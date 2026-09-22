@@ -140,6 +140,17 @@ pub enum RowPaint {
     Dimmed,
     /// Brought forward: the selection, or a search hit.
     Highlighted,
+    /// The row a dragged badge is over — where it would land if the button
+    /// came up now (`docs/design/02-keymap.md` §2.15).
+    ///
+    /// Its own variant rather than [`RowPaint::Highlighted`] because during
+    /// a drag **both** rows are on screen at once: the cursor has not moved
+    /// and comes back when the badge is dropped, so the two have to be told
+    /// apart. They were the same paint until
+    /// m5-history-and-ghost-preview/35, which is why a drag looked like
+    /// nothing happening — the only change on screen was the same faint
+    /// raise moving from one row to another.
+    DropTarget,
     /// A Ghost Preview row: a commit that does not exist yet, or a real
     /// parent clipped at the preview slice's edge and drawn as an anchor
     /// rather than loaded (ADR-0038 §5). The node draws as a hollow anchor
@@ -161,7 +172,7 @@ impl RowPaint {
         match self {
             RowPaint::Normal | RowPaint::Ghost => Modifier::empty(),
             RowPaint::Dimmed => Modifier::DIM,
-            RowPaint::Highlighted => Modifier::BOLD,
+            RowPaint::Highlighted | RowPaint::DropTarget => Modifier::BOLD,
         }
     }
 }

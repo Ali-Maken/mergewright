@@ -52,6 +52,38 @@ pub(super) fn thread(history: &History) -> Option<Thread> {
 ///
 /// Under a selection every lane draws bold on its thread and dim off it; in
 /// Focus mode the rows off the thread fade as a whole.
+/// What a badge in the air does to the row at absolute history row `index`,
+/// or `None` when this row has nothing to do with the drag
+/// (m5-history-and-ghost-preview/10, §2.15; reworked by 35 after the user
+/// reported that a drag showed nothing until he let go).
+///
+/// Applied last, over Focus mode's fade: while a badge is in the air the
+/// question on screen is where it would land, and that answer wins.
+///
+/// The row the badge is **over** gets its own [`RowPaint::DropTarget`]
+/// rather than the cursor's `Highlighted`. The cursor has not moved and
+/// comes back the moment the badge is dropped, so both rows are on screen
+/// and both have to be legible. Until 35 they were the same paint and the
+/// drop target *replaced* the cursor's highlight — so the whole of a drag,
+/// on screen, was one faint background raise moving from one row to
+/// another.
+///
+/// The row the badge came **from** fades, because that is what has
+/// happened: the badge is not there any more, it is in the user's hand.
+/// This is the mark that lands on the button *down*, before any motion,
+/// and it is the answer to "nothing indicates I have picked anything up" —
+/// until 35 the press changed nothing on screen but the footer.
+fn drag_paint(state: &AppState, index: usize) -> Option<RowPaint> {
+    let drag = state.drag.as_ref()?;
+    if drag.over == Some(index) {
+        Some(RowPaint::DropTarget)
+    } else if drag.from_row == index {
+        Some(RowPaint::Dimmed)
+    } else {
+        None
+    }
+}
+
 pub(super) fn visible_rows<'a>(
     state: &'a AppState,
     history: &'a History,
@@ -124,14 +156,9 @@ pub(super) fn visible_rows<'a>(
                     {
                         entry.line.paint = RowPaint::Dimmed;
                     }
-                    // The row a dragged badge is over, last: while a badge
-                    // is in the air the question on screen is "where would
-                    // this land", and the answer wins over the cursor's own
-                    // highlight and over Focus mode's fade. The cursor has
-                    // not moved and comes back the moment the badge is
-                    // dropped (m5-history-and-ghost-preview/10, §2.15).
-                    if crate::update::drag::drop_target(state) == Some(index) {
-                        entry.line.paint = RowPaint::Highlighted;
+                    // The drag's two rows, last: over Focus mode's fade.
+                    if let Some(paint) = drag_paint(state, index) {
+                        entry.line.paint = paint;
                     }
                     entry
                 }),

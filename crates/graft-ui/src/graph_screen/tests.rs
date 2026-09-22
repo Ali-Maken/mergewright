@@ -211,16 +211,43 @@ fn at_palette16_the_cursor_row_gets_a_rule_instead_of_a_background() {
     assert!(!buffer[(10, 2)].modifier.is_empty()); // still bold
 }
 
+/// m5-history-and-ghost-preview/35. **This test used to assert the
+/// opposite** — that the `▏` rule appears *only* at Palette16, and that
+/// `TrueColor` is marked by the raised background alone. That was the
+/// behaviour the user could not see: the background step is `#14161B` →
+/// `#232730` in the dark theme, and *"really and I mean really hard to
+/// notice which row I'm on"* is what it came to in his terminal.
+///
+/// The rule is drawn at every depth now, so both marks are on the cursor
+/// row at `TrueColor`: the fill for terminals that show it well, and the
+/// shape for the reader — and for the black-and-white screenshot, and for
+/// the theme whose surfaces sit close together.
 #[test]
-fn truecolor_snapshot_is_unchanged_by_the_palette16_rule() {
+fn at_truecolor_the_cursor_row_gets_the_rule_as_well_as_the_background() {
     let rows = linear(3);
     let terminal = draw(&view(&rows, WalkView::Complete { rows: 3 }, 1), 40, 6);
     let buffer = terminal.backend().buffer();
     let theme = Theme::new(ThemeKind::Dark, &terminal_caps());
     let raised = color(theme.token(Token::SurfaceRaised));
+    let accent = color(theme.token(Token::Accent));
 
-    assert_eq!(buffer[(30, 2)].bg, raised);
-    assert!(!(0..buffer.area.width).any(|x| buffer[(x, 2)].symbol() == "▏"));
+    assert_eq!(buffer[(30, 2)].bg, raised, "the fill is still painted");
+    let rule = (0..buffer.area.width)
+        .find(|x| buffer[(*x, 2)].symbol() == "▏")
+        .expect("the cursor row carries the rule at TrueColor too");
+    assert_eq!(
+        buffer[(rule, 2)].fg,
+        accent,
+        "the rule is the accent colour"
+    );
+    assert!(
+        buffer[(rule, 2)].modifier.contains(Modifier::BOLD),
+        "and bold, so it reads against the lane glyphs beside it"
+    );
+    assert!(
+        !(0..buffer.area.width).any(|x| buffer[(x, 1)].symbol() == "▏"),
+        "no other row carries one"
+    );
 }
 
 #[test]
@@ -310,6 +337,47 @@ fn the_marker_slot_is_the_same_width_empty_or_filled() {
     };
     assert_eq!(subject_at(&empty_screen[1]), subject_at(&filled_screen[1]));
     assert_ne!(empty_screen[1], filled_screen[1]);
+}
+
+/// m5-history-and-ghost-preview/35. The marker slot holds **both** marks
+/// when a row has both: the cursor's rule in its first cell, the Mistake
+/// Radar's glyph in its second.
+///
+/// Found by the capture this ticket took, not by reasoning: the first cut
+/// of 35 kept the radar's precedence, and on `docs/shots/m5-ui-dragging-*`
+/// the row carrying `ⓘ` lost its rule entirely — back to the raised
+/// background alone, which is the one signal the user had already told us
+/// he could not see. A fix for "you cannot find the cursor" that switches
+/// itself off on some rows is not a fix.
+#[test]
+fn a_row_with_a_marker_still_shows_the_cursor_rule() {
+    let rows = linear(2);
+    let mut filled = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    filled.rows[0].marker = Some(MarkerView {
+        severity: Severity::Warning,
+    });
+    filled.marker_column = true;
+    let terminal = draw(&filled, 120, 5);
+    let buffer = terminal.backend().buffer();
+
+    let rule = (0..buffer.area.width)
+        .find(|x| buffer[(*x, 1)].symbol() == "▏")
+        .expect("the cursor row keeps its rule beside a marker");
+    assert_eq!(
+        buffer[(rule + 1, 1)].symbol(),
+        "⚠",
+        "and the marker takes the cell next to it"
+    );
+
+    // The columns after it have not moved: the slot is still two cells.
+    let empty = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let plain = text(&draw(&empty, 120, 5));
+    let both = text(&terminal);
+    let subject_at = |line: &str| {
+        let byte = line.find("Commit").expect("the subject is drawn");
+        line[..byte].chars().count()
+    };
+    assert_eq!(subject_at(&plain[1]), subject_at(&both[1]));
 }
 
 #[test]

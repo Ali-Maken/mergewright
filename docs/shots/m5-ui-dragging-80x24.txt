@@ -1,0 +1,48 @@
+# m5-ui-dragging-80x24.txt: drawn by `view::view` from a real
+# AppState over a real repository (`main` three commits, `feature` forked off
+# the first with two of its own, `feature` checked out), opened over the real
+# job pool, `feature`'s badge pressed and dragged onto `main`'s row — the
+# button is **still down**, two real mouse events through `update`, no release
+# (crates/graft/tests/it/name_and_drag.rs, capture_a_drag_in_flight_for_docs_shots).
+# A golden snapshot: that test fails if the frame drifts. Regenerate on
+# purpose with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so
+# this is a character grid with no colour attributes in it — CLAUDE.md rule 5,
+# colour ships unverified, and the raised background on two of these rows is
+# **not** in this file. The three marks below are shapes for exactly that
+# reason.
+#
+# What right looks like:
+#  - `main`'s row carries `▸` in the marker column: this is where the badge
+#    would land.
+#  - The row `feature`'s badge came off is faded — the badge is in the air,
+#    not on that row. Here that is also the row the cursor is on (the badge
+#    was picked up from under it), so the fade replaces the cursor's own
+#    `▏`: one row, one state. Drag from a row the cursor is not on and both
+#    marks are drawn, `▏` and `▸`, on different rows.
+#  - The footer reads `release drop on a row  esc cancel`.
+#  - Nothing else has moved: no menu, no box, the graph unchanged.
+
+ graft /code/api  8 commits
+  ◆ ⓘ [◆ feature] finish the feature                                now  8d6cd28
+  ●   start the feature                                             2m   52f3b96
+● │ ▸ [main] main moves again                                       3m   45fa51d
+● │   main moves on                                                 4m   37926a7
+●─╯   add the base                                                  5m   ed332bc
+●     Correct the note                                              1y   a82960b
+●     Add the first note                                            1y   fadcfb3
+◇     Add a readme                                                  1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ release drop on a row  esc cancel
