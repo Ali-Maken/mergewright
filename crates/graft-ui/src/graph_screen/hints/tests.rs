@@ -1090,3 +1090,53 @@ fn resolver_hint_ladder() {
     // there is no doorway to lead a dropped tail to.
     assert!(!text_80.contains("more"), "{text_80:?}");
 }
+
+/// `⏎ resolve` leads `ChangesPane { unmerged: true }` and `Banner {
+/// conflicted: true }` (Proposed change 2a) — pinned by exact string on
+/// `context_list`, before the `Live` filter, since both entries stay
+/// `Planned` in this build (`ChangesPane`'s `M mergetool`/`space resolved`,
+/// `Banner`'s new `⏎ resolve`) and so draw nothing for `hints_for` to check
+/// (`every_planned_hint_is_still_unbound`, `graft`'s
+/// `every_key_the_bar_draws_is_answered`, cover that half).
+///
+/// Wording is what the code emits, not a re-derivation from the design
+/// note's prose: `⇥` here is `graph` (the existing verb, unchanged by this
+/// group), not the note's own paraphrase.
+#[test]
+fn unmerged_rows_lead_with_resolve() {
+    let unmerged = context_list(&HintContext::ChangesPane { unmerged: true });
+    assert_eq!(
+        hints_text(&unmerged),
+        " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph"
+    );
+
+    let banner_plain = context_list(&HintContext::Banner {
+        skippable: false,
+        conflicted: true,
+    });
+    assert_eq!(
+        hints_text(&banner_plain),
+        " ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph"
+    );
+
+    let banner_skippable = context_list(&HintContext::Banner {
+        skippable: true,
+        conflicted: true,
+    });
+    assert_eq!(
+        hints_text(&banner_skippable),
+        " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph"
+    );
+
+    // `conflicted: false` drops `⏎ resolve` along with `M`/`e`: nothing is
+    // unmerged, so the whole conflict-resolution group refuses in words.
+    let banner_no_conflict = context_list(&HintContext::Banner {
+        skippable: true,
+        conflicted: false,
+    });
+    assert!(
+        !hints_text(&banner_no_conflict).contains("resolve"),
+        "{:?}",
+        hints_text(&banner_no_conflict)
+    );
+}
