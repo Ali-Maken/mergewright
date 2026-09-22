@@ -9,14 +9,15 @@
 //! [`InversePlan`]: crate::undo::InversePlan
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 
-use graft_core::journal::HeadRef;
+use graft_core::journal::{HeadRef, IndexState};
 use graft_core::oid::Oid;
 use graft_git::run::{GitArg, GitInvocation, RunError};
 
 use crate::apply::Context;
 use crate::snapshot;
-use crate::undo::{PathScope, Step};
+use crate::undo::{IndexPaths, PathScope, Step};
 
 use super::RestoreError;
 
@@ -28,7 +29,7 @@ pub(super) fn run_step(
     match step {
         Step::UpdateRef { name, expect, to } => update_ref(ctx, name, *expect, *to, commands),
         Step::SetHead(head) => set_head(ctx, head, commands),
-        Step::RestoreIndex { tree, paths } => restore_index(ctx, *tree, paths, commands),
+        Step::RestoreIndex { index, paths } => restore_index(ctx, *index, paths, commands),
         Step::RestoreWorktree { tree, paths } => restore_worktree(ctx, *tree, paths, commands),
         Step::StashStore { commit } => stash_store(ctx, *commit, commands),
         Step::StashDrop { commit } => stash_drop(ctx, *commit, commands),
@@ -109,34 +110,120 @@ fn set_head(
     run(ctx, args, None, commands).map(|_output| ())
 }
 
-/// Put the staged state of the scoped paths back, through
-/// `update-index --index-info`.
+/// Put the scoped paths back the way the recorded index state holds them,
+/// through **one** `update-index --index-info`.
 ///
 /// Never `read-tree` on the real index: that would replace the whole index,
-/// including paths the operation never touched.
+/// including paths the operation never touched. Never `checkout --merge`
+/// either — the stages come out of the recorded tree, so nothing here replays
+/// a merge (m6-conflicts/08's constraint).
+///
+/// Every path gets a **mode-0 removal line before its entries**. That is
+/// git's documented rule for placing higher-stage entries, and without it a
+/// path that is unmerged now keeps its stale stages when the recorded state
+/// has it merged, and the other way round (verified, git 2.54).
 fn restore_index(
     ctx: &mut Context<'_>,
-    tree: Oid,
-    scope: &PathScope,
+    index: IndexState,
+    scope: &IndexPaths,
     commands: &mut Vec<String>,
 ) -> Result<(), RestoreError> {
-    let paths = scoped_paths(ctx, tree, scope, Side::Index, commands)?;
+    let paths = index_scoped_paths(ctx, index, scope)?;
+    put_stages_back(ctx, index, &paths, commands).map_err(as_snapshot_error)
+}
+
+/// The write half of [`restore_index`], over paths the caller already has.
+///
+/// Its error set is exactly [`snapshot::SnapshotError`]'s — one `ls-tree`
+/// read and one `update-index`, with the stop kept as a stop — so a caller
+/// outside a restore plan ([`crate::restore::restore_stages`], which `d`
+/// after `⏎` goes through) gets the failure it can actually map, rather than
+/// a [`RestoreError`] whose other dozen variants it would have to pretend to
+/// handle.
+pub(crate) fn put_stages_back(
+    ctx: &mut Context<'_>,
+    index: IndexState,
+    paths: &[PathBuf],
+    commands: &mut Vec<String>,
+) -> Result<(), snapshot::SnapshotError> {
     if paths.is_empty() {
         return Ok(());
     }
-    let present = tree_entries(ctx, tree, &paths, commands)?;
-    let zero = "0".repeat(tree.as_bytes().len() * 2);
+    let held = snapshot::stage_entries_for(ctx.repo, index, paths, ctx.stop)?;
+    let stdin = index_info_records(paths, &held, index.tree().as_bytes().len() * 2);
+    let args = vec![
+        GitArg::Flag("update-index"),
+        GitArg::Flag("-z"),
+        GitArg::Flag("--index-info"),
+    ];
+    let invocation = GitInvocation::new(ctx.repo).args(args).stdin(stdin);
+    commands.push(invocation.command_line());
+    invocation
+        .run(ctx.stop)
+        .map(|_output| ())
+        .map_err(|why| match why {
+            // The stop stays a stop: folding it into `Run` would read as a
+            // git failure and take the cancel path away from the caller.
+            RunError::Stopped => snapshot::SnapshotError::Stopped,
+            other => snapshot::SnapshotError::Run(other),
+        })
+}
+
+/// The bytes one `update-index -z --index-info` takes: per path, the mode-0
+/// removal, then every entry the recorded state holds for it, in stage order.
+///
+/// Pure, so the order can be asserted without a repository — it is the whole
+/// correctness of the step (`unmerged_index_info_lines`). A path the state
+/// does not hold gets the removal line alone, which is how a restore takes a
+/// staged entry back out.
+fn index_info_records(
+    paths: &[PathBuf],
+    held: &BTreeMap<PathBuf, Vec<snapshot::StageEntry>>,
+    zeros: usize,
+) -> Vec<u8> {
+    let zero = "0".repeat(zeros);
     let mut stdin = Vec::new();
-    for path in &paths {
-        match present.get(path) {
-            Some((mode, id)) => stdin.extend_from_slice(format!("{mode} {id}\t").as_bytes()),
-            None => stdin.extend_from_slice(format!("0 {zero}\t").as_bytes()),
+    for path in paths {
+        let name = path.as_os_str().as_encoded_bytes();
+        stdin.extend_from_slice(format!("0 {zero}\t").as_bytes());
+        stdin.extend_from_slice(name);
+        stdin.push(0);
+        for entry in held.get(path).into_iter().flatten() {
+            stdin.extend_from_slice(
+                format!("{:06o} {} {}\t", entry.mode, entry.oid, entry.stage).as_bytes(),
+            );
+            stdin.extend_from_slice(name);
+            stdin.push(0);
         }
-        stdin.extend_from_slice(path);
-        stdin.push(b'\n');
     }
-    let args = vec![GitArg::Flag("update-index"), GitArg::Flag("--index-info")];
-    run(ctx, args, Some(stdin), commands).map(|_output| ())
+    stdin
+}
+
+/// The paths an index restore may touch, and no others.
+///
+/// `ChangedBetween` is the operation's own footprint over the two recorded
+/// states; `Exactly` is one file being started over; `Everything` is the
+/// fallback for an operation that died before its after-state could be
+/// recorded — the union of what the backup holds and what the index tracks
+/// now, since an unmerged index has no tree to diff against.
+fn index_scoped_paths(
+    ctx: &mut Context<'_>,
+    index: IndexState,
+    scope: &IndexPaths,
+) -> Result<Vec<PathBuf>, RestoreError> {
+    let found = match scope {
+        IndexPaths::Exactly(paths) => return Ok(paths.clone()),
+        IndexPaths::ChangedBetween { from, to } => {
+            snapshot::index_paths_changed(ctx.repo, *from, *to, ctx.stop)
+        }
+        IndexPaths::Everything => {
+            snapshot::index_paths(ctx.repo, index, ctx.stop).and_then(|mut union| {
+                union.extend(snapshot::tracked_paths_now(ctx.repo, ctx.stop)?);
+                Ok(union)
+            })
+        }
+    };
+    Ok(found.map_err(as_snapshot_error)?.into_iter().collect())
 }
 
 /// Put the working-tree content of the scoped paths back.
@@ -152,7 +239,7 @@ fn restore_worktree(
     scope: &PathScope,
     commands: &mut Vec<String>,
 ) -> Result<(), RestoreError> {
-    let paths = scoped_paths(ctx, tree, scope, Side::Worktree, commands)?;
+    let paths = scoped_paths(ctx, tree, scope, commands)?;
     if paths.is_empty() {
         return Ok(());
     }
@@ -350,14 +437,7 @@ fn stash_reflog(
     Ok(found)
 }
 
-/// Which tree a scope's "now" side is read from.
-#[derive(Clone, Copy)]
-enum Side {
-    Index,
-    Worktree,
-}
-
-/// The paths a step may touch, and no others.
+/// The paths a working-tree step may touch, and no others.
 ///
 /// `ChangedBetween` is the operation's own footprint. `Everything` is the
 /// fallback for an operation that died before its after-state could be
@@ -368,20 +448,10 @@ fn scoped_paths(
     ctx: &mut Context<'_>,
     tree: Oid,
     scope: &PathScope,
-    side: Side,
     commands: &mut Vec<String>,
 ) -> Result<Vec<Vec<u8>>, RestoreError> {
     let (from, to) = match scope {
         PathScope::ChangedBetween { from, to } => (*from, *to),
-        // The index side takes the union of the backup's paths and every
-        // path the index tracks now, rather than a diff: an unmerged index
-        // has no tree to diff against, and this is exactly the case
-        // `Everything` exists for — an operation that died mid-merge.
-        PathScope::Everything if matches!(side, Side::Index) => {
-            let mut union: BTreeSet<Vec<u8>> = tree_paths(ctx, tree, commands)?;
-            union.extend(tracked_now_all(ctx, commands)?);
-            return Ok(union.into_iter().collect());
-        }
         PathScope::Everything => {
             let now = snapshot::worktree_tree(ctx.repo, &ctx.scratch, ctx.stop)
                 .map_err(RestoreError::Snapshot)?;
@@ -401,33 +471,6 @@ fn scoped_paths(
     ];
     let output = run(ctx, args, None, commands)?;
     Ok(split_nul(&output))
-}
-
-/// Every path a tree holds.
-fn tree_paths(
-    ctx: &mut Context<'_>,
-    tree: Oid,
-    commands: &mut Vec<String>,
-) -> Result<BTreeSet<Vec<u8>>, RestoreError> {
-    let args = vec![
-        GitArg::Flag("ls-tree"),
-        GitArg::Flag("-r"),
-        GitArg::Flag("--name-only"),
-        GitArg::Flag("-z"),
-        GitArg::Oid(tree),
-    ];
-    let output = run(ctx, args, None, commands)?;
-    Ok(split_nul(&output).into_iter().collect())
-}
-
-/// Every path the index tracks, unmerged ones included.
-fn tracked_now_all(
-    ctx: &mut Context<'_>,
-    commands: &mut Vec<String>,
-) -> Result<BTreeSet<Vec<u8>>, RestoreError> {
-    let args = vec![GitArg::Flag("ls-files"), GitArg::Flag("-z")];
-    let output = run(ctx, args, None, commands)?;
-    Ok(split_nul(&output).into_iter().collect())
 }
 
 /// `<mode> <oid>` for each of `paths` the tree holds.
@@ -525,9 +568,112 @@ fn run(
         .map_err(as_restore_error)
 }
 
+/// A snapshot failure as a restore failure — the **stop kept as a stop**.
+///
+/// `RestoreError::Snapshot(Stopped)` would read as a git failure, and the
+/// cancel path (m5/06: a stop rolls back what already ran) is chosen on
+/// `RestoreError::Stopped` alone, so folding the two would leave a cancel
+/// half-applied.
+fn as_snapshot_error(why: snapshot::SnapshotError) -> RestoreError {
+    match why {
+        snapshot::SnapshotError::Stopped => RestoreError::Stopped,
+        other => RestoreError::Snapshot(other),
+    }
+}
+
 fn as_restore_error(why: RunError) -> RestoreError {
     match why {
         RunError::Stopped => RestoreError::Stopped,
         other => RestoreError::Run(other),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used, clippy::unwrap_used)]
+
+    use super::*;
+
+    fn oid(byte: u8) -> Oid {
+        Oid::from_hex(&format!("{byte:02x}").repeat(20)).expect("a hex oid")
+    }
+
+    fn entry(mode: u32, id: u8, stage: u8) -> snapshot::StageEntry {
+        snapshot::StageEntry {
+            mode,
+            oid: oid(id),
+            stage,
+        }
+    }
+
+    /// The records a conflicted path restores through: the mode-0 removal
+    /// first, then stages 1, 2, 3, all NUL-terminated, the path repeated on
+    /// every line.
+    ///
+    /// The removal line is git's own documented rule for `--index-info`: an
+    /// entry at stage 0 blocks a higher stage from being added, so the path
+    /// has to go before its stages come back. Without it the resolved entry
+    /// survives and the path still reads as merged.
+    #[test]
+    fn unmerged_index_info_lines() {
+        let path = PathBuf::from("both.txt");
+        let mut held = BTreeMap::new();
+        held.insert(
+            path.clone(),
+            vec![
+                entry(0o100_644, 1, 1),
+                entry(0o100_644, 2, 2),
+                entry(0o100_755, 3, 3),
+            ],
+        );
+
+        let records = index_info_records(std::slice::from_ref(&path), &held, 40);
+        let lines: Vec<String> = records
+            .split(|byte| *byte == 0)
+            .filter(|record| !record.is_empty())
+            .map(|record| String::from_utf8_lossy(record).into_owned())
+            .collect();
+
+        assert_eq!(
+            lines,
+            vec![
+                format!("0 {}\tboth.txt", "0".repeat(40)),
+                format!("100644 {} 1\tboth.txt", oid(1)),
+                format!("100644 {} 2\tboth.txt", oid(2)),
+                format!("100755 {} 3\tboth.txt", oid(3)),
+            ]
+        );
+        assert_eq!(
+            records.last(),
+            Some(&0),
+            "every record is NUL-terminated, the last one too"
+        );
+    }
+
+    /// A path the recorded state does not hold gets the removal line and
+    /// nothing else: that is how a restore drops an index entry the
+    /// operation added.
+    #[test]
+    fn a_path_with_no_stages_is_only_removed() {
+        let path = PathBuf::from("gone.rs");
+        let records = index_info_records(std::slice::from_ref(&path), &BTreeMap::new(), 40);
+        assert_eq!(
+            String::from_utf8_lossy(&records),
+            format!("0 {}\tgone.rs\0", "0".repeat(40))
+        );
+    }
+
+    /// A merged path is one stage-0 line after its removal — the shape every
+    /// pre-M6 restore wrote, unchanged.
+    #[test]
+    fn a_merged_path_is_one_stage_zero_line() {
+        let path = PathBuf::from("a.rs");
+        let mut held = BTreeMap::new();
+        held.insert(path.clone(), vec![entry(0o100_644, 7, 0)]);
+        let records = index_info_records(std::slice::from_ref(&path), &held, 40);
+        assert_eq!(
+            String::from_utf8_lossy(&records),
+            format!("0 {}\ta.rs\0100644 {} 0\ta.rs\0", "0".repeat(40), oid(7))
+        );
     }
 }

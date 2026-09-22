@@ -44,6 +44,7 @@ use graft_git::status::UnmergedHow;
 
 use super::stage::with_paths;
 use super::{Invocation, Refusal, RepoFacts};
+use crate::snapshot::StageEntry;
 
 /// Which side of a conflict a whole-file resolution keeps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -142,8 +143,8 @@ pub(super) fn describe_restart(params: &RestartParams) -> String {
 
 /// Both operations need the path to be unmerged *now*: the resolver is only
 /// ever open on one that is, and running either on a path git has no stages
-/// for is what `checkout --merge`'s "does not have all necessary versions"
-/// is (verified, git 2.54).
+/// for at all is what `checkout --merge`'s "did not match any file(s) known
+/// to git" is (verified, git 2.54).
 pub(super) fn check_unmerged(path: &Path, facts: &RepoFacts) -> Result<UnmergedHow, Refusal> {
     match facts
         .status
@@ -191,6 +192,90 @@ pub(super) fn plan_resolve(params: &ResolveWholeParams) -> Vec<Invocation> {
             Invocation::new(with_paths(vec![GitArg::Flag("add")], paths)),
         ],
     }
+}
+
+/// `check` for a restart: **a shape `checkout --merge` can actually merge**,
+/// wherever the stages for it live.
+///
+/// "Unmerged" is not the honest gate, and saying it was cost a raw git error
+/// where a refusal in words belongs (m6 g03 review, M1). Measured on git
+/// 2.54.0 (Apple Git-157) over a merge holding one path per shape:
+///
+/// | shape | `git checkout --merge -- <p>` |
+/// |---|---|
+/// | `UU` both modified | exit 0, three stages back |
+/// | `AA` both added | exit 0, two stages back (there is no base) |
+/// | `UD` `DU` `AU` `UA` `DD` | **exit 1**, `does not have all necessary versions` |
+///
+/// All seven shapes were run, from the rename/rename fixture
+/// `conflict_ops::stopped_merge` builds. Exactly the two that work are the
+/// two [`UnmergedHow::has_markers`] names — a shape with one stage has
+/// nothing to merge — so that is the gate.
+///
+/// # Why this no longer refuses a merged path (m6-conflicts/08, scope 5(c))
+///
+/// `d` has to work **after `⏎`**, which is the one case git alone cannot do:
+/// `⏎` is `git add`, so the path sits at stage 0 and the status has no
+/// [`UnmergedHow`] for it at all. There is nothing here to read — the stages
+/// are in a recorded stage tree, and only a spawn reaches it, while `check`
+/// is pure over [`RepoFacts`] by contract.
+///
+/// So the gate splits along what each half can see, and stays **one rule**:
+///
+/// - the status calls the path unmerged → decide here, exactly as before:
+///   [`UnmergedHow::has_markers`] or [`Refusal::NotMarkerShape`];
+/// - it does not → admit it here, and let [`crate::apply::stage_source`]
+///   find the stages and apply the *same* test to them
+///   ([`shape_of_stages`]): none kept anywhere is
+///   [`Refusal::NoStagesKept`], a one-sided set is the same
+///   [`Refusal::NotMarkerShape`] it would have been in the index.
+///
+/// A merged path is therefore never silently admitted: it is admitted here
+/// and answered there, before any `git` that writes runs.
+///
+/// The way out of a one-sided shape is the whole-file resolution the resolver
+/// already offers, which is what the refusal's words say.
+pub(super) fn check_restart(path: &Path, facts: &RepoFacts) -> Result<(), Refusal> {
+    let Some(how) = facts
+        .status
+        .entry(path)
+        .and_then(|entry| entry.unmerged_how)
+    else {
+        // Stage 0, or not in the status at all: `apply` decides, because only
+        // a read can say whether the sides were kept.
+        return Ok(());
+    };
+    if how.has_markers() {
+        Ok(())
+    } else {
+        Err(Refusal::NotMarkerShape {
+            path: path.to_path_buf(),
+            how,
+        })
+    }
+}
+
+/// The [`UnmergedHow`] a set of index stages spells, or `None` for no stages
+/// at all.
+///
+/// The inverse of git's own `XY` pair, and the only way to apply the marker
+/// gate to stages that come out of a recorded tree rather than out of the
+/// status. Stage 1 is the merge base, 2 ours, 3 theirs, so: both sides
+/// present is a marker shape (with a base `UU`, without one `AA`), one side
+/// plus a base is a delete by the other, one side alone is an add by that
+/// side, and a base alone is `DD`.
+pub(crate) fn shape_of_stages(stages: &[StageEntry]) -> Option<UnmergedHow> {
+    let has = |stage: u8| stages.iter().any(|entry| entry.stage == stage);
+    Some(match (has(1), has(2), has(3)) {
+        (true, true, true) => UnmergedHow::BothModified,
+        (false, true, true) => UnmergedHow::BothAdded,
+        (true, true, false) => UnmergedHow::DeletedByThem,
+        (true, false, true) => UnmergedHow::DeletedByUs,
+        (false, true, false) => UnmergedHow::AddedByUs,
+        (false, false, true) => UnmergedHow::AddedByThem,
+        (true, false, false) => UnmergedHow::BothDeleted,
+        (false, false, false) => return None,
+    })
 }
 
 /// `git checkout --merge -- <path>`: git re-runs its own merge of stages 1,

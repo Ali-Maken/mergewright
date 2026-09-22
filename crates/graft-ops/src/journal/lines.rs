@@ -8,7 +8,9 @@
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use graft_core::journal::{
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
+};
 use graft_core::oid::Oid;
 use serde::{Deserialize, Serialize};
 
@@ -40,8 +42,9 @@ pub struct PendingLine {
     pub head_before: HeadRef,
     /// Touched refs before.
     pub refs_before: BTreeMap<String, Option<Oid>>,
-    /// Index tree before.
-    pub index_before: Option<Oid>,
+    /// The index before: a bare oid for a merged one, `{"unmerged":…}`
+    /// for the stage tree of a half-finished merge.
+    pub index_before: Option<IndexState>,
     /// Working-tree tree before.
     pub worktree_before: Option<Oid>,
     /// The backup ref, taken before the operation.
@@ -63,8 +66,8 @@ pub struct OutcomeLine {
     pub head_after: Option<HeadRef>,
     /// Touched refs after.
     pub refs_after: BTreeMap<String, Option<Oid>>,
-    /// Index tree after.
-    pub index_after: Option<Oid>,
+    /// The index after, the same two shapes.
+    pub index_after: Option<IndexState>,
     /// Working-tree tree after.
     pub worktree_after: Option<Oid>,
     /// The Command Log.
