@@ -67,6 +67,11 @@ pub enum GitArg {
     /// not added a [`GitArg::Separator`] before the first path, the runner
     /// adds one, so a path can never be read as an option.
     Path(Vec<u8>),
+    /// A fixed flag with raw bytes glued on: `Glued("--path=", bytes)` is
+    /// `--path=<bytes>`. For an option whose value is a pathname — not
+    /// always UTF-8, and not something that can wait for the `--` that
+    /// [`GitArg::Path`] lands after (`cat-file --filters --path=…`).
+    Glued(&'static str, Vec<u8>),
     /// `--`, the end of options.
     Separator,
     /// An argument the caller built, such as a `--format=` string. Never a
@@ -207,6 +212,9 @@ pub fn command_line(args: &[GitArg]) -> String {
             GitArg::Count(flag, n) => format!("{flag}{n}"),
             GitArg::Oid(oid) => oid.to_string(),
             GitArg::Ref(bytes) | GitArg::Path(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+            GitArg::Glued(flag, bytes) => {
+                format!("{flag}{}", String::from_utf8_lossy(bytes))
+            }
             GitArg::Separator => "--".to_owned(),
             GitArg::Word(word) => word.clone(),
         };
