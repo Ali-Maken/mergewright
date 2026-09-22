@@ -537,6 +537,47 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads one conflicted path for the resolver, under an id `update`
+    /// chose so a stale answer can be dropped (m6-conflicts/04).
+    fn open_conflict(&self, id: JobId, path: std::path::PathBuf) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::OpenConflict), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let opened = super::conflict::open(&repos, &path, cancel).map(Arc::new);
+                Outcome::Produced(Product::ConflictOpened(opened))
+            })
+        });
+    }
+
+    /// Takes one side of one conflict block and writes the file back, under
+    /// an id `update` chose (m6-conflicts/04).
+    ///
+    /// Not cancellable part-way on purpose: the write is one temp-file
+    /// rename deep inside `ops`, and a token checked between "decide" and
+    /// "rename" would only ever report a take that had in fact already
+    /// landed.
+    fn take_side(&self, id: JobId, request: crate::update::TakeRequest) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::TakeSide), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let crate::update::TakeRequest {
+                    path,
+                    file,
+                    block,
+                    take,
+                } = request;
+                let taken = super::conflict::take(&repos, &path, &file, block, take).map(Arc::new);
+                Outcome::Produced(Product::Taken(taken))
+            })
+        });
+    }
+
     /// Reads `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     fn read_commit_template(&self, id: JobId) {
@@ -899,6 +940,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::PlanPreview(id, request) => self.plan_preview(id, request),
             Command::RevertTo(id, target, force) => self.run_revert_to(id, target, force),
             Command::ReadStashes(id) => self.read_stashes(id),
+            Command::OpenConflict(id, path) => self.open_conflict(id, path),
+            Command::TakeSide(id, request) => self.take_side(id, request),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),

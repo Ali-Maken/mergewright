@@ -91,20 +91,20 @@
 ●      Ship release 14                                                                                   GF 2h   0f8d5d6
 ●      Ship release 13                                                                                   GF 2h   78ddfac
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- c continue  a abort  M mergetool  e edit  ⇥ graph
+ ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 80393eb
 CONFLICTS (16)                ▎
-  notes.md           unmerged       1 + <<<<<<< HEAD
-  shared.rs          unmerged   1   2   our plan
+  notes.md      both modified       1 + <<<<<<< HEAD
+  shared.rs     both modified   1   2   our plan
   ▾ src/                            3 + =======
-    step_00.rs       unmerged       4 + their plan
-    step_01.rs       unmerged       5 + >>>>>>> feature
-    step_02.rs       unmerged
-    step_03.rs       unmerged
-    step_04.rs       unmerged
-    step_05.rs       unmerged
-    step_06.rs       unmerged
-    step_07.rs       unmerged
-    step_08.rs       unmerged
-    step_09.rs       unmerged
+    step_00.rs  both modified       4 + their plan
+    step_01.rs  both modified       5 + >>>>>>> feature
+    step_02.rs  both modified
+    step_03.rs  both modified
+    step_04.rs  both modified
+    step_05.rs  both modified
+    step_06.rs  both modified
+    step_07.rs  both modified
+    step_08.rs  both modified
+    step_09.rs  both modified

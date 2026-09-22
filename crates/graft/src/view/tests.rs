@@ -2108,7 +2108,11 @@ fn changes_pane_state(columns: u16, rows: u16) -> AppState {
     use graft_ui::detail::DetailFocus;
 
     let (staged, unstaged) = scripted_file_lists();
-    let (view, list) = crate::jobs::detail::assemble_working_tree(&staged, &unstaged);
+    let (view, list) = crate::jobs::detail::assemble_working_tree(
+        &staged,
+        &unstaged,
+        &crate::jobs::detail::UnmergedShapes::new(),
+    );
     let status = scripted_status();
 
     let mut state = AppState {

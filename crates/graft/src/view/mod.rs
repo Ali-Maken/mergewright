@@ -26,6 +26,7 @@ mod map;
 mod name_prompt;
 mod preview;
 pub(crate) mod radar;
+pub(crate) mod resolver;
 pub(crate) mod rows;
 mod stash;
 mod status;

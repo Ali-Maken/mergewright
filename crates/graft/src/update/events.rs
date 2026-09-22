@@ -180,6 +180,11 @@ pub enum Task {
     ReadStashes,
     /// Read the configured remotes and `HEAD`'s upstream (m4-remotes/05).
     ReadRemotes,
+    /// Read one conflicted path for the resolver (m6-conflicts/04).
+    OpenConflict,
+    /// Take one side of one conflict block and write the file back
+    /// (m6-conflicts/04).
+    TakeSide,
 }
 
 /// What a job brought back.
@@ -301,6 +306,30 @@ pub enum Product {
         /// Whether it ran, or why it did not.
         result: Result<(), String>,
     },
+    /// One conflicted path, read for the resolver (m6-conflicts/04), or why
+    /// it could not be opened — in `graft_ops`' own words
+    /// ([`graft_ops::conflict::OpenError`]'s `Display`), never `{:?}`.
+    ///
+    /// `Arc`: the open resolver holds the parsed document across frames and
+    /// the layout is built from it, so it is shared rather than copied per
+    /// event (mirroring [`Product::Preview`]). The id it answers under
+    /// rides on [`AppEvent::Produced`], like every other product's.
+    ConflictOpened(
+        Result<
+            std::sync::Arc<crate::jobs::conflict::OpenedFile>,
+            crate::jobs::conflict::OpenFailure,
+        >,
+    ),
+    /// One conflict block took a side and the file was written back
+    /// (m6-conflicts/04): the document as it now stands, with its new
+    /// fingerprint, or why nothing was written
+    /// ([`graft_ops::conflict::TakeError`]'s `Display`).
+    Taken(
+        Result<
+            std::sync::Arc<graft_git::conflict::ConflictFile>,
+            crate::jobs::conflict::TakeFailure,
+        >,
+    ),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.
@@ -542,6 +571,39 @@ pub enum Command {
     /// (`keys.suspend_on_ctrl_z`, ADR-0002). Carried out by the frame loop,
     /// like `OpenExternalEditor`.
     Suspend,
+    /// Read one conflicted path for the resolver (m6-conflicts/04), under an
+    /// id `update` chose so a stale answer can be dropped.
+    ///
+    /// No status rides along: the job reads the working tree's status
+    /// **itself**, fresh. The resolver re-reads its file after `e` and `M`
+    /// precisely to find out whether the path is still unmerged, and a
+    /// cached status — the one `AppState` is holding, read before the
+    /// handover — could never say that it is not.
+    OpenConflict(JobId, std::path::PathBuf),
+    /// Take one side of one conflict block and write the file back
+    /// (m6-conflicts/04), under an id `update` chose.
+    TakeSide(JobId, TakeRequest),
+}
+
+/// One block's take, as the resolver asks for it.
+///
+/// The **document** travels, not a fingerprint: `graft_ops::conflict::apply_take`
+/// applies the take to the copy the user is looking at and writes that back,
+/// checking `file.fingerprint` against the bytes on disk as it goes. Re-reading
+/// the path instead would drop every block already resolved and re-index the
+/// rest, so a second take would land on the wrong block (design note, hard
+/// choice 2; m6-conflicts/03).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TakeRequest {
+    /// The conflicted file, as git's porcelain names it.
+    pub path: std::path::PathBuf,
+    /// The document the take was chosen against — the resolver's own copy,
+    /// shared rather than cloned into the command.
+    pub file: std::sync::Arc<graft_git::conflict::ConflictFile>,
+    /// Which block, counting `Conflict` and `Resolved` regions in order.
+    pub block: usize,
+    /// Which side it keeps.
+    pub take: graft_git::conflict::Take,
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

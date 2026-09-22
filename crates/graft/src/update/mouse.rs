@@ -19,6 +19,16 @@ pub(super) const WHEEL_LINES: isize = 3;
 
 /// The half of [`super::core_event`] that answers the mouse (DESIGN.md §2.15).
 pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
+    // The conflict resolver first, and it claims **every** mouse event
+    // while it is open (m6-conflicts/04). Nothing below this line checks
+    // `graph_overlay()`: `left_click` goes straight to `graph_row_at`, so a
+    // click over the Map, the journal or the stash list still selects a row
+    // of the graph behind them (`docs/reviews/m5-10-30-31.md:291-296`, open
+    // since m5). Fixing those three is a separate change; what this does is
+    // make sure the resolver is not a fourth.
+    if super::resolver::resolver_mouse(next, mouse) {
+        return;
+    }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: any
     // button down either dispatches (inside it) or closes it (outside), and
     // nothing else this click would have done happens in the same press.

@@ -14,6 +14,7 @@ use graft_git::diff::{
     file_diff, list_files, pairs,
 };
 use graft_git::run::Stop;
+use graft_git::status::UnmergedHow;
 use graft_term::sanitize::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::detail::{
     DiffView, FileListView, FileRow, FileRowKind, FileStatusView, HunkView, LineKindView, LineView,
@@ -55,7 +56,16 @@ pub(super) fn read_files(
             list_files(&handle, &DiffSpec::Staged, &options, stop).map_err(|e| e.to_string())?;
         let unstaged =
             list_files(&handle, &DiffSpec::Unstaged, &options, stop).map_err(|e| e.to_string())?;
-        let (view, list) = assemble_working_tree(&staged, &unstaged);
+        // The shape of each conflict ("both modified", "deleted by
+        // them") is the status' to say, not the diff's, so the changes
+        // pane's own read fetches it alongside the two diffs. A status
+        // that cannot be read costs the CONFLICTS rows their wording and
+        // nothing else, so it is not this job's failure.
+        let how = match graft_git::status::read(&handle, stop) {
+            Ok(status) => shapes_of(&status),
+            Err(_) => UnmergedShapes::new(),
+        };
+        let (view, list) = assemble_working_tree(&staged, &unstaged, &how);
         return Ok((Arc::new(view), Arc::new(list)));
     }
     let list = list_files(&handle, &spec, &options, stop).map_err(|e| e.to_string())?;
@@ -188,15 +198,43 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView {
         list,
         &(0..list.files.len()).collect::<Vec<_>>(),
         0,
+        // A commit's files are never unmerged, so there is no shape to name.
+        &UnmergedShapes::new(),
     );
     view
+}
+
+/// Each unmerged path's shape, by path, from one working-tree status.
+pub type UnmergedShapes = std::collections::HashMap<Vec<u8>, UnmergedHow>;
+
+/// [`UnmergedShapes`] from a status read: every entry git called unmerged
+/// and told us the shape of, keyed by the same raw bytes the diff carries.
+fn shapes_of(status: &graft_git::status::WorkingTreeStatus) -> UnmergedShapes {
+    use std::os::unix::ffi::OsStrExt;
+
+    status
+        .entries
+        .iter()
+        .filter_map(|entry| {
+            Some((
+                entry.path.as_os_str().as_bytes().to_vec(),
+                entry.unmerged_how?,
+            ))
+        })
+        .collect()
 }
 
 /// `indices` of `list`, in path order, pushed onto `view` as a directory
 /// tree (directories first-seen, paths in byte order) starting at `base`
 /// depth. Shared by the commit pane's flat list and the changes pane's
 /// per-section ones, so a section's files nest exactly as a commit's do.
-fn push_tree(view: &mut FileListView, list: &FileList, indices: &[usize], base: u8) {
+fn push_tree(
+    view: &mut FileListView,
+    list: &FileList,
+    indices: &[usize],
+    base: u8,
+    how: &UnmergedShapes,
+) {
     let mut order: Vec<usize> = indices.to_vec();
     order.sort_by(|&a, &b| list.files[a].path.cmp(&list.files[b].path));
 
@@ -227,7 +265,7 @@ fn push_tree(view: &mut FileListView, list: &FileList, indices: &[usize], base: 
             depth: base.saturating_add(depth(dirs.len())),
             name: sanitize_line(file),
             kind: FileRowKind::File {
-                status: status_view(entry.status),
+                status: status_view(entry.status, how.get(&entry.path).copied()),
                 added: entry.added,
                 removed: entry.removed,
             },
@@ -300,7 +338,11 @@ fn sections_of(
 /// An empty tree gets no section rows at all, just the `nothing to commit`
 /// message, so the pane does not print three empty headings.
 #[must_use]
-pub fn assemble_working_tree(staged: &FileList, unstaged: &FileList) -> (FileListView, FileList) {
+pub fn assemble_working_tree(
+    staged: &FileList,
+    unstaged: &FileList,
+    how: &UnmergedShapes,
+) -> (FileListView, FileList) {
     let by_section = sections_of(staged, unstaged);
 
     let mut merged = FileList {
@@ -334,7 +376,7 @@ pub fn assemble_working_tree(staged: &FileList, unstaged: &FileList) -> (FileLis
             },
             entry: None,
         });
-        push_tree(&mut view, &merged, indices, 1);
+        push_tree(&mut view, &merged, indices, 1, how);
     }
     // The cursor starts on the first file, not on a heading: opening the
     // pane should show a diff, and `Space` on a heading means "all of it".
@@ -350,7 +392,7 @@ fn depth(levels: usize) -> u8 {
     u8::try_from(levels).unwrap_or(u8::MAX)
 }
 
-fn status_view(status: FileStatus) -> FileStatusView {
+fn status_view(status: FileStatus, how: Option<UnmergedHow>) -> FileStatusView {
     match status {
         FileStatus::Added => FileStatusView::Added,
         FileStatus::Deleted => FileStatusView::Deleted,
@@ -358,14 +400,15 @@ fn status_view(status: FileStatus) -> FileStatusView {
         FileStatus::Renamed { .. } => FileStatusView::Renamed,
         FileStatus::Copied { .. } => FileStatusView::Copied,
         FileStatus::TypeChanged => FileStatusView::TypeChanged,
-        // `how` wants git's porcelain `XY` pair in words ("both modified",
-        // "deleted by them"). `graft_git::diff::FileStatus::Unmerged` does
-        // not carry the pair — `file_list.rs` maps every `U` to one
-        // variant — so the only true thing to say here is that it is
-        // unmerged. Carrying `XY` through needs `graft-git`, which this
-        // group does not hold; it is in the ticket's NOTES as a gap.
+        // `how` is git's porcelain `XY` pair in words ("both modified",
+        // "deleted by them"). The diff does not carry the pair —
+        // `graft_git::diff::FileStatus` maps every `U` to one variant — so
+        // it comes from the working-tree status the same job reads, by
+        // path. `None` where nothing read the status (a commit's diff has
+        // no unmerged paths at all), and then all that is true is that it
+        // is unmerged (m6-conflicts/04, closing KNOWN_GAPS row 472).
         FileStatus::Unmerged => FileStatusView::Unmerged {
-            how: sanitize_line("unmerged"),
+            how: sanitize_line(how.map_or("unmerged", graft_git::status::UnmergedHow::words)),
         },
         FileStatus::Untracked => FileStatusView::Untracked,
     }
@@ -400,7 +443,7 @@ pub fn assemble_diff(diff: &FileDiff, word_tint: bool) -> DiffView {
     DiffView {
         path: sanitize_path_bytes(&diff.entry.path),
         old_path: diff.entry.old_path.as_deref().map(sanitize_path_bytes),
-        status: status_view(diff.entry.status),
+        status: status_view(diff.entry.status, None),
         hunks,
         binary: diff.binary.map(|note| {
             sanitize_line(match note {
@@ -656,7 +699,7 @@ mod working_tree_tests {
             file("u1.rs", FileStatus::Modified),
             file("new.txt", FileStatus::Untracked),
         ]);
-        let (view, merged) = assemble_working_tree(&staged, &unstaged);
+        let (view, merged) = assemble_working_tree(&staged, &unstaged, &UnmergedShapes::new());
         assert_eq!(
             rows(&view),
             vec![
@@ -688,7 +731,7 @@ mod working_tree_tests {
     #[test]
     fn an_untracked_file_is_a_row_of_its_own_section_not_an_unstaged_one() {
         let unstaged = list(vec![file("new.txt", FileStatus::Untracked)]);
-        let (view, _) = assemble_working_tree(&list(Vec::new()), &unstaged);
+        let (view, _) = assemble_working_tree(&list(Vec::new()), &unstaged, &UnmergedShapes::new());
         assert_eq!(
             rows(&view),
             vec![
@@ -700,7 +743,8 @@ mod working_tree_tests {
 
     #[test]
     fn an_empty_section_gets_no_heading_and_a_clean_tree_gets_no_rows() {
-        let (view, merged) = assemble_working_tree(&list(Vec::new()), &list(Vec::new()));
+        let (view, merged) =
+            assemble_working_tree(&list(Vec::new()), &list(Vec::new()), &UnmergedShapes::new());
         assert!(view.rows.is_empty(), "{:?}", view.rows);
         assert!(merged.files.is_empty());
     }
@@ -712,7 +756,7 @@ mod working_tree_tests {
             file("b.rs", FileStatus::Modified),
             file("c.rs", FileStatus::Modified),
         ]);
-        let (view, _) = assemble_working_tree(&staged, &unstaged);
+        let (view, _) = assemble_working_tree(&staged, &unstaged, &UnmergedShapes::new());
         assert_eq!(view.section_entries(0), vec![0]);
         assert_eq!(view.section_entries(2), vec![1, 2]);
         // A file row is not a section row: asking is safe and answers empty.
@@ -722,7 +766,7 @@ mod working_tree_tests {
     #[test]
     fn files_nest_under_their_section_one_level_deeper() {
         let unstaged = list(vec![file("src/a/b.rs", FileStatus::Modified)]);
-        let (view, _) = assemble_working_tree(&list(Vec::new()), &unstaged);
+        let (view, _) = assemble_working_tree(&list(Vec::new()), &unstaged, &UnmergedShapes::new());
         assert_eq!(
             rows(&view),
             vec![

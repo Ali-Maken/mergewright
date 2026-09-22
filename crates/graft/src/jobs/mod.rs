@@ -71,6 +71,7 @@ mod tests;
 
 mod askpass;
 pub(crate) mod commit_message;
+pub(crate) mod conflict;
 pub(crate) mod detail;
 mod kinds;
 mod map;

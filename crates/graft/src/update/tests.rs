@@ -1171,6 +1171,7 @@ fn every_field_spelled_out() -> AppState {
         external_editor: None,
         suspend_on_ctrl_z: false,
         preview: None,
+        resolver: None,
     }
 }
 
@@ -3606,15 +3607,22 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             row: Box::new(HintContext::PlainRow),
             opens: *opens,
         }),
+        // The resolver is an overlay now, and `view::rows::overlay_context`
+        // answers exactly this form for it. `base`/`restart` stay false:
+        // `B` and `d` are group 05's keys and nothing in the app sets
+        // either flag yet, so the other three combinations have no state to
+        // classify and are left unswept (their two hints are `Planned`,
+        // which `drawable` filters out, so nothing dead can hide there).
+        HintContext::Resolver {
+            base: false,
+            restart: false,
+        } => Some(HintContext::Resolver {
+            base: false,
+            restart: false,
+        }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
-        // code that decides it.
-        //
-        // `Resolver` has no app-side state yet either — no `GraphOverlay`
-        // variant, no `view::rows` arm reads for it (that wiring is G4's,
-        // at the seam this ticket's crate set stops short of). Every one
-        // of its hints ships `Planned` (graft-ui/src/graph_screen/hints.rs),
-        // so `dead_keys_in` never asks `footer_context` to classify a state
-        // that does not exist.
+        // code that decides it. The three `Resolver` forms above this arm
+        // never reach the app.
         HintContext::Preview | HintContext::Resolver { .. } => None,
         // The three overlays and the pane with one behind it **are**
         // classified, since m5/42: `view::rows` reads
@@ -3844,19 +3852,13 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // Radar marker that tell `BranchRow`, `Marked` and `PlainRow` apart
         // are painted on the row, not held in the state, and no key turns
         // on them.
-        //
-        // `Resolver` shares this arm's state too, but for an unrelated
-        // reason: no app state represents the resolver screen yet (G4
-        // builds it). Every hint `resolver_list` produces is `Planned`
-        // (graft-ui/src/graph_screen/hints.rs), so `hints_for` draws none
-        // of them here and `dead_keys_in` has nothing live to press — this
-        // placeholder only has to be *a* valid, settleable state, not a
-        // real resolver one.
         HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::Marked(_)
-        | HintContext::Preview
-        | HintContext::Resolver { .. } => vec![merge_on_screen(walk, MERGE_ROW).0],
+        | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
+        // The resolver open on a two-block conflict: every live key in
+        // `resolver_list` has something to do in it.
+        HintContext::Resolver { .. } => vec![resolver_on_screen(walk)],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
@@ -4160,6 +4162,37 @@ fn status_entry(path: &str, unmerged: bool) -> graft_git::status::StatusEntry {
         unmerged_how: None,
         submodule: false,
     }
+}
+
+/// The resolver open on a real two-block conflict, the state every one of
+/// `resolver_list`'s live keys has to act in: a cursor on the first block so
+/// `o`/`t`/`b` write, a second open block so `n` moves, a mergetool
+/// configured so `M` hands over instead of refusing, and a working tree that
+/// lists the file as unmerged so the title and `⏎` have a file to name.
+fn resolver_on_screen(walk: JobId) -> AppState {
+    const CONFLICTED: &[u8] = b"one\n\
+        <<<<<<< HEAD\nours a\n=======\ntheirs a\n>>>>>>> topic\n\
+        two\n\
+        <<<<<<< HEAD\nours b\n=======\ntheirs b\n>>>>>>> topic\n\
+        three\n";
+    let file = graft_git::conflict::parse(CONFLICTED).expect("two open blocks");
+    let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![status_entry("conflicted.rs", true)],
+    }));
+    state.mergetool = Some("vimdiff".to_string());
+    state.resolver = Some(resolver::ResolverState {
+        path: PathBuf::from("conflicted.rs"),
+        opened_from: resolver::OpenedFrom::Pane,
+        file: Some(Arc::new(file)),
+        cursor_block: Some(0),
+        top: 0,
+        base_shown: false,
+        job: None,
+        staging: None,
+        notice: None,
+    });
+    state
 }
 
 /// A branch badge picked up from row 1 and held over row 0, which is where

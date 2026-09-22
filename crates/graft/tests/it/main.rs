@@ -37,6 +37,7 @@ mod published_repo;
 mod refresh_race;
 mod remote_by_key;
 mod repo_truth;
+mod resolver;
 mod seam_rule;
 mod stash_by_key;
 mod two_boxes_over_content;

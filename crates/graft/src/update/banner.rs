@@ -312,6 +312,22 @@ pub fn banner_key(
             }
             None => nothing_conflicted(state),
         },
+        // `⏎` opens the resolver on the first conflicted file
+        // (`docs/design/02-keymap.md` §2.6a, m6-conflicts/04). It was the
+        // catch-all's before, which meant the one key §2.2 gives to "open /
+        // drill in" did nothing at all on the banner.
+        KeyCode::Enter if plain => match first_conflicted(state) {
+            Some(path) => {
+                super::resolver::open_resolver(
+                    state,
+                    commands,
+                    path,
+                    super::resolver::OpenedFrom::Banner,
+                    next_id,
+                );
+            }
+            None => nothing_conflicted(state),
+        },
         KeyCode::Char('e') if plain => match first_conflicted(state) {
             Some(path) => {
                 edit_conflict(state, commands, Some(&path));

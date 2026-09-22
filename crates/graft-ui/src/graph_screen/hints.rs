@@ -298,22 +298,15 @@ pub enum HintContext {
     /// The conflict resolver has the keyboard (M6, `docs/design-notes/m6-conflicts.md`
     /// "New UI"): modal, its own whole list, no `. more`.
     ///
-    /// **Every entry [`resolver_list`] draws is [`HintState::Planned`].**
-    /// This group (`ui-conflict-resolver`) builds the widget and this
-    /// table; it does not build the resolver's key dispatch — there is no
-    /// `AppState` for "the resolver has focus" yet, so nothing in `graft`
-    /// can answer a press. Drawing any of these keys `Live` now, with
-    /// nothing behind them, is exactly the defect m5-03 review's Critical 2
-    /// named for `M mergetool`: a hint whose key does something else, or
-    /// nothing. `app-conflict-resolver` (G4) builds the state machine and
-    /// flips this table to `Live` in the same commit
-    /// (`docs/design-notes/m6-conflicts.md`, Groups: "G4 … + `hints.rs` at
-    /// the seam close").
+    /// **Live since m6-conflicts/04**, which built `update::resolver`: the
+    /// resolver is an `AppState::resolver` and a `GraphOverlay::Resolver`,
+    /// and `resolver_key` answers every key [`resolver_list`] draws. `B`
+    /// and `d` are the exceptions and stay `Planned` — m6-conflicts/05
+    /// binds them.
     Resolver {
-        /// `B` show/hide base (Proposed change 2b) — pending a
-        /// `docs/design/02-keymap.md` edit; the app passes `false` until
-        /// then, per the ticket. Kept as a field so the shape is ready; the
-        /// hint stays [`HintState::Planned`] either way today.
+        /// `B` show/hide base (Proposed change 2b) — m6-conflicts/05's.
+        /// The app passes `false` until then; the hint stays
+        /// [`HintState::Planned`] either way today.
         base: bool,
         /// `d` start this file over (Proposed change 2c) — same.
         restart: bool,
@@ -382,6 +375,17 @@ pub enum HintContext {
 /// whole at 80 columns, so nothing is dropped and nothing needs a doorway.
 #[must_use]
 pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<Hint> {
+    // The resolver below its own floor is the one context whose *keys*
+    // depend on the width: under `conflict_resolver::MIN_COLUMNS` the
+    // widget draws one line of text instead of the document, and the app
+    // answers nothing but `Esc` — there is no document on screen to take a
+    // side of. So the bar says the one thing that is true there, which is
+    // also what that line itself says (m6-conflicts/04).
+    if matches!(context, HintContext::Resolver { .. })
+        && columns < crate::conflict_resolver::MIN_COLUMNS
+    {
+        return vec![hint("esc", "close")];
+    }
     let (list, trailer) = whole_bar(context, divider);
     fit_list(&list, trailer, columns)
 }
@@ -849,11 +853,9 @@ fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
     }
     list.push(hint("a", "abort"));
     if conflicted {
-        // `⏎ resolve` leads (Proposed change 2a): planned until the
-        // resolver's key handling exists (`HintContext::Resolver`'s doc
-        // comment) — G4 flips it to `Live` in the same commit that opens
-        // the resolver from here.
-        list.insert(0, planned("⏎", "resolve"));
+        // `⏎ resolve` leads (Proposed change 2a): live since
+        // m6-conflicts/04, which binds it in `update::banner::banner_key`.
+        list.insert(0, hint("⏎", "resolve"));
         list.push(hint("M", "mergetool"));
         list.push(hint("e", "edit"));
     }
@@ -862,20 +864,18 @@ fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
 }
 
 /// The changes pane (design note, "Changes pane"). On an unmerged file the
-/// write keys swap for the conflict keys — `M mergetool` and `space
-/// resolved` are M6's to build (`space` is *refused* on an unmerged entry
-/// today, `update::operate`), so until then the pane keeps its own keys,
-/// minus the two that would be a lie.
+/// write keys swap for the conflict keys: `⏎` opens the resolver
+/// (`update::detail::keys`), `M` launches the mergetool and `space` marks
+/// the file resolved — which is what staging an unmerged path *is*
+/// (`update::operate::stage_selected`). All three bound by m6-conflicts/04.
 fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
     if unmerged {
         vec![
-            // `⏎ resolve` leads (Proposed change 2a) — planned for the same
-            // reason the other two are: G4 flips all three to `Live`
-            // together, when it wires the key that opens the resolver.
-            planned("⏎", "resolve"),
-            planned("M", "mergetool"),
+            // `⏎ resolve` leads (Proposed change 2a).
+            hint("⏎", "resolve"),
+            hint("M", "mergetool"),
             hint("e", "edit"),
-            planned("space", "resolved"),
+            hint("space", "resolved"),
             hint("c", "commit"),
             hint("⇥", "graph"),
         ]
@@ -897,29 +897,27 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
 /// `B base` after `b both` only while `base` (Proposed change 2b), `d start
 /// over` before `esc close` only while `restart` (Proposed change 2c).
 ///
-/// Every entry is [`planned`] — see [`HintContext::Resolver`]'s doc comment
-/// for why: this ticket builds the table and the widget, not the app-side
-/// key handling `G4` wires it to.
+/// Live since m6-conflicts/04, which built `update::resolver` — every one
+/// of these is answered by `resolver_key`. The two in brackets are **not**:
+/// `B base` and `d start over` are m6-conflicts/05's, and stay [`planned`]
+/// until it binds them. The app passes `base: false, restart: false` for
+/// now, so neither is even in the list it asks for.
 fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
-    let mut list = vec![
-        planned("o", "ours"),
-        planned("t", "theirs"),
-        planned("b", "both"),
-    ];
+    let mut list = vec![hint("o", "ours"), hint("t", "theirs"), hint("b", "both")];
     if base {
         list.push(planned("B", "base"));
     }
     list.extend([
-        planned("e", "edit"),
-        planned("n", "next"),
-        planned("N", "prev"),
-        planned("⏎", "resolved"),
-        planned("M", "mergetool"),
+        hint("e", "edit"),
+        hint("n", "next"),
+        hint("N", "prev"),
+        hint("⏎", "resolved"),
+        hint("M", "mergetool"),
     ]);
     if restart {
         list.push(planned("d", "start over"));
     }
-    list.push(planned("esc", "close"));
+    list.push(hint("esc", "close"));
     list
 }
 

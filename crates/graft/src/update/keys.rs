@@ -42,6 +42,21 @@ fn boxes_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     claimed
 }
 
+/// The conflict resolver, right after the preview and before the banner
+/// (m6-conflicts/04). Modal: while it is open every key but `Ctrl+C` is
+/// its own.
+///
+/// **Before the banner on purpose.** `⏎` on the focused banner is what
+/// opens it, and the banner is modal too — leaving it first would mean the
+/// resolver's own `c`, `s`, `a`, `M` and `e` reached the operation instead
+/// of the file, with a document on screen saying otherwise.
+fn resolver_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::resolver::resolver_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
 /// The operation banner, right after the preview and before the menu
 /// (m5-history-and-ghost-preview/09). Modal while focused: a merge or
 /// rebase stopped on a conflict is a state the user has to resolve or
@@ -72,15 +87,16 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
-    // A badge in the air is dropped by any key, before that key means
-    // anything: `drag::drag_key`. Only `Esc` is spent doing it.
-    if super::drag::drag_key(next, key) {
-        return;
-    }
-    if boxes_key(next, commands, key) {
-        return;
-    }
-    if banner_key(next, commands, key) {
+    // The modal claims, in order, each returning `true` once it has taken
+    // the key: a badge in the air is dropped by any key before that key
+    // means anything (`drag::drag_key`; only `Esc` is spent doing it), then
+    // the confirm box and the preview, then the resolver, then the focused
+    // banner. `||` is the early return, one claim per line.
+    if super::drag::drag_key(next, key)
+        || boxes_key(next, commands, key)
+        || resolver_key(next, commands, key)
+        || banner_key(next, commands, key)
+    {
         return;
     }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) gets the key
@@ -730,69 +746,85 @@ fn is_refresh(key: KeyPress) -> bool {
 /// it with the hint tables.
 #[must_use]
 pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
-    &[
-        // `graph_key`, this file.
-        ("q", "quit"),         // `is_quit`
-        ("F2", "status"),      // `is_screen_toggle`
-        ("F3", "renderer"),    // `is_tier_cycle`
-        ("+", "lanes"),        // `is_lane_toggle`
-        ("F", "focus"),        // `is_focus_toggle`
-        ("y", "sha"),          // `is_copy_key` → `copy_selected_sha`
-        ("x", "compare"),      // `is_compare_key` → `toggle_compare_selected`
-        ("c", "commit"),       // `is_commit_key` → `commit_editor::open`
-        ("a", "amend"),        // `is_commit_key`, amending
-        ("m", "merge"),        // `write_key` → `preview::history_key`, `Merge`
-        ("r", "rebase"),       // `write_key` → `preview::history_key`, `Rebase`
-        ("p", "pull"),         // `is_remote_key` → `remote::pull_key`
-        ("P", "push"),         // `is_remote_key` → `remote::push_key`
-        ("f", "fetch"),        // `is_remote_key` → `remote::fetch_key`
-        ("space", "fold"),     // `view_change` → `ViewChange::Fold`
-        ("1", "first-parent"), // `view_change` → `ViewChange::FirstParent`
-        ("H", "hide stash"),   // `view_change` → `ViewChange::Stashes`
-        ("j/k", "move"),       // `motion_for` → `move_cursor`
-        ("g/G", "top/bottom"), // `motion_for`
-        ("PgUp/PgDn", "page"), // `motion_for`
-        ("⌃R", "refresh"),     // `is_refresh` → `refresh_key`
-        ("u", "undo"),         // `is_undo_key` → `undo::undo_key`
-        ("U", "redo"),         // `is_undo_key`, redo
-        ("esc", "dismiss"),    // `key_event`: clears a `Failed`/`Sticky` status
-        ("b", "branch"),       // `is_name_key` → `name_prompt::open_from_graph`
-        ("t", "tag"),          // `is_name_key`, tagging
-        (".", "more"),         // `is_context_menu_key` → `context_menu::open_selected`
-        (".", "explain"),      // the same menu's `Explain` item on a marked row
-        // The panes and overlays (`pane_and_overlay_key`).
-        ("⏎", "open"),      // `detail::keys`: opens the pane on the cursor row
-        ("⏎", "changes"),   // the same key on the uncommitted-changes row
-        ("<>", "resize"),   // `detail::keys`, while the pane is shown (ADR-0028)
-        ("⇥", "graph"),     // `detail::keys`: cycles focus back to the graph
-        ("space", "stage"), // `detail::keys::changes_pane_write_key`
-        ("d", "discard"),   // the same, `operate::request_discard`
-        ("⌃A", "all"),      // the same, `operate::stage_all`
-        ("e", "edit"),      // the same, `$EDITOR` at the cursor's line
-        // The operation banner, while it has focus (`banner::banner_key`).
-        // `e edit` and `⇥ graph` above are the same keys in another
-        // context; these four are the banner's own.
-        ("c", "continue"),  // `banner_key` → `continue_pressed`
-        ("s", "skip"),      // `banner_key` → `skip_pressed`
-        ("a", "abort"),     // `banner_key` → `abort_pressed`
-        ("M", "mergetool"), // `banner_key` → `open_mergetool`
-        ("S", "stash"),     // `stash::stash_key`: opens the overlay
-        ("J", "journal"),   // `journal::journal_key`: opens the browser
-        ("M", "map"),       // `map::map_key`
-        ("O", "overview"),  // `strip::strip_key`
-        ("/", "search"),    // `search::search_key`, before `key_event`
-        // Inside the three overlays, which hint their own lists.
-        ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip
-        ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry
-        ("⏎", "apply"),   // `stash::operate_on_selected`, keeping the entry
-        ("p", "pop"),     // the same, popping
-        ("d", "drop"),    // `stash::stash_key`
-        ("b", "branch"),  // `stash::shown_key` → `name_prompt::open_name_prompt`
-        ("esc", "close"), // either overlay's own `Esc`
-        // Dragging a branch badge (`drag::drag_mouse`, `drag::drag_key`).
-        // `release` is the mouse button, named as a key so the hint bar can
-        // offer it: the gesture ends with the button, not with `⏎`.
-        ("release", "drop on a row"),
-        ("esc", "cancel"), // `drag_key`: `Esc` drops the badge, doing nothing
-    ]
+    BOUND_ACTIONS
 }
+
+/// [`bound_actions`]' list. A `const`, not the function's own body: it is a
+/// table, and a table is not a function long enough to want splitting.
+const BOUND_ACTIONS: &[(&str, &str)] = &[
+    // `graph_key`, this file.
+    ("q", "quit"),         // `is_quit`
+    ("F2", "status"),      // `is_screen_toggle`
+    ("F3", "renderer"),    // `is_tier_cycle`
+    ("+", "lanes"),        // `is_lane_toggle`
+    ("F", "focus"),        // `is_focus_toggle`
+    ("y", "sha"),          // `is_copy_key` → `copy_selected_sha`
+    ("x", "compare"),      // `is_compare_key` → `toggle_compare_selected`
+    ("c", "commit"),       // `is_commit_key` → `commit_editor::open`
+    ("a", "amend"),        // `is_commit_key`, amending
+    ("m", "merge"),        // `write_key` → `preview::history_key`, `Merge`
+    ("r", "rebase"),       // `write_key` → `preview::history_key`, `Rebase`
+    ("p", "pull"),         // `is_remote_key` → `remote::pull_key`
+    ("P", "push"),         // `is_remote_key` → `remote::push_key`
+    ("f", "fetch"),        // `is_remote_key` → `remote::fetch_key`
+    ("space", "fold"),     // `view_change` → `ViewChange::Fold`
+    ("1", "first-parent"), // `view_change` → `ViewChange::FirstParent`
+    ("H", "hide stash"),   // `view_change` → `ViewChange::Stashes`
+    ("j/k", "move"),       // `motion_for` → `move_cursor`
+    ("g/G", "top/bottom"), // `motion_for`
+    ("PgUp/PgDn", "page"), // `motion_for`
+    ("⌃R", "refresh"),     // `is_refresh` → `refresh_key`
+    ("u", "undo"),         // `is_undo_key` → `undo::undo_key`
+    ("U", "redo"),         // `is_undo_key`, redo
+    ("esc", "dismiss"),    // `key_event`: clears a `Failed`/`Sticky` status
+    ("b", "branch"),       // `is_name_key` → `name_prompt::open_from_graph`
+    ("t", "tag"),          // `is_name_key`, tagging
+    (".", "more"),         // `is_context_menu_key` → `context_menu::open_selected`
+    (".", "explain"),      // the same menu's `Explain` item on a marked row
+    // The panes and overlays (`pane_and_overlay_key`).
+    ("⏎", "open"),      // `detail::keys`: opens the pane on the cursor row
+    ("⏎", "changes"),   // the same key on the uncommitted-changes row
+    ("<>", "resize"),   // `detail::keys`, while the pane is shown (ADR-0028)
+    ("⇥", "graph"),     // `detail::keys`: cycles focus back to the graph
+    ("space", "stage"), // `detail::keys::changes_pane_write_key`
+    ("d", "discard"),   // the same, `operate::request_discard`
+    ("⌃A", "all"),      // the same, `operate::stage_all`
+    ("e", "edit"),      // the same, `$EDITOR` at the cursor's line
+    // The operation banner, while it has focus (`banner::banner_key`).
+    // `e edit` and `⇥ graph` above are the same keys in another
+    // context; these four are the banner's own.
+    ("c", "continue"),  // `banner_key` → `continue_pressed`
+    ("s", "skip"),      // `banner_key` → `skip_pressed`
+    ("a", "abort"),     // `banner_key` → `abort_pressed`
+    ("M", "mergetool"), // `banner_key` → `open_mergetool`
+    // The conflict keys, on the banner and on a `CONFLICTS` row of the
+    // changes pane (m6-conflicts/04).
+    ("⏎", "resolve"), // `banner_key`, `detail::keys` → `resolver::open_resolver`
+    ("space", "resolved"), // `detail::keys` → `operate::stage_selected` on an unmerged path
+    // Inside the resolver (`resolver::resolver_key`). `B base` and
+    // `d start over` are m6-conflicts/05's and are not bound here.
+    ("o", "ours"),     // `take_side`, `Take::Ours`
+    ("t", "theirs"),   // the same, `Take::Theirs`
+    ("b", "both"),     // the same, `Take::Both`
+    ("n", "next"),     // `walk_blocks`, forward
+    ("N", "prev"),     // the same, backward
+    ("⏎", "resolved"), // `mark_resolved`: `git add` on the open file
+    ("S", "stash"),    // `stash::stash_key`: opens the overlay
+    ("J", "journal"),  // `journal::journal_key`: opens the browser
+    ("M", "map"),      // `map::map_key`
+    ("O", "overview"), // `strip::strip_key`
+    ("/", "search"),   // `search::search_key`, before `key_event`
+    // Inside the three overlays, which hint their own lists.
+    ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip
+    ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry
+    ("⏎", "apply"),   // `stash::operate_on_selected`, keeping the entry
+    ("p", "pop"),     // the same, popping
+    ("d", "drop"),    // `stash::stash_key`
+    ("b", "branch"),  // `stash::shown_key` → `name_prompt::open_name_prompt`
+    ("esc", "close"), // either overlay's own `Esc`
+    // Dragging a branch badge (`drag::drag_mouse`, `drag::drag_key`).
+    // `release` is the mouse button, named as a key so the hint bar can
+    // offer it: the gesture ends with the button, not with `⏎`.
+    ("release", "drop on a row"),
+    ("esc", "cancel"), // `drag_key`: `Esc` drops the badge, doing nothing
+];
