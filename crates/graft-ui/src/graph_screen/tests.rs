@@ -170,15 +170,15 @@ fn a_banner_sits_under_the_header_and_takes_rows_from_the_body() {
 }
 
 #[test]
-fn the_cursor_row_is_raised_and_the_others_are_not() {
+fn the_cursor_row_is_selected_and_the_others_are_not() {
     let rows = linear(3);
     let terminal = draw(&view(&rows, WalkView::Complete { rows: 3 }, 1), 40, 6);
     let buffer = terminal.backend().buffer();
     let theme = Theme::new(ThemeKind::Dark, &terminal_caps());
-    let raised = color(theme.token(Token::SurfaceRaised));
+    let selection = color(theme.token(Token::Selection));
 
-    assert_eq!(buffer[(30, 2)].bg, raised);
-    assert_ne!(buffer[(30, 1)].bg, raised);
+    assert_eq!(buffer[(30, 2)].bg, selection);
+    assert_ne!(buffer[(30, 1)].bg, selection);
     assert!(buffer[(10, 2)].modifier.contains(Modifier::BOLD));
 }
 
@@ -198,7 +198,7 @@ fn at_palette16_the_cursor_row_gets_a_rule_instead_of_a_background() {
     let buffer = terminal.backend().buffer();
 
     // No usable background step at this depth: the row's fill is left
-    // untouched, same as an unhighlighted row, not `surface-raised`.
+    // untouched, same as an unhighlighted row, not `selection`.
     assert_eq!(buffer[(30, 2)].bg, buffer[(30, 1)].bg, "{buffer:#?}");
     // The marker slot carries the highlight instead, in the accent colour.
     let accent = color(theme.token(Token::Accent));
@@ -228,10 +228,10 @@ fn at_truecolor_the_cursor_row_gets_the_rule_as_well_as_the_background() {
     let terminal = draw(&view(&rows, WalkView::Complete { rows: 3 }, 1), 40, 6);
     let buffer = terminal.backend().buffer();
     let theme = Theme::new(ThemeKind::Dark, &terminal_caps());
-    let raised = color(theme.token(Token::SurfaceRaised));
+    let selection = color(theme.token(Token::Selection));
     let accent = color(theme.token(Token::Accent));
 
-    assert_eq!(buffer[(30, 2)].bg, raised, "the fill is still painted");
+    assert_eq!(buffer[(30, 2)].bg, selection, "the fill is still painted");
     let rule = (0..buffer.area.width)
         .find(|x| buffer[(*x, 2)].symbol() == "▏")
         .expect("the cursor row carries the rule at TrueColor too");

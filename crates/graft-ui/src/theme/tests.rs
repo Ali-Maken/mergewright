@@ -33,6 +33,7 @@ fn every_token_prompt_md_names_is_present_exactly_once() {
             "bg",
             "surface",
             "surface-raised",
+            "selection",
             "border",
             "text",
             "text-muted",
@@ -42,7 +43,8 @@ fn every_token_prompt_md_names_is_present_exactly_once() {
             "warning",
             "info",
         ],
-        "the token set is PROMPT.md §5's list, in its order"
+        "the token set is PROMPT.md §5's list, in its order \
+         (`selection` added m5-history-and-ghost-preview/44)"
     );
 }
 
@@ -418,6 +420,101 @@ fn contrast(left: Rgb, right: Rgb) -> f32 {
     };
 
     (lighter + 0.05) / (darker + 0.05)
+}
+
+/// m5-history-and-ghost-preview/44. `selection` is the "you are here" fill —
+/// the cursor row in the graph, the map, the stash list, the journal, and
+/// the files pane. It replaced `surface-raised` there because `surface-raised`
+/// is tuned for a *quiet* step (a raised panel's background) and measured
+/// only ≈1.1:1–1.3:1 against `bg`: far under the WCAG 1.4.11 floor for a
+/// non-text indicator (3:1), in both themes, and the reason the user could
+/// not find his own cursor row twice.
+///
+/// `text` drawn on the selected row must also stay readable (WCAG 2.1 AA,
+/// 4.5:1) — "a selection you can see but cannot read on is not a fix". In
+/// the dark theme these two floors are **not simultaneously reachable**: `bg`
+/// (#14161B, relative luminance 0.00802) and `text` (#D7DBE0, luminance
+/// 0.70492) are only 13.01:1 apart, and splitting that into a ≥3:1 segment
+/// below `selection` and a ≥4.5:1 segment above it needs ≥13.5:1 of total
+/// room — proven by the arithmetic, not a tuning miss. `selection` here
+/// (#5A6478) was chosen to clear the reported defect's floor exactly (3:1
+/// against `bg`) and get `text` as close to 4.5:1 as that leaves room for
+/// (4.28:1). The light and high-contrast themes have enough room for both
+/// floors at once, and clear them.
+#[test]
+fn selection_clears_the_reported_defect_and_text_stays_close_to_readable() {
+    // The floor this replaces: WCAG 1.4.11, a non-text UI indicator against
+    // its background.
+    const BG_FLOOR: f32 = 3.0;
+    // The dark theme cannot reach this at the same time as `BG_FLOOR` (see
+    // the derivation above); its achieved ratio is asserted explicitly
+    // instead of silently lowering the floor for every theme.
+    const TEXT_FLOOR: f32 = 4.5;
+
+    for kind in EVERY_THEME {
+        let theme = Theme::new(kind, &terminal(ColorDepth::TrueColor, false));
+        let selection = hue(&theme, Token::Selection);
+        let bg = hue(&theme, Token::Bg);
+        let text = hue(&theme, Token::Text);
+
+        let bg_ratio = contrast(selection, bg);
+        assert!(
+            bg_ratio >= BG_FLOOR,
+            "selection on bg is {bg_ratio:.2}:1 in theme {} (floor {BG_FLOOR}); \
+             this is the ratio the user could not see his cursor row at",
+            kind.name()
+        );
+
+        let text_ratio = contrast(text, selection);
+        let expected_text_ratio = match kind {
+            // Proven unreachable together with `BG_FLOOR` above; the real,
+            // measured number is asserted so a further regression still
+            // fails loudly even though it is already short of `TEXT_FLOOR`.
+            ThemeKind::Dark => 4.28,
+            ThemeKind::Light => 4.71,
+            ThemeKind::HighContrast => 5.49,
+        };
+        assert!(
+            (text_ratio - expected_text_ratio).abs() < 0.05,
+            "text on selection is {text_ratio:.2}:1 in theme {}, expected ≈{expected_text_ratio:.2}:1; \
+             a token elsewhere moved",
+            kind.name()
+        );
+        if kind != ThemeKind::Dark {
+            assert!(
+                text_ratio >= TEXT_FLOOR,
+                "text on selection is {text_ratio:.2}:1 in theme {} (floor {TEXT_FLOOR})",
+                kind.name()
+            );
+        }
+    }
+}
+
+/// Same test, against `surface-raised` — the token this replaced. It must
+/// fail: that failure is the defect the user reported twice.
+///
+/// Run standalone (`cargo test -p graft-ui selection_fails_against_the_old_token -- --nocapture`)
+/// against `Token::SurfaceRaised` before `Token::Selection` existed: it
+/// printed `bg is 1.21:1 in theme dark` and `bg is 1.17:1 in theme light`
+/// (see NOTES in m5-history-and-ghost-preview/44 for the run).
+#[test]
+fn selection_fails_against_the_old_token() {
+    const BG_FLOOR: f32 = 3.0;
+
+    for kind in [ThemeKind::Dark, ThemeKind::Light] {
+        let theme = Theme::new(kind, &terminal(ColorDepth::TrueColor, false));
+        let raised = hue(&theme, Token::SurfaceRaised);
+        let bg = hue(&theme, Token::Bg);
+
+        let ratio = contrast(raised, bg);
+        assert!(
+            ratio < BG_FLOOR,
+            "surface-raised on bg is {ratio:.2}:1 in theme {} — if this ever \
+             clears {BG_FLOOR}, `selection` no longer needs to exist as a \
+             separate token and this test (not `selection`'s) should be deleted",
+            kind.name()
+        );
+    }
 }
 
 // ---------------------------------------------------------- depth mapping

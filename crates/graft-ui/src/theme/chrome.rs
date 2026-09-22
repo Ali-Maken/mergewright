@@ -30,10 +30,17 @@ use super::{TOKEN_COUNT, Token};
 pub(super) type ChromeHues = [Rgb; TOKEN_COUNT];
 
 /// Dark: the default, and what an unknown terminal gets (DESIGN.md §4.1).
+///
+/// `selection` (m5-history-and-ghost-preview/44): #5A6478 measures 3.04:1
+/// against `bg` (floor 3:1, WCAG 1.4.11) and 4.28:1 for `text` drawn on it
+/// (floor 4.5:1, WCAG 2.1 AA) — see `theme::tests` for why 4.5:1 is not
+/// reachable here at the same time as the 3:1 `bg` floor, and NOTES in the
+/// ticket for the derivation.
 pub(super) const DARK: ChromeHues = build(
     rgb(0x14, 0x16, 0x1B), // bg
     rgb(0x1B, 0x1E, 0x24), // surface
     rgb(0x23, 0x27, 0x30), // surface-raised
+    rgb(0x5A, 0x64, 0x78), // selection
     rgb(0x33, 0x39, 0x44), // border
     rgb(0xD7, 0xDB, 0xE0), // text
     rgb(0x8A, 0x91, 0x9C), // text-muted
@@ -45,10 +52,14 @@ pub(super) const DARK: ChromeHues = build(
 );
 
 /// Light: the same relationships inverted, not the dark hues brightened.
+///
+/// `selection` (m5-history-and-ghost-preview/44): #828CA0 measures 3.27:1
+/// against `bg` and 4.71:1 for `text` drawn on it — both floors clear here.
 pub(super) const LIGHT: ChromeHues = build(
     rgb(0xFB, 0xFB, 0xFC), // bg
     rgb(0xF2, 0xF3, 0xF5), // surface
     rgb(0xE8, 0xEA, 0xED), // surface-raised
+    rgb(0x82, 0x8C, 0xA0), // selection
     rgb(0xC9, 0xCD, 0xD4), // border
     rgb(0x1E, 0x22, 0x2A), // text
     rgb(0x5F, 0x67, 0x73), // text-muted
@@ -61,10 +72,14 @@ pub(super) const LIGHT: ChromeHues = build(
 
 /// High contrast: black ground, white rules, saturated semantics. Reachable
 /// only through an explicit override — no terminal background implies it.
+///
+/// `selection` (m5-history-and-ghost-preview/44): #696969 measures 3.83:1
+/// against `bg` and 5.49:1 for `text` drawn on it — both floors clear here.
 pub(super) const HIGH_CONTRAST: ChromeHues = build(
     rgb(0x00, 0x00, 0x00), // bg
     rgb(0x00, 0x00, 0x00), // surface
     rgb(0x1A, 0x1A, 0x1A), // surface-raised
+    rgb(0x69, 0x69, 0x69), // selection
     rgb(0xFF, 0xFF, 0xFF), // border
     rgb(0xFF, 0xFF, 0xFF), // text
     rgb(0xD0, 0xD0, 0xD0), // text-muted
@@ -86,6 +101,7 @@ const fn build(
     bg: Rgb,
     surface: Rgb,
     surface_raised: Rgb,
+    selection: Rgb,
     border: Rgb,
     text: Rgb,
     text_muted: Rgb,
@@ -99,6 +115,7 @@ const fn build(
     hues[Token::Bg.index()] = bg;
     hues[Token::Surface.index()] = surface;
     hues[Token::SurfaceRaised.index()] = surface_raised;
+    hues[Token::Selection.index()] = selection;
     hues[Token::Border.index()] = border;
     hues[Token::Text.index()] = text;
     hues[Token::TextMuted.index()] = text_muted;

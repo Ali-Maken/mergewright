@@ -184,7 +184,7 @@ impl MapScreen<'_> {
         if selected {
             base_style = base_style.add_modifier(Modifier::BOLD);
             if !reduced {
-                let raised = color(self.theme.token(Token::SurfaceRaised));
+                let raised = color(self.theme.token(Token::Selection));
                 buf.set_style(
                     Rect {
                         y,

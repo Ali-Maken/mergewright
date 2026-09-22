@@ -187,7 +187,7 @@ impl StashScreen<'_> {
         let on_cursor = index == self.view.selected;
         let text = foreground(self.theme, Token::Text);
         let style = if on_cursor {
-            text.bg(crate::paint::color(self.theme.token(Token::SurfaceRaised)))
+            text.bg(crate::paint::color(self.theme.token(Token::Selection)))
                 .add_modifier(Modifier::BOLD)
         } else {
             text

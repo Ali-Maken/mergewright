@@ -7,6 +7,7 @@ theme dark
   bg              #14161B     233   0
   surface         #1B1E24     234   0
   surface-raised  #232730     235   0
+  selection       #5A6478     60    8
   border          #333944     237   8
   text            #D7DBE0     253   7
   text-muted      #8A919C     246   8
@@ -33,6 +34,7 @@ theme light
   bg              #FBFBFC     231   15
   surface         #F2F3F5     255   15
   surface-raised  #E8EAED     255   15
+  selection       #828CA0     103   8
   border          #C9CDD4     252   7
   text            #1E222A     235   0
   text-muted      #5F6773     241   8
@@ -59,6 +61,7 @@ theme high-contrast
   bg              #000000     16    0
   surface         #000000     16    0
   surface-raised  #1A1A1A     234   0
+  selection       #696969     242   8
   border          #FFFFFF     231   15
   text            #FFFFFF     231   15
   text-muted      #D0D0D0     252   7
