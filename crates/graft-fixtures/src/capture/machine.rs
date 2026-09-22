@@ -32,9 +32,12 @@
 //! machine and not yet across machines; fixing that means giving the walk a
 //! fixed scratch location, not a wider placeholder.
 //!
-//! This module is scanned by that guard like every other tracked file, so it
-//! spells the roots it forbids in two pieces (`concat!`) rather than carrying
-//! the literals it exists to ban.
+//! This module is scanned by that guard like every other file, so it spells
+//! the roots it forbids in two pieces (`concat!`) and assembles the ports its
+//! own tests use, rather than carrying the literals it exists to ban. That is
+//! the whole accommodation: the guard is never told to look away from a file,
+//! because a guard with an exemption list is one entry away from being no
+//! guard (m5-history-and-ghost-preview/41).
 
 /// A class of machine-specific text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -297,6 +300,14 @@ mod tests {
         format!("{MACOS_SCRATCH}{rest}")
     }
 
+    /// A loopback address on an ephemeral port, assembled rather than
+    /// spelled, for the reason the roots are (see the module note): the guard
+    /// reads this file like any other, and a literal here is a literal it
+    /// would have to find.
+    fn loopback(port: u32) -> String {
+        format!("{}{port}", LOOPBACK[0])
+    }
+
     #[test]
     fn a_home_directory_is_found_and_its_tail_is_kept() {
         let line = format!("graft {}/dev/sandbox/graft  73 commits", home("ada"));
@@ -386,9 +397,10 @@ mod tests {
 
     #[test]
     fn an_ephemeral_port_is_zeroed_and_the_host_stays() {
+        let host = LOOPBACK[0];
         assert_eq!(
-            redacted("url http://127.0.0.1:54372/bare"),
-            "url http://127.0.0.1:00000/bare"
+            redacted(&format!("url http://{}/bare", loopback(54372))),
+            format!("url http://{host}00000/bare")
         );
     }
 
@@ -407,7 +419,12 @@ mod tests {
 
     #[test]
     fn every_class_in_one_line_is_found_once_each() {
-        let line = format!("{} {} 127.0.0.1:51000", home("ada"), scratch("z4/h/T/x"));
+        let line = format!(
+            "{} {} {}",
+            home("ada"),
+            scratch("z4/h/T/x"),
+            loopback(51000)
+        );
         let classes: Vec<Machine> = found(line.as_bytes())
             .into_iter()
             .map(|hit| hit.machine)
@@ -421,9 +438,10 @@ mod tests {
     #[test]
     fn redacting_twice_changes_nothing_the_first_pass_left() {
         let line = format!(
-            "{}/dev {} 127.0.0.1:51000",
+            "{}/dev {} {}",
             home("ada"),
-            scratch("z4/h/T/x")
+            scratch("z4/h/T/x"),
+            loopback(51000)
         );
         let once = redacted(&line);
         assert_eq!(redacted(&once), once);
