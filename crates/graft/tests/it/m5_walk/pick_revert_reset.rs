@@ -7,7 +7,7 @@ use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
 use super::claim::ghost_equals_git;
-use super::fixture::{Fixture, forked_on_main};
+use super::fixture::{Fixture, forked_on_main, merged_on_main};
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::Marks;
 use super::vocabulary::{
@@ -19,6 +19,7 @@ pub(super) fn picking_reverting_resetting() -> Vec<Scenario> {
     vec![
         cherry_pick_via_menu_ghost_equals_git(),
         revert_via_menu_ghost_equals_git(),
+        revert_merge_uses_mainline(),
         reset_hard_says_loses_and_u_brings_it_back(),
         reset_mixed_keeps_the_tree(),
         checkout_branch_via_menu(),
@@ -80,6 +81,68 @@ fn revert_via_menu_ghost_equals_git() -> Scenario {
             let parent = fixture.git(&["rev-parse", "main~1"])?;
             check(parent.trim() == branch(&marks.before, "main")?, || {
                 "the revert did not land on main's old tip".to_owned()
+            })?;
+            last_entry_committed(reverted, OperationKind::Revert)
+        },
+        capture: None,
+    }
+}
+
+/// `.` on a merge commit: git refuses `revert` on one without being told
+/// which side to keep, so the menu row carries the mainline it will pass —
+/// `Revert <sha7>, -m 1`, the first parent, the branch the merge landed on
+/// (`context_menu::verbs::revert_verb`). The ghost's patch is the merge's,
+/// reversed against that same parent, which is what `ghost_equals_git`
+/// checks for a revert.
+fn revert_merge_uses_mainline() -> Scenario {
+    Scenario {
+        name: "revert-merge-uses-mainline",
+        shape: Shape::Trivial,
+        remote: false,
+        size: (80, 24),
+        setup: merged_on_main,
+        steps: chain(vec![
+            vec![
+                Step::WaitFor(Wait::Ready),
+                Step::CursorTo("main"),
+                Step::MenuPick("Revert "),
+            ],
+            claim_and_confirm("the revert of the merge"),
+            vec![Step::Mark("reverted")],
+        ]),
+        expect: |fixture, marks| {
+            let reverted = marks.get("reverted")?;
+            let claim = marks.claim()?;
+            check(
+                claim
+                    .plan
+                    .plan
+                    .commands
+                    .iter()
+                    .any(|line| line.starts_with("git revert ") && line.contains("-m 1")),
+                || format!("the plan's commands are {:?}", claim.plan.plan.commands),
+            )?;
+            check(claim.plan.plan.ghosts.len() == 1, || {
+                "one ghost for one revert".to_owned()
+            })?;
+            ghost_equals_git(claim, &marks.before, reverted, fixture)?;
+            // `-m 1` keeps the first parent's side: what `feature` brought
+            // goes, what `main` had stays.
+            for gone in ["work-one.txt", "work-two.txt"] {
+                check(
+                    !reverted.repo.files.contains_key(std::path::Path::new(gone)),
+                    || format!("the revert left {gone} in the tree"),
+                )?;
+            }
+            for kept in ["main-one.txt", "main-two.txt", "base.txt"] {
+                check(
+                    reverted.repo.files.contains_key(std::path::Path::new(kept)),
+                    || format!("the revert took {kept} out of the tree"),
+                )?;
+            }
+            let parent = fixture.git(&["rev-parse", "main~1"])?;
+            check(parent.trim() == branch(&marks.before, "main")?, || {
+                "the revert did not land on the merge it reverts".to_owned()
             })?;
             last_entry_committed(reverted, OperationKind::Revert)
         },

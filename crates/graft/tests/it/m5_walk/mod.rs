@@ -28,6 +28,7 @@ mod gestures;
 mod merge_rebase;
 mod pick_revert_reset;
 mod preview;
+mod radar_fixes;
 mod refs_and_names;
 mod remotes;
 mod run;
@@ -51,6 +52,7 @@ pub fn scenarios() -> Vec<Scenario> {
     all.extend(merge_rebase::merging());
     all.extend(merge_rebase::rebasing());
     all.extend(pick_revert_reset::picking_reverting_resetting());
+    all.extend(radar_fixes::fixing_a_foxtrot());
     all.extend(conflicts::conflicting_merges());
     all.extend(time_machine::time_travelling());
     all.extend(remotes::remote_history());
