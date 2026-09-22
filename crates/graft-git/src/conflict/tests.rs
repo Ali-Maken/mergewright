@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use graft_fixtures::Shape;
 
 use super::{
-    BaseMismatch, Block, BlockState, ConflictFile, Diff3Error, Line, MarkerEnds, ParseError,
-    ParseErrorKind, ReadError, Region, Take, WriteError, attach_base, blob_id, diff3_file, parse,
-    read, stage_bytes, write_back,
+    BaseMismatch, Block, BlockState, ConflictFile, Line, MarkerEnds, ParseError, ParseErrorKind,
+    ReadError, Region, Take, WriteError, attach_base, blob_id, diff3_file, parse, read,
+    stage_bytes, write_back,
 };
 use crate::history_reads::first_marker_line;
 use crate::repo::RepoHandle;
@@ -42,6 +42,14 @@ fn git(dir: &Path, args: &[&str]) -> Vec<u8> {
 
 fn lines(text: &[&[u8]]) -> Vec<Line> {
     text.iter().map(|line| Line(line.to_vec())).collect()
+}
+
+/// `first_marker_line` over bytes: written to a scratch file and scanned.
+fn scan(input: &[u8]) -> Option<usize> {
+    let dir = tempfile::tempdir().expect("a scratch directory");
+    let path = dir.path().join("f.txt");
+    std::fs::write(&path, input).expect("writes");
+    first_marker_line(&path).expect("scans")
 }
 
 fn one_block(file: &ConflictFile) -> &Block {
@@ -112,7 +120,7 @@ fn setext_underline_after_the_separator_is_content() {
     let dir = borrowed(Shape::StoppedRebase);
     let on_disk = parse(&bytes(&dir.join("md.md"))).expect("md.md parses");
     let block = one_block(&on_disk);
-    assert_eq!(block.ours_label, b"HEAD");
+    assert_eq!(block.ours_label.as_deref(), Some(&b"HEAD"[..]));
     assert!(
         block.theirs.contains(&Line(b"=======\n".to_vec())),
         "theirs should hold the underline as content: {:?}",
@@ -128,12 +136,12 @@ fn diff3_and_zdiff3_carry_base() {
     assert!(zdiff3.open() >= 1);
     for region in &zdiff3.regions {
         if let Region::Conflict(block) = region {
-            let (label, base) = block
+            let base = block
                 .base
                 .as_ref()
                 .expect("a zdiff3 block carries its base");
-            assert_eq!(label, b"base");
-            assert_eq!(base, &lines(&[b"middle\n"]));
+            assert_eq!(base.label.as_deref(), Some(&b"base"[..]));
+            assert_eq!(base.lines, lines(&[b"middle\n"]));
         }
     }
     let plain_style = parse(&bytes(&dir.join("both.txt"))).expect("both.txt parses");
@@ -329,14 +337,29 @@ fn stage_bytes_reads_and_names_missing() {
     );
 }
 
-/// The base lines of every block that has one, in order.
+/// The reproduced base lines of every block that was given one, in order.
 fn attached_bases(file: &ConflictFile) -> Vec<Vec<Line>> {
     file.regions
         .iter()
         .filter_map(|region| match region {
-            Region::Conflict(block) | Region::Resolved { block, .. } => {
-                block.base.as_ref().map(|(_, base)| base.clone())
-            }
+            Region::Conflict(block) | Region::Resolved { block, .. } => block
+                .reproduced
+                .as_ref()
+                .map(|reproduced| reproduced.base.lines.clone()),
+            Region::Plain(_) => None,
+        })
+        .collect()
+}
+
+/// Every block's `shared` flag, for the blocks that got a reproduced base.
+fn attached_shared(file: &ConflictFile) -> Vec<bool> {
+    file.regions
+        .iter()
+        .filter_map(|region| match region {
+            Region::Conflict(block) | Region::Resolved { block, .. } => block
+                .reproduced
+                .as_ref()
+                .map(|reproduced| reproduced.shared),
             Region::Plain(_) => None,
         })
         .collect()
@@ -390,17 +413,16 @@ fn a_joined_block_gets_the_base_of_its_whole_run() {
             b"three\n"
         ])]
     );
+    // One file block, one run: the base is this block's own, not shared.
+    assert_eq!(attached_shared(&file), vec![false]);
     let Region::Conflict(block) = &file.regions[1] else {
         panic!("region 1 is the block: {:?}", file.regions);
     };
-    assert_eq!(
-        block.base.as_ref().map(|(label, _)| label.as_slice()),
-        Some(&b"base"[..])
-    );
-    assert_eq!(
-        file.render(),
-        b"alpha\n<<<<<<< ours\none-ours\nbravo\ntwo-ours\ncharlie\nthree-ours\n||||||| base\none\nbravo\ntwo\ncharlie\nthree\n=======\none-theirs\nbravo\ntwo-theirs\ncharlie\nthree-theirs\n>>>>>>> theirs\ndelta\n"
-    );
+    let reproduced = block.reproduced.as_ref().expect("a base was attached");
+    assert_eq!(reproduced.base.label.as_deref(), Some(&b"base"[..]));
+    // The file on disk had no `|||||||`, and still has none.
+    assert!(block.base.is_none());
+    assert_eq!(file.render(), MERGE_STYLE_JOINED);
 
     // A run must match on both sides: theirs edited by hand, ours intact,
     // is still a mismatch.
@@ -416,6 +438,46 @@ fn a_joined_block_gets_the_base_of_its_whole_run() {
     assert!(attached_bases(&edited).is_empty());
 }
 
+/// The other direction, and the one the first round got wrong: git's zealous
+/// refinement **splits** a conflict whose sides share interior lines, so two
+/// file blocks are one reproduced block. Both literals are what git 2.54
+/// printed on 2026-09-22 for base `1…7`, ours `A b c d e f B`, theirs `X b c
+/// d e f Y` — the left one from a real `git merge` into the working tree, the
+/// right one from `git merge-file -p --diff3` on its three stages.
+const MERGE_STYLE_SPLIT: &[u8] = b"<<<<<<< HEAD\nA\n=======\nX\n>>>>>>> feature\nb\nc\nd\ne\nf\n<<<<<<< HEAD\nB\n=======\nY\n>>>>>>> feature\n";
+const DIFF3_STYLE_ONE_BLOCK: &[u8] = b"<<<<<<< ours\nA\nb\nc\nd\ne\nf\nB\n||||||| base\n1\n2\n3\n4\n5\n6\n7\n=======\nX\nb\nc\nd\ne\nf\nY\n>>>>>>> theirs\n";
+
+#[test]
+fn a_block_git_split_gets_the_whole_regions_base_marked_shared() {
+    let diff3 = parse(DIFF3_STYLE_ONE_BLOCK).expect("git's diff3 output parses");
+    assert_eq!(diff3.open(), 1);
+
+    let mut file = parse(MERGE_STYLE_SPLIT).expect("git's merge output parses");
+    assert_eq!(file.open(), 2);
+    let before = file.blocks();
+    assert_eq!(attach_base(&mut file, &diff3), Ok(2));
+
+    // Both blocks get the whole region's base, and both say it is shared:
+    // git cannot attribute those lines to one half or the other.
+    let whole = lines(&[b"1\n", b"2\n", b"3\n", b"4\n", b"5\n", b"6\n", b"7\n"]);
+    assert_eq!(attached_bases(&file), vec![whole.clone(), whole]);
+    assert_eq!(attached_shared(&file), vec![true, true]);
+
+    // M4: attaching changed neither the bytes nor the line numbers.
+    assert_eq!(file.render(), MERGE_STYLE_SPLIT);
+    assert_eq!(file.blocks(), before);
+
+    // A hand edit in the split region is still a mismatch, with a message
+    // that does not blame edits on a file nobody edited.
+    let mut edited = parse(MERGE_STYLE_SPLIT).expect("parses");
+    hand_edit(&mut edited, 1);
+    let why = attach_base(&mut edited, &diff3).expect_err("no run matches");
+    assert_eq!(why, BaseMismatch { block: 0 });
+    let said = why.to_string();
+    assert!(!said.contains("edit"), "{said}");
+    assert!(said.contains("no base"), "{said}");
+}
+
 #[test]
 fn base_attaches_by_equality_only() {
     let scratch = graft_fixtures::copy_into_temp(Shape::StoppedRebase);
@@ -425,16 +487,26 @@ fn base_attaches_by_equality_only() {
     let diff3 = three_txt_diff3(&repo);
 
     let mut file = read(&path).expect("three.txt reads");
+    let before_blocks = file.blocks();
+    let before_bytes = file.render();
     assert_eq!(attach_base(&mut file, &diff3), Ok(3));
     assert_eq!(
         attached_bases(&file),
         vec![lines(&[b"one\n"]), lines(&[b"two\n"]), lines(&[b"three\n"])]
     );
+    assert_eq!(attached_shared(&file), vec![false, false, false]);
     let Region::Conflict(middle) = &file.regions[3] else {
         panic!("region 3 is the middle block: {:?}", file.regions);
     };
     assert_eq!(middle.ours, lines(&[b"two-ours\n"]));
     assert_eq!(middle.theirs, lines(&[b"two-theirs\n"]));
+
+    // M4: a reproduced base is not part of the file. `write_back` would put
+    // the same bytes back, and every block still starts on the line it does
+    // on disk — what `$EDITOR` and the diff pane show.
+    assert_eq!(file.render(), before_bytes);
+    assert_eq!(file.render(), bytes(&path));
+    assert_eq!(file.blocks(), before_blocks);
 
     // In memory: a take keeps its block intact, a hand edit changes block
     // 1's lines — no reproduced block equals it, and nothing is attached.
@@ -459,7 +531,72 @@ fn base_attaches_by_equality_only() {
         diff3_file(&repo, Path::new("not-in-the-index.txt")),
         Ok(None)
     ));
-    let _: Option<Diff3Error> = None;
+}
+
+/// A repository whose `.gitattributes` makes one path CRLF in the working
+/// tree while its blobs stay LF (`text eol=crlf`; `core.autocrlf=true` and an
+/// `ident`/smudge filter do the same thing). Built here rather than added to
+/// the shared corpus: it needs its own `.gitattributes`, and the corpus'
+/// unmerged paths are counted by other tests.
+///
+/// Measured on git 2.54, 2026-09-22: the stop writes the conflict file CRLF
+/// throughout, markers included, while `git show :2:f.txt` is LF.
+fn crlf_attribute_stop() -> tempfile::TempDir {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let dir = scratch.path();
+    graft_fixtures::git::init_repo(dir).expect("git init");
+    std::fs::write(dir.join(".gitattributes"), b"f.txt text eol=crlf\n").expect("attributes");
+    let commit = |name: &str, content: &[u8]| {
+        std::fs::write(dir.join("f.txt"), content).expect("f.txt");
+        git(dir, &["add", "-A", "--", "."]);
+        git(dir, &["commit", "-q", "-m", name]);
+    };
+    commit("base", b"one\ntwo\nthree\n");
+    git(dir, &["checkout", "-q", "-b", "feature"]);
+    commit("theirs", b"one\ntwo-theirs\nthree\n");
+    git(dir, &["checkout", "-q", "main"]);
+    commit("ours", b"one\ntwo-ours\nthree\n");
+    // The merge is meant to stop on conflicts (exit 1); anything else is a
+    // broken recipe, so it is not run through `git` (which insists on 0).
+    let stopped = graft_fixtures::git::run(dir, &["merge", "--no-edit", "feature"]);
+    match stopped {
+        Err(graft_fixtures::git::GitError::Failed { status, .. }) if status.code() == Some(1) => {}
+        other => panic!("`git merge` should have stopped on a conflict: {other:?}"),
+    }
+    scratch
+}
+
+#[test]
+fn a_crlf_checkout_still_gets_its_base() {
+    let scratch = crlf_attribute_stop();
+    let dir = scratch.path();
+    let repo = open(dir);
+    let path = dir.join("f.txt");
+
+    // The premise, asserted rather than assumed: CRLF on disk, LF in the
+    // index. Comparing the raw stages against this file matches nothing.
+    let on_disk = bytes(&path);
+    assert!(
+        on_disk.starts_with(b"one\r\n<<<<<<< HEAD\r\n"),
+        "{on_disk:?}"
+    );
+    let raw = stage_bytes(&repo, Path::new("f.txt"), 2)
+        .expect("stage 2 reads")
+        .expect("stage 2 is there");
+    assert_eq!(raw, b"one\ntwo-ours\nthree\n", "stage_bytes stays raw");
+
+    let diff3 = diff3_file(&repo, Path::new("f.txt"))
+        .expect("merge-file runs")
+        .expect("every stage is there");
+    let mut file = read(&path).expect("f.txt reads");
+    assert_eq!(file.open(), 1);
+    assert_eq!(
+        attach_base(&mut file, &diff3),
+        Ok(1),
+        "a pristine CRLF checkout has a base"
+    );
+    assert_eq!(attached_bases(&file), vec![lines(&[b"two\r\n"])]);
+    assert_eq!(file.render(), on_disk);
 }
 
 #[test]
@@ -545,24 +682,125 @@ fn parse_never_panics_on_marker_soup() {
 
 #[test]
 fn first_marker_line_agrees() {
-    let dir = borrowed(Shape::StoppedRebase);
-    for name in MARKER_FILES {
-        let path = dir.join(name);
-        let file = parse(&bytes(&path)).expect("parses");
-        let from_scan = first_marker_line(&path).expect("scans");
-        assert_eq!(from_scan, Some(file.blocks()[0].first_line), "{name}");
+    for shape in Shape::STOPPED {
+        let dir = borrowed(*shape);
+        for name in MARKER_FILES {
+            let path = dir.join(name);
+            let file = parse(&bytes(&path)).expect("parses");
+            let from_scan = first_marker_line(&path).expect("scans");
+            assert_eq!(
+                from_scan,
+                Some(file.blocks()[0].first_line),
+                "{name} in {shape:?}"
+            );
+        }
     }
 }
 
+/// What git 2.54 wrote into the working tree on 2026-09-22 for a path with
+/// `.gitattributes` `f.txt conflict-marker-size=12`: a real `UU` file whose
+/// markers this parser cannot read.
+const MARKER_SIZE_TWELVE: &[u8] =
+    b"one\n<<<<<<<<<<<< HEAD\ntwo-ours\n============\ntwo-theirs\n>>>>>>>>>>>> feature\nthree\n";
+
 #[test]
-fn marker_size_other_than_seven_is_plain() {
-    let twelve = b"a\n<<<<<<<<<<<< HEAD\nours\n============\ntheirs\n>>>>>>>>>>>> feature\n";
-    let file = parse(twelve).expect("parses, as plain text");
-    assert_eq!(file.open(), 0);
-    assert_eq!(file.regions.len(), 1);
-    assert_eq!(file.render(), twelve);
+fn a_marker_size_over_seven_is_refused_not_called_plain() {
+    // Calling this plain is the work-loss path: no blocks, so the resolver
+    // has nothing to open and nothing can refuse the stage.
+    assert_eq!(
+        parse(MARKER_SIZE_TWELVE).unwrap_err(),
+        ParseError {
+            line: 2,
+            what: ParseErrorKind::MarkerSize,
+        }
+    );
+    // And the scan that guards a stage does see it.
+    assert!(
+        ParseError {
+            line: 2,
+            what: ParseErrorKind::MarkerSize
+        }
+        .to_string()
+        .contains("conflict-marker-size")
+    );
+
+    // Below seven is not caught here (`>>> ` at column 0 is a Python prompt,
+    // `<<< ` is rare but the pair is not worth the false positives); it
+    // parses as plain text, as it did before.
+    let three = b"one\n<<< HEAD\ntwo-ours\n===\ntwo-theirs\n>>> feature\nthree\n";
+    assert_eq!(parse(three).expect("plain").open(), 0);
     let six = b"<<<<<< HEAD\nours\n======\ntheirs\n>>>>>> feature\n";
     assert_eq!(parse(six).expect("plain").open(), 0);
+
+    // A long run of `=` or `>` stays content: a Markdown setext underline is
+    // exactly `========`, and is why a project sets the attribute at all.
+    let setext = b"Introduction\n============\n\nbody\n";
+    let file = parse(setext).expect("a plain Markdown file is not a marker file");
+    assert_eq!(file.open(), 0);
+    assert_eq!(file.render(), setext);
+    let quoted = b"a\n>>>>>>>>> deeply quoted\n";
+    assert_eq!(parse(quoted).expect("plain").render(), &quoted[..]);
+
+    // Inside a block a long `<` run is content, not a size error: a file the
+    // parser got inside of has seven-character markers.
+    let inside = b"<<<<<<< HEAD\n<<<<<<<<<<<< not a marker\n=======\nt\n>>>>>>> feature\n";
+    let file = parse(inside).expect("parses");
+    assert_eq!(file.render(), &inside[..]);
+    assert_eq!(
+        one_block(&file).ours,
+        lines(&[b"<<<<<<<<<<<< not a marker\n"])
+    );
+}
+
+/// git's `rerere` preimage, byte for byte, from a stop with `rerere.enabled`
+/// on git 2.54 (2026-09-22): bare markers, no space and no label. M7's
+/// rerere reads these files.
+const RERERE_PREIMAGE: &[u8] = b"one\n<<<<<<<\nb-o\n=======\nb-t\n>>>>>>>\nthree\n";
+
+#[test]
+fn bare_markers_are_markers_and_stay_byte_distinct() {
+    let file = parse(RERERE_PREIMAGE).expect("a rerere preimage parses");
+    assert_eq!(file.open(), 1);
+    assert_eq!(file.render(), RERERE_PREIMAGE);
+    let block = one_block(&file);
+    assert_eq!(block.ours_label, None);
+    assert_eq!(block.theirs_label, None);
+    assert_eq!(block.ours, lines(&[b"b-o\n"]));
+    assert_eq!(block.theirs, lines(&[b"b-t\n"]));
+    assert_eq!(scan(RERERE_PREIMAGE), Some(2));
+    // The oversize opener is seen by the scan too, though `parse` refuses
+    // the file: the guard before a stage must never miss a real marker.
+    assert_eq!(scan(MARKER_SIZE_TWELVE), Some(2));
+}
+
+#[test]
+fn a_bare_label_and_an_empty_one_are_different_bytes() {
+    // `None` and an empty label are different bytes and stay different.
+    let empty = b"<<<<<<< \no\n||||||| \nb\n=======\nt\n>>>>>>> \n";
+    let with_empty = parse(empty).expect("parses");
+    assert_eq!(with_empty.render(), &empty[..]);
+    let block = one_block(&with_empty);
+    assert_eq!(block.ours_label.as_deref(), Some(&b""[..]));
+    assert_eq!(
+        block.base.as_ref().and_then(|base| base.label.as_deref()),
+        Some(&b""[..])
+    );
+
+    // A bare base marker too, and the CRLF form of all of them.
+    let bare_base = b"<<<<<<<\r\no\r\n|||||||\r\nb\r\n=======\r\nt\r\n>>>>>>>\r\n";
+    let file = parse(bare_base).expect("parses");
+    assert_eq!(file.render(), &bare_base[..]);
+    let block = one_block(&file);
+    assert_eq!(block.base.as_ref().expect("a base").label, None);
+
+    // Bare markers out of place are stray, the same as labelled ones.
+    for input in [&b"a\n>>>>>>>\n"[..], &b"|||||||\n"[..]] {
+        assert_eq!(
+            parse(input).unwrap_err().what,
+            ParseErrorKind::StrayMarker,
+            "{input:?}"
+        );
+    }
 }
 
 #[test]
@@ -629,7 +867,7 @@ fn a_second_base_marker_or_separator_inside_a_block_is_content() {
     let file = parse(input).expect("parses");
     let block = one_block(&file);
     assert_eq!(
-        block.base.as_ref().map(|(_, lines)| lines.clone()),
+        block.base.as_ref().map(|base| base.lines.clone()),
         Some(lines(&[b"base\n", b"||||||| again\n"]))
     );
     assert_eq!(
@@ -668,12 +906,13 @@ fn blocks_report_index_state_and_line() {
 fn a_hand_built_block_renders_with_its_ends() {
     let file = ConflictFile {
         regions: vec![Region::Conflict(Block {
-            ours_label: b"HEAD".to_vec(),
+            ours_label: Some(b"HEAD".to_vec()),
             ours: lines(&[b"o\n"]),
             base: None,
-            theirs_label: b"feature".to_vec(),
+            theirs_label: Some(b"feature".to_vec()),
             theirs: lines(&[b"t\n"]),
             ends: MarkerEnds::LF,
+            reproduced: None,
         })],
         fingerprint: blob_id(b""),
     };

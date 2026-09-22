@@ -281,6 +281,11 @@ pub(super) fn os_arg(argument: &GitArg) -> OsString {
         GitArg::Count(flag, n) => OsString::from(format!("{flag}{n}")),
         GitArg::Oid(oid) => OsString::from(oid.to_string()),
         GitArg::Ref(bytes) | GitArg::Path(bytes) => os_bytes(bytes),
+        GitArg::Glued(flag, bytes) => {
+            let mut glued = OsString::from(flag);
+            glued.push(os_bytes(bytes));
+            glued
+        }
         GitArg::Separator => OsString::from("--"),
         GitArg::Word(word) => OsString::from(word),
     }
