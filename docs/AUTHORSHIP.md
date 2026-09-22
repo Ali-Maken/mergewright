@@ -1,6 +1,6 @@
 # Authorship
 
-Which model designed, specified, built and reviewed each part of Graft. **Generated from PROGRESS.md's session log** (the conductor regenerates it at every milestone checkpoint). Nothing here goes beyond what the log records; where the log is silent, this file says so.
+Which model designed, specified, built and reviewed each part of Graft. **Generated from the session logs under `docs/log/<milestone>.md`** (the conductor regenerates it at every milestone checkpoint). Nothing here goes beyond what the log records; where the log is silent, this file says so.
 
 Roles:
 - **Designed:** the design documents the work follows (DESIGN.md, ADRs from design work, design notes).
@@ -201,6 +201,147 @@ Group 03 has no review round recorded in the log.
 
 **Milestone review perf tier:** `cargo test --release --features heavy-tests` — 1855 passed, 0 failed, exit 0 (`docs/perf/m4.txt`). Frame budgets hold under `--release`.
 
-## M5–M8
+## M5 History, Ghost Preview, merge, rebase, reset
 
-Not yet in the session log.
+Started under ADR-0029's groups model (11 groups across two `planner-fable`
+design passes). Group 11 (acceptance) did not run to a single finish: it split,
+after the eye-check and review rounds it kept surfacing, into a long chain of
+numbered defect/fix tickets (14–43) closed by an acceptance-walk split (37, 38,
+39, plus 32 and 43) — the same "split along the ticket's own handoff seams"
+pattern M1 and M4 used for an oversized acceptance ticket. The walk finished at
+49/49, `b3b176a` (git log: "g39 merged - the walk is whole, 49 of 49").
+
+| Role | Model | Detail |
+|---|---|---|
+| Designed | Fable (`planner-fable`) | Design pass 1 of 2: note + 7 group specs (11 groups planned, 4 left for pass 2). Design pass 2 of 2, after two scouts: 4 more specs (app-preview-and-keys, app-conflict-interim, app-drag-drop-and-stash-branch, acceptance-history). `planner-fable`'s own definition carries no Agent tool, so it could not dispatch the ADR-0035 scout itself — logged as a process gap and surfaced to the user, not silently worked around. |
+| Specified | Fable (`planner-fable`); scouts dispatched by conductor | Conductor ran the two scouts planner-fable couldn't (Explore, sonnet: app scout, ops/graph scout) between the two design passes; both scouts were read-only and could not write their own files, so the conductor wrote `.scratch/m5-history-and-ghost-preview/scout-{app,ops}.md` from their reports. Conductor then filed and sequenced groups 01–11 and set `Build with` from the planner's post-scout recommendations: Sonnet 01–04, Opus 05, 06, 08, 09, 10, Fable 07 (signature) and 11 (acceptance). |
+| Specified (defect/fix tickets 14–43) | Conductor | Filed off review findings and the user's own by-eye checks, not further `planner-fable` passes — the M5 counterpart to M2/M4's conductor-filed ranges. Includes the acceptance-walk split into 37 (refs/names), 38 (previews/conflicts), 39 (undo/push/secrets), each pre-assigned a model and crate scope by the conductor before dispatch. |
+| Built | see table below | |
+| Reviewed | Fable (reviewer agent) | One round per group for 01–09 and the user's own 12/13 (context-menu overlay), plus two combined catch-up rounds: tickets 14–22 and 15 together (nine tickets the review step had quietly skipped — a third of the milestone, caught by the conductor's own audit, not by process); and tickets 10, 30 and 31 together. The defect-ticket chain past 13 (16 through 43) ran its fix/review cycle per-ticket rather than as further "group" reviews; several of those tickets state their own findings were reproduced/verified before being trusted (rule 7 in practice). |
+
+### M5 builds
+
+| Model | Groups/tickets |
+|---|---|
+| Sonnet | g01 secret-field (done, merged `fe2c000`, 7/7 ticks each naming its test, turn count not recovered — conductor compacted before logging); g02 git-history-reads (done, merged `2826aa5`, turn count not recovered, same reason); g02 fix round (done, merged `4415c5e`, 60 tool uses, all 5 fixes at cause); g03 hint bar (done, COMPACTED once mid-ticket, merged `ee855e4`, 315 tool uses); g04 ui-ghost-banner-conflict — first dispatch killed by a session rate limit mid-flight (nothing committed, nothing lost), resumed and closed **partial** (`blocked: needs graft` at `fad9f9b`, 84 tool uses) — its gates were run `-p graft-ui` only, which is exactly what hid the crate-seam problem it left for its successor; ticket 27 short-form hint table (done, 87 turns, merged); ticket 30 border-glyph invariant (done, COMPACTED once, 231 tool uses, merged) — two point-fixes-that-caused-the-next replaced by one rule; ticket 36 review's-8-minors group (done, merged `b4840ca`); ticket 37 acceptance-walk refs/names (done, merged, 7/7 scenarios `ok`, no findings) |
+| Fable | g07 ops-history-operations, **pieces 1–2 only** (`OperationKind`, the operation shapes; committed `667ad8e`) — ran out of credits mid-build; remainder substituted to Opus (detail below). g11 acceptance — did not run to completion; split into the defect-ticket chain (14–43) instead of one Fable run to the end. |
+| Opus | g04 seam+pulse fix (done, merged `190a4ed`, 123 tool uses — restored the pulse ADR-0038 §2 needs on both halves after the review round's fix bought length-freedom by deleting it); g05 refresh race (done, merged `6c8f7c1`, 137 tool uses, scout used, 7 tests run red-before-green, no sleep/poll/retry); g05 refresh-race fix (folded into g08, see below); g06 undo-cancel-rollback (done, merged `9ff1d28`, 83 tool uses, scout used) and its fix round (done, merged, 84 tool uses — C1 fixed with the mutation named correctly the second time); g07 pieces 3–9 (**Fable-substitution**, detail below; compacted once; `done` in its own crates, `blocked: needs graft` — not merged standalone) then g07 seam+leftovers (done, merged `7180f07`, 90 tool uses, scout used); g07 fix round dispatched to **`builder-opus-xhigh`** (escalation, detail below) — partial, `blocked: needs graft`, 255 tool uses, all 3 Criticals fixed at cause; g08 app-preview-and-keys, pieces 1–5 (partial, COMPACTED once, 265 tool uses, scout used), continuation 1, pieces 7–10 (partial, 160 tool uses, `blocked: needs graft-ui` on piece 6), piece 6 (done, 91 tool uses, scout used), piece 6 label ruling resumed (done, 16 tool uses); g09 app-conflict-interim, pieces 1–4 (partial, COMPACTED, merged `4c000e3`); ticket 14 journal live-vs-interrupted, group 09's seam A (done); ticket 15 undo-rules+push (done, 191 turns/57 min — the mutation-check-cost ticket); g10 name-prompt+drag (done, COMPACTED **twice**, 307 tool uses); g12 context-menu overlay, the user's own filed ticket (done, scout used, 91 tool uses); g13 menu-keys-and-overlay-clears (done); ticket 16 banner-visible-and-honest (done, **resumed after a stream-watchdog stall**, detail below); ticket 17 preview-shows-your-screen (done, COMPACTED once, 12 mutations A–L); ticket 18 right-click-wrong-row (done); ticket 19 pane-boundaries-as-a-class (done — built from the user's own test design); ticket 20 say-it-once-name-the-outcome (done); ticket 21 unmerged-files-invisible (done); ticket 22 diff-parser-swallows-unknown (done, 63 turns); ticket 23 every-capture-reproducible (done, 117 turns/17 min); ticket 24 the ladder (done across **three separate Opus passes**, 75+59 turns after the first — first built the rule as written and reverted it on measurement, second built a corrected rule and stopped at the `graft` fence, third closed the seam); ticket 25 review's-five-majors+clock-seam (done, COMPACTED once, 254 turns/46 min); ticket 26 (done, 77 turns); ticket 28 (done, 212 turns); ticket 29 (done, 131 turns); ticket 31 (done, no compaction, 215 tool uses); ticket 33 (done, COMPACTED once); tickets 34+35 combined (done, one merge `e1cacf2`); ticket 38 previews/conflicts — **built and deliberately not merged**: 7 of 8 scenarios `ok`, 1 left failing as a filed finding, same handling as ticket 11→32; ticket 39 undo/push/secrets (done, 287 turns, merged `b3b176a` — the milestone's closing walk, 49/49); ticket 40 stale-captures class (done, 8/8 ticks); ticket 41 home-path/scratch-path redaction, two rounds (done); ticket 42 dead-key-overlay-bar (done); ticket 43 rebase-instead fix, merged together with 38 (done) |
+| **Not recorded** | Ticket 32 — referenced repeatedly as merged and as having closed ticket 11's five deliberately-failing scenarios ("ticket 11's five deliberate failures are genuinely closed by ticket 32"; "ticket 32 made the preview tell the truth about files"), but the log carries no dedicated build entry naming its builder, model or merge hash. Left unstated here rather than guessed from the surrounding Opus run of tickets. |
+| Conductor (not a build) | Eye-check before forwarding captures to the user (found the empty-parens `Uncommitted changes ()` defect → ticket 21); review triage with no helper (tickets 30/31 review close-out; ticket 36's Minors/Questions sort); acceptance-walk split into 37/38/39; the capability ledger regeneration and its mechanical re-check (six agents reading the tickets, ~137 capabilities, `docs/capabilities/`) |
+
+**Fable substitution, group 07 (`ops-history-operations`, signature ticket).**
+Fable ran out of credits mid-build; the conductor routed the remainder to Opus
+rather than stall groups 08–10, which all wait on 07. Recorded as a
+substitution, not a silent swap: pieces 1–2 are Fable's (`667ad8e`); pieces
+3–9 — including both items the ticket was routed to Fable for, the journal
+shape of a conflicted operation and `PreviewPlan` — are Opus's. The group 07
+review later found a Critical (C1: a resolved conflict is unreachable by `u`)
+and said plainly the structural question **"wanted Fable"** — the ticket's own
+`Build with` line was right and the conductor's substitution was the wrong
+call, made to keep the milestone moving. The log records this as a cost paid
+on the milestone's central promise, found by review rather than by the user.
+
+**Escalation to `builder-opus-xhigh`, group 07 fix round.** CLAUDE.md reserves
+that agent for undo, conflicts, interactive rebase and the layout engine; C1
+(undo-across-a-conflict) is exactly that class, so the fix round was dispatched
+there rather than to plain `builder-opus`. It also pushed back on the
+reviewer's own suggested fix (keying the live span off `ORIG_HEAD`) with
+evidence, and won.
+
+**Stalled/killed runs, infrastructure not code (recorded distinctly from
+`failed` builds):**
+- A session rate limit killed three in-flight agents at once (g01 fix round,
+  g04 build, g07 build). None had committed; all three worktrees held complete
+  uncommitted diffs, so nothing was lost; all three resumed in the same
+  worktrees, told explicitly to verify the inherited diff rather than assume it
+  finished.
+- Ticket 16's builder and the groups-12/13 reviewer were both killed by the
+  stream watchdog (600 s no progress) within moments of each other. The
+  builder's uncommitted diff survived whole and was treated as unverified, not
+  done, by its resumed successor (which found one mutation — C — had been
+  inherited green with no test covering it). The reviewer's findings did **not**
+  survive (nothing on disk, nothing committed) and were explicitly not carried
+  forward; re-dispatched fresh with a process change (write findings
+  incrementally, not once at the end).
+
+**Compacted:** g03 hint bar (once, mid-ticket), g08 pieces 1–5 (once), g09
+pieces 1–4, g10 (**twice**), g07 pieces 3–9 (once), g33 (once, near the end),
+tickets 17, 23, 25 (each once).
+
+### Review rounds
+
+One round per group unless noted; `docs/reviews/m5-*.md` under each hash.
+
+- **g01 secret-field** — 1 Critical (in-place `Zeroizing<String>` reallocs
+  leaked unwiped prefixes on any password over 8 characters), 4 Major, 11
+  Minor. 7/7 ticks held as worded, though 2 held against the tick's own text
+  while failing the user's binding condition.
+- **g02 git-history-reads** — 1 Critical (`merge-tree --write-tree` does write
+  objects, contradicting the ticket's "nothing writes" claim), 4 Major, 15
+  Minor. 4 ticks checked, 3 held, **1 false** (cited a nonexistent test).
+- **g04 ui-ghost-banner-conflict** — 1 Critical (`preview_box.rs` always
+  reported "too small" at its own configured height, hidden by padded test
+  fixtures and a capture pipeline that filters blank rows), 7 Major, 12 Minor.
+  11 ticks total, 10 checked, **only 7 held** — three false ticks in one group.
+- **g03 hint bar** — 2 Critical (an unreachable `ChangesPane` branch meant
+  `space stage`/`d discard` never appeared at all; a guard test with an
+  exemption list that let unbound keys through), 6 Major, 10 Minor. 13 ticks
+  checked, all 13 name real tests, 11 hold, 2 true of the code only.
+- **g05 refresh race** — 1 Critical (a test built to prove a race provably
+  cannot fail — it passed even with the race reverted), 4 Major, 3 Minor.
+  4 ticks / 11 named claims checked, 10 held.
+- **g06 undo-cancel-rollback** — 1 Critical (a mutation-check claim was half
+  true: one mutation genuinely caught, the other's catching test passed for an
+  unrelated reason, caught by the reviewer re-running it), 5 Major, 6 Minor. 3
+  boxes held at box level; of box 1's 7 named tests, 4 held, 1 half, 1 flaky, 1
+  Critical.
+- **g07 ops-history-operations** — 3 Critical (C1: a journaled conflict
+  resolution is unreachable by `u`; C2: `plan_revert_to` re-creates
+  deliberately-undone work; C3: a "13 kinds" mutation-check claim was actually
+  11), 11 Major, 15 Minor. 5 ticks checked, 4 held, 1 partly. Verified both of
+  the builder's own spec corrections against real git 2.54.
+- **g08 app-preview-and-keys** — 0 Critical as filed, **1 Major escalated to
+  Critical by the conductor** (the preview drew the slice's first row rather
+  than the viewport's, invisible in every test and capture because all of them
+  have `top == 0`), 6 Major, 11 Minor total. 14/33 ticks checked, 13 held, 1
+  held by inspection only.
+- **g09 app-conflict-interim** — 1 Critical (a false capture tick: at 80x24
+  the conflict banner is entirely absent, and below 100 columns generally a
+  **modal** overlay travels off-screen with the tab layout while still holding
+  the keyboard), 5 Major, 9 Minor. 10 ticks checked, 9 held, 1 false. Folded
+  into ticket 16 rather than filed separately.
+- **Review of tickets 14–22 and 15 (combined, catch-up round)** — 0 Critical,
+  6 Major, 9 Minor. 22 acceptance ticks spot-checked, **all 22 held**. Found a
+  fourth instance of the milestone's "two things that must agree" fault
+  class, vertical rather than horizontal (a banner row reserved before layout
+  ran); a rule-3 violation shipped hours earlier (`.ok()?` on a failed remote
+  read silently downgrading a push-aware undo to a plain one); one tick
+  narrowed-but-not-false; ran the release perf tier early as the milestone
+  review run (13/13 budgets, p99 7.7–9.1 ms).
+- **Review of tickets 10, 30, 31 (combined)** — 0 Critical, 6 Major, 8 Minor, 2
+  Questions. T10 27/27 ticks exist, T31 6/6, **T30 none — all seven boxes left
+  blank** (nothing false shipped, but the tick list — the artefact a reviewer
+  spot-checks — was never filled in; added as a pre-merge check to the conduct
+  skill). One Major escalated to Critical scope by the conductor's own account:
+  badge-geometry hit-testing and drawing used two different icon/lane-cap
+  sources, so a drag lands on the wrong badge under Nerd icons — the icon set
+  this user actually runs.
+- **Groups 12/13 (context menu + overlay clears)** — 1 Critical, 3 Major, 5
+  Minor, re-run after the lost attempt above. 12 ticks checked, 11 held, 1
+  false. Critical escalated by the conductor from the review's own Major:
+  right-click opens the menu on the clicked row without moving the cursor, so
+  a fall-through verb (`y`, silently) can act on the wrong commit with no
+  feedback at all.
+
+### Escalations (severity, not model)
+
+Beyond the two model-routing escalations above (Fable→Opus substitution on g07,
+Opus→`builder-opus-xhigh` on g07's fix round), the conductor escalated a
+reviewer-scored **Major to Critical** three times in this milestone, each time
+reasoning from the milestone's own promise ("you see the result before you
+confirm") rather than diff size: g08's preview-window bug (drawn from the wrong
+row of the slice), the tickets-10/30/31 review's badge-geometry bug (hit-test
+and draw used two different icon/lane sources), and the groups-12/13 review's
+right-click-wrong-row bug (a silent verb acting on a commit the user didn't
+click). Each escalation states the reviewer's original score and the reasoning
+for raising it, rather than silently overriding it.
