@@ -243,6 +243,11 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
         return;
     }
     let kind = prompt.kind.clone();
+    // Kept, not dropped: a refused preview restores this below. The name
+    // the user typed is their work; losing it to a transient refusal (a
+    // write already running, git mid-operation) is the smallest version of
+    // the thing this project exists to prevent (review m5-10-30-31 m6).
+    let reopen = prompt.clone();
     state.name_prompt = None;
     match kind {
         // A create moves no history: no ref moves, nothing is replayed and
@@ -272,32 +277,49 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
         // and drops the entry — so it gets the box, like every other write
         // that changes where you are standing.
         NameKind::BranchFromStash { index, commit } => {
-            // The overlay closes as the picture opens: the preview draws
-            // over the graph, and an overlay behind a modal box is a screen
-            // the `Esc` out of the box would return to with the stash list
-            // already stale.
-            state.stash.shown = false;
-            let opened = super::preview::open_preview(
-                state,
-                commands,
-                PreviewSubject::Operation {
-                    op: Box::new(Operation::BranchFromStash(BranchFromStashParams {
-                        name,
-                        index,
-                        commit,
-                    })),
-                    opened_by: "b",
-                },
-                false,
-                next_id,
-            );
-            if !opened {
-                // `open_preview` has already written the reason (a write
-                // running, git mid-operation) to the status line; put the
-                // overlay back so the user is where they were.
-                state.stash.shown = true;
-            }
+            branch_from_stash(state, commands, name, index, commit, reopen, next_id);
         }
+    }
+}
+
+/// `NameKind::BranchFromStash`'s half of [`create`], split out to keep that
+/// function's line count under the limit.
+///
+/// The overlay closes as the picture opens: the preview draws over the
+/// graph, and an overlay behind a modal box is a screen the `Esc` out of the
+/// box would return to with the stash list already stale. On a refusal (a
+/// write already running, git mid-operation — `open_preview` has already
+/// written the reason to the status line) both the overlay and the prompt —
+/// name typed and all — come back, so the user is where they were, not
+/// retyping over a refusal that was never theirs to fix
+/// (review m5-10-30-31 m6).
+fn branch_from_stash(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    name: String,
+    index: usize,
+    commit: Oid,
+    reopen: NamePrompt,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    state.stash.shown = false;
+    let opened = super::preview::open_preview(
+        state,
+        commands,
+        PreviewSubject::Operation {
+            op: Box::new(Operation::BranchFromStash(BranchFromStashParams {
+                name,
+                index,
+                commit,
+            })),
+            opened_by: "b",
+        },
+        false,
+        next_id,
+    );
+    if !opened {
+        state.stash.shown = true;
+        state.name_prompt = Some(reopen);
     }
 }
 

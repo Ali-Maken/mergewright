@@ -68,7 +68,7 @@ pub fn drag_mouse(state: &mut AppState, commands: &mut Vec<Command>, mouse: Mous
     match mouse.kind {
         MouseKind::Down(MouseButton::Left) if state.drag.is_none() => press(state, mouse),
         MouseKind::Drag(MouseButton::Left) if state.drag.is_some() => {
-            let over = geometry::graph_row_at(state, mouse.row);
+            let over = geometry::graph_row_at_column(state, mouse.column, mouse.row);
             if let Some(drag) = state.drag.as_mut() {
                 drag.over = over;
             }
@@ -139,17 +139,20 @@ pub(super) fn drag_key(state: &mut AppState, key: KeyPress) -> bool {
     state.drag.take().is_some() && key.code == KeyCode::Escape
 }
 
-/// Can a drag start at all? Not over a preview, a confirm box, the commit
-/// editor, the credential prompt, the name prompt, a context menu or one of
-/// the overlays: each of those is either modal or stands where the graph
-/// does, so there is no badge on screen to pick up.
+/// Can a drag start at all? Not while a text field owns the keyboard
+/// (search prompt, commit editor, stash-branch prompt, credential prompt,
+/// name prompt — `AppState::text_field_open`, the one predicate every new
+/// field belongs in, not a second hand-listed set: a hand list is what
+/// omitted the search prompt here, review m5-10-30-31 m1), not while a
+/// focused banner owns it either, and not over a preview, a confirm box, a
+/// context menu or one of the overlays: each of those is either modal or
+/// stands where the graph does, so there is no badge on screen to pick up.
 fn can_start(state: &AppState) -> bool {
-    !(state.preview.is_some()
+    !(state.text_field_open()
+        || state.banner_focus
+        || state.preview.is_some()
         || state.confirm.is_some()
         || state.context_menu.is_some()
-        || state.commit_editor.is_some()
-        || state.credential.is_some()
-        || state.name_prompt.is_some()
         || state.stash.shown
         || state.journal.shown
         || state.map.shown)

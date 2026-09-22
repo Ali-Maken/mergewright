@@ -308,6 +308,18 @@ pub(super) fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
     (absolute < history.rows).then_some(absolute)
 }
 
+/// [`graph_row_at`], with the column checked against the graph's own
+/// rectangle first: a row number alone cannot tell the graph from the
+/// detail pane at the same height, and a drag dropped sideways into the
+/// pane must land on nothing rather than on whatever row happens to share
+/// that screen row (review m5-10-30-31 m3).
+pub(super) fn graph_row_at_column(state: &AppState, column: u16, row: u16) -> Option<usize> {
+    if !context_menu_graph_bounds(state)?.contains(column, row) {
+        return None;
+    }
+    graph_row_at(state, row)
+}
+
 /// The graph's own rectangle, whatever the detail pane is doing: mirrors
 /// `detail_hit`'s split, but the graph side rather than the pane
 /// (`context-actions-menu`, m2-details-and-diffs/12).

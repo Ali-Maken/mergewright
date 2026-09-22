@@ -205,6 +205,24 @@ mod tests {
         assert!(row.starts_with("╭ main ─"), "{row:?}");
     }
 
+    /// A label longer than the row has room for is cut with `…`, and one
+    /// blank cell — not a dash — sits between the cut label and the right
+    /// corner, so the ellipsis never touches a border glyph (the fix this
+    /// module's doc comment describes). The sweep only ever reached this
+    /// branch by coincidence, where some widget's title happened to
+    /// overflow at one of the widths it tests — pinned directly here so the
+    /// branch stays covered regardless (review m5-10-30-31 m7).
+    #[test]
+    fn border_row_reserves_a_blank_cell_before_a_cut_labels_corner() {
+        let row = border_row('╭', '╮', "a label far longer than this row is wide", 20);
+        assert_eq!(cells(&row), 20, "{row:?}");
+        assert!(row.contains('…'), "the label was cut: {row:?}");
+        assert!(
+            row.ends_with(" ╮"),
+            "one blank cell, not a dash, before the corner: {row:?}"
+        );
+    }
+
     /// Every choice is a button; only the cursor's carries `▸`. Both are the
     /// same width, so the row does not shift as the cursor moves, and the
     /// reported offset/width really is where the cursor's button sits.
