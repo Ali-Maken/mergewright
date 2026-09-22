@@ -94,13 +94,13 @@ Measured on this ticket's own base, `fe393df`, not the conductor's `e1acf45`
 — two ticket files were added between them, and both quote the path.
 
 - [x] `git ls-files | xargs grep -l "/[U]sers/"` returns **0** — **132 → 0**.
-      Test: `it::published_repo::no_tracked_file_names_this_machine`
-      (`crates/graft/tests/it/published_repo.rs`), which reads every file
-      `git ls-files` names and fails on the class. The grep itself, re-run
-      after the change: 0.
+      Test: `it::published_repo::nothing_a_commit_would_carry_names_this_machine`
+      (`crates/graft/tests/it/published_repo.rs`), which reads every file a
+      commit from here would carry and fails on the class. The grep itself,
+      re-run after the change: 0.
 - [x] No tracked file carries an OS scratch path or an ephemeral port —
       scratch **48 → 0**, ports **6 → 0**. Same test
-      (`no_tracked_file_names_this_machine`): it reports all three classes and
+      (`nothing_a_commit_would_carry_names_this_machine`): it reports all three classes and
       `Machine::why` says which. Counted with
       `grep -lE '/var/fold[e]rs/[A-Za-z0-9_+-]{2}/'` and
       `grep -lE '(127\.0\.0\.1|localhost|\[::1\]):(49[2-9][0-9]{2}|5[0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])'`
@@ -146,7 +146,8 @@ Measured on this ticket's own base, `fe393df`, not the conductor's `e1acf45`
       finding; the frame is taken long before that), and the M1–M4 walk
       scripts were not converted — see NOTES.
 - [x] A test fails if a home path, scratch path or port reappears in a tracked
-      file — `it::published_repo::no_tracked_file_names_this_machine`. Checked
+      file — `it::published_repo::nothing_a_commit_would_carry_names_this_machine`.
+      Checked
       that it bites: appended one bait line with a home path and a loopback
       address on an ephemeral port to `docs/perf/toolchain.txt`; the test
       failed naming
@@ -271,3 +272,50 @@ home.
   captures changed content (the marker-spacing drift the assert caught, plus
   the scratch-path placeholder), and 175 older files changed only by
   redaction.
+
+## NOTES round 2 (builder, g41) — the guard could not see the file adding it
+
+**The failure.** `crates/graft-fixtures/src/capture/machine.rs` wrote three
+loopback addresses on ephemeral ports as literals, to test that ports are
+redacted. The guard reads that file like any other and flagged all three.
+
+**Why my gates were green and the merge was not.** The guard listed
+`git ls-files`, which is the **index**. `machine.rs` was a new file, so it was
+not in the index while I ran the gates — I staged it afterwards, and committed
+without re-running. The first run that could see it was the run after the
+commit. That is the same shape as the gap this whole ticket exists to close:
+an instrument that cannot see the thing being added.
+
+**Answer to the question asked, written down because the next person will
+assume otherwise.** Before this change the guard read the index: tracked files
+**and** files already `git add`ed, but **not** untracked ones. After it, it
+reads the index *and* `--others --exclude-standard`, so:
+
+| | scanned? |
+|---|---|
+| tracked | yes |
+| staged, not yet committed | yes (before and after) |
+| untracked, not ignored | **yes, new** |
+| ignored (`.gitignore`) | no — cannot be committed without `git add -f` |
+| index content the working tree no longer has | no — it reads files from disk |
+
+The last row is the one remaining limitation and it is deliberate: closing it
+means `git cat-file` per path, and the case it would catch is `add` followed
+by an edit that *removes* a leak. A builder needs to do nothing extra; there
+is no "remember to re-run after staging" left.
+
+Verified both directions, not assumed: an untracked bait file failed the guard
+naming `docs/perf/g41-bait.txt:1 — a home directory names an account
+(untracked, and not ignored — a commit would take it)`; the same bait under
+`target/` (ignored, confirmed with `git check-ignore -v`) did not. Both baits
+deleted; `git status` clean of them.
+
+**The fixture fix does not weaken the pattern.** No exemption list, no
+tolerance, no change to what counts as a leak. The module's tests now assemble
+the addresses they need from `LOOPBACK[0]` plus the number, exactly as it
+already spelled its forbidden roots with `concat!`. The one test that keeps a
+literal is `a_port_after_something_that_is_not_loopback_is_a_number_in_prose`,
+whose whole point is a number the pattern must *not* match.
+
+The test is renamed `nothing_a_commit_would_carry_names_this_machine`,
+because "tracked" is no longer what it reads.

@@ -63,14 +63,22 @@ any other reason is a defect, and neither is a place to hide one.
 classes out of what the code drew, before it compares or writes it — a home
 directory, a path under the OS scratch directory, and a port the OS picked —
 each replaced by a placeholder of exactly the width it took, so no grid moves.
-`no_tracked_file_names_this_machine` then checks every file `git` tracks, on
-every run, and says what to do:
+`nothing_a_commit_would_carry_names_this_machine` then checks, on every run,
+**every file a commit from here would carry** — the index (tracked, and
+anything already `git add`ed) *and* the working tree's un-ignored files. Both,
+because a new file is not in the index until it is added, so reading the index
+alone lets a builder's last green gate precede the failure by one commit. That
+happened to this rule's own module. What it does not see: `.gitignore`d files,
+which cannot be committed without `-f`, and index content the working tree no
+longer has, since it reads files from disk. It says what to do:
 
 ```sh
 cargo run -q -p graft-fixtures -- redact <path>...   # a file older than the rule
 ```
 
-Write `<home>` by hand where a test or a document needs a home directory. The
+Write `<home>` by hand where a test or a document needs a home directory; a
+test that needs one of these literally assembles it from pieces, the way
+`graft_fixtures::capture::machine` spells its own roots and ports. The
 pty walks do not write to `docs/shots/` themselves: they pipe each frame to
 `graft-fixtures capture <path>`, which is the same mechanism on the same terms,
 so a walk asserts like everything else and `GRAFT_UPDATE_SHOTS=1` is how it
