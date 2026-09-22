@@ -29,6 +29,26 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   the keyboard the same way a modal pane does. `p`/`P` (pull/push) are the
   model for any future same-shift-key opposite pair: box the irreversible
   half behind a confirm, never let a slipped `Shift` run it.
+- **The hint bar is a ranked selection, not an enumeration** (added by the
+  conductor, 2026-09-22, from m5/33's exemption list). "The bar always shows
+  what's active" — said twice below — means the bar reflects the **current
+  mode**, never that every bound key appears on it. The bar has a width
+  budget and a `more` affordance; it ranks by relevance at the cursor.
+  **Two classes never appear on it, and that is correct:**
+  - **Navigation and meta globals** (§2.2): `g`/`G` top/bottom, `PgUp`/`PgDn`
+    page, `Ctrl+R` refresh, `U` redo, `Esc` dismiss. They are live in every
+    pane and identical in every context, so a bar slot spent on them teaches
+    nothing and costs a slot that changes with the cursor.
+  - **A key whose verb is not valid at the cursor**, which is the mode rule
+    already stated below, not an exception to it.
+
+  Everything else that is bound **is a candidate for a slot**, and a row or
+  ambient verb that never appears anywhere is a finding, not a default.
+  `crates/graft/src/update/tests.rs::every_bound_action_is_hinted_live_or_is_named_here`
+  is the test that holds this; its `NEVER_HINTED` list is the first class
+  above and nothing else. **Adding a row to that list is a spec change and
+  belongs here first.**
+
 - **A pane dense enough to need the alphabet for its own vocabulary is
   modal: it answers every key itself, `Ctrl+C` excepted, and nothing
   outside it is live while it has focus.** The hint bar always shows what's
