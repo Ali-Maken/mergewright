@@ -105,6 +105,14 @@ Ticket 30's seven acceptance boxes were merged blank. **The conductor has
 ticked them from the builder's Report and labelled the note as post-hoc**, and
 added the missing check to its own merge procedure. Nothing here for you.
 
+## Also: `cargo run` does not work, and the user hit it
+
+The workspace has four binaries, so plain `cargo run` fails with *"could not
+determine which binary to run"*. The user hit this the first time he tried to
+open his own app. Add `default-run = "graft"` so `cargo run -- <repo>` works.
+One line; check whether it belongs on the workspace or on `crates/graft`, and
+update any doc that currently tells a reader to use `--bin`.
+
 ## NOT yours
 
 - The review's **8 Minors and 2 Questions** — the conductor triages them at the
