@@ -39,6 +39,7 @@ mod prelude;
 pub mod preview;
 pub mod radar;
 pub mod remote;
+pub mod resolver;
 mod search;
 mod selection;
 pub mod stash;
@@ -46,7 +47,9 @@ mod state;
 mod strip;
 pub mod undo;
 
-pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, Task};
+pub use events::{
+    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeRequest, Task,
+};
 pub(crate) use geometry::context_menu_area;
 pub use state::{AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, Quit, Screen, Size, Status};
 
@@ -221,6 +224,14 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(_, Product::Mergetool { path, result }) => {
             mergetool_returned(next, commands, &path, result);
         }
+        AppEvent::Produced(id, Product::ConflictOpened(result)) => {
+            resolver::conflict_opened(next, id, result);
+        }
+        AppEvent::Produced(id, Product::Taken(result)) => {
+            let mut local_jobs = next.local_jobs;
+            resolver::taken(next, id, result, commands, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
+        }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);
         }
@@ -234,6 +245,20 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
             remote::remote_progress(next, id, &brief);
+        }
+        // `e` from inside the resolver: `$EDITOR` had the file, so the
+        // document on screen is not what is on disk any more. Before the
+        // commit editor's arm, which is where every other `HandedOver`
+        // goes — the resolver is modal, so while it is open there is no
+        // other handover this can be (`Ctrl+Z` is swallowed by
+        // `resolver_key`, which runs before `suspend_on_ctrl_z`).
+        AppEvent::Produced(_, Product::HandedOver(result)) if next.resolver.is_some() => {
+            if let Err(why) = result {
+                next.status = Status::sticky(why);
+            }
+            let mut local_jobs = next.local_jobs;
+            resolver::handed_back(next, commands, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
         }
         event @ AppEvent::Produced(
             _,
@@ -276,6 +301,15 @@ fn mergetool_returned(
     }
     commands.push(Command::ReadWorkingTree);
     commands.extend(next.detail.refresh(&mut || next.local_jobs.next_id()));
+    // The resolver's `M`: its document is as stale as the file list was.
+    // Both handovers land here now — `e` through `Product::HandedOver` in
+    // [`answer`] — so the two behave the same, which they never did
+    // (m6-conflicts/04; `e` scheduled no read at all).
+    if next.resolver.is_some() {
+        let mut local_jobs = next.local_jobs;
+        resolver::handed_back(next, commands, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
+    }
 }
 
 /// The journal read answered.
@@ -348,6 +382,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::RevertTo
         | Task::ReadStashes
         | Task::ReadRemotes
+        | Task::OpenConflict
+        | Task::TakeSide
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -386,10 +422,25 @@ fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
 fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
     match event {
         AppEvent::Produced(id, Product::Operated(outcome)) => {
+            // Read before the outcome is handed over: only a write that
+            // actually ran moves the resolver on. A `git add` that was
+            // refused leaves the file exactly where it was, and jumping to
+            // the next conflict would hide the refusal behind a new screen.
+            let staged = matches!(
+                *outcome,
+                crate::jobs::operate::Operated::Done(_)
+                    | crate::jobs::operate::Operated::Incomplete { .. }
+            );
             let mut local_jobs = next.local_jobs;
             commands.extend(operate::operated(next, id, *outcome, &mut || {
                 local_jobs.next_id()
             }));
+            // `⏎`'s `git add` on the open file: on to the next conflicted
+            // one, or out. Only that write — `resolved_advance` compares
+            // the id with the one the resolver launched.
+            if staged {
+                resolver::resolved_advance(next, commands, id, &mut || local_jobs.next_id());
+            }
             next.local_jobs = local_jobs;
         }
         // `launch` already put the write's words on the line; this only
@@ -529,7 +580,9 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::ExternalEditor(_)
-        | Product::HandedOver(_) => {}
+        | Product::HandedOver(_)
+        | Product::ConflictOpened(_)
+        | Product::Taken(_) => {}
     }
 }
 

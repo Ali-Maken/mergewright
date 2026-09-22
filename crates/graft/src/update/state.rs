@@ -264,6 +264,15 @@ pub struct AppState {
     /// of the walk's. **Not** in [`AppState::text_field_open`]: nothing is
     /// typed into it, and its own handler runs before `u` regardless.
     pub preview: Option<super::preview::PreviewState>,
+    /// The conflict resolver (`⏎` on a `CONFLICTS` row or on the focused
+    /// banner, m6-conflicts/04): `None` while closed.
+    ///
+    /// Modal like the Ghost Preview, and for the same reason: it is a
+    /// picture of a file the user is deciding about, and nothing may act
+    /// over it. Its handler runs right after the preview's and before the
+    /// banner's, so a resolver opened *from* the banner keeps the keyboard
+    /// the banner would otherwise claim.
+    pub resolver: Option<super::resolver::ResolverState>,
 }
 
 /// The screens Graft can show.
@@ -446,7 +455,16 @@ impl AppState {
     /// covers the Map, the Map covers the journal, and so on down.
     #[must_use]
     pub fn graph_overlay(&self) -> Option<GraphOverlay> {
-        if self.commit_editor.is_some() {
+        if self.resolver.is_some() {
+            // Above the commit editor and the three overlays alike: the
+            // resolver is the only one that covers the **detail pane** as
+            // well as the graph, and `⏎` on a `CONFLICTS` row reaches
+            // `detail::keys` with the Map, the journal or the stash list
+            // already up. It refuses to open over a confirm box or the
+            // editor (`resolver::open_resolver`), so the order below it is
+            // untouched.
+            Some(GraphOverlay::Resolver)
+        } else if self.commit_editor.is_some() {
             Some(GraphOverlay::CommitEditor)
         } else if self.map.shown {
             Some(GraphOverlay::Map)
@@ -467,6 +485,9 @@ impl AppState {
 /// live.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GraphOverlay {
+    /// The conflict resolver (`⏎` on a conflicted file, m6-conflicts/04).
+    /// The one overlay that takes the detail pane's area too.
+    Resolver,
     /// The commit message editor (`c`).
     CommitEditor,
     /// The Map view (`M`).

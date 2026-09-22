@@ -390,19 +390,20 @@ fn bar_is(state: &AppState, three: &str) -> Result<(), String> {
     })
 }
 
-/// The focused banner's bar: all six of `hints::banner_list`'s hints and no
-/// `. more`, because they fit.
+/// The focused banner's bar: all seven of `hints::banner_list`'s hints and
+/// no `. more`, because they fit. `⏎ resolve` joined them in
+/// m6-conflicts/04 and leads the list (design note, Proposed change 2a).
 fn the_banners_whole_list(state: &AppState) -> Result<(), String> {
     check(state.banner_focus, || {
         "⇥ did not take the banner's keyboard back".to_owned()
     })?;
     let drawn = bar_by(state, "c continue")?;
-    let wanted = " c continue  s skip  a abort  M mergetool  e edit  ⇥ graph";
+    let wanted = " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph";
     check(drawn.trim_end() == wanted, || {
         format!("the banner's bar is {drawn:?}, not {wanted:?}")
     })?;
     check(!drawn.contains(". more"), || {
-        "the banner's six hints fit at 80: nothing is left over".to_owned()
+        "the banner's seven hints fit at 80: nothing is left over".to_owned()
     })
 }
 
@@ -411,8 +412,8 @@ fn the_banners_whole_list(state: &AppState) -> Result<(), String> {
 /// a context whose list *does* fit teaches all of it and draws no `. more`
 /// at all. The strings are the design note's own per-context lists.
 ///
-/// The focused banner is the second kind: its six hints measure 57 columns,
-/// so ADR-0039's ladder never has to shorten them. The design note's own
+/// The focused banner is the second kind: its seven hints still fit inside
+/// 80, so ADR-0039's ladder never has to shorten them. The design note's own
 /// 80-column mockup still shows `c continue  s skip  a abort  . more` there
 /// — stale, from before the ladder replaced the width tiers (the note says
 /// as much two lines above it). Filed in the ticket.
@@ -463,13 +464,20 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             // The unmerged branch of `hints::changes_pane_list`, not the
             // ordinary one — which starts `space stage`, so this string is
             // also what says the cursor really is on a conflicted file.
-            // `M mergetool` and `space resolved` are `planned()` and so not
-            // drawn: they are M6's to build, and until then `space` is
-            // refused on an unmerged entry, so advertising it would be a
-            // hint that lies (`hints.rs:834`). The design note's parenthesis
-            // is the M6 target, not today.
+            // `⏎ resolve`, `M mergetool` and `space resolved` were
+            // `planned()` here until m6-conflicts/04 bound all three; the
+            // design note's parenthesis is today's bar now.
+            // Six hints and the doorway measure 74 of the 80 columns, so
+            // this is the *whole* list, not a three-and-`. more` prefix:
+            // before m6-conflicts/04 three of the six were `planned()` and
+            // the bar was short enough to be the other kind.
             Step::See("the changes pane, on an unmerged file", |state| {
-                bar_is(state, "e edit  c commit  ⇥ graph")
+                let drawn = bar(state)?;
+                let wanted =
+                    " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph  . more";
+                check(drawn.trim_end() == wanted, || {
+                    format!("the bar is {drawn:?}, not {wanted:?}")
+                })
             }),
             Step::Mark("looked"),
         ],

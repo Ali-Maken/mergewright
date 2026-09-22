@@ -1,0 +1,269 @@
+//! Building the conflict resolver's [`DocView`] (m6-conflicts/04).
+//!
+//! **The one sanitisation site for a conflicted file.** Every byte here —
+//! the file's own lines, git's marker labels, the path in the title — came
+//! off disk or out of git, so every one goes through `graft_term`
+//! (`docs/design/08-architecture.md` §8.2). `graft_ui::conflict_resolver`
+//! takes `SanitizedText` and nothing else, which is what makes that a rule
+//! the compiler keeps rather than a habit.
+
+use std::path::Path;
+
+use graft_git::conflict::{Block, ConflictFile, Region, Take};
+use graft_git::state::{InProgress, InProgressDetail};
+use graft_term::{SanitizedText, sanitize_line, sanitize_path_bytes};
+use graft_ui::conflict_resolver::{
+    BlockState, BlockView, DocView, Layout, RegionView, SIDE_BY_SIDE_MIN, TakeView, layout,
+};
+
+use crate::update::AppState;
+
+/// Everything the resolver draws for the file it has open, or `None` when
+/// it is closed or still waiting for its opening read.
+#[must_use]
+pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
+    let open = state.resolver.as_ref()?;
+    let file = open.file.as_ref()?;
+    let paths = crate::update::banner::unmerged_paths(state);
+    let index = paths
+        .iter()
+        .position(|path| path == &open.path)
+        .map_or(1, |at| at + 1);
+    let blocks = file.blocks();
+    Some(DocView {
+        title: sanitize_line(&resolver_title(
+            &open.path,
+            index,
+            paths.len().max(1),
+            file.open(),
+            blocks.len(),
+            columns >= SIDE_BY_SIDE_MIN,
+        )),
+        explainer: resolver_explainer(state).as_deref().map(sanitize_line),
+        regions: regions(file),
+        cursor_block: open.cursor_block,
+        base_shown: open.base_shown,
+        notice: open
+            .notice
+            .as_ref()
+            .map(|(text, error)| (sanitize_line(text), *error)),
+    })
+}
+
+/// The open document, laid out at `columns` — the same rows the widget will
+/// draw, so a key that scrolls and a click that lands agree with the
+/// picture by construction (`graft_ui::conflict_resolver::row_at`).
+#[must_use]
+pub fn resolver_layout(state: &AppState, columns: u16) -> Option<Layout> {
+    resolver_view(state, columns).map(|doc| layout(&doc, columns))
+}
+
+/// The title row: `src/auth.rs · file 1 of 3 · 2 of 3 conflicts open`, or
+/// the short form when the screen is too narrow to carry all three.
+#[must_use]
+pub fn resolver_title(
+    path: &Path,
+    file_index: usize,
+    files: usize,
+    open: usize,
+    total: usize,
+    wide: bool,
+) -> String {
+    let name = path.display();
+    if wide {
+        format!("{name} · file {file_index} of {files} · {open} of {total} conflicts open")
+    } else {
+        format!("{name} · {open}/{total} open")
+    }
+}
+
+/// **Which side is which**, in the words of the operation that made the
+/// conflict — the one thing a rebase gets wrong for everybody, because git
+/// swaps `ours` and `theirs` round compared with a merge.
+///
+/// Wider than the ticket's `(&InProgressDetail)`: naming the branch a
+/// rebase is landing on means looking it up in the refs, which an
+/// `InProgressDetail` does not carry (it has the `onto` commit's id, not a
+/// name). `None` outside an operation, where there are no sides to explain.
+#[must_use]
+pub fn resolver_explainer(state: &AppState) -> Option<String> {
+    let detail = state.in_progress.as_ref()?;
+    Some(match detail.kind {
+        InProgress::Rebase => format!(
+            "ours = {}, what you are rebasing onto · theirs = the commit being replayed",
+            onto_name(state, detail)
+        ),
+        InProgress::Merge => format!(
+            "ours = {} · theirs = the branch being merged in",
+            current_branch(state).unwrap_or_else(|| "this branch".to_owned())
+        ),
+        InProgress::CherryPick | InProgress::Revert | InProgress::Bisect => format!(
+            "ours = {} · theirs = the commit being applied",
+            current_branch(state).unwrap_or_else(|| "this branch".to_owned())
+        ),
+    })
+}
+
+/// What the rebase is landing on, named: a branch on that commit if the
+/// refs know one, else its abbreviated id, else the phrase that says what
+/// it is without pretending to know which.
+fn onto_name(state: &AppState, detail: &InProgressDetail) -> String {
+    let Some(onto) = detail.onto else {
+        return "the branch you are rebasing onto".to_owned();
+    };
+    branch_on(state, onto).unwrap_or_else(|| {
+        let full = onto.to_string();
+        full.chars().take(SHORT_OID).collect()
+    })
+}
+
+/// Hex digits of a commit id shown when no ref names it — the seven every
+/// other line in Graft shows (`update::preview::short`).
+const SHORT_OID: usize = 7;
+
+/// The first local branch name on `commit`, if the refs are in.
+fn branch_on(state: &AppState, commit: graft_core::oid::Oid) -> Option<String> {
+    state
+        .refs
+        .as_deref()?
+        .on(commit)
+        .iter()
+        .find_map(|label| match label {
+            crate::refs::RefLabel::Branch { name, .. } => {
+                Some(sanitize_path_bytes(name).as_str().to_owned())
+            }
+            _ => None,
+        })
+}
+
+/// The branch `HEAD` is on, if there is one.
+fn current_branch(state: &AppState) -> Option<String> {
+    let refs = state.refs.as_deref()?;
+    refs.on(refs.head()?).iter().find_map(|label| match label {
+        crate::refs::RefLabel::Branch {
+            name,
+            current: true,
+            ..
+        } => Some(sanitize_path_bytes(name).as_str().to_owned()),
+        _ => None,
+    })
+}
+
+/// The document's regions, in file order, with every byte sanitised.
+fn regions(file: &ConflictFile) -> Vec<RegionView> {
+    let total = file.blocks().len();
+    let mut out = Vec::with_capacity(file.regions.len());
+    let mut line = 1usize;
+    let mut index = 0usize;
+    for region in &file.regions {
+        match region {
+            Region::Plain(lines) => {
+                out.push(RegionView::Plain {
+                    first_line: line,
+                    lines: lines.iter().map(text_of).collect(),
+                });
+                line += lines.len();
+            }
+            Region::Conflict(block) => {
+                out.push(RegionView::Block(block_view(
+                    block,
+                    index,
+                    total,
+                    line,
+                    BlockState::Open,
+                )));
+                index += 1;
+                line += conflict_lines(block);
+            }
+            Region::Resolved { block, take } => {
+                out.push(RegionView::Block(block_view(
+                    block,
+                    index,
+                    total,
+                    line,
+                    BlockState::Took(take_view(*take)),
+                )));
+                index += 1;
+                line += taken_lines(block, *take);
+            }
+        }
+    }
+    out
+}
+
+/// One block, drawn.
+fn block_view(
+    block: &Block,
+    index: usize,
+    of: usize,
+    first_line: usize,
+    state: BlockState,
+) -> BlockView {
+    BlockView {
+        index,
+        of,
+        state,
+        ours_label: label(block.ours_label.as_deref(), "ours"),
+        theirs_label: label(block.theirs_label.as_deref(), "theirs"),
+        ours: block.ours.iter().map(text_of).collect(),
+        base: block.shown_base().map(|(base, shared)| {
+            (
+                label(
+                    base.label.as_deref(),
+                    if shared {
+                        "merged common ancestor (shared)"
+                    } else {
+                        "merged common ancestor"
+                    },
+                ),
+                base.lines.iter().map(text_of).collect(),
+            )
+        }),
+        theirs: block.theirs.iter().map(text_of).collect(),
+        first_line,
+    }
+}
+
+/// A marker's label, or the stand-in for git's bare `<<<<<<<` form.
+fn label(raw: Option<&[u8]>, fallback: &str) -> SanitizedText {
+    match raw {
+        Some(bytes) => sanitize_path_bytes(bytes),
+        None => sanitize_line(fallback),
+    }
+}
+
+/// One line of the file, without the terminator it is stored with: a `\n`
+/// or `\r\n` drawn into a cell is a control character, not content.
+fn text_of(line: &graft_git::conflict::Line) -> SanitizedText {
+    let raw = line.0.as_slice();
+    let content = raw
+        .strip_suffix(b"\n")
+        .map_or(raw, |cut| cut.strip_suffix(b"\r").unwrap_or(cut));
+    sanitize_line(&String::from_utf8_lossy(content))
+}
+
+/// How many rendered lines an open block takes, so the next region's first
+/// line number is the file's own (`ConflictFile::blocks`' arithmetic, which
+/// is not public).
+fn conflict_lines(block: &Block) -> usize {
+    let base = block.base.as_ref().map_or(0, |base| base.lines.len() + 1);
+    3 + block.ours.len() + base + block.theirs.len()
+}
+
+/// The same for a block a take has collapsed.
+fn taken_lines(block: &Block, take: Take) -> usize {
+    match take {
+        Take::Ours => block.ours.len(),
+        Take::Theirs => block.theirs.len(),
+        Take::Both => block.ours.len() + block.theirs.len(),
+    }
+}
+
+/// `graft_git`'s take, as the widget names it.
+fn take_view(take: Take) -> TakeView {
+    match take {
+        Take::Ours => TakeView::Ours,
+        Take::Theirs => TakeView::Theirs,
+        Take::Both => TakeView::Both,
+    }
+}

@@ -131,6 +131,11 @@ fn a_bisect_draws_no_banner_and_claims_no_key() {
 /// §2.1's modal rule: every key but `Ctrl+C` is the banner's. `u` is the one
 /// that matters — undoing the entry *before* the live one, mid-rebase, is
 /// the bug this swallow exists to stop.
+///
+/// `⏎` was in this list until m6-conflicts/04 gave it a job (§2.6a: it opens
+/// the resolver on the first conflicted file). It is still the banner's —
+/// `every_hint_the_focused_banner_draws_is_answered_by_banner_key` presses
+/// it and checks what it does — it just no longer does *nothing*.
 #[test]
 fn the_focused_banner_claims_every_key_but_control_c() {
     for code in [
@@ -139,7 +144,6 @@ fn the_focused_banner_claims_every_key_but_control_c() {
         KeyCode::Char('S'),
         KeyCode::Char('m'),
         KeyCode::Char('q'),
-        KeyCode::Enter,
     ] {
         let mut state = stopped(InProgress::Rebase, &["a.rs"]);
         let (claimed, commands) = press(&mut state, code);
@@ -582,6 +586,7 @@ fn code_for(key: &str) -> KeyCode {
         "a" => KeyCode::Char('a'),
         "M" => KeyCode::Char('M'),
         "e" => KeyCode::Char('e'),
+        "⏎" => KeyCode::Enter,
         "⇥" => KeyCode::Tab,
         other => panic!(
             "the focused banner's hint bar draws `{other}`, which this test \
@@ -649,12 +654,31 @@ fn did_a_file_verb(verb: &str, key: &str, before: &AppState, commands: &[Command
     assert_eq!(*queued, path, "`{key} {verb}` opened the wrong file");
 }
 
+/// `⏎`: the one that stays in the app. It opens the resolver on the first
+/// conflicted file and queues the read of it. Hinted only while there is
+/// one, so "there is none" is a failure here too.
+fn did_resolve(key: &str, before: &AppState, after: &AppState, commands: &[Command]) {
+    let path = first_conflicted(before).unwrap_or_else(|| {
+        panic!("`{key} resolve` is hinted with nothing conflicted for it to open")
+    });
+    let resolver = after
+        .resolver
+        .as_ref()
+        .unwrap_or_else(|| panic!("`{key} resolve` opened no resolver"));
+    assert_eq!(resolver.path, path, "`{key} resolve` opened the wrong file");
+    let [Command::OpenConflict(_, queued)] = commands else {
+        panic!("`{key} resolve` queued {commands:?}")
+    };
+    assert_eq!(*queued, path, "`{key} resolve` read the wrong file");
+}
+
 /// What pressing `verb`'s key must have done. Every arm asserts the verb's
 /// own outcome; an unknown verb is a failure, not a pass.
 fn did_the_verb(verb: &str, key: &str, before: &AppState, after: &AppState, commands: &[Command]) {
     match verb {
         "continue" | "skip" | "abort" => did_a_resume_verb(verb, key, before, after, commands),
         "mergetool" | "edit" => did_a_file_verb(verb, key, before, commands),
+        "resolve" => did_resolve(key, before, after, commands),
         "graph" => assert!(
             !after.banner_focus,
             "`{key} {verb}` did not give the keyboard back"

@@ -138,6 +138,26 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
 /// the line cursor. A write that cannot apply (one already in flight, no file
 /// row under the cursor) falls through to `Space`'s other meaning, folding a
 /// directory. `d` and `Ctrl+A` have no other meaning on this pane.
+/// `⏎` on a `CONFLICTS` row opens the resolver (`docs/design/02-keymap.md`
+/// §2.4, m6-conflicts/04), and answers `false` on any other row — where
+/// `⏎` keeps all three meanings it already has: open the pane, focus the
+/// diff, or nothing once the diff has focus.
+fn open_the_resolver(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
+    let Some(path) = super::super::banner::cursor_conflict(next) else {
+        return false;
+    };
+    let mut local_jobs = next.local_jobs;
+    let opened = super::super::resolver::open_resolver(
+        next,
+        commands,
+        path,
+        super::super::resolver::OpenedFrom::Pane,
+        &mut || local_jobs.next_id(),
+    );
+    next.local_jobs = local_jobs;
+    opened
+}
+
 fn changes_pane_write_key(
     next: &mut AppState,
     commands: &mut Vec<Command>,
@@ -152,6 +172,9 @@ fn changes_pane_write_key(
         DetailFocus::Diff => true,
         DetailFocus::Graph => return false,
     };
+    if plain && key.code == KeyCode::Enter && open_the_resolver(next, commands) {
+        return true;
+    }
     // A conflicted row answers `M` and `e` itself: the mergetool, and the
     // editor at the file's first `<<<<<<< ` rather than at the diff cursor.
     // The pane's diff for an unmerged file is the file as it stands against

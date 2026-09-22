@@ -316,6 +316,10 @@ pub(crate) fn footer_context(
     banner: Option<&graft_ui::graph_screen::BannerView>,
 ) -> HintContext {
     match banner {
+        // The resolver stands over the banner as well as the graph, and it
+        // is modal: `c`, `s`, `a` reach the file, not the operation. Its
+        // own bar is what `hint_context` answers (m6-conflicts/04).
+        _ if state.resolver.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(banner),
         _ => hint_context(state, rows),
     }
@@ -384,6 +388,19 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         GraphOverlay::Journal => HintContext::Journal,
         GraphOverlay::Stash => HintContext::Stash,
         GraphOverlay::CommitEditor => return None,
+        // Modal in the stronger sense, like the commit editor — but unlike
+        // it, the resolver draws a bar, so it has one. It covers the detail
+        // pane too, which is why it answers before the focus test below:
+        // there is no pane on screen to have the keyboard.
+        //
+        // `base: false, restart: false` throughout this build: `B` and `d`
+        // are m6-conflicts/05's, and their hints are still `Planned`.
+        GraphOverlay::Resolver => {
+            return Some(HintContext::Resolver {
+                base: false,
+                restart: false,
+            });
+        }
     };
     if state.graph_has_focus() {
         return Some(overlay);
