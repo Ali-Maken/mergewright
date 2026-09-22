@@ -3,7 +3,7 @@
 # `file://` bare, the clone left one commit ahead of it, the walk let
 # settle, then `P` pressed
 # (crates/graft/tests/it/two_boxes_over_content.rs,
-# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# capture_two_boxes_over_real_content_for_docs_shots, asserted).
 # Not a pty capture: the terminal is ratatui's TestBackend, so this is
 # a character grid with no colour attributes in it — CLAUDE.md rule 5,
 # colour ships unverified. The scratch repository's temporary path is
@@ -48,27 +48,27 @@
 == `P`: the push confirm, on the graph ==
 
  graft /code/api  200 commits
-◆ ⓘ [◆ main ↑1] Commit 200                                          2d   d5ae5fd
-●   [origin/main] Commit 199                                        2d   13e6ab1
-●   Commit 198                                                      2d   f5055d9
-●   Commit 197                                                      2d   2cce853
-●   Commit 196                                                      2d   325da3f
-●   Commit 195                                                      2d   0722297
-●   ╭ Push main → origin/main ─────────────────────────────────────────╮ b6a4a47
-●   │ 1 commit · can't be undone from here — origin keeps what you     │ 60af0eb
-●   │ send                                                             │ aceb8c5
-●   │                                                                  │ 11d68ff
-●   │ git push --progress origin refs/heads/main:refs/heads/main       │ 91900bd
-●   │                                                                  │ cec3e93
-●   │ ▸[ Cancel ]   [ Push ]                                           │ 0a91ece
-●   ╰──────────────────────────────────────────────────────────────────╯ 3121935
-●   Commit 186                                                      2d   fab25df
-●   Commit 185                                                      2d   09ae97c
-●   Commit 184                                                      2d   49d7783
-●   Commit 183                                                      2d   22d55c9
-●   Commit 182                                                      2d   d212b3e
-●   Commit 181                                                      2d   c8254c5
-●   Commit 180                                                      2d   e95ccd4
+◆ ▏ⓘ [◆ main ↑1] Commit 200                                         2d   d5ae5fd
+●    [origin/main] Commit 199                                       2d   13e6ab1
+●    Commit 198                                                     2d   f5055d9
+●    Commit 197                                                     2d   2cce853
+●    Commit 196                                                     2d   325da3f
+●    Commit 195                                                     2d   0722297
+●    ╭ Push main → origin/main ────────────────────────────────────────╮ b6a4a47
+●    │ 1 commit · can't be undone from here — origin keeps what you    │ 60af0eb
+●    │ send                                                            │ aceb8c5
+●    │                                                                 │ 11d68ff
+●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 91900bd
+●    │                                                                 │ cec3e93
+●    │ ▸[ Cancel ]   [ Push ]                                          │ 0a91ece
+●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
+●    Commit 186                                                     2d   fab25df
+●    Commit 185                                                     2d   09ae97c
+●    Commit 184                                                     2d   49d7783
+●    Commit 183                                                     2d   22d55c9
+●    Commit 182                                                     2d   d212b3e
+●    Commit 181                                                     2d   c8254c5
+●    Commit 180                                                     2d   e95ccd4
  no commit-graph file · B build one · X never here
  . explain  ⏎ open  c commit  P  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
 

@@ -21,9 +21,37 @@ pub fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
     frame_at(state, columns, rows, None)
 }
 
+/// The path every capture draws its repository at, whatever directory the
+/// test actually opened.
+///
+/// A capture drawn from a live repository is drawn from a scratch copy in the
+/// system temp directory, and the header shows where you are — so the frame
+/// carried `/var/folders/…/T/graft-remote-idICFn/wor…`, a name the fixture
+/// invents afresh every run. That made the file impossible to reproduce and
+/// so impossible to check, and it shipped one machine's directory layout in a
+/// repository that may be published (m5-history-and-ghost-preview/40).
+///
+/// This is the same fix m5-history-and-ghost-preview/23 made for the clock,
+/// at the same seam: a capture is drawn against a fixed instant *and* a fixed
+/// location. No capture loses anything — a real path would be one machine's
+/// either way — and `/code/api` is the path the rest of the captures and the
+/// mockups in `docs/design/01-view-mockups.md` already use.
+///
+/// It is set **before** the frame is drawn, never substituted into the text
+/// afterwards. The header *fits* itself to the width it has, so substituting
+/// left the 80-column captures showing `graft /code/api  8…` — a truncation
+/// caused by a path that is not in the picture — and tied every capture to
+/// this machine's temp-path length, so the same file could not be drawn on
+/// Linux (M5 groups 12/13 review, m2). Two captures were fixed that way, one
+/// at a time; doing it here is what makes it true of all of them.
+const CAPTURE_REPO_PATH: &str = "/code/api";
+
 /// [`frame`], with the instant its relative dates are drawn against. `None`
 /// is the wall clock; a capture that must not age passes
 /// `Some(Clock::Fixed(…))`.
+///
+/// The repository's location is rewritten to [`CAPTURE_REPO_PATH`] whatever
+/// directory the test opened, so the frame is the same on every machine.
 pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>) -> Vec<String> {
     let session = graft::session::Session::settle(
         &graft::config::Loaded::default(),
@@ -33,6 +61,9 @@ pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>)
     state.size = graft::update::Size { columns, rows };
     if let Some(clock) = clock {
         state.harness.clock = clock;
+    }
+    if let Some(repository) = &mut state.repository {
+        repository.path = std::path::PathBuf::from(CAPTURE_REPO_PATH);
     }
     let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))
         .expect("test backend opens");
@@ -51,11 +82,95 @@ pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>)
         .collect()
 }
 
-/// Writes one capture into `docs/shots/` and says where it went.
-pub fn write_shot(name: &str, body: &str) {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/shots")
-        .join(name);
-    std::fs::write(&path, body).expect("docs/shots is writable");
-    println!("wrote {} ({} bytes)", path.display(), body.len());
+/// The shortest prefix of an object id a frame ever shows.
+const SHORT_ID: usize = 7;
+
+/// Replaces an object id the run itself invented with zeros of **the same
+/// width**, every prefix of it the frame might show.
+///
+/// A capture that commits before it draws cannot name a fixed id: the commit
+/// is made now, so its id is new every run, and the file could never be
+/// compared to anything (m5-history-and-ghost-preview/40). Zeroing it keeps
+/// the file reproducible and keeps every column where it was, so the grid the
+/// user judges by eye is the grid the code drew.
+///
+/// This is only ever for a value the run genuinely invents, and the capture's
+/// own caption says so. A capture that differs for any other reason is a
+/// defect, and this is not a place to hide one — hence the panic when the id
+/// is not there at all.
+///
+/// # Panics
+///
+/// If `id` never appears in `body`, which means the caller is normalising
+/// something the frame does not show.
+pub fn without_invented_id(body: &str, id: &str) -> String {
+    assert!(
+        id.len() >= SHORT_ID && id.chars().all(|c| c.is_ascii_hexdigit()),
+        "{id:?} is not an object id"
+    );
+    let mut out = body.to_owned();
+    // Longest prefix first: once the 40-character form is zeroed, the shorter
+    // passes cannot match inside what it left behind.
+    for length in (SHORT_ID..=id.len()).rev() {
+        out = out.replace(&id[..length], &"0".repeat(length));
+    }
+    assert_ne!(
+        out, body,
+        "{id} was normalised out of a capture that never showed it"
+    );
+    out
+}
+
+/// Asserts one capture under `docs/shots/` against what the code just drew —
+/// or, under `GRAFT_UPDATE_SHOTS=1`, rewrites it and fails anyway.
+///
+/// It used to write, unconditionally, from a `#[ignore]`d test nobody re-ran,
+/// which is how 42 captures drifted across four milestones without a test
+/// going red (m5-history-and-ghost-preview/40). See
+/// [`graft_fixtures::capture`] for the mechanism and `TESTING.md` for the
+/// workflow.
+pub fn check_shot(name: &str, body: &str) {
+    graft_fixtures::capture(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots")
+            .join(name),
+        body,
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::without_invented_id;
+
+    #[test]
+    fn a_short_id_is_zeroed_where_it_appears() {
+        let out = without_invented_id("tip 1e43bf9 pushed\n", "1e43bf9");
+        assert_eq!(out, "tip 0000000 pushed\n");
+    }
+
+    #[test]
+    fn every_prefix_the_frame_shows_is_zeroed_at_its_own_width() {
+        let id = "1e43bf90c1d2e3f4";
+        let out = without_invented_id("short 1e43bf9, long 1e43bf90c1d2e3f4.", id);
+        assert_eq!(out, "short 0000000, long 0000000000000000.");
+    }
+
+    #[test]
+    fn the_replacement_keeps_the_line_the_width_it_was() {
+        let line = "◆    [◆ main ⇄ origin] to push     now  1e43bf9";
+        let out = without_invented_id(line, "1e43bf9");
+        assert_eq!(out.chars().count(), line.chars().count());
+    }
+
+    #[test]
+    #[should_panic(expected = "never showed it")]
+    fn normalising_an_id_the_frame_does_not_show_is_a_mistake() {
+        without_invented_id("nothing here\n", "deadbee");
+    }
+
+    #[test]
+    #[should_panic(expected = "is not an object id")]
+    fn only_an_object_id_may_be_normalised() {
+        without_invented_id("to push\n", "to push");
+    }
 }

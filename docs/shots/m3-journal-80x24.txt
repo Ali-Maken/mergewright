@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `J` on a scripted journal of six entries, drawn
+# capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `J` on a scripted journal of six entries, drawn
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:

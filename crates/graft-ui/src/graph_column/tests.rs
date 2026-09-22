@@ -643,8 +643,7 @@ fn ghost_row_paints_every_owned_cell_text_muted() {
 /// parents are clipped"). The first two rows are real; the last two are
 /// ghost rows standing in for parents that fell outside the preview slice —
 /// clipped, not loaded, drawn as anchors rather than a truncated shape.
-/// Run by hand to regenerate: `cargo test -p graft-ui
-/// graph_column::tests::capture_for_docs_shots -- --ignored --nocapture`.
+/// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_column::tests::capture_for_docs_shots`.
 /// What the user is judging in `docs/shots/m5-ui-ghost-rows.txt`.
 const GHOST_CAPTION: &str = "\
 # docs/shots/m5-ui-ghost-rows.txt — ghost anchor vs real parent
@@ -671,8 +670,8 @@ const GHOST_CAPTION: &str = "\
 ";
 
 #[test]
-#[ignore = "writes docs/shots/m5-ui-ghost-rows.txt; run by hand to regenerate"]
 fn capture_for_docs_shots() {
+    let mut shots = graft_fixtures::Captures::new();
     let rows = reuse_rows();
     let theme = dark(ColorDepth::TrueColor);
     // The last two rows stand in for real parents that fall outside the
@@ -713,12 +712,12 @@ fn capture_for_docs_shots() {
             out.push('\n');
         }
     }
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m5-ui-ghost-rows.txt"
         ),
         out,
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }

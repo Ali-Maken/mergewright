@@ -1,7 +1,7 @@
 # m5-hints-changes-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -49,13 +49,13 @@
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits      UNCOMMITTED · 1 unstaged
-◌   Uncommitted changes (1 unstaged)                                                         diff vs HEAD 29a1432
-◆   [◆ main] add second                                                         8m   29a1432
-●   add first                                                                   9m   3d9496e
-●   Correct the note                                                            1y   a82960b
-●   Add the first note                                                          1y   fadcfb3 UNSTAGED (1)
-◇   Add a readme                                                                1y   64ded19   M first.txt                                                 +1 −0
+ graft /code/api  5 commits                                                                  UNCOMMITTED · 1 unstaged
+◌ ▏  Uncommitted changes (1 unstaged)                                                        diff vs HEAD 29a1432
+◆    [◆ main] add second                                                        8m   29a1432
+●    add first                                                                  9m   3d9496e
+●    Correct the note                                                           1y   a82960b
+●    Add the first note                                                         1y   fadcfb3 UNSTAGED (1)
+◇    Add a readme                                                               1y   64ded19   M first.txt                                                 +1 −0
                                                                                              reading…
 
 

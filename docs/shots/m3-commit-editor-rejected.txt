@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_commit_editor_rejected in crates/graft/src/view/tests.rs
-# (#[ignore]d). The same half-typed editor, after a pre-commit hook refused
+# (asserted). The same half-typed editor, after a pre-commit hook refused
 # the commit.
 #
 # Judge by eye:

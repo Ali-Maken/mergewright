@@ -294,11 +294,10 @@ fn the_only_constructor_opens_on_cancel() {
 /// too-small screen, every row as drawn. **No blank-row filter**: the
 /// filter this test used to apply is what hid the box the widget did not
 /// draw (review Critical 1), so a capture is only evidence if it shows the
-/// grid whole. Run by hand to regenerate: `cargo test -p graft-ui
-/// preview_box::tests::capture_for_docs_shots -- --ignored --nocapture`.
+/// grid whole. Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui preview_box::tests::capture_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-preview-box.txt; run by hand to regenerate"]
 fn capture_for_docs_shots() {
+    let mut shots = graft_fixtures::Captures::new();
     let theme = theme();
     let mut out = String::new();
     out.push_str(
@@ -336,12 +335,12 @@ fn capture_for_docs_shots() {
         }
         out.push('\n');
     }
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m5-ui-preview-box.txt"
         ),
         out,
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }

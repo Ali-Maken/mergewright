@@ -653,10 +653,20 @@ fn reports_render_time_for_a_32_row_strip() {
     );
 }
 
-/// Writes the eyeball PNGs under `docs/shots/`. A tool, not a check: run it
-/// by hand with `cargo test -p graft-graph --test it write_shots -- --ignored`.
+/// The eyeball PNGs under `docs/shots/`, **asserted** against what the
+/// rasteriser draws now.
+///
+/// It used only to write them, from an `#[ignore]`d test — which is how 42
+/// captures drifted across four milestones with nothing going red
+/// (m5-history-and-ghost-preview/40). Regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1`; that run is red too, so a rewritten file cannot
+/// pass unnoticed.
+///
+/// The comparison is on **pixels**, not on the PNG bytes: the encoder is
+/// `tiny-skia`'s, and its output could change with a version bump without one
+/// pixel of the picture moving. Pixels are what the user's eye judges, so
+/// pixels are what this asserts.
 #[test]
-#[ignore = "writes docs/shots PNGs; run by hand when the drawing changes"]
 fn write_shots() {
     let shots = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots");
     for name in SHAPES {
@@ -762,6 +772,56 @@ fn save(frame: &RasterFrame, path: &std::path::Path, backdrop: Option<(u8, u8, u
             canvas
         }
     };
-    out.save_png(path)
-        .unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
+    check_png(&out, path);
+}
+
+/// One rendered pixmap against the PNG committed at `path` — or, when
+/// regenerating, the file rewritten first and the run failed anyway.
+///
+/// Decoding the committed file and comparing pixel buffers keeps the check
+/// about the picture rather than about the encoder. The size is compared
+/// first, so a resized strip says so instead of reporting a mismatch at pixel
+/// zero.
+fn check_png(out: &tiny_skia::Pixmap, path: &std::path::Path) {
+    let updating = graft_fixtures::updating();
+    if updating {
+        out.save_png(path)
+            .unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
+    }
+    let committed = tiny_skia::Pixmap::load_png(path).unwrap_or_else(|why| {
+        panic!(
+            "{}: the committed capture could not be read ({why}). If it is simply \
+             missing, create it with GRAFT_UPDATE_SHOTS=1.",
+            path.display()
+        )
+    });
+    assert_eq!(
+        (committed.width(), committed.height()),
+        (out.width(), out.height()),
+        "{}: the committed capture is a different size from what the rasteriser draws. \
+         Regenerate on purpose with GRAFT_UPDATE_SHOTS=1 and read the diff.",
+        path.display()
+    );
+    let differing = committed
+        .data()
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.data().as_chunks::<4>().0)
+        .filter(|(left, right)| left != right)
+        .count();
+    assert_eq!(
+        differing,
+        0,
+        "{}: {differing} pixels differ from what the rasteriser draws. A capture is the \
+         evidence the user judges by eye (CLAUDE.md rule 6), so it must match. If the new \
+         drawing is the right one, regenerate with GRAFT_UPDATE_SHOTS=1 and read the diff.",
+        path.display()
+    );
+    assert!(
+        !updating,
+        "{}: regenerated. This run is red so the change cannot pass unnoticed — read the \
+         diff under docs/shots/ and commit it if it is right.",
+        path.display()
+    );
 }

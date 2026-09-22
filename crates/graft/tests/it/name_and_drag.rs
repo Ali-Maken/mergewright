@@ -19,7 +19,7 @@ use graft::update::AppState;
 use graft_core::event::{KeyCode, MouseButton, MouseKind};
 
 use crate::app_harness::{App, git, git_as_graft};
-use crate::context_menu::{at_a_fixed_path, check_capture, on_mains_row, settled, updating_shots};
+use crate::context_menu::{on_mains_row, settled};
 use crate::preview::{FORK_NOW, forked, frame_at, opened, rows_drawn};
 
 // ---------------------------------------------------------------------------
@@ -478,18 +478,17 @@ fn a_drag_onto_a_row_ends_in_a_preview() {
 /// The **user** judges these by eye (CLAUDE.md rule 6); this only keeps what
 /// he judged from changing behind his back. Regenerate on purpose with
 /// `GRAFT_UPDATE_SHOTS=1`, and read the diff — that run is red either way,
-/// see `context_menu::check_capture`.
+/// see `graft_fixtures::capture`.
 #[test]
 fn capture_the_drop_menu_for_docs_shots() {
-    let updating = updating_shots(std::env::var_os("GRAFT_UPDATE_SHOTS").as_deref());
     let mut drifted = Vec::new();
     for (columns, rows) in [(80_u16, 24_u16), (160, 48)] {
         let scratch = forked();
         let (app, state) = App::open(scratch.path());
-        let state = at_a_fixed_path(dropped_onto_main(&app, state, columns, rows));
+        let state = dropped_onto_main(&app, state, columns, rows);
         let out = capture(&state, columns, rows, &drop_menu_caption(columns, rows));
         app.close();
-        if let Err(why) = check_capture(&shot(columns, rows, "drop-menu"), &out, updating) {
+        if let Err(why) = graft_fixtures::check(&shot(columns, rows, "drop-menu"), &out) {
             drifted.push(why);
         }
     }
@@ -500,15 +499,14 @@ fn capture_the_drop_menu_for_docs_shots() {
 /// until m5-history-and-ghost-preview/35.
 #[test]
 fn capture_a_drag_in_flight_for_docs_shots() {
-    let updating = updating_shots(std::env::var_os("GRAFT_UPDATE_SHOTS").as_deref());
     let mut drifted = Vec::new();
     for (columns, rows) in [(80_u16, 24_u16), (160, 48)] {
         let scratch = forked();
         let (app, state) = App::open(scratch.path());
-        let state = at_a_fixed_path(holding_over_main(&app, state, columns, rows));
+        let state = holding_over_main(&app, state, columns, rows);
         let out = capture(&state, columns, rows, &dragging_caption(columns, rows));
         app.close();
-        if let Err(why) = check_capture(&shot(columns, rows, "dragging"), &out, updating) {
+        if let Err(why) = graft_fixtures::check(&shot(columns, rows, "dragging"), &out) {
             drifted.push(why);
         }
     }
@@ -551,7 +549,7 @@ fn capture_the_name_prompt_for_docs_shots() {
     let (app, state) = App::open(scratch.path());
     let state = settled(&app, on_mains_row(&app, state));
     let state = app.key(&state, KeyCode::Char('b'));
-    let state = at_a_fixed_path(type_in(&app, state, "main"));
+    let state = type_in(&app, state, "main");
     assert!(
         state.name_prompt.is_some(),
         "the prompt is open for the picture"
@@ -559,8 +557,7 @@ fn capture_the_name_prompt_for_docs_shots() {
     let out = capture(&state, 80, 24, &name_prompt_caption());
     app.close();
 
-    let updating = updating_shots(std::env::var_os("GRAFT_UPDATE_SHOTS").as_deref());
-    let checked = check_capture(&shot(80, 24, "name-prompt"), &out, updating);
+    let checked = graft_fixtures::check(&shot(80, 24, "name-prompt"), &out);
     assert!(checked.is_ok(), "{}", checked.expect_err("it drifted"));
 }
 

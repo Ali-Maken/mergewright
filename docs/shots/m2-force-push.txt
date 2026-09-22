@@ -1,6 +1,6 @@
 # m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_force_push in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). Three synthetic commits; `main` stands on the
+# capture_m2_force_push in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits; `main` stands on the
 # middle one (0202020), which is opened in the detail pane, with the
 # force-push probe's verdict injected as Rewritten { remote_ref:
 # "origin/main", previous: 0909090, current: 0202020 } — the verdict a real
@@ -18,9 +18,9 @@
 #   the diff never arrives. Only the header line is what this shot is about.
 #
 " graft 3 commits                                                                                    "
-"◉─╮   Merge branch 'feature'                                                         TE 57y  0303030"
-"◆ │ ⚠ [◆ main ↑2 ↓2] Ship the release notes                                          TE 57y  0202020"
-"◇─╯   Start the feature branch                                                       TE 57y  0101010"
+"◉─╮    Merge branch 'feature'                                                        TE 57y  0303030"
+"◆ │ ▏⚠ [◆ main ↑2 ↓2] Ship the release notes                                         TE 57y  0202020"
+"◇─╯    Start the feature branch                                                      TE 57y  0101010"
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "

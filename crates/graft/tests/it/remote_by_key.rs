@@ -24,7 +24,7 @@ use graft_fixtures::fifo::Fifo;
 use graft_fixtures::remote::{HungRemote, LocalRemote};
 
 use crate::app_harness::{App, git};
-use crate::captures::{frame, write_shot};
+use crate::captures::{check_shot, frame, without_invented_id};
 
 fn local() -> LocalRemote {
     let remote =
@@ -735,11 +735,8 @@ fn progress_reaches_the_status_line() {
 
 /// Writes the undo-after-push capture into `docs/shots/`.
 ///
-/// Run by hand: `cargo test -p graft --test it
-/// remote_by_key::capture_undo_after_push_for_docs_shots -- --ignored
-/// --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it remote_by_key::capture_undo_after_push_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-undo-after-push-80x24.txt; run by hand to regenerate"]
 fn capture_undo_after_push_for_docs_shots() {
     let remote = local();
     let work = remote.work();
@@ -747,6 +744,12 @@ fn capture_undo_after_push_for_docs_shots() {
 
     let (app, state) = App::open(work);
     let state = pushed_one_commit(&app, state);
+
+    // The one thing in this capture the run invents: `to push` is committed
+    // moments before the frame is drawn, so its id is new every run. The
+    // frame keeps its shape and the id is zeroed out of the file
+    // (m5-history-and-ghost-preview/40) — the capture's caption says so.
+    let pushed = run(&remote, work, &["rev-parse", "HEAD"]).trim().to_owned();
 
     // `u`: the box that explains the push.
     let asked = app.key(&state, KeyCode::Char('u'));
@@ -771,7 +774,10 @@ fn capture_undo_after_push_for_docs_shots() {
         first.join("\n"),
         second.join("\n"),
     );
-    write_shot("m5-ui-undo-after-push-80x24.txt", &body);
+    check_shot(
+        "m5-ui-undo-after-push-80x24.txt",
+        &without_invented_id(&body, &pushed),
+    );
 
     drop(repush);
     drop(state);
@@ -784,7 +790,7 @@ fn undo_after_push_header() -> String {
     "# m5-ui-undo-after-push-80x24.txt: 80x24, drawn by `view::view` from a\n\
      # real AppState \u{2014} a scratch repository pushed to a `file://` bare,\n\
      # then `u` (crates/graft/tests/it/remote_by_key.rs,\n\
-     # capture_undo_after_push_for_docs_shots, #[ignore]d). Not a pty\n\
+     # capture_undo_after_push_for_docs_shots, asserted). Not a pty\n\
      # capture: the terminal is ratatui's TestBackend, so this is a\n\
      # character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
      # colour ships unverified.\n\
@@ -806,6 +812,11 @@ fn undo_after_push_header() -> String {
      #    command, so the tail is clipped \u{2014} the same clipping the M4 lease\n\
      #    box already takes (noted in the ticket; the fix is in graft-ops).\n\
      #  - Your local branch keeps every commit it has: re-push moves the\n\
-     #    remote back, not you.\n"
+     #    remote back, not you.\n\
+     #\n\
+     # The `to push` commit is made by this test moments before the frame is\n\
+     # drawn, so its id is new on every run. It is zeroed to `0000000` in\n\
+     # this file, at the width it was drawn at, so the capture can be\n\
+     # compared to the code. Nothing else here is normalised.\n"
         .to_owned()
 }

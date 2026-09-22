@@ -1201,10 +1201,9 @@ fn the_evil_marker_paints_on_the_graph_row_with_the_pane_closed() {
 
 /// Regenerates `docs/shots/m2-evil-merge.txt` (m2-details-and-diffs/14).
 ///
-/// `#[ignore]`d: it writes a file. Run it by hand with
-/// `cargo test -p graft --lib capture_m2_evil_merge -- --ignored`.
+/// Asserted on every run; regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_evil_merge`.
 #[test]
-#[ignore = "writes docs/shots/m2-evil-merge.txt; run by hand to regenerate"]
 fn capture_m2_evil_merge() {
     use crate::update::detail::Loading;
     use crate::update::{AppEvent, update};
@@ -1229,8 +1228,8 @@ fn capture_m2_evil_merge() {
     assert!(screen.contains("evil merge"), "{screen}");
     let header = "\
 # m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_evil_merge in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). Three synthetic commits: a merge (0303030) over
+# capture_m2_evil_merge in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits: a merge (0303030) over
 # two parents, opened in the detail pane, with the evil-merge probe's
 # verdict injected as Evil { files: [\"src/config.rs\"] } — the verdict a
 # real `git show --remerge-diff` would give for a resolution the merge
@@ -1245,20 +1244,19 @@ fn capture_m2_evil_merge() {
 #   the diff never arrives. Only the header line is what this shot is about.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-evil-merge.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Regenerates `docs/shots/m2-force-push.txt` (m2-details-and-diffs/15).
 ///
-/// `#[ignore]`d: it writes a file. Run it by hand with
-/// `cargo test -p graft --lib capture_m2_force_push -- --ignored`.
+/// Asserted on every run; regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_force_push`.
 /// The state `capture_m2_force_push` draws: three synthetic commits, `main`
 /// on the middle one tracking `origin/main`, and the force-push verdict a
 /// rewritten remote would give — injected, because a capture runs no `git`.
@@ -1311,8 +1309,8 @@ fn force_push_state() -> (AppState, Oid) {
 
 /// Regenerates `docs/shots/m2-duplicate-commit.txt` (m2-details-and-diffs/16).
 ///
-/// `#[ignore]`d: it writes a file. Run it by hand with
-/// `cargo test -p graft --lib capture_m2_duplicate_commit -- --ignored`.
+/// Asserted on every run; regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_duplicate_commit`.
 /// The state `capture_m2_duplicate_commit` draws: three synthetic commits,
 /// with the middle one (0202020) carrying a `DuplicateCommit` finding whose
 /// copy is the tip (0303030) — the finding a real duplicates probe would
@@ -1348,7 +1346,6 @@ fn duplicate_commit_state() -> (AppState, Oid) {
 }
 
 #[test]
-#[ignore = "writes docs/shots/m2-duplicate-commit.txt; run by hand to regenerate"]
 fn capture_m2_duplicate_commit() {
     use crate::update::{AppEvent, update};
     use graft_core::event::{Event, KeyCode, KeyPress};
@@ -1362,8 +1359,8 @@ fn capture_m2_duplicate_commit() {
     assert!(screen.contains("duplicate commit"), "{screen}");
     let header = "\
 # m2-duplicate-commit.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_duplicate_commit in crates/graft/src/view/tests.rs (#[ignore]d,
-# run by hand to regenerate). Three synthetic commits; the middle one
+# capture_m2_duplicate_commit in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits; the middle one
 # (0202020) is opened in the detail pane, with a DuplicateCommit finding
 # injected as Evidence::Duplicate { copies: [0303030] } — the finding a
 # real duplicates probe would give after two commits shared a patch-id.
@@ -1376,18 +1373,16 @@ fn capture_m2_duplicate_commit() {
 #   the diff never arrives. Only the header line is what this shot is about.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-duplicate-commit.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 #[test]
-#[ignore = "writes docs/shots/m2-force-push.txt; run by hand to regenerate"]
 fn capture_m2_force_push() {
     use crate::update::{AppEvent, update};
     use graft_core::event::{Event, KeyCode, KeyPress};
@@ -1401,8 +1396,8 @@ fn capture_m2_force_push() {
     assert!(screen.contains("force-pushed remote"), "{screen}");
     let header = "\
 # m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
-# capture_m2_force_push in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). Three synthetic commits; `main` stands on the
+# capture_m2_force_push in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits; `main` stands on the
 # middle one (0202020), which is opened in the detail pane, with the
 # force-push probe's verdict injected as Rewritten { remote_ref:
 # \"origin/main\", previous: 0909090, current: 0202020 } — the verdict a real
@@ -1420,14 +1415,13 @@ fn capture_m2_force_push() {
 #   the diff never arrives. Only the header line is what this shot is about.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-force-push.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// The `main` history [`foxtrot_explain_state`] draws: a root, its real
@@ -1522,7 +1516,6 @@ fn foxtrot_explain_state() -> AppState {
 }
 
 #[test]
-#[ignore = "writes docs/shots/m2-explain-panel.txt; run by hand to regenerate"]
 fn capture_m2_explain_panel() {
     use crate::update::detail::{LOCAL_JOB_BIT, open_explain};
     use graft_core::job::JobId;
@@ -1544,8 +1537,8 @@ fn capture_m2_explain_panel() {
 # m2-explain-panel.txt: TestBackend capture (not a pty), 160x24 — wide
 # enough for the `Right` breakpoint, so the pane's full height shows the
 # sketch and the footer without scrolling. Fixture:
-# capture_m2_explain_panel in crates/graft/src/view/tests.rs (#[ignore]d,
-# run by hand to regenerate). Three synthetic commits: a root (0101010), its
+# capture_m2_explain_panel in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic commits: a root (0101010), its
 # real branch tip (0202020), and a merge (0303030) whose first parent is
 # the root, not the tip — classify_commit's Foxtrot shape. `open_explain`
 # is called directly (as the context-actions-menu's `Explain` choice would
@@ -1562,14 +1555,13 @@ fn capture_m2_explain_panel() {
 #   (crates/graft/src/view/tests.rs) is what proves that behaviour.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-explain-panel.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// `state.map.shown` (`map-view-screen`, m2-details-and-diffs/19): the Map
@@ -1691,10 +1683,9 @@ fn strip_narrows_the_graph_column_without_moving_the_trailing_columns() {
 
 /// Regenerates `docs/shots/m2-map-view.txt` (m2-details-and-diffs/19).
 ///
-/// `#[ignore]`d: it writes a file. Run it by hand with
-/// `cargo test -p graft --lib capture_m2_map_view -- --ignored`.
+/// Asserted on every run; regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_map_view`.
 #[test]
-#[ignore = "writes docs/shots/m2-map-view.txt; run by hand to regenerate"]
 #[allow(clippy::too_many_lines)] // one hand-built fixture plus its capture header, not logic
 fn capture_m2_map_view() {
     use crate::map::{MapBranch, MapData, MapMark};
@@ -1754,8 +1745,9 @@ fn capture_m2_map_view() {
     assert!(screen.contains("MAP ·"), "{screen}");
     let header = "\
 # m2-map-view.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_map_view in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). Three synthetic branches: main (current, tip in the
+# capture_m2_map_view in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic branches: main (current, tip in
+# the
 # newest bucket), feature/auth (merged into main's row, elbow at bucket 3),
 # release/2.3 (a v1.0 tag and a Warning radar mark), plus 2 more local
 # branches beyond the row cap (footer's \"+2 more\"), and complete: false
@@ -1770,22 +1762,20 @@ fn capture_m2_map_view() {
 # - Footer: `+2 more` and ` · partial`, both present.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-map-view.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Regenerates `docs/shots/m2-map-view-loading.txt` (m2-details-and-diffs/19).
 ///
-/// `#[ignore]`d: it writes a file. Run it by hand with
-/// `cargo test -p graft --lib capture_m2_map_view_loading -- --ignored`.
+/// Asserted on every run; regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_map_view_loading`.
 #[test]
-#[ignore = "writes docs/shots/m2-map-view-loading.txt; run by hand to regenerate"]
 fn capture_m2_map_view_loading() {
     let mut state = AppState {
         size: Size {
@@ -1802,8 +1792,8 @@ fn capture_m2_map_view_loading() {
     assert!(screen.contains("building map"), "{screen}");
     let header = "\
 # m2-map-view-loading.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_map_view_loading in crates/graft/src/view/tests.rs (#[ignore]d,
-# run by hand to regenerate). `state.map.progress = Some((2, 5))`, no build
+# capture_m2_map_view_loading in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). `state.map.progress = Some((2, 5))`, no build
 # landed yet.
 #
 # Judge by eye:
@@ -1812,14 +1802,13 @@ fn capture_m2_map_view_loading() {
 # - Footer: \"Esc cancels\", not the usual key hints.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-map-view-loading.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Two feature branches, each merged into `main`, `main`'s tip as `HEAD`:
@@ -1892,10 +1881,9 @@ fn strip_capture_state() -> AppState {
 
 /// Regenerates `docs/shots/m2-overview-strip.txt` (m2-details-and-diffs/20).
 ///
-/// `#[ignore]`d: it writes a file. Run it by hand with
-/// `cargo test -p graft --lib capture_m2_overview_strip -- --ignored`.
+/// Asserted on every run; regenerate on purpose with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --lib capture_m2_overview_strip`.
 #[test]
-#[ignore = "writes docs/shots/m2-overview-strip.txt; run by hand to regenerate"]
 fn capture_m2_overview_strip() {
     let state = strip_capture_state();
     let unicode = draw(&state, 80, 24);
@@ -1908,8 +1896,8 @@ fn capture_m2_overview_strip() {
 
     let header = "\
 # m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_overview_strip in crates/graft/src/view/tests.rs (#[ignore]d,
-# run by hand to regenerate). Seven synthetic commits mirroring
+# capture_m2_overview_strip in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Seven synthetic commits mirroring
 # graft_fixtures::Shape::FeatureBranches: two feature branches each merged
 # into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
 # would set it). First block is the Unicode tier, second is ASCII
@@ -1930,14 +1918,13 @@ fn capture_m2_overview_strip() {
 #
 ";
     let combined = format!("{header}\n=== unicode ===\n{unicode}\n=== ascii ===\n{ascii}");
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-overview-strip.txt"
         ),
         combined,
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 // m3-working-tree-undo-and-stash/04: the changes pane's captures. The user
@@ -2153,8 +2140,9 @@ fn changes_pane_state(columns: u16, rows: u16) -> AppState {
 
 const CHANGES_PANE_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_changes_pane in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). A scripted dirty tree: src/auth/token.rs staged and
+# capture_m3_changes_pane in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). A scripted dirty tree: src/auth/token.rs staged
+# and
 # edited again, src/api/routes.rs edited, notes.md untracked. The diff region
 # has focus and the line cursor is on the second added line of hunk 1.
 #
@@ -2202,27 +2190,26 @@ fn the_confirm_box_is_drawn_over_everything_else() {
 /// Regenerates the changes pane's three captures
 /// (m3-working-tree-undo-and-stash/04).
 #[test]
-#[ignore = "writes docs/shots/m3-changes-pane-*.txt; run by hand to regenerate"]
 fn capture_m3_changes_pane() {
+    let mut shots = graft_fixtures::Captures::new();
     for (columns, rows) in [(160_u16, 48_u16), (120, 40), (80, 24)] {
         let state = changes_pane_state(columns, rows);
         let screen = draw(&state, columns, rows);
         assert!(screen.contains("STAGED"), "{screen}");
-        std::fs::write(
+        shots.check(
             format!(
                 "{}/../../docs/shots/m3-changes-pane-{columns}x{rows}.txt",
                 env!("CARGO_MANIFEST_DIR")
             ),
             format!("{CHANGES_PANE_HEADER}=== {columns}x{rows} ===\n{screen}"),
-        )
-        .expect("docs/shots is writable");
+        );
     }
+    shots.finish();
 }
 
 /// Regenerates `docs/shots/m3-confirm-discard.txt`
 /// (m3-working-tree-undo-and-stash/04).
 #[test]
-#[ignore = "writes docs/shots/m3-confirm-discard.txt; run by hand to regenerate"]
 fn capture_m3_confirm_discard() {
     let mut state = changes_pane_state(120, 40);
     assert!(
@@ -2233,7 +2220,7 @@ fn capture_m3_confirm_discard() {
     let header = "\
 # m3-confirm-discard.txt: TestBackend capture (not a pty), 120x40, no colour
 # recorded. Fixture: capture_m3_confirm_discard in
-# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
 # `d` pressed with the diff region focused and the line cursor on an added
 # line of src/api/routes.rs.
 #
@@ -2246,20 +2233,18 @@ fn capture_m3_confirm_discard() {
 #   is asking about.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-confirm-discard.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Regenerates `docs/shots/m3-confirm-delete-untracked.txt`: the whole-file
 /// discard box, whose consequence line is now per class (m3/04 review M6).
 #[test]
-#[ignore = "writes docs/shots/m3-confirm-delete-untracked.txt; run by hand to regenerate"]
 fn capture_m3_confirm_delete_untracked() {
     use crate::update::detail::Loading;
     use graft_ui::detail::DetailFocus;
@@ -2284,7 +2269,7 @@ fn capture_m3_confirm_delete_untracked() {
     let header = "\
 # m3-confirm-delete-untracked.txt: TestBackend capture (not a pty), 120x40,
 # no colour recorded. Fixture: capture_m3_confirm_delete_untracked in
-# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
 # `d` pressed with the files list focused and the cursor on notes.md, which
 # is untracked.
 #
@@ -2297,14 +2282,13 @@ fn capture_m3_confirm_delete_untracked() {
 #   brackets; `Discard` beside it is not.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-confirm-delete-untracked.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// The state the commit editor's captures draw: the changes pane's scripted
@@ -2353,8 +2337,8 @@ fn commit_editor_state(columns: u16, rows: u16) -> AppState {
 
 const COMMIT_EDITOR_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_commit_editor in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). `c` on the scripted dirty tree, a subject typed,
+# capture_m3_commit_editor in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). `c` on the scripted dirty tree, a subject typed,
 # then Tab to the body and a sentence typed there.
 #
 # Judge by eye:
@@ -2394,13 +2378,13 @@ fn commit_editor_pane_note(columns: u16) -> &'static str {
 /// Regenerates the commit editor's two captures
 /// (m3-working-tree-undo-and-stash/05).
 #[test]
-#[ignore = "writes docs/shots/m3-commit-editor-*.txt; run by hand to regenerate"]
 fn capture_m3_commit_editor() {
+    let mut shots = graft_fixtures::Captures::new();
     for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
         let state = commit_editor_state(columns, rows);
         let screen = draw(&state, columns, rows);
         assert!(screen.contains("COMMIT"), "{screen}");
-        std::fs::write(
+        shots.check(
             format!(
                 "{}/../../docs/shots/m3-commit-editor-{columns}x{rows}.txt",
                 env!("CARGO_MANIFEST_DIR")
@@ -2409,16 +2393,15 @@ fn capture_m3_commit_editor() {
                 "{COMMIT_EDITOR_HEADER}{}=== {columns}x{rows} ===\n{screen}",
                 commit_editor_pane_note(columns)
             ),
-        )
-        .expect("docs/shots is writable");
+        );
     }
+    shots.finish();
 }
 
 /// Regenerates `docs/shots/m3-commit-editor-rejected.txt` — a pre-commit
 /// hook's refusal, drawn on the editor rather than on the graph behind it
 /// (m3/05 review, Major 1).
 #[test]
-#[ignore = "writes docs/shots/m3-commit-editor-rejected.txt; run by hand to regenerate"]
 fn capture_m3_commit_editor_rejected() {
     let mut state = commit_editor_state(120, 40);
     state.status = crate::update::Status::sticky(
@@ -2429,7 +2412,7 @@ fn capture_m3_commit_editor_rejected() {
     let header = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_commit_editor_rejected in crates/graft/src/view/tests.rs
-# (#[ignore]d). The same half-typed editor, after a pre-commit hook refused
+# (asserted). The same half-typed editor, after a pre-commit hook refused
 # the commit.
 #
 # Judge by eye:
@@ -2443,20 +2426,18 @@ fn capture_m3_commit_editor_rejected() {
 #   record. The words are what has to carry it, and they do.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-commit-editor-rejected.txt"
         ),
         format!("{header}=== 120x40 ===\n{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Regenerates `docs/shots/m3-commit-editor-refused.txt`
 /// (m3-working-tree-undo-and-stash/05).
 #[test]
-#[ignore = "writes docs/shots/m3-commit-editor-refused.txt; run by hand to regenerate"]
 fn capture_m3_commit_editor_refused() {
     let mut state = commit_editor_state(120, 40);
     // Nothing staged: the same editor, with the button dimmed and the reason
@@ -2470,7 +2451,7 @@ fn capture_m3_commit_editor_refused() {
     let header = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_commit_editor_refused in crates/graft/src/view/tests.rs
-# (#[ignore]d). The same editor with nothing staged.
+# (asserted). The same editor with nothing staged.
 #
 # Judge by eye:
 # - `nothing staged` sits immediately after [ Commit ] on the options row.
@@ -2481,19 +2462,17 @@ fn capture_m3_commit_editor_refused() {
 #
 === 120x40 ===
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-commit-editor-refused.txt"
         ),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Regenerates `docs/shots/m3-amend.txt` (m3-working-tree-undo-and-stash/05).
 #[test]
-#[ignore = "writes docs/shots/m3-amend.txt; run by hand to regenerate"]
 fn capture_m3_amend() {
     use crate::update::commit_editor::CommitEditor;
 
@@ -2506,7 +2485,7 @@ fn capture_m3_amend() {
     assert!(screen.contains("AMEND a1b2c3d"), "{screen}");
     let header = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_amend in crates/graft/src/view/tests.rs (#[ignore]d). `a` on the
+# capture_m3_amend in crates/graft/src/view/tests.rs (asserted). `a` on the
 # scripted tree, with HEAD's message already prefilled.
 #
 # Judge by eye:
@@ -2518,11 +2497,10 @@ fn capture_m3_amend() {
 #
 === 120x40 ===
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/shots/m3-amend.txt"),
         format!("{header}{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// The moment every journal capture is drawn against, so the ages in them
@@ -2687,8 +2665,8 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
 
 const JOURNAL_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `J` on a scripted journal of six entries, drawn
+# capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `J` on a scripted journal of six entries, drawn
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
@@ -2710,8 +2688,8 @@ const JOURNAL_HEADER: &str = "\
 
 const JOURNAL_EXPANDED_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). The same journal with the cursor moved onto the
+# capture_m3_journal in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). The same journal with the cursor moved onto the
 # failed discard and `space` pressed.
 #
 # Judge by eye:
@@ -2725,9 +2703,10 @@ const JOURNAL_EXPANDED_HEADER: &str = "\
 /// Regenerates the journal browser's captures
 /// (m3-working-tree-undo-and-stash/06).
 #[test]
-#[ignore = "writes docs/shots/m3-journal-*.txt; run by hand to regenerate"]
 fn capture_m3_journal() {
     use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let mut shots = graft_fixtures::Captures::new();
 
     for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
         let state = journal_state(columns, rows);
@@ -2737,14 +2716,13 @@ fn capture_m3_journal() {
         assert!(screen.contains("← U"), "{screen}");
         assert!(screen.contains("undone"), "{screen}");
         assert!(screen.contains("interrupted"), "{screen}");
-        std::fs::write(
+        shots.check(
             format!(
                 "{}/../../docs/shots/m3-journal-{columns}x{rows}.txt",
                 env!("CARGO_MANIFEST_DIR")
             ),
             format!("{JOURNAL_HEADER}=== {columns}x{rows} ===\n{screen}"),
-        )
-        .expect("docs/shots is writable");
+        );
     }
 
     // Down onto the failed discard — the fifth row, newest first — then
@@ -2760,14 +2738,14 @@ fn capture_m3_journal() {
     }
     let screen = draw(&state, 120, 32);
     assert!(screen.contains("Permission denied"), "{screen}");
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-journal-expanded.txt"
         ),
         format!("{JOURNAL_EXPANDED_HEADER}=== 120x32 ===\n{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }
 
 /// The stash overlay open over the scripted repository, with two entries
@@ -2841,8 +2819,8 @@ fn stash_entry(
 
 const STASH_LIST_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `S` on a scripted list of two stashes, `space`
+# capture_m3_stash in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `S` on a scripted list of two stashes, `space`
 # pressed on the newest, drawn against a fixed clock so the ages never move.
 #
 # Judge by eye:
@@ -2857,8 +2835,8 @@ const STASH_LIST_HEADER: &str = "\
 
 const STASH_SAVE_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `s` pressed, a message typed, `tab` pressed once.
+# capture_m3_stash in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `s` pressed, a message typed, `tab` pressed once.
 #
 # Judge by eye:
 # - The message line carries what was typed, with the cursor after it.
@@ -2872,8 +2850,8 @@ const STASH_SAVE_HEADER: &str = "\
 
 const STASH_EMPTY_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `S` on a repository with no stashes.
+# capture_m3_stash in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `S` on a repository with no stashes.
 #
 # Judge by eye:
 # - The header reads STASHES (0) and the body says
@@ -2885,23 +2863,23 @@ const STASH_EMPTY_HEADER: &str = "\
 /// Regenerates the stash overlay's captures
 /// (m3-working-tree-undo-and-stash/06).
 #[test]
-#[ignore = "writes docs/shots/m3-stash-*.txt; run by hand to regenerate"]
 fn capture_m3_stash() {
     use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let mut shots = graft_fixtures::Captures::new();
 
     let state = stash_state(120, 32);
     let screen = draw(&state, 120, 32);
     assert!(screen.contains("STASHES (2)"), "{screen}");
     assert!(screen.contains("stash@{1}"), "{screen}");
     assert!(screen.contains("1 file"), "{screen}");
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-stash-list.txt"
         ),
         format!("{STASH_LIST_HEADER}=== 120x32 ===\n{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 
     // `s`, a message, then `tab` onto `staged only`.
     let mut state = stash_state(120, 32);
@@ -2918,34 +2896,33 @@ fn capture_m3_stash() {
     let screen = draw(&state, 120, 32);
     assert!(screen.contains("token work"), "{screen}");
     assert!(screen.contains("(\u{2022}) staged only"), "{screen}");
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-stash-save.txt"
         ),
         format!("{STASH_SAVE_HEADER}=== 120x32 ===\n{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 
     let mut state = stash_state(120, 32);
     state.stash.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(Vec::new()));
     state.stash.preview = crate::update::detail::Loading::Idle;
     let screen = draw(&state, 120, 32);
     assert!(screen.contains("no stashes"), "{screen}");
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-stash-empty.txt"
         ),
         format!("{STASH_EMPTY_HEADER}=== 120x32 ===\n{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }
 
 const DRIFT_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_undo_drift in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). The undo job answered Drift: the repository moved
+# capture_m3_undo_drift in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). The undo job answered Drift: the repository moved
 # since the entry `u` would take back.
 #
 # Judge by eye:
@@ -2961,7 +2938,6 @@ const DRIFT_HEADER: &str = "\
 /// Regenerates the undo drift guard's capture
 /// (m3-working-tree-undo-and-stash/06).
 #[test]
-#[ignore = "writes docs/shots/m3-undo-drift.txt; run by hand to regenerate"]
 fn capture_m3_undo_drift() {
     let mut state = changes_pane_state(120, 32);
     let id = graft_core::job::JobId::new(7);
@@ -2987,20 +2963,18 @@ fn capture_m3_undo_drift() {
     );
     let screen = draw(&state, 120, 32);
     assert!(screen.contains("Stop"), "{screen}");
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-undo-drift.txt"
         ),
         format!("{DRIFT_HEADER}=== 120x32 ===\n{screen}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Regenerates `docs/shots/m4-remote-keys.txt` (m4-remotes/05): the lease
 /// push box `P` opens after a rejection, then the footer while a fetch runs.
 #[test]
-#[ignore = "writes docs/shots/m4-remote-keys.txt; run by hand to regenerate"]
 fn capture_m4_remote_keys() {
     use crate::jobs::remote::RemoteFacts;
     use crate::update::detail::Loading;
@@ -3040,7 +3014,7 @@ fn capture_m4_remote_keys() {
     let header = "\
 # m4-remote-keys.txt: TestBackend capture (not a pty), 120x40, no colour
 # recorded. Fixture: capture_m4_remote_keys in crates/graft/src/view/tests.rs
-# (#[ignore]d, run by hand to regenerate). Two screens.
+# (asserted; regenerate on purpose). Two screens.
 #
 # 1. `P` after git refused a push as not a fast-forward: the lease box.
 #    Judge by eye: it names the tip it expects (9f8e7d6) and the one it
@@ -3051,14 +3025,13 @@ fn capture_m4_remote_keys() {
 #    to stop it (`esc cancels`).
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m4-remote-keys.txt"
         ),
         format!("{header}{push_box}\n# ---- 2. while `f` runs ----\n\n{fetching}"),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// A push running, with git's question open over it (m4-remotes/06).
@@ -3193,7 +3166,6 @@ fn gits_words_and_a_remote_failure_cannot_carry_an_escape_to_the_screen() {
 /// Regenerates `docs/shots/m4-credential-prompt-in-app.txt` (m4-remotes/06):
 /// git's password question over the running push, and the username ask.
 #[test]
-#[ignore = "writes docs/shots/m4-credential-prompt-in-app.txt; run by hand to regenerate"]
 fn capture_m4_credential_prompt_in_app() {
     let ask = "Password for 'http://user@127.0.0.1:8443':";
     let mut password = credential_state_seeded(120, 40, ask, false);
@@ -3214,7 +3186,7 @@ fn capture_m4_credential_prompt_in_app() {
     let header = "\
 # m4-credential-prompt-in-app.txt: TestBackend captures (not a pty), no
 # colour recorded. Fixture: capture_m4_credential_prompt_in_app in
-# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
 # The prompt as it appears *in the app*, over a running push — the widget on
 # its own is docs/shots/m4-credential-prompt-and-hints.txt.
 #
@@ -3239,7 +3211,7 @@ fn capture_m4_credential_prompt_in_app() {
 #    open (a username is not a secret), no `•` anywhere.
 #
 ";
-    std::fs::write(
+    graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m4-credential-prompt-in-app.txt"
@@ -3249,8 +3221,7 @@ fn capture_m4_credential_prompt_in_app() {
              === 120x40 · the same password · pulse seed up ===\n{masked_other_seed}\n\
              === 80x24 · username ===\n{plain}"
         ),
-    )
-    .expect("docs/shots is writable");
+    );
 }
 
 /// Which of [`history_of`]'s commits the frame actually drew, by id.

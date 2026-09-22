@@ -1,6 +1,6 @@
 # m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_overview_strip in crates/graft/src/view/tests.rs (#[ignore]d,
-# run by hand to regenerate). Seven synthetic commits mirroring
+# capture_m2_overview_strip in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Seven synthetic commits mirroring
 # graft_fixtures::Shape::FeatureBranches: two feature branches each merged
 # into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
 # would set it). First block is the Unicode tier, second is ASCII
@@ -22,13 +22,13 @@
 
 === unicode ===
 " graft 7 commits                                                               ●"
-"◆─╮     [HEAD] Merge branch 'topic-b'                               57y  090909█"
-"● │     topic-b work                                                57y  080808█"
-"● │     topic-b start                                               57y  070707█"
-"◉─┴─╮   Merge branch 'topic-a'                                      57y  040404█"
-"●   │   topic-a work                                                57y  030303█"
-"│   ●   topic-a start                                               57y  020202█"
-"◇───╯   root                                                        57y  010101█"
+"◆─╮   ▏  [HEAD] Merge branch 'topic-b'                              57y  090909█"
+"● │      topic-b work                                               57y  080808█"
+"● │      topic-b start                                              57y  070707█"
+"◉─┴─╮    Merge branch 'topic-a'                                     57y  040404█"
+"●   │    topic-a work                                               57y  030303█"
+"│   ●    topic-a start                                              57y  020202█"
+"◇───╯    root                                                       57y  010101█"
 "                                                                               █"
 "                                                                               █"
 "                                                                               ◉"
@@ -48,13 +48,13 @@
 
 === ascii ===
 " graft 7 commits                                                               *"
-"*-\     [HEAD] Merge branch 'topic-b'                               57y  090909#"
-"* |     topic-b work                                                57y  080808#"
-"* |     topic-b start                                               57y  070707#"
-"*-+-\   Merge branch 'topic-a'                                      57y  040404#"
-"*   |   topic-a work                                                57y  030303#"
-"|   *   topic-a start                                               57y  020202#"
-"*---/   root                                                        57y  010101#"
+"*-\   |  [HEAD] Merge branch 'topic-b'                              57y  090909#"
+"* |      topic-b work                                               57y  080808#"
+"* |      topic-b start                                              57y  070707#"
+"*-+-\    Merge branch 'topic-a'                                     57y  040404#"
+"*   |    topic-a work                                               57y  030303#"
+"|   *    topic-a start                                              57y  020202#"
+"*---/    root                                                       57y  010101#"
 "                                                                               #"
 "                                                                               #"
 "                                                                               o"

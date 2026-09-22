@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_commit_editor_refused in crates/graft/src/view/tests.rs
-# (#[ignore]d). The same editor with nothing staged.
+# (asserted). The same editor with nothing staged.
 #
 # Judge by eye:
 # - `nothing staged` sits immediately after [ Commit ] on the options row.

@@ -24,6 +24,40 @@ cargo nextest run
 cargo test --doc   # nextest does not run doctests
 ```
 
+## Captures
+
+Every file under `docs/shots/` is **asserted by every `cargo nextest run`** and
+written only when you ask for it (m5-history-and-ghost-preview/40). Change what
+the app draws and the run goes red, naming the file, the first differing line
+and its column. There is no tolerance to relax: the captures are what the user
+judges by eye (CLAUDE.md rule 6), so a capture allowed to differ is not
+evidence of anything.
+
+They were `#[ignore]`d generators until then — written unconditionally, run by
+hand, and 42 of them drifted across four milestones without a test ever going
+red.
+
+When the new picture is the right one:
+
+```sh
+GRAFT_UPDATE_SHOTS=1 cargo nextest run   # rewrites, and fails anyway
+git diff --stat docs/shots/              # read it before you commit it
+```
+
+**A regeneration is always a red run.** The files are rewritten *and* the tests
+fail, so a changed capture cannot reach a commit without someone having looked
+at it. One pass rewrites everything: a generator that owns several files
+collects its mismatches (`graft_fixtures::Captures`) instead of aborting at the
+first. Then run the gate again, plain, and it is green.
+
+A capture must be reproducible on any machine, so nothing the run invents may
+reach the file. Two seams handle that for you: `captures::frame_at` draws every
+frame at a fixed instant and at the fixed path `/code/api` (never substituted
+into the text afterwards — the header fits itself to its width, so a real path
+changes the truncation), and `captures::without_invented_id` zeroes an object id
+a test committed itself, same width, every prefix. A capture that differs for
+any other reason is a defect, and neither is a place to hide one.
+
 ## Times I left
 
 Every time you leave Graft for the shell, one line here. **This is the only

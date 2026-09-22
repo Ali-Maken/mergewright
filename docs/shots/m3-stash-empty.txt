@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `S` on a repository with no stashes.
+# capture_m3_stash in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `S` on a repository with no stashes.
 #
 # Judge by eye:
 # - The header reads STASHES (0) and the body says

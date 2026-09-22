@@ -1,7 +1,7 @@
 # m5-hints-detail-80x24.txt: 80x24, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is

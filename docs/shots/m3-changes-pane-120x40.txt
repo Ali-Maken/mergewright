@@ -1,6 +1,7 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_changes_pane in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). A scripted dirty tree: src/auth/token.rs staged and
+# capture_m3_changes_pane in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). A scripted dirty tree: src/auth/token.rs staged
+# and
 # edited again, src/api/routes.rs edited, notes.md untracked. The diff region
 # has focus and the line cursor is on the second added line of hunk 1.
 #
@@ -20,10 +21,10 @@
 #
 === 120x40 ===
 " graft 3 commits                                                                                                        "
-"◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                             "
-"◆   [HEAD] Commit 3␛[31m                                                                                 TE 57y  0303030"
-"●   Commit 2␛[31m                                                                                        TE 57y  0202020"
-"◇   Commit 1␛[31m                                                                                        TE 57y  0101010"
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "

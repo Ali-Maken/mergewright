@@ -395,10 +395,8 @@ fn a_failure_still_names_the_key_that_clears_it() {
 
 /// The captures under `docs/shots/`, from this same real path — the user
 /// judges the bar by eye at 80 and 120 columns (CLAUDE.md rule 6).
-/// Run by hand: `cargo test -p graft --test it
-/// hint_bar::capture_hint_bar_for_docs_shots -- --ignored --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it hint_bar::capture_hint_bar_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-hints-*.txt; run by hand to regenerate"]
 #[allow(
     clippy::too_many_lines,
     reason = "four scenarios and the header each capture explains itself with, not logic"
@@ -418,10 +416,7 @@ fn capture_hint_bar_for_docs_shots() {
     let detail = app.key(&tip, KeyCode::Enter);
     let detail = app.pump(detail, "the tip's detail", |state| state.detail.shown);
     let detail = app.key(&detail, KeyCode::Enter);
-    // The scratch repository lives under a different temporary directory
-    // every run, and the header row draws its path: replaced so that
-    // regenerating the captures shows only what actually changed.
-    let home = scratch.path().display().to_string();
+    let mut drifted = Vec::new();
 
     for (name, state, what) in [
         (
@@ -466,7 +461,7 @@ fn capture_hint_bar_for_docs_shots() {
                 "# m5-hints-{name}-{label}.txt: {columns}x{rows}, drawn by `view::view` from\n\
                  # a real AppState — a real repository, opened over the real job pool, with\n\
                  # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,\n\
-                 # capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the\n\
+                 # capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the\n\
                  # terminal is ratatui's TestBackend, so this is a character grid with no\n\
                  # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch\n\
                  # repository's temporary path is replaced by `/code/api` so the capture is\n\
@@ -519,17 +514,19 @@ fn capture_hint_bar_for_docs_shots() {
             }
             out.push('\n');
             for line in &drawn {
-                out.push_str(&line.replace(&home, "/code/api"));
+                out.push_str(line);
                 out.push('\n');
             }
             let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../docs/shots")
                 .join(format!("m5-hints-{name}-{label}.txt"));
-            write(&path, &out);
-            println!("wrote {} ({} bytes)", path.display(), out.len());
+            if let Err(why) = graft_fixtures::check(&path, &out) {
+                drifted.push(why);
+            }
         }
     }
     app.close();
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }
 
 /// What a capture says when the frame it recorded has no hint bar at all:
@@ -546,10 +543,6 @@ const MISSING_BAR: &str = "#\n\
      # judge by eye: every layout carries a bar of its own\n\
      # (hint_bar::the_tab_layout_draws_the_panes_own_keys,\n\
      # hint_bar::every_tab_context_draws_a_bar).\n";
-
-fn write(path: &Path, text: &str) {
-    std::fs::write(path, text).unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
-}
 
 /// **The Detail tab draws no key the focused pane refuses** (m5/31, review
 /// Q2). Two presses of `⏎` from a fresh screen: the first opens the pane on

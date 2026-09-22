@@ -362,8 +362,10 @@ fn resident_bytes_for_a_viewport_plus_buffer() {
 
 /// The numbers behind [`STRIP_ROWS`]: per-strip rasterise time and bytes at
 /// the user's cell, and what one strip costs as a scroll frame's worst case.
-/// A tool, not a check: `cargo test --release -p graft-graph --test it
-/// strip_height_numbers -- --ignored --nocapture`.
+/// A tool, not a check — it prints numbers and asserts nothing, so it stays
+/// `#[ignore]`d and is the one test in the workspace that does: `cargo test
+/// --release -p graft-graph --test it strip_height_numbers -- --ignored
+/// --nocapture`.
 #[test]
 #[ignore = "timing tool; run by hand in release when choosing the strip height"]
 fn strip_height_numbers() {

@@ -21,7 +21,7 @@ use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton};
 use graft_git::state::InProgress;
 
 use crate::app_harness::{App, git};
-use crate::captures::{frame, frame_at, write_shot};
+use crate::captures::{check_shot, frame, frame_at};
 
 /// The instant [`about_to_conflict_over`]'s first commit is stamped at, Unix
 /// seconds; one minute per commit after it.
@@ -1311,7 +1311,7 @@ fn capture_header(
              # both rewrote the same {conflicts} files, opened over the real job pool, the\n\
              # merge launched with `m` through the preview and the confirm box, and\n\
              # git really stopped on the conflict (crates/graft/tests/it/\n\
-             # conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). The\n\
+             # conflict_interim.rs, capture_banner_for_docs_shots, asserted). The\n\
              # app was resized to {columns}x{rows} before the frame was drawn, so the\n\
              # layout it chose is the layout for this screen and not for another\n\
              # one. Not a pty capture: the terminal is ratatui's TestBackend, so\n\
@@ -1353,10 +1353,8 @@ fn capture_header(
 
 /// Writes the banner captures for `docs/shots/`.
 ///
-/// Run by hand: `cargo test -p graft --test it
-/// conflict_interim::capture_banner_for_docs_shots -- --ignored --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it conflict_interim::capture_banner_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-banner-conflict-*.txt; run by hand to regenerate"]
 fn capture_banner_for_docs_shots() {
     // Enough behind the frame that the banner's two rows land on content:
     // 30 commits of ordinary work for the graph and 16 conflicted files for
@@ -1443,7 +1441,7 @@ fn capture_banner_for_docs_shots() {
             out.push_str(&line.replace(&home, "/code/api"));
             out.push('\n');
         }
-        write_shot(&format!("m5-ui-banner-conflict-{label}.txt"), &out);
+        check_shot(&format!("m5-ui-banner-conflict-{label}.txt"), &out);
     }
     drop(state);
     drop(on_the_graph);

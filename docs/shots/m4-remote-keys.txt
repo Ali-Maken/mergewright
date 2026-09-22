@@ -1,6 +1,6 @@
 # m4-remote-keys.txt: TestBackend capture (not a pty), 120x40, no colour
 # recorded. Fixture: capture_m4_remote_keys in crates/graft/src/view/tests.rs
-# (#[ignore]d, run by hand to regenerate). Two screens.
+# (asserted; regenerate on purpose). Two screens.
 #
 # 1. `P` after git refused a push as not a fast-forward: the lease box.
 #    Judge by eye: it names the tip it expects (9f8e7d6) and the one it
@@ -11,10 +11,10 @@
 #    to stop it (`esc cancels`).
 #
 " graft 3 commits                                                                                                        "
-"◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                             "
-"◆   [HEAD] Commit 3␛[31m                                                                                 TE 57y  0303030"
-"●   Commit 2␛[31m                                                                                        TE 57y  0202020"
-"◇   Commit 1␛[31m                                                                                        TE 57y  0101010"
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -25,14 +25,14 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"    ╭ Force-push main → origin/main? ─────────────────────────────────────────────────────────────────╮                 "
-"    │ origin/main 9f8e7d6 → 0303030 · refused if origin moved since your fetch (lease)                │                 "
-"    │ rewrites history for everyone who has 9f8e7d6                                                   │                 "
-"    │                                                                                                 │                 "
-"    │ git push --progress --force-with-lease=refs/heads/main:9f8e7d6c5b4a39281706f5e4d3c2b1a09876543… │                 "
-"    │                                                                                                 │                 "
-"    │ ▸[ Cancel ]   [ Force push ]                                                                    │                 "
-"    ╰─────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"     ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮                 "
+"     │ origin/main 9f8e7d6 → 0303030 · refused if origin moved since your fetch (lease)               │                 "
+"     │ rewrites history for everyone who has 9f8e7d6                                                  │                 "
+"     │                                                                                                │                 "
+"     │ git push --progress --force-with-lease=refs/heads/main:9f8e7d6c5b4a39281706f5e4d3c2b1a0987654… │                 "
+"     │                                                                                                │                 "
+"     │ ▸[ Cancel ]   [ Force push ]                                                                   │                 "
+"     ╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
 " space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                           "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
@@ -54,10 +54,10 @@
 # ---- 2. while `f` runs ----
 
 " graft 3 commits                                                                                                        "
-"◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                             "
-"◆   [HEAD] Commit 3␛[31m                                                                                 TE 57y  0303030"
-"●   Commit 2␛[31m                                                                                        TE 57y  0202020"
-"◇   Commit 1␛[31m                                                                                        TE 57y  0101010"
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "

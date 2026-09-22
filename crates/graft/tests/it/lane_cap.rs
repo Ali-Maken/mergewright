@@ -17,7 +17,7 @@ use graft::session::Clock;
 use graft_core::event::KeyCode;
 
 use crate::app_harness::{App, git};
-use crate::captures::{frame, frame_at, write_shot};
+use crate::captures::{check_shot, frame, frame_at};
 
 /// The instant [`many_lanes`]'s first commit is stamped at, Unix seconds;
 /// one minute per commit and per merge after it.
@@ -169,10 +169,8 @@ fn the_pane_narrows_the_graph_so_the_graph_folds_more() {
 
 /// Writes the lane-cap capture into `docs/shots/`.
 ///
-/// Run by hand: `cargo test -p graft --test it
-/// lane_cap::capture_lane_cap_for_docs_shots -- --ignored --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it lane_cap::capture_lane_cap_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-lane-cap-160x24.txt; run by hand to regenerate"]
 fn capture_lane_cap_for_docs_shots() {
     let scratch = many_lanes();
     let (app, state) = App::open(scratch.path());
@@ -191,7 +189,7 @@ fn capture_lane_cap_for_docs_shots() {
         with_pane.join("\n"),
         full_width.join("\n"),
     );
-    write_shot("m5-lane-cap-160x24.txt", &body);
+    check_shot("m5-lane-cap-160x24.txt", &body);
 
     drop(state);
     app.close();
@@ -204,7 +202,7 @@ fn header() -> String {
      # AppState \u{2014} a scratch repository with fourteen topic branches merged\n\
      # into `main` one after another, so fifteen columns are open over most\n\
      # of the window (crates/graft/tests/it/lane_cap.rs,\n\
-     # capture_lane_cap_for_docs_shots, #[ignore]d). Not a pty capture: the\n\
+     # capture_lane_cap_for_docs_shots, asserted). Not a pty capture: the\n\
      # terminal is ratatui's TestBackend, so this is a character grid with\n\
      # no colour attributes in it \u{2014} CLAUDE.md rule 5, colour ships\n\
      # unverified.\n\

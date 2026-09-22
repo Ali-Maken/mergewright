@@ -704,7 +704,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 # m5-hints-branch-120x40.txt: 120x40, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -753,12 +753,12 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                  GF 8m   29a1432
-●   add first                                                                                            GF 9m   3d9496e
-●   Correct the note                                                                                     GF 1y   a82960b
-●   Add the first note                                                                                   GF 1y   fadcfb3
-◇   Add a readme                                                                                         GF 1y   64ded19
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] add second                                                                                 GF 8m   29a1432
+●    add first                                                                                           GF 9m   3d9496e
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
 
 
 
@@ -801,7 +801,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 # m5-hints-branch-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -850,12 +850,12 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                                                          GF 8m   29a1432
-●   add first                                                                                                                                    GF 9m   3d9496e
-●   Correct the note                                                                                                                             GF 1y   a82960b
-●   Add the first note                                                                                                                           GF 1y   fadcfb3
-◇   Add a readme                                                                                                                                 GF 1y   64ded19
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] add second                                                                                                                         GF 8m   29a1432
+●    add first                                                                                                                                   GF 9m   3d9496e
+●    Correct the note                                                                                                                            GF 1y   a82960b
+●    Add the first note                                                                                                                          GF 1y   fadcfb3
+◇    Add a readme                                                                                                                                GF 1y   64ded19
 
 
 
@@ -906,7 +906,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 # m5-hints-branch-80x24.txt: 80x24, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -954,13 +954,13 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                             8m   29a1432
-●   add first                                                       9m   3d9496e
-●   Correct the note                                                1y   a82960b
-●   Add the first note                                              1y   fadcfb3
-◇   Add a readme                                                    1y   64ded19
+ graft /code/api  5 commits  date order, sorting…
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] add second                                            8m   29a1432
+●    add first                                                      9m   3d9496e
+●    Correct the note                                               1y   a82960b
+●    Add the first note                                             1y   fadcfb3
+◇    Add a readme                                                   1y   64ded19
 
 
 
@@ -987,7 +987,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 # m5-hints-changes-120x40.txt: 120x40, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1036,12 +1036,12 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 # them.
 
  graft /code/api  5 commits
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                  GF 8m   29a1432
-●   add first                                                                                            GF 9m   3d9496e
-●   Correct the note                                                                                     GF 1y   a82960b
-●   Add the first note                                                                                   GF 1y   fadcfb3
-◇   Add a readme                                                                                         GF 1y   64ded19
+◌ ▏  Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                                                                 GF 8m   29a1432
+●    add first                                                                                           GF 9m   3d9496e
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
 
 
 
@@ -1084,7 +1084,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 # m5-hints-changes-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1132,13 +1132,13 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits      UNCOMMITTED · 1 unstaged
-◌   Uncommitted changes (1 unstaged)                                                         diff vs HEAD 29a1432
-◆   [◆ main] add second                                                         8m   29a1432
-●   add first                                                                   9m   3d9496e
-●   Correct the note                                                            1y   a82960b
-●   Add the first note                                                          1y   fadcfb3 UNSTAGED (1)
-◇   Add a readme                                                                1y   64ded19   M first.txt                                                 +1 −0
+ graft /code/api  5 commits                                                                  UNCOMMITTED · 1 unstaged
+◌ ▏  Uncommitted changes (1 unstaged)                                                        diff vs HEAD 29a1432
+◆    [◆ main] add second                                                        8m   29a1432
+●    add first                                                                  9m   3d9496e
+●    Correct the note                                                           1y   a82960b
+●    Add the first note                                                         1y   fadcfb3 UNSTAGED (1)
+◇    Add a readme                                                               1y   64ded19   M first.txt                                                 +1 −0
                                                                                              reading…
 
 
@@ -1189,7 +1189,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 # m5-hints-changes-80x24.txt: 80x24, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1270,7 +1270,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 # m5-hints-detail-120x40.txt: 120x40, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1319,12 +1319,12 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆ ▏ [◆ main] add second                                                                                  GF 8m   29a1432
-●   add first                                                                                            GF 9m   3d9496e
-●   Correct the note                                                                                     GF 1y   a82960b
-●   Add the first note                                                                                   GF 1y   fadcfb3
-◇   Add a readme                                                                                         GF 1y   64ded19
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] add second                                                                                 GF 8m   29a1432
+●    add first                                                                                           GF 9m   3d9496e
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
 
 
 
@@ -1367,7 +1367,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 # m5-hints-detail-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1415,13 +1415,13 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5 commits  da… COMMIT 29a1432
-◌   Uncommitted changes (1 unstaged)                                                         Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
-◆ ▏ [◆ main] add second                                                         8m   29a1432 parents 3d9496e · diff vs first parent
-●   add first                                                                   9m   3d9496e Contained in: checking…
-●   Correct the note                                                            1y   a82960b
-●   Add the first note                                                          1y   fadcfb3 reading…
-◇   Add a readme                                                                1y   64ded19
+ graft /code/api  5 commits  date order, sorting…                                            COMMIT 29a1432
+◌    Uncommitted changes (1 unstaged)                                                        Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
+◆ ▏  [◆ main] add second                                                        8m   29a1432 parents 3d9496e · diff vs first parent
+●    add first                                                                  9m   3d9496e Contained in: checking…
+●    Correct the note                                                           1y   a82960b
+●    Add the first note                                                         1y   fadcfb3 reading…
+◇    Add a readme                                                               1y   64ded19
 
 
 
@@ -1472,7 +1472,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 # m5-hints-detail-80x24.txt: 80x24, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1719,8 +1719,8 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 # are captured through the whole app instead — m5-hints-branch-*,
 # -plain-*, -uncommitted-*, -changes-*. Fixture:
 # capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to
-# regenerate).
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
 #
 # Judge by eye: the footer's last row reads the marked row's hints for
 # this width — `. explain` leads (the marker's own key), then the row's
@@ -1734,11 +1734,11 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 # not, and the bar is never all hidden — never a key that does nothing.
 
  graft /code/api  5 commits
-●     Commit 5                                                                                           TE 2h   0505050
-◉─╮   Commit 4                                                                                           TE 2h   0404040
-● │   Commit 3                                                                                           TE 2h   0303030
-●─╯   Commit 2                                                                                           TE 2h   0202020
-◇     Commit 1                                                                                           TE 2h   0101010
+●      Commit 5                                                                                          TE 2h   0505050
+◉─╮ ▏  Commit 4                                                                                          TE 2h   0404040
+● │    Commit 3                                                                                          TE 2h   0303030
+●─╯    Commit 2                                                                                          TE 2h   0202020
+◇      Commit 1                                                                                          TE 2h   0101010
 
 
 
@@ -1788,8 +1788,8 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 # are captured through the whole app instead — m5-hints-branch-*,
 # -plain-*, -uncommitted-*, -changes-*. Fixture:
 # capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to
-# regenerate).
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
 #
 # Judge by eye: the footer's last row reads the marked row's hints for
 # this width — `. explain` leads (the marker's own key), then the row's
@@ -1803,11 +1803,11 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 # not, and the bar is never all hidden — never a key that does nothing.
 
  graft /code/api  5 commits
-●     Commit 5                                                                                                                                   TE 2h   0505050
-◉─╮   Commit 4                                                                                                                                   TE 2h   0404040
-● │   Commit 3                                                                                                                                   TE 2h   0303030
-●─╯   Commit 2                                                                                                                                   TE 2h   0202020
-◇     Commit 1                                                                                                                                   TE 2h   0101010
+●      Commit 5                                                                                                                                  TE 2h   0505050
+◉─╮ ▏  Commit 4                                                                                                                                  TE 2h   0404040
+● │    Commit 3                                                                                                                                  TE 2h   0303030
+●─╯    Commit 2                                                                                                                                  TE 2h   0202020
+◇      Commit 1                                                                                                                                  TE 2h   0101010
 
 
 
@@ -1865,8 +1865,8 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 # are captured through the whole app instead — m5-hints-branch-*,
 # -plain-*, -uncommitted-*, -changes-*. Fixture:
 # capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to
-# regenerate).
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
 #
 # Judge by eye: the footer's last row reads the marked row's hints for
 # this width — `. explain` leads (the marker's own key), then the row's
@@ -1880,11 +1880,11 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 # not, and the bar is never all hidden — never a key that does nothing.
 
  graft /code/api  5 commits
-●     Commit 5                                                      2h   0505050
-◉─╮   Commit 4                                                      2h   0404040
-● │   Commit 3                                                      2h   0303030
-●─╯   Commit 2                                                      2h   0202020
-◇     Commit 1                                                      2h   0101010
+●      Commit 5                                                     2h   0505050
+◉─╮ ▏  Commit 4                                                     2h   0404040
+● │    Commit 3                                                     2h   0303030
+●─╯    Commit 2                                                     2h   0202020
+◇      Commit 1                                                     2h   0101010
 
 
 
@@ -1912,7 +1912,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 # m5-hints-plain-120x40.txt: 120x40, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -1961,12 +1961,12 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                  GF 8m   29a1432
-●   add first                                                                                            GF 9m   3d9496e
-●   Correct the note                                                                                     GF 1y   a82960b
-●   Add the first note                                                                                   GF 1y   fadcfb3
-◇   Add a readme                                                                                         GF 1y   64ded19
+◌    Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                                                                 GF 8m   29a1432
+● ▏  add first                                                                                           GF 9m   3d9496e
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
 
 
 
@@ -2009,7 +2009,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 # m5-hints-plain-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -2058,12 +2058,12 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                                                          GF 8m   29a1432
-●   add first                                                                                                                                    GF 9m   3d9496e
-●   Correct the note                                                                                                                             GF 1y   a82960b
-●   Add the first note                                                                                                                           GF 1y   fadcfb3
-◇   Add a readme                                                                                                                                 GF 1y   64ded19
+◌    Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                                                                                                         GF 8m   29a1432
+● ▏  add first                                                                                                                                   GF 9m   3d9496e
+●    Correct the note                                                                                                                            GF 1y   a82960b
+●    Add the first note                                                                                                                          GF 1y   fadcfb3
+◇    Add a readme                                                                                                                                GF 1y   64ded19
 
 
 
@@ -2114,7 +2114,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 # m5-hints-plain-80x24.txt: 80x24, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -2162,13 +2162,13 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                             8m   29a1432
-●   add first                                                       9m   3d9496e
-●   Correct the note                                                1y   a82960b
-●   Add the first note                                              1y   fadcfb3
-◇   Add a readme                                                    1y   64ded19
+ graft /code/api  5 commits  date order, sorting…
+◌    Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                            8m   29a1432
+● ▏  add first                                                      9m   3d9496e
+●    Correct the note                                               1y   a82960b
+●    Add the first note                                             1y   fadcfb3
+◇    Add a readme                                                   1y   64ded19
 
 
 
@@ -2195,7 +2195,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # m5-hints-uncommitted-120x40.txt: 120x40, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -2244,12 +2244,12 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                  GF 8m   29a1432
-●   add first                                                                                            GF 9m   3d9496e
-●   Correct the note                                                                                     GF 1y   a82960b
-●   Add the first note                                                                                   GF 1y   fadcfb3
-◇   Add a readme                                                                                         GF 1y   64ded19
+◌ ▏  Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                                                                 GF 8m   29a1432
+●    add first                                                                                           GF 9m   3d9496e
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
 
 
 
@@ -2292,7 +2292,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # m5-hints-uncommitted-160x48.txt: 160x48, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -2341,12 +2341,12 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # them.
 
  graft /code/api  5 commits  date order, sorting…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                                                          GF 8m   29a1432
-●   add first                                                                                                                                    GF 9m   3d9496e
-●   Correct the note                                                                                                                             GF 1y   a82960b
-●   Add the first note                                                                                                                           GF 1y   fadcfb3
-◇   Add a readme                                                                                                                                 GF 1y   64ded19
+◌ ▏  Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                                                                                                         GF 8m   29a1432
+●    add first                                                                                                                                   GF 9m   3d9496e
+●    Correct the note                                                                                                                            GF 1y   a82960b
+●    Add the first note                                                                                                                          GF 1y   fadcfb3
+◇    Add a readme                                                                                                                                GF 1y   64ded19
 
 
 
@@ -2397,7 +2397,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # m5-hints-uncommitted-80x24.txt: 80x24, drawn by `view::view` from
 # a real AppState — a real repository, opened over the real job pool, with
 # the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
-# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_hint_bar_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with no
 # colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
 # repository's temporary path is replaced by `/code/api` so the capture is
@@ -2445,13 +2445,13 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 # one state photographed at three sizes is a picture of at most one of
 # them.
 
- graft /code/api  5…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                             8m   29a1432
-●   add first                                                       9m   3d9496e
-●   Correct the note                                                1y   a82960b
-●   Add the first note                                              1y   fadcfb3
-◇   Add a readme                                                    1y   64ded19
+ graft /code/api  5 commits  date order, sorting…
+◌ ▏  Uncommitted changes (1 unstaged)
+◆    [◆ main] add second                                            8m   29a1432
+●    add first                                                      9m   3d9496e
+●    Correct the note                                               1y   a82960b
+●    Add the first note                                             1y   fadcfb3
+◇    Add a readme                                                   1y   64ded19
 
 
 
@@ -2479,7 +2479,7 @@ what right looks like: Capture header "What right looks like": the two frames di
 # AppState — a scratch repository with fourteen topic branches merged
 # into `main` one after another, so fifteen columns are open over most
 # of the window (crates/graft/tests/it/lane_cap.rs,
-# capture_lane_cap_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_lane_cap_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with
 # no colour attributes in it — CLAUDE.md rule 5, colour ships
 # unverified.
@@ -2516,54 +2516,54 @@ what right looks like: Capture header "What right looks like": the two frames di
 == the pane open: the graph has 92 columns ==
 
  graft /code/api  31 commits  +1 lanes                                                       COMMIT 0b83d39
-◆─╮                   ⋮   [◆ main] Merge branch 'topic-14'                      32m  0b83d39 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
-│ ●                   ⋮ ⓘ [topic-14] Work on topic-14                           33m  20e9d9b parents 1152b59, 20e9d9b · diff vs first parent
-◉─│─╮                 ⋮   Merge branch 'topic-13'                               34m  1152b59 Contained in: checking…
-│ │ ●                 ⋮ ⓘ [topic-13] Work on topic-13                           35m  1b324bc evil merge: clean
-◉─│─│─╮               ⋮   Merge branch 'topic-12'                               36m  66ca526 A topic-14.rs                                                 +1 −0
-│ │ │ ●               ⋮ ⓘ [topic-12] Work on topic-12                           37m  d5b2138 reading…
-◉─│─│─│─╮             ⋮   Merge branch 'topic-11'                               38m  c7cfb0f
-│ │ │ │ ●             ⋮ ⓘ [topic-11] Work on topic-11                           39m  78d006a
-◉─│─│─│─│─╮           ⋮   Merge branch 'topic-10'                               40m  c4f1278
-│ │ │ │ │ ●           ⋮ ⓘ [topic-10] Work on topic-10                           41m  c2ae944
-◉─│─│─│─│─│─╮         ⋮   Merge branch 'topic-09'                               42m  88d0971
-│ │ │ │ │ │ ●         ⋮ ⓘ [topic-09] Work on topic-09                           43m  9a14cfb
-◉─│─│─│─│─│─│─╮       ⋮   Merge branch 'topic-08'                               44m  49000db
-│ │ │ │ │ │ │ ●       ⋮ ⓘ [topic-08] Work on topic-08                           45m  0172b6a
-◉─│─│─│─│─│─│─│─╮     ⋮   Merge branch 'topic-07'                               46m  413742f
-│ │ │ │ │ │ │ │ ●     ⋮ ⓘ [topic-07] Work on topic-07                           47m  7f91379
-◉─│─│─│─│─│─│─│─│─╮   ⋮   Merge branch 'topic-06'                               48m  5572a1b
-│ │ │ │ │ │ │ │ │ ●   ⋮ ⓘ [topic-06] Work on topic-06                           49m  ea66e44
-◉─│─│─│─│─│─│─│─│─│─╮ ⋮   Merge branch 'topic-05'                               50m  400cf48
-│ │ │ │ │ │ │ │ │ │ ● ⋮ ⓘ [topic-05] Work on topic-05                           51m  3eb9e24
-◉▾│ │ │ │ │ │ │ │ │ │ ⋮   Merge branch 'topic-04'                               52m  ea6b0bf
+◆─╮                   ⋮ ▏  [◆ main] Merge branch 'topic-14'                     32m  0b83d39 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
+│ ●                   ⋮  ⓘ [topic-14] Work on topic-14                          33m  20e9d9b parents 1152b59, 20e9d9b · diff vs first parent
+◉─│─╮                 ⋮    Merge branch 'topic-13'                              34m  1152b59 Contained in: checking…
+│ │ ●                 ⋮  ⓘ [topic-13] Work on topic-13                          35m  1b324bc evil merge: clean
+◉─│─│─╮               ⋮    Merge branch 'topic-12'                              36m  66ca526 A topic-14.rs                                                 +1 −0
+│ │ │ ●               ⋮  ⓘ [topic-12] Work on topic-12                          37m  d5b2138 reading…
+◉─│─│─│─╮             ⋮    Merge branch 'topic-11'                              38m  c7cfb0f
+│ │ │ │ ●             ⋮  ⓘ [topic-11] Work on topic-11                          39m  78d006a
+◉─│─│─│─│─╮           ⋮    Merge branch 'topic-10'                              40m  c4f1278
+│ │ │ │ │ ●           ⋮  ⓘ [topic-10] Work on topic-10                          41m  c2ae944
+◉─│─│─│─│─│─╮         ⋮    Merge branch 'topic-09'                              42m  88d0971
+│ │ │ │ │ │ ●         ⋮  ⓘ [topic-09] Work on topic-09                          43m  9a14cfb
+◉─│─│─│─│─│─│─╮       ⋮    Merge branch 'topic-08'                              44m  49000db
+│ │ │ │ │ │ │ ●       ⋮  ⓘ [topic-08] Work on topic-08                          45m  0172b6a
+◉─│─│─│─│─│─│─│─╮     ⋮    Merge branch 'topic-07'                              46m  413742f
+│ │ │ │ │ │ │ │ ●     ⋮  ⓘ [topic-07] Work on topic-07                          47m  7f91379
+◉─│─│─│─│─│─│─│─│─╮   ⋮    Merge branch 'topic-06'                              48m  5572a1b
+│ │ │ │ │ │ │ │ │ ●   ⋮  ⓘ [topic-06] Work on topic-06                          49m  ea66e44
+◉─│─│─│─│─│─│─│─│─│─╮ ⋮    Merge branch 'topic-05'                              50m  400cf48
+│ │ │ │ │ │ │ │ │ │ ● ⋮  ⓘ [topic-05] Work on topic-05                          51m  3eb9e24
+◉▾│ │ │ │ │ │ │ │ │ │ ⋮    Merge branch 'topic-04'                              52m  ea6b0bf
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
  ⏎ open  c commit  P push  . more  <>  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F
 
 == the same terminal, pane closed: the graph has all 160 ==
 
  graft /code/api  31 commits
-◆─╮                       [◆ main] Merge branch 'topic-14'                                                                                       GF 32m  0b83d39
-│ ●                     ⓘ [topic-14] Work on topic-14                                                                                            GF 33m  20e9d9b
-◉─│─╮                     Merge branch 'topic-13'                                                                                                GF 34m  1152b59
-│ │ ●                   ⓘ [topic-13] Work on topic-13                                                                                            GF 35m  1b324bc
-◉─│─│─╮                   Merge branch 'topic-12'                                                                                                GF 36m  66ca526
-│ │ │ ●                 ⓘ [topic-12] Work on topic-12                                                                                            GF 37m  d5b2138
-◉─│─│─│─╮                 Merge branch 'topic-11'                                                                                                GF 38m  c7cfb0f
-│ │ │ │ ●               ⓘ [topic-11] Work on topic-11                                                                                            GF 39m  78d006a
-◉─│─│─│─│─╮               Merge branch 'topic-10'                                                                                                GF 40m  c4f1278
-│ │ │ │ │ ●             ⓘ [topic-10] Work on topic-10                                                                                            GF 41m  c2ae944
-◉─│─│─│─│─│─╮             Merge branch 'topic-09'                                                                                                GF 42m  88d0971
-│ │ │ │ │ │ ●           ⓘ [topic-09] Work on topic-09                                                                                            GF 43m  9a14cfb
-◉─│─│─│─│─│─│─╮           Merge branch 'topic-08'                                                                                                GF 44m  49000db
-│ │ │ │ │ │ │ ●         ⓘ [topic-08] Work on topic-08                                                                                            GF 45m  0172b6a
-◉─│─│─│─│─│─│─│─╮         Merge branch 'topic-07'                                                                                                GF 46m  413742f
-│ │ │ │ │ │ │ │ ●       ⓘ [topic-07] Work on topic-07                                                                                            GF 47m  7f91379
-◉─│─│─│─│─│─│─│─│─╮       Merge branch 'topic-06'                                                                                                GF 48m  5572a1b
-│ │ │ │ │ │ │ │ │ ●     ⓘ [topic-06] Work on topic-06                                                                                            GF 49m  ea66e44
-◉─│─│─│─│─│─│─│─│─│─╮     Merge branch 'topic-05'                                                                                                GF 50m  400cf48
-│ │ │ │ │ │ │ │ │ │ ●   ⓘ [topic-05] Work on topic-05                                                                                            GF 51m  3eb9e24
-◉─│─│─│─│─│─│─│─│─│─│─╮   Merge branch 'topic-04'                                                                                                GF 52m  ea6b0bf
+◆─╮                     ▏  [◆ main] Merge branch 'topic-14'                                                                                      GF 32m  0b83d39
+│ ●                      ⓘ [topic-14] Work on topic-14                                                                                           GF 33m  20e9d9b
+◉─│─╮                      Merge branch 'topic-13'                                                                                               GF 34m  1152b59
+│ │ ●                    ⓘ [topic-13] Work on topic-13                                                                                           GF 35m  1b324bc
+◉─│─│─╮                    Merge branch 'topic-12'                                                                                               GF 36m  66ca526
+│ │ │ ●                  ⓘ [topic-12] Work on topic-12                                                                                           GF 37m  d5b2138
+◉─│─│─│─╮                  Merge branch 'topic-11'                                                                                               GF 38m  c7cfb0f
+│ │ │ │ ●                ⓘ [topic-11] Work on topic-11                                                                                           GF 39m  78d006a
+◉─│─│─│─│─╮                Merge branch 'topic-10'                                                                                               GF 40m  c4f1278
+│ │ │ │ │ ●              ⓘ [topic-10] Work on topic-10                                                                                           GF 41m  c2ae944
+◉─│─│─│─│─│─╮              Merge branch 'topic-09'                                                                                               GF 42m  88d0971
+│ │ │ │ │ │ ●            ⓘ [topic-09] Work on topic-09                                                                                           GF 43m  9a14cfb
+◉─│─│─│─│─│─│─╮            Merge branch 'topic-08'                                                                                               GF 44m  49000db
+│ │ │ │ │ │ │ ●          ⓘ [topic-08] Work on topic-08                                                                                           GF 45m  0172b6a
+◉─│─│─│─│─│─│─│─╮          Merge branch 'topic-07'                                                                                               GF 46m  413742f
+│ │ │ │ │ │ │ │ ●        ⓘ [topic-07] Work on topic-07                                                                                           GF 47m  7f91379
+◉─│─│─│─│─│─│─│─│─╮        Merge branch 'topic-06'                                                                                               GF 48m  5572a1b
+│ │ │ │ │ │ │ │ │ ●      ⓘ [topic-06] Work on topic-06                                                                                           GF 49m  ea66e44
+◉─│─│─│─│─│─│─│─│─│─╮      Merge branch 'topic-05'                                                                                               GF 50m  400cf48
+│ │ │ │ │ │ │ │ │ │ ●    ⓘ [topic-05] Work on topic-05                                                                                           GF 51m  3eb9e24
+◉─│─│─│─│─│─│─│─│─│─│─╮    Merge branch 'topic-04'                                                                                               GF 52m  ea6b0bf
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  / search  q quit  F2 status  F3 renderer  x compare  + lane  . more  j/k  space  1  F  H  y
 
@@ -2577,7 +2577,7 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 # both rewrote the same 16 files, opened over the real job pool, the
 # merge launched with `m` through the preview and the confirm box, and
 # git really stopped on the conflict (crates/graft/tests/it/
-# conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). The
+# conflict_interim.rs, capture_banner_for_docs_shots, asserted). The
 # app was resized to 120x40 before the frame was drawn, so the
 # layout it chose is the layout for this screen and not for another
 # one. Not a pty capture: the terminal is ratatui's TestBackend, so
@@ -2643,27 +2643,27 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 #
 
  graft /code/api    MERGING
-◌     Uncommitted changes (16 unmerged)
-◆     [◆ main] main's take                                                                               GF 87m  80393eb
-│ ● ⓘ [feature] the feature's take                                                                       GF 88m  38c48dd
-●─╯   the shared files                                                                                   GF 89m  58854e9
-●     Ship release 29                                                                                    GF 2h   b796998
-●     Ship release 28                                                                                    GF 2h   8b1f759
-●     Ship release 27                                                                                    GF 2h   0e2c4ab
-●     Ship release 26                                                                                    GF 2h   e478821
-●     Ship release 25                                                                                    GF 2h   4f73502
-●     Ship release 24                                                                                    GF 2h   dbaccce
-●     Ship release 23                                                                                    GF 2h   fcfad85
-●     Ship release 22                                                                                    GF 2h   2b22a7d
-●     Ship release 21                                                                                    GF 2h   f18afe9
-●     Ship release 20                                                                                    GF 2h   8afb691
-●     Ship release 19                                                                                    GF 2h   3c4da4b
-●     Ship release 18                                                                                    GF 2h   56aee62
-●     Ship release 17                                                                                    GF 2h   16ea802
-●     Ship release 16                                                                                    GF 2h   9e9dfd0
-●     Ship release 15                                                                                    GF 2h   a840fd9
-●     Ship release 14                                                                                    GF 2h   0f8d5d6
-●     Ship release 13                                                                                    GF 2h   78ddfac
+◌   ▏  Uncommitted changes (16 unmerged)
+◆      [◆ main] main's take                                                                              GF 87m  80393eb
+│ ●  ⓘ [feature] the feature's take                                                                      GF 88m  38c48dd
+●─╯    the shared files                                                                                  GF 89m  58854e9
+●      Ship release 29                                                                                   GF 2h   b796998
+●      Ship release 28                                                                                   GF 2h   8b1f759
+●      Ship release 27                                                                                   GF 2h   0e2c4ab
+●      Ship release 26                                                                                   GF 2h   e478821
+●      Ship release 25                                                                                   GF 2h   4f73502
+●      Ship release 24                                                                                   GF 2h   dbaccce
+●      Ship release 23                                                                                   GF 2h   fcfad85
+●      Ship release 22                                                                                   GF 2h   2b22a7d
+●      Ship release 21                                                                                   GF 2h   f18afe9
+●      Ship release 20                                                                                   GF 2h   8afb691
+●      Ship release 19                                                                                   GF 2h   3c4da4b
+●      Ship release 18                                                                                   GF 2h   56aee62
+●      Ship release 17                                                                                   GF 2h   16ea802
+●      Ship release 16                                                                                   GF 2h   9e9dfd0
+●      Ship release 15                                                                                   GF 2h   a840fd9
+●      Ship release 14                                                                                   GF 2h   0f8d5d6
+●      Ship release 13                                                                                   GF 2h   78ddfac
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  c continue  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
@@ -2693,7 +2693,7 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 # both rewrote the same 16 files, opened over the real job pool, the
 # merge launched with `m` through the preview and the confirm box, and
 # git really stopped on the conflict (crates/graft/tests/it/
-# conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). The
+# conflict_interim.rs, capture_banner_for_docs_shots, asserted). The
 # app was resized to 160x48 before the frame was drawn, so the
 # layout it chose is the layout for this screen and not for another
 # one. Not a pty capture: the terminal is ratatui's TestBackend, so
@@ -2759,43 +2759,43 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 #
 
  graft /code/api    MERGING                                                                  UNCOMMITTED
-◌     Uncommitted changes (16 unmerged)                                                      diff vs HEAD 80393eb
-◆     [◆ main] main's take                                                      87m  80393eb
-│ ● ⓘ [feature] the feature's take                                              88m  38c48dd
-●─╯   the shared files                                                          89m  58854e9
-●     Ship release 29                                                           2h   b796998 CONFLICTS (16)
-●     Ship release 28                                                           2h   8b1f759   notes.md                                                 unmerged
-●     Ship release 27                                                           2h   0e2c4ab   shared.rs                                                unmerged
-●     Ship release 26                                                           2h   e478821   ▾ src/
-●     Ship release 25                                                           2h   4f73502     step_00.rs                                             unmerged
-●     Ship release 24                                                           2h   dbaccce     step_01.rs                                             unmerged
-●     Ship release 23                                                           2h   fcfad85     step_02.rs                                             unmerged
-●     Ship release 22                                                           2h   2b22a7d     step_03.rs                                             unmerged
-●     Ship release 21                                                           2h   f18afe9     step_04.rs                                             unmerged
-●     Ship release 20                                                           2h   8afb691     step_05.rs                                             unmerged
-●     Ship release 19                                                           2h   3c4da4b     step_06.rs                                             unmerged
-●     Ship release 18                                                           2h   56aee62     step_07.rs                                             unmerged
-●     Ship release 17                                                           2h   16ea802     step_08.rs                                             unmerged
-●     Ship release 16                                                           2h   9e9dfd0     step_09.rs                                             unmerged
-●     Ship release 15                                                           2h   a840fd9     step_10.rs                                             unmerged
-●     Ship release 14                                                           2h   0f8d5d6     step_11.rs                                             unmerged
-●     Ship release 13                                                           2h   78ddfac     step_12.rs                                             unmerged
-●     Ship release 12                                                           2h   9bedacc ▎
-●     Ship release 11                                                           2h   e3bce29       1 + <<<<<<< HEAD
-●     Ship release 10                                                           2h   185dcc3   1   2   our plan
-●     Ship release 9                                                            2h   f374c8f       3 + =======
-●     Ship release 8                                                            2h   10e2d5c       4 + their plan
-●     Ship release 7                                                            2h   d6ce0bf       5 + >>>>>>> feature
-●     Ship release 6                                                            2h   4dd324d
-●     Ship release 5                                                            2h   00219d3
-●     Ship release 4                                                            2h   e8f4fb9
-●     Ship release 3                                                            2h   9bb4121
-●     Ship release 2                                                            2h   dd893e6
-●     Ship release 1                                                            2h   589a12f
-●     Ship release 0                                                            2h   c759852
-●     Correct the note                                                          1y   a82960b
-●     Add the first note                                                        1y   fadcfb3
-◇     Add a readme                                                              1y   64ded19
+◌   ▏  Uncommitted changes (16 unmerged)                                                     diff vs HEAD 80393eb
+◆      [◆ main] main's take                                                     87m  80393eb
+│ ●  ⓘ [feature] the feature's take                                             88m  38c48dd
+●─╯    the shared files                                                         89m  58854e9
+●      Ship release 29                                                          2h   b796998 CONFLICTS (16)
+●      Ship release 28                                                          2h   8b1f759   notes.md                                                 unmerged
+●      Ship release 27                                                          2h   0e2c4ab   shared.rs                                                unmerged
+●      Ship release 26                                                          2h   e478821   ▾ src/
+●      Ship release 25                                                          2h   4f73502     step_00.rs                                             unmerged
+●      Ship release 24                                                          2h   dbaccce     step_01.rs                                             unmerged
+●      Ship release 23                                                          2h   fcfad85     step_02.rs                                             unmerged
+●      Ship release 22                                                          2h   2b22a7d     step_03.rs                                             unmerged
+●      Ship release 21                                                          2h   f18afe9     step_04.rs                                             unmerged
+●      Ship release 20                                                          2h   8afb691     step_05.rs                                             unmerged
+●      Ship release 19                                                          2h   3c4da4b     step_06.rs                                             unmerged
+●      Ship release 18                                                          2h   56aee62     step_07.rs                                             unmerged
+●      Ship release 17                                                          2h   16ea802     step_08.rs                                             unmerged
+●      Ship release 16                                                          2h   9e9dfd0     step_09.rs                                             unmerged
+●      Ship release 15                                                          2h   a840fd9     step_10.rs                                             unmerged
+●      Ship release 14                                                          2h   0f8d5d6     step_11.rs                                             unmerged
+●      Ship release 13                                                          2h   78ddfac     step_12.rs                                             unmerged
+●      Ship release 12                                                          2h   9bedacc ▎
+●      Ship release 11                                                          2h   e3bce29       1 + <<<<<<< HEAD
+●      Ship release 10                                                          2h   185dcc3   1   2   our plan
+●      Ship release 9                                                           2h   f374c8f       3 + =======
+●      Ship release 8                                                           2h   10e2d5c       4 + their plan
+●      Ship release 7                                                           2h   d6ce0bf       5 + >>>>>>> feature
+●      Ship release 6                                                           2h   4dd324d
+●      Ship release 5                                                           2h   00219d3
+●      Ship release 4                                                           2h   e8f4fb9
+●      Ship release 3                                                           2h   9bb4121
+●      Ship release 2                                                           2h   dd893e6
+●      Ship release 1                                                           2h   589a12f
+●      Ship release 0                                                           2h   c759852
+●      Correct the note                                                         1y   a82960b
+●      Add the first note                                                       1y   fadcfb3
+◇      Add a readme                                                             1y   64ded19
 
 
 
@@ -2817,7 +2817,7 @@ what right looks like: Capture header "What right looks like": at 80x24 the pict
 # both rewrote the same 16 files, opened over the real job pool, the
 # merge launched with `m` through the preview and the confirm box, and
 # git really stopped on the conflict (crates/graft/tests/it/
-# conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). The
+# conflict_interim.rs, capture_banner_for_docs_shots, asserted). The
 # app was resized to 80x24 before the frame was drawn, so the
 # layout it chose is the layout for this screen and not for another
 # one. Not a pty capture: the terminal is ratatui's TestBackend, so
@@ -2885,27 +2885,27 @@ what right looks like: Capture header "What right looks like": at 80x24 the pict
 #
 
  graft /code/api    MERGING
-◌     Uncommitted changes (16 unmerged)
-◆     [◆ main] main's take                                          87m  80393eb
-│ ●   [feature] the feature's take                                  88m  38c48dd
-●─╯   the shared files                                              89m  58854e9
-●     Ship release 29                                               2h   b796998
-●     Ship release 28                                               2h   8b1f759
-●     Ship release 27                                               2h   0e2c4ab
-●     Ship release 26                                               2h   e478821
-●     Ship release 25                                               2h   4f73502
-●     Ship release 24                                               2h   dbaccce
-●     Ship release 23                                               2h   fcfad85
-●     Ship release 22                                               2h   2b22a7d
-●     Ship release 21                                               2h   f18afe9
-●     Ship release 20                                               2h   8afb691
-●     Ship release 19                                               2h   3c4da4b
-●     Ship release 18                                               2h   56aee62
-●     Ship release 17                                               2h   16ea802
-●     Ship release 16                                               2h   9e9dfd0
-●     Ship release 15                                               2h   a840fd9
-●     Ship release 14                                               2h   0f8d5d6
-●     Ship release 13                                               2h   78ddfac
+◌      Uncommitted changes (16 unmerged)
+◆      [◆ main] main's take                                         87m  80393eb
+│ ● ▏  [feature] the feature's take                                 88m  38c48dd
+●─╯    the shared files                                             89m  58854e9
+●      Ship release 29                                              2h   b796998
+●      Ship release 28                                              2h   8b1f759
+●      Ship release 27                                              2h   0e2c4ab
+●      Ship release 26                                              2h   e478821
+●      Ship release 25                                              2h   4f73502
+●      Ship release 24                                              2h   dbaccce
+●      Ship release 23                                              2h   fcfad85
+●      Ship release 22                                              2h   2b22a7d
+●      Ship release 21                                              2h   f18afe9
+●      Ship release 20                                              2h   8afb691
+●      Ship release 19                                              2h   3c4da4b
+●      Ship release 18                                              2h   56aee62
+●      Ship release 17                                              2h   16ea802
+●      Ship release 16                                              2h   9e9dfd0
+●      Ship release 15                                              2h   a840fd9
+●      Ship release 14                                              2h   0f8d5d6
+●      Ship release 13                                              2h   78ddfac
  no commit-graph file · B build one · X never here
  c continue  a abort  M mergetool  e edit  ⇥ graph
 
@@ -2942,26 +2942,26 @@ what right looks like: Capture header "What right looks like": while an operatio
 
 === 80x10 ===
  graft /code/api    REBASING step 3 of 7
-●   Commit 2                                                        2h   0202020
-◇   Commit 1                                                        2h   0101010
+● ▏  Commit 2                                                       2h   0202020
+◇    Commit 1                                                       2h   0101010
  ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
 
 === 120x10 ===
  graft /code/api    REBASING step 3 of 7
-●   Commit 2                                                                                             TE 2h   0202020
-◇   Commit 1                                                                                             TE 2h   0101010
+● ▏  Commit 2                                                                                            TE 2h   0202020
+◇    Commit 1                                                                                            TE 2h   0101010
  ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
 
 === 160x10 ===
  graft /code/api    REBASING step 3 of 7
-●   Commit 2                                                                                                                                     TE 2h   0202020
-◇   Commit 1                                                                                                                                     TE 2h   0101010
+● ▏  Commit 2                                                                                                                                    TE 2h   0202020
+◇    Commit 1                                                                                                                                    TE 2h   0101010
  ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
 
 === a long path does not cut the banner, 120x10 ===
  graft /Users/someone/work/customers/acme/services/billing-api    REBASING step 3 of 7
-●   Commit 2                                                                                             TE 2h   0202020
-◇   Commit 1                                                                                             TE 2h   0101010
+● ▏  Commit 2                                                                                            TE 2h   0202020
+◇    Commit 1                                                                                            TE 2h   0101010
  ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
 
 
@@ -2975,7 +2975,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 # `file://` bare, the clone left one commit ahead of it, the walk let
 # settle, then `P` pressed
 # (crates/graft/tests/it/two_boxes_over_content.rs,
-# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# capture_two_boxes_over_real_content_for_docs_shots, asserted).
 # Not a pty capture: the terminal is ratatui's TestBackend, so this is
 # a character grid with no colour attributes in it — CLAUDE.md rule 5,
 # colour ships unverified. The scratch repository's temporary path is
@@ -3020,51 +3020,51 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 == `P`: the push confirm, on the graph ==
 
  graft /code/api  200 commits
-◆ ⓘ [◆ main ↑1] Commit 200                                                                                                                       GF 2d   d5ae5fd
-●   [origin/main] Commit 199                                                                                                                     GF 2d   13e6ab1
-●   Commit 198                                                                                                                                   GF 2d   f5055d9
-●   Commit 197                                                                                                                                   GF 2d   2cce853
-●   Commit 196                                                                                                                                   GF 2d   325da3f
-●   Commit 195                                                                                                                                   GF 2d   0722297
-●   Commit 194                                                                                                                                   GF 2d   b6a4a47
-●   Commit 193                                                                                                                                   GF 2d   60af0eb
-●   Commit 192                                                                                                                                   GF 2d   aceb8c5
-●   Commit 191                                                                                                                                   GF 2d   11d68ff
-●   Commit 190                                                                                                                                   GF 2d   91900bd
-●   Commit 189                                                                                                                                   GF 2d   cec3e93
-●   Commit 188                                                                                                                                   GF 2d   0a91ece
-●   Commit 187                                                                                                                                   GF 2d   3121935
-●   Commit 186                                                                                                                                   GF 2d   fab25df
-●   Commit 185                                                                                                                                   GF 2d   09ae97c
-●   Commit 184                                                                                                                                   GF 2d   49d7783
-●   Commit 183                                                                                                                                   GF 2d   22d55c9
-●   Commit 182                                                                                                                                   GF 2d   d212b3e
-●   ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   c8254c5
-●   │ 1 commit · can't be undone from here — origin keeps what you send                                                                       │  GF 2d   e95ccd4
-●   │                                                                                                                                         │  GF 2d   97b58e5
-●   │ git push --progress origin refs/heads/main:refs/heads/main                                                                              │  GF 2d   1c9b7ed
-●   │                                                                                                                                         │  GF 2d   f93340a
-●   │ ▸[ Cancel ]   [ Push ]                                                                                                                  │  GF 2d   5aaeeba
-●   ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   6be5928
-●   Commit 174                                                                                                                                   GF 2d   9b67be4
-●   Commit 173                                                                                                                                   GF 2d   937d32b
-●   Commit 172                                                                                                                                   GF 2d   81be718
-●   Commit 171                                                                                                                                   GF 2d   57b8196
-●   Commit 170                                                                                                                                   GF 2d   8ea98be
-●   Commit 169                                                                                                                                   GF 2d   4926766
-●   Commit 168                                                                                                                                   GF 2d   0d60d60
-●   Commit 167                                                                                                                                   GF 2d   fa5ef1d
-●   Commit 166                                                                                                                                   GF 2d   953abf3
-●   Commit 165                                                                                                                                   GF 2d   49912f3
-●   Commit 164                                                                                                                                   GF 2d   1143b38
-●   Commit 163                                                                                                                                   GF 2d   e135216
-●   Commit 162                                                                                                                                   GF 2d   6ddbc37
-●   Commit 161                                                                                                                                   GF 2d   4b6f375
-●   Commit 160                                                                                                                                   GF 2d   545bf13
-●   Commit 159                                                                                                                                   GF 2d   a1a658c
-●   Commit 158                                                                                                                                   GF 2d   1e28a71
-●   Commit 157                                                                                                                                   GF 2d   b57586d
-●   Commit 156                                                                                                                                   GF 2d   edc7cba
+◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                      GF 2d   d5ae5fd
+●    [origin/main] Commit 199                                                                                                                    GF 2d   13e6ab1
+●    Commit 198                                                                                                                                  GF 2d   f5055d9
+●    Commit 197                                                                                                                                  GF 2d   2cce853
+●    Commit 196                                                                                                                                  GF 2d   325da3f
+●    Commit 195                                                                                                                                  GF 2d   0722297
+●    Commit 194                                                                                                                                  GF 2d   b6a4a47
+●    Commit 193                                                                                                                                  GF 2d   60af0eb
+●    Commit 192                                                                                                                                  GF 2d   aceb8c5
+●    Commit 191                                                                                                                                  GF 2d   11d68ff
+●    Commit 190                                                                                                                                  GF 2d   91900bd
+●    Commit 189                                                                                                                                  GF 2d   cec3e93
+●    Commit 188                                                                                                                                  GF 2d   0a91ece
+●    Commit 187                                                                                                                                  GF 2d   3121935
+●    Commit 186                                                                                                                                  GF 2d   fab25df
+●    Commit 185                                                                                                                                  GF 2d   09ae97c
+●    Commit 184                                                                                                                                  GF 2d   49d7783
+●    Commit 183                                                                                                                                  GF 2d   22d55c9
+●    Commit 182                                                                                                                                  GF 2d   d212b3e
+●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   c8254c5
+●    │ 1 commit · can't be undone from here — origin keeps what you send                                                                      │  GF 2d   e95ccd4
+●    │                                                                                                                                        │  GF 2d   97b58e5
+●    │ git push --progress origin refs/heads/main:refs/heads/main                                                                             │  GF 2d   1c9b7ed
+●    │                                                                                                                                        │  GF 2d   f93340a
+●    │ ▸[ Cancel ]   [ Push ]                                                                                                                 │  GF 2d   5aaeeba
+●    ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   6be5928
+●    Commit 174                                                                                                                                  GF 2d   9b67be4
+●    Commit 173                                                                                                                                  GF 2d   937d32b
+●    Commit 172                                                                                                                                  GF 2d   81be718
+●    Commit 171                                                                                                                                  GF 2d   57b8196
+●    Commit 170                                                                                                                                  GF 2d   8ea98be
+●    Commit 169                                                                                                                                  GF 2d   4926766
+●    Commit 168                                                                                                                                  GF 2d   0d60d60
+●    Commit 167                                                                                                                                  GF 2d   fa5ef1d
+●    Commit 166                                                                                                                                  GF 2d   953abf3
+●    Commit 165                                                                                                                                  GF 2d   49912f3
+●    Commit 164                                                                                                                                  GF 2d   1143b38
+●    Commit 163                                                                                                                                  GF 2d   e135216
+●    Commit 162                                                                                                                                  GF 2d   6ddbc37
+●    Commit 161                                                                                                                                  GF 2d   4b6f375
+●    Commit 160                                                                                                                                  GF 2d   545bf13
+●    Commit 159                                                                                                                                  GF 2d   a1a658c
+●    Commit 158                                                                                                                                  GF 2d   1e28a71
+●    Commit 157                                                                                                                                  GF 2d   b57586d
+●    Commit 156                                                                                                                                  GF 2d   edc7cba
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  . explain  ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2  F3  x  +  j/k  space  1  F  H  y  M  O
 
@@ -3079,7 +3079,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 # `file://` bare, the clone left one commit ahead of it, the walk let
 # settle, then `P` pressed
 # (crates/graft/tests/it/two_boxes_over_content.rs,
-# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# capture_two_boxes_over_real_content_for_docs_shots, asserted).
 # Not a pty capture: the terminal is ratatui's TestBackend, so this is
 # a character grid with no colour attributes in it — CLAUDE.md rule 5,
 # colour ships unverified. The scratch repository's temporary path is
@@ -3124,27 +3124,27 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 == `P`: the push confirm, on the graph ==
 
  graft /code/api  200 commits
-◆ ⓘ [◆ main ↑1] Commit 200                                          2d   d5ae5fd
-●   [origin/main] Commit 199                                        2d   13e6ab1
-●   Commit 198                                                      2d   f5055d9
-●   Commit 197                                                      2d   2cce853
-●   Commit 196                                                      2d   325da3f
-●   Commit 195                                                      2d   0722297
-●   ╭ Push main → origin/main ─────────────────────────────────────────╮ b6a4a47
-●   │ 1 commit · can't be undone from here — origin keeps what you     │ 60af0eb
-●   │ send                                                             │ aceb8c5
-●   │                                                                  │ 11d68ff
-●   │ git push --progress origin refs/heads/main:refs/heads/main       │ 91900bd
-●   │                                                                  │ cec3e93
-●   │ ▸[ Cancel ]   [ Push ]                                           │ 0a91ece
-●   ╰──────────────────────────────────────────────────────────────────╯ 3121935
-●   Commit 186                                                      2d   fab25df
-●   Commit 185                                                      2d   09ae97c
-●   Commit 184                                                      2d   49d7783
-●   Commit 183                                                      2d   22d55c9
-●   Commit 182                                                      2d   d212b3e
-●   Commit 181                                                      2d   c8254c5
-●   Commit 180                                                      2d   e95ccd4
+◆ ▏ⓘ [◆ main ↑1] Commit 200                                         2d   d5ae5fd
+●    [origin/main] Commit 199                                       2d   13e6ab1
+●    Commit 198                                                     2d   f5055d9
+●    Commit 197                                                     2d   2cce853
+●    Commit 196                                                     2d   325da3f
+●    Commit 195                                                     2d   0722297
+●    ╭ Push main → origin/main ────────────────────────────────────────╮ b6a4a47
+●    │ 1 commit · can't be undone from here — origin keeps what you    │ 60af0eb
+●    │ send                                                            │ aceb8c5
+●    │                                                                 │ 11d68ff
+●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 91900bd
+●    │                                                                 │ cec3e93
+●    │ ▸[ Cancel ]   [ Push ]                                          │ 0a91ece
+●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
+●    Commit 186                                                     2d   fab25df
+●    Commit 185                                                     2d   09ae97c
+●    Commit 184                                                     2d   49d7783
+●    Commit 183                                                     2d   22d55c9
+●    Commit 182                                                     2d   d212b3e
+●    Commit 181                                                     2d   c8254c5
+●    Commit 180                                                     2d   e95ccd4
  no commit-graph file · B build one · X never here
  . explain  ⏎ open  c commit  P  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
 
@@ -3248,9 +3248,9 @@ what right looks like: Capture header "What right looks like": the same context 
 #
 
  graft /code/api  8 commits
-  ◆ ⓘ [◆ feature] finish the feature                                                                                                             GF now  8d6cd28
-  ●   start the feature                                                                                                                          GF 2m   52f3b96
-● │ ▏ [main] main moves again                                                                                                                    GF 3m   45fa51d
+  ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ●    start the feature                                                                                                                         GF 2m   52f3b96
+● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -3353,9 +3353,9 @@ what right looks like: Capture header "What right looks like": the context menu 
 #
 
  graft /code/api  8 commits
-  ◆ ⓘ [◆ feature] finish the feature                                now  8d6cd28
-  ●   start the feature                                             2m   52f3b96
-● │ ▏ [main] main moves again                                       3m   45fa51d
+  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ●    start the feature                                            2m   52f3b96
+● │ ▏  [main] main moves again                                      3m   45fa51d
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -3390,7 +3390,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 # `Progress::CredentialNeeded` uses) and a seven-character password
 # typed into it
 # (crates/graft/tests/it/two_boxes_over_content.rs,
-# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# capture_two_boxes_over_real_content_for_docs_shots, asserted).
 # The host in the question is pinned to `127.0.0.1:8443`: a real HTTP
 # fixture is served on a port the OS picks, and a capture whose title
 # changed every run could not be diffed. Not a pty capture — no
@@ -3422,51 +3422,51 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 == git's password question, over the push it belongs to ==
 
  graft /code/api  200 commits
-◆ ⓘ [◆ main ↑1] Commit 200                                                                                                                       GF 2d   d5ae5fd
-●   [origin/main] Commit 199                                                                                                                     GF 2d   13e6ab1
-●   Commit 198                                                                                                                                   GF 2d   f5055d9
-●   Commit 197                                                                                                                                   GF 2d   2cce853
-●   Commit 196                                                                                                                                   GF 2d   325da3f
-●   Commit 195                                                                                                                                   GF 2d   0722297
-●   Commit 194                                                                                                                                   GF 2d   b6a4a47
-●   Commit 193                                                                                                                                   GF 2d   60af0eb
-●   Commit 192                                                                                                                                   GF 2d   aceb8c5
-●   Commit 191                                                                                                                                   GF 2d   11d68ff
-●   Commit 190                                                                                                                                   GF 2d   91900bd
-●   Commit 189                                                                                                                                   GF 2d   cec3e93
-●   Commit 188                                                                                                                                   GF 2d   0a91ece
-●   Commit 187                                                                                                                                   GF 2d   3121935
-●   Commit 186                                                                                                                                   GF 2d   fab25df
-●   Commit 185                                                                                                                                   GF 2d   09ae97c
-●   Commit 184                                                                                                                                   GF 2d   49d7783
-●   Commit 183                                                                                                                                   GF 2d   22d55c9
-●   Commit 182                                                                                                                                   GF 2d   d212b3e
-●   Commit 181                                                                                                                                   GF 2d   c8254c5
+◆ ▏ⓘ [◆ main ↑1] Commit 200                                                                                                                      GF 2d   d5ae5fd
+●    [origin/main] Commit 199                                                                                                                    GF 2d   13e6ab1
+●    Commit 198                                                                                                                                  GF 2d   f5055d9
+●    Commit 197                                                                                                                                  GF 2d   2cce853
+●    Commit 196                                                                                                                                  GF 2d   325da3f
+●    Commit 195                                                                                                                                  GF 2d   0722297
+●    Commit 194                                                                                                                                  GF 2d   b6a4a47
+●    Commit 193                                                                                                                                  GF 2d   60af0eb
+●    Commit 192                                                                                                                                  GF 2d   aceb8c5
+●    Commit 191                                                                                                                                  GF 2d   11d68ff
+●    Commit 190                                                                                                                                  GF 2d   91900bd
+●    Commit 189                                                                                                                                  GF 2d   cec3e93
+●    Commit 188                                                                                                                                  GF 2d   0a91ece
+●    Commit 187                                                                                                                                  GF 2d   3121935
+●    Commit 186                                                                                                                                  GF 2d   fab25df
+●    Commit 185                                                                                                                                  GF 2d   09ae97c
+●    Commit 184                                                                                                                                  GF 2d   49d7783
+●    Commit 183                                                                                                                                  GF 2d   22d55c9
+●    Commit 182                                                                                                                                  GF 2d   d212b3e
+●    Commit 181                                                                                                                                  GF 2d   c8254c5
                                             ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮
                                             │ Password for 'http://user@127.0.0.1:8443':                           │
                                             │ ▏◦•••••••                                                            │
                                             │ typed here only · never stored by Graft                              │
                                             ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯
-●   Commit 175                                                                                                                                   GF 2d   6be5928
-●   Commit 174                                                                                                                                   GF 2d   9b67be4
-●   Commit 173                                                                                                                                   GF 2d   937d32b
-●   Commit 172                                                                                                                                   GF 2d   81be718
-●   Commit 171                                                                                                                                   GF 2d   57b8196
-●   Commit 170                                                                                                                                   GF 2d   8ea98be
-●   Commit 169                                                                                                                                   GF 2d   4926766
-●   Commit 168                                                                                                                                   GF 2d   0d60d60
-●   Commit 167                                                                                                                                   GF 2d   fa5ef1d
-●   Commit 166                                                                                                                                   GF 2d   953abf3
-●   Commit 165                                                                                                                                   GF 2d   49912f3
-●   Commit 164                                                                                                                                   GF 2d   1143b38
-●   Commit 163                                                                                                                                   GF 2d   e135216
-●   Commit 162                                                                                                                                   GF 2d   6ddbc37
-●   Commit 161                                                                                                                                   GF 2d   4b6f375
-●   Commit 160                                                                                                                                   GF 2d   545bf13
-●   Commit 159                                                                                                                                   GF 2d   a1a658c
-●   Commit 158                                                                                                                                   GF 2d   1e28a71
-●   Commit 157                                                                                                                                   GF 2d   b57586d
-●   Commit 156                                                                                                                                   GF 2d   edc7cba
+●    Commit 175                                                                                                                                  GF 2d   6be5928
+●    Commit 174                                                                                                                                  GF 2d   9b67be4
+●    Commit 173                                                                                                                                  GF 2d   937d32b
+●    Commit 172                                                                                                                                  GF 2d   81be718
+●    Commit 171                                                                                                                                  GF 2d   57b8196
+●    Commit 170                                                                                                                                  GF 2d   8ea98be
+●    Commit 169                                                                                                                                  GF 2d   4926766
+●    Commit 168                                                                                                                                  GF 2d   0d60d60
+●    Commit 167                                                                                                                                  GF 2d   fa5ef1d
+●    Commit 166                                                                                                                                  GF 2d   953abf3
+●    Commit 165                                                                                                                                  GF 2d   49912f3
+●    Commit 164                                                                                                                                  GF 2d   1143b38
+●    Commit 163                                                                                                                                  GF 2d   e135216
+●    Commit 162                                                                                                                                  GF 2d   6ddbc37
+●    Commit 161                                                                                                                                  GF 2d   4b6f375
+●    Commit 160                                                                                                                                  GF 2d   545bf13
+●    Commit 159                                                                                                                                  GF 2d   a1a658c
+●    Commit 158                                                                                                                                  GF 2d   1e28a71
+●    Commit 157                                                                                                                                  GF 2d   b57586d
+●    Commit 156                                                                                                                                  GF 2d   edc7cba
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  push main → origin/main · esc cancels
 
@@ -3484,7 +3484,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 # `Progress::CredentialNeeded` uses) and a seven-character password
 # typed into it
 # (crates/graft/tests/it/two_boxes_over_content.rs,
-# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# capture_two_boxes_over_real_content_for_docs_shots, asserted).
 # The host in the question is pinned to `127.0.0.1:8443`: a real HTTP
 # fixture is served on a port the OS picks, and a capture whose title
 # changed every run could not be diffed. Not a pty capture — no
@@ -3516,27 +3516,27 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 == git's password question, over the push it belongs to ==
 
  graft /code/api  200 commits
-◆ ⓘ [◆ main ↑1] Commit 200                                          2d   d5ae5fd
-●   [origin/main] Commit 199                                        2d   13e6ab1
-●   Commit 198                                                      2d   f5055d9
-●   Commit 197                                                      2d   2cce853
-●   Commit 196                                                      2d   325da3f
-●   Commit 195                                                      2d   0722297
-●   Commit 194                                                      2d   b6a4a47
-●   Commit 193                                                      2d   60af0eb
+◆ ▏ⓘ [◆ main ↑1] Commit 200                                         2d   d5ae5fd
+●    [origin/main] Commit 199                                       2d   13e6ab1
+●    Commit 198                                                     2d   f5055d9
+●    Commit 197                                                     2d   2cce853
+●    Commit 196                                                     2d   325da3f
+●    Commit 195                                                     2d   0722297
+●    Commit 194                                                     2d   b6a4a47
+●    Commit 193                                                     2d   60af0eb
     ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮
     │ Password for 'http://user@127.0.0.1:8443':                           │
     │ ▏◦•••••••                                                            │
     │ typed here only · never stored by Graft                              │
     ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯
-●   Commit 187                                                      2d   3121935
-●   Commit 186                                                      2d   fab25df
-●   Commit 185                                                      2d   09ae97c
-●   Commit 184                                                      2d   49d7783
-●   Commit 183                                                      2d   22d55c9
-●   Commit 182                                                      2d   d212b3e
-●   Commit 181                                                      2d   c8254c5
-●   Commit 180                                                      2d   e95ccd4
+●    Commit 187                                                     2d   3121935
+●    Commit 186                                                     2d   fab25df
+●    Commit 185                                                     2d   09ae97c
+●    Commit 184                                                     2d   49d7783
+●    Commit 183                                                     2d   22d55c9
+●    Commit 182                                                     2d   d212b3e
+●    Commit 181                                                     2d   c8254c5
+●    Commit 180                                                     2d   e95ccd4
  no commit-graph file · B build one · X never here
  push main → origin/main · esc cancels
 
@@ -3571,14 +3571,14 @@ what right looks like: Capture header "What right looks like": the drag is visib
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  graft /code/api  8 commits
-  ◆ ⓘ [◆ feature] finish the feature                                                                                                             GF now  8d6cd28
-  ●   start the feature                                                                                                                          GF 2m   52f3b96
-● │ ▸ [main] main moves again                                                                                                                    GF 3m   45fa51d
-● │   main moves on                                                                                                                              GF 4m   37926a7
-●─╯   add the base                                                                                                                               GF 5m   ed332bc
-●     Correct the note                                                                                                                           GF 1y   a82960b
-●     Add the first note                                                                                                                         GF 1y   fadcfb3
-◇     Add a readme                                                                                                                               GF 1y   64ded19
+  ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ●    start the feature                                                                                                                         GF 2m   52f3b96
+● │ ▸  [main] main moves again                                                                                                                   GF 3m   45fa51d
+● │    main moves on                                                                                                                             GF 4m   37926a7
+●─╯    add the base                                                                                                                              GF 5m   ed332bc
+●      Correct the note                                                                                                                          GF 1y   a82960b
+●      Add the first note                                                                                                                        GF 1y   fadcfb3
+◇      Add a readme                                                                                                                              GF 1y   64ded19
 
 
 
@@ -3649,14 +3649,14 @@ what right looks like: Capture header "What right looks like": the drag is visib
 #  - Nothing else has moved: no menu, no box, the graph unchanged.
 
  graft /code/api  8 commits
-  ◆ ⓘ [◆ feature] finish the feature                                now  8d6cd28
-  ●   start the feature                                             2m   52f3b96
-● │ ▸ [main] main moves again                                       3m   45fa51d
-● │   main moves on                                                 4m   37926a7
-●─╯   add the base                                                  5m   ed332bc
-●     Correct the note                                              1y   a82960b
-●     Add the first note                                            1y   fadcfb3
-◇     Add a readme                                                  1y   64ded19
+  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ●    start the feature                                            2m   52f3b96
+● │ ▸  [main] main moves again                                      3m   45fa51d
+● │    main moves on                                                4m   37926a7
+●─╯    add the base                                                 5m   ed332bc
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
 
 
 
@@ -3703,9 +3703,9 @@ what right looks like: Capture header "What right looks like": a title row reads
 #    on, which is still readable above it.
 #
  graft /code/api  8 commits
-  ◆ ▏ⓘ[◆ feature] finish the feature                                                                                                             GF now  8d6cd28
-  ●   start the feature                                                                                                                          GF 2m   52f3b96
-● │   [main] main moves again                                                                                                                    GF 3m   45fa51d
+  ◆ ▏ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
+  ●    start the feature                                                                                                                         GF 2m   52f3b96
+● │    [main] main moves again                                                                                                                   GF 3m   45fa51d
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
@@ -3781,9 +3781,9 @@ what right looks like: Capture header "What right looks like": a title row reads
 #    on, which is still readable above it.
 #
  graft /code/api  8 commits
-  ◆ ▏ⓘ[◆ feature] finish the feature                                now  8d6cd28
-  ●   start the feature                                             2m   52f3b96
-● │   [main] main moves again                                       3m   45fa51d
+  ◆ ▏ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ●    start the feature                                            2m   52f3b96
+● │    [main] main moves again                                      3m   45fa51d
  feature → main
  Merge feature into main — check out main first
  Rebase feature onto main
@@ -3891,14 +3891,14 @@ what right looks like: Capture header "What right looks like": the box's top bor
 #    column shows beside it.
 #
  graft /code/api  8 commits
-  ◆ ⓘ [◆ feature] finish the feature                                now  8d6cd28
-  ●   start the feature                                             2m   52f3b96
-● │ ▏ [main] main moves again                                       3m   45fa51d
-● │   main moves on                                                 4m   37926a7
-●─╯   add the base                                                  5m   ed332bc
-●     Correct the note                                              1y   a82960b
-●     Add the first note                                            1y   fadcfb3
-◇     Add a readme                                                  1y   64ded19
+  ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
+  ●    start the feature                                            2m   52f3b96
+● │ ▏  [main] main moves again                                      3m   45fa51d
+● │    main moves on                                                4m   37926a7
+●─╯    add the base                                                 5m   ed332bc
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
           ╭ New branch at 45fa51d ───────────────────────────────────╮
           │ ▏main                                                    │
           │ ( ) check out after creating · ⇥ toggles                 │
@@ -4098,7 +4098,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 # over the real job pool, cursor moved to `main`'s row and `r` pressed
 # through `update`, then the real `graft_ops::preview::plan` run
 # (crates/graft/tests/it/preview.rs, capture_preview_for_docs_shots,
-# #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so
+# asserted). Not a pty capture: the terminal is ratatui's TestBackend, so
 # this is a character grid with no colour attributes in it — CLAUDE.md rule
 # 5, colour ships unverified. The scratch repository's temporary path is
 # replaced by `/code/api`; nothing else is touched.
@@ -4120,17 +4120,17 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 #
 
  graft /code/api  8 commits
-  ●     finish the feature                                                                                                                       GF now  8d6cd28
-  ●     start the feature                                                                                                                        GF 2m   52f3b96
-  │     after rebase
-  │ ○   [◆ feature] finish the feature                                                                                                           GF —    —
-  │ ○   start the feature                                                                                                                        GF —    —
-●─│─╯   [main] main moves again                                                                                                                  GF 3m   45fa51d
-● │     main moves on                                                                                                                            GF 4m   37926a7
-●─╯     add the base                                                                                                                             GF 5m   ed332bc
-●       Correct the note                                                                                                                         GF 1y   a82960b
-●       Add the first note                                                                                                                       GF 1y   fadcfb3
-◇       Add a readme                                                                                                                             GF 1y   64ded19
+  ●      finish the feature                                                                                                                      GF now  8d6cd28
+  ●      start the feature                                                                                                                       GF 2m   52f3b96
+  │      after rebase
+  │ ○    [◆ feature] finish the feature                                                                                                          GF —    —
+  │ ○    start the feature                                                                                                                       GF —    —
+●─│─╯ ▏  [main] main moves again                                                                                                                 GF 3m   45fa51d
+● │      main moves on                                                                                                                           GF 4m   37926a7
+●─╯      add the base                                                                                                                            GF 5m   ed332bc
+●        Correct the note                                                                                                                        GF 1y   a82960b
+●        Add the first note                                                                                                                      GF 1y   fadcfb3
+◇        Add a readme                                                                                                                            GF 1y   64ded19
 
 
 
@@ -4179,7 +4179,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 # over the real job pool, cursor moved to `main`'s row and `r` pressed
 # through `update`, then the real `graft_ops::preview::plan` run
 # (crates/graft/tests/it/preview.rs, capture_preview_for_docs_shots,
-# #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so
+# asserted). Not a pty capture: the terminal is ratatui's TestBackend, so
 # this is a character grid with no colour attributes in it — CLAUDE.md rule
 # 5, colour ships unverified. The scratch repository's temporary path is
 # replaced by `/code/api`; nothing else is touched.
@@ -4200,18 +4200,18 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 #    box covers rows the graph never drew — no real row is hidden by it.
 #
 
- graft /code/api  8…
-  ●     finish the feature                                          now  8d6cd28
-  ●     start the feature                                           2m   52f3b96
-  │     after rebase
-  │ ○   [◆ feature] finish the feature                              —    —
-  │ ○   start the feature                                           —    —
-●─│─╯   [main] main moves again                                     3m   45fa51d
-● │     main moves on                                               4m   37926a7
-●─╯     add the base                                                5m   ed332bc
-●       Correct the note                                            1y   a82960b
-●       Add the first note                                          1y   fadcfb3
-◇       Add a readme                                                1y   64ded19
+ graft /code/api  8 commits
+  ●      finish the feature                                         now  8d6cd28
+  ●      start the feature                                          2m   52f3b96
+  │      after rebase
+  │ ○    [◆ feature] finish the feature                             —    —
+  │ ○    start the feature                                          —    —
+●─│─╯ ▏  [main] main moves again                                    3m   45fa51d
+● │      main moves on                                              4m   37926a7
+●─╯      add the base                                               5m   ed332bc
+●        Correct the note                                           1y   a82960b
+●        Add the first note                                         1y   fadcfb3
+◇        Add a readme                                               1y   64ded19
 
 
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
@@ -4240,7 +4240,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
-# capture_scrolled_preview_for_docs_shots, #[ignore]d). Not a pty capture:
+# capture_scrolled_preview_for_docs_shots, asserted). Not a pty capture:
 # ratatui's TestBackend, a character grid with no colour attributes in it
 # — CLAUDE.md rule 5, colour ships unverified. The scratch repository's
 # temporary path is replaced by `/code/api`; nothing else is touched.
@@ -4272,43 +4272,43 @@ what right looks like: Capture header "What right looks like": the rows on scree
 #
 
  graft /code/api  70 commits
-  ●     redesign step 23                                                                                                                         GF 39m  5de8eef
-  ●     redesign step 22                                                                                                                         GF 40m  7bd6716
-  ●     redesign step 21                                                                                                                         GF 41m  43008f4
-  ●     redesign step 20                                                                                                                         GF 42m  3ed8649
-  ●     redesign step 19                                                                                                                         GF 43m  7f09e2b
-  ●     redesign step 18                                                                                                                         GF 44m  15f3c2d
-  ●     redesign step 17                                                                                                                         GF 45m  f5adc23
-  ●     redesign step 16                                                                                                                         GF 46m  b451d3b
-  ●     redesign step 15                                                                                                                         GF 47m  7543dcd
-  ●     redesign step 14                                                                                                                         GF 48m  74ea4d0
-  ●     redesign step 13                                                                                                                         GF 49m  618a7de
-  ●     redesign step 12                                                                                                                         GF 50m  a7d62f1
-  ●     redesign step 11                                                                                                                         GF 51m  5f7971c
-  ●     redesign step 10                                                                                                                         GF 52m  2e71932
-  ●     redesign step 09                                                                                                                         GF 53m  15e3640
-  ●     redesign step 08                                                                                                                         GF 54m  d9ead6d
-  ●     redesign step 07                                                                                                                         GF 55m  abc4f61
-  ●     redesign step 06                                                                                                                         GF 56m  8124484
-  ●     redesign step 05                                                                                                                         GF 57m  c2d6da1
-  ●     redesign step 04                                                                                                                         GF 58m  be1a1ac
-  ●     redesign step 03                                                                                                                         GF 59m  eb40531
-  ●     redesign step 02                                                                                                                         GF 60m  a2606d6
-  ●     redesign step 01                                                                                                                         GF 61m  3533523
-  ●     redesign step 00                                                                                                                         GF 62m  c6c79eb
-  │ ●   finish the topic                                                                                                                         GF 63m  e7e39a7
-  │ ●   start the topic                                                                                                                          GF 64m  169d215
-●─┴─╯   [main] main moves on (2)                                                                                                                 GF 65m  107af44
-●       main moves on (1)                                                                                                                        GF 66m  2b2b2f1
-●       main moves on (0)                                                                                                                        GF 67m  ba665c1
-│       after rebase
-│ ○     [◆ topic] finish the topic                                                                                                               GF —    —
-│ ○     start the topic                                                                                                                          GF —    —
-│ ○     main moves on (2)                                                                                                                        GF —    —
-│ ○     main moves on (1)                                                                                                                        GF —    —
-│ ○     main moves on (0)                                                                                                                        GF —    —
-│ ●     [old-release] cut release 1.0                                                                                                            GF 68m  3b09656
-●─╯     add the base                                                                                                                             GF 69m  ed332bc
+  ●      redesign step 23                                                                                                                        GF 39m  5de8eef
+  ●      redesign step 22                                                                                                                        GF 40m  7bd6716
+  ●      redesign step 21                                                                                                                        GF 41m  43008f4
+  ●      redesign step 20                                                                                                                        GF 42m  3ed8649
+  ●      redesign step 19                                                                                                                        GF 43m  7f09e2b
+  ●      redesign step 18                                                                                                                        GF 44m  15f3c2d
+  ●      redesign step 17                                                                                                                        GF 45m  f5adc23
+  ●      redesign step 16                                                                                                                        GF 46m  b451d3b
+  ●      redesign step 15                                                                                                                        GF 47m  7543dcd
+  ●      redesign step 14                                                                                                                        GF 48m  74ea4d0
+  ●      redesign step 13                                                                                                                        GF 49m  618a7de
+  ●      redesign step 12                                                                                                                        GF 50m  a7d62f1
+  ●      redesign step 11                                                                                                                        GF 51m  5f7971c
+  ●      redesign step 10                                                                                                                        GF 52m  2e71932
+  ●      redesign step 09                                                                                                                        GF 53m  15e3640
+  ●      redesign step 08                                                                                                                        GF 54m  d9ead6d
+  ●      redesign step 07                                                                                                                        GF 55m  abc4f61
+  ●      redesign step 06                                                                                                                        GF 56m  8124484
+  ●      redesign step 05                                                                                                                        GF 57m  c2d6da1
+  ●      redesign step 04                                                                                                                        GF 58m  be1a1ac
+  ●      redesign step 03                                                                                                                        GF 59m  eb40531
+  ●      redesign step 02                                                                                                                        GF 60m  a2606d6
+  ●      redesign step 01                                                                                                                        GF 61m  3533523
+  ●      redesign step 00                                                                                                                        GF 62m  c6c79eb
+  │ ●    finish the topic                                                                                                                        GF 63m  e7e39a7
+  │ ●    start the topic                                                                                                                         GF 64m  169d215
+●─┴─╯    [main] main moves on (2)                                                                                                                GF 65m  107af44
+●        main moves on (1)                                                                                                                       GF 66m  2b2b2f1
+●        main moves on (0)                                                                                                                       GF 67m  ba665c1
+│        after rebase
+│ ○      [◆ topic] finish the topic                                                                                                              GF —    —
+│ ○      start the topic                                                                                                                         GF —    —
+│ ○      main moves on (2)                                                                                                                       GF —    —
+│ ○      main moves on (1)                                                                                                                       GF —    —
+│ ○      main moves on (0)                                                                                                                       GF —    —
+│ ●   ▏  [old-release] cut release 1.0                                                                                                           GF 68m  3b09656
+●─╯      add the base                                                                                                                            GF 69m  ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │
@@ -4335,7 +4335,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
-# capture_scrolled_preview_for_docs_shots, #[ignore]d). Not a pty capture:
+# capture_scrolled_preview_for_docs_shots, asserted). Not a pty capture:
 # ratatui's TestBackend, a character grid with no colour attributes in it
 # — CLAUDE.md rule 5, colour ships unverified. The scratch repository's
 # temporary path is replaced by `/code/api`; nothing else is touched.
@@ -4366,20 +4366,20 @@ what right looks like: Capture header "What right looks like": the rows on scree
 #    `[ Cancel ]` comes first with the cursor on it (ADR-0038 §1).
 #
 
- graft /code/api  7…
-  │ ●   finish the topic                                            63m  e7e39a7
-  │ ●   start the topic                                             64m  169d215
-●─┴─╯   [main] main moves on (2)                                    65m  107af44
-●       main moves on (1)                                           66m  2b2b2f1
-●       main moves on (0)                                           67m  ba665c1
-│       after rebase
-│ ○     [◆ topic] finish the topic                                  —    —
-│ ○     start the topic                                             —    —
-│ ○     main moves on (2)                                           —    —
-│ ○     main moves on (1)                                           —    —
-│ ○     main moves on (0)                                           —    —
-│ ●     [old-release] cut release 1.0                               68m  3b09656
-●─╯     add the base                                                69m  ed332bc
+ graft /code/api  70 commits
+  │ ●    finish the topic                                           63m  e7e39a7
+  │ ●    start the topic                                            64m  169d215
+●─┴─╯    [main] main moves on (2)                                   65m  107af44
+●        main moves on (1)                                          66m  2b2b2f1
+●        main moves on (0)                                          67m  ba665c1
+│        after rebase
+│ ○      [◆ topic] finish the topic                                 —    —
+│ ○      start the topic                                            —    —
+│ ○      main moves on (2)                                          —    —
+│ ○      main moves on (1)                                          —    —
+│ ○      main moves on (0)                                          —    —
+│ ●   ▏  [old-release] cut release 1.0                              68m  3b09656
+●─╯      add the base                                               69m  ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
@@ -4403,10 +4403,12 @@ what right looks like: Capture header "What right looks like": the journal brows
 # `update` over the real job pool, then the real
 # `graft_ops::preview::plan_revert_to` run
 # (crates/graft/tests/it/preview.rs, capture_time_machine_for_docs_shots,
-# #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid
+# asserted). Not a pty capture: ratatui's TestBackend, a character grid
 # with no colour attributes — CLAUDE.md rule 5, colour ships
 # unverified. The scratch repository's temporary path is replaced by
-# `/code/api`; nothing else is touched.
+# `/code/api`, and the base commit's id — invented by this run, so
+# different every time — is zeroed to `0000000`; nothing else is
+# touched.
 #
 # What right looks like:
 #  - The journal browser is gone and the preview box is in its place. `Esc`
@@ -4422,10 +4424,10 @@ what right looks like: Capture header "What right looks like": the journal brows
 #
 
  graft /code/api  4 commits
-◆   [◆ main] add the base                                                                                                                        GT now  d5fb070
-●   Correct the note                                                                                                                             GF 7y   a82960b
-●   Add the first note                                                                                                                           GF 7y   fadcfb3
-◇   Add a readme                                                                                                                                 GF 7y   64ded19
+◆ ▏  [◆ main] add the base                                                                                                                       GT now  0000000
+●    Correct the note                                                                                                                            GF 7y   a82960b
+●    Add the first note                                                                                                                          GF 7y   fadcfb3
+◇    Add a readme                                                                                                                                GF 7y   64ded19
 
 
 
@@ -4482,10 +4484,12 @@ what right looks like: Capture header "What right looks like": the journal brows
 # `update` over the real job pool, then the real
 # `graft_ops::preview::plan_revert_to` run
 # (crates/graft/tests/it/preview.rs, capture_time_machine_for_docs_shots,
-# #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid
+# asserted). Not a pty capture: ratatui's TestBackend, a character grid
 # with no colour attributes — CLAUDE.md rule 5, colour ships
 # unverified. The scratch repository's temporary path is replaced by
-# `/code/api`; nothing else is touched.
+# `/code/api`, and the base commit's id — invented by this run, so
+# different every time — is zeroed to `0000000`; nothing else is
+# touched.
 #
 # What right looks like:
 #  - The journal browser is gone and the preview box is in its place. `Esc`
@@ -4500,11 +4504,11 @@ what right looks like: Capture header "What right looks like": the journal brows
 #  - Nothing has run: this picture is a read.
 #
 
- graft /code/api  4…
-◆   [◆ main] add the base                                           now  d5fb070
-●   Correct the note                                                7y   a82960b
-●   Add the first note                                              7y   fadcfb3
-◇   Add a readme                                                    7y   64ded19
+ graft /code/api  4 commits
+◆ ▏  [◆ main] add the base                                          now  0000000
+●    Correct the note                                               7y   a82960b
+●    Add the first note                                             7y   fadcfb3
+◇    Add a readme                                                   7y   64ded19
 
 
 
@@ -4533,7 +4537,7 @@ what right looks like: Capture header "What right looks like": the first box nam
 # m5-ui-undo-after-push-80x24.txt: 80x24, drawn by `view::view` from a
 # real AppState — a scratch repository pushed to a `file://` bare,
 # then `u` (crates/graft/tests/it/remote_by_key.rs,
-# capture_undo_after_push_for_docs_shots, #[ignore]d). Not a pty
+# capture_undo_after_push_for_docs_shots, asserted). Not a pty
 # capture: the terminal is ratatui's TestBackend, so this is a
 # character grid with no colour attributes in it — CLAUDE.md rule 5,
 # colour ships unverified.
@@ -4556,58 +4560,63 @@ what right looks like: Capture header "What right looks like": the first box nam
 #    box already takes (noted in the ticket; the fix is in graft-ops).
 #  - Your local branch keeps every commit it has: re-push moves the
 #    remote back, not you.
+#
+# The `to push` commit is made by this test moments before the frame is
+# drawn, so its id is new on every run. It is zeroed to `0000000` in
+# this file, at the width it was drawn at, so the capture can be
+# compared to the code. Nothing else here is normalised.
 
 == `u` after a push: the one box with three real answers ==
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-idICFn/wor…
-◆   [◆ main ⇄ origin] to push                                       now  1e68989
-●   Commit 200                                                      7y   d5ae5fd
-●   Commit 199                                                      7y   13e6ab1
-●   Commit 198                                                      7y   f5055d9
-●   Commit 197                                                      7y   2cce853
-●   ╭ Undo after a push ───────────────────────────────────────────────╮ 325da3f
-●   │ commit "to push" is on origin/main                               │ 0722297
-●   │ undo works on your local branch only                             │ b6a4a47
-●   │ Re-push old tip rewrites origin/main, which others may have      │ 60af0eb
-●   │ already pulled                                                   │ aceb8c5
-●   │                                                                  │ 11d68ff
-●   │                                                                  │ 91900bd
-●   │                                                                  │ cec3e93
-●   │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]             │ 0a91ece
-●   ╰──────────────────────────────────────────────────────────────────╯ 3121935
-●   Commit 186                                                      7y   fab25df
-●   Commit 185                                                      7y   09ae97c
-●   Commit 184                                                      7y   49d7783
-●   Commit 183                                                      7y   22d55c9
-●   Commit 182                                                      7y   d212b3e
-●   Commit 181                                                      7y   c8254c5
-●   Commit 180                                                      7y   e95ccd4
+ graft /code/api  152 rows so far
+◆    [◆ main ⇄ origin] to push                                      now  0000000
+● ▏  Commit 200                                                     7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    ╭ Undo after a push ──────────────────────────────────────────────╮ 325da3f
+●    │ commit "to push" is on origin/main                              │ 0722297
+●    │ undo works on your local branch only                            │ b6a4a47
+●    │ Re-push old tip rewrites origin/main, which others may have     │ 60af0eb
+●    │ already pulled                                                  │ aceb8c5
+●    │                                                                 │ 11d68ff
+●    │                                                                 │ 91900bd
+●    │                                                                 │ cec3e93
+●    │ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]            │ 0a91ece
+●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+●    Commit 181                                                     7y   c8254c5
+●    Commit 180                                                     7y   e95ccd4
  ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
 
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-idICFn/wor…
-◆   [◆ main ⇄ origin] to push                                       now  1e68989
-●   Commit 200                                                      7y   d5ae5fd
-●   Commit 199                                                      7y   13e6ab1
-●   Commit 198                                                      7y   f5055d9
-●   Commit 197                                                      7y   2cce853
-●   ╭ Re-push old tip d5ae5fd → origin/main? ──────────────────────────╮ 325da3f
-●   │ origin/main 1e68989 → d5ae5fd · refused if origin moved since    │ 0722297
-●   │ your fetch (lease)                                               │ b6a4a47
-●   │ rewrites history for everyone who has 1e68989                    │ 60af0eb
-●   │ your local branch keeps every commit it has                      │ aceb8c5
-●   │                                                                  │ 11d68ff
-●   │ git push --progress --force-with-lease=refs/heads/main:1e689890… │ 91900bd
-●   │                                                                  │ cec3e93
-●   │ ▸[ Cancel ]   [ Re-push ]                                        │ 0a91ece
-●   ╰──────────────────────────────────────────────────────────────────╯ 3121935
-●   Commit 186                                                      7y   fab25df
-●   Commit 185                                                      7y   09ae97c
-●   Commit 184                                                      7y   49d7783
-●   Commit 183                                                      7y   22d55c9
-●   Commit 182                                                      7y   d212b3e
-●   Commit 181                                                      7y   c8254c5
-●   Commit 180                                                      7y   e95ccd4
+ graft /code/api  152 rows so far
+◆    [◆ main ⇄ origin] to push                                      now  0000000
+● ▏  Commit 200                                                     7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    ╭ Re-push old tip d5ae5fd → origin/main? ─────────────────────────╮ 325da3f
+●    │ origin/main 0000000 → d5ae5fd · refused if origin moved since   │ 0722297
+●    │ your fetch (lease)                                              │ b6a4a47
+●    │ rewrites history for everyone who has 0000000                   │ 60af0eb
+●    │ your local branch keeps every commit it has                     │ aceb8c5
+●    │                                                                 │ 11d68ff
+●    │ git push --progress --force-with-lease=refs/heads/main:0000000… │ 91900bd
+●    │                                                                 │ cec3e93
+●    │ ▸[ Cancel ]   [ Re-push ]                                       │ 0a91ece
+●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+●    Commit 181                                                     7y   c8254c5
+●    Commit 180                                                     7y   e95ccd4
  ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
 

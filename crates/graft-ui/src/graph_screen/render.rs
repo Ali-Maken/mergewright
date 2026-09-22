@@ -11,7 +11,7 @@ use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
 use super::layout::{Columns, graph_width};
-use super::{Badge, BadgeKind, GraphEntry, GraphScreen, Icons, SUBJECT_GAP, badges};
+use super::{Badge, BadgeKind, GraphEntry, GraphScreen, Icons, RULE_WIDTH, SUBJECT_GAP, badges};
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
@@ -166,20 +166,26 @@ impl GraphScreen<'_> {
         );
     }
 
-    /// The marker slot, which holds two things that **do not queue**: the
-    /// cursor's rule ([`row_rule`]) takes its first cell and the Mistake
-    /// Radar's glyph the rest.
+    /// The marker slot, which holds two marks that **do not queue** and the
+    /// gap that keeps them apart: the cursor's rule ([`row_rule`]) takes the
+    /// first cell, the Mistake Radar's glyph the second, and the third stays
+    /// blank so neither ever touches the subject.
     ///
     /// The rule used to lose that contest outright, so on any row carrying a
     /// `⚠` the cursor fell back to the background fill alone — which is the
     /// signal m5-history-and-ghost-preview/35 exists because the user could
     /// not see. Found by taking `docs/shots/m5-ui-dragging-80x24.txt`, not by
-    /// reading the code.
+    /// reading the code. Giving the rule the first cell then spent the gap
+    /// instead (`▏⚠Merge branch 'feature'`), so the slot is three cells wide
+    /// now and [`RULE_WIDTH`] is reserved on every row — see
+    /// [`MARKER_WIDTH`](super::MARKER_WIDTH).
+    /// Reserving it rather than taking it only when a rule draws is what
+    /// keeps the glyph in the same column on a cursor row and its neighbour.
     ///
     /// The marker's text is the bare glyph and the no-marker case is the
     /// empty string, because [`draw_cell`] pads to the width it is given:
-    /// a `"⚠ "` or `"  "` literal *truncates*, to `…`, once the rule has
-    /// taken one of the slot's two cells.
+    /// a `"⚠ "` or `"  "` literal would *truncate*, to `…`, on the narrow
+    /// terminals where the slot is clamped below its full width.
     fn draw_marker_slot(
         &self,
         entry: &GraphEntry<'_>,
@@ -188,18 +194,18 @@ impl GraphScreen<'_> {
         style: Style,
         buf: &mut Buffer,
     ) {
-        let rule = row_rule(entry.line.paint, entry.compare_marked, self.view.ascii);
-        let rule_width = u16::from(rule.is_some()).min(columns.marker_width);
-        if let Some(rule) = rule {
-            draw_cell(
-                buf,
-                columns.marker_x,
-                y,
-                rule_width,
-                rule,
-                foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
-            );
-        }
+        let rule_width = RULE_WIDTH.min(columns.marker_width);
+        let (rule, rule_style) =
+            match row_rule(entry.line.paint, entry.compare_marked, self.view.ascii) {
+                Some(rule) => (
+                    rule,
+                    foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+                ),
+                // Still drawn, so the cell carries the row's own emphasis
+                // rather than whatever the buffer held before it.
+                None => ("", style),
+            };
+        draw_cell(buf, columns.marker_x, y, rule_width, rule, rule_style);
         let (glyph, glyph_style) = match self.marker_glyph(entry) {
             Some((glyph, token)) => (glyph, foreground(self.theme, token)),
             None => ("", style),
