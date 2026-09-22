@@ -8,6 +8,7 @@
 
 pub mod commit_editor;
 pub mod confirm;
+pub mod conflict_resolver;
 pub mod context_menu;
 pub mod credential_prompt;
 pub mod detail;

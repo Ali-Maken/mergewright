@@ -140,8 +140,19 @@ Full frame below the header (graph and pane both covered, header kept —
 `REBASING step 3 of 7` stays visible): title row, document, footer (its own
 complete key list — modal, no `. more`, ADR-0039).
 
+**Both frames below are drawn by hand and compressed to fit this page.** They
+are the authority on *what is on each row and in what order* — that is the
+acceptance — and they are **not** literal terminal output at the size their
+label names: measured during m6/02, their interior rows are 77–79 cells wide
+and vary row to row, under a `120x40` label. Don't build a cell-exact test
+against them; it cannot pass, and one build round was spent discovering that.
+The layout is pinned instead by golden files generated from the widget's own
+render (`crates/graft-ui/tests/shots/resolver-*.txt`), which catch drift but
+claim nothing about whether the screen looks right — that is judged by eye, by
+the user, on the M6 acceptance capture (CLAUDE.md rule 6).
+
 ```
-120x40 (≥100 columns: sides paired)
+120x40 (≥100 columns: sides paired — see the note above on the frame's width)
 ╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ────────────────────────────────╮
 │ src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open                      │
 │ ours = main, what you are rebasing onto · theirs = the commit being replayed │
