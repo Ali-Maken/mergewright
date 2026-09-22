@@ -801,19 +801,20 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     // changes pane (m6-conflicts/04).
     ("⏎", "resolve"), // `banner_key`, `detail::keys` → `resolver::open_resolver`
     ("space", "resolved"), // `detail::keys` → `operate::stage_selected` on an unmerged path
-    // Inside the resolver (`resolver::resolver_key`). `B base` and
-    // `d start over` are m6-conflicts/05's and are not bound here.
-    ("o", "ours"),     // `take_side`, `Take::Ours`
-    ("t", "theirs"),   // the same, `Take::Theirs`
-    ("b", "both"),     // the same, `Take::Both`
-    ("n", "next"),     // `walk_blocks`, forward
-    ("N", "prev"),     // the same, backward
-    ("⏎", "resolved"), // `mark_resolved`: `git add` on the open file
-    ("S", "stash"),    // `stash::stash_key`: opens the overlay
-    ("J", "journal"),  // `journal::journal_key`: opens the browser
-    ("M", "map"),      // `map::map_key`
-    ("O", "overview"), // `strip::strip_key`
-    ("/", "search"),   // `search::search_key`, before `key_event`
+    // Inside the resolver (`resolver::resolver_key`).
+    ("B", "base"),       // `toggle_base`
+    ("d", "start over"), // `restart_box`
+    ("o", "ours"),       // `take_side`, `Take::Ours`
+    ("t", "theirs"),     // the same, `Take::Theirs`
+    ("b", "both"),       // the same, `Take::Both`
+    ("n", "next"),       // `walk_blocks`, forward
+    ("N", "prev"),       // the same, backward
+    ("⏎", "resolved"),   // `mark_resolved`: `git add` on the open file
+    ("S", "stash"),      // `stash::stash_key`: opens the overlay
+    ("J", "journal"),    // `journal::journal_key`: opens the browser
+    ("M", "map"),        // `map::map_key`
+    ("O", "overview"),   // `strip::strip_key`
+    ("/", "search"),     // `search::search_key`, before `key_event`
     // Inside the three overlays, which hint their own lists.
     ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip
     ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry

@@ -393,12 +393,13 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         // pane too, which is why it answers before the focus test below:
         // there is no pane on screen to have the keyboard.
         //
-        // `base: false, restart: false` throughout this build: `B` and `d`
-        // are m6-conflicts/05's, and their hints are still `Planned`.
+        // `B`/`d` act the moment they are pressed (`update::resolver::
+        // toggle_base`/`restart_box`, m6-conflicts/05), so this passes
+        // `true` for both, and the bar draws both as live hints.
         GraphOverlay::Resolver => {
             return Some(HintContext::Resolver {
-                base: false,
-                restart: false,
+                base: true,
+                restart: true,
             });
         }
     };

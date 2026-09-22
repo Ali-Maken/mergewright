@@ -232,6 +232,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             resolver::taken(next, id, result, commands, &mut || local_jobs.next_id());
             next.local_jobs = local_jobs;
         }
+        AppEvent::Produced(id, Product::BaseLoaded(result)) => {
+            resolver::base_loaded(next, id, result);
+        }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);
         }
@@ -384,6 +387,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::ReadRemotes
         | Task::OpenConflict
         | Task::TakeSide
+        | Task::LoadBase
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -435,11 +439,15 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             commands.extend(operate::operated(next, id, *outcome, &mut || {
                 local_jobs.next_id()
             }));
-            // `⏎`'s `git add` on the open file: on to the next conflicted
-            // one, or out. Only that write — `resolved_advance` compares
-            // the id with the one the resolver launched.
+            // `⏎`'s `git add` on the open file, or a whole-file `o`/`t`
+            // (which also stages): on to the next conflicted one, or out.
+            // `d`'s restart is the other write a resolver can launch, and
+            // goes the other way — back to the same file, freshly read.
+            // Both compare the id with the one the resolver launched, so
+            // only the write that matches acts.
             if staged {
                 resolver::resolved_advance(next, commands, id, &mut || local_jobs.next_id());
+                resolver::restart_landed(next, commands, id, &mut || local_jobs.next_id());
             }
             next.local_jobs = local_jobs;
         }
@@ -582,7 +590,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::ExternalEditor(_)
         | Product::HandedOver(_)
         | Product::ConflictOpened(_)
-        | Product::Taken(_) => {}
+        | Product::Taken(_)
+        | Product::BaseLoaded(_) => {}
     }
 }
 

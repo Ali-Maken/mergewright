@@ -16,6 +16,7 @@ use graft::update::resolver::OpenedFrom;
 use graft::update::{AppState, Command, GraphOverlay, Status};
 use graft_core::event::{KeyCode, KeyPress, MouseKind};
 use graft_fixtures::{Scratch, Shape};
+use graft_git::status::UnmergedHow;
 
 use crate::app_harness::{App, changes_pane, cursor_to, press_for_commands};
 
@@ -63,6 +64,19 @@ fn resolver_on(app: &App, state: AppState, path: &str) -> AppState {
             .resolver
             .as_ref()
             .is_some_and(|open| open.file.is_some())
+    })
+}
+
+/// The resolver open on `path`, its first read landed — a whole-file shape
+/// (`file` stays `None` forever; [`resolver_on`] waits for it and hangs).
+fn resolver_on_whole_file(app: &App, state: AppState, path: &str) -> AppState {
+    let state = on_the_row(app, state, path);
+    let state = app.key(&state, KeyCode::Enter);
+    app.pump(state, "the whole-file card", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.whole_file.is_some())
     })
 }
 
@@ -183,23 +197,514 @@ fn open_refusals_in_words() {
     drop(scratch);
 }
 
+/// The whole-file card's own key text, per shape and per binary
+/// (m6-conflicts/05 scope 1).
 #[test]
-fn whole_file_refused_in_words_for_now() {
+fn whole_file_table_through_the_keys() {
+    for (how, binary, want) in [
+        (
+            UnmergedHow::DeletedByThem,
+            false,
+            "o keeps the file  t deletes it",
+        ),
+        (
+            UnmergedHow::DeletedByUs,
+            false,
+            "o deletes it  t keeps theirs",
+        ),
+        (UnmergedHow::AddedByUs, false, "o keeps yours  t drops it"),
+        (
+            UnmergedHow::AddedByThem,
+            false,
+            "o drops it  t keeps theirs",
+        ),
+        (UnmergedHow::BothDeleted, false, "o or t removes it"),
+        (
+            UnmergedHow::BothModified,
+            true,
+            "o keeps ours  t keeps theirs",
+        ),
+        (UnmergedHow::BothAdded, true, "o keeps ours  t keeps theirs"),
+    ] {
+        assert_eq!(
+            graft::update::resolver::whole_file_keys(how, binary),
+            want,
+            "{how:?} binary={binary}"
+        );
+    }
+}
+
+/// `theirs-deleted.txt` is `UD` (`DeletedByThem`): a whole-file card, not a
+/// closed resolver — the shape scope 1 turns from a refusal into a card.
+#[test]
+fn deleted_by_them_o_keeps() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
-    let state = on_the_row(&app, state, "theirs-deleted.txt");
-    let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the whole-file refusal", |state| {
-        state.resolver.is_none() && !matches!(state.status, Status::Ready)
+    let repo = scratch.path().to_owned();
+    let state = resolver_on_whole_file(&app, state, "theirs-deleted.txt");
+    {
+        let whole = open(&state)
+            .whole_file
+            .as_ref()
+            .expect("a whole-file card, not a closed resolver");
+        assert_eq!(whole.how, UnmergedHow::DeletedByThem);
+        assert!(!whole.binary);
+        assert_eq!(
+            whole.lines,
+            vec![b"changed by us, deleted by them".to_vec()],
+            "the card shows what is on disk"
+        );
+    }
+
+    let state = app.key(&state, KeyCode::Char('o'));
+    assert!(
+        state.operating.is_some(),
+        "`o` on a whole-file card queued no write: {:?}",
+        state.status
+    );
+    let state = app.pump(state, "the whole-file resolve", |state| {
+        state.operating.is_none()
     });
 
-    let Status::Sticky { reason, keys } = &state.status else {
-        panic!("a whole-file conflict said {:?}", state.status)
-    };
-    assert!(
-        reason.contains("binary and whole-file conflicts"),
-        "{reason:?}"
+    assert_eq!(
+        on_disk(&repo, "theirs-deleted.txt"),
+        "changed by us, deleted by them\n",
+        "`o` kept our side, staged"
     );
-    assert_eq!(keys.as_deref(), Some("M mergetool  e edit"));
+    assert!(
+        !still_unmerged(&repo)
+            .lines()
+            .any(|line| line == "theirs-deleted.txt"),
+        "git no longer calls it unmerged: {:?}",
+        still_unmerged(&repo)
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+#[test]
+fn deleted_by_them_t_deletes() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = resolver_on_whole_file(&app, state, "theirs-deleted.txt");
+
+    let state = app.key(&state, KeyCode::Char('t'));
+    assert!(
+        state.operating.is_some(),
+        "`t` on a whole-file card queued no write: {:?}",
+        state.status
+    );
+    let state = app.pump(state, "the whole-file resolve", |state| {
+        state.operating.is_none()
+    });
+
+    assert!(
+        !repo.join("theirs-deleted.txt").exists(),
+        "`t` removed the file theirs never had"
+    );
+    assert!(
+        !still_unmerged(&repo)
+            .lines()
+            .any(|line| line == "theirs-deleted.txt"),
+        "git no longer calls it unmerged: {:?}",
+        still_unmerged(&repo)
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// `b` has no meaning on a whole-file card: there are no blocks to keep both
+/// sides of.
+#[test]
+fn b_refused_on_whole_file() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let state = resolver_on_whole_file(&app, state, "theirs-deleted.txt");
+
+    let state = app.key(&state, KeyCode::Char('b'));
+    assert!(state.operating.is_none(), "`b` wrote nothing");
+    let Status::Sticky { reason, keys } = &state.status else {
+        panic!("`b` on a whole-file card said {:?}", state.status)
+    };
+    assert_eq!(reason, "no both for a deleted by them file");
+    assert_eq!(keys.as_deref(), Some("o ours  t theirs"));
+    assert!(open(&state).whole_file.is_some(), "the card is still up");
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// The file's own `Block`s, in order — `ConflictFile::blocks()` answers
+/// only position and state (`BlockAt`), not the `base`/`reproduced` fields a
+/// base test needs, which live on the `Block` each region carries.
+fn conflict_blocks(file: &graft_git::conflict::ConflictFile) -> Vec<&graft_git::conflict::Block> {
+    file.regions
+        .iter()
+        .filter_map(|region| match region {
+            graft_git::conflict::Region::Conflict(block)
+            | graft_git::conflict::Region::Resolved { block, .. } => Some(block),
+            graft_git::conflict::Region::Plain(_) => None,
+        })
+        .collect()
+}
+
+// --------------------------------------------------------------- B: base
+
+/// `B` loads and shows the merged common ancestor inside every open block;
+/// a second `B` hides it again, for free — no job (m6-conflicts/05 scope 2).
+#[test]
+#[allow(
+    non_snake_case,
+    reason = "the key is `B`, and the test is named for it"
+)]
+fn B_shows_and_hides_base() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let state = resolver_on(&app, state, "three.txt");
+    assert!(!open(&state).base_shown, "not shown until asked");
+
+    let state = app.key(&state, KeyCode::Char('B'));
+    assert!(
+        open(&state).base_job.is_some(),
+        "`B` queued no load: {:?}",
+        state.status
+    );
+    let state = app.pump(state, "the base load", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.base_job.is_none())
+    });
+
+    assert!(open(&state).base_shown, "`B` showed it");
+    let file = open(&state).file.as_ref().expect("a document");
+    for block in conflict_blocks(file) {
+        assert!(
+            block.reproduced.is_some(),
+            "every open block of three.txt has a base attached: {block:?}"
+        );
+    }
+    assert!(
+        matches!(&state.status, Status::Done(line) if line == "base shown for 3 conflicts"),
+        "{:?}",
+        state.status
+    );
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(
+        rows.iter().any(|row| row.contains("BASE")),
+        "no BASE row drawn at 120 columns:\n{}",
+        rows.join("\n")
+    );
+
+    let state = app.key(&state, KeyCode::Char('B'));
+    assert!(!open(&state).base_shown, "the second `B` hides it");
+    assert!(open(&state).base_job.is_none(), "hiding queues no job");
+    let file = open(&state).file.as_ref().expect("a document");
+    assert!(
+        conflict_blocks(file)[0].reproduced.is_some(),
+        "hiding keeps the base attached, only base_shown flips"
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// `both-added.txt` is `AA`: two stages, no merge base for git's own `diff3`
+/// to reproduce — `B` says so in words rather than drawing nothing.
+#[test]
+#[allow(
+    non_snake_case,
+    reason = "the key is `B`, and the test is named for it"
+)]
+fn B_says_no_base() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let state = resolver_on(&app, state, "both-added.txt");
+
+    let state = app.key(&state, KeyCode::Char('B'));
+    let state = app.pump(state, "the base load's refusal", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.base_job.is_none())
+    });
+
+    assert!(!open(&state).base_shown, "nothing was attached");
+    let (words, problem) = open(&state).notice.clone().expect("a notice");
+    assert_eq!(words, "this conflict has no common ancestor to show");
+    assert!(problem, "a base asked for and not loaded is a problem");
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// A fresh read — here, closing and reopening the same file — carries no
+/// attached bases: `open_conflict` never calls `attach_base`, only `B` does
+/// (m6-conflicts/05 scope 2).
+#[test]
+fn reread_drops_base() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let state = resolver_on(&app, state, "three.txt");
+    let state = app.key(&state, KeyCode::Char('B'));
+    let state = app.pump(state, "the base load", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.base_job.is_none())
+    });
+    assert!(open(&state).base_shown, "shown before the re-read");
+
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none(), "closed");
+    // Reopened directly: `Esc` never moved the changes-pane cursor off
+    // three.txt's row, so `⏎` there reopens the same file without another
+    // trip through `on_the_row`/`cursor_to`.
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the re-read", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.file.is_some())
+    });
+
+    assert!(!open(&state).base_shown, "a fresh read carries no base");
+    let file = open(&state).file.as_ref().expect("a document");
+    for block in conflict_blocks(file) {
+        assert!(
+            block.reproduced.is_none(),
+            "and nothing was attached to reproduce a base from: {block:?}"
+        );
+    }
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+// ---------------------------------------------------------------- d: restart
+
+/// `d` raises a confirm box; answering it runs `checkout --merge` and the
+/// file comes back with all its markers (m6-conflicts/05 scope 3).
+#[test]
+#[allow(
+    non_snake_case,
+    reason = "the key is `d`, and the test is named for it"
+)]
+fn d_starts_over_behind_a_box() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = resolver_on(&app, state, "both.txt");
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = settled(&app, state);
+    assert_eq!(
+        open(&state).file.as_ref().expect("a document").open(),
+        0,
+        "both.txt's one block is taken"
+    );
+
+    let state = app.key(&state, KeyCode::Char('d'));
+    let confirm = state.confirm.as_ref().expect("`d` raised a box");
+    assert_eq!(confirm.view.title.as_str(), "Start both.txt over?");
+    assert!(
+        confirm
+            .view
+            .message
+            .iter()
+            .any(|line| line.as_str().contains("comes back with all its markers")),
+        "{:?}",
+        confirm.view.message
+    );
+    assert!(
+        confirm.view.message.iter().any(|line| line
+            .as_str()
+            .contains("not undoable while the operation is open")),
+        "{:?}",
+        confirm.view.message
+    );
+    assert_eq!(
+        confirm.view.command.as_str(),
+        "git checkout --merge -- both.txt"
+    );
+
+    // `→` off `Cancel` onto `Start over`, then `Enter` runs it.
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the restart", |state| {
+        state.operating.is_none()
+            && state
+                .resolver
+                .as_ref()
+                .is_some_and(|open| open.job.is_none())
+    });
+
+    assert!(state.confirm.is_none(), "the box is gone");
+    assert_eq!(open(&state).path, Path::new("both.txt"), "the same file");
+    assert_eq!(
+        open(&state).file.as_ref().expect("a document").open(),
+        1,
+        "the take is gone: the block is open again"
+    );
+    assert!(
+        on_disk(&repo, "both.txt").contains("<<<<<<<"),
+        "the markers are back on disk"
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// `Esc` (or `←` onto `Cancel`, then `Enter`) answers the box for free: no
+/// write, the take stands.
+#[test]
+#[allow(
+    non_snake_case,
+    reason = "the key is `d`, and the test is named for it"
+)]
+fn d_cancel_is_free() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = resolver_on(&app, state, "both.txt");
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = settled(&app, state);
+
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_some());
+    let state = app.key(&state, KeyCode::Escape);
+
+    assert!(state.confirm.is_none(), "`Esc` answers the box");
+    assert!(state.operating.is_none(), "no write was launched");
+    assert_eq!(
+        open(&state).file.as_ref().expect("a document").open(),
+        0,
+        "the take still stands"
+    );
+    assert_eq!(
+        on_disk(&repo, "both.txt"),
+        "same on both sides\nthe line, as we changed it\nand a tail\n",
+        "nothing on disk moved"
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// The journal on disk, as the app's own reader sees it.
+fn journal_entries(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
+    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+        .expect("the journal the merge just wrote is readable")
+        .entries()
+        .to_vec()
+}
+
+/// A whole-file `o`/`t` and a `d` restart both run *inside* the merge's own
+/// live operation (`apply::resume::inside_live_operation`) rather than as a
+/// standalone write: neither adds a journal entry of its own — the merge's
+/// one `Pending` entry is what `u` still undoes (m6-conflicts/05 scope 1, 3).
+#[test]
+fn whole_file_and_restart_fold_into_live_entry() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    // The fixture built the merge with raw git, never through the app, so
+    // there is no journal entry for the merge itself here — only whether a
+    // whole-file resolve or a restart adds one of its own is this test's,
+    // and that is `before` either way.
+    let before = journal_entries(&repo).len();
+
+    // A whole-file `o`.
+    let state = resolver_on_whole_file(&app, state, "theirs-deleted.txt");
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = app.pump(state, "the whole-file resolve", |state| {
+        state.operating.is_none()
+    });
+    assert_eq!(
+        journal_entries(&repo).len(),
+        before,
+        "no new entry for the whole-file resolve"
+    );
+
+    // The resolve advanced to whatever conflicted file is next in the
+    // list, keeping the resolver's modal keyboard — `Esc` gives the pane
+    // back, already open on the files list (so `cursor_to` alone finds
+    // `both.txt`; `on_the_row`/`changes_pane` assume a fresh graph-top
+    // start, which this is not).
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none(), "closed, back to the pane");
+    let state = app.pump(state, "the files list after the resolve", |state| {
+        matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
+    });
+
+    // A `d` restart on a block take.
+    let state = cursor_to(&app, state, "both.txt");
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the conflict file", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.file.is_some())
+    });
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = settled(&app, state);
+    let state = app.key(&state, KeyCode::Char('d'));
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the restart", |state| {
+        state.operating.is_none()
+            && state
+                .resolver
+                .as_ref()
+                .is_some_and(|open| open.job.is_none())
+    });
+    assert_eq!(
+        journal_entries(&repo).len(),
+        before,
+        "no new entry for the restart either"
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+// -------------------------------------------------- stash-pop conflict path
+
+/// `KNOWN_GAPS.md` row 229: a conflicted `git stash pop` leaves an unmerged
+/// index with no operation and so no banner — the resolver still opens on
+/// it, names the sides in its own words, and the last file closes it with
+/// no `c continue` offered (m6-conflicts/05 scope 4).
+#[test]
+fn stash_pop_conflict_resolves_without_a_banner() {
+    let scratch = stash_pop_conflict();
+    let (app, state) = opened_on(&scratch);
+    assert!(state.in_progress.is_none(), "a stash pop is no operation");
+
+    let state = resolver_on(&app, state, "sample.txt");
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("ours = your working tree")
+                && row.contains("theirs = the stash")),
+        "the stash-pop explainer is not on the frame:\n{}",
+        rows.join("\n")
+    );
+
+    let state = take_all_and_mark(&app, state);
+    assert!(state.resolver.is_none(), "the only file closes it");
+    assert!(
+        matches!(&state.status, Status::Done(line) if line == "all conflicts resolved"),
+        "no banner, so no `c continue`: {:?}",
+        state.status
+    );
+    assert!(!state.banner_focus, "there is no banner to hand back to");
+    assert_eq!(
+        crate::app_harness::git(scratch.path(), &["ls-files", "-u"]).trim(),
+        "",
+        "the index holds no unmerged entry"
+    );
 
     drop(state);
     app.close();
