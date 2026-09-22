@@ -28,6 +28,7 @@ mod gestures;
 mod merge_rebase;
 mod pick_revert_reset;
 mod preview;
+mod refs_and_names;
 mod remotes;
 mod run;
 mod steps;
@@ -53,6 +54,7 @@ pub fn scenarios() -> Vec<Scenario> {
     all.extend(conflicts::conflicting_merges());
     all.extend(time_machine::time_travelling());
     all.extend(remotes::remote_history());
+    all.extend(refs_and_names::refs_and_names());
     all
 }
 

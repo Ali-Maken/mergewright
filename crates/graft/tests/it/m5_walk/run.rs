@@ -116,6 +116,9 @@ impl Walk<'_> {
         for step in steps {
             state = match step {
                 Step::Key(key) => self.app.press(&state, *key),
+                Step::Type(text) => text.chars().fold(state, |state, character| {
+                    self.app.key(&state, KeyCode::Char(character))
+                }),
                 Step::WaitFor(wait) => self.wait_for(state, *wait)?,
                 Step::CursorTo(badge) => self.cursor_to(&state, |state| on_badge(state, badge))?,
                 Step::CursorToSubject(subject) => {
@@ -226,6 +229,12 @@ impl Walk<'_> {
                 state.journal.shown
                     && matches!(state.journal.entries, Loading::Ready(_))
                     && state.journal.reading.is_none()
+            }),
+            Wait::Prompt => self.pump(state, "the name prompt", |state| {
+                state.name_prompt.is_some()
+            }),
+            Wait::StashReady => self.pump(state, "the stash list", |state| {
+                matches!(state.stash.entries, Loading::Ready(_))
             }),
         }
     }

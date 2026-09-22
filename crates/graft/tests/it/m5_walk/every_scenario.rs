@@ -54,6 +54,13 @@ walk! {
     time_machine_three_steps => "time-machine-three-steps",
     time_machine_esc_returns_to_journal => "time-machine-esc-returns-to-journal",
     pull_diverged_offers_m_and_r => "pull-diverged-offers-m-and-r",
+    b_creates_and_checks_out => "b-creates-and-checks-out",
+    b_refuses_bad_and_existing_names => "b-refuses-bad-and-existing-names",
+    t_creates_a_tag => "t-creates-a-tag",
+    delete_branch_then_u_restores => "delete-branch-then-u-restores",
+    delete_tag_then_u_restores => "delete-tag-then-u-restores",
+    stash_b_branches_from_stash => "stash-b-branches-from-stash",
+    move_a_branch_not_checked_out => "move-a-branch-not-checked-out",
 }
 
 /// Every capture names a distinct `m5-<nn>-…` stem, presses keys, says
@@ -127,6 +134,7 @@ fn ghost_equals_git_is_the_only_claim_check() {
         "conflicts.rs",
         "time_machine.rs",
         "remotes.rs",
+        "refs_and_names.rs",
     ] {
         let source = std::fs::read_to_string(dir.join(name)).expect(name);
         for (number, line) in source.lines().enumerate() {
