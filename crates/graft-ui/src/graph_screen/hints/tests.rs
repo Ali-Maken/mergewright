@@ -246,10 +246,11 @@ fn status_line_keeps_its_keys() {
 /// (m5-03 review, Critical 2 — at 80 columns two of a branch row's three
 /// keys did nothing at all).
 ///
-/// The canary used to be `m merge`, then `b branch`; both have since been
-/// bound (M5 tickets 25 and 10) and the table was updated with them, which
-/// is the rule working. `M mergetool` carries it now — M6's, and the last
-/// `Planned` row left on the graph side.
+/// The canary used to be `m merge`, then `b branch`, then `M mergetool`; all
+/// three have since been bound (M5 tickets 25 and 10, m6-conflicts/04) and
+/// the table was updated with them, which is the rule working. `B base`
+/// carries it now — group 05's, and with `d start over` the last two
+/// `Planned` rows in the table.
 #[test]
 fn no_planned_hint_is_ever_drawn() {
     let planned: Vec<Hint> = every_hint()
@@ -259,7 +260,7 @@ fn no_planned_hint_is_ever_drawn() {
     assert!(
         planned
             .iter()
-            .any(|hint| (hint.key, hint.verb) == ("M", "mergetool")),
+            .any(|hint| (hint.key, hint.verb) == ("B", "base")),
         "the design note's planned entries must stay in the table: {planned:?}"
     );
     for context in all_contexts() {
@@ -348,14 +349,18 @@ fn a_pane_hints_only_its_own_keys() {
         Divider::Hidden,
         200,
     ));
-    assert_eq!(unmerged, " e edit  c commit  ⇥ graph  . more");
+    assert_eq!(
+        unmerged,
+        " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph  . more"
+    );
 }
 
 /// The banner draws its **own** keys — the whole list, at 80 columns, with
 /// no `. more` and no `<> resize`: it is modal, so those two would name
 /// keys it swallows (m5/16). `M`/`e` are there only while something is
-/// conflicted; with nothing unmerged both refuse in words, and a hint that
-/// can only say no is a hint that lies (m5-09 review, Major 2).
+/// conflicted, and so is `⏎ resolve` (m6-conflicts/04); with nothing
+/// unmerged all three refuse in words, and a hint that can only say no is a
+/// hint that lies (m5-09 review, Major 2).
 #[test]
 fn the_banner_draws_its_own_keys_and_no_doorway() {
     assert_eq!(
@@ -367,7 +372,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             Divider::Shown,
             80,
         )),
-        " c continue  s skip  a abort  M mergetool  e edit  ⇥ graph"
+        " ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph"
     );
     assert_eq!(
         hints_text(&hints_for(
@@ -378,7 +383,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             Divider::Shown,
             80,
         )),
-        " c continue  a abort  M mergetool  e edit  ⇥ graph"
+        " ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph"
     );
     assert_eq!(
         hints_text(&hints_for(
@@ -1007,13 +1012,9 @@ fn every_context_lists_resolver() {
 /// mockups, `B base`/`d start over` only under their flag, and answers
 /// [`ladder`]'s width sweep the same way any other ~9-key list would.
 ///
-/// This checks the *table*, not the bar: every entry here is
-/// `HintState::Planned` in this build (`HintContext::Resolver`'s doc
-/// comment), so `hints_for` itself draws nothing for `Resolver` yet — that
-/// half is `no_context_hides_every_key`'s documented exemption, not a gap in
-/// this test. What this proves is that the table and the ladder are already
-/// right, so flipping the table to `Live` (G4) is a one-line change with
-/// nothing left to design.
+/// This checks the *table*, not the bar. Since m6-conflicts/04 every entry
+/// here is `Live` except `B base` and `d start over`, which are group 05's
+/// and stay `Planned` — so `drawable` draws the nine and hides those two.
 #[test]
 fn resolver_hint_ladder() {
     let list = context_list(&HintContext::Resolver {
@@ -1035,7 +1036,10 @@ fn resolver_hint_ladder() {
             ("esc", "close"),
         ]
     );
-    assert!(list.iter().all(|hint| hint.state == HintState::Planned));
+    assert!(
+        list.iter().all(|hint| hint.state == HintState::Live),
+        "every key the resolver's own list draws is bound (m6-conflicts/04): {list:?}"
+    );
 
     let with_base = context_list(&HintContext::Resolver {
         base: true,

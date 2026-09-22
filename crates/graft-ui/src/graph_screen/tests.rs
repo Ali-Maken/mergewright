@@ -953,7 +953,10 @@ fn the_changes_pane_hints_replace_the_row_context() {
         .expect("a footer row")
         .trim_end()
         .to_owned();
-    assert_eq!(unmerged_footer, " e edit  c commit  ⇥ graph  . more");
+    assert_eq!(
+        unmerged_footer,
+        " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph  . more"
+    );
     assert!(
         !unmerged_footer.contains("space stage"),
         "{unmerged_footer}"

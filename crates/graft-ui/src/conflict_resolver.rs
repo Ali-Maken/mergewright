@@ -61,8 +61,19 @@ const GUTTER: u16 = 2;
 const TOO_SMALL: &str = "resolver needs 60x10 · esc closes";
 /// [`TOO_SMALL`]'s ASCII form.
 const TOO_SMALL_ASCII: &str = "resolver needs 60x10 - esc closes";
-const MIN_COLUMNS: u16 = 60;
-const MIN_ROWS: u16 = 10;
+/// The narrowest the resolver draws its document at; below this it draws
+/// [`TOO_SMALL`] instead.
+///
+/// Public because the sentence above [`TOO_SMALL`] makes it the app's
+/// business: *the app decides no key acts.* It cannot decide that against a
+/// number it cannot see, and a second copy of `60` in `update::resolver`
+/// would be the widget's floor and the keyboard's floor drifting apart
+/// (m6-conflicts/04).
+pub const MIN_COLUMNS: u16 = 60;
+/// The shortest the resolver draws its document at, on the same terms as
+/// [`MIN_COLUMNS`]. Counted over the rows the resolver actually gets, not
+/// over the terminal.
+pub const MIN_ROWS: u16 = 10;
 
 /// Everything the resolver draws for one file.
 #[derive(Clone, Debug, PartialEq, Eq)]
