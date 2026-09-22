@@ -4,9 +4,9 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M5 build complete — history and ghost preview.** Every ticket 01–43 is merged; main green workspace-wide at **2470/2470, 1 skipped**. The **M5 acceptance walk is whole: 49 of 49 scenarios `ok`, 0 failed** (`cargo run -p graft --example m5_walk`, conductor's own run on main at `b3b176a`), and `TESTING.md`'s "Not yet walked" section is empty and says so in words. The `KNOWN_GAPS.md` row marked **broken** that stopped M5 being called finished — the walk at 23 of 49 — is closed and moved to `docs/gaps/closed.md`. What remains before the checkpoint: regenerate `docs/AUTHORSHIP.md` from `docs/log/*.md`, run the M6 design pass, then stop for the user — whose own eye-check is the one thing no agent can tick.
+**Current step:** **M5 done, ticked 2026-09-22 on the user's own eye.** Main green at **2472/2472, 1 skipped**; the acceptance walk is 49 of 49. The last thing standing was the cursor row: he could not see it in his theme, twice, and ticket 44 split a `selection` token out of `surface-raised` (1.21:1 → 3.04:1 dark). He confirmed it by looking — *"yes i can see it now much better"* — which is the only instrument rule 5 leaves for colour. **Next: M6 conflicts**, 7 groups filed and sequenced in `.scratch/m6-conflicts/`, 4 of them brownfield and awaiting a scout. ADR-0042 approved the resolver's shape; `docs/design/01` §1.5 and `02-keymap.md` need my edits before group 04 binds a key.
 
-**Running now:** nothing. M5's last builder (ticket 39, the walk's undo/push/secrets eleven) handed back and is merged. Next out of this session: `docs/AUTHORSHIP.md` regeneration, then the M6 design pass (`planner-fable`), then the M5 checkpoint report.
+**Running now:** nothing. M5 is closed. M6 group 01 (`git-conflict-model`, Fable, signature) and group 02 (`ui-conflict-resolver`, brownfield → scout first) are both unblocked and can start together — disjoint crates.
 
 **The milestone's signature failure was two things that must agree with nothing testing one against the other** — six instances: three stale captions, a hand-mirrored layout, an untested banner mirror, and three "text touching a border" fixes where each created the next. Tickets 30, 31 and 11 answer it with one invariant per class: borders, keys, captions.
 
@@ -64,7 +64,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [x] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
 | [x] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
 | [x] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
-| [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
+| [x] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
 | [ ] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
 | [ ] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
 | [ ] | M8 Polish, **final name**, ship (read-only) — **conditional** (ADR-0030) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
