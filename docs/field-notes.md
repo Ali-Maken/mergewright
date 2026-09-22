@@ -39,3 +39,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - **Footer verbosity inverted**: 120 columns gets the long explanatory line, 160 with forty more columns gets the terse one. Wider terminal, terser text.
 - **A caption claimed a screen the capture does not show** — it describes `CONFLICTS (2)` above `STAGED`/`UNSTAGED` while the capture shows `reading…` and neither. Taken mid-load. A capture of a half-loaded screen is weak evidence for everything else on it too.
 - **A caption true at one width and false at the other**: `history.top is 14` holds at 160x48 and is 24 at 80x24. Second instance of a per-width caption bug this milestone.
+- 2026-09-22 — Preview box over the graph at ~200 columns: **no left border**, and the `u` of `undo:` eaten by a lane glyph. Found by eye in five minutes, on the running app, after ticket 30's border sweep passed green. The invariant is right; the sweep does not reach what ships. Ticket 34.
