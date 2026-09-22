@@ -3813,10 +3813,21 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
         // the graph glyph. A row's own text may start further right — a ref
         // badge pushes the subject along — so it is the minimum across the
         // rows that says where the column itself begins.
+        //
+        // The **marker slot** sits between the two and is not the subject
+        // column: it carries the Mistake Radar's `⚠`/`ⓘ` and, since
+        // m5-history-and-ghost-preview/35, the cursor row's own `▏` rule at
+        // every colour depth rather than only at Palette16. Counting those
+        // made this read 2 instead of 4 and fail — the box had not moved.
+        // So they are skipped by name.
         let subject_x = without
             .iter()
             .filter(|row| row.concat().contains("Commit"))
-            .filter_map(|row| row.iter().skip(1).position(|cell| cell.trim() != ""))
+            .filter_map(|row| {
+                row.iter().skip(1).position(|cell| {
+                    cell.trim() != "" && !matches!(cell.as_str(), "▏" | "▸" | "⚠" | "ⓘ")
+                })
+            })
             .map(|index| u16::try_from(index + 1).expect("a screen is narrower than u16::MAX"))
             .min()
             .expect("the graph draws subjects");
@@ -3956,4 +3967,368 @@ fn the_confirm_box_leaves_a_gutter_before_a_wider_detail_pane() {
             rect.right()
         );
     }
+}
+
+/// The state ticket 34 was found in: a preview box docked over a graph that
+/// still has lanes on the rows it covers, at a real terminal width.
+fn preview_over_lanes(columns: u16, rows: u16) -> AppState {
+    let (mut state, _top, _height) = scrolled_preview(120, |height| 2 * height, 3);
+    state.size = Size { columns, rows };
+    state
+}
+
+/// A `Session` whose graph draws in pixels, as Ghostty's does.
+fn pixel_session() -> Session {
+    let mut session = session();
+    session.rendering.tier = graft_core::capabilities::RenderingTier::Pixel;
+    session.capabilities.pixel_protocol = Some(graft_core::capabilities::PixelProtocol::Kitty);
+    session
+}
+
+/// m5-history-and-ghost-preview/34. **The user's fault, and it is not in the
+/// character grid at all.**
+///
+/// At the pixel tier the lane column is not drawn into the buffer:
+/// `view_with_graphics` hands back the rectangle the lane images belong in
+/// and `event_loop::running::draw` writes those images *after* the frame, so
+/// the terminal composites them over whatever the frame already put there. A
+/// box docked over the graph is drawn under them. At ~200 columns that put a
+/// lane glyph on the preview box's own `│` at column 0 and on the `u` of
+/// `undo:` at column 2 — "the box has no left border", and `ndo: u takes
+/// this back`.
+///
+/// **Why every existing test was green.** `border_rules.rs` (ticket 30) and
+/// `pane_boundaries.rs` (29) check cells in a `Buffer`, and every `.txt`
+/// capture is a character grid: the pixel layer is in neither. The two
+/// layers only meet on the user's screen, so the only thing a test can hold
+/// is the *geometry* — that the rectangle handed to the graphics layer and
+/// the rectangle a box drew into do not overlap.
+///
+/// **Failed before the fix**, at every size here — e.g. 200x50 returned
+/// `Rect { x: 0, y: 1, width: 4, height: 48 }` for the lanes against a box
+/// at `Rect { x: 0, y: 38, width: 200, height: 11 }`, overlapping on
+/// `Rect { x: 0, y: 38, width: 4, height: 11 }`: eleven rows of box with
+/// lane images over their first four columns.
+#[test]
+fn the_lane_images_never_cover_a_box_drawn_over_the_graph() {
+    use crate::view::view_with_graphics;
+    use graft_ui::graph_screen::GraphicsStatus;
+
+    let session = pixel_session();
+    for rows in [24u16, 30, 48, 50] {
+        for columns in 20u16..=240 {
+            let state = preview_over_lanes(columns, rows);
+            let mut terminal = Terminal::new(TestBackend::new(columns, rows))
+                .expect("TestBackend reports its size");
+            let mut lanes = None;
+            terminal
+                .draw(|frame| {
+                    lanes = view_with_graphics(&session, &state, &GraphicsStatus::Ok, frame);
+                })
+                .expect("TestBackend cannot fail to draw");
+            let Some(lanes) = lanes else { continue };
+            let view = crate::update::preview::preview_box(&state).expect("a preview is open");
+            let boxed =
+                graft_ui::preview_box::preview_box_area(Rect::new(0, 0, columns, rows), &view);
+            let overlap = lanes.intersection(boxed);
+            assert!(
+                overlap.is_empty(),
+                "{columns}x{rows}: the lane images go in {lanes:?} and the preview box drew in \
+                 {boxed:?} — they share {overlap:?}, which the terminal paints lanes over"
+            );
+        }
+    }
+}
+
+/// The same rule for the modal boxes: the confirm box and the credential
+/// prompt stand over the graph too, and the lane images were written over
+/// them the same way.
+#[test]
+fn the_lane_images_never_cover_the_confirm_box_or_the_credential_prompt() {
+    use crate::view::view_with_graphics;
+    use graft_ui::graph_screen::GraphicsStatus;
+
+    let session = pixel_session();
+    for rows in [24u16, 30, 48] {
+        for columns in [40u16, 60, 80, 100, 120, 160, 200, 240] {
+            for (name, state) in [
+                ("confirm", confirm_over_graph(columns, rows)),
+                ("credential", graph_behind_a_box(columns, rows)),
+            ] {
+                let mut terminal = Terminal::new(TestBackend::new(columns, rows))
+                    .expect("TestBackend reports its size");
+                let mut lanes = None;
+                terminal
+                    .draw(|frame| {
+                        lanes = view_with_graphics(&session, &state, &GraphicsStatus::Ok, frame);
+                    })
+                    .expect("TestBackend cannot fail to draw");
+                let Some(lanes) = lanes else { continue };
+                // The box as it was really drawn, read back out of the
+                // picture rather than recomputed.
+                let grid = draw_cells(&state, columns, rows);
+                if !grid.iter().any(|row| row.iter().any(|c| c == "\u{256d}")) {
+                    continue;
+                }
+                let boxed = drawn_box_rect(&grid);
+                let overlap = lanes.intersection(boxed);
+                assert!(
+                    overlap.is_empty(),
+                    "{name} {columns}x{rows}: lanes in {lanes:?}, box in {boxed:?}, \
+                     sharing {overlap:?}"
+                );
+            }
+        }
+    }
+}
+
+/// The character-grid half of the same ticket, kept as the floor: over a
+/// graph that really has lanes, at every width from 20 to 240 and with the
+/// detail pane and the overview strip both ways, the preview box's own left
+/// border is a border glyph on every one of its rows.
+///
+/// **Why ticket 30's sweep could not see the user's fault.** Three reasons,
+/// none of them width — it already sweeps 20..=240:
+/// 1. `border_rules.rs` renders each widget into a bare `Buffer` of its own
+///    with nothing behind it, so "the graph drew into my border cell" is not
+///    a question it can ask.
+/// 2. `pane_boundaries.rs`'s box sweep does draw a real graph, but it checks
+///    only the cells *beside* `rect.x` and `rect.right()`, and skips the
+///    left check entirely when `rect.x == frame.x` — which is where the
+///    preview box always is, since `preview_box_area` takes the full frame
+///    width and never calls `snap_to_columns` at all.
+/// 3. Neither can see the pixel layer, which is where the fault actually
+///    was — see [`the_lane_images_never_cover_a_box_drawn_over_the_graph`].
+///
+/// This test was **green before the fix as well**: it is here so the grid
+/// half cannot regress while the pixel half is being held, not as evidence
+/// for the ticket.
+#[test]
+fn the_preview_box_keeps_its_own_left_border_over_a_graph_with_lanes() {
+    for detail in [false, true] {
+        for strip in [false, true] {
+            for rows in [24u16, 30, 40, 50] {
+                for columns in 20u16..=240 {
+                    let mut state = preview_over_lanes(columns, rows);
+                    state.detail.shown = detail;
+                    state.strip_shown = strip;
+                    let grid = draw_cells(&state, columns, rows);
+                    let Some(top) = grid.iter().position(|r| r.iter().any(|c| c == "\u{256d}"))
+                    else {
+                        continue;
+                    };
+                    let bottom = grid
+                        .iter()
+                        .rposition(|r| r.iter().any(|c| c == "\u{2570}"))
+                        .expect("a box that opened is closed");
+                    let left = grid[top]
+                        .iter()
+                        .position(|c| c == "\u{256d}")
+                        .expect("the row holding the corner holds it");
+                    for (y, row) in grid.iter().enumerate().take(bottom + 1).skip(top) {
+                        let cell = &row[left];
+                        assert!(
+                            matches!(cell.as_str(), "\u{256d}" | "\u{2502}" | "\u{2570}"),
+                            "detail={detail} strip={strip} {columns}x{rows}: the box's left \
+                             column {left} holds {cell:?} on row {y}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Every cell of a drawn frame, row by row, **with its style** —
+/// [`draw_cells`]'s sibling for assertions about attributes rather than
+/// characters. `TestBackend`'s `Buffer` carries `fg`, `bg` and `modifier`
+/// per cell; rule 5 is about what a `.txt` *capture* can prove, not about
+/// what a test can read (m5-history-and-ghost-preview/35).
+fn drawn_cells(state: &AppState, columns: u16, rows: u16) -> Vec<Vec<ratatui::buffer::Cell>> {
+    let mut terminal =
+        Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| view(&session(), state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer().clone();
+    (0..rows)
+        .map(|y| (0..columns).map(|x| buffer[(x, y)].clone()).collect())
+        .collect()
+}
+
+/// A graph with `feature`'s badge picked up off history row 0 and the
+/// pointer over `over`, as the state is between the button going down and
+/// coming back up.
+fn mid_drag(columns: u16, rows: u16, over: Option<usize>) -> AppState {
+    use crate::update::drag::{DragSource, DragState};
+
+    let mut state = graph_with_no_overlay(columns, rows);
+    state.size = Size { columns, rows };
+    state.on_working_tree = false;
+    let history = state.history.as_mut().expect("a history");
+    history.top = 0;
+    history.cursor = 1;
+    state.drag = Some(DragState {
+        source: DragSource {
+            name: "refs/heads/feature".to_owned(),
+            short: "feature".to_owned(),
+            at: oid(30),
+            current: false,
+        },
+        from_row: 0,
+        over,
+    });
+    state
+}
+
+/// m5-history-and-ghost-preview/35B. **A drag in progress, in the rendered
+/// buffer, before the button comes up.**
+///
+/// The user: *"when I'm dragging there is no indication that I have held
+/// something, until I release and a popup shows up."* Both halves that were
+/// supposed to answer him existed and both were tested —
+/// `RowPaint::Highlighted` on the row under the pointer (ticket 10) and
+/// `HintContext::Dragging`'s `release drop on a row · esc cancel` (swept by
+/// 31). **The chain broke at its last hop, the rendered attribute**, and in
+/// two places:
+///
+/// - `view/entries.rs` painted the drop target `RowPaint::Highlighted` —
+///   the cursor row's own paint — and *replaced* the cursor's highlight
+///   with it. So the whole of a drag, on screen, was one faint background
+///   raise (`#14161B` → `#232730`) moving from one row to another.
+/// - Nothing at all marked the badge as picked up. Before the pointer first
+///   moved, `over` is `None`, so there was no target row either, and the
+///   footer was the only thing on screen that had changed.
+///
+/// - Every drag test was on `AppState`, not on a frame:
+///   `update/drag/tests.rs` and `tests/it/name_and_drag.rs` assert
+///   `state.drag…over == Some(row)`, and the one capture in that file is of
+///   the drop menu **after** release. Nothing rendered a frame while
+///   `state.drag` was `Some`. This test does.
+///
+/// Three marks are asserted, which is what 35 chose to draw:
+/// 1. the row the badge is **over** — `▸` in the accent colour, its own
+///    `RowPaint::DropTarget`, so it is not the cursor's mark;
+/// 2. the row the badge came **from** — dimmed, because the badge is not
+///    there any more, it is in the user's hand. This is the one that
+///    appears on the button *down*, before any motion;
+/// 3. the cursor row — still carrying its own `▏`, because it has not
+///    moved and comes back when the badge is dropped.
+///
+/// Plus the hint bar, which was right all along.
+#[test]
+fn a_drag_in_progress_is_visible_in_the_buffer_before_the_button_comes_up() {
+    use ratatui::style::Modifier;
+
+    const COLUMNS: u16 = 120;
+    const ROWS: u16 = 24;
+
+    let state = mid_drag(COLUMNS, ROWS, Some(4));
+    let grid = draw_cells(&state, COLUMNS, ROWS);
+    let painted = drawn_cells(&state, COLUMNS, ROWS);
+    let cells = |y: usize| &painted[y];
+
+    // Screen row of an absolute history row, read off the picture rather
+    // than assumed: the header takes row 0 and the working-tree row takes
+    // the next, so history row 0 is two down, not one.
+    let first = grid
+        .iter()
+        .position(|row| row.concat().contains("Uncommitted changes"))
+        .expect("the working-tree row is drawn")
+        + 1;
+    let row_of = |history_row: usize| first + history_row;
+
+    // 1. The target row: `▸`, in the accent colour.
+    let theme = session().theme;
+    let accent = graft_ui::paint::color(theme.token(graft_ui::theme::Token::Accent));
+    let target = cells(row_of(4));
+    let mark = target
+        .iter()
+        .position(|cell| cell.symbol() == "▸")
+        .expect("the row under the pointer is marked");
+    assert_eq!(
+        target[mark].fg, accent,
+        "the drop mark is drawn in the accent colour"
+    );
+    // And it is *not* the cursor's mark, so the two read as two things.
+    assert!(
+        !target.iter().any(|cell| cell.symbol() == "▏"),
+        "the target row does not also carry the cursor's rule"
+    );
+
+    // 2. The source row is dimmed — the mark that lands on the button down.
+    //    Asserted on the subject text, which is the row's own words: the
+    //    lane glyph and the ref badge carry branch colours of their own and
+    //    take the paint's modifier through their own styles.
+    let subject_at = |y: usize| {
+        grid[y]
+            .iter()
+            .position(|cell| cell.as_str() == "C")
+            .expect("every row here has a `Commit N` subject")
+    };
+    let source = cells(row_of(0));
+    assert!(
+        source[subject_at(row_of(0))]
+            .modifier
+            .contains(Modifier::DIM),
+        "the subject of the row the badge came from is dim:\n{:?}",
+        grid[row_of(0)].concat()
+    );
+    let untouched = cells(row_of(2));
+    assert!(
+        !untouched[subject_at(row_of(2))]
+            .modifier
+            .contains(Modifier::DIM),
+        "a row with nothing to do with the drag is not:\n{:?}",
+        grid[row_of(2)].concat()
+    );
+
+    // 3. The cursor row keeps its own rule while the badge is in the air.
+    let cursor = cells(row_of(1));
+    assert!(
+        cursor.iter().any(|cell| cell.symbol() == "▏"),
+        "the cursor row is still findable during a drag:\n{:?}",
+        grid[row_of(1)].concat()
+    );
+}
+
+/// The fourth mark, and the one half of the chain that was right all along:
+/// `HintContext::Dragging`'s bar. It reached the frame; it was simply the
+/// only thing on screen that changed, and the footer is not where a hand on
+/// the mouse is looking.
+#[test]
+fn the_hint_bar_names_the_gesture_while_a_badge_is_in_the_air() {
+    const COLUMNS: u16 = 120;
+    const ROWS: u16 = 24;
+
+    let grid = draw_cells(&mid_drag(COLUMNS, ROWS, Some(4)), COLUMNS, ROWS);
+    let footer = grid[usize::from(ROWS) - 1].concat();
+    assert!(
+        footer.contains("release") && footer.contains("drop on a row"),
+        "the footer names the gesture: {footer:?}"
+    );
+    assert!(footer.contains("esc"), "and the way out: {footer:?}");
+}
+
+/// The button-down half on its own: with nothing yet under the pointer
+/// (`over: None`, which is the state a press produces before any motion),
+/// the screen still says a badge has been picked up.
+///
+/// This is the exact moment the user was describing. Before 35 the only
+/// thing that changed on it was the footer.
+#[test]
+fn picking_a_badge_up_changes_the_screen_before_the_pointer_moves() {
+    const COLUMNS: u16 = 120;
+    const ROWS: u16 = 24;
+
+    let mut state = mid_drag(COLUMNS, ROWS, None);
+    let holding = state.drag.take();
+    let before = draw(&state, COLUMNS, ROWS);
+    state.drag = holding;
+    let after = draw(&state, COLUMNS, ROWS);
+
+    assert_ne!(
+        before, after,
+        "the press alone changes the picture — the source row fades and the footer swaps"
+    );
 }

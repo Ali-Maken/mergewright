@@ -6,7 +6,7 @@ shape: octopus-merge, truecolor, 80x24, cursor on row 2
 
  graft ~/code/api  5 commits
 *-+-+-\   Merge branches 'topic-1', 'topic-2' and 'topic-3'         4y   e385b54
-| | | *   topic 3                                                   4y   c95dba0
+| | | * | topic 3                                                   4y   c95dba0
 | | * |   topic 2                                                   4y   3d625a5
 | * | |   topic 1                                                   4y   04bb363
 *-+-+-/   Add the base                                              4y   68d5d19

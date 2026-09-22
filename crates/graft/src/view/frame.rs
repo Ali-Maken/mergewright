@@ -90,10 +90,15 @@ fn draw_journal(
     } else {
         frame.render_widget(widget, area);
     }
-    draw_context_menu(state, frame, area, &session.theme);
-    draw_confirm(state, frame, area, &session.theme, &[]);
-    draw_name_prompt(state, frame, area, session);
-    draw_credential(state, frame, area, session);
+    // The rectangles the boxes report are the pixel layer's business
+    // (`pixels_above_overlays`), and this overlay draws no pixels — so they
+    // are taken and dropped here rather than threaded nowhere.
+    let _boxes: [Option<Rect>; 4] = [
+        draw_context_menu(state, frame, area, &session.theme),
+        draw_confirm(state, frame, area, &session.theme, &[]),
+        draw_name_prompt(state, frame, area, session),
+        draw_credential(state, frame, area, session),
+    ];
     None
 }
 
@@ -114,10 +119,15 @@ fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect
     } else {
         frame.render_widget(widget, area);
     }
-    draw_context_menu(state, frame, area, &session.theme);
-    draw_confirm(state, frame, area, &session.theme, &[]);
-    draw_name_prompt(state, frame, area, session);
-    draw_credential(state, frame, area, session);
+    // The rectangles the boxes report are the pixel layer's business
+    // (`pixels_above_overlays`), and this overlay draws no pixels — so they
+    // are taken and dropped here rather than threaded nowhere.
+    let _boxes: [Option<Rect>; 4] = [
+        draw_context_menu(state, frame, area, &session.theme),
+        draw_confirm(state, frame, area, &session.theme, &[]),
+        draw_name_prompt(state, frame, area, session),
+        draw_credential(state, frame, area, session),
+    ];
     None
 }
 
@@ -150,11 +160,15 @@ fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) 
         );
         None
     };
-    draw_context_menu(state, frame, area, &session.theme);
-    draw_confirm(state, frame, area, &session.theme, &[]);
-    draw_name_prompt(state, frame, area, session);
-    draw_credential(state, frame, area, session);
-    graph
+    let overlays = [
+        draw_context_menu(state, frame, area, &session.theme),
+        draw_confirm(state, frame, area, &session.theme, &[]),
+        draw_name_prompt(state, frame, area, session),
+        draw_credential(state, frame, area, session),
+    ];
+    // The Map's own pixels are the detail pane's, and a full-width box
+    // covers that pane too (m5-history-and-ghost-preview/34).
+    pixels_above_overlays(graph, overlays.into_iter().flatten())
 }
 
 /// The commit editor in the graph's area, the detail pane left alone. Always
@@ -263,18 +277,20 @@ pub fn view_with_graphics(
                 } else {
                     render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
                 };
-                draw_preview(state, frame, area, &session.theme);
-                draw_context_menu(state, frame, area, &session.theme);
-                draw_confirm(
-                    state,
-                    frame,
-                    area,
-                    &session.theme,
-                    &row_columns(session, state, &screen, area),
-                );
-                draw_name_prompt(state, frame, area, session);
-                draw_credential(state, frame, area, session);
-                graph
+                let overlays = [
+                    draw_preview(state, frame, area, &session.theme),
+                    draw_context_menu(state, frame, area, &session.theme),
+                    draw_confirm(
+                        state,
+                        frame,
+                        area,
+                        &session.theme,
+                        &row_columns(session, state, &screen, area),
+                    ),
+                    draw_name_prompt(state, frame, area, session),
+                    draw_credential(state, frame, area, session),
+                ];
+                pixels_above_overlays(graph, overlays.into_iter().flatten())
             }
         },
         Screen::Status => {
@@ -688,19 +704,18 @@ fn draw_tab_strip(
 /// asks for — the same height `AppState::graph_rows` already took out of
 /// the viewport, so the box covers rows the graph did not draw rather than
 /// rows it did.
-fn draw_preview(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
-    let Some(view) = crate::update::preview::preview_box(state) else {
-        return;
-    };
+fn draw_preview(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) -> Option<Rect> {
+    let view = crate::update::preview::preview_box(state)?;
     let rect = graft_ui::preview_box::preview_box_area(area, &view);
     if rect.is_empty() {
-        return;
+        return None;
     }
     clear_and_tint(frame, rect, rect, theme);
     frame.render_widget(
         &graft_ui::preview_box::PreviewBoxWidget { view: &view, theme },
         rect,
     );
+    Some(rect)
 }
 
 /// Hands an overlay a rectangle it really owns: `clear` is wiped, then
@@ -743,6 +758,51 @@ pub(super) fn primary_pane_area(state: &AppState, area: Rect) -> Option<Rect> {
         (area.width, area.height),
     );
     graft_ui::detail_pane::split_area(layout, area).0
+}
+
+/// The graph's pixel rectangle cut back to the rows no overlay stands on
+/// (m5-history-and-ghost-preview/34).
+///
+/// **Why this exists at all.** The pixel tier does not draw the lane column
+/// into the text buffer: `view_with_graphics` hands back the rectangle the
+/// lanes belong in and `event_loop::running::draw` writes the images *after*
+/// the whole frame, so the terminal composites them on top of every cell the
+/// frame already wrote. An overlay that covers the graph — the Ghost Preview
+/// box, the `.` popup, the confirm box, either prompt — is therefore drawn
+/// *under* the lanes it is standing on, however correct its own rectangle is.
+///
+/// That is the fault the user found: at ~200 columns the preview box's own
+/// `│` left border sat at column 0 and the `u` of `undo:` at column 2, and
+/// the lane image covered both. Nothing in the character grid was wrong, so
+/// no `.txt` capture and no buffer sweep could see it — the two layers only
+/// meet on the user's screen.
+///
+/// **The rule, one for every overlay:** the lanes keep the rows above the
+/// topmost overlay that overlaps them, and nothing below it. Cutting rather
+/// than splitting because the graphics layer places one rectangle, not a
+/// set; an overlay docked to the bottom (the preview box) therefore costs
+/// the lanes only the rows it actually covers, and a centred box costs them
+/// the rows below it too — which is the safe direction, since those rows are
+/// the box's own and the graph text under it was never drawn either.
+///
+/// `None` when nothing is left, which reads as "no lanes on this frame".
+fn pixels_above_overlays(
+    graph: Option<Rect>,
+    overlays: impl Iterator<Item = Rect>,
+) -> Option<Rect> {
+    let graph = graph?;
+    let mut height = graph.height;
+    for overlay in overlays {
+        if overlay.is_empty()
+            || overlay.right() <= graph.x
+            || overlay.x >= graph.right()
+            || overlay.bottom() <= graph.y
+        {
+            continue;
+        }
+        height = height.min(overlay.y.saturating_sub(graph.y));
+    }
+    (height > 0).then_some(Rect { height, ..graph })
 }
 
 /// The band a box occupies: its own rows, the frame's whole width.
@@ -846,15 +906,15 @@ fn overlay_band(area: Rect, rect: Rect, pane: Option<Rect>) -> Rect {
 /// the pane, and only then is the popup's own rectangle tinted and drawn.
 /// The popup itself is not widened (m5-history-and-ghost-preview/12, found
 /// by the user in `docs/shots/m5-ui-context-menu-verbs-80x24.txt`).
-fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
-    let Some(open) = state.context_menu.as_ref() else {
-        return;
-    };
+fn draw_context_menu(
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+    theme: &Theme,
+) -> Option<Rect> {
+    let open = state.context_menu.as_ref()?;
     let menu = &open.menu;
-    let Some((x, y, width, height)) = crate::update::context_menu_area(state, open.row, menu)
-    else {
-        return;
-    };
+    let (x, y, width, height) = crate::update::context_menu_area(state, open.row, menu)?;
     let rect = Rect {
         x,
         y,
@@ -863,11 +923,14 @@ fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Th
     }
     .intersection(area);
     if rect.is_empty() {
-        return;
+        return None;
     }
     let band = overlay_band(area, rect, primary_pane_area(state, area));
     clear_and_tint(frame, band, rect, theme);
     frame.render_widget(menu, rect);
+    // The band, not the popup: the whole of it is cleared, so the lanes are
+    // gone from every cell of it, not only the popup's own.
+    Some(band)
 }
 
 /// Draws the discard confirm box over everything else, when one is open
@@ -875,13 +938,17 @@ fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Th
 /// answers a key while it is up — so it is drawn last, after the context
 /// menu, and never under it. Like the context menu the widget paints only
 /// its own text, so the raised background is this caller's job.
-fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme, columns: &[u16]) {
-    let Some(pending) = state.confirm.as_ref() else {
-        return;
-    };
+fn draw_confirm(
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+    theme: &Theme,
+    columns: &[u16],
+) -> Option<Rect> {
+    let pending = state.confirm.as_ref()?;
     let natural = graft_ui::confirm::confirm_area(area, &pending.view).intersection(area);
     if natural.is_empty() {
-        return;
+        return None;
     }
     // ADR-0040: the box covers whole columns or it clears. This one never
     // clears — the rows beside it are the graph it is about to act on, and
@@ -901,7 +968,7 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme, 
         None => (natural, full_width_band(area, natural)),
     };
     if rect.is_empty() {
-        return;
+        return None;
     }
     clear_and_tint(frame, clear, rect, theme);
     frame.render_widget(
@@ -911,6 +978,7 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme, 
         },
         rect,
     );
+    Some(clear)
 }
 
 /// git's credential question, over everything — the confirm box included
@@ -926,13 +994,16 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme, 
 /// Draws the name prompt (`b`, `t`, stash `b`) over everything but git's
 /// own credential question — which opens by itself, at a moment nobody
 /// chose, and so has to be the one box on top.
-fn draw_name_prompt(state: &AppState, frame: &mut Frame, area: Rect, session: &Session) {
-    let Some(view) = super::name_prompt_view(state) else {
-        return;
-    };
+fn draw_name_prompt(
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+    session: &Session,
+) -> Option<Rect> {
+    let view = super::name_prompt_view(state)?;
     let rect = graft_ui::name_prompt::name_prompt_area(area).intersection(area);
     if rect.is_empty() {
-        return;
+        return None;
     }
     let theme = &session.theme;
     // ADR-0040: clears rather than snapping, for the credential prompt's
@@ -943,15 +1014,19 @@ fn draw_name_prompt(state: &AppState, frame: &mut Frame, area: Rect, session: &S
         &graft_ui::name_prompt::NamePrompt { view: &view, theme },
         rect,
     );
+    Some(full_width_band(area, rect))
 }
 
-fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, session: &Session) {
-    let Some(view) = super::credential_view(state) else {
-        return;
-    };
+fn draw_credential(
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+    session: &Session,
+) -> Option<Rect> {
+    let view = super::credential_view(state)?;
     let rect = graft_ui::credential_prompt::credential_area(area).intersection(area);
     if rect.is_empty() {
-        return;
+        return None;
     }
     let theme = &session.theme;
     // ADR-0040: this box clears, at every width, rather than snapping. It
@@ -970,6 +1045,7 @@ fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, session: &Se
         },
         rect,
     );
+    Some(full_width_band(area, rect))
 }
 
 /// The footer's notice: what is happening or just happened, else `F3`'s

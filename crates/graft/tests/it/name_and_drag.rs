@@ -374,6 +374,40 @@ fn dropped_onto_main(app: &App, state: AppState, columns: u16, rows: u16) -> App
     state
 }
 
+/// The same gesture stopped **one event earlier**: the badge is over
+/// `main`'s row and the button is still down.
+///
+/// This is the state the user described as showing nothing
+/// (m5-history-and-ghost-preview/35B): *"when I'm dragging there is no
+/// indication that I have held something, until I release and a popup shows
+/// up."* Every drag test before this one either asserted `AppState` or
+/// captured the frame *after* release.
+fn holding_over_main(app: &App, state: AppState, columns: u16, rows: u16) -> AppState {
+    let state = app.resize(&opened(app, state), columns, rows);
+    let state = settled(app, state);
+
+    let (state, column, from_screen_row) = grab_a_badge(app, &state, columns);
+    let from_row = state
+        .drag
+        .as_ref()
+        .map(|drag| drag.from_row)
+        .expect("a badge is in the air");
+    let onto = mains_row(&state);
+    let onto_screen_row = from_screen_row + u16::try_from(onto - from_row).expect("a small window");
+    let state = app.mouse(
+        &state,
+        MouseKind::Drag(MouseButton::Left),
+        column,
+        onto_screen_row,
+    );
+    assert_eq!(
+        state.drag.as_ref().and_then(|drag| drag.over),
+        Some(onto),
+        "the badge is over main's row, button still down"
+    );
+    state
+}
+
 /// The gesture end to end: a menu with a title and a disabled row, and
 /// `Enter` on an enabled verb landing in a Ghost Preview rather than a
 /// write.
@@ -454,6 +488,53 @@ fn capture_the_drop_menu_for_docs_shots() {
         }
     }
     assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
+}
+
+/// **Mid-drag**, before the button comes up: the one frame nothing captured
+/// until m5-history-and-ghost-preview/35.
+#[test]
+fn capture_a_drag_in_flight_for_docs_shots() {
+    let updating = updating_shots(std::env::var_os("GRAFT_UPDATE_SHOTS").as_deref());
+    let mut drifted = Vec::new();
+    for (columns, rows) in [(80_u16, 24_u16), (160, 48)] {
+        let scratch = forked();
+        let (app, state) = App::open(scratch.path());
+        let state = at_a_fixed_path(holding_over_main(&app, state, columns, rows));
+        let out = capture(&state, columns, rows, &dragging_caption(columns, rows));
+        app.close();
+        if let Err(why) = check_capture(&shot(columns, rows, "dragging"), &out, updating) {
+            drifted.push(why);
+        }
+    }
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
+}
+
+fn dragging_caption(columns: u16, rows: u16) -> String {
+    format!(
+        "# m5-ui-dragging-{columns}x{rows}.txt: drawn by `view::view` from a real\n\
+         # AppState over a real repository (`main` three commits, `feature` forked off\n\
+         # the first with two of its own, `feature` checked out), opened over the real\n\
+         # job pool, `feature`'s badge pressed and dragged onto `main`'s row — the\n\
+         # button is **still down**, two real mouse events through `update`, no release\n\
+         # (crates/graft/tests/it/name_and_drag.rs, capture_a_drag_in_flight_for_docs_shots).\n\
+         # A golden snapshot: that test fails if the frame drifts. Regenerate on\n\
+         # purpose with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so\n\
+         # this is a character grid with no colour attributes in it — CLAUDE.md rule 5,\n\
+         # colour ships unverified, and the raised background on two of these rows is\n\
+         # **not** in this file. The three marks below are shapes for exactly that\n\
+         # reason.\n\
+         #\n\
+         # What right looks like:\n\
+         #  - `main`'s row carries `▸` in the marker column: this is where the badge\n\
+         #    would land.\n\
+         #  - The row `feature`'s badge came off is faded — the badge is in the air,\n\
+         #    not on that row. Here that is also the row the cursor is on (the badge\n\
+         #    was picked up from under it), so the fade replaces the cursor's own\n\
+         #    `▏`: one row, one state. Drag from a row the cursor is not on and both\n\
+         #    marks are drawn, `▏` and `▸`, on different rows.\n\
+         #  - The footer reads `release drop on a row  esc cancel`.\n\
+         #  - Nothing else has moved: no menu, no box, the graph unchanged.\n"
+    )
 }
 
 /// The name prompt with its option line and a refusal under the field: `b`

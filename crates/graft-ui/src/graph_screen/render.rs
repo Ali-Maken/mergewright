@@ -127,30 +127,9 @@ impl GraphScreen<'_> {
             "a Ghost Preview row never carries the pinned-compare accent or a Mistake Radar \
              marker — the caller builds ghost rows fresh, never off a real row that had one"
         );
-        let (style, trailing_style, palette16_edge) = self.row_emphasis(entry, y, area, buf);
+        let (style, trailing_style) = self.row_emphasis(entry, y, area, buf);
 
-        let (glyph, glyph_style) = if let Some((glyph, token)) = self.marker_glyph(entry) {
-            (glyph, foreground(self.theme, token))
-        } else if entry.compare_marked || palette16_edge {
-            // The pinned compare base (`x`, m2-details-and-diffs/11) draws
-            // the same accent `▏` the Palette16 fallback uses, unconditional
-            // of colour depth: it is a mark the user set, not a substitute
-            // for a background this terminal can't show.
-            (
-                "▏ ",
-                foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
-            )
-        } else {
-            ("  ", style)
-        };
-        draw_cell(
-            buf,
-            columns.marker_x,
-            y,
-            columns.marker_width,
-            glyph,
-            glyph_style,
-        );
+        self.draw_marker_slot(entry, y, columns, style, buf);
         let taken = self.draw_badges(entry, y, columns, style, buf);
         draw_cell(
             buf,
@@ -187,6 +166,54 @@ impl GraphScreen<'_> {
         );
     }
 
+    /// The marker slot, which holds two things that **do not queue**: the
+    /// cursor's rule ([`row_rule`]) takes its first cell and the Mistake
+    /// Radar's glyph the rest.
+    ///
+    /// The rule used to lose that contest outright, so on any row carrying a
+    /// `⚠` the cursor fell back to the background fill alone — which is the
+    /// signal m5-history-and-ghost-preview/35 exists because the user could
+    /// not see. Found by taking `docs/shots/m5-ui-dragging-80x24.txt`, not by
+    /// reading the code.
+    ///
+    /// The marker's text is the bare glyph and the no-marker case is the
+    /// empty string, because [`draw_cell`] pads to the width it is given:
+    /// a `"⚠ "` or `"  "` literal *truncates*, to `…`, once the rule has
+    /// taken one of the slot's two cells.
+    fn draw_marker_slot(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        columns: &Columns,
+        style: Style,
+        buf: &mut Buffer,
+    ) {
+        let rule = row_rule(entry.line.paint, entry.compare_marked, self.view.ascii);
+        let rule_width = u16::from(rule.is_some()).min(columns.marker_width);
+        if let Some(rule) = rule {
+            draw_cell(
+                buf,
+                columns.marker_x,
+                y,
+                rule_width,
+                rule,
+                foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+            );
+        }
+        let (glyph, glyph_style) = match self.marker_glyph(entry) {
+            Some((glyph, token)) => (glyph, foreground(self.theme, token)),
+            None => ("", style),
+        };
+        draw_cell(
+            buf,
+            columns.marker_x.saturating_add(rule_width),
+            y,
+            columns.marker_width.saturating_sub(rule_width),
+            glyph,
+            glyph_style,
+        );
+    }
+
     /// The marker slot's glyph and colour token for this row's Mistake Radar
     /// marker, or `None` when there is none to draw — either the row carries
     /// no finding, or the column has not yet earned its keep this session
@@ -198,11 +225,16 @@ impl GraphScreen<'_> {
             return None;
         }
         let marker = entry.marker?;
+        // The bare glyph: `draw_cell` pads it out to whatever the slot has
+        // left, which since m5-history-and-ghost-preview/35 is one cell on
+        // a row that also carries the cursor's rule and two otherwise. A
+        // trailing space baked in here truncated to `…` in the one-cell
+        // case.
         Some(match (marker.severity, self.view.ascii) {
-            (Severity::Warning, false) => ("⚠ ", Token::Warning),
-            (Severity::Warning, true) => ("! ", Token::Warning),
-            (Severity::Info, false) => ("ⓘ ", Token::TextMuted),
-            (Severity::Info, true) => ("i ", Token::TextMuted),
+            (Severity::Warning, false) => ("⚠", Token::Warning),
+            (Severity::Warning, true) => ("!", Token::Warning),
+            (Severity::Info, false) => ("ⓘ", Token::TextMuted),
+            (Severity::Info, true) => ("i", Token::TextMuted),
         })
     }
 
@@ -224,28 +256,30 @@ impl GraphScreen<'_> {
         y: u16,
         area: Rect,
         buf: &mut Buffer,
-    ) -> (Style, Style, bool) {
+    ) -> (Style, Style) {
         let mut style = foreground(self.theme, Token::Text);
         let mut trailing_style = foreground(self.theme, Token::TextMuted);
-        let highlighted = entry.line.paint == RowPaint::Highlighted;
-        let palette16_edge = highlighted
-            && matches!(
-                self.theme.color_depth(),
-                ColorDepth::Palette16 | ColorDepth::None
-            );
+        let raised = matches!(
+            entry.line.paint,
+            RowPaint::Highlighted | RowPaint::DropTarget
+        );
+        let no_background = matches!(
+            self.theme.color_depth(),
+            ColorDepth::Palette16 | ColorDepth::None
+        );
 
-        if highlighted {
+        if raised {
             style = style.add_modifier(Modifier::BOLD);
             trailing_style = trailing_style.add_modifier(Modifier::BOLD);
-            if !palette16_edge {
-                let raised = color(self.theme.token(Token::SurfaceRaised));
+            if !no_background {
+                let fill = color(self.theme.token(Token::SurfaceRaised));
                 buf.set_style(
                     Rect {
                         y,
                         height: 1,
                         ..area
                     },
-                    Style::new().bg(raised),
+                    Style::new().bg(fill),
                 );
             }
         } else if entry.line.paint == RowPaint::Dimmed {
@@ -253,7 +287,7 @@ impl GraphScreen<'_> {
             trailing_style = trailing_style.add_modifier(Modifier::DIM);
         }
 
-        (style, trailing_style, palette16_edge)
+        (style, trailing_style)
     }
 }
 
@@ -393,4 +427,48 @@ fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: St
     }
     let text = fit(text, usize::from(width));
     buf.set_stringn(x, y, text, usize::from(width), style);
+}
+
+/// The accent rule the marker slot draws for this row, or `None` when the
+/// slot is the row's own to leave blank.
+///
+/// **A shape, at every colour depth** (m5-history-and-ghost-preview/35).
+/// The cursor row used to be marked by `Modifier::BOLD` plus a background
+/// one step off the pane's own — `#14161B` → `#232730` in the dark theme —
+/// and nothing else, with the `▏` rule drawn only where the terminal had no
+/// background to give (`ColorDepth::Palette16` and `NO_COLOR`). Both were
+/// applied, and both were correct, and the user still could not find his own
+/// cursor: *"really and I mean really hard to notice which row I'm on."* A
+/// six-percent lightness step is a real attribute and an unreadable signal,
+/// and a test that asserts `bg == SurfaceRaised` cannot tell the difference.
+///
+/// So the rule is unconditional now. It costs the two cells the slot already
+/// reserves, it survives every theme, every colour depth and a screenshot in
+/// black and white, and it is the one cue that does not depend on the
+/// terminal's palette being kind.
+///
+/// Three marks share the slot, and they are distinct **by shape**, so two of
+/// them on screen at once still read as two different things:
+///
+/// | Unicode | ASCII | |
+/// |---|---|---|
+/// | `▏` | `\|` | the cursor row, or the pinned compare base (`x`) |
+/// | `▸` | `>` | the row a dragged badge would land on |
+///
+/// The ASCII column follows [`GraphScreen::marker_glyph`]'s switch on the
+/// same `view.ascii` flag. The compare mark took the Unicode `▏` at the
+/// ASCII tier before this — a pre-existing leak, fixed here because the
+/// rule is now one function.
+///
+/// The rule takes the **first** of the slot's two cells and a Mistake Radar
+/// marker the second, so a row can carry both (`▏⚠`) and the cursor is never
+/// the one that loses. `Ghost` and `Dimmed` rows draw no rule: a ghost is
+/// not somewhere the cursor can be, and a dimmed row is one pushed back.
+fn row_rule(paint: RowPaint, compare_marked: bool, ascii: bool) -> Option<&'static str> {
+    let cursor = if ascii { "|" } else { "\u{258f}" };
+    match paint {
+        RowPaint::DropTarget => Some(if ascii { ">" } else { "\u{25b8}" }),
+        RowPaint::Highlighted => Some(cursor),
+        RowPaint::Normal | RowPaint::Dimmed | RowPaint::Ghost => compare_marked.then_some(cursor),
+    }
 }
