@@ -1,6 +1,6 @@
 gallery stop 15/23: ref-states, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/r…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/r…
   *       [tag: archived] Archived work                             6y   51ea533
 *-| *tag  [origin/behind]初ehind: theirs                            6y   b9b94c1
 *-| *t*g  [behind ↓1]lbehind: shared                                6y   379c02d

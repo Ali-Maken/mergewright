@@ -1,6 +1,6 @@
 details gallery stop 1/19: m2-01-feature-branches-enter, unicode tier, 100x30
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branches  10 …
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branches  10 …
  gallery 1/19 feature-branches · Enter · ] next [ back q quit · unicode
  shows: pane on three: in progress (row 0): header, A three.txt +1 −0, 1 + a
  differs: the baseline pane; the merge is row 1: j then Enter opens it instead

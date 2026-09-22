@@ -1,6 +1,6 @@
 gallery stop 10/23: orphan-branch, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/o…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/o…
   ●   [docs] docs: second page                                      6y   f4a9901
 ●─◇─  docs: first page                                              6y   1526215
 ◆─●─  [◆ main]mAdd the code                                         6y   90cb5c5

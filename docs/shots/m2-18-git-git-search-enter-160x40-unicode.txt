@@ -1,6 +1,6 @@
 details gallery stop 18/19: m2-18-git-git-search-enter, unicode tier, 160x40
 
- graft /Users/devuser/.cache/graft/git-git.git  13640 rows so far  +126 lanes            COMMIT 03d0593
+ graft <home____________>/.cache/graft/git-git.git  13640 rows so far  +126 lanes            COMMIT 03d0593
  gallery 18/19 git-git · /v2.41.0-rc0⏎ Enter · ] next [ back q quit · unicode                Jiang Xin <worldhello.net@gmail.com> · 2023-05-16 10:19 +0800 · 3y
  shows: Merge tag 'v2.41.0-rc0': 805 files, ✉ message (24 lines), first diff                 parents f66ad35, 0df2c18 · diff vs first parent
  differs: scale: search lands the merge, Enter opens it; j to a long file, L                 Contained in: bisect, jch, maint, master, next, seen, test, v2.41.…

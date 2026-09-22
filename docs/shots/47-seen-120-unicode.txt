@@ -1,7 +1,7 @@
 m1-the-graph/47: git/git, 120x40, Unicode tier, first frame. ADR-0025: the cap is a budget, pins are priorities.
 
 == final frame, plain ==
- graft /Users/devuser/.cache/graft/git-git.git  152 rows so far  +31 lanes
+ graft <home____________>/.cache/graft/git-git.git  152 rows so far  +31 lanes
 ◉─╮               ⋮   [next] Merge branch 'jk/ci-use-system-asciidoctor' into next                       JC 1d   848ec2e
 │ │ ◉▾            ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into seen                              JC 1d   a184f46
 │ │ ◉▾            ⋮   Merge branch 'ap/var-broken-down-idents' into seen                                 JC 1d   01c5fa0

@@ -1,6 +1,6 @@
 gallery stop 16/23: detached-head, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/d…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/d…
 ●   [main] Commit 4                                                 6y   c393c13
 ●─  Commit 3                                                        6y   4d62f2a
 ◆─  [HEAD][Commit 2                                                 6y   8863aa9

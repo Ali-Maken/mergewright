@@ -1,6 +1,6 @@
 m4 walk capture: m4-05-progress-footer — scenario progress-reaches-the-footer, keys f, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-vbsGaJ/wor…
+ graft <scratch_______________________________________________________________>…
 ◆   [◆ main ⇄ origin] Commit 200                                    7y   d5ae5fd
 ●   Commit 199                                                      7y   13e6ab1
 ●   Commit 198                                                      7y   f5055d9

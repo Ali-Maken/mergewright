@@ -9,7 +9,7 @@ shape to scratch, scripts its history with git, runs its headless prefix
 the scratch with the capture's keys as the harness prelude (fed one key per
 settled state). This script waits for the text the capture says must be on
 screen, then — depending on the capture's `when` — for the screen to stop
-changing (`settled`) or not at all (`appears`), writes the frame to
+changing (`settled`) or not at all (`appears`), asserts the frame against
 docs/shots/<stem>-<WxH>.txt and ends the run with SIGTERM.
 
 Three checks, per capture:
@@ -21,15 +21,24 @@ Three checks, per capture:
     does cannot forget it), and a `masked` stem must show `•`;
   * the file is under 8 KB (a note otherwise); over 200 KB it is not written.
 
-Captures go straight to files; this script prints only byte counts and the
-verdicts. The raw stream stays under <target>/pty-walk-m5/, never in the
-repo. pyte records character cells with no colour attributes: **a capture
-cannot show colour**, and the user judges these by eye.
+Captures are **asserted, not written**: each frame goes to
+`graft-fixtures capture <path>`, the same mechanism every Rust-drawn capture
+uses (m5-history-and-ghost-preview/40, 41). A drifted capture fails the run;
+GRAFT_UPDATE_SHOTS=1 rewrites it and the run is red anyway, so a changed
+capture cannot reach a commit unlooked-at. That binary also redacts the
+machine's own home, scratch paths and ephemeral ports out of the frame
+before it compares or writes, so nothing here names whoever ran it.
+
+This script prints only byte counts and the verdicts. The raw stream stays
+under <target>/pty-walk-m5/, never in the repo. pyte records character cells
+with no colour attributes: **a capture cannot show colour**, and the user
+judges these by eye.
 
 Usage: python3 pty-walk-m5.py <COLSxROWS> [<scenario> ...]
-(none = every scenario with a capture). Build first, and point BIN at the
-target directory that holds it:
+(none = every scenario with a capture). Build both binaries first, and point
+GRAFT_TARGET at the directory that holds them:
     cargo build -q -p graft --example m5_walk
+    cargo build -q -p graft-fixtures --bin graft-fixtures
     GRAFT_TARGET=target python3 .scratch/m5-history-and-ghost-preview/pty-walk-m5.py 80x24
 The ticket's sizes: 80x24 and 160x48 for every capture, 120x40 for the
 banner as well, 38x10 for the too-small preview only.
@@ -42,6 +51,9 @@ SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 TARGET = os.environ.get("GRAFT_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m5_walk"
+# Captures are asserted, not written, and the one mechanism that does it
+# lives in Rust (m5-history-and-ghost-preview/41).
+FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,
                            check=True).stdout.splitlines()]
@@ -184,7 +196,17 @@ class Run:
         os.close(self.master)
 
 
-def write_capture(stem, scenario, keys, frame, notes):
+def check_capture(stem, scenario, keys, frame, notes):
+    """Assert one capture through `graft-fixtures capture`.
+
+    The same mechanism every Rust-drawn capture goes through
+    (m5-history-and-ghost-preview/40, 41): the committed file is **compared**
+    to what the app drew, the machine's own paths and ports are redacted out
+    of the drawn frame before anything is compared or written, and the file is
+    rewritten only under GRAFT_UPDATE_SHOTS=1 — a run that rewrites one is red
+    anyway, so a changed capture cannot reach a commit unlooked-at. This
+    script does not write to docs/shots/ itself; it asks the binary to.
+    """
     path = f"docs/shots/{stem}-{SIZE}.txt"
     body = (f"m5 walk capture: {stem} — scenario {scenario}, keys {keys}, "
             f"unicode tier, {SIZE}\n")
@@ -197,8 +219,12 @@ def write_capture(stem, scenario, keys, frame, notes):
         return False
     if size > SOFT_CAP:
         notes.append(f"{size} bytes, over the 8 KB the ticket wants")
-    with open(path, "w") as f:
-        f.write(body)
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),
+                             capture_output=True)
+    if checked.returncode != 0:
+        print(f"{path}: {size} bytes, DRIFTED")
+        print(checked.stderr.decode().rstrip())
+        return False
     print(f"{path}: {size} bytes" + (", " + "; ".join(notes) if notes else ", settled"))
     return True
 
@@ -232,7 +258,7 @@ for stem, scenario, on_screen, keys, when in CAPTURES:
         if "masked" in stem and "•" not in frame:
             print(f"{stem}-{SIZE}: the masked field shows no `•`")
             failed = True
-        if not write_capture(stem, scenario, keys, frame, notes):
+        if not check_capture(stem, scenario, keys, frame, notes):
             failed = True
     run.end()
 

@@ -1,6 +1,6 @@
 gallery stop 7/23: backward-merge, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/b…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/b…
   ◉─╮   [feature] Merge branch 'main' into feature                  6y   84cc93e
 ●─●─│   feature: work                                               6y   8fa6bfc
 ◆─│─╯   [◆ main]iAdvance main                                       6y   18ca7c9

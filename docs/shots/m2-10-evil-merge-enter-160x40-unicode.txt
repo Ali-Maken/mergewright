@@ -1,6 +1,6 @@
 details gallery stop 10/19: m2-10-evil-merge-enter, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/evil-merge  4 …COMMIT cc1103b
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/evil-merge  4 …COMMIT cc1103b
  gallery 10/19 evil-merge · Enter · ] next [ back q quit · unicode                           Graft Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 ·…
  shows: pane subject row gains · evil merge when the tree probe lands (live git)             parents 0631550, bd20b78 · diff vs first parent
  differs: no marker until the probe answers: evil is a tree fact, not a shape                Contained in: main

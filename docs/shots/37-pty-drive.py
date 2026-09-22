@@ -6,7 +6,7 @@ pid, fd = pty.fork()
 if pid == 0:
     os.environ["XDG_CONFIG_HOME"] = "/tmp/37/cfg"
     os.environ["TERM"] = "xterm-kitty"
-    os.execv(os.environ.get("GRAFT_BIN", "/Users/devuser/dev/sandbox/gitter/target/debug/graft"),
+    os.execv(os.environ.get("GRAFT_BIN", "<home____________>/dev/sandbox/gitter/target/debug/graft"),
              ["graft", os.path.expanduser("~/.cache/graft/git-git.git")])
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, COLS, COLS*10, ROWS*20))
 buf = bytearray(); marks = []; reads = []; t0 = time.time()

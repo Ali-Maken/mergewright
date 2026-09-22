@@ -1,6 +1,6 @@
 gallery stop git-git, unicode tier, 80x24, after G
 
- graft /Users/devuser/.cache/graft/git-git.git  85649 commits
+ graft <home____________>/.cache/graft/git-git.git  85649 commits
  gallery 23/23 git-git · real repos · ] next [ back q quit · unicode
  shows: master straight in lane 0 throughout; ◉ merges curve in; [tag: v2.x.y]
  differs: stop 3's shapes at real scale; needs scripts/clone-git-git.sh first

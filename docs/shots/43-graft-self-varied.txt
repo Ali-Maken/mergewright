@@ -1,6 +1,6 @@
 gallery stop graft-self, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter  76 rows so far
+ graft <home____________>/dev/sandbox/gitter  76 rows so far
  gallery 21/23 graft-self · real repos · ] next [ back q quit · unicode
  shows: this checkout: one lane, ● everywhere but ◆ at HEAD and ◇ at the bottom
  differs: a real repo with no merges: stop 2's shape, real subjects and dates

@@ -1,6 +1,6 @@
 details gallery stop 9/19: m2-09-accidental-pull-merge, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/accidental-pull-merge  4 commits
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/accidental-pull-merge  4 commits
  gallery 9/19 accidental-pull-merge · radar · ] next [ back q quit · unicode
  shows: ⓘ on 'Merge branch main of https://…': info colour, not warning
  differs: the only ⓘ the graph alone raises: no probe, no tree read

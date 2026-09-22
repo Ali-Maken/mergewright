@@ -61,8 +61,8 @@ what you would drop instead — do not silently shave the gap back off.
 temp directory. Two runs, two different files:
 
 ```
-- graft /var/folders/z4/…/T/graft-remote-idICFn/wor…
-+ graft /var/folders/z4/…/T/graft-remote-4Y1Uzx/wor…
+- graft <scratch_______>…/T/graft-remote-idICFn/wor…
++ graft <scratch_______>…/T/graft-remote-4Y1Uzx/wor…
 ```
 
 Two consequences, and the second is the one that matters:
@@ -146,7 +146,7 @@ above are yours to use.
       **The ticket names the wrong file:** `m4-credential-prompt-in-app.txt`
       has no temp path in it (`grep -c '/var/folders'` = 0); the random
       scratch path was in `docs/shots/m5-ui-undo-after-push-80x24.txt`
-      (` graft /var/folders/z4/.../T/graft-remote-idICFn/wor...`). Fixed at
+      (` graft <scratch_______________________________________>`). Fixed at
       the seam rather than in that one file: `captures::frame_at` now sets
       `repository.path` to `/code/api` **before** the frame is drawn, so it
       holds for every capture drawn through it.
@@ -230,12 +230,12 @@ nothing in this ticket's mechanism reaches them:
 
 | What | Files | Example |
 |---|---|---|
-| `$HOME` | 113 | ` graft /Users/devuser/dev/sandbox/gitter  137 commits` (`09-graph-screen.txt`) |
-| macOS temp dir | 47 | ` graft /var/folders/z4/.../T/graft-trivial-TMtlqo  4 commits` (`m3-01-stage-file-160x48.txt`) |
-| ephemeral port | 5 | `Credentials - 127.0.0.1:54372` (`m4-03-credential-masked-160x48.txt`) |
+| `$HOME` | 113 | ` graft <home____________>/dev/sandbox/gitter  137 commits` (`09-graph-screen.txt`) |
+| macOS temp dir | 47 | ` graft <scratch_________________________________>  4 commits` (`m3-01-stage-file-160x48.txt`) |
+| ephemeral port | 5 | `Credentials - 127.0.0.1:00000` (`m4-03-credential-masked-160x48.txt`) |
 
 `docs/shots/37-pty-drive.py:9` also hardcodes
-`/Users/devuser/dev/sandbox/gitter/target/debug/graft` as its default
+`<home____________>/dev/sandbox/gitter/target/debug/graft` as its default
 binary. **The repo may be published** (CLAUDE.md), so this is one person's
 home directory and machine layout shipped in 160 files, and it means no
 acceptance-walk capture can be reproduced or asserted either. Fixing it needs

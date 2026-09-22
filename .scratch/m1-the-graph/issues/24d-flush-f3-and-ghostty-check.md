@@ -55,7 +55,7 @@ Verified:
 ## Ghostty command (user, by eye)
 
 ```
-cd /Users/devuser/dev/sandbox/gitter && cargo build -p graft && open -na /Applications/Ghostty.app --args -e /Users/devuser/dev/sandbox/gitter/target/debug/graft /Users/devuser/dev/sandbox/gitter
+cd <home____________>/dev/sandbox/gitter && cargo build -p graft && open -na /Applications/Ghostty.app --args -e <home____________>/dev/sandbox/gitter/target/debug/graft <home____________>/dev/sandbox/gitter
 ```
 
 Look for: header `gfx ok`; lanes drawn as pixels in the graph column, lined up with the rows, not stretched; `j`/`k`/`PgDn` scroll keeps them aligned across strip seams; resize the window → graph comes back; `F3` → Unicode graph + footer `renderer forced to unicode (F3)`, no leftover images; `F2` and back; `q` leaves no images behind.

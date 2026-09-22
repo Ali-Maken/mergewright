@@ -1,6 +1,6 @@
 details gallery stop 16/19: m2-16-feature-branches-o, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/fⓘ
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/fⓘ
  gallery 16/19 feature-branches · O · ] next [ back q quit · unicode           █
  shows: strip at the right edge: ◉ twice, ● at the top, █ over the viewport    ●
  differs: one column added to stop 3's graph; O again removes it               █

@@ -29,7 +29,7 @@ WRAPPED: first row went back to HEAD at notch 26
  q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 
 --- notch 26: back at the top ---
- graft /Users/devuser/dev/sandbox/gitter  191 commits
+ graft <home____________>/dev/sandbox/gitter  191 commits
 
 
 
@@ -55,7 +55,7 @@ WRAPPED: first row went back to HEAD at notch 26
  q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 
 --- after 100 notches ---
- graft /Users/devuser/dev/sandbox/gitter  191 commits
+ graft <home____________>/dev/sandbox/gitter  191 commits
 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
 ●   m1-the-graph-24d: flush strips on theme/cell-size/resize (resi… 53m  3e28dc7
 ●   progress: m1/24c done, next 24d                                 1h   97b065a

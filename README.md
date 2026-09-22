@@ -266,7 +266,7 @@ You should get a screen like this, and nothing else:
 ```
 Graft
 
-Repository  /Users/you/code/some-repo
+Repository  /code/some-repo
 HEAD        main
 Rendering   unicode, detected, cell 9x18 (reported)
 Theme       dark, from the terminal background, truecolor

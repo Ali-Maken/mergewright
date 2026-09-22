@@ -2,7 +2,7 @@
 Look for: all box-drawing glyphs (├ │ ╮ ╯ ┼ etc.) collapse onto the six-glyph ASCII table (* | / \ - +); footer notice; terminal left sane after quit.
 
 === frame after startup ===
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
   ●         [beta] beta: carry on                                   6y   be27a12
 ◆─│─╮       [◆ main] Merge branch 'alpha'                           6y   e44c042
 │ ◉─│─╮     beta: merge alpha                                       6y   f77039c
@@ -28,7 +28,7 @@ Look for: all box-drawing glyphs (├ │ ╮ ╯ ┼ etc.) collapse onto the si
  q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
 
 === frame after F3 (tier-drop key) ===
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
   *         [beta] beta: carry on                                   6y   be27a12
 *-|-\       [◆ main] Merge branch 'alpha'                           6y   e44c042
 | *-|-\     beta: merge alpha                                       6y   f77039c

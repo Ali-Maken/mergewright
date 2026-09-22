@@ -1,6 +1,6 @@
 gallery stop 3/23: feature-branches, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
  gallery 3/23 feature-branches · merges · ] next [ back q quit · unicode
  shows: two merges on main; feature/one and /two curve in, /three stays open
  differs: the first curves; Space folds the merged two, 1 leaves main's column

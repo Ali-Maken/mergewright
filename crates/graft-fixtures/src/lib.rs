@@ -83,6 +83,7 @@ mod tier;
 use std::path::PathBuf;
 
 pub use cache::CacheError;
+pub use capture::machine::{Found, Machine, found, redacted, redacted_bytes};
 pub use capture::{Captures, UPDATE_VAR, capture, capture_bytes, check, check_bytes, updating};
 pub use corpus::{
     CorpusError, Report, Unavailable, build_into, ensure, try_borrow, try_copy_into_temp,

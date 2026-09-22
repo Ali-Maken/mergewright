@@ -65,7 +65,7 @@ No compaction.
 
 **Try in Zed and VS Code** (integrated terminal):
 ```
-cd /Users/devuser/dev/sandbox/gitter && cargo run --release -- .
+cd <home____________>/dev/sandbox/gitter && cargo run --release -- .
 cargo run --release -- ~/.cache/graft/git-git.git
 ```
 Keys: `j`/`k` or arrows, `PgUp`/`PgDn`, `g`/`G`, `Esc` backs out of a `G`, `F2` status screen, `q` quits.

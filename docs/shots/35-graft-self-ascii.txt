@@ -1,6 +1,6 @@
 gallery stop 21/23: graft-self, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter  44 rows so far  run -p graft-fixtu
+ graft <home____________>/dev/sandbox/gitter  44 rows so far  run -p graft-fixtu
 *   Uncommitted changes (6 unstaged, 44 untracked)
 *   [◆ main] m1-the-graph-35c: one stdin reader per process: Input… 8m   159de44
 *r  progress: m1/35b TESTING.md entries done; gallery key loss blo… 12m  7dfa01e

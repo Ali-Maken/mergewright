@@ -43,7 +43,7 @@
  ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
 
 === a long path does not cut the banner, 120x10 ===
- graft /Users/someone/work/customers/acme/services/billing-api    REBASING step 3 of 7
+ graft /media/archive/work/customers/acme/services/billing-api    REBASING step 3 of 7
 ● ▏  Commit 2                                                                                            TE 2h   0202020
 ◇    Commit 1                                                                                            TE 2h   0101010
  ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O

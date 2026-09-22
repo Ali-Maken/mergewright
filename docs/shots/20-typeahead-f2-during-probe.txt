@@ -4,7 +4,7 @@
 === frame after typeahead ===
 Graft          =q,t=d,f=24;AAAA
 
-Repository  /Users/devuser/dev/sandbox/gitter
+Repository  <home____________>/dev/sandbox/gitter
 HEAD        main
 History     complete, 166 rows laid out
 Rendering   unicode, assumed (terminal silent), cell 8x16 (assumed)

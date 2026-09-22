@@ -1,6 +1,6 @@
 gallery stop 13/23: tags, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
 *   [◆ main] [tag: v2.0] Add c.txt                                  6y   34a3dee
 *-  [tag: v1.0]MAdd b.txt                                           6y   fd98729
 *-  [tag: v0.2] Add a.txt                                           6y   ce1a638

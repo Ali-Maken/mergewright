@@ -1,6 +1,6 @@
 details gallery stop 1/19: m2-01-feature-branches-enter, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
  gallery 1/19 feature-branches · Enter · ] next [ back q quit · unicode                      Graft Fixture <fixture@example.invalid> · 2020-01-01 00:09 +0000 ·…
  shows: pane on three: in progress (row 0): header, A three.txt +1 −0, 1 + a                 parents de95041 · diff vs first parent
  differs: the baseline pane; the merge is row 1: j then Enter opens it instead               Contained in: feature/three

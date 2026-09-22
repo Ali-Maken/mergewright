@@ -55,7 +55,7 @@ Verified:
 ## Ghostty command (user, by eye)
 
 ```
-cd /Users/devuser/dev/sandbox/gitter && cargo build -p graft && open -na /Applications/Ghostty.app --args -e /Users/devuser/dev/sandbox/gitter/target/debug/graft /Users/devuser/dev/sandbox/gitter
+cd <home____________>/dev/sandbox/gitter && cargo build -p graft && open -na /Applications/Ghostty.app --args -e <home____________>/dev/sandbox/gitter/target/debug/graft <home____________>/dev/sandbox/gitter
 ```
 
 Look for: footer shows `F3 renderer`; F3 → Unicode graph, footer `renderer: unicode (F3 cycles)`, no leftover images; F3 → ASCII; F3 → pixel graph back, header `gfx ok`, footer hints again, lanes aligned; `q` leaves no images.

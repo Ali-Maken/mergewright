@@ -1,6 +1,6 @@
 gallery stop 12/23: skewed-dates, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/s…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/s…
   *   [feature] feature: build on the fast commit                   6y   7144678
 *-|-  [◆ main] Main 12                                              6y   220859a
 *-|-  Main 11                                                       6y   cfad0c5

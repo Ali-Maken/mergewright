@@ -1,6 +1,6 @@
 details gallery stop 4/19: m2-04-feature-branches-enter-w, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
  gallery 4/19 feature-branches · Enter W · ] next [ back q quit · unicode                    Graft Fixture <fixture@example.invalid> · 2020-01-01 00:09 +0000 ·…
  shows: word tint: the changed words carry a stronger bg inside changed lines                parents de95041 · diff vs first parent
  differs: stop 1 with W: only the changed words darken; lines keep the soft tint             Contained in: feature/three

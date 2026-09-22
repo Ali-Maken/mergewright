@@ -119,7 +119,7 @@ preference; the code was not changed.
    the same complaint one level down. Unverified whether the M2 stash design
    intended it.
 2. **Capture headers carry the machine's scratch path**
-   (`/var/folders/z4/…/graft-trivial-XXXXXX`) in a repo that may be
+   (`<scratch_______>…/graft-trivial-XXXXXX`) in a repo that may be
    published. Minor 7; the fix conflicts with the "what pyte saw" contract,
    so it needs a decision, not a patch.
 3. **`~/.gnupg/` on the user's machine** — created by the review's probe,

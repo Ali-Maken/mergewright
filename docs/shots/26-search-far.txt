@@ -1,5 +1,5 @@
 --- first frame ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -24,7 +24,7 @@
 ●     Trunk commit 99980                                            6y   9f71232
  q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 --- prompt: /308912d880 ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -50,7 +50,7 @@
  /308912d880_
 Enter -> oldest commit's row and (1/1) on screen: 641 ms
 --- far hit landed ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 │ ●   topic/000000: step 2                                          6y   29fb1fa
 │ ●   topic/000000: step 1                                          6y   aa1b47b
 ●─╯   Trunk commit 10                                               6y   49cdf7d
@@ -75,7 +75,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 ●     Trunk commit 99980                                            6y   9f71232
  /308912d880  1 match (1/1)  n/N next/prev  Esc close
 --- search settled ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 │ ●   topic/000000: step 2                                          6y   29fb1fa
 │ ●   topic/000000: step 1                                          6y   aa1b47b
 ●─╯   Trunk commit 10                                               6y   49cdf7d
@@ -100,7 +100,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 
  /308912d880  1 match (1/1)  n/N next/prev  Esc close
 --- many hits, count partial while running (first hit selected) ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -125,7 +125,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 
  /commit 99  360 matches so far (1/360)  n/N next/prev  Esc cancel
 --- Esc straight after (a running search is cancelled, selection restored) ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 │ ●   topic/000000: step 2                                          6y   29fb1fa
 │ ●   topic/000000: step 1                                          6y   aa1b47b
 ●─╯   Trunk commit 10                                               6y   49cdf7d
@@ -150,7 +150,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 
  /commit 99  search cancelled, 718 matches found (1/718)  n/N next/prev  Esc cl…
 --- same query run to the end: count settled ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -175,7 +175,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 ●     Trunk commit 99980                                            6y   9f71232
  /commit 99  797 matches (1/797)  n/N next/prev  Esc close
 --- after n ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -200,7 +200,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 ●     Trunk commit 99980                                            6y   9f71232
  /commit 99  797 matches (2/797)  n/N next/prev  Esc close
 --- after N N (wraps from the first hit to the last) ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 │ ●   topic/000007: step 2                                          6y   fc2a41d
 │ ●   topic/000007: step 1                                          6y   5b09201
 ●─╯   Trunk commit 108                                              6y   0a5aa19
@@ -225,7 +225,7 @@ Enter -> oldest commit's row and (1/1) on screen: 641 ms
 ●     Trunk commit 89                                               6y   495b551
  /commit 99  797 matches (797/797)  n/N next/prev  Esc close
 --- zero matches ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 │ ●   topic/000007: step 2                                          6y   fc2a41d
 │ ●   topic/000007: step 1                                          6y   5b09201
 ●─╯   Trunk commit 108                                              6y   0a5aa19

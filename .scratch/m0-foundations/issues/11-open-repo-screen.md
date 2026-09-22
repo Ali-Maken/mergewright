@@ -65,7 +65,7 @@ GUI terminal, so **the M0 checkpoint still needs the user's eyes** (KNOWN_GAPS).
 
 | Check | Result |
 |---|---|
-| `graft .` | `Graft` / `Repository  /Users/…/gitter` / `HEAD  main` / `Rendering  unicode, detected, cell 8x16 (assumed)` / `Theme  dark, terminal background unknown, truecolor` / `q  quit` |
+| `graft .` | `Graft` / `Repository  <home_>…/gitter` / `HEAD  main` / `Rendering  unicode, detected, cell 8x16 (assumed)` / `Theme  dark, terminal background unknown, truecolor` / `q  quit` |
 | `q` | exit 0, alternate screen left, every mode popped, cursor shown |
 | `graft /tmp` | `graft: /tmp is not inside a git repository`, exit 1, terminal restored first |
 | `SIGINT` mid-run | dies of the signal (exit code -2), terminal fully restored |

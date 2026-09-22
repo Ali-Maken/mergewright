@@ -1,6 +1,6 @@
 details gallery stop 19/19: m2-19-git-git-o, unicode tier, 160x40
 
- graft /Users/devuser/.cache/graft/git-git.git  140 rows so far  +26 lanes                                                                                 ⓘ
+ graft <home____________>/.cache/graft/git-git.git  140 rows so far  +26 lanes                                                                                 ⓘ
  gallery 19/19 git-git · O · ] next [ back q quit · unicode                                                                                                    ◉
  shows: strip honestly incomplete: buckets below the walked range are blank                                                                                    ◉
  differs: stop 16's strip at 85k rows: it grows as the walk lands, never at once                                                                               ◉

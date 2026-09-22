@@ -1,6 +1,6 @@
 gallery stop 11/23: cherry-pick-duplicates, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
   ●   [topic] topic: unrelated work                                 6y   3fb661a
 ●─●─  Fix the greeting (cherry picked)                              6y   c0f7180
 ◆─│─  [◆ main]mFix the greeting                                     6y   9a9350a

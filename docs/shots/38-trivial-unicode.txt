@@ -1,6 +1,6 @@
 gallery stop 1/23: trivial, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
  gallery 1/23 trivial · one lane · ] next [ back q quit · unicode
  shows: 3 commits in one straight lane: ◆ HEAD on top, ◇ root at the bottom
  differs: the smallest stop, so only 3 rows show: that is all of it, a baseline

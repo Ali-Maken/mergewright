@@ -1,6 +1,6 @@
 m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, keys k ⏎ d, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-iOuzBb  4 commits      UNCOMMITTED · 1 unstaged
+ graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 unstaged
 ◌   Uncommitted changes (1 unstaged)                                                         diff vs HEAD 1cb6de4
 ◆   [◆ main] add sample.txt                                                      now  1cb6de4
 ●   Correct the note                                                             7y   a82960b

@@ -1,6 +1,6 @@
 details gallery stop 5/19: m2-05-feature-branches-x-j-j-x, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMPARE 0683985 → e30e870
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMPARE 0683985 → e30e870
  gallery 5/19 feature-branches · x j j x · ] next [ back q quit · unicode
  shows: pane header COMPARE 0683985 → e30e870 (no counts yet); ▏ on the base row
  differs: no COMMIT header: two rows compared; the base stays marked as j moves

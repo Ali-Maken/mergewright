@@ -1,7 +1,7 @@
 39 fold vocabulary: pty capture of target/release/graft (text tier: the pty answers no graphics query), truecolor env, script docs/shots/39-capture.py. First frame (cursor on the top row): a selection deeper in a merge train pins its whole thread, so little folds (see 39-git-git-80x24-after-jj.txt). git/git history-only clone (all branches, seen included), 80x24. Judge by eye: header ends '+N lanes'; merges show ◉▾; last graph column ⋮ on every row; no digits in the graph column.
 
 == final frame, plain ==
- graft /Users/devuser/.cache/graft/git-git.git  88 rows so far  +17 lanes
+ graft <home____________>/.cache/graft/git-git.git  88 rows so far  +17 lanes
 ◉─╮           ⋮   [next] Merge branch 'jk/ci-use-system-asciidocto… 1d   848ec2e
 │ │ ◉▾        ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into… 1d   a184f46
 │ │ ◉▾        ⋮   Merge branch 'ap/var-broken-down-idents' into se… 1d   01c5fa0

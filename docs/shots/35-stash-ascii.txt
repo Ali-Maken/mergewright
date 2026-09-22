@@ -1,6 +1,6 @@
 gallery stop 18/23: stash, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/s…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/s…
   *-+-\   [stash] On main: wip: with an untracked file              5y   393688e
 *-| * |m  index on main: d96881b Add a.txt                          5y   b4bed6e
 *-| | *d  untracked files on main: d96881b Add a.txt                5y   f11c383

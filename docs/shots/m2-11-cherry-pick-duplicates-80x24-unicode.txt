@@ -1,6 +1,6 @@
 details gallery stop 11/19: m2-11-cherry-pick-duplicates, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/c…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/c…
  gallery 11/19 cherry-pick-duplicates · radar · ] next [ back q quit · unicode
  shows: ⓘ duplicate commit on both 'Fix the greeting' rows when the probe lands
  differs: topic's ⓘ is no upstream; the two fix rows share one finding

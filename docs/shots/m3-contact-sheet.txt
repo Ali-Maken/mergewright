@@ -21,7 +21,7 @@ what right looks like: TESTING.md § Per breakpoint, Changes pane row: pane righ
 
 m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-TMtlqo  4 commits      UNCOMMITTED · 1 staged
+ graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 staged
 ◌   Uncommitted changes (1 staged)                                                           diff vs HEAD 38f8f03
 ◆   [◆ main] add sample.txt                                                      now  38f8f03
 ●   Correct the note                                                             7y   a82960b
@@ -109,7 +109,7 @@ what right looks like: TESTING.md § Per breakpoint, Changes pane row: pane righ
 
 m3 walk capture: m3-02-stage-hunk — scenario stage-hunk, keys k ⏎ ⏎ Space, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-4Wu0wy  4 commits      UNCOMMITTED · 1 staged 1 unstaged
+ graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 staged 1 unstaged
 ◌   Uncommitted changes (1 staged, 1 unstaged)                                               diff vs HEAD 3c63c73
 ◆   [◆ main] add sample.txt                                                      now  3c63c73
 ●   Correct the note                                                             7y   a82960b
@@ -197,7 +197,7 @@ what right looks like: TESTING.md § Per breakpoint, Confirm box row: same box, 
 
 m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, keys k ⏎ d, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-iOuzBb  4 commits      UNCOMMITTED · 1 unstaged
+ graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 unstaged
 ◌   Uncommitted changes (1 unstaged)                                                         diff vs HEAD 1cb6de4
 ◆   [◆ main] add sample.txt                                                      now  1cb6de4
 ●   Correct the note                                                             7y   a82960b
@@ -637,7 +637,7 @@ what right looks like: TESTING.md § Per breakpoint, Journal row: same.
 
 m3 walk capture: m3-08-journal-after-unstage — scenario unstage-file, keys k ⏎ Space Esc J, unicode tier, 160x48
 
-UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-OkphFw
+UNDO JOURNAL · <scratch____________________________________________________________>
 ▸ now       unstage sample.txt                           the index · backup saved                                                                           ← u
 
 
@@ -693,7 +693,7 @@ what right looks like: TESTING.md § Per breakpoint, Journal row: the unstage en
 
 m3 walk capture: m3-08-journal-after-unstage — scenario unstage-file, keys k ⏎ Space Esc J, unicode tier, 80x24
 
-UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-g…
+UNDO JOURNAL · <scratch_______________________________________________________>…
 ▸ now       unstage sample.txt        the index · backup saved              ← u
 
 
@@ -725,7 +725,7 @@ what right looks like: TESTING.md § Per breakpoint, Drift box row: same.
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-k9N2Or  5 commits
+ graft <scratch____________________________________________________________>  5 commits
 ◌   Uncommitted changes (1 unstaged)
 ◆   [◆ main] before the drift                                                                                                                    GT now  5a9dc77
 ●   add sample.txt                                                                                                                               GT now  e9dad5a
@@ -781,7 +781,7 @@ what right looks like: TESTING.md § Per breakpoint, Drift box row: `Undo "commi
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-ZypN0p  5…
+ graft <scratch____________________________________________________________>  5…
 ◌   Uncommitted changes (1 unstaged)
 ◆   [◆ main] before the drift                                       now  1cb4243
 ●   add sample.txt                                                  now  95720b7

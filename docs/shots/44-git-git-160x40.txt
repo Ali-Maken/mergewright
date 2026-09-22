@@ -1,7 +1,7 @@
 m1-the-graph/44: lane cap follows width. Default (graph.max_lanes unset): 12 lanes at 160 columns and above (ceiling = the lane palette's hue count). pty capture of target/release/graft, truecolor env, script docs/shots/39-capture.py. Judge by eye: header ends '+N lanes' with N exact; last graph column shows the rail; nothing cut past half the screen.
 
 == final frame, plain ==
- graft /Users/devuser/.cache/graft/git-git.git  152 rows so far  +29 lanes
+ graft <home____________>/.cache/graft/git-git.git  152 rows so far  +29 lanes
 ◉─╮                   ⋮   [next] Merge branch 'jk/ci-use-system-asciidoctor' into next                                                           JC 1d   848ec2e
 │ │ ◉▾                ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into seen                                                                  JC 1d   a184f46
 │ │ ◉▾                ⋮   Merge branch 'ap/var-broken-down-idents' into seen                                                                     JC 1d   01c5fa0
