@@ -1,6 +1,6 @@
 src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open
 ours = main, what you are rebasing onto · theirs = the commit being replayed
-   38 fn refresh(&mut self) {
+     38 fn refresh(&mut self) {
 ▏  39 ── conflict 1 of 3 · open ── o ours  t theirs  b both ────────────────────
 ▏ OURS · HEAD
 ▏    40 if expired() {
@@ -9,9 +9,9 @@ ours = main, what you are rebasing onto · theirs = the commit being replayed
 ▏       if is_expired() {
 ▏       self.do_refresh();
 ▏ ──────────────────────────────────────────────────────────────────────────────
-   42 }
+     42 }
    57 ── conflict 2 of 3 · took theirs ── o ours  b both ───────────────────────
-     58 let tok = self.store.get();
+     57 let tok = self.store.get();
   ──────────────────────────────────────────────────────────────────────────────
 
 
