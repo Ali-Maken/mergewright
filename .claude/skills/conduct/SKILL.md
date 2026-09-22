@@ -21,7 +21,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
   - `git log --oneline -10` and `git status --short`
 - **Model check:** this session should be Opus. If it isn't, tell the user to run `/model opus` and stop.
 - **Every piece of work goes to a fresh helper** via the Agent tool, **one group per helper** (ADR-0029) — the group's pieces run inside that one context, so the prefix is read once. Tell it the milestone, the group ID and path, and "Read CLAUDE.md first."
-- **Always pass `model:` explicitly for an unnamed agent.** `general-purpose`, `Explore` and any agent without a definition file **inherit the conductor's model — Opus** — so an unpinned research or docs job silently runs at Opus prices. It happened once in M3: the naming research ran 127,775 tokens on Opus for work CLAUDE.md routes to Sonnet. Research, docs, summarising and scouting → `model: "sonnet"` or `"haiku"`.
+- **Always pass `model:` explicitly for an unnamed agent.** `general-purpose`, `Explore` and any agent without a definition file **inherit the conductor's model — Opus** — so an unpinned research or docs job silently runs at Opus prices. It happened once in M3: the naming research ran 127,775 tokens on Opus for work CLAUDE.md routes to Sonnet. Scouting → `scout`; research, docs, summarising → `researcher` (both Opus, low, from 2026-09-22). Anything still sent to an unnamed agent → pass `model:`.
 - **Whom to dispatch:**
   - `planner-fable` — the milestone's design pass **and its ticket specs** (M2 onward); a spec-only pass when a split needs new decisions; the M8 architecture-pass ticket
   - `builder-sonnet` / `builder-opus` / `builder-fable` — whatever the ticket's `Build with` line says (`Fable (signature)` → `builder-fable`)
@@ -68,7 +68,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
       ```
       M<n> done. <one-line result>
       Built: <3–5 one-line bullets>
-      Models: spec Fable · Sonnet g1,g3 · Opus g2 · Fable g4 (signature) · review Fable · escalated: <ids or none>
+      Models: spec Fable · low g1,g3 · Opus g2 · Fable g4 (signature) · review Fable · escalated: <ids or none>
       Turns: g1 <n> · g2 <n> · … · total <n>, mean <n>/group   (ADR-0029's test: well under M2's 119)
       Compacted: <group ids → split into ids, or none>
       Try: <exact commands>
@@ -87,9 +87,11 @@ Moved out of CLAUDE.md on 2026-09-19 (conductor-only; builders were paying for i
 
 ## Models
 
+**Sonnet is a tier name too, from 2026-09-22 on** (user): `builder-sonnet` runs **Opus at low effort**, and scouting, research and standalone docs go to the `scout` and `researcher` definitions, also Opus low. Nothing in the project dispatches Sonnet or Haiku any more.
+
 **Fable is a tier name, not a model, from 2026-09-22 on.** Every agent that used to run on the Fable model now runs on **Opus at high effort**; `builder-opus`'s own tasks moved from high to **medium** effort to make room. Ticket labels (`Build with: Fable (signature)`, `Build with: Fable`) and agent names (`builder-fable`, `planner-fable`) are unchanged — they still mark the same tier of work — only the engine under them changed. `builder-opus-xhigh` is untouched: still Opus at xhigh, still only the four hardest areas (undo, conflicts, interactive rebase, M1 graph layout). Reach for `xhigh` on anything else — prototyping, design work, a high-difficulty bug — only when the user asks for it on a named ticket.
 
-**Opus (high) decides, specifies and reviews (the Fable tier); Opus (medium) conducts and builds; Sonnet builds mechanical work.**
+**Opus (high) decides, specifies and reviews (the Fable tier); Opus (medium) conducts and builds; Opus (low) builds mechanical work and scouts (the Sonnet tier).**
 
 | Work | Who | Model |
 |---|---|---|
@@ -98,15 +100,16 @@ Moved out of CLAUDE.md on 2026-09-19 (conductor-only; builders were paying for i
 | **Signature tickets** — M2 Mistake Radar, M3 undo inverse, M5 Ghost Preview, M6 conflict state machine | `builder-fable` | Opus, high |
 | Acceptance ticket, last of every milestone | `builder-fable` | Opus, high |
 | Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, medium |
-| Mechanical: wiring, config, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
+| Mechanical: wiring, config, plain widgets, tests, renames | `builder-sonnet` | Opus, low |
 | Reviews, every milestone from M2 | `reviewer` | Opus, high |
 | Debugging | `debugger` | Opus, high |
-| Research, standalone docs, summarising, scouting | unnamed agent — **pass `model:` explicitly** | Sonnet or Haiku |
+| Scouting (brownfield groups, ADR-0035) | `scout` | Opus, low |
+| Research, standalone docs, summarising | `researcher` | Opus, low |
 
 - **An agent with no definition file inherits the conductor's model (Opus).** Never dispatch `general-purpose` or `Explore` without naming the model.
-- **Docs follow the context, not the table.** Docs a ticket produces — MAP.md, ARCHITECTURE.md, ticket NOTES — are written by that ticket's own builder, whatever its model. **Standalone** doc work goes to Sonnet.
+- **Docs follow the context, not the table.** Docs a ticket produces — MAP.md, ARCHITECTURE.md, ticket NOTES — are written by that ticket's own builder, whatever its model. **Standalone** doc work goes to `researcher`.
 - **Any other ticket goes to the Fable tier (`builder-fable`, Opus at high) only when all three hold:** doesn't decide the approach; a wrong choice becomes structural; correctness can't be judged from diff or tests. Expect one or two Fable-tier builds per milestone.
-- **Escalation beats prediction.** Sonnet fails twice → Opus (medium, `builder-opus`). Opus stalls twice, or review finds its design wrong → `builder-fable` (Opus, high). That fails too → `debugger` (Opus, high). `xhigh` only when the user asks for it on a named ticket, or for the four `builder-opus-xhigh` areas.
+- **Escalation beats prediction.** `builder-sonnet` (Opus low) fails twice → `builder-opus` (Opus, medium). Opus stalls twice, or review finds its design wrong → `builder-fable` (Opus, high). That fails too → `debugger` (Opus, high). `xhigh` only when the user asks for it on a named ticket, or for the four `builder-opus-xhigh` areas.
 
 ## Checkpoint policy
 

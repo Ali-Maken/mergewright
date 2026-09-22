@@ -44,8 +44,8 @@ Your ticket's `Build with` line names your model; follow it. Model routing,
 escalation and checkpoint policy are the conductor's — they live in
 `.claude/skills/conduct/SKILL.md`. Two rules bind everyone:
 
-- **An agent with no definition file inherits the conductor's model (Opus).** Never dispatch `general-purpose` or `Explore` without passing `model:` explicitly. Research, standalone docs, summarising and scouting → Sonnet or Haiku.
-- **Docs follow the context, not the model table.** Docs a ticket produces — MAP.md, ARCHITECTURE.md, ticket NOTES — are written by that ticket's own builder, whatever its model. **Standalone** doc work goes to Sonnet.
+- **An agent with no definition file inherits the conductor's model (Opus).** Never dispatch `general-purpose` or `Explore` for work that has a definition. Scouting → `scout`; research, standalone docs, summarising → `researcher` (both Opus, low).
+- **Docs follow the context, not the model table.** Docs a ticket produces — MAP.md, ARCHITECTURE.md, ticket NOTES — are written by that ticket's own builder, whatever its model. **Standalone** doc work goes to `researcher`.
 
 ## Gates
 
@@ -59,7 +59,7 @@ escalation and checkpoint policy are the conductor's — they live in
 
 - User runs `/conduct` on **Opus**. Every piece of work goes to a fresh helper in `.claude/agents/`. Step 1 (`/grill-with-docs`) is the exception — it runs in the main session.
 - **Groups, not tickets** (ADR-0029). A group is what one builder takes in one context, made of work that **shares files**. Decompose the work; don't decompose the context.
-- **Brownfield groups** (ADR-0035) — anything touching existing code — get a **scout first** (`Explore`, haiku/sonnet, ≤1 page: what exists, what state it holds, what it draws, which keys it claims). Sized to one pane or one interaction. `Build with` left blank, set by the conductor after the scout.
+- **Brownfield groups** (ADR-0035) — anything touching existing code — get a **scout first** (`scout`, Opus low, writes its own file, ≤1 page: what exists, what state it holds, what it draws, which keys it claims). Sized to one pane or one interaction. `Build with` left blank, set by the conductor after the scout.
 - **Every builder report says whether it used a scout, and if not, why.**
 - **Builders run concurrently, isolated** (ADR-0036). Each gets its own git worktree, its own `CARGO_TARGET_DIR` outside the shared `target/`, and a **disjoint crate set**. Never two cargo commands in one worktree.
 - **A builder never edits outside its crate set.** Needs a crate another holds → commit at the seam, report `blocked: needs <crate>` naming the signature, stop. Never wait in place.
