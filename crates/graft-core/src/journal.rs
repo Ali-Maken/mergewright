@@ -164,6 +164,14 @@ pub enum OperationKind {
     /// `git stash branch`: a branch at the stash's base with the stash
     /// applied and dropped.
     BranchFromStash,
+    /// A conflicted path resolved whole, one side taken: the shapes with no
+    /// markers to take from (`git checkout --ours|--theirs` then `add`, or
+    /// `add`/`rm` on their own). Folded into the live operation's entry when
+    /// one is open; its own entry when nothing is (m6-conflicts/03).
+    ResolveConflict,
+    /// A conflicted path put back the way git left it: `git checkout
+    /// --merge`, the resolver's "start this file over" (m6-conflicts/03).
+    RestartConflict,
     /// The journal's time machine: every in-force entry back to a target,
     /// reversed one `Undo` entry at a time (DESIGN.md §6.6).
     ///

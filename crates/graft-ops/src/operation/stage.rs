@@ -303,7 +303,7 @@ fn pathspec(paths: &[PathBuf], status: &WorkingTreeStatus) -> Vec<PathBuf> {
 /// are pathspec magic even after `--` — verified: `add -- 'a*b'` also stages
 /// `ab` and `acb`, and `clean -f` would remove them; with the flag each
 /// command takes `a*b` alone.
-fn with_paths(mut args: Vec<GitArg>, paths: &[PathBuf]) -> Vec<GitArg> {
+pub(super) fn with_paths(mut args: Vec<GitArg>, paths: &[PathBuf]) -> Vec<GitArg> {
     args.insert(0, GitArg::Flag("--literal-pathspecs"));
     args.push(GitArg::Separator);
     args.extend(

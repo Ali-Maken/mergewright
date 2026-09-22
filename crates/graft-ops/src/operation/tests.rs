@@ -821,3 +821,178 @@ fn kind_matches_the_variant() {
     );
     assert!(Path::new("u.rs").is_relative());
 }
+
+// ---- the conflict operations (m6-conflicts/03) -----------------------------
+
+use graft_git::status::UnmergedHow;
+
+use super::{ResolveWholeParams, RestartParams, Side};
+
+/// Facts with one unmerged path of the given shape, stopped on a merge.
+fn conflicted(path: &str, how: UnmergedHow) -> RepoFacts {
+    RepoFacts {
+        status: WorkingTreeStatus {
+            entries: vec![StatusEntry {
+                unmerged: true,
+                unmerged_how: Some(how),
+                ..entry(path)
+            }],
+        },
+        in_progress: Some(InProgress::Merge),
+        ..facts()
+    }
+}
+
+fn resolve(path: &str, side: Side, how: UnmergedHow) -> Operation {
+    Operation::ResolveWholeFile(ResolveWholeParams {
+        path: PathBuf::from(path),
+        side,
+        how,
+    })
+}
+
+fn restart(path: &str) -> Operation {
+    Operation::RestartConflict(RestartParams {
+        path: PathBuf::from(path),
+    })
+}
+
+/// The table in `operation/conflict.rs`, as command lines. Every row was run
+/// against git 2.54 in a throwaway stopped merge before it was written down;
+/// `tests/it/conflict_ops.rs` re-runs each one against real git and compares
+/// the result with git's own commands.
+#[test]
+fn plan_whole_file_resolution_per_shape() {
+    let checkout_ours =
+        "git --literal-pathspecs checkout --ours -- p.rs|git --literal-pathspecs add -- p.rs";
+    let checkout_theirs =
+        "git --literal-pathspecs checkout --theirs -- p.rs|git --literal-pathspecs add -- p.rs";
+    let add = "git --literal-pathspecs add -- p.rs";
+    let remove = "git --literal-pathspecs rm --quiet -- p.rs";
+    let rows: [(UnmergedHow, Side, &str); 14] = [
+        (UnmergedHow::BothModified, Side::Ours, checkout_ours),
+        (UnmergedHow::BothModified, Side::Theirs, checkout_theirs),
+        (UnmergedHow::BothAdded, Side::Ours, checkout_ours),
+        (UnmergedHow::BothAdded, Side::Theirs, checkout_theirs),
+        (UnmergedHow::DeletedByThem, Side::Ours, add),
+        (UnmergedHow::DeletedByThem, Side::Theirs, remove),
+        (UnmergedHow::DeletedByUs, Side::Theirs, add),
+        (UnmergedHow::DeletedByUs, Side::Ours, remove),
+        (UnmergedHow::AddedByUs, Side::Ours, add),
+        (UnmergedHow::AddedByUs, Side::Theirs, remove),
+        (UnmergedHow::AddedByThem, Side::Theirs, add),
+        (UnmergedHow::AddedByThem, Side::Ours, remove),
+        (UnmergedHow::BothDeleted, Side::Ours, remove),
+        (UnmergedHow::BothDeleted, Side::Theirs, remove),
+    ];
+    for (how, side, expected) in rows {
+        let f = conflicted("p.rs", how);
+        assert_eq!(
+            lines(&resolve("p.rs", side, how), &f).join("|"),
+            expected,
+            "{how:?} {side:?}"
+        );
+    }
+}
+
+#[test]
+fn plan_restart_is_checkout_merge() {
+    let f = conflicted("p.rs", UnmergedHow::BothModified);
+    assert_eq!(
+        lines(&restart("p.rs"), &f),
+        ["git --literal-pathspecs checkout --merge -- p.rs"]
+    );
+}
+
+/// Both run inside a live merge — that is where a conflict lives — and both
+/// refuse a path the status does not call unmerged.
+#[test]
+fn conflict_operations_check_against_the_status() {
+    let f = conflicted("p.rs", UnmergedHow::DeletedByThem);
+    assert_eq!(
+        resolve("p.rs", Side::Ours, UnmergedHow::DeletedByThem).check(&f),
+        Ok(())
+    );
+    assert_eq!(restart("p.rs").check(&f), Ok(()));
+    // The shape the caller held is not the shape the status reads now: the
+    // side they picked may not exist in the shape it became.
+    assert_eq!(
+        resolve("p.rs", Side::Ours, UnmergedHow::BothModified).check(&f),
+        Err(Refusal::NotUnmerged {
+            path: PathBuf::from("p.rs"),
+        })
+    );
+    // A path with no unmerged entry at all.
+    assert_eq!(
+        resolve("other.rs", Side::Ours, UnmergedHow::BothModified).check(&f),
+        Err(Refusal::NotUnmerged {
+            path: PathBuf::from("other.rs"),
+        })
+    );
+    assert_eq!(
+        restart("other.rs").check(&f),
+        Err(Refusal::NotUnmerged {
+            path: PathBuf::from("other.rs"),
+        })
+    );
+}
+
+#[test]
+fn conflict_operations_describe_and_record_their_kind() {
+    let resolved = resolve("src/a.rs", Side::Ours, UnmergedHow::BothModified);
+    assert_eq!(resolved.describe(), "resolved src/a.rs (ours)");
+    assert_eq!(resolved.kind(), OperationKind::ResolveConflict);
+    assert_eq!(
+        resolve("src/a.rs", Side::Theirs, UnmergedHow::AddedByThem).describe(),
+        "resolved src/a.rs (theirs)"
+    );
+    // `BothDeleted` has no side to name: both sides deleted it.
+    assert_eq!(
+        resolve("src/a.rs", Side::Ours, UnmergedHow::BothDeleted).describe(),
+        "resolved src/a.rs (deleted)"
+    );
+    assert_eq!(restart("src/a.rs").describe(), "restarted src/a.rs");
+    assert_eq!(restart("src/a.rs").kind(), OperationKind::RestartConflict);
+}
+
+#[test]
+fn conflict_operations_touch_the_index_and_the_working_tree() {
+    let f = conflicted("p.rs", UnmergedHow::BothModified);
+    let expected = Touches {
+        refs: vec![],
+        index: true,
+        worktree: true,
+    };
+    assert_eq!(
+        resolve("p.rs", Side::Ours, UnmergedHow::BothModified).touches(&f),
+        expected
+    );
+    assert_eq!(restart("p.rs").touches(&f), expected);
+}
+
+#[test]
+fn conflict_refusals_in_words() {
+    assert_eq!(
+        Refusal::NotUnmerged {
+            path: PathBuf::from("src/a.rs"),
+        }
+        .explain(),
+        "src/a.rs is not conflicted"
+    );
+    assert_eq!(
+        Refusal::ConflictsOpen {
+            path: PathBuf::from("src/a.rs"),
+            open: 2,
+        }
+        .explain(),
+        "2 conflicts still open in src/a.rs"
+    );
+    assert_eq!(
+        Refusal::NotMarkerShape {
+            path: PathBuf::from("src/a.rs"),
+            how: UnmergedHow::DeletedByThem,
+        }
+        .explain(),
+        "src/a.rs: deleted by them — no markers to take from"
+    );
+}

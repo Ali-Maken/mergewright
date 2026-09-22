@@ -13,6 +13,7 @@
 //! a snapshot; it turns a key into an `Operation` and hands it over.
 
 mod commit;
+mod conflict;
 mod history;
 mod remote;
 mod stage;
@@ -28,9 +29,10 @@ use graft_git::remote::{Remote, TrackedUpstream};
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
 use graft_git::state::InProgress;
-use graft_git::status::WorkingTreeStatus;
+use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
+pub use conflict::{ResolveWholeParams, RestartParams, Side};
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
@@ -108,6 +110,12 @@ pub enum Operation {
     TagDelete(RefDeleteParams),
     /// `git stash branch`.
     BranchFromStash(BranchFromStashParams),
+    /// One conflicted path resolved whole, to one side: the shapes a block
+    /// take cannot reach — no markers, or binary (m6-conflicts/03).
+    ResolveWholeFile(ResolveWholeParams),
+    /// One conflicted path put back the way git left it: `git checkout
+    /// --merge`, the resolver's "start this file over" (m6-conflicts/03).
+    RestartConflict(RestartParams),
 }
 
 /// What [`crate::facts::read_facts`] must read for one operation, beyond
@@ -424,6 +432,33 @@ pub enum Refusal {
         /// The branch merged into, short name.
         branch: String,
     },
+    /// A conflict operation on a path the status does not call unmerged —
+    /// resolved already, never conflicted, or the status has moved on
+    /// (m6-conflicts/03).
+    NotUnmerged {
+        /// The path.
+        path: PathBuf,
+    },
+    /// `⏎` (mark resolved) on a file that still has blocks nobody has taken
+    /// a side on. Said in words before any `git` process runs;
+    /// [`Refusal::MarkersRemain`] stays as the second line of defence
+    /// (m6-conflicts/03).
+    ConflictsOpen {
+        /// The path.
+        path: PathBuf,
+        /// How many blocks are still open.
+        open: usize,
+    },
+    /// A block take on a shape that has no markers to take from: every
+    /// `UnmergedHow` but `BothModified` and `BothAdded`, and a binary file
+    /// of either of those. [`Operation::ResolveWholeFile`] is the way out
+    /// (m6-conflicts/03).
+    NotMarkerShape {
+        /// The path.
+        path: PathBuf,
+        /// The shape the status read.
+        how: UnmergedHow,
+    },
 }
 
 impl Refusal {
@@ -558,6 +593,16 @@ impl Refusal {
             Self::NotFastForward { branch } => {
                 format!("{branch} has diverged; a fast-forward is not possible — m merges instead")
             }
+            // The M6 conflict refusals, in the design note's words.
+            Self::NotUnmerged { path } => format!("{} is not conflicted", path.display()),
+            Self::ConflictsOpen { path, open } => {
+                format!("{open} conflicts still open in {}", path.display())
+            }
+            Self::NotMarkerShape { path, how } => format!(
+                "{}: {} — no markers to take from",
+                path.display(),
+                how.words()
+            ),
         }
     }
 }
@@ -618,6 +663,8 @@ impl Operation {
             Self::TagCreate(_) => OperationKind::TagCreate,
             Self::TagDelete(_) => OperationKind::TagDelete,
             Self::BranchFromStash(_) => OperationKind::BranchFromStash,
+            Self::ResolveWholeFile(_) => OperationKind::ResolveConflict,
+            Self::RestartConflict(_) => OperationKind::RestartConflict,
         }
     }
 
@@ -731,6 +778,52 @@ impl Operation {
             Self::TagCreate(params) => history::describe_tag_create(params),
             Self::TagDelete(params) => history::describe_delete("tag", params),
             Self::BranchFromStash(params) => history::describe_branch_from_stash(params),
+            Self::ResolveWholeFile(params) => conflict::describe_resolve(params),
+            Self::RestartConflict(params) => conflict::describe_restart(params),
+        }
+    }
+
+    /// The two gates every operation passes before its own rules: unmerged
+    /// paths, and an operation git already has in progress.
+    ///
+    /// A stage or unstage of exactly the unmerged paths is "mark resolved"
+    /// (m5/07), and the two conflict operations *are* the resolution, so
+    /// their own `check` is the one that refuses. A stage of a path that
+    /// still carries markers is `MarkersRemain`. Everything else waits for
+    /// the operation in progress to finish.
+    fn check_conflict_state(&self, facts: &RepoFacts) -> Result<(), Refusal> {
+        let unmerged: Vec<PathBuf> = facts
+            .status
+            .entries
+            .iter()
+            .filter(|entry| entry.unmerged)
+            .map(|entry| entry.path.clone())
+            .collect();
+        if !unmerged.is_empty() {
+            let resolving = match self {
+                Self::Stage(Target::Paths(paths)) | Self::Unstage(Target::Paths(paths)) => {
+                    paths.iter().all(|path| unmerged.contains(path))
+                }
+                Self::ResolveWholeFile(_) | Self::RestartConflict(_) => true,
+                _ => false,
+            };
+            if !resolving {
+                return Err(Refusal::Unmerged { paths: unmerged });
+            }
+            if let Self::Stage(Target::Paths(paths)) = self {
+                history::markers_in(paths, facts)?;
+            }
+        }
+        let waits = !matches!(
+            self,
+            Self::Stage(_)
+                | Self::Unstage(_)
+                | Self::ResolveWholeFile(_)
+                | Self::RestartConflict(_)
+        );
+        match facts.in_progress.filter(|_| waits) {
+            Some(kind) => Err(Refusal::InProgress(kind)),
+            None => Ok(()),
         }
     }
 
@@ -753,31 +846,7 @@ impl Operation {
         if facts.bare {
             return Err(Refusal::Bare);
         }
-        let unmerged: Vec<PathBuf> = facts
-            .status
-            .entries
-            .iter()
-            .filter(|entry| entry.unmerged)
-            .map(|entry| entry.path.clone())
-            .collect();
-        if !unmerged.is_empty() {
-            let resolving = match self {
-                Self::Stage(Target::Paths(paths)) | Self::Unstage(Target::Paths(paths)) => {
-                    paths.iter().all(|path| unmerged.contains(path))
-                }
-                _ => false,
-            };
-            if !resolving {
-                return Err(Refusal::Unmerged { paths: unmerged });
-            }
-            if let Self::Stage(Target::Paths(paths)) = self {
-                history::markers_in(paths, facts)?;
-            }
-        }
-        let waits_for_in_progress = !matches!(self, Self::Stage(_) | Self::Unstage(_));
-        if let Some(kind) = facts.in_progress.filter(|_| waits_for_in_progress) {
-            return Err(Refusal::InProgress(kind));
-        }
+        self.check_conflict_state(facts)?;
         match self {
             Self::Stage(target) => stage::check(target, &facts.status, stage::State::Stageable),
             Self::Unstage(target) => stage::check(target, &facts.status, stage::State::Staged),
@@ -803,6 +872,10 @@ impl Operation {
             Self::TagCreate(params) => history::check_tag_create(params, facts),
             Self::TagDelete(params) => history::check_delete(params, facts),
             Self::BranchFromStash(params) => history::check_branch_from_stash(params, facts),
+            Self::ResolveWholeFile(params) => conflict::check_resolve(params, facts),
+            Self::RestartConflict(params) => {
+                conflict::check_unmerged(&params.path, facts).map(|_| ())
+            }
         }
     }
 
@@ -834,6 +907,8 @@ impl Operation {
             Self::BranchDelete(params) | Self::TagDelete(params) => history::plan_delete(params),
             Self::TagCreate(params) => history::plan_tag_create(params),
             Self::BranchFromStash(params) => history::plan_branch_from_stash(params),
+            Self::ResolveWholeFile(params) => conflict::plan_resolve(params),
+            Self::RestartConflict(params) => conflict::plan_restart(params),
         }
     }
 
@@ -878,7 +953,14 @@ impl Operation {
     pub fn touches(&self, facts: &RepoFacts) -> Touches {
         let (refs, index, worktree) = match self {
             Self::Stage(_) | Self::Unstage(_) => (vec![], true, false),
-            Self::Discard(_) => (vec![], true, true),
+            // A discard, and the two conflict operations: the index (three
+            // stages collapsing to one entry, or going) and the working tree
+            // (a side written out, or the file removed). No ref moves for
+            // either conflict operation — the operation the conflict belongs
+            // to is what moves one, when it finishes.
+            Self::Discard(_) | Self::ResolveWholeFile(_) | Self::RestartConflict(_) => {
+                (vec![], true, true)
+            }
             Self::Commit(_) | Self::Amend(_) => {
                 (vec![commit::head_ref_name(&facts.head)], true, false)
             }
