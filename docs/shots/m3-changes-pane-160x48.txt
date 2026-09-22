@@ -8,8 +8,11 @@
 # - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
 #   its files indented under it. src/auth/token.rs appears twice, once under
 #   STAGED and once under UNSTAGED: that is the point, not a duplicate.
-# - notes.md is a row at all (at 80x24 the list is short enough that it may
-#   sit below the fold — scroll it into view when judging that size). Before
+#   **At 80x24 the file list has six rows and stops at UNSTAGED's
+#   `▾ src/` / `▾ api/`**: routes.rs, token.rs's second row and the whole
+#   UNTRACKED section are below the fold — scroll the list to judge them at
+#   that size. All three sections are on screen at 120x40 and 160x48.
+# - notes.md is a row at all (below the fold at 80x24, see above). Before
 #   this milestone untracked files were invisible in this pane.
 # - The line cursor: a ▎ in the sign column of one diff row, and that row
 #   alone. It is what Space and d act on.
@@ -18,9 +21,9 @@
 === 160x48 ===
 " graft 3 commits                                                                             UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
 "◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                  diff vs HEAD 0303030                                               "
-"◆   [HEAD] Commit 3␛[31m                                                         57y  0303030                                                                   "
-"●   Commit 2␛[31m                                                                57y  0202020                                                                   "
-"◇   Commit 1␛[31m                                                                57y  0101010                                                                   "
+"◆   [HEAD] Commit 3␛[31m                                                        57y  0303030                                                                    "
+"●   Commit 2␛[31m                                                               57y  0202020                                                                    "
+"◇   Commit 1␛[31m                                                               57y  0101010                                                                    "
 "                                                                                             STAGED (1)                                                         "
 "                                                                                               ▾ src/                                                           "
 "                                                                                                 ▾ auth/                                                        "
@@ -63,4 +66,4 @@
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search                                                                            "
+" space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                                                                   "

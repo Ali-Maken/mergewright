@@ -1,21 +1,21 @@
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-qIGljE/wor…
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-ZSTY6b/wor…
 ◆   ⓘ [◆ main ↑1 ↓1] amended                                        6y   68c13c4
 │ ● ⓘ [origin/main] Commit 200                                      7y   d5ae5fd
 ●─╯   Commit 199                                                    7y   13e6ab1
 ●     Commit 198                                                    7y   f5055d9
 ●     Commit 197                                                    7y   2cce853
 ●     Commit 196                                                    7y   325da3f
-●     CoForce-push main → origin/main?                                   0722297
-●     Coorigin/main d5ae5fd → 68c13c4 · refused if origin moved since    b6a4a47
-●     Coyour fetch (lease)                                               60af0eb
-●     Corewrites history for everyone who has d5ae5fd                    aceb8c5
-●     Commit 191                                                    7y   11d68ff
-●     Cogit push --progress --force-with-lease=refs/heads/main:d5ae5fd2… 91900bd
-●     Commit 189                                                    7y   cec3e93
-●     Co[ Cancel ]     Force push                                        0a91ece
-●     Commit 187                                                    7y   3121935
+●     ╭ Force-push main → origin/main? ────────────────────────────────╮ 0722297
+●     │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since  │ b6a4a47
+●     │ your fetch (lease)                                             │ 60af0eb
+●     │ rewrites history for everyone who has d5ae5fd                  │ aceb8c5
+●     │                                                                │ 11d68ff
+●     │ git push --progress --force-with-lease=refs/heads/main:d5ae5f… │ 91900bd
+●     │                                                                │ cec3e93
+●     │ ▸[ Cancel ]   [ Force push ]                                   │ 0a91ece
+●     ╰────────────────────────────────────────────────────────────────╯ 3121935
 ●     Commit 186                                                    7y   fab25df
 ●     Commit 185                                                    7y   09ae97c
 ●     Commit 184                                                    7y   49d7783

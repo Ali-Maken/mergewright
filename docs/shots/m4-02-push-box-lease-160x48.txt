@@ -1,6 +1,6 @@
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-WEHYeF/work  184 rows so far
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-GBkWI8/work  184 rows so far
 ◆   ⓘ [◆ main ↑1 ↓1] amended                                                                                                                     GF 6y   68c13c4
 │ ● ⓘ [origin/main] Commit 200                                                                                                                   GF 7y   d5ae5fd
 ●─╯   Commit 199                                                                                                                                 GF 7y   13e6ab1
@@ -19,14 +19,14 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●     Commit 186                                                                                                                                 GF 7y   fab25df
 ●     Commit 185                                                                                                                                 GF 7y   09ae97c
 ●     Commit 184                                                                                                                                 GF 7y   49d7783
-●     Commit 183                                Force-push main → origin/main?                                                                   GF 7y   22d55c9
-●     Commit 182                                origin/main d5ae5fd → 68c13c4 · refused if origin moved since                                    GF 7y   d212b3e
-●     Commit 181                                your fetch (lease)                                                                               GF 7y   c8254c5
-●     Commit 180                                rewrites history for everyone who has d5ae5fd                                                    GF 7y   e95ccd4
-●     Commit 179                                                                                                                                 GF 7y   97b58e5
-●     Commit 178                                git push --progress --force-with-lease=refs/heads/main:d5ae5fd2…                                 GF 7y   1c9b7ed
-●     Commit 177                                                                                                                                 GF 7y   f93340a
-●     Commit 176                                [ Cancel ]     Force push                                                                        GF 7y   5aaeeba
+●     ╭ Force-push main → origin/main? ───────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
+●     │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                      │  GF 7y   d212b3e
+●     │ rewrites history for everyone who has d5ae5fd                                                                                         │  GF 7y   c8254c5
+●     │                                                                                                                                       │  GF 7y   e95ccd4
+●     │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/heads/ma… │  GF 7y   97b58e5
+●     │                                                                                                                                       │  GF 7y   1c9b7ed
+●     │ ▸[ Cancel ]   [ Force push ]                                                                                                          │  GF 7y   f93340a
+●     ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
 ●     Commit 175                                                                                                                                 GF 7y   6be5928
 ●     Commit 174                                                                                                                                 GF 7y   9b67be4
 ●     Commit 173                                                                                                                                 GF 7y   937d32b

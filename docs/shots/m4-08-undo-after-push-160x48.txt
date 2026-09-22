@@ -1,8 +1,8 @@
-m4 walk capture: m4-08-undo-after-push — scenario u-never-touches-the-remote, keys u, unicode tier, 160x48
+m4 walk capture: m4-08-undo-after-push — scenario u-never-touches-the-remote, keys u → ⏎, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-DUtAKw/work  184 rows so far
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-aVSH1x/work  184 rows so far
 ◌     Uncommitted changes (1 staged)
-  ●   [origin/main] ours                                                                                                                         GT now  658e327
+  ●   [origin/main] ours                                                                                                                         GT now  8e7c06f
 ◆─╯   [◆ main ↓1] theirs                                                                                                                         GF 6y   7be74b5
 ●     Commit 200                                                                                                                                 GF 7y   d5ae5fd
 ●     Commit 199                                                                                                                                 GF 7y   13e6ab1

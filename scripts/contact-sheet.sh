@@ -75,6 +75,7 @@ not_recorded_count=0
 case "$milestone" in
   m3) promise="you cannot lose work — every write is journaled with a backup and comes back byte for byte on u (TESTING.md \"Working tree, undo and stash\")." ;;
   m4) promise="you never leave Graft to fetch, pull or push — not for a password, a rejection or a hang (TESTING.md \"Remotes\")." ;;
+  m5) promise="you see the result before you confirm — the ghost the preview draws is what git then does, and u takes it back (TESTING.md \"History\")." ;;
   *) promise="NOT RECORDED — add this milestone's promise to scripts/contact-sheet.sh." ;;
 esac
 

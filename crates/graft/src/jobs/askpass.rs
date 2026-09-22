@@ -9,14 +9,14 @@
 //! [`Secret`] the whole way — never printed, zeroed when dropped — and an
 //! answer for a job that has stopped asking is dropped, not queued.
 //!
-//! What that does **not** cover: the characters before the `Enter` that makes
-//! the `Answer`. They are typed into the prompt's plain `TextField`, whose
-//! `String` `update` clones on every event (`update` returns a new `AppState`)
-//! and drops without zeroing. Copies of the typed password therefore sit in
-//! freed heap until it is reused. Closing the prompt replaces the field, which
-//! keeps it off the screen and out of the next state — not out of memory.
-//! Fixing it means a secret-backed field in `graft-ui`, not a change here
-//! (m4-remotes/06 review).
+//! The characters before the `Enter` that makes the `Answer` are typed into
+//! a [`graft_ui::text_input::SecretField`] (M5 group 01): one reserved
+//! buffer that is zeroed on drop, no `text()` or `Display`, taken out only
+//! by value into the `Secret`. What is still copied: `update` clones the
+//! whole `AppState` once per event, so while a prompt is open the field is
+//! cloned per keystroke, progress message or resize — each copy zeroes when
+//! it drops; none is freed unwiped. Removing that copy is `update`'s shape
+//! to change, not this module's (the type's own doc says the same).
 
 use std::collections::HashMap;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};

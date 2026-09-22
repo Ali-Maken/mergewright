@@ -2962,6 +2962,60 @@ fn the_prelude_holds_a_key_while_a_write_is_in_flight() {
     assert!(state.journal.shown, "and it opened the journal browser");
 }
 
+/// m5-history-and-ghost-preview/11: a preview whose plan is still being
+/// worked out is a job an earlier key started. The acceptance captures
+/// press `m → ⏎` — `→` and `⏎` on a box with no plan yet would close it
+/// and the pty would record a graph with no box, which proves nothing.
+#[test]
+fn the_prelude_holds_a_key_while_a_preview_plan_is_pending() {
+    let walk = JobId::new(4);
+    let mut state = awaiting(walk);
+    state.harness.prelude = vec![KeyPress::plain(KeyCode::Right)];
+    let (state, _) = update(&state, sized(80, 12));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(9),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    let mut state = state;
+    let planning = JobId::new(78);
+    state.preview = Some(super::preview::PreviewState {
+        subject: super::preview::PreviewSubject::RevertTo(graft_core::journal::EntryId::new(
+            0, [0; 10],
+        )),
+        resident: Vec::new(),
+        slice_top: 0,
+        job: planning,
+        plan: Loading::Pending(planning),
+        rows: Vec::new(),
+        view_start: 0,
+        selected_row: None,
+        ghost_index: std::collections::HashMap::new(),
+        clipped: 0,
+        undrawable: None,
+        cursor: 0,
+        return_to_journal: false,
+    });
+
+    let (state, _) = update(&state, working_tree_read(JobId::new(10)));
+    assert_eq!(
+        state.harness.prelude.len(),
+        1,
+        "the plan is in flight: → waits"
+    );
+
+    let mut state = state;
+    state.preview = None;
+    let (state, _) = update(&state, sized(80, 12));
+    assert!(
+        state.harness.prelude.is_empty(),
+        "the box is gone: → was fed"
+    );
+}
+
 /// m4-remotes/06: the one exception to the rule above. A credential prompt
 /// is a text field waiting for a key, and the write that asked for it *is*
 /// still in flight — a prelude that waited for `operating` to clear would

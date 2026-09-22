@@ -46,7 +46,7 @@
 
 --- the cursor is on the uncommitted-changes row
 [······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  x  +
+ ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
@@ -66,13 +66,13 @@
 
 --- the undo journal browser has focus
 [······························ 80 cells of bar ·······························]
- ⏎ revert  esc close  . more
+ ⏎ revert  esc close
 
 === as built — 120 cells of bar ===
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  . more  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  space  1  F  H  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
@@ -92,13 +92,13 @@
 
 --- the undo journal browser has focus
 [·················································· 120 cells of bar ··················································]
- ⏎ revert  esc close  . more
+ ⏎ revert  esc close
 
 === as built — 160 cells of bar ===
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 rend  . more  x  +  space  1  F  H  y  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  . more  +  space  1  F  H  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
@@ -118,7 +118,7 @@
 
 --- the undo journal browser has focus
 [······································································ 160 cells of bar ······································································]
- ⏎ revert  esc close  . more
+ ⏎ revert  esc close
 
 === `rev` — revert's only home, the undo journal browser ===
 #
@@ -138,17 +138,17 @@
 
 --- the undo journal browser has focus, 16 cells
 [ 16 cells of bar ]
- . more
+
 
 --- the undo journal browser has focus, 20 cells
 [ 20 cells of bar ·]
- . more
+ ⏎ revert  esc close
 
 --- the undo journal browser has focus, 24 cells
 [·· 24 cells of bar ···]
- . more
+ ⏎ revert  esc close
 
 --- the undo journal browser has focus, 27 cells
 [···· 27 cells of bar ····]
- ⏎ rev  esc close  . more
+ ⏎ revert  esc close
 

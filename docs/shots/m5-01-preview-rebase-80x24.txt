@@ -1,0 +1,26 @@
+m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 80x24
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-2M6ckb  8…
+  ●     finish the feature                                          6y   8d6cd28
+  ●     start the feature                                           6y   52f3b96
+  │     after rebase
+  │ ○   [◆ feature] finish the feature                              —    —
+  │ ○   start the feature                                           —    —
+●─│─╯   [main] main moves again                                     6y   45fa51d
+● │     main moves on                                               6y   37926a7
+●─╯     add the base                                                6y   ed332bc
+●       Correct the note                                            7y   a82960b
+●       Add the first note                                          7y   fadcfb3
+◇       Add a readme                                                7y   64ded19
+
+
+╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
+│ 2 commits replayed                                                           │
+│ feature 8d6cd28 → 2 new commits                                              │
+│ working tree: 2 files updated                                                │
+│ no conflicts expected                                                        │
+│ undo: u takes this back                                                      │
+│ git rebase --no-update-refs --no-autostash main                              │
+│ ▸[ Cancel ]   [ Confirm ]                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+

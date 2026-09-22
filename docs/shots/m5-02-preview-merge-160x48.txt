@@ -1,0 +1,50 @@
+m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 160x48
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-OP9pbQ  8 commits
+  │ ●   [feature] finish the feature                                                                                                             GF 6y   8d6cd28
+  │ ●   start the feature                                                                                                                        GF 6y   52f3b96
+●─╯ │   main moves again                                                                                                                         GF 6y   45fa51d
+●   │   main moves on                                                                                                                            GF 6y   37926a7
+●───╯   add the base                                                                                                                             GF 6y   ed332bc
+●       Correct the note                                                                                                                         GF 7y   a82960b
+●       Add the first note                                                                                                                       GF 7y   fadcfb3
+◇       Add a readme                                                                                                                             GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                                                               │
+│ main 45fa51d → 1 new commit                                                                                                                                  │
+│ working tree: 2 files updated                                                                                                                                │
+│ no conflicts expected                                                                                                                                        │
+│ undo: u takes this back                                                                                                                                      │
+│ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                                                                 │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

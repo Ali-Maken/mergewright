@@ -1,7 +1,7 @@
 m4 walk capture: m4-01-push-box-plain — scenario push-plain, keys P, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-B87U1U/work  184 rows so far
-◆ ⓘ [◆ main ↑1] to push                                                                                                                          GT now  95a84ee
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-4HEmLC/work  184 rows so far
+◆ ⓘ [◆ main ↑1] to push                                                                                                                          GT now  233ee7e
 ●   [origin/main] Commit 200                                                                                                                     GF 7y   d5ae5fd
 ●   Commit 199                                                                                                                                   GF 7y   13e6ab1
 ●   Commit 198                                                                                                                                   GF 7y   f5055d9
@@ -20,13 +20,13 @@ m4 walk capture: m4-01-push-box-plain — scenario push-plain, keys P, unicode t
 ●   Commit 185                                                                                                                                   GF 7y   09ae97c
 ●   Commit 184                                                                                                                                   GF 7y   49d7783
 ●   Commit 183                                                                                                                                   GF 7y   22d55c9
-●   Commit 182                                  Push main → origin/main                                                                          GF 7y   d212b3e
-●   Commit 181                                  1 commit · can't be undone from here — origin keeps what you                                     GF 7y   c8254c5
-●   Commit 180                                  send                                                                                             GF 7y   e95ccd4
-●   Commit 179                                                                                                                                   GF 7y   97b58e5
-●   Commit 178                                  git push --progress origin refs/heads/main:refs/heads/main                                       GF 7y   1c9b7ed
-●   Commit 177                                                                                                                                   GF 7y   f93340a
-●   Commit 176                                  [ Cancel ]     Push                                                                              GF 7y   5aaeeba
+●   ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   d212b3e
+●   │ 1 commit · can't be undone from here — origin keeps what you send                                                                       │  GF 7y   c8254c5
+●   │                                                                                                                                         │  GF 7y   e95ccd4
+●   │ git push --progress origin refs/heads/main:refs/heads/main                                                                              │  GF 7y   97b58e5
+●   │                                                                                                                                         │  GF 7y   1c9b7ed
+●   │ ▸[ Cancel ]   [ Push ]                                                                                                                  │  GF 7y   f93340a
+●   ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
 ●   Commit 175                                                                                                                                   GF 7y   6be5928
 ●   Commit 174                                                                                                                                   GF 7y   9b67be4
 ●   Commit 173                                                                                                                                   GF 7y   937d32b
@@ -47,4 +47,4 @@ m4 walk capture: m4-01-push-box-plain — scenario push-plain, keys P, unicode t
 ●   Commit 158                                                                                                                                   GF 7y   1e28a71
 ●   Commit 157                                                                                                                                   GF 7y   b57586d
 ●   Commit 156                                                                                                                                   GF 7y   edc7cba
- q quit  F2 status  F3 renderer  u undo  . explain  / search  j/k move  Space fold  1 first-parent  F focus  S stash  H hide stash  f fetch  p pull  P push
+ . explain  ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2  F3  x  +  j/k  space  1  F  H  y  M  O

@@ -44,7 +44,7 @@
 "                                                                               █"
 "                                                                                "
 "                                                                                "
-" q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent "
+" ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +    "
 
 === ascii ===
 " graft 7 commits                                                               *"

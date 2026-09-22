@@ -6,12 +6,13 @@
 //! history window, the refs answer and the working-tree status are on hand,
 //! and nothing an earlier key started is still in flight (the radar context,
 //! a search, the pane's file list or diff, a write and its undo, a journal
-//! or stash read, the commit editor's prefill). So `Enter` opens on a real
-//! row and not on nothing, `j` after it moves the files cursor and not an
-//! empty list, `k` finds the uncommitted row once the status says the tree
-//! is dirty, and `u` after `Space` undoes the stage that has landed rather
-//! than racing it (m3-working-tree-undo-and-stash/07). Empty in the shipped
-//! binary, so `update` never feeds anything there.
+//! or stash read, the commit editor's prefill, a Ghost Preview's plan). So
+//! `Enter` opens on a real row and not on nothing, `j` after it moves the
+//! files cursor and not an empty list, `k` finds the uncommitted row once
+//! the status says the tree is dirty, `u` after `Space` undoes the stage
+//! that has landed rather than racing it (m3-working-tree-undo-and-stash/07),
+//! and `→ ⏎` after `m` confirm a drawn box and not an empty one. Empty in
+//! the shipped binary, so `update` never feeds anything there.
 
 use graft_core::event::KeyPress;
 
@@ -56,5 +57,13 @@ fn settled(state: &AppState) -> bool {
         && !matches!(state.stash.entries, Loading::Pending(_))
         && state.head_message.is_none()
         && state.commit_template.is_none();
-    window && refs && status && quiet && writes_landed
+    // M5's Ghost Preview: the box a key opened is planned by a job. `→ ⏎`
+    // fed before the plan lands would act on a box with no plan — close it
+    // — and a capture would show a graph with no box
+    // (m5-history-and-ghost-preview/11).
+    let planned = state
+        .preview
+        .as_ref()
+        .is_none_or(|preview| !matches!(preview.plan, Loading::Pending(_)));
+    window && refs && status && quiet && writes_landed && planned
 }

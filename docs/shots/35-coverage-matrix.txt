@@ -83,3 +83,17 @@ m4-05-progress-footer      C         C
 m4-06-rejected-sticky      C         C       
 m4-07-journal-remote-rows  C         C       
 m4-08-undo-after-push      C         C       
+
+History and Ghost Preview coverage: capture × size (m5-history-and-ghost-preview/11)
+Files docs/shots/<stem>-<WxH>.txt from .scratch/m5-history-and-ghost-preview/pty-walk-m5.py;
+C the file exists, — it does not. Unicode tier only; colour is never captured.
+
+capture                     80x24     160x48  
+m5-01-preview-rebase        C         C       
+m5-02-preview-merge         C         C       
+m5-03-preview-reset-hard    C         C       
+m5-04-time-machine          C         C       
+m5-05-preview-too-small     —         —       
+m5-06-banner-conflicts      C         C       
+m5-07-branch-row-hints      C         C       
+m5-11-diverged-pull-sticky  C         C       

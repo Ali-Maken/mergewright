@@ -8,8 +8,6 @@
 //! hand. The shared parts (the plan types, the forecast [`fold`], ghost oids
 //! and the time machine) stay in the parent module.
 
-use std::path::PathBuf;
-
 use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
 use graft_git::history_reads;
@@ -25,9 +23,9 @@ use crate::operation::{
 };
 
 use super::{
-    ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, PATHS_CAP, PreviewError, PreviewPlan,
-    RefMove, Target, UndoNote, WorktreeEffect, blank, dirty_tracked, fold, forecast_one, ghost_oid,
-    identity_now, is_ancestor, updated,
+    ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, Landing, PreviewError, PreviewPlan,
+    RefMove, Replay, Target, UndoNote, WorktreeEffect, blank, dirty_tracked, fold, forecast_one,
+    ghost_oid, identity_now, is_ancestor, worktree,
 };
 
 // ── merge ───────────────────────────────────────────────────────────────
@@ -54,7 +52,16 @@ pub(super) fn merge(
             from: Some(into),
             to: Some(Target::Real(source)),
         }];
-        plan.worktree = updated(repo, into, source)?;
+        // A fast-forward lands `HEAD` on `source` itself, so the tree it
+        // ends at is real. `Joining` would give the same answer here — the
+        // fork point *is* `into` — which is the rule agreeing with itself.
+        plan.worktree = worktree(
+            repo,
+            &Landing::At {
+                from: into,
+                to: source,
+            },
+        )?;
         return Ok(plan);
     }
     if params.ff == FastForward::Only {
@@ -74,7 +81,16 @@ pub(super) fn merge(
         from: Some(into),
         to: Some(Target::Ghost(0)),
     }];
-    plan.worktree = updated(repo, into, source)?;
+    // The merge commit's tree is a ghost, so what lands on disk is what
+    // `source` gained since the two diverged — never `into` against
+    // `source`, which would also name `HEAD`'s own files, already on disk.
+    plan.worktree = worktree(
+        repo,
+        &Landing::Joining {
+            ours: into,
+            theirs: source,
+        },
+    )?;
     plan.conflicts = forecast_one(repo, git, None, into, source, stop)?;
     Ok(plan)
 }
@@ -112,10 +128,16 @@ pub(super) fn rebase(
         from: Some(params.branch.oid),
         to: Some(Target::Ghost(plan.ghosts.len() - 1)),
     }];
-    // The files that differ between where the branch is and where it is
-    // going: the replayed result's tree is not known (it is a ghost), and
-    // this is the real pair that bounds what lands on disk.
-    plan.worktree = updated(repo, params.branch.oid, onto)?;
+    // The replayed branch's tree is a ghost. What lands on disk is what
+    // `onto` gained since the two diverged: the branch's own commits are
+    // replayed on top and their files are already here.
+    plan.worktree = worktree(
+        repo,
+        &Landing::Joining {
+            ours: params.branch.oid,
+            theirs: onto,
+        },
+    )?;
     plan.conflicts = if range.capped {
         ConflictForecast::NotChecked(format!("more than {FORECAST_CAP} commits"))
     } else {
@@ -152,6 +174,7 @@ pub(super) fn cherry_pick(
     let head = params.head.oid;
     let mut plan = blank();
     let mut conflicts = ConflictForecast::Clean;
+    let mut replays: Vec<Replay> = Vec::new();
     for commit in &params.commits {
         // The picked commit is by definition not on `head`, so one
         // `rev-list <commit> ^<head>` capped at one gives the commit itself
@@ -176,6 +199,10 @@ pub(super) fn cherry_pick(
             replays: Some(summary.id),
         });
         let base = summary.parents.first().copied();
+        replays.push(Replay {
+            parent: base,
+            commit: *commit,
+        });
         conflicts = fold(
             conflicts,
             forecast_one(repo, git, base, head, *commit, stop)?,
@@ -186,30 +213,12 @@ pub(super) fn cherry_pick(
         from: Some(head),
         to: Some(Target::Ghost(plan.ghosts.len() - 1)),
     }];
-    plan.worktree = worktree_of_replay(repo, head, &params.commits)?;
+    // Only the picked patches come in: each against its own first parent,
+    // which is what the patch *is*. `head` against the commit would name
+    // everything on the other branch too, picked or not.
+    plan.worktree = worktree(repo, &Landing::Replaying(replays))?;
     plan.conflicts = conflicts;
     Ok(plan)
-}
-
-/// The paths a replay would rewrite: the union of what each replayed commit
-/// changed against its own first parent, which is the patch being applied.
-fn worktree_of_replay(
-    repo: &RepoHandle,
-    head: Oid,
-    commits: &[Oid],
-) -> Result<WorktreeEffect, PreviewError> {
-    let mut paths: Vec<PathBuf> = Vec::new();
-    let mut more = false;
-    for commit in commits {
-        let (changed, cut) = history_reads::changed_paths(repo, head, *commit, PATHS_CAP)?;
-        more |= cut;
-        for path in changed {
-            if !paths.contains(&path) {
-                paths.push(path);
-            }
-        }
-    }
-    Ok(WorktreeEffect::Updated { paths, more })
 }
 
 // ── revert ──────────────────────────────────────────────────────────────
@@ -242,12 +251,13 @@ pub(super) fn revert(
     // (`commit..head`) was empty whenever the commit being reverted was
     // `HEAD`, which is the ordinary case, so the box said no file changed
     // while git rewrote several (m5/07 review, M3).
-    plan.worktree = match params.parent {
-        Some(parent) => updated(repo, parent, params.commit)?,
-        None => WorktreeEffect::NotShown {
-            why: "the reverted commit's parent was not recorded".to_owned(),
-        },
-    };
+    plan.worktree = worktree(
+        repo,
+        &Landing::Replaying(vec![Replay {
+            parent: params.parent,
+            commit: params.commit,
+        }]),
+    )?;
     // The reverse patch as a three-way merge: base is the commit itself,
     // theirs is its parent — going backwards along that one edge.
     plan.conflicts = match params.parent {
@@ -304,7 +314,8 @@ fn hard_reset_effect(
 ) -> Result<WorktreeEffect, PreviewError> {
     let dirty = dirty_tracked(facts);
     if dirty.is_empty() {
-        updated(repo, from, to)
+        // The tree lands on `to`, which already exists.
+        worktree(repo, &Landing::At { from, to })
     } else {
         Ok(WorktreeEffect::Lost { paths: dirty })
     }
@@ -330,7 +341,7 @@ pub(super) fn checkout(
         }
     };
     plan.worktree = match (from, to) {
-        (Some(from), Some(to)) => updated(repo, from, to)?,
+        (Some(from), Some(to)) => worktree(repo, &Landing::At { from, to })?,
         // An unborn `HEAD`, or a branch the facts could not resolve: there
         // is no pair to diff, and saying "nothing changes" would be a
         // guess. The ref move and the `HEAD` move still say where it goes.
@@ -370,7 +381,13 @@ pub(super) fn branch_create(
     if params.checkout {
         plan.head = Some(HeadMove::ToBranch(branch_ref(&params.name)));
         if let Some(from) = head_tip(facts) {
-            plan.worktree = updated(repo, from, params.at)?;
+            plan.worktree = worktree(
+                repo,
+                &Landing::At {
+                    from,
+                    to: params.at,
+                },
+            )?;
         }
     }
     Ok(plan)
@@ -432,7 +449,17 @@ pub(super) fn branch_from_stash(
             to: Some(Target::Real(base)),
         }],
         head: Some(HeadMove::ToBranch(name)),
-        worktree: updated(repo, base, params.commit)?,
+        // `stash branch` checks the new branch out at `base` and applies
+        // the stash there, so the tree lands on the stash commit's own
+        // tree — a real one. From `HEAD`, not from `base`: leaving `HEAD`
+        // is part of what rewrites the user's files.
+        worktree: worktree(
+            repo,
+            &Landing::At {
+                from: head,
+                to: params.commit,
+            },
+        )?,
         ..blank()
     })
 }

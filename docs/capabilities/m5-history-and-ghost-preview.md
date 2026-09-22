@@ -244,7 +244,7 @@ unverified_aspect: the captures — unverified by eye
   Ghost Preview's own confirm) shares this: its only constructor starts on `Cancel` too, and
   `choices`/`cursor` are private so no caller can build one that starts elsewhere.
 - **Proven by:** `graft_ui::confirm::tests::every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked`, `graft::update::confirm::tests::left_on_cancel_stays_on_cancel`, `graft::update::confirm::tests::right_moves_onto_the_acting_choice_and_clamps`, `graft_ui::preview_box::tests::the_only_constructor_opens_on_cancel`
-- **Looks like:** `docs/shots/m5-ui-confirm.txt`, `docs/shots/m5-ui-preview-box.txt`
+- **Looks like:** `docs/shots/m5-ui-confirm-over-graph-80x24.txt`, `docs/shots/m5-ui-confirm-over-graph-160x48.txt`, `docs/shots/m5-ui-preview-box.txt`
 - **Decided in:** `docs/adr/0038-m5-spec-decisions.md` §1
 - **Status:** works; captures unverified by eye
 

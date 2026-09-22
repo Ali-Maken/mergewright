@@ -42,8 +42,8 @@
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 2 commits replayed                                                           │
 │ feature 8d6cd28 → 2 new commits                                              │
-│ working tree: 4 files updated                                                │
-│ no conflicts expected (forecast)                                             │
+│ working tree: 2 files updated                                                │
+│ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash main                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │

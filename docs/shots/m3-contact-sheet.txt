@@ -852,15 +852,15 @@ what right looks like: Capture header "Judge by eye": the title row reads AMEND 
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 
@@ -879,8 +879,11 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/160
 # - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
 #   its files indented under it. src/auth/token.rs appears twice, once under
 #   STAGED and once under UNSTAGED: that is the point, not a duplicate.
-# - notes.md is a row at all (at 80x24 the list is short enough that it may
-#   sit below the fold — scroll it into view when judging that size). Before
+#   **At 80x24 the file list has six rows and stops at UNSTAGED's
+#   `▾ src/` / `▾ api/`**: routes.rs, token.rs's second row and the whole
+#   UNTRACKED section are below the fold — scroll the list to judge them at
+#   that size. All three sections are on screen at 120x40 and 160x48.
+# - notes.md is a row at all (below the fold at 80x24, see above). Before
 #   this milestone untracked files were invisible in this pane.
 # - The line cursor: a ▎ in the sign column of one diff row, and that row
 #   alone. It is what Space and d act on.
@@ -910,21 +913,21 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/160
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search  j/k move  Space fold              "
+" space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                           "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 
@@ -943,8 +946,11 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/120
 # - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
 #   its files indented under it. src/auth/token.rs appears twice, once under
 #   STAGED and once under UNSTAGED: that is the point, not a duplicate.
-# - notes.md is a row at all (at 80x24 the list is short enough that it may
-#   sit below the fold — scroll it into view when judging that size). Before
+#   **At 80x24 the file list has six rows and stops at UNSTAGED's
+#   `▾ src/` / `▾ api/`**: routes.rs, token.rs's second row and the whole
+#   UNTRACKED section are below the fold — scroll the list to judge them at
+#   that size. All three sections are on screen at 120x40 and 160x48.
+# - notes.md is a row at all (below the fold at 80x24, see above). Before
 #   this milestone untracked files were invisible in this pane.
 # - The line cursor: a ▎ in the sign column of one diff row, and that row
 #   alone. It is what Space and d act on.
@@ -953,9 +959,9 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/120
 === 160x48 ===
 " graft 3 commits                                                                             UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
 "◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                  diff vs HEAD 0303030                                               "
-"◆   [HEAD] Commit 3␛[31m                                                         57y  0303030                                                                   "
-"●   Commit 2␛[31m                                                                57y  0202020                                                                   "
-"◇   Commit 1␛[31m                                                                57y  0101010                                                                   "
+"◆   [HEAD] Commit 3␛[31m                                                        57y  0303030                                                                    "
+"●   Commit 2␛[31m                                                               57y  0202020                                                                    "
+"◇   Commit 1␛[31m                                                               57y  0101010                                                                    "
 "                                                                                             STAGED (1)                                                         "
 "                                                                                               ▾ src/                                                           "
 "                                                                                                 ▾ auth/                                                        "
@@ -998,11 +1004,11 @@ what right looks like: Capture header: same scripted dirty tree as the 80x24/120
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search                                                                            "
+" space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                                                                   "
 
 ================================================================================
 docs/shots/m3-changes-pane-80x24.txt
-what right looks like: Capture header: scripted dirty tree (staged+edited file, edited file, untracked file); diff region focused, line cursor on the second added line of hunk 1 — judge by eye per the file's own bullets.
+what right looks like: Capture header: scripted dirty tree (staged+edited file, edited file, untracked file); diff region focused, line cursor on the second added line of hunk 1. At 80x24 the file list is six rows: `STAGED (1)` with `M token.rs`, then `UNSTAGED (2)` with only `▾ src/` / `▾ api/` — `routes.rs` and the whole `UNTRACKED` section are below the fold, not missing (the sections are all on screen at 120x40 and 160x48). Judge the rest by the file's own bullets.
 ================================================================================
 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
@@ -1015,8 +1021,11 @@ what right looks like: Capture header: scripted dirty tree (staged+edited file, 
 # - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
 #   its files indented under it. src/auth/token.rs appears twice, once under
 #   STAGED and once under UNSTAGED: that is the point, not a duplicate.
-# - notes.md is a row at all (at 80x24 the list is short enough that it may
-#   sit below the fold — scroll it into view when judging that size). Before
+#   **At 80x24 the file list has six rows and stops at UNSTAGED's
+#   `▾ src/` / `▾ api/`**: routes.rs, token.rs's second row and the whole
+#   UNTRACKED section are below the fold — scroll the list to judge them at
+#   that size. All three sections are on screen at 120x40 and 160x48.
+# - notes.md is a row at all (below the fold at 80x24, see above). Before
 #   this milestone untracked files were invisible in this pane.
 # - The line cursor: a ▎ in the sign column of one diff row, and that row
 #   alone. It is what Space and d act on.
@@ -1034,7 +1043,6 @@ what right looks like: Capture header: scripted dirty tree (staged+edited file, 
 "UNSTAGED (2)                                                                    "
 "  ▾ src/                                                                        "
 "    ▾ api/                                                                      "
-"      M routes.rs                                                          +3 −2"
 "fn routes()                                                                     "
 " 18  18       let mut app = Router::new();                                      "
 " 19     -     app.get("/health", health);                                       "
@@ -1047,6 +1055,7 @@ what right looks like: Capture header: scripted dirty tree (staged+edited file, 
 " 45     -     Json(Status::Ok)                                                  "
 "     46 +     Json(Status::from(&state))                                        "
 " 46  47   }                                                                     "
+" space stage  d discard  c commit  ⌃A all  e edit  ⇥ graph  . more              "
 
 ================================================================================
 docs/shots/m3-commit-editor-160x48.txt
@@ -1076,7 +1085,7 @@ what right looks like: Capture header: same commit editor, wider — judge by ey
 === 160x48 ===
 "COMMIT ── ⎇ main ── 1 file staged                                                            UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
 "                                                                                             diff vs HEAD 0303030                                               "
-" Subject fix the token refresh race                        ┊                            26/50                                                                   "
+" Subject fix the token refresh race                        ┊                           26/50                                                                    "
 "                                                                                                                                                                "
 "▸Body                                                                                                                                                           "
 "         The old token was refreshed twice when two requests raced.              ┊           STAGED (1)                                                         "
@@ -1222,15 +1231,15 @@ what right looks like: Capture header "Judge by eye": `nothing staged` sits imme
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 
@@ -1284,15 +1293,15 @@ what right looks like: Capture header "Judge by eye": the hook's own words are o
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 
@@ -1330,29 +1339,29 @@ what right looks like: Capture header: `d` pressed with the files list focused, 
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
-"                            Delete notes.md?                                                                            "
-"                            Deletes the file from the working tree.                                                     "
-"                            Graft keeps a backup first, so `u` can undo it afterwards.                                  "
-"                                                                                                                        "
-"                            git clean -f -- notes.md                                                                    "
-"                                                                                                                        "
-"                            [ Cancel ]     Delete                                                                       "
-" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search  j/k move  Space fold              "
+"    ╭ Delete notes.md? ───────────────────────────────────────────────────────────────────────────────╮                 "
+"    │ Deletes the file from the working tree.                                                         │                 "
+"    │ Graft keeps a backup first, so `u` can undo it afterwards.                                      │                 "
+"    │                                                                                                 │                 "
+"    │ git clean -f -- notes.md                                                                        │                 "
+"    │                                                                                                 │                 "
+"    │ ▸[ Cancel ]   [ Delete ]                                                                        │                 "
+"    ╰─────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+" space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                           "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 
@@ -1390,29 +1399,29 @@ what right looks like: Capture header: `d` pressed with the diff region focused,
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
-"                            Discard this line of src/api/routes.rs?                                                     "
-"                            1 added / 0 removed lines go back to how they were.                                         "
-"                            Graft keeps a backup first, so `u` can undo it afterwards.                                  "
-"                                                                                                                        "
-"                            git apply -R -                                                                              "
-"                                                                                                                        "
-"                            [ Cancel ]     Discard                                                                      "
-" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search  j/k move  Space fold              "
+"    ╭ Discard this line of src/api/routes.rs? ────────────────────────────────────────────────────────╮                 "
+"    │ 1 added / 0 removed lines go back to how they were.                                             │                 "
+"    │ Graft keeps a backup first, so `u` can undo it afterwards.                                      │                 "
+"    │                                                                                                 │                 "
+"    │ git apply -R -                                                                                  │                 "
+"    │                                                                                                 │                 "
+"    │ ▸[ Cancel ]   [ Discard ]                                                                       │                 "
+"    ╰─────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+" space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                           "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "
 
@@ -1772,26 +1781,26 @@ what right looks like: Capture header "Judge by eye": the question names the ent
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
-"                            Undo “commit "Add OAuth provider"”?                                                         "
-"                            Since this commit "Add OAuth provider", the index changed; the                              "
-"                            working tree's state after the operation was never recorded;                                "
-"                            undo restores all of it.                                                                    "
-"                            A backup is taken first, so this is itself undoable.                                        "
-"                                                                                                                        "
-"                            undo restores the recorded state                                                            "
-"                                                                                                                        "
-" q quit  F2 status  F3 rende[ Stop ]     Undo                                               ve  Space fold              "
+"    ╭ Undo “commit "Add OAuth provider"”? ────────────────────────────────────────────────────────────╮                 "
+"    │ Since this commit "Add OAuth provider", the index changed; the                                  │                 "
+"    │ working tree's state after the operation was never recorded;                                    │                 "
+"    │ undo restores all of it.                                                                        │                 "
+"    │ A backup is taken first, so this is itself undoable.                                            │                 "
+"    │                                                                                                 │                 "
+"    │ undo restores the recorded state                                                                │                 "
+"    │                                                                                                 │                 "
+"    │ ▸[ Stop ]   [ Undo ]                                                                            │                 "
+" spa╰─────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 
