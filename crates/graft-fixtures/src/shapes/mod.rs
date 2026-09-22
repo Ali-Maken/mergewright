@@ -10,6 +10,7 @@
 //! *around* the objects, where `git` itself is the only honest way to produce
 //! what git would produce.
 
+mod conflicts;
 mod history;
 mod merges;
 mod refs;
@@ -51,6 +52,15 @@ pub enum BuildError {
         path: PathBuf,
         /// What the operating system said.
         source: io::Error,
+    },
+    /// A recipe step did not do what the shape needs — a command meant to
+    /// stop on conflicts that ran clean, say (m6-conflicts/01).
+    #[error("building the {shape} fixture: {what}")]
+    Unexpected {
+        /// The shape being built.
+        shape: Shape,
+        /// What went wrong, in one line.
+        what: String,
     },
 }
 
@@ -108,8 +118,24 @@ impl<'a> Site<'a> {
 
     /// Writes a file in the working tree.
     pub fn write(&self, relative: &str, content: &str) -> Result<(), BuildError> {
+        self.write_bytes(relative, content.as_bytes())
+    }
+
+    /// Writes a file in the working tree from bytes — binary content, or
+    /// text whose line endings must be exactly these.
+    pub fn write_bytes(&self, relative: &str, content: &[u8]) -> Result<(), BuildError> {
         let path = self.dir.join(relative);
-        self.write_file(&path, content.as_bytes())
+        self.write_file(&path, content)
+    }
+
+    /// Removes a working-tree file so the next commit records its deletion.
+    pub fn remove(&self, relative: &str) -> Result<(), BuildError> {
+        let path = self.dir.join(relative);
+        fs::remove_file(&path).map_err(|source| BuildError::Io {
+            shape: self.shape,
+            path,
+            source,
+        })
     }
 
     fn mkdir(&self, path: &Path) -> Result<(), BuildError> {
@@ -163,5 +189,7 @@ pub fn build(shape: Shape, dir: &Path, streams: &Path) -> Result<(), BuildError>
         Shape::Stash => refs::stash(&site),
         Shape::NonUtf8Path => refs::non_utf8_path(&site),
         Shape::NonUtf8RefName => refs::non_utf8_ref_name(&site),
+        Shape::StoppedRebase => conflicts::stopped_rebase(&site),
+        Shape::StoppedMerge => conflicts::stopped_merge(&site),
     }
 }

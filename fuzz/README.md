@@ -22,6 +22,7 @@ cd fuzz
 cargo +nightly fuzz build                    # proves it compiles
 cargo +nightly fuzz run parse_unified        # runs until stopped (Ctrl-C)
 cargo +nightly fuzz run parse_file_list
+cargo +nightly fuzz run conflict_parse       # never panics, and render(parse(b)) == b (m6-conflicts/01)
 ```
 
 Never run from CI, `cargo test`, or a builder's own gates (CLAUDE.md: "One
