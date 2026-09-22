@@ -3397,6 +3397,61 @@ fn every_key_the_bar_draws_is_answered() {
     );
 }
 
+/// **The bar the Detail tab draws with an overlay behind it answers every
+/// key on it** (m5/42, the review's Q1 as m5/36 confirmed it).
+///
+/// The sweep above now covers this state too, through
+/// `HintContext::PaneOverOverlay` — this test is the same claim made where
+/// the defect was, so a failure names the overlay and the focus rather than
+/// a context enum. Before the fix it reported, for each of the three
+/// overlays and both focuses, a bar of the graph's verbs with every one of
+/// them dead: `b branch`, `r rebase`, `t tag`, `c commit`, `y sha`,
+/// `m merge`, `q quit`, `F2 status`, `F3 renderer`, `x compare`,
+/// `+ lanes`, `. more` — the overlay's `shown_key` claims the keyboard
+/// before `graph_key` ever runs.
+#[test]
+fn the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows() {
+    use graft_ui::graph_screen::{Divider, hints_for};
+
+    let mut dead: Vec<String> = Vec::new();
+    for overlay in EVERY_OVERLAY {
+        for opens in [true, false] {
+            let state = settled(overlay_over(commit_pane(JobId::new(701), opens), overlay));
+            // The bar the frame really draws over this state, at the width
+            // where the Detail tab owns the screen (`view::frame`'s `Tab`
+            // layout, the only layout that draws a bar under an overlay).
+            let state = AppState {
+                size: Size {
+                    columns: 80,
+                    rows: 48,
+                },
+                ..state
+            };
+            assert_eq!(
+                crate::update::detail::tab_hint_rows(&state),
+                1,
+                "{overlay:?} (opens {opens}): the Detail tab reserves its hint row"
+            );
+            let context = crate::view::rows::pane_hint_context(&state);
+            let idle = nothing_happened(&state);
+            for hint in hints_for(&context, Divider::Hidden, 80) {
+                if !answered(&state, &idle, hint.key) {
+                    dead.push(format!(
+                        "{overlay:?} (opens {opens}) draws `{} {}`",
+                        hint.key, hint.verb
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        dead.is_empty(),
+        "the bar behind an overlay draws {} key(s) nothing answers:\n  {}",
+        dead.len(),
+        dead.join("\n  ")
+    );
+}
+
 /// One cell of [`every_key_the_bar_draws_is_answered`]'s sweep: this
 /// context, at this width, with the pane open or not — every hint its bar
 /// draws that the handler with focus does nothing with.
@@ -3406,9 +3461,25 @@ fn dead_keys_on(
     columns: u16,
     bound: &[(&str, &str)],
 ) -> Vec<String> {
+    states_for(context, divider, columns)
+        .into_iter()
+        .flat_map(|state| dead_keys_in(&settled(state), context, divider, columns, bound))
+        .collect()
+}
+
+/// [`dead_keys_on`] against one of the screens that context can be the bar
+/// for — every hint the bar draws that this screen's focused handler does
+/// nothing with.
+fn dead_keys_in(
+    state: &AppState,
+    context: &HintContext,
+    divider: Divider,
+    columns: u16,
+    bound: &[(&str, &str)],
+) -> Vec<String> {
     use graft_ui::graph_screen::hints_for;
 
-    let state = settled(state_for(context, divider, columns));
+    let state = state.clone();
     // Both bars this state can be under: the one the enum names, and the one
     // `view::rows` actually asks for when handed the state (they differ only
     // in row decoration, but a classifier that reads the state wrongly is
@@ -3497,12 +3568,10 @@ fn dead_keys_on(
 ///
 /// With no drawn rows to read badges or a marker off, `view::rows`
 /// answers `PlainRow` where the bar's context says `BranchRow` or `Marked`:
-/// the difference is decoration on the row, and the keys are the same. The
-/// two overlays are the other gap and a real one — `view::frame` draws the
-/// journal and the stash *instead of* the graph screen, so the graph's
-/// footer is never asked to classify them ([`state_for`] builds them from
-/// `shown` and their entries instead, and the sweep still presses their
-/// keys).
+/// the difference is decoration on the row, and the keys are the same. That
+/// is the only gap left: since m5/42 the three overlays are classified like
+/// everything else, so a fixture with the journal, the stash or the Map
+/// view open is checked against the bar the app would really draw over it.
 #[test]
 fn every_swept_state_is_the_context_it_claims() {
     use graft_ui::graph_screen::{Divider, every_context};
@@ -3512,13 +3581,14 @@ fn every_swept_state_is_the_context_it_claims() {
             let Some(want) = classified_form(&context) else {
                 continue;
             };
-            let state = state_for(&context, divider, 160);
-            let banner = crate::update::banner::banner_view(&state);
-            assert_eq!(
-                crate::view::rows::footer_context(&state, &[], banner.as_ref()),
-                want,
-                "the fixture for {context:?} ({divider:?}) is not that screen"
-            );
+            for state in states_for(&context, divider, 160) {
+                let banner = crate::update::banner::banner_view(&state);
+                assert_eq!(
+                    crate::view::rows::footer_context(&state, &[], banner.as_ref()),
+                    want,
+                    "a fixture for {context:?} ({divider:?}) is not that screen"
+                );
+            }
         }
     }
 }
@@ -3533,11 +3603,21 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             row: Box::new(HintContext::PlainRow),
             opens: *opens,
         }),
-        // The overlays replace the graph screen, and `Preview`'s box draws
-        // its own footer: `hint_context` is not the code that decides any
-        // of the three.
-        HintContext::Journal | HintContext::Stash | HintContext::Preview => None,
-        HintContext::WorkingTreeRow
+        // `Preview`'s box draws its own footer: `hint_context` is not the
+        // code that decides it.
+        HintContext::Preview => None,
+        // The three overlays and the pane with one behind it **are**
+        // classified, since m5/42: `view::rows` reads
+        // `AppState::graph_overlay` and answers the overlay's own list with
+        // the graph focused, or `PaneOverOverlay` with the detail pane
+        // focused. Before that the overlays were `None` here — and that
+        // hole is exactly why a sweep carrying this invariant passed a bar
+        // of nine dead keys (the ticket's own finding).
+        HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::WorkingTreeRow
         | HintContext::PlainRow
         | HintContext::Banner { .. }
         | HintContext::ChangesPane { .. }
@@ -3702,31 +3782,43 @@ fn outcome(state: &AppState, press: Press) -> (AppState, Vec<Command>) {
 /// `divider` is not decoration: `Divider::Shown` means a pane is open on
 /// this frame, and `<> resize` is drawn because of it. A state built
 /// without the pane would fail its own hint.
-fn state_for(context: &HintContext, divider: Divider, columns: u16) -> AppState {
-    let mut state = screen_for(context);
-    // The width the bar being checked was drawn for (m5/33, review M6). It
-    // used to be 160 for every fixture while the sweep drew bars at six
-    // widths, so every narrow bar was pressed into a wide, side-by-side
-    // state — and the `Tab` layout under 100 columns is exactly where
-    // tickets 29 and 31's defects lived.
-    state.size = Size { columns, rows: 48 };
-    one_stash(&mut state);
-    if divider == Divider::Shown && !state.detail.shown {
-        // On a commit, even where the cursor is on the working-tree row:
-        // a pane open on the working tree *is* the changes pane, which is
-        // its own context. This is the moment after the cursor moved onto
-        // the row and before the pane has followed it.
-        let spec = head_spec(&state)
-            .or_else(|| state.selected_spec())
-            .expect("a row to open the pane on");
-        show_pane(&mut state, spec, DetailFocus::Graph);
-    }
-    state
+fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppState> {
+    screen_for(context)
+        .into_iter()
+        .map(|mut state| {
+            // The width the bar being checked was drawn for (m5/33, review
+            // M6). It used to be 160 for every fixture while the sweep drew
+            // bars at six widths, so every narrow bar was pressed into a
+            // wide, side-by-side state — and the `Tab` layout under 100
+            // columns is exactly where tickets 29 and 31's defects lived.
+            state.size = Size { columns, rows: 48 };
+            one_stash(&mut state);
+            if divider == Divider::Shown && !state.detail.shown {
+                // On a commit, even where the cursor is on the working-tree
+                // row: a pane open on the working tree *is* the changes
+                // pane, which is its own context. This is the moment after
+                // the cursor moved onto the row and before the pane has
+                // followed it.
+                let spec = head_spec(&state)
+                    .or_else(|| state.selected_spec())
+                    .expect("a row to open the pane on");
+                show_pane(&mut state, spec, DetailFocus::Graph);
+            }
+            state
+        })
+        .collect()
 }
 
-/// The half of [`state_for`] that is one arm per context — kept apart from
+/// The half of [`states_for`] that is one arm per context — kept apart from
 /// the width and the pane, which every arm shares.
-fn screen_for(context: &HintContext) -> AppState {
+///
+/// **A list, not a state** (m5/42). Most contexts have one screen behind
+/// them, but a context can be the bar for several: the detail pane with an
+/// overlay behind it draws one bar over three different overlays, and the
+/// three do not swallow the same keys — the Map view claims `p`, `d` and
+/// `s`, which the stash list answers. A sweep that picked one of them would
+/// be as blind to the other two as the whole sweep was to this state.
+fn screen_for(context: &HintContext) -> Vec<AppState> {
     let walk = JobId::new(701);
     match context {
         // The cursor on the uncommitted-changes row. With a pane open it is
@@ -3736,7 +3828,7 @@ fn screen_for(context: &HintContext) -> AppState {
             let mut state = dirty_on_screen(walk);
             state.on_working_tree = true;
             state.history.as_mut().expect("a walk").cursor = MERGE_ROW;
-            state
+            vec![state]
         }
         // One row of history under the cursor. The badge and the Mistake
         // Radar marker that tell `BranchRow`, `Marked` and `PlainRow` apart
@@ -3745,52 +3837,122 @@ fn screen_for(context: &HintContext) -> AppState {
         HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::Marked(_)
-        | HintContext::Preview => merge_on_screen(walk, MERGE_ROW).0,
+        | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
-        HintContext::PaneFocused { opens, .. } => {
-            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
-            let spec = state.selected_spec().expect("the cursor is on a commit");
-            // `opens` *is* which region has focus: `⏎` opens the diff from
-            // the files list, and has nothing left to open once the diff
-            // has it (`detail::keys::enter_opens`).
-            let focus = if *opens {
-                DetailFocus::Files
-            } else {
-                DetailFocus::Diff
-            };
-            show_pane(&mut state, spec, focus);
-            let (view, raw) = pane_files();
-            state.detail.files = Loading::Ready(view);
-            state.detail.list = Some(raw);
-            let (diff, diff_raw) = long_diff("a.rs");
-            state.detail.diff = Loading::Ready(diff);
-            state.detail.diff_raw = Some(diff_raw);
-            state
-        }
+        HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
         HintContext::Banner {
             skippable,
             conflicted,
-        } => stopped_operation(walk, *skippable, *conflicted),
-        HintContext::ChangesPane { unmerged } => changes_pane_open(walk, *unmerged),
-        HintContext::Journal => {
-            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+        } => vec![stopped_operation(walk, *skippable, *conflicted)],
+        HintContext::ChangesPane { unmerged } => vec![changes_pane_open(walk, *unmerged)],
+        HintContext::Journal => vec![overlay_over(
+            merge_on_screen(walk, MERGE_ROW).0,
+            Shown::Journal,
+        )],
+        HintContext::Stash => vec![overlay_over(
+            merge_on_screen(walk, MERGE_ROW).0,
+            Shown::Stash,
+        )],
+        HintContext::Map => vec![overlay_over(merge_on_screen(walk, MERGE_ROW).0, Shown::Map)],
+        // **The state ticket 31's sweep could not reach** (m5/42): the pane
+        // has the keyboard and an overlay, not the graph, stands behind it.
+        // One per overlay, because the three swallow different keys.
+        HintContext::PaneOverOverlay { opens } => EVERY_OVERLAY
+            .into_iter()
+            .map(|overlay| overlay_over(commit_pane(walk, *opens), overlay))
+            .collect(),
+        HintContext::Dragging => vec![badge_in_the_air(walk)],
+    }
+}
+
+/// The three overlays that stand where the graph stands and take its keys
+/// (`AppState::graph_overlay`, minus the commit editor — which claims every
+/// key before the panes and draws no hint bar, `view::rows::overlay_context`).
+#[derive(Clone, Copy, Debug)]
+enum Shown {
+    Map,
+    Journal,
+    Stash,
+}
+
+/// Every overlay a bar can be drawn behind.
+const EVERY_OVERLAY: [Shown; 3] = [Shown::Map, Shown::Journal, Shown::Stash];
+
+/// `state` with `overlay` open over it, its rows loaded — so the keys that
+/// move a selection have somewhere to move to and the sweep is not reading
+/// an empty list as a dead key.
+fn overlay_over(mut state: AppState, overlay: Shown) -> AppState {
+    match overlay {
+        Shown::Map => {
+            state.map.shown = true;
+            state.map.data = Loading::Ready(Arc::new(two_branch_map()));
+        }
+        Shown::Journal => {
             state.journal.shown = true;
             state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
                 entries: vec![journal_entry()],
                 unreadable: Vec::new(),
                 live: Vec::new(),
             }));
-            state
         }
-        HintContext::Stash => {
-            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+        Shown::Stash => {
             state.stash.shown = true;
             state.stash.entries = Loading::Ready(Arc::new(vec![stash_entry()]));
-            state
         }
-        HintContext::Dragging => badge_in_the_air(walk),
     }
+    state
+}
+
+/// Two branches in the Map view: one row to sit on and one to move to, so
+/// `j/k move` has somewhere to go.
+fn two_branch_map() -> crate::map::MapData {
+    let branches = (0..2)
+        .map(|i| crate::map::MapBranch {
+            name: graft_core::ref_name::RefName::new(format!("refs/heads/b{i}").into_bytes())
+                .expect("a valid ref name"),
+            identity: graft_graph::identity::BranchIdentity::of_name(format!("b{i}").as_bytes()),
+            tip: Oid::from_bytes(&[u8::try_from(i + 1).expect("a small row"); Oid::SHA1_BYTES])
+                .expect("20 bytes is an oid"),
+            tip_date: 0,
+            counts: vec![0; 10],
+            is_current: i == 0,
+            is_default: i == 0,
+            merged_into: None,
+            marks: Vec::new(),
+            complete: true,
+        })
+        .collect();
+    crate::map::MapData {
+        branches,
+        more: 0,
+        from: 0,
+        to: 1,
+        buckets: 10,
+        complete: true,
+    }
+}
+
+/// The detail pane open on the cursor's commit, with a file list and a long
+/// diff in it, focused where `opens` says: `⏎` opens the diff from the
+/// files list, and has nothing left to open once the diff has it
+/// (`detail::keys::enter_opens`).
+fn commit_pane(walk: JobId, opens: bool) -> AppState {
+    let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+    let spec = state.selected_spec().expect("the cursor is on a commit");
+    let focus = if opens {
+        DetailFocus::Files
+    } else {
+        DetailFocus::Diff
+    };
+    show_pane(&mut state, spec, focus);
+    let (view, raw) = pane_files();
+    state.detail.files = Loading::Ready(view);
+    state.detail.list = Some(raw);
+    let (diff, diff_raw) = long_diff("a.rs");
+    state.detail.diff = Loading::Ready(diff);
+    state.detail.diff_raw = Some(diff_raw);
+    state
 }
 
 /// The row [`merge_on_screen`] puts a **merge** on, which is the row a

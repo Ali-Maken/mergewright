@@ -781,7 +781,8 @@ pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
         ("M", "map"),       // `map::map_key`
         ("O", "overview"),  // `strip::strip_key`
         ("/", "search"),    // `search::search_key`, before `key_event`
-        // Inside the two overlays, which hint their own lists.
+        // Inside the three overlays, which hint their own lists.
+        ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip
         ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry
         ("⏎", "apply"),   // `stash::operate_on_selected`, keeping the entry
         ("p", "pop"),     // the same, popping

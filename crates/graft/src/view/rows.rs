@@ -13,7 +13,7 @@ use graft_ui::graph_screen::{
 use std::collections::BTreeSet;
 
 use crate::history::{History, Phase, Promotion, WalkFacts};
-use crate::update::AppState;
+use crate::update::{AppState, GraphOverlay};
 
 use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 
@@ -346,6 +346,53 @@ pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
     hint_context(state, &[])
 }
 
+/// **The bar an open overlay puts the footer in**, or `None` when the graph
+/// is the thing behind the cursor after all.
+///
+/// The Map view, the journal browser and the stash list stand *where the
+/// graph stands* and answer the keys the graph would: each one's
+/// `shown_key` ends in a catch-all that claims the key and does nothing
+/// with it (`update::map`, `update::journal`, `update::stash`). So while
+/// one is open the graph's own vocabulary — `b`, `t`, `c`, `m`, `r`, `y`,
+/// `q`, `x`, `.` — reaches nothing at all.
+///
+/// Which of the two bars depends on **who has the keyboard**, exactly as
+/// `update::keys::pane_and_overlay_key` decides it:
+///
+/// - the graph has focus, so the overlay is first and answers everything:
+///   its own list;
+/// - the detail pane has focus, so `detail::keys::detail_key` is first and
+///   the overlay swallows whatever the pane leaves: the pane's own keys
+///   and the two globals that are dispatched above both
+///   ([`HintContext::PaneOverOverlay`]).
+///
+/// Until m5/42 this function did not exist and the footer under an overlay
+/// was the graph's row context — a bar of nine verbs, every one of them
+/// dead (m5/36's probe, this ticket's
+/// `update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
+///
+/// **The commit editor is the overlay that is not here.** It is modal in
+/// the stronger sense — `commit_editor::editor_key` claims every key but
+/// `Ctrl+C` before the panes are reached — and it never draws a hint bar
+/// to be wrong on: `view::frame::draw_commit_editor` refuses the `Tab`
+/// layout outright, and the split layout above 100 columns draws no hint
+/// row (`view::frame::split_for_detail`). A bar drawn for it would be a
+/// bar the app never shows.
+fn overlay_context(state: &AppState) -> Option<HintContext> {
+    let overlay = match state.graph_overlay()? {
+        GraphOverlay::Map => HintContext::Map,
+        GraphOverlay::Journal => HintContext::Journal,
+        GraphOverlay::Stash => HintContext::Stash,
+        GraphOverlay::CommitEditor => return None,
+    };
+    if state.graph_has_focus() {
+        return Some(overlay);
+    }
+    Some(HintContext::PaneOverOverlay {
+        opens: crate::update::detail::enter_opens(&state.detail),
+    })
+}
+
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):
 /// the changes pane and the working-tree row both win over anything the
 /// cursor sits on, since they are full-screen states — **the pane first**,
@@ -364,9 +411,16 @@ pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
 /// it, for every context alike.
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     // A badge in the air first: while the gesture is running, the keys the
-    // cursor's row would offer are not the ones that end it.
+    // cursor's row would offer are not the ones that end it. First here
+    // because it is first in `update::keys::key_event` too — `drag_key`
+    // takes the key before any overlay or pane sees it.
     if state.drag.is_some() {
         return HintContext::Dragging;
+    }
+    // Then an overlay, for the same reason: it stands where the graph
+    // stands and answers the keys the graph would (m5/42).
+    if let Some(context) = overlay_context(state) {
+        return context;
     }
     // The changes pane's own bar, but only while the pane has focus:
     // `space`, `d`, `⌃A` and `e` are read by `changes_pane_write_key`,

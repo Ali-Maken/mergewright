@@ -555,6 +555,82 @@ const MISSING_BAR: &str = "#\n\
 /// the four keys that need the graph to have the keyboard (`S`, `J`, `M`,
 /// `O`) were dead there too. The doorway stays: `.` still leads to
 /// everything hidden, which is what makes filtering honest (ADR-0039).
+/// **The Detail tab with an overlay behind it draws the keys that still
+/// work, not the graph's** (m5/42; the review's Q1, which m5/36 confirmed).
+///
+/// Driven the way the user reaches it: open the pane, `Tab` back to the
+/// graph, `J` to open the journal browser over it, `Tab` to the Detail tab.
+/// The graph is gone from under the bar — `journal::shown_key` claims every
+/// key `detail_key` has not already taken — so a bar of `b t c m r y` would
+/// be nine dead verbs, which is exactly what it was.
+///
+/// Only the frame can prove this: the context is picked in `view::rows` and
+/// drawn in `view::frame::draw_tab_hints`, and nothing but a drawn buffer
+/// shows that the two met.
+#[test]
+fn the_bar_behind_an_overlay_draws_what_the_pane_still_answers() {
+    use graft_ui::detail::DetailFocus;
+
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+
+    let pane = app.key(&state, KeyCode::Enter);
+    let mut pane = app.pump(pane, "the tip's detail", |state| state.detail.shown);
+    // Back to the graph, which is what `J` asks for (`journal_key` reads
+    // `AppState::graph_has_focus`).
+    for _ in 0..3 {
+        if pane.detail.focus == DetailFocus::Graph {
+            break;
+        }
+        pane = app.key(&pane, KeyCode::Tab);
+    }
+    assert_eq!(
+        pane.detail.focus,
+        DetailFocus::Graph,
+        "`Tab` cycles back to the graph with the pane open"
+    );
+    let journal = app.key(&pane, KeyCode::Char('J'));
+    assert!(
+        journal.journal.shown,
+        "`J` opens the browser over the graph"
+    );
+    let detail_tab = app.key(&journal, KeyCode::Tab);
+    assert!(
+        detail_tab.journal.shown && detail_tab.detail.focus == DetailFocus::Files,
+        "`Tab` shows the Detail tab with the browser still open"
+    );
+
+    // The bar is the frame's last row in the `Tab` layout, and it carries no
+    // `. more`: `.` reaches the browser, which swallows it.
+    let drawn = frame(&detail_tab, 80, 24);
+    let bar = drawn.last().cloned().unwrap_or_default();
+    assert_eq!(
+        bar.trim_end(),
+        " ⏎ open  j/k move  u undo  / search",
+        "the keys the pane and the globals still answer, quoted so the change is legible \
+         in review: {drawn:?}"
+    );
+    for dead in [
+        "b", "t", "c", "m", "r", "y", "S", "J", "M", "q", "x", "+", ".",
+    ] {
+        assert!(
+            !bar.split_whitespace().any(|word| word == dead),
+            "`{dead}` reaches the browser, which does nothing with it: {bar:?}"
+        );
+    }
+
+    // And the overlay still claims them: what changed is the bar, not what
+    // the browser answers (`update::journal::an_open_browser_swallows_the_\
+    // graphs_own_keys` is the same claim at the handler).
+    let pressed = app.key(&detail_tab, KeyCode::Char('c'));
+    assert!(
+        pressed.commit_editor.is_none() && pressed.journal.shown,
+        "`c` is swallowed by the browser, not passed to the graph"
+    );
+    app.close();
+}
+
 #[test]
 fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
     let scratch = repo();
