@@ -6,7 +6,13 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **Current step:** **M5 done, ticked 2026-09-22 on the user's own eye.** Main green at **2472/2472, 1 skipped**; the acceptance walk is 49 of 49. The last thing standing was the cursor row: he could not see it in his theme, twice, and ticket 44 split a `selection` token out of `surface-raised` (1.21:1 → 3.04:1 dark). He confirmed it by looking — *"yes i can see it now much better"* — which is the only instrument rule 5 leaves for colour. **Next: M6 conflicts**, 7 groups filed and sequenced in `.scratch/m6-conflicts/`, 4 of them brownfield and awaiting a scout. ADR-0042 approved the resolver's shape; `docs/design/01` §1.5 and `02-keymap.md` need my edits before group 04 binds a key.
 
-**Running now:** nothing. M5 is closed. M6 group 01 (`git-conflict-model`, Fable, signature) and group 02 (`ui-conflict-resolver`, brownfield → scout first) are both unblocked and can start together — disjoint crates.
+**Running now:** nothing — paused 2026-09-22 at the user's request so he can upgrade Claude Code (2.1.278 → 2.1.280; auto-updates are off by his own setting, so it is `claude update` by hand). **Main is green and every branch is merged**: fmt · clippy `-D warnings` · nextest **2584 passed, 1 skipped** · doctests 3, all run by the conductor on the merged tree rather than taken from a builder. Nothing is pushed.
+
+**M6 so far:** groups 01, 02 (+ fix round), 03, 08 (pieces A and 5(c)) and 04 are built, reviewed where due, and merged. **Groups 05, 06 remain, then 07 (acceptance, Fable)**, which produces the contact sheet and the first capture of the resolver — ADR-0042 says that is the cheap moment to disagree with how it looks, and it has not been judged by eye yet.
+
+**Two things waiting on the user at the M6 stop, batched per the checkpoint policy:** (1) the resolver's look, unjudged; (2) a wording call — `n` past the last open block says `no more conflicts · ⏎ marks <file> resolved`, which reads as though the file were done when `N` has left blocks open behind the cursor. Group 04's builder shipped it as specified and proposed `no more conflicts this way` instead.
+
+**Group 04 is `partial`, and deliberately not continued**: 17 of 19 acceptance boxes ticked with tests named; the 2 unticked are marked **unverified, not broken** (the last-file close, and 2 of 3 open-refusals). A continuation builder is the first thing to dispatch on resuming, before 05.
 
 **The milestone's signature failure was two things that must agree with nothing testing one against the other** — six instances: three stale captions, a hand-mirrored layout, an untested banner mirror, and three "text touching a border" fixes where each created the next. Tickets 30, 31 and 11 answer it with one invariant per class: borders, keys, captions.
 
