@@ -242,3 +242,35 @@ much less so when it is not.
 
 **Unverified in this note, by its own marking:** every competitor row is
 recalled, not checked. Treat them as prompts for the M8 research, not as facts.
+
+---
+
+## Conductor's note, 2026-09-22: the precondition is met by test, not yet by eye
+
+The note asked to be re-read after ticket 35 landed, because its "open, don't
+follow" reasoning leans on the cursor being obvious. **35 has landed**
+(merged at `e1cacf2`).
+
+What it actually established, and the limits of it:
+
+- The cursor row now differs from **both** neighbours by **three named
+  attributes**, asserted in the rendered buffer —
+  `graft_ui::selection::the_cursor_row_differs_from_its_neighbours_by_three_named_attributes`.
+- It is findable **without hue** —
+  `graft_ui::selection::without_colour_the_cursor_row_is_still_marked_by_its_shape`
+  (a `▏` shape mark), with the 256-depth snapshots regenerated.
+- The cause was **not** a missing style. `row_emphasis` had been applied all
+  along; `crates/graft-ui/tests/selection.rs:104-115` simply never read
+  `cell.bg`/`fg`, so the assertion could not see how faint it was. The fix is
+  a stronger rule *and* an assertion that can fail.
+
+**So the note's dependency is satisfied to the limit a test can reach, and no
+further.** A test can prove the cursor row differs; it cannot prove the user
+notices it. That is rule 6, and the user has not yet looked — legibility of the
+6% fill and of `▏` versus the drop target's `▸` is on his eye-check list.
+
+**The note stays parked for M8** (ADR-0041): its recommendation is presentation,
+and presentation defers. If his eye says the cursor is now obvious, the note's
+argument stands as written. If it says otherwise, the ordering sentence above
+("35 lands first, then this") has not actually been discharged and the
+follow-on-rest recommendation should be re-argued, not implemented.
