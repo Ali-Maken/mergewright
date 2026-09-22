@@ -9,6 +9,7 @@
 use std::path::Path;
 
 use graft_git::conflict::{ConflictFile, Take};
+use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::status::UnmergedHow;
 
@@ -31,6 +32,12 @@ pub struct OpenedFile {
     pub how: UnmergedHow,
     /// git calls the working-tree file binary (a NUL in the first 8 KiB).
     pub binary: bool,
+    /// The working-tree file's own lines, read for a whole-file shape's
+    /// card (`file: None`) so the resolver can show what is on disk under
+    /// it — empty when the shape has no file there (`BothDeleted`, or a
+    /// side that removed it) and always empty when `file` is `Some`
+    /// (m6-conflicts/05). Raw bytes: sanitised at the view, never here.
+    pub lines: Vec<Vec<u8>>,
 }
 
 /// Why a path could not be opened, with the one distinction the resolver
@@ -87,11 +94,44 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<OpenedFil
             ),
         }
     })?;
+    let lines = if opened.file.is_none() {
+        worktree_lines(&handle, path)
+    } else {
+        Vec::new()
+    };
     Ok(OpenedFile {
         file: opened.file,
         how: opened.how,
         binary: opened.binary,
+        lines,
     })
+}
+
+/// A whole-file shape's card shows the file as it stands on disk, when
+/// there is one there (`DeletedByThem` keeps it, `BothDeleted` never has
+/// one, …) — read directly rather than through `graft_git::conflict::read`,
+/// which parses markers this shape does not have. A path that is not there,
+/// or not readable, draws no lines rather than fail the whole open: the
+/// card's `how`/`keys` line is what matters, and empty is a fine answer for
+/// a file that is gone.
+fn worktree_lines(handle: &RepoHandle, path: &Path) -> Vec<Vec<u8>> {
+    let full = match handle.workdir() {
+        Some(workdir) => workdir.join(path),
+        None => path.to_path_buf(),
+    };
+    let Ok(bytes) = std::fs::read(&full) else {
+        return Vec::new();
+    };
+    let mut lines: Vec<Vec<u8>> = bytes
+        .split(|&byte| byte == b'\n')
+        .map(|line| line.strip_suffix(b"\r").unwrap_or(line).to_vec())
+        .collect();
+    // A trailing `\n` splits into one empty line past the last real one;
+    // drop it so `wc -l`'s count and this one agree.
+    if lines.last().is_some_and(Vec::is_empty) {
+        lines.pop();
+    }
+    lines
 }
 
 /// A repository or status read that failed: real, and never "not unmerged".
@@ -126,4 +166,26 @@ pub fn take(
             reread: matches!(error, graft_ops::conflict::TakeError::Changed { .. }),
         }
     })
+}
+
+/// Attaches the merge base to every block of `file` (`B`, m6-conflicts/05).
+///
+/// `file` is the resolver's own copy, takes and all — `graft_ops::conflict::base_for`
+/// mutates it in place rather than reading the path again, so a block
+/// already taken keeps its base exactly as an open one does
+/// (`ConflictFile::take` moves the block whole, `graft_git::conflict` tests).
+///
+/// # Errors
+/// `graft_ops::conflict::BaseError`'s own words: `this conflict has no
+/// common ancestor to show`, `base unavailable after edits`, or git's own
+/// `diff3` failure.
+pub fn load_base(
+    store: &RepoStore,
+    path: &Path,
+    mut file: ConflictFile,
+) -> Result<(ConflictFile, usize), String> {
+    let repo = store.shared().map_err(|error| error.to_string())?;
+    graft_ops::conflict::base_for(&repo.handle(), path, &mut file)
+        .map(|attached| (file, attached))
+        .map_err(|error| error.to_string())
 }

@@ -185,6 +185,9 @@ pub enum Task {
     /// Take one side of one conflict block and write the file back
     /// (m6-conflicts/04).
     TakeSide,
+    /// Attach the merge base to every block of the open file (`B`,
+    /// m6-conflicts/05).
+    LoadBase,
 }
 
 /// What a job brought back.
@@ -330,6 +333,13 @@ pub enum Product {
             crate::jobs::conflict::TakeFailure,
         >,
     ),
+    /// The merge base was attached to every block of the open file, or it
+    /// could not be (`B`, m6-conflicts/05): the document with every block's
+    /// [`graft_git::conflict::Block::base`] filled in, and how many blocks
+    /// got one, or why not — `graft_ops::conflict::BaseError`'s own words
+    /// (`no base (added on both sides)`, `base unavailable after edits`, or
+    /// git's own `diff3` failure).
+    BaseLoaded(Result<(std::sync::Arc<graft_git::conflict::ConflictFile>, usize), String>),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.
@@ -583,6 +593,16 @@ pub enum Command {
     /// Take one side of one conflict block and write the file back
     /// (m6-conflicts/04), under an id `update` chose.
     TakeSide(JobId, TakeRequest),
+    /// Attach the merge base to every block of the file the resolver has
+    /// open (`B`, m6-conflicts/05), under an id `update` chose. The file
+    /// rides along — a fresh clone of the resolver's own copy, bases and
+    /// all it already carries preserved — because `graft_ops::conflict::base_for`
+    /// takes `&mut ConflictFile` rather than reading the path a second time.
+    LoadBase(
+        JobId,
+        std::path::PathBuf,
+        Box<graft_git::conflict::ConflictFile>,
+    ),
 }
 
 /// One block's take, as the resolver asks for it.

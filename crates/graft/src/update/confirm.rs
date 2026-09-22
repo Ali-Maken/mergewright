@@ -3,6 +3,8 @@
 //! nothing else reaches the pane while it is open (`context_menu.rs`'s own
 //! pattern, m3-working-tree-undo-and-stash/04).
 
+use std::path::PathBuf;
+
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 
@@ -72,6 +74,15 @@ pub enum ConfirmThen {
         /// yet — and then the box has no third choice to reach it by.
         repush: Option<Box<graft_ops::operation::PushParams>>,
     },
+    /// `d` in the resolver: start this file over, behind a confirm box
+    /// (m6-conflicts/05, design note Proposed change 2(c)). Its own variant
+    /// rather than a plain `Operate` because the resolver has to reopen the
+    /// path once the write lands, which `ConfirmThen::Operate` has no way
+    /// to ask for.
+    RestartConflict {
+        /// The file to put back the way git left it.
+        path: PathBuf,
+    },
 }
 
 /// The box's own keys, while it is open: `Left`/`Right` move between
@@ -129,6 +140,24 @@ pub fn confirm_key(
                             repush.map(|params| *params),
                             next_id,
                         );
+                    }
+                    ConfirmThen::RestartConflict { path } => {
+                        super::operate::launch(
+                            next,
+                            commands,
+                            Operation::RestartConflict(graft_ops::operation::RestartParams {
+                                path,
+                            }),
+                            next_id,
+                        );
+                        // The same "which write is this?" tag `⏎`'s `Stage`
+                        // carries as `staging`, but on its own field: a
+                        // restart reopens the file fresh rather than
+                        // advancing to the next one, and the two must never
+                        // be confused for the same write landing twice.
+                        if let Some(open) = next.resolver.as_mut() {
+                            open.restarting = next.operating;
+                        }
                     }
                 }
             }

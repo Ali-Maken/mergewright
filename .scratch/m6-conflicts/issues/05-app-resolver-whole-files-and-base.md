@@ -1,6 +1,6 @@
 # app-resolver-whole-files-and-base: `o`/`t` on deleted/added/binary conflicts through git, `B` shows the merged base inside every open block, `d` starts a file over behind a confirm box, and the stash-pop conflict (no banner) walks the same path
 
-Status: ready
+Status: done
 Blocked by: **01**, **03**, **04**.
 Build with: Sonnet — set by the conductor after the scout (`.scratch/m6-conflicts/scout-app-g05.md`); the keymap gate on line 13 is already met (`02-keymap.md:245-246`, `4dfa409`).
 Crates: graft
@@ -76,3 +76,35 @@ fmt / clippy / nextest / doc, workspace-wide; `seam_rule` (the app builds no `Gi
 ## Size
 
 One context; ~400 lines. Reads G4's `resolver.rs` (it is the file being extended) and the scout page; nothing else in source beyond `confirm.rs`'s box shape.
+
+## NOTES
+
+Built all four scope pieces, in `crates/graft/src/update/{events,resolver,confirm,mod}.rs`, `crates/graft/src/jobs/{conflict,runner}.rs`, `crates/graft/src/view/resolver.rs`, `crates/graft/src/view/rows.rs`, `crates/graft/tests/it/resolver.rs`. Scout used (`.scratch/m6-conflicts/scout-app-g05.md`) — its file:line references for `ResolverState`, `act()`, `conflict_arrived`, the view layer and the ops surface all held.
+
+**Keymap gate**: already satisfied (`02-keymap.md:245-246`, commit `4dfa409`) per the conductor's override of the ticket's spec-change preamble — built pieces 1–4 in full, no `blocked: keymap`.
+
+**`base_job` vs `job` (scout point 3)**: `LoadBase` gets its own `ResolverState.base_job: Option<JobId>` field, never shares `job` (which tracks the open read / a take in flight). A base load and a take answer for the same document could otherwise race for the same id slot, silently dropping whichever lands second. `toggle_base` also refuses while `job` is busy, as a courtesy — the separate field is what actually rules the race out, not that refusal.
+
+**Notice bool for a failed base load**: fixed to `true` (a problem) during this build — the first cut left it `false`, inconsistent with `taken()`'s failure path (`open.notice = Some((failure.words.clone(), true))`, `resolver.rs`). A base asked for and not loaded is a problem the same way a failed take is; the doc comment blaming `base_shown` (not the notice bool) for staying false was correct but the code next to it disagreed. Fixed at the cause (the wrong literal), not worked around in the test.
+
+**BaseError wording — ticket prose vs. real code, deviation, deliberate**: the ticket's acceptance text says `no base (added on both sides)` for `NoBase` and `base unavailable after edits` for `Mismatch`. The actual `#[error(...)]` strings in `graft-ops/src/conflict.rs` are `"this conflict has no common ancestor to show"` (`NoBase`) and `BaseMismatch`'s own Display for `Mismatch` (its doc comment explicitly says never "after edits" wording). `base_loaded()` shows `error.to_string()` verbatim — `ops` decides the words, `app` only wires them — and the test (`B_says_no_base`) asserts the real string, not the ticket's stale one.
+
+**`graft-ui` hint-bar wiring — shipped, not blocked**: `view::rows::overlay_context`'s `GraphOverlay::Resolver` arm passes `HintContext::Resolver { base: true, restart: true }` (was `false, false`) — functionally live the moment `B`/`d` are pressed, tested directly (`resolver.rs`'s `B_shows_and_hides_base`, `d_starts_over_behind_a_box`, etc.) and via `hint_context`'s own unit coverage. What is **not** shipped: `update::keys::BOUND_ACTIONS` does not yet list `("B","base")`/`("d","start over")`, because `graft-ui`'s `resolver_list` (`crates/graft-ui/src/graph_screen/hints.rs`, ~lines 907/918) hard-codes both as `HintState::Planned` regardless of the booleans passed in — flipping that is outside the `graft` crate set. Exact signature to flip: `resolver_list(base: bool, restart: bool)` in `crates/graft-ui/src/graph_screen/hints.rs` — its two `planned("B", "base")`/`planned("d", "start over")` calls become `hint(...)` (or equivalent) when `base`/`restart` are `true`; its doc comments (~lines 301–313) already say this is pending m6-conflicts/05. No functional gap for the user pressing the keys — only the footer's own hint text lags.
+
+**Acceptance checklist, tests named**:
+- `deleted_by_them_o_keeps`, `deleted_by_them_t_deletes` (`crates/graft/tests/it/resolver.rs`).
+- `whole_file_table_through_the_keys` (table test, all seven `(how, binary)` rows).
+- `b_refused_on_whole_file`.
+- `B_shows_and_hides_base` (on `three.txt`, checks `base_shown`, `Block.reproduced` on every block, a `BASE` row at 120 columns, second `B` frees no job).
+- `B_says_no_base` (on `both-added.txt`, AA has no stage 1).
+- `reread_drops_base` (close + reopen; `Block.reproduced` gone on the fresh read).
+- `d_starts_over_behind_a_box` (box copy, `→`/`⏎`, markers back on disk).
+- `d_cancel_is_free`.
+- `whole_file_and_restart_fold_into_live_entry` (journal entry count unchanged across both writes — the fixture's merge itself is raw git, never through the app, so the baseline is whatever `journal_entries().len()` reads before either write, not a fixed `1`).
+- `stash_pop_conflict_resolves_without_a_banner` (explainer text on the drawn frame, `Status::Done("all conflicts resolved")`, no `c continue`, no `banner_focus`).
+- `hint_context()`/`overlay_context` → `Resolver { base: true, restart: true }`: covered by existing unit tests `every_key_the_bar_draws_is_answered` and `every_planned_hint_is_still_unbound` (`crates/graft/src/update/tests.rs`), which the full `nextest run` gate below re-verifies; no new test needed since these already sweep every `HintContext` combination.
+- `MAP.md` updated (`crates/graft/MAP.md`, `update::resolver`, `update::events`/`Command`/`Product`, `update::confirm`, `jobs::conflict`, `view::resolver`).
+
+**Test-harness fixes made along the way** (symptom-level, inside this ticket's own new tests, not production bugs): `resolver_on` waits on `open.file.is_some()`, which never becomes true for a whole-file shape — added `resolver_on_whole_file` waiting on `open.whole_file.is_some()` instead. Re-navigating the changes pane a second time in the same `App` session (after a resolve advances past the resolver's modal keyboard) breaks `on_the_row`/`changes_pane`, which assume a fresh graph-top start; fixed by closing with `Esc` and driving `cursor_to`/`⏎` directly once back in the pane, waiting for `Loading::Ready` first.
+
+Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` clean, workspace-wide. `act()`'s cognitive-complexity lint (16/15 after adding `B`/`d`) fixed by pulling the mergetool handover into `mergetool_here` and the `o`/`t`/`b` dispatch into `take_key` — both are root-cause splits (real complexity, not a suppression). `cargo nextest run` workspace-wide: 2598/2598 passed, 1 skipped; `cargo test --doc`: all pass; `seam_rule`: 2/2. One stale sweep fixture fixed on the way: `update::tests::classified_form` mapped `Resolver{false,false}` as the app's form — now `{true,true}`, the only form `overlay_context` produces.

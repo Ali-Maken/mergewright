@@ -3608,17 +3608,18 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             opens: *opens,
         }),
         // The resolver is an overlay now, and `view::rows::overlay_context`
-        // answers exactly this form for it. `base`/`restart` stay false:
-        // `B` and `d` are group 05's keys and nothing in the app sets
-        // either flag yet, so the other three combinations have no state to
-        // classify and are left unswept (their two hints are `Planned`,
-        // which `drawable` filters out, so nothing dead can hide there).
+        // answers exactly this form for it. `base`/`restart` are both
+        // `true` (m6-conflicts/05): `B`/`d` act the moment they are
+        // pressed, so this is the one combination the real app ever
+        // produces — the other three have no state to classify and are
+        // left unswept (their two hints are `Planned`, which `drawable`
+        // filters out, so nothing dead can hide there).
         HintContext::Resolver {
-            base: false,
-            restart: false,
+            base: true,
+            restart: true,
         } => Some(HintContext::Resolver {
-            base: false,
-            restart: false,
+            base: true,
+            restart: true,
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
@@ -4185,11 +4186,14 @@ fn resolver_on_screen(walk: JobId) -> AppState {
         path: PathBuf::from("conflicted.rs"),
         opened_from: resolver::OpenedFrom::Pane,
         file: Some(Arc::new(file)),
+        whole_file: None,
         cursor_block: Some(0),
         top: 0,
         base_shown: false,
         job: None,
+        base_job: None,
         staging: None,
+        restarting: None,
         notice: None,
     });
     state
