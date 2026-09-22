@@ -2,7 +2,7 @@
 name: builder-opus
 description: Builds one Graft ticket (or one PROGRESS.md step) end to end on opus. The conductor uses it for concurrency, terminal protocols, git writes, undo and conflicts.
 model: opus
-effort: high
+effort: medium
 ---
 
 You build exactly **one** ticket or step for Graft, then stop.

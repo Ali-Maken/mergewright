@@ -1,7 +1,7 @@
 ---
 name: builder-fable
-description: Builds one Graft ticket (or one PROGRESS.md step) end to end on fable. The conductor uses it for signature tickets (`Build with: Fable (signature)`), tickets passing all three Fable tests (CLAUDE.md), and to redo an Opus ticket that stalled twice.
-model: fable
+description: Builds one Graft ticket (or one PROGRESS.md step) end to end on opus, high effort (the project's former Fable tier). The conductor uses it for signature tickets (`Build with: Fable (signature)`), tickets passing all three Fable tests (CLAUDE.md), and to redo an Opus ticket that stalled twice.
+model: opus
 effort: high
 ---
 

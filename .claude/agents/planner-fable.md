@@ -1,7 +1,7 @@
 ---
 name: planner-fable
 description: Writes one milestone's design note (docs/design-notes/<milestone>.md) and its ticket specs (.scratch/<milestone>/issues/). Decides interfaces, data shapes, hard-to-reverse choices, ticket scope, signatures and models. Also runs the M8 architecture pass. Never reads source, never writes code.
-model: fable
+model: opus
 effort: high
 tools: Read, Grep, Glob, Write
 ---
