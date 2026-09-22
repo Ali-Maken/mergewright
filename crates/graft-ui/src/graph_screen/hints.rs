@@ -17,8 +17,8 @@
 //!
 //! The per-context lists are the design note's priority table
 //! (`docs/design-notes/m5-history-and-ghost-preview.md`, "Hint bar") — with
-//! `Journal` and `Stash`, which the note leaves out, taken from
-//! `docs/design/02-keymap.md` §2.11 and §2.9.
+//! `Journal`, `Stash` and `Map`, which the note leaves out, taken from
+//! `docs/design/02-keymap.md` §2.11, §2.9 and §2.3a.
 //!
 //! **A hint is only drawn once its key is bound.** Every entry carries a
 //! [`HintState`]: the table stays as the design wrote it, but
@@ -262,6 +262,39 @@ pub enum HintContext {
     /// The stash list has focus (overlay; draws its own footer today —
     /// reserved for the `?` help overlay, M8).
     Stash,
+    /// The Map view has focus (overlay; draws its own footer today, which
+    /// carries no keys — `docs/design/02-keymap.md` §2.3a is where this
+    /// list comes from).
+    Map,
+    /// **The detail pane has the keyboard with an overlay, not the graph,
+    /// standing behind it** (m5/42).
+    ///
+    /// [`HintContext::PaneFocused`] borrows the cursor row's list because
+    /// the graph is still underneath and still answers those keys. Under an
+    /// overlay it is not: the Map view, the journal browser and the stash
+    /// list each swallow every key their own `shown_key` does not use, so
+    /// `b`, `t`, `c`, `m`, `r`, `y`, `q`, `x`, `+`, `.` and the rest of the
+    /// graph's vocabulary reach nothing at all. Borrowing the row's list
+    /// here drew a bar on which every verb was dead (`graft`'s
+    /// `update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
+    ///
+    /// What is left is this list: the pane's own `⏎` and `j`/`k`, and the
+    /// two verbs dispatched **before** the panes and so still live under an
+    /// overlay — `u undo` and `/ search` (`graft::update::keys::key_event`,
+    /// which answers both above `pane_and_overlay_key`).
+    ///
+    /// The overlay's *own* verbs are not here either. `⏎` and `Esc` never
+    /// reach it while the pane has focus — `detail::keys::detail_key` runs
+    /// first and spends them opening the diff and closing the pane — so
+    /// `⏎ apply` would name a key that does something else, which is the
+    /// failure this context exists to end rather than repeat. The rest of
+    /// the overlay's list acts on a list the Detail tab is not showing.
+    PaneOverOverlay {
+        /// `⏎` still opens something: the files list has focus, so it opens
+        /// the diff. `false` with the diff already focused, exactly as
+        /// [`HintContext::PaneFocused`] reads it.
+        opens: bool,
+    },
     /// A branch badge is being dragged (`docs/design/02-keymap.md` §2.15).
     /// The gesture ends with the button, not a key, so the bar says what
     /// the pointer must do and which key backs out.
@@ -357,10 +390,17 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // condition rules out (its first amendment, extended to the
         // overlays in m5/31 — the sweep pressed `.` in the journal and
         // nothing happened).
+        // The Map view is the third overlay and swallows keys the same way
+        // (`graft::update::map::shown_key`'s catch-all). The detail pane
+        // with an overlay behind it takes no doorway either: `.` reaches
+        // the overlay, which swallows it — pressed in every one of these
+        // states and nothing happened (m5/42).
         HintContext::Banner { .. }
         | HintContext::Dragging
         | HintContext::Journal
-        | HintContext::Stash => (drawable(context, divider), None),
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. } => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -434,6 +474,8 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Dragging
                 | HintContext::Journal
                 | HintContext::Stash
+                | HintContext::Map
+                | HintContext::PaneOverOverlay { .. }
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the
@@ -640,6 +682,22 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
             hint("b", "branch"),
             hint("esc", "close"),
         ],
+        // Keymap §2.3a: the Map view answers `Enter`, the movement keys and
+        // `M`/`Esc`. `M` is left out for the reason the journal leaves `J`
+        // out — one way of saying "close" is enough for a bar this short.
+        HintContext::Map => vec![hint("⏎", "seek"), hint("j/k", "move"), hint("esc", "close")],
+        // Only ever drawn in the sub-100-column `Tab` layout, which has no
+        // divider to drag: everywhere else the overlay draws its own footer
+        // beside the pane (`graft::view::frame::split_for_detail`, which
+        // draws a hint row only for `DetailLayout::Tab`).
+        HintContext::PaneOverOverlay { opens } => {
+            let mut list = Vec::new();
+            if *opens {
+                list.push(hint("⏎", "open"));
+            }
+            list.extend([hint("j/k", "move"), hint("u", "undo"), hint("/", "search")]);
+            list
+        }
         // The drag is a mouse gesture: `release` is not a key, it is what
         // the user's hand has to do, and `esc` is the one key that answers
         // while a badge is in the air (`graft::update::drag::drag_cancel`).
@@ -850,6 +908,9 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,
         HintContext::Stash,
+        HintContext::Map,
+        HintContext::PaneOverOverlay { opens: false },
+        HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
@@ -877,6 +938,8 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::ChangesPane { .. }
         | HintContext::Journal
         | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. } => None,
@@ -889,9 +952,14 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
 ///
 /// Not the working-tree row: a pane open on *it* is the changes pane, so
 /// the classifier answers `ChangesPane` long before it looks at the cursor
-/// row. Not the changes pane, the overlays or the banner either — none of
-/// their lists has an `⏎` this could take, and wrapping a list to change
-/// nothing would be a context nobody can tell from the one inside it.
+/// row. Not the changes pane or the banner either — neither list has an
+/// `⏎` this could take, and wrapping a list to change nothing would be a
+/// context nobody can tell from the one inside it.
+///
+/// Not the overlays: a pane focused with one of them behind it draws
+/// neither the overlay's list nor a row's, because the graph is not there
+/// to answer the row's keys. That is [`HintContext::PaneOverOverlay`],
+/// which [`every_context`] names in its own right.
 ///
 /// Exhaustive on purpose: see [`every_context`].
 fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
@@ -911,6 +979,8 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::ChangesPane { .. }
         | HintContext::Journal
         | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::PaneFocused { .. } => Vec::new(),
     }

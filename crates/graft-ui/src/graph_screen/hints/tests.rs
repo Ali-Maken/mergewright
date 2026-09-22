@@ -815,7 +815,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Preview
         | HintContext::Dragging
         | HintContext::Journal
-        | HintContext::Stash => None,
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. } => None,
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
         // still leads to everything, the dropped `⏎` included.
