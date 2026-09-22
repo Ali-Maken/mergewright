@@ -144,6 +144,66 @@ pub fn conflicting(fixture: &Fixture) -> Result<(), String> {
     fixture.git(&["switch", "main"]).map(drop)
 }
 
+/// `feature` branched off the first commit and left there while `main`
+/// moved twice, `main` checked out: `feature` is already an ancestor, so
+/// merging it has nothing to do.
+pub fn already_up_to_date(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit("base.txt", "base\n", "add the base", 1)?;
+    fixture.git(&["branch", "feature"])?;
+    fixture.commit("main-one.txt", "one\n", "main moves on", 2)?;
+    fixture.commit("main-two.txt", "two\n", "main moves again", 3)
+}
+
+/// [`forked_on_main`], then `feature` merged into `main` with git: `main`'s
+/// tip is a two-parent merge commit, ready to be reverted with a mainline.
+pub fn merged_on_main(fixture: &Fixture) -> Result<(), String> {
+    forked_on_main(fixture)?;
+    let when = format!("@{} +0000", EPOCH + 6 * 60);
+    graft_fixtures::git::run_at(
+        fixture.repo(),
+        &["merge", "--no-ff", "--no-edit", "feature"],
+        &when,
+    )
+    .map(drop)
+    .map_err(|why| format!("merging feature: {why}"))
+}
+
+/// `main` rewrote `shared.txt` once; `feature` rewrote it **twice** off the
+/// same base, `feature` checked out. Rebasing `feature` onto `main` stops
+/// on the first replayed commit and, once that is resolved, stops again on
+/// the second.
+pub fn twice_conflicting(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit("shared.txt", "shared line\n", "add the shared file", 1)?;
+    fixture.git(&["branch", "feature"])?;
+    fixture.commit("shared.txt", "main's line\n", "main rewrites it", 2)?;
+    fixture.git(&["switch", "feature"])?;
+    fixture.commit("shared.txt", "feature's first line\n", "feature writes", 3)?;
+    fixture.commit(
+        "shared.txt",
+        "feature's second line\n",
+        "feature writes again",
+        4,
+    )?;
+    Ok(())
+}
+
+/// [`Shape::FoxtrotMerge`](graft_fixtures::Shape::FoxtrotMerge) needs no
+/// scripting: the corpus shape the radar's own tests use already has the
+/// foxtrot as `main`'s tip, with `main` checked out. This insists on that
+/// much, so a change to the shape fails here — naming the shape — instead
+/// of inside a `.` menu that quietly has no `Fix:` row.
+pub fn foxtrot(fixture: &Fixture) -> Result<(), String> {
+    let parents = fixture.git(&["log", "-1", "--format=%P", "HEAD"])?;
+    let parents: Vec<&str> = parents.split_whitespace().collect();
+    crate::repo_truth::check(parents.len() == 2, || {
+        format!("main's tip has {} parents, not two", parents.len())
+    })?;
+    let head = fixture.git(&["symbolic-ref", "HEAD"])?;
+    crate::repo_truth::check(head.trim() == "refs/heads/main", || {
+        format!("HEAD is on {}, not main", head.trim())
+    })
+}
+
 /// One commit and three untracked files, ready to stage one at a time —
 /// three journal entries for the time machine to step back over.
 pub fn three_to_stage(fixture: &Fixture) -> Result<(), String> {

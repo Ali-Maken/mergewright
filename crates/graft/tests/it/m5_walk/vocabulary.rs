@@ -74,6 +74,14 @@ pub(super) fn box_lines(state: &AppState) -> Result<Vec<String>, String> {
         .ok_or_else(|| format!("no preview box is drawn; status {:?}", state.status))
 }
 
+/// The buttons the preview box offers, in order: `["Cancel", "Confirm"]`
+/// for a plan that does something, `["Close"]` for one that does not.
+pub(super) fn box_choices(state: &AppState) -> Result<Vec<String>, String> {
+    preview_box(state)
+        .map(|view| view.choices().iter().map(ToString::to_string).collect())
+        .ok_or_else(|| format!("no preview box is drawn; status {:?}", state.status))
+}
+
 /// The title starts with `Preview: ` and names `word`.
 pub(super) fn title_names(state: &AppState, word: &str) -> Result<(), String> {
     let title = box_title(state)?;
@@ -130,6 +138,23 @@ pub(super) fn branch(truth: &Truth, name: &str) -> Result<String, String> {
     })
 }
 
+/// A file's bytes **as they were when the mark was taken** — never as they
+/// are now: `expect` runs once, at the end, so reading the disk there
+/// answers about the last step and not about the one being judged.
+pub(super) fn file_was(truth: &Truth, name: &str, body: &[u8]) -> Result<(), String> {
+    let path = std::path::Path::new(name);
+    match truth.repo.files.get(path) {
+        Some(found) => check(found == body, || {
+            format!(
+                "{name} was {:?}, not {:?}",
+                String::from_utf8_lossy(found),
+                String::from_utf8_lossy(body)
+            )
+        }),
+        None => Err(format!("{name} was not in the tree")),
+    }
+}
+
 /// The refs of two truths are the same.
 pub(super) fn same_refs(what: &str, a: &Truth, b: &Truth) -> Result<(), String> {
     check(a.repo.refs == b.repo.refs, || {
@@ -159,6 +184,16 @@ pub(super) fn last_entry(truth: &Truth) -> Result<&JournalEntry, String> {
         .journal
         .last()
         .ok_or_else(|| "the journal is empty".to_owned())
+}
+
+/// How many journal entries are of this kind — the count a "one entry from
+/// start to finish" claim is made of.
+pub(super) fn entries_of(truth: &Truth, kind: OperationKind) -> usize {
+    truth
+        .journal
+        .iter()
+        .filter(|entry| entry.kind == kind)
+        .count()
 }
 
 /// The last entry is of `kind` and committed.

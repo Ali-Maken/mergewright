@@ -1,6 +1,7 @@
 # the-walk-proves-a-conflict-can-be-finished
 
-Status: ready
+Status: **done** (2026-09-22). Seven of the eight `ok`; the eighth fails on
+purpose as a finding — see **Findings**.
 Blocked by: **37** (shares `graft`, and `steps.rs`/`every_scenario.rs`).
 Crates: `graft`.
 Build with: **Opus.** Conflicts and the rebase state machine (CLAUDE.md's
@@ -95,25 +96,149 @@ read a capture or the contact sheet back into your context** — sizes and
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] A foxtrot fixture exists and the `fix-*` trio runs on it — say whether
-      it reuses the radar shape or is new, and why.
-- [ ] Eight scenarios, each `ok` from `cargo run -p graft --example m5_walk
-      --only <name>` — list all eight with their result. **A `FAIL` is an
-      acceptable tick if it is a finding**; say which and quote <= 20 lines.
-- [ ] A rebase that stops twice leaves **one** journal entry and **one** `u`
-      undoes it — test: name it, and quote the journal assertion.
-- [ ] Each asserts truth from **git**, not `AppState` — name the git commands,
-      and confirm the only `AppState` read is `PreviewState.plan`.
-- [ ] Every one is in the `walk!` list — test:
-      `m5_walk::every_scenario::every_scenario_has_a_test`.
-- [ ] Every one has a `TESTING.md` "History" entry and is out of "Not yet
-      walked" — quote one entry whole.
-- [ ] `git fsck --no-dangling` clean in each — say how it is asserted.
-- [ ] Slowest new scenario under 4 s, no `sleep` or poll loop — give the time.
-- [ ] Whole suite green; report before and after. Read the baseline from
-      `docs/log/m5.md`; do not assume a number.
+- [x] **Reused, not built.** `Shape::FoxtrotMerge` — the shape
+      `graft-ops/tests/it/mistake_radar.rs:303` (`check_foxtrot`) is written
+      against — already has the foxtrot as `main`'s tip with `main` checked
+      out, so all three `Fix:` rows appear on one row. `fixture::foxtrot`
+      (`crates/graft/tests/it/m5_walk/fixture.rs`) scripts nothing; it
+      asserts the shape by git (`log -1 --format=%P HEAD` has two parents,
+      `symbolic-ref HEAD` is `refs/heads/main`) so a change to the shape
+      fails there and not inside a silent menu. Tests:
+      `m5_walk::every_scenario::fix_revert_the_merge`,
+      `fix_reset_to_before_the_merge`, `fix_rebase_instead`.
+- [x] Eight scenarios, each run as `cargo run -p graft --example m5_walk --
+      --only <name>`:
+      `preview-refused-during-an-operation` **ok**;
+      `merge-already-up-to-date-offers-close` **ok**;
+      `revert-merge-uses-mainline` **ok**;
+      `fix-revert-the-merge` **ok**;
+      `fix-reset-to-before-the-merge` **ok**;
+      `fix-rebase-instead` **FAIL — finding 1**, quoted whole:
+      `FAIL fix-rebase-instead: ghost 1: subject `Merge branch 'main' into
+      feature`, git wrote `feature: work``;
+      `continue-refuses-until-resolved-then-one-entry-undoes` **ok**;
+      `rebase-stops-twice-same-entry` **ok**.
+- [x] Test: `m5_walk::every_scenario::rebase_stops_twice_same_entry`
+      (`conflicts.rs`, verdict `two_stops_one_entry`). The journal assertion
+      is `the_one_entry(truth, OperationKind::Rebase)?`, which fails unless
+      `entries_of(truth, Rebase) == 1`, applied at **both** stops (status
+      `Pending` each time) and again after the second `c` (status
+      `Committed`); the two stops are proved distinct by
+      `first.repo.head != second.repo.head`. One `u` then holds:
+      `branch(undone, "feature")? == branch(&marks.before, "feature")?` and
+      `same_files("one u after two stops", &marks.before, undone)`.
+- [x] Git commands the eight read truth from (`truth::truth`, `refs_of`,
+      `in_progress`, `journal`, plus each verdict's own): `for-each-ref`,
+      `rev-parse HEAD`, `rev-parse <oid>~n`/`<oid>^2`, `symbolic-ref -q
+      HEAD`, `ls-files -u`, `ls-files -s`, `write-tree`, `log -1
+      --format=%P`, `log -1 --format=%s`, `diff-tree -p`, `patch-id
+      --stable`, `cat-file`, the `.git/MERGE_HEAD` and `.git/rebase-merge`
+      markers, `.git/graft/undo-journal.jsonl`, and file bytes off disk.
+      The only `AppState` read that judges anything is the claim
+      (`Step::Claim` → `PreviewState.plan`); `Step::See` closures read only
+      the drawn box, the status line, the menu and `banner_focus`, and
+      `m5_walk::every_scenario::ghost_equals_git_is_the_only_claim_check`
+      greps all eight source files — `radar_fixes.rs` was **added to its
+      hand-enumerated list**.
+- [x] Test: `m5_walk::every_scenario::every_scenario_has_a_test` (passes;
+      it asserts the `walk!` list equals `scenarios()` in order).
+- [x] All eight are in `TESTING.md` "History" → "The scenarios", renumbered
+      1–38, and out of "Not yet walked". Quoted whole, entry 28:
+
+      > 28. **rebase-stops-twice-same-entry** — `main` and `feature` both
+      >     rewrote `shared.txt`, `feature` twice; `r` on `main` from
+      >     `feature`, confirm: git stops, is resolved as `resolved once\n`,
+      >     `c`, **stops again** at a different `HEAD`, is resolved as
+      >     `resolved twice\n`, `c`. At both stops there is exactly **one**
+      >     `Rebase` entry and it is `Pending`; after the second `c` that
+      >     same one entry is `Committed` — one entry across two stops. The
+      >     replayed branch's `~2` is `main`'s tip and `shared.txt` is
+      >     `resolved twice\n`. One `u` puts `feature` back at its old
+      >     commit with every file byte-identical to before the rebase.
+
+- [x] `git fsck --no-dangling` is the **last line of `run_scenario`**
+      (`m5_walk/run.rs`: `fsck_clean(fixture.repo())`), so every scenario
+      ends with it and a scenario cannot opt out. All eight returned from it
+      without error.
+- [x] Slowest new scenario: `rebase_stops_twice_same_entry` at **1.479 s**
+      (`cargo nextest run -E 'test(m5_walk::every_scenario)' --status-level
+      pass`; next is `continue_refuses_…` at 1.244 s). No `sleep` and no
+      poll loop anywhere: every wait is `Walk::pump`, which blocks on the
+      real job-pool channel and fails by timeout rather than spinning.
+- [x] Whole suite, workspace-wide `cargo nextest run`: **before 2445
+      passed, 1 skipped** (`docs/log/m5.md:1246`); **after 2453 run, 2452
+      passed, 1 failed, 1 skipped** — +8 tests, the one failure being
+      finding 1, left failing on purpose. `cargo fmt --all --check` and
+      `cargo clippy --all-targets -- -D warnings` clean; `cargo test --doc`
+      run (vacuous, 0 tests — not offered as evidence).
 
 Rule 6: you do not tick "looks right". The user does.
+
+## Findings
+
+### 1 (defect, Major) — a rebase draws a ghost for a merge git will drop
+
+`fix-rebase-instead` is left **failing**. `Fix: rebase instead` replays
+`main` (tip = the foxtrot merge) onto the merge's second parent. The range
+is `{feature: work, the merge}`, and the plan draws **one ghost per commit
+in it**, merge included, then points the branch's `RefMove` at the last
+ghost — the merge's. `git rebase` without `--rebase-merges` drops merge
+commits, so git wrote one commit where the box promised two, and the tip
+the box predicted never exists.
+
+Lines that prove it:
+
+- `crates/graft-ops/src/preview/kinds.rs:113` — `for (index, commit) in
+  range.commits.iter().enumerate()` pushes a `GhostCommit` for every commit,
+  with no merge filter; `:128` points the `RefMove` at
+  `Target::Ghost(plan.ghosts.len() - 1)`.
+- `crates/graft-git/src/history_reads.rs:94` (`commits_between`) builds that
+  range with `rev-list --reverse` and **no `--no-merges`** (args at
+  :104–111).
+- Observed: `FAIL fix-rebase-instead: ghost 1: subject `Merge branch 'main'
+  into feature`, git wrote `feature: work``.
+
+Everything else in that scenario holds and is proved: the replayed tip has
+exactly one parent and it is `<merge>^2`, all three files survive, the last
+entry is `Rebase`/`Committed`, and `u` puts `main` back on the merge. The
+claim is judged **last** in `rebase_instead_holds` on purpose, so those
+eight checks are reached rather than sitting unreachable under it (the m5/32
+lesson).
+
+Not fixed here — the ticket says a scenario failing because the app is wrong
+is the conductor's.
+
+### 2 (question, not a defect) — `u` right after a finished `--continue`
+
+Pressing `u` immediately after the continue's own `Status::Done`, with the
+walk's `Wait::Ready` already satisfied, was refused with `finish or abort
+the merge first · ⇥ banner`: the app's `in_progress` had not yet been
+re-read, and `ready()` does not look at it. Adding `Wait::NotInProgress`
+(pumps the real event stream until `state.in_progress.is_none()`; not a
+sleep) made both conflict scenarios pass. **I cannot say whether a human
+could ever hit this window** — it is one re-read wide — so it is filed as a
+question, not a defect, per rule 7.
+
+### 3 (textual, fixed here) — stale counts and `FAIL` markers in TESTING.md
+
+"History" said *All 35 scenarios pass* while the same section said *30
+scenarios*, and five entries still carried inline `(**FAIL**, worktree
+line)` markers although the paragraph under them says m5/32 fixed exactly
+those five. I ran the full walk: `37 ok, 1 failed`, the one failure being
+finding 1 — those five all pass. The counts now read 38, the stale markers
+are gone, and the one real failure is named where the count is.
+
+### 4 (walk helper, fixed here, proved by running git)
+
+`claim::patch_id` reversed a revert's patch against `<commit>^` — parent 1,
+always. A foxtrot revert passes `-m 2`, so the comparison was between two
+different patches and `fix-revert-the-merge` failed for the helper's reason,
+not the app's. Proved with a scratch repo before changing anything: for a
+`git revert -m 2` of a foxtrot merge, the revert's patch-id equals
+`diff-tree -p <merge> <merge>^2` (`ef5a4ea…`) and not `<merge>^1`
+(`606b60a…`). `patch_id` now takes the mainline from the plan's own `git
+revert … -m N` command line. `rebase-two-commits`' two call sites pass
+`None` and are unchanged in meaning.
 
 ## Gates
 
@@ -131,3 +256,21 @@ command at a time. **Never bare `git stash`.** **Never `git checkout` or
 How many of the eight are `ok` and how many are findings. Whether the foxtrot
 fixture was reused or built. Whether one `u` really undid a twice-stopped
 rebase. Anything unverified — which is not broken.
+
+## NOTES
+
+- No scout: the ticket says none is needed, and the whole group is inside
+  `crates/graft/tests/it/m5_walk/`, which I read directly.
+- No compaction.
+- **No live `git mergetool` was faked.** Nothing here hands over to one; the
+  banner's `M` is never pressed.
+- New walk vocabulary, for whoever writes scenarios next: `Wait::RadarReady`
+  (the radar's context, without which `.` silently has no `Fix:` row),
+  `Wait::NotInProgress`, `Wait::Resolved`, `vocabulary::box_choices`,
+  `entries_of`, `file_was`. `file_was` exists because `expect` runs **once,
+  at the end**: reading the disk there answers about the last step, which
+  cost me two false failures while writing this (both caught before they
+  could pass for the wrong reason).
+- Unverified: nothing in these eight was judged by eye. None has a capture —
+  all eight are about refusals, journal shape and git truth, not about a
+  picture. Colour, as always, is unverified.
