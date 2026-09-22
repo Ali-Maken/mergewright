@@ -2,7 +2,7 @@
 
 Status: ready
 Blocked by: **01**, **03**, **04**.
-Build with: (blank — brownfield in `update/resolver.rs` (G4's state machine), `update/confirm.rs` (a new `ConfirmThen`), `jobs/`, `view/resolver.rs`; recommendation: **Sonnet** — three additions on a state machine that exists, each with a fixture file that proves it.)
+Build with: Sonnet — set by the conductor after the scout (`.scratch/m6-conflicts/scout-app-g05.md`); the keymap gate on line 13 is already met (`02-keymap.md:245-246`, `4dfa409`).
 Crates: graft
 Needs:
 - `app-conflict-resolver` — `ResolverState`, `resolver_key`, `open_resolver`, `conflict_opened`, `resolver_view`, `Command::OpenConflict`, `Product::ConflictOpened`.

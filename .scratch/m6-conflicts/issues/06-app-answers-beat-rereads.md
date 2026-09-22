@@ -2,7 +2,7 @@
 
 Status: ready
 Blocked by: **04**.
-Build with: (blank — brownfield in `update/remote.rs` (`:640` re-push lease), `update/undo.rs`, `update/journal.rs` (`launch_into_live`), `update/remote.rs::fetch_key`, `jobs/undo.rs`, `event_loop/`; recommendation: **Opus** — four ordering bugs where a wrong fix is another swallowed staleness; the fix is small, the reasoning is not; every one has a test that fails before.)
+Build with: Opus — set by the conductor after the scout (`.scratch/m6-conflicts/scout-app-g06.md`); all four bugs and row 505 confirmed real, with lines.
 Crates: graft
 Needs:
 - `app-conflict-resolver` — `open_resolver`, `OpenedFrom::Banner` (piece 3 opens nothing itself, it puts the user one `⏎` away).
