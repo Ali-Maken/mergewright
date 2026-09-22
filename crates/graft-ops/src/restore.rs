@@ -23,7 +23,9 @@
 mod rollback;
 mod steps;
 
-use graft_core::journal::EntryStatus;
+use std::path::Path;
+
+use graft_core::journal::{EntryStatus, IndexState};
 use graft_core::oid::Oid;
 use graft_git::run::RunError;
 
@@ -173,6 +175,38 @@ impl From<crate::apply::PrepareError> for RestoreError {
             PrepareError::Stopped => RestoreError::Stopped,
         }
     }
+}
+
+/// Put one path's recorded index stages back, and nothing else.
+///
+/// The narrow half of [`Step::RestoreIndex`], for the one caller that is not
+/// undoing anything: `d` on a path `⏎` already staged
+/// ([`crate::apply::stage_source`], m6-conflicts/08 scope 5(c)). The stages
+/// have to be in the index before `git checkout --merge` has anything to
+/// merge, and `plan()` returns [`crate::operation::Invocation`]s — a pure
+/// description of what git will be asked to do, with nowhere to put a
+/// recorded tree or the stdin it needs. Growing `Invocation` to carry stdin
+/// would let every later operation smuggle state through its plan, so the one
+/// operation that needs a write `plan()` cannot describe asks for it here
+/// instead, and `plan()` stays pure.
+///
+/// No journal line, no entry, no backup: the caller is inside an operation of
+/// its own and has already taken both.
+///
+/// Returns the command lines run, for the Command Log.
+///
+/// # Errors
+/// [`SnapshotError`] — the stop, or a `git` that would not run. It is exactly
+/// the error set of the two commands this runs.
+pub fn restore_stages(
+    ctx: &mut Context<'_>,
+    index: IndexState,
+    path: &Path,
+) -> Result<Vec<String>, SnapshotError> {
+    let mut commands = Vec::new();
+    let paths = [path.to_path_buf()];
+    steps::put_stages_back(ctx, index, &paths, &mut commands)?;
+    Ok(commands)
 }
 
 /// Run a plan, journaled as its own entry.

@@ -944,12 +944,68 @@ fn conflict_operations_check_against_the_status() {
             path: PathBuf::from("other.rs"),
         })
     );
+    // A restart is the one conflict operation that does **not** refuse here
+    // for a path the status leaves out. After `⏎` the path is at stage 0 and
+    // has no `UnmergedHow` to read at all, and whether its sides were kept is
+    // a question only a spawn can answer — so `check` admits it and
+    // `apply::prepare_restart` decides, with the same marker gate, against
+    // the stages it finds (m6-conflicts/08 scope 5(c)).
+    assert_eq!(restart("other.rs").check(&f), Ok(()));
+}
+
+/// The stage set, read back as the shape git's `XY` pair would have printed —
+/// the only way the marker gate can be asked of stages that come out of a
+/// recorded tree rather than out of the status.
+#[test]
+fn a_stage_set_spells_the_shape_it_came_from() {
+    use super::conflict::shape_of_stages;
+    use crate::snapshot::StageEntry;
+
+    let at = |stages: &[u8]| -> Vec<StageEntry> {
+        stages
+            .iter()
+            .map(|stage| StageEntry {
+                mode: 0o100_644,
+                oid: graft_core::oid::Oid::from_hex(&"a".repeat(40)).expect("an oid"),
+                stage: *stage,
+            })
+            .collect()
+    };
     assert_eq!(
-        restart("other.rs").check(&f),
-        Err(Refusal::NotUnmerged {
-            path: PathBuf::from("other.rs"),
-        })
+        shape_of_stages(&at(&[1, 2, 3])),
+        Some(UnmergedHow::BothModified)
     );
+    assert_eq!(shape_of_stages(&at(&[2, 3])), Some(UnmergedHow::BothAdded));
+    assert_eq!(
+        shape_of_stages(&at(&[1, 2])),
+        Some(UnmergedHow::DeletedByThem)
+    );
+    assert_eq!(
+        shape_of_stages(&at(&[1, 3])),
+        Some(UnmergedHow::DeletedByUs)
+    );
+    assert_eq!(shape_of_stages(&at(&[2])), Some(UnmergedHow::AddedByUs));
+    assert_eq!(shape_of_stages(&at(&[3])), Some(UnmergedHow::AddedByThem));
+    assert_eq!(shape_of_stages(&at(&[1])), Some(UnmergedHow::BothDeleted));
+    assert_eq!(shape_of_stages(&at(&[])), None);
+    // Exactly the two `checkout --merge` can merge are the two the gate lets
+    // through, wherever the stages came from.
+    for stages in [vec![1, 2, 3], vec![2, 3]] {
+        assert!(
+            shape_of_stages(&at(&stages))
+                .expect("a shape")
+                .has_markers(),
+            "{stages:?} should be a marker shape"
+        );
+    }
+    for stages in [vec![1, 2], vec![1, 3], vec![2], vec![3], vec![1]] {
+        assert!(
+            !shape_of_stages(&at(&stages))
+                .expect("a shape")
+                .has_markers(),
+            "{stages:?} should not be a marker shape"
+        );
+    }
 }
 
 #[test]
@@ -993,6 +1049,13 @@ fn conflict_refusals_in_words() {
         }
         .explain(),
         "src/a.rs is not conflicted"
+    );
+    assert_eq!(
+        Refusal::NoStagesKept {
+            path: PathBuf::from("src/a.rs"),
+        }
+        .explain(),
+        "src/a.rs: the conflict's sides were not kept"
     );
     assert_eq!(
         Refusal::ConflictsOpen {

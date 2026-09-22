@@ -26,8 +26,8 @@ use crate::snapshot;
 use crate::undo::RepoStateNow;
 
 use super::{
-    AfterState, Applied, ApplyError, Context, Pending, PlanRun, Refresh, anchors, finish,
-    reason_for, run_plan,
+    AfterState, Applied, ApplyError, Context, Pending, PlanRun, Refresh, RestartPrep, anchors,
+    as_apply_error, finish, reason_for, run_plan, run_restart_prep,
 };
 
 /// How [`resume`] takes a stopped history operation on (m5/07).
@@ -82,6 +82,7 @@ pub(super) fn inside_live_operation(
     op: &Operation,
     facts: &RepoFacts,
     live: InProgress,
+    prep: &RestartPrep,
 ) -> Result<Applied, ApplyError> {
     // Before anything runs: the entry the step folds into, and the snapshot
     // that keeps what the step is about to overwrite.
@@ -96,8 +97,15 @@ pub(super) fn inside_live_operation(
         _ => None,
     };
 
+    // A restart of a path `⏎` already staged needs its stages back in the
+    // index before `checkout --merge` has anything to merge (scope 5(c)).
+    // After the chained backup, so what it is about to overwrite is kept.
+    // `prepare_restart` decided this before a byte was written; this is the
+    // write half.
+    let mut commands = run_restart_prep(ctx, prep)?;
+
     let plan = op.plan(facts);
-    let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
+    commands.extend(plan.iter().map(Invocation::command_line));
     let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
     fold_commands(ctx, span.as_ref(), commands.clone());
 
@@ -133,15 +141,6 @@ pub(super) fn inside_live_operation(
             };
             Err(failed.into_error(record))
         }
-    }
-}
-
-/// A snapshot failure as an apply failure, the **stop kept as a stop** so the
-/// caller can tell "you cancelled" from "git would not run".
-fn as_apply_error(why: snapshot::SnapshotError) -> ApplyError {
-    match why {
-        snapshot::SnapshotError::Stopped => ApplyError::Stopped,
-        other => ApplyError::Snapshot(other),
     }
 }
 
@@ -284,7 +283,7 @@ pub struct Recovered {
 /// A fact the entry never recorded is not evidence against it: the
 /// comparison is skipped rather than failed, which keeps a real conflict
 /// resumable.
-fn live_entry<'a>(
+pub(super) fn live_entry<'a>(
     repo: &RepoHandle,
     entries: &'a [JournalEntry],
     kind: InProgress,

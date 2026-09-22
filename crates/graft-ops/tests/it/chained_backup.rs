@@ -19,7 +19,8 @@ use graft_git::run::Stop;
 use graft_git::status::UnmergedHow;
 use graft_ops::apply::{Applied, ApplyError, Resume, apply, resume};
 use graft_ops::operation::{
-    FastForward, MergeParams, Operation, ResolveWholeParams, Side, Source, Tip,
+    FastForward, MergeParams, Operation, Refusal, ResolveWholeParams, RestartParams, Side, Source,
+    Target, Tip,
 };
 
 use crate::support::{NOW, Never, TempRepo, context, journal_for};
@@ -326,4 +327,205 @@ fn resume_chains_then_after_snapshot_parents_the_chain() {
         "one entry, closed once"
     );
     assert_eq!(journal_lines(&repo), 2, "and exactly its two lines");
+}
+
+// ── `d` after `⏎` (m6-conflicts/08 scope 5(c)) ──────────────────────────
+
+/// `git ls-files -u -- <path>`, as git prints it.
+fn unmerged_lines(repo: &TempRepo, path: &str) -> String {
+    repo.git(&["--literal-pathspecs", "ls-files", "-u", "--", path])
+}
+
+/// `git ls-files --resolve-undo`: git's own resolve-undo (REUC) extension.
+fn resolve_undo(repo: &TempRepo) -> String {
+    repo.git(&["ls-files", "--resolve-undo"])
+}
+
+/// `⏎` on a path: the resolver writes the resolved bytes, then stages them.
+fn mark_resolved(repo: &TempRepo, path: &str, bytes: &[u8], at: i64) {
+    repo.write(path, bytes);
+    step(
+        repo,
+        &Operation::Stage(Target::Paths(vec![PathBuf::from(path)])),
+        at,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("staging {path}: {}", why.explain()));
+}
+
+fn restart(path: &str) -> Operation {
+    Operation::RestartConflict(RestartParams {
+        path: PathBuf::from(path),
+    })
+}
+
+/// Whether the recorded command lines include the index restore this group
+/// added — which is what says **Graft** put the stages back.
+fn put_stages_back(applied: &Applied) -> bool {
+    applied
+        .entry
+        .commands
+        .iter()
+        .any(|line| line.contains("update-index") && line.contains("--index-info"))
+}
+
+/// `d` after `⏎`: the path is at stage 0 and `check` has no `UnmergedHow` to
+/// read at all, so the stages come back out of the chained backup and
+/// `checkout --merge` regenerates the markers from them.
+///
+/// **The outcome here does not discriminate, and is not meant to.** Measured
+/// by disabling the restore and re-running: the stages and the markers still
+/// came back, because `git add` had recorded them in git's own resolve-undo
+/// extension and bare `checkout --merge` restored from there (git 2.54.0).
+/// Only the last assertion — `update-index --index-info` in the recorded
+/// command lines — fails. `restart_survives_a_relaunch` is the test that
+/// takes REUC away and makes the outcome itself the proof.
+#[test]
+fn restart_after_stage_brings_the_conflict_back() {
+    let (repo, _entry) = a_stopped_graft_merge();
+    let stages_before = unmerged_lines(&repo, "shared.txt");
+    assert_eq!(
+        stages_before.lines().count(),
+        3,
+        "the merge left three stages"
+    );
+
+    mark_resolved(&repo, "shared.txt", b"a hand-written merge\n", NOW + 1);
+    assert_eq!(
+        unmerged_lines(&repo, "shared.txt"),
+        String::new(),
+        "`⏎` moved it to stage 0"
+    );
+
+    let applied = step(&repo, &restart("shared.txt"), NOW + 2, &Never)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(
+        unmerged_lines(&repo, "shared.txt"),
+        stages_before,
+        "the same three stage oids and modes, byte for byte"
+    );
+    let back = String::from_utf8_lossy(&repo.read("shared.txt")).into_owned();
+    assert!(back.contains("<<<<<<<"), "the markers are back: {back}");
+    assert!(back.contains("feature's line"), "theirs is back: {back}");
+    assert!(
+        put_stages_back(&applied),
+        "the stages were put back from the recorded tree: {:?}",
+        applied.entry.commands
+    );
+}
+
+/// The same, with git's resolve-undo **cleared** — the only control that
+/// tells Graft's stage tree apart from git's own bookkeeping.
+///
+/// `git add` on a conflicted path records its three stages in the index's
+/// REUC extension, and bare `git checkout --merge` restores from there
+/// (measured, git 2.54.0). So a green
+/// `restart_after_stage_brings_the_conflict_back` proves nothing on its own.
+/// Here the index is rebuilt from its own tree, which drops REUC: the same
+/// bare command then exits 0 and does nothing — asserted below, so the
+/// control is part of the test rather than a claim about it — and the only
+/// thing left that can bring the conflict back is the chain commit. That
+/// lives in the ref, not in memory, which is the relaunch: every `step` here
+/// opens a fresh `Context` over a freshly read journal.
+///
+/// Checked by disabling the restore and re-running: `ls-files -u` comes back
+/// **empty**, not wrong. This test is answered by the recorded stage tree and
+/// by nothing else.
+#[test]
+fn restart_survives_a_relaunch() {
+    let (repo, _entry) = a_stopped_graft_merge();
+    let stages_before = unmerged_lines(&repo, "shared.txt");
+
+    // Both paths resolved, so the index has a tree to be rebuilt from. The
+    // `UD` one goes first, so the newest chain commit is the one taken before
+    // `shared.txt` was staged — the one still holding its stages.
+    step(
+        &repo,
+        &resolve("gone.txt", Side::Ours, UnmergedHow::DeletedByThem),
+        NOW + 1,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    mark_resolved(&repo, "shared.txt", b"a hand-written merge\n", NOW + 2);
+    assert!(
+        !resolve_undo(&repo).is_empty(),
+        "git recorded resolve-undo for the staged paths"
+    );
+
+    // The relaunch, and the control: an index rebuilt from its own tree is
+    // the same index without REUC.
+    let tree = repo.git(&["write-tree"]);
+    std::fs::remove_file(repo.path().join(".git/index")).expect("the index is removed");
+    repo.git(&["read-tree", &tree]);
+    assert_eq!(
+        resolve_undo(&repo),
+        String::new(),
+        "resolve-undo is gone, so git alone has nothing to restore from"
+    );
+    assert!(repo.exists(".git/MERGE_HEAD"), "the merge is still live");
+
+    repo.git(&[
+        "--literal-pathspecs",
+        "checkout",
+        "--merge",
+        "--",
+        "shared.txt",
+    ]);
+    assert_eq!(
+        unmerged_lines(&repo, "shared.txt"),
+        String::new(),
+        "bare `checkout --merge` exits 0 and does nothing once REUC is gone"
+    );
+
+    let applied = step(&repo, &restart("shared.txt"), NOW + 3, &Never)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    // The outcome first, then the mechanism: with REUC gone, the outcome
+    // alone already fails if the stage tree is not what answered.
+    assert_eq!(
+        unmerged_lines(&repo, "shared.txt"),
+        stages_before,
+        "the same three stage oids and modes, byte for byte"
+    );
+    let back = String::from_utf8_lossy(&repo.read("shared.txt")).into_owned();
+    assert!(back.contains("<<<<<<<"), "the markers are back: {back}");
+    assert!(
+        put_stages_back(&applied),
+        "the stages came from the recorded tree: {:?}",
+        applied.entry.commands
+    );
+}
+
+/// No chain commit holds the path, so `d` says so in words and writes
+/// nothing — rather than running a `checkout --merge` that would exit 0 and
+/// silently do nothing.
+#[test]
+fn restart_refuses_without_stages() {
+    let (repo, entry) = a_stopped_graft_merge();
+    let pre_op = backup_tip(&repo, &entry);
+
+    mark_resolved(&repo, "shared.txt", b"a hand-written merge\n", NOW + 1);
+    // The chain thrown away: the ref back at the pre-operation snapshot,
+    // whose index was merged and holds no stages for anything.
+    let name = entry.backup_ref.as_deref().expect("a backup ref");
+    repo.git(&["update-ref", name, &pre_op.to_string()]);
+
+    let index_before = repo.git(&["--literal-pathspecs", "ls-files", "-s", "--", "shared.txt"]);
+    let bytes_before = repo.read("shared.txt");
+    let lines_before = journal_lines(&repo);
+
+    match step(&repo, &restart("shared.txt"), NOW + 2, &Never) {
+        Err(ApplyError::Refused(Refusal::NoStagesKept { path })) => {
+            assert_eq!(path, PathBuf::from("shared.txt"));
+        }
+        other => panic!("expected NoStagesKept, got {other:?}"),
+    }
+
+    assert_eq!(
+        repo.git(&["--literal-pathspecs", "ls-files", "-s", "--", "shared.txt"]),
+        index_before,
+        "the index is untouched"
+    );
+    assert_eq!(repo.read("shared.txt"), bytes_before, "and the file");
+    assert_eq!(journal_lines(&repo), lines_before, "and the journal");
 }

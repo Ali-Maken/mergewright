@@ -129,18 +129,44 @@ fn restore_index(
     commands: &mut Vec<String>,
 ) -> Result<(), RestoreError> {
     let paths = index_scoped_paths(ctx, index, scope)?;
+    put_stages_back(ctx, index, &paths, commands).map_err(as_snapshot_error)
+}
+
+/// The write half of [`restore_index`], over paths the caller already has.
+///
+/// Its error set is exactly [`snapshot::SnapshotError`]'s — one `ls-tree`
+/// read and one `update-index`, with the stop kept as a stop — so a caller
+/// outside a restore plan ([`crate::restore::restore_stages`], which `d`
+/// after `⏎` goes through) gets the failure it can actually map, rather than
+/// a [`RestoreError`] whose other dozen variants it would have to pretend to
+/// handle.
+pub(crate) fn put_stages_back(
+    ctx: &mut Context<'_>,
+    index: IndexState,
+    paths: &[PathBuf],
+    commands: &mut Vec<String>,
+) -> Result<(), snapshot::SnapshotError> {
     if paths.is_empty() {
         return Ok(());
     }
-    let held = snapshot::stage_entries_for(ctx.repo, index, &paths, ctx.stop)
-        .map_err(as_snapshot_error)?;
-    let stdin = index_info_records(&paths, &held, index.tree().as_bytes().len() * 2);
+    let held = snapshot::stage_entries_for(ctx.repo, index, paths, ctx.stop)?;
+    let stdin = index_info_records(paths, &held, index.tree().as_bytes().len() * 2);
     let args = vec![
         GitArg::Flag("update-index"),
         GitArg::Flag("-z"),
         GitArg::Flag("--index-info"),
     ];
-    run(ctx, args, Some(stdin), commands).map(|_output| ())
+    let invocation = GitInvocation::new(ctx.repo).args(args).stdin(stdin);
+    commands.push(invocation.command_line());
+    invocation
+        .run(ctx.stop)
+        .map(|_output| ())
+        .map_err(|why| match why {
+            // The stop stays a stop: folding it into `Run` would read as a
+            // git failure and take the cancel path away from the caller.
+            RunError::Stopped => snapshot::SnapshotError::Stopped,
+            other => snapshot::SnapshotError::Run(other),
+        })
 }
 
 /// The bytes one `update-index -z --index-info` takes: per path, the mode-0

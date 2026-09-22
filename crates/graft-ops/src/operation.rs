@@ -32,6 +32,7 @@ use graft_git::state::InProgress;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
+pub(crate) use conflict::shape_of_stages;
 pub use conflict::{ResolveWholeParams, RestartParams, Side};
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
@@ -465,6 +466,15 @@ pub enum Refusal {
         /// The shape the status read.
         how: UnmergedHow,
     },
+    /// `d` on a path that is no longer unmerged and whose sides no recorded
+    /// stage tree holds either: there is nothing to put back, and
+    /// `checkout --merge` on a stage-0 path git kept no resolve-undo for
+    /// exits 0 and silently does nothing (measured, git 2.54.0). Said in
+    /// words instead (m6-conflicts/08).
+    NoStagesKept {
+        /// The path.
+        path: PathBuf,
+    },
 }
 
 impl Refusal {
@@ -609,6 +619,9 @@ impl Refusal {
                 path.display(),
                 how.words()
             ),
+            Self::NoStagesKept { path } => {
+                format!("{}: the conflict's sides were not kept", path.display())
+            }
         }
     }
 }

@@ -482,7 +482,14 @@ fn restart_refuses_the_shapes_checkout_merge_cannot_merge() {
 }
 
 /// Both operations refuse a path the status does not call unmerged, before
-/// any `git` process runs.
+/// any `git` process runs — but with different words, because they are
+/// different questions.
+///
+/// A whole-file resolution of a resolved path is meaningless: `NotUnmerged`.
+/// A restart of one is not — that is `d` after `⏎`, the case
+/// m6-conflicts/08 scope 5(c) exists for — so it is refused only when the
+/// sides were not kept anywhere, and then by name: this merge was begun in
+/// the shell, so there is no entry of Graft's and no chain to read.
 #[test]
 fn conflict_operations_refuse_a_path_that_is_not_conflicted() {
     let repo = stopped_merge();
@@ -498,22 +505,27 @@ fn conflict_operations_refuse_a_path_that_is_not_conflicted() {
         NOW,
     );
 
-    for op in [
-        Operation::ResolveWholeFile(ResolveWholeParams {
+    match try_run(
+        &repo,
+        &Operation::ResolveWholeFile(ResolveWholeParams {
             path: clean.clone(),
             side: Side::Ours,
             how: UnmergedHow::AddedByUs,
         }),
-        Operation::RestartConflict(RestartParams {
+        NOW + 1,
+    ) {
+        Err(ApplyError::Refused(Refusal::NotUnmerged { path })) => assert_eq!(path, clean),
+        other => panic!("expected NotUnmerged, got {other:?}"),
+    }
+    match try_run(
+        &repo,
+        &Operation::RestartConflict(RestartParams {
             path: clean.clone(),
         }),
-    ] {
-        match try_run(&repo, &op, NOW + 1) {
-            Err(ApplyError::Refused(Refusal::NotUnmerged { path })) => {
-                assert_eq!(path, clean);
-            }
-            other => panic!("expected NotUnmerged, got {other:?}"),
-        }
+        NOW + 1,
+    ) {
+        Err(ApplyError::Refused(Refusal::NoStagesKept { path })) => assert_eq!(path, clean),
+        other => panic!("expected NoStagesKept, got {other:?}"),
     }
 }
 

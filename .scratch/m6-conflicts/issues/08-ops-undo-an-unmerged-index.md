@@ -1,6 +1,6 @@
 # ops-undo-an-unmerged-index: the journal records index stages 1/2/3 as a tree, so `u` inverts a resolution made with no operation live, `U` puts a conflict back, and `d` starts a file over after it was already staged — without re-running anything
 
-Status: partial — piece A done, piece B's Scope 5(c) (`stage_source`, `d` after `⏎`) not built; see NOTES
+Status: done — piece A (first builder) and piece B / Scope 5(c) (second builder) both built. One thing remains and it is **not this group's**: `crates/graft` does not compile against this branch (see "Seam"); its 11-line fix is the conductor's to close.
 Blocked by: **03** (its `ResolveWholeFile`/`RestartConflict` are what become undoable; same crates). Groups 04–07 do **not** wait on this one; 07 (acceptance) gains one scenario from it — see "For group 07" at the end. The conductor adds **08** to 07's `Blocked by`.
 Build with: Opus — undo and git index writes (CLAUDE.md routing). Not Fable: the schema, the tree layout, the restore order and the fold rule are all decided below, and every claim is checkable byte-for-byte against `git ls-files --stage` in a throwaway repo — a diff and a test can judge it. Fails Fable tests 2 and 3. Brownfield in `graft-ops` (`snapshot`, `undo`, `restore`, `apply`) and `graft-core` (`journal`): scout questions listed under Size.
 Crates: graft-ops, graft-core
@@ -131,8 +131,11 @@ with the reason, per rule 1.
 - [x] Undoing a conflicted pop with nothing touched since shows **no** drift and needs no `force` — `tests/it/unmerged_index.rs::conflicted_pop_undo_is_clean_without_force`; `src/undo/tests.rs::drift_says_which_way_the_index_shape_went` for the two new words.
 - [x] A folded step moves the entry's backup ref to a commit whose first parent is the old target and whose `unmerged/` holds the path's three stages; the journal file's line count is unchanged; `Applied.step_backup == Some(that commit)` — `tests/it/chained_backup.rs::folded_step_chains_a_backup`. **Deviation:** a stopped merge Graft ran, not `Shape::StoppedRebase`.
 - [x] **The g03 review's M2 data-loss path**: hand-edit a `UD` file, then take theirs (`git rm --quiet`, no confirm, no journal line) → the edit's bytes are in the chained commit's `worktree/` tree — `tests/it/chained_backup.rs::a_hand_edit_is_recoverable_after_the_other_side_is_taken`. The false comment at `apply/resume.rs:64-66` is replaced by what is now true.
-- [ ] `RestartConflict` after `⏎` (`stage_source`, `Backup { tree }`, `Refusal::NoStagesKept`, `RestoreIndex` then `checkout --merge`) — **not built.** Scope 5(c) only. See NOTES.
-- [ ] `restart_refuses_without_stages` — not built, same reason.
+- [x] `StoppedMerge`: `Stage shared.txt` (folded) then `RestartConflict shared.txt` → `ls-files -u` lists it with the **original** stage oids and modes byte for byte, and the file holds markers — `tests/it/chained_backup.rs::restart_after_stage_brings_the_conflict_back`. **This test's outcome does not discriminate and says so in its own doc comment**: measured by disabling the restore and re-running, git's REUC answers it. Its last assertion (the `update-index --index-info` line in `Applied.entry.commands`) is what catches that, and does fail without the restore.
+- [x] The same with the chain read fresh **and REUC cleared** — the index rebuilt from its own tree, the control (`git ls-files --resolve-undo` empty, and bare `git checkout --merge -- shared.txt` then exits 0 and leaves `ls-files -u` empty) asserted inside the test — `tests/it/chained_backup.rs::restart_survives_a_relaunch`. Checked by disabling the restore and re-running: `ls-files -u` comes back **empty**, so the recorded stage tree and nothing else answers this one. Every `step` opens a fresh `Context` over a freshly read journal, which is the relaunch.
+- [x] `StoppedMerge`, no chain commit holding the path (the entry's backup ref reset to the pre-operation commit) → `RestartConflict` refuses `NoStagesKept { path }`; the index line, the file's bytes and the journal's line count are all unchanged — `tests/it/chained_backup.rs::restart_refuses_without_stages`.
+- [x] `stage_source`'s `Index` arm and the two-place gate: a restart of a path resolved inside a **shell-started** merge (no entry of Graft's, so no chain) is refused `NoStagesKept`, while a whole-file resolution of the same path is still `NotUnmerged` — `tests/it/conflict_ops.rs::conflict_operations_refuse_a_path_that_is_not_conflicted`. The stage-set → `UnmergedHow` mapping the runtime half of the gate rests on: `src/operation/tests.rs::a_stage_set_spells_the_shape_it_came_from` (all seven shapes plus the empty set, and `has_markers` over each). The pure half unchanged for an unmerged path: `src/operation/tests.rs::conflict_operations_check_against_the_status`, `tests/it/conflict_ops.rs::restart_refuses_the_shapes_checkout_merge_cannot_merge`.
+- [x] `Refusal::NoStagesKept`'s words — `src/operation/tests.rs::conflict_refusals_in_words`.
 - [x] `resume(Continue)` chains a backup of its own first and the closing after-commit's first parent is that chain tip, so every chained commit stays reachable (`merge-base --is-ancestor`) — `tests/it/chained_backup.rs::resume_chains_then_after_snapshot_parents_the_chain`; m5's `history_ops` tests unchanged and green.
 - [x] Chained commits add no entries: same line count, same entry count, same `next_undo` — `tests/it/chained_backup.rs::chain_adds_no_entries`.
 - [x] `RestoreIndex(Unmerged)` stdin bytes, mode-0 record first, one process per step — `src/restore/steps.rs::tests::unmerged_index_info_lines`, plus `a_path_with_no_stages_is_only_removed` and `a_merged_path_is_one_stage_zero_line`.
@@ -140,7 +143,7 @@ with the reason, per rule 1.
 - [x] Stop raised before the chained snapshot → `Stopped`, the ref not moved, the step not run — `tests/it/chained_backup.rs::stop_before_chain_writes_nothing`.
 - [ ] `tests/it/seam_rule.rs` unchanged and green — **not run**: it lives in `crates/graft`, which this builder does not hold and which does not compile until the seam below is closed. No new writer was exposed (`chain_backup` and `stage_entries` read; `index_paths_changed` reads).
 - [x] `cargo test --doc` covers the `IndexState` doc example — 1 doctest, passing.
-- [x] MAP.md per Scope 7, for what was built — `graft-core` §journal (`IndexState`); `graft-ops` §snapshot (`index_state`, the `unmerged/` layout, `chain_backup`, `StageEntry`/`stage_entries`, `index_paths_changed`, `SnapshotError::Unmerged` retired), §undo (`IndexPaths`, the `NoBackup` reading retired), §restore (mode-0-first, `NoBefore`'s index sentence retired), §apply (`step_backup`), §undo execution half ("forcing past it still works" retired), and `RestartParams`' gate. No `stage_source` entry, because there is none.
+- [x] MAP.md per Scope 7, for what was built — `graft-core` §journal (`IndexState`); `graft-ops` §snapshot (`index_state`, the `unmerged/` layout, `chain_backup`, `StageEntry`/`stage_entries`, `index_paths_changed`, `SnapshotError::Unmerged` retired), §undo (`IndexPaths`, the `NoBackup` reading retired), §restore (mode-0-first, `NoBefore`'s index sentence retired), §apply (`step_backup`), §undo execution half ("forcing past it still works" retired), and `RestartParams`' gate. Completed for 5(c): §apply (`StageSource`/`stage_source`, `prepare_restart`/`run_restart_prep`), §snapshot (`recorded_index_state`, `backup_chain`), §restore (`restore_stages`), §operation (`NoStagesKept`, `shape_of_stages`, and `RestartParams`' two-place gate).
 
 ### The g03 review's M1, taken as instructed
 
@@ -320,3 +323,112 @@ New public shapes the app can now use: `IndexState::{Merged, Unmerged}` with
 `RepoStateNow.index: IndexState`; `Applied.step_backup: Option<Oid>`;
 `Refusal::NotMarkerShape` is now also returned for `RestartConflict`, so `d`'s
 refusal path in the resolver must expect it.
+
+## NOTES (second builder, Scope 5(c), 2026-09-22)
+
+**Scout: none.** The handoff above named every file and every open question,
+and the compiler named the rest. A scout would have re-read what it already
+said. Cost of not having one: nothing found late.
+
+### The gate, settled before the code (the first thing the dispatch asked)
+
+`check_restart` is pure over `RepoFacts` and **cannot spawn**, by the four-
+properties contract. After `⏎` the path is at stage 0, so there is no
+`UnmergedHow` to read at all, and whether its sides were kept lives in a
+recorded stage tree that only a spawn reaches. So the gate splits along what
+each half can see, and stays **one rule** — *`checkout --merge` needs both
+sides*:
+
+- **`check_restart`** (`src/operation/conflict.rs`): the status calls the path
+  unmerged → decide exactly as the g03 review's M1 left it,
+  `UnmergedHow::has_markers()` or `NotMarkerShape { path, how }`. It does
+  **not** → `Ok(())`. `NotUnmerged` is no longer a restart's refusal.
+- **`apply::prepare_restart`** (`src/apply.rs`), before a byte is written:
+  `stage_source` → `None` is `NoStagesKept`; `Backup { tree }` has the same
+  test applied to the stages actually kept, via `operation::shape_of_stages`
+  (1+2+3 `UU`, 2+3 `AA`, 1+2 `UD`, 1+3 `DU`, 2 `AU`, 3 `UA`, 1 `DD`) →
+  `has_markers()`, else `NotMarkerShape` with the derived shape.
+
+So the stage-0 path is admitted by `check` **exactly when** `stage_source`
+returns `Backup` *and* what it found is a marker shape — decided one step
+later, where the answer exists, and still before any git that writes. A
+one-sided shape is refused wherever its stages live.
+
+**Order matters and is not arbitrary:** the restore runs **after** the
+before-snapshot (`begin`) or the chained backup, never before. Snapshot first
+means `u` on the restart puts back the *resolution* the user is starting over
+from. Restore first would have recorded the stages as the before-state and
+put the stage-0 resolution out of undo's reach. Both call sites do it in that
+order; `prepare_restart`/`run_restart_prep` is the split that makes it
+possible without a refusal leaving a `Pending` line behind.
+
+### The design call held up
+
+`inside_live_operation` (and `apply`'s non-live path) special-case
+`RestartConflict` and call `restore::restore_stages(ctx, index, path)` before
+running the plan. **`plan()` stayed pure and still returns
+`Vec<Invocation>`.** Cost: one `RestartPrep` enum, two small functions, one
+extra match arm at each of two call sites — about 40 lines. Nothing pushed
+back. `Invocation` was not touched.
+
+**Both** call sites are wired, not only the live one, and that is not scope
+creep: relaxing `check_restart` means a stage-0 path now reaches `apply` in
+the no-operation case too (a conflicted stash pop), and without
+`prepare_restart` there it would have run `checkout --merge` on a stage-0
+path — exit 0, nothing done, no word to the user. The refusal has to be where
+the admission is.
+
+### Which mechanism answered each test — git 2.54.0 (Apple Git-157), macOS
+
+Measured, not reasoned: each test was re-run with `run_restart_prep`'s restore
+arm disabled.
+
+| test | answered by | how that is known |
+|---|---|---|
+| `restart_after_stage_brings_the_conflict_back` | **git's REUC** | With the restore disabled the stages and markers still came back. Only the `update-index --index-info` assertion on `Applied.entry.commands` failed. Recorded in the test's own doc comment so nobody reads it as proof. |
+| `restart_survives_a_relaunch` | **the recorded stage tree, and nothing else** | REUC cleared inside the test (`write-tree`, `rm .git/index`, `read-tree <tree>`); `ls-files --resolve-undo` asserted empty and bare `checkout --merge` asserted to exit 0 and leave `ls-files -u` empty. With the restore disabled, `ls-files -u` after the operation came back **empty** — the outcome itself fails, not just the mechanism assertion. |
+| `restart_refuses_without_stages` | **neither** | It refuses in `prepare_restart` before any git that writes; `stage_source` walks the chain (reset to the pre-operation commit, whose index is `Merged`) and finds nothing. Index line, file bytes and journal line count all asserted unchanged. |
+| `conflict_operations_refuse_a_path_that_is_not_conflicted` | **neither** | Same refusal path, for a shell-started merge with no entry of Graft's. |
+| `a_stage_set_spells_the_shape_it_came_from` | **neither** | Pure, no repository. |
+
+### A trade-off this makes, named
+
+`stage_source` deliberately does not consult REUC. So there is a case Graft
+now refuses that bare git would have done: a path staged outside Graft, or
+inside a merge Graft did not start, where git still holds resolve-undo. The
+user gets `<path>: the conflict's sides were not kept` instead of the conflict
+back. That is the ticket's decision (REUC is one slot per path, overwritten by
+the next resolution and gone with a rebuilt index — Decision under "Answered
+before the build", point 2), and the refusal is in words rather than a silent
+no-op, but it is a real narrowing and the conductor should know it.
+
+### What was NOT observed
+
+- Nothing run under `--release`, on Linux, or on any git but 2.54.0.
+- `restart_survives_a_relaunch` simulates the relaunch with a fresh `Context`
+  per step over a freshly read journal. **No process was actually restarted.**
+- The **app** side of any of this: `crates/graft` does not compile against
+  this branch (the seam below, unchanged by this session — still 14 errors,
+  all the first builder's, and `Refusal::NoStagesKept` broke no exhaustive
+  match, so the seam table needs no new row). `tests/it/seam_rule.rs` still
+  not run.
+- `stage_source`'s **journal** arm (no operation live) has no integration test
+  of its own reaching `Backup`: the tests that exercise the no-live path
+  (`conflict_operations_refuse_a_path_that_is_not_conflicted`) reach `None`.
+  The code path is the same walk over `IndexState`s that the chain arm uses,
+  but that is a reading, not an observation. Filed here rather than ticked.
+
+### Deviation from the spec's signatures
+
+`stage_source(ctx, facts, path)`, not `stage_source(ctx, path)`. `apply` has
+already read the status one line earlier; a second `ls-files -u` would be a
+wasted spawn that could disagree with the `check` that just ran. The return
+type is the spec's.
+
+### Gates
+
+`cargo fmt --check`, `cargo clippy --workspace --exclude graft --all-targets
+-D warnings`, `cargo nextest run --workspace --exclude graft` (1436 passed, 1
+skipped), `cargo test --doc --workspace --exclude graft` — all green. **Not
+workspace-wide**: `graft` is held by another builder and does not compile
+against this branch. That is a green I did not get, and this says so.

@@ -258,6 +258,115 @@ pub fn chain_backup(ctx: &Context<'_>, entry: &JournalEntry) -> Result<Option<Oi
     Ok(Some(commit))
 }
 
+/// The index state a backup commit records, or `None` when the commit is not
+/// one of Graft's backups.
+///
+/// A backup commit's tree is `{ index/ | unmerged/, worktree/ }`
+/// ([`commit_trees`]), so the **name** of the index subtree is what says which
+/// shape it holds — the commit is readable on its own, without the journal
+/// line that named it. A commit with neither subtree is somebody's own
+/// history, which is how [`backup_chain`] knows it has walked off the end of
+/// the chain.
+///
+/// # Errors
+/// [`SnapshotError`] when `ls-tree` will not run or prints a record with no
+/// object id in it.
+pub fn recorded_index_state(
+    repo: &RepoHandle,
+    commit: Oid,
+    stop: &dyn Stop,
+) -> Result<Option<IndexState>, SnapshotError> {
+    let output = run_git(
+        repo,
+        vec![
+            GitArg::Flag("ls-tree"),
+            GitArg::Flag("-z"),
+            GitArg::Oid(commit),
+        ],
+        None,
+        stop,
+    )?;
+    for record in split_nul(&output.stdout) {
+        // The name decides the shape, so the entry is read as a plain tree
+        // record whatever it turns out to be.
+        let (name, entry) = ls_tree_entry(&record, false)?;
+        match name.as_os_str().as_encoded_bytes() {
+            b"index" => return Ok(Some(IndexState::Merged(entry.oid))),
+            b"unmerged" => {
+                return Ok(Some(IndexState::Unmerged {
+                    unmerged: entry.oid,
+                }));
+            }
+            _ => {}
+        }
+    }
+    Ok(None)
+}
+
+/// A backup ref's chain of recorded index states, **newest first**.
+///
+/// The ref's own commit, then its first parent, and so on — the single linear
+/// chain [`chain_backup`] keeps: pre-operation → before step 1 → … The walk
+/// stops at the first commit that is not a backup commit
+/// ([`recorded_index_state`] gives `None`), which is where the pre-operation
+/// snapshot's parents hand over to the user's own history. An absent ref is
+/// an empty chain, not a failure.
+///
+/// This is what `d` reads after `⏎`: the stages git dropped when it staged
+/// the path are in one of these, and nothing here re-runs the merge.
+///
+/// # Errors
+/// [`SnapshotError`] — the stop, or a `git` that would not run.
+pub fn backup_chain(
+    repo: &RepoHandle,
+    name: &str,
+    stop: &dyn Stop,
+) -> Result<Vec<IndexState>, SnapshotError> {
+    let mut chain = Vec::new();
+    let mut at = read_ref(repo, name, stop)?;
+    while let Some(commit) = at {
+        let Some(state) = recorded_index_state(repo, commit, stop)? else {
+            break;
+        };
+        chain.push(state);
+        at = first_parent(repo, commit, stop)?;
+    }
+    Ok(chain)
+}
+
+/// A commit's first parent, or `None` when it is a root.
+///
+/// `rev-list --parents -n 1` prints `<commit> <parent>…`, so one spawn
+/// answers it without `rev-parse <c>^1` failing loudly on a root commit.
+fn first_parent(
+    repo: &RepoHandle,
+    commit: Oid,
+    stop: &dyn Stop,
+) -> Result<Option<Oid>, SnapshotError> {
+    let output = run_git(
+        repo,
+        vec![
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--parents"),
+            GitArg::Flag("-n"),
+            GitArg::Flag("1"),
+            GitArg::Oid(commit),
+        ],
+        None,
+        stop,
+    )?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let Some(parent) = text.split_whitespace().nth(1) else {
+        return Ok(None);
+    };
+    Oid::from_hex(parent)
+        .map(Some)
+        .map_err(|_| SnapshotError::NotAnOid {
+            what: "rev-list --parents",
+            printed: parent.to_owned(),
+        })
+}
+
 /// The `(mode, oid, stage)` triples one path has in a recorded index state;
 /// empty when the state does not hold the path at all.
 ///
