@@ -132,8 +132,11 @@ pub struct BlockView {
     pub base: Option<(SanitizedText, Vec<SanitizedText>)>,
     /// Their side's lines.
     pub theirs: Vec<SanitizedText>,
-    /// The line the block's own marker (`<<<<<<<`) sits on in the
-    /// rendered file; the card's content lines are numbered from here.
+    /// The block's position in the file, 1-based: while `Open`, the line
+    /// its `<<<<<<<` marker sits on; once `Took`, its first taken line
+    /// (matching `graft_git::conflict::BlockAt::first_line`'s own doc —
+    /// the marker line no longer exists once resolved). The card's
+    /// content lines are numbered from here.
     pub first_line: usize,
 }
 
@@ -448,15 +451,30 @@ impl ResolverScreen<'_> {
         self.doc.cursor_block == Some(block)
     }
 
-    fn block(&self, index: usize) -> &BlockView {
-        self.doc
-            .regions
-            .iter()
-            .find_map(|region| match region {
-                RegionView::Block(block) if block.index == index => Some(block),
-                _ => None,
-            })
-            .unwrap_or_else(|| panic!("layout names block {index}, which `doc` has no card for"))
+    /// `None` when `doc` carries no card for `index` — a stale `Layout` built
+    /// from a previous `DocView` (a re-read after `e`/`M` can shrink
+    /// `blocks()`, `retake_replaces` shows 3 → 2). Draw call sites must stay
+    /// total: they draw a blank row rather than unwrap this.
+    fn block(&self, index: usize) -> Option<&BlockView> {
+        self.doc.regions.iter().find_map(|region| match region {
+            RegionView::Block(block) if block.index == index => Some(block),
+            _ => None,
+        })
+    }
+
+    /// A blank row, `width` cells, for a row whose block or line no longer
+    /// exists in `doc` — the render stays total instead of panicking or
+    /// reading stale data (CLAUDE.md rule 3).
+    fn draw_blank(&self, buf: &mut Buffer, area: Rect, y: u16) {
+        let content = Self::content_area(area);
+        set_text(
+            buf,
+            content.x,
+            y,
+            content,
+            &" ".repeat(usize::from(content.width)),
+            foreground(self.theme, Token::TextMuted),
+        );
     }
 
     /// `area` with the gutter's cells removed from the left, whether or not
@@ -483,25 +501,42 @@ impl ResolverScreen<'_> {
         }
     }
 
-    fn base_style(&self, cursor: bool) -> ratatui::style::Style {
-        let style = foreground(self.theme, Token::Text);
+    /// The plain content style: never reversed. Only [`Self::draw_header`]
+    /// reverses (Major 3, m6-02-03 review) — every other row of the cursor
+    /// block carries the `▏` gutter instead ([`Self::draw_gutter`]), which
+    /// is the design note's own split ("the cursor block's header (reversed,
+    /// `▏` rule on its lines)"). A whole reversed card is a worse version of
+    /// the m5/44 problem this design already fixed once.
+    fn base_style(&self) -> ratatui::style::Style {
+        foreground(self.theme, Token::Text)
+    }
+
+    /// [`Self::base_style`], reversed when `cursor` — the header's own
+    /// style, and the only place reversal happens.
+    fn header_style(&self, cursor: bool) -> ratatui::style::Style {
         if cursor {
-            style.add_modifier(Modifier::REVERSED)
+            self.base_style().add_modifier(Modifier::REVERSED)
         } else {
-            style
+            self.base_style()
         }
     }
 
     fn draw_row(&self, buf: &mut Buffer, area: Rect, y: u16, row: &ScreenRow) {
         match row {
             ScreenRow::Plain { line_no, text } => {
+                // Drawn through `content_area` like every block row, so the
+                // number column sits in the same cells whether the row is
+                // inside a card or not (Major 2, m6-02-03 review) — a plain
+                // line never carries the cursor gutter, but it still leaves
+                // room for one so the numbers line up.
+                let content = Self::content_area(area);
                 let line = format!("{line_no:>5} {text}");
                 set_text(
                     buf,
-                    area.x,
+                    content.x,
                     y,
-                    area,
-                    &fit(&line, usize::from(area.width)),
+                    content,
+                    &fit(&line, usize::from(content.width)),
                     foreground(self.theme, Token::Text),
                 );
             }
@@ -529,7 +564,10 @@ impl ResolverScreen<'_> {
     }
 
     fn draw_header(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
-        let block = self.block(block_index);
+        let Some(block) = self.block(block_index) else {
+            self.draw_blank(buf, area, y);
+            return;
+        };
         self.draw_gutter(buf, area, y, block_index);
         let content = Self::content_area(area);
         let (state_word, keys) = match block.state {
@@ -554,11 +592,14 @@ impl ResolverScreen<'_> {
         let after_prefix = usize::from(content.width).saturating_sub(prefix.width());
         let line = format!("{prefix}{}", ruled_line(&middle, self.rule(), after_prefix));
         let cursor = self.is_cursor_block(block_index);
-        set_text(buf, content.x, y, content, &line, self.base_style(cursor));
+        set_text(buf, content.x, y, content, &line, self.header_style(cursor));
     }
 
     fn draw_labels(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
-        let block = self.block(block_index);
+        let Some(block) = self.block(block_index) else {
+            self.draw_blank(buf, area, y);
+            return;
+        };
         self.draw_gutter(buf, area, y, block_index);
         let content = Self::content_area(area);
         let width = usize::from(content.width);
@@ -569,15 +610,7 @@ impl ResolverScreen<'_> {
             width.saturating_sub(half + 1),
         );
         let line = format!("{left}{}{right}", self.divider());
-        let cursor = self.is_cursor_block(block_index);
-        set_text(
-            buf,
-            content.x,
-            y,
-            content,
-            &line,
-            self.side_style(cursor, false),
-        );
+        set_text(buf, content.x, y, content, &line, self.side_style(false));
     }
 
     fn draw_pair(
@@ -589,21 +622,30 @@ impl ResolverScreen<'_> {
         ours: Option<usize>,
         theirs: Option<usize>,
     ) {
-        let block = self.block(block_index);
+        let Some(block) = self.block(block_index) else {
+            self.draw_blank(buf, area, y);
+            return;
+        };
         self.draw_gutter(buf, area, y, block_index);
         let content = Self::content_area(area);
         let width = usize::from(content.width);
         let half = width.saturating_sub(1) / 2;
-        let left_text = ours.map_or("", |i| block.ours[i].as_str());
+        // `Pair` rows only exist for an `Open` block (`layout_block`), so
+        // `first_line` is still the `<<<<<<<` marker line and OURS's first
+        // content line is one past it.
+        let left_text = ours
+            .and_then(|i| block.ours.get(i))
+            .map_or("", |t| t.as_str());
         let left = fit(
             &numbered(ours.map(|i| block.first_line + 1 + i), left_text),
             half,
         );
-        let right_text = theirs.map_or("", |i| block.theirs[i].as_str());
+        let right_text = theirs
+            .and_then(|i| block.theirs.get(i))
+            .map_or("", |t| t.as_str());
         let right = fit(&numbered(None, right_text), width.saturating_sub(half + 1));
         let line = format!("{left}{}{right}", self.divider());
-        let cursor = self.is_cursor_block(block_index);
-        set_text(buf, content.x, y, content, &line, self.base_style(cursor));
+        set_text(buf, content.x, y, content, &line, self.base_style());
     }
 
     fn draw_side(
@@ -615,11 +657,13 @@ impl ResolverScreen<'_> {
         side: SideKind,
         i: usize,
     ) {
-        let block = self.block(block_index);
+        let Some(block) = self.block(block_index) else {
+            self.draw_blank(buf, area, y);
+            return;
+        };
         self.draw_gutter(buf, area, y, block_index);
         let content = Self::content_area(area);
         let width = usize::from(content.width);
-        let cursor = self.is_cursor_block(block_index);
         let (line, muted) = match side {
             SideKind::Label(LabelOf::Ours) => {
                 (format!("OURS {} {}", self.dot(), block.ours_label), true)
@@ -631,25 +675,36 @@ impl ResolverScreen<'_> {
             SideKind::Label(LabelOf::Base) => {
                 (format!("BASE {} merged common ancestor", self.dot()), true)
             }
-            SideKind::Ours => (
-                numbered(Some(block.first_line + 1 + i), block.ours[i].as_str()),
-                false,
-            ),
+            SideKind::Ours => {
+                // `graft-git::conflict::BlockAt::first_line` doc: "its
+                // first taken line once resolved" — once `Took`, the OURS
+                // lines start *at* `first_line`, not one past it. Open, this
+                // row is the stacked (<100-col) OURS section and
+                // `first_line` is still the `<<<<<<<` marker line, so the
+                // content is one past it (Major 1, m6-02-03 review).
+                let n = match block.state {
+                    BlockState::Open => block.first_line + 1 + i,
+                    BlockState::Took(_) => block.first_line + i,
+                };
+                let text = block.ours.get(i).map_or("", |t| t.as_str());
+                (numbered(Some(n), text), false)
+            }
             SideKind::Theirs => {
                 // Open, THEIRS is the replayed commit's content, not a line
                 // of the working file — no "current" line number (module
                 // doc). Taken (`Theirs` or `Both`), it *is* on disk now, at
-                // a real position: `docs/design/01-view-mockups.md` §1.5's
-                // `58` (one past block 1's `first_line: 57`), the line
-                // right after whatever OURS lines a `Both` take kept.
+                // `first_line` (`Theirs`) or right after the OURS lines a
+                // `Both` take kept (`Both`) — same `first_line`-is-already-
+                // the-first-taken-line correction as the OURS arm above.
                 let n = match block.state {
-                    BlockState::Took(TakeView::Theirs) => Some(block.first_line + 1 + i),
+                    BlockState::Took(TakeView::Theirs) => Some(block.first_line + i),
                     BlockState::Took(TakeView::Both) => {
-                        Some(block.first_line + 1 + block.ours.len() + i)
+                        Some(block.first_line + block.ours.len() + i)
                     }
                     BlockState::Open | BlockState::Took(TakeView::Ours) => None,
                 };
-                (numbered(n, block.theirs[i].as_str()), false)
+                let text = block.theirs.get(i).map_or("", |t| t.as_str());
+                (numbered(n, text), false)
             }
             SideKind::Base => {
                 let base_lines = block
@@ -668,7 +723,7 @@ impl ResolverScreen<'_> {
             y,
             content,
             &fit(&line, width),
-            self.side_style(cursor, muted),
+            self.side_style(muted),
         );
     }
 
@@ -686,21 +741,18 @@ impl ResolverScreen<'_> {
         } else {
             rule.to_string().repeat(width)
         };
-        let cursor = self.is_cursor_block(block_index);
         set_text(
             buf,
             content.x,
             y,
             content,
             &fit(&line, width),
-            self.base_style(cursor),
+            self.base_style(),
         );
     }
 
-    fn side_style(&self, cursor: bool, muted: bool) -> ratatui::style::Style {
-        if cursor {
-            self.base_style(true)
-        } else if muted {
+    fn side_style(&self, muted: bool) -> ratatui::style::Style {
+        if muted {
             foreground(self.theme, Token::TextMuted)
         } else {
             foreground(self.theme, Token::Text)

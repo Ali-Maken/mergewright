@@ -337,10 +337,13 @@ fn resolver_ascii_tier_is_ascii() {
     }
 }
 
-/// The widget draws only `layout.rows[top..top + height]`: a row far past
-/// the window is never even reached (a panicking `SanitizedText`-shaped
-/// probe would be overkill here; instead the buffer's last row, which the
-/// small window cannot reach, stays blank).
+/// The widget draws only `layout.rows[top..top + height]` and **nothing
+/// outside its `Rect`** — rendered here into a sub-`Rect` of a larger buffer
+/// pre-filled with a sentinel glyph, so both halves of the claim are
+/// actually checked (Critical 1, m6-02-03 review: the old version rendered
+/// into `frame.area()`, the whole `TestBackend` buffer, so there was never a
+/// cell outside `area` to assert anything about — the box's "asserts cells
+/// outside `area` are untouched" was a false tick).
 #[test]
 fn resolver_draws_only_the_window() {
     let mut regions = vec![RegionView::Plain {
@@ -358,16 +361,31 @@ fn resolver_draws_only_the_window() {
     let laid = layout(&doc, 120);
     assert_eq!(laid.rows.len(), 4000);
 
+    let full = Rect::new(0, 0, 140, 30);
+    let sub = Rect::new(10, 5, 100, 10 + HEADER_ROWS);
+    let sentinel = "#";
+    let mut buf = sentinel_buffer(full, sentinel);
+
+    let capabilities = test_capabilities(ColorDepth::TrueColor, false);
+    let theme = Theme::new(ThemeKind::Dark, &capabilities);
     let top = 1000;
-    let buf = draw(&doc, &laid, top, 120, 10 + HEADER_ROWS, false);
-    // Row 0 of the body is `layout.rows[top]` = "line 1001".
-    let body_row0: String = (0..120)
-        .map(|x| buf[(x, HEADER_ROWS)].symbol().chars().next().unwrap_or(' '))
-        .collect();
+    ResolverScreen {
+        doc: &doc,
+        layout: &laid,
+        top,
+        theme: &theme,
+        ascii: false,
+    }
+    .render(sub, &mut buf);
+
+    // Inside the window: row 0 of the body is `layout.rows[top]` = "line 1001".
+    let body_row0 = row_text(&buf, sub.y + HEADER_ROWS, sub.right()).split_off(sub.x.into());
     assert!(body_row0.contains("1001"), "{body_row0:?}");
-    // The buffer never named a line past what the window could hold —
-    // `layout.rows[top + height..]` never reaches `draw_row` (no line
-    // number from beyond the window appears anywhere in the buffer).
+
+    assert_untouched_outside(&buf, full, sub, sentinel);
+
+    // Rows past `top + height` are never read: no line number from beyond
+    // the window appears anywhere in the buffer.
     let whole: String = buf
         .content()
         .iter()
@@ -377,6 +395,32 @@ fn resolver_draws_only_the_window() {
         !whole.contains("1011 "),
         "a row past the window was drawn: {whole:?}"
     );
+}
+
+/// A buffer over `area`, every cell set to `sentinel`.
+fn sentinel_buffer(area: Rect, sentinel: &str) -> ratatui::buffer::Buffer {
+    let mut buf = ratatui::buffer::Buffer::empty(area);
+    for cell in &mut buf.content {
+        cell.set_symbol(sentinel);
+    }
+    buf
+}
+
+/// Every cell of `buf` outside `sub` still holds `sentinel` — the widget
+/// touched nothing past its `Rect`.
+fn assert_untouched_outside(buf: &ratatui::buffer::Buffer, full: Rect, sub: Rect, sentinel: &str) {
+    for y in full.y..full.bottom() {
+        for x in full.x..full.right() {
+            if x >= sub.x && x < sub.right() && y >= sub.y && y < sub.bottom() {
+                continue;
+            }
+            assert_eq!(
+                buf[(x, y)].symbol(),
+                sentinel,
+                "cell ({x},{y}) outside {sub:?} was touched"
+            );
+        }
+    }
 }
 
 /// A rendered row as a plain string, its own width wide, first-char-per-cell
@@ -423,13 +467,16 @@ fn header_row_carries_its_block_line_number() {
     );
 }
 
-/// **Fixes the second half of the same disagreement**: once a block is
-/// `Took(Theirs)` (or `Both`), its THEIRS lines are on disk at a real
-/// position and carry a real line number — the mockup's `58`, one past
-/// block 1's own `first_line: 57` there. Open, THEIRS still draws the
-/// blank margin the module doc reserves for it (not yet a line of the
-/// working file) — checked here too, so the fix does not leak into the
-/// case it must not touch.
+/// **Fixes the second half of the same disagreement, corrected again in the
+/// m6-02-03 review round (Major 1): `graft-git::conflict::BlockAt::first_line`'s
+/// own doc says a resolved block's `first_line` is already "its first taken
+/// line once resolved" — not the old `<<<<<<<` marker line.** Once a block
+/// is `Took(Theirs)` (or `Both`), its THEIRS lines are on disk at
+/// `first_line + i`, not `first_line + 1 + i`: block 1 here has
+/// `first_line: 50`, so its one taken line reads `50`, not `51`. Open,
+/// THEIRS still draws the blank margin the module doc reserves for it (not
+/// yet a line of the working file) — checked here too, so the fix does not
+/// leak into the case it must not touch.
 #[test]
 fn taken_theirs_carries_its_real_line_number_open_theirs_stays_blank() {
     let doc = three_block_doc(false);
@@ -441,7 +488,7 @@ fn taken_theirs_carries_its_real_line_number_open_theirs_stays_blank() {
     let content_y = HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap() + 1;
     let taken_row = row_text(&buf, content_y, 120);
     assert!(
-        taken_row.trim_start().starts_with("51 new_way();"),
+        taken_row.trim_start().starts_with("50 new_way();"),
         "{taken_row:?}"
     );
 
@@ -478,4 +525,91 @@ fn taken_theirs_carries_its_real_line_number_open_theirs_stays_blank() {
             "open THEIRS drew a line number: {row:?}"
         );
     }
+}
+
+/// The number column sits in the same cells whether a row is a bare `Plain`
+/// line or a block's own content: both draw through `content_area`, so the
+/// digit that starts a number lands at the same `x` (Major 2, m6-02-03
+/// review — a `Plain` row used to draw two cells left of a block row's
+/// number).
+#[test]
+fn plain_and_block_numbers_share_one_column() {
+    let doc = three_block_doc(false);
+    let laid = layout(&doc, 120);
+    let buf = draw(&doc, &laid, 0, 120, 24, false);
+
+    // Row 0 (`Plain`, "38 fn refresh…") and the first `Pair` row of block 0
+    // ("40 if expired() {") should both start their digit at the same x.
+    let plain_x = first_digit_x(&buf, HEADER_ROWS, 120);
+    let block_row = HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap() + 2; // Header, Labels, then the first Pair row.
+    let block_x = first_digit_x(&buf, block_row, 120);
+    assert_eq!(
+        plain_x, block_x,
+        "plain row's number starts at {plain_x:?}, block row's at {block_x:?}"
+    );
+}
+
+/// The x of the first ASCII digit on row `y`, or `None` if there is none.
+fn first_digit_x(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> Option<u16> {
+    (0..width).find(|&x| {
+        buf[(x, y)]
+            .symbol()
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit())
+    })
+}
+
+/// Only the cursor block's header reverses; every other row of that block —
+/// labels, pair, side, end — draws in the plain (non-reversed) style, the
+/// `▏` gutter alone carrying the cursor (Major 3, m6-02-03 review: the whole
+/// card used to reverse, a worse version of the m5/44 problem the gutter was
+/// built to fix).
+#[test]
+fn only_the_cursor_headers_reverses() {
+    let doc = three_block_doc(false); // cursor_block: Some(0)
+    let laid = layout(&doc, 120);
+    let buf = draw(&doc, &laid, 0, 120, 24, false);
+
+    let is_reversed = |y: u16| {
+        (0..120u16).any(|x| {
+            buf[(x, y)]
+                .style()
+                .add_modifier
+                .contains(Modifier::REVERSED)
+        })
+    };
+
+    let header_row = HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap();
+    assert!(
+        is_reversed(header_row),
+        "cursor block's header must reverse"
+    );
+
+    // Every other row of block 0's card (Labels, Pair x2, End) must not.
+    for offset in 1..=4 {
+        let y = header_row + offset;
+        assert!(
+            !is_reversed(y),
+            "row {y} (block 0, offset {offset} past its header) reversed"
+        );
+    }
+}
+
+/// A `Layout` built against a stale `DocView` — one whose `blocks()` shrank
+/// after a re-read (`e`/`M`, `retake_replaces` shows 3 → 2 blocks) — draws a
+/// blank row instead of panicking (Major 5, m6-02-03 review: `block()` used
+/// to `unwrap_or_else(|| panic!(...))` in the render path, and side content
+/// was indexed unchecked).
+#[test]
+fn a_layout_naming_a_block_the_doc_no_longer_has_does_not_panic() {
+    let doc = three_block_doc(false);
+    // Lay out the full three-block doc, then drop block 0 from the doc
+    // without re-laying-out — exactly the shape a stale `Layout` takes.
+    let laid = layout(&doc, 120);
+    let mut stale_doc = doc.clone();
+    stale_doc.regions.remove(1); // RegionView::Block(0)
+
+    // Must not panic.
+    let _buf = draw(&stale_doc, &laid, 0, 120, 24, false);
 }
