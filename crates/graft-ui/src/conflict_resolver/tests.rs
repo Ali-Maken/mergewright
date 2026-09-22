@@ -378,3 +378,104 @@ fn resolver_draws_only_the_window() {
         "a row past the window was drawn: {whole:?}"
     );
 }
+
+/// A rendered row as a plain string, its own width wide, first-char-per-cell
+/// (every glyph this widget draws is one cell).
+fn row_text(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> String {
+    (0..width)
+        .map(|x| buf[(x, y)].symbol().chars().next().unwrap_or(' '))
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+/// **Fixes a filed disagreement with `docs/design/01-view-mockups.md`
+/// §1.5** (continuation session, 2026-09-22; ADR-0042 made §1.5 the
+/// resolver's spec): a block's `Header` row now leads with its own
+/// `first_line`, the same number the mockup shows (`39`, `57`) — narrower
+/// than `numbered`'s 5-wide margin (a single space either side), since this
+/// is a hint at the block's position in the file, not a column to read code
+/// against line by line.
+#[test]
+fn header_row_carries_its_block_line_number() {
+    let doc = three_block_doc(false);
+    let laid = layout(&doc, 120);
+    let buf = draw(&doc, &laid, 0, 120, 24, false);
+    // Block 0: open, first_line 39, the cursor block (gutter mark first).
+    let header0 = row_text(
+        &buf,
+        HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap(),
+        120,
+    );
+    assert!(
+        header0.contains(" 39 ── conflict 1 of 3 · open ──"),
+        "{header0:?}"
+    );
+    // Block 1: took theirs, first_line 50, not the cursor block.
+    let header1 = row_text(
+        &buf,
+        HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap(),
+        120,
+    );
+    assert!(
+        header1.contains(" 50 ── conflict 2 of 3 · took theirs ──"),
+        "{header1:?}"
+    );
+}
+
+/// **Fixes the second half of the same disagreement**: once a block is
+/// `Took(Theirs)` (or `Both`), its THEIRS lines are on disk at a real
+/// position and carry a real line number — the mockup's `58`, one past
+/// block 1's own `first_line: 57` there. Open, THEIRS still draws the
+/// blank margin the module doc reserves for it (not yet a line of the
+/// working file) — checked here too, so the fix does not leak into the
+/// case it must not touch.
+#[test]
+fn taken_theirs_carries_its_real_line_number_open_theirs_stays_blank() {
+    let doc = three_block_doc(false);
+
+    // Block 1 (took theirs, first_line 50): its lone content row is
+    // `Header, Side, End` — the content row is one past the header.
+    let laid = layout(&doc, 120);
+    let buf = draw(&doc, &laid, 0, 120, 24, false);
+    let content_y = HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap() + 1;
+    let taken_row = row_text(&buf, content_y, 120);
+    assert!(
+        taken_row.trim_start().starts_with("51 new_way();"),
+        "{taken_row:?}"
+    );
+
+    // Block 0 (open, first_line 39) stacked at 80 columns: its THEIRS
+    // section still has no number.
+    let narrow = layout(&doc, 80);
+    let buf80 = draw(&doc, &narrow, 0, 80, 24, false);
+    let theirs_rows: Vec<usize> = narrow
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(_, row)| {
+            matches!(
+                row,
+                ScreenRow::Side {
+                    block: 0,
+                    side: SideKind::Theirs,
+                    ..
+                }
+            )
+        })
+        .map(|(i, _)| i)
+        .collect();
+    assert!(!theirs_rows.is_empty(), "expected block 0's THEIRS rows");
+    for row_index in theirs_rows {
+        let y = HEADER_ROWS + u16::try_from(row_index).unwrap();
+        let row = row_text(&buf80, y, 80);
+        assert!(
+            !row.trim_start()
+                .chars()
+                .next()
+                .unwrap_or(' ')
+                .is_ascii_digit(),
+            "open THEIRS drew a line number: {row:?}"
+        );
+    }
+}

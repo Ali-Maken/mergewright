@@ -545,7 +545,14 @@ impl ResolverScreen<'_> {
             block.of,
             self.dot(),
         );
-        let line = ruled_line(&middle, self.rule(), usize::from(content.width));
+        // The block's own current line (`docs/design/01-view-mockups.md`
+        // §1.5's `39`/`57`) leads the rule, a single space either side —
+        // narrower than `numbered`'s 5-wide field (`Plain` rows), since this
+        // is a hint at the block's position, not a margin to read code
+        // against.
+        let prefix = format!(" {} ", block.first_line);
+        let after_prefix = usize::from(content.width).saturating_sub(prefix.width());
+        let line = format!("{prefix}{}", ruled_line(&middle, self.rule(), after_prefix));
         let cursor = self.is_cursor_block(block_index);
         set_text(buf, content.x, y, content, &line, self.base_style(cursor));
     }
@@ -628,7 +635,22 @@ impl ResolverScreen<'_> {
                 numbered(Some(block.first_line + 1 + i), block.ours[i].as_str()),
                 false,
             ),
-            SideKind::Theirs => (numbered(None, block.theirs[i].as_str()), false),
+            SideKind::Theirs => {
+                // Open, THEIRS is the replayed commit's content, not a line
+                // of the working file — no "current" line number (module
+                // doc). Taken (`Theirs` or `Both`), it *is* on disk now, at
+                // a real position: `docs/design/01-view-mockups.md` §1.5's
+                // `58` (one past block 1's `first_line: 57`), the line
+                // right after whatever OURS lines a `Both` take kept.
+                let n = match block.state {
+                    BlockState::Took(TakeView::Theirs) => Some(block.first_line + 1 + i),
+                    BlockState::Took(TakeView::Both) => {
+                        Some(block.first_line + 1 + block.ours.len() + i)
+                    }
+                    BlockState::Open | BlockState::Took(TakeView::Ours) => None,
+                };
+                (numbered(n, block.theirs[i].as_str()), false)
+            }
             SideKind::Base => {
                 let base_lines = block
                     .base
