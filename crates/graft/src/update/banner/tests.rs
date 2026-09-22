@@ -28,6 +28,7 @@ fn unmerged(path: &str) -> StatusEntry {
         unstaged: None,
         untracked: false,
         unmerged: true,
+        unmerged_how: None,
         submodule: false,
     }
 }

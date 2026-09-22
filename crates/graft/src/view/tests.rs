@@ -533,6 +533,7 @@ pub(crate) fn counts_with_unmerged(
             unstaged: None,
             untracked: false,
             unmerged: false,
+            unmerged_how: None,
             submodule: false,
         });
     }
@@ -544,6 +545,7 @@ pub(crate) fn counts_with_unmerged(
             unstaged: Some(Change::Modified),
             untracked: false,
             unmerged: false,
+            unmerged_how: None,
             submodule: false,
         });
     }
@@ -555,6 +557,7 @@ pub(crate) fn counts_with_unmerged(
             unstaged: None,
             untracked: true,
             unmerged: false,
+            unmerged_how: None,
             submodule: false,
         });
     }
@@ -566,6 +569,7 @@ pub(crate) fn counts_with_unmerged(
             unstaged: None,
             untracked: false,
             unmerged: true,
+            unmerged_how: None,
             submodule: false,
         });
     }
@@ -2082,6 +2086,7 @@ fn scripted_status() -> graft_git::status::WorkingTreeStatus {
             unstaged,
             untracked,
             unmerged: false,
+            unmerged_how: None,
             submodule: false,
         }
     };

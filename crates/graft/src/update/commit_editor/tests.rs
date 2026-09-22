@@ -51,6 +51,7 @@ fn staged(paths: &[&str]) -> Arc<WorkingTreeStatus> {
                 unstaged: None,
                 untracked: false,
                 unmerged: false,
+                unmerged_how: None,
                 submodule: false,
             })
             .collect(),
