@@ -24,6 +24,11 @@ const FORBIDDEN: &[(&str, Allowed)] = &[
     ("Step::RestoreWorktree", Allowed::Nowhere),
     ("Step::StashStore", Allowed::Nowhere),
     ("Step::StashDrop", Allowed::Nowhere),
+    // m6/03: writing a resolved conflict back to disk is an operation, not a
+    // thing `app` does. `ops` holds the blob-id lease that makes the write
+    // refuse a file that changed underneath it; a direct call from `app` would
+    // skip the lease and clobber.
+    ("write_back", Allowed::Nowhere),
 ];
 
 #[derive(Clone, Copy)]
