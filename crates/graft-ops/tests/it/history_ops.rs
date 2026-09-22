@@ -596,6 +596,178 @@ fn ghost_matches_git_rebase() {
     real_moves_landed(&repo, &plan);
 }
 
+/// The subjects of the commits a ref now reaches that `onto` does not,
+/// oldest first: what git actually wrote.
+fn subjects_after(repo: &TempRepo, onto: &str, branch: &str) -> Vec<String> {
+    repo.git(&["rev-list", "--reverse", branch, &format!("^{onto}")])
+        .lines()
+        .map(|line| repo.git(&["log", "-1", "--format=%s", line]))
+        .collect()
+}
+
+/// The subjects the plan drew, in ghost order.
+fn ghost_subjects(plan: &PreviewPlan) -> Vec<String> {
+    plan.ghosts
+        .iter()
+        .map(|ghost| ghost.subject.clone())
+        .collect()
+}
+
+/// A foxtrot merge on `main`: `main`'s tip is a merge whose *first* parent
+/// is the feature side, so `main`'s own previous tip is the second parent.
+/// `previous` is a branch at that tip — what `Fix: rebase instead` replays
+/// onto.
+fn foxtrot() -> TempRepo {
+    let repo = diverged();
+    let previous = id(&repo, "refs/heads/main");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.git(&[
+        "merge",
+        "--no-ff",
+        "-m",
+        "Merge branch 'main' into feature",
+        "main",
+    ]);
+    let merge = id(&repo, "refs/heads/feature").to_string();
+    repo.git(&["branch", "-f", "main", &merge]);
+    repo.git(&["branch", "previous", &previous.to_string()]);
+    repo.git(&["switch", "-q", "main"]);
+    repo
+}
+
+/// `git rebase` without `--rebase-merges` drops the merge commits in the
+/// range, so the preview must not draw a ghost for one — and the `RefMove`
+/// must point at the last commit git really writes (m5/43).
+#[test]
+fn a_rebase_draws_no_ghost_for_a_merge_git_will_drop() {
+    let repo = foxtrot();
+    let onto = id(&repo, "refs/heads/previous");
+    let op = rebase_op(&repo, "refs/heads/previous");
+    let plan = preview_of(&repo, &op);
+
+    assert_eq!(
+        ghost_subjects(&plan),
+        vec!["one on feature".to_owned()],
+        "the merge in the range is not a commit git will write"
+    );
+    assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(onto)]);
+    assert_eq!(
+        plan.ref_moves[0].to,
+        Some(GhostTarget::Ghost(0)),
+        "the branch lands on the last commit git writes"
+    );
+
+    run(&repo, &op, NOW);
+    assert_eq!(
+        subjects_after(&repo, "refs/heads/previous", "refs/heads/main"),
+        ghost_subjects(&plan),
+        "the ghosts are the commits git wrote, in git's order"
+    );
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s", "refs/heads/main"]),
+        plan.ghosts[0].subject,
+        "the tip the box predicted is the tip git left"
+    );
+}
+
+/// git skips a commit whose change is already on `onto` under another id
+/// ("skipped previously applied commit"), so the preview must skip it too.
+#[test]
+fn a_rebase_draws_no_ghost_for_a_change_already_on_onto() {
+    let repo = TempRepo::init();
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "topic"]);
+    repo.write("main.txt", b"main\n");
+    repo.commit_all("two on main");
+    repo.git(&["switch", "-q", "topic"]);
+    repo.write("first.txt", b"first\n");
+    repo.commit_all("first on topic");
+    repo.write("second.txt", b"second\n");
+    repo.commit_all("second on topic");
+    let already = id(&repo, "topic~1").to_string();
+    repo.git(&["switch", "-q", "main"]);
+    repo.git(&["cherry-pick", "--no-edit", &already]);
+    repo.git(&["switch", "-q", "topic"]);
+
+    let op = rebase_op(&repo, "refs/heads/main");
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        ghost_subjects(&plan),
+        vec!["second on topic".to_owned()],
+        "`first on topic` is already on main under another id"
+    );
+
+    run(&repo, &op, NOW);
+    assert_eq!(
+        subjects_after(&repo, "refs/heads/main", "refs/heads/topic"),
+        ghost_subjects(&plan),
+        "the ghosts are the commits git wrote"
+    );
+}
+
+/// Nothing left to replay is not nothing happening: git checks `onto` out
+/// and leaves the branch there. The box has to draw that ref move.
+#[test]
+fn a_rebase_with_nothing_to_replay_still_draws_the_branch_moving() {
+    let repo = diverged();
+    repo.git(&["switch", "-q", "-c", "t1"]);
+    repo.git(&["merge", "--no-ff", "-m", "Merge feature into t1", "feature"]);
+    repo.git(&["switch", "-q", "-c", "t2", "main"]);
+    repo.git(&["merge", "--no-ff", "-m", "Merge feature into t2", "feature"]);
+    repo.git(&["switch", "-q", "t1"]);
+    let onto = id(&repo, "refs/heads/t2");
+
+    let op = rebase_op(&repo, "refs/heads/t2");
+    let plan = preview_of(&repo, &op);
+    assert!(
+        plan.ghosts.is_empty(),
+        "the only commit in the range is a merge git drops: {:?}",
+        ghost_subjects(&plan)
+    );
+    assert_eq!(plan.ref_moves.len(), 1);
+    assert_eq!(plan.ref_moves[0].name, "refs/heads/t1");
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Real(onto)));
+
+    run(&repo, &op, NOW);
+    real_moves_landed(&repo, &plan);
+    assert_eq!(id(&repo, "refs/heads/t1"), onto, "git left t1 on t2");
+}
+
+/// The branch already being behind `onto` is the same shape: git
+/// fast-forwards it, so the box says so rather than "nothing would be
+/// replayed".
+#[test]
+fn a_rebase_of_a_branch_behind_onto_draws_the_fast_forward() {
+    let repo = ahead();
+    repo.git(&["switch", "-q", "feature"]);
+    let onto = id(&repo, "refs/heads/main");
+
+    let op = rebase_op(&repo, "refs/heads/main");
+    let plan = preview_of(&repo, &op);
+    assert!(plan.ghosts.is_empty());
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Real(onto)));
+
+    run(&repo, &op, NOW);
+    real_moves_landed(&repo, &plan);
+    assert_eq!(id(&repo, "refs/heads/feature"), onto);
+}
+
+/// Rebasing a branch onto itself really does nothing, and says so.
+#[test]
+fn a_rebase_onto_the_same_commit_is_not_undoable() {
+    let repo = diverged();
+    repo.git(&["branch", "here", "main"]);
+    let plan = preview_of(&repo, &rebase_op(&repo, "refs/heads/here"));
+    assert!(plan.ghosts.is_empty());
+    assert!(plan.ref_moves.is_empty(), "no ref moves anywhere");
+    assert!(
+        matches!(plan.undo, UndoNote::NotUndoable(ref why) if why.contains("nothing")),
+        "{:?}",
+        plan.undo
+    );
+}
+
 /// `git patch-id`'s id for one commit: the change, independent of its
 /// parents or its own id.
 fn patch_id(repo: &TempRepo, rev: &str) -> String {

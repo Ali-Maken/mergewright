@@ -185,13 +185,13 @@ fn fix_rebase_instead() -> Scenario {
 /// the feature side brought is a plain commit on top of `main`'s own line,
 /// and `u` puts the merge back.
 ///
-/// **The claim is judged last, on purpose.** `ghost_equals_git` is the one
-/// check here that fails today (see the ticket's finding: a rebase whose
-/// range contains a merge draws a ghost for that merge, and `git rebase`
-/// without `--rebase-merges` drops it). Put first, it would hide every
-/// other check behind itself — the m5/32 lesson, where three assertions sat
-/// unreachable under a failing line and read the wrong history the moment
-/// they became reachable.
+/// **The claim is judged last, on purpose.** `ghost_equals_git` is the
+/// broadest check here — it was the one that failed when m5/38 wrote this
+/// scenario (a rebase whose range contains a merge drew a ghost for that
+/// merge, which `git rebase` without `--rebase-merges` drops; fixed in
+/// m5/43). Put first, it would hide every other check behind itself — the
+/// m5/32 lesson, where three assertions sat unreachable under a failing
+/// line and read the wrong history the moment they became reachable.
 fn rebase_instead_holds(fixture: &Fixture, marks: &Marks) -> Result<(), String> {
     let rebased = marks.get("rebased")?;
     let new_tip = branch(rebased, "main")?;
