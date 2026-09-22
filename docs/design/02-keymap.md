@@ -52,7 +52,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 - **A pane dense enough to need the alphabet for its own vocabulary is
   modal: it answers every key itself, `Ctrl+C` excepted, and nothing
   outside it is live while it has focus.** The hint bar always shows what's
-  active, so this isn't a hidden mode. Five places do this:
+  active, so this isn't a hidden mode. These do:
   - The **conflict resolver** (§2.6) binds `o`/`t`/`b` to ours/theirs/both,
     `e` to edit inline, `n`/`N` to next/previous hunk. None of the graph
     pane's global bindings (`p` pull, `r` rebase, `f` fetch, `M` Map, `n`/`N`
@@ -71,12 +71,18 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   - The **commit message editor** (§2.10) claims every key but `Ctrl+C`.
   - The **stash save prompt** (inside §2.9's `S` → `s`) and the **search
     prompt** (`/`) claim every key but `Ctrl+C` while typing.
+  - The **Map, Journal and Stash overlays** (added by the conductor,
+    2026-09-22, from m5/42). Each claims the keyboard through its own
+    `shown_key` before the graph sees it, which is what a modal pane does —
+    they were simply never written down here. They are **not** identical:
+    the Map view eats `p`, `d` and `s`; the stash answers them. So the bar
+    behind one is built per overlay, not once for all three.
   - The **first-run / empty state** (§2.13) binds `o`/`i`/`c` to
     Open/Init/Clone — no repo is open yet, so the whole repo vocabulary
     (`c` commit included) is off duty.
 - **An overlay that needs only a cursor is not a modal pane** (decided
   2026-09-20, from the M5/12 captures; closes the gap the `.` menu fell
-  through). The five modal panes above claim the alphabet because they need
+  through). The modal panes above claim the alphabet because they need
   it for their own vocabulary. The `.` context menu does not: it needs `j`/`k`
   to move, `Enter` to choose, and `Esc` or `.` again to close — movement,
   confirm, and its own opener, not verbs. So it claims **those five and
