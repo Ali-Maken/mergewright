@@ -121,29 +121,79 @@ Hunks and lines expand under a file with the same `[x]`/`[ ]` checkboxes,
 staged at hunk or line granularity; `Space` toggles whatever is under the
 cursor (file, hunk or single line).
 
-### 1.5 Conflict resolver (three-pane)
+### 1.5 Conflict resolver (document model)
+
+Supersedes the three full-height OURS/RESULT/THEIRS columns and the
+`CONFLICTED FILES` strip this section used to specify (ADR-0042): three
+independent columns need a live row-alignment algorithm with no ground
+truth, and are unreadable at the widths the user works — 25/38 cells at
+80/120 columns three-up. The resolver instead shows **one file as a
+document**: plain lines drawn as they are; each conflict block — what git
+delimits with `<<<<<<<`/`>>>>>>>` — drawn as a labelled card with **OURS and
+THEIRS side by side at ≥100 columns, stacked below that**. `o`/`t`/`b`
+rewrite the block **on disk**; the card collapses to the taken lines and
+keeps its header until the resolver closes. Ours, theirs and result are all
+on screen — the result *is* the page. Full reasoning: ADR-0042,
+`docs/design-notes/m6-conflicts.md` "New UI — the conflict resolver".
+
+Full frame below the header (graph and pane both covered, header kept —
+`REBASING step 3 of 7` stays visible): title row, document, footer (its own
+complete key list — modal, no `. more`, ADR-0039).
 
 ```
-╭ RESOLVING CONFLICTS ── rebase 3/7 ── 2 files ── src/auth/token.rs (1/2) ───╮
-│ OURS (HEAD)            │ RESULT (edit here)      │ THEIRS (feature/auth)  │
-│ fn refresh(&mut self){ │ fn refresh(&mut self){  │ fn refresh(&mut self){ │
-│   if expired() {       │<<<<<<< ours ────────── │   if is_expired() {    │
-│     self.renew();      │   if expired() {        │     self.do_refresh(); │
-│   }                    │     self.renew();       │   }                    │
-│ }                      │   }                      │                        │
-│                         │======================= │                        │
-│                         │   if is_expired() {      │                        │
-│                         │     self.do_refresh();   │                        │
-│                         │   }                      │                        │
-│                         │>>>>>>> theirs ────────── │                        │
-├──────────────────────────────────────────────────────────────────────────┤
-│ CONFLICTED FILES: ⚠ src/auth/token.rs   ⚠ src/auth/mod.rs                │
-╰ o take ours  t take theirs  b take both  e edit  n next hunk  ⏎ resolved ─╯
+120x40 (≥100 columns: sides paired)
+╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ────────────────────────────────╮
+│ src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open                      │
+│ ours = main, what you are rebasing onto · theirs = the commit being replayed │
+│   38 fn refresh(&mut self) {                                                 │
+│▏  39 ── conflict 1 of 3 · open ── o ours  t theirs  b both ──────────────── │
+│▏     OURS · HEAD                        │ THEIRS · 3f2a1b (Add OAuth provider)│
+│▏  40   if expired() {                   │   if is_expired() {                 │
+│▏  41     self.renew();                  │     self.do_refresh();              │
+│▏     ───────────────────────────────────┴──────────────────────────────────── │
+│   42 }                                                                       │
+│   57 ── conflict 2 of 3 · took theirs ── o ours  b both ──────────────────── │
+│   58   let tok = self.store.get();                                           │
+╰ o ours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close ╯
 ```
 
-Base is available on demand (a fourth column or a toggle) when a merge base
-exists; "Launch external mergetool" (`M`) hands the file to the user's
-configured `git mergetool`.
+```
+80x24 (<100 columns: stacked)
+╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ─╮
+│ src/auth/token.rs · 1/2 · 2 of 3 open        │
+│ ours = main (onto) · theirs = replayed commit│
+│   38 fn refresh(&mut self) {                 │
+│▏  39 ── conflict 1 of 3 · open ─────────────│
+│▏     OURS · HEAD                             │
+│▏  40   if expired() {                        │
+│▏  41     self.renew();                       │
+│▏     THEIRS · 3f2a1b (Add OAuth provider)    │
+│▏       if is_expired() {                     │
+│▏         self.do_refresh();                  │
+│▏     ────────────────────────────────────── │
+╰ o ours  t theirs  b both  e edit  n next  ⏎ resolved  esc ╯
+```
+
+- **Labels are git's own, verbatim** (`HEAD`, `feature/auth`,
+  `3f2a1b (Add OAuth provider)`), plus one explainer line on a rebase — *ours
+  = main, what you are rebasing onto · theirs = the commit being replayed* —
+  the classic rebase-direction confusion, answered where it happens.
+- **BASE** (`B`, on demand): a third, stacked `BASE · merged common ancestor`
+  section inside every open block, at every width. `base unavailable after
+  edits` / `no base (added on both sides)` shows in its place when it can't
+  be attached (base is matched by byte-equality against git's own diff3
+  blocks, never guessed).
+- **Whole-file shapes** (deleted/added/binary — UD/DU/AU/UA/DD): the document
+  is the file as it is (or empty), one card at the top: `deleted by them · o
+  keeps the file  t deletes it` — `o`/`t` resolve and mark it in the same
+  press.
+- **Line numbers** are the file's current ones; a taken block keeps its
+  header (`took ours`, keys reduced to the other takes) until the resolver
+  closes; reopening shows plain lines.
+- Mouse: wheel scrolls; clicking a block's row makes it the cursor block.
+- No text editor is built here: `e` hands the file to `$EDITOR` at the
+  cursor block, `M` to `git mergetool`; the resolver re-reads the file on
+  return, so what's on screen is always what's on disk.
 
 ### 1.6 Command palette
 

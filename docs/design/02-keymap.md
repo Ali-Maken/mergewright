@@ -28,7 +28,9 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   one-shot initials on a banner that appears once per session and claims
   the keyboard the same way a modal pane does. `p`/`P` (pull/push) are the
   model for any future same-shift-key opposite pair: box the irreversible
-  half behind a confirm, never let a slipped `Shift` run it.
+  half behind a confirm, never let a slipped `Shift` run it. A hand-over to
+  an external program (`M` mergetool) is a place you go to and come back
+  from, and joins this set the same way (KNOWN_GAPS row 482).
 - **The hint bar is a ranked selection, not an enumeration** (added by the
   conductor, 2026-09-22, from m5/33's exemption list). "The bar always shows
   what's active" — said twice below — means the bar reflects the **current
@@ -53,11 +55,12 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   modal: it answers every key itself, `Ctrl+C` excepted, and nothing
   outside it is live while it has focus.** The hint bar always shows what's
   active, so this isn't a hidden mode. These do:
-  - The **conflict resolver** (§2.6) binds `o`/`t`/`b` to ours/theirs/both,
-    `e` to edit inline, `n`/`N` to next/previous hunk. None of the graph
-    pane's global bindings (`p` pull, `r` rebase, `f` fetch, `M` Map, `n`/`N`
-    search) are live while it has focus — same letters, different,
-    non-conflicting verbs.
+  - The **conflict resolver** (§2.6) binds `o`/`t`/`b` to ours/theirs/both
+    per block, `B` to show/hide BASE, `d` to start the file over, `e` to
+    `$EDITOR` (no inline editor is built, ADR-0042), `n`/`N` to
+    next/previous open block. None of the graph pane's global bindings
+    (`p` pull, `r` rebase, `f` fetch, `M` Map, `n`/`N` search) are live
+    while it has focus — same letters, different, non-conflicting verbs.
   - The **operation banner**, when focused (a merge, rebase, cherry-pick or
     revert in progress — conflicted or not), binds `c s a` to
     Continue/Skip/Abort — "commit," "stage" and "amend" aren't valid while
@@ -212,6 +215,7 @@ and any redo prompt should lead with.
 | `Ctrl+A` | Stage all |
 | `d` | Discard, with confirmation and an undoable backup |
 | `e` | Open in `$EDITOR` at the current line — on a `CONFLICTS` row, at the first conflict marker |
+| `Enter` | On a `CONFLICTS` row: opens the resolver (§2.2's global open / drill in, applied — not a new letter; see §2.6) |
 | `M` | On a `CONFLICTS` row only: launch the configured mergetool on that file (§2.6a) |
 | `i` | Add to `.gitignore` |
 | `c` / `a` | Commit / amend (as above — same verbs, same keys) |
@@ -235,14 +239,16 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 
 | Key | Action |
 |---|---|
-| `o` | Take ours (this hunk) |
-| `t` | Take theirs (this hunk) |
+| `o` | Take ours (cursor block) |
+| `t` | Take theirs (cursor block) |
 | `b` | Take both |
-| `e` | Edit the result inline |
-| `n` / `N` | Next / previous conflicted hunk or file |
-| `Enter` | Mark file resolved |
-| `M` | Launch the configured external mergetool |
-| (banner focused) `c` `s` `a` | Continue / Skip / Abort |
+| `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
+| `d` | Start this file over (`git checkout --merge`), behind a confirm box — not undoable while the operation is open (the box says so) |
+| `n` / `N` | Next / previous open block, crossing to the next conflicted file at the end |
+| `Enter` | Mark this file resolved and move to the next conflicted file, or close if none left |
+| `e` | Open `$EDITOR` at the cursor block |
+| `M` | Launch the configured external mergetool on this file |
+| `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |
 
 ### 2.6a Operation banner (M5 interim, until the resolver of §2.6 lands)
 
@@ -257,6 +263,7 @@ underneath.
 
 | Key | Action |
 |---|---|
+| `Enter` | Opens the resolver (§2.6) |
 | `c` | Continue — refused, in words, while any path is still unmerged |
 | `s` | Skip this commit (rebase and cherry-pick only; a merge says there is nothing to skip) |
 | `a` | Abort, back to where the operation started |
