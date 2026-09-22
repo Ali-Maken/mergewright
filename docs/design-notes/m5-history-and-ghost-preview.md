@@ -233,8 +233,10 @@ focused on the frame a conflict lands. The changes pane opens on `CONFLICTS (n)`
 │ ▸ src/auth.rs        both modified                       │   │ CONFLICTS (2)   ▸ src/auth/token.rs  both modified   src/login.rs  deleted by them   │
 │   src/login.rs       deleted by them                     │   │ STAGED (1) …                                                                         │
 │ STAGED (1) …                                             │   ╰ c continue  s skip  a abort  M mergetool  e edit  ⇥ graph ────────────────────────╯
-╰ c continue  s skip  a abort  . more ─────────────────────╯
+╰ c continue  s skip  a abort  M mergetool  e edit  ⇥ graph╯
 ```
+
+*(Corrected 2026-09-22, m5/39 NOTES 2: this footer read `c continue  s skip  a abort  . more`. Under ADR-0039 the ladder shortens a list only when it does not fit, and all six fit at 80 — 57 columns. The schematic box is drawn 60 wide, narrower than the 80 it is labelled, which is why it looks tight here; the walk scenario `hints-at-80-show-three-and-more` asserts the drawn string (`crates/graft/tests/it/m5_walk/regressions.rs:395-400`).)*
 **`u` after a push** — three-choice confirm (no undo runs yet): title `Undo after a push`, lines `commit "x" is on
 origin/main (pushed 2m ago) · undo works on your local branch only`, `[ Cancel ]  [ Undo locally ]  [ Re-push old tip ]`.
 Re-push opens the existing lease box with `push --force-with-lease=refs/heads/main:<tracking tip> origin 9f8e7d6:refs/heads/main`
