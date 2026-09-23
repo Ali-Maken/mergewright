@@ -412,6 +412,27 @@ fn context_lists_match_the_design_note_order() {
     );
 }
 
+/// **Gap row 553.** The uncommitted-changes row is no merge, so `space`
+/// folds nothing there and the bar must not offer it. A commit row keeps
+/// it — the key is dropped per row, not from [`TAIL`].
+#[test]
+fn uncommitted_row_has_no_fold() {
+    let working_tree = hints_for(&HintContext::WorkingTreeRow, Divider::Hidden, 1000);
+    assert!(
+        !working_tree.iter().any(|hint| hint.key == "space"),
+        "{:?}",
+        hints_text(&working_tree)
+    );
+    let plain = hints_for(&HintContext::PlainRow, Divider::Hidden, 1000);
+    assert!(
+        plain
+            .iter()
+            .any(|hint| hint.key == "space" && hint.verb == "fold"),
+        "{:?}",
+        hints_text(&plain)
+    );
+}
+
 // --- The shrink ladder (m5/24, ADR-0039's third amendment) ---
 
 /// Every cell of the short-form table is the user's own word, spelled as he

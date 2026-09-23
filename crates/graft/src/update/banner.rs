@@ -571,12 +571,14 @@ pub fn resumed(
     state.remote.running = None;
     match outcome {
         crate::jobs::operate::Operated::Done(applied) => {
-            state.banner_focus = false;
+            super::undo::operation_ended(state);
             state.status = Status::Done(applied.entry.description.clone());
             super::operate::refresh_scope(state, applied.refresh, next_id)
         }
+        // It ran; only its record is short. The re-read confirms the end
+        // the same way it does for `Done`.
         crate::jobs::operate::Operated::Incomplete { applied, error } => {
-            state.banner_focus = false;
+            super::undo::operation_ended(state);
             state.status = Status::sticky(format!(
                 "{} \u{2014} could not confirm it fully: {error}",
                 applied.entry.description
@@ -590,8 +592,10 @@ pub fn resumed(
             kind,
             paths,
             stalled,
+            entry,
             ..
         } => {
+            state.live_entries = vec![entry];
             state.banner_focus = banner_focusable(kind);
             let reason = if let Some(why) = &stalled {
                 format!("stopped again: {why}")

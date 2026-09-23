@@ -74,6 +74,183 @@ fn pull_refusals_are_words_not_commands() {
     }
 }
 
+/// **Gap row 481.** `f` while a write runs is refused **in words** — the
+/// same `Status::Failed` the other remote-key refusals use, naming what is
+/// running — and sends nothing. It used to answer the key with no status
+/// at all, a key that looked dead (rule 3).
+#[test]
+fn fetch_refusal_in_words() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let (running, _) = press(&state, plain('f'));
+    let id = running.operating.expect("f launched the fetch");
+    let (again, commands) = press(&running, plain('f'));
+    assert!(commands.is_empty(), "a second write queued: {commands:?}");
+    assert_eq!(again.operating, Some(id), "the first fetch is untouched");
+    assert_eq!(
+        again.status,
+        Status::Failed("wait for fetch all remotes to finish".to_owned())
+    );
+}
+
+/// The in-flight arm is one branch whatever job is running: a pull holding
+/// `operating` refuses `f` the same way, naming the pull.
+#[test]
+fn fetch_refusal_names_whatever_write_is_running() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let (running, _) = press(&state, plain('p'));
+    let id = running.operating.expect("p launched the pull");
+    let pulling = running
+        .remote
+        .running
+        .as_ref()
+        .expect("the pull is the running write")
+        .description
+        .clone();
+    assert_ne!(pulling, "fetch all remotes", "a different job than a fetch");
+    let (again, commands) = press(&running, plain('f'));
+    assert!(commands.is_empty(), "a second write queued: {commands:?}");
+    assert_eq!(again.operating, Some(id), "the pull is untouched");
+    assert_eq!(
+        again.status,
+        Status::Failed(format!("wait for {pulling} to finish"))
+    );
+}
+
+/// A push of `branch` to `origin`, as the app builds them.
+fn push_of(branch: &str) -> PushParams {
+    PushParams {
+        branch: branch.to_owned(),
+        remote: "origin".to_owned(),
+        remote_branch: branch.to_owned(),
+        set_upstream: false,
+        lease: None,
+        source_commit: None,
+    }
+}
+
+/// **Gap row 550.** The journal names a push's branch by `head_before`
+/// (`entry_branch`), so a push must send `HEAD`'s branch. The write site
+/// checks it: a push of any other branch is refused **in words** before a
+/// job exists — never a push whose entry would name the wrong branch.
+/// Asserted on the check itself: in a debug build the launch site's
+/// `debug_assert!` fires first (`the_write_site_asserts_the_push_invariant`).
+#[test]
+fn write_site_refuses_the_impossible_state() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &state,
+            &Operation::Push(push_of("refs/heads/main"))
+        ),
+        Ok(())
+    );
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &state,
+            &Operation::Push(push_of("refs/heads/feature"))
+        ),
+        Err("refused: a push of feature while HEAD is on main \u{2014} \
+             the undo journal would record it as main's"
+            .to_owned())
+    );
+    let detached = with_facts(vec![remote("origin")], None, None);
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &detached,
+            &Operation::Push(push_of("refs/heads/main"))
+        ),
+        Err("refused: a push of main while HEAD is detached \u{2014} \
+             the undo journal would record it as no branch's"
+            .to_owned())
+    );
+    // Not a push: nothing to check.
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &detached,
+            &Operation::Fetch(graft_ops::operation::FetchParams {
+                remote: None,
+                prune: true,
+            })
+        ),
+        Ok(())
+    );
+}
+
+/// The launch site holds the invariant loudly in a debug build: a push of
+/// another branch reaching it is a bug upstream of it.
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic(expected = "a push sends HEAD's branch")]
+fn the_write_site_asserts_the_push_invariant() {
+    let mut state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let mut commands = Vec::new();
+    crate::update::operate::launch(
+        &mut state,
+        &mut commands,
+        Operation::Push(push_of("refs/heads/feature")),
+        &mut || graft_core::job::JobId::new(1),
+    );
+}
+
+/// The release path of the same site: everything `launch_with` does after
+/// its `debug_assert!` — which compiles to nothing in a release build —
+/// runs here in the fast (debug) tier. The violating push is refused in
+/// words: status set, no job id taken, no command, no running record, no
+/// panic.
+#[test]
+fn the_write_site_refuses_in_release() {
+    let mut state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let op = Operation::Push(push_of("refs/heads/feature"));
+    let invariant = crate::update::remote::push_sends_head(&state, &op);
+    assert!(invariant.is_err(), "the fixture violates the invariant");
+    let mut commands = Vec::new();
+    let mut ids_taken = 0;
+    crate::update::operate::launch_checked(
+        &mut state,
+        &mut commands,
+        op,
+        invariant,
+        Stoppable::Yes,
+        None,
+        &mut || {
+            ids_taken += 1;
+            graft_core::job::JobId::new(1)
+        },
+    );
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(ids_taken, 0, "no job id was taken");
+    assert_eq!(state.operating, None);
+    assert!(state.remote.running.is_none(), "no running record");
+    assert_eq!(
+        state.status,
+        Status::Failed(
+            "refused: a push of feature while HEAD is on main \u{2014} \
+             the undo journal would record it as main's"
+                .to_owned()
+        )
+    );
+}
+
 /// `p` with an upstream launches the pull, one write at a time.
 #[test]
 fn pull_with_an_upstream_launches_it() {
@@ -797,8 +974,8 @@ fn u_after_push_asks_before_it_runs() {
     assert_eq!(view.selected(), 0, "the safe choice first (ADR-0038 §1)");
 }
 
-/// **ADR-0038 §4, condition 1.** The re-push is leased against the tracking
-/// tip the user last fetched, and the command it shows is
+/// **ADR-0038 §4, condition 1.** The re-push is leased against the tip the
+/// push entry recorded leaving on the remote (gap row 557), and the command it shows is
 /// `--force-with-lease=…` — never a bare force. Mutating the lease to `None`
 /// fails here, and `graft_ops`' `check_push` would then refuse the push
 /// outright (`Refusal::RepushNeedsLease`): `PushParams` has no bare force to
@@ -1167,6 +1344,33 @@ fn a_pending_remote_read_is_not_reported_as_a_failure() {
             "a read in flight is not a failure: {third:?}"
         );
     }
+    let choices: Vec<&str> = view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(choices, ["Cancel", "Undo locally"]);
+}
+
+/// **Gap row 557.** A push entry that did not record the tip it left has no
+/// lease to offer, and the fetched tracking tip is not a stand-in for it:
+/// the box opens with two choices and says why.
+#[test]
+fn a_push_entry_without_its_tip_offers_no_repush() {
+    let mut state = after_a_push();
+    let Loading::Ready(read) = &state.journal.entries else {
+        panic!("after_a_push has a journal");
+    };
+    let mut read = (**read).clone();
+    read.entries[1].refs_after.clear();
+    state.journal.entries = Loading::Ready(Arc::new(read));
+
+    let (next, _) = press(&state, plain('u'));
+    let view = &next.confirm.as_ref().expect("the box still opened").view;
+    assert_eq!(
+        view.message[2].as_str(),
+        "re-push unavailable: entry has no remote tip"
+    );
     let choices: Vec<&str> = view
         .choices
         .iter()

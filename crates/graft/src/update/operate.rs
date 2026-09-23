@@ -107,6 +107,36 @@ fn launch_with(
     opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    // The one site every write passes, so the one place a push's branch is
+    // checked against `HEAD` (gap row 550). Loud in a debug build, where
+    // reaching here with the wrong branch is a bug upstream; refused in
+    // words in a release build, never a push the journal would misname.
+    let invariant = super::remote::push_sends_head(next, &op);
+    debug_assert!(
+        invariant.is_ok(),
+        "invariant: a push sends HEAD's branch, because the journal names a \
+         push's branch by head_before: {invariant:?}"
+    );
+    launch_checked(next, commands, op, invariant, stoppable, opened_by, next_id);
+}
+
+/// [`launch_with`] past its `debug_assert!`: what a release build does with
+/// the checked invariant. Split out so the fast (debug) tier can run the
+/// refusal branch — the assert fires first there
+/// (`update::remote::tests::the_write_site_refuses_in_release`).
+pub(super) fn launch_checked(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    op: Operation,
+    invariant: Result<(), String>,
+    stoppable: super::remote::Stoppable,
+    opened_by: Option<&'static str>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    if let Err(why) = invariant {
+        next.status = Status::Failed(why);
+        return;
+    }
     let id = next_id();
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
@@ -777,7 +807,11 @@ pub fn operated(
             kind,
             paths,
             stalled,
+            entry,
         } => {
+            // The answer names the live entry; the journal re-read the
+            // refresh asks for will say the same (gap row 505).
+            state.live_entries = vec![entry];
             // Sticky, not `Failed` and not `Done`: git stopped and its state
             // is still there, so the line has to outlive the full refresh it
             // triggers (that refresh is exactly what puts the files under
@@ -2090,7 +2124,27 @@ mod tests {
             kind: InProgress::Merge,
             paths: paths.iter().map(PathBuf::from).collect(),
             stalled: stalled.map(ToOwned::to_owned),
+            entry: graft_core::journal::EntryId::new(42, [4; 10]),
         }
+    }
+
+    /// **Gap row 505.** The conflict's answer names its journal entry, and
+    /// that id reaches the state the banner is drawn from — `live_entries`
+    /// — unchanged and at once, not only when the journal re-read lands.
+    #[test]
+    fn conflicted_entry_id_survives() {
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        operated(&mut state, id, conflicted(&["src/a.rs"], None), &mut ids());
+        assert_eq!(
+            state.live_entries,
+            vec![graft_core::journal::EntryId::new(42, [4; 10])]
+        );
     }
 
     #[test]

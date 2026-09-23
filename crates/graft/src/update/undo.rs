@@ -108,6 +108,39 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
     })
 }
 
+/// A `--continue`/`--skip`/`--abort` answered `Done`: the operation is
+/// over, on the answer's own word, **in the same update** (gap row 569).
+///
+/// Before this the only writer of `in_progress` was the working-tree
+/// re-read the answer schedules, so for as long as that read took `u` said
+/// *"finish or abort the rebase first"* about a rebase that had finished.
+/// The re-read still runs and still has the last word: [`reread_disagrees`]
+/// says so if it finds the operation standing. A rebase that stops again is
+/// `Operated::Conflicted`, never `Done`, so disagreement is a real surprise.
+pub fn operation_ended(state: &mut AppState) {
+    state.in_progress = None;
+    state.banner_focus = false;
+    state.ended_by_answer = true;
+}
+
+/// The working-tree read after [`operation_ended`]: spends the mark, and
+/// when git still reports an operation, the words for it. `None` when the
+/// read agrees, or when no answer was waiting on it.
+pub(super) fn reread_disagrees(
+    state: &mut AppState,
+    found: Option<&graft_git::state::InProgressDetail>,
+) -> Option<Status> {
+    if !std::mem::take(&mut state.ended_by_answer) {
+        return None;
+    }
+    found.map(|detail| {
+        Status::sticky(format!(
+            "git says a {} is still in progress \u{b7} Ctrl+R",
+            detail.kind.name()
+        ))
+    })
+}
+
 /// The same key again, past the drift guard: the user has read what moved
 /// and chosen `[ Undo ]`.
 pub(super) fn forced(

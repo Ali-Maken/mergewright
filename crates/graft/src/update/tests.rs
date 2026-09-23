@@ -1165,6 +1165,7 @@ fn every_field_spelled_out() -> AppState {
         in_progress: None,
         mergetool: None,
         banner_focus: false,
+        ended_by_answer: false,
         live_entries: Vec::new(),
         head_message: None,
         commit_template: None,

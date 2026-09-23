@@ -77,6 +77,9 @@ pub enum Operated {
         /// ("git stopped and its state is still here"), and the one fact
         /// that tells them apart is carried rather than dropped.
         stalled: Option<String>,
+        /// The journal entry git is part-way through, still `Pending` —
+        /// the live entry, named by the answer itself (gap row 505).
+        entry: graft_core::journal::EntryId,
     },
     /// Nothing was written, or nothing could be recorded — the one case
     /// with no [`Applied`] to refresh from.
@@ -312,6 +315,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
             kind,
             paths,
             stalled: None,
+            entry: entry.id,
         },
         Err(ApplyError::ResumeFailed { entry, kind, error }) => Operated::Conflicted {
             description: entry.description.clone(),
@@ -321,6 +325,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
             // do about it.
             paths: Vec::new(),
             stalled: Some(error.to_string()),
+            entry: entry.id,
         },
         Err(error) => {
             let refresh = refresh_after_failure(&error);

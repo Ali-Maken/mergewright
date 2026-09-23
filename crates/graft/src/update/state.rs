@@ -231,6 +231,12 @@ pub struct AppState {
     /// banner to focus — [`crate::update::banner::banner_view`] is the one
     /// thing that draws it, and it answers `None` without `in_progress`.
     pub banner_focus: bool,
+    /// A `--continue`/`--skip`/`--abort` answered `Done` and
+    /// [`AppState::in_progress`] was cleared on that answer's word, ahead of
+    /// the working-tree re-read (gap row 569). The next working-tree read
+    /// spends it: agreeing is silent, and still finding the operation is
+    /// said on the status line rather than quietly undoing the answer.
+    pub ended_by_answer: bool,
     /// The journal entries git is still part-way through, as the last
     /// journal read found them
     /// ([`crate::jobs::undo::JournalRead::live`], m5/09 seam A).

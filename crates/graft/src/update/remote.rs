@@ -285,13 +285,15 @@ fn facts(state: &AppState) -> Result<&Arc<RemoteFacts>, String> {
     }
 }
 
-/// `f`: fetch every remote, pruning. A no-op while a write runs.
+/// `f`: fetch every remote, pruning. Refused in words while a write runs
+/// (gap row 481): it used to answer the key with nothing at all.
 pub fn fetch_key(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
     if super::operate::operation_in_flight(state) {
+        state.status = Status::Failed(wait_for_running(state));
         return true;
     }
     let op = Operation::Fetch(FetchParams {
@@ -300,6 +302,56 @@ pub fn fetch_key(
     });
     super::operate::launch(state, commands, op, next_id);
     true
+}
+
+/// The invariant the journal's reading of a push rests on (gap row 550):
+/// **a push sends `HEAD`'s branch**. `entry_branch` names a push entry's
+/// branch by its `head_before`, so a push of any other branch would be
+/// recorded as `HEAD`'s — and `u` would then explain, and re-push, the
+/// wrong one. Every `PushParams` the app builds today carries `HEAD`'s
+/// branch; this is where that stops being an accident.
+///
+/// `Ok` for anything that is not a push. `Err` carries the refusal's words.
+///
+/// # Errors
+/// The push names a branch `HEAD` is not on, `HEAD` is detached, or the
+/// remote facts that say where `HEAD` is have not been read.
+pub fn push_sends_head(state: &AppState, op: &Operation) -> Result<(), String> {
+    let Operation::Push(params) = op else {
+        return Ok(());
+    };
+    let facts = facts(state)
+        .map_err(|why| format!("refused: cannot confirm HEAD's branch \u{2014} {why}"))?;
+    if facts.head_branch.as_deref() == Some(params.branch.as_str()) {
+        return Ok(());
+    }
+    let head = facts
+        .head_branch
+        .as_deref()
+        .map_or("is detached".to_owned(), |name| {
+            format!("is on {}", short_branch(name))
+        });
+    let recorded = facts
+        .head_branch
+        .as_deref()
+        .map_or("no branch's".to_owned(), |name| {
+            format!("{}'s", short_branch(name))
+        });
+    Err(format!(
+        "refused: a push of {} while HEAD {head} \u{2014} the undo journal would record it as {recorded}",
+        short_branch(&params.branch)
+    ))
+}
+
+/// The refusal for a write key pressed while another write runs: `wait for
+/// <what is running> to finish`, the Ghost Preview's own words for it.
+fn wait_for_running(state: &AppState) -> String {
+    let running = state
+        .remote
+        .running
+        .as_ref()
+        .map_or("the write", |it| it.description.as_str());
+    format!("wait for {running} to finish")
 }
 
 /// `p`: fast-forward `HEAD`'s branch from its upstream. Refused in words,
@@ -529,8 +581,9 @@ pub(super) struct UndoAfterPush {
     /// `origin/main`, read from the push entry itself so the box names the
     /// side that push actually moved.
     pub remote_side: String,
-    /// The re-push: the old tip, under a lease against the tracking tip the
-    /// user last fetched. **Always leased** — `PushParams` has no bare
+    /// The re-push: the old tip, under a lease against the tip the push
+    /// itself left on the remote, read from its journal entry (gap row
+    /// 557). **Always leased** — `PushParams` has no bare
     /// force to reach for, and `graft_ops` refuses a source commit without
     /// one (`Refusal::RepushNeedsLease`).
     ///
@@ -614,7 +667,7 @@ pub(super) fn undo_after_push(state: &AppState) -> Option<UndoAfterPush> {
         push: push.id.clone(),
         description: elided(&target.description, QUOTED_DESCRIPTION),
         remote_side: pushed_to(push),
-        repush: repush_for(state, target, branch),
+        repush: repush_for(state, target, push, branch),
     })
 }
 
@@ -625,9 +678,21 @@ pub(super) fn undo_after_push(state: &AppState) -> Option<UndoAfterPush> {
 /// remote that could not be read, a read still in flight (which is not a
 /// failure and is not worded as one), a branch other than the one `HEAD`
 /// is on — whose upstream is not the upstream we hold — an upstream that
-/// does not exist, a tracking ref never fetched, or a branch that did not
-/// exist before the entry, where "the old tip" would be a branch deletion.
-fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<PushParams, String> {
+/// does not exist, a push entry that did not record the tip it left, or a
+/// branch that did not exist before the entry, where "the old tip" would be
+/// a branch deletion.
+///
+/// The lease is the push's own answer ([`repush_lease`]), never the
+/// tracking tip `state.remotes` last read (gap row 557): the two differ
+/// whenever the remote re-read has not landed yet, or has landed *after*
+/// someone else pushed — and in the second case a lease from the read
+/// would match the remote and throw their commit away.
+fn repush_for(
+    state: &AppState,
+    target: &JournalEntry,
+    push: &JournalEntry,
+    branch: &str,
+) -> Result<PushParams, String> {
     let short = short_branch(branch);
     let facts = facts(state).map_err(|why| format!("no re-push \u{2014} {why}"))?;
     if facts.head_branch.as_deref() != Some(branch) {
@@ -637,12 +702,8 @@ fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<P
         .head_upstream
         .as_ref()
         .ok_or_else(|| format!("no re-push \u{2014} {short} has no upstream"))?;
-    let expected = upstream.tracking_tip.ok_or_else(|| {
-        format!(
-            "no re-push \u{2014} {} has not been fetched",
-            upstream.remote
-        )
-    })?;
+    let expected = repush_lease(push, &upstream.tracking_ref)
+        .ok_or_else(|| "re-push unavailable: entry has no remote tip".to_owned())?;
     // `refs_before` is `Option<Oid>` per ref: a branch that did not exist
     // before the entry has no old tip to send, and pushing "nothing" is a
     // branch deletion, not a re-push.
@@ -660,6 +721,16 @@ fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<P
         lease: Some(Lease { expected }),
         source_commit: Some(old_tip),
     })
+}
+
+/// The tip a push left on the remote, from its journal entry:
+/// `refs_after[tracking]`, which `graft_ops` reads right after `git push`
+/// has moved the tracking ref. `None` when the entry does not carry it (an
+/// entry whose after-state could not be read), and the box then offers no
+/// re-push rather than guess.
+#[must_use]
+pub fn repush_lease(push: &JournalEntry, tracking: &str) -> Option<Oid> {
+    push.refs_after.get(tracking).copied().flatten()
 }
 
 /// `text`, or its first `limit` characters and an ellipsis.

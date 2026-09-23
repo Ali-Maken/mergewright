@@ -200,7 +200,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(
             _,
             product @ (Product::SystemGit(_) | Product::Refs(_) | Product::WorkingTree(_)),
-        ) => took_fact(next, product),
+        ) => took_fact(next, commands, product),
         AppEvent::Progress(id, Progress::History(update)) => {
             history::walk_progress(next, commands, id, update);
         }
@@ -242,7 +242,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             reverted_to_answer(next, commands, id, *done);
         }
         AppEvent::Produced(id, Product::Undone(done)) => undone_answer(next, commands, id, *done),
-        AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
+        AppEvent::Produced(id, product @ Product::Journal(_)) => {
+            journal_answer(next, commands, id, &product);
+        }
         AppEvent::Produced(id, Product::Remotes(result)) => {
             remote::remotes_arrived(next, id, result);
         }
@@ -316,8 +318,11 @@ fn mergetool_returned(
 }
 
 /// The journal read answered.
-fn journal_answer(next: &mut AppState, id: JobId, product: &Product) {
-    let taken: bool = journal::journal_event(next, id, product);
+fn journal_answer(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, product: &Product) {
+    let mut local_jobs = next.local_jobs;
+    let taken: bool =
+        journal::journal_event(next, commands, id, product, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
     debug_assert!(taken, "the journal's own product");
 }
 
@@ -524,7 +529,7 @@ fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_c
 
 /// A fact about the repository beside the graph arrived: the system git
 /// check, the refs, or the working tree counts. `answer` routes only those.
-fn took_fact(next: &mut AppState, product: Product) {
+fn took_fact(next: &mut AppState, commands: &mut Vec<Command>, product: Product) {
     match product {
         Product::SystemGit(check) => {
             next.system_git = Some(check);
@@ -541,6 +546,9 @@ fn took_fact(next: &mut AppState, product: Product) {
             // Read before the assignment: the launch read is the one that
             // finds no working tree yet. See `journal::launch_into_live`.
             let first_read = next.working_tree.is_none();
+            if let Some(disagreement) = undo::reread_disagrees(next, read.in_progress.as_ref()) {
+                next.status = disagreement;
+            }
             next.working_tree = Some(read.status);
             next.in_progress = read.in_progress;
             next.mergetool = read.mergetool;
@@ -554,7 +562,9 @@ fn took_fact(next: &mut AppState, product: Product) {
                 // The other half of the launch takeover: whichever of the
                 // two launch reads lands second is the one that has both
                 // facts, so both call it and the second one wins.
-                journal::launch_into_live(next);
+                let mut local_jobs = next.local_jobs;
+                journal::launch_into_live(next, commands, &mut || local_jobs.next_id());
+                next.local_jobs = local_jobs;
             }
         }
         Product::WorkingTree(Err(failure)) => {

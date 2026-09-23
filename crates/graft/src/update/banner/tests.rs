@@ -5,11 +5,12 @@
 //! here is the part that is a function over plain data: which keys the
 //! modal claims, what the refusals say, and what the header draws.
 
-use graft_core::event::Modifiers;
+use graft_core::event::{Event, Modifiers};
 use graft_git::state::{InProgress, InProgressDetail};
 use graft_git::status::{StatusEntry, WorkingTreeStatus};
 
 use super::*;
+use crate::update::{AppEvent, Product};
 
 fn detail(kind: InProgress, step: Option<(u32, u32)>) -> InProgressDetail {
     InProgressDetail {
@@ -355,6 +356,7 @@ fn stopping_again_keeps_the_banner_focused() {
             kind: InProgress::Rebase,
             paths: vec!["a.rs".into(), "b.rs".into()],
             stalled: None,
+            entry: graft_core::journal::EntryId::new(1, [0; 10]),
         },
         &mut || JobId::new(8),
     );
@@ -369,6 +371,11 @@ fn stopping_again_keeps_the_banner_focused() {
     assert!(
         !commands.is_empty(),
         "git's state moved: something must be re-read"
+    );
+    assert_eq!(
+        state.live_entries,
+        vec![graft_core::journal::EntryId::new(1, [0; 10])],
+        "the stop names its entry, and the state keeps it (gap row 505)"
     );
 }
 
@@ -432,6 +439,93 @@ fn finishing_clears_the_focus() {
         "a finished operation has no banner to hold the keyboard"
     );
     assert_eq!(state.status, Status::Done("continue rebase".to_owned()));
+}
+
+/// **Gap row 569.** The answer to `--continue` already says the rebase
+/// ended, so `in_progress` goes `None` in the same update, and `u` in the
+/// very next one is an undo — not *"finish or abort the rebase first"*,
+/// which it was for as long as the working-tree re-read took to land.
+///
+/// Driven through `update` with no `WorkingTree` product in between: the
+/// re-read the answer scheduled is left unanswered on purpose.
+#[test]
+fn u_right_after_continue_is_accepted() {
+    let mut state = stopped(InProgress::Rebase, &[]);
+    let id = JobId::new(7);
+    state.operating = Some(id);
+    let (answered, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Resumed(Box::new(crate::jobs::operate::Operated::Done(
+                done_applied(),
+            ))),
+        ),
+    );
+    assert_eq!(answered.in_progress, None, "the answer ended it");
+    assert!(!answered.banner_focus);
+
+    let (pressed, commands) = crate::update::update(
+        &answered,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('u')))),
+    );
+    let Some(undo) = pressed.operating else {
+        panic!("u was refused: {:?}", pressed.status);
+    };
+    assert!(
+        commands.contains(&Command::Undo(undo, false)),
+        "{commands:?}"
+    );
+}
+
+/// The re-read is a confirmation, never a silent contradiction: a
+/// working-tree read that still finds the rebase after the answer said it
+/// ended puts it back **and says so**.
+#[test]
+fn answer_and_read_disagree_says_so() {
+    let mut state = stopped(InProgress::Rebase, &[]);
+    let id = JobId::new(7);
+    state.operating = Some(id);
+    let (answered, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Resumed(Box::new(crate::jobs::operate::Operated::Done(
+                done_applied(),
+            ))),
+        ),
+    );
+    let read = crate::working_tree::WorkingTree {
+        status: std::sync::Arc::new(WorkingTreeStatus {
+            entries: Vec::new(),
+        }),
+        in_progress: Some(detail(InProgress::Rebase, Some((4, 7)))),
+        mergetool: None,
+    };
+    let (reread, _) = crate::update::update(
+        &answered,
+        AppEvent::Produced(JobId::new(9), Product::WorkingTree(Ok(read))),
+    );
+    assert!(reread.in_progress.is_some(), "git's word stands");
+    assert_eq!(
+        reread.status,
+        Status::sticky("git says a rebase is still in progress \u{b7} Ctrl+R".to_owned())
+    );
+
+    // A read that agrees says nothing new.
+    let agreeing = crate::working_tree::WorkingTree {
+        status: std::sync::Arc::new(WorkingTreeStatus {
+            entries: Vec::new(),
+        }),
+        in_progress: None,
+        mergetool: None,
+    };
+    let (confirmed, _) = crate::update::update(
+        &answered,
+        AppEvent::Produced(JobId::new(9), Product::WorkingTree(Ok(agreeing))),
+    );
+    assert_eq!(confirmed.status, answered.status);
+    assert_eq!(confirmed.in_progress, None);
 }
 
 /// `M` and `e` with nothing unmerged: the banner acts on "the first
