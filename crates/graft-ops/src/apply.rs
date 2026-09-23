@@ -42,6 +42,7 @@ pub use error::{AfterState, ApplyError};
 pub use recover::{Recovered, recover_interrupted};
 pub use remote::RemoteHooks;
 pub use restart::{StageSource, stage_source};
+pub(crate) use resume::live_entry;
 pub use resume::{Resume, resume};
 
 pub(crate) use error::{as_apply_error, reason_for};

@@ -22,10 +22,23 @@ use super::{
 };
 
 /// How [`resume`] takes a stopped history operation on (m5/07).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// Not `Copy` since m6-conflicts/09: `ContinueWith` carries the message.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Resume {
-    /// `--continue`: every unmerged path must be staged first.
+    /// `--continue`: every unmerged path must be staged first. A merge
+    /// commits with git's own message, untouched.
     Continue,
+    /// A merge finished with the message the user edited: `git commit
+    /// --cleanup=strip -F -`, the message on stdin (m6-conflicts/09,
+    /// Amendment 2 hard choice 3). git's `MERGE_MSG` is never written — git
+    /// removes it itself once the commit lands. Merge only: any other kind
+    /// is [`Refusal::MessageNotHere`] before anything runs.
+    ContinueWith {
+        /// The message as the user left it; git strips comments and
+        /// trailing blank lines.
+        message: Vec<u8>,
+    },
     /// `--skip`: drop the commit being replayed (rebase, cherry-pick,
     /// revert). A merge has nothing to skip.
     Skip,
@@ -63,7 +76,7 @@ pub enum Resume {
 /// A fact the entry never recorded is not evidence against it: the
 /// comparison is skipped rather than failed, which keeps a real conflict
 /// resumable.
-pub(super) fn live_entry<'a>(
+pub(crate) fn live_entry<'a>(
     repo: &RepoHandle,
     entries: &'a [JournalEntry],
     kind: InProgress,
@@ -144,33 +157,48 @@ pub(super) fn unmerged_paths(ctx: &Context<'_>) -> Result<Vec<PathBuf>, ApplyErr
 /// [`Refusal::NotInProgress`] when git has no operation in progress or no
 /// `Pending` entry of Graft's matches it (one begun in the shell finishes
 /// there); [`Refusal::CannotSkip`] for `Skip` on a merge;
-/// [`Refusal::Unmerged`] for `Continue` over unmerged paths; the executor's
-/// own errors otherwise.
+/// [`Refusal::Unmerged`] for `Continue` or `ContinueWith` over unmerged
+/// paths; [`Refusal::MessageNotHere`] for `ContinueWith` on anything but a
+/// merge, before the entry is even looked up; the executor's own errors
+/// otherwise — a hook refusing `ContinueWith`'s commit leaves the merge live,
+/// so it is [`ApplyError::ResumeFailed`] like any other refusal.
 pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError> {
     if ctx.stop.should_stop() {
         return Err(ApplyError::Stopped);
     }
-    let (kind, entry) = resume_target(ctx, how)?;
+    let (kind, entry) = resume_target(ctx, &how)?;
 
     // What git is about to write over. `--abort` throws the span's work away
     // and `--continue` commits it, so in both cases the last state the user
     // saw is only in the chain after this (m6-conflicts/08 Decision 2).
     snapshot::chain_backup(ctx, &entry).map_err(as_apply_error)?;
 
-    let args = [
-        GitArg::Flag(kind.name()),
-        GitArg::Flag(match how {
-            Resume::Continue => "--continue",
-            Resume::Skip => "--skip",
-            Resume::Abort => "--abort",
-        }),
-    ];
+    let aborting = how == Resume::Abort;
+    let flag = |flag| vec![GitArg::Flag(kind.name()), GitArg::Flag(flag)];
+    let (args, message) = match how {
+        // `resume_target` has refused every kind but a merge.
+        Resume::ContinueWith { message } => (
+            vec![
+                GitArg::Flag("commit"),
+                GitArg::Flag("--cleanup=strip"),
+                GitArg::Flag("-F"),
+                GitArg::Flag("-"),
+            ],
+            Some(message),
+        ),
+        Resume::Continue => (flag("--continue"), None),
+        Resume::Skip => (flag("--skip"), None),
+        Resume::Abort => (flag("--abort"), None),
+    };
     let mut commands = entry.commands.clone();
     commands.push(graft_git::run::command_line(&args));
-    let ran = GitInvocation::new(ctx.repo)
+    let mut invocation = GitInvocation::new(ctx.repo)
         .args(args)
-        .env("GIT_EDITOR", "true")
-        .run(ctx.stop);
+        .env("GIT_EDITOR", "true");
+    if let Some(message) = message {
+        invocation = invocation.stdin(message);
+    }
+    let ran = invocation.run(ctx.stop);
 
     let failure = match ran {
         Ok(_) => None,
@@ -186,7 +214,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
             Some(error)
         }
     };
-    close_resume(ctx, entry, how, commands, failure)
+    close_resume(ctx, entry, aborting, commands, failure)
 }
 
 /// Which entry a resume closes, and the checks that run before git does.
@@ -194,18 +222,24 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
 /// git's own state names the kind; the journal's newest `Pending` entry of
 /// that kind is the one Graft opened. An operation begun in the shell has no
 /// entry here and is finished there ([`Refusal::NotInProgress`]).
-fn resume_target(ctx: &Context<'_>, how: Resume) -> Result<(InProgress, JournalEntry), ApplyError> {
+fn resume_target(
+    ctx: &Context<'_>,
+    how: &Resume,
+) -> Result<(InProgress, JournalEntry), ApplyError> {
     let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
     let Some(kind) = live else {
         return Err(ApplyError::Refused(Refusal::NotInProgress));
     };
+    if matches!(how, Resume::ContinueWith { .. }) && kind != InProgress::Merge {
+        return Err(ApplyError::Refused(Refusal::MessageNotHere { kind }));
+    }
     let Some(entry) = live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?.cloned() else {
         return Err(ApplyError::Refused(Refusal::NotInProgress));
     };
-    if how == Resume::Skip && kind == InProgress::Merge {
+    if *how == Resume::Skip && kind == InProgress::Merge {
         return Err(ApplyError::Refused(Refusal::CannotSkip(kind)));
     }
-    if how == Resume::Continue {
+    if matches!(how, Resume::Continue | Resume::ContinueWith { .. }) {
         let paths = unmerged_paths(ctx)?;
         if !paths.is_empty() {
             return Err(ApplyError::Refused(Refusal::Unmerged { paths }));
@@ -243,11 +277,12 @@ fn still_pending(
 }
 
 /// git is done with the operation, one way or the other: write the outcome
-/// line the stop deferred.
+/// line the stop deferred. `aborting` is `Resume::Abort`; every other way
+/// on commits.
 fn close_resume(
     ctx: &mut Context<'_>,
     entry: JournalEntry,
-    how: Resume,
+    aborting: bool,
     commands: Vec<String>,
     failure: Option<RunError>,
 ) -> Result<Applied, ApplyError> {
@@ -270,14 +305,15 @@ fn close_resume(
         entry,
         before_commit,
     };
-    let status = match (how, &failure) {
+    let status = match (aborting, &failure) {
         (_, Some(error)) => EntryStatus::Aborted {
             reason: reason_for(error),
         },
-        (Resume::Abort, None) => EntryStatus::Aborted {
+        (true, None) => EntryStatus::Aborted {
             reason: "aborted".to_owned(),
         },
-        (Resume::Continue | Resume::Skip, None) => EntryStatus::Committed,
+        // Continue, ContinueWith or Skip, and git finished.
+        (false, None) => EntryStatus::Committed,
     };
     let mut unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,

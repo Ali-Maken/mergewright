@@ -461,7 +461,7 @@ pub fn resume(
         return false;
     };
     let verb = match what {
-        Resume::Continue => "continue",
+        Resume::Continue | Resume::ContinueWith { .. } => "continue",
         Resume::Skip => "skip",
         Resume::Abort => "abort",
     };
