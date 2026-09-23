@@ -173,6 +173,27 @@ impl ResolverState {
     }
 }
 
+/// **The one gate for writing this file**: the words a writing key is
+/// refused with while another write on it is in flight, or `None` when it
+/// may go ahead.
+///
+/// Two channels write a conflicted file: a block take is an fs write on
+/// the pool ([`ResolverState::job`]), and `⏎`, a whole-file `o`/`t` and `d`
+/// are git writes (`state.operating`). The pool runs jobs on several
+/// workers, so a take and a `git add` queued together race — the index can
+/// end up holding the old take while the screen and disk show the new one
+/// (m6-04-08 review, Major 2). Every writing key asks here, so the two
+/// channels are serial on this file.
+pub(super) fn write_refusal(state: &AppState) -> Option<&'static str> {
+    if let Some(words) = state.resolver.as_ref().and_then(ResolverState::busy_words) {
+        return Some(words);
+    }
+    state
+        .operating
+        .is_some()
+        .then_some("a write is already running")
+}
+
 /// **Open the resolver on `path`**, or refuse in words.
 ///
 /// `true` when the key was spent — which is either way: a refusal is an
@@ -309,8 +330,8 @@ fn mark_resolved(
         };
         return;
     }
-    if state.operating.is_some() {
-        state.status = Status::sticky("a write is already running");
+    if let Some(words) = write_refusal(state) {
+        state.status = Status::sticky(words);
         return;
     }
     super::operate::launch(
