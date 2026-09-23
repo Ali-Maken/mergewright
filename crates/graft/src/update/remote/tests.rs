@@ -1,5 +1,8 @@
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
-use graft_git::remote::{Remote, TrackedUpstream};
+use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use graft_git::remote::{Remote, RemoteFailure, TrackedUpstream};
+use graft_ops::operation::Lease;
+use graft_ui::confirm::ConfirmView;
 
 use super::*;
 use crate::update::{AppEvent, update};
@@ -150,7 +153,10 @@ fn a_push_boxed_before_a_reread_launches_and_ops_decides() {
             _ => None,
         })
         .expect("Ctrl+R asks for the remote facts");
-    assert!(matches!(reading.remotes, Loading::Ready(_)), "old facts kept");
+    assert!(
+        matches!(reading.remotes, Loading::Ready(_)),
+        "old facts kept"
+    );
     let (boxed, _) = press(&reading, plain('P'));
     assert!(boxed.confirm.is_some(), "P opened the push box");
     let moved = Arc::new(RemoteFacts {

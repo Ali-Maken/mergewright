@@ -1,0 +1,205 @@
+//! A remote write while it runs and as it ends: `Esc` stopping it, the
+//! live progress line, and the done and failure lines.
+
+use graft_core::job::JobId;
+use graft_git::remote::RemoteFailure;
+use graft_ops::operation::Operation;
+
+use super::{
+    DIVERGED_KEYS, ESC_HINT, NARROW_COLUMNS, Stoppable, short_branch, short_ref, short_tracking,
+};
+use crate::update::events::Command;
+use crate::update::state::{AppState, Status};
+
+/// `Esc` while a write runs: ask it to stop. Not while a text field, the
+/// confirm box or the menu is open — their `Esc` is their own. A second
+/// `Esc` while the first is being honoured does nothing more.
+pub fn cancel_operating(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
+    if state.operating.is_none()
+        || state.text_field_open()
+        || state.confirm.is_some()
+        || state.context_menu.is_some()
+    {
+        return false;
+    }
+    stop_write(state, commands)
+}
+
+/// Ask the running write to stop, and say so — [`cancel_operating`]'s
+/// work, without its guard, for the one modal that owns a running write:
+/// the commit editor, whose `Esc` while its commit runs means this.
+/// `false` when no write runs.
+pub(in crate::update) fn stop_write(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
+    let Some(id) = state.operating else {
+        return false;
+    };
+    // A write that cannot be stopped safely keeps running, and the line says
+    // so rather than leaving `Esc` looking ignored. `Busy` is drawn with a
+    // trailing `…`, which is right here: it really is still going.
+    if let Stoppable::No(why) = stoppable(state, id) {
+        state.status = Status::Busy(format!("{} {why}", running_words(state, id)));
+        return true;
+    }
+    if state.remote.cancelling == Some(id) {
+        return true;
+    }
+    state.remote.cancelling = Some(id);
+    commands.push(Command::CancelJob(id));
+    // `Busy` is drawn with a trailing `…`, so the words stop at the verb.
+    state.status = Status::Busy(format!("{} · cancelling", running_words(state, id)));
+    true
+}
+
+/// Whether `Esc` may stop the write running under `id`. A write nothing
+/// recorded is treated as stoppable: that is what every write before this
+/// field existed was, and killing one git child is the safe half.
+fn stoppable(state: &AppState, id: JobId) -> Stoppable {
+    state
+        .remote
+        .running(id)
+        .map_or(Stoppable::Yes, |running| running.stoppable)
+}
+
+/// What the running write is called, for the cancel lines.
+fn running_words(state: &AppState, id: JobId) -> String {
+    state.remote.running(id).map_or_else(
+        || "the write".to_owned(),
+        |running| running.description.clone(),
+    )
+}
+
+/// A job ended cancelled. When it is the write `Esc` stopped, that is the
+/// answer the user asked for: `operating` clears, the line says so (not
+/// sticky), and everything is re-read — a cancelled fetch may have moved
+/// some tracking refs, a cancelled commit may have run its hook. `None`
+/// when it is not that write, for the caller's own handling.
+pub(in crate::update) fn cancelled(
+    state: &mut AppState,
+    id: JobId,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Option<Vec<Command>> {
+    if state.operating != Some(id) || state.remote.cancelling != Some(id) {
+        return None;
+    }
+    state.operating = None;
+    state.remote.cancelling = None;
+    state.status = Status::Done(format!("{} cancelled", running_words(state, id)));
+    Some(crate::update::operate::refresh_scope(
+        state,
+        graft_ops::apply::Refresh::Everything,
+        next_id,
+    ))
+}
+
+/// A progress line from the running fetch, pull or push. Dropped for any
+/// other job, and once `Esc` has asked it to stop.
+pub fn remote_progress(state: &mut AppState, id: JobId, brief: &str) {
+    if state.operating != Some(id) || state.remote.cancelling == Some(id) {
+        return;
+    }
+    let brief = if state.size.columns < NARROW_COLUMNS {
+        narrow(brief)
+    } else {
+        brief.to_owned()
+    };
+    state.status = Status::Busy(format!("{} · {brief}{ESC_HINT}", running_words(state, id)));
+}
+
+/// `receiving objects 45%` → `receiving 45%`: the phase's first word and the
+/// percent, when there is one.
+fn narrow(brief: &str) -> String {
+    let mut words = brief.split_whitespace();
+    let first = words.next().unwrap_or_default();
+    match words.last().filter(|last| last.ends_with('%')) {
+        Some(percent) => format!("{first} {percent}"),
+        None => brief.to_owned(),
+    }
+}
+
+/// The line a finished remote write leaves: `fetched`, `pulled origin/main`,
+/// `pushed main → origin/main`. A push that landed forgets the rejection.
+pub(in crate::update) fn remote_done(state: &mut AppState, op: &Operation) -> Option<String> {
+    match op {
+        Operation::Fetch(_) => Some("fetched".to_owned()),
+        Operation::Pull(params) => Some(format!(
+            "pulled {}",
+            short_tracking(&params.upstream.tracking_ref)
+        )),
+        Operation::Push(params) => {
+            state.remote.last_rejected_push = None;
+            Some(format!(
+                "pushed {} → {}/{}",
+                short_branch(&params.branch),
+                params.remote,
+                short_branch(&params.remote_branch)
+            ))
+        }
+        _ => None,
+    }
+}
+
+/// The status a failed remote write leaves. `explained` is `ops`' failure
+/// line (`ApplyError::Remote`'s `explain`), worded `reason` or `reason ·
+/// keys` (the design note's "Failure line" convention, `docs/design/02-…`
+/// isn't the source here — `ops::apply::remote::explain`'s own doc comment
+/// is). Split so the footer can keep the keys whole and cut the reason
+/// first at 80 columns (`hints::fit_status_line`, ADR-0037 §4) — parsed
+/// here rather than in `graft-ops`, which is another ticket's crate. A
+/// non-fast-forward push is remembered, so the next `P` offers the lease. A
+/// cancel is the user's own doing: `Done`, not sticky.
+pub fn remote_failed(
+    state: &mut AppState,
+    op: &Operation,
+    failure: &RemoteFailure,
+    explained: &str,
+) -> Status {
+    let sticky = || {
+        let (reason, keys) = split_reason_and_keys(explained);
+        Status::Sticky { reason, keys }
+    };
+    match (failure, op) {
+        // Not reached through the job pool: `jobs::pool::run_job` turns any
+        // product returned after a cancel into `Event::JobCancelled`, which
+        // `cancelled` answers, so a cancelled remote write never arrives
+        // here. Kept because `RemoteFailure` can carry it from `ops` on any
+        // other route, and dropping the arm would make that a silent
+        // wrong-worded failure line (m4-remotes/05 review, Minor 4).
+        (RemoteFailure::Cancelled, _) => Status::Done(format!("{} cancelled", op.describe())),
+        (RemoteFailure::NonFastForward, Operation::Push(params)) => {
+            state.remote.last_rejected_push = Some(params.clone());
+            sticky()
+        }
+        // The pull that cannot fast-forward. `graft_ops`' own line sends the
+        // user to the shell (`git pull --rebase`); M5 gave them both verbs
+        // inside Graft, so the line names the two keys instead and the
+        // upstream is remembered for them to aim at.
+        (RemoteFailure::NotFastForward, Operation::Pull(params)) => {
+            let Some(tip) = params.upstream.tracking_tip else {
+                // Nothing to pin `m` or `r` to. `ops`' own sentence is the
+                // honest answer, including its shell fallback.
+                return sticky();
+            };
+            state.remote.diverged_upstream = Some((params.upstream.tracking_ref.clone(), tip));
+            Status::Sticky {
+                reason: format!(
+                    "{} and {} have diverged",
+                    short_ref(&params.branch),
+                    short_tracking(&params.upstream.tracking_ref)
+                ),
+                keys: Some(DIVERGED_KEYS.to_owned()),
+            }
+        }
+        _ => sticky(),
+    }
+}
+
+/// `"push rejected: X has moved · p pull first · P force with lease"` →
+/// `("push rejected: X has moved", Some("p pull first · P force with
+/// lease"))`. A line with no ` · ` (most of them) has no keys to keep
+/// whole; the reason is cut like any other footer text.
+fn split_reason_and_keys(explained: &str) -> (String, Option<String>) {
+    match explained.split_once(" · ") {
+        Some((reason, keys)) => (reason.to_owned(), Some(keys.to_owned())),
+        None => (explained.to_owned(), None),
+    }
+}
