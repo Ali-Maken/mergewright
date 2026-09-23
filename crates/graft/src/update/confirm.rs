@@ -12,7 +12,7 @@ use graft_ops::operation::Operation;
 use graft_ui::confirm::ConfirmView;
 
 use super::events::Command;
-use super::state::AppState;
+use super::state::{AppState, Status};
 
 /// A confirm box waiting for an answer: what it shows, and what `Confirm`
 /// does.
@@ -140,6 +140,14 @@ pub fn confirm_key(
                             repush.map(|params| *params),
                             next_id,
                         );
+                    }
+                    // A write that began while the box was up owns the
+                    // index: a second one would run beside it, and the
+                    // answer of whichever lost the race would be dropped
+                    // (m6-05 review, Major 3). `restart_box` refuses the
+                    // same before the box opens.
+                    ConfirmThen::RestartConflict { .. } if next.operating.is_some() => {
+                        next.status = Status::sticky("a write is already running");
                     }
                     ConfirmThen::RestartConflict { path } => {
                         super::operate::launch(

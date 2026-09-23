@@ -314,6 +314,12 @@ pub enum HintContext {
         base: bool,
         /// `d` start this file over (Proposed change 2c) — same.
         restart: bool,
+        /// The open file is a whole-file card (`deleted by them`, a binary
+        /// `both modified`, …): no blocks, so no `b`, `N`, `⏎`, `B` or `d`
+        /// — `o`/`t` resolve the path whole, and `n` crosses to the next
+        /// conflicted file (m6-05 review, Major 1). `base`/`restart` are
+        /// not read while this is set.
+        whole_file: bool,
     },
     /// A branch badge is being dragged (`docs/design/02-keymap.md` §2.15).
     /// The gesture ends with the button, not a key, so the bar says what
@@ -705,7 +711,17 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
             conflicted,
         } => banner_list(*skippable, *conflicted),
         HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
-        HintContext::Resolver { base, restart } => resolver_list(*base, *restart),
+        HintContext::Resolver {
+            base,
+            restart,
+            whole_file,
+        } => {
+            if *whole_file {
+                resolver_card_list()
+            } else {
+                resolver_list(*base, *restart)
+            }
+        }
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         // Keymap §2.9: `b` (branch from this stash) is named there as
@@ -924,6 +940,25 @@ fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
     list
 }
 
+/// A whole-file card's own list (m6-conflicts/05, m6-05 review Major 1):
+/// `o ours  t theirs  e edit  n next  M mergetool  esc close`.
+///
+/// Only the keys a card answers. `b` is refused in words (there is no
+/// "both" of a path), `⏎` has nothing to mark — `o`/`t` already stage —
+/// `B` has no blocks to show a base in, `d` has no markers to bring back,
+/// and `N` has no previous file to walk to. `n` crosses to the next
+/// conflicted file, as it does from a document's last block.
+fn resolver_card_list() -> Vec<Hint> {
+    vec![
+        hint("o", "ours"),
+        hint("t", "theirs"),
+        hint("e", "edit"),
+        hint("n", "next"),
+        hint("M", "mergetool"),
+        hint("esc", "close"),
+    ]
+}
+
 /// **Every context the footer can be put in**, every field combination, each
 /// row context also wrapped in [`HintContext::Marked`]. The one enumeration
 /// every sweep reads — `graft-ui`'s own hint tests, [`every_hint`] and
@@ -980,28 +1015,35 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,
-        HintContext::Resolver {
-            base: false,
-            restart: false,
-        },
-        HintContext::Resolver {
-            base: true,
-            restart: false,
-        },
-        HintContext::Resolver {
-            base: false,
-            restart: true,
-        },
-        HintContext::Resolver {
-            base: true,
-            restart: true,
-        },
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
+    all.extend(resolver_forms());
     all.extend(plain.iter().filter_map(marked_form));
     let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
     all.extend(rows);
     all
+}
+
+/// Every [`HintContext::Resolver`] form [`every_context`] names: the four
+/// `base`/`restart` combinations of a document, and a whole-file card
+/// (whose list reads neither flag, so one form covers it).
+fn resolver_forms() -> [HintContext; 5] {
+    let document = |base, restart| HintContext::Resolver {
+        base,
+        restart,
+        whole_file: false,
+    };
+    [
+        document(false, false),
+        document(true, false),
+        document(false, true),
+        document(true, true),
+        HintContext::Resolver {
+            base: false,
+            restart: false,
+            whole_file: true,
+        },
+    ]
 }
 
 /// `context` wrapped in [`HintContext::Marked`], for the contexts a Mistake

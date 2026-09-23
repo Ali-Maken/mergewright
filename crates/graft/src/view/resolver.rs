@@ -80,11 +80,8 @@ fn whole_file_view(
         regions: vec![RegionView::WholeFile {
             how: sanitize_line(whole.how.words()),
             keys: sanitize_line(whole_file_keys(whole.how, whole.binary)),
-            lines: whole
-                .lines
-                .iter()
-                .map(|line| whole_file_line(line))
-                .collect(),
+            lines: whole_file_lines(whole),
+            note: whole_file_note(whole),
         }],
         cursor_block: None,
         base_shown: false,
@@ -95,10 +92,62 @@ fn whole_file_view(
     }
 }
 
+/// A whole-file card's plain-text tail: what is on disk, as far as the
+/// card read it (`jobs::conflict::glimpse`) — never more than
+/// `jobs::conflict::CARD_LINES` lines, so sanitising them per frame is
+/// bounded however large the file is. None for a binary file.
+fn whole_file_lines(whole: &WholeFileShape) -> Vec<SanitizedText> {
+    whole.on_disk.as_ref().map_or_else(Vec::new, |on_disk| {
+        on_disk
+            .head
+            .iter()
+            .map(|line| whole_file_line(line))
+            .collect()
+    })
+}
+
+/// The unnumbered line under a card's text: a binary file's size in place
+/// of its bytes, or how much of a long file the card left unread.
+fn whole_file_note(whole: &WholeFileShape) -> Option<SanitizedText> {
+    let on_disk = whole.on_disk.as_ref()?;
+    if whole.binary {
+        return Some(sanitize_line(&format!(
+            "binary · {}",
+            size_words(on_disk.size)
+        )));
+    }
+    on_disk.cut.then(|| {
+        sanitize_line(&format!(
+            "… first {} lines of {} · e opens the whole file",
+            on_disk.head.len(),
+            size_words(on_disk.size)
+        ))
+    })
+}
+
 /// One line of a whole-file card's plain-text tail: raw bytes off disk,
 /// through the same sanitiser as every other byte this widget draws.
 fn whole_file_line(line: &[u8]) -> SanitizedText {
     sanitize_line(&String::from_utf8_lossy(line))
+}
+
+/// A file size the way a person reads one: `812 B`, `64.0 KB`, `4.2 MB`.
+#[must_use]
+pub fn size_words(bytes: u64) -> String {
+    const UNITS: [&str; 4] = ["KB", "MB", "GB", "TB"];
+    if bytes < 1024 {
+        return format!("{bytes} B");
+    }
+    let bytes = u128::from(bytes);
+    let mut divisor: u128 = 1024;
+    let mut unit = 0;
+    while bytes >= divisor * 1024 && unit + 1 < UNITS.len() {
+        divisor *= 1024;
+        unit += 1;
+    }
+    // Tenths of a unit, rounded, in integers: no float casts to lint.
+    let tenths = (bytes * 10 + divisor / 2) / divisor;
+    format!("{}.{} {}", tenths / 10, tenths % 10, UNITS[unit])
 }
 
 /// The open document, laid out at `columns` — the same rows the widget will
@@ -468,5 +517,18 @@ mod tests {
             "src/auth.rs · 1/3 open",
             "the short form is what fits under 100 columns"
         );
+    }
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::size_words;
+
+    #[test]
+    fn sizes_read_the_way_a_person_reads_them() {
+        assert_eq!(size_words(812), "812 B");
+        assert_eq!(size_words(64 * 1024), "64.0 KB");
+        assert_eq!(size_words(4_404_019), "4.2 MB");
+        assert_eq!(size_words(3 * 1024 * 1024 * 1024), "3.0 GB");
     }
 }

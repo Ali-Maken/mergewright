@@ -6,7 +6,9 @@
 //! line shows. The app never calls `graft_git::conflict`'s writing half
 //! itself — that is the seam `tests/it/seam_rule.rs` locks.
 
+use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
 
 use graft_git::conflict::{ConflictFile, Take};
 use graft_git::repo::RepoHandle;
@@ -32,12 +34,37 @@ pub struct OpenedFile {
     pub how: UnmergedHow,
     /// git calls the working-tree file binary (a NUL in the first 8 KiB).
     pub binary: bool,
-    /// The working-tree file's own lines, read for a whole-file shape's
-    /// card (`file: None`) so the resolver can show what is on disk under
-    /// it — empty when the shape has no file there (`BothDeleted`, or a
-    /// side that removed it) and always empty when `file` is `Some`
-    /// (m6-conflicts/05). Raw bytes: sanitised at the view, never here.
-    pub lines: Vec<Vec<u8>>,
+    /// What a whole-file shape's card (`file: None`) shows of the file on
+    /// disk under it — `None` when the shape has no file there
+    /// (`BothDeleted`, or a side that removed it) and always `None` when
+    /// `file` is `Some` (m6-conflicts/05).
+    pub on_disk: Option<OnDisk>,
+}
+
+/// The most of a whole-file card's file that is read: its first
+/// [`CARD_LINES`] lines, and never more than this many bytes of them.
+///
+/// A card is a glimpse, not a pager — `e` opens the whole file. Reading it
+/// whole froze the UI on an ordinary 50–100 MB generated file or binary
+/// asset: every byte was held in the state, which `update` clones on every
+/// event, and sanitised on every frame (m6-05 review, Major 4).
+pub const CARD_BYTES: u64 = 64 * 1024;
+
+/// The most lines a whole-file card holds; see [`CARD_BYTES`].
+pub const CARD_LINES: usize = 500;
+
+/// A whole-file card's glimpse of the file on disk.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OnDisk {
+    /// The file's whole size, in bytes.
+    pub size: u64,
+    /// Its first lines, at most [`CARD_LINES`] of them and [`CARD_BYTES`]
+    /// in all — none for a binary file, which has no lines worth drawing.
+    /// Raw bytes: sanitised at the view, never here. `Arc` because the
+    /// resolver's state holds it and every event clones that state.
+    pub head: Arc<[Vec<u8>]>,
+    /// Lines past [`Self::head`] were left unread.
+    pub cut: bool,
 }
 
 /// Why a path could not be opened, with the one distinction the resolver
@@ -94,16 +121,16 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<OpenedFil
             ),
         }
     })?;
-    let lines = if opened.file.is_none() {
-        worktree_lines(&handle, path)
+    let on_disk = if opened.file.is_none() {
+        worktree_glimpse(&handle, path, opened.binary)
     } else {
-        Vec::new()
+        None
     };
     Ok(OpenedFile {
         file: opened.file,
         how: opened.how,
         binary: opened.binary,
-        lines,
+        on_disk,
     })
 }
 
@@ -111,27 +138,55 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<OpenedFil
 /// there is one there (`DeletedByThem` keeps it, `BothDeleted` never has
 /// one, …) — read directly rather than through `graft_git::conflict::read`,
 /// which parses markers this shape does not have. A path that is not there,
-/// or not readable, draws no lines rather than fail the whole open: the
-/// card's `how`/`keys` line is what matters, and empty is a fine answer for
-/// a file that is gone.
-fn worktree_lines(handle: &RepoHandle, path: &Path) -> Vec<Vec<u8>> {
+/// or not readable, draws nothing rather than fail the whole open: the
+/// card's `how`/`keys` line is what matters, and nothing is a fine answer
+/// for a file that is gone.
+fn worktree_glimpse(handle: &RepoHandle, path: &Path, binary: bool) -> Option<OnDisk> {
     let full = match handle.workdir() {
         Some(workdir) => workdir.join(path),
         None => path.to_path_buf(),
     };
-    let Ok(bytes) = std::fs::read(&full) else {
-        return Vec::new();
-    };
+    // Every failure here is the "not there, or not readable" of the doc
+    // comment above: the card draws no glimpse and still offers `o`/`t`.
+    let file = std::fs::File::open(&full).ok()?;
+    let size = file.metadata().ok()?.len();
+    glimpse(file, size, binary).ok()
+}
+
+/// The first lines of `file` (whose whole size is `size`), as a card holds
+/// them: at most [`CARD_LINES`] lines and [`CARD_BYTES`] bytes read, and
+/// nothing read at all for a binary file.
+///
+/// # Errors
+/// The read's own.
+pub fn glimpse(file: impl Read, size: u64, binary: bool) -> std::io::Result<OnDisk> {
+    if binary {
+        return Ok(OnDisk {
+            size,
+            head: Arc::from(Vec::new()),
+            cut: false,
+        });
+    }
+    let mut bytes = Vec::new();
+    file.take(CARD_BYTES).read_to_end(&mut bytes)?;
+    let short_read = u64::try_from(bytes.len()).map_or(true, |read| read < size);
     let mut lines: Vec<Vec<u8>> = bytes
         .split(|&byte| byte == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line).to_vec())
         .collect();
     // A trailing `\n` splits into one empty line past the last real one;
-    // drop it so `wc -l`'s count and this one agree.
-    if lines.last().is_some_and(Vec::is_empty) {
+    // drop it so `wc -l`'s count and this one agree. Cut short by the byte
+    // cap, the last line is a fragment instead, and is dropped too.
+    if short_read || lines.last().is_some_and(Vec::is_empty) {
         lines.pop();
     }
-    lines
+    let cut = short_read || lines.len() > CARD_LINES;
+    lines.truncate(CARD_LINES);
+    Ok(OnDisk {
+        size,
+        head: Arc::from(lines),
+        cut,
+    })
 }
 
 /// A repository or status read that failed: real, and never "not unmerged".
@@ -207,7 +262,67 @@ mod tests {
     use graft_git::conflict::{BaseMismatch, Diff3Error};
     use graft_ops::conflict::BaseError;
 
-    use super::base_refusal;
+    use super::{CARD_BYTES, CARD_LINES, base_refusal, glimpse};
+
+    /// A file of `lines` numbered lines, and its size.
+    fn numbered(lines: usize) -> (Vec<u8>, u64) {
+        let bytes: Vec<u8> = (0..lines)
+            .flat_map(|n| format!("line {n}\n").into_bytes())
+            .collect();
+        let size = u64::try_from(bytes.len()).expect("fits");
+        (bytes, size)
+    }
+
+    #[test]
+    fn a_short_file_is_read_whole() {
+        let (bytes, size) = numbered(3);
+        let seen = glimpse(bytes.as_slice(), size, false).expect("reads");
+        assert_eq!(
+            &*seen.head,
+            [b"line 0".to_vec(), b"line 1".to_vec(), b"line 2".to_vec()]
+        );
+        assert!(!seen.cut);
+        assert_eq!(seen.size, size);
+    }
+
+    /// Many short lines: the line cap is what stops it.
+    #[test]
+    fn many_lines_stop_at_the_line_cap() {
+        let (bytes, size) = numbered(CARD_LINES * 3);
+        let seen = glimpse(bytes.as_slice(), size, false).expect("reads");
+        assert_eq!(seen.head.len(), CARD_LINES);
+        assert!(seen.cut);
+    }
+
+    /// A few long lines: the byte cap is what stops it, and the fragment it
+    /// cuts through is not shown as though it were a line.
+    #[test]
+    fn long_lines_stop_at_the_byte_cap() {
+        let line = vec![b'x'; 10_000];
+        let mut bytes = Vec::new();
+        for _ in 0..20 {
+            bytes.extend_from_slice(&line);
+            bytes.push(b'\n');
+        }
+        let size = u64::try_from(bytes.len()).expect("fits");
+        let seen = glimpse(bytes.as_slice(), size, false).expect("reads");
+        let held: usize = seen.head.iter().map(Vec::len).sum();
+        assert!(u64::try_from(held).expect("fits") <= CARD_BYTES);
+        assert!(
+            seen.head.iter().all(|kept| kept.len() == 10_000),
+            "no fragment"
+        );
+        assert!(seen.cut);
+    }
+
+    /// A binary file is not read at all: its size is the whole card.
+    #[test]
+    fn a_binary_file_reads_nothing() {
+        let (bytes, size) = numbered(10);
+        let seen = glimpse(bytes.as_slice(), size, true).expect("reads");
+        assert!(seen.head.is_empty());
+        assert_eq!(seen.size, size);
+    }
 
     #[test]
     fn no_base_and_mismatch_are_facts_not_problems() {

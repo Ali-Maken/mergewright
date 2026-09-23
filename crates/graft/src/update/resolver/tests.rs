@@ -1,0 +1,290 @@
+//! The resolver's keys and answers over hand-built states — the races and
+//! refusals a real repository cannot be made to hit on cue (m6-05 review).
+
+use std::path::Path;
+use std::sync::Arc;
+
+use graft_core::event::{Event, KeyCode, KeyPress};
+use graft_core::job::JobId;
+use graft_ui::conflict_resolver::{Layout, ScreenRow};
+
+use super::scroll_block_into_view;
+use crate::update::{AppEvent, AppState, Command, Product, Size, Status, update};
+
+const WALK: JobId = JobId::new(4_100);
+
+/// The resolver open on a two-block document, at a size it draws in.
+fn resolver_on_screen(walk: JobId) -> AppState {
+    sized(crate::update::tests::resolver_on_screen(walk))
+}
+
+/// The resolver open on a `deleted by them` card, at a size it draws in.
+fn resolver_card_on_screen(walk: JobId) -> AppState {
+    sized(crate::update::tests::resolver_card_on_screen(walk))
+}
+
+fn sized(state: AppState) -> AppState {
+    AppState {
+        size: Size {
+            columns: 120,
+            rows: 48,
+        },
+        ..state
+    }
+}
+
+fn press(state: &AppState, code: KeyCode) -> (AppState, Vec<Command>) {
+    update(state, AppEvent::Core(Event::Key(KeyPress::plain(code))))
+}
+
+/// The status line's reason and keys, or a panic naming what it was.
+fn sticky(state: &AppState) -> (&str, Option<&str>) {
+    match &state.status {
+        Status::Sticky { reason, keys } => (reason.as_str(), keys.as_deref()),
+        other => panic!("expected a sticky line, got {other:?}"),
+    }
+}
+
+fn open_path(state: &AppState) -> &Path {
+    &state.resolver.as_ref().expect("the resolver is open").path
+}
+
+// ------------------------------------------------ Major 1: a whole-file card
+
+/// `n` on a card crosses to the next conflicted file, as it does from a
+/// document's last block — before, it returned silently, and the only way
+/// off a card was `Esc`.
+#[test]
+fn n_on_a_card_crosses_to_the_next_file() {
+    let (state, commands) = press(&resolver_card_on_screen(WALK), KeyCode::Char('n'));
+    assert_eq!(open_path(&state), Path::new("later.rs"));
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenConflict(_, path) if path == Path::new("later.rs"))),
+        "{commands:?}"
+    );
+}
+
+/// On the last conflicted file there is nowhere to cross to, and the line
+/// says so with the keys a card does answer — not `⏎`, which it does not.
+#[test]
+fn n_on_the_last_card_says_no_more() {
+    let mut state = resolver_card_on_screen(WALK);
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![graft_git::status::StatusEntry {
+            path: "gone.txt".into(),
+            original_path: None,
+            staged: None,
+            unstaged: None,
+            untracked: false,
+            unmerged: true,
+            unmerged_how: None,
+            submodule: false,
+        }],
+    }));
+    let (state, _) = press(&state, KeyCode::Char('n'));
+    assert_eq!(open_path(&state), Path::new("gone.txt"));
+    assert_eq!(
+        sticky(&state),
+        ("no more conflicts", Some("o ours  t theirs"))
+    );
+}
+
+/// `d` on a card is refused in words, before any box: `checkout --merge`
+/// has no markers to bring back for a whole-file shape, and the box would
+/// promise them (ticket scope 3).
+#[test]
+fn d_on_a_card_is_refused_in_words() {
+    let (state, commands) = press(&resolver_card_on_screen(WALK), KeyCode::Char('d'));
+    assert!(state.confirm.is_none(), "no box");
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::Operate(..))),
+        "{commands:?}"
+    );
+    assert_eq!(
+        sticky(&state).0,
+        "gone.txt: deleted by them — no markers to take from"
+    );
+}
+
+// ------------------------------------- Major 2: a base load and a take race
+
+/// `B` then the id of the `LoadBase` it queued.
+fn base_loading(state: &AppState) -> (AppState, JobId) {
+    let (state, commands) = press(state, KeyCode::Char('B'));
+    let id = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::LoadBase(id, ..) => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("`B` queued no LoadBase: {commands:?}"));
+    (state, id)
+}
+
+/// The `LoadBase` answer, carrying the document the resolver had when `B`
+/// was pressed.
+fn base_answer(state: &AppState, id: JobId) -> AppEvent {
+    let file = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.file.clone())
+        .expect("a document");
+    AppEvent::Produced(id, Product::BaseLoaded(Ok((file, 2))))
+}
+
+fn takes(commands: &[Command]) -> usize {
+    commands
+        .iter()
+        .filter(|command| matches!(command, Command::TakeSide(..)))
+        .count()
+}
+
+/// A take is held while a base load is in flight: the load carries the
+/// document as it was at `B`, and landing after a take would put the taken
+/// block back on screen while the file on disk has it taken.
+#[test]
+fn a_take_waits_for_the_base_load() {
+    let (state, id) = base_loading(&resolver_on_screen(WALK));
+    let before = state.clone();
+    let (state, commands) = press(&state, KeyCode::Char('o'));
+    assert_eq!(takes(&commands), 0, "no take while the base loads");
+    assert_eq!(sticky(&state).0, "still loading the base");
+
+    let (state, _) = update(&state, base_answer(&before, id));
+    let open = state.resolver.as_ref().expect("open");
+    assert!(open.base_shown && open.base_job.is_none());
+    let (_, commands) = press(&state, KeyCode::Char('o'));
+    assert_eq!(takes(&commands), 1, "the take goes once the base is in");
+}
+
+/// `e` hands the terminal over with a base load in flight: the re-read the
+/// hand-back starts owns the document, and the base answer — carrying the
+/// document from before the edit — is dropped rather than landing over it.
+#[test]
+fn a_hand_back_drops_the_base_in_flight() {
+    let (state, id) = base_loading(&resolver_on_screen(WALK));
+    let answer = base_answer(&state, id);
+    let (state, commands) = update(
+        &state,
+        AppEvent::Produced(JobId::new(4_200), Product::HandedOver(Ok(()))),
+    );
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenConflict(..))),
+        "the hand-back re-reads: {commands:?}"
+    );
+    assert!(
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.base_job.is_none())
+    );
+
+    let (after, _) = update(&state, answer);
+    assert_eq!(
+        after.resolver, state.resolver,
+        "the stale base answer changed nothing"
+    );
+}
+
+// ---------------------------------------- Major 3: `d` over a running write
+
+/// `d` while a write runs is refused in words, before the box: confirming
+/// would launch a second git write over the first.
+#[test]
+fn d_is_refused_while_a_write_runs() {
+    let mut state = resolver_on_screen(WALK);
+    state.operating = Some(JobId::new(4_300));
+    let (state, _) = press(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_none(), "no box");
+    assert_eq!(sticky(&state).0, "a write is already running");
+}
+
+/// A write that began while the box was up is caught at the accept too:
+/// the box is answered, nothing is launched, the first write keeps its id.
+#[test]
+fn start_over_is_refused_if_a_write_began_under_the_box() {
+    let (state, _) = press(&resolver_on_screen(WALK), KeyCode::Char('d'));
+    assert!(state.confirm.is_some(), "the box is up");
+    let mut state = state;
+    let running = JobId::new(4_301);
+    state.operating = Some(running);
+    let (state, _) = press(&state, KeyCode::Right);
+    let (state, commands) = press(&state, KeyCode::Enter);
+    assert!(state.confirm.is_none(), "the box was answered");
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::Operate(..))),
+        "{commands:?}"
+    );
+    assert_eq!(state.operating, Some(running));
+    assert!(
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.restarting.is_none())
+    );
+    assert_eq!(sticky(&state).0, "a write is already running");
+}
+
+// ------------------------------------------------------------ scrolling
+
+/// A hundred rows with a block header every ten.
+fn layout_of(rows: usize, headers: &[usize]) -> Layout {
+    Layout {
+        rows: (0..rows)
+            .map(|row| match headers.iter().position(|at| *at == row) {
+                Some(block) => ScreenRow::Header { block },
+                None => ScreenRow::Plain {
+                    line_no: row + 1,
+                    text: graft_term::sanitize_line("a line"),
+                },
+            })
+            .collect(),
+        block_row: headers.to_vec(),
+        columns: 120,
+    }
+}
+
+/// A take lands on a block the window has scrolled past: the window
+/// moves, and it moves so the header is the **first** row, since
+/// everything the block is about is below it.
+#[test]
+fn take_scrolls_the_block_into_view() {
+    let layout = layout_of(120, &[10, 50, 90]);
+
+    assert_eq!(
+        scroll_block_into_view(&layout, 2, 0, 20),
+        90,
+        "block 2's header is the first row of the window"
+    );
+    assert_eq!(
+        scroll_block_into_view(&layout, 0, 5, 20),
+        5,
+        "already on screen: the window does not move at all"
+    );
+    assert_eq!(
+        scroll_block_into_view(&layout, 0, 40, 20),
+        10,
+        "scrolling back is the same rule in the other direction"
+    );
+    assert_eq!(
+        scroll_block_into_view(&layout, 9, 7, 20),
+        7,
+        "a block that is not there moves nothing"
+    );
+}
+
+/// Never past the end: the last screenful is as far as the window goes,
+/// or the rows below the document would be blank.
+#[test]
+fn the_window_stops_at_the_last_screenful() {
+    let layout = layout_of(100, &[10, 95]);
+    assert_eq!(scroll_block_into_view(&layout, 1, 0, 20), 80);
+}

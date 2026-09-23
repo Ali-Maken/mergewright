@@ -393,15 +393,7 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         // pane too, which is why it answers before the focus test below:
         // there is no pane on screen to have the keyboard.
         //
-        // `B`/`d` act the moment they are pressed (`update::resolver::
-        // toggle_base`/`restart_box`, m6-conflicts/05), so this passes
-        // `true` for both, and the bar draws both as live hints.
-        GraphOverlay::Resolver => {
-            return Some(HintContext::Resolver {
-                base: true,
-                restart: true,
-            });
-        }
+        GraphOverlay::Resolver => return Some(resolver_context(state)),
     };
     if state.graph_has_focus() {
         return Some(overlay);
@@ -409,6 +401,29 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
     Some(HintContext::PaneOverOverlay {
         opens: crate::update::detail::enter_opens(&state.detail),
     })
+}
+
+/// The resolver's bar: the one context both the classifier above and the
+/// resolver's own footer (`view::frame::draw_resolver_footer`) draw from,
+/// so the bar the key sweep checks is the bar on screen (m6-05 review,
+/// Major 1 — the footer had its own hard-coded copy, which drew neither
+/// `B` nor `d`).
+///
+/// `B`/`d` act the moment they are pressed (`update::resolver::toggle_base`
+/// / `restart_box`, m6-conflicts/05), so a document passes `true` for both.
+/// A whole-file card has no blocks for either to act on, and draws its own
+/// shorter list.
+#[must_use]
+pub fn resolver_context(state: &AppState) -> HintContext {
+    let card = state
+        .resolver
+        .as_ref()
+        .is_some_and(|open| open.whole_file.is_some());
+    HintContext::Resolver {
+        base: !card,
+        restart: !card,
+        whole_file: card,
+    }
 }
 
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):

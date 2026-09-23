@@ -118,8 +118,14 @@ pub enum RegionView {
         how: SanitizedText,
         /// The keys that apply here (`o keeps the file  t deletes it`).
         keys: SanitizedText,
-        /// The file as it is (empty for a delete).
+        /// The file as it is (empty for a delete) — as far as the app read
+        /// it, which for a large file is its head only.
         lines: Vec<SanitizedText>,
+        /// One line under them, muted and **unnumbered** (m6-05 review,
+        /// Major 4): how much of a long file was left unread, or a binary
+        /// file's size in place of its bytes. Not a line of the file, so
+        /// it never carries a line number that would claim it is one.
+        note: Option<SanitizedText>,
     },
 }
 
@@ -250,6 +256,11 @@ pub enum ScreenRow {
         /// The keys that apply.
         keys: SanitizedText,
     },
+    /// A whole-file card's note under its lines: not a line of the file.
+    Note {
+        /// The note.
+        text: SanitizedText,
+    },
 }
 
 /// `doc` laid out at `columns`: every row the widget can draw, and where
@@ -281,7 +292,12 @@ pub fn layout(doc: &DocView, columns: u16) -> Layout {
                     });
                 }
             }
-            RegionView::WholeFile { how, keys, lines } => {
+            RegionView::WholeFile {
+                how,
+                keys,
+                lines,
+                note,
+            } => {
                 rows.push(ScreenRow::WholeFile {
                     how: how.clone(),
                     keys: keys.clone(),
@@ -291,6 +307,9 @@ pub fn layout(doc: &DocView, columns: u16) -> Layout {
                         line_no: offset + 1,
                         text: text.clone(),
                     });
+                }
+                if let Some(text) = note {
+                    rows.push(ScreenRow::Note { text: text.clone() });
                 }
             }
             RegionView::Block(block) => {
@@ -549,6 +568,20 @@ impl ResolverScreen<'_> {
                     content,
                     &fit(&line, usize::from(content.width)),
                     foreground(self.theme, Token::Text),
+                );
+            }
+            ScreenRow::Note { text } => {
+                // In the text column, under the lines above it, with the
+                // number column left blank: it is about the file, not in it.
+                let content = Self::content_area(area);
+                let line = format!("{:>5} {text}", "");
+                set_text(
+                    buf,
+                    content.x,
+                    y,
+                    content,
+                    &fit(&line, usize::from(content.width)),
+                    foreground(self.theme, Token::TextMuted),
                 );
             }
             ScreenRow::WholeFile { how, keys } => {

@@ -381,8 +381,8 @@ fn deleted_by_them_o_keeps() {
         assert_eq!(whole.how, UnmergedHow::DeletedByThem);
         assert!(!whole.binary);
         assert_eq!(
-            whole.lines,
-            vec![b"changed by us, deleted by them".to_vec()],
+            whole.on_disk.as_ref().map(|on_disk| on_disk.head.to_vec()),
+            Some(vec![b"changed by us, deleted by them".to_vec()]),
             "the card shows what is on disk"
         );
     }
@@ -499,6 +499,73 @@ fn b_refused_on_whole_file() {
     assert_eq!(reason, "no both for a deleted by them file");
     assert_eq!(keys.as_deref(), Some("o ours  t theirs"));
     assert!(open(&state).whole_file.is_some(), "the card is still up");
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// A large file under a whole-file card is not read whole (m6-05 review,
+/// Major 4): the card holds its first lines only, and says how much more
+/// there is.
+#[test]
+fn a_large_card_reads_only_its_head() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let big: String = (0..100_000).fold(String::new(), |mut big, n| {
+        big.push_str("line ");
+        big.push_str(&n.to_string());
+        big.push('\n');
+        big
+    });
+    std::fs::write(scratch.path().join("theirs-deleted.txt"), &big).expect("writable");
+    let state = resolver_on_whole_file(&app, state, "theirs-deleted.txt");
+    let whole = open(&state).whole_file.as_ref().expect("a card");
+    let on_disk = whole.on_disk.as_ref().expect("the file is there");
+    assert_eq!(on_disk.head.len(), 500, "`jobs::conflict::CARD_LINES`");
+    assert!(on_disk.cut);
+    assert_eq!(on_disk.size, u64::try_from(big.len()).expect("fits"));
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(
+        rows.iter().any(|row| row.contains("line 0")),
+        "the head is drawn:\n{}",
+        rows.join("\n")
+    );
+    // The window shows the top; the last line says how much was left.
+    let state = app.key(&state, KeyCode::Char('G'));
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("… first 500 lines of 1.0 MB · e opens the whole file")),
+        "the cut is said:\n{}",
+        rows.join("\n")
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// A binary card reads none of the file's bytes: it shows the size alone,
+/// never the bytes as lossy text "lines" (m6-05 review, Major 4).
+#[test]
+fn a_binary_card_shows_its_size_not_its_bytes() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let size = std::fs::metadata(scratch.path().join("pic.bin"))
+        .expect("the binary is on disk")
+        .len();
+    let state = resolver_on_whole_file(&app, state, "pic.bin");
+    let whole = open(&state).whole_file.as_ref().expect("a card");
+    assert!(whole.binary);
+    let on_disk = whole.on_disk.as_ref().expect("the file is there");
+    assert!(on_disk.head.is_empty(), "no bytes held");
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(size < 1024, "the fixture's binary is small: {size}");
+    let expected = format!("binary · {size} B");
+    assert!(
+        rows.iter().any(|row| row.contains(&expected)),
+        "{expected:?} is not on the frame:\n{}",
+        rows.join("\n")
+    );
 
     drop(state);
     app.close();

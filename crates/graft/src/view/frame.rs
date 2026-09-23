@@ -272,10 +272,7 @@ fn draw_resolver_footer(
             Some(notice) => (notice.as_str().to_owned(), Token::TextMuted),
             None => (
                 graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                    &HintContext::Resolver {
-                        base: false,
-                        restart: false,
-                    },
+                    &super::rows::resolver_context(state),
                     graft_ui::graph_screen::Divider::Hidden,
                     // Not `body.width`: the floor `hints_for` drops the
                     // resolver's keys at is a *width* one, and the rows can

@@ -123,9 +123,10 @@ pub struct WholeFileShape {
     pub how: UnmergedHow,
     /// git calls the working-tree file binary.
     pub binary: bool,
-    /// The file's own lines, as they stand on disk — empty when there is
-    /// nothing there to show (`BothDeleted`, or a side that removed it).
-    pub lines: Vec<Vec<u8>>,
+    /// What is on disk under the card — its first lines only, capped
+    /// (`jobs::conflict::CARD_LINES`) — or `None` when there is nothing
+    /// there to show (`BothDeleted`, or a side that removed it).
+    pub on_disk: Option<crate::jobs::conflict::OnDisk>,
 }
 
 impl ResolverState {
@@ -338,7 +339,7 @@ fn block_of(row: &ScreenRow) -> Option<usize> {
         | ScreenRow::Pair { block, .. }
         | ScreenRow::Side { block, .. }
         | ScreenRow::End { block } => Some(*block),
-        ScreenRow::Plain { .. } | ScreenRow::WholeFile { .. } => None,
+        ScreenRow::Plain { .. } | ScreenRow::WholeFile { .. } | ScreenRow::Note { .. } => None,
     }
 }
 
@@ -349,12 +350,13 @@ fn take_side(
     take: Take,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    let (running, cursor, file, path) = {
+    let (running, loading_base, cursor, file, path) = {
         let Some(open) = state.resolver.as_ref() else {
             return;
         };
         (
             open.job.is_some(),
+            open.base_job.is_some(),
             open.cursor_block,
             open.file.clone(),
             open.path.clone(),
@@ -362,6 +364,16 @@ fn take_side(
     };
     if running {
         state.status = Status::sticky("still writing the last take");
+        return;
+    }
+    // The base load carries the document as it stood at `B` and replaces
+    // the open one when it lands. A take in between would be written to
+    // disk and then overwritten on screen by the pre-take copy — the
+    // screen showing the block open while the file has it taken, and the
+    // next take refused as an outside edit (m6-05 review, Major 2). So the
+    // two are serial: the take waits for the base.
+    if loading_base {
+        state.status = Status::sticky("still loading the base");
         return;
     }
     let (Some(block), Some(file)) = (cursor, file) else {
@@ -524,21 +536,29 @@ fn walk_blocks(
     forward: bool,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    let (file, cursor, path, from) = {
+    let (file, card, cursor, path, from) = {
         let Some(open) = state.resolver.as_ref() else {
             return;
         };
         (
             open.file.clone(),
+            open.whole_file.is_some(),
             open.cursor_block,
             open.path.clone(),
             open.opened_from,
         )
     };
-    let Some(file) = file else {
+    // A whole-file card has no blocks to walk, so it is at its own end
+    // straight away and `n` crosses to the next file (m6-05 review, Major
+    // 1). With neither a document nor a card the opening read is still in
+    // flight, and there is nothing yet to walk from.
+    if file.is_none() && !card {
         return;
-    };
-    if let Some(block) = next_open_block(&file, cursor, forward) {
+    }
+    if let Some(block) = file
+        .as_deref()
+        .and_then(|file| next_open_block(file, cursor, forward))
+    {
         let top = scrolled_to(state, block);
         let Some(open) = state.resolver.as_mut() else {
             return;
@@ -557,7 +577,12 @@ fn walk_blocks(
     }
     state.status = Status::Sticky {
         reason: "no more conflicts".to_owned(),
-        keys: Some(format!("⏎ marks {} resolved", path.display())),
+        // A card is resolved by its own `o`/`t`; it has no `⏎` to offer.
+        keys: Some(if card {
+            "o ours  t theirs".to_owned()
+        } else {
+            format!("⏎ marks {} resolved", path.display())
+        }),
     };
 }
 
@@ -635,12 +660,32 @@ fn edit_here(state: &mut AppState, commands: &mut Vec<Command>) {
 /// concurrent-write worry [`toggle_base`] guards against, and confirming a
 /// restart mid-write would hand the operation a file the take job is still
 /// writing to.
+///
+/// Refused in words, before the box, on a whole-file card — `ops` restarts
+/// only a shape with markers to bring back, and the box would promise them
+/// (m6-05 review, Major 1) — and while any write is running: confirming
+/// would launch a second git write over the first (Major 3).
 fn restart_box(state: &mut AppState) {
     let Some(open) = state.resolver.as_ref() else {
         return;
     };
     if open.job.is_some() {
         state.status = Status::sticky("still writing the last take");
+        return;
+    }
+    if let Some(whole) = open.whole_file.as_ref() {
+        let refusal = graft_ops::operation::Refusal::NotMarkerShape {
+            path: open.path.clone(),
+            how: whole.how,
+        };
+        state.status = Status::Sticky {
+            reason: refusal.explain(),
+            keys: Some("o ours  t theirs".to_owned()),
+        };
+        return;
+    }
+    if state.operating.is_some() {
+        state.status = Status::sticky("a write is already running");
         return;
     }
     let path = open.path.clone();
@@ -771,12 +816,13 @@ fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::conflict::Opened
             return;
         };
         open.job = None;
+        open.base_job = None;
         open.how = Some(opened.how);
         open.file = None;
         open.whole_file = Some(WholeFileShape {
             how: opened.how,
             binary: opened.binary,
-            lines: opened.lines.clone(),
+            on_disk: opened.on_disk.clone(),
         });
         open.cursor_block = None;
         open.top = 0;
@@ -790,6 +836,8 @@ fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::conflict::Opened
         return;
     };
     open.job = None;
+    // A fresh read replaces the document any base load was loading into.
+    open.base_job = None;
     open.how = Some(opened.how);
     open.file = Some(Arc::new(file));
     open.whole_file = None;
@@ -923,6 +971,11 @@ pub fn handed_back(
     let id = next_id();
     if let Some(open) = state.resolver.as_mut() {
         open.job = Some(id);
+        // A base load still in flight carries the document from before the
+        // hand-over; the re-read owns the document now, so its answer is
+        // withdrawn rather than left to land over the fresh one (m6-05
+        // review, Major 2).
+        open.base_job = None;
         open.notice = None;
     }
     commands.push(Command::OpenConflict(id, path));
@@ -1169,61 +1222,4 @@ fn scrolled_to(state: &AppState, block: usize) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::scroll_block_into_view;
-    use graft_ui::conflict_resolver::{Layout, ScreenRow};
-
-    /// A hundred rows with a block header every ten.
-    fn layout_of(rows: usize, headers: &[usize]) -> Layout {
-        Layout {
-            rows: (0..rows)
-                .map(|row| match headers.iter().position(|at| *at == row) {
-                    Some(block) => ScreenRow::Header { block },
-                    None => ScreenRow::Plain {
-                        line_no: row + 1,
-                        text: graft_term::sanitize_line("a line"),
-                    },
-                })
-                .collect(),
-            block_row: headers.to_vec(),
-            columns: 120,
-        }
-    }
-
-    /// A take lands on a block the window has scrolled past: the window
-    /// moves, and it moves so the header is the **first** row, since
-    /// everything the block is about is below it.
-    #[test]
-    fn take_scrolls_the_block_into_view() {
-        let layout = layout_of(120, &[10, 50, 90]);
-
-        assert_eq!(
-            scroll_block_into_view(&layout, 2, 0, 20),
-            90,
-            "block 2's header is the first row of the window"
-        );
-        assert_eq!(
-            scroll_block_into_view(&layout, 0, 5, 20),
-            5,
-            "already on screen: the window does not move at all"
-        );
-        assert_eq!(
-            scroll_block_into_view(&layout, 0, 40, 20),
-            10,
-            "scrolling back is the same rule in the other direction"
-        );
-        assert_eq!(
-            scroll_block_into_view(&layout, 9, 7, 20),
-            7,
-            "a block that is not there moves nothing"
-        );
-    }
-
-    /// Never past the end: the last screenful is as far as the window goes,
-    /// or the rows below the document would be blank.
-    #[test]
-    fn the_window_stops_at_the_last_screenful() {
-        let layout = layout_of(100, &[10, 95]);
-        assert_eq!(scroll_block_into_view(&layout, 1, 0, 20), 80);
-    }
-}
+mod tests;
