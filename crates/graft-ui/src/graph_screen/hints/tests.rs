@@ -246,37 +246,38 @@ fn status_line_keeps_its_keys() {
 /// (m5-03 review, Critical 2 — at 80 columns two of a branch row's three
 /// keys did nothing at all).
 ///
-/// The canary used to be `m merge`, then `b branch`, then `M mergetool`; all
-/// three have since been bound (M5 tickets 25 and 10, m6-conflicts/04) and
-/// the table was updated with them, which is the rule working. `B base`
-/// carries it now — group 05's, and with `d start over` the last two
-/// `Planned` rows in the table.
+/// The canary used to be `m merge`, then `b branch`, then `M mergetool`,
+/// then `B base`; all have since been bound (the last two by
+/// m6-conflicts/05), and the table holds no `Planned` row today. The sweep
+/// below still guards the rule for the next key a design names ahead of its
+/// group.
 #[test]
 fn no_planned_hint_is_ever_drawn() {
-    let planned: Vec<Hint> = every_hint()
-        .into_iter()
-        .filter(|hint| hint.state == HintState::Planned)
-        .collect();
+    // Positive control: the check the sweep uses rejects a list holding a
+    // `Planned` hint, so this test can still fail even though no table row
+    // is `Planned` today. (The drop itself is `drawable`'s filter.)
+    let canary = [hint("x", "live"), planned("y", "unbuilt")];
     assert!(
-        planned
-            .iter()
-            .any(|hint| (hint.key, hint.verb) == ("B", "base")),
-        "the design note's planned entries must stay in the table: {planned:?}"
+        only_live(&canary).is_err(),
+        "the check must reject a Planned hint"
     );
+
     for context in all_contexts() {
         for divider in [Divider::Shown, Divider::Hidden] {
             for columns in [40, 80, 100, 120, 160, 200] {
-                for drawn in hints_for(&context, divider, columns) {
-                    assert_eq!(
-                        drawn.state,
-                        HintState::Live,
-                        "{context:?} at {columns} draws the unbuilt `{} {}`",
-                        drawn.key,
-                        drawn.verb
-                    );
+                if let Err(unbuilt) = only_live(&hints_for(&context, divider, columns)) {
+                    panic!("{context:?} at {columns} draws the unbuilt `{unbuilt}`");
                 }
             }
         }
+    }
+}
+
+/// `Err` naming the first drawn hint that is not [`HintState::Live`].
+fn only_live(drawn: &[Hint]) -> Result<(), String> {
+    match drawn.iter().find(|hint| hint.state != HintState::Live) {
+        Some(hint) => Err(format!("{} {}", hint.key, hint.verb)),
+        None => Ok(()),
     }
 }
 

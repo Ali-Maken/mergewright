@@ -17,12 +17,16 @@ use graft_ui::conflict_resolver::{
 };
 
 use crate::update::AppState;
+use crate::update::resolver::{ResolverState, WholeFileShape, whole_file_keys};
 
 /// Everything the resolver draws for the file it has open, or `None` when
 /// it is closed or still waiting for its opening read.
 #[must_use]
 pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
     let open = state.resolver.as_ref()?;
+    if let Some(whole) = open.whole_file.as_ref() {
+        return Some(whole_file_view(state, open, whole, columns));
+    }
     let file = open.file.as_ref()?;
     let paths = crate::update::banner::unmerged_paths(state);
     let index = paths
@@ -48,6 +52,53 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
             .as_ref()
             .map(|(text, error)| (sanitize_line(text), *error)),
     })
+}
+
+/// A whole-file shape's own card (m6-conflicts/05): one region, no blocks,
+/// no cursor to draw a gutter for.
+fn whole_file_view(
+    state: &AppState,
+    open: &ResolverState,
+    whole: &WholeFileShape,
+    columns: u16,
+) -> DocView {
+    let paths = crate::update::banner::unmerged_paths(state);
+    let index = paths
+        .iter()
+        .position(|path| path == &open.path)
+        .map_or(1, |at| at + 1);
+    DocView {
+        title: sanitize_line(&resolver_title(
+            &open.path,
+            index,
+            paths.len().max(1),
+            0,
+            0,
+            columns >= SIDE_BY_SIDE_MIN,
+        )),
+        explainer: resolver_explainer(state).as_deref().map(sanitize_line),
+        regions: vec![RegionView::WholeFile {
+            how: sanitize_line(whole.how.words()),
+            keys: sanitize_line(whole_file_keys(whole.how, whole.binary)),
+            lines: whole
+                .lines
+                .iter()
+                .map(|line| whole_file_line(line))
+                .collect(),
+        }],
+        cursor_block: None,
+        base_shown: false,
+        notice: open
+            .notice
+            .as_ref()
+            .map(|(text, error)| (sanitize_line(text), *error)),
+    }
+}
+
+/// One line of a whole-file card's plain-text tail: raw bytes off disk,
+/// through the same sanitiser as every other byte this widget draws.
+fn whole_file_line(line: &[u8]) -> SanitizedText {
+    sanitize_line(&String::from_utf8_lossy(line))
 }
 
 /// The open document, laid out at `columns` — the same rows the widget will
@@ -84,10 +135,20 @@ pub fn resolver_title(
 /// Wider than the ticket's `(&InProgressDetail)`: naming the branch a
 /// rebase is landing on means looking it up in the refs, which an
 /// `InProgressDetail` does not carry (it has the `onto` commit's id, not a
-/// name). `None` outside an operation, where there are no sides to explain.
+/// name). No operation is not always "nothing to explain": a conflicted
+/// `git stash pop` leaves an unmerged index with no rebase/merge state at
+/// all (`KNOWN_GAPS.md` row 229, no `InProgressDetail`), and the resolver
+/// can still be open on it — the only way that happens with `in_progress`
+/// `None`, so a resolver open with no operation *is* one (m6-conflicts/05,
+/// scope 4). `None` only when the resolver itself is closed.
 #[must_use]
 pub fn resolver_explainer(state: &AppState) -> Option<String> {
-    let detail = state.in_progress.as_ref()?;
+    let Some(detail) = state.in_progress.as_ref() else {
+        return state
+            .resolver
+            .is_some()
+            .then(|| "ours = your working tree · theirs = the stash".to_owned());
+    };
     Some(match detail.kind {
         InProgress::Rebase => format!(
             "ours = {}, what you are rebasing onto · theirs = the commit being replayed",
@@ -297,11 +358,15 @@ mod tests {
                 path: path.into(),
                 opened_from: OpenedFrom::Pane,
                 file: Some(Arc::new(file)),
+                whole_file: None,
+                how: None,
                 cursor_block: Some(0),
                 top: 0,
                 base_shown: false,
                 job: None,
+                base_job: None,
                 staging: None,
+                restarting: None,
                 notice: None,
             }),
             ..AppState::default()
@@ -372,11 +437,20 @@ mod tests {
             )
         );
 
+        // No operation, resolver still open: the only way that happens is a
+        // conflicted `git stash pop` (m6-conflicts/05, scope 4), so this is
+        // the stash explainer, not "no sides to explain".
         state.in_progress = None;
+        assert_eq!(
+            resolver_explainer(&state).as_deref(),
+            Some("ours = your working tree · theirs = the stash")
+        );
+
+        state.resolver = None;
         assert_eq!(
             resolver_explainer(&state),
             None,
-            "nothing in progress, no sides to explain"
+            "the resolver is closed, nothing to explain"
         );
     }
 

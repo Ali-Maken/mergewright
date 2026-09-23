@@ -186,6 +186,13 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
 
 /// A hint the keymap names for this context that no group has built yet.
 /// Never drawn (see the module comment).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no key is planned-but-unbound today (m6-conflicts/05 bound the last two); kept for the next one a design names ahead of its group, and used by the tests' positive control"
+    )
+)]
 const fn planned(key: &'static str, verb: &'static str) -> Hint {
     Hint {
         key,
@@ -300,13 +307,10 @@ pub enum HintContext {
     ///
     /// **Live since m6-conflicts/04**, which built `update::resolver`: the
     /// resolver is an `AppState::resolver` and a `GraphOverlay::Resolver`,
-    /// and `resolver_key` answers every key [`resolver_list`] draws. `B`
-    /// and `d` are the exceptions and stay `Planned` — m6-conflicts/05
-    /// binds them.
+    /// and `resolver_key` answers every key [`resolver_list`] draws, `B`
+    /// and `d` included since m6-conflicts/05.
     Resolver {
-        /// `B` show/hide base (Proposed change 2b) — m6-conflicts/05's.
-        /// The app passes `false` until then; the hint stays
-        /// [`HintState::Planned`] either way today.
+        /// `B` show/hide base (Proposed change 2b), live since m6-conflicts/05.
         base: bool,
         /// `d` start this file over (Proposed change 2c) — same.
         restart: bool,
@@ -898,14 +902,12 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
 /// over` before `esc close` only while `restart` (Proposed change 2c).
 ///
 /// Live since m6-conflicts/04, which built `update::resolver` — every one
-/// of these is answered by `resolver_key`. The two in brackets are **not**:
-/// `B base` and `d start over` are m6-conflicts/05's, and stay [`planned`]
-/// until it binds them. The app passes `base: false, restart: false` for
-/// now, so neither is even in the list it asks for.
+/// of these is answered by `resolver_key`, the two in brackets included
+/// since m6-conflicts/05 bound them (`toggle_base`, `restart_box`).
 fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
     let mut list = vec![hint("o", "ours"), hint("t", "theirs"), hint("b", "both")];
     if base {
-        list.push(planned("B", "base"));
+        list.push(hint("B", "base"));
     }
     list.extend([
         hint("e", "edit"),
@@ -915,7 +917,7 @@ fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
         hint("M", "mergetool"),
     ]);
     if restart {
-        list.push(planned("d", "start over"));
+        list.push(hint("d", "start over"));
     }
     list.push(hint("esc", "close"));
     list
