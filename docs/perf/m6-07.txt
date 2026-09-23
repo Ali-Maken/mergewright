@@ -1,0 +1,24 @@
+# M6 acceptance perf — 2026-09-23T05:50:16Z
+# HEAD 047e25f (plus the uncommitted work of m6-conflicts/07)
+# machine: Darwin arm64, 10 cpus
+
+## M6 walk rows, fast tier (warm build; the ticket's bar is < 60 s)
+  Summary [   5.413s] 19 tests run: 15 passed, 4 failed, 278 skipped
+  FAIL [   0.403s] ( 9/19) graft::it m5_walk::every_scenario::resolver_is_modal_and_esc_returns
+  FAIL [   0.703s] (12/19) graft::it m5_walk::every_scenario::start_over_brings_the_markers_back
+  FAIL [   1.789s] (19/19) graft::it m5_walk::every_scenario::undo_a_resolution_in_a_stash_pop_conflict
+  FAIL [   2.353s] (10/19) graft::it m5_walk::every_scenario::merge_resolved_with_the_keys
+  wall 6 s, exit 100 (red rows are the ticket's findings F1-F5)
+
+## release + heavy tier (ADR-0021; frame budgets fail only under --release)
+  cargo test --release --features heavy-tests --workspace --no-fail-fast
+  2681 passed, 4 failed, 1 ignored, exit 101, wall 180 s
+  ---- m5_walk::every_scenario::merge_resolved_with_the_keys stdout ----
+  thread 'm5_walk::every_scenario::merge_resolved_with_the_keys' (114923699) panicked at crates/graft/tests/it/m5_walk/every_scenario.rs:15:9:
+  ---- m5_walk::every_scenario::resolver_is_modal_and_esc_returns stdout ----
+  thread 'm5_walk::every_scenario::resolver_is_modal_and_esc_returns' (114944296) panicked at crates/graft/tests/it/m5_walk/every_scenario.rs:15:9:
+  ---- m5_walk::every_scenario::start_over_brings_the_markers_back stdout ----
+  thread 'm5_walk::every_scenario::start_over_brings_the_markers_back' (114947154) panicked at crates/graft/tests/it/m5_walk/every_scenario.rs:15:9:
+  ---- m5_walk::every_scenario::undo_a_resolution_in_a_stash_pop_conflict stdout ----
+  thread 'm5_walk::every_scenario::undo_a_resolution_in_a_stash_pop_conflict' (114959995) panicked at crates/graft/tests/it/m5_walk/every_scenario.rs:15:9:
+  test result: FAILED. 315 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 106.89s

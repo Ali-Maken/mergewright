@@ -210,3 +210,184 @@ fn subjects(state: &AppState) -> Vec<String> {
         })
         .unwrap_or_default()
 }
+
+// ───────────────────────────── the resolver (m6-conflicts/07) ─────────────────────────────
+
+impl Walk<'_> {
+    /// [`super::steps::Step::Resolve`]: the resolver open and idle on
+    /// `path`, reached the way a person reaches it — off the banner, into
+    /// the changes pane, `j`/`k` to the path's row, `⏎`.
+    pub(super) fn resolve(&mut self, state: AppState, path: &str) -> Result<AppState, String> {
+        let mut state = state;
+        if state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.path.as_os_str() != path)
+        {
+            state = self.app.key(&state, KeyCode::Escape);
+        }
+        if state
+            .resolver
+            .as_ref()
+            .is_none_or(|open| open.path.as_os_str() != path)
+        {
+            let mut guard = 0;
+            while state.banner_focus {
+                check(guard < 6, || "Tab never let the banner go".to_owned())?;
+                state = self.app.key(&state, KeyCode::Tab);
+                guard += 1;
+            }
+            if !state.on_changes_pane() {
+                state = self.app.key(&state, KeyCode::Char('g'));
+                if !state.on_working_tree {
+                    state = self.app.key(&state, KeyCode::Char('k'));
+                }
+                check(state.on_working_tree, || {
+                    "`k` from the top row did not select the uncommitted-changes row".to_owned()
+                })?;
+                state = self.app.key(&state, KeyCode::Enter);
+            }
+            state = self.pump(state, "the changes pane's file list", |state| {
+                matches!(state.detail.files, Loading::Ready(_))
+                    && state.on_changes_pane()
+                    && state.operating.is_none()
+            })?;
+            state = crate::app_harness::cursor_to(self.app, state, path);
+            state = self.app.key(&state, KeyCode::Enter);
+        }
+        let state = self.pump(state, "the resolver's read", |state| {
+            state.operating.is_none()
+                && state.resolver.as_ref().is_some_and(|open| {
+                    open.job.is_none()
+                        && open.base_job.is_none()
+                        && (open.file.is_some() || open.whole_file.is_some())
+                })
+        })?;
+        let on = state
+            .resolver
+            .as_ref()
+            .map(|open| open.path.display().to_string());
+        check(on.as_deref() == Some(path), || {
+            format!(
+                "the resolver opened on {on:?}, not {path}; status {:?}",
+                state.status
+            )
+        })?;
+        Ok(state)
+    }
+
+    /// [`super::steps::Step::FocusBanner`]: `Tab` round the focus cycle
+    /// (graph → detail → banner, `banner::take_focus`) until the banner has
+    /// the keyboard — at most four presses, the cycle's length plus one.
+    pub(super) fn focus_banner(&mut self, state: AppState) -> Result<AppState, String> {
+        let mut state = state;
+        for _ in 0..4 {
+            if state.banner_focus {
+                return Ok(state);
+            }
+            state = self.app.key(&state, KeyCode::Tab);
+        }
+        check(state.banner_focus, || {
+            format!("four ⇥ never reached the banner; status {:?}", state.status)
+        })?;
+        Ok(state)
+    }
+
+    /// [`super::steps::Step::HandOver`]: press `key`, carry out the
+    /// terminal hand-over its commands ask for with the loop's own command
+    /// builders, and feed the answer back — every other command goes to the
+    /// pool as `App::press` would send it.
+    pub(super) fn hand_over(
+        &mut self,
+        state: &AppState,
+        what: &str,
+        key: graft_core::event::KeyPress,
+    ) -> Result<AppState, String> {
+        use graft::event_loop::outside::{editor_command, mergetool_command};
+        use graft::jobs::Dispatch as _;
+        use graft::update::{AppEvent, Command, Product, update};
+
+        let (next, commands) = crate::app_harness::press_for_commands(state, key);
+        let mut state = next;
+        let repo = self.fixture.repo().to_path_buf();
+        let mut handed = 0;
+        for command in commands {
+            let event = match command {
+                Command::OpenExternalEditor { path, line } => {
+                    let editor = fixture_editor(&repo, what)?;
+                    let status = editor_command(&editor, &path, line, Some(&repo)).status();
+                    // The words `Handover::open` uses (event_loop/outside.rs).
+                    let result = match status {
+                        Ok(status) if status.success() => Ok(()),
+                        Ok(status) => Err(match status.code() {
+                            Some(code) => format!("{editor} exited {code}, message unchanged"),
+                            None => format!("{editor} was killed, message unchanged"),
+                        }),
+                        Err(why) => Err(format!("could not run {editor}: {why}")),
+                    };
+                    AppEvent::Produced(graft_core::job::JobId::new(0), Product::HandedOver(result))
+                }
+                Command::OpenMergetool { path } => {
+                    let status = mergetool_command(&path, &repo).status();
+                    // The words `Handover::mergetool` uses (event_loop/outside.rs).
+                    let result = match status {
+                        Ok(status) if status.success() => Ok(()),
+                        Ok(status) => Err(match status.code() {
+                            Some(code) => {
+                                format!("mergetool exited {code} for {}", path.display())
+                            }
+                            None => format!("mergetool was killed for {}", path.display()),
+                        }),
+                        Err(why) => Err(format!("could not run git mergetool: {why}")),
+                    };
+                    AppEvent::Produced(
+                        graft_core::job::JobId::new(0),
+                        Product::Mergetool { path, result },
+                    )
+                }
+                other => {
+                    self.app.jobs.dispatch(other);
+                    continue;
+                }
+            };
+            handed += 1;
+            self.seen.events.push(format!("{event:?}"));
+            let (after, more) = update(&state, event);
+            state = after;
+            for command in more {
+                self.app.jobs.dispatch(command);
+            }
+        }
+        check(handed == 1, || {
+            format!(
+                "{what}: the key handed the terminal over {handed} times; status {:?}",
+                state.status
+            )
+        })?;
+        Ok(state)
+    }
+}
+
+/// The editor the fixture set, as the app's hand-over would find it:
+/// `Handover::git_editor` asks git in the git directory
+/// (`graft_git::editor::git_editor`, `git var GIT_EDITOR`). The same
+/// question here, with the environment's editor variables taken out: git
+/// answers them before `core.editor`, so a developer's `GIT_EDITOR=true`
+/// would otherwise decide what the scenario's fixture set.
+fn fixture_editor(repo: &std::path::Path, what: &str) -> Result<String, String> {
+    let asked = std::process::Command::new("git")
+        .args(["var", "GIT_EDITOR"])
+        .current_dir(repo.join(".git"))
+        .env_remove("GIT_EDITOR")
+        .env_remove("VISUAL")
+        .env_remove("EDITOR")
+        .output()
+        .map_err(|why| format!("{what}: git var GIT_EDITOR: {why}"))?;
+    check(asked.status.success(), || {
+        format!(
+            "{what}: git names no editor: {}",
+            String::from_utf8_lossy(&asked.stderr)
+        )
+    })?;
+    Ok(String::from_utf8_lossy(&asked.stdout).trim().to_owned())
+}

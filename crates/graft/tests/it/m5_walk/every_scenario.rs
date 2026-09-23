@@ -80,14 +80,35 @@ walk! {
     ctrl_r_twice_leaves_one_history_job => "ctrl-r-twice-leaves-one-history-job",
     password_field_is_secret => "password-field-is-secret",
     hints_at_80_show_three_and_more => "hints-at-80-show-three-and-more",
+    // M6, m6-conflicts/07.
+    merge_resolved_with_the_keys => "merge-resolved-with-the-keys",
+    every_whole_file_shape => "every-whole-file-shape",
+    whole_file_card_glimpses_a_large_file => "whole-file-card-glimpses-a-large-file",
+    binary_card_shows_its_size => "binary-card-shows-its-size",
+    crlf_and_no_final_newline_survive => "crlf-and-no-final-newline-survive",
+    zdiff3_and_base_on_demand => "zdiff3-and-base-on-demand",
+    n_past_the_last_block_says_no_more => "n-past-the-last-block-says-no-more",
+    start_over_brings_the_markers_back => "start-over-brings-the-markers-back",
+    editor_edits_are_never_clobbered => "editor-edits-are-never-clobbered",
+    mergetool_hand_over_and_back => "mergetool-hand-over-and-back",
+    rebase_stops_twice_resolved_twice => "rebase-stops-twice-resolved-twice",
+    stash_pop_conflict_resolves_without_a_banner => "stash-pop-conflict-resolves-without-a-banner",
+    undo_a_resolution_in_a_stash_pop_conflict => "undo-a-resolution-in-a-stash-pop-conflict",
+    kill_9_mid_rebase_then_relaunch => "kill-9-mid-rebase-then-relaunch",
+    kill_9_mid_rebase_then_abort => "kill-9-mid-rebase-then-abort",
+    u_right_after_continue_is_accepted => "u-right-after-continue-is-accepted",
+    repush_lease_is_the_entrys_tip => "repush-lease-is-the-entrys-tip",
+    resolver_is_modal_and_esc_returns => "resolver-is-modal-and-esc-returns",
+    tiny_frame_says_so => "tiny-frame-says-so",
 }
 
-/// Every capture names a distinct `m5-<nn>-…` stem, presses keys, says
-/// what must be on screen; the coverage table lists each stem.
+/// Every capture names a distinct `m5-<nn>-…` or `m6-<nn>-…` stem, presses
+/// keys, says what must be on screen; its milestone's coverage table lists
+/// each stem.
 #[test]
 fn captures_are_named_keyed_and_listed_in_the_matrix() {
     use super::stems_line;
-    use crate::coverage::{M5_STEMS, history_matrix};
+    use crate::coverage::{M5_STEMS, M6_STEMS, conflicts_matrix, history_matrix};
     let all = scenarios();
     let captures: Vec<_> = all
         .iter()
@@ -97,11 +118,16 @@ fn captures_are_named_keyed_and_listed_in_the_matrix() {
     stems.sort_unstable();
     stems.dedup();
     assert_eq!(stems.len(), captures.len(), "stems repeat");
-    assert_eq!(stems, M5_STEMS, "the coverage table's list of stems");
+    let listed: Vec<&str> = M5_STEMS.iter().chain(M6_STEMS.iter()).copied().collect();
+    assert_eq!(stems, listed, "the coverage tables' lists of stems");
     let workspace = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let matrix = history_matrix(&workspace);
+    let matrix = history_matrix(&workspace) + &conflicts_matrix(&workspace);
     for (scenario, capture) in &captures {
-        assert!(capture.stem.starts_with("m5-"), "{}", capture.stem);
+        assert!(
+            capture.stem.starts_with("m5-") || capture.stem.starts_with("m6-"),
+            "{}",
+            capture.stem
+        );
         assert!(!capture.keys.is_empty(), "{} presses nothing", capture.stem);
         assert!(
             !capture.on_screen.is_empty(),
@@ -212,9 +238,32 @@ fn ghost_equals_git_is_the_only_claim_check() {
 /// caption for a capture that was deleted (ADR-0037).
 #[test]
 fn contact_sheet_captions_cover_every_m5_capture() {
-    let shots = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots");
-    let captions = std::fs::read_to_string(shots.join("m5-contact-sheet-captions.tsv"))
-        .expect("docs/shots/m5-contact-sheet-captions.tsv");
+    captions_cover_every_capture(
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots"),
+        "m5",
+    );
+}
+
+/// The same for M6: every `docs/shots/m6/m6-*.txt` has a caption in
+/// `docs/shots/m6/m6-contact-sheet-captions.tsv`, and every caption names
+/// a file under `docs/shots/m6/` (m6-conflicts/07).
+#[test]
+fn contact_sheet_captions_cover_every_m6_capture() {
+    captions_cover_every_capture(
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/m6"),
+        "m6",
+    );
+}
+
+/// `<shots>/<milestone>-contact-sheet-captions.tsv` captions exactly the
+/// `<milestone>-*.txt` captures in `shots`, the sheet itself aside. A
+/// caption may name a file in a subdirectory or a parent (`../m5-…`): it
+/// must exist, and it does not have to be one of the milestone's own.
+fn captions_cover_every_capture(shots: &std::path::Path, milestone: &str) {
+    let sheet = format!("{milestone}-contact-sheet.txt");
+    let tsv = format!("{milestone}-contact-sheet-captions.tsv");
+    let captions = std::fs::read_to_string(shots.join(&tsv))
+        .unwrap_or_else(|why| panic!("{}: {why}", shots.join(&tsv).display()));
     let mut captioned = std::collections::BTreeSet::new();
     for (number, line) in captions.lines().enumerate() {
         let (name, caption) = line
@@ -227,8 +276,9 @@ fn contact_sheet_captions_cover_every_m5_capture() {
         );
         assert!(
             shots.join(name).is_file(),
-            "captions line {}: {name} is not under docs/shots",
-            number + 1
+            "captions line {}: {name} is not under {}",
+            number + 1,
+            shots.display()
         );
         assert!(
             captioned.insert(name),
@@ -236,8 +286,8 @@ fn contact_sheet_captions_cover_every_m5_capture() {
             number + 1
         );
     }
-    let mut captures: Vec<String> = std::fs::read_dir(&shots)
-        .expect("docs/shots")
+    let mut captures: Vec<String> = std::fs::read_dir(shots)
+        .unwrap_or_else(|why| panic!("{}: {why}", shots.display()))
         .map(|entry| {
             entry
                 .expect("entry")
@@ -246,11 +296,11 @@ fn contact_sheet_captions_cover_every_m5_capture() {
                 .into_owned()
         })
         .filter(|name| {
-            name.starts_with("m5-")
+            name.starts_with(&format!("{milestone}-"))
                 && std::path::Path::new(name)
                     .extension()
                     .is_some_and(|extension| extension.eq_ignore_ascii_case("txt"))
-                && name != "m5-contact-sheet.txt"
+                && *name != sheet
         })
         .collect();
     captures.sort();

@@ -1,0 +1,42 @@
+m6 walk capture: m6-04-card-binary — scenario binary-card-shows-its-size, keys k ⏎ j j j j j j j j j ⏎, unicode tier, 120x40
+
+MERGING
+pic.bin · file 10 of 13 · 0 of 0 conflicts open
+ours = main · theirs = the branch being merged in
+both modified · o keeps ours  t keeps theirs
+        binary · 22 B
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  e edit  n next  M mergetool  esc close

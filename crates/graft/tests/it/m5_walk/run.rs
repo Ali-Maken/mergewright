@@ -246,7 +246,7 @@ fn drive_app(
         Remote::None | Remote::Local => None,
     };
     let mut seen = Seen::default();
-    for chunk in steps.split(|step| matches!(step, Step::Relaunch)) {
+    for (chunk, ended_by) in chunks(steps) {
         let (app, state) = match &helper {
             Some(helper) => App::open_with_askpass(fixture.repo(), helper.clone()),
             None => App::open(fixture.repo()),
@@ -263,14 +263,66 @@ fn drive_app(
             seen = walk.seen;
             outcome
         };
-        app.close();
-        match outcome {
-            Ok(Ok(())) => {}
-            Ok(Err(why)) => return Err(why),
-            Err(payload) => return Err(format!("panicked: {}", panic_text(payload.as_ref()))),
+        let last = match outcome {
+            Ok(Ok(last)) => last,
+            Ok(Err(why)) => {
+                app.close();
+                return Err(why);
+            }
+            Err(payload) => {
+                app.close();
+                return Err(format!("panicked: {}", panic_text(payload.as_ref())));
+            }
+        };
+        if matches!(ended_by, Some(Step::Kill)) {
+            killed(fixture, app, &last)?;
+        } else {
+            app.close();
         }
     }
     Ok(seen)
+}
+
+/// The steps between relaunches, each with the step that ended it
+/// ([`Step::Relaunch`], [`Step::Kill`], or `None` for the last).
+fn chunks(steps: &[Step]) -> Vec<(&[Step], Option<&Step>)> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    for (at, step) in steps.iter().enumerate() {
+        if matches!(step, Step::Relaunch | Step::Kill) {
+            out.push((&steps[start..at], Some(step)));
+            start = at + 1;
+        }
+    }
+    out.push((&steps[start..], None));
+    out
+}
+
+/// [`Step::Kill`]: the app is dropped with no shutdown — its pool is never
+/// told to cancel or join, so no outcome line and no clean close — and git
+/// must then say an operation is still part-way through, with the journal's
+/// last line still `Pending`. Refused while a write is in flight: a write
+/// that finished after the "kill" could write the journal, which a real
+/// `SIGKILL` never lets it do.
+fn killed(fixture: &Fixture, app: App, last: &AppState) -> Result<(), String> {
+    if last.operating.is_some() {
+        app.close();
+        return Err(format!(
+            "Kill with a write in flight is not a kill: {:?}",
+            last.status
+        ));
+    }
+    // Dropped, not closed: `JobRunner::shutdown` is exactly what a killed
+    // process never runs. An idle worker ends when its queue goes; a read
+    // still running finishes and finds nobody listening.
+    drop(app);
+    let repo = fixture.repo();
+    check(super::truth::operation_on_disk(repo)?, || {
+        "after the kill git says nothing is part-way through".to_owned()
+    })?;
+    check(super::truth::last_journal_line_is_pending(repo), || {
+        "after the kill the journal's last line is not Pending".to_owned()
+    })
 }
 
 pub(super) struct Walk<'a> {
@@ -287,7 +339,7 @@ impl Walk<'_> {
         mut state: AppState,
         steps: &[Step],
         marks: &mut Marks,
-    ) -> Result<(), String> {
+    ) -> Result<AppState, String> {
         for step in steps {
             state = match step {
                 Step::Key(key) => self.app.press(&state, *key),
@@ -333,11 +385,16 @@ impl Walk<'_> {
                     see(&state).map_err(|why| format!("{what}: {why}"))?;
                     state
                 }
-                Step::Relaunch => unreachable!("drive_app splits the steps at a relaunch"),
+                Step::Resolve(path) => self.resolve(state, path)?,
+                Step::FocusBanner => self.focus_banner(state)?,
+                Step::HandOver(what, key) => self.hand_over(&state, what, *key)?,
+                Step::Relaunch | Step::Kill => {
+                    unreachable!("drive_app splits the steps at a relaunch or a kill")
+                }
             };
             self.note(&state);
         }
-        Ok(())
+        Ok(state)
     }
 
     /// The open box's choice at `index`: `→` that many times off `Cancel`,
@@ -498,6 +555,57 @@ impl Walk<'_> {
             Wait::ChangesPane => self.pump(state, "the changes pane's file list", |state| {
                 matches!(state.detail.files, Loading::Ready(_)) && state.on_changes_pane()
             }),
+            Wait::ConflictOpened
+            | Wait::ResolvedPath(_)
+            | Wait::ResolverClosed
+            | Wait::ConflictedPath(_) => self.wait_for_resolver(state, wait),
+        }
+    }
+
+    /// M6's waits (m6-conflicts/07): the resolver's reads and takes, and a
+    /// path's conflict leaving or coming back — the last two checked
+    /// against git as well as the app's re-read.
+    fn wait_for_resolver(&mut self, state: AppState, wait: Wait) -> Result<AppState, String> {
+        match wait {
+            Wait::ConflictOpened => self.pump(state, "the resolver's read or take", |state| {
+                state.operating.is_none()
+                    && state.resolver.as_ref().is_some_and(|open| {
+                        open.job.is_none()
+                            && open.base_job.is_none()
+                            && (open.file.is_some() || open.whole_file.is_some())
+                    })
+            }),
+            Wait::ResolvedPath(path) => {
+                let state = self.pump(state, "the re-read after the resolution", |state| {
+                    state.operating.is_none()
+                        && state.working_tree.is_some()
+                        && !graft::update::banner::unmerged_paths(state)
+                            .iter()
+                            .any(|unmerged| unmerged.as_os_str() == path)
+                })?;
+                let listed = super::truth::unmerged(self.fixture.repo(), path)?;
+                check(listed.is_empty(), || {
+                    format!("the app calls {path} resolved; git still lists it: {listed:?}")
+                })?;
+                Ok(state)
+            }
+            Wait::ResolverClosed => self.pump(state, "the resolver closing", |state| {
+                state.resolver.is_none() && state.operating.is_none()
+            }),
+            Wait::ConflictedPath(path) => {
+                let state = self.pump(state, "the re-read listing the conflict", |state| {
+                    state.operating.is_none()
+                        && graft::update::banner::unmerged_paths(state)
+                            .iter()
+                            .any(|unmerged| unmerged.as_os_str() == path)
+                })?;
+                let listed = super::truth::unmerged(self.fixture.repo(), path)?;
+                check(!listed.is_empty(), || {
+                    format!("the app lists {path} as conflicted; git does not")
+                })?;
+                Ok(state)
+            }
+            other => unreachable!("wait_for_state answers {other:?}"),
         }
     }
 

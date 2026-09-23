@@ -300,6 +300,169 @@ pub fn one_to_push(fixture: &Fixture) -> Result<(), String> {
     fixture.commit("ours.txt", "ours\n", "ours locally", 1)
 }
 
+// ───────────────────────────── conflicts (m6-conflicts/07) ─────────────────────────────
+
+/// [`Shape::StoppedMerge`] as the corpus builds it: nothing to script. The
+/// merge was started by the shell, so the journal has no entry for it.
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "a `Fix`: every scenario's setup has this signature"
+)]
+pub fn as_built(_: &Fixture) -> Result<(), String> {
+    Ok(())
+}
+
+/// Where the walk's stand-in programs live: inside the git directory, so
+/// they are neither untracked files nor anything a status read lists.
+fn tool_path(fixture: &Fixture, name: &str) -> Result<PathBuf, String> {
+    let git_dir = fixture.git(&["rev-parse", "--absolute-git-dir"])?;
+    Ok(Path::new(git_dir.trim()).join(name))
+}
+
+/// Write an executable shell script.
+fn script(path: &Path, body: &str) -> Result<(), String> {
+    std::fs::write(path, body).map_err(|why| format!("{}: {why}", path.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))
+            .map_err(|why| format!("{}: {why}", path.display()))?;
+    }
+    Ok(())
+}
+
+/// The line the walk's `$EDITOR` writes in place of a file's **first**
+/// conflict block, markers and all.
+pub const EDITED: &str = "edited by hand";
+/// The bytes the walk's mergetool leaves in a file it resolves.
+pub const TOOL_WROTE: &[u8] = b"resolved by the tool\n";
+
+/// [`Shape::StoppedMerge`] with `core.editor` a script that replaces the
+/// file's first conflict block with [`EDITED`] and leaves the rest alone —
+/// what a person fixing one block by hand does. Local config, so it wins
+/// over the machine's own `core.editor` (though not over a `GIT_EDITOR` in
+/// the environment, which git ranks first).
+pub fn with_an_editor(fixture: &Fixture) -> Result<(), String> {
+    let editor = tool_path(fixture, "walk-editor.sh")?;
+    script(
+        &editor,
+        &format!(
+            "#!/bin/sh\n\
+             # The file is the last argument; a line flag, if any, comes first.\n\
+             for f in \"$@\"; do :; done\n\
+             awk 'done == 0 && /^<<<<<<< / {{ skip = 1; print \"{EDITED}\"; next }}\n\
+                  skip && /^>>>>>>> / {{ skip = 0; done = 1; next }}\n\
+                  !skip {{ print }}' \"$f\" > \"$f.walk\" && mv \"$f.walk\" \"$f\"\n"
+        ),
+    )?;
+    let editor = editor.to_str().ok_or("the scratch path is not UTF-8")?;
+    fixture
+        .git(&["config", "--local", "core.editor", editor])
+        .map(drop)
+}
+
+/// [`Shape::StoppedMerge`] with `merge.tool` a script: on `both.txt` it
+/// writes [`TOOL_WROTE`] and exits 0 (git then stages the file — the tool
+/// is trusted); on any other file it changes nothing and exits 1.
+pub fn with_a_mergetool(fixture: &Fixture) -> Result<(), String> {
+    let tool = tool_path(fixture, "walk-mergetool.sh")?;
+    script(
+        &tool,
+        &format!(
+            "#!/bin/sh\n\
+             case \"$1\" in\n\
+             *both.txt) printf '{}' > \"$1\"; exit 0 ;;\n\
+             *) exit 1 ;;\n\
+             esac\n",
+            String::from_utf8_lossy(TOOL_WROTE).replace('\n', "\\n")
+        ),
+    )?;
+    let tool = tool.to_str().ok_or("the scratch path is not UTF-8")?;
+    let command = format!("'{tool}' \"$MERGED\"");
+    for (key, value) in [
+        ("merge.tool", "walktool"),
+        ("mergetool.walktool.cmd", command.as_str()),
+        ("mergetool.walktool.trustExitCode", "true"),
+        ("mergetool.keepBackup", "false"),
+        ("mergetool.keepTemporaries", "false"),
+    ] {
+        fixture.git(&["config", "--local", key, value])?;
+    }
+    Ok(())
+}
+
+/// `shared.txt` with **two** conflicting lines four unchanged lines apart
+/// (git's default style keeps them two blocks): `main` rewrote both once,
+/// `feature` twice off the same base, `feature` checked out. Rebasing
+/// `feature` onto `main` stops on the first replayed commit with two
+/// blocks open — one can be taken and the other left, so the file is
+/// half-taken on disk — and, once resolved, stops again on the second.
+pub fn twice_conflicting_in_two_places(fixture: &Fixture) -> Result<(), String> {
+    let body =
+        |top: &str, bottom: &str| format!("{top}\nkeep 1\nkeep 2\nkeep 3\nkeep 4\n{bottom}\n");
+    fixture.commit(
+        "shared.txt",
+        &body("top", "bottom"),
+        "add the shared file",
+        1,
+    )?;
+    fixture.git(&["branch", "feature"])?;
+    fixture.commit(
+        "shared.txt",
+        &body("main's top", "main's bottom"),
+        "main rewrites it",
+        2,
+    )?;
+    fixture.git(&["switch", "feature"])?;
+    fixture.commit(
+        "shared.txt",
+        &body("feature's top", "feature's bottom"),
+        "feature writes",
+        3,
+    )?;
+    fixture.commit(
+        "shared.txt",
+        &body("feature's top again", "feature's bottom again"),
+        "feature writes again",
+        4,
+    )
+}
+
+/// The file [`stash_pop_conflict`] leaves unmerged.
+pub const POPPED: &str = "p";
+
+/// [`stash_pop_conflict`] up to the pop and not the pop itself: the stash
+/// listed, `committed\n` committed over the stash's base, the tree clean.
+/// The scenario pops through the app's stash list, so the pop is a journal
+/// entry a `u` can take back — a shell pop is not.
+pub fn stash_to_pop_over_a_conflict(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit(POPPED, "base\n", "add p", 1)?;
+    fixture.dirty(POPPED, "stashed\n")?;
+    fixture.git(&["stash", "push"])?;
+    fixture.commit(POPPED, "committed\n", "commit over it", 2)
+}
+
+/// A `git stash pop` stopped on a conflict in [`POPPED`]: stashed
+/// `stashed\n`, then `committed\n` committed over the same base — unmerged
+/// paths and **no operation**, so no banner (`KNOWN_GAPS.md` row 229). The
+/// shape of `tests/it/resolver.rs::stash_pop_conflict`, in the walk.
+pub fn stash_pop_conflict(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit(POPPED, "base\n", "add p", 1)?;
+    fixture.dirty(POPPED, "stashed\n")?;
+    fixture.git(&["stash", "push"])?;
+    fixture.commit(POPPED, "committed\n", "commit over it", 2)?;
+    // Meant to fail: a pop that stops on a conflict exits non-zero. What
+    // proves it stopped on *the* conflict, and not on anything else, is
+    // git listing the path as unmerged just below.
+    if fixture.git(&["stash", "pop"]).is_ok() {
+        return Err("git stash pop was meant to stop on a conflict and did not".to_owned());
+    }
+    let unmerged = fixture.git(&["ls-files", "-u", "--", POPPED])?;
+    crate::repo_truth::check(unmerged.lines().count() == 3, || {
+        format!("the pop did not leave {POPPED} with three stages: {unmerged:?}")
+    })
+}
+
 /// The work clone one commit ahead of `origin/main`, and the bare one
 /// ahead of the clone: a diverged pull.
 pub fn diverged(fixture: &Fixture) -> Result<(), String> {

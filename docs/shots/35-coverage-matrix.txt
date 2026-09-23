@@ -97,3 +97,18 @@ m5-05-preview-too-small     —         —
 m5-06-banner-conflicts      C         C       
 m5-07-branch-row-hints      C         C       
 m5-11-diverged-pull-sticky  C         C       
+
+Conflicts coverage: capture × size (m6-conflicts/07)
+Files docs/shots/m6/<stem>-<WxH>.txt from .scratch/m6-conflicts/pty-walk-m6.py;
+C the file exists, — it does not. Unicode tier only; colour is never captured.
+
+capture                   120x40    80x24   
+m6-01-resolver-three      —         —       
+m6-02-whole-file-card     C         C       
+m6-03-card-large-file     —         —       
+m6-04-card-binary         C         C       
+m6-05-still-open-refusal  —         —       
+m6-06-relaunch-sticky     —         —       
+m6-07-all-resolved        —         —       
+m6-08-no-more-conflicts   —         —       
+m6-09-start-over-box      —         —       

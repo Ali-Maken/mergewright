@@ -2,16 +2,22 @@
 # Assembles one milestone's contact sheet from its per-scenario captures
 # (docs/shots/<milestone>-*.txt), per ADR-0037 decision 2.
 #
-# Usage: scripts/contact-sheet.sh <milestone>       e.g. m3, m4
+# Usage: scripts/contact-sheet.sh <milestone> [<shots-dir>]   e.g. m3, m4
+#        scripts/contact-sheet.sh m6 docs/shots/m6
+#
+# <shots-dir> defaults to docs/shots; M6 keeps its captures in docs/shots/m6.
 #
 # Reads:
-#   docs/shots/<milestone>-*.txt                    the captures, in order
-#   docs/shots/<milestone>-contact-sheet-captions.tsv   filename<TAB>caption
+#   <shots-dir>/<milestone>-*.txt                    the captures, in order
+#   <shots-dir>/<milestone>-contact-sheet-captions.tsv   filename<TAB>caption
 #     one line per capture: what right looks like, in the user's own terms.
 #     Missing entries print as NOT RECORDED rather than being invented.
+#     A line may also name a file outside the milestone's own (`../m5-…`):
+#     an earlier milestone's capture this one changed. Those follow the
+#     milestone's own captures, in the captions file's order.
 #
 # Writes:
-#   docs/shots/<milestone>-contact-sheet.txt
+#   <shots-dir>/<milestone>-contact-sheet.txt
 #
 # The captions file is hand-authored per milestone (by that milestone's
 # acceptance group), sourced in this order of preference: 1) TESTING.md's
@@ -20,13 +26,13 @@
 # invent captions.
 set -euo pipefail
 
-if [ $# -ne 1 ]; then
-  echo "usage: $0 <milestone-prefix>   e.g. m3, m4" >&2
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "usage: $0 <milestone-prefix> [<shots-dir>]   e.g. m3, m4; m6 docs/shots/m6" >&2
   exit 1
 fi
 
 milestone="$1"
-shots_dir="docs/shots"
+shots_dir="${2:-docs/shots}"
 captions_file="$shots_dir/${milestone}-contact-sheet-captions.tsv"
 out_file="$shots_dir/${milestone}-contact-sheet.txt"
 
@@ -76,6 +82,7 @@ case "$milestone" in
   m3) promise="you cannot lose work — every write is journaled with a backup and comes back byte for byte on u (TESTING.md \"Working tree, undo and stash\")." ;;
   m4) promise="you never leave Graft to fetch, pull or push — not for a password, a rejection or a hang (TESTING.md \"Remotes\")." ;;
   m5) promise="you see the result before you confirm — the ghost the preview draws is what git then does, and u takes it back (TESTING.md \"History\")." ;;
+  m6) promise="a real conflict is resolvable without leaving the app — each shape a merge, rebase or stash pop stops on is taken, staged and continued by keys, and the bytes are what the command line's own checkout gives (TESTING.md \"Conflicts walk\")." ;;
   *) promise="NOT RECORDED — add this milestone's promise to scripts/contact-sheet.sh." ;;
 esac
 
@@ -109,6 +116,22 @@ esac
     cat "$shots_dir/$name"
     echo
   done
+  # Earlier milestones' captures this one changed: named in the captions
+  # file, outside the milestone's own prefix, in the captions file's order.
+  if [ -f "$captions_file" ]; then
+    while IFS=$'\t' read -r name caption; do
+      case "$name" in
+        "${milestone}-"*) continue ;;
+      esac
+      echo "================================================================================"
+      echo "$shots_dir/$name   (an earlier milestone's capture, changed by ${milestone})"
+      echo "what right looks like: $caption"
+      echo "================================================================================"
+      echo
+      cat "$shots_dir/$name"
+      echo
+    done < "$captions_file"
+  fi
 } > "$out_file"
 
 echo "wrote $out_file (${#captures[@]} captures, $not_recorded_count without a recorded caption)"

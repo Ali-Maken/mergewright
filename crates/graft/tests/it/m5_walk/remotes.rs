@@ -140,7 +140,7 @@ fn pull_diverged_holds(fixture: &Fixture, marks: &Marks) -> Result<(), String> {
 /// and nothing else) and push it. That is the shape `u` after a push is
 /// about: a journal entry that moved `refs/heads/main`, and a push of the
 /// same branch after it.
-fn merged_and_pushed() -> Vec<Step> {
+pub(super) fn merged_and_pushed() -> Vec<Step> {
     vec![
         Step::WaitFor(Wait::Ready),
         Step::CursorTo("feature"),
