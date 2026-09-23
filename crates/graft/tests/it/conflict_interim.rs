@@ -791,9 +791,10 @@ fn relaunch_into_a_live_conflict() {
         state.status,
         Status::Sticky {
             reason: "merge still in progress from a previous run".to_owned(),
-            keys: Some("c continue  a abort".to_owned()),
+            keys: Some("\u{23ce} resolve  c continue  a abort".to_owned()),
         },
-        "and the line says whose operation it is, with the two keys that end it"
+        "and the line says whose operation it is, the key that resolves its \
+         conflicts, and the two keys that end it (m6-conflicts/06)"
     );
     // Still open on disk: the launch read recovered nothing (as-built §1).
     assert_eq!(
@@ -804,6 +805,142 @@ fn relaunch_into_a_live_conflict() {
         graft_core::journal::EntryStatus::Pending,
     );
 
+    drop(state);
+    app.close();
+}
+
+/// `Shape::StoppedRebase` as a killed Graft leaves it: git's rebase state
+/// on disk and the journal's `Pending` line for the rebase that stopped,
+/// with no outcome after it. `head_before` is the branch the rebase started
+/// on, which is what `graft_ops`' launch read matches a live entry by.
+fn killed_mid_rebase() -> graft_fixtures::Scratch {
+    use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::StoppedRebase);
+    let path = scratch.path();
+    let mut journal =
+        graft_ops::journal::Journal::open(&path.join(".git/graft/undo-journal.jsonl"))
+            .expect("the journal file can be created");
+    journal
+        .append_pending(&JournalEntry {
+            id: EntryId::new(CONFLICT_EPOCH * 1000, [7; 10]),
+            at_unix_ms: CONFLICT_EPOCH * 1000,
+            kind: OperationKind::Rebase,
+            description: "rebase feature onto main".to_owned(),
+            status: EntryStatus::Pending,
+            touches: graft_core::journal::Touches::default(),
+            head_before: HeadRef::Branch("refs/heads/feature".to_owned()),
+            head_after: None,
+            refs_before: std::collections::BTreeMap::new(),
+            refs_after: std::collections::BTreeMap::new(),
+            index_before: None,
+            index_after: None,
+            worktree_before: None,
+            worktree_after: None,
+            backup_ref: None,
+            pins: Vec::new(),
+            commands: Vec::new(),
+            reverses: None,
+        })
+        .expect("the pending line is written");
+    scratch
+}
+
+/// Both launch reads, and the changes pane's list the takeover asked for.
+fn landed(app: &App, state: AppState) -> AppState {
+    let state = launched(app, state);
+    app.pump(state, "the changes pane the relaunch opened", |state| {
+        matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
+    })
+}
+
+/// The row under the changes pane's cursor, and its section heading.
+fn cursor_row(state: &AppState) -> (String, Option<graft_ui::detail::WorkingTreeSection>) {
+    let graft::update::detail::Loading::Ready(files) = &state.detail.files else {
+        panic!("the file list has not arrived: {:?}", state.detail.files);
+    };
+    (
+        files.rows[files.cursor].name.as_str().to_owned(),
+        files.selected_section(),
+    )
+}
+
+/// **Decision 2a.** A relaunch into a stopped rebase lands one `⏎` from the
+/// resolver: the banner has the keyboard, the changes pane is open on
+/// CONFLICTS with the cursor on git's first conflicted path, and the line
+/// names `⏎ resolve` beside the two keys that end the rebase. Nothing is
+/// opened or written by the launch itself — `⏎` is the user's.
+#[test]
+fn relaunch_lands_on_the_conflict() {
+    let scratch = killed_mid_rebase();
+    let repo = scratch.path();
+
+    let (app, state) = App::open(repo);
+    let state = landed(&app, state);
+
+    assert_eq!(state.live_entries.len(), 1, "the pending rebase is live");
+    assert!(state.banner_focus, "{:?}", state.status);
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "rebase still in progress from a previous run".to_owned(),
+            keys: Some("\u{23ce} resolve  c continue  a abort".to_owned()),
+        }
+    );
+    assert!(
+        state.on_changes_pane(),
+        "the pane is open on the working tree"
+    );
+    let first =
+        graft::update::banner::first_conflicted(&state).expect("the rebase has conflicted files");
+    // git's order is by path, so the fixture's first is not `both.txt`
+    // (the ticket's guess) but the `UA` file that sorts ahead of it.
+    assert_eq!(first, Path::new("added-by-them.txt"));
+    let (row, section) = cursor_row(&state);
+    assert_eq!(
+        section,
+        Some(graft_ui::detail::WorkingTreeSection::Unmerged),
+        "the cursor is under CONFLICTS"
+    );
+    assert_eq!(Path::new(&row), first, "on git's first conflicted path");
+    assert!(state.resolver.is_none(), "the launch opened nothing itself");
+
+    let commands = commands_for(&state, KeyPress::plain(KeyCode::Enter));
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenConflict(_, path) if *path == first)),
+        "one \u{23ce} opens the resolver on it: {commands:?}"
+    );
+    drop(state);
+    app.close();
+}
+
+/// The same relaunch with every file resolved and staged before the kill:
+/// nothing to resolve, so no `⏎ resolve` on the line, and the pane lands on
+/// STAGED — what `c` would commit.
+#[test]
+fn relaunch_with_nothing_conflicted() {
+    let scratch = killed_mid_rebase();
+    let repo = scratch.path();
+    git(repo, &["add", "-A"]);
+
+    let (app, state) = App::open(repo);
+    let state = landed(&app, state);
+
+    assert!(state.banner_focus, "{:?}", state.status);
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "rebase still in progress from a previous run".to_owned(),
+            keys: Some("c continue  a abort".to_owned()),
+        }
+    );
+    assert!(state.on_changes_pane());
+    assert_eq!(
+        cursor_row(&state).1,
+        Some(graft_ui::detail::WorkingTreeSection::Staged),
+        "the cursor is under STAGED"
+    );
     drop(state);
     app.close();
 }

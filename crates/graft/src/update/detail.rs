@@ -26,7 +26,8 @@ pub(crate) use control::detail_event;
 pub use control::{LocalJobs, close_explain, effective_layout, open_explain, tab_hint_rows};
 pub(crate) use keys::{detail_key, enter_opens};
 pub use state::{
-    Bounded, CompareBase, DetailSpec, DetailState, DiffKey, Loading, PaneSize, toggle_compare,
+    Bounded, CompareBase, DetailSpec, DetailState, DiffKey, KeptCursor, Loading, PaneSize,
+    toggle_compare,
 };
 
 #[cfg(test)]
