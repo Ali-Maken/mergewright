@@ -15,6 +15,7 @@ mod handover;
 mod last_file;
 mod modal;
 mod restart;
+mod shell_begun;
 mod stash_pop;
 mod takes;
 mod whole_file;

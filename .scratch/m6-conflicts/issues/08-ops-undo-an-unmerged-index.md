@@ -1,6 +1,7 @@
 # ops-undo-an-unmerged-index: the journal records index stages 1/2/3 as a tree, so `u` inverts a resolution made with no operation live, `U` puts a conflict back, and `d` starts a file over after it was already staged — without re-running anything
 
 Status: done — piece A (first builder) and piece B / Scope 5(c) (second builder) both built. One thing remains and it is **not this group's**: `crates/graft` does not compile against this branch (see "Seam"); its 11-line fix is the conductor's to close.
+Review fixes (m6-04-08): M1 and M3 done in graft-ops; the `graft` seam test is updated and M1 is proven through the app — see "Review fixes, part 2" at the end. **Spec question open:** in a shell-begun merge the edit is recoverable only after leaving the app.
 Blocked by: **03** (its `ResolveWholeFile`/`RestartConflict` are what become undoable; same crates). Groups 04–07 do **not** wait on this one; 07 (acceptance) gains one scenario from it — see "For group 07" at the end. The conductor adds **08** to 07's `Blocked by`.
 Build with: Opus — undo and git index writes (CLAUDE.md routing). Not Fable: the schema, the tree layout, the restore order and the fold rule are all decided below, and every claim is checkable byte-for-byte against `git ls-files --stage` in a throwaway repo — a diff and a test can judge it. Fails Fable tests 2 and 3. Brownfield in `graft-ops` (`snapshot`, `undo`, `restore`, `apply`) and `graft-core` (`journal`): scout questions listed under Size.
 Crates: graft-ops, graft-core
@@ -432,3 +433,184 @@ type is the spec's.
 skipped), `cargo test --doc --workspace --exclude graft` — all green. **Not
 workspace-wide**: `graft` is held by another builder and does not compile
 against this branch. That is a green I did not get, and this says so.
+
+## Review fixes (m6-04-08) — builder, 2026-09-23, branch `m6-08-fix`
+
+Findings: `docs/reviews/m6-04-08.md`, Majors **M1** and **M3** (the g08 ones).
+A scout was used (the fold path and the file layout). This session
+**compacted once**, between M1's commit and M3's; nothing of M3 was lost —
+it was gated after the compaction.
+
+### M1 — a whole-file take or `d` in a merge begun in the shell took no backup
+
+**Cause, not symptom.** `apply::resume::folded_step` (now
+`apply/fold.rs`) sent every conflict step taken while git had an operation
+live into `inside_live_operation`, and chained a backup only onto a live entry
+of Graft's. A merge begun in the shell has none (`live_entry` → `None`), so a
+`t` (`git rm` / `checkout --ours|--theirs`) or a `d` (`checkout --merge`)
+wrote over the working tree with no journal line and no backup ref. A hand
+edit in the file was gone.
+
+**Fix.** Ticket 03's scope 2 rule, which the fold had skipped: "folds into the
+live entry **when one is live**; with no live entry … it is its own entry,
+undoable through the normal backup". `fold::folded_step` now returns `None`
+when there is no live entry *and* the step can write the working tree
+(`Operation::touches(facts).worktree` — `ResolveWholeFile`, `RestartConflict`),
+and `apply` runs it as an ordinary entry: `Pending` line, full snapshot under
+`refs/graft/backup/<wt>/<ulid>`, outcome line. Index-only steps (`Stage`,
+`Unstage`) still fold into nothing — they move no bytes, and the index they
+change is git's own record of the merge.
+
+This is **not** the review's suggested fix (a standalone backup ref with no
+journal line, or a refusal). A ref with no line has no way back that the app
+knows about; an entry is reachable by `u`. It is the dispatch's "stash-pop
+precedent" (a `ResolveWholeFile` with nothing live is its own entry) and
+03's written rule, so it was built, not asked.
+
+**Proving tests** (red before the fix — journal ids `[]` against `[id]` —
+green after, run through a real repository, `nextest`):
+- `graft-ops` `tests/it/shell_begun_merge.rs::a_hand_edit_survives_taking_the_other_side`
+  — hand edit on `theirs-deleted.txt`, take theirs, file gone; one
+  `ResolveConflict` entry, `Committed`, with a backup ref; `undo::undo` gives
+  the edited bytes back and the same `ls-files -u` stages; `MERGE_HEAD` still
+  there.
+- `…::a_hand_edit_survives_starting_the_file_over` — hand edit on `both.txt`,
+  `RestartConflict`, markers back; one `RestartConflict` entry with a backup
+  ref; undo gives the edit and the stages back.
+- `…::a_stage_writes_no_line` — `Stage` in the same merge: journal still empty,
+  index resolved, bytes unchanged.
+
+**Tests changed, with the reason:**
+- `conflict_ops::whole_file_folds_into_live_entry` **removed**. It asserted
+  the defect (no entry in a shell-begun merge). Its index-only half is
+  `a_stage_writes_no_line`; its whole-file half is inverted by
+  `a_hand_edit_survives_taking_the_other_side`.
+- `conflict_ops::restart_refuses_the_shapes_checkout_merge_cannot_merge` —
+  its two final restarts are now two entries, so they take distinct
+  timestamps (`NOW`, `NOW + 1`); same `NOW` opened one ULID twice.
+- `conflict_ops::conflict_operations_refuse_a_path_that_is_not_conflicted` —
+  doc only, below.
+
+**Cost to the user.**
+- In the app, `u` is refused while any operation is live
+  (`crates/graft/src/update/undo.rs:103 in_progress_refusal`). The edit is
+  **safe but not reachable** until the merge ends in the shell (`git commit` /
+  `git merge --abort`); then `u` takes it back, possibly behind the drift
+  confirm. Observed only at the ops level (`undo::undo` has no in-progress
+  gate); the app path is **unverified** — `graft` is not this group's.
+- Each `t` / `d` in a shell-begun merge adds one journal row.
+- **Follow-up (refusal, not loss):** `d` after a `t`/`⏎` in a shell-begun merge
+  still refuses `NoStagesKept`. `restart::stage_source` reads the **chain**
+  while an operation is live and ignores the take's own entry, which now holds
+  the stages. Read, not observed by a dedicated test. Not fixed here — scope.
+
+**Seam — `blocked: needs graft`.** One app test asserts the defect and now
+fails (the only failure workspace-wide):
+`crates/graft/tests/it/resolver/restart.rs:151 no_entry_added_in_a_shell_begun_merge`.
+Observed: `restart.rs:166` left 1, right 0. The change it needs:
+- line 168 `before` → `before + 1` (observed);
+- line 206 `before` → `before + 2` (**expected, not observed** — the run
+  stops at 166);
+- rename, e.g. `each_whole_file_step_is_its_own_entry_in_a_shell_begun_merge`;
+- doc (143-149): the step is its own entry with its own backup (m6 g04/g08
+  review, M1); `apply::resume::inside_live_operation` is now
+  `apply::fold::inside_live_operation`.
+
+### M3 — `snapshot.rs` 976 and `apply.rs` 1230 lines, against PROMPT §6.2's ~400
+
+**Cause, not symptom:** split by concern (`codebase-design`), private
+submodules, every public item re-exported so no path outside the module moved.
+No behaviour change: bodies moved whole; the edits are `use` lines,
+`pub(super)` visibility and one call path (`resume::folded_step` →
+`fold::folded_step`).
+
+| File | Lines | Holds |
+|---|---|---|
+| `snapshot.rs` | 300 | types, `take`, `index_state`, `worktree_tree`, `commit_trees`, `stage_entries` |
+| `snapshot/stage_tree.rs` | 210 | the unmerged index as one tree, and back |
+| `snapshot/chain.rs` | 163 | `chain_backup`, `backup_chain`, `recorded_index_state` |
+| `snapshot/index_paths.rs` | 93 | `index_paths_changed` and friends |
+| `snapshot/plumbing.rs` | 297 | temporary index, `git` helpers |
+| `apply.rs` | 373 | `Context`, `apply`, `Applied`, `Refresh` |
+| `apply/error.rs` | 232 | `ApplyError`, `AfterState`, `reason_for` |
+| `apply/record.rs` | 339 | `begin`, `finish`, after-state, `Pending` |
+| `apply/run.rs` | 127 | running a plan |
+| `apply/restart.rs` | 247 | `stage_source`, `prepare_restart` |
+| `apply/fold.rs` | 183 | `folded_step`, `inside_live_operation` |
+| `apply/resume.rs` | 314 | `resume`, `live_entry` |
+| `apply/recover.rs` | 142 | `recover_interrupted` |
+
+`apply/resume.rs` was split too although the review did not name it: 573
+lines at `d74a016`, 614 after M1. `apply/remote.rs` (281) untouched.
+Suite count identical: **2676** before the split and after, same single seam
+failure. `crates/graft-ops/MAP.md` §snapshot and §apply gained one layout line
+each; no public item changed.
+
+### Gates (workspace-wide)
+
+`cargo fmt --check` ok · `cargo clippy --all-targets -- -D warnings` ok ·
+`cargo test --doc` ok · `cargo nextest run` **2675/2676** — the one failure is
+the seam above. Not run: `--release`, Linux, any git but 2.54.0.
+
+## Review fixes, part 2 (m6-04-08 M1) — builder, 2026-09-23, branch `m6-08-fix2`
+
+Branch from `67c2dbb`, `git merge main` (g04 race fix): **clean, no
+conflict** — the two touched disjoint files. No scout: the seam and the
+walk were named in the dispatch; the refusals were found by running a
+throwaway probe test (deleted before commit), not by reading source.
+
+### The seam test (observed)
+
+`crates/graft/tests/it/resolver/restart.rs`
+`no_entry_added_in_a_shell_begun_merge` renamed
+**`each_working_tree_step_is_its_own_entry_in_a_shell_begun_merge`**; doc
+rewritten (each step is its own entry with its own backup;
+`apply::fold::folded_step`). Both counts **observed** passing: whole-file
+`o` → `before + 1`, the `d` restart → `before + 2`. Added: every new entry
+has a `backup_ref`.
+
+### M1 through the app — what the user must do to recover
+
+`crates/graft/tests/it/resolver/shell_begun.rs::a_hand_edit_taken_by_t_comes_back_after_the_merge_ends`
+(`Shape::StoppedMerge`, a merge built with raw git). Observed, in order:
+
+1. Hand edit `theirs-deleted.txt`, `⏎` its row, `t`: file gone; one new
+   `Committed` entry with a backup ref.
+2. `Esc`, `u` → refused, `finish or abort the merge first · ⇥ banner`.
+3. `⇥` to the banner, `a`, `→`, `⏎` → refused, `nothing Graft started is in
+   progress; an operation begun in the shell is finished there`. MERGE_HEAD
+   still there.
+4. **In the shell:** `git merge --abort`.
+5. Back in the app: `Esc` (the banner is modal and eats `Ctrl+R`), `Ctrl+R`
+   → the banner goes.
+6. `u` → drift box `Undo “resolved theirs-deleted.txt (theirs)”?`, `→`, `⏎`
+   → `undo: resolved …`. **The hand edit's bytes are back on disk.**
+
+**So: there is no in-app path.** The edit is safe (backed up, journaled)
+but reachable only after the user ends the merge **outside the app**.
+Nothing invented here. **Spec question for the conductor/user:** should
+`u` (or the banner) reach a whole-file step's entry while a shell-begun
+merge is still open, or should the banner's `a` abort a shell-begun merge?
+Both are spec changes (keymap §2.6a; the abort refusal).
+
+Not tested: ending the merge with `git commit` instead of `--abort` (the
+file would have to be resolved first, so the drift box differs).
+
+**Observed side effect (pinned in the test):** the undo restores the index
+the take found — `theirs-deleted.txt` is back as `UD` in `ls-files -u` with
+**no MERGE_HEAD**: conflict stages with no operation around them. The user
+has their bytes but a file git calls unmerged; `git add` clears it. Whether
+the app draws that state sensibly was **not checked**. Question, not defect.
+
+### `d` after `t` in a shell-begun merge (follow-up, refusal not loss)
+
+Still open, **read, not observed**: `restart::stage_source` reads the
+**chain** while an operation is live and ignores the take's own entry, which
+now holds the stages, so `d` after a `t`/`⏎` refuses `NoStagesKept`. No
+bytes lost. Not fixed here.
+
+### Gates (workspace-wide, own `CARGO_TARGET_DIR`)
+
+`cargo fmt --check` ok · `cargo clippy --all-targets -- -D warnings` ok ·
+`cargo nextest run` **2679/2679** (1 skipped) · `cargo test --doc` ok.
+Not run: `--release`, Linux, any git but 2.54.0.
