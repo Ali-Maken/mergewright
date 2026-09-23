@@ -33,6 +33,7 @@
 mod answers;
 mod base;
 mod geometry;
+mod names;
 mod restart;
 mod scroll;
 mod take;
@@ -53,6 +54,9 @@ use super::state::{AppState, Status};
 pub use answers::{conflict_opened, handed_back, resolved_advance, taken};
 pub use base::base_loaded;
 pub use geometry::{banner_rows, fits, scroll_block_into_view};
+#[cfg(test)]
+pub(crate) use names::fixtures;
+pub use names::side_names;
 pub use restart::restart_landed;
 pub use scroll::resolver_mouse;
 pub use walk::next_open_block;
@@ -135,7 +139,7 @@ pub struct ResolverState {
     /// reopening this one.
     pub restarting: Option<JobId>,
     /// The line under the title: what just happened here, and whether it
-    /// was a failure. Replaces the rebase/merge explainer while it is set.
+    /// was a failure. Drawn on the row under the title while set.
     pub notice: Option<(String, bool)>,
 }
 
@@ -402,12 +406,14 @@ fn reopen(
 
 // ----------------------------------------------------------------- helpers
 
-/// git's own word for a side, as the status line says it.
-fn side_word(take: Take) -> &'static str {
+/// A side, as the status line says it: the side's one name
+/// ([`side_names`]), or `both`.
+fn side_word(state: &AppState, take: Take) -> String {
+    let names = side_names(state);
     match take {
-        Take::Ours => "ours",
-        Take::Theirs => "theirs",
-        Take::Both => "both",
+        Take::Ours => names.ours.as_str().to_owned(),
+        Take::Theirs => names.theirs.as_str().to_owned(),
+        Take::Both => "both".to_owned(),
     }
 }
 

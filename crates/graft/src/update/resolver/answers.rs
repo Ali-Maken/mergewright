@@ -150,7 +150,7 @@ pub(super) fn take_landed(state: &mut AppState, file: &Arc<ConflictFile>) {
     let side = cursor
         .and_then(|block| blocks.get(block))
         .and_then(|at| match at.state {
-            BlockState::Took(take) => Some(side_word(take)),
+            BlockState::Took(take) => Some(side_word(state, take)),
             BlockState::Open => None,
         });
     let Some(open) = state.resolver.as_mut() else {

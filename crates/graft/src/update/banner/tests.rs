@@ -18,6 +18,7 @@ fn detail(kind: InProgress, step: Option<(u32, u32)>) -> InProgressDetail {
         step,
         head_name: None,
         onto: None,
+        theirs: None,
     }
 }
 
@@ -504,7 +505,7 @@ fn answer_and_read_disagree_says_so() {
     };
     let (reread, _) = crate::update::update(
         &answered,
-        AppEvent::Produced(JobId::new(9), Product::WorkingTree(Ok(read))),
+        AppEvent::Produced(JobId::new(9), Product::WorkingTree(Ok(Box::new(read)))),
     );
     assert!(reread.in_progress.is_some(), "git's word stands");
     assert_eq!(
@@ -522,7 +523,7 @@ fn answer_and_read_disagree_says_so() {
     };
     let (confirmed, _) = crate::update::update(
         &answered,
-        AppEvent::Produced(JobId::new(9), Product::WorkingTree(Ok(agreeing))),
+        AppEvent::Produced(JobId::new(9), Product::WorkingTree(Ok(Box::new(agreeing)))),
     );
     assert_eq!(confirmed.status, answered.status);
     assert_eq!(confirmed.in_progress, None);

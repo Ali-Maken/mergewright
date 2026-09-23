@@ -456,6 +456,7 @@ pub fn resolver_context(state: &AppState) -> HintContext {
         base: !card,
         restart: !card,
         whole_file: card,
+        roles: crate::update::resolver::side_names(state).roles,
     }
 }
 

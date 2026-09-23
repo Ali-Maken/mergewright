@@ -2691,11 +2691,11 @@ fn a_clean_tree_while_shown_clears_the_flag_and_follows_off_it() {
         &opened,
         AppEvent::Produced(
             JobId::new(1),
-            Product::WorkingTree(Ok(crate::working_tree::WorkingTree {
+            Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
                 status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
                 in_progress: None,
                 mergetool: None,
-            })),
+            }))),
         ),
     );
     assert!(!clean.on_working_tree);
@@ -2931,11 +2931,11 @@ fn the_prelude_waits_for_the_window_and_the_refs_and_then_opens_row_0() {
 fn working_tree_read(id: JobId) -> AppEvent {
     AppEvent::Produced(
         id,
-        Product::WorkingTree(Ok(crate::working_tree::WorkingTree {
+        Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
             status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
             in_progress: None,
             mergetool: None,
-        })),
+        }))),
     )
 }
 
@@ -3689,20 +3689,24 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             base: true,
             restart: true,
             whole_file: false,
+            roles,
         } => Some(HintContext::Resolver {
             base: true,
             restart: true,
             whole_file: false,
+            roles: *roles,
         }),
         // A whole-file card (m6-05 review, Major 1): the one other form.
         HintContext::Resolver {
             base: false,
             restart: false,
             whole_file: true,
+            roles,
         } => Some(HintContext::Resolver {
             base: false,
             restart: false,
             whole_file: true,
+            roles: *roles,
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
@@ -3949,11 +3953,15 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // The resolver open on a two-block conflict: every live key in
         // `resolver_list` has something to do in it.
         HintContext::Resolver {
-            whole_file: false, ..
-        } => vec![resolver_on_screen(walk)],
+            whole_file: false,
+            roles,
+            ..
+        } => vec![in_roles(resolver_on_screen(walk), *roles)],
         HintContext::Resolver {
-            whole_file: true, ..
-        } => vec![resolver_card_on_screen(walk)],
+            whole_file: true,
+            roles,
+            ..
+        } => vec![in_roles(resolver_card_on_screen(walk), *roles)],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
@@ -4184,6 +4192,7 @@ fn stopped_operation(walk: JobId, skippable: bool, conflicted: bool) -> AppState
         step: None,
         head_name: None,
         onto: None,
+        theirs: None,
     });
     state.banner_focus = true;
     if conflicted {
@@ -4668,6 +4677,7 @@ fn the_tab_strip_comes_out_of_the_graphs_row_budget() {
         step: None,
         head_name: None,
         onto: None,
+        theirs: None,
     });
     assert_eq!(
         live.graph_rows(),
@@ -4774,6 +4784,7 @@ fn the_mirror_agrees_at(
             step: None,
             head_name: None,
             onto: None,
+            theirs: None,
         });
     }
     let layout =
@@ -4830,4 +4841,20 @@ fn the_geometry_mirror_matches_the_rects_the_frame_hands_out() {
             }
         }
     }
+}
+
+/// `state` in the operation whose sides go by `roles`: stash pop is the
+/// resolver open with no operation at all (`update::resolver::side_names`).
+fn in_roles(mut state: AppState, roles: graft_ui::conflict_resolver::SideRoles) -> AppState {
+    use graft_git::state::InProgress;
+    use graft_ui::conflict_resolver::SideRoles;
+    let kind = match roles {
+        SideRoles::Merge => Some(InProgress::Merge),
+        SideRoles::Rebase => Some(InProgress::Rebase),
+        SideRoles::CherryPick => Some(InProgress::CherryPick),
+        SideRoles::Revert => Some(InProgress::Revert),
+        SideRoles::StashPop => None,
+    };
+    state.in_progress = kind.map(|kind| crate::update::resolver::fixtures::operation(kind, None));
+    state
 }

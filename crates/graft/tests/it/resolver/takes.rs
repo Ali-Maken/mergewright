@@ -23,7 +23,7 @@ fn o_takes_ours_on_disk() {
         "and the document on screen has no open block left"
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "took ours in both.txt · 0 of 1 open"),
+        matches!(&state.status, Status::Done(line) if line == "took yours · main in both.txt · 0 of 1 open"),
         "{:?}",
         state.status
     );

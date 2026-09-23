@@ -15,12 +15,15 @@
 //! scrolls and hit-tests against the same rows the widget draws
 //! ([`row_at`]); there is no second copy of the layout.
 //!
-//! **Line numbers are the file's current numbers**, taken from each
-//! region's `first_line`/`BlockView::first_line`. Only the **OURS** side
-//! carries them: THEIRS is the replayed commit's content, not a line of the
-//! working file, and BASE is the common ancestor's — neither has a "current"
-//! line number, so both draw a blank margin instead (mockup, `docs/design-notes/m6-conflicts.md`
-//! "New UI").
+//! **Line numbers are per side** (ADR-0043 §5): each side is numbered
+//! contiguously by its own projection (`graft_git::conflict::Projection`).
+//! An open card's yours lines count from [`BlockNumbers::ours`], its theirs
+//! lines from [`BlockNumbers::theirs`]; plain and taken lines carry the
+//! result's number. BASE and every marker row (header, labels, end, note)
+//! carry none. The number column is as wide as the widest number drawn.
+//!
+//! **Names** come from [`SideNames`], one per side (`yours · main`); git's
+//! marker labels are never drawn.
 //!
 //! **What this ticket does not build** (`m6-conflicts/02-ui-conflict-resolver.md`
 //! scope; G4/G5's job): key handling, scrolling state, hit-testing beyond
@@ -46,8 +49,7 @@ use crate::theme::{Theme, Token};
 pub const SIDE_BY_SIDE_MIN: u16 = 100;
 
 /// Screen rows the widget reserves above the document itself: the title row
-/// and one more for the explainer or the notice (mutually exclusive; the
-/// notice replaces the explainer while it is set).
+/// and one more for the notice (blank while none is set).
 pub const HEADER_ROWS: u16 = 2;
 
 /// Cells the cursor-block gutter (`▏`/`|`) and its trailing space take, on
@@ -75,6 +77,73 @@ pub const MIN_COLUMNS: u16 = 60;
 /// over the terminal.
 pub const MIN_ROWS: u16 = 10;
 
+/// The role words for one operation's two sides — a closed set, so the hint
+/// bar can carry them as `&'static str` (ADR-0043 §4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SideRoles {
+    /// A merge or pull, or no operation at all: `yours` / `theirs`.
+    Merge,
+    /// A rebase: `upstream` / `yours` (the commit being replayed is yours).
+    Rebase,
+    /// A cherry-pick: `yours` / `picked`.
+    CherryPick,
+    /// A revert: `yours` / `reverting`.
+    Revert,
+    /// A stash pop: `yours` / `stashed`.
+    StashPop,
+}
+
+impl SideRoles {
+    /// The ours side's role word.
+    #[must_use]
+    pub const fn ours(self) -> &'static str {
+        match self {
+            SideRoles::Rebase => "upstream",
+            SideRoles::Merge | SideRoles::CherryPick | SideRoles::Revert | SideRoles::StashPop => {
+                "yours"
+            }
+        }
+    }
+
+    /// The theirs side's role word.
+    #[must_use]
+    pub const fn theirs(self) -> &'static str {
+        match self {
+            SideRoles::Merge => "theirs",
+            SideRoles::Rebase => "yours",
+            SideRoles::CherryPick => "picked",
+            SideRoles::Revert => "reverting",
+            SideRoles::StashPop => "stashed",
+        }
+    }
+}
+
+/// The one name each side goes by everywhere the resolver names it: role
+/// word, then what it is (`yours · main`, `picked · 3f2a1b7 Add OAuth`).
+/// The app builds them; this widget draws them verbatim, cut with `…` from
+/// the right so the role word survives.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SideNames {
+    /// The ours side (`yours · main`; rebase `upstream · main`).
+    pub ours: SanitizedText,
+    /// The theirs side (`theirs · feature`; stash pop `stashed`).
+    pub theirs: SanitizedText,
+    /// The role words alone, for the header keys and the hint bar.
+    pub roles: SideRoles,
+}
+
+/// Where an open block's lines start in each projection, 1-based
+/// (`graft_git::conflict::ConflictFile::first_lines`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BlockNumbers {
+    /// Its first yours line, counted in the ours projection.
+    pub ours: usize,
+    /// Its first theirs line, counted in the theirs projection.
+    pub theirs: usize,
+    /// Its first line in the result: where a taken block's lines start.
+    pub result: usize,
+}
+
 /// Everything the resolver draws for one file.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DocView {
@@ -82,10 +151,8 @@ pub struct DocView {
     /// (≥100 columns) or the short form below it — the app builds the
     /// wording, this widget only draws it.
     pub title: SanitizedText,
-    /// The rebase/merge explainer (`ours = main, what you are rebasing
-    /// onto · theirs = the commit being replayed`), or `None` outside a
-    /// rebase. Replaced by `notice` while one is set.
-    pub explainer: Option<SanitizedText>,
+    /// Each side's one name (card labels, took words, header keys).
+    pub names: SideNames,
     /// The document's regions, in file order.
     pub regions: Vec<RegionView>,
     /// The block the cursor is on, if any: its header draws reversed and
@@ -93,7 +160,7 @@ pub struct DocView {
     pub cursor_block: Option<usize>,
     /// `B` toggled BASE on: every open block with a base draws it.
     pub base_shown: bool,
-    /// Replaces the explainer row while set: `(text, is_error)`.
+    /// Drawn on the row under the title while set: `(text, is_error)`.
     /// `is_error` is not drawn differently (ADR-0041 — the words carry the
     /// distinction, not colour).
     pub notice: Option<(SanitizedText, bool)>,
@@ -104,7 +171,7 @@ pub struct DocView {
 pub enum RegionView {
     /// Lines outside any conflict block, drawn as-is.
     Plain {
-        /// The first line's number (the file's own numbering).
+        /// The first line's number in the result projection.
         first_line: usize,
         /// The lines themselves.
         lines: Vec<SanitizedText>,
@@ -138,10 +205,6 @@ pub struct BlockView {
     pub of: usize,
     /// Open, or taken.
     pub state: BlockState,
-    /// Git's own marker label for ours (`HEAD`).
-    pub ours_label: SanitizedText,
-    /// Git's own marker label for theirs (`3f2a1b (Add OAuth provider)`).
-    pub theirs_label: SanitizedText,
     /// Our side's lines.
     pub ours: Vec<SanitizedText>,
     /// The base's label and lines, when attached (`attach_base`); `None`
@@ -152,9 +215,11 @@ pub struct BlockView {
     /// The block's position in the file, 1-based: while `Open`, the line
     /// its `<<<<<<<` marker sits on; once `Took`, its first taken line
     /// (matching `graft_git::conflict::BlockAt::first_line`'s own doc —
-    /// the marker line no longer exists once resolved). The card's
-    /// content lines are numbered from here.
+    /// the marker line no longer exists once resolved). Where `e` opens
+    /// the editor; never drawn.
     pub first_line: usize,
+    /// Where each side's lines are numbered from.
+    pub numbers: BlockNumbers,
 }
 
 /// Whether a block still has a decision to make.
@@ -186,18 +251,18 @@ pub enum SideKind {
     Base,
     /// A line of `BlockView::theirs`.
     Theirs,
-    /// The label row leading a stacked section (`OURS · HEAD`, …).
+    /// The label row leading a stacked section (`yours · main`, …).
     Label(LabelOf),
 }
 
 /// Which section a [`SideKind::Label`] row names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LabelOf {
-    /// `OURS · {label}`.
+    /// [`SideNames::ours`].
     Ours,
     /// `BASE · merged common ancestor`.
     Base,
-    /// `THEIRS · {label}`.
+    /// [`SideNames::theirs`].
     Theirs,
 }
 
@@ -207,7 +272,7 @@ pub enum LabelOf {
 /// can never disagree.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ScreenRow {
-    /// A plain line: `{line_no:>5} {text}`.
+    /// A plain line: `{line_no} {text}`, the number right-aligned.
     Plain {
         /// The file's own line number.
         line_no: usize,
@@ -219,7 +284,7 @@ pub enum ScreenRow {
         /// The block's index.
         block: usize,
     },
-    /// The wide-layout labels row (`OURS · … │ THEIRS · …`).
+    /// The wide-layout labels row (`yours · main │ theirs · feature`).
     Labels {
         /// The block's index.
         block: usize,
@@ -477,6 +542,16 @@ impl ResolverScreen<'_> {
         if self.ascii { "-" } else { "\u{b7}" }
     }
 
+    /// `n` right-aligned in the number column, then a space; a blank column
+    /// when `None`.
+    fn numbered(&self, n: Option<usize>, text: &str) -> String {
+        let width = number_width(self.doc);
+        match n {
+            Some(n) => format!("{n:>width$} {text}"),
+            None => format!("{:width$} {text}", ""),
+        }
+    }
+
     fn is_cursor_block(&self, block: usize) -> bool {
         self.doc.cursor_block == Some(block)
     }
@@ -560,7 +635,7 @@ impl ResolverScreen<'_> {
                 // line never carries the cursor gutter, but it still leaves
                 // room for one so the numbers line up.
                 let content = Self::content_area(area);
-                let line = format!("{line_no:>5} {text}");
+                let line = self.numbered(Some(*line_no), text.as_str());
                 set_text(
                     buf,
                     content.x,
@@ -574,7 +649,7 @@ impl ResolverScreen<'_> {
                 // In the text column, under the lines above it, with the
                 // number column left blank: it is about the file, not in it.
                 let content = Self::content_area(area);
-                let line = format!("{:>5} {text}", "");
+                let line = self.numbered(None, text.as_str());
                 set_text(
                     buf,
                     content.x,
@@ -614,11 +689,21 @@ impl ResolverScreen<'_> {
         };
         self.draw_gutter(buf, area, y, block_index);
         let content = Self::content_area(area);
+        let names = &self.doc.names;
+        let (ours, theirs) = (names.roles.ours(), names.roles.theirs());
         let (state_word, keys) = match block.state {
-            BlockState::Open => ("open", "o ours  t theirs  b both"),
-            BlockState::Took(TakeView::Ours) => ("took ours", "t theirs  b both"),
-            BlockState::Took(TakeView::Theirs) => ("took theirs", "o ours  b both"),
-            BlockState::Took(TakeView::Both) => ("took both", "o ours  t theirs"),
+            BlockState::Open => ("open".to_owned(), format!("o {ours}  t {theirs}  b both")),
+            BlockState::Took(TakeView::Ours) => (
+                format!("took {}", names.ours),
+                format!("t {theirs}  b both"),
+            ),
+            BlockState::Took(TakeView::Theirs) => (
+                format!("took {}", names.theirs),
+                format!("o {ours}  b both"),
+            ),
+            BlockState::Took(TakeView::Both) => {
+                ("took both".to_owned(), format!("o {ours}  t {theirs}"))
+            }
         };
         let rule2 = self.rule().to_string().repeat(2);
         let middle = format!(
@@ -627,30 +712,24 @@ impl ResolverScreen<'_> {
             block.of,
             self.dot(),
         );
-        // The block's own current line (`docs/design/01-view-mockups.md`
-        // §1.5's `39`/`57`) leads the rule, a single space either side —
-        // narrower than `numbered`'s 5-wide field (`Plain` rows), since this
-        // is a hint at the block's position, not a margin to read code
-        // against.
-        let prefix = format!(" {} ", block.first_line);
-        let after_prefix = usize::from(content.width).saturating_sub(prefix.width());
-        let line = format!("{prefix}{}", ruled_line(&middle, self.rule(), after_prefix));
+        // No number: a marker row is not a line of any side (ADR-0043 §5).
+        let line = ruled_line(&middle, self.rule(), usize::from(content.width));
         let cursor = self.is_cursor_block(block_index);
         set_text(buf, content.x, y, content, &line, self.header_style(cursor));
     }
 
     fn draw_labels(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
-        let Some(block) = self.block(block_index) else {
+        if self.block(block_index).is_none() {
             self.draw_blank(buf, area, y);
             return;
-        };
+        }
         self.draw_gutter(buf, area, y, block_index);
         let content = Self::content_area(area);
         let width = usize::from(content.width);
         let half = width.saturating_sub(1) / 2;
-        let left = fit(&format!("OURS {} {}", self.dot(), block.ours_label), half);
+        let left = fit(self.doc.names.ours.as_str(), half);
         let right = fit(
-            &format!("THEIRS {} {}", self.dot(), block.theirs_label),
+            self.doc.names.theirs.as_str(),
             width.saturating_sub(half + 1),
         );
         let line = format!("{left}{}{right}", self.divider());
@@ -674,20 +753,22 @@ impl ResolverScreen<'_> {
         let content = Self::content_area(area);
         let width = usize::from(content.width);
         let half = width.saturating_sub(1) / 2;
-        // `Pair` rows only exist for an `Open` block (`layout_block`), so
-        // `first_line` is still the `<<<<<<<` marker line and OURS's first
-        // content line is one past it.
+        // `Pair` rows only exist for an `Open` block (`layout_block`): each
+        // side counts in its own projection.
         let left_text = ours
             .and_then(|i| block.ours.get(i))
             .map_or("", |t| t.as_str());
         let left = fit(
-            &numbered(ours.map(|i| block.first_line + 1 + i), left_text),
+            &self.numbered(ours.map(|i| block.numbers.ours + i), left_text),
             half,
         );
         let right_text = theirs
             .and_then(|i| block.theirs.get(i))
             .map_or("", |t| t.as_str());
-        let right = fit(&numbered(None, right_text), width.saturating_sub(half + 1));
+        let right = fit(
+            &self.numbered(theirs.map(|i| block.numbers.theirs + i), right_text),
+            width.saturating_sub(half + 1),
+        );
         let line = format!("{left}{}{right}", self.divider());
         set_text(buf, content.x, y, content, &line, self.base_style());
     }
@@ -709,46 +790,31 @@ impl ResolverScreen<'_> {
         let content = Self::content_area(area);
         let width = usize::from(content.width);
         let (line, muted) = match side {
-            SideKind::Label(LabelOf::Ours) => {
-                (format!("OURS {} {}", self.dot(), block.ours_label), true)
-            }
-            SideKind::Label(LabelOf::Theirs) => (
-                format!("THEIRS {} {}", self.dot(), block.theirs_label),
-                true,
-            ),
+            SideKind::Label(LabelOf::Ours) => (self.doc.names.ours.as_str().to_owned(), true),
+            SideKind::Label(LabelOf::Theirs) => (self.doc.names.theirs.as_str().to_owned(), true),
             SideKind::Label(LabelOf::Base) => {
                 (format!("BASE {} merged common ancestor", self.dot()), true)
             }
             SideKind::Ours => {
-                // `graft-git::conflict::BlockAt::first_line` doc: "its
-                // first taken line once resolved" — once `Took`, the OURS
-                // lines start *at* `first_line`, not one past it. Open, this
-                // row is the stacked (<100-col) OURS section and
-                // `first_line` is still the `<<<<<<<` marker line, so the
-                // content is one past it (Major 1, m6-02-03 review).
+                // Open: the ours projection. Taken: the result, where the
+                // kept lines start at `numbers.result`.
                 let n = match block.state {
-                    BlockState::Open => block.first_line + 1 + i,
-                    BlockState::Took(_) => block.first_line + i,
+                    BlockState::Open => block.numbers.ours + i,
+                    BlockState::Took(_) => block.numbers.result + i,
                 };
                 let text = block.ours.get(i).map_or("", |t| t.as_str());
-                (numbered(Some(n), text), false)
+                (self.numbered(Some(n), text), false)
             }
             SideKind::Theirs => {
-                // Open, THEIRS is the replayed commit's content, not a line
-                // of the working file — no "current" line number (module
-                // doc). Taken (`Theirs` or `Both`), it *is* on disk now, at
-                // `first_line` (`Theirs`) or right after the OURS lines a
-                // `Both` take kept (`Both`) — same `first_line`-is-already-
-                // the-first-taken-line correction as the OURS arm above.
+                // Open: the theirs projection. Taken: the result, after the
+                // ours lines a `Both` take kept first.
                 let n = match block.state {
-                    BlockState::Took(TakeView::Theirs) => Some(block.first_line + i),
-                    BlockState::Took(TakeView::Both) => {
-                        Some(block.first_line + block.ours.len() + i)
-                    }
-                    BlockState::Open | BlockState::Took(TakeView::Ours) => None,
+                    BlockState::Open => block.numbers.theirs + i,
+                    BlockState::Took(TakeView::Both) => block.numbers.result + block.ours.len() + i,
+                    BlockState::Took(_) => block.numbers.result + i,
                 };
                 let text = block.theirs.get(i).map_or("", |t| t.as_str());
-                (numbered(n, text), false)
+                (self.numbered(Some(n), text), false)
             }
             SideKind::Base => {
                 let base_lines = block
@@ -756,7 +822,7 @@ impl ResolverScreen<'_> {
                     .as_ref()
                     .map_or(&[][..], |(_, lines)| lines.as_slice());
                 (
-                    numbered(None, base_lines.get(i).map_or("", SanitizedText::as_str)),
+                    self.numbered(None, base_lines.get(i).map_or("", SanitizedText::as_str)),
                     false,
                 )
             }
@@ -804,14 +870,31 @@ impl ResolverScreen<'_> {
     }
 }
 
-/// `n`, right-aligned in 5 cells plus a space when `Some`, or a blank
-/// margin of the same width when `None` — THEIRS and BASE never carry a
-/// line number (see the module doc).
-fn numbered(n: Option<usize>, text: &str) -> String {
-    match n {
-        Some(n) => format!("{n:>5} {text}"),
-        None => format!("      {text}"),
-    }
+/// Digits in the widest line number any projection reaches in `doc` — the
+/// number column's width (at least 1).
+#[must_use]
+pub fn number_width(doc: &DocView) -> usize {
+    let last = |first: usize, len: usize| (first + len).saturating_sub(1);
+    let widest = doc
+        .regions
+        .iter()
+        .map(|region| match region {
+            RegionView::Plain { first_line, lines } => last(*first_line, lines.len()),
+            RegionView::WholeFile { lines, .. } => lines.len(),
+            RegionView::Block(block) => last(block.numbers.ours, block.ours.len())
+                .max(last(block.numbers.theirs, block.theirs.len()))
+                .max(last(
+                    block.numbers.result,
+                    match block.state {
+                        BlockState::Open | BlockState::Took(TakeView::Ours) => block.ours.len(),
+                        BlockState::Took(TakeView::Theirs) => block.theirs.len(),
+                        BlockState::Took(TakeView::Both) => block.ours.len() + block.theirs.len(),
+                    },
+                )),
+        })
+        .max()
+        .unwrap_or(0);
+    widest.max(1).to_string().len()
 }
 
 /// `middle` centred in a rule line `width` cells wide, the rule character
@@ -883,7 +966,7 @@ impl Widget for ResolverScreen<'_> {
 }
 
 impl ResolverScreen<'_> {
-    /// The title row, then a notice or an explainer on the row below it —
+    /// The title row, then the notice (if any) on the row below it —
     /// the two `HEADER_ROWS` the body draws under. Not to be confused with
     /// [`Self::draw_header`], a block's own card header.
     fn draw_page_header(&self, buf: &mut Buffer, area: Rect) {
@@ -911,15 +994,6 @@ impl ResolverScreen<'_> {
                 area,
                 text.as_str(),
                 foreground(self.theme, token),
-            );
-        } else if let Some(explainer) = &self.doc.explainer {
-            set_text(
-                buf,
-                area.x,
-                area.y + 1,
-                area,
-                explainer.as_str(),
-                foreground(self.theme, Token::TextMuted),
             );
         }
     }

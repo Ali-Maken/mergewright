@@ -16,11 +16,12 @@ fn stash_pop_conflict_resolves_without_a_banner() {
 
     let state = resolver_on(&app, state, "sample.txt");
     let rows = crate::captures::frame(&state, 120, 40);
+    // ADR-0043 §4: theirs is `stashed`, the role alone, and the bar's
+    // `t` says so.
     assert!(
-        rows.iter()
-            .any(|row| row.contains("ours = your working tree")
-                && row.contains("theirs = the stash")),
-        "the stash-pop explainer is not on the frame:\n{}",
+        rows.last()
+            .is_some_and(|bar| bar.contains("o yours  t stashed")),
+        "the stash pop's role words are not on the bar:\n{}",
         rows.join("\n")
     );
 
@@ -78,11 +79,12 @@ fn stash_pop_whole_file_journals_its_own_row() {
 
     let state = resolver_on_whole_file(&app, state, "sample.txt");
     let rows = crate::captures::frame(&state, 120, 40);
+    // ADR-0043 §4: theirs is `stashed`, the role alone, and the bar's
+    // `t` says so.
     assert!(
-        rows.iter()
-            .any(|row| row.contains("ours = your working tree")
-                && row.contains("theirs = the stash")),
-        "the stash-pop explainer is not on the frame:\n{}",
+        rows.last()
+            .is_some_and(|bar| bar.contains("o yours  t stashed")),
+        "the stash pop's role words are not on the bar:\n{}",
         rows.join("\n")
     );
 

@@ -32,6 +32,7 @@
 
 use unicode_width::UnicodeWidthStr;
 
+use crate::conflict_resolver::SideRoles;
 use crate::fit::fit;
 
 /// Whether the key a hint names actually does the verb it names, today.
@@ -320,6 +321,10 @@ pub enum HintContext {
         /// conflicted file (m6-05 review, Major 1). `base`/`restart` are
         /// not read while this is set.
         whole_file: bool,
+        /// The operation's role words: `o`/`t` read as the sides' roles
+        /// (`o yours  t theirs`; rebase `o upstream  t yours`), never as a
+        /// branch name or sha (ADR-0043 §4).
+        roles: SideRoles,
     },
     /// A branch badge is being dragged (`docs/design/02-keymap.md` §2.15).
     /// The gesture ends with the button, not a key, so the bar says what
@@ -737,11 +742,12 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
             base,
             restart,
             whole_file,
+            roles,
         } => {
             if *whole_file {
-                resolver_card_list()
+                resolver_card_list(*roles)
             } else {
-                resolver_list(*base, *restart)
+                resolver_list(*base, *restart, *roles)
             }
         }
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
@@ -957,8 +963,12 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
 /// Live since m6-conflicts/04, which built `update::resolver` — every one
 /// of these is answered by `resolver_key`, the two in brackets included
 /// since m6-conflicts/05 bound them (`toggle_base`, `restart_box`).
-fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
-    let mut list = vec![hint("o", "ours"), hint("t", "theirs"), hint("b", "both")];
+fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
+    let mut list = vec![
+        hint("o", roles.ours()),
+        hint("t", roles.theirs()),
+        hint("b", "both"),
+    ];
     if base {
         list.push(hint("B", "base"));
     }
@@ -984,10 +994,10 @@ fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
 /// `B` has no blocks to show a base in, `d` has no markers to bring back,
 /// and `N` has no previous file to walk to. `n` crosses to the next
 /// conflicted file, as it does from a document's last block.
-fn resolver_card_list() -> Vec<Hint> {
+fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
     vec![
-        hint("o", "ours"),
-        hint("t", "theirs"),
+        hint("o", roles.ours()),
+        hint("t", roles.theirs()),
         hint("e", "edit"),
         hint("n", "next"),
         hint("M", "mergetool"),
@@ -1066,25 +1076,42 @@ pub fn every_context() -> Vec<HintContext> {
 
 /// Every [`HintContext::Resolver`] form [`every_context`] names: the four
 /// `base`/`restart` combinations of a document, and a whole-file card
-/// (whose list reads neither flag, so one form covers it).
-fn resolver_forms() -> [HintContext; 5] {
-    let document = |base, restart| HintContext::Resolver {
-        base,
-        restart,
-        whole_file: false,
-    };
-    [
-        document(false, false),
-        document(true, false),
-        document(false, true),
-        document(true, true),
-        HintContext::Resolver {
-            base: false,
-            restart: false,
-            whole_file: true,
-        },
-    ]
+/// (whose list reads neither flag, so one form covers it) — each under
+/// every [`SideRoles`].
+fn resolver_forms() -> Vec<HintContext> {
+    ALL_ROLES
+        .iter()
+        .flat_map(|&roles| {
+            let document = move |base, restart| HintContext::Resolver {
+                base,
+                restart,
+                whole_file: false,
+                roles,
+            };
+            [
+                document(false, false),
+                document(true, false),
+                document(false, true),
+                document(true, true),
+                HintContext::Resolver {
+                    base: false,
+                    restart: false,
+                    whole_file: true,
+                    roles,
+                },
+            ]
+        })
+        .collect()
 }
+
+/// Every [`SideRoles`], for [`resolver_forms`].
+const ALL_ROLES: [SideRoles; 5] = [
+    SideRoles::Merge,
+    SideRoles::Rebase,
+    SideRoles::CherryPick,
+    SideRoles::Revert,
+    SideRoles::StashPop,
+];
 
 /// `context` wrapped in [`HintContext::Marked`], for the contexts a Mistake
 /// Radar marker can actually reach — the cursor's own row, once

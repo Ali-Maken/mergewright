@@ -152,7 +152,7 @@ pub fn replayed_commits(
 /// to walk and how. Capped by fetching one more than `cap` so the caller
 /// learns whether more exist; `--reverse` is applied after `--max-count`,
 /// so the entries kept are the ones nearest the tip.
-fn rev_list(
+pub(crate) fn rev_list(
     repo: &RepoHandle,
     cap: usize,
     revs: Vec<GitArg>,

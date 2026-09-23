@@ -348,6 +348,7 @@ fn last_file_staged_from_the_pane() -> AppState {
         step: None,
         head_name: None,
         onto: None,
+        theirs: None,
     });
     state.banner_focus = false;
     let staged = JobId::new(4_500);
@@ -498,4 +499,35 @@ fn a_take_waits_for_the_stage_in_flight() {
     let (state, second) = press(&state, KeyCode::Char('t'));
     assert_eq!(writes(&second), 0, "no take over a stage: {second:?}");
     assert_eq!(sticky(&state).0, "a write is already running");
+}
+
+/// The status line after a take of block 0 lands, in `kind`.
+fn took_line(kind: graft_git::state::InProgress) -> String {
+    use crate::update::resolver::fixtures::{commit, oid, operation, refs};
+    let mut state = resolver_on_screen(WALK);
+    state.refs = Some(refs(false));
+    state.in_progress = Some(operation(kind, Some(commit(oid(3), "Add OAuth provider"))));
+    let open = state.resolver.as_mut().expect("the resolver is open");
+    open.cursor_block = Some(0);
+    let mut file = (**open.file.as_ref().expect("a document")).clone();
+    file.take(0, graft_git::conflict::Take::Theirs)
+        .expect("block 0 exists");
+    super::answers::take_landed(&mut state, &Arc::new(file));
+    match &state.status {
+        Status::Done(words) => words.clone(),
+        other => panic!("expected a done status, got {other:?}"),
+    }
+}
+
+/// ADR-0043 §4: a take is worded by the side's one name.
+#[test]
+fn took_line_uses_the_side_name() {
+    use graft_git::state::InProgress;
+    let merge = took_line(InProgress::Merge);
+    assert!(merge.starts_with("took theirs · feature in "), "{merge}");
+    let rebase = took_line(InProgress::Rebase);
+    assert!(
+        rebase.starts_with("took yours · 0303030 Add OAuth provider in "),
+        "{rebase}"
+    );
 }

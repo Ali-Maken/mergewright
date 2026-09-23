@@ -1,7 +1,7 @@
 //! Building the conflict resolver's [`DocView`] (m6-conflicts/04).
 //!
 //! **The one sanitisation site for a conflicted file.** Every byte here —
-//! the file's own lines, git's marker labels, the path in the title — came
+//! the file's own lines, the base's label, the path in the title — came
 //! off disk or out of git, so every one goes through `graft_term`
 //! (`docs/design/08-architecture.md` §8.2). `graft_ui::conflict_resolver`
 //! takes `SanitizedText` and nothing else, which is what makes that a rule
@@ -9,15 +9,15 @@
 
 use std::path::Path;
 
-use graft_git::conflict::{Block, ConflictFile, Region, Take};
-use graft_git::state::{InProgress, InProgressDetail};
+use graft_git::conflict::{Block, ConflictFile, Projection, Region, Take};
 use graft_term::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::conflict_resolver::{
-    BlockState, BlockView, DocView, Layout, RegionView, SIDE_BY_SIDE_MIN, TakeView, layout,
+    BlockNumbers, BlockState, BlockView, DocView, Layout, RegionView, SIDE_BY_SIDE_MIN, TakeView,
+    layout,
 };
 
 use crate::update::AppState;
-use crate::update::resolver::{ResolverState, WholeFileShape, whole_file_keys};
+use crate::update::resolver::{ResolverState, WholeFileShape, side_names, whole_file_keys};
 
 /// Everything the resolver draws for the file it has open, or `None` when
 /// it is closed or still waiting for its opening read.
@@ -42,7 +42,7 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
             Some((file.open(), blocks.len())),
             columns >= SIDE_BY_SIDE_MIN,
         )),
-        explainer: resolver_explainer(state).as_deref().map(sanitize_line),
+        names: side_names(state),
         regions: regions(file),
         cursor_block: open.cursor_block,
         base_shown: open.base_shown,
@@ -76,10 +76,14 @@ fn whole_file_view(
             None,
             columns >= SIDE_BY_SIDE_MIN,
         )),
-        explainer: resolver_explainer(state).as_deref().map(sanitize_line),
+        names: side_names(state),
         regions: vec![RegionView::WholeFile {
             how: sanitize_line(whole.how.words()),
-            keys: sanitize_line(whole_file_keys(whole.how, whole.binary)),
+            keys: sanitize_line(&whole_file_keys(
+                whole.how,
+                whole.binary,
+                &side_names(state),
+            )),
             lines: whole_file_lines(whole),
             note: whole_file_note(whole),
         }],
@@ -181,126 +185,44 @@ pub fn resolver_title(
     }
 }
 
-/// **Which side is which**, in the words of the operation that made the
-/// conflict — the one thing a rebase gets wrong for everybody, because git
-/// swaps `ours` and `theirs` round compared with a merge.
-///
-/// Wider than the ticket's `(&InProgressDetail)`: naming the branch a
-/// rebase is landing on means looking it up in the refs, which an
-/// `InProgressDetail` does not carry (it has the `onto` commit's id, not a
-/// name). No operation is not always "nothing to explain": a conflicted
-/// `git stash pop` leaves an unmerged index with no rebase/merge state at
-/// all (`KNOWN_GAPS.md` row 229, no `InProgressDetail`), and the resolver
-/// can still be open on it — the only way that happens with `in_progress`
-/// `None`, so a resolver open with no operation *is* one (m6-conflicts/05,
-/// scope 4). `None` only when the resolver itself is closed.
-#[must_use]
-pub fn resolver_explainer(state: &AppState) -> Option<String> {
-    let Some(detail) = state.in_progress.as_ref() else {
-        return state
-            .resolver
-            .is_some()
-            .then(|| "ours = your working tree · theirs = the stash".to_owned());
-    };
-    Some(match detail.kind {
-        InProgress::Rebase => format!(
-            "ours = {}, what you are rebasing onto · theirs = the commit being replayed",
-            onto_name(state, detail)
-        ),
-        InProgress::Merge => format!(
-            "ours = {} · theirs = the branch being merged in",
-            current_branch(state).unwrap_or_else(|| "this branch".to_owned())
-        ),
-        InProgress::CherryPick | InProgress::Revert | InProgress::Bisect => format!(
-            "ours = {} · theirs = the commit being applied",
-            current_branch(state).unwrap_or_else(|| "this branch".to_owned())
-        ),
-    })
-}
-
-/// What the rebase is landing on, named: a branch on that commit if the
-/// refs know one, else its abbreviated id, else the phrase that says what
-/// it is without pretending to know which.
-fn onto_name(state: &AppState, detail: &InProgressDetail) -> String {
-    let Some(onto) = detail.onto else {
-        return "the branch you are rebasing onto".to_owned();
-    };
-    branch_on(state, onto).unwrap_or_else(|| {
-        let full = onto.to_string();
-        full.chars().take(SHORT_OID).collect()
-    })
-}
-
-/// Hex digits of a commit id shown when no ref names it — the seven every
-/// other line in Graft shows (`update::preview::short`).
-const SHORT_OID: usize = 7;
-
-/// The first local branch name on `commit`, if the refs are in.
-fn branch_on(state: &AppState, commit: graft_core::oid::Oid) -> Option<String> {
-    state
-        .refs
-        .as_deref()?
-        .on(commit)
-        .iter()
-        .find_map(|label| match label {
-            crate::refs::RefLabel::Branch { name, .. } => {
-                Some(sanitize_path_bytes(name).as_str().to_owned())
-            }
-            _ => None,
-        })
-}
-
-/// The branch `HEAD` is on, if there is one.
-fn current_branch(state: &AppState) -> Option<String> {
-    let refs = state.refs.as_deref()?;
-    refs.on(refs.head()?).iter().find_map(|label| match label {
-        crate::refs::RefLabel::Branch {
-            name,
-            current: true,
-            ..
-        } => Some(sanitize_path_bytes(name).as_str().to_owned()),
-        _ => None,
-    })
-}
-
-/// The document's regions, in file order, with every byte sanitised.
+/// The document's regions, in file order, with every byte sanitised. Each
+/// line is numbered by its own projection (ADR-0043 §5): plain lines by the
+/// result, an open block's sides by ours and theirs.
 fn regions(file: &ConflictFile) -> Vec<RegionView> {
-    let total = file.blocks().len();
+    let at = file.blocks();
+    let ours = file.first_lines(Projection::Ours);
+    let theirs = file.first_lines(Projection::Theirs);
+    let result = file.first_lines(Projection::Result);
     let mut out = Vec::with_capacity(file.regions.len());
-    let mut line = 1usize;
     let mut index = 0usize;
-    for region in &file.regions {
-        match region {
+    for (r, region) in file.regions.iter().enumerate() {
+        let numbers = BlockNumbers {
+            ours: ours[r],
+            theirs: theirs[r],
+            result: result[r],
+        };
+        let (block, state) = match region {
             Region::Plain(lines) => {
                 out.push(RegionView::Plain {
-                    first_line: line,
+                    first_line: result[r],
                     lines: lines.iter().map(text_of).collect(),
                 });
-                line += lines.len();
+                continue;
             }
-            Region::Conflict(block) => {
-                out.push(RegionView::Block(block_view(
-                    block,
-                    index,
-                    total,
-                    line,
-                    BlockState::Open,
-                )));
-                index += 1;
-                line += conflict_lines(block);
-            }
-            Region::Resolved { block, take } => {
-                out.push(RegionView::Block(block_view(
-                    block,
-                    index,
-                    total,
-                    line,
-                    BlockState::Took(take_view(*take)),
-                )));
-                index += 1;
-                line += taken_lines(block, *take);
-            }
-        }
+            Region::Conflict(block) => (block, BlockState::Open),
+            Region::Resolved { block, take } => (block, BlockState::Took(take_view(*take))),
+        };
+        // `blocks()` has one entry per non-plain region, in order.
+        let first_line = at.get(index).map_or(numbers.result, |at| at.first_line);
+        out.push(RegionView::Block(block_view(
+            block,
+            index,
+            at.len(),
+            first_line,
+            numbers,
+            state,
+        )));
+        index += 1;
     }
     out
 }
@@ -311,14 +233,13 @@ fn block_view(
     index: usize,
     of: usize,
     first_line: usize,
+    numbers: BlockNumbers,
     state: BlockState,
 ) -> BlockView {
     BlockView {
         index,
         of,
         state,
-        ours_label: label(block.ours_label.as_deref(), "ours"),
-        theirs_label: label(block.theirs_label.as_deref(), "theirs"),
         ours: block.ours.iter().map(text_of).collect(),
         base: block.shown_base().map(|(base, shared)| {
             (
@@ -335,6 +256,7 @@ fn block_view(
         }),
         theirs: block.theirs.iter().map(text_of).collect(),
         first_line,
+        numbers,
     }
 }
 
@@ -356,23 +278,6 @@ fn text_of(line: &graft_git::conflict::Line) -> SanitizedText {
     sanitize_line(&String::from_utf8_lossy(content))
 }
 
-/// How many rendered lines an open block takes, so the next region's first
-/// line number is the file's own (`ConflictFile::blocks`' arithmetic, which
-/// is not public).
-fn conflict_lines(block: &Block) -> usize {
-    let base = block.base.as_ref().map_or(0, |base| base.lines.len() + 1);
-    3 + block.ours.len() + base + block.theirs.len()
-}
-
-/// The same for a block a take has collapsed.
-fn taken_lines(block: &Block, take: Take) -> usize {
-    match take {
-        Take::Ours => block.ours.len(),
-        Take::Theirs => block.theirs.len(),
-        Take::Both => block.ours.len() + block.theirs.len(),
-    }
-}
-
 /// `graft_git`'s take, as the widget names it.
 fn take_view(take: Take) -> TakeView {
     match take {
@@ -386,10 +291,41 @@ fn take_view(take: Take) -> TakeView {
 mod tests {
     use std::sync::Arc;
 
-    use super::{resolver_explainer, resolver_title, resolver_view};
+    use super::{resolver_title, resolver_view};
     use crate::update::AppState;
-    use crate::update::resolver::{OpenedFrom, ResolverState};
-    use graft_git::state::{InProgress, InProgressDetail};
+    use crate::update::resolver::fixtures::{commit, oid, operation, refs};
+    use crate::update::resolver::{OpenedFrom, ResolverState, WholeFileShape};
+    use graft_git::state::InProgress;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+
+    /// The whole frame as `view` draws it, one string per row.
+    fn frame(state: &AppState, columns: u16, rows: u16) -> String {
+        let mut terminal =
+            Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+        terminal
+            .draw(|frame| crate::view::view(&crate::session::for_tests::session(), state, frame))
+            .expect("TestBackend cannot fail to draw");
+        let buffer = terminal.backend().buffer();
+        (0..buffer.area.height)
+            .map(|y| {
+                (0..buffer.area.width)
+                    .map(|x| buffer[(x, y)].symbol())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Git's own words that must never reach the screen as a side's name.
+    const RAW: [&str; 6] = [
+        "HEAD",
+        "OURS",
+        "THEIRS",
+        "ours =",
+        "(yours)",
+        "Stashed changes",
+    ];
 
     /// A resolver open on `bytes`, at `path`.
     fn open_on(bytes: &[u8], path: &str) -> AppState {
@@ -454,10 +390,6 @@ mod tests {
                     .iter()
                     .chain(block.theirs.iter())
                     .map(|line| line.as_str().to_owned())
-                    .chain([
-                        block.ours_label.as_str().to_owned(),
-                        block.theirs_label.as_str().to_owned(),
-                    ])
                     .collect::<Vec<_>>(),
                 graft_ui::conflict_resolver::RegionView::WholeFile { .. } => Vec::new(),
             })
@@ -472,40 +404,92 @@ mod tests {
         );
     }
 
-    /// A rebase swaps `ours` and `theirs` round compared with a merge, which
-    /// is the one thing everybody gets wrong. The explainer says which.
+    /// Two one-line blocks git wrote for a stopped merge, `HEAD`'s and
+    /// git's raw labels included — which must not be drawn.
+    const TWO_BLOCKS: &[u8] = b"one\n<<<<<<< HEAD\ntwo from main\n=======\nTWO from feature\n>>>>>>> feature\nthree\n<<<<<<< Updated upstream\nfour\n=======\nFOUR\n>>>>>>> Stashed changes\n";
+
+    fn assert_no_raw_label(drawn: &str) {
+        for raw in RAW {
+            assert!(!drawn.contains(raw), "{raw:?} was drawn:\n{drawn}");
+        }
+    }
+
+    /// ADR-0043 §4: each side has one name, the same on every card, and
+    /// git's own labels never reach the frame.
     #[test]
-    fn explainer_names_the_sides() {
-        let mut state = open_on(b"a\n<<<<<<< HEAD\nx\n=======\ny\n>>>>>>> f\n", "both.txt");
-        state.in_progress = Some(InProgressDetail {
-            kind: InProgress::Rebase,
-            step: None,
-            head_name: None,
-            onto: None,
-        });
-        assert_eq!(
-            resolver_explainer(&state).as_deref(),
-            Some(
-                "ours = the branch you are rebasing onto, what you are rebasing onto · \
-                 theirs = the commit being replayed"
-            )
-        );
+    fn one_name_per_side() {
+        let feature = commit(oid(3), "Add OAuth provider");
+        let cases = [
+            (
+                InProgress::Merge,
+                Some(feature.clone()),
+                "yours · main",
+                "theirs · feature",
+            ),
+            (
+                InProgress::Rebase,
+                Some(feature.clone()),
+                "upstream · main",
+                "yours · 0303030 Add OAuth provider",
+            ),
+            (
+                InProgress::CherryPick,
+                Some(feature.clone()),
+                "yours · main",
+                "picked · 0303030 Add OAuth provider",
+            ),
+        ];
+        for (kind, theirs, ours_name, theirs_name) in cases {
+            let mut state = open_on(TWO_BLOCKS, "notes.txt");
+            state.refs = Some(refs(false));
+            state.in_progress = Some(operation(kind, theirs));
+            for columns in [80, 120] {
+                let drawn = frame(&state, columns, 30);
+                assert!(drawn.contains(ours_name), "{kind:?} {columns}:\n{drawn}");
+                assert!(drawn.contains(theirs_name), "{kind:?} {columns}:\n{drawn}");
+                assert_no_raw_label(&drawn);
+            }
+        }
 
-        // No operation, resolver still open: the only way that happens is a
-        // conflicted `git stash pop` (m6-conflicts/05, scope 4), so this is
-        // the stash explainer, not "no sides to explain".
-        state.in_progress = None;
-        assert_eq!(
-            resolver_explainer(&state).as_deref(),
-            Some("ours = your working tree · theirs = the stash")
-        );
+        // Stash pop: the resolver open with no operation in progress.
+        let mut state = open_on(TWO_BLOCKS, "notes.txt");
+        state.refs = Some(refs(false));
+        let drawn = frame(&state, 120, 30);
+        assert!(drawn.contains("yours · main"), "{drawn}");
+        assert!(drawn.contains("│stashed"), "{drawn}");
+        assert!(!drawn.contains("stashed ·"), "{drawn}");
+        assert_no_raw_label(&drawn);
+    }
 
-        state.resolver = None;
-        assert_eq!(
-            resolver_explainer(&state),
-            None,
-            "the resolver is closed, nothing to explain"
-        );
+    /// Decision 2: HEAD with no branch on it reads as its short id.
+    #[test]
+    fn detached_head_names_the_sha() {
+        let mut state = open_on(TWO_BLOCKS, "notes.txt");
+        state.refs = Some(refs(true));
+        state.in_progress = Some(operation(InProgress::Merge, Some(commit(oid(3), "x"))));
+        let drawn = frame(&state, 120, 30);
+        assert!(drawn.contains("yours · 0909090"), "{drawn}");
+        assert!(drawn.contains("theirs · feature"), "{drawn}");
+    }
+
+    /// A `DU` file has no markers to read a label from; its card still names
+    /// theirs by its one name.
+    #[test]
+    fn whole_file_card_names_theirs_without_markers() {
+        let mut state = open_on(b"x\n", "gone.txt");
+        state.refs = Some(refs(false));
+        state.in_progress = Some(operation(InProgress::Merge, Some(commit(oid(3), "x"))));
+        if let Some(open) = state.resolver.as_mut() {
+            open.file = None;
+            open.whole_file = Some(WholeFileShape {
+                how: graft_git::status::UnmergedHow::DeletedByUs,
+                binary: false,
+                on_disk: None,
+            });
+        }
+        let drawn = frame(&state, 120, 30);
+        assert!(drawn.contains("t keeps theirs · feature"), "{drawn}");
+        assert_no_raw_label(&drawn);
     }
 
     /// The title is the only place the file's own count is drawn, so it says

@@ -49,7 +49,8 @@ The conflict file as data (m6-conflicts/01). The marker rules are decided in the
 - `Block` (struct) — `ours_label: Option<Vec<u8>>` (`None` = bare marker; `Some(b"")` = `<<<<<<< `, byte-distinct), `ours`, `base: Option<Base>` (what the file on disk carries, so it renders), `theirs_label: Option<Vec<u8>>`, `theirs`, `ends`, `reproduced: Option<Reproduced>`; `shown_base() -> Option<(&Base, bool)>` — the file's base if it has one, else the reproduced one and whether it is shared; `taken(take)` — the lines a take leaves.
 - `Take` (enum) — `Ours`, `Theirs`, `Both` (ours then theirs).
 - `Region` (enum) — `Plain(lines)`, `Conflict(Block)`, `Resolved { block, take }`.
-- `ConflictFile` (struct) — `regions`, `fingerprint` (blob id of the bytes parsed); `render`, `take(block, take) -> Result<(), NoSuchBlock>` (the index counts `Conflict` and `Resolved` regions in order; re-taking replaces), `blocks() -> Vec<BlockAt>`, `open()` (blocks still `Conflict`).
+- `ConflictFile` (struct) — `regions`, `fingerprint` (blob id of the bytes parsed); `render`, `take(block, take) -> Result<(), NoSuchBlock>` (the index counts `Conflict` and `Resolved` regions in order; re-taking replaces), `blocks() -> Vec<BlockAt>`, `open()` (blocks still `Conflict`), `first_lines(Projection) -> Vec<usize>` (one per region, its 1-based first line in that projection; each numbers 1..=n with no gap — m6-conflicts/10).
+- `Projection` (enum) — `Ours` (plain + every block's ours lines), `Theirs` (plain + theirs lines), `Result` (plain, taken lines, an open block's ours lines).
 - `BlockAt` (struct) — `index`, `state`, `first_line` (1-based, in `render()`); `BlockState` (enum) — `Open`, `Took(Take)`.
 - `ParseError` (struct) — `line` (1-based), `what: ParseErrorKind`: `Unterminated` (a block still open at EOF, at its `<<<<<<<` line), `StrayMarker` (`<<<<<<<` inside a block; `=======`, `|||||||` or `>>>>>>>` outside one, bare or labelled; `>>>>>>>` before the separator), `MarkerSize` (a conflict opened with markers longer than seven characters).
 - `NoSuchBlock` (struct) — the index `take` was given.
@@ -230,7 +231,7 @@ The conflict file as data (m6-conflicts/01). The marker rules are decided in the
 ## state
 - `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name`/`continue_command`/`abort_command` (m3/01).
 - `in_progress` (fn) — a plain fs check under `RepoHandle::git_dir` for `MERGE_HEAD`, `rebase-merge/`, `rebase-apply/`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `BISECT_LOG`; no `git` spawn (m3/01).
-- `InProgressDetail` (struct) — `kind`, `step` (`(current, total)`), `head_name`, `onto`; the last three are only ever set for `Rebase` (m5-history-and-ghost-preview/02).
+- `InProgressDetail` (struct) — `kind`, `step` (`(current, total)`), `head_name`, `onto` (these three only ever set for `Rebase`, m5-history-and-ghost-preview/02), `theirs: Option<CommitSummary>` — the incoming commit from `MERGE_HEAD` line 1 / `CHERRY_PICK_HEAD` / `REVERT_HEAD` / `REBASE_HEAD` (either backend), `None` for bisect or a missing file; a head file naming an unreadable commit is `StateError::Io` (m6-conflicts/10).
 - `StateError` (enum) — `Io(io::Error)`, from `in_progress` itself; a rebase detail file that is missing or unparsable is never an error, just `None` on that field (m5-history-and-ghost-preview/02).
 - `in_progress_detail` (fn) — `in_progress`, plus for a rebase: `rebase-merge/{msgnum,end,head-name,onto}` or `rebase-apply/{next,last,head-name,onto}`, whichever backend is in use; plain fs reads (m5-history-and-ghost-preview/02).
 - `mergetool` (fn) — `git config --get merge.tool` through `run`; `None` on its exit 1 (unset), never an error (m5-history-and-ghost-preview/02).

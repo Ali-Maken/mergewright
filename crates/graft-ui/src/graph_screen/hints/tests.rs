@@ -1028,7 +1028,8 @@ fn every_context_lists_resolver() {
                 contexts.contains(&HintContext::Resolver {
                     base,
                     restart,
-                    whole_file: false
+                    whole_file: false,
+                    roles: SideRoles::Merge,
                 }),
                 "every_context() is missing Resolver {{ base: {base}, restart: {restart} }}"
             );
@@ -1042,6 +1043,7 @@ fn document(base: bool, restart: bool) -> HintContext {
         base,
         restart,
         whole_file: false,
+        roles: SideRoles::Merge,
     }
 }
 
@@ -1060,7 +1062,7 @@ fn resolver_hint_ladder() {
     assert_eq!(
         words,
         vec![
-            ("o", "ours"),
+            ("o", "yours"),
             ("t", "theirs"),
             ("b", "both"),
             ("e", "edit"),
@@ -1103,7 +1105,7 @@ fn resolver_hint_ladder() {
     let at_160 = fit_list(&whole, None, 160);
     assert_eq!(
         hints_text(&at_160),
-        " o ours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close"
+        " o yours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close"
     );
     // Observed (cargo test -p graft-ui --lib graph_screen::hints::tests::resolver_hint_ladder
     // -- --nocapture, with a temporary eprintln probe): the 160-column line is
@@ -1116,7 +1118,7 @@ fn resolver_hint_ladder() {
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,
-        " o ours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc"
+        " o yours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc"
     );
     assert!(text_80.width() <= 80, "{text_80:?}");
     // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
@@ -1134,16 +1136,18 @@ fn resolver_card_draws_only_what_a_card_answers() {
             base,
             restart,
             whole_file: true,
+            roles: SideRoles::Merge,
         };
         assert_eq!(
             hints_text(&hints_for(&card, Divider::Hidden, 160)),
-            " o ours  t theirs  e edit  n next  M mergetool  esc close"
+            " o yours  t theirs  e edit  n next  M mergetool  esc close"
         );
     }
     assert!(every_context().contains(&HintContext::Resolver {
         base: false,
         restart: false,
         whole_file: true,
+        roles: SideRoles::Merge,
     }));
 }
 
@@ -1195,4 +1199,37 @@ fn unmerged_rows_lead_with_resolve() {
         "{:?}",
         hints_text(&banner_no_conflict)
     );
+}
+
+/// ADR-0043 §4: `o`/`t` read as the operation's role words, never a name;
+/// a role word has no short form, so the short rung is the word itself.
+#[test]
+fn resolver_verbs_are_role_words() {
+    let bar = |roles| {
+        let context = HintContext::Resolver {
+            base: false,
+            restart: false,
+            whole_file: false,
+            roles,
+        };
+        hints_text(&hints_for(&context, Divider::Hidden, 200))
+    };
+    assert!(bar(SideRoles::Merge).starts_with(" o yours  t theirs  b both"));
+    assert!(bar(SideRoles::Rebase).starts_with(" o upstream  t yours  b both"));
+    for roles in [
+        SideRoles::Merge,
+        SideRoles::Rebase,
+        SideRoles::CherryPick,
+        SideRoles::Revert,
+        SideRoles::StashPop,
+    ] {
+        for word in [roles.ours(), roles.theirs()] {
+            assert_eq!(super::short_form(word), None, "{word} has a short form");
+            let short = Hint {
+                rung: Rung::Short,
+                ..hint("o", word)
+            };
+            assert_eq!(short.text(), format!("o {word}"), "{word}");
+        }
+    }
 }

@@ -7,7 +7,7 @@ use graft_fixtures::Shape;
 
 use super::{
     BaseMismatch, Block, BlockState, ConflictFile, Line, MarkerEnds, ParseError, ParseErrorKind,
-    ReadError, Region, Take, WriteError, attach_base, blob_id, diff3_file, parse, read,
+    Projection, ReadError, Region, Take, WriteError, attach_base, blob_id, diff3_file, parse, read,
     stage_bytes, write_back,
 };
 use crate::history_reads::first_marker_line;
@@ -920,4 +920,125 @@ fn a_hand_built_block_renders_with_its_ends() {
         file.render(),
         &b"<<<<<<< HEAD\no\n=======\nt\n>>>>>>> feature\n"[..]
     );
+}
+
+/// Projection `p`'s lines for each region, as a reader of that version
+/// would see them.
+fn projected(region: &Region, p: Projection) -> Vec<Line> {
+    match (region, p) {
+        (Region::Plain(lines), _) => lines.clone(),
+        (Region::Conflict(block) | Region::Resolved { block, .. }, Projection::Ours)
+        | (Region::Conflict(block), Projection::Result) => block.ours.clone(),
+        (Region::Conflict(block) | Region::Resolved { block, .. }, Projection::Theirs) => {
+            block.theirs.clone()
+        }
+        (Region::Resolved { block, take }, Projection::Result) => {
+            block.taken(*take).cloned().collect()
+        }
+    }
+}
+
+fn assert_contiguous(file: &ConflictFile, what: &str) {
+    for p in [Projection::Ours, Projection::Theirs, Projection::Result] {
+        let firsts = file.first_lines(p);
+        assert_eq!(
+            firsts.len(),
+            file.regions.len(),
+            "{what} {p:?}: one per region"
+        );
+        let mut numbered = Vec::new();
+        for (region, first) in file.regions.iter().zip(&firsts) {
+            let lines = projected(region, p);
+            assert_eq!(*first, numbered.len() + 1, "{what} {p:?}: a gap or overlap");
+            numbered.extend((0..lines.len()).map(|i| first + i));
+        }
+        assert!(
+            numbered.iter().enumerate().all(|(i, n)| *n == i + 1),
+            "{what} {p:?}: numbers are not 1..=n"
+        );
+    }
+    // Every block taken: Result is the rendered file, line for line.
+    for take in [Take::Ours, Take::Theirs, Take::Both] {
+        let mut taken = file.clone();
+        for index in 0..taken.blocks().len() {
+            taken.take(index, take).expect("the block exists");
+        }
+        let rendered = taken.render();
+        let result: Vec<u8> = taken
+            .regions
+            .iter()
+            .flat_map(|region| projected(region, Projection::Result))
+            .flat_map(|line| line.0)
+            .collect();
+        assert_eq!(result, rendered, "{what} {take:?}: Result is not render()");
+        let firsts = taken.first_lines(Projection::Result);
+        let mut blocks = taken.blocks().into_iter();
+        for (region, first) in taken.regions.iter().zip(firsts) {
+            if !matches!(region, Region::Plain(_)) {
+                let block = blocks.next().expect("one BlockAt per block");
+                assert_eq!(
+                    block.first_line, first,
+                    "{what} {take:?}: disagrees with blocks()"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn first_lines_number_each_projection_without_gaps() {
+    for shape in [Shape::StoppedMerge, Shape::StoppedRebase] {
+        let dir = borrowed(shape);
+        let conflicted = git(&dir, &["diff", "--name-only", "--diff-filter=U"]);
+        let mut checked = 0;
+        for name in String::from_utf8_lossy(&conflicted).lines() {
+            let path = dir.join(name);
+            if !path.exists() {
+                continue; // deleted on a side: a whole-file conflict, no text
+            }
+            let Ok(file) = parse(&bytes(&path)) else {
+                continue; // binary or unparsable: the resolver never numbers it
+            };
+            if file.open() == 0 {
+                continue; // a whole-file conflict: no markers to number
+            }
+            assert_contiguous(&file, &format!("{shape:?} {name}"));
+            checked += 1;
+        }
+        assert!(
+            checked > 0,
+            "{shape:?} holds no conflicted file with markers"
+        );
+    }
+
+    // A generated set: plain runs and blocks of varied sizes.
+    let mut state = 0x2545_F491_4F6C_DD1Du64;
+    let mut next = move |out_of: u64| {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        usize::try_from(state % out_of).expect("small")
+    };
+    for round in 0..200 {
+        let mut text = String::new();
+        for _ in 0..next(5) {
+            for i in 0..next(4) {
+                text.push_str(&format!("plain {i}\n"));
+            }
+            text.push_str("<<<<<<< a\n");
+            for i in 0..next(4) {
+                text.push_str(&format!("ours {i}\n"));
+            }
+            if next(2) == 0 {
+                text.push_str("||||||| b\nbase\n");
+            }
+            text.push_str("=======\n");
+            for i in 0..next(4) {
+                text.push_str(&format!("theirs {i}\n"));
+            }
+            text.push_str(">>>>>>> c\n");
+        }
+        let file = parse(text.as_bytes()).expect("generated files parse");
+        assert_contiguous(&file, &format!("generated {round}"));
+    }
 }

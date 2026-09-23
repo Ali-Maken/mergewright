@@ -11,6 +11,7 @@
 )]
 
 mod base;
+mod card_names;
 mod handover;
 mod last_file;
 mod modal;
@@ -139,7 +140,7 @@ fn enter_on_conflicts_row_opens_the_resolver() {
     // The bar under the document is the resolver's own, not the pane's.
     let drawn = crate::captures::frame(&state, 120, 40);
     let footer = drawn.last().expect("a footer row").to_owned();
-    for key in ["o ours", "t theirs", "b both", "n next", "esc close"] {
+    for key in ["o yours", "t theirs", "b both", "n next", "esc close"] {
         assert!(footer.contains(key), "{key} missing from {footer:?}");
     }
 
