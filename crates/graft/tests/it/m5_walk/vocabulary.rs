@@ -117,6 +117,15 @@ pub(super) fn nothing_open(state: &AppState) -> Result<(), String> {
     })
 }
 
+/// The stop line (`banner::stop_line`, m6-conflicts/12) is exactly `text`.
+/// A stop is state, not a status: it leads the banner's own bottom row.
+pub(super) fn stop_line_is(state: &AppState, text: &str) -> Result<(), String> {
+    let line = graft::update::banner::stop_line(state);
+    check(line.as_deref() == Some(text), || {
+        format!("the stop line is {line:?}, not {text:?}")
+    })
+}
+
 /// The status line contains `text`.
 pub(super) fn status_containing(state: &AppState, text: &str) -> Result<(), String> {
     let status = status_text(state);

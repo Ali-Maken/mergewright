@@ -383,7 +383,7 @@ pub(super) fn refresh_key(
     next.awaiting = Some(walk);
     commands.push(Command::OpenRepository);
     commands.push(Command::ReadHistory(walk, Order::Topological));
-    commands.push(Command::ReadRefs);
+    commands.push(Command::ReadRefs(next_id()));
     super::remote::request(next, commands, next_id);
     commands.push(Command::ReadWorkingTree);
     // The default branch's tip may have moved: a stale chain would
@@ -786,6 +786,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("⏎", "changes"),   // the same key on the uncommitted-changes row
     ("<>", "resize"),   // `detail::keys`, while the pane is shown (ADR-0028)
     ("⇥", "graph"),     // `detail::keys`: cycles focus back to the graph
+    ("⇥", "banner"),    // `banner::take_focus`: back into a live operation's banner
     ("space", "stage"), // `detail::keys::changes_pane_write_key`
     ("d", "discard"),   // the same, `operate::request_discard`
     ("⌃A", "all"),      // the same, `operate::stage_all`

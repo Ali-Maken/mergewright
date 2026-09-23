@@ -362,12 +362,17 @@ fn stopping_again_keeps_the_banner_focused() {
         &mut || JobId::new(8),
     );
     assert!(state.banner_focus, "the banner keeps the keyboard");
+    // The stop is a state, not a sticky line (m6-conflicts/12): the footer
+    // words it `rebase stopped again at step 3 of 7 · …`.
+    assert_eq!(state.status, Status::Ready);
     assert_eq!(
-        state.status,
-        Status::Sticky {
-            reason: "stopped again: conflicts in 2 files".to_owned(),
-            keys: Some(STUCK_KEYS.to_owned()),
-        }
+        state.stopped,
+        Some(crate::update::Stop {
+            origin: crate::update::LiveOrigin::ThisRun,
+            again: true,
+            kind: InProgress::Rebase,
+            paths_at_stop: 2,
+        })
     );
     assert!(
         !commands.is_empty(),
@@ -918,4 +923,409 @@ fn a_focused_banner_answers_u_instead_of_swallowing_it() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Landing after a stop (m6-conflicts/12)
+// ---------------------------------------------------------------------------
+
+use crate::update::{LiveOrigin, Size, Stop};
+
+/// The frame `state` draws at `columns`×`rows`, its last row only.
+fn bottom_row(state: &AppState, columns: u16, rows: u16) -> String {
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+
+    let mut state = state.clone();
+    state.size = Size { columns, rows };
+    let mut terminal =
+        Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| crate::view::view(&crate::session::for_tests::session(), &state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer();
+    (0..columns)
+        .map(|x| buffer[(x, rows - 1)].symbol())
+        .collect()
+}
+
+fn working_tree(in_progress: Option<InProgressDetail>, paths: &[&str]) -> AppEvent {
+    AppEvent::Produced(
+        JobId::new(90),
+        Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+            status: std::sync::Arc::new(WorkingTreeStatus {
+                entries: paths.iter().map(|path| unmerged(path)).collect(),
+            }),
+            in_progress,
+            mergetool: None,
+        }))),
+    )
+}
+
+/// A merge started in this run stops on `gone.txt`, answered through
+/// `update` exactly as the job pool answers it, then the refresh's
+/// working-tree read lands.
+fn a_merge_stops() -> AppState {
+    let id = JobId::new(7);
+    let state = AppState {
+        history: Some(crate::view::tests::history_of(5, 0)),
+        operating: Some(id),
+        status: Status::Busy("merge feature into main".to_owned()),
+        // Not a launch: the first read is long gone.
+        working_tree: Some(std::sync::Arc::new(WorkingTreeStatus {
+            entries: Vec::new(),
+        })),
+        ..AppState::default()
+    };
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Operated(Box::new(crate::jobs::operate::Operated::Conflicted {
+                description: "merge feature into main".to_owned(),
+                kind: InProgress::Merge,
+                paths: vec!["gone.txt".into()],
+                stalled: None,
+                entry: graft_core::journal::EntryId::new(1, [0; 10]),
+            })),
+        ),
+    );
+    let (state, _) = crate::update::update(
+        &state,
+        working_tree(Some(detail(InProgress::Merge, None)), &["gone.txt"]),
+    );
+    state
+}
+
+fn step(state: &AppState, code: KeyCode) -> AppState {
+    crate::update::update(state, AppEvent::Core(Event::Key(key(code)))).0
+}
+
+#[test]
+fn a_stop_keeps_the_banner_keys_on_the_bottom_row() {
+    let state = a_merge_stops();
+    assert!(state.banner_focus);
+    assert_eq!(
+        state.status,
+        Status::Ready,
+        "the launch's `Busy` is cleared"
+    );
+    for (columns, rows) in [(80, 24), (120, 40), (200, 50)] {
+        let row = bottom_row(&state, columns, rows);
+        assert!(row.contains("⏎ resolve"), "{columns}x{rows}: {row}");
+        assert!(row.contains("a abort"), "{columns}x{rows}: {row}");
+        assert!(!row.contains("esc dismiss"), "{columns}x{rows}: {row}");
+    }
+    let row = bottom_row(&state, 120, 40);
+    assert!(
+        row.trim_start()
+            .starts_with("merge stopped · 1 file conflicted ·"),
+        "{row}"
+    );
+}
+
+#[test]
+fn the_stop_line_outlives_a_dismissed_problem() {
+    let mut state = a_merge_stops();
+    let id = JobId::new(8);
+    state.operating = Some(id);
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Resumed(Box::new(crate::jobs::operate::Operated::Failed {
+                error: "a hook refused the commit".to_owned(),
+                refresh: None,
+                remote: None,
+                refused: None,
+            })),
+        ),
+    );
+    assert!(matches!(state.status, Status::Sticky { .. }));
+    assert!(
+        bottom_row(&state, 120, 40).contains("a hook refused the commit"),
+        "the control: the problem takes the row while it stands"
+    );
+    // `Esc` dismisses the problem and, as it always has, leaves the banner
+    // in the same press. The stop is not a status, so it is still there.
+    let state = step(&state, KeyCode::Escape);
+    assert_eq!(state.status, Status::Ready, "the problem is dismissed");
+    assert!(!state.banner_focus);
+    assert!(state.stopped.is_some(), "the stop outlives the problem");
+    // Back on the banner, its row leads with the stop's reason again.
+    let state = step(&state, KeyCode::Tab);
+    assert!(state.banner_focus, "the control: one ⇥ is the way back");
+    let row = bottom_row(&state, 120, 40);
+    assert!(
+        row.trim_start()
+            .starts_with("merge stopped · 1 file conflicted"),
+        "{row}"
+    );
+}
+
+#[test]
+fn tab_keeps_a_failed_resumes_words() {
+    let mut state = stopped(InProgress::Rebase, &["a.rs"]);
+    let failed = Status::Sticky {
+        reason: "a hook refused the commit".to_owned(),
+        keys: Some("a abort".to_owned()),
+    };
+    state.status = failed.clone();
+    let (claimed, _) = press(&mut state, KeyCode::Tab);
+    assert!(claimed);
+    assert!(
+        !state.banner_focus,
+        "the control: `Tab` did leave the banner"
+    );
+    assert_eq!(state.status, failed);
+}
+
+#[test]
+fn esc_on_the_banner_leaves_a_way_back_on_screen() {
+    let state = a_merge_stops();
+    let state = step(&state, KeyCode::Escape);
+    assert!(
+        !state.banner_focus,
+        "the control: `Esc` handed the keyboard back"
+    );
+    let row = bottom_row(&state, 120, 40);
+    assert!(row.contains("⇥ banner"), "{row}");
+    let state = step(&state, KeyCode::Tab);
+    assert!(state.banner_focus, "one `Tab` is the way back");
+    let state = step(&state, KeyCode::Enter);
+    let resolver = state.resolver.as_ref().expect("`⏎` opens the resolver");
+    assert_eq!(
+        Some(resolver.path.clone()),
+        first_conflicted(&state),
+        "on the first conflicted file"
+    );
+}
+
+fn stop(origin: LiveOrigin, again: bool, kind: InProgress, paths_at_stop: usize) -> Stop {
+    Stop {
+        origin,
+        again,
+        kind,
+        paths_at_stop,
+    }
+}
+
+/// What `stop_reason` is handed from the working-tree read: its detail and
+/// its unmerged count.
+type LiveRead<'a> = (&'a InProgressDetail, usize);
+
+#[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one table: every row of the ticket's wording, read top to bottom"
+)]
+fn stop_reason_words() {
+    let merge = detail(InProgress::Merge, None);
+    let rebase = detail(InProgress::Rebase, Some((3, 7)));
+    let again = detail(InProgress::Rebase, Some((4, 7)));
+    let pick = detail(InProgress::CherryPick, None);
+    let revert = detail(InProgress::Revert, None);
+    let cases: [(Stop, Option<LiveRead<'_>>, &str); 12] = [
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::Merge, 1),
+            Some((&merge, 1)),
+            "merge stopped · 1 file conflicted",
+        ),
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 2),
+            Some((&rebase, 2)),
+            "rebase stopped at step 3 of 7 · 2 files conflicted",
+        ),
+        (
+            stop(LiveOrigin::ThisRun, true, InProgress::Rebase, 1),
+            Some((&again, 1)),
+            "rebase stopped again at step 4 of 7 · 1 file conflicted",
+        ),
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 0),
+            Some((&rebase, 0)),
+            "rebase stopped at step 3 of 7",
+        ),
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::CherryPick, 1),
+            Some((&pick, 1)),
+            "cherry-pick stopped · 1 file conflicted",
+        ),
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::Revert, 2),
+            Some((&revert, 2)),
+            "revert stopped · 2 files conflicted",
+        ),
+        (
+            stop(LiveOrigin::PreviousRun, false, InProgress::Merge, 1),
+            Some((&merge, 1)),
+            "merge still in progress from a previous run · 1 file conflicted",
+        ),
+        (
+            stop(LiveOrigin::PreviousRun, false, InProgress::Rebase, 1),
+            Some((&rebase, 1)),
+            "rebase still in progress from a previous run · step 3 of 7 · 1 file conflicted",
+        ),
+        (
+            stop(LiveOrigin::OutsideGraft, false, InProgress::Merge, 1),
+            Some((&merge, 1)),
+            "merge in progress · begun outside Graft · 1 file conflicted",
+        ),
+        (
+            stop(LiveOrigin::OutsideGraft, false, InProgress::Rebase, 2),
+            Some((&rebase, 2)),
+            "rebase in progress · begun outside Graft · step 3 of 7 · 2 files conflicted",
+        ),
+        // The read names another operation: the stop's own kind and count,
+        // and no step.
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 2),
+            Some((&merge, 5)),
+            "rebase stopped · 2 files conflicted",
+        ),
+        // No read at all: the same fallback.
+        (
+            stop(LiveOrigin::ThisRun, false, InProgress::Merge, 0),
+            None,
+            "merge stopped",
+        ),
+    ];
+    for (stop, live, words) in cases {
+        assert_eq!(stop_reason(&stop, live), words, "{stop:?}");
+    }
+}
+
+#[test]
+fn the_count_follows_the_read() {
+    let state = AppState {
+        stopped: Some(stop(LiveOrigin::ThisRun, false, InProgress::Merge, 2)),
+        in_progress: Some(detail(InProgress::Merge, None)),
+        history: Some(crate::view::tests::history_of(5, 0)),
+        working_tree: Some(std::sync::Arc::new(WorkingTreeStatus {
+            entries: vec![unmerged("a.rs"), unmerged("b.rs")],
+        })),
+        ..AppState::default()
+    };
+    let line = crate::view::rows::stopped_line(&state).expect("a stop is standing");
+    assert_eq!(
+        line.as_str(),
+        "merge stopped · 2 files conflicted",
+        "the control"
+    );
+    let (state, _) = crate::update::update(
+        &state,
+        working_tree(Some(detail(InProgress::Merge, None)), &["b.rs"]),
+    );
+    let line = crate::view::rows::stopped_line(&state).expect("a stop is standing");
+    assert_eq!(line.as_str(), "merge stopped · 1 file conflicted");
+}
+
+fn oid(byte: u8) -> graft_core::oid::Oid {
+    graft_core::oid::Oid::from_bytes(&[byte; graft_core::oid::Oid::SHA1_BYTES]).expect("20 bytes")
+}
+
+fn refs_at(head: graft_core::oid::Oid) -> crate::refs::RefBadges {
+    crate::refs::badges(
+        &[],
+        &graft_git::repo::HeadState::Detached(head),
+        &std::collections::HashMap::new(),
+        &[],
+        |_, _| Err("no upstreams in this fixture".to_owned()),
+    )
+    .expect("a detached HEAD needs no count")
+}
+
+/// A rebase whose last step was resolved, `c` pressed and its `Done` in:
+/// the refresh's two reads are named in `commands`.
+fn continued_rebase() -> (AppState, JobId, JobId) {
+    let id = JobId::new(7);
+    let mut state = stopped(InProgress::Rebase, &[]);
+    state.history = Some(crate::view::tests::history_of(5, 2));
+    state.refs = Some(std::sync::Arc::new(refs_at(oid(5))));
+    state.stopped = Some(stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 1));
+    state.detail.shown = true;
+    state.detail.focus = graft_ui::detail::DetailFocus::Files;
+    state.on_working_tree = true;
+    state.operating = Some(id);
+    let (state, commands) = crate::update::update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Resumed(Box::new(crate::jobs::operate::Operated::Done(
+                done_applied(),
+            ))),
+        ),
+    );
+    let refs = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadRefs(id) => Some(*id),
+            _ => None,
+        })
+        .expect("the refresh re-reads the refs");
+    let walk = state.awaiting.expect("the refresh restarts the walk");
+    (state, refs, walk)
+}
+
+#[test]
+fn continue_lands_on_the_new_commit() {
+    let (state, refs, walk) = continued_rebase();
+    assert_eq!(state.status, Status::Done("continue rebase".to_owned()));
+    assert_eq!(state.stopped, None);
+    assert!(state.land_on_head);
+    assert_eq!(
+        state.detail.focus,
+        graft_ui::detail::DetailFocus::Graph,
+        "the graph is focused"
+    );
+    // The fresh walk starts, then the refs name the rebased tip.
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Started(walk, crate::update::Task::ReadHistory),
+    );
+    let new_head = oid(6);
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(refs, Product::Refs(Ok(refs_at(new_head)))),
+    );
+    assert!(!state.land_on_head, "spent");
+    // The walk answers the `Find` with rows holding the new tip.
+    let asked = state.history.as_ref().expect("a walk").asked;
+    let mut window = crate::view::tests::history_of(6, 0)
+        .window
+        .expect("the fixture has rows");
+    window.request = asked;
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Progress(
+            walk,
+            crate::update::Progress::History(crate::history::HistoryUpdate::Window(window)),
+        ),
+    );
+    let history = state.history.as_ref().expect("a walk");
+    assert_eq!(
+        history.selected().map(|row| row.commit.id),
+        Some(new_head),
+        "the cursor row is the new HEAD"
+    );
+    assert!(!state.on_working_tree);
+    assert!(state.graph_has_focus());
+}
+
+#[test]
+fn a_stale_refs_answer_does_not_spend_the_landing() {
+    let (state, refs, walk) = continued_rebase();
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Started(walk, crate::update::Task::ReadHistory),
+    );
+    // An older read — from before the `c` — lands after `Done`.
+    let older_read = JobId::new(refs.raw() ^ 0x55);
+    assert_ne!(older_read, refs);
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(older_read, Product::Refs(Ok(refs_at(oid(5))))),
+    );
+    assert!(state.land_on_head, "an older read leaves the landing owed");
+    assert_eq!(state.head_landing.refs, Some(refs));
 }

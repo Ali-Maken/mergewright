@@ -408,10 +408,19 @@ fn killed_half_taken() -> Vec<Step> {
             Step::Kill,
             Step::WaitFor(Wait::BannerFocused),
             Step::See("the relaunch lands on the conflict", |state| {
+                // A stop is state, not a status (m6-conflicts/12): the
+                // status is clear and the stop line says whose rebase.
+                check(state.status == graft::update::Status::Ready, || {
+                    format!("the status is {:?}", state.status)
+                })?;
+                let line = graft::update::banner::stop_line(state);
                 check(
-                    super::run::status_text(state)
-                        == "rebase still in progress from a previous run · ⏎ resolve  c continue  a abort",
-                    || format!("the status is {:?}", state.status),
+                    line.as_deref().is_some_and(|line| {
+                        line.starts_with(
+                            "rebase still in progress from a previous run \u{b7} step ",
+                        )
+                    }),
+                    || format!("the stop line is {line:?}"),
                 )?;
                 check(state.on_changes_pane(), || {
                     "the changes pane is not open".to_owned()
@@ -691,7 +700,12 @@ fn resolver_is_modal_and_esc_returns() -> Scenario {
         size: (80, 24),
         setup: as_built,
         steps: chain(vec![
-            vec![Step::WaitFor(Wait::Ready), key(KeyCode::Tab)],
+            // The launch lands on the merge git is in (m6-conflicts/12):
+            // no `Tab` to reach the banner.
+            vec![
+                Step::WaitFor(Wait::Ready),
+                Step::WaitFor(Wait::BannerFocused),
+            ],
             resolve_from_the_banner(),
             vec![
                 key(ch('u')),
@@ -754,7 +768,11 @@ fn tiny_frame_says_so() -> Scenario {
         size: (50, 8),
         setup: as_built,
         steps: chain(vec![
-            vec![Step::WaitFor(Wait::Ready), key(KeyCode::Tab)],
+            // The launch lands on the merge git is in (m6-conflicts/12).
+            vec![
+                Step::WaitFor(Wait::Ready),
+                Step::WaitFor(Wait::BannerFocused),
+            ],
             resolve_from_the_banner(),
             vec![
                 Step::See("one line, and only it", |state| {

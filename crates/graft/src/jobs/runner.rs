@@ -512,15 +512,18 @@ impl<S: JobEvents> JobRunner<S> {
             Outcome::Produced(Product::CommitGraphDeclined(decline_commit_graph(&repos)))
         });
     }
-    /// Reads the refs off the loop's thread.
-    fn read_refs(&self) {
+    /// Reads the refs off the loop's thread, under the id `update` chose
+    /// for it (m6-conflicts/12: a landing waits on one particular read).
+    fn read_refs(&self, id: JobId) {
         let repos = Arc::clone(&self.repos);
         let cache = Arc::clone(&self.ahead_behind);
-        self.announce(Task::ReadRefs, move |cancel| {
-            if cancel.is_cancelled() {
-                return Outcome::Cancelled;
-            }
-            Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
+        self.queue_as(id, Some(Task::ReadRefs), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
+            })
         });
     }
 
@@ -929,7 +932,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::CheckSystemGit => {
                 self.announce(Task::CheckSystemGit, check_system_git());
             }
-            Command::ReadRefs => self.read_refs(),
+            Command::ReadRefs(id) => self.read_refs(id),
             Command::ReadWorkingTree => self.read_working_tree(),
             Command::PromoteHistory => self.promote_history(),
             Command::WriteCommitGraph => self.write_commit_graph(),

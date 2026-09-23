@@ -1,74 +1,145 @@
-//! Relaunching into an operation git is still part-way through
-//! (m3-working-tree-undo-and-stash/06, m6-conflicts/06): the banner takes
-//! the keyboard, and the changes pane opens where the work is. Fired by the
-//! first journal read and the first working-tree read, whichever lands
-//! second.
+//! Landing on an operation git is part-way through
+//! (m3-working-tree-undo-and-stash/06, m6-conflicts/06, m6-conflicts/12):
+//! the banner takes the keyboard, the stop is recorded as a state, and the
+//! changes pane opens where the work is.
+//!
+//! **Keyed on git, not the journal** (m6-conflicts/12). The launch used to
+//! need a journaled live entry, so a merge begun in the shell — which writes
+//! none — opened on the graph with the banner unfocused and the resolver
+//! several keys away (`.scratch/m6-conflicts/scout-stuck-after-merge.md`,
+//! path B). Now the first working-tree read that finds a focusable
+//! operation lands, whatever the journal holds; the journal only decides
+//! whose operation it is ([`LiveOrigin`]).
 
 use graft_core::job::JobId;
 
 use super::events::Command;
-use super::state::AppState;
+use super::state::{AppState, Stop};
 
-/// The keys a relaunch into a live operation offers, worded for the hint bar.
-///
-/// `s` is not among them: a merge has no step to skip, and the two keys that
-/// are always right are the two that end the operation either way.
-const LIVE_KEYS: &str = "c continue  a abort";
+/// Whose operation the banner is standing over — the one fact the stop's
+/// words need that git's own state does not carry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LiveOrigin {
+    /// An operation this run started, which stopped.
+    ThisRun,
+    /// A journaled operation a previous run started and never finished.
+    PreviousRun,
+    /// Git is part-way through something no journal entry names: begun in
+    /// the shell, or by another tool.
+    OutsideGraft,
+}
 
-/// [`LIVE_KEYS`] when something is still conflicted: `⏎` on the focused
-/// banner opens the resolver on the first conflicted file (§2.6a,
-/// m6-conflicts/04), and that is the next thing to do.
-const LIVE_KEYS_CONFLICTED: &str = "\u{23ce} resolve  c continue  a abort";
+/// Land on the operation git is part-way through: record the stop, hand the
+/// banner the keyboard, and open the changes pane on the work.
+///
+/// Called from the **first** working-tree read (`update::took_fact`) and
+/// the **first** journal read (`update::journal`), and from the first
+/// working-tree read after a modal closed while the landing was owed. A
+/// conflict that happens later in the session is `update::operate`'s to
+/// announce.
+///
+/// While a modal owns the keys it records the stop only and returns
+/// `false`: grabbing the keyboard out from under a commit message or a
+/// confirm box would be worse than landing a read later
+/// ([`AppState::live_landing_owed`]). `true` when it landed.
+///
+/// The launch leaves `Status` alone: at launch nothing of the operation's is
+/// on it, and anything that is (a failed refs read) is a real problem the
+/// stop must not wipe.
+pub(super) fn land_on_live_operation(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    origin: LiveOrigin,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) else {
+        return false;
+    };
+    // A bisect has no banner to focus, so there is nothing to hand the
+    // keyboard to and no `c`/`a` to offer.
+    if !super::banner::banner_focusable(kind) {
+        return false;
+    }
+    let paths = super::banner::unmerged_paths(state);
+    // An earlier stop of the same kind keeps its own words (a `ThisRun`
+    // stop that a re-read reaches here after must not turn into "from a
+    // previous run").
+    if state.stopped.as_ref().is_none_or(|stop| stop.kind != kind) {
+        state.stopped = Some(Stop {
+            origin,
+            again: false,
+            kind,
+            paths_at_stop: paths.len(),
+        });
+    }
+    if state.modal_owns_keys() {
+        state.live_landing_owed = true;
+        return false;
+    }
+    state.live_landing_owed = false;
+    state.banner_focus = true;
+    land_on_the_work(state, commands, paths.into_iter().next(), next_id);
+    true
+}
 
-/// Relaunching into an operation git is still part-way through: the banner
-/// takes the keyboard and says whose it is (PROMPT.md §9 — `kill -9`
-/// mid-rebase must be answered by a key, not by reading docs).
-///
-/// Called from the **first** journal read and the **first** working-tree
-/// read, because the takeover needs a fact from each and either can land
-/// second. Both are first-reads on purpose: a conflict that happens later in
-/// the session is [`crate::update::operate`]'s to announce, and its wording
-/// is about the operation the user just ran — not "a previous run".
-///
-/// It also lands the user where the work is (design note Decision 2a): the
-/// changes pane opens with its cursor on the first conflicted file under
-/// CONFLICTS — or, with nothing left conflicted, on STAGED, which is what
-/// `c` would commit. One `⏎` from there opens the resolver; the launch
-/// itself opens nothing and writes nothing.
-pub(super) fn launch_into_live(
+/// The first journal read landed: it is the fact that turns
+/// [`LiveOrigin::OutsideGraft`] into [`LiveOrigin::PreviousRun`] when the
+/// working-tree read got there first, and it lands the operation itself when
+/// the working-tree read has come in but nothing has landed yet.
+pub(super) fn journal_read_landed(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    if state.live_entries.is_empty() {
-        return;
-    }
-    let Some(detail) = state.in_progress.as_ref() else {
-        return;
-    };
-    // A bisect has no banner to focus, so there is nothing to hand the
-    // keyboard to and no `c`/`a` to offer.
-    if !super::banner::banner_focusable(detail.kind) {
-        return;
-    }
-    let kind = detail.kind.name();
-    let first = super::banner::first_conflicted(state);
-    state.banner_focus = true;
-    state.status = super::state::Status::Sticky {
-        reason: format!("{kind} still in progress from a previous run"),
-        keys: Some(
-            if first.is_some() {
-                LIVE_KEYS_CONFLICTED
+    let journaled = !state.live_entries.is_empty();
+    match state.stopped.as_mut() {
+        Some(stop) if stop.origin == LiveOrigin::OutsideGraft && journaled => {
+            stop.origin = LiveOrigin::PreviousRun;
+        }
+        None if state.working_tree.is_some() => {
+            let origin = if journaled {
+                LiveOrigin::PreviousRun
             } else {
-                LIVE_KEYS
-            }
-            .to_owned(),
-        ),
-    };
-    land_on_the_work(state, commands, first, next_id);
+                LiveOrigin::OutsideGraft
+            };
+            land_on_live_operation(state, commands, origin, next_id);
+        }
+        // Already landed with the right origin, or the working-tree read is
+        // still out and lands when it comes.
+        Some(_) | None => {}
+    }
 }
 
-/// The changes pane, open, its cursor put where [`launch_into_live`] says.
+/// A working-tree read came in with an operation live. Lands it when this
+/// is the first read, or when a modal made the launch owe its landing and
+/// has since closed.
+pub(super) fn working_tree_read_landed(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    first_read: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    if first_read {
+        let origin = if state.live_entries.is_empty() {
+            LiveOrigin::OutsideGraft
+        } else {
+            LiveOrigin::PreviousRun
+        };
+        land_on_live_operation(state, commands, origin, next_id);
+    } else if state.live_landing_owed && !state.modal_owns_keys() {
+        let origin = state
+            .stopped
+            .as_ref()
+            .map_or(LiveOrigin::OutsideGraft, |stop| stop.origin);
+        land_on_live_operation(state, commands, origin, next_id);
+    }
+}
+
+/// The changes pane, open, its cursor put where [`land_on_live_operation`]
+/// says: the first conflicted file under CONFLICTS — or, with nothing left
+/// conflicted, STAGED, which is what `c` would commit (design note
+/// Decision 2a). One `⏎` from the banner opens the resolver; the landing
+/// itself opens nothing and writes nothing.
 ///
 /// The cursor goes through [`KeptCursor`] — the same record a refresh uses
 /// to put the user back — so it lands when the list arrives, not before:
@@ -109,3 +180,6 @@ fn land_on_the_work(
         body: 0,
     });
 }
+
+#[cfg(test)]
+mod tests;

@@ -120,6 +120,10 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
 pub fn operation_ended(state: &mut AppState) {
     state.in_progress = None;
     state.banner_focus = false;
+    // The one clearer of a stop (m6-conflicts/12), and of a launch landing
+    // still owed to an operation that is now over.
+    state.stopped = None;
+    state.live_landing_owed = false;
     state.ended_by_answer = true;
 }
 
@@ -738,7 +742,12 @@ mod tests {
             &mut ids(),
         );
         assert!(commands.contains(&Command::OpenRepository), "{commands:?}");
-        assert!(commands.contains(&Command::ReadRefs), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadRefs(_))),
+            "{commands:?}"
+        );
     }
 
     #[test]

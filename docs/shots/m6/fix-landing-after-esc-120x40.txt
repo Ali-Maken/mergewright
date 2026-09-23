@@ -1,0 +1,40 @@
+ graft /code/api    MERGING
+◌      Uncommitted changes (2 unmerged)
+◆      [◆ main] main's take                                                                              GF 2h   ddeed32
+│ ● ▏  [feature] the feature's take                                                                      GF 2h   f43f326
+●─╯    the shared files                                                                                  GF 2h   b35b2f1
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⇥ banner  m merge  r rebase  . more  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O

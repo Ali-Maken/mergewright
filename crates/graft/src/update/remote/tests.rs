@@ -424,7 +424,12 @@ fn esc_cancels_the_running_write_once() {
         done.status,
         Status::Done("fetch all remotes cancelled".to_owned())
     );
-    assert!(commands.contains(&Command::ReadRefs), "{commands:?}");
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadRefs(_))),
+        "{commands:?}"
+    );
 }
 
 /// Progress names the write and the brief; under 100 columns the brief

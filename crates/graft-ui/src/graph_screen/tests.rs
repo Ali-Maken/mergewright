@@ -28,7 +28,7 @@ fn oid(byte: u8) -> Oid {
 }
 
 /// A linear history of `count` commits, newest first.
-fn linear(count: u8) -> Vec<Row> {
+pub(super) fn linear(count: u8) -> Vec<Row> {
     let commits: Vec<Commit> = (1..=count)
         .rev()
         .map(|id| {
@@ -52,7 +52,7 @@ fn linear(count: u8) -> Vec<Row> {
     layout(&commits, Seeds::default())
 }
 
-fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
+pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     GraphView {
         location: Some(sanitize_line("/code/api")),
         walk,
@@ -93,6 +93,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         notice: None,
         search: None,
         compare_footer: None,
+        stopped: None,
         commit_graph: None,
         banner: Vec::new(),
         divider_shown: false,
@@ -102,7 +103,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
     }
 }
 
-fn draw(view: &GraphView<'_>, columns: u16, rows: u16) -> Terminal<TestBackend> {
+pub(super) fn draw(view: &GraphView<'_>, columns: u16, rows: u16) -> Terminal<TestBackend> {
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
     let mut terminal = Terminal::new(TestBackend::new(columns, rows)).expect("test backend opens");
     terminal
@@ -111,7 +112,7 @@ fn draw(view: &GraphView<'_>, columns: u16, rows: u16) -> Terminal<TestBackend> 
     terminal
 }
 
-fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
+pub(super) fn text(terminal: &Terminal<TestBackend>) -> Vec<String> {
     let buffer = terminal.backend().buffer();
     (0..buffer.area.height)
         .map(|y| {
@@ -1928,7 +1929,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 29;
+const COVERAGE_SLOTS: usize = 30;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1977,6 +1978,7 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::NamePrompt { toggle: false } => 26,
         HintContext::NamePrompt { toggle: true } => 27,
         HintContext::Credential => 28,
+        HintContext::OperationLive(_) => 29,
     }
 }
 

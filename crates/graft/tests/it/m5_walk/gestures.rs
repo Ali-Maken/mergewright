@@ -231,11 +231,21 @@ impl Walk<'_> {
             .as_ref()
             .is_none_or(|open| open.path.as_os_str() != path)
         {
+            // `Esc`, not `Tab`: since m6-conflicts/12 a launch into a live
+            // operation lands with the changes pane open and focused, and
+            // `Esc` hands the keyboard back to it where `Tab` would move on
+            // to the graph. (A first `Esc` may only dismiss a sticky line.)
             let mut guard = 0;
             while state.banner_focus {
-                check(guard < 6, || "Tab never let the banner go".to_owned())?;
-                state = self.app.key(&state, KeyCode::Tab);
+                check(guard < 6, || "Esc never let the banner go".to_owned())?;
+                state = self.app.key(&state, KeyCode::Escape);
                 guard += 1;
+            }
+            if state.on_changes_pane() && state.detail.focus == graft_ui::detail::DetailFocus::Graph
+            {
+                // The pane is open on the work but the graph has the keys:
+                // one `Tab` takes them to its file list.
+                state = self.app.key(&state, KeyCode::Tab);
             }
             if !state.on_changes_pane() {
                 state = self.app.key(&state, KeyCode::Char('g'));

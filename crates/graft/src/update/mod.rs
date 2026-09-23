@@ -52,7 +52,11 @@ pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeRequest, Task,
 };
 pub(crate) use geometry::context_menu_area;
-pub use state::{AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, Quit, Screen, Size, Status};
+pub use relaunch::LiveOrigin;
+pub use state::{
+    AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, HeadLanding, Quit, Screen, Size, Status,
+    Stop,
+};
 
 use graft_core::event::{Event, KeyPress};
 use graft_core::job::JobId;
@@ -83,6 +87,7 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     };
     let walk = state.local_jobs.next_id();
     state.awaiting = Some(walk);
+    let refs = state.local_jobs.next_id();
     let commands = vec![
         Command::OpenRepository,
         Command::CheckSystemGit,
@@ -91,7 +96,7 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
         // commit-graph file.
         Command::ReadHistory(walk, graft_git::history::Order::Topological),
         // Badges: ahead/behind walks commits.
-        Command::ReadRefs,
+        Command::ReadRefs(refs),
         // The uncommitted-changes row.
         Command::ReadWorkingTree,
     ];
@@ -199,9 +204,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         AppEvent::Produced(_, Product::Repository(result)) => repository_answer(next, result),
         AppEvent::Produced(
-            _,
+            id,
             product @ (Product::SystemGit(_) | Product::Refs(_) | Product::WorkingTree(_)),
-        ) => took_fact(next, commands, product),
+        ) => took_fact(next, commands, id, product),
         AppEvent::Progress(id, Progress::History(update)) => {
             history::walk_progress(next, commands, id, update);
         }
@@ -526,49 +531,81 @@ fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_c
         commands.push(Command::ShowRows(id, request));
     }
     next.history = Some(history);
+    // A finished `--continue` waits on this walk too: a seek into the
+    // walk it replaced would be thrown away with it (m6-conflicts/12).
+    banner::walk_started(next, commands, id);
 }
 
 /// A fact about the repository beside the graph arrived: the system git
 /// check, the refs, or the working tree counts. `answer` routes only those.
-fn took_fact(next: &mut AppState, commands: &mut Vec<Command>, product: Product) {
+/// A working-tree read came back: the status, git's in-progress state and
+/// the mergetool, and whatever landing they settle.
+fn working_tree_read(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    read: crate::working_tree::WorkingTree,
+) {
+    // Read before the assignment: the launch read is the one that finds no
+    // working tree yet. See `relaunch::land_on_live_operation`.
+    let first_read = next.working_tree.is_none();
+    if let Some(disagreement) = undo::reread_disagrees(next, read.in_progress.as_ref()) {
+        next.status = disagreement;
+    }
+    next.working_tree = Some(read.status);
+    next.in_progress = read.in_progress;
+    next.mergetool = read.mergetool;
+    // The banner cannot have focus once there is no banner: the operation
+    // finished, was aborted, or was finished from another terminal. Leaving
+    // the flag set would make every key vanish into a modal nothing
+    // (m5-history-and-ghost-preview/09).
+    if next.in_progress.is_none() {
+        next.banner_focus = false;
+        // Nor can anything be stopped: the operation ended, in another
+        // terminal or by an answer this read confirms. A stop left standing
+        // would word a reason for an operation git no longer has
+        // (m6-conflicts/12).
+        next.stopped = None;
+        next.live_landing_owed = false;
+    } else {
+        // The launch lands on git's word alone; the journal only says whose
+        // operation it is (m6-conflicts/12).
+        let mut local_jobs = next.local_jobs;
+        relaunch::working_tree_read_landed(next, commands, first_read, &mut || {
+            local_jobs.next_id()
+        });
+        next.local_jobs = local_jobs;
+    }
+}
+
+fn took_fact(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: graft_core::job::JobId,
+    product: Product,
+) {
     match product {
         Product::SystemGit(check) => {
             next.system_git = Some(check);
         }
         Product::Refs(Ok(refs)) => {
             next.refs = Some(std::sync::Arc::new(refs));
+            // A finished `--continue` waits on this read for the new
+            // `HEAD` (m6-conflicts/12); any other read passes it by.
+            banner::refs_answered(next, commands, id);
         }
         Product::Refs(Err(failure)) => {
             // The graph still draws without badges; the reason goes on the
             // status line rather than leaving them silently missing.
             next.status = Status::Failed(failure);
-        }
-        Product::WorkingTree(Ok(read)) => {
-            let read = *read;
-            // Read before the assignment: the launch read is the one that
-            // finds no working tree yet. See `relaunch::launch_into_live`.
-            let first_read = next.working_tree.is_none();
-            if let Some(disagreement) = undo::reread_disagrees(next, read.in_progress.as_ref()) {
-                next.status = disagreement;
-            }
-            next.working_tree = Some(read.status);
-            next.in_progress = read.in_progress;
-            next.mergetool = read.mergetool;
-            // The banner cannot have focus once there is no banner: the
-            // operation finished, was aborted, or was finished from another
-            // terminal. Leaving the flag set would make every key vanish
-            // into a modal nothing (m5-history-and-ghost-preview/09).
-            if next.in_progress.is_none() {
-                next.banner_focus = false;
-            } else if first_read {
-                // The other half of the launch takeover: whichever of the
-                // two launch reads lands second is the one that has both
-                // facts, so both call it and the second one wins.
-                let mut local_jobs = next.local_jobs;
-                relaunch::launch_into_live(next, commands, &mut || local_jobs.next_id());
-                next.local_jobs = local_jobs;
+            // The read a finished `--continue` waited on has no `HEAD` to
+            // give: the landing is dropped (the failure is on screen)
+            // rather than spent on the stale refs still held.
+            if next.head_landing.refs == Some(id) {
+                next.land_on_head = false;
+                next.head_landing = state::HeadLanding::default();
             }
         }
+        Product::WorkingTree(Ok(read)) => working_tree_read(next, commands, *read),
         Product::WorkingTree(Err(failure)) => {
             // The graph still draws without the uncommitted row; the reason
             // goes on the status line rather than leaving it silently

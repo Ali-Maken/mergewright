@@ -1,0 +1,40 @@
+ graft /code/api  3 commits
+  ◆ ▏ⓘ [◆ feature] Change every file on feature                                                          GF futu…0000000
+●─╯    [main] Change every file on main                                                                  GF 2h   274c7d4
+◇      Add the files both sides will change                                                              GF 1y   9571fc9
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ rebase feature onto main ✓
+COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:00 +0000 · 2h · parents 274c7d4 · diff vs firs…
+Change every file on feature · no upstream (feature)
+A added-by-them.txt     +1 −0
+M both-added.txt        +4 −0       1 + renamed to a different name by each side
+M both.txt              +4 −0
+M crlf.txt              +4 −0
+M md.md                 +7 −0
+M nofinal.txt           +4 −0
+A ours-deleted.txt      +1 −0
+M three.txt            +12 −0
+M zdiff3.txt            +6 −0
+
+
+
+
+

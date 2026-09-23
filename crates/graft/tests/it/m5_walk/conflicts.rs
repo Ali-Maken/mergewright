@@ -13,7 +13,7 @@ use super::steps::{Capture, Fix, Scenario, Step, Wait, When};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{
     a_status_said, branch, ch, chain, entries_of, file_was, key, last_entry, plain, same_files,
-    same_refs, status_containing, undo,
+    same_refs, status_containing, stop_line_is, undo,
 };
 use crate::repo_truth::check;
 
@@ -178,7 +178,10 @@ fn conflict_survives_relaunch() -> Scenario {
                 Step::Relaunch,
                 Step::WaitFor(Wait::BannerFocused),
                 Step::See("the line says whose merge it is", |state| {
-                    status_containing(state, "still in progress from a previous run")
+                    stop_line_is(
+                        state,
+                        "merge still in progress from a previous run \u{b7} 1 file conflicted",
+                    )
                 }),
                 Step::Mark("relaunched"),
                 key(ch('a')),

@@ -247,6 +247,35 @@ pub struct AppState {
     /// apart. An entry named here is **not** announced as interrupted and is
     /// not drawn as one — it is the banner's, and `c`/`a` end it.
     pub live_entries: Vec<graft_core::journal::EntryId>,
+    /// **The live operation stopped, and why** (m6-conflicts/12). A state,
+    /// not a [`Status`]: `Status` is one slot, and during a live operation a
+    /// refused `c`, a failed resume, `Busy` and `Done` all take it — a stop
+    /// line living there was wiped by any of them and could not come back
+    /// after `Esc` dismissed a real problem.
+    ///
+    /// Set by `operate::operated`'s `Conflicted`, by `banner::resumed`'s
+    /// `Conflicted` (stopping again) and by `relaunch::land_on_live_operation`.
+    /// Cleared by `undo::operation_ended`, and by a working-tree read that
+    /// finds no operation at all (it ended in another terminal). `Esc`, a
+    /// refresh and a `JobFinished` leave it. The footer words it each frame
+    /// through `banner::stop_reason`, from the live read.
+    pub stopped: Option<Stop>,
+    /// A `--continue` finished (`resumed` → `Done`): the graph cursor goes
+    /// to the new `HEAD` once the refresh that answer issued has both the
+    /// fresh refs and the fresh walk ([`AppState::head_landing`]). Spent by
+    /// `banner::land_on_head`.
+    pub land_on_head: bool,
+    /// The two reads [`AppState::land_on_head`] waits on, each `Some` until
+    /// it has answered. Ids, not "the next answer": a refs read from before
+    /// the `c` can land after `Done`, and it would put the cursor on the old
+    /// `HEAD`. `Command::ReadRefs` carries an id `update` chose for exactly
+    /// this (the refs answer had no id guard before).
+    pub head_landing: HeadLanding,
+    /// The launch found an operation live while a modal owned the keys, so
+    /// it set [`AppState::stopped`] and left the keyboard alone. The focus
+    /// landing runs on the first working-tree read after the modal closes;
+    /// cleared then, or by `undo::operation_ended`.
+    pub live_landing_owed: bool,
     /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).
@@ -637,6 +666,31 @@ impl AppState {
             || self.resolver.is_some()
             || (self.banner_focus && super::banner::banner_view(self).is_some())
     }
+}
+
+/// A live operation stopped: what the footer's reason is worded from
+/// (`banner::stop_reason`). The live working-tree read overrides `kind`'s
+/// step and `paths_at_stop` while it names the same kind.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Stop {
+    /// Whose operation this is: this run's, a previous run's, or one begun
+    /// in the shell.
+    pub origin: super::relaunch::LiveOrigin,
+    /// A rebase that stopped on a later step after a `c` (`stopped again`).
+    pub again: bool,
+    /// The operation git is part-way through.
+    pub kind: graft_git::state::InProgress,
+    /// Unmerged paths when it stopped — the count until a read says more.
+    pub paths_at_stop: usize,
+}
+
+/// The reads a pending [`AppState::land_on_head`] still waits on.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HeadLanding {
+    /// The refresh's refs read, until it answers.
+    pub refs: Option<JobId>,
+    /// The refresh's history walk, until it starts.
+    pub walk: Option<JobId>,
 }
 
 /// What the status line has to say.

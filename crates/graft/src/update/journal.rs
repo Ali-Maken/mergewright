@@ -101,7 +101,7 @@ pub(super) fn journal_event(
         return true;
     }
     // Read before the assignment below: the launch read is the one that
-    // finds `entries` anything but `Ready`. See `update::relaunch::launch_into_live`.
+    // finds `entries` anything but `Ready`. See `update::relaunch::journal_read_landed`.
     let first_read = !matches!(state.journal.entries, Loading::Ready(_));
     state.journal.reading = None;
     if let Ok(read) = result {
@@ -128,7 +128,7 @@ pub(super) fn journal_event(
         state.journal.expanded = None;
     }
     if first_read {
-        super::relaunch::launch_into_live(state, commands, next_id);
+        super::relaunch::journal_read_landed(state, commands, next_id);
     }
     true
 }

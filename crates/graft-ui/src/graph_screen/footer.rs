@@ -8,7 +8,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
-use super::hints::{Divider, fit_status_line, hints_for, hints_text};
+use super::hints::{Divider, fit_status_line, hints_for, hints_text, stopped_row};
 use super::layout::{Columns, graph_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
@@ -97,7 +97,13 @@ impl GraphScreen<'_> {
                         Divider::Hidden
                     };
                     let hints = hints_for(&self.view.hint_context, divider, width16);
-                    (hints_text(&hints), Token::TextMuted)
+                    match &self.view.stopped {
+                        // A stop is a state, not a problem: it leads the
+                        // bar rather than replacing it, and never names
+                        // `esc dismiss` (m6-conflicts/12).
+                        Some(reason) => (stopped_row(reason, &hints, width16), Token::Text),
+                        None => (hints_text(&hints), Token::TextMuted),
+                    }
                 }
             }
         }
@@ -218,4 +224,57 @@ pub(super) fn grouped(number: u32) -> String {
         out.push(digit);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    //! The stop's rung is the last one (m6-conflicts/12, scope item 3): the
+    //! rows above it in `footer_line` still win the whole row.
+
+    use graft_term::sanitize_line;
+
+    use crate::graph_screen::tests::{draw, linear, text, view};
+    use crate::graph_screen::{HintContext, ProblemLine, SearchLine, WalkView};
+
+    fn last_row(view: &crate::graph_screen::GraphView<'_>) -> String {
+        text(&draw(view, 120, 8)).pop().expect("eight rows")
+    }
+
+    #[test]
+    fn a_problem_still_wins_over_a_stop() {
+        let rows = linear(3);
+        let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
+        shown.stopped = Some(sanitize_line("merge stopped · 1 file conflicted"));
+        // The focused banner's short list, which leaves the reason room.
+        shown.hint_context = HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        };
+        assert!(
+            last_row(&shown).starts_with(" merge stopped · 1 file conflicted ·"),
+            "the control: with nothing above it the stop leads the row: {}",
+            last_row(&shown)
+        );
+        shown.problem = Some(ProblemLine {
+            reason: sanitize_line("a hook refused the commit"),
+            keys: Some(sanitize_line("a abort")),
+        });
+        let row = last_row(&shown);
+        assert!(
+            row.starts_with(" a hook refused the commit · a abort"),
+            "{row}"
+        );
+        assert!(!row.contains("merge stopped"), "{row}");
+    }
+
+    #[test]
+    fn a_search_line_still_wins_over_a_stop() {
+        let rows = linear(3);
+        let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
+        shown.stopped = Some(sanitize_line("merge stopped · 1 file conflicted"));
+        shown.search = Some(SearchLine::Prompt(sanitize_line("fix")));
+        let row = last_row(&shown);
+        assert!(row.starts_with(" /fix_"), "{row}");
+        assert!(!row.contains("merge stopped"), "{row}");
+    }
 }

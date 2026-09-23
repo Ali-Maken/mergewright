@@ -988,9 +988,9 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
                 JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2),
                 Order::Topological,
             ),
-            Command::ReadRefs,
+            Command::ReadRefs(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
             // The remote facts, beside the refs (m4-remotes/05).
-            Command::ReadRemotes(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
+            Command::ReadRemotes(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 4)),
             Command::ReadWorkingTree,
         ]
     );
@@ -1006,10 +1006,10 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             ..state.journal.clone()
         },
         remotes: crate::update::detail::Loading::Pending(JobId::new(
-            crate::update::detail::LOCAL_JOB_BIT | 3,
+            crate::update::detail::LOCAL_JOB_BIT | 4,
         )),
         remote: crate::update::remote::RemoteState {
-            reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
+            reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 4)),
             ..crate::update::remote::RemoteState::default()
         },
         // The walk is named at once, not when its `Started` event lands.
@@ -1113,6 +1113,10 @@ fn a_bare_r_asks_for_nothing() {
 /// stops this file compiling until [`the_same_event_always_gives_the_same_answer`]
 /// has been given a value for it — a new field with hidden state is exactly
 /// what that test is about.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one line per `AppState` field is the point: it grows with the state"
+)]
 fn every_field_spelled_out() -> AppState {
     AppState {
         quit: None,
@@ -1167,6 +1171,10 @@ fn every_field_spelled_out() -> AppState {
         banner_focus: false,
         ended_by_answer: false,
         live_entries: Vec::new(),
+        stopped: None,
+        land_on_head: false,
+        head_landing: crate::update::HeadLanding::default(),
+        live_landing_owed: false,
         head_message: None,
         commit_template: None,
         external_editor: None,
@@ -3712,6 +3720,10 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // code that decides it. The three `Resolver` forms above this arm
         // never reach the app.
         HintContext::Preview | HintContext::Resolver { .. } => None,
+        // The wrapper classifies as its row does.
+        HintContext::OperationLive(row) => {
+            classified_form(row).map(|row| HintContext::OperationLive(Box::new(row)))
+        }
         // The three overlays and the pane with one behind it **are**
         // classified, since m5/42: `view::rows` reads
         // `AppState::graph_overlay` and answers the overlay's own list with
@@ -3918,6 +3930,14 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
             }
             state
         })
+        // With the pane open and the graph focused, `Tab` goes to the pane,
+        // not the banner, so the bar never leads with `⇥ banner` there
+        // (`banner::one_tab_to_banner`): that screen is not this context.
+        .filter(|state| {
+            !matches!(context, HintContext::OperationLive(_))
+                || !state.detail.shown
+                || state.detail.focus == DetailFocus::Diff
+        })
         .collect()
 }
 
@@ -3970,6 +3990,23 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
             conflicted,
         } => vec![stopped_operation(walk, *skippable, *conflicted)],
         HintContext::ChangesPane { unmerged } => vec![changes_pane_open(walk, *unmerged)],
+        // The row's own screen with a merge standing and the banner handed
+        // back (m6-conflicts/12): `⇥` leads, and every other key on the
+        // row's bar must still answer with an operation live.
+        HintContext::OperationLive(row) => screen_for(row)
+            .into_iter()
+            .map(|mut state| {
+                state.in_progress = Some(graft_git::state::InProgressDetail {
+                    kind: graft_git::state::InProgress::Merge,
+                    step: None,
+                    head_name: None,
+                    onto: None,
+                    theirs: None,
+                });
+                state.banner_focus = false;
+                state
+            })
+            .collect(),
         HintContext::Journal => vec![overlay_over(
             merge_on_screen(walk, MERGE_ROW).0,
             Shown::Journal,

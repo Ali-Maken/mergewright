@@ -33,6 +33,8 @@
 use unicode_width::UnicodeWidthStr;
 
 use crate::conflict_resolver::SideRoles;
+use graft_term::SanitizedText;
+
 use crate::fit::fit;
 
 /// Whether the key a hint names actually does the verb it names, today.
@@ -377,6 +379,18 @@ pub enum HintContext {
         /// the diff. `false` with the diff already focused.
         opens: bool,
     },
+    /// **An operation is live and the banner is one `⇥` away, unfocused**
+    /// (m6-conflicts/12, P9): the row's own list with `⇥ banner` leading.
+    ///
+    /// `Esc` on a focused banner hands the keyboard back, and before this
+    /// the only way back in was a `Tab` nothing on screen named — the user
+    /// pressed `Esc` on the one hint shown and was stranded
+    /// (`.scratch/m6-conflicts/scout-stuck-after-merge.md`). No key is
+    /// bound here: `⇥` already cycles into the banner
+    /// (`graft::update::banner::take_focus`); this only says so. `graft`
+    /// draws it only while one `Tab` really lands on the banner
+    /// (`graft::update::banner::one_tab_to_banner`).
+    OperationLive(Box<HintContext>),
 }
 
 /// The hints for `context` that fit in `columns` cells: **as many whole
@@ -491,8 +505,21 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
+        // The row's own bar with the way back leading, so the ladder's floor
+        // always holds it. The row's own `⇥` (the changes pane's `⇥ graph`)
+        // goes: one key, one meaning, and here `Tab` lands on the banner.
+        HintContext::OperationLive(row) => {
+            let (list, trailer) = whole_bar(row, divider);
+            let mut led = vec![WAY_BACK];
+            led.extend(list.into_iter().filter(|hint| hint.key != WAY_BACK.key));
+            (led, trailer)
+        }
     }
 }
+
+/// `⇥ banner`: the way back to a live operation's banner
+/// ([`HintContext::OperationLive`]).
+const WAY_BACK: Hint = hint("⇥", "banner");
 
 /// `Enter`, as every table spells it. Named because
 /// [`HintContext::PaneFocused`] filters on it.
@@ -800,9 +827,10 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
         // All three are answered in `whole_bar` before this is reached; a
         // `RowContext` sub-enum would say so in the type, at the cost of
         // wrapping every row context at every call site.
-        HintContext::Marked(_) | HintContext::PaneFocused { .. } | HintContext::Preview => {
-            Vec::new()
-        }
+        HintContext::Marked(_)
+        | HintContext::PaneFocused { .. }
+        | HintContext::OperationLive(_)
+        | HintContext::Preview => Vec::new(),
     }
 }
 
@@ -1071,7 +1099,41 @@ pub fn every_context() -> Vec<HintContext> {
     all.extend(plain.iter().filter_map(marked_form));
     let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
     all.extend(rows);
+    let live: Vec<HintContext> = all.iter().filter_map(operation_live_form).collect();
+    all.extend(live);
     all
+}
+
+/// `context` wrapped in [`HintContext::OperationLive`], for the contexts
+/// `graft::view::rows::footer_context` can wrap: an unmodal graph-screen
+/// bar — a cursor row, marked or not, or the changes pane. Not a pane
+/// focused on a commit's diff: `⇥` from there lands on the banner too, but
+/// `graft` does not wrap it (the pane's own list has no `⇥` to replace).
+///
+/// Exhaustive on purpose: see [`every_context`].
+fn operation_live_form(context: &HintContext) -> Option<HintContext> {
+    match context {
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow
+        | HintContext::Marked(_) => Some(HintContext::OperationLive(Box::new(context.clone()))),
+        // Not the changes pane: it is one `Tab` from the banner only from
+        // its diff, where its own bar's `space`/`d` are not answered.
+        HintContext::ChangesPane { .. }
+        | HintContext::Banner { .. }
+        | HintContext::Preview
+        | HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Map
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Dragging
+        | HintContext::ConfirmBox
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
+        | HintContext::Resolver { .. }
+        | HintContext::PaneFocused { .. }
+        | HintContext::OperationLive(_) => None,
+    }
 }
 
 /// Every [`HintContext::Resolver`] form [`every_context`] names: the four
@@ -1139,7 +1201,8 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Credential
         | HintContext::Resolver { .. }
         | HintContext::Marked(_)
-        | HintContext::PaneFocused { .. } => None,
+        | HintContext::PaneFocused { .. }
+        | HintContext::OperationLive(_) => None,
     }
 }
 
@@ -1183,7 +1246,8 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
-        | HintContext::PaneFocused { .. } => Vec::new(),
+        | HintContext::PaneFocused { .. }
+        | HintContext::OperationLive(_) => Vec::new(),
     }
 }
 
@@ -1200,6 +1264,7 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(MORE);
     all.push(EXPLAIN);
     all.push(RESIZE);
+    all.push(WAY_BACK);
     let mut seen = Vec::new();
     all.retain(|hint| {
         let fresh = !seen.contains(hint);
@@ -1225,6 +1290,42 @@ pub fn hints_text(hints: &[Hint]) -> String {
         line.push_str(&hint.text());
     }
     line
+}
+
+/// The bottom row while an operation is stopped: `<reason> · <bar>`
+/// (m6-conflicts/12, scope item 3).
+///
+/// `hints` is the bar **already fitted at `columns`** by its own ladder
+/// ([`hints_for`]), so the keys are never what gives: the reason takes what
+/// the bar leaves, cut with `…`, and only while that is at least twelve
+/// cells — a reason shorter than that says nothing a reader can use.
+/// Otherwise the row is the bar alone; the header banner still names the
+/// operation.
+///
+/// Beside the focused banner's short fixed list the reason shows. Beside a
+/// laddered row bar (after `Esc`) the ladder usually fills the row and the
+/// reason drops — accepted in the ticket.
+#[must_use]
+pub fn stopped_row(reason: &SanitizedText, hints: &[Hint], columns: u16) -> String {
+    /// The narrowest reason worth drawing.
+    const MIN_REASON: usize = 12;
+    let bar = hints_text(hints);
+    // `bar` carries its own leading space; the row adds one before the
+    // reason and ` ·` between the two, three cells in all.
+    let room = usize::from(columns)
+        .saturating_sub(text_width(&bar))
+        .saturating_sub(3);
+    if room < MIN_REASON {
+        return bar;
+    }
+    // `fit` pads as well as cuts; a reason that already fits is drawn as
+    // it is, so the ` ·` sits right after it.
+    let reason = if text_width(reason.as_str()) <= room {
+        reason.as_str().to_owned()
+    } else {
+        fit(reason.as_str(), room)
+    };
+    format!(" {reason} ·{bar}")
 }
 
 /// A status line, worded `reason · keys` (the design note's "Failure line",

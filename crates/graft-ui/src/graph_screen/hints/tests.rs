@@ -864,8 +864,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Resolver { .. } => None,
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
-        // still leads to everything, the dropped `⏎` included.
-        HintContext::PaneFocused { row, .. } => doorway_of(row),
+        // still leads to everything, the dropped `⏎` included. So does the
+        // way back: it leads the row's list, and changes nothing else.
+        HintContext::PaneFocused { row, .. } | HintContext::OperationLive(row) => doorway_of(row),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
@@ -1232,4 +1233,97 @@ fn resolver_verbs_are_role_words() {
             assert_eq!(short.text(), format!("o {word}"), "{word}");
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// A stop's row and the way back to the banner (m6-conflicts/12)
+// ---------------------------------------------------------------------------
+
+/// After `Esc` hands the keyboard back, the bar leads with the one key that
+/// returns to the banner — at every width, since it sits in the floor.
+#[test]
+fn operation_live_leads_with_the_way_back() {
+    for row in [
+        HintContext::PlainRow,
+        HintContext::WorkingTreeRow,
+        HintContext::BranchRow { current: true },
+        HintContext::ChangesPane { unmerged: true },
+    ] {
+        let context = HintContext::OperationLive(Box::new(row.clone()));
+        // 80 is the narrowest the app lays out for; 187 is the user's.
+        for columns in [80, 120, 187, 200] {
+            let drawn = hints_for(&context, Divider::Hidden, columns);
+            assert_eq!(
+                drawn.first().map(|hint| (hint.key, hint.verb)),
+                Some(("⇥", "banner")),
+                "{row:?} at {columns}: {}",
+                hints_text(&drawn)
+            );
+            assert_eq!(
+                drawn.iter().filter(|hint| hint.key == "⇥").count(),
+                1,
+                "{row:?} at {columns}: `⇥` means one thing on this bar: {}",
+                hints_text(&drawn)
+            );
+        }
+    }
+}
+
+fn reason(text: &str) -> SanitizedText {
+    graft_term::sanitize_line(text)
+}
+
+/// The keys are fitted first and never give: when what they leave for the
+/// reason is under twelve cells, the reason goes entirely rather than
+/// drawing a stub.
+#[test]
+fn stopped_row_drops_the_reason_under_twelve_cells() {
+    let hints = hints_for(
+        &HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        Divider::Hidden,
+        80,
+    );
+    let bar = hints_text(&hints);
+    let bar_width = bar.width();
+    let why = reason("merge stopped · 1 file conflicted");
+    // Exactly eleven cells of room: dropped.
+    let columns = u16::try_from(bar_width + 3 + 11).expect("fits u16");
+    assert_eq!(stopped_row(&why, &hints, columns), bar);
+    // Twelve: drawn, cut with `…`.
+    let columns = u16::try_from(bar_width + 3 + 12).expect("fits u16");
+    let row = stopped_row(&why, &hints, columns);
+    assert!(row.starts_with(" merge stop"), "{row}");
+    assert!(row.contains('…'), "{row}");
+    assert!(row.ends_with(&bar), "{row}");
+    assert!(row.width() <= usize::from(columns), "{row}");
+}
+
+/// The bar comes back exactly as the ladder fitted it, reason or not, and
+/// the whole row never outgrows the columns it was given.
+#[test]
+fn stopped_row_keeps_the_bar_whole() {
+    let context = HintContext::Banner {
+        skippable: true,
+        conflicted: true,
+    };
+    for columns in [40u16, 60, 80, 120, 187, 200] {
+        let hints = hints_for(&context, Divider::Hidden, columns);
+        let bar = hints_text(&hints);
+        let row = stopped_row(
+            &reason("rebase stopped at step 3 of 7 · 2 files conflicted"),
+            &hints,
+            columns,
+        );
+        assert!(row.ends_with(&bar), "{columns}: {row}");
+        assert!(row.width() <= usize::from(columns), "{columns}: {row}");
+    }
+    let hints = hints_for(&context, Divider::Hidden, 200);
+    let row = stopped_row(&reason("rebase stopped at step 3 of 7"), &hints, 200);
+    assert_eq!(
+        row,
+        format!(" rebase stopped at step 3 of 7 ·{}", hints_text(&hints))
+    );
 }

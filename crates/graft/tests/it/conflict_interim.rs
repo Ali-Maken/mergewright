@@ -787,14 +787,13 @@ fn relaunch_into_a_live_conflict() {
         "the banner takes the keyboard at launch: {:?}",
         state.status
     );
-    assert_eq!(
-        state.status,
-        Status::Sticky {
-            reason: "merge still in progress from a previous run".to_owned(),
-            keys: Some("\u{23ce} resolve  c continue  a abort".to_owned()),
-        },
-        "and the line says whose operation it is, the key that resolves its \
-         conflicts, and the two keys that end it (m6-conflicts/06)"
+    // m6-conflicts/12: a stop is state, not a status. The bottom row says
+    // whose operation it is before the keys that resolve and end it.
+    assert_eq!(state.status, Status::Ready);
+    stop_line_reads(
+        &state,
+        "merge still in progress from a previous run",
+        &["\u{23ce} resolve", "c continue", "a abort"],
     );
     // Still open on disk: the launch read recovered nothing (as-built §1).
     assert_eq!(
@@ -845,6 +844,23 @@ fn killed_mid_rebase() -> graft_fixtures::Scratch {
     scratch
 }
 
+/// The graph screen's bottom row at 120x40 (the changes pane opens below
+/// it) names the stop, then the keys it offers.
+fn stop_line_reads(state: &AppState, reason: &str, keys: &[&str]) {
+    let drawn = frame(state, 120, 40);
+    let bottom = drawn
+        .iter()
+        .find(|line| line.contains(reason))
+        .unwrap_or_else(|| panic!("the stop is named:\n{}", drawn.join("\n")));
+    let at = bottom.find(reason).expect("the row was found by it");
+    for key in keys {
+        let key_at = bottom
+            .find(key)
+            .unwrap_or_else(|| panic!("{key} is offered: {bottom:?}"));
+        assert!(key_at > at, "the reason leads, then {key}: {bottom:?}");
+    }
+}
+
 /// Both launch reads, and the changes pane's list the takeover asked for.
 fn landed(app: &App, state: AppState) -> AppState {
     let state = launched(app, state);
@@ -879,12 +895,11 @@ fn relaunch_lands_on_the_conflict() {
 
     assert_eq!(state.live_entries.len(), 1, "the pending rebase is live");
     assert!(state.banner_focus, "{:?}", state.status);
-    assert_eq!(
-        state.status,
-        Status::Sticky {
-            reason: "rebase still in progress from a previous run".to_owned(),
-            keys: Some("\u{23ce} resolve  c continue  a abort".to_owned()),
-        }
+    assert_eq!(state.status, Status::Ready);
+    stop_line_reads(
+        &state,
+        "rebase still in progress from a previous run",
+        &["\u{23ce} resolve", "c continue", "a abort"],
     );
     assert!(
         state.on_changes_pane(),
@@ -928,13 +943,18 @@ fn relaunch_with_nothing_conflicted() {
     let state = landed(&app, state);
 
     assert!(state.banner_focus, "{:?}", state.status);
-    assert_eq!(
-        state.status,
-        Status::Sticky {
-            reason: "rebase still in progress from a previous run".to_owned(),
-            keys: Some("c continue  a abort".to_owned()),
-        }
+    assert_eq!(state.status, Status::Ready);
+    stop_line_reads(
+        &state,
+        "rebase still in progress from a previous run",
+        &["c continue", "a abort"],
     );
+    let drawn = frame(&state, 120, 40);
+    let bottom = drawn
+        .iter()
+        .find(|line| line.contains("from a previous run"))
+        .expect("the stop row is drawn");
+    assert!(!bottom.contains("resolve"), "nothing to resolve: {bottom}");
     assert!(state.on_changes_pane());
     assert_eq!(
         cursor_row(&state).1,
@@ -1071,14 +1091,14 @@ fn the_footer_does_not_call_a_live_merge_interrupted() {
             drawn.join("\n")
         );
     }
-    // What the line reads instead: the operation's own state, in the words
-    // `update::operate` put there when git stopped. A state, not an error
-    // (CLAUDE.md, "a status field must never read as an error").
+    // What the line reads instead: the operation's own state, the stop
+    // line `banner::stop_reason` words (m6-conflicts/12). A state, not an
+    // error (CLAUDE.md, "a status field must never read as an error").
     let drawn = frame(&state, 120, 40);
     assert!(
         drawn
             .iter()
-            .any(|line| line.contains("merge feature into main")),
+            .any(|line| line.contains("merge stopped \u{b7} ")),
         "the live merge names itself instead:\n{}",
         drawn.join("\n")
     );
@@ -1514,10 +1534,9 @@ fn capture_banner_for_docs_shots() {
     // keyboard through all of it (`detail.focus` is what the tab strip
     // reads, and it is still `Graph` here).
     // Tab out of the banner and round to it again: the cycle is banner ->
-    // graph -> banner while the pane is closed, and coming back round is
-    // what clears the sticky line the stop laid over the hint bar. Without
-    // it the footer reads `esc dismiss` and the banner's own keys are
-    // nowhere on the frame.
+    // graph -> banner while the pane is closed. Since m6-conflicts/12 the
+    // stop is no sticky line, so the round trip changes nothing on the
+    // footer; it is kept so the shot is taken the way it always was.
     let on_the_graph = tab_back_to_the_banner(&app, app.key(&state, KeyCode::Tab));
     let state = app.key(&state, KeyCode::Tab);
     let state = open_changes_pane(&app, state);
@@ -1729,3 +1748,5 @@ fn a_click_on_the_detail_tab_does_not_move_the_hidden_graph() {
     drop(state);
     app.close();
 }
+
+mod landing_shots;

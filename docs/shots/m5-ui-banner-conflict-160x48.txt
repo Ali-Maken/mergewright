@@ -115,4 +115,4 @@
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · 16 files co… · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph

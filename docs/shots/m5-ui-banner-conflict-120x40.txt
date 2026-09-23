@@ -91,7 +91,7 @@
 ●      Ship release 14                                                                                   GF 2h   0f8d5d6
 ●      Ship release 13                                                                                   GF 2h   78ddfac
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · 16 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 80393eb
 CONFLICTS (16)                ▎
