@@ -1,6 +1,6 @@
 # app-resolver-whole-files-and-base: `o`/`t` on deleted/added/binary conflicts through git, `B` shows the merged base inside every open block, `d` starts a file over behind a confirm box, and the stash-pop conflict (no banner) walks the same path
 
-Status: done — 9 of 9 boxes; review fix round (m6-05) done, see `## Review fixes (m6-05)`
+Status: partial — 1 of 9 acceptance boxes open (71: half verified, half filed as a question) (continuation 2); review fix round (m6-05): 6 Majors fixed, see `## Review fixes (m6-05)`
 Blocked by: **01**, **03**, **04**.
 Build with: Sonnet — set by the conductor after the scout (`.scratch/m6-conflicts/scout-app-g05.md`); the keymap gate on line 13 is already met (`02-keymap.md:245-246`, `4dfa409`).
 Crates: graft
