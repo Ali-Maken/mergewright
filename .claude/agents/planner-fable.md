@@ -16,10 +16,16 @@ You make the design decisions for **one** Graft milestone and write its ticket s
    - `crates/*/MAP.md` for every crate the milestone touches
    - the previous milestone's review file in `docs/reviews/`, if any
 
+   - **the milestone's prior-art study, `docs/research/<topic>.md`** (CLAUDE.md, "The feature pipeline", step 2). **No study for a user-facing feature → write nothing; report `blocked: no prior-art study for <feature>` and stop.**
+   - `docs/field-notes.md` — the user's own findings feed the Need and Journeys sections
+
    **Never read source** (`crates/**/*.rs`, `prototypes/`). If a MAP.md is missing or too thin to design against, say so in the note rather than opening source.
 
 2. **Write `docs/design-notes/<milestone-slug>.md`** (for example `m2-details-and-diffs.md`). **Two pages max.** Telegraphic. Exactly these sections:
    - **Promise:** one line, what the milestone lets the user rely on (CLAUDE.md names M1, M3, M5, M6; name the others). The acceptance ticket proves it.
+   - **Need:** who, which daily task, what hurts today — from field notes, in his words.
+   - **Prior art:** per aspect, the best tool's answer (cite the study), ours, and **take / reject / invent** with one-line why. Invent only where nothing fits.
+   - **Journeys:** each task as numbered user steps from where he is to done, the count, and the best tool's count beside it. Say where the app lands him after each event (an operation stopping, finishing, failing). Fewest steps that are still enough. The acceptance ticket asserts these counts.
    - **Interfaces and data shapes:** the types, traits and function signatures the milestone introduces or changes, in which crate, and who calls them. Real Rust signatures, not prose.
    - **Hard-to-reverse choices:** the two or three decisions that would be expensive to undo later. For each: options, **recommendation**, one-line why.
    - **Where I'd differ from DESIGN.md:** what and why, with the trade-off. "None" is a valid answer. These go to the user as Proposed changes; don't treat them as decided.

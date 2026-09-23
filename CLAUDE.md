@@ -22,6 +22,22 @@ Every rule below earned its place by catching a real failure. They are dispositi
 
 **A status field must never read as an error when nothing is wrong.** Render status by its state (`gfx ok` / `gfx: <error>`), or show it only when there's something to report.
 
+## The feature pipeline — every feature, every milestone, no skipping
+
+The user asked for step 2 on 2026-09-17; it was skipped for three milestones because nothing blocked on it. **Each step produces a file, and the next step refuses to start without it.** Missing file → stop and say so; never design around it.
+
+1. **Need.** Who uses it, in which daily task, what hurts today (`docs/field-notes.md`, the user's words). In the design note.
+2. **Prior art** → `docs/research/<topic>.md` (`researcher`). The best-loved tools for this task (the user named JetBrains, VS Code, Sublime Merge, **Araxis Merge**, lazygit, GitUp, jj, GitLens, delta, Magit — pick the relevant ones, add others), how each does it, **what their users praise and complain about, with links**. No sources → not research.
+3. **Decide:** per aspect, **take / reject / invent** — invent only where nothing found fits, and say why. Recorded in the design note's **Prior art** section; hard-to-reverse ones as an ADR.
+4. **Journey, step-counted.** Each task written as the user's actual steps from where he is to done, counted, next to the best tool's count. **Fewest steps that are still enough**: never 5–6 where 2–3 do; not 1 at any cost. Where the app lands him after each event (e.g. a merge stopping) is part of the journey. In the design note's **Journeys** section.
+   Judged against `docs/research/ux-principles.md` (standing reference: heuristics, step/keystroke counting, keyboard-TUI patterns) — cite the principle, not taste.
+5. **Prototype** any new screen or interaction before specs: throwaway (`prototype` skill, allowed for this step since 2026-09-23 on the user's word), the smallest thing that shows the journey — the user tries it or its capture. What he says goes to field notes; findings as an ADR. **The cheapest moment to disagree is before the build.**
+6. **Design** — screens, keys, states (the rest of the design note).
+7. **Build** test-first. The acceptance walk **counts the steps** of each journey and fails if it exceeds the note's count.
+8. **Verify** by the user's eye and daily use; what he hits goes to `docs/field-notes.md` the same day and feeds step 1 next time.
+
+The planner refuses to write a note without step 2's file; the conductor refuses to file tickets from a note missing **Prior art** or **Journeys**; the reviewer checks both against the build.
+
 ## Where things live
 
 | File | Purpose |
@@ -33,6 +49,7 @@ Every rule below earned its place by catching a real failure. They are dispositi
 | `PROGRESS.md` | Plan + current step. Milestone log: `docs/log/<milestone>.md`. |
 | Tickets | `.scratch/<milestone>/issues/NN-<slug>.md`. See `docs/agents/issue-tracker.md`. |
 | `KNOWN_GAPS.md` | Open items. Closed rows: `docs/gaps/closed.md`. |
+| `docs/research/` | Prior-art studies (pipeline step 2) and `ux-principles.md`, the standing UX reference. |
 | `docs/field-notes.md` | What the user hit in real use. One line, dated. Feeds the next design pass. |
 | `TESTING.md` "Times I left" | Every reach for the shell (ADR-0033). The only measurement of the promise. |
 | `docs/reviews/`, `docs/design-notes/` | Milestone reviews; one design note per milestone. |
@@ -84,12 +101,13 @@ Matt Pocock plugin skills are **banned by default**. Allowed, only for what the 
 | `implement` | Building a ticket. |
 | `tdd` | Test-first work inside a ticket. |
 | `code-review` | Reviewing a finished ticket or milestone. |
+| `prototype` | The feature pipeline's step 5 only: a throwaway UX prototype before specs (user, 2026-09-23). |
 | `diagnosing-bugs` | **`debugger` only.** Not builders. |
 | `codebase-design` | Adding or moving modules. |
 | `handoff` | Mid-ticket handover. |
 | `improve-codebase-architecture` | After M2, M5 and M7 only. |
 
-**Every other skill in that plugin is banned**, `prototype` and `wayfinder` included. Think you need one: **stop and ask the user**. Don't work around it silently. Keep `prototype`'s principles — throwaway, minimal, findings as an ADR — not the skill.
+**Every other skill in that plugin is banned**, `wayfinder` included. Think you need one: **stop and ask the user**. Don't work around it silently. `prototype` stays throwaway and minimal; findings go in an ADR.
 
 Some allowed skills aren't in the Skill tool's listing. Read the SKILL.md directly:
 `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/engineering/<name>/SKILL.md`

@@ -23,6 +23,7 @@ You review. You do **not** fix, and you only write inside `docs/reviews/`.
    Report the fast-suite time, the 5 slowest tests, peak memory and the size of `target/`.
 3. Use the `code-review` skill. Check:
    - Spec compliance for this milestone, including the relevant Definition of Done items
+   - **The feature pipeline** (CLAUDE.md): the design note has Need, Prior art (citing `docs/research/`) and Journeys; the built journeys' step counts match the note's (count them in the walk or the captures); a feature with no prior-art study is a **Major** finding
    - Correctness bugs and edge cases (see PROMPT.md section 6)
    - Any risk of losing user data
    - Git work blocking the UI thread
