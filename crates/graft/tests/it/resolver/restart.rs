@@ -140,21 +140,19 @@ fn d_cancel_is_free() {
     drop(scratch);
 }
 
-/// In a merge **begun in the shell** a whole-file `o` and a `d` restart add
-/// no journal entry: they are steps of a live operation
-/// (`apply::resume::inside_live_operation`), and with no entry of Graft's
-/// to chain onto there is nothing to fold into — so, too, **no backup is
-/// taken** of what either step drops (the ops trade-off m6 g03 review M2
-/// raised). The fold itself, into an entry Graft did write, is
-/// [`whole_file_and_restart_fold_into_live_entry`] (m6-05 review, Major 5).
+/// In a merge **begun in the shell** a whole-file `o` and a `d` restart
+/// are **each their own journal entry**, with their own backup: with no
+/// entry of Graft's live there is nothing to fold into, and a step that
+/// writes the working tree is not left without a way back
+/// (`apply::fold::folded_step`; m6 g04/g08 review, M1). The fold, into an
+/// entry Graft did write, is [`whole_file_and_restart_fold_into_live_entry`].
 #[test]
-fn no_entry_added_in_a_shell_begun_merge() {
+fn each_working_tree_step_is_its_own_entry_in_a_shell_begun_merge() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let repo = scratch.path().to_owned();
     // The fixture built the merge with raw git, never through the app, so
-    // there is no journal entry for the merge itself here — only whether a
-    // whole-file resolve or a restart adds one of its own is this test's,
-    // and that is `before` either way.
+    // there is no journal entry for the merge itself here: each step below
+    // adds exactly one of its own.
     let before = journal_entries(&repo).len();
 
     // A whole-file `o`.
@@ -165,8 +163,8 @@ fn no_entry_added_in_a_shell_begun_merge() {
     });
     assert_eq!(
         journal_entries(&repo).len(),
-        before,
-        "no new entry for the whole-file resolve"
+        before + 1,
+        "the whole-file resolve is its own entry"
     );
 
     // The resolve advanced to whatever conflicted file is next in the
@@ -203,9 +201,15 @@ fn no_entry_added_in_a_shell_begun_merge() {
     });
     assert_eq!(
         journal_entries(&repo).len(),
-        before,
-        "no new entry for the restart either"
+        before + 2,
+        "the restart is its own entry too"
     );
+    for entry in &journal_entries(&repo)[before..] {
+        assert!(
+            entry.backup_ref.is_some(),
+            "each step keeps a backup: {entry:?}"
+        );
+    }
 
     drop(state);
     app.close();
