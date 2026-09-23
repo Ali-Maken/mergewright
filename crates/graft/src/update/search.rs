@@ -230,3 +230,6 @@ pub(super) fn search_job_ended(next: &mut AppState, event: Event) {
     search.job = None;
     search.state = state;
 }
+
+#[cfg(test)]
+mod tests;

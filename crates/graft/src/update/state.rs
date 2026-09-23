@@ -613,6 +613,30 @@ impl AppState {
             || self.credential.is_some()
             || self.name_prompt.is_some()
     }
+
+    /// Is a modal pane or box taking the keyboard right now
+    /// (`docs/design/02-keymap.md` §2.1)?
+    ///
+    /// The graph's `/`, `n` and `N` ask this before the search answers
+    /// them: the search used to run ahead of the whole modal chain, so a
+    /// `/` typed into a commit subject opened an invisible prompt and took
+    /// the rest of the line with it (review m6-07, Major 1). Every text
+    /// field, both boxes, the resolver and the focused banner: the panes
+    /// that claim every key but `Ctrl+C`. **A new one belongs in this
+    /// list**; `update::search::tests::slash_belongs_to_every_modal_that_is_up`
+    /// sweeps it.
+    ///
+    /// Not the Map, journal or stash overlay: each claims only the keys it
+    /// shows (§2.1), and the bar behind each offers `/ search`, which works
+    /// there (`update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
+    #[must_use]
+    pub fn modal_owns_keys(&self) -> bool {
+        self.text_field_open()
+            || self.confirm.is_some()
+            || self.preview.is_some()
+            || self.resolver.is_some()
+            || (self.banner_focus && super::banner::banner_view(self).is_some())
+    }
 }
 
 /// What the status line has to say.
