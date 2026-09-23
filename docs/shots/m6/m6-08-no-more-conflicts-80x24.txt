@@ -23,4 +23,4 @@ ours = main · theirs = the branch being merged in
 
 
 
-no more conflicts · ⏎ marks zdiff3.txt resolved
+ no more conflicts · ⏎ marks zdiff3.txt resolved

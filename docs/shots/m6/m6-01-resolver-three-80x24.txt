@@ -23,4 +23,4 @@ ours = main · theirs = the branch being merged in
      13 c2
      14 c3
      15 c4
-base shown for 3 conflicts ✓
+ base shown for 3 conflicts ✓

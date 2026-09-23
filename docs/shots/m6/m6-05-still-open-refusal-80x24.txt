@@ -23,4 +23,4 @@ ours = main · theirs = the branch being merged in
      15 c4
    16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────
   OURS · HEAD
-2 conflicts still open in three.txt · n next
+ 2 conflicts still open in three.txt · n next
