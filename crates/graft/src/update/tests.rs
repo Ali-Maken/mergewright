@@ -3583,8 +3583,14 @@ fn dead_keys_in(
         "{context:?} ({divider:?}) at {columns} columns: a key nothing binds reads as an \
          answer, so every key drawn on this bar would"
     );
+    // A live confirm box is blind the same way: every key it has no use
+    // for cancels it, the inert one included. Its three hints are pinned
+    // one by one where the box is (`confirm::tests`: `←`/`→`
+    // `left_on_cancel_stays_on_cancel`, `right_moves_onto_the_acting_choice_and_clamps`;
+    // `⏎` `enter_on_confirm_dispatches_the_operation`; `esc`
+    // `escape_closes_without_dispatching`).
     assert!(
-        !blind || state.drag.is_some(),
+        !blind || state.drag.is_some() || state.confirm.is_some(),
         "{context:?} ({divider:?}) at {columns} columns: a key nothing binds moved the \
          state, and not by dropping a dragged badge — every key here now reads as answered \
          whether it is or not"
@@ -3717,7 +3723,10 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::PlainRow
         | HintContext::Banner { .. }
         | HintContext::ChangesPane { .. }
-        | HintContext::Dragging => Some(context.clone()),
+        | HintContext::Dragging
+        | HintContext::ConfirmBox
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential => Some(context.clone()),
     }
 }
 
@@ -3746,7 +3755,9 @@ const ALSO_INERT: KeyCode = KeyCode::Function(11);
 /// A drag is not settled — every key ends one (see the sweep's `blind`),
 /// so settling would put the badge down and throw the context away.
 fn settled(mut state: AppState) -> AppState {
-    if state.drag.is_some() {
+    // A confirm box is the same: every key it has no use for cancels it
+    // (`confirm::confirm_key`'s catch-all), so settling would shut it.
+    if state.drag.is_some() || state.confirm.is_some() {
         return state;
     }
     for _ in 0..4 {
@@ -3842,6 +3853,7 @@ fn presses_for(name: &str) -> Vec<Press> {
         "g/G" => vec![plain(KeyCode::Char('g')), plain(KeyCode::Char('G'))],
         "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],
         "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
+        "←/→" => vec![plain(KeyCode::Left), plain(KeyCode::Right)],
         one => {
             let mut letters = one.chars();
             match (letters.next(), letters.next()) {
@@ -3967,6 +3979,58 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
             .map(|overlay| overlay_over(commit_pane(walk, *opens), overlay))
             .collect(),
         HintContext::Dragging => vec![badge_in_the_air(walk)],
+        // A live box over the graph (rulings 07b, Q1): its bar is its own
+        // keys, whatever stands behind it.
+        HintContext::ConfirmBox | HintContext::NamePrompt { .. } | HintContext::Credential => {
+            vec![box_over_the_graph(walk, context)]
+        }
+    }
+}
+
+/// [`screen_for`]'s live boxes, each over the graph with a merge under the
+/// cursor.
+fn box_over_the_graph(walk: JobId, context: &HintContext) -> AppState {
+    match context {
+        HintContext::ConfirmBox => {
+            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+            state.confirm = Some(super::confirm::PendingConfirm {
+                view: graft_ui::confirm::ConfirmView::new(
+                    graft_term::sanitize_line("Discard changes?"),
+                    vec![graft_term::sanitize_line("3 files lose their edits.")],
+                    graft_term::sanitize_line("git restore ."),
+                ),
+                then: super::confirm::ConfirmThen::Undo { redo: false },
+            });
+            state
+        }
+        HintContext::NamePrompt { toggle } => {
+            let (mut state, at) = merge_on_screen(walk, MERGE_ROW);
+            let kind = if *toggle {
+                super::name_prompt::NameKind::Branch { at, checkout: true }
+            } else {
+                super::name_prompt::NameKind::Tag { at }
+            };
+            state.name_prompt = Some(super::name_prompt::NamePrompt {
+                kind,
+                field: graft_ui::text_input::TextField::new("feature"),
+            });
+            state
+        }
+        HintContext::Credential => {
+            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+            let job = JobId::new(702);
+            state.operating = Some(job);
+            state.credential = Some(super::credential::CredentialPrompt {
+                title: graft_term::sanitize_line("Credentials — example.com"),
+                prompt: graft_term::sanitize_line("Username for 'https://example.com':"),
+                field: super::credential::PromptField::Open(graft_ui::text_input::TextField::new(
+                    "me",
+                )),
+                job,
+            });
+            state
+        }
+        other => unreachable!("{other:?} is not a box"),
     }
 }
 

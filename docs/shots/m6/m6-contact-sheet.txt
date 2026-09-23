@@ -60,7 +60,7 @@ ours = main · theirs = the branch being merged in
 
 
 
-base shown for 3 conflicts ✓
+ base shown for 3 conflicts ✓
 
 ================================================================================
 docs/shots/m6/m6-01-resolver-three-80x24.txt
@@ -92,7 +92,7 @@ ours = main · theirs = the branch being merged in
      13 c2
      14 c3
      15 c4
-base shown for 3 conflicts ✓
+ base shown for 3 conflicts ✓
 
 ================================================================================
 docs/shots/m6/m6-02-whole-file-card-120x40.txt
@@ -380,7 +380,7 @@ ours = main · theirs = the branch being merged in
 
 
 
-2 conflicts still open in three.txt · n next
+ 2 conflicts still open in three.txt · n next
 
 ================================================================================
 docs/shots/m6/m6-05-still-open-refusal-80x24.txt
@@ -412,7 +412,7 @@ ours = main · theirs = the branch being merged in
      15 c4
    16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────
   OURS · HEAD
-2 conflicts still open in three.txt · n next
+ 2 conflicts still open in three.txt · n next
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-120x40.txt
@@ -494,7 +494,7 @@ CONFLICTS (1)
 
 
 
-rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
+ rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-120x40.txt
@@ -574,7 +574,7 @@ STAGED (1)
 
 
 
-all conflicts resolved · c continue ✓
+ all conflicts resolved · c continue ✓
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-120x40.txt
@@ -622,7 +622,7 @@ ours = main · theirs = the branch being merged in
 
 
 
-no more conflicts · ⏎ marks zdiff3.txt resolved
+ no more conflicts · ⏎ marks zdiff3.txt resolved
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-80x24.txt
@@ -654,11 +654,11 @@ ours = main · theirs = the branch being merged in
 
 
 
-no more conflicts · ⏎ marks zdiff3.txt resolved
+ no more conflicts · ⏎ marks zdiff3.txt resolved
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-120x40.txt
-what right looks like: TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected (fix F10 — the box was live but never drawn). Judge: the hint bar under the box still offers the resolver's keys, which the box swallows (a question).
+what right looks like: TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected (fix F10 — the box was live but never drawn). The bottom row is the box's own keys and nothing else: `←/→ move  ⏎ choose  esc cancel` (rulings 07b Q1 — it offered the resolver's keys, which the box swallows).
 ================================================================================
 
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
@@ -702,11 +702,11 @@ ours = main · theirs = the branch being merged in
 
 
 
- o ours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-80x24.txt
-what right looks like: The same box at 80 columns, over the stacked OURS/THEIRS halves. Judge: the box does not clear the rows it stands on, so `▏ THEIRS` and the block's closing rule show cut off at its left and right edges (a question).
+what right looks like: The same box at 80 columns, over the stacked OURS/THEIRS halves: the rows it stands on are blank from the left edge to the right (rulings 07b Q2, ADR-0040 — `▏ THEIRS` and the block's closing rule showed cut off at its edges before), and the bottom row is `←/→ move  ⏎ choose  esc cancel`.
 ================================================================================
 
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 80x24
@@ -718,10 +718,10 @@ ours = main · theirs = the branch being merged in
 ▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────
 ▏ OURS · HEAD
 ▏     3 the line, as we changed it
-▏ THEIRS╭ Start both.txt over? ────────────────────────────────────────╮
-▏       │ the conflict comes back with all its markers                 │
-▏ ──────│ takes and edits in this file are lost · not undoable while   │────────
-      7 │ the merge is open                                            │
+        ╭ Start both.txt over? ────────────────────────────────────────╮
+        │ the conflict comes back with all its markers                 │
+        │ takes and edits in this file are lost · not undoable while   │
+        │ the merge is open                                            │
         │                                                              │
         │ git checkout --merge -- both.txt                             │
         │                                                              │
@@ -734,7 +734,7 @@ ours = main · theirs = the branch being merged in
 
 
 
- o ours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M  d  esc
+ ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)
@@ -1318,5 +1318,5 @@ what right looks like: the status line on the 80-column Detail tab — changed b
 " 45     -     Json(Status::Ok)                                                  "
 "     46 +     Json(Status::from(&state))                                        "
 " 46  47   }                                                                     "
-"push main → origin/main · esc cancels                                           "
+" push main → origin/main · esc cancels                                          "
 

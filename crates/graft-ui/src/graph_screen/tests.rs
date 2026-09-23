@@ -1928,7 +1928,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 25;
+const COVERAGE_SLOTS: usize = 29;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1947,22 +1947,11 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::BranchRow { current: false } => 1,
         HintContext::BranchRow { current: true } => 2,
         HintContext::PlainRow => 3,
+        // Both fields are plain `bool`s, so the arm stays exhaustive.
         HintContext::Banner {
-            skippable: false,
-            conflicted: false,
-        } => 4,
-        HintContext::Banner {
-            skippable: false,
-            conflicted: true,
-        } => 5,
-        HintContext::Banner {
-            skippable: true,
-            conflicted: false,
-        } => 6,
-        HintContext::Banner {
-            skippable: true,
-            conflicted: true,
-        } => 7,
+            skippable,
+            conflicted,
+        } => 4 + 2 * usize::from(*skippable) + usize::from(*conflicted),
         HintContext::Preview => 8,
         HintContext::ChangesPane { unmerged: false } => 9,
         HintContext::ChangesPane { unmerged: true } => 10,
@@ -1976,28 +1965,17 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,
         HintContext::Resolver {
-            base: false,
-            restart: false,
+            base,
+            restart,
             whole_file: false,
-        } => 20,
-        HintContext::Resolver {
-            base: true,
-            restart: false,
-            whole_file: false,
-        } => 21,
-        HintContext::Resolver {
-            base: false,
-            restart: true,
-            whole_file: false,
-        } => 22,
-        HintContext::Resolver {
-            base: true,
-            restart: true,
-            whole_file: false,
-        } => 23,
+        } => 20 + usize::from(*base) + 2 * usize::from(*restart),
         HintContext::Resolver {
             whole_file: true, ..
         } => 24,
+        HintContext::ConfirmBox => 25,
+        HintContext::NamePrompt { toggle: false } => 26,
+        HintContext::NamePrompt { toggle: true } => 27,
+        HintContext::Credential => 28,
     }
 }
 

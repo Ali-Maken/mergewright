@@ -2157,7 +2157,8 @@ credential capture M6 changed.
    theirs byte for byte and still has `\r\n`; `nofinal.txt` by `o` is git's
    ours and does not gain a final newline.
 6. **zdiff3-and-base-on-demand** — `zdiff3.txt`'s one block carries its
-   base from its own markers with `B` unpressed; `three.txt`'s three blocks
+   base from its own markers before `B` (no load) and, like every block,
+   draws it only on `B`; `three.txt`'s three blocks
    carry none until `B`, then all three do; `B` on `both-added.txt` says
    `no base (added on both sides)`, not as a problem. Index and files
    unchanged.
@@ -2206,8 +2207,10 @@ credential capture M6 changed.
     stash stays); `o`, `⏎`; `u` brings back three stages and the bytes from
     before `⏎`; `u` again (the drift box `Undo “pop stash@{0}”?`, confirmed)
     takes the pop back — no stages, the files and stash list as before;
-    `U` puts the conflict back — markers on disk, `ls-files -u` three
-    lines — and the stash is **still listed**, where git left it (fix F2).
+    `U` puts back the unmerged index (`ls-files -u` three lines) with `p`
+    as `o` left it — what the second `u` found, not the pop's markers,
+    which `o` had already replaced — and the stash is **still listed**,
+    where git left it (fix F2).
 14. **kill-9-mid-rebase-then-relaunch** — the rebase stops on `shared.txt`
     (two blocks), `o` on the first, then `Step::Kill`: `rebase-merge/`
     present (`truth::operation_on_disk`), the journal's last line

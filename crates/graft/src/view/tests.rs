@@ -3900,7 +3900,11 @@ fn a_box_that_does_not_clear_covers_and_never_alters() {
             for (x, (a, b)) in drawn.iter().zip(plain).enumerate() {
                 let x = u16::try_from(x).expect("a screen is narrower than u16::MAX");
                 let inside = x >= rect.x && x < rect.right() && y >= rect.y && y < rect.bottom();
-                if inside {
+                // The footer is the box's too: it names the keys the box
+                // answers, not the graph's (rulings 07b, Q1;
+                // `view::frame::tests::the_bottom_row_under_a_live_box_offers_only_its_keys`).
+                let footer = y + 1 == rows;
+                if inside || footer {
                     continue;
                 }
                 assert_eq!(
@@ -4223,12 +4227,69 @@ fn the_lane_images_never_cover_the_confirm_box_or_the_credential_prompt() {
 /// This test was **green before the fix as well**: it is here so the grid
 /// half cannot regress while the pixel half is being held, not as evidence
 /// for the ticket.
+///
+/// **Fast tier: every layout, not every width** (m6-07 review, Major 5).
+/// The full sweep is 2 × 2 × 4 × 221 = 3,536 whole frames at ~3.2 ms each
+/// in a debug build — 11.5 s, with a flat profile (graph rows ~40 %, the
+/// state build ~20 %, buffer diff ~15 %): no slow path, just volume. What
+/// can move the box's left column is the layout, and the layout changes
+/// only at the width breakpoints, so the fast tier draws each side of each
+/// one plus a stride across the rest. The every-width sweep is kept, in the
+/// heavy tier: [`the_preview_box_keeps_its_left_border_at_every_width`].
 #[test]
 fn the_preview_box_keeps_its_own_left_border_over_a_graph_with_lanes() {
+    left_border_holds_over(&layout_widths(), &[24, 50]);
+}
+
+/// The exhaustive sweep the fast tier samples: every width 20..=240 at four
+/// heights. Heavy tier (TESTING.md), ~12 s in a debug build.
+#[cfg(feature = "heavy-tests")]
+#[test]
+fn the_preview_box_keeps_its_left_border_at_every_width() {
+    let every: Vec<u16> = (20u16..=240).collect();
+    left_border_holds_over(&every, &[24, 30, 40, 50]);
+}
+
+/// Each side of every width at which the frame's layout changes, the two
+/// ends, and every 13th width between so no stretch goes unsampled.
+///
+/// The detail pane's edges are read off `effective_layout` itself, at both
+/// sampled heights, so a moved breakpoint moves the sample with it. The
+/// graph screen's own edges — the author column (100) and the wide lane
+/// budget (160, `graph_screen/layout.rs`'s `breakpoint_lanes`) — are named.
+fn layout_widths() -> Vec<u16> {
+    let state = preview_over_lanes(120, 24);
+    // The kind only (tab, below, right): a right column's width moves with
+    // every width, which is proportion, not a layout change.
+    let layout = |columns: u16, rows: u16| {
+        std::mem::discriminant(&crate::update::detail::effective_layout(
+            state.detail.focus,
+            &state.detail.pane_size,
+            (columns, rows),
+        ))
+    };
+    let mut edges = vec![graft_ui::graph_screen::AUTHOR_BREAKPOINT, 160];
+    for rows in [24u16, 50] {
+        edges.extend((21u16..=240).filter(|&w| layout(w, rows) != layout(w - 1, rows)));
+    }
+    let mut widths: Vec<u16> = (20u16..=240).step_by(13).chain([240]).collect();
+    for edge in edges {
+        widths.extend([edge - 1, edge, edge + 1]);
+    }
+    widths.retain(|w| (20..=240).contains(w));
+    widths.sort_unstable();
+    widths.dedup();
+    widths
+}
+
+/// The preview box's left column is a border glyph on every one of its
+/// rows, with the detail pane and the overview strip both ways, at each of
+/// `widths` × `heights`.
+fn left_border_holds_over(widths: &[u16], heights: &[u16]) {
     for detail in [false, true] {
         for strip in [false, true] {
-            for rows in [24u16, 30, 40, 50] {
-                for columns in 20u16..=240 {
+            for &rows in heights {
+                for &columns in widths {
                     let mut state = preview_over_lanes(columns, rows);
                     state.detail.shown = detail;
                     state.strip_shown = strip;

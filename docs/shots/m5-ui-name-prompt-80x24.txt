@@ -42,4 +42,4 @@
 
 
  no commit-graph file · B build one · X never here
- m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
+ ⏎ create  ⇥ toggle  esc cancel

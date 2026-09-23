@@ -1011,7 +1011,7 @@ fn choice_at(view: &PreviewBox, area: BoxRect, column: u16, row: u16) -> Option<
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 /// The two history keys the graph pane answers directly
 /// (`docs/design/02-keymap.md` §2.3: `m` merge selected branch into current,

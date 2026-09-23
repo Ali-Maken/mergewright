@@ -39,4 +39,4 @@ ours = main · theirs = the branch being merged in
 
 
 
-2 conflicts still open in three.txt · n next
+ 2 conflicts still open in three.txt · n next

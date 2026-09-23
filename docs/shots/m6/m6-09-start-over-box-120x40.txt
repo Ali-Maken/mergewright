@@ -39,4 +39,4 @@ ours = main · theirs = the branch being merged in
 
 
 
- o ours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ ←/→ move  ⏎ choose  esc cancel

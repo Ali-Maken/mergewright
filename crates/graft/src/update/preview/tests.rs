@@ -95,7 +95,7 @@ fn on_screen() -> AppState {
 }
 
 /// A plan that does something: one ghost, one branch moving onto it.
-fn a_plan() -> PreviewPlan {
+pub(in crate::update) fn a_plan() -> PreviewPlan {
     PreviewPlan {
         description: "rebase feature onto main".to_owned(),
         commands: vec!["git rebase --no-update-refs --no-autostash main".to_owned()],
@@ -156,7 +156,7 @@ fn subject() -> PreviewSubject {
 }
 
 /// Opens a preview and answers its job with `plan`.
-fn opened_with(plan: PreviewPlan) -> (AppState, Vec<Command>) {
+pub(in crate::update) fn opened_with(plan: PreviewPlan) -> (AppState, Vec<Command>) {
     let mut state = on_screen();
     let mut commands = Vec::new();
     assert!(open_preview(

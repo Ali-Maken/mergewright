@@ -55,7 +55,7 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ←/→ move  ⏎ choose  esc cancel
 
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
@@ -82,4 +82,4 @@
 ●    Commit 182                                                     7y   d212b3e
 ●    Commit 181                                                     7y   c8254c5
 ●    Commit 180                                                     7y   e95ccd4
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ←/→ move  ⏎ choose  esc cancel

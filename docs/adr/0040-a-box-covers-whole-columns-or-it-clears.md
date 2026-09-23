@@ -82,6 +82,10 @@ accident, so the rule is stated over the geometry instead.
 - **The confirm box does not clear. It snaps.** The rows beside it are the
   graph the user is about to act on, and seeing them is M5's promise ("you
   see the result before you confirm"), not a leak.
+- **The confirm box over the resolver clears its band** (rulings 07b, Q2,
+  2026-09-23): full width, at every width, like the credential prompt. The
+  resolver's rows are code — a cut line or a fused side label is the
+  fragment this ADR exists to stop — and it has no columns to snap to.
 
 ## How it is built
 

@@ -39,4 +39,4 @@ ours = main · theirs = the branch being merged in
 
 
 
-base shown for 3 conflicts ✓
+ base shown for 3 conflicts ✓

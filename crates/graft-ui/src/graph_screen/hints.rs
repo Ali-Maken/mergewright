@@ -325,6 +325,25 @@ pub enum HintContext {
     /// The gesture ends with the button, not a key, so the bar says what
     /// the pointer must do and which key backs out.
     Dragging,
+    /// **A confirm box is live** (rulings 07b, Q1): it claims the next key
+    /// before any screen does (`graft::update::confirm::confirm_key`), so
+    /// the bar under it offers its keys and no other. `←`/`→` (and `⇥`)
+    /// move between the choices, `⏎` takes the one under the cursor, and
+    /// every other key cancels — `esc` is the one the bar names.
+    ConfirmBox,
+    /// **The name prompt is live** (same ruling): `⏎` creates, `esc`
+    /// cancels, and `⇥` flips "check out after" for a branch only — for a
+    /// tag or a stash branch the key is swallowed, so `toggle` is `false`
+    /// and it is not drawn. The box's own bottom border says the same.
+    NamePrompt {
+        /// `⇥` toggles check-out: a plain branch, not a tag.
+        toggle: bool,
+    },
+    /// **git's credential question is up** (ADR-0040): `⏎` sends, `esc`
+    /// cancels the write. Usually hidden behind the notice the running
+    /// write puts on the same row (`push main → origin/main · esc
+    /// cancels`), which the status ladder draws first.
+    Credential,
     /// The cursor row's own context, drawn while the **detail pane has the
     /// keyboard and nothing left to open** — the same list, minus `⏎`.
     ///
@@ -434,6 +453,9 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // states and nothing happened (m5/42).
         HintContext::Banner { .. }
         | HintContext::Dragging
+        | HintContext::ConfirmBox
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
@@ -755,6 +777,20 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
         // Nothing else is offered because nothing else acts — every other
         // key cancels the drag and then means what it always means.
         HintContext::Dragging => vec![hint("release", "drop on a row"), hint("esc", "cancel")],
+        HintContext::ConfirmBox => vec![
+            hint("←/→", "move"),
+            hint("⏎", "choose"),
+            hint("esc", "cancel"),
+        ],
+        HintContext::NamePrompt { toggle } => {
+            let mut list = vec![hint("⏎", "create")];
+            if *toggle {
+                list.push(hint("⇥", "toggle"));
+            }
+            list.push(hint("esc", "cancel"));
+            list
+        }
+        HintContext::Credential => vec![hint("⏎", "send"), hint("esc", "cancel")],
         // All three are answered in `whole_bar` before this is reached; a
         // `RowContext` sub-enum would say so in the type, at the cost of
         // wrapping every row context at every call site.
@@ -1015,6 +1051,10 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,
+        HintContext::ConfirmBox,
+        HintContext::NamePrompt { toggle: true },
+        HintContext::NamePrompt { toggle: false },
+        HintContext::Credential,
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
     all.extend(resolver_forms());
@@ -1067,6 +1107,9 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
+        | HintContext::ConfirmBox
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
         | HintContext::Resolver { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. } => None,
@@ -1109,6 +1152,9 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
+        | HintContext::ConfirmBox
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
         | HintContext::Resolver { .. }
         | HintContext::PaneFocused { .. } => Vec::new(),
     }

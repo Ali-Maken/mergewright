@@ -70,5 +70,5 @@
 ●    Commit 181                                                     2d   c8254c5
 ●    Commit 180                                                     2d   e95ccd4
  no commit-graph file · B build one · X never here
- . explain  ⏎ open  c commit  P  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
+ ←/→ move  ⏎ choose  esc cancel
 

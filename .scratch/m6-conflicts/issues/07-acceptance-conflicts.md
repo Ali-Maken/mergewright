@@ -160,6 +160,7 @@ Each fix test-first, each test seen red on the named line before the fix.
 - Extra `Step`s: `Resolve(path)`, `HandOver(label, key)`, `FocusBanner`; extra `Wait`s: `ConflictedPath(path)`, `ResolverClosed`.
 - Extra scenarios: `whole-file-card-glimpses-a-large-file`, `binary-card-shows-its-size`, `n-past-the-last-block-says-no-more`, `kill-9-mid-rebase-then-abort` (the spec's second variant as its own row). Extra capture `m6-09-start-over-box`; `m6-03` card on a large file, `m6-04` binary, `m6-08` `no more conflicts`.
 - `undo-a-resolution-in-a-stash-pop-conflict` pops **in the app** (`S`, `p`): a pop run in the shell has no journal entry for the second `u`.
+- Same scenario, the `U` step (final fix round, review m6-07 Major 2): the conductor's text says "`U` → the conflict is back, markers on disk". The walk asserts, and the app does, that `U` puts back the unmerged index with `p` **as `o` left it** (`resolved_operations.rs:377-382`). That is the design: redo is the inverse of the `Undo` entry, restored from that entry's own before-state (`graft-ops/src/undo.rs:9-10`, DESIGN §6.5 "undo is itself journaled … computed the same way as any other operation"), and the second `u` found `o`'s bytes, not the pop's markers. Restoring the markers would drop the `o` take from the only path back to it. The bold criterion (the `ls-files -u` counts) holds. TESTING.md scenario 13 and the F2 note's "(markers, unmerged index)" were the wrong half; TESTING.md is reworded.
 - `HandOver`'s editor lookup strips `GIT_EDITOR`/`VISUAL`/`EDITOR` from `git var GIT_EDITOR`: this machine exports `GIT_EDITOR=true`, which git ranks above the fixture's `core.editor`.
 - Rebase scenarios take `b`/`t`, not `o`, where `o` on every block would make a replayed commit empty (git drops it).
 - Contact sheet is `docs/shots/m6/m6-contact-sheet.txt` via `scripts/contact-sheet.sh m6 docs/shots/m6` (the script gained a shots-dir argument, the M6 promise, and a tail for earlier milestones' changed captures — the four `m5-hints-*` M6 changed, captioned "the uncommitted row has no `space fold`").
@@ -179,9 +180,43 @@ Each fix test-first, each test seen red on the named line before the fix.
 - Continuation 1: no scout — the ticket's findings and rulings carried the lines, and the work was the walk's own two scenarios plus captures. **Not compacted.**
 - Continuation 2: no scout — F9, F10 and F12 carried their lines; the reading was `view/frame.rs` and `update/commit_editor.rs` at those lines. Review: self-review of the diff, no `code-review` sub-agents (last continuation; the change is three functions in one file plus one match arm). `view/frame.rs` was over PROMPT.md 6.2's 400 lines before this (1258) and grew by the two helpers; splitting it is outside this ticket. **Not compacted.**
 
+## Final fix round (2026-09-23, branch `m6-final-fix`, crate set `graft` + `graft-ui`)
+
+Sources: `docs/reviews/m6-07.md` Majors 1, 2, 4, 5 (not 3 — the conductor files those gaps); `rulings-07b.md` 1–4. Each behaviour fix was written test-first and seen red before the fix.
+
+- **Major 1 — `/` opened search from a text field or over a modal. Cause fixed.** `update::core_event` answered the search keys ahead of the modal chain. The search is now answered only when the prompt is open or no modal owns the keys: `AppState::modal_owns_keys` (`update/state.rs`), which covers text fields, confirm, Ghost Preview, the resolver and a focused banner. Map, journal and stash are left out because their bar offers `/ search`. Invariant sweep: `update::search::tests::slash_belongs_to_every_modal_that_is_up` (eight modals; `a/b` typed into each field reads back `a/b`) and `…::n_and_capital_n_never_step_a_search_behind_a_modal`, plus two controls on the bare graph. Cost to the user: none; `/` still searches wherever the bar says it does.
+- **Ruling Q1 — under a live box, the bottom row shows only that box's keys. Cause fixed.** There is one drawing site, `view::frame::bars::draw_box_bars` (before `draw_modal_boxes`), and one classifier, `view::rows::box_context`, which `footer_context`/`hint_context` return first. New `HintContext` variants: `ConfirmBox`, `NamePrompt { toggle }`, `Credential` (`graft-ui` hints). Tests:
+  - `view::frame::tests::the_bottom_row_under_a_live_box_offers_only_its_keys` covers every overlay, the bare graph and the status screen, detail shut and open, at 120x40 and 80x24.
+  - The key sweep `every_key_the_bar_draws_is_answered` now reaches the three new contexts.
+- **Ruling Q2 — the start-over box clears its band. Cause fixed.** `draw_confirm` skips the snap over the resolver and clears the band full width. Test: `view::frame::tests::the_start_over_box_clears_its_band_over_the_resolver`, red at 80x24 before the fix. ADR-0040 has one line for it.
+- **Ruling Q3 — status indented one space. Cause fixed** in the one shared function, `draw_status_or_hints`. Test: `view::frame::tests::a_status_on_a_standin_footer_starts_at_column_one`.
+- **Ruling Q4.** TESTING.md scenario 6 reworded. Wording only.
+- **Major 2 — the code is right; TESTING.md was wrong.** See Deviations. Wording only; no code change.
+- **Major 5 — the 12.4 s test. Cause: volume, not a slow path.**
+  - The sweep drew 3,536 whole frames at ~3.2 ms each (debug). The profile is flat (`sample`): graph rows ~40 %, state build ~20 %, buffer diff ~15 %.
+  - The box's left column can only move with the layout, and the layout changes only at width breakpoints. The fast test now draws each side of every breakpoint (the detail-layout ones read off `effective_layout`, plus 100 and 160) and a stride of 13: 0.67 s.
+  - The every-width sweep is kept under `heavy-tests` as `the_preview_box_keeps_its_left_border_at_every_width` (11.6 s; run once and seen green).
+  - Why heavy: it is an exhaustive regression floor that was green before its own fix; the fast tier keeps every distinct layout.
+- **Major 4 — `view/frame.rs` split.**
+  - Sizes: 1401 → 210 lines, plus five private children — `layout` 319, `boxes` 366, `bars` 307, `conflicts` 120, `overlays` 151.
+  - Only the file placement, visibility and `super::` paths changed. A script comparing the old file with the new six as multisets of lines found only line-wrap differences.
+  - Suite: no `#[test]` was added or removed by the split; 2674 before and after.
+  - The same commit clears five clippy `--all-targets` errors that this round's own tests had introduced earlier (`type_complexity`, `too_many_lines`) by restructuring them, not with `allow`.
+- **Captures.**
+  - Retaken with the pty walk at both sizes; the re-run without `GRAFT_UPDATE_SHOTS` is clean at both (0 drifted, 0 not on screen). 10 frames changed:
+    - `m6-01`, `m6-05`, `m6-06` 80x24, `m6-07` 80x24 and `m6-08`: status indent only.
+    - `m6-09`: the bottom row is the box's keys at both sizes; at 80x24 the band is blank edge to edge.
+  - `m6-09`'s two captions are rewritten. Every retaken frame was read against its caption.
+  - Sheet rebuilt: 71 KB.
+  - Also regenerated in `graft`'s capture tests: `m3-confirm-*`, `m3-undo-drift`, `m4-credential-prompt-in-app`, `m4-remote-keys`, `m5-ui-confirm-over-graph-{80x24,160x48}`, `m5-ui-name-prompt-80x24`, `m5-ui-undo-after-push-80x24`. Each diff was read: the bottom row now shows the box's keys, or the status is indented.
+  - Colour is unverified (rule 5).
+- No scout: the review and the rulings carried their file:line references. **Context was compacted once** during this round; the work was completed after it.
+
 ## Gates
 
 fmt / clippy / nextest / doc, workspace-wide (tests-only change, still the full set).
+
+Final fix round: `cargo fmt --check` clean; `cargo clippy --workspace --all-targets -- -D warnings` clean; `cargo nextest run --workspace` 2674/2674 (1 skipped); `cargo test --doc` 3/3.
 
 ## Size
 

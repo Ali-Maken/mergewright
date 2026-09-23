@@ -7,10 +7,10 @@ ours = main · theirs = the branch being merged in
 ▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────
 ▏ OURS · HEAD
 ▏     3 the line, as we changed it
-▏ THEIRS╭ Start both.txt over? ────────────────────────────────────────╮
-▏       │ the conflict comes back with all its markers                 │
-▏ ──────│ takes and edits in this file are lost · not undoable while   │────────
-      7 │ the merge is open                                            │
+        ╭ Start both.txt over? ────────────────────────────────────────╮
+        │ the conflict comes back with all its markers                 │
+        │ takes and edits in this file are lost · not undoable while   │
+        │ the merge is open                                            │
         │                                                              │
         │ git checkout --merge -- both.txt                             │
         │                                                              │
@@ -23,4 +23,4 @@ ours = main · theirs = the branch being merged in
 
 
 
- o ours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M  d  esc
+ ←/→ move  ⏎ choose  esc cancel
