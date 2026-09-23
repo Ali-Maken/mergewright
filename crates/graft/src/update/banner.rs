@@ -592,8 +592,10 @@ pub fn resumed(
             kind,
             paths,
             stalled,
+            entry,
             ..
         } => {
+            state.live_entries = vec![entry];
             state.banner_focus = banner_focusable(kind);
             let reason = if let Some(why) = &stalled {
                 format!("stopped again: {why}")

@@ -356,6 +356,7 @@ fn stopping_again_keeps_the_banner_focused() {
             kind: InProgress::Rebase,
             paths: vec!["a.rs".into(), "b.rs".into()],
             stalled: None,
+            entry: graft_core::journal::EntryId::new(1, [0; 10]),
         },
         &mut || JobId::new(8),
     );
@@ -370,6 +371,11 @@ fn stopping_again_keeps_the_banner_focused() {
     assert!(
         !commands.is_empty(),
         "git's state moved: something must be re-read"
+    );
+    assert_eq!(
+        state.live_entries,
+        vec![graft_core::journal::EntryId::new(1, [0; 10])],
+        "the stop names its entry, and the state keeps it (gap row 505)"
     );
 }
 

@@ -791,7 +791,11 @@ pub fn operated(
             kind,
             paths,
             stalled,
+            entry,
         } => {
+            // The answer names the live entry; the journal re-read the
+            // refresh asks for will say the same (gap row 505).
+            state.live_entries = vec![entry];
             // Sticky, not `Failed` and not `Done`: git stopped and its state
             // is still there, so the line has to outlive the full refresh it
             // triggers (that refresh is exactly what puts the files under
@@ -2104,7 +2108,27 @@ mod tests {
             kind: InProgress::Merge,
             paths: paths.iter().map(PathBuf::from).collect(),
             stalled: stalled.map(ToOwned::to_owned),
+            entry: graft_core::journal::EntryId::new(42, [4; 10]),
         }
+    }
+
+    /// **Gap row 505.** The conflict's answer names its journal entry, and
+    /// that id reaches the state the banner is drawn from — `live_entries`
+    /// — unchanged and at once, not only when the journal re-read lands.
+    #[test]
+    fn conflicted_entry_id_survives() {
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        operated(&mut state, id, conflicted(&["src/a.rs"], None), &mut ids());
+        assert_eq!(
+            state.live_entries,
+            vec![graft_core::journal::EntryId::new(42, [4; 10])]
+        );
     }
 
     #[test]
