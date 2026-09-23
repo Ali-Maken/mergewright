@@ -74,6 +74,28 @@ fn pull_refusals_are_words_not_commands() {
     }
 }
 
+/// **Gap row 481.** `f` while a write runs is refused **in words** — the
+/// same `Status::Failed` the other remote-key refusals use, naming what is
+/// running — and sends nothing. It used to answer the key with no status
+/// at all, a key that looked dead (rule 3).
+#[test]
+fn fetch_refusal_in_words() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let (running, _) = press(&state, plain('f'));
+    let id = running.operating.expect("f launched the fetch");
+    let (again, commands) = press(&running, plain('f'));
+    assert!(commands.is_empty(), "a second write queued: {commands:?}");
+    assert_eq!(again.operating, Some(id), "the first fetch is untouched");
+    assert_eq!(
+        again.status,
+        Status::Failed("wait for fetch all remotes to finish".to_owned())
+    );
+}
+
 /// `p` with an upstream launches the pull, one write at a time.
 #[test]
 fn pull_with_an_upstream_launches_it() {

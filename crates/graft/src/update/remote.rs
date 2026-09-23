@@ -285,13 +285,15 @@ fn facts(state: &AppState) -> Result<&Arc<RemoteFacts>, String> {
     }
 }
 
-/// `f`: fetch every remote, pruning. A no-op while a write runs.
+/// `f`: fetch every remote, pruning. Refused in words while a write runs
+/// (gap row 481): it used to answer the key with nothing at all.
 pub fn fetch_key(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
     if super::operate::operation_in_flight(state) {
+        state.status = Status::Failed(wait_for_running(state));
         return true;
     }
     let op = Operation::Fetch(FetchParams {
@@ -300,6 +302,17 @@ pub fn fetch_key(
     });
     super::operate::launch(state, commands, op, next_id);
     true
+}
+
+/// The refusal for a write key pressed while another write runs: `wait for
+/// <what is running> to finish`, the Ghost Preview's own words for it.
+fn wait_for_running(state: &AppState) -> String {
+    let running = state
+        .remote
+        .running
+        .as_ref()
+        .map_or("the write", |it| it.description.as_str());
+    format!("wait for {running} to finish")
 }
 
 /// `p`: fast-forward `HEAD`'s branch from its upstream. Refused in words,
