@@ -134,3 +134,12 @@ fmt / clippy / nextest / doc, workspace-wide. `tests/it/seam_rule.rs` still pass
 ## Size
 
 One context, but the largest of the milestone — ~900 lines. Stop seam after piece 3 if compaction looms (say so; the conductor splits 4–7).
+
+## Review fixes (m6-04-08)
+
+**M2 — `⏎` and a block take in flight together on one file. Reproduced, fixed at the cause.**
+
+- **Reproduced** (update level, red before the fix): `t` over a taken block then `⏎` queued `TakeSide` + `Operate(Stage)`; `⏎` then `t` queued `Operate(Stage)` + `TakeSide`. The pool shares one queue across several workers (`jobs/runner.rs:128-138`), so the two run concurrently. The on-disk interleaving itself was not observed — only that both writes were queued at once.
+- **Cause:** two write channels (fs take via `open.job`; git write via `state.operating`) with each key checking only one. **Fix:** one gate, `write_refusal` (`update/resolver.rs`), asked by every writing key — block take (`take.rs`), `⏎` (`mark_resolved`), whole-file `o`/`t` (`whole_file.rs`), `d` (`restart.rs`). Refuses with the busy words of a take/read, else `a write is already running`.
+- **Tests:** `update::resolver::tests::enter_waits_for_a_take_in_flight`, `update::resolver::tests::a_take_waits_for_the_stage_in_flight` — both seen red, now green.
+- **Cost to the user:** a key pressed during a write is refused in words (sticky line) and must be pressed again once the write lands. Side effects of the single gate: a whole-file `o`/`t` during a re-read now says `still reading the file` (before: launched); `d` on a card while a write runs now says `a write is already running` rather than the not-a-marker-shape refusal.

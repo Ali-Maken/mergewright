@@ -45,12 +45,12 @@ pub(super) fn take_side(
     take: Take,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    let (running, loading_base, cursor, file, path) = {
+    let running = super::write_refusal(state);
+    let (loading_base, cursor, file, path) = {
         let Some(open) = state.resolver.as_ref() else {
             return;
         };
         (
-            open.busy_words(),
             open.base_job.is_some(),
             open.cursor_block,
             open.file.clone(),

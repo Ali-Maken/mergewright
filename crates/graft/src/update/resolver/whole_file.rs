@@ -66,8 +66,8 @@ pub(super) fn whole_file_take(
         };
         (whole.how, open.path.clone())
     };
-    if state.operating.is_some() {
-        state.status = Status::sticky("a write is already running");
+    if let Some(words) = super::write_refusal(state) {
+        state.status = Status::sticky(words);
         return true;
     }
     crate::update::operate::launch(
