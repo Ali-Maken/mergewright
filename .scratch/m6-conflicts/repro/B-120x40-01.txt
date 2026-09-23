@@ -1,0 +1,41 @@
+# after: ENTER  cursor=(120,28)
+ graft /private/tmp/claude-501/-Users-devuser-dev-sandbox-gitter/da631dc1-3524-47f5-9bc5-3903b13b15c3/scra…  MERGING
+◌      Uncommitted changes (2 unmerged)
+◆   ▏  [◆ main] main                                                                                     MA now  33e9a43
+│ ●  ⓘ [feature] feature                                                                                 MA now  7bed594
+◇─╯    base                                                                                              MA now  0ff5604
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  c commit  P push  <> resize  p pull  f fetch  . more  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F  H  y
+COMMIT 33e9a43 · Ali-Maken <116688264+Ali-Maken@users.noreply.github.com> · 2026-09-23 18:54 +0500 · now · parents 0ff5604 · diff vs first…
+main
+M gone.txt              +1 −1
+M notes.txt             +2 −2   1     - keep me
+                                    1 + keep me, edited on main
+
+
+
+
+
+
+
+
+
+
+

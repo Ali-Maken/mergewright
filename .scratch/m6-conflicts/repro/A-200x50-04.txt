@@ -1,0 +1,51 @@
+# after: ENTER  cursor=(200,49)
+MERGING
+gone.txt · file 1 of 2
+ours = main · theirs = the branch being merged in
+deleted by them · o keeps the file  t deletes it
+      1 keep me, edited on main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge feature into main — 2 files conflict, under CONFLICTS in the changes pane: resolve and stage them; the merge stays in progress until you do · esc dismiss

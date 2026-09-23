@@ -1,0 +1,41 @@
+# after: RIGHT  cursor=(27,37)
+ graft /private/tmp/claude-501/-Users-devuser-dev-sandbox-gitter/da631dc1-3524-47f5-9bc5-3903b13b15c3/scratchpad/gc…
+  │ ● ▏  [feature] feature                                                                               MA now  d709ba8
+●─╯ │    main                                                                                            MA now  e25730c
+◇───╯    base                                                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                         │
+│  [ Cancel ]  ▸[ Confirm ]                                                                                            │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
+

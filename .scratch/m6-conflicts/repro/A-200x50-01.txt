@@ -1,0 +1,51 @@
+# after: m  cursor=(78,46)
+ graft /private/tmp/claude-501/-Users-devuser-dev-sandbox-gitter/da631dc1-3524-47f5-9bc5-3903b13b15c3/scratchpad/gc-2089uku_/graft-conflict  3 commits
+  │ ● ▏  [feature] feature                                                                                                                                                               MA now  00b1f84
+●─╯ │    main                                                                                                                                                                            MA now  1f8f2b3
+◇───╯    base                                                                                                                                                                            MA now  a3ade43
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                                                                                                       │
+│ main 1f8f2b3 → 1 new commit                                                                                                                                                                          │
+│ working tree: 2 files updated                                                                                                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                                                                                                    │
+│ undo: u takes this back                                                                                                                                                                              │
+│ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                                                                                                         │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                                            │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

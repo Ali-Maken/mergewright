@@ -1,0 +1,51 @@
+# after: ENTER  cursor=(200,4)
+ graft /private/tmp/claude-501/-Users-devuser-dev-sandbox-gitter/da631dc1-3524-47f5-9bc5-3903b13b15c3/scratchpad/gc-2089uku_/graft-conflict    MERGING
+◌      Uncommitted changes (2 unmerged)
+  ● ▏ⓘ [feature] feature                                                                                                                                                                 MA now  00b1f84
+◆ │    [◆ main] main                                                                                                                                                                     MA now  1f8f2b3
+◇─╯    base                                                                                                                                                                              MA now  a3ade43
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ merge feature into main — 2 files conflict, under CONFLICTS in the changes pane: resolve and stage them; the merge stays in progress until you do · esc dismiss
