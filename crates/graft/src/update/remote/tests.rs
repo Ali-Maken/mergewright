@@ -124,131 +124,60 @@ fn fetch_refusal_names_whatever_write_is_running() {
     );
 }
 
-/// A push of `branch` to `origin`, as the app builds them.
-fn push_of(branch: &str) -> PushParams {
-    PushParams {
-        branch: branch.to_owned(),
-        remote: "origin".to_owned(),
-        remote_branch: branch.to_owned(),
-        set_upstream: false,
-        lease: None,
-        source_commit: None,
-    }
-}
-
-/// **Gap row 550.** The journal names a push's branch by `head_before`
-/// (`entry_branch`), so a push must send `HEAD`'s branch. The write site
-/// checks it: a push of any other branch is refused **in words** before a
-/// job exists — never a push whose entry would name the wrong branch.
-/// Asserted on the check itself: in a debug build the launch site's
-/// `debug_assert!` fires first (`the_write_site_asserts_the_push_invariant`).
+/// **m6-06 review Major 1, reached through the keys.** `Ctrl+R` asks for
+/// the remote facts again and keeps the old ones `Ready` meanwhile; `P` in
+/// that window builds the push box from the **old** `head_branch`; the read
+/// lands saying `HEAD` moved; `Enter` launches the box's push. That push is
+/// not the app's to refuse: it names a branch the in-memory facts no longer
+/// agree with, and `graft_ops::apply` re-reads `HEAD` and refuses it with
+/// `Refusal::BranchChanged` before the `Pending` line
+/// (`graft-ops/src/operation/remote.rs:219-221`, `apply.rs:368`; proved by
+/// `graft-ops` `operation::remote::tests`, `push.check(&other_branch)`).
+/// So the app launches it — no panic, one `Operate` — and git's side says
+/// no in words.
 #[test]
-fn write_site_refuses_the_impossible_state() {
+fn a_push_boxed_before_a_reread_launches_and_ops_decides() {
     let state = with_facts(
         vec![remote("origin")],
         Some("refs/heads/main"),
         Some(upstream(Some(THEIRS))),
     );
-    assert_eq!(
-        crate::update::remote::push_sends_head(
-            &state,
-            &Operation::Push(push_of("refs/heads/main"))
-        ),
-        Ok(())
+    let (reading, commands) = press(&state, KeyPress::control(KeyCode::Char('r')));
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadRemotes(id) => Some(*id),
+            _ => None,
+        })
+        .expect("Ctrl+R asks for the remote facts");
+    assert!(matches!(reading.remotes, Loading::Ready(_)), "old facts kept");
+    let (boxed, _) = press(&reading, plain('P'));
+    assert!(boxed.confirm.is_some(), "P opened the push box");
+    let moved = Arc::new(RemoteFacts {
+        remotes: vec![remote("origin")],
+        head_branch: Some("refs/heads/feature".to_owned()),
+        head_upstream: None,
+    });
+    let (landed, _) = update(
+        &boxed,
+        AppEvent::Produced(read, crate::update::Product::Remotes(Ok(moved))),
     );
-    assert_eq!(
-        crate::update::remote::push_sends_head(
-            &state,
-            &Operation::Push(push_of("refs/heads/feature"))
-        ),
-        Err("refused: a push of feature while HEAD is on main \u{2014} \
-             the undo journal would record it as main's"
-            .to_owned())
+    assert!(landed.confirm.is_some(), "the box outlives the read");
+    // The box rests on `Cancel` (ADR-0038 §1): `→` to `Push`, then `Enter`.
+    let (on_push, _) = press(&landed, KeyPress::plain(KeyCode::Right));
+    let (pushed, commands) = press(&on_push, KeyPress::plain(KeyCode::Enter));
+    let sent: Vec<_> = commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::Operate(_, op) => Some(op.as_ref()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        matches!(sent.as_slice(), [Operation::Push(params)] if params.branch == "refs/heads/main"),
+        "the box's push goes to graft_ops to check: {sent:?}"
     );
-    let detached = with_facts(vec![remote("origin")], None, None);
-    assert_eq!(
-        crate::update::remote::push_sends_head(
-            &detached,
-            &Operation::Push(push_of("refs/heads/main"))
-        ),
-        Err("refused: a push of main while HEAD is detached \u{2014} \
-             the undo journal would record it as no branch's"
-            .to_owned())
-    );
-    // Not a push: nothing to check.
-    assert_eq!(
-        crate::update::remote::push_sends_head(
-            &detached,
-            &Operation::Fetch(graft_ops::operation::FetchParams {
-                remote: None,
-                prune: true,
-            })
-        ),
-        Ok(())
-    );
-}
-
-/// The launch site holds the invariant loudly in a debug build: a push of
-/// another branch reaching it is a bug upstream of it.
-#[cfg(debug_assertions)]
-#[test]
-#[should_panic(expected = "a push sends HEAD's branch")]
-fn the_write_site_asserts_the_push_invariant() {
-    let mut state = with_facts(
-        vec![remote("origin")],
-        Some("refs/heads/main"),
-        Some(upstream(Some(THEIRS))),
-    );
-    let mut commands = Vec::new();
-    crate::update::operate::launch(
-        &mut state,
-        &mut commands,
-        Operation::Push(push_of("refs/heads/feature")),
-        &mut || graft_core::job::JobId::new(1),
-    );
-}
-
-/// The release path of the same site: everything `launch_with` does after
-/// its `debug_assert!` — which compiles to nothing in a release build —
-/// runs here in the fast (debug) tier. The violating push is refused in
-/// words: status set, no job id taken, no command, no running record, no
-/// panic.
-#[test]
-fn the_write_site_refuses_in_release() {
-    let mut state = with_facts(
-        vec![remote("origin")],
-        Some("refs/heads/main"),
-        Some(upstream(Some(THEIRS))),
-    );
-    let op = Operation::Push(push_of("refs/heads/feature"));
-    let invariant = crate::update::remote::push_sends_head(&state, &op);
-    assert!(invariant.is_err(), "the fixture violates the invariant");
-    let mut commands = Vec::new();
-    let mut ids_taken = 0;
-    crate::update::operate::launch_checked(
-        &mut state,
-        &mut commands,
-        op,
-        invariant,
-        Stoppable::Yes,
-        None,
-        &mut || {
-            ids_taken += 1;
-            graft_core::job::JobId::new(1)
-        },
-    );
-    assert!(commands.is_empty(), "{commands:?}");
-    assert_eq!(ids_taken, 0, "no job id was taken");
-    assert_eq!(state.operating, None);
-    assert!(state.remote.running.is_none(), "no running record");
-    assert_eq!(
-        state.status,
-        Status::Failed(
-            "refused: a push of feature while HEAD is on main \u{2014} \
-             the undo journal would record it as main's"
-                .to_owned()
-        )
-    );
+    assert!(pushed.operating.is_some());
 }
 
 /// `p` with an upstream launches the pull, one write at a time.

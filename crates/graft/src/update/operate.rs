@@ -107,36 +107,13 @@ fn launch_with(
     opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    // The one site every write passes, so the one place a push's branch is
-    // checked against `HEAD` (gap row 550). Loud in a debug build, where
-    // reaching here with the wrong branch is a bug upstream; refused in
-    // words in a release build, never a push the journal would misname.
-    let invariant = super::remote::push_sends_head(next, &op);
-    debug_assert!(
-        invariant.is_ok(),
-        "invariant: a push sends HEAD's branch, because the journal names a \
-         push's branch by head_before: {invariant:?}"
-    );
-    launch_checked(next, commands, op, invariant, stoppable, opened_by, next_id);
-}
-
-/// [`launch_with`] past its `debug_assert!`: what a release build does with
-/// the checked invariant. Split out so the fast (debug) tier can run the
-/// refusal branch — the assert fires first there
-/// (`update::remote::tests::the_write_site_refuses_in_release`).
-pub(super) fn launch_checked(
-    next: &mut AppState,
-    commands: &mut Vec<Command>,
-    op: Operation,
-    invariant: Result<(), String>,
-    stoppable: super::remote::Stoppable,
-    opened_by: Option<&'static str>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    if let Err(why) = invariant {
-        next.status = Status::Failed(why);
-        return;
-    }
+    // No branch check here (gap row 550, m6-06 review Major 1): the journal
+    // names a push's branch by `head_before`, so a push must send `HEAD`'s
+    // branch — and `graft_ops::apply` holds exactly that, against a fresh
+    // read of `HEAD`, before the `Pending` line (`check_push` refuses with
+    // `Refusal::BranchChanged`). A check here could only compare against the
+    // in-memory remote facts, which a re-read can replace under an open push
+    // box (`update::remote::tests::a_push_boxed_before_a_reread_launches_and_ops_decides`).
     let id = next_id();
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
