@@ -26,7 +26,11 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   `u`/`U` and `n`/`N` — no new letter joins that pair by resemblance alone.
   `B`/`X` on the commit-graph offer banner are a named, narrow exception:
   one-shot initials on a banner that appears once per session and claims
-  the keyboard the same way a modal pane does. `p`/`P` (pull/push) are the
+  the keyboard the same way a modal pane does. `O`/`T` in the conflict
+  resolver (§2.6) are a second one (P6, approved 2026-09-23; ADR-0043):
+  whole-file yours/theirs, the bulk form of `o`/`t` that §2.1's modifier rule
+  would otherwise put on `Ctrl+O`/`Ctrl+T` — which the per-file-but-no-mark
+  take already holds. A slipped `Shift` is recovered with `d`. `p`/`P` (pull/push) are the
   model for any future same-shift-key opposite pair: box the irreversible
   half behind a confirm, never let a slipped `Shift` run it. A hand-over to
   an external program (`M` mergetool) is a place you go to and come back
@@ -58,7 +62,8 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   - The **conflict resolver** (§2.6) binds `o`/`t`/`b` to ours/theirs/both
     per block, `B` to show/hide BASE, `d` to start the file over, `e` to
     `$EDITOR` (no inline editor is built, ADR-0042), `n`/`N` to
-    next/previous open block. None of the graph pane's global bindings
+    next/previous block, `j`/`k` between files, `c` to finish (full list and
+    the finish summary: §2.6, §2.6b). None of the graph pane's global bindings
     (`p` pull, `r` rebase, `f` fetch, `M` Map, `n`/`N` search) are live
     while it has focus — same letters, different, non-conflicting verbs.
   - The **operation banner**, when focused (a merge, rebase, cherry-pick or
@@ -206,6 +211,14 @@ and any redo prompt should lead with.
 | `Enter` | Seek the graph to the selected branch's tip and close the view |
 | `Esc` | Close |
 
+### 2.3b Ghost Preview (merge / rebase)
+
+| Key | Action |
+|---|---|
+| `m` / `r` | Confirm, when the preview was opened by that same key and its plan has landed (`m m`, `r r`). The cursor still rests on Cancel (ADR-0038 §1); a `.`-opened preview is unchanged — `.` still closes what `.` opened (P1, approved 2026-09-23) |
+| `Enter` | The choice under the cursor (ADR-0038 §1) |
+| `Esc` | Cancel |
+
 ### 2.4 Working tree / staging (detail pane)
 
 | Key | Action |
@@ -239,16 +252,23 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 
 | Key | Action |
 |---|---|
-| `o` | Take ours (cursor block) |
-| `t` | Take theirs (cursor block) |
-| `b` | Take both |
+| `o` | Take ours (cursor block), then move the cursor to the next open block (P2) |
+| `t` | Take theirs (cursor block), then move the cursor to the next open block (P2) |
+| `b` | Take both, then move the cursor to the next open block (P2) |
+| `Ctrl+O` / `Ctrl+T` | Yours / theirs in every open block of this file, one write; does not mark it done — `Enter` as usual (P3) |
+| `O` / `T` | Yours / theirs in every open block of this file, mark it done, move to the next file; on a whole-file card, same as `o`/`t` (P6; the named §2.1 exception) |
 | `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
 | `d` | Start this file over (`git checkout --merge`), behind a confirm box — not undoable while the operation is open (the box says so) |
-| `n` / `N` | Next / previous open block, crossing to the next conflicted file at the end |
+| `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts` (P2) |
+| `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G`, the wheel |
+| `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open; the resolver stays open after the last file is done (P8) |
 | `Enter` | Mark this file resolved and move to the next conflicted file, or close if none left |
 | `e` | Open `$EDITOR` at the cursor block |
 | `M` | Launch the configured external mergetool on this file |
 | `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |
+
+Rows marked P2, P3, P6–P8 were approved 2026-09-23 (`docs/field-notes.md`;
+`docs/design-notes/m6-conflicts.md` Amendments 1–2; layout ADR-0043).
 
 ### 2.6a Operation banner (M5 interim, until the resolver of §2.6 lands)
 
@@ -257,14 +277,16 @@ what git is standing in the middle of and takes the keys; §2.6's pane
 replaces it in M6, keeping the same letters for the same verbs.
 
 **Modal while focused** (§2.1): the banner answers every key itself,
-`Ctrl+C` excepted. It takes focus the moment an operation stops, so the
-first key after a conflict goes to the thing that stopped, not to the graph
-underneath.
+`Ctrl+C` excepted. A stop with anything unmerged opens the resolver (§2.6)
+on the first conflicted file, and `Esc` there lands on the banner. A stop
+with nothing unmerged focuses the banner. Either way the first key after a
+stop goes to the thing that stopped, not to the graph underneath (P5,
+approved 2026-09-23). A launch mid-operation keeps the banner.
 
 | Key | Action |
 |---|---|
 | `Enter` | Opens the resolver (§2.6) |
-| `c` | Continue — refused, in words, while any path is still unmerged |
+| `c` | Continue — refused, in words, while any path is still unmerged. For a merge, opens the finish summary (§2.6b) — including a merge begun in the shell (P4, approved 2026-09-23); shell-begun rebase and cherry-pick stay M7 |
 | `s` | Skip this commit (rebase and cherry-pick only; a merge says there is nothing to skip) |
 | `a` | Abort, back to where the operation started |
 | `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
@@ -281,6 +303,23 @@ it. Nothing else here is bound outside the banner.
 write over the first, and the banner is where the first one ends either way.
 Commit and amend refuse for the same reason and name the same keys (M5/15).
 A bisect draws no banner until M7, so it is not covered by this rule.
+
+### 2.6b Finish summary
+
+Opened by `c` for a merge (§2.6, §2.6a). **Modal**, full frame under the
+header like the resolver. Nothing is written until `Enter`. Reuses existing
+meanings (§2.2, §2.10), so it adds no letter (P9, approved 2026-09-23;
+`docs/design-notes/m6-conflicts.md` Amendment 2 "New UI").
+
+| Key | Action |
+|---|---|
+| `Enter` | Commit — in the file list and the subject; in the body it is a newline |
+| `Ctrl+Enter` | Commit, from any focus (§2.10) |
+| `Esc` | Back to the resolver, from any focus; the draft message is kept |
+| `Space` | Show / hide the cursor file's diff |
+| `j` / `k` | Move between files (§2.2) |
+| `Tab` | Move focus files → subject → body → files |
+| `Ctrl+E` | Open the message in `$EDITOR` (§2.10) |
 
 ### 2.7 Interactive rebase editor
 
