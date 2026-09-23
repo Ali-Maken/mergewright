@@ -3900,7 +3900,11 @@ fn a_box_that_does_not_clear_covers_and_never_alters() {
             for (x, (a, b)) in drawn.iter().zip(plain).enumerate() {
                 let x = u16::try_from(x).expect("a screen is narrower than u16::MAX");
                 let inside = x >= rect.x && x < rect.right() && y >= rect.y && y < rect.bottom();
-                if inside {
+                // The footer is the box's too: it names the keys the box
+                // answers, not the graph's (rulings 07b, Q1;
+                // `view::frame::tests::the_bottom_row_under_a_live_box_offers_only_its_keys`).
+                let footer = y + 1 == rows;
+                if inside || footer {
                     continue;
                 }
                 assert_eq!(

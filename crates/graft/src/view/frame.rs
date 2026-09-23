@@ -293,17 +293,23 @@ fn draw_status_or_hints(
     theme: &Theme,
     hints: impl FnOnce() -> String,
 ) {
+    // A status is indented one space, as the graph footer indents it, so
+    // it starts in the column the hints do (`hints_text` leads with the
+    // space itself) — rulings 07b, Q3.
     let (text, token) = match super::status::graph_problem(&state.status) {
         Some(problem) => (
-            graft_ui::graph_screen::fit_status_line(
-                problem.reason.as_str(),
-                problem.keys.as_ref().map(SanitizedText::as_str),
-                width,
+            format!(
+                " {}",
+                graft_ui::graph_screen::fit_status_line(
+                    problem.reason.as_str(),
+                    problem.keys.as_ref().map(SanitizedText::as_str),
+                    width.saturating_sub(1),
+                )
             ),
             Token::Warning,
         ),
         None => match footer_notice(state, tier) {
-            Some(notice) => (notice.as_str().to_owned(), Token::TextMuted),
+            Some(notice) => (format!(" {}", notice.as_str()), Token::TextMuted),
             None => (hints(), Token::TextMuted),
         },
     };
@@ -456,10 +462,63 @@ pub fn view_with_graphics(
             (None, Vec::new())
         }
     };
+    draw_box_bars(session, state, frame, area);
     pixels_above_overlays(
         graph,
         draw_modal_boxes(session, state, frame, area, &columns).into_iter(),
     )
+}
+
+/// **Every bar on the frame, under a live box, says the box's keys**
+/// (rulings 07b, Q1) — or what went wrong, or what is running, first, as
+/// every bar does (`draw_status_or_hints`). One call, after whichever
+/// screen drew and before the boxes go on top, for the reason
+/// `draw_modal_boxes` is one call: the resolver, the Map view, the journal,
+/// the stash list and the commit editor each draw their own bar, and a
+/// per-screen answer is the one a sixth screen forgets. The graph's footer
+/// and the detail pane already asked `rows::box_context` for their context;
+/// writing them again here costs nothing and leaves no screen out.
+fn draw_box_bars(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) {
+    let Some(context) = super::rows::box_context(state) else {
+        return;
+    };
+    let tier = tier_in_force(session, state);
+    for bar in bar_rows(state, area) {
+        frame.render_widget(Clear, bar);
+        draw_status_or_hints(
+            frame,
+            state,
+            tier,
+            (bar.x, bar.y, bar.width),
+            &session.theme,
+            || {
+                graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+                    &context,
+                    graft_ui::graph_screen::Divider::Hidden,
+                    bar.width,
+                ))
+            },
+        );
+    }
+}
+
+/// The rows this frame drew a bar of keys on: the bottom row of the screen
+/// that stands where the graph does — the graph, an overlay, or with the
+/// sub-100-column Detail tab up, the tab's own hint row at the foot of the
+/// frame. The resolver covers the detail pane too, so its bar runs the
+/// whole width. The status screen has none: its `q  quit` is a line of the
+/// page, not a bar.
+fn bar_rows(state: &AppState, area: Rect) -> Vec<Rect> {
+    let bottom_of = |rect: Rect| Rect {
+        y: rect.bottom().saturating_sub(1),
+        height: rect.height.min(1),
+        ..rect
+    };
+    match state.screen {
+        Screen::Status => Vec::new(),
+        Screen::Graph if state.resolver.is_some() => vec![bottom_of(area)],
+        Screen::Graph => vec![bottom_of(primary_pane_area(state, area).unwrap_or(area))],
+    }
 }
 
 /// The three modal boxes, over whatever this frame drew, in the order they
@@ -1174,7 +1233,22 @@ fn draw_confirm(
     // showing them is the whole point of confirming over the graph. So it
     // snaps outward onto the column boundaries and takes its height again
     // at the width that gives it.
-    let (rect, clear) = match snap_to_columns(natural, columns, area) {
+    //
+    // **Over the resolver it clears, full width, at every width** (rulings
+    // 07b, Q2; ADR-0040 "What each box does"). The resolver's document has
+    // no column boundaries to snap to — below 100 columns it is one column
+    // running the whole width — and its rows are code: a cut line, or a
+    // side label fused to the border (`▏ THEIRS╭ Start both.txt over?`), is
+    // exactly the fragment beside a border that reads as content. The box
+    // says what is lost; the document beside it is not what it acts on.
+    let over_the_resolver =
+        state.screen == Screen::Graph && state.graph_overlay() == Some(GraphOverlay::Resolver);
+    let snapped = if over_the_resolver {
+        None
+    } else {
+        snap_to_columns(natural, columns, area)
+    };
+    let (rect, clear) = match snapped {
         Some(snapped) => {
             let rect =
                 graft_ui::confirm::confirm_area_at(area, &pending.view, snapped.x, snapped.width)

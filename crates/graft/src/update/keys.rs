@@ -828,4 +828,12 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     // offer it: the gesture ends with the button, not with `⏎`.
     ("release", "drop on a row"),
     ("esc", "cancel"), // `drag_key`: `Esc` drops the badge, doing nothing
+    // The three modal boxes (rulings 07b, Q1): `esc cancel` above is theirs
+    // too — `confirm_key`'s catch-all, `name_prompt_key` and
+    // `credential_key` each close on `Esc`.
+    ("←/→", "move"), // `confirm::confirm_key`: the cursor between choices
+    ("⏎", "choose"), // `confirm::confirm_key`: the choice under the cursor
+    ("⏎", "create"), // `name_prompt::name_prompt_key` → `create`
+    ("⇥", "toggle"), // `name_prompt::name_prompt_key`: check out after
+    ("⏎", "send"),   // `credential::credential_key`: the answer to git
 ];

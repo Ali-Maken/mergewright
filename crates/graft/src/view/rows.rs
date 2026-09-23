@@ -304,6 +304,36 @@ fn compaction(
     }
 }
 
+/// **The bar under a live modal box**, or `None` with no box up (rulings
+/// 07b, Q1).
+///
+/// A box claims the next key before any screen, overlay or pane does —
+/// `credential_key`, then `name_prompt_claimed`, then `confirm_key`, the
+/// order `update::core_event` and `update::keys::key_event` ask them in —
+/// so a key of the screen behind it is a key that does nothing, and a line
+/// never offers one of those (`update::resolver::answers`). This is asked
+/// **first**, before any screen's own context: by [`footer_context`] and
+/// [`hint_context`] for the graph's footer and the detail pane's bar, and
+/// by `view::frame`, once after whichever screen drew, for every other bar
+/// on the frame (the resolver's, the overlays' own). The same shape as F10's
+/// `draw_modal_boxes`: one decision, not one per screen.
+pub(crate) fn box_context(state: &AppState) -> Option<HintContext> {
+    if state.credential.is_some() {
+        Some(HintContext::Credential)
+    } else if let Some(prompt) = &state.name_prompt {
+        Some(HintContext::NamePrompt {
+            toggle: matches!(
+                prompt.kind,
+                crate::update::name_prompt::NameKind::Branch { .. }
+            ),
+        })
+    } else if state.confirm.is_some() {
+        Some(HintContext::ConfirmBox)
+    } else {
+        None
+    }
+}
+
 /// What the footer offers under this frame's rows.
 ///
 /// A focused banner owns the keyboard, so the footer must list the banner's
@@ -315,6 +345,9 @@ pub(crate) fn footer_context(
     rows: &[GraphEntry<'_>],
     banner: Option<&graft_ui::graph_screen::BannerView>,
 ) -> HintContext {
+    if let Some(boxed) = box_context(state) {
+        return boxed;
+    }
     match banner {
         // The resolver stands over the banner as well as the graph, and it
         // is modal: `c`, `s`, `a` reach the file, not the operation. Its
@@ -443,6 +476,10 @@ pub fn resolver_context(state: &AppState) -> HintContext {
 /// hint them. `<> resize` is not a context: `GraphView::divider_shown` carries
 /// it, for every context alike.
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
+    // A live box before anything: it takes the key before the drag does.
+    if let Some(boxed) = box_context(state) {
+        return boxed;
+    }
     // A badge in the air first: while the gesture is running, the keys the
     // cursor's row would offer are not the ones that end it. First here
     // because it is first in `update::keys::key_event` too — `drag_key`

@@ -1928,7 +1928,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 25;
+const COVERAGE_SLOTS: usize = 29;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1998,6 +1998,10 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::Resolver {
             whole_file: true, ..
         } => 24,
+        HintContext::ConfirmBox => 25,
+        HintContext::NamePrompt { toggle: false } => 26,
+        HintContext::NamePrompt { toggle: true } => 27,
+        HintContext::Credential => 28,
     }
 }
 

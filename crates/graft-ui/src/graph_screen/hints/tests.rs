@@ -854,6 +854,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         HintContext::Banner { .. }
         | HintContext::Preview
         | HintContext::Dragging
+        | HintContext::ConfirmBox
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
