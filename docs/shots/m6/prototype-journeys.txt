@@ -4518,3 +4518,1980 @@ ours = main · theirs = the branch being merged in
 # stalls: 0
 # design note count: b-launch-to-first-conflict 1 + gone 2 + notes P3:2 + b-finish P4:1 = 6
 
+
+# v2 --layout jb: FINISH SUMMARY (field note 2026-09-23, approved). PROTOTYPE.
+# c opens one screen, not a yes/no box. ⏎ commits, e edits the message, Esc back to the resolver (state kept).
+# Without --auto the canned repo has nothing git combined on its own: `none`. --auto fakes 2 files.
+
+########################################################################################################################
+# RUN: jb finish summary at 200x50   (keys: c e     m a i n ⏎ ⏎)
+########################################################################################################################
+=== PROTOTYPE jb finish summary · 200x50 · frame 0 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  done ✓          │    1 one                                               │   1 one                                               │   1 one
+                              │▏── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │▏   2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │    5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb finish summary · 200x50 · frame 1 · finish summary: your choices per file, git combined none — shown honestly · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary · 200x50 · frame 2 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 3 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into mai▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 4 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into ma▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 5 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into m▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 6 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into ▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 7 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into m▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 8 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into ma▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 9 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into mai▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 10 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 200x50 · frame 11 · finish summary: your choices per file, git combined none — shown honestly · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary · 200x50 · frame 12 · merged: cursor on the new merge commit, u undo in the bar · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 16  (m m O T c e     m a i n ⏎ ⏎)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c ⏎ 2 = 6 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb finish summary --auto at 200x50   (keys: c j ⏎ Esc Esc c ⏎)
+########################################################################################################################
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 0 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  done ✓          │    1 one                                               │   1 one                                               │   1 one
+                              │▏── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │▏   2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │    5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 1 · finish summary: your choices per file, 2 files git combined, j/k + ⏎ opens one · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   README.md   +3 -1
+   src/app.rs  +5 -2
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  j/k files  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 2 · cursor on README.md (combined by git) · next: ⏎ opens its diff
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+ ▏ README.md   +3 -1   ⏎ open
+   src/app.rs  +5 -2
+
+commit message:
+   Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ open diff  j/k move  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 3 · diff of a file git combined on its own · next: Esc back to the summary
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+README.md · combined by git on its own · +3 -1
+
+  @@ -4,3 +4,5 @@
+     ## Usage
+   - run: make
+   + run: make run
+   + test: make test
+   + lint: make lint
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ esc back to summary
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 4 · cursor on README.md (combined by git) · next: ⏎ opens its diff
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+ ▏ README.md   +3 -1   ⏎ open
+   src/app.rs  +5 -2
+
+commit message:
+   Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ open diff  j/k move  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 5 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  done ✓          │    1 one                                               │   1 one                                               │   1 one
+                              │▏── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │▏   2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │    5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 6 · finish summary: your choices per file, 2 files git combined, j/k + ⏎ opens one · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                                                                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   README.md   +3 -1
+   src/app.rs  +5 -2
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  j/k files  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 200x50 · frame 7 · merged: cursor on the new merge commit, u undo in the bar · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 11  (m m O T c j ⏎ Esc Esc c ⏎)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c ⏎ 2 = 6 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb finish summary at 120x40   (keys: c e     m a i n ⏎ ⏎)
+########################################################################################################################
+=== PROTOTYPE jb finish summary · 120x40 · frame 0 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+▏ ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     5 FIVE from feature
+     6 six
+
+  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb finish summary · 120x40 · frame 1 · finish summary: your choices per file, git combined none — shown honestly · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary · 120x40 · frame 2 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 3 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into mai▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 4 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into ma▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 5 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into m▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 6 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into ▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 7 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into m▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 8 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into ma▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 9 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into mai▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 10 · editing the commit message in place · next: ⏎ keeps it
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main▌
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ editing message · ⏎ keep  esc cancel  ⌫ delete
+=== PROTOTYPE jb finish summary · 120x40 · frame 11 · finish summary: your choices per file, git combined none — shown honestly · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   none
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary · 120x40 · frame 12 · merged: cursor on the new merge commit, u undo in the bar · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 16  (m m O T c e     m a i n ⏎ ⏎)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c ⏎ 2 = 6 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb finish summary --auto at 120x40   (keys: c j ⏎ Esc Esc c ⏎)
+########################################################################################################################
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 0 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+▏ ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     5 FIVE from feature
+     6 six
+
+  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 1 · finish summary: your choices per file, 2 files git combined, j/k + ⏎ opens one · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   README.md   +3 -1
+   src/app.rs  +5 -2
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  j/k files  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 2 · cursor on README.md (combined by git) · next: ⏎ opens its diff
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+ ▏ README.md   +3 -1   ⏎ open
+   src/app.rs  +5 -2
+
+commit message:
+   Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ open diff  j/k move  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 3 · diff of a file git combined on its own · next: Esc back to the summary
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+README.md · combined by git on its own · +3 -1
+
+  @@ -4,3 +4,5 @@
+     ## Usage
+   - run: make
+   + run: make run
+   + test: make test
+   + lint: make lint
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ esc back to summary
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 4 · cursor on README.md (combined by git) · next: ⏎ opens its diff
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+ ▏ README.md   +3 -1   ⏎ open
+   src/app.rs  +5 -2
+
+commit message:
+   Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ open diff  j/k move  e edit message  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 5 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+▏ ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     5 FIVE from feature
+     6 six
+
+  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 6 · finish summary: your choices per file, 2 files git combined, j/k + ⏎ opens one · next: ⏎ commits
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto                                                     MERGING
+Finish merge: feature → main
+
+resolved by you:
+   gone.txt    kept main (yours)
+   notes.txt   took feature (theirs)
+
+combined by git on its own:
+   README.md   +3 -1
+   src/app.rs  +5 -2
+
+commit message:
+ ▏ Merge branch 'feature' into main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  e edit message  j/k files  esc back to resolver
+=== PROTOTYPE jb finish summary --auto · 120x40 · frame 7 · merged: cursor on the new merge commit, u undo in the bar · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb  --auto
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 11  (m m O T c j ⏎ Esc Esc c ⏎)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c ⏎ 2 = 6 (v1 in-spec 11, v1 proposed 7)
+

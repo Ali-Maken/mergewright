@@ -350,6 +350,14 @@ class Walk:
 
 YOURS, THEIRS = "main (yours)", "feature (theirs)"  # one name per side, everywhere (audit C)
 FILES = ["gone.txt", "notes.txt"]
+# --auto: files git merged cleanly on its own (faked; the canned repo has none). (name, +, -, diff lines)
+AUTO = [
+    ("README.md", 3, 1, ["@@ -4,3 +4,5 @@", "   ## Usage", " - run: make", " + run: make run", " + test: make test",
+                         " + lint: make lint"]),
+    ("src/app.rs", 5, 2, ["@@ -10,4 +10,7 @@ fn main() {", "   let cfg = load();", " - run(cfg);", " - exit(0);",
+                          " + let app = App::new(cfg);", " + app.run()?;", " + log::info!(\"bye\");",
+                          " + Ok(())", " + // from main", "   }"]),
+]
 # notes.txt as each side has it on disk: context lines and the 2 blocks. Both sides number 1-6 contiguously.
 NOTES_LAYOUT = ["one", 0, "three", "four", 1, "six"]
 
@@ -364,18 +372,108 @@ class JbWalk(Walk):
     Keys are --proposed's (P1-P5) plus two list keys: j/k move between files, O/T take a whole file
     as main (yours) / feature (theirs) and mark it done (audit A: 1 key per file)."""
 
-    def __init__(self, start):
+    def __init__(self, start, auto=False):
         super().__init__(True, start)
         self.staged = [False, False]
+        self.auto = AUTO if auto else []  # files git combined on its own (canned repo: none)
+        self.message = "Merge branch 'feature' into main"
+        self.editing = None  # None, or the line being edited
+        self.srow = -1  # summary cursor: -1 message line, i >= 0 an auto-merged file
+        self.diff = None  # index of the auto-merged file whose diff is open
+
+    # ---------- finish summary (field note 2026-09-23: approved) ----------
+    def open_summary(self):
+        self.screen, self.srow, self.editing = "summary", -1, None
+
+    def on_summary(self, k):
+        if self.editing is not None:
+            if k == "\r":
+                self.message, self.editing = self.editing or self.message, None
+            elif k == "\x1b":
+                self.editing = None
+            elif k in ("\x7f", "\x08"):
+                self.editing = self.editing[:-1]
+            elif len(k) == 1 and k.isprintable():
+                self.editing += k
+            else:
+                return False
+            return True
+        if k == "\x1b":
+            self.screen = "resolver"
+        elif k == "e":
+            self.editing, self.srow = self.message, -1
+        elif k in ("j", "k") and self.auto:
+            self.srow = max(-1, min(len(self.auto) - 1, self.srow + (1 if k == "j" else -1)))
+        elif k == "\r" and self.srow >= 0:
+            self.screen, self.diff = "autodiff", self.srow
+        elif k == "\r":
+            self.screen, self.done, self.outcome = "merged", True, "merged in the app"
+        else:
+            return False
+        return True
+
+    def on_autodiff(self, k):
+        if k == "\x1b":
+            self.screen = "summary"
+            return True
+        return False
+
+    def summary_rows(self, w):
+        g = {"ours": f"kept {YOURS}", "theirs": f"took {THEIRS}"}
+        n = self.blocks
+        notes = g[n[0]] if n[0] == n[1] and n[0] in g else " · ".join(
+            f"conflict {i+1} {'both' if b == 'both' else g[b].split(' ', 1)[0] + ' ' + self.took(b)}"
+            for i, b in enumerate(n))
+        rows = ["Finish merge: feature → main", "",
+                "resolved by you:",
+                f"   gone.txt    {g[self.gone] if self.gone == 'ours' else 'took ' + THEIRS + ' (deleted)'}",
+                f"   notes.txt   {notes}", "",
+                "combined by git on its own:"]
+        if not self.auto:
+            rows.append("   none")
+        for i, (name, a, d, _) in enumerate(self.auto):
+            m = "▏" if self.srow == i else " "
+            rows.append(f" {m} {name:<11} +{a} -{d}" + ("   ⏎ open" if self.srow == i else ""))
+        m = "▏" if self.srow == -1 else " "
+        msg = (self.editing + "▌") if self.editing is not None else self.message
+        rows += ["", "commit message:", f" {m} {msg}"]
+        return rows
+
+    def autodiff_rows(self, w):
+        name, a, d, lines = self.auto[self.diff]
+        return [f"{name} · combined by git on its own · +{a} -{d}", ""] + [f"  {ln}" for ln in lines]
+
+    def bottom(self):
+        if self.screen == "summary":
+            if self.editing is not None:
+                return " editing message · ⏎ keep  esc cancel  ⌫ delete"
+            if self.srow >= 0:
+                return " ⏎ open diff  j/k move  e edit message  esc back to resolver"
+            j = "  j/k files" if self.auto else ""
+            return " ⏎ commit  e edit message" + j + "  esc back to resolver"
+        if self.screen == "autodiff":
+            return " esc back to summary"
+        return super().bottom()
+
+    def frame(self, w, h):
+        if self.screen not in ("summary", "autodiff", "merged"):
+            return super().frame(w, h)
+        body = {"summary": self.summary_rows, "autodiff": self.autodiff_rows,
+                "merged": lambda w: [r.replace("Merge branch 'feature' into main", fit(self.message, 32))
+                                     for r in self.graph_rows(None, merged=True)]}[self.screen](w)
+        tail = [(" " + self.msg) if self.msg else "", self.bottom()]
+        out = [self.title(w)] + body[: max(0, h - 1 - len(tail))]
+        out += [""] * (h - len(out) - len(tail)) + tail
+        return [fit(ln, w) for ln in out[:h]]
 
     def title(self, w):
         tag = "" if self.screen in ("graph", "preview", "merged") else "MERGING"
-        left = f" graft {REPO}   PROTOTYPE  --layout jb"
+        left = f" graft {REPO}   PROTOTYPE  --layout jb{'  --auto' if self.auto else ''}"
         return left + " " * max(1, w - len(left) - len(tag) - 1) + tag
 
     def on_banner(self, k):
         if k == "c" and self.banner == "resolved":
-            self.screen, self.done, self.outcome = "merged", True, "merged in the app"
+            self.open_summary()
             return True
         return super().on_banner(k)
 
@@ -408,7 +506,7 @@ class JbWalk(Walk):
             return True
         if k == "c":
             if all(self.staged):
-                self.screen, self.done, self.outcome = "merged", True, "merged in the app"
+                self.open_summary()
                 return True
             return False
         if k in ("O", "T"):  # whole file from the list
@@ -589,6 +687,17 @@ class JbWalk(Walk):
 
     def caption(self):
         s = self.screen
+        if s == "summary":
+            if self.editing is not None:
+                return "editing the commit message in place · next: ⏎ keeps it"
+            if self.srow >= 0:
+                return f"cursor on {self.auto[self.srow][0]} (combined by git) · next: ⏎ opens its diff"
+            what = "2 files git combined, j/k + ⏎ opens one" if self.auto else "git combined none — shown honestly"
+            return f"finish summary: your choices per file, {what} · next: ⏎ commits"
+        if s == "autodiff":
+            return "diff of a file git combined on its own · next: Esc back to the summary"
+        if s == "merged":
+            return "merged: cursor on the new merge commit, u undo in the bar · done"
         if s != "resolver":
             if s == "preview" and self.sel == 0:
                 return "preview, cursor on Cancel · next: m (P1)"
@@ -608,8 +717,8 @@ class JbWalk(Walk):
 
     def note_count(self):
         if self.start == "shell":
-            return "launch ⏎ 1 + gone O 1 + notes T 1 + finish c 1 = 4 (v1 in-spec 7 + shell, v1 proposed 6)"
-        return "merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)"
+            return "launch ⏎ 1 + gone O 1 + notes T 1 + finish c ⏎ 2 = 5 (v1 in-spec 7 + shell, v1 proposed 6)"
+        return "merge m m 2 + gone O 1 + notes T 1 + finish c ⏎ 2 = 6 (v1 in-spec 11, v1 proposed 7)"
 
 
 def pick_size():
@@ -635,7 +744,7 @@ def interactive(args):
     import tty
 
     w, h = pick_size()
-    walk = make(args.layout, args.proposed, args.start)
+    walk = make(args.layout, args.proposed, args.start, args.auto)
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     sys.stdout.write("\x1b[?1049h\x1b[?25l")
@@ -678,8 +787,8 @@ JB_SCRIPTS = [
 ]
 
 
-def make(layout, proposed, start):
-    return JbWalk(start) if layout == "jb" else Walk(proposed, start)
+def make(layout, proposed, start, auto=False):
+    return JbWalk(start, auto) if layout == "jb" else Walk(proposed, start)
 
 
 def run_script(out, walk, name, keys, w, h):
@@ -721,15 +830,39 @@ def capture(path):
         f.write("\n".join(out) + "\n")
 
 
+SUMMARY_SCRIPTS = [
+    ("jb finish summary", False, ["m", "m", "O", "T", "c", "e", "\x7f", "\x7f", "\x7f", "\x7f", "m", "a", "i", "n", "\r", "\r"]),
+    ("jb finish summary --auto", True, ["m", "m", "O", "T", "c", "j", "\r", "\x1b", "\x1b", "c", "\r"]),
+]
+
+
+def capture_summary(path):
+    out = ["", "# v2 --layout jb: FINISH SUMMARY (field note 2026-09-23, approved). PROTOTYPE.",
+           "# c opens one screen, not a yes/no box. ⏎ commits, e edits the message, Esc back to the resolver (state kept).",
+           "# Without --auto the canned repo has nothing git combined on its own: `none`. --auto fakes 2 files.", ""]
+    for w, h in ((200, 50), (120, 40)):
+        for name, auto, keys in SUMMARY_SCRIPTS:
+            walk = JbWalk("app", auto)
+            for k in keys[:4]:  # skip to the resolver's last frame; earlier frames are above
+                walk.press(k)
+            run_script(out, walk, name, keys[4:], w, h)
+    with open(path, "a") as f:
+        f.write("\n".join(out) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser(description="PROTOTYPE: M6 conflict journey walk")
     ap.add_argument("--layout", choices=["jb", "card"], default="jb", help="jb: file list + 3 panes (v2); card: v1")
     ap.add_argument("--proposed", action="store_true", help="card layout: turn on P1-P5 (jb always has them)")
     ap.add_argument("--start", choices=["app", "shell"], default="app")
+    ap.add_argument("--auto", action="store_true", help="jb: fake 2 files git combined on its own (summary)")
     ap.add_argument("--capture", metavar="OUT")
+    ap.add_argument("--capture-summary", metavar="OUT", help="append the finish-summary runs to OUT")
     args = ap.parse_args()
     if args.capture:
         capture(args.capture)
+    elif args.capture_summary:
+        capture_summary(args.capture_summary)
     else:
         interactive(args)
 
