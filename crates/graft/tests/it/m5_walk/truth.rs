@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use graft::update::preview::Planned;
 use graft_core::journal::JournalEntry;
+pub use graft_ops::operation::Side;
 
 use super::fixture::Fixture;
 use crate::repo_truth::{RepoTruth, diff_truth as diff_repo, git_truth, run_git};
@@ -103,6 +104,100 @@ pub fn journal(repo: &Path) -> Result<Vec<JournalEntry>, String> {
     graft_ops::journal::Journal::open(&path)
         .map(|journal| journal.entries().to_vec())
         .map_err(|why| format!("the journal: {why}"))
+}
+
+// ───────────────────────────── conflicts (m6-conflicts/07) ─────────────────────────────
+
+/// The working-tree bytes of `path` as the resolution left them: what `⏎`
+/// staged, byte for byte. A file the resolution removed is an error naming
+/// it, never an empty file.
+pub fn resolved_bytes(repo: &Path, path: &str) -> Result<Vec<u8>, String> {
+    let file = repo.join(path);
+    std::fs::read(&file).map_err(|why| format!("{}: {why}", file.display()))
+}
+
+/// What git itself gives for one side of a conflicted `path`: a copy of the
+/// whole repository (index stages and all — a `git clone` carries neither)
+/// in a scratch directory, `git checkout --ours|--theirs -- <path>` there,
+/// and the bytes it wrote. `repo` is never touched; it must still hold the
+/// conflict, so call this on a fresh build of the same fixture.
+pub fn side_bytes(repo: &Path, path: &str, side: Side) -> Result<Vec<u8>, String> {
+    let scratch = tempfile::tempdir().map_err(|why| format!("a scratch directory: {why}"))?;
+    let copy = scratch.path().join("repo");
+    copy_tree(repo, &copy)?;
+    let flag = match side {
+        Side::Ours => "--ours",
+        Side::Theirs => "--theirs",
+    };
+    run_git(&copy, &["checkout", flag, "--", path])?;
+    resolved_bytes(&copy, path)
+}
+
+/// `path`'s unmerged index entries, `git ls-files -u -- <path>`, one per
+/// stage: `<mode> <oid> <stage>\t<path>`. Empty once it is resolved.
+pub fn unmerged(repo: &Path, path: &str) -> Result<Vec<String>, String> {
+    Ok(run_git(repo, &["ls-files", "-u", "--", path])?
+        .lines()
+        .map(str::to_owned)
+        .collect())
+}
+
+/// Git says an operation is part-way through: `rebase-merge/` or
+/// `MERGE_HEAD` under the git directory.
+pub fn operation_on_disk(repo: &Path) -> Result<bool, String> {
+    let git_dir = run_git(repo, &["rev-parse", "--absolute-git-dir"])?;
+    let git_dir = Path::new(git_dir.trim());
+    Ok(git_dir.join("rebase-merge").is_dir() || git_dir.join("MERGE_HEAD").is_file())
+}
+
+/// The journal file's last line is a `Pending` line with no outcome after
+/// it: the raw line says `"status":"pending"`, and the app's own reader
+/// agrees that the newest entry is still `Pending`. `false` for a journal
+/// that is missing or unreadable — the caller's check names that.
+pub fn last_journal_line_is_pending(repo: &Path) -> bool {
+    let path = repo.join(".git/graft/undo-journal.jsonl");
+    let Ok(raw) = std::fs::read_to_string(&path) else {
+        // Missing or unreadable: there is no Pending line to find, which is
+        // exactly the answer `false` gives; the caller's message says so.
+        return false;
+    };
+    let raw_says = raw
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| line.contains("\"status\":\"pending\""));
+    let reader_says = journal(repo).is_ok_and(|entries| {
+        entries
+            .last()
+            .is_some_and(|entry| entry.status == graft_core::journal::EntryStatus::Pending)
+    });
+    raw_says && reader_says
+}
+
+/// Copy a directory tree, files and directories only (the fixtures hold no
+/// links a copy must keep).
+fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(to).map_err(|why| format!("{}: {why}", to.display()))?;
+    let entries = std::fs::read_dir(from).map_err(|why| format!("{}: {why}", from.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|why| format!("{}: {why}", from.display()))?;
+        let kind = entry
+            .file_type()
+            .map_err(|why| format!("{}: {why}", entry.path().display()))?;
+        let target = to.join(entry.file_name());
+        if kind.is_dir() {
+            copy_tree(&entry.path(), &target)?;
+        } else if kind.is_file() {
+            std::fs::copy(entry.path(), &target)
+                .map_err(|why| format!("{}: {why}", entry.path().display()))?;
+        } else {
+            return Err(format!(
+                "{}: not a file or a directory; the copy would lose it",
+                entry.path().display()
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// What moved between two truths, 20 lines at most: the repository's

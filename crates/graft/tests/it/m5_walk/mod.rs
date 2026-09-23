@@ -32,6 +32,8 @@ mod radar_fixes;
 mod refs_and_names;
 mod regressions;
 mod remotes;
+mod resolved_operations;
+mod resolving;
 mod run;
 mod steps;
 mod time_machine;
@@ -59,6 +61,8 @@ pub fn scenarios() -> Vec<Scenario> {
     all.extend(remotes::remote_history());
     all.extend(refs_and_names::refs_and_names());
     all.extend(regressions::regressions());
+    all.extend(resolving::resolving());
+    all.extend(resolved_operations::resolved_operations());
     all
 }
 

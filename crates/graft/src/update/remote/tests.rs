@@ -1032,6 +1032,74 @@ fn after_the_box_params() -> PushParams {
     }
 }
 
+/// **m6-conflicts/06, Scope 1 ruling (planner, 2026-09-23).** One push sent
+/// two commits, `OLD_TIP` → `FIRST` → `THEIRS`; `u` targets the second.
+/// The re-push is the remote half of undoing *that* commit, so it sends
+/// the target's `refs_before[main]` — `FIRST`, which the user still has
+/// locally — not the push entry's pre-push tracking tip `OLD_TIP`, which
+/// would roll origin back past `FIRST`. The lease stays the push entry's
+/// `refs_after[tracking]`. Driven through both boxes to the dispatched
+/// `Operate`, so it pins what reaches the job runner.
+#[test]
+fn repush_after_a_two_commit_push_sends_the_first_commit() {
+    const FIRST: &str = "5555555555555555555555555555555555555555";
+    let mut state = after_a_push();
+    state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
+        entries: vec![
+            entry(
+                1,
+                OperationKind::Commit,
+                "commit \"first\"",
+                Some(("refs/heads/main", Some(oid(OLD_TIP)), Some(oid(FIRST)))),
+            ),
+            entry(
+                2,
+                OperationKind::Commit,
+                "commit \"second\"",
+                Some(("refs/heads/main", Some(oid(FIRST)), Some(oid(THEIRS)))),
+            ),
+            entry(
+                3,
+                OperationKind::Push,
+                "push main → origin/main",
+                Some((
+                    "refs/remotes/origin/main",
+                    Some(oid(OLD_TIP)),
+                    Some(oid(THEIRS)),
+                )),
+            ),
+        ],
+        unreadable: Vec::new(),
+        live: Vec::new(),
+    }));
+
+    let (asked, _) = press(&state, plain('u'));
+    assert_eq!(
+        asked.confirm.as_ref().expect("the box opened").view.message[0].as_str(),
+        "commit \"second\" is on origin/main",
+        "u targets the second commit"
+    );
+    let (asked, _) = press(&asked, KeyPress::plain(KeyCode::Right));
+    let (asked, _) = press(&asked, KeyPress::plain(KeyCode::Right));
+    let (lease_box, _) = press(&asked, KeyPress::plain(KeyCode::Enter));
+    let (moved, _) = press(&lease_box, KeyPress::plain(KeyCode::Right));
+    let (pushed, commands) = press(&moved, KeyPress::plain(KeyCode::Enter));
+    let Some(id) = pushed.operating else {
+        panic!("the lease box's Enter pushed nothing: {commands:?}");
+    };
+    assert_eq!(
+        commands,
+        [Command::Operate(
+            id,
+            Box::new(Operation::Push(PushParams {
+                source_commit: Some(oid(FIRST)),
+                ..after_the_box_params()
+            }))
+        )],
+        "source_commit is the first commit, not the pre-push tracking tip"
+    );
+}
+
 /// `[ Cancel ]` answers nothing, so the next `u` asks again. A box that went
 /// quiet after being dismissed would let the second `u` rewrite history the
 /// user had just declined to think about.

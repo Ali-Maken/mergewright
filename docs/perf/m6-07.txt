@@ -1,0 +1,11 @@
+# M6 acceptance perf — 2026-09-23T06:40:33Z
+# HEAD e26707d (plus the uncommitted work of m6-conflicts/07)
+# machine: Darwin arm64, 10 cpus
+
+## M6 walk rows, fast tier (warm build; the ticket's bar is < 60 s)
+  Summary [   5.622s] 19 tests run: 19 passed, 278 skipped
+  wall 6 s, exit 0 (a red row is a finding: see the ticket)
+
+## release + heavy tier (ADR-0021; frame budgets fail only under --release)
+  cargo test --release --features heavy-tests --workspace --no-fail-fast
+  2698 passed, 0 failed, 1 ignored, exit 0, wall 279 s

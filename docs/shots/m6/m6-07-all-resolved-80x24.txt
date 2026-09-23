@@ -1,0 +1,26 @@
+m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
+
+REBASING step 1 of 2
+Graph  [Detail]
+UNCOMMITTED · 1 staged
+diff vs HEAD 4d548b9
+
+STAGED (1)
+  M shared.txt                                                             +1 −1
+▎
+  1     - main's line
+      1 + feature's first line
+
+
+
+
+
+
+
+
+
+
+
+
+
+all conflicts resolved · c continue ✓

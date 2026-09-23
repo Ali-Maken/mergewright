@@ -68,9 +68,11 @@ pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
         )
 }
 
-/// The undo journal browser in the graph's area, with the confirm box over
-/// it — `Enter` on the next-undo row can open the drift guard without the
-/// browser having closed first (m3-working-tree-undo-and-stash/06).
+/// The undo journal browser in the graph's area, and the context menu over
+/// it. The confirm box — `Enter` on the next-undo row can open the drift
+/// guard without the browser having closed first
+/// (m3-working-tree-undo-and-stash/06) — is [`draw_modal_boxes`]'s, drawn
+/// over every screen alike.
 ///
 /// Never returns a pixel rectangle: like the Map view, the overlay replaces
 /// the graph, so there is no graph to draw pixels into.
@@ -90,21 +92,16 @@ fn draw_journal(
     } else {
         frame.render_widget(widget, area);
     }
-    // The rectangles the boxes report are the pixel layer's business
-    // (`pixels_above_overlays`), and this overlay draws no pixels — so they
-    // are taken and dropped here rather than threaded nowhere.
-    let _boxes: [Option<Rect>; 4] = [
-        draw_context_menu(state, frame, area, &session.theme),
-        draw_confirm(state, frame, area, &session.theme, &[]),
-        draw_name_prompt(state, frame, area, session),
-        draw_credential(state, frame, area, session),
-    ];
+    // The menu's rectangle is the pixel layer's business
+    // (`pixels_above_overlays`), and this overlay draws no pixels — so it is
+    // taken and dropped here rather than threaded nowhere.
+    let _menu: Option<Rect> = draw_context_menu(state, frame, area, &session.theme);
     None
 }
 
-/// The stash overlay in the graph's area, with the confirm box over it —
-/// `d` opens the drop box without the overlay having closed first
-/// (m3-working-tree-undo-and-stash/06).
+/// The stash overlay in the graph's area, and the context menu over it.
+/// The confirm box `d` opens without the overlay having closed first
+/// (m3-working-tree-undo-and-stash/06) is [`draw_modal_boxes`]'s.
 ///
 /// Never returns a pixel rectangle, for the same reason the journal browser
 /// does not: the overlay replaces the graph.
@@ -119,20 +116,13 @@ fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect
     } else {
         frame.render_widget(widget, area);
     }
-    // The rectangles the boxes report are the pixel layer's business
-    // (`pixels_above_overlays`), and this overlay draws no pixels — so they
-    // are taken and dropped here rather than threaded nowhere.
-    let _boxes: [Option<Rect>; 4] = [
-        draw_context_menu(state, frame, area, &session.theme),
-        draw_confirm(state, frame, area, &session.theme, &[]),
-        draw_name_prompt(state, frame, area, session),
-        draw_credential(state, frame, area, session),
-    ];
+    // As in `draw_journal`: no pixels here for the menu to cut.
+    let _menu: Option<Rect> = draw_context_menu(state, frame, area, &session.theme);
     None
 }
 
-/// The Map view in the graph's area, with the context menu and the confirm
-/// box over it. Returns the rectangle the detail pane's pixels go in.
+/// The Map view in the graph's area, with the context menu over it.
+/// Returns the rectangle the detail pane's pixels go in.
 fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) -> Option<Rect> {
     let tier = tier_in_force(session, state);
     let mut screen = map_view(state, state.harness.clock.now_seconds());
@@ -160,15 +150,12 @@ fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) 
         );
         None
     };
-    let overlays = [
-        draw_context_menu(state, frame, area, &session.theme),
-        draw_confirm(state, frame, area, &session.theme, &[]),
-        draw_name_prompt(state, frame, area, session),
-        draw_credential(state, frame, area, session),
-    ];
     // The Map's own pixels are the detail pane's, and a full-width box
     // covers that pane too (m5-history-and-ghost-preview/34).
-    pixels_above_overlays(graph, overlays.into_iter().flatten())
+    pixels_above_overlays(
+        graph,
+        draw_context_menu(state, frame, area, &session.theme).into_iter(),
+    )
 }
 
 /// The conflict resolver over the whole frame. Always `None`: it draws no
@@ -259,41 +246,71 @@ fn draw_resolver_footer(
     if body.height == 0 || body.width == 0 {
         return;
     }
+    let hints = || {
+        graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+            &super::rows::resolver_context(state),
+            graft_ui::graph_screen::Divider::Hidden,
+            // Not `body.width`: the floor `hints_for` drops the resolver's
+            // keys at is a *width* one, and the rows can be short enough to
+            // put the widget below its floor at a perfectly wide screen.
+            // Asking with 0 there gives the same one-key bar the narrow case
+            // gets, so the bar never offers a key `resolver_key` is about to
+            // refuse.
+            if crate::update::resolver::fits(state) {
+                body.width
+            } else {
+                0
+            },
+        ))
+    };
+    draw_status_or_hints(
+        frame,
+        state,
+        tier,
+        (body.x, body.bottom() - 1, body.width),
+        theme,
+        hints,
+    );
+}
+
+/// A bottom row that stands in for the graph screen's footer: what went
+/// wrong, else what is happening or just happened, else `hints` — the
+/// graph footer's own ladder (`graft_ui::graph_screen::footer`), so a
+/// status is never hidden by the screen that happens to own the row
+/// (ADR-0039: a bar is never hidden).
+///
+/// Three rows use it: the resolver's footer, and in the sub-100-column tab
+/// layout the Detail tab's hint row and the focused banner's key row. The
+/// last two drew their keys only, so on the Detail tab at 80 columns the
+/// relaunch's `rebase still in progress from a previous run` and the
+/// resolver's `all conflicts resolved · c continue` were on
+/// `state.status` and on no cell (m6-07 F9). `(x, y, width)` is the row.
+fn draw_status_or_hints(
+    frame: &mut Frame,
+    state: &AppState,
+    tier: RenderingTier,
+    (x, y, width): (u16, u16, u16),
+    theme: &Theme,
+    hints: impl FnOnce() -> String,
+) {
     let (text, token) = match super::status::graph_problem(&state.status) {
         Some(problem) => (
             graft_ui::graph_screen::fit_status_line(
                 problem.reason.as_str(),
                 problem.keys.as_ref().map(SanitizedText::as_str),
-                body.width,
+                width,
             ),
             Token::Warning,
         ),
         None => match footer_notice(state, tier) {
             Some(notice) => (notice.as_str().to_owned(), Token::TextMuted),
-            None => (
-                graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                    &super::rows::resolver_context(state),
-                    graft_ui::graph_screen::Divider::Hidden,
-                    // Not `body.width`: the floor `hints_for` drops the
-                    // resolver's keys at is a *width* one, and the rows can
-                    // be short enough to put the widget below its floor at
-                    // a perfectly wide screen. Asking with 0 there gives
-                    // the same one-key bar the narrow case gets, so the bar
-                    // never offers a key `resolver_key` is about to refuse.
-                    if crate::update::resolver::fits(state) {
-                        body.width
-                    } else {
-                        0
-                    },
-                )),
-                Token::TextMuted,
-            ),
+            None => (hints(), Token::TextMuted),
         },
     };
     frame.buffer_mut().set_string(
-        body.x,
-        body.bottom() - 1,
-        graft_ui::fit::fit(&text, usize::from(body.width)),
+        x,
+        y,
+        graft_ui::fit::fit(&text, usize::from(width)),
         Style::default().fg(color(theme.token(token))),
     );
 }
@@ -355,7 +372,13 @@ pub fn view_with_graphics(
     }
     let pixels = draws_pixels(session, state);
 
-    match state.screen {
+    // The screen first, then the modal boxes over it — **outside** the
+    // match, so no screen or overlay can leave them out. The resolver did:
+    // its `d` set a confirm box that took the next key and was never drawn
+    // (m6-07 F10). `columns` is where the graph's row columns stand this
+    // frame, for the confirm box to snap onto; empty where no graph rows are
+    // on screen.
+    let (graph, columns) = match state.screen {
         // Which overlay stands where the graph would be is asked once, of
         // `AppState::graph_overlay`, and `update::banner::graph_screen_on_frame`
         // asks the same function (review M3, m5/31). The two cannot drift:
@@ -371,11 +394,15 @@ pub fn view_with_graphics(
             // Above them all: the resolver covers the detail pane too, and
             // it is the one overlay that keeps the operation banner
             // (`draw_resolver`).
-            Some(GraphOverlay::Resolver) => draw_resolver(session, state, frame, area),
-            Some(GraphOverlay::CommitEditor) => draw_commit_editor(session, state, frame, area),
-            Some(GraphOverlay::Map) => draw_map(session, state, frame, area),
-            Some(GraphOverlay::Journal) => draw_journal(session, state, frame, area),
-            Some(GraphOverlay::Stash) => draw_stash(session, state, frame, area),
+            Some(GraphOverlay::Resolver) => {
+                (draw_resolver(session, state, frame, area), Vec::new())
+            }
+            Some(GraphOverlay::CommitEditor) => {
+                (draw_commit_editor(session, state, frame, area), Vec::new())
+            }
+            Some(GraphOverlay::Map) => (draw_map(session, state, frame, area), Vec::new()),
+            Some(GraphOverlay::Journal) => (draw_journal(session, state, frame, area), Vec::new()),
+            Some(GraphOverlay::Stash) => (draw_stash(session, state, frame, area), Vec::new()),
             None => {
                 // Kept from the guard this replaced, and now covering the one
                 // direction left: that `graph_screen_on_frame` still *is* this
@@ -413,29 +440,55 @@ pub fn view_with_graphics(
                 let overlays = [
                     draw_preview(state, frame, area, &session.theme),
                     draw_context_menu(state, frame, area, &session.theme),
-                    draw_confirm(
-                        state,
-                        frame,
-                        area,
-                        &session.theme,
-                        &row_columns(session, state, &screen, area),
-                    ),
-                    draw_name_prompt(state, frame, area, session),
-                    draw_credential(state, frame, area, session),
                 ];
-                pixels_above_overlays(graph, overlays.into_iter().flatten())
+                (
+                    pixels_above_overlays(graph, overlays.into_iter().flatten()),
+                    row_columns(session, state, &screen, area),
+                )
             }
         },
+        // A fetch started from the graph can ask for a password while the
+        // user is reading this screen: the question follows them, and so
+        // does any box that is still waiting for its answer.
         Screen::Status => {
             let screen = status_view(session, state);
             frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
-            // A fetch started from the graph can ask for a password while
-            // the user is reading this screen: the question follows them.
-            draw_name_prompt(state, frame, area, session);
-            draw_credential(state, frame, area, session);
-            None
+            (None, Vec::new())
         }
-    }
+    };
+    pixels_above_overlays(
+        graph,
+        draw_modal_boxes(session, state, frame, area, &columns).into_iter(),
+    )
+}
+
+/// The three modal boxes, over whatever this frame drew, in the order they
+/// stack: the confirm box, the name prompt, git's credential question on top.
+/// Each draws only when its state is live; each returns the rectangle it
+/// cleared, for the pixel layer to keep the lanes off.
+///
+/// **One call site, after every screen** (m6-07 F10). A box in
+/// `state.confirm` takes the next key wherever the user is — `confirm_key`
+/// is the first modal claim in `update::keys::key_event` — so it has to be
+/// on screen wherever the user is. When each overlay drew its own boxes, the
+/// resolver, the commit editor and the status screen did not, and the
+/// resolver's `d` opened a box nobody could see. Pinned by
+/// `view::frame::tests::a_live_confirm_box_is_drawn_over_every_overlay`.
+fn draw_modal_boxes(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+    columns: &[u16],
+) -> Vec<Rect> {
+    [
+        draw_confirm(state, frame, area, &session.theme, columns),
+        draw_name_prompt(state, frame, area, session),
+        draw_credential(state, frame, area, session),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 /// The graph screen split with the detail pane, per [`DetailLayout`]:
@@ -705,13 +758,14 @@ fn split_for_detail(
     let DetailLayout::Tab { shown } = layout else {
         return graft_ui::detail_pane::split_area(layout, area);
     };
-    let left = draw_tab_banner(frame, state, area, &session.theme);
+    let tier = tier_in_force(session, state);
+    let left = draw_tab_banner(frame, state, area, &session.theme, tier);
     let strip = Rect {
         height: 1.min(left.height),
         ..left
     };
     draw_tab_strip(frame, strip, shown, primary_label, &session.theme);
-    draw_tab_hints(frame, state, left, hints, &session.theme);
+    draw_tab_hints(frame, state, left, hints, &session.theme, tier);
     // Not a second copy of the arithmetic: the drawing path splits by the
     // very function the mouse mirror is swept against.
     detail_rects(state, layout, area)
@@ -732,30 +786,34 @@ fn split_for_detail(
 /// `Divider::Hidden`: the tab layout has no divider to drag, so `<>` is a
 /// key that would do nothing — the same reason the focused banner's own
 /// hints hide it.
+///
+/// The row is the graph footer's in every other way too: a problem or a
+/// notice takes it before the keys do ([`draw_status_or_hints`], m6-07 F9).
 fn draw_tab_hints(
     frame: &mut Frame,
     state: &AppState,
     left: Rect,
     context: &HintContext,
     theme: &Theme,
+    tier: RenderingTier,
 ) {
     let rows = crate::update::detail::tab_hint_rows(state).min(left.height);
     if rows == 0 || left.width == 0 {
         return;
     }
-    let hints = graft_ui::graph_screen::hints_for(
-        context,
-        graft_ui::graph_screen::Divider::Hidden,
-        left.width,
-    );
-    frame.buffer_mut().set_string(
-        left.x,
-        left.bottom() - 1,
-        graft_ui::fit::fit(
-            &graft_ui::graph_screen::hints_text(&hints),
-            usize::from(left.width),
-        ),
-        Style::default().fg(color(theme.token(Token::TextMuted))),
+    draw_status_or_hints(
+        frame,
+        state,
+        tier,
+        (left.x, left.bottom() - 1, left.width),
+        theme,
+        || {
+            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+                context,
+                graft_ui::graph_screen::Divider::Hidden,
+                left.width,
+            ))
+        },
     );
 }
 
@@ -780,7 +838,13 @@ fn draw_tab_hints(
 /// The cost, knowingly accepted: **one** row of pane content while an
 /// operation is live, **two** while its banner has the keyboard, and none
 /// at all the rest of the time.
-fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Theme) -> Rect {
+fn draw_tab_banner(
+    frame: &mut Frame,
+    state: &AppState,
+    area: Rect,
+    theme: &Theme,
+    tier: RenderingTier,
+) -> Rect {
     // The row budget is `update`'s, not this function's: `geometry` and
     // `graph_rows` count from the same number, and a second opinion here is
     // exactly how a click comes to land one row off (review M1). `0` also
@@ -806,19 +870,24 @@ fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Them
         return left;
     }
     // The banner's own keys, on the bottom row — the row `tab_banner_area`
-    // just took off the end. `Divider::Hidden`: the tab layout has no
+    // just took off the end — unless a problem or a notice has it, as it
+    // would the graph footer (m6-07 F9: the relaunch's Sticky names the
+    // banner's keys itself). `Divider::Hidden`: the tab layout has no
     // divider to drag (`update::detail`'s angle keys are a no-op here), and
     // the modal would swallow `<>` in any case.
-    let hints = graft_ui::graph_screen::hints_for(
-        &crate::view::rows::banner_context(&banner),
-        graft_ui::graph_screen::Divider::Hidden,
-        area.width,
-    );
-    frame.buffer_mut().set_string(
-        left.x,
-        area.bottom() - 1,
-        graft_ui::fit::fit(&graft_ui::graph_screen::hints_text(&hints), width),
-        Style::default().fg(color(theme.token(Token::TextMuted))),
+    draw_status_or_hints(
+        frame,
+        state,
+        tier,
+        (left.x, area.bottom() - 1, area.width),
+        theme,
+        || {
+            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+                &crate::view::rows::banner_context(&banner),
+                graft_ui::graph_screen::Divider::Hidden,
+                area.width,
+            ))
+        },
     );
     left
 }

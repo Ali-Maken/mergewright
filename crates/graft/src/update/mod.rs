@@ -653,7 +653,11 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
                 return;
             }
             if next.search_prompt.is_some() || !next.harness.hand_back.contains(&key.code) {
-                if !search::search_key(next, commands, key) {
+                // The resolver is modal (§2.1): `/`, `n` and `N` are its to
+                // answer, never the search's behind it (m6-conflicts/07 F1).
+                // It cannot open over a search prompt — the prompt takes
+                // every key — so skipping the search here drops no text.
+                if next.resolver.is_some() || !search::search_key(next, commands, key) {
                     keys::key_event(next, commands, key);
                 }
             } else {

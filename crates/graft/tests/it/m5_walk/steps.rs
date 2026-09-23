@@ -91,6 +91,24 @@ pub enum Wait {
     /// stale reading also is — and a force-with-lease built from a stale
     /// tip is refused by git, not by the app.
     RemotesCaughtUp,
+    /// The resolver is open and idle on a file: its read or its last take
+    /// has landed (`job` is `None`), it holds a document **or** a
+    /// whole-file card, and no write is running (m6-conflicts/07). A
+    /// whole-file shape never gets a document, so waiting for `file` alone
+    /// would hang on a card.
+    ConflictOpened,
+    /// The app's re-read no longer lists this path as unmerged, nothing is
+    /// running — and git agrees: `ls-files -u -- <path>` prints nothing
+    /// (m6-conflicts/07). Named `ResolvedPath` rather than the ticket's
+    /// `Resolved(path)` because [`Wait::Resolved`] (every path) is M5's.
+    ResolvedPath(&'static str),
+    /// The inverse: the app's re-read lists this path as unmerged again,
+    /// nothing is running — and git agrees, `ls-files -u -- <path>` prints
+    /// its stages (m6-conflicts/07, an undone resolution).
+    ConflictedPath(&'static str),
+    /// The resolver has closed by itself — a re-read found the file no
+    /// longer conflicted — and nothing is running (m6-conflicts/07).
+    ResolverClosed,
 }
 
 /// One thing the walk does to the running app, in order.
@@ -155,6 +173,30 @@ pub enum Step {
     /// Close the app and open it again on the same repository — what a
     /// relaunch mid-conflict is.
     Relaunch,
+    /// Drop the app **without shutting it down** — no `cancel_all`, no
+    /// join, no outcome line — and open it again on the same repository
+    /// for the steps after it: on disk, what `kill -9` leaves
+    /// (m6-conflicts/07, design note Decision 2 (b)). Refused unless no
+    /// write is in flight, so nothing that finishes after the "kill" can
+    /// write the journal; a read still running (a status re-read after a
+    /// take) is left to finish and find nobody listening. The truth
+    /// assertion runs between the two apps: `rebase-merge/` or
+    /// `MERGE_HEAD` present, the journal's last line `Pending`.
+    Kill,
+    /// Open the resolver on this path from the changes pane: off the
+    /// banner, into the pane, the cursor to the path's row, `⏎`, and wait
+    /// for [`Wait::ConflictOpened`]. A resolver already open on another
+    /// file is closed with `Esc` first (m6-conflicts/07).
+    Resolve(&'static str),
+    /// Press a key whose commands hand the terminal over — `e`
+    /// (`OpenExternalEditor`) or `M` (`OpenMergetool`) — and **carry the
+    /// hand-over out**, as the frame loop does, with the loop's own command
+    /// builders (`event_loop::outside::{editor_command, mergetool_command}`)
+    /// and git's own editor lookup; then feed the answer back through
+    /// `update` (m6-conflicts/07). What it cannot do headless is suspend and
+    /// re-enter a terminal, so the exit-status words are this step's, copied
+    /// from `Handover::{open, mergetool}` (`event_loop/outside.rs`).
+    HandOver(&'static str, KeyPress),
 }
 
 /// When the pty script writes the frame.

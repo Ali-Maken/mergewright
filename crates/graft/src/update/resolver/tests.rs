@@ -233,6 +233,168 @@ fn start_over_is_refused_if_a_write_began_under_the_box() {
     assert_eq!(sticky(&state).0, "a write is already running");
 }
 
+// ------------------------------- m6-07 F7: a refusal words what is in flight
+
+/// The resolver as `⏎` leaves it: the opening read queued, nothing parsed.
+fn opening_read() -> AppState {
+    let mut state = resolver_on_screen(WALK);
+    state.resolver = None;
+    let mut commands = Vec::new();
+    let mut ids = 4_400;
+    let opened = super::open_resolver(
+        &mut state,
+        &mut commands,
+        std::path::PathBuf::from("conflicted.rs"),
+        super::OpenedFrom::Pane,
+        &mut || {
+            ids += 1;
+            JobId::new(ids)
+        },
+    );
+    assert!(opened, "the resolver opened");
+    assert!(
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.job.is_some() && open.file.is_none()),
+        "the opening read is in flight"
+    );
+    state
+}
+
+/// A key on the resolver before its opening read lands is refused with
+/// what is actually happening — no take was pressed, so "still writing the
+/// last take" was a lie (acceptance finding F7).
+#[test]
+fn a_key_during_the_opening_read_says_it_is_reading() {
+    for key in ['o', 't', 'b', 'B', 'd'] {
+        let (state, commands) = press(&opening_read(), KeyCode::Char(key));
+        assert_eq!(takes(&commands), 0, "{key}: no take");
+        assert!(state.confirm.is_none(), "{key}: no box");
+        assert_eq!(sticky(&state).0, "still reading the file", "{key}");
+    }
+}
+
+/// The re-read after `e`/`M` hands back is a read too, though the old
+/// document is still on screen.
+#[test]
+fn a_key_during_the_hand_back_reread_says_it_is_reading() {
+    let (state, _) = update(
+        &resolver_on_screen(WALK),
+        AppEvent::Produced(JobId::new(4_200), Product::HandedOver(Ok(()))),
+    );
+    let (state, commands) = press(&state, KeyCode::Char('o'));
+    assert_eq!(takes(&commands), 0);
+    assert_eq!(sticky(&state).0, "still reading the file");
+}
+
+/// A take in flight keeps its own words, and `B` over a base load says the
+/// base is loading, not that a take is being written.
+#[test]
+fn a_take_or_a_base_in_flight_keeps_its_own_words() {
+    let (state, commands) = press(&resolver_on_screen(WALK), KeyCode::Char('o'));
+    assert_eq!(takes(&commands), 1);
+    let (state, _) = press(&state, KeyCode::Char('t'));
+    assert_eq!(sticky(&state).0, "still writing the last take");
+
+    let (state, _) = base_loading(&resolver_on_screen(WALK));
+    let mut state = state;
+    state.resolver.as_mut().expect("open").base_shown = false;
+    let (state, _) = press(&state, KeyCode::Char('B'));
+    assert_eq!(sticky(&state).0, "still loading the base");
+}
+
+// ----------------------------------- m6-07 F1: the modal owns `/`, `n`, `N`
+
+/// `/` over the resolver opens no search prompt behind it: the resolver is
+/// modal (§2.1), and the search's keys were answered before the modal chain.
+#[test]
+fn slash_opens_no_search_behind_the_resolver() {
+    let (state, _) = press(&resolver_on_screen(WALK), KeyCode::Char('/'));
+    assert!(
+        state.search_prompt.is_none(),
+        "no prompt behind the resolver"
+    );
+    assert!(state.resolver.is_some(), "the resolver is still open");
+}
+
+/// With a search from before the resolver still live, `n` walks the
+/// resolver's blocks — it does not step the search behind it.
+#[test]
+fn n_walks_blocks_even_with_a_search_live() {
+    let mut state = resolver_on_screen(WALK);
+    let query = crate::search::Query::parse("root").expect("a non-empty query");
+    let mut search = crate::search::Search::new(query, 0, (0, 0));
+    search.state = crate::search::SearchState::Done { hits: 0 };
+    state.search = Some(search);
+    let before = state.search.clone();
+    let (state, _) = press(&state, KeyCode::Char('n'));
+    assert_eq!(
+        state.resolver.as_ref().and_then(|open| open.cursor_block),
+        Some(1),
+        "n moved to the second block"
+    );
+    assert_eq!(state.search, before, "the search was not stepped");
+}
+
+// ------------------------- m6-07 F4: `c continue` only where `c` continues
+
+/// The last file resolved in a stopped merge, the resolver opened from the
+/// changes pane: the `Stage` `⏎` launched lands.
+fn last_file_staged_from_the_pane() -> AppState {
+    let mut state = resolver_on_screen(WALK);
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+    });
+    state.banner_focus = false;
+    let staged = JobId::new(4_500);
+    state.resolver.as_mut().expect("open").staging = Some(staged);
+    let mut commands = Vec::new();
+    let mut ids = 4_500;
+    super::resolved_advance(&mut state, &mut commands, staged, &mut || {
+        ids += 1;
+        JobId::new(ids)
+    });
+    // The re-read the `Stage` asked for lands: nothing is unmerged.
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: Vec::new(),
+    }));
+    state
+}
+
+/// The line offers `c continue`, so the key under it must be the banner's:
+/// the design note closes the last file "to the banner". Before, a resolver
+/// opened from the pane closed to the pane, and `c` there opened the commit
+/// editor (acceptance finding F4, `resolver/answers.rs:235-240`).
+#[test]
+fn all_resolved_from_the_pane_offers_c_where_c_continues() {
+    let state = last_file_staged_from_the_pane();
+    assert!(
+        state.resolver.is_none(),
+        "the last file closed the resolver"
+    );
+    assert_eq!(
+        state.status,
+        Status::Done("all conflicts resolved · c continue".to_owned())
+    );
+    assert!(state.banner_focus, "the keyboard is on the banner");
+    let (state, commands) = press(&state, KeyCode::Char('c'));
+    assert!(
+        state.commit_editor.is_none(),
+        "c did not open the commit editor"
+    );
+    assert!(
+        commands.iter().any(|command| matches!(
+            command,
+            Command::Resume(_, graft_ops::apply::Resume::Continue)
+        )),
+        "c continued the merge: {commands:?}"
+    );
+}
+
 // ------------------------------------------------------------ scrolling
 
 /// A hundred rows with a block header every ten.

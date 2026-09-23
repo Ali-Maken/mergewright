@@ -43,7 +43,7 @@ fn stopped_merge() -> TempRepo {
 
 /// A repository whose stash pop is about to conflict: one stash entry, and a
 /// commit on top that touches the same line.
-fn about_to_pop_a_conflict() -> (TempRepo, Oid) {
+pub(crate) fn about_to_pop_a_conflict() -> (TempRepo, Oid) {
     let repo = TempRepo::init();
     repo.write("p.txt", b"base one\nbase two\n");
     repo.commit_all("base");

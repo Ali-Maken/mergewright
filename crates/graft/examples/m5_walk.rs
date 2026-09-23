@@ -7,7 +7,7 @@
 //! cargo run -p graft --example m5_walk -- --list                                # the names
 //! cargo run -p graft --example m5_walk -- --stems                               # capture stems
 //! cargo run -p graft --example m5_walk -- --capture merge-no-ff-ghost-equals-git   # one scenario, live, for the pty script
-//! cargo run -p graft --example m5_walk -- --matrix                              # docs/shots/35-coverage-matrix.txt
+//! cargo run -p graft --example m5_walk -- --matrix                              # docs/shots/35-coverage-matrix.txt, .scratch/m6-conflicts/matrix.txt
 //! ```
 //!
 //! Each scenario copies a corpus shape to scratch, scripts a history into
@@ -192,6 +192,14 @@ fn show(
     // The fixture lives as long as the run: it holds the scratch and, for a
     // remote scenario, the bare.
     let (_fixture, repo) = prepare_capture(scenario)?;
+    // The pty script's `kill -9` capture (m6-conflicts/07) relaunches the
+    // real `graft` on this scratch after the process died, so it has to
+    // know where the scratch is: a SIGKILL runs no destructor, and the
+    // scratch outlives us for the script to remove.
+    if let Some(out) = std::env::var_os("GRAFT_CAPTURE_REPO_OUT") {
+        std::fs::write(&out, repo.as_os_str().as_encoded_bytes())
+            .map_err(|why| format!("{}: {why}", Path::new(&out).display()))?;
+    }
     let config = graft::config::load().map_err(|error| error.to_string())?;
     let startup = Startup {
         repo_path: repo,
@@ -218,12 +226,15 @@ fn show(
 
 /// Print the coverage matrix and write it where the ticket wants it.
 fn write_matrix(workspace: &Path) -> ExitCode {
-    match coverage::write_matrix(workspace) {
+    let written = coverage::write_matrix(workspace)
+        .and_then(|matrix| coverage::write_conflicts_matrix(workspace).map(|_conflicts| matrix));
+    match written {
         Ok(matrix) => {
             print!("{matrix}");
             eprintln!(
-                "written to {}",
-                workspace.join(coverage::MATRIX_PATH).display()
+                "written to {} and, the M6 table alone, {}",
+                workspace.join(coverage::MATRIX_PATH).display(),
+                workspace.join(coverage::M6_MATRIX_PATH).display()
             );
             ExitCode::SUCCESS
         }

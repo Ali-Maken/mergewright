@@ -1,0 +1,43 @@
+m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 120x40
+(the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
+
+ graft <scratch____________________________________________________________>    REBASING step 1 of 2
+◌   ▏  Uncommitted changes (1 unmerged)
+  ●  ⓘ [feature] feature writes again                                                                    GF 6y   2e2d51c
+  ●    feature writes                                                                                    GF 6y   c3b01ea
+◆ │  ⓘ [HEAD] [main] main rewrites it                                                                    GF 6y   b0eb655
+●─╯    add the shared file                                                                               GF 6y   4119e0a
+●      Correct the note                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
+UNCOMMITTED
+diff vs HEAD 2e2d51c
+CONFLICTS (1)                 ▎keep 1
+  shared.txt    both modified   3   3   keep 2
+                                4   4   keep 3
+                                5   5   keep 4
+                                    6 + <<<<<<< HEAD
+                                6   7   main's bottom
+                                    8 + =======
+                                    9 + feature's bottom
+                                   10 + >>>>>>> c3b01ea (feature writes)
+
+
+
+
+

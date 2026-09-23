@@ -25,8 +25,8 @@ pub(super) fn restart_box(state: &mut AppState) {
     let Some(open) = state.resolver.as_ref() else {
         return;
     };
-    if open.job.is_some() {
-        state.status = Status::sticky("still writing the last take");
+    if let Some(words) = open.busy_words() {
+        state.status = Status::sticky(words);
         return;
     }
     if let Some(whole) = open.whole_file.as_ref() {

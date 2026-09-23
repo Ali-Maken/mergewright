@@ -7,6 +7,7 @@ mod mistake_radar;
 mod ops_execution;
 mod ops_execution_hard;
 mod remote_ops;
+mod stash_pop_redo;
 mod support;
 mod undo_cancel;
 mod unmerged_index;

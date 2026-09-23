@@ -982,7 +982,7 @@ fn commit_refused_nothing_staged() -> Scenario {
                 let editor = state.commit_editor.as_ref().ok_or("the editor closed")?;
                 let refusal = editor.refusal(
                     state.working_tree.as_deref(),
-                    state.in_progress.as_ref().map(|detail| detail.kind),
+                    graft::update::commit_editor::live_operation(state),
                 );
                 check(refusal.as_deref() == Some("nothing staged"), || {
                     format!("refusal {refusal:?}")

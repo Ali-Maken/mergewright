@@ -50,15 +50,15 @@ pub(super) fn take_side(
             return;
         };
         (
-            open.job.is_some(),
+            open.busy_words(),
             open.base_job.is_some(),
             open.cursor_block,
             open.file.clone(),
             open.path.clone(),
         )
     };
-    if running {
-        state.status = Status::sticky("still writing the last take");
+    if let Some(words) = running {
+        state.status = Status::sticky(words);
         return;
     }
     // The base load carries the document as it stood at `B` and replaces
@@ -83,6 +83,7 @@ pub(super) fn take_side(
         return;
     };
     open.job = Some(id);
+    open.reading = false;
     open.notice = None;
     commands.push(Command::TakeSide(
         id,
