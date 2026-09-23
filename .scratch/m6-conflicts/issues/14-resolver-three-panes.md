@@ -1,6 +1,8 @@
 # fix-resolver-three-panes: at 180 columns and wider, yours | result | theirs, rows level by git's own regions, the chosen side landing in the middle
 
-Status: draft · new 2026-09-23 (Amendment 2, ADR-0043 §2, §5). Not gated.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 10-resolver-line-numbers.md, 13-resolver-file-list.md
+Was: draft · new 2026-09-23 (Amendment 2, ADR-0043 §2, §5). Not gated.
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Opus**: a second arrangement through the same `layout` → draw → hit-test chain; the rules are fixed in ADR-0043 and judged by golden files and captures.
 Needs: `fix-resolver-line-numbers` (`Projection`, `first_lines`, `BlockNumbers`, `SideNames`); `fix-resolver-file-list` (`Placement::Column`, `arrangement` callers).
 Crates: graft-ui, graft (`view::resolver`, `update::resolver::{geometry, scroll}`).

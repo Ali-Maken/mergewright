@@ -1,6 +1,8 @@
 # fix-take-advances-to-next-block: `o`/`t`/`b` move the cursor to the next open block; `n`/`N` reach taken blocks, so a take can be fixed by keyboard, and cross to the next file at the end
 
-Status: draft · **P2 approved** (user, 2026-09-23: "keep all 5"). The §2.6 keymap rows are to be written into `02-keymap.md` by the conductor (the note's "Keymap rows owed"). The file-crossing clause (item 3) is Amendment 2's reading of P2, which J9 counts on.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 13-resolver-file-list.md, 10-resolver-line-numbers.md
+Was: draft · **P2 approved** (user, 2026-09-23: "keep all 5"). The §2.6 keymap rows are to be written into `02-keymap.md` by the conductor (the note's "Keymap rows owed"). The file-crossing clause (item 3) is Amendment 2's reading of P2, which J9 counts on.
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Opus**: the take queue is new state over an async write, judged by tests.
 Needs: `fix-resolver-file-list` (`select_file`, list order, `FileState::Done`) for item 3's crossing. `fix-resolver-line-numbers` (`SideNames`) for the notice words.
 Crates: graft.

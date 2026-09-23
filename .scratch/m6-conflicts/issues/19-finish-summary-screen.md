@@ -1,6 +1,8 @@
 # fix-finish-summary-screen: `c` on a merge shows what will land — what you resolved, what git combined on its own, the message — and `⏎` commits it
 
-Status: draft · new 2026-09-23. **Part A is approved** (the user, field notes 2026-09-23: *"yes build it that way"*). §2.6b keymap rows (P9) are to be written before the binding lands. **Part B is gated on P8** (`c` inside the resolver; the resolver stays open after the last file). Do not build Part B until P8 is approved.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md
+Was: draft · new 2026-09-23. **Part A is approved** (the user, field notes 2026-09-23: *"yes build it that way"*). §2.6b keymap rows (P9) are to be written before the binding lands. **Part B is gated on P8** (`c` inside the resolver; the resolver stays open after the last file). Do not build Part B until P8 is approved.
 Build with: blank — brownfield (ADR-0035): **scout first** (banner `c`, commit editor fields, overlay precedence). Expected **Opus**: a new modal overlay with a text field, a job and an expandable diff.
 Needs: `fix-ops-conflict-set-and-summary` (`finish_summary`, `FinishSummary`, `Resume::ContinueWith`); `fix-resolver-line-numbers` (`SideNames`, for the row wording).
 Crates: graft-ui, graft.

@@ -1,6 +1,8 @@
 # fix-ops-conflict-set-and-summary: git tells us which files this operation conflicted on, and what a merge will commit; an edited message reaches git through `commit -F`
 
-Status: draft · new 2026-09-23 (Amendment 2). Interface-first: the file list, the finish summary and P4 call what this exposes.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: none
+Was: draft · new 2026-09-23 (Amendment 2). Interface-first: the file list, the finish summary and P4 call what this exposes.
 Build with: blank — brownfield (`apply/resume.rs`, `Refusal`) (ADR-0035): **scout first**. Expected **Opus**: every decision is made in the note, but git's behaviour has to be verified in throwaway repos.
 Needs: none.
 Crates: graft-ops; graft only where an exhaustive `match` on `Resume` or `Refusal` stops compiling (arms only, no behaviour).

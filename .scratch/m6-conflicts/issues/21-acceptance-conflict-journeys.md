@@ -1,6 +1,8 @@
 # fix-acceptance-conflict-journeys: the walk replays every journey in the note, counts its keys, fails over the note's count, and asserts where he lands after every event; both start paths, both arrangements, the finish summary
 
-Status: draft · **rewritten 2026-09-23 (Amendment 2)**. This replaces the Amendment 1 version: that version's count block (`journey-counts-superseded`) is not parsed.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 11-preview-verb-confirms.md, 12-landing-after-a-stop.md, 13-resolver-file-list.md, 14-resolver-three-panes.md, 15-take-advances-to-next-block.md, 16-take-every-open-block.md, 17-resolver-file-keys.md, 18-stop-opens-the-resolver.md, 19-finish-summary-screen.md, 20-continue-a-merge-begun-in-the-shell.md
+Was: draft · **rewritten 2026-09-23 (Amendment 2)**. This replaces the Amendment 1 version: that version's count block (`journey-counts-superseded`) is not parsed.
 Build with: **Fable**. It is the acceptance ticket and does not count against the Fable build budget. It decides what each landing must prove, and writes the "what right looks like" lines the user judges by.
 Needs: every other `fix-*` ticket in `.scratch/m6-conflicts/issues/`:
 - `fix-ops-conflict-set-and-summary`, `fix-resolver-line-numbers`, `fix-resolver-file-list`, `fix-resolver-three-panes`, `fix-finish-summary-screen` (Part A; Part B only if P8 is approved);

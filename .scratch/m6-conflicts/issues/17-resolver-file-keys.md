@@ -1,6 +1,8 @@
 # fix-resolver-file-keys: `O`/`T` settle the whole file in one key and move on; `j`/`k` move between files
 
-Status: draft · new 2026-09-23. **Gated on Proposed changes P6 (`O`/`T`) and P7 (`j`/`k` between files)**, per the note's "Where I'd differ". Build only the half that is approved. If neither is approved, do not file this ticket. The keymap rows go into `02-keymap.md` §2.6 before the binding lands; P6 also needs a named §2.1 exception, like the banner's `B`/`X`.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 16-take-every-open-block.md, 13-resolver-file-list.md, 15-take-advances-to-next-block.md
+Was: draft · new 2026-09-23. **Gated on Proposed changes P6 (`O`/`T`) and P7 (`j`/`k` between files)**, per the note's "Where I'd differ". Build only the half that is approved. If neither is approved, do not file this ticket. The keymap rows go into `02-keymap.md` §2.6 before the binding lands; P6 also needs a named §2.1 exception, like the banner's `B`/`X`.
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Sonnet**: both keys chain functions other tickets built (`apply_take_all`, `Stage`, `resolved_advance`, `select_file`), and every rule is written here.
 Needs: `fix-take-every-open-block` (`apply_take_all`, its command and answer path); `fix-resolver-file-list` (`select_file`, `ResolverState.files`/`file_cursor`, list-order advance); `fix-take-advances-to-next-block` (the take queue: `O`/`T` wait behind it).
 Crates: graft-ui (`graph_screen::hints` Resolver table only), graft.

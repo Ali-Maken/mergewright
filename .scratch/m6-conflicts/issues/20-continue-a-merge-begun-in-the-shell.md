@@ -1,6 +1,8 @@
 # fix-continue-a-merge-begun-in-the-shell: `c` finishes a merge Graft did not start — through the same finish summary — journaled as its own entry whose `u` puts the repository back mid-merge, exactly
 
-Status: draft · **P4 approved** (user, 2026-09-23: "keep all 5"). It reverses ruling F5 and pulls TESTING.md:108 ("Times I left") from M7. The conductor writes the §2.6a row into `02-keymap.md`.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 12-landing-after-a-stop.md, 09-ops-conflict-set-and-summary.md, 19-finish-summary-screen.md
+Was: draft · **P4 approved** (user, 2026-09-23: "keep all 5"). It reverses ruling F5 and pulls TESTING.md:108 ("Times I left") from M7. The conductor writes the §2.6a row into `02-keymap.md`.
 Build with: **Fable**. It meets all three tests:
 1. **Structural:** a new journal kind and a new inverse step that M7's shell-begun rebase and cherry-pick will build on.
 2. **Not readable from a diff:** whether `u` truly restores a *merging* repository shows only in git's state afterwards.

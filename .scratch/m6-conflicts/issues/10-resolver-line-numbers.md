@@ -1,6 +1,8 @@
 # fix-resolver-line-numbers: one name per side everywhere; every side numbered contiguously by its own projection; no number on a marker row
 
-Status: draft · **revised 2026-09-23 (Amendment 2)** — supersedes this ticket's earlier "disk numbers, `SideLines`" scope (never built).
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: none
+Was: draft · **revised 2026-09-23 (Amendment 2)** — supersedes this ticket's earlier "disk numbers, `SideLines`" scope (never built).
 Build with: blank — brownfield (ADR-0035): **scout first**; the conductor sets it after the scout. Expected **Sonnet** — both rules are fully stated here and checked by property tests.
 Needs: none.
 Crates: graft-git, graft-ui, graft (`view::resolver` only).

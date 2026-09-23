@@ -1,6 +1,8 @@
 # fix-stop-opens-the-resolver: a stop with anything unmerged lands in the resolver on the first conflicted file; `Esc` goes to the banner
 
-Status: draft · **P5 approved** (user, 2026-09-23: "keep all 5"). The conductor rewrites the §2.6a sentence in `02-keymap.md` (the note's "Keymap rows owed").
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 12-landing-after-a-stop.md, 13-resolver-file-list.md
+Was: draft · **P5 approved** (user, 2026-09-23: "keep all 5"). The conductor rewrites the §2.6a sentence in `02-keymap.md` (the note's "Keymap rows owed").
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Sonnet**: two call sites of an existing function, fully specified.
 Needs: `fix-landing-after-a-stop` (`Status::Stopped`, `stop_reason`, the banner the resolver's `Esc` returns to); `fix-resolver-file-list` (the list shown on landing).
 Crates: graft.

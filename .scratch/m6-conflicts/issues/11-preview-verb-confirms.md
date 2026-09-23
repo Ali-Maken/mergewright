@@ -1,6 +1,8 @@
 # fix-preview-verb-confirms: in a Ghost Preview opened by `m` or `r`, the same key again confirms; the cursor still rests on Cancel
 
-Status: draft · **P1 approved** (user, 2026-09-23: "keep all 5"). The conductor writes the Ghost Preview row into `02-keymap.md` (the note's "Keymap rows owed"). ADR-0038 §1 is kept, not amended.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: none
+Was: draft · **P1 approved** (user, 2026-09-23: "keep all 5"). The conductor writes the Ghost Preview row into `02-keymap.md` (the note's "Keymap rows owed"). ADR-0038 §1 is kept, not amended.
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Sonnet**: one key rule and one footer label, fully specified.
 Needs: none.
 Crates: graft (`update::preview`), graft-ui (`preview_box`).

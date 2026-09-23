@@ -1,6 +1,8 @@
 # fix-resolver-file-list: every file the operation conflicted on stays on screen, with its state and the current file marked
 
-Status: draft · new 2026-09-23 (Amendment 2, ADR-0043 §1). Not gated: the list's display and mouse selection are in-spec. `j`/`k` on it are P7 (`fix-resolver-file-keys`).
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md
+Was: draft · new 2026-09-23 (Amendment 2, ADR-0043 §1). Not gated: the list's display and mouse selection are in-spec. `j`/`k` on it are P7 (`fix-resolver-file-keys`).
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Opus**: new resolver state across a file switch, and a strip and a column with shared hit-testing.
 Needs: `fix-ops-conflict-set-and-summary` (`operation_conflicts`, `ConflictSet`); `fix-resolver-line-numbers` (`DocView.names`, which lands first in the same files).
 Crates: graft-ui, graft.

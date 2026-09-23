@@ -1,6 +1,8 @@
 # fix-landing-after-a-stop: after a stop, a launch into a live operation, an `Esc`, or a `c`, the next key is on screen and one press away
 
-Status: draft · **revised 2026-09-23 (Amendment 2)**: item 5 now covers rebase, cherry-pick and revert only. A merge's `c` opens the finish summary, and `fix-finish-summary-screen` asserts where its commit lands.
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: none
+Was: draft · **revised 2026-09-23 (Amendment 2)**: item 5 now covers rebase, cherry-pick and revert only. A merge's `c` opens the finish summary, and `fix-finish-summary-screen` asserts where its commit lands.
 Build with: blank — brownfield (ADR-0035). `scout-stuck-after-merge.md` covers the start paths; a second scout owes the footer's draw path (`view::status`, `view::rows::footer_context`, `hints_for(Banner)`). Expected **Opus**: three state transitions and the footer's precedence, judged by tests and captures.
 Needs: none.
 Crates: graft, graft-ui (`graph_screen::hints` only).

@@ -1,6 +1,8 @@
 # fix-take-every-open-block: `Ctrl+O` / `Ctrl+T` take yours / theirs in every open block of this file, in one write
 
-Status: draft · **P3 approved** (user, 2026-09-23: "keep all 5"). The conductor writes the new §2.6 row into `02-keymap.md`. Still open: whether Zed's terminal claims `Ctrl+T`. The acceptance capture taken from his terminal checks it (**unverified** until then).
+Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Blocked by: 15-take-advances-to-next-block.md, 10-resolver-line-numbers.md
+Was: draft · **P3 approved** (user, 2026-09-23: "keep all 5"). The conductor writes the new §2.6 row into `02-keymap.md`. Still open: whether Zed's terminal claims `Ctrl+T`. The acceptance capture taken from his terminal checks it (**unverified** until then).
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Sonnet**: `take_all` is `take` in a loop, and the write path is `apply_take`'s.
 Needs: `fix-take-advances-to-next-block` (the take queue: a queued single take must not interleave with a bulk one); `fix-resolver-line-numbers` (`SideNames`, for the notice).
 Crates: graft-git, graft-ops, graft-ui (`hints` Resolver table), graft.
