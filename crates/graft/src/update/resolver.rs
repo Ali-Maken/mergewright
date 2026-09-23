@@ -501,7 +501,9 @@ fn toggle_base(
         // Added on both sides: git holds no stage 1, so there is no base to
         // load — answered here, in the spec's words, with no job.
         if let Some(open) = state.resolver.as_mut() {
-            open.notice = Some(("no base (added on both sides)".to_owned(), true));
+            // A fact of the file, not a failure: not a problem (planner
+            // ruling, 2026-09-23).
+            open.notice = Some(("no base (added on both sides)".to_owned(), false));
         }
         return;
     }
@@ -990,7 +992,7 @@ pub fn restart_landed(
 pub fn base_loaded(
     state: &mut AppState,
     id: JobId,
-    result: Result<(Arc<ConflictFile>, usize), String>,
+    result: Result<(Arc<ConflictFile>, usize), (String, bool)>,
 ) {
     let Some(open) = state.resolver.as_ref() else {
         return;
@@ -1008,16 +1010,16 @@ pub fn base_loaded(
             open.base_shown = true;
             state.status = Status::Done(format!("base shown for {attached} conflicts"));
         }
-        Err(words) => {
+        Err((words, problem)) => {
             let Some(open) = state.resolver.as_mut() else {
                 return;
             };
             open.base_job = None;
             // `base_shown` stays `false`: nothing was attached, so there is
-            // nothing for the widget to draw even if it were set. The
-            // notice is a problem, the same as a failed take (`taken`,
-            // above) — `B` asked for something and did not get it.
-            open.notice = Some((words, true));
+            // nothing for the widget to draw even if it were set. Only a
+            // failure (git's `diff3`, the repo not opening) is a problem;
+            // no base or a file edited past git is a fact, shown plainly.
+            open.notice = Some((words, problem));
         }
     }
 }

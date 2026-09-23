@@ -602,7 +602,10 @@ fn B_says_no_base() {
     assert!(!open(&state).base_shown, "nothing was attached");
     let (words, problem) = open(&state).notice.clone().expect("a notice");
     assert_eq!(words, "no base (added on both sides)");
-    assert!(problem, "a base asked for and not loaded is a problem");
+    assert!(
+        !problem,
+        "an `AA` file having no ancestor is a fact of the file, not a failure (planner ruling)"
+    );
 
     drop(state);
     app.close();
@@ -927,15 +930,29 @@ fn stash_pop_conflict_resolves_without_a_banner() {
         rows.join("\n")
     );
 
-    let state = take_all_and_mark(&app, state);
-    assert!(state.resolver.is_none(), "the only file closes it");
+    // The take journals nothing; `⏎` is an ordinary journaled `Stage` —
+    // no live operation to fold into (planner ruling, 2026-09-23).
+    let before = journal_entries(scratch.path()).len();
+    let mut state = state;
+    while open(&state).file.as_ref().expect("a document").open() > 0 {
+        state = app.key(&state, KeyCode::Char('o'));
+        state = settled(&app, state);
+    }
     assert_eq!(
-        journal_entries(scratch.path())
-            .last()
-            .map(|entry| entry.description.clone()),
+        journal_entries(scratch.path()).len(),
+        before,
+        "the take adds no journal entry"
+    );
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the stage and the close", |state| {
+        state.operating.is_none() && state.resolver.is_none()
+    });
+    let after = journal_entries(scratch.path());
+    assert_eq!(after.len(), before + 1, "`⏎` adds exactly one entry");
+    assert_eq!(
+        after.last().map(|entry| entry.description.clone()),
         Some("stage sample.txt".to_owned()),
-        "a block take + `Stage` with no operation open is an ordinary \
-         journaled stage (the box says `unchanged`: filed as a question)"
+        "the one entry is the stage"
     );
     assert!(
         matches!(&state.status, Status::Done(line) if line == "all conflicts resolved"),
@@ -948,6 +965,54 @@ fn stash_pop_conflict_resolves_without_a_banner() {
         "",
         "the index holds no unmerged entry"
     );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// The whole-file half of the stash-pop box: the stash deleted a file the
+/// branch then changed, so `sample.txt` is `deleted by them`. `o` is its own
+/// journal entry, `resolved sample.txt (ours)`, and resolving the only file
+/// closes the resolver with no `⏎` (m6-conflicts/05 scope 4).
+#[test]
+fn stash_pop_whole_file_journals_its_own_row() {
+    let scratch = stash_pop_delete_conflict();
+    let (app, state) = opened_on(&scratch);
+    assert!(state.in_progress.is_none(), "a stash pop is no operation");
+    let before = journal_entries(scratch.path()).len();
+
+    let state = resolver_on_whole_file(&app, state, "sample.txt");
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("ours = your working tree")
+                && row.contains("theirs = the stash")),
+        "the stash-pop explainer is not on the frame:\n{}",
+        rows.join("\n")
+    );
+
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = app.pump(state, "the whole-file resolve and the close", |state| {
+        state.operating.is_none() && state.resolver.is_none()
+    });
+    let after = journal_entries(scratch.path());
+    assert_eq!(after.len(), before + 1, "`o` is exactly one entry");
+    assert_eq!(
+        after.last().map(|entry| entry.description.clone()),
+        Some("resolved sample.txt (ours)".to_owned())
+    );
+    assert!(
+        matches!(&state.status, Status::Done(line) if line == "all conflicts resolved"),
+        "no banner, so no `c continue`: {:?}",
+        state.status
+    );
+    assert_eq!(
+        crate::app_harness::git(scratch.path(), &["ls-files", "-u"]).trim(),
+        "",
+        "the index holds no unmerged entry"
+    );
+    assert!(scratch.path().join("sample.txt").exists(), "ours kept it");
 
     drop(state);
     app.close();
@@ -1524,6 +1589,23 @@ fn stash_pop_conflict() -> Scratch {
     git(repo, &["add", "sample.txt"]);
     git_as_graft(repo, &["commit", "-m", "base"]);
     std::fs::write(repo.join("sample.txt"), "stashed\n").expect("writable scratch");
+    git_as_graft(repo, &["stash", "push"]);
+    std::fs::write(repo.join("sample.txt"), "committed\n").expect("writable scratch");
+    git_as_graft(repo, &["commit", "-am", "committed"]);
+    git_stops(repo, &["stash", "pop"]);
+    scratch
+}
+
+/// A `git stash pop` stopped on a modify/delete: the stash deleted
+/// `sample.txt`, the branch then changed it — `deleted by them`, no banner.
+fn stash_pop_delete_conflict() -> Scratch {
+    use crate::app_harness::{git, git_as_graft};
+    let scratch = graft_fixtures::copy_into_temp(Shape::Trivial);
+    let repo = scratch.path();
+    std::fs::write(repo.join("sample.txt"), "base\n").expect("writable scratch");
+    git(repo, &["add", "sample.txt"]);
+    git_as_graft(repo, &["commit", "-m", "base"]);
+    git(repo, &["rm", "-q", "sample.txt"]);
     git_as_graft(repo, &["stash", "push"]);
     std::fs::write(repo.join("sample.txt"), "committed\n").expect("writable scratch");
     git_as_graft(repo, &["commit", "-am", "committed"]);

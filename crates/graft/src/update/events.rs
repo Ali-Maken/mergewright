@@ -338,8 +338,9 @@ pub enum Product {
     /// [`graft_git::conflict::Block::base`] filled in, and how many blocks
     /// got one, or why not — `graft_ops::conflict::BaseError`'s own words
     /// (`no base (added on both sides)`, `base unavailable after edits`, or
-    /// git's own `diff3` failure).
-    BaseLoaded(Result<(std::sync::Arc<graft_git::conflict::ConflictFile>, usize), String>),
+    /// git's own `diff3` failure), paired with whether they are a problem —
+    /// only a failure is; no base and edited-past-git are facts.
+    BaseLoaded(Result<(std::sync::Arc<graft_git::conflict::ConflictFile>, usize), (String, bool)>),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.

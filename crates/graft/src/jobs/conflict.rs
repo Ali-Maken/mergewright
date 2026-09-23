@@ -178,14 +178,48 @@ pub fn take(
 /// # Errors
 /// `graft_ops::conflict::BaseError`'s own words: `this conflict has no
 /// common ancestor to show`, `base unavailable after edits`, or git's own
-/// `diff3` failure.
+/// `diff3` failure — paired with whether it is a problem (only a failure is).
 pub fn load_base(
     store: &RepoStore,
     path: &Path,
     mut file: ConflictFile,
-) -> Result<(ConflictFile, usize), String> {
-    let repo = store.shared().map_err(|error| error.to_string())?;
+) -> Result<(ConflictFile, usize), (String, bool)> {
+    // The repository not opening is a failure, not a fact of the file.
+    let repo = store.shared().map_err(|error| (error.to_string(), true))?;
     graft_ops::conflict::base_for(&repo.handle(), path, &mut file)
         .map(|attached| (file, attached))
-        .map_err(|error| error.to_string())
+        .map_err(|error| base_refusal(&error))
+}
+
+/// `B`'s refusal as the resolver's notice: the words, and whether they are
+/// a problem. No ancestor (`NoBase`) and a file edited past what git wrote
+/// (`Mismatch`) are facts of the file — nothing went wrong, so they must not
+/// read as errors. Only git's own `diff3` failing is one (planner ruling,
+/// 2026-09-23).
+fn base_refusal(error: &graft_ops::conflict::BaseError) -> (String, bool) {
+    use graft_ops::conflict::BaseError;
+    let problem = matches!(error, BaseError::Diff3(_));
+    (error.to_string(), problem)
+}
+
+#[cfg(test)]
+mod tests {
+    use graft_git::conflict::{BaseMismatch, Diff3Error};
+    use graft_ops::conflict::BaseError;
+
+    use super::base_refusal;
+
+    #[test]
+    fn no_base_and_mismatch_are_facts_not_problems() {
+        assert!(!base_refusal(&BaseError::NoBase).1);
+        assert!(!base_refusal(&BaseError::Mismatch(BaseMismatch { block: 0 })).1);
+    }
+
+    #[test]
+    fn a_diff3_failure_is_a_problem() {
+        let error = BaseError::Diff3(Diff3Error::Io(std::io::Error::other("disk full")));
+        let (words, problem) = base_refusal(&error);
+        assert!(problem, "git itself failed");
+        assert!(words.contains("disk full"), "{words}");
+    }
 }
