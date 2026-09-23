@@ -37,27 +37,28 @@ fn with_a_live_search(mut state: AppState) -> AppState {
     state
 }
 
+/// What a text field holds, read back after typing; `None` once it shut.
+type Readback = fn(&AppState) -> Option<String>;
+
+/// A modal by name, the state with it up, and — for a text field — how to
+/// read back what it holds.
+type Modal = (&'static str, AppState, Option<Readback>);
+
 /// Every pane and box that claims every key but `Ctrl+C` (§2.1), each over
 /// a loaded walk — the states in which `/` must not open a search behind
 /// it. Not the Map, journal or stash overlay: each claims only the keys it
 /// shows, and the bar behind each offers `/ search` (see
-/// `AppState::modal_owns_keys`). A text field's
-/// entry says how to read back what it holds.
-fn every_modal() -> Vec<(&'static str, AppState, Option<fn(&AppState) -> String>)> {
-    let mut modals: Vec<(&'static str, AppState, Option<fn(&AppState) -> String>)> = Vec::new();
+/// `AppState::modal_owns_keys`).
+fn every_modal() -> Vec<Modal> {
+    let mut modals = text_fields();
+    modals.extend(boxes());
+    modals
+}
 
+/// The modals that hold a text field: `/` there is a character.
+fn text_fields() -> Vec<Modal> {
     let mut editor = on_graph();
     editor.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
-    modals.push((
-        "the commit editor",
-        editor,
-        Some(|s| {
-            s.commit_editor
-                .as_ref()
-                .map(|e| e.subject.text().to_owned())
-                .unwrap_or_default()
-        }),
-    ));
 
     let mut stash = on_graph();
     stash.stash.shown = true;
@@ -65,17 +66,6 @@ fn every_modal() -> Vec<(&'static str, AppState, Option<fn(&AppState) -> String>
         message: TextField::new(""),
         staged_only: false,
     });
-    modals.push((
-        "the stash message prompt",
-        stash,
-        Some(|s| {
-            s.stash
-                .prompt
-                .as_ref()
-                .map(|p| p.message.text().to_owned())
-                .unwrap_or_default()
-        }),
-    ));
 
     let mut name = on_graph();
     name.name_prompt = Some(NamePrompt {
@@ -84,16 +74,6 @@ fn every_modal() -> Vec<(&'static str, AppState, Option<fn(&AppState) -> String>
         },
         field: TextField::new(""),
     });
-    modals.push((
-        "the name prompt",
-        name,
-        Some(|s| {
-            s.name_prompt
-                .as_ref()
-                .map(|p| p.field.text().to_owned())
-                .unwrap_or_default()
-        }),
-    ));
 
     let mut credential = on_graph();
     // A prompt is live only while its write runs (`close_if_orphaned`).
@@ -104,15 +84,40 @@ fn every_modal() -> Vec<(&'static str, AppState, Option<fn(&AppState) -> String>
         field: PromptField::Open(TextField::new("")),
         job: JobId::new(1),
     });
-    modals.push((
-        "the credential prompt",
-        credential,
-        Some(|s| match s.credential.as_ref().map(|c| &c.field) {
-            Some(PromptField::Open(field)) => field.text().to_owned(),
-            _ => String::new(),
-        }),
-    ));
 
+    vec![
+        (
+            "the commit editor",
+            editor,
+            Some(|s| {
+                s.commit_editor
+                    .as_ref()
+                    .map(|e| e.subject.text().to_owned())
+            }),
+        ),
+        (
+            "the stash message prompt",
+            stash,
+            Some(|s| s.stash.prompt.as_ref().map(|p| p.message.text().to_owned())),
+        ),
+        (
+            "the name prompt",
+            name,
+            Some(|s| s.name_prompt.as_ref().map(|p| p.field.text().to_owned())),
+        ),
+        (
+            "the credential prompt",
+            credential,
+            Some(|s| match s.credential.as_ref().map(|c| &c.field) {
+                Some(PromptField::Open(field)) => Some(field.text().to_owned()),
+                _ => None,
+            }),
+        ),
+    ]
+}
+
+/// The modals with no text field: each shuts on a key it has no use for.
+fn boxes() -> Vec<Modal> {
     let mut confirm = on_graph();
     confirm.confirm = Some(PendingConfirm {
         view: graft_ui::confirm::ConfirmView::new(
@@ -122,14 +127,10 @@ fn every_modal() -> Vec<(&'static str, AppState, Option<fn(&AppState) -> String>
         ),
         then: ConfirmThen::Undo { redo: false },
     });
-    modals.push(("the confirm box", confirm, None));
 
     let (preview, _) =
         crate::update::preview::tests::opened_with(crate::update::preview::tests::a_plan());
-    modals.push(("the Ghost Preview", preview, None));
-
     let resolver = crate::update::tests::resolver_on_screen(JobId::new(4_100));
-    modals.push(("the conflict resolver", resolver, None));
 
     let mut banner = on_graph();
     banner.in_progress = Some(graft_git::state::InProgressDetail {
@@ -139,9 +140,13 @@ fn every_modal() -> Vec<(&'static str, AppState, Option<fn(&AppState) -> String>
         onto: None,
     });
     banner.banner_focus = true;
-    modals.push(("the focused operation banner", banner, None));
 
-    modals
+    vec![
+        ("the confirm box", confirm, None),
+        ("the Ghost Preview", preview, None),
+        ("the conflict resolver", resolver, None),
+        ("the focused operation banner", banner, None),
+    ]
 }
 
 /// The control: on the bare graph `/` does open the prompt, so the sweep
@@ -174,7 +179,7 @@ fn slash_belongs_to_every_modal_that_is_up() {
             let after = [KeyCode::Char('a'), KeyCode::Char('/'), KeyCode::Char('b')]
                 .into_iter()
                 .fold(state, |state, code| press(&state, code));
-            if text(&after) != "a/b" || after.search_prompt.is_some() {
+            if text(&after).as_deref() != Some("a/b") || after.search_prompt.is_some() {
                 wrong.push(format!(
                     "{name}: the field holds {:?}, not \"a/b\"",
                     text(&after)

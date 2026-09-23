@@ -8,6 +8,7 @@ use graft_ui::text_input::TextField;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
+use super::boxes::{draw_confirm, draw_credential, overlay_band};
 use super::*;
 use crate::session::for_tests::session;
 use crate::update::confirm::{ConfirmThen, PendingConfirm};
@@ -592,7 +593,9 @@ const BEHIND: [&str; 8] = [
 /// `Ready`, so the ladder falls through to keys.
 #[test]
 fn the_bottom_row_under_a_live_box_offers_only_its_keys() {
-    let boxes: [(&str, fn(&mut AppState), &str); 2] = [
+    /// A box by name, how to open it, and the bar it owns.
+    type LiveBox = (&'static str, fn(&mut AppState), &'static str);
+    let boxes: [LiveBox; 2] = [
         (
             "confirm",
             |state| state.confirm = Some(a_confirm()),

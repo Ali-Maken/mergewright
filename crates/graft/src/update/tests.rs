@@ -3981,6 +3981,16 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::Dragging => vec![badge_in_the_air(walk)],
         // A live box over the graph (rulings 07b, Q1): its bar is its own
         // keys, whatever stands behind it.
+        HintContext::ConfirmBox | HintContext::NamePrompt { .. } | HintContext::Credential => {
+            vec![box_over_the_graph(walk, context)]
+        }
+    }
+}
+
+/// [`screen_for`]'s live boxes, each over the graph with a merge under the
+/// cursor.
+fn box_over_the_graph(walk: JobId, context: &HintContext) -> AppState {
+    match context {
         HintContext::ConfirmBox => {
             let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
             state.confirm = Some(super::confirm::PendingConfirm {
@@ -3991,7 +4001,7 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
                 ),
                 then: super::confirm::ConfirmThen::Undo { redo: false },
             });
-            vec![state]
+            state
         }
         HintContext::NamePrompt { toggle } => {
             let (mut state, at) = merge_on_screen(walk, MERGE_ROW);
@@ -4004,7 +4014,7 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
                 kind,
                 field: graft_ui::text_input::TextField::new("feature"),
             });
-            vec![state]
+            state
         }
         HintContext::Credential => {
             let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
@@ -4018,8 +4028,9 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
                 )),
                 job,
             });
-            vec![state]
+            state
         }
+        other => unreachable!("{other:?} is not a box"),
     }
 }
 
