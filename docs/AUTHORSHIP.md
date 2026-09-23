@@ -345,3 +345,63 @@ and draw used two different icon/lane sources), and the groups-12/13 review's
 right-click-wrong-row bug (a silent verb acting on a commit the user didn't
 click). Each escalation states the reviewer's original score and the reasoning
 for raising it, rather than silently overriding it.
+
+## M6 Conflict resolver
+
+Groups model (ADR-0029): 8 groups (01–08; 08 added mid-milestone), fix rounds,
+`planner-fable` rulings. Start `47b55c2`; final fixes merged `902a742` at 2674
+passed, 1 skipped (conductor's own gate run). Tool-use counts are the harness's,
+as logged in `docs/log/m6.md` (cited `m6:<line>`); "no count" means the log gives none.
+
+**Model changes during M6** (both recorded, not silent): resumed 2026-09-22 with
+the conductor on Opus 5.5 and the Fable tier running on Opus at high effort
+(`19ac7fe`, m6:79); same day the user switched Sonnet → Opus low everywhere —
+`builder-sonnet` keeps its name as a tier label, and new `scout`/`researcher`
+definitions (Opus low) close the "scouts cannot write" gap (m6:85). So
+`builder-fable` after m6:79 is Opus high, and `builder-sonnet` after m6:85 is Opus low.
+
+| Role | Model | Detail |
+|---|---|---|
+| Designed | Fable (`planner-fable`) | Note + 7 group specs + ADR-0042, `3d90471`, turn count logged with M5's close (m6:9). Group 08 spec later, 20 tool uses (m6:35). |
+| Specified | `planner-fable`; conductor | Rulings passes: g05 box 74/no-base notice, 12 tool uses (m6:98); g06 relaunch/fetch, 4 (m6:105); g06 box 550 re-ruling, 5 (m6:117); g06 repush question, no count (m6:121); g07 F3/F5 rulings, no count (m6:124); g07 design rulings 07b, no count (m6:134). Conductor widened g02's crate set from the scout (m6:11), set g04 → Opus (m6:45), g05 Sonnet / g06 Opus (m6:80–81). |
+| Scouts | Explore, sonnet (read-only; conductor wrote their files) | ui 47 (m6:10); app g04 50 (m6:42); app g05 54 (m6:80); app g06 55 (m6:81). |
+| Built | see table below | |
+| Reviewed | Fable, then Opus high (reviewer) | g01 (m6:22), g02+g03 (m6:47), g05 (m6:102), g06 (m6:110), g07 + milestone runs (m6:135). |
+| Researcher (Opus low) | — | history audit (m6:86), false-tick sort (m6:87), KNOWN_GAPS ×2 (m6:114, m6:137); no counts logged. |
+
+### M6 builds
+
+| Group | Agent (model) | Runs, as logged | Tool uses |
+|---|---|---|---|
+| 01 git-conflict-model | builder-fable (signature) | build, **COMPACTED** once, `partial` → `blocked: needs graft, graft-ops` (m6:12); review fix round, builder-opus, merged `421b4ec`, no scout (m6:31) | 136 + 113 = **249** |
+| 02 ui-conflict-resolver | builder-sonnet | build + continuation 1 (m6:15); continuation 2 (m6:18); continuation 3, golden files (m6:19); review fix round (m6:52) | 155 + 32 + ? + ? + 50 = **237** (cont. 2, 3 no count) |
+| 03 ops-conflict-operations | builder-opus | build `partial`, no scout (m6:26); continuation, merged (m6:39) | ? + 32 = **32** (build no count) |
+| 08 ops-undo-an-unmerged-index | builder-opus | piece A, **COMPACTED** once, `partial`, `blocked: needs graft` (m6:54); Scope 5(c) continuation, `done` (m6:60); seam closed by conductor (m6:65) | 241 + 106 = **347** |
+| 04 app-conflict-resolver | builder-opus | build, **COMPACTED twice**, `partial`, scout used (m6:67); continuation 1 (medium), `done`, merged `421593c` (m6:82) | 363 + 42 = **405** |
+| 05 app-resolver-whole-files-and-base | builder-sonnet (**Sonnet**, dispatched before the switch) | build, **COMPACTED** once, reported `done` but all 9 boxes blank — not merged (m6:88–89); continuation 1, Opus low, `partial` 5/9 (m6:92); continuation 2, Opus low, `partial` 8/9 (m6:94); fix round after ruling, Opus low, `done` (m6:100), merged `e6c92cd` (m6:101); review fix round, **escalated to builder-opus** (medium) because Major 3 is two concurrent git writes, COMPACTED (reply vs ticket disagree; logged compacted) (m6:109, m6:111) | 271 + 34 + 57 + 26 + 138 = **526** |
+| 06 answers-beat-rereads | builder-opus (medium) | build `partial` 5/8, no compaction (m6:103); continuation 1, `done` (m6:107), merged `e2b6f56`; review fix round, no compaction (m6:115); (iii) round after re-ruling (m6:118), merged `3662e79` | 183 + 32 + 71 + 27 = **313** |
+| 07 acceptance | builder-fable (Opus high) | build, **COMPACTED ×2**, `partial` 4/6 (m6:122); F1/F4/F6/F7/F8 fixes, builder-opus medium (m6:125); F2 fix, **builder-opus-xhigh** (undo) (m6:123, m6:127); continuation 1 `partial` 5/6 (m6:129); continuation 2 `done` 6/6 (m6:131), merged `c309b45` | 388 + ? + 57 + ? + 143 = **588** (fixes and cont. 1 no count) |
+| M6 final fix round (g07 review Majors + rulings 07b) | builder-opus (medium) | `done`, **COMPACTED** once, no scout (m6:138), merged `902a742` | **261** |
+
+Builder total, counted entries only: **2958**. Not counted (no number in the
+log): g02 continuations 2 and 3, g03 build, g07 fixes round, g07 continuation 1.
+
+**Compacted:** g01 build (once), g04 build (twice), g05 build (once), g05
+review fix round (once, disputed by its own ticket), g07 build (twice), g08
+piece A (once), final fix round (once).
+
+**Escalations (model):** g05 review fix round Sonnet-tier → builder-opus
+(m6:109); g07 F2 → builder-opus-xhigh, undo class (m6:123).
+
+**Conductor's own errors, as logged:** g02 line-number fix ordered wrong
+(m6:50); g05 brief said hints "already draw" when the scout said `planned`
+(m6:90); planner's `checkout --merge` reading wrong until the conductor ran it (m6:36).
+
+### Review rounds
+
+- **g01** — reviewer (Fable), 27 tool uses: 1 Critical (overstated tick), 5 Major, 11 Minor, 1 Question; 14 checked / 13 held (m6:22).
+- **g02 + g03** — reviewer (Fable), 45 tool uses: g02 1 Critical, 5 Major, 4 Minor, 13 checked / 11 held, 1 false; g03 0 Critical, 2 Major, 4 Minor, 16/16 held (m6:47).
+- **g05** — reviewer (Opus high), 56 tool uses: 0 Critical, 6 Major, 9 Minor; 9/9 held (m6:102).
+- **g06** — reviewer (Opus high), 84 tool uses: 0 Critical, 2 Major, 9 Minor; 8/8 held (m6:110).
+- **g07** — reviewer (Opus high), no count: 0 Critical, 5 Major, 8 Minor; 9/9 held. Milestone runs: heavy 2701/0, release 13/13 frame p99 ≤ 8.9 ms, fuzz 4×60 s 0 crashes (m6:135).
+- g04 and g08 have no review round recorded in the log.
