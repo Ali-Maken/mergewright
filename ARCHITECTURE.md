@@ -50,7 +50,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   only inside `jobs/` (reads); the journal's `render_*` and the inverse's
   `Step::`/`PathScope::` constructors nowhere in `app`.
 - **Changing fetch, pull or push** → `graft/src/update/remote.rs` for the
-  keys, the push box, `Esc` and the status-line words;
+  `f`/`p` keys and the facts; `update/remote/push_box.rs` for `P` and its
+  box, `after_push.rs` for `u` on pushed work, `in_flight.rs` for `Esc`,
+  progress and the status-line words;
   `graft/src/jobs/remote.rs` for the remote facts read; `ops::operation` for
   what actually runs.
 - **Changing terminal detection or an image protocol** → `term`. Start at

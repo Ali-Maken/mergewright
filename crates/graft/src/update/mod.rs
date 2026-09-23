@@ -38,6 +38,7 @@ pub mod operate;
 mod prelude;
 pub mod preview;
 pub mod radar;
+mod relaunch;
 pub mod remote;
 pub mod resolver;
 mod search;
@@ -544,7 +545,7 @@ fn took_fact(next: &mut AppState, commands: &mut Vec<Command>, product: Product)
         }
         Product::WorkingTree(Ok(read)) => {
             // Read before the assignment: the launch read is the one that
-            // finds no working tree yet. See `journal::launch_into_live`.
+            // finds no working tree yet. See `relaunch::launch_into_live`.
             let first_read = next.working_tree.is_none();
             if let Some(disagreement) = undo::reread_disagrees(next, read.in_progress.as_ref()) {
                 next.status = disagreement;
@@ -563,7 +564,7 @@ fn took_fact(next: &mut AppState, commands: &mut Vec<Command>, product: Product)
                 // two launch reads lands second is the one that has both
                 // facts, so both call it and the second one wins.
                 let mut local_jobs = next.local_jobs;
-                journal::launch_into_live(next, commands, &mut || local_jobs.next_id());
+                relaunch::launch_into_live(next, commands, &mut || local_jobs.next_id());
                 next.local_jobs = local_jobs;
             }
         }
