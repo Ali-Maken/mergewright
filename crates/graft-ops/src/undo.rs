@@ -202,7 +202,7 @@ pub fn inverse(
         field: "reverses (no root operation)",
     })?;
     let mut steps = generic_steps(entry)?;
-    steps.extend(stash_step(root, forward)?);
+    steps.extend(stash_step(entry, root, forward)?);
     let verb = if kind == OperationKind::Undo {
         "undo"
     } else {
@@ -295,12 +295,17 @@ fn scope(after: Option<Oid>, before: Oid) -> PathScope {
 }
 
 /// The reflog step for the root operation's kind: its inverse when undoing,
-/// its own effect again when redoing. A push that pushed nothing (`git stash
+/// its own effect again when redoing. `entry` is the entry being inverted —
+/// when redoing, the `Undo` entry. A push that pushed nothing (`git stash
 /// push` with nothing to save exits 0, so the entry is `Committed` with
 /// `refs/stash` unmoved) has no reflog step either way: the commit at
 /// `refs/stash` is the user's own earlier stash, and dropping it would
 /// destroy something the operation never touched.
-fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInvertible> {
+fn stash_step(
+    entry: &JournalEntry,
+    root: &JournalEntry,
+    forward: bool,
+) -> Result<Option<Step>, NotInvertible> {
     let pinned = || {
         root.pins
             .first()
@@ -308,8 +313,12 @@ fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInv
             .ok_or(NotInvertible::Incomplete { field: "pins" })
     };
     Ok(match (root.kind, forward) {
-        (OperationKind::StashPush, false) => pushed(root)?.map(|commit| Step::StashDrop { commit }),
-        (OperationKind::StashPush, true) => pushed(root)?.map(|commit| Step::StashStore { commit }),
+        (OperationKind::StashPush, false) => {
+            stash_moved_to(root)?.map(|commit| Step::StashDrop { commit })
+        }
+        (OperationKind::StashPush, true) => {
+            stash_moved_to(root)?.map(|commit| Step::StashStore { commit })
+        }
         // `stash branch` applies the stash and drops it, so its inverse
         // stores the commit back exactly as a pop's does; the branch it
         // created is removed by the generic `UpdateRef` (m5/07).
@@ -317,10 +326,23 @@ fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInv
             OperationKind::StashPop | OperationKind::StashDrop | OperationKind::BranchFromStash,
             false,
         ) => Some(Step::StashStore { commit: pinned()? }),
+        // The redo drops only what its undo stored back: a pop git refused
+        // on a conflict kept its stash, its undo's store was a no-op, and
+        // there is nothing to drop (m6-conflicts/07, F2). The undo's own
+        // `refs/stash` says which; the root's cannot, since popping
+        // `stash@{1}` leaves it unmoved whether git dropped it or not.
         (
             OperationKind::StashPop | OperationKind::StashDrop | OperationKind::BranchFromStash,
             true,
-        ) => Some(Step::StashDrop { commit: pinned()? }),
+        ) => {
+            let commit = pinned()?;
+            // `refs/stash` moved to some other commit means something else
+            // wrote the stash list while the undo ran. Dropping nothing is
+            // the side that loses nothing: at worst the stash stays listed.
+            stash_moved_to(entry)?
+                .filter(|stored| *stored == commit)
+                .map(|commit| Step::StashDrop { commit })
+        }
         (OperationKind::Undo | OperationKind::Redo, _) => {
             return Err(NotInvertible::Incomplete {
                 field: "reverses (root is not an operation)",
@@ -330,18 +352,20 @@ fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInv
     })
 }
 
-/// The stash commit a push created: `refs/stash` after, when it differs from
-/// `refs/stash` before. Both sides must be recorded — an unknown before-value
-/// cannot tell a new stash from the user's old one.
-fn pushed(root: &JournalEntry) -> Result<Option<Oid>, NotInvertible> {
-    let before = root
+/// Where `entry` moved `refs/stash` to: its after-value, when that differs
+/// from its before-value. For a push, the stash commit it created; for an
+/// undo, the commit its `StashStore` put on top. Both sides must be recorded
+/// — an unknown before-value cannot tell a new stash from the user's old one,
+/// and an unknown after-value cannot tell a store from a no-op.
+fn stash_moved_to(entry: &JournalEntry) -> Result<Option<Oid>, NotInvertible> {
+    let before = entry
         .refs_before
         .get(STASH_REF)
         .copied()
         .ok_or(NotInvertible::Incomplete {
             field: "refs_before[refs/stash]",
         })?;
-    let after = root
+    let after = entry
         .refs_after
         .get(STASH_REF)
         .copied()
