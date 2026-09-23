@@ -541,6 +541,9 @@ fn took_fact(next: &mut AppState, product: Product) {
             // Read before the assignment: the launch read is the one that
             // finds no working tree yet. See `journal::launch_into_live`.
             let first_read = next.working_tree.is_none();
+            if let Some(disagreement) = undo::reread_disagrees(next, read.in_progress.as_ref()) {
+                next.status = disagreement;
+            }
             next.working_tree = Some(read.status);
             next.in_progress = read.in_progress;
             next.mergetool = read.mergetool;
