@@ -1,0 +1,97 @@
+# M6 milestone review (group 07) — 2026-09-23T07:13:17Z
+# HEAD 0a3b3de (code = c309b45)
+# machine: Darwin arm64, 10 cpus
+
+## gates
+- fmt: exit 0, wall 1 s, peak RSS 81 MB
+- clippy: exit 0, wall 0 s, peak RSS 91 MB
+- clippy-heavy: exit 0, wall 3 s, peak RSS 691 MB
+- nextest: exit 0, wall 89 s, peak RSS 259 MB
+  Summary [  88.097s] 2667 tests run: 2667 passed, 1 skipped
+  5 slowest:
+- doctest: exit 0, wall 2 s, peak RSS 165 MB
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+## heavy tier (ADR-0018)
+- heavy: exit 0, wall 321 s, peak RSS 791 MB
+  2701 passed, 0 failed, 1 ignored
+
+## release perf run (ADR-0021), alone
+- release: exit 0, wall 132 s, peak RSS 670 MB
+  test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 6.661875ms, 25000 lookups 532.333µs (21 ns each), 25180 labels found
+  frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=817 p50=209 p99=4442 max=7071 total=1050438 over_1ms=385 over_2ms=344
+  frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=15070 PageDown=8839 Char('k')=12281 PageUp=4837 Char('j')=10745
+  test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier ... refs: 50000 refs, badges() 5.050458ms, 25000 lookups 487.208µs (19 ns each), 25196 labels found
+  frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=822 p50=0 p99=1 max=4 total=226 over_1ms=0 over_2ms=0
+  frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=9527 PageDown=6312 Char('k')=4263 PageUp=2632 Char('j')=11824
+  test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff ... refs: 50000 refs, badges() 5.210083ms, 25000 lookups 503.625µs (20 ns each), 25196 labels found
+  frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=502 p50=0 p99=0 max=8 total=118 over_1ms=0 over_2ms=0
+  frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=11737 PageDown=11695 Char('k')=11713 PageUp=11766 Char('j')=11715
+  test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open ... refs: 50000 refs, badges() 5.207875ms, 25000 lookups 502.375µs (20 ns each), 25196 labels found
+  frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=501 p50=0 p99=1 max=7 total=129 over_1ms=0 over_2ms=0
+  frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=8336 PageDown=9451 Char('k')=11820 PageUp=7230 Char('j')=5979
+  test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open ... refs: 50000 refs, badges() 5.073208ms, 25000 lookups 515.208µs (20 ns each), 25196 labels found
+  frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=697 p50=0 p99=1 max=9 total=144 over_1ms=0 over_2ms=0
+  frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=11084 PageDown=9509 Char('k')=11084 PageUp=6449 Char('j')=10691
+  test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=4
+  frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=750 p50=1295 p99=4258 max=5337 total=1057250 over_1ms=386 over_2ms=343
+  frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=15878 PageDown=3793 Char('k')=10199 PageUp=13732 Char('j')=6829
+  test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=5
+  frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=759 p50=0 p99=1 max=7 total=215 over_1ms=0 over_2ms=0
+  frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=8456 PageDown=8367 Char('k')=9658 PageUp=4423 Char('j')=11108
+  test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=37660 bottom_ms=53 top_ms=0 rows=100000 provisional=false rss_at_paint=89571328 rss_at_bottom=100958208 peak_rss=101187584 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=13845 bottom_ms=48 top_ms=0 rows=100000 provisional=false rss_at_paint=22659072 rss_at_bottom=30687232 peak_rss=30687232 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=15989 bottom_ms=471 top_ms=0 rows=100000 provisional=true rss_at_paint=25591808 rss_at_bottom=96600064 peak_rss=96600064 overflow_len=100000
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=13937 bottom_ms=49 top_ms=0 rows=100000 provisional=false rss_at_paint=22740992 rss_at_bottom=35487744 peak_rss=35487744 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=16245 bottom_ms=516 top_ms=0 rows=100000 provisional=true rss_at_paint=26624000 rss_at_bottom=102662144 peak_rss=102662144 overflow_len=100000
+  test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 306 filtered out; finished in 73.05s
+               4108097  page reclaims
+
+## target/
+   14G
+
+## 5 slowest (second nextest run, --status-level pass; 88.2 s, 2667/2667)
+  12.410 s  graft view::tests::the_preview_box_keeps_its_own_left_border_over_a_graph_with_lanes
+  8.796 s  graft-git::it diff_fixture::parse_unified_matches_numstat_for_every_shape
+  7.011 s  graft-ops::it undo_cancel::cancel_at_every_step_boundary_is_clean
+  6.842 s  graft-graph layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded
+  6.060 s  graft-ops::it conflict_ops::whole_file_shapes_resolve_like_git
+
+## frame input-to-frame (release)
+  frames: tier=Pixel refs=FiftyThousand pane=Closed keys=420 p50_us=5504 p99_us=8333 max_us=11097
+  frames: tier=Unicode refs=FiftyThousand pane=Closed keys=420 p50_us=5387 p99_us=8802 max_us=9345
+  frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys=422 p50_us=5943 p99_us=8507 max_us=8994
+  frames: tier=Unicode refs=FiftyThousand pane=Open keys=421 p50_us=5872 p99_us=8624 max_us=8904
+  frames: tier=Unicode refs=FiftyThousand pane=Map keys=421 p50_us=5806 p99_us=8554 max_us=8801
+  frames: tier=Pixel refs=Fixture pane=Closed keys=420 p50_us=5441 p99_us=8054 max_us=9631
+  frames: tier=Unicode refs=Fixture pane=Closed keys=420 p50_us=5431 p99_us=8865 max_us=9568
+
+## fuzzing (cargo +nightly fuzz run <t> -- -max_total_time=60 -rss_limit_mb=1024)
+  conflict_parse: exit 0, Done 581066 runs, crash lines 0, wall 107 s
+  parse_file_list: exit 0, Done 638560 runs, crash lines 0, wall 62 s
+  parse_porcelain_v2: exit 0, Done 599482 runs, crash lines 0, wall 63 s
+  parse_unified: exit 0, Done 671685 runs, crash lines 0, wall 62 s
+
+## benchmarks (--warm-up-time 1 --measurement-time 3)
+  graft-graph: exit 101, wall 30 s
+  graft-ui: exit 101, wall 26 s
+  (the two exit 101 above: libtest rejected criterion's flags on the lib target; rerun with --bench)
+  graft-graph hot_paths --bench : exit 101, wall 0 s
+  graft-ui row_render --bench : exit 101, wall 0 s
+  rerun per bench target (bash; zsh had not split the loop words):
+  graft-graph --bench hot_paths: exit 0, wall 20 s
+    StreamingLayout::advance/one chunk  775.95 µs
+    rasterise/one strip                 623.70 µs
+    StripCache::get/hit                 1.6946 µs
+    StripCache::get/miss                626.60 µs
+  graft-ui --bench row_render: exit 0, wall 4 s
+    GraphColumn::render/one screen      15.294 µs
+  No criterion baseline in target/criterion: no "change:" line, so no regression comparison is possible from this run.
