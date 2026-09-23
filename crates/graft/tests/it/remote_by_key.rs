@@ -486,21 +486,7 @@ fn repush_lease_comes_from_the_entry() {
         .expect("the push entry records the tracking tip it left");
     assert_eq!(recorded.to_string(), ours, "the entry names our pushed tip");
 
-    // The remote moves, and this clone learns it: `state.remotes` now
-    // holds their tip, which is what the old lease was built from.
-    let theirs = remote
-        .commit_on_remote("theirs")
-        .expect("a teammate's push");
-    run(&remote, work, &["fetch", "-q", "origin"]);
-    let state = app.press(&state, KeyPress::control(KeyCode::Char('r')));
-    let state = app.pump(state, "the re-read tracking tip", |state| {
-        matches!(&state.remotes, Loading::Ready(facts)
-            if facts.head_upstream.as_ref().and_then(|up| up.tracking_tip)
-                .is_some_and(|tip| tip.to_string() == theirs))
-            && state.remote.reading.is_none()
-            && matches!(state.journal.entries, Loading::Ready(_))
-            && state.journal.reading.is_none()
-    });
+    let (state, theirs) = their_push_fetched(&app, &state, &remote);
 
     // `u`, `→ →` onto `[ Re-push old tip ]`, `Enter`: the lease box.
     let state = app.key(&state, KeyCode::Char('u'));
@@ -544,6 +530,26 @@ fn repush_lease_comes_from_the_entry() {
         "the bare keeps their commit"
     );
     app.close();
+}
+
+/// A teammate pushes and this clone fetches it outside the app, then
+/// `Ctrl+R`: `state.remotes` now holds *their* tip — what the old lease was
+/// built from. Returns their tip, 40 hex.
+fn their_push_fetched(app: &App, state: &AppState, remote: &LocalRemote) -> (AppState, String) {
+    let theirs = remote
+        .commit_on_remote("theirs")
+        .expect("a teammate's push");
+    run(remote, remote.work(), &["fetch", "-q", "origin"]);
+    let state = app.press(state, KeyPress::control(KeyCode::Char('r')));
+    let state = app.pump(state, "the re-read tracking tip", |state| {
+        matches!(&state.remotes, Loading::Ready(facts)
+            if facts.head_upstream.as_ref().and_then(|up| up.tracking_tip)
+                .is_some_and(|tip| tip.to_string() == theirs))
+            && state.remote.reading.is_none()
+            && matches!(state.journal.entries, Loading::Ready(_))
+            && state.journal.reading.is_none()
+    });
+    (state, theirs)
 }
 
 /// A commit made by `c` and sent by `P`, with the journal and the refreshed
