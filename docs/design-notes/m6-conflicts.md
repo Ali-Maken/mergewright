@@ -15,6 +15,8 @@ gaps expiring M7, not counted as failures.
 
 ## Decision 1: what "three-pane" means here
 
+> **Superseded by ADR-0043 (Amendment 2):** file list always; three panes at ≥180 columns; this card below.
+
 **Result-centred, sides shown inside the conflict.** The resolver shows **one file** — the working-tree file itself,
 as a document: plain lines drawn as they are, and each conflict block (between git's `<<<<<<<` and `>>>>>>>`) drawn as a
 labelled card with **OURS and THEIRS side by side** (≥100 columns) or **stacked** (<100). BASE is a third labelled
@@ -106,7 +108,7 @@ pub fn resolver_view(state: &AppState) -> Option<DocView>;   // view::resolver �
 
 1. **The document model** (above) vs a three-column diff-aligned view. **Document.** Reasons in Decision 1. Cost: the
    user does not see ours/theirs for *unconflicted* lines (git already merged them; the diff pane still shows the file
-   against `HEAD`).
+   against `HEAD`). *(Amendment 2 / ADR-0043: three panes aligned by git's regions at ≥180 columns; still no diff alignment.)*
 2. **A take writes the file at once** (temp+rename, fingerprint-checked) vs a buffer written on `⏎`. **At once.** What is
    on screen is on disk: `e`, `M`, a crash and a second Graft all see the takes; `⏎` is the same `Stage` write `space`
    already is (`MarkersRemain` refusal untouched). Cost: a take is not journaled — it is a step inside the live `Pending`
@@ -138,6 +140,8 @@ pub fn resolver_view(state: &AppState) -> Option<DocView>;   // view::resolver �
    as M5 built it (row 561 → M7).
 
 ## New UI — the conflict resolver (`docs/design/01` §1.5 replaced; everything else per DESIGN)
+
+> **Amended by Amendment 2 / ADR-0043:** a file list above (strip) or beside (column ≥180); names `role · name`; numbering per projection; no explainer line.
 
 Full frame below the header (graph and pane both covered; header keeps `REBASING step 3 of 7`); title row; document;
 footer = its own complete key list (modal, no `. more`, ADR-0039). Eye lands on the **cursor block's header** (reversed,
@@ -237,11 +241,11 @@ over the count in the `journey-counts` block.
 | Confirm a previewed op | not in CR; ADR-0038 §1 (his): cursor on Cancel, everywhere | `m → ⏎` | **Keep §1. I, P1**: the verb key again confirms (`m m`). The decision was made at `m` and while reading the picture; the confirm is anticipated (UX 1.1 Rule 1), and `→` is a K with no work in it |
 | Advance after a take | KDiff3 auto-advance (CR 1.8) | stays; `n` | **T, P2** — with `n`/`N` reaching taken blocks, so a take stays fixable by keyboard (H3) |
 | Whole-file take (text) | JetBrains Accept Theirs; Tower; asked of Sublime #316, lazygit #1608 | none | **T, P3** as "every open block", not `checkout --theirs` (lazygit maintainer's caveat, CR 1.5); `Ctrl+O`/`Ctrl+T` (§2.1: bulk = modifier) |
-| Line numbers | each pane its own file (JetBrains/KDiff3, **(?)**) | OURS only | **I**: every line that is on disk carries its disk number, both sides — what `e` and his editor show (H2) |
+| Line numbers | each pane its own file (JetBrains/KDiff3, **(?)**) | OURS only | **I**: every line that is on disk carries its disk number, both sides — what `e` and his editor show (H2) *(superseded by Amendment 2: per-pane projection numbers)* |
 | Number on the marker | nobody numbers a marker | `2` on the header | **I**: rows that stand for markers carry no number |
 | Finish | lazygit's "Continue the merge?" (1 key) | `c` (A); refused when begun in the shell (TESTING.md:108) | Keep A. **P4**: `c` finishes a shell-begun merge |
 | Landing after finish | UX 3.1: cursor on the new commit | unspecified | **T**: cursor on the merge commit, `merged … ✓` |
-| Three columns / AI | VS Code went back to inline (#160806) | document (ADR-0042) | **R**, unchanged |
+| Three columns / AI | VS Code went back to inline (#160806) | document (ADR-0042) | **R**, unchanged *(reopened by Amendment 2: #160806 changed the default only, LA §0)* |
 
 ### Journeys
 UX 1.3: key = one chord (`⇥` = Tab); `[M]` = a decision. CR counts are read from docs, not measured. "As built" = scout.
@@ -273,7 +277,8 @@ UX 1.3: key = one chord (`⇥` = Tab); `[M]` = a decision. CR counts are read fr
 `all conflicts resolved · c continue`. Committed → graph, cursor on the new commit. `c` refused or failed → banner stays
 focused; the reason leads its key row (H9). Launch into a live op, journal or not → banner focused, pane on CONFLICTS.
 
-```journey-counts
+```journey-counts-superseded
+# Superseded by the journey-counts block in Amendment 2 (counts before P1–P5 were approved). Not parsed.
 # id                          keys  once approved
 a-merge-to-stop               3     P1:2
 a-stop-to-first-conflict      1     P5:0
@@ -295,6 +300,7 @@ impl ConflictFile { pub fn side_lines(&self, block: usize) -> Option<SideLines>;
 // graft-ui/src/conflict_resolver.rs
 pub struct SideNumbers { pub ours: Option<usize>, pub base: Option<usize>, pub theirs: Option<usize> }
 pub struct BlockView { …, pub numbers: SideNumbers }   // Header, Labels, End rows never draw a number
+// (SideLines / SideNumbers superseded by Amendment 2: Projection / first_lines / BlockNumbers)
 
 // graft/src/update/mod.rs                                                       fix-landing-after-a-stop
 pub enum Status { …, Stopped { reason: String } }   // a state: leads the bottom row, never replaces keys, no `esc dismiss`; cleared when the op ends
@@ -332,12 +338,13 @@ pub struct MergeState { pub merge_head: Oid, pub merge_msg: Vec<u8>, pub merge_m
    `in_progress`. **Git's state**; the journal only picks the words. A shell-begun op has no entry, ever.
 2. **Line numbers: the file on disk, markers unnumbered** · vs each side numbered in its stage file. **Disk.** It is
    what `e` and his editor show, and `side_lines` is exact against `render()`; stage numbering needs the alignment
-   ADR-0042 reason 1 refused.
+   ADR-0042 reason 1 refused. *(Superseded by Amendment 2 / ADR-0043 §5: per-pane projection numbers; `e` still opens at the disk line.)*
 3. **(P4) What `u` after finishing a shell-begun merge restores.** Options: the resolved result as uncommitted changes,
    not merging · the exact mid-merge state, `MERGE_HEAD` included. **Exact.** Every other `u` puts back what was; losing
    the second parent turns the next `c` into a plain commit, silently. Cost: a new inverse step writing git's own files.
 
-### Where I'd differ (Proposed changes — not decided; fix specs marked *gated* wait for them)
+### Approved changes P1–P5 (user, 2026-09-23: "keep all 5") — were Proposed; now in-spec
+Keymap rows are still to be written into `docs/design/02-keymap.md` (the conductor routes the edit; rows listed in Amendment 2).
 - **P1 — preview: the verb key again confirms** (`m m`, `r r`), only once the plan has landed. ADR-0038 §1 is kept
   (cursor on Cancel everywhere, `⏎` = the choice under the cursor). Keymap: Ghost Preview gains `m`/`r` for `.`-less
   opens only (`.` still closes what `.` opened). Trade-off: a double tap merges after one glance — the same glance
@@ -347,7 +354,8 @@ pub struct MergeState { pub merge_head: Oid, pub merge_msg: Vec<u8>, pub merge_m
   TESTING.md scenario 1's `n t n b` becomes `t b`. Trade-off: `n` stops on taken blocks; the title's count says what
   is left.
 - **P3 — `Ctrl+O` / `Ctrl+T`: ours / theirs in every open block of this file**, one write, then `⏎` as usual. No
-  bulk-both (`Ctrl+B` is tmux's prefix). **(?)** Zed's terminal may claim `Ctrl+T` — check before approving.
+  bulk-both (`Ctrl+B` is tmux's prefix). **(?)** Zed's terminal may claim `Ctrl+T` — the acceptance capture from his
+  terminal checks it.
 - **P4 — `c` finishes a merge begun in the shell** (reverses ruling F5; pulls TESTING.md:108 from M7). Merge only;
   shell-begun rebase and cherry-pick stay M7. Journaled as its own entry, exact inverse (choice 3).
 - **P5 — a stop with anything unmerged lands in the resolver** on the first conflicted file (§2.6a says the banner
@@ -388,3 +396,347 @@ Wizard-of-Oz (UX §4): canned 120x40 text frames, a script steps on his keys; on
 both sides numbered, no header number · 5 after `t` with advance (P2) and after `Ctrl+T` (P3) · 6 after `c`, cursor on
 the merge commit · 7 the preview footer with `m merge` (P1). Record first key per frame and every stall (UX 4.1);
 field notes the same day; findings → ADR.
+
+---
+
+## Amendment 2 — 2026-09-23 — the layout (ADR-0043), the finish summary, P1–P5 approved
+
+Read: `docs/research/conflict-layout-audit.md` (**LA**); prototype v2 frames `docs/shots/m6/prototype-journeys.txt`
+(`--layout jb` runs, :12–:2280; frames only); field notes 2026-09-23 (last two); 02-keymap §2.1, §2.2, §2.6, §2.6a,
+§2.10; ADR-0042, ADR-0043; graft, graft-ui, graft-ops, graft-git MAPs. No source. **P1–P5 approved** (above) and
+counted as in-spec below. ADR-0043 supersedes ADR-0042. New proposals are P6–P9.
+
+### Need
+- **Who / task:** unchanged. A merge or a pull stops with conflicts in **several files**; he gets each resolved and the
+  merge committed.
+- **His words, prototype v1:** *"confusing at which file I was talking with."* His ask: left, middle, right, *"the chosen
+  side lands in the middle"*, plus a file list to choose from (field notes, 2026-09-23).
+- **His words on finishing:** approved *"yes build it that way"*. `c` shows one screen of what will land: merging X → Y,
+  what he resolved (per file, which side), what git combined on its own (each can be opened), and an editable message.
+  `⏎` commits and `Esc` goes back. Why: *"the conflicts are only part of what lands on main; git-combined changes are
+  never seen otherwise."* **Not** a yes/no confirm, because `u` already undoes, and a bare confirm teaches pressing `⏎`
+  without reading.
+- **Why it hurt** (LA §C, frames :175, :257, :262): the current file was named in one header row that changed silently;
+  each side had 3–4 names; line numbers skipped the marker lines.
+
+### Prior art (LA · T take · R reject · I invent)
+| Aspect | Best answer | Ours before | Rec · why |
+|---|---|---|---|
+| File list | JetBrains Conflicts dialog, Accept Yours/Theirs per file (LA §0, §A); lazygit files panel | one header row | **T**: strip below 180 columns, column at 180 and wider (ADR-0043 §1). H1, H6 |
+| Three panes | JetBrains yours / result / theirs (LA §0); lazygit #2133 asks for it | card | **T at ≥180 columns** (LA §B: 46–52 chars a pane). **I**: rows line up by git's regions, with no diff (ADR-0043 §2) |
+| Names per side | JetBrains: one label per pane | 3–4 names per side | **T + I**: `role · name`, the same everywhere; no parentheses (§2.1) |
+| Line numbers | each pane numbers its own file (JetBrains) | skipped the markers | **T**: every pane is numbered with no gaps, by projection (ADR-0043 §5) |
+| Whole-file take | JetBrains Accept Theirs, 1 key a file; asked of Sublime (#316) | P3 `Ctrl+T ⏎`, 2 keys | **P6**: `O`/`T` take every open block and mark the file done, 1 key |
+| Moving between files | JetBrains dialog list; lazygit `j`/`k` | `n` crosses only at the last block | **P7**: `j`/`k` move between files |
+| Finish | lazygit "Continue the merge?" (CR:289) | `c` runs at once | **R** the bare confirm. **I** (his approval): the summary |
+| Merge message | not in CR | git's message, never shown | **I**: shown and editable in §2.10's own fields |
+
+### Journeys
+Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (changed on main, deleted on feature) and
+`notes.txt` (2 blocks). "In-spec" now includes P1–P5 and ADR-0043; `P6:` gives the count once P6 is approved.
+
+- **J1 merge until it stops.** Graph, cursor on `feature`: `m` [M: read the picture] · `m`. **2**. Lands in the resolver
+  (P5) on the list's first file, cursor on block 0, list `▸` on it, header `MERGING`, bottom row = the resolver's keys.
+- **J2 stop → first conflict.** **0**. JetBrains 0 + 1; lazygit 2.
+- **J3 begun in the shell → first conflict.** Lands on the banner (a launch is not a stop). `⏎`. **1**.
+- **J4 one file, one conflict.** `o` [M] · `⏎`. **2**; P6 `O` **1**. JetBrains 2. Lands on the next file not yet done
+  (list order, wrapping), with the list `▸` moved and the notice `notes.txt done ✓ · ▸ gone.txt`. If no file is left,
+  the resolver closes to the banner: `every file done ✓ · c finishes the merge` (P8: it stays in the resolver instead).
+- **J5 one file, 3 conflicts, theirs everywhere.** `Ctrl+T ⏎` **2** (the P2 route, `t t t ⏎`, is 4); P6 `T` **1**.
+  JetBrains Accept Theirs 1.
+- **J5b modify/delete, keep yours.** `o` on the whole-file card (a git write, marks it done). **1**. JetBrains 1.
+- **J8 two files in order.** gone `o` · notes `Ctrl+T ⏎`. **3**; P6 `O T` **2**. JetBrains 2.
+- **J9 two files, notes first.** Resolver on gone: `n` (the card crosses to the next file) · `Ctrl+T ⏎` (lands on
+  gone, the next file not done) · `o`. **4**; P6 `n T O` **3** (P7's `j T O` is also 3).
+- **J6 finish, merge begun in the app.** From `every file done`: `c` → summary, cursor on the first row git combined ·
+  `⏎` → commit. **2**. lazygit 1: the extra key is his choice. Lands: graph focused, cursor on the merge commit,
+  `merged feature into main ✓`.
+- **J6b finish, merge begun in the shell (P4).** `c ⏎`. **2**. Same landing, and one `FinishMerge` entry.
+- **J10 see a change git combined on its own.** In the summary: `space` expands that file's diff under its row. **1**.
+- **J7 back after `Esc`.** Resolver `Esc` → banner, `Esc` → graph with `⇥ banner` leading the bar: `⇥ ⏎`. **2**.
+- **Whole journeys.** A, one file, one conflict: `m m o ⏎ c ⏎` **6** (P6: 5). A, two files: `m m o ^T ⏎ c ⏎` **7**
+  (P6 `m m O T c ⏎`: **6**; v1 in-spec was 11). B, two files: `⏎ o ^T ⏎ c ⏎` **6** (P6: 5).
+
+**Where each event lands him (additions).**
+- A take → the cursor moves to the next open block (P2).
+- A file done (`⏎`, `O`/`T`, or `o`/`t` on a whole-file card) → the next file not done.
+- The last file done → the banner (P8: the resolver), with the notice `every file done ✓ · c finishes the merge`.
+- `c` while files are still open → refused with `1 file still conflicted · ⏎ marks done`.
+- `c` on a rebase, cherry-pick or revert → continues with no summary (merge only this milestone; gap row → M7), and the
+  next stop lands in the resolver.
+- In the summary:
+  - `Esc` → back to where `c` was pressed, with the draft message kept.
+  - `⏎` → `committing…`, then the graph with the cursor on the merge commit.
+  - A hook refuses → the summary stays, the reason goes above its bar, and the draft is kept.
+  - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`.
+
+```journey-counts
+# id                          keys  once-approved   # parts (whole rows) · best tool
+a-merge-to-stop               2
+a-stop-to-first-conflict      0                     # JetBrains 0
+b-launch-to-first-conflict    1
+one-file-one-conflict         2     P6:1            # JetBrains 2
+three-conflicts-all-theirs    2     P6:1            # JetBrains Accept Theirs 1
+modify-delete-keep-yours      1                     # JetBrains 1
+two-files-in-order            3     P6:2            # JetBrains 2
+two-files-out-of-order        4     P6:3
+a-finish                      2                     # lazygit 1 (bare confirm, rejected)
+b-finish                      2
+summary-open-git-combined     1
+back-after-esc                2
+a-whole-one-file              6     P6:5            # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish
+a-whole-two-files             7     P6:6            # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish
+b-whole-two-files             6     P6:5            # b-launch-to-first-conflict + two-files-in-order + b-finish
+```
+The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. When P6 is
+approved, the conductor moves the `P6:` numbers into `keys`.
+
+### Interfaces and data shapes (amendment 2)
+```rust
+// graft-git/src/conflict.rs                                            fix-resolver-line-numbers (revised; SideLines dropped, never built)
+pub enum Projection { Ours, Theirs, Result }
+impl ConflictFile { pub fn first_lines(&self, p: Projection) -> Vec<usize>; }
+// one entry per region, the 1-based first line of that region under `p`. Ours/Theirs: every block, open or taken, counts that
+// side's lines. Result: Plain its lines, Resolved its taken lines, Conflict its ours lines (drawn as an unnumbered placeholder).
+// An empty region gets the next line's number.
+
+// graft-ui/src/conflict_resolver.rs                                    fix-resolver-line-numbers
+pub struct SideNames { pub ours: SanitizedText, pub theirs: SanitizedText, pub ours_role: SanitizedText, pub theirs_role: SanitizedText } // "yours · main" / "yours"
+pub struct BlockNumbers { pub ours: usize, pub theirs: usize, pub result: usize }   // this block's first line in each projection
+pub struct DocView { …, pub names: SideNames }        // `explainer` removed
+pub struct BlockView { …, pub numbers: BlockNumbers }  // `ours_label`/`theirs_label` removed: `DocView::names` carries them
+// RegionView::Plain.first_line now = the Result projection's number
+
+// graft-ui/src/conflict_resolver/files.rs (new)                         fix-resolver-file-list
+pub struct FileRow { pub name: SanitizedText, pub state: FileState }
+pub enum FileState { Open { open: usize, of: usize }, AllTaken, Done, WholeFile { how: SanitizedText }, Binary, Unread }
+pub struct FileListView { pub rows: Vec<FileRow>, pub cursor: usize }
+pub enum Placement { Column { width: u16 }, Strip { rows: u16 } }
+pub fn placement(view: &FileListView, frame_columns: u16) -> Placement;          // Column iff arrangement(frame_columns) == ThreePane
+pub fn file_at(view: &FileListView, placement: Placement, width: u16, dx: u16, dy: u16) -> Option<usize>;  // offsets from the list's origin
+pub struct FileList<'a> { pub view: &'a FileListView, pub placement: Placement, pub theme: &'a Theme, pub ascii: bool }  // Widget
+pub struct DocView { …, pub files: FileListView }
+
+// graft-ui/src/conflict_resolver.rs                                    fix-resolver-three-panes
+pub const THREE_PANE_MIN: u16 = 180;
+pub enum Arrangement { ThreePane, Card }
+pub fn arrangement(frame_columns: u16) -> Arrangement;
+pub enum LineRef { Plain { region: usize, i: usize }, Ours { block: usize, i: usize }, Theirs { block: usize, i: usize }, Taken { block: usize, i: usize }, Base { block: usize, i: usize } }
+pub enum Cell { Line { line_no: Option<usize>, text: LineRef }, Pad, Placeholder, Rule }
+pub enum ScreenRow { /* existing */ PaneTitles, Aligned { block: Option<usize>, ours: Cell, result: Cell, theirs: Cell } }
+pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout;   // was (doc, columns); Card == today's rows
+
+// graft-ops/src/conflict.rs                                            fix-ops-conflict-set-and-summary
+pub struct ConflictSet { pub paths: Vec<PathBuf>, pub recorded: bool }   // unmerged in git's status order, then resolved ones in MERGE_MSG order; recorded = git's list was found
+pub enum ConflictSetError { Io(io::Error), Run(RunError) }
+pub fn operation_conflicts(repo: &RepoHandle, facts: &RepoFacts) -> Result<ConflictSet, ConflictSetError>;
+// graft-ops/src/finish.rs (new)
+pub struct FinishSummary { pub into: Vec<u8>, pub from: Vec<u8>, pub by_you: Vec<ByYou>, pub by_git: Vec<ByGit>, pub message: Vec<u8>, pub recorded: bool }
+pub struct ByYou { pub path: PathBuf, pub result: ResultIs }
+pub enum ResultIs { Yours, Theirs, Deleted, Combined }   // the staged blob vs HEAD:path and MERGE_HEAD:path
+pub struct ByGit { pub path: PathBuf, pub change: Change, pub added: usize, pub removed: usize }
+pub enum Change { Added, Modified, Deleted, Renamed { from: PathBuf }, TypeChanged }
+pub enum SummaryError { NotMerging, StillUnmerged { count: usize }, Facts(FactsError), Run(RunError), Io(io::Error) }
+pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError>;
+// graft-ops/src/apply/resume.rs
+pub enum Resume { Continue, ContinueWith { message: Vec<u8> }, Skip, Abort }   // ContinueWith: merge only → `git commit --cleanup=strip -F <scratch>/MSG`
+pub enum Refusal { …, MessageNotHere { kind: InProgress } }                       // ContinueWith on a rebase / pick / revert (M7)
+// fix-continue-a-merge-begun-in-the-shell: FinishMergeParams gains `pub message: Option<Vec<u8>>`
+
+// graft (app)                                                          fix-resolver-file-list, fix-finish-summary-screen
+pub struct ResolverState { …, pub files: Loading<Arc<ConflictSet>>, pub file_cursor: usize }
+pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k` if P7
+pub struct Choices { pub takes: Vec<Option<Take>>, pub whole: Option<Side>, pub edited: bool }
+pub struct AppState { …, pub choices: BTreeMap<PathBuf, Choices>, pub finish: Option<FinishState>, pub finish_draft: Option<(String, String)> }
+pub struct FinishState { pub summary: Loading<Arc<FinishSummary>>, pub job: Option<JobId>, pub cursor: usize, pub expanded: Option<(usize, Loading<Arc<DiffView>>)>,
+    pub subject: TextField, pub body: TextArea, pub focus: FinishFocus, pub return_to: ReturnTo, pub committing: Option<JobId> }
+pub enum FinishFocus { Files, Subject, Body }   pub enum ReturnTo { Banner, Resolver }
+pub fn open_finish(state: &mut AppState, commands: &mut Vec<Command>, from: ReturnTo, next_id: /* same */) -> bool;  // `c` on a merge, nothing unmerged
+pub fn finish_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress, next_id: /* same */) -> bool;    // modal; before resolver_key
+pub enum GraphOverlay { …, Finish }   pub enum Command { …, ReadConflictSet(JobId), ReadFinishSummary(JobId) }
+pub enum Product { …, ConflictSet(Result<Arc<ConflictSet>, String>), FinishSummary(Result<Arc<FinishSummary>, String>) }
+// graft-ui/src/finish_summary.rs (new)
+pub struct SummaryRow { pub path: SanitizedText, pub what: SanitizedText }
+pub struct FinishView<'a> { pub title: SanitizedText, pub by_you: Vec<SummaryRow>, pub by_git: Vec<SummaryRow>, pub recorded: bool, pub cursor: usize,
+    pub expanded: Option<(usize, Arc<DiffView>)>, pub subject: FieldView<'a>, pub body: AreaView<'a>, pub focus: SummaryFocus, pub notice: Option<(SanitizedText, bool)>, pub busy: bool }
+pub enum SummaryFocus { Files, Subject, Body }
+pub struct FinishScreen<'a> { pub view: &'a FinishView<'a>, pub theme: &'a Theme, pub ascii: bool }   // Widget
+pub const FINISH_MIN: (u16, u16) = (60, 14);   pub const TWO_COLUMN_MIN: u16 = 160;
+pub enum HintContext { …, Finish { focus: SummaryFocus, expandable: bool } }
+```
+
+### Hard-to-reverse choices (amendment 2)
+1. **What the yours and theirs panes show.** Options: projections of the conflicted file, or git's stage files with a
+   three-way alignment. **Projections** (ADR-0043 Consequences). Cost: a change git merged in from the other side shows
+   in both side panes. The summary's *combined by git* section names those changes.
+2. **Where the operation's set of conflicted files comes from.** Options: this run's memory, or git. **Git**: the
+   unmerged paths, plus `MERGE_MSG`'s `Conflicts:` list, plus the live entry's backup chain. With git, a relaunch and a
+   merge begun in the shell list the same files. This run's memory adds only the per-block choices (`Choices`). Cost: we
+   parse a comment block git writes. The builder verifies it per operation kind in a throwaway repo. When it is absent,
+   `recorded: false`, and the screen says so instead of guessing.
+3. **How an edited message reaches git.** Options: rewrite `MERGE_MSG` and run `--continue`, or
+   `git commit --cleanup=strip -F`. **`commit -F`**: git's own state files are written only by git, and P4's inverse
+   restores `MERGE_MSG` exactly as git left it. An unedited message uses today's `--continue`, byte for byte.
+
+### Keymap rows owed for P1–P5 (the conductor writes them into `02-keymap.md`)
+- **Ghost Preview** (a new row under §2.3 or its own section): `m` / `r`, when the preview was opened by that key and
+  its plan has landed, is Confirm. The cursor still rests on Cancel, and `.`-opened previews are unchanged.
+- **§2.6**: `n` / `N` become "next / previous block, taken ones included; past the end, the first open block; at the
+  last block, cross to the next file". A new line: `o`/`t`/`b` move the cursor to the next open block.
+- **§2.6**: new row `Ctrl+O` / `Ctrl+T`: yours / theirs in every open block of this file (no staging).
+- **§2.6a**: `c` also finishes a merge begun in the shell. For a merge, `c` opens the finish summary (§2.6b).
+- **§2.6a**: replace "It takes focus the moment an operation stops" with "A stop with anything unmerged opens the
+  resolver on the first conflicted file, and `Esc` there lands on the banner. A stop with nothing unmerged focuses the
+  banner."
+
+### Where I'd differ (Proposed, not decided; gated specs wait for them)
+- **P6 — `O` / `T` in the resolver: yours / theirs in every open block of the current file, then mark it done and move
+  to the next file**, in one key. On a whole-file card they are the same as `o`/`t`. This conflicts with §2.1:
+  UPPERCASE is reserved for places, modes and the two direction pairs, and bulk actions use a modifier. It needs a named
+  exception, like the banner's `B`/`X`. Why: the list puts the file on screen, so acting on it is 1 key (JetBrains Accept
+  Theirs); the prototype walked it. Trade-off: a slipped `Shift` resolves a whole file. It can be recovered with `d`
+  (start the file over, which reads the stages back from the backup chain).
+- **P7 — `j`/`k` (and `↑`/`↓`) move between files in the resolver.** The document scrolls with `n`/`N`, `PgUp`/`PgDn`,
+  `g`/`G` and the wheel. Why: the list is the resolver's selection, so §2.2's "move selection" applies. Trade-off: no
+  line-by-line scrolling key, though the cursor block always scrolls itself into view.
+- **P8 — `c` in the resolver finishes**: it opens the summary for a merge and continues for anything else. Refused while
+  files are open. The resolver stays open after the last file is done (the prototype's frame 4). Why: the list shows
+  that every file is done, and the finish key belongs where the eye already is. Same key count either way.
+- **P9 — §2.6b "Finish summary"** rows: `⏎` commit and `Esc` back (his approval); `space` shows or hides the file's
+  diff, and `j`/`k` move (§2.2); `⇥` moves focus files → subject → body; `Ctrl+Enter` commits and `Ctrl+E` opens
+  `$EDITOR` (§2.10). This reuses existing meanings, so it is a doc edit.
+- ADR-0043 is accepted, so rewriting `docs/design/01` §1.5 is a consequence of it, not a proposal.
+
+### New UI (amendment 2) — resolver layout and finish summary
+Mockups are hand-drawn and not to scale; the widths are stated in the text. The keys shown assume P6–P8 are approved.
+Without them, `O/T`, `j/k` and `c finish` are left off the bar. The header keeps `MERGING` / `REBASING step n of m`.
+
+**≥180 columns (200x50): list column + three panes.** The list column is `clamp(longest row, 22, 32)` wide, and each pane
+is a third of the rest.
+```
+ graft ~/code/api                                                                                       MERGING
+ FILES · 2 conflicted        │ ▸ notes.txt · 2 conflicts · 1 open
+                             │   yours · main                 │   result                      │   theirs · feature
+   gone.txt    done ✓        │    1 one                       │    1 one                      │    1 one
+ ▸ notes.txt   1 of 2 open   │  ── not taken                  │ ── 1 of 2 · took theirs       │ ── taken ✓
+                             │    2 two from main             │    2 TWO from feature         │    2 TWO from feature
+                             │    3 three                     │    3 three                    │    3 three
+                             │▏ ── o take                     │ ── 2 of 2 · open              │ ── t take
+                             │▏   4 five from main            │      ? open · o t b           │    4 FIVE from feature
+                             │    5 six                       │    5 six                      │    5 six
+ o yours  t theirs  b both  ^O/^T all  O/T file  ⏎ done  j/k file  n next  B base  e edit  c finish  esc banner
+```
+- The eye goes first to the cursor block's rule row across all three panes (`▏` on its rows), then to the result
+  pane's `? open` placeholder, then to the list's `▸`. The block rule reads `o take` / `t take` on the sides while
+  open, and `taken ✓` / `not taken` once taken.
+- `B` puts the block's BASE lines in the result placeholder, unnumbered, headed `base`. Text too long for a pane is cut
+  with `…` (no horizontal scroll this milestone; gap row → M7).
+- Mouse: a click on a list row selects that file; a click on any pane's block row makes it the cursor block; the wheel
+  scrolls all three panes together.
+
+**Below 180 columns (120x40, 160x48): list strip + card.** The strip is one row when every entry fits. Otherwise it is
+a grid of `name  state` cells, filled row by row, up to 3 rows, keeping the cursor's row visible, with `… N more` last.
+```
+ graft ~/code/api                                                              MERGING
+ files   gone.txt · done ✓    ▸ notes.txt · 1 of 2 open
+ ────────────────────────────────────────────────────────────────────────────────────
+ ▸ notes.txt · 2 conflicts · 1 open
+     1 one
+   ── conflict 1 of 2 · took theirs · feature ─────────────────────────────────
+     2 TWO from feature
+     3 three
+▏  ── conflict 2 of 2 · open ── o yours  t theirs  b both ─────────────────────
+▏       yours · main                     │       theirs · feature
+▏     4 five from main                   │     4 FIVE from feature
+▏  ──────────────────────────────────────┴──────────────────────────────────────
+     5 six
+ o yours  t theirs  b both  ^T all theirs  O/T file  ⏎ done  j/k file  n next  e edit  esc banner
+many files:  files · 7 · 2 done   ▸ src/auth/token.rs 2 of 3 open   src/api/routes.rs done ✓   Cargo.lock ⏎ marks done
+                                    docs/gone.md keep or delete      src/lib.rs 1 of 1 open     … 2 more · j/k
+```
+- At 160 the layout is the same as at 120, with wider halves and more of the bar at full rungs. At 80x24 the sides
+  stack (below 100). The strip compacts a state to `1/2 open` / `✓` before it becomes a grid.
+- The eye goes first to the file identity row (`▸ notes.txt · …`), which repeats the strip's `▸`, then to the cursor
+  card.
+- Empty and error states are unchanged from the ADR-0042 section above. A file the resolver has not read yet shows
+  `Unread` as `…`. If the set could not be read, the strip reads `files: git's list unavailable · the unmerged ones below`.
+
+**Finish summary** (full frame under the header, like the resolver; modal).
+```
+120x40                                                                  160x48 and 200x50: two columns
+ graft ~/code/api                                           MERGING      files on the left (60 %), MESSAGE on the right:
+ Finish · merging feature → main · nothing is written until ⏎            subject field + body area (§2.10's look)
+ RESOLVED BY YOU · 2
+   gone.txt      kept · yours · main
+   notes.txt     theirs · feature in 2 of 2 conflicts
+ COMBINED BY GIT ON ITS OWN · 3 · space shows the change
+ ▸ src/lib.rs    modified  +12 −3
+     │ @@ -10,6 +10,9 @@ …            (expanded by space: at most 12 rows, then `… 9 more lines · space hides`)
+   README.md     modified  +1 −1
+   src/new.rs    added     +40
+ MESSAGE · ⇥ edit
+   Merge branch 'feature' into main
+ ⏎ commit  space diff  j/k move  ⇥ message  esc back
+```
+- The eye goes first to the title's `merging feature → main`, then to the cursor, which opens on the **first row git
+  combined** (the part he has never seen), then to `⏎ commit`.
+- How each row under *resolved by you* is worded. This run's `Choices` come first:
+  - `theirs · feature in 2 of 2 conflicts`, or `yours · main in 1, theirs · feature in 1`;
+  - `kept · yours · main` or `deleted · as theirs · feature`;
+  - `edited in your editor`.
+
+  Without `Choices`, the row falls back to `ResultIs`: `same as yours · main`, `same as theirs · feature`, `deleted`,
+  or `combined`.
+- Focus and keys:
+  - `⇥` moves focus files → subject → body → files.
+  - In the subject, `⏎` commits. In the body, `⏎` is a newline and `Ctrl+Enter` commits.
+  - `Esc` goes back from any focus, keeping the draft in `finish_draft`.
+  - A click on a row moves the cursor there and toggles its diff.
+- States:
+  - Loading: `reading what this merge changes…`, and `⏎` answers `still reading · wait`.
+  - Git combined nothing: `COMBINED BY GIT ON ITS OWN · none`.
+  - `recorded: false`: one section, `CHANGED BY THIS MERGE · n · which were conflicts is not recorded`.
+  - Read failed: `summary unavailable: <why> · ⏎ commits with git's message`.
+  - Empty subject: `⏎` answers `the message is empty · ⇥ to write one`.
+  - Committing: the bar reads `committing…` and every key but `Ctrl+C` is swallowed.
+  - A hook refuses: the reason appears above the bar.
+  - Frame smaller than 60x14: `finish needs 60x14 · esc back`, and `⏎` does nothing.
+- Colour and reverse video are **unverified** in captures (rule 5). The text tells are `▸` and the bar.
+
+### Genuinely risky tickets (amendment 2)
+- **fix-continue-a-merge-begun-in-the-shell (P4, approved)**: **Fable**, for the three reasons above. It is now also
+  reached through the summary (`message`).
+- **fix-resolver-three-panes**: Opus. The layout is a pure function checked against golden files, and the projection
+  rule is decided here, not by the builder.
+- **fix-ops-conflict-set-and-summary**: Opus. Whether git writes `Conflicts:` for each kind has to be checked in
+  throwaway repos, and the diff alone cannot show it, but every decision is made here, so it does not pass Fable test 3.
+- Fable builds this milestone: G1 (built) and P4, plus acceptance. The design is not underspecified.
+
+### Specs (`.scratch/m6-conflicts/issues/`) — what supersedes what
+- **Revised in place:**
+  - `fix-resolver-line-numbers`: now one name per side plus projection numbers; `SideLines` is dropped.
+  - `fix-take-every-open-block`: P3, un-gated.
+  - `fix-take-advances-to-next-block`: P2, un-gated.
+  - `fix-stop-opens-the-resolver`: P5, un-gated.
+  - `fix-preview-verb-confirms`: P1, un-gated.
+  - `fix-landing-after-a-stop`: item 5 is now rebase-only; a merge's `c` goes to the summary.
+  - `fix-continue-a-merge-begun-in-the-shell`: un-gated, now takes a `message`.
+  - `fix-acceptance-conflict-journeys`: rewritten.
+- **New:**
+  - `fix-ops-conflict-set-and-summary`: interface first.
+  - `fix-resolver-file-list`.
+  - `fix-resolver-three-panes`.
+  - `fix-finish-summary-screen`: its Part B is gated on P8.
+  - `fix-resolver-file-keys`: gated on P6 and P7.
+- **Order.** Every one of these touches `graft`, so they run one after another in `graft`:
+  1. `fix-ops-conflict-set-and-summary`
+  2. `fix-resolver-line-numbers`
+  3. `fix-resolver-file-list`
+  4. `fix-resolver-three-panes`
+  5. `fix-finish-summary-screen`
+  6. P1, P2, P3 and P5, in any order
+  7. P4, after step 1
+  8. `fix-resolver-file-keys`, after the file list and P3
+  9. acceptance, last
+
+  The pure `graft-ui` and `graft-git` halves of steps 2–4 can be built ahead in a worktree limited to those crates.

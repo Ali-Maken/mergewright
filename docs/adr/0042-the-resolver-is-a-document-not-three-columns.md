@@ -1,7 +1,7 @@
 # ADR-0042 — The conflict resolver is a document, not three columns
 
 Date: 2026-09-22
-Status: accepted (conductor, on the M6 design pass; design functionality is
+Status: superseded by ADR-0043 (2026-09-23). Was: accepted (conductor, on the M6 design pass; design functionality is
 delegated to `planner-fable` by the user's standing instruction of 2026-09-22)
 
 ## Context
