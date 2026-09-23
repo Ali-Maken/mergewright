@@ -213,12 +213,12 @@ fn merge_msg_mtime(repo: &TempRepo) -> std::time::SystemTime {
         .expect("MERGE_MSG's mtime")
 }
 
-/// `git stripspace --strip-comments`: what `--cleanup=strip` makes of a
-/// message, from git itself.
+/// `git stripspace`: what `--cleanup=whitespace` makes of a message, from
+/// git itself. Comment lines are kept.
 fn stripspace(message: &[u8]) -> String {
     use std::io::Write;
     let mut child = std::process::Command::new("git")
-        .args(["stripspace", "--strip-comments"])
+        .arg("stripspace")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -231,6 +231,24 @@ fn stripspace(message: &[u8]) -> String {
         .expect("written");
     let output = child.wait_with_output().expect("stripspace ends");
     String::from_utf8(output.stdout).expect("utf-8")
+}
+
+/// `HEAD`'s message, byte for byte: `git cat-file commit`, everything after
+/// the header's blank line. `%B` would add a newline of its own.
+fn head_message(repo: &TempRepo) -> Vec<u8> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(["cat-file", "commit", "HEAD"])
+        .output()
+        .expect("cat-file runs");
+    assert!(output.status.success(), "cat-file commit HEAD");
+    let raw = output.stdout;
+    let body = raw
+        .windows(2)
+        .position(|pair| pair == b"\n\n")
+        .expect("a header ends in a blank line");
+    raw[body + 2..].to_vec()
 }
 
 #[test]
@@ -276,17 +294,15 @@ fn an_edited_message_is_the_commit_message() {
     )
     .unwrap_or_else(|why| panic!("{}", why.explain()));
     assert_eq!(applied.entry.status, EntryStatus::Committed);
-    assert!(
-        applied
-            .entry
-            .commands
-            .last()
-            .is_some_and(|line| line.starts_with("git commit --cleanup=strip -F")),
-        "{:?}",
-        applied.entry.commands
+    assert_eq!(
+        applied.entry.commands.last().map(String::as_str),
+        Some("git commit --cleanup=whitespace -F -")
     );
+    // `# a comment line` is kept: git's own comments were removed when the
+    // summary read MERGE_MSG, so any left are the user's (m6-conflicts/22).
     let body = repo.git(&["log", "-1", "--format=%B"]);
     assert_eq!(format!("{body}\n"), stripspace(&message));
+    assert!(body.lines().any(|line| line == "# a comment line"));
     assert_eq!(
         repo.git(&["rev-parse", "HEAD^2"]),
         id(&repo, "feature").to_string()
@@ -355,4 +371,69 @@ fn a_message_on_a_rebase_is_refused_before_anything_runs() {
         "no backup was chained"
     );
     assert!(repo.exists(".git/rebase-merge"), "still rebasing");
+}
+
+#[test]
+fn a_hash_line_the_user_typed_survives() {
+    let repo = graft_merge_resolved();
+    let message = b"Merge feature\n\n#123 fixes login\n".to_vec();
+    let applied = run_resume(&repo, Resume::ContinueWith { message }, NOW + 3)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    let body = repo.git(&["log", "-1", "--format=%B"]);
+    assert!(
+        body.lines().any(|line| line == "#123 fixes login"),
+        "{body:?}"
+    );
+}
+
+/// Graft's merge with `core.commentChar` as given (`None` unset), stopped,
+/// both files marked done: `MERGE_MSG` still carries git's comment block.
+fn resolved_with_comment_char(comment: Option<&str>) -> TempRepo {
+    let repo = two_file_conflict();
+    if let Some(comment) = comment {
+        repo.git(&["config", "core.commentChar", comment]);
+    }
+    graft_merge_stops(&repo);
+    repo.write("a.txt", b"1\nboth\n3\n");
+    graft_stage(&repo, "a.txt", NOW + 1);
+    repo.write("b.txt", b"both\n");
+    graft_stage(&repo, "b.txt", NOW + 2);
+    repo
+}
+
+#[test]
+fn gits_comment_lines_never_reach_the_summary() {
+    for (comment, prefix) in [(None, "#"), (Some(";"), ";")] {
+        let repo = resolved_with_comment_char(comment);
+        let merge_msg = String::from_utf8(repo.read(".git/MERGE_MSG")).expect("utf-8");
+        assert!(
+            merge_msg.contains(&format!("{prefix} Conflicts:")),
+            "git wrote its block under {prefix:?}: {merge_msg:?}"
+        );
+        let summary = finish_summary(&repo.open()).unwrap_or_else(|why| panic!("{why}"));
+        let message = String::from_utf8(summary.message).expect("utf-8");
+        assert!(!message.is_empty(), "the subject is kept");
+        assert!(
+            !message.lines().any(|line| line.starts_with(prefix)),
+            "{prefix:?}: {message:?}"
+        );
+    }
+}
+
+#[test]
+fn an_unedited_message_lands_as_shown() {
+    let repo = graft_merge_resolved();
+    let shown = finish_summary(&repo.open())
+        .unwrap_or_else(|why| panic!("{why}"))
+        .message;
+    let applied = run_resume(&repo, Resume::Continue, NOW + 3)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    // Byte for byte: git ends a message with exactly one newline, and the
+    // summary's message already does, so no normalisation is needed.
+    assert_eq!(
+        String::from_utf8_lossy(&head_message(&repo)),
+        String::from_utf8_lossy(&shown)
+    );
 }

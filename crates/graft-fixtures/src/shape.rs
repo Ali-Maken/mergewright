@@ -85,6 +85,13 @@ pub enum Shape {
     /// `main` instead, so `MERGE_HEAD` is present and both `in_progress`
     /// kinds have a corpus.
     StoppedMerge,
+    /// A rebase of two commits that stops on a different file at each step:
+    /// step 1 on `a.txt`, step 2 on `b.txt`. Left stopped at step 1, with
+    /// `.git/rebase-merge/` present and `HEAD` detached at `main`
+    /// (m6-conflicts/22). What a multi-step conflict set is judged on: the
+    /// set at step 2 names `b.txt` alone. In `STEPPED`, not `STOPPED`: see
+    /// there.
+    TwoStopRebase,
 }
 
 impl Shape {
@@ -121,6 +128,11 @@ impl Shape {
     /// when those decisions are made.
     pub const STOPPED: &'static [Shape] = &[Shape::StoppedRebase, Shape::StoppedMerge];
 
+    /// Stopped shapes with a history of more than one step (m6-conflicts/22),
+    /// listed apart from `STOPPED` because every consumer of `STOPPED`
+    /// expects its thirteen unmerged paths — the marker files included.
+    pub const STEPPED: &'static [Shape] = &[Shape::TwoStopRebase];
+
     /// The shape's directory name inside the corpus, and the name tests and
     /// reports call it by.
     pub fn name(self) -> &'static str {
@@ -148,6 +160,7 @@ impl Shape {
             Shape::NonUtf8RefName => "non-utf8-ref-name",
             Shape::StoppedRebase => "stopped-rebase",
             Shape::StoppedMerge => "stopped-merge",
+            Shape::TwoStopRebase => "two-stop-rebase",
         }
     }
 
@@ -156,9 +169,14 @@ impl Shape {
         Shape::every().find(|shape| shape.name() == name)
     }
 
-    /// Every shape the corpus builds: [`Shape::ALL`] then [`Shape::STOPPED`].
+    /// Every shape the corpus builds: [`Shape::ALL`], [`Shape::STOPPED`],
+    /// then [`Shape::STEPPED`].
     pub fn every() -> impl Iterator<Item = Shape> {
-        Shape::ALL.iter().chain(Shape::STOPPED).copied()
+        Shape::ALL
+            .iter()
+            .chain(Shape::STOPPED)
+            .chain(Shape::STEPPED)
+            .copied()
     }
 }
 

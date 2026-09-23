@@ -191,5 +191,6 @@ pub fn build(shape: Shape, dir: &Path, streams: &Path) -> Result<(), BuildError>
         Shape::NonUtf8RefName => refs::non_utf8_ref_name(&site),
         Shape::StoppedRebase => conflicts::stopped_rebase(&site),
         Shape::StoppedMerge => conflicts::stopped_merge(&site),
+        Shape::TwoStopRebase => conflicts::two_stop_rebase(&site),
     }
 }

@@ -8,6 +8,7 @@
 use std::path::PathBuf;
 
 use graft_core::oid::Oid;
+use graft_fixtures::Shape;
 use graft_ops::apply::{Applied, ApplyError, Resume, resume};
 use graft_ops::conflict::{ConflictSet, operation_conflicts};
 use graft_ops::facts::read_facts;
@@ -54,6 +55,26 @@ pub fn downstream_of(upstream: &TempRepo, both: bool) -> TempRepo {
         repo.write("b.txt", b"D\n");
     }
     repo.commit_all("downstream");
+    repo
+}
+
+/// `Shape::TwoStopRebase`'s history, **not** stopped: its `main` and
+/// `feature` fetched into a fresh repository, so the rebase that stops on
+/// it is Graft's own (with an entry and a backup chain), not the shell's the
+/// corpus left behind. `main` is checked out.
+pub fn two_stop_history() -> TempRepo {
+    let shape = graft_fixtures::borrow(Shape::TwoStopRebase);
+    let repo = TempRepo::init();
+    let from = shape.to_str().expect("utf-8 corpus path");
+    repo.git(&[
+        "fetch",
+        "-q",
+        "--update-head-ok",
+        from,
+        "refs/heads/main:refs/heads/main",
+        "refs/heads/feature:refs/heads/feature",
+    ]);
+    repo.git(&["reset", "-q", "--hard", "main"]);
     repo
 }
 

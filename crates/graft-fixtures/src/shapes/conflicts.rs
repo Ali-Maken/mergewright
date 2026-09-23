@@ -72,6 +72,43 @@ fn stopped(site: &Site<'_>, how: Stop) -> Result<(), BuildError> {
     .map(|_| ())
 }
 
+/// `TwoStopRebase` (m6-conflicts/22): `feature` changes `a.txt`, then
+/// `b.txt`, one commit each; `main` changes both its own way. `git rebase
+/// main` on `feature` stops at step 1 on `a.txt` alone, and — once that is
+/// resolved and continued — at step 2 on `b.txt` alone. Left at step 1.
+pub(super) fn two_stop_rebase(site: &Site<'_>) -> Result<(), BuildError> {
+    const FEATURE: &[u8] = b"refs/heads/feature";
+    let mut stream = Stream::new();
+    let root = stream.commit(
+        MAIN,
+        b"Add a and b\n",
+        &[],
+        &[file(b"a.txt", b"1\n2\n3\n"), file(b"b.txt", b"x\n")],
+    );
+    let step1 = stream.commit(
+        FEATURE,
+        b"Change a on feature\n",
+        &[root],
+        &[file(b"a.txt", b"1\nF\n3\n")],
+    );
+    stream.commit(
+        FEATURE,
+        b"Change b on feature\n",
+        &[step1],
+        &[file(b"b.txt", b"F\n")],
+    );
+    stream.commit(
+        MAIN,
+        b"Change a and b on main\n",
+        &[root],
+        &[file(b"a.txt", b"1\nM\n3\n"), file(b"b.txt", b"M\n")],
+    );
+    site.import(stream)?;
+    site.checkout_main()?;
+    site.git(&["checkout", "-q", "feature"])?;
+    stop_on_conflict(site, &["rebase", "main"])
+}
+
 /// The files as both sides start from, on `main`.
 fn root_commit(site: &Site<'_>) -> Result<(), BuildError> {
     let mut stream = Stream::new();
@@ -259,8 +296,43 @@ mod tests {
     }
 
     #[test]
+    fn two_stop_rebase_stops_at_step_one_on_a_alone() {
+        let root = tempfile::tempdir().expect("a scratch directory");
+        let streams = root.path().join("streams");
+        std::fs::create_dir(&streams).expect("the streams directory");
+        let dir = root.path().join(Shape::TwoStopRebase.name());
+        crate::shapes::build(Shape::TwoStopRebase, &dir, &streams)
+            .unwrap_or_else(|why| panic!("{why}"));
+        let merge = dir.join(".git").join("rebase-merge");
+        assert!(merge.exists(), "left mid-rebase");
+        let read = |name: &str| {
+            std::fs::read_to_string(merge.join(name)).unwrap_or_else(|why| panic!("{name}: {why}"))
+        };
+        assert_eq!(read("msgnum").trim(), "1", "at step 1");
+        assert_eq!(read("end").trim(), "2", "of two");
+        assert_eq!(
+            unmerged(&dir),
+            [("UU".to_owned(), "a.txt".to_owned())],
+            "step 1 stops on a.txt alone"
+        );
+        // Step 2's stop, reached the way a user reaches it.
+        std::fs::write(dir.join("a.txt"), b"1\nboth\n3\n").expect("a.txt resolved");
+        git::run(&dir, &["add", "a.txt"]).unwrap_or_else(|why| panic!("{why}"));
+        assert!(
+            git::run(&dir, &["-c", "core.editor=true", "rebase", "--continue"]).is_err(),
+            "step 2 stops too"
+        );
+        assert_eq!(read("msgnum").trim(), "2", "at step 2");
+        assert_eq!(
+            unmerged(&dir),
+            [("UU".to_owned(), "b.txt".to_owned())],
+            "step 2 stops on b.txt alone"
+        );
+    }
+
+    #[test]
     fn every_stopped_shape_has_a_name_and_is_found_by_it() {
-        for shape in Shape::STOPPED {
+        for shape in Shape::STOPPED.iter().chain(Shape::STEPPED) {
             assert_eq!(Shape::from_name(shape.name()), Some(*shape));
             assert!(
                 !Shape::ALL.contains(shape),

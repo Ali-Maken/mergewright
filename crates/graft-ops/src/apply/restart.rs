@@ -105,7 +105,11 @@ fn chain_states(ctx: &Context<'_>, live: InProgress) -> Result<Vec<IndexState>, 
     let Some(name) = span.and_then(|entry| entry.backup_ref.as_deref()) else {
         return Ok(Vec::new());
     };
-    snapshot::backup_chain(ctx.repo, name, ctx.stop).map_err(as_facts)
+    // Every link, whatever its kind: bounding this walk to the current step
+    // is a separate question (m6-conflicts/22 NOTES).
+    snapshot::backup_chain(ctx.repo, name, ctx.stop)
+        .map(|chain| chain.into_iter().map(|(state, _)| state).collect())
+        .map_err(as_facts)
 }
 
 /// The in-force entries' recorded index states, newest entry first and
