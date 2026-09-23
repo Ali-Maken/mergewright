@@ -529,8 +529,9 @@ pub(super) struct UndoAfterPush {
     /// `origin/main`, read from the push entry itself so the box names the
     /// side that push actually moved.
     pub remote_side: String,
-    /// The re-push: the old tip, under a lease against the tracking tip the
-    /// user last fetched. **Always leased** — `PushParams` has no bare
+    /// The re-push: the old tip, under a lease against the tip the push
+    /// itself left on the remote, read from its journal entry (gap row
+    /// 557). **Always leased** — `PushParams` has no bare
     /// force to reach for, and `graft_ops` refuses a source commit without
     /// one (`Refusal::RepushNeedsLease`).
     ///
@@ -614,7 +615,7 @@ pub(super) fn undo_after_push(state: &AppState) -> Option<UndoAfterPush> {
         push: push.id.clone(),
         description: elided(&target.description, QUOTED_DESCRIPTION),
         remote_side: pushed_to(push),
-        repush: repush_for(state, target, branch),
+        repush: repush_for(state, target, push, branch),
     })
 }
 
@@ -625,9 +626,21 @@ pub(super) fn undo_after_push(state: &AppState) -> Option<UndoAfterPush> {
 /// remote that could not be read, a read still in flight (which is not a
 /// failure and is not worded as one), a branch other than the one `HEAD`
 /// is on — whose upstream is not the upstream we hold — an upstream that
-/// does not exist, a tracking ref never fetched, or a branch that did not
-/// exist before the entry, where "the old tip" would be a branch deletion.
-fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<PushParams, String> {
+/// does not exist, a push entry that did not record the tip it left, or a
+/// branch that did not exist before the entry, where "the old tip" would be
+/// a branch deletion.
+///
+/// The lease is the push's own answer ([`repush_lease`]), never the
+/// tracking tip `state.remotes` last read (gap row 557): the two differ
+/// whenever the remote re-read has not landed yet, or has landed *after*
+/// someone else pushed — and in the second case a lease from the read
+/// would match the remote and throw their commit away.
+fn repush_for(
+    state: &AppState,
+    target: &JournalEntry,
+    push: &JournalEntry,
+    branch: &str,
+) -> Result<PushParams, String> {
     let short = short_branch(branch);
     let facts = facts(state).map_err(|why| format!("no re-push \u{2014} {why}"))?;
     if facts.head_branch.as_deref() != Some(branch) {
@@ -637,12 +650,8 @@ fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<P
         .head_upstream
         .as_ref()
         .ok_or_else(|| format!("no re-push \u{2014} {short} has no upstream"))?;
-    let expected = upstream.tracking_tip.ok_or_else(|| {
-        format!(
-            "no re-push \u{2014} {} has not been fetched",
-            upstream.remote
-        )
-    })?;
+    let expected = repush_lease(push, &upstream.tracking_ref)
+        .ok_or_else(|| "re-push unavailable: entry has no remote tip".to_owned())?;
     // `refs_before` is `Option<Oid>` per ref: a branch that did not exist
     // before the entry has no old tip to send, and pushing "nothing" is a
     // branch deletion, not a re-push.
@@ -660,6 +669,16 @@ fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<P
         lease: Some(Lease { expected }),
         source_commit: Some(old_tip),
     })
+}
+
+/// The tip a push left on the remote, from its journal entry:
+/// `refs_after[tracking]`, which `graft_ops` reads right after `git push`
+/// has moved the tracking ref. `None` when the entry does not carry it (an
+/// entry whose after-state could not be read), and the box then offers no
+/// re-push rather than guess.
+#[must_use]
+pub fn repush_lease(push: &JournalEntry, tracking: &str) -> Option<Oid> {
+    push.refs_after.get(tracking).copied().flatten()
 }
 
 /// `text`, or its first `limit` characters and an ellipsis.

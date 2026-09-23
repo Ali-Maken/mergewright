@@ -455,6 +455,97 @@ fn u_after_push_repush_old_tip_moves_the_bare_back() {
     app.close();
 }
 
+/// **Gap row 557 (m6-conflicts/06).** The re-push's lease comes from the
+/// push's own journal record — the tip that push left on the remote — never
+/// from whatever `state.remotes` read last.
+///
+/// A teammate pushes after ours and the tracking ref is fetched, so
+/// `state.remotes` now holds *their* tip. A lease taken from it would match
+/// the remote and the re-push would silently throw their commit away. Taken
+/// from the entry, it names the tip we pushed, the remote is no longer
+/// there, and git refuses in words. The bare keeps their commit.
+#[test]
+fn repush_lease_comes_from_the_entry() {
+    let remote = local();
+    let work = remote.work();
+    let main = main_ref(&remote);
+    stage(work);
+
+    let (app, state) = App::open(work);
+    let state = pushed_one_commit(&app, state);
+    let ours = rev(work, &main);
+    let push = journal(work)
+        .into_iter()
+        .rfind(|entry| entry.kind == OperationKind::Push)
+        .expect("the push is journaled");
+    let recorded = push
+        .refs_after
+        .get(&tracking(&remote))
+        .copied()
+        .flatten()
+        .expect("the push entry records the tracking tip it left");
+    assert_eq!(recorded.to_string(), ours, "the entry names our pushed tip");
+
+    // The remote moves, and this clone learns it: `state.remotes` now
+    // holds their tip, which is what the old lease was built from.
+    let theirs = remote
+        .commit_on_remote("theirs")
+        .expect("a teammate's push");
+    run(&remote, work, &["fetch", "-q", "origin"]);
+    let state = app.press(&state, KeyPress::control(KeyCode::Char('r')));
+    let state = app.pump(state, "the re-read tracking tip", |state| {
+        matches!(&state.remotes, Loading::Ready(facts)
+            if facts.head_upstream.as_ref().and_then(|up| up.tracking_tip)
+                .is_some_and(|tip| tip.to_string() == theirs))
+            && state.remote.reading.is_none()
+            && matches!(state.journal.entries, Loading::Ready(_))
+            && state.journal.reading.is_none()
+    });
+
+    // `u`, `→ →` onto `[ Re-push old tip ]`, `Enter`: the lease box.
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    let pending = state
+        .confirm
+        .as_ref()
+        .unwrap_or_else(|| panic!("no lease box; status {:?}", state.status));
+    let graft::update::confirm::ConfirmThen::Operate(graft_ops::operation::Operation::Push(params)) =
+        &pending.then
+    else {
+        panic!("the lease box runs a push: {:?}", pending.then);
+    };
+    let expected = params.lease.as_ref().map(|lease| lease.expected);
+    assert_eq!(
+        expected,
+        Some(recorded),
+        "the lease names the entry's tip, not the fetched {theirs}"
+    );
+
+    let state = confirm(&app, &state);
+    let state = finish(&app, state, "the re-push");
+    let Status::Sticky { reason, .. } = &state.status else {
+        panic!("a refused lease is a sticky failure: {:?}", state.status);
+    };
+    // `graft_ops` checks the lease against the fetched tracking ref before
+    // git is asked, and says so; here "fetched since" is the true reason.
+    assert!(
+        reason.starts_with(&format!(
+            "force-push refused: origin/{} is not where the box said",
+            remote.default_branch()
+        )),
+        "{reason}"
+    );
+    drop(state);
+    assert_eq!(
+        rev(remote.bare(), &main),
+        theirs,
+        "the bare keeps their commit"
+    );
+    app.close();
+}
+
 /// A commit made by `c` and sent by `P`, with the journal and the refreshed
 /// tracking tip landed: the state `u` finds after a push.
 fn pushed_one_commit(app: &App, state: AppState) -> AppState {

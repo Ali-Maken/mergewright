@@ -797,8 +797,8 @@ fn u_after_push_asks_before_it_runs() {
     assert_eq!(view.selected(), 0, "the safe choice first (ADR-0038 §1)");
 }
 
-/// **ADR-0038 §4, condition 1.** The re-push is leased against the tracking
-/// tip the user last fetched, and the command it shows is
+/// **ADR-0038 §4, condition 1.** The re-push is leased against the tip the
+/// push entry recorded leaving on the remote (gap row 557), and the command it shows is
 /// `--force-with-lease=…` — never a bare force. Mutating the lease to `None`
 /// fails here, and `graft_ops`' `check_push` would then refuse the push
 /// outright (`Refusal::RepushNeedsLease`): `PushParams` has no bare force to
@@ -1167,6 +1167,33 @@ fn a_pending_remote_read_is_not_reported_as_a_failure() {
             "a read in flight is not a failure: {third:?}"
         );
     }
+    let choices: Vec<&str> = view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(choices, ["Cancel", "Undo locally"]);
+}
+
+/// **Gap row 557.** A push entry that did not record the tip it left has no
+/// lease to offer, and the fetched tracking tip is not a stand-in for it:
+/// the box opens with two choices and says why.
+#[test]
+fn a_push_entry_without_its_tip_offers_no_repush() {
+    let mut state = after_a_push();
+    let Loading::Ready(read) = &state.journal.entries else {
+        panic!("after_a_push has a journal");
+    };
+    let mut read = (**read).clone();
+    read.entries[1].refs_after.clear();
+    state.journal.entries = Loading::Ready(Arc::new(read));
+
+    let (next, _) = press(&state, plain('u'));
+    let view = &next.confirm.as_ref().expect("the box still opened").view;
+    assert_eq!(
+        view.message[2].as_str(),
+        "re-push unavailable: entry has no remote tip"
+    );
     let choices: Vec<&str> = view
         .choices
         .iter()
