@@ -1,6 +1,6 @@
 # fix-resolver-line-numbers: one name per side everywhere; every side numbered contiguously by its own projection; no number on a marker row
 
-Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: done (built 2026-09-23) · was ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 Blocked by: none
 Was: draft · **revised 2026-09-23 (Amendment 2)** — supersedes this ticket's earlier "disk numbers, `SideLines`" scope (never built).
 **Revised after scout-10 (2026-09-23):** crate set widened to `update::resolver` (took-lines, notices), `view::rows::resolver_context` and `graph_screen::hints`; names come from one oid-per-side source in `InProgressDetail`, never marker labels; role words are a closed static set (`SideRoles`), so only role words reach the hint bar; detached HEAD reads as a 7-char sha; stash pop's theirs is `stashed` alone. `SideNames` loses `ours_role`/`theirs_role` for `roles: SideRoles` (a change to the note's Interfaces block, reported to the conductor).
@@ -88,16 +88,16 @@ pub fn side_names(state: &AppState) -> graft_ui::conflict_resolver::SideNames;
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] graft-git `conflict::tests::first_lines_number_each_projection_without_gaps`: over every conflicted file in the `StoppedMerge`/`StoppedRebase` fixtures and a generated set, projection `p`'s concatenated lines, numbered from `first_lines(p)`, run 1..=n with no gap. `Result` with every block taken equals `render()`'s lines one for one. If a named fixture holds no conflicted file, say so in NOTES; don't substitute.
-- [ ] graft-git `state::tests::in_progress_detail_reads_the_incoming_commit`: merge → `MERGE_HEAD`'s id and subject; cherry-pick, revert, rebase (both backends) likewise; no operation → `None`.
-- [ ] graft-ui `conflict_resolver::tests::no_marker_row_draws_a_number`: `Header`, `Labels`, `End`, `Note` at 60, 80, 99, 100, 120, 179 columns, Unicode and ASCII.
-- [ ] graft-ui `…::both_sides_are_numbered_at_every_width`.
-- [ ] graft-ui `graph_screen::hints::tests::resolver_verbs_are_role_words`: `Merge` → `o yours  t theirs  b both`; `Rebase` → `o upstream  t yours`; short rung equals the role word.
-- [ ] graft `view::resolver::tests::one_name_per_side`: merge, rebase, cherry-pick, stash pop. The drawn frame holds `yours · main` / `theirs · feature` (rebase: `upstream · main` / `yours · <sha7> <subject>`; stash: `stashed`), and no `HEAD`, `OURS`, `THEIRS`, `ours =`, `(yours)` or `Stashed changes`.
-- [ ] graft `…::detached_head_names_the_sha`: merge with HEAD detached → `yours · <sha7>`.
-- [ ] graft `…::whole_file_card_names_theirs_without_markers`: a `DU` file in a merge names `theirs · feature`.
-- [ ] graft `update::resolver::tests::took_line_uses_the_side_name`: a take of theirs in a merge → notice `took theirs · feature`; in a rebase `took yours · <sha7> <subject>`.
-- [ ] Captures `docs/shots/m6/fix-card-names-numbers-120x40.txt` and `…-80x24.txt`, the resolver on `notes.txt` (two one-line blocks) in the merge fixture. **What right looks like:**
+- [x] graft-git `conflict::tests::first_lines_number_each_projection_without_gaps` — verified by that test (both fixtures hold marker files; checked > 0 asserted per shape; files deleted on a side or unparsable skipped — whole-file shapes have no numbers). Also asserts `Result` first lines equal `blocks()`'s `first_line` once taken:: over every conflicted file in the `StoppedMerge`/`StoppedRebase` fixtures and a generated set, projection `p`'s concatenated lines, numbered from `first_lines(p)`, run 1..=n with no gap. `Result` with every block taken equals `render()`'s lines one for one. If a named fixture holds no conflicted file, say so in NOTES; don't substitute.
+- [x] graft-git `state::tests::in_progress_detail_reads_the_incoming_commit` — verified by that test (`--merge` and `--apply` rebase both):: merge → `MERGE_HEAD`'s id and subject; cherry-pick, revert, rebase (both backends) likewise; no operation → `None`.
+- [x] graft-ui `conflict_resolver::tests::no_marker_row_draws_a_number` — verified by that test (stacked label rows included):: `Header`, `Labels`, `End`, `Note` at 60, 80, 99, 100, 120, 179 columns, Unicode and ASCII.
+- [x] graft-ui `conflict_resolver::tests::both_sides_are_numbered_at_every_width` — verified by that test (ours/theirs given different starts, 39 vs 125, so a swap fails).
+- [x] graft-ui `graph_screen::hints::tests::resolver_verbs_are_role_words` — verified by that test:: `Merge` → `o yours  t theirs  b both`; `Rebase` → `o upstream  t yours`; short rung equals the role word.
+- [x] graft `view::resolver::tests::one_name_per_side` — verified by that test, drawn through `view::view` at 80 and 120 (revert not in the list; same builder arm as cherry-pick):: merge, rebase, cherry-pick, stash pop. The drawn frame holds `yours · main` / `theirs · feature` (rebase: `upstream · main` / `yours · <sha7> <subject>`; stash: `stashed`), and no `HEAD`, `OURS`, `THEIRS`, `ours =`, `(yours)` or `Stashed changes`.
+- [x] graft `view::resolver::tests::detached_head_names_the_sha` — verified by that test:: merge with HEAD detached → `yours · <sha7>`.
+- [x] graft `view::resolver::tests::whole_file_card_names_theirs_without_markers` — verified by that test (card keys read `o deletes it  t keeps theirs · feature`):: a `DU` file in a merge names `theirs · feature`.
+- [x] graft `update::resolver::tests::took_line_uses_the_side_name` — verified by that test (status reads `took theirs · feature in <path> · …`):: a take of theirs in a merge → notice `took theirs · feature`; in a rebase `took yours · <sha7> <subject>`.
+- [x] Captures written and pinned by `it::resolver::card_names::card_names_and_numbers_capture` (asserts the labels, `2 two from main │2 TWO from feature`, `3 three`, bar) — **the look is the user's call (rule 6); colour unverified (rule 5)**. `docs/shots/m6/fix-card-names-numbers-120x40.txt` and `…-80x24.txt`, the resolver on `notes.txt` (two one-line blocks) in the merge fixture. **What right looks like:**
   - The first card's labels read `yours · main │ theirs · feature`.
   - Its rows read `2 two from main │ 2 TWO from feature`.
   - The next plain line reads `3 three`.
@@ -113,3 +113,14 @@ Medium: one pure fn, one fs+object read, one names builder, one draw rule, one h
 
 ## Report
 Tell the conductor: `SideNames` fields changed from the note (`roles: SideRoles` replaces `ours_role`/`theirs_role`), which binds the file-list, three-pane and finish-summary tickets. Stash pop reads `stashed`, not `stashed · stash@{0}` (ADR-0043 §4 row) — a Proposed change for the user.
+
+## NOTES (builder, 2026-09-23)
+- Scout used: `.scratch/m6-conflicts/scout-10.md`. No compaction.
+- **Fixture substitution, said plainly:** the `StoppedMerge` fixture has no `notes.txt`. The capture builds its own stopped merge in a scratch repo (`card_names.rs::notes_merge`: `notes.txt` with blocks on lines 2 and 7, four unchanged lines apart so git keeps them two blocks). Editing `graft-fixtures` was outside the crate set.
+- **Stash pop vs "none"**: detected as the old explainer did (resolver open, no operation). So the table's "none" row (`theirs`, `Merge` roles) is only reached with the resolver closed; `checkout -m` reads as stash pop. Same predicate as before, not a new one.
+- **Whole-file keys name sides by full name** (`t keeps theirs · feature`), not role words: the acceptance wants `theirs · feature` on a `DU` card, and the card has no label row. `b` refusal keys and the hint bar use role words.
+- **Took header** in the card reads `took theirs · feature` (full name); it can run long for a commit-like side (`took yours · 3f2a1b7 Add OAuth provider`) and is cut with `…` at 80 columns.
+- `Product::WorkingTree` now boxes its read: `InProgressDetail.theirs` made every `AppEvent` 264 bytes (clippy `large_enum_variant`). Cause-level fix, no behaviour change.
+- The failed-object-read error rides `StateError::Io` (`io::Error::other`), not a new variant: `graft-ops` matches `StateError` exhaustively and is outside the crate set.
+- `update::keys::bound_actions` gained the role-word rows (`o upstream`, `t yours|picked|reverting|stashed`) so the bar sweeps hold.
+- Report items: `SideNames.roles: SideRoles` replaces the note's `ours_role`/`theirs_role` (binds file-list, three-pane, finish-summary tickets). Stash pop reads `stashed`, not `stashed · stash@{0}` (ADR-0043 §4) — Proposed change for the user.

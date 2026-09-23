@@ -804,17 +804,24 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     // Inside the resolver (`resolver::resolver_key`).
     ("B", "base"),       // `toggle_base`
     ("d", "start over"), // `restart_box`
-    ("o", "ours"),       // `take_side`, `Take::Ours`
-    ("t", "theirs"),     // the same, `Take::Theirs`
-    ("b", "both"),       // the same, `Take::Both`
-    ("n", "next"),       // `walk_blocks`, forward
-    ("N", "prev"),       // the same, backward
-    ("⏎", "resolved"),   // `mark_resolved`: `git add` on the open file
-    ("S", "stash"),      // `stash::stash_key`: opens the overlay
-    ("J", "journal"),    // `journal::journal_key`: opens the browser
-    ("M", "map"),        // `map::map_key`
-    ("O", "overview"),   // `strip::strip_key`
-    ("/", "search"),     // `search::search_key`, before `key_event`
+    // `o`/`t` read as the operation's role words (`SideRoles`, ADR-0043 §4):
+    // one row per word the bar can draw.
+    ("o", "yours"),     // `take_side`, `Take::Ours`
+    ("o", "upstream"),  // the same, in a rebase
+    ("t", "theirs"),    // the same, `Take::Theirs`
+    ("t", "yours"),     // the same, in a rebase
+    ("t", "picked"),    // the same, in a cherry-pick
+    ("t", "reverting"), // the same, in a revert
+    ("t", "stashed"),   // the same, after a stash pop
+    ("b", "both"),      // the same, `Take::Both`
+    ("n", "next"),      // `walk_blocks`, forward
+    ("N", "prev"),      // the same, backward
+    ("⏎", "resolved"),  // `mark_resolved`: `git add` on the open file
+    ("S", "stash"),     // `stash::stash_key`: opens the overlay
+    ("J", "journal"),   // `journal::journal_key`: opens the browser
+    ("M", "map"),       // `map::map_key`
+    ("O", "overview"),  // `strip::strip_key`
+    ("/", "search"),    // `search::search_key`, before `key_event`
     // Inside the three overlays, which hint their own lists.
     ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip
     ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry

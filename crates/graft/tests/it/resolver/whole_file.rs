@@ -6,6 +6,12 @@ use super::*;
 /// (m6-conflicts/05 scope 1).
 #[test]
 fn whole_file_table_through_the_keys() {
+    // Role words alone: the names a side has with no branch to name.
+    let names = graft_ui::conflict_resolver::SideNames {
+        ours: graft_term::sanitize_line("yours"),
+        theirs: graft_term::sanitize_line("theirs"),
+        roles: graft_ui::conflict_resolver::SideRoles::Merge,
+    };
     for (how, binary, want) in [
         (
             UnmergedHow::DeletedByThem,
@@ -27,12 +33,16 @@ fn whole_file_table_through_the_keys() {
         (
             UnmergedHow::BothModified,
             true,
-            "o keeps ours  t keeps theirs",
+            "o keeps yours  t keeps theirs",
         ),
-        (UnmergedHow::BothAdded, true, "o keeps ours  t keeps theirs"),
+        (
+            UnmergedHow::BothAdded,
+            true,
+            "o keeps yours  t keeps theirs",
+        ),
     ] {
         assert_eq!(
-            graft::update::resolver::whole_file_keys(how, binary),
+            graft::update::resolver::whole_file_keys(how, binary, &names),
             want,
             "{how:?} binary={binary}"
         );
@@ -300,7 +310,7 @@ fn b_refused_on_whole_file() {
         panic!("`b` on a whole-file card said {:?}", state.status)
     };
     assert_eq!(reason, "no both for a deleted by them file");
-    assert_eq!(keys.as_deref(), Some("o ours  t theirs"));
+    assert_eq!(keys.as_deref(), Some("o yours  t theirs"));
     assert!(open(&state).whole_file.is_some(), "the card is still up");
 
     drop(state);

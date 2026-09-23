@@ -153,3 +153,70 @@ fn names_and_commands_are_stable() {
     assert_eq!(InProgress::Revert.name(), "revert");
     assert_eq!(InProgress::Bisect.name(), "bisect");
 }
+
+/// A `main`/`side` pair that conflicts on `f.txt`, checked out on `main`.
+fn diverged() -> Fixture {
+    let fixture = Fixture::with_two_commits();
+    fs::write(fixture.root().join("f.txt"), "base\n").expect("file written");
+    fixture.git(&["add", "f.txt"]);
+    fixture.commit("add f");
+    fixture.git(&["checkout", "-q", "-b", "side"]);
+    fs::write(fixture.root().join("f.txt"), "side\n").expect("file written");
+    fixture.git(&["add", "f.txt"]);
+    fixture.commit("side change");
+    fixture.git(&["checkout", "-q", "main"]);
+    fs::write(fixture.root().join("f.txt"), "main\n").expect("file written");
+    fixture.git(&["add", "f.txt"]);
+    fixture.commit("main change");
+    fixture
+}
+
+fn incoming_of(fixture: &Fixture) -> Option<(Oid, String)> {
+    in_progress_detail(&open(fixture))
+        .expect("state reads")
+        .expect("an operation is in progress")
+        .theirs
+        .map(|summary| (summary.id, summary.subject))
+}
+
+#[test]
+fn in_progress_detail_reads_the_incoming_commit() {
+    let side = |fixture: &Fixture| Oid::from_hex(&fixture.rev_parse("side")).expect("an id");
+
+    let merge = diverged();
+    assert!(!run_expecting_maybe_failure(&merge, &["merge", "side", "-m", "m"]).success());
+    assert_eq!(
+        incoming_of(&merge),
+        Some((side(&merge), "side change".into()))
+    );
+
+    let pick = diverged();
+    assert!(!run_expecting_maybe_failure(&pick, &["cherry-pick", "side"]).success());
+    assert_eq!(
+        incoming_of(&pick),
+        Some((side(&pick), "side change".into()))
+    );
+
+    let revert = diverged();
+    revert.git(&["checkout", "-q", "side"]);
+    fs::write(revert.root().join("f.txt"), "later\n").expect("file written");
+    revert.git(&["add", "f.txt"]);
+    revert.commit("later change");
+    let reverted = Oid::from_hex(&revert.rev_parse("HEAD~1")).expect("an id");
+    assert!(!run_expecting_maybe_failure(&revert, &["revert", "--no-edit", "HEAD~1"]).success());
+    assert_eq!(incoming_of(&revert), Some((reverted, "side change".into())));
+
+    for backend in ["--merge", "--apply"] {
+        let rebase = diverged();
+        rebase.git(&["checkout", "-q", "side"]);
+        assert!(!run_expecting_maybe_failure(&rebase, &["rebase", backend, "main"]).success());
+        assert_eq!(
+            incoming_of(&rebase),
+            Some((side(&rebase), "side change".into())),
+            "{backend}"
+        );
+    }
+
+    let idle = diverged();
+    assert_eq!(in_progress_detail(&open(&idle)).expect("state reads"), None);
+}

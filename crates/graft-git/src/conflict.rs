@@ -187,6 +187,18 @@ impl Block {
     }
 }
 
+/// Which reading of a conflict file a line number counts in: one side's
+/// version, or the result being built. Each numbers its lines 1..=n.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Projection {
+    /// Plain lines and every block's ours lines.
+    Ours,
+    /// Plain lines and every block's theirs lines.
+    Theirs,
+    /// Plain lines, taken lines, and each open block's ours lines.
+    Result,
+}
+
 /// Which side a block keeps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Take {
@@ -662,6 +674,44 @@ impl ConflictFile {
             line += region.line_count();
         }
         found
+    }
+
+    /// One entry per region: the 1-based line that region starts on when the
+    /// file is read as projection `p`. Every projection numbers its own lines
+    /// contiguously from 1, so the entries never skip a number.
+    ///
+    /// - [`Projection::Ours`] / [`Projection::Theirs`]: plain lines, plus
+    ///   that side's lines of every block, open or taken.
+    /// - [`Projection::Result`]: plain lines, a taken block's taken lines,
+    ///   and an open block's ours lines (drawn as a placeholder).
+    ///
+    /// An empty region gets the number the next line would have.
+    #[must_use]
+    pub fn first_lines(&self, p: Projection) -> Vec<usize> {
+        let mut line = 1usize;
+        self.regions
+            .iter()
+            .map(|region| {
+                let first = line;
+                line += match (region, p) {
+                    (Region::Plain(lines), _) => lines.len(),
+                    // An open block's result is its ours lines (a placeholder).
+                    (
+                        Region::Conflict(block) | Region::Resolved { block, .. },
+                        Projection::Ours,
+                    )
+                    | (Region::Conflict(block), Projection::Result) => block.ours.len(),
+                    (
+                        Region::Conflict(block) | Region::Resolved { block, .. },
+                        Projection::Theirs,
+                    ) => block.theirs.len(),
+                    (Region::Resolved { block, take }, Projection::Result) => {
+                        block.taken(*take).count()
+                    }
+                };
+                first
+            })
+            .collect()
     }
 
     /// How many blocks are still open.

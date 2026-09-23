@@ -30,7 +30,8 @@ use std::path::Path;
 use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize_line;
 use graft_ui::conflict_resolver::{
-    BlockState, BlockView, DocView, RegionView, ResolverScreen, TakeView, layout,
+    BlockNumbers, BlockState, BlockView, DocView, RegionView, ResolverScreen, SideNames, SideRoles,
+    TakeView, layout,
 };
 use graft_ui::theme::ThemeKind;
 use ratatui::Terminal;
@@ -53,29 +54,37 @@ fn mockup_doc() -> DocView {
         index: 0,
         of: 3,
         state: BlockState::Open,
-        ours_label: text("HEAD"),
-        theirs_label: text("3f2a1b (Add OAuth provider)"),
         ours: lines(&["if expired() {", "self.renew();"]),
         base: None,
         theirs: lines(&["if is_expired() {", "self.do_refresh();"]),
         first_line: 39,
+        numbers: BlockNumbers {
+            ours: 39,
+            theirs: 39,
+            result: 39,
+        },
     };
     let block1 = BlockView {
         index: 1,
         of: 3,
         state: BlockState::Took(TakeView::Theirs),
-        ours_label: text("HEAD"),
-        theirs_label: text("3f2a1b"),
         ours: lines(&["old_way();"]),
         base: None,
         theirs: lines(&["let tok = self.store.get();"]),
-        first_line: 57,
+        first_line: 42,
+        numbers: BlockNumbers {
+            ours: 42,
+            theirs: 42,
+            result: 42,
+        },
     };
     DocView {
         title: text("src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open"),
-        explainer: Some(text(
-            "ours = main, what you are rebasing onto · theirs = the commit being replayed",
-        )),
+        names: SideNames {
+            ours: text("upstream · main"),
+            theirs: text("yours · 3f2a1b7 Add OAuth provider"),
+            roles: SideRoles::Rebase,
+        },
         regions: vec![
             RegionView::Plain {
                 first_line: 38,
@@ -83,7 +92,7 @@ fn mockup_doc() -> DocView {
             },
             RegionView::Block(block0),
             RegionView::Plain {
-                first_line: 42,
+                first_line: 41,
                 lines: lines(&["}"]),
             },
             RegionView::Block(block1),

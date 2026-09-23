@@ -15,10 +15,20 @@ fn lines(items: &[&str]) -> Vec<SanitizedText> {
     items.iter().map(|s| text(s)).collect()
 }
 
+fn names() -> SideNames {
+    SideNames {
+        ours: text("yours · main"),
+        theirs: text("theirs · feature"),
+        roles: SideRoles::Merge,
+    }
+}
+
+/// An open block whose ours lines start at `ours_at` and theirs lines at
+/// `theirs_at`; its result line is `ours_at` (where the placeholder sits).
 fn open_block(
     index: usize,
     of: usize,
-    first_line: usize,
+    (ours_at, theirs_at): (usize, usize),
     ours: &[&str],
     theirs: &[&str],
 ) -> BlockView {
@@ -26,12 +36,15 @@ fn open_block(
         index,
         of,
         state: BlockState::Open,
-        ours_label: text("HEAD"),
-        theirs_label: text("3f2a1b (Add OAuth provider)"),
         ours: lines(ours),
         base: None,
         theirs: lines(theirs),
-        first_line,
+        first_line: ours_at,
+        numbers: BlockNumbers {
+            ours: ours_at,
+            theirs: theirs_at,
+            result: ours_at,
+        },
     }
 }
 
@@ -41,7 +54,7 @@ fn three_block_doc(base_shown: bool) -> DocView {
     let mut block2 = open_block(
         2,
         3,
-        57,
+        (43, 130),
         &["let tok = self.store.get();"],
         &["let tok = store();"],
     );
@@ -49,9 +62,7 @@ fn three_block_doc(base_shown: bool) -> DocView {
 
     DocView {
         title: text("src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open"),
-        explainer: Some(text(
-            "ours = main, what you are rebasing onto · theirs = the commit being replayed",
-        )),
+        names: names(),
         regions: vec![
             RegionView::Plain {
                 first_line: 38,
@@ -60,24 +71,27 @@ fn three_block_doc(base_shown: bool) -> DocView {
             RegionView::Block(open_block(
                 0,
                 3,
-                39,
+                (39, 125),
                 &["if expired() {", "self.renew();"],
                 &["if is_expired() {", "self.do_refresh();"],
             )),
             RegionView::Plain {
-                first_line: 42,
+                first_line: 41,
                 lines: lines(&["}"]),
             },
             RegionView::Block(BlockView {
                 index: 1,
                 of: 3,
                 state: BlockState::Took(TakeView::Theirs),
-                ours_label: text("HEAD"),
-                theirs_label: text("3f2a1b"),
                 ours: lines(&["old_way();"]),
                 base: None,
                 theirs: lines(&["new_way();"]),
-                first_line: 50,
+                first_line: 42,
+                numbers: BlockNumbers {
+                    ours: 42,
+                    theirs: 128,
+                    result: 42,
+                },
             }),
             RegionView::Block(block2),
         ],
@@ -313,14 +327,13 @@ fn resolver_tiny_frame_says_so() {
 fn resolver_ascii_tier_is_ascii() {
     let mut doc = three_block_doc(true);
     doc.title = text("src/auth/token.rs - file 1 of 2 - 2 of 3 conflicts open");
-    doc.explainer = Some(text("ours = main - theirs = the replayed commit"));
+    doc.names.ours = text("yours - main");
+    doc.names.theirs = text("theirs - feature");
     for region in &mut doc.regions {
-        if let RegionView::Block(block) = region {
-            block.ours_label = text("HEAD");
-            block.theirs_label = text("3f2a1b");
-            if let Some((label, _)) = &mut block.base {
-                *label = text("merge base");
-            }
+        if let RegionView::Block(block) = region
+            && let Some((label, _)) = &mut block.base
+        {
+            *label = text("merge base");
         }
     }
     for columns in [80u16, 120] {
@@ -353,7 +366,7 @@ fn resolver_draws_only_the_window() {
     }];
     let doc = DocView {
         title: text("big.txt · file 1 of 1 · 0 of 0 conflicts open"),
-        explainer: None,
+        names: names(),
         regions: std::mem::take(&mut regions),
         cursor_block: None,
         base_shown: false,
@@ -434,98 +447,170 @@ fn row_text(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> String {
         .to_string()
 }
 
-/// **Fixes a filed disagreement with `docs/design/01-view-mockups.md`
-/// §1.5** (continuation session, 2026-09-22; ADR-0042 made §1.5 the
-/// resolver's spec): a block's `Header` row now leads with its own
-/// `first_line`, the same number the mockup shows (`39`, `57`) — narrower
-/// than `numbered`'s 5-wide margin (a single space either side), since this
-/// is a hint at the block's position in the file, not a column to read code
-/// against line by line.
-#[test]
-fn header_row_carries_its_block_line_number() {
-    let doc = three_block_doc(false);
-    let laid = layout(&doc, 120);
-    let buf = draw(&doc, &laid, 0, 120, 24, false);
-    // Block 0: open, first_line 39, the cursor block (gutter mark first).
-    let header0 = row_text(
-        &buf,
-        HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap(),
-        120,
-    );
-    assert!(
-        header0.contains(" 39 ── conflict 1 of 3 · open ──"),
-        "{header0:?}"
-    );
-    // Block 1: took theirs, first_line 50, not the cursor block.
-    let header1 = row_text(
-        &buf,
-        HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap(),
-        120,
-    );
-    assert!(
-        header1.contains(" 50 ── conflict 2 of 3 · took theirs ──"),
-        "{header1:?}"
-    );
+/// The widths the numbering tests sweep: both sides of 100 (stacked vs
+/// paired), the 60-column floor, and wide.
+const WIDTHS: [u16; 6] = [60, 80, 99, 100, 120, 179];
+
+/// Row `y` of `buf` from past the cursor gutter to `width`.
+fn content_text(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> String {
+    row_text(buf, y, width).chars().skip(2).collect()
 }
 
-/// **Fixes the second half of the same disagreement, corrected again in the
-/// m6-02-03 review round (Major 1): `graft-git::conflict::BlockAt::first_line`'s
-/// own doc says a resolved block's `first_line` is already "its first taken
-/// line once resolved" — not the old `<<<<<<<` marker line.** Once a block
-/// is `Took(Theirs)` (or `Both`), its THEIRS lines are on disk at
-/// `first_line + i`, not `first_line + 1 + i`: block 1 here has
-/// `first_line: 50`, so its one taken line reads `50`, not `51`. Open,
-/// THEIRS still draws the blank margin the module doc reserves for it (not
-/// yet a line of the working file) — checked here too, so the fix does not
-/// leak into the case it must not touch.
-#[test]
-fn taken_theirs_carries_its_real_line_number_open_theirs_stays_blank() {
-    let doc = three_block_doc(false);
-
-    // Block 1 (took theirs, first_line 50): its lone content row is
-    // `Header, Side, End` — the content row is one past the header.
-    let laid = layout(&doc, 120);
-    let buf = draw(&doc, &laid, 0, 120, 24, false);
-    let content_y = HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap() + 1;
-    let taken_row = row_text(&buf, content_y, 120);
-    assert!(
-        taken_row.trim_start().starts_with("50 new_way();"),
-        "{taken_row:?}"
-    );
-
-    // Block 0 (open, first_line 39) stacked at 80 columns: its THEIRS
-    // section still has no number.
-    let narrow = layout(&doc, 80);
-    let buf80 = draw(&doc, &narrow, 0, 80, 24, false);
-    let theirs_rows: Vec<usize> = narrow
-        .rows
-        .iter()
-        .enumerate()
-        .filter(|(_, row)| {
-            matches!(
-                row,
-                ScreenRow::Side {
-                    block: 0,
-                    side: SideKind::Theirs,
-                    ..
-                }
-            )
-        })
-        .map(|(i, _)| i)
-        .collect();
-    assert!(!theirs_rows.is_empty(), "expected block 0's THEIRS rows");
-    for row_index in theirs_rows {
-        let y = HEADER_ROWS + u16::try_from(row_index).unwrap();
-        let row = row_text(&buf80, y, 80);
-        assert!(
-            !row.trim_start()
-                .chars()
-                .next()
-                .unwrap_or(' ')
-                .is_ascii_digit(),
-            "open THEIRS drew a line number: {row:?}"
-        );
+/// A doc with a whole-file card and its note, for the `Note` row.
+fn whole_file_doc() -> DocView {
+    DocView {
+        title: text("big.bin"),
+        names: names(),
+        regions: vec![RegionView::WholeFile {
+            how: text("deleted by them"),
+            keys: text("o keeps the file  t deletes it"),
+            lines: lines(&["one", "two"]),
+            note: Some(text("and 3 more lines unread")),
+        }],
+        cursor_block: None,
+        base_shown: false,
+        notice: None,
     }
+}
+
+/// ADR-0043 §5: a marker row is no line of any side, so no row but a
+/// content row starts with a number — header, labels (paired or stacked),
+/// end and note, at every width and in both glyph tiers.
+#[test]
+fn no_marker_row_draws_a_number() {
+    for doc in [three_block_doc(true), whole_file_doc()] {
+        for columns in WIDTHS {
+            for ascii in [false, true] {
+                let laid = layout(&doc, columns);
+                let rows = u16::try_from(laid.rows.len()).unwrap() + HEADER_ROWS;
+                let buf = draw(&doc, &laid, 0, columns, rows, ascii);
+                for (index, row) in laid.rows.iter().enumerate() {
+                    let marker = matches!(
+                        row,
+                        ScreenRow::Header { .. }
+                            | ScreenRow::Labels { .. }
+                            | ScreenRow::End { .. }
+                            | ScreenRow::Note { .. }
+                            | ScreenRow::Side {
+                                side: SideKind::Label(_),
+                                ..
+                            }
+                    );
+                    if !marker {
+                        continue;
+                    }
+                    let y = HEADER_ROWS + u16::try_from(index).unwrap();
+                    let drawn = content_text(&buf, y, columns);
+                    assert!(
+                        !drawn.trim_start().starts_with(|c: char| c.is_ascii_digit()),
+                        "{columns} cols ascii={ascii}: {row:?} drew a number: {drawn:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// ADR-0043 §5: an open card numbers yours from `numbers.ours` and theirs
+/// from `numbers.theirs`, paired and stacked alike; BASE carries none; a
+/// taken block's lines carry the result's numbers.
+/// `drawn` (a row's text past the gutter) starts with the number `n`.
+fn starts_with_number(drawn: &str, n: usize) -> bool {
+    drawn.trim_start().starts_with(&format!("{n} "))
+}
+
+/// Block `index` of `doc`.
+fn block_of(doc: &DocView, index: usize) -> &BlockView {
+    doc.regions
+        .iter()
+        .find_map(|region| match region {
+            RegionView::Block(block) if block.index == index => Some(block),
+            _ => None,
+        })
+        .unwrap()
+}
+
+/// The number a content row of `side` should lead with, `None` for BASE.
+fn expected_number(view: &BlockView, side: SideKind, i: usize) -> Option<usize> {
+    match (view.state, side) {
+        (BlockState::Open, SideKind::Ours) => Some(view.numbers.ours + i),
+        (BlockState::Open, SideKind::Theirs) => Some(view.numbers.theirs + i),
+        (BlockState::Took(TakeView::Both), SideKind::Theirs) => {
+            Some(view.numbers.result + view.ours.len() + i)
+        }
+        (BlockState::Took(_), SideKind::Ours | SideKind::Theirs) => Some(view.numbers.result + i),
+        _ => None,
+    }
+}
+
+/// Checks one drawn row's numbers; `true` when it numbered an open theirs
+/// line.
+fn check_row_numbers(doc: &DocView, row: &ScreenRow, drawn: &str, divider: char, at: &str) -> bool {
+    match *row {
+        ScreenRow::Pair {
+            block,
+            ours,
+            theirs,
+            ..
+        } => {
+            let numbers = block_of(doc, block).numbers;
+            let (left, right) = drawn.split_once(divider).expect(at);
+            if let Some(i) = ours {
+                assert!(starts_with_number(left, numbers.ours + i), "{at}");
+            }
+            if let Some(i) = theirs {
+                assert!(starts_with_number(right, numbers.theirs + i), "{at}");
+            }
+            theirs.is_some()
+        }
+        ScreenRow::Side { block, side, i } => {
+            let view = block_of(doc, block);
+            match expected_number(view, side, i) {
+                Some(n) => assert!(starts_with_number(drawn, n), "{at}"),
+                None => assert!(
+                    !drawn.trim_start().starts_with(|c: char| c.is_ascii_digit()),
+                    "{at}"
+                ),
+            }
+            view.state == BlockState::Open && side == SideKind::Theirs
+        }
+        ScreenRow::Plain { line_no, .. } => {
+            assert!(starts_with_number(drawn, line_no), "{at}");
+            false
+        }
+        _ => false,
+    }
+}
+
+/// ADR-0043 §5: an open card numbers yours from `numbers.ours` and theirs
+/// from `numbers.theirs`, paired and stacked alike; BASE carries none; a
+/// taken block's lines carry the result's numbers.
+#[test]
+fn both_sides_are_numbered_at_every_width() {
+    let doc = three_block_doc(true);
+    for columns in WIDTHS {
+        for ascii in [false, true] {
+            let laid = layout(&doc, columns);
+            let rows = u16::try_from(laid.rows.len()).unwrap() + HEADER_ROWS;
+            let buf = draw(&doc, &laid, 0, columns, rows, ascii);
+            let divider = if ascii { '|' } else { '│' };
+            let mut theirs_numbered = 0;
+            for (index, row) in laid.rows.iter().enumerate() {
+                let y = HEADER_ROWS + u16::try_from(index).unwrap();
+                let drawn = content_text(&buf, y, columns);
+                let at = format!("{columns} cols ascii={ascii} {row:?}: {drawn:?}");
+                if check_row_numbers(&doc, row, &drawn, divider, &at) {
+                    theirs_numbered += 1;
+                }
+            }
+            assert!(theirs_numbered > 0, "{columns}: no open theirs row");
+        }
+    }
+    // The taken block (took theirs, result 42) reads 42, not its theirs 128.
+    let laid = layout(&doc, 120);
+    let buf = draw(&doc, &laid, 0, 120, 40, false);
+    let y = HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap() + 1;
+    assert!(starts_with_number(&content_text(&buf, y, 120), 42));
 }
 
 /// The number column sits in the same cells whether a row is a bare `Plain`
@@ -540,7 +625,7 @@ fn plain_and_block_numbers_share_one_column() {
     let buf = draw(&doc, &laid, 0, 120, 24, false);
 
     // Row 0 (`Plain`, "38 fn refresh…") and the first `Pair` row of block 0
-    // ("40 if expired() {") should both start their digit at the same x.
+    // ("39 if expired() {") should both start their digit at the same x.
     let plain_x = first_digit_x(&buf, HEADER_ROWS, 120);
     let block_row = HEADER_ROWS + u16::try_from(laid.block_row[0]).unwrap() + 2; // Header, Labels, then the first Pair row.
     let block_x = first_digit_x(&buf, block_row, 120);

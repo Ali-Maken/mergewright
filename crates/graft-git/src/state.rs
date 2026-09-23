@@ -11,6 +11,7 @@ use std::path::Path;
 
 use graft_core::oid::Oid;
 
+use crate::history_reads::{CommitSummary, rev_list};
 use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, RunError};
 
@@ -115,6 +116,7 @@ fn exists(path: &Path) -> Result<bool, io::Error> {
 /// `step`/`head_name`/`onto` are only ever set for [`InProgress::Rebase`]: a
 /// merge, cherry-pick, revert or bisect has no analogous "step n of m" or
 /// "onto" concept in a single well-known file, so those fields stay `None`.
+/// `theirs` is set for every operation but bisect.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InProgressDetail {
     /// Which operation is in progress.
@@ -131,6 +133,12 @@ pub struct InProgressDetail {
     /// `rebase-merge/onto` or `rebase-apply/onto`: the commit being rebased
     /// onto. `None` on the same terms as `step`.
     pub onto: Option<Oid>,
+    /// The incoming commit — the resolver's theirs side: `MERGE_HEAD`'s
+    /// first line (merge, pull), `CHERRY_PICK_HEAD`, `REVERT_HEAD`, or
+    /// `REBASE_HEAD` (either rebase backend), with its subject. `None` for
+    /// bisect, or when git has not written that file (a rebase stopped on
+    /// an `edit`, say).
+    pub theirs: Option<CommitSummary>,
 }
 
 /// Why [`in_progress_detail`] could not even check whether an operation is
@@ -150,7 +158,8 @@ pub enum StateError {
 /// # Errors
 /// [`StateError`] on the same terms as [`in_progress`]: a marker path could
 /// not be checked. Never for a rebase detail file that is missing or does
-/// not parse; those fields are simply `None`.
+/// not parse; those fields are simply `None`. Also [`StateError::Io`] when
+/// the incoming commit's head file names a commit git cannot read.
 pub fn in_progress_detail(repo: &RepoHandle) -> Result<Option<InProgressDetail>, StateError> {
     let Some(kind) = in_progress(repo)? else {
         return Ok(None);
@@ -171,12 +180,48 @@ pub fn in_progress_detail(repo: &RepoHandle) -> Result<Option<InProgressDetail>,
     } else {
         (None, None, None)
     };
+    let theirs = incoming(repo, kind)?;
     Ok(Some(InProgressDetail {
         kind,
         step,
         head_name,
         onto,
+        theirs,
     }))
+}
+
+/// The commit `kind` is bringing in, read from the head file git writes for
+/// it. A missing file is `None`; a file naming a commit git cannot read is
+/// an error, carried on [`StateError::Io`] (the one error path this call
+/// has).
+fn incoming(repo: &RepoHandle, kind: InProgress) -> Result<Option<CommitSummary>, StateError> {
+    let file = match kind {
+        InProgress::Merge => "MERGE_HEAD",
+        InProgress::CherryPick => "CHERRY_PICK_HEAD",
+        InProgress::Revert => "REVERT_HEAD",
+        InProgress::Rebase => "REBASE_HEAD",
+        InProgress::Bisect => return Ok(None),
+    };
+    // `MERGE_HEAD` lists one id per merged head; the first is the one merged.
+    let Some(hex) = read_field(&repo.git_dir().join(file))
+        .and_then(|text| text.lines().next().map(str::to_owned))
+    else {
+        return Ok(None);
+    };
+    let id = Oid::from_hex(hex.trim()).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("{file} does not hold a commit id: {hex}"),
+        )
+    })?;
+    let range = rev_list(repo, 1, vec![GitArg::Oid(id)], &()).map_err(io::Error::other)?;
+    let summary = range.commits.into_iter().last().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("{file} names {id}, which git did not list"),
+        )
+    })?;
+    Ok(Some(summary))
 }
 
 /// Reads a one-line git state file, trimmed. `None` if it is missing, empty

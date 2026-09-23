@@ -544,6 +544,7 @@ fn took_fact(next: &mut AppState, commands: &mut Vec<Command>, product: Product)
             next.status = Status::Failed(failure);
         }
         Product::WorkingTree(Ok(read)) => {
+            let read = *read;
             // Read before the assignment: the launch read is the one that
             // finds no working tree yet. See `relaunch::launch_into_live`.
             let first_read = next.working_tree.is_none();

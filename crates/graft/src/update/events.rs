@@ -206,7 +206,10 @@ pub enum Product {
     /// per changed path), or why it could not be read. `Arc`: shared with
     /// the changes pane's file list, never copied per event
     /// (m3-working-tree-undo-and-stash/04, mirroring `Product::Refs`).
-    WorkingTree(Result<crate::working_tree::WorkingTree, String>),
+    /// Boxed: the read carries the incoming commit's summary
+    /// (`InProgressDetail::theirs`), which would otherwise make every event
+    /// as large as this one.
+    WorkingTree(Result<Box<crate::working_tree::WorkingTree>, String>),
     /// Every commit in strict topological order, for the walk on screen to
     /// promote to (ADR-0008).
     TopologicalOrder(std::sync::Arc<[graft_core::commit_handle::CommitHandle]>),

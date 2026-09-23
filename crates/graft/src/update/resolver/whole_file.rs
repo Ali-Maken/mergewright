@@ -6,6 +6,7 @@
 use graft_core::job::JobId;
 use graft_git::status::UnmergedHow;
 use graft_ops::operation::{Operation, ResolveWholeParams, Side};
+use graft_ui::conflict_resolver::SideNames;
 
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
@@ -29,18 +30,25 @@ pub struct WholeFileShape {
 /// nowhere near each other (git leaves ours' bytes, or nothing, depending on
 /// platform) and is resolved exactly like the two text shapes' own
 /// `checkout --ours|--theirs` path, so it reads the same as they do.
+///
+/// A side is named by its one name (`t keeps theirs · feature`,
+/// [`super::side_names`]); words about the file itself (`keeps the file`,
+/// `deletes it`) stay as they are.
 #[must_use]
-pub fn whole_file_keys(how: UnmergedHow, binary: bool) -> &'static str {
+pub fn whole_file_keys(how: UnmergedHow, binary: bool, names: &SideNames) -> String {
+    let (ours, theirs) = (names.ours.as_str(), names.theirs.as_str());
     if binary {
-        return "o keeps ours  t keeps theirs";
+        return format!("o keeps {ours}  t keeps {theirs}");
     }
     match how {
-        UnmergedHow::DeletedByThem => "o keeps the file  t deletes it",
-        UnmergedHow::DeletedByUs => "o deletes it  t keeps theirs",
-        UnmergedHow::AddedByUs => "o keeps yours  t drops it",
-        UnmergedHow::AddedByThem => "o drops it  t keeps theirs",
-        UnmergedHow::BothDeleted => "o or t removes it",
-        UnmergedHow::BothModified | UnmergedHow::BothAdded => "o keeps ours  t keeps theirs",
+        UnmergedHow::DeletedByThem => "o keeps the file  t deletes it".to_owned(),
+        UnmergedHow::DeletedByUs => format!("o deletes it  t keeps {theirs}"),
+        UnmergedHow::AddedByUs => format!("o keeps {ours}  t drops it"),
+        UnmergedHow::AddedByThem => format!("o drops it  t keeps {theirs}"),
+        UnmergedHow::BothDeleted => "o or t removes it".to_owned(),
+        UnmergedHow::BothModified | UnmergedHow::BothAdded => {
+            format!("o keeps {ours}  t keeps {theirs}")
+        }
     }
 }
 
@@ -98,7 +106,10 @@ pub(super) fn whole_file_both_refused(state: &mut AppState) -> bool {
     };
     state.status = Status::Sticky {
         reason: format!("no both for a {} file", whole.how.words()),
-        keys: Some("o ours  t theirs".to_owned()),
+        keys: Some({
+            let roles = super::side_names(state).roles;
+            format!("o {}  t {}", roles.ours(), roles.theirs())
+        }),
     };
     true
 }

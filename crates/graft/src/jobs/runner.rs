@@ -531,9 +531,9 @@ impl<S: JobEvents> JobRunner<S> {
             if cancel.is_cancelled() {
                 return Outcome::Cancelled;
             }
-            Outcome::Produced(Product::WorkingTree(crate::working_tree::read(
-                &repos, cancel,
-            )))
+            Outcome::Produced(Product::WorkingTree(
+                crate::working_tree::read(&repos, cancel).map(Box::new),
+            ))
         });
     }
 

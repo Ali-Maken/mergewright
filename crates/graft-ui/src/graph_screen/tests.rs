@@ -1968,6 +1968,7 @@ fn coverage_slot(context: &HintContext) -> usize {
             base,
             restart,
             whole_file: false,
+            ..
         } => 20 + usize::from(*base) + 2 * usize::from(*restart),
         HintContext::Resolver {
             whole_file: true, ..

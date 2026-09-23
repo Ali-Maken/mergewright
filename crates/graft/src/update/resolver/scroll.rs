@@ -38,7 +38,7 @@ pub fn resolver_mouse(state: &mut AppState, mouse: MouseInput) -> bool {
 }
 
 /// A left click: the block whose row was hit takes the cursor. The title
-/// and explainer rows, and any row past the end of the document, name no
+/// and notice rows, and any row past the end of the document, name no
 /// block and so do nothing.
 pub(super) fn click(state: &mut AppState, row: u16) {
     let Some((layout, _)) = body(state) else {

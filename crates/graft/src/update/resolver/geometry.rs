@@ -36,7 +36,7 @@ pub fn banner_rows(state: &AppState) -> u16 {
 }
 
 /// The first screen row of the resolver's document body: past the banner
-/// line and past the widget's own title and explainer rows.
+/// line and past the widget's own title and notice rows.
 pub(super) fn body_y(state: &AppState) -> u16 {
     banner_rows(state).saturating_add(HEADER_ROWS)
 }
