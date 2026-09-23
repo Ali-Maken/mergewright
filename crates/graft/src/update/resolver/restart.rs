@@ -22,13 +22,13 @@ use crate::update::state::{AppState, Status};
 /// (m6-05 review, Major 1) — and while any write is running: confirming
 /// would launch a second git write over the first (Major 3).
 pub(super) fn restart_box(state: &mut AppState) {
-    let Some(open) = state.resolver.as_ref() else {
-        return;
-    };
-    if let Some(words) = open.busy_words() {
+    if let Some(words) = super::write_refusal(state) {
         state.status = Status::sticky(words);
         return;
     }
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
     if let Some(whole) = open.whole_file.as_ref() {
         let refusal = graft_ops::operation::Refusal::NotMarkerShape {
             path: open.path.clone(),
@@ -38,10 +38,6 @@ pub(super) fn restart_box(state: &mut AppState) {
             reason: refusal.explain(),
             keys: Some("o ours  t theirs".to_owned()),
         };
-        return;
-    }
-    if state.operating.is_some() {
-        state.status = Status::sticky("a write is already running");
         return;
     }
     let path = open.path.clone();

@@ -450,3 +450,52 @@ fn the_window_stops_at_the_last_screenful() {
     let layout = layout_of(100, &[10, 95]);
     assert_eq!(scroll_block_into_view(&layout, 1, 0, 20), 80);
 }
+
+// ------------- m6-04-08 review, Major 2: one write on this file at a time
+
+/// The resolver on a document whose every block is taken, so `⏎` is not
+/// refused for open blocks and a re-take (`t` over a taken block) is live.
+fn all_taken() -> AppState {
+    let mut state = resolver_on_screen(WALK);
+    let open = state.resolver.as_mut().expect("open");
+    let mut file = open.file.as_deref().expect("a document").clone();
+    file.take(0, graft_git::conflict::Take::Ours)
+        .expect("block 0");
+    file.take(1, graft_git::conflict::Take::Ours)
+        .expect("block 1");
+    open.file = Some(Arc::new(file));
+    state
+}
+
+/// The git writes (`⏎`'s `Stage`) and fs writes (a block take) queued.
+fn writes(commands: &[Command]) -> usize {
+    takes(commands)
+        + commands
+            .iter()
+            .filter(|command| matches!(command, Command::Operate(..)))
+            .count()
+}
+
+/// `t` then `⏎` before the take lands: the stage would `git add` a file
+/// the take is still rewriting, and the index could hold the old take while
+/// the screen and the disk show the new one.
+#[test]
+fn enter_waits_for_a_take_in_flight() {
+    let (state, first) = press(&all_taken(), KeyCode::Char('t'));
+    assert_eq!(takes(&first), 1, "the re-take was queued");
+    let (state, second) = press(&state, KeyCode::Enter);
+    assert_eq!(writes(&second), 0, "no stage over a take: {second:?}");
+    assert!(state.operating.is_none(), "no git write began");
+    assert_eq!(sticky(&state).0, "still writing the last take");
+}
+
+/// `⏎` then `t` before the stage lands: the take would rewrite the file
+/// `git add` is reading.
+#[test]
+fn a_take_waits_for_the_stage_in_flight() {
+    let (state, first) = press(&all_taken(), KeyCode::Enter);
+    assert_eq!(writes(&first), 1, "the stage was queued: {first:?}");
+    let (state, second) = press(&state, KeyCode::Char('t'));
+    assert_eq!(writes(&second), 0, "no take over a stage: {second:?}");
+    assert_eq!(sticky(&state).0, "a write is already running");
+}
