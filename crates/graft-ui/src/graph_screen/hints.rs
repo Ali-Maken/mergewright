@@ -477,8 +477,9 @@ const GRAPH_ONLY: [&str; 4] = ["S", "J", "M", "O"];
 /// a compare base there is no oid for. Both return at their first line on
 /// that row (`graft::update::keys::copy_selected_sha`,
 /// `toggle_compare_selected`), which the design note already said and the
-/// bar drew anyway (m5/31).
-const NEEDS_A_COMMIT: [&str; 2] = ["y", "x"];
+/// bar drew anyway (m5/31). `space` folds the merge under the cursor, and
+/// the uncommitted row is no merge (gap row 553).
+const NEEDS_A_COMMIT: [&str; 3] = ["y", "x", "space"];
 
 /// Every hint the footer could draw for `context`, in priority order, with
 /// the ones nothing has built yet already dropped: the context's own keys,

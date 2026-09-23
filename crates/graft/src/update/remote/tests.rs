@@ -96,6 +96,34 @@ fn fetch_refusal_in_words() {
     );
 }
 
+/// The in-flight arm is one branch whatever job is running: a pull holding
+/// `operating` refuses `f` the same way, naming the pull.
+#[test]
+fn fetch_refusal_names_whatever_write_is_running() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let (running, _) = press(&state, plain('p'));
+    let id = running.operating.expect("p launched the pull");
+    let pulling = running
+        .remote
+        .running
+        .as_ref()
+        .expect("the pull is the running write")
+        .description
+        .clone();
+    assert_ne!(pulling, "fetch all remotes", "a different job than a fetch");
+    let (again, commands) = press(&running, plain('f'));
+    assert!(commands.is_empty(), "a second write queued: {commands:?}");
+    assert_eq!(again.operating, Some(id), "the pull is untouched");
+    assert_eq!(
+        again.status,
+        Status::Failed(format!("wait for {pulling} to finish"))
+    );
+}
+
 /// A push of `branch` to `origin`, as the app builds them.
 fn push_of(branch: &str) -> PushParams {
     PushParams {
@@ -177,6 +205,49 @@ fn the_write_site_asserts_the_push_invariant() {
         &mut commands,
         Operation::Push(push_of("refs/heads/feature")),
         &mut || graft_core::job::JobId::new(1),
+    );
+}
+
+/// The release path of the same site: everything `launch_with` does after
+/// its `debug_assert!` — which compiles to nothing in a release build —
+/// runs here in the fast (debug) tier. The violating push is refused in
+/// words: status set, no job id taken, no command, no running record, no
+/// panic.
+#[test]
+fn the_write_site_refuses_in_release() {
+    let mut state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let op = Operation::Push(push_of("refs/heads/feature"));
+    let invariant = crate::update::remote::push_sends_head(&state, &op);
+    assert!(invariant.is_err(), "the fixture violates the invariant");
+    let mut commands = Vec::new();
+    let mut ids_taken = 0;
+    crate::update::operate::launch_checked(
+        &mut state,
+        &mut commands,
+        op,
+        invariant,
+        Stoppable::Yes,
+        None,
+        &mut || {
+            ids_taken += 1;
+            graft_core::job::JobId::new(1)
+        },
+    );
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(ids_taken, 0, "no job id was taken");
+    assert_eq!(state.operating, None);
+    assert!(state.remote.running.is_none(), "no running record");
+    assert_eq!(
+        state.status,
+        Status::Failed(
+            "refused: a push of feature while HEAD is on main \u{2014} \
+             the undo journal would record it as main's"
+                .to_owned()
+        )
     );
 }
 

@@ -117,6 +117,22 @@ fn launch_with(
         "invariant: a push sends HEAD's branch, because the journal names a \
          push's branch by head_before: {invariant:?}"
     );
+    launch_checked(next, commands, op, invariant, stoppable, opened_by, next_id);
+}
+
+/// [`launch_with`] past its `debug_assert!`: what a release build does with
+/// the checked invariant. Split out so the fast (debug) tier can run the
+/// refusal branch — the assert fires first there
+/// (`update::remote::tests::the_write_site_refuses_in_release`).
+pub(super) fn launch_checked(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    op: Operation,
+    invariant: Result<(), String>,
+    stoppable: super::remote::Stoppable,
+    opened_by: Option<&'static str>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     if let Err(why) = invariant {
         next.status = Status::Failed(why);
         return;

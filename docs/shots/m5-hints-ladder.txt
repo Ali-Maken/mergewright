@@ -46,7 +46,7 @@
 
 --- the cursor is on the uncommitted-changes row
 [······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +
+ ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  +  1  F
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
@@ -72,7 +72,7 @@
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  space  1  F  H  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  . more  /  j/k  q  F2  F3  +  1  F  H  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
@@ -98,7 +98,7 @@
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  . more  +  space  1  F  H  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
