@@ -39,8 +39,7 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
             &open.path,
             index,
             paths.len().max(1),
-            file.open(),
-            blocks.len(),
+            Some((file.open(), blocks.len())),
             columns >= SIDE_BY_SIDE_MIN,
         )),
         explainer: resolver_explainer(state).as_deref().map(sanitize_line),
@@ -72,8 +71,9 @@ fn whole_file_view(
             &open.path,
             index,
             paths.len().max(1),
-            0,
-            0,
+            // A card has no marker blocks to count: `0 of 0 conflicts
+            // open` would read as nothing left to do (m6-conflicts/07 F8).
+            None,
             columns >= SIDE_BY_SIDE_MIN,
         )),
         explainer: resolver_explainer(state).as_deref().map(sanitize_line),
@@ -160,20 +160,24 @@ pub fn resolver_layout(state: &AppState, columns: u16) -> Option<Layout> {
 
 /// The title row: `src/auth.rs · file 1 of 3 · 2 of 3 conflicts open`, or
 /// the short form when the screen is too narrow to carry all three.
+/// `blocks` is `(open, total)`, or `None` for a whole-file card, which has
+/// no blocks and so no count clause.
 #[must_use]
 pub fn resolver_title(
     path: &Path,
     file_index: usize,
     files: usize,
-    open: usize,
-    total: usize,
+    blocks: Option<(usize, usize)>,
     wide: bool,
 ) -> String {
     let name = path.display();
-    if wide {
-        format!("{name} · file {file_index} of {files} · {open} of {total} conflicts open")
-    } else {
-        format!("{name} · {open}/{total} open")
+    match (blocks, wide) {
+        (Some((open, total)), true) => {
+            format!("{name} · file {file_index} of {files} · {open} of {total} conflicts open")
+        }
+        (Some((open, total)), false) => format!("{name} · {open}/{total} open"),
+        (None, true) => format!("{name} · file {file_index} of {files}"),
+        (None, false) => name.to_string(),
     }
 }
 
@@ -413,6 +417,7 @@ mod tests {
                 top: 0,
                 base_shown: false,
                 job: None,
+                reading: false,
                 base_job: None,
                 staging: None,
                 restarting: None,
@@ -509,14 +514,40 @@ mod tests {
     fn the_title_says_where_you_are() {
         let path = std::path::Path::new("src/auth.rs");
         assert_eq!(
-            resolver_title(path, 2, 5, 1, 3, true),
+            resolver_title(path, 2, 5, Some((1, 3)), true),
             "src/auth.rs · file 2 of 5 · 1 of 3 conflicts open"
         );
         assert_eq!(
-            resolver_title(path, 2, 5, 1, 3, false),
+            resolver_title(path, 2, 5, Some((1, 3)), false),
             "src/auth.rs · 1/3 open",
             "the short form is what fits under 100 columns"
         );
+    }
+
+    /// A whole-file or binary card has no marker blocks, so a count clause
+    /// reads `0 of 0 conflicts open` — "nothing to do" on a file that still
+    /// needs `o` or `t` (acceptance finding F8). The card's title drops it.
+    #[test]
+    fn a_card_title_has_no_count() {
+        for binary in [false, true] {
+            let mut state = open_on(b"a\n<<<<<<< HEAD\nx\n=======\ny\n>>>>>>> f\n", "gone.txt");
+            let open = state.resolver.as_mut().expect("open");
+            open.file = None;
+            open.cursor_block = None;
+            open.whole_file = Some(crate::update::resolver::WholeFileShape {
+                how: graft_git::status::UnmergedHow::DeletedByThem,
+                binary,
+                on_disk: None,
+            });
+            let wide = resolver_view(&state, 120).expect("a card");
+            assert_eq!(
+                wide.title.as_str(),
+                "gone.txt · file 1 of 1",
+                "binary {binary}"
+            );
+            let narrow = resolver_view(&state, 80).expect("a card");
+            assert_eq!(narrow.title.as_str(), "gone.txt", "binary {binary}");
+        }
     }
 }
 

@@ -3031,6 +3031,70 @@ fn the_prelude_holds_a_key_while_a_preview_plan_is_pending() {
     );
 }
 
+/// m6-conflicts/07 F6: the resolver's opening read (`job`) and a `B` base
+/// load (`base_job`) are jobs an earlier key started. A take fed before the
+/// read lands is refused (`resolver/take.rs`), so the acceptance captures
+/// recorded refusals instead of takes.
+#[test]
+fn the_prelude_holds_a_key_while_the_resolver_is_reading() {
+    let walk = JobId::new(4);
+    let mut state = awaiting(walk);
+    state.harness.prelude = vec![KeyPress::plain(KeyCode::Char('o'))];
+    let (state, _) = update(&state, sized(80, 12));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(9),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    let mut state = state;
+    let reading = JobId::new(79);
+    state.resolver = Some(resolver::ResolverState {
+        path: PathBuf::from("conflicted.rs"),
+        opened_from: resolver::OpenedFrom::Pane,
+        file: None,
+        whole_file: None,
+        how: None,
+        cursor_block: None,
+        top: 0,
+        base_shown: false,
+        job: Some(reading),
+        reading: true,
+        base_job: None,
+        staging: None,
+        restarting: None,
+        notice: None,
+    });
+
+    let (state, _) = update(&state, working_tree_read(JobId::new(10)));
+    assert_eq!(
+        state.harness.prelude.len(),
+        1,
+        "the opening read is in flight: o waits"
+    );
+
+    let mut state = state;
+    let open = state.resolver.as_mut().expect("still open");
+    open.job = None;
+    open.base_job = Some(JobId::new(80));
+    let (state, _) = update(&state, sized(80, 12));
+    assert_eq!(
+        state.harness.prelude.len(),
+        1,
+        "a base load is in flight: o waits"
+    );
+
+    let mut state = state;
+    state.resolver.as_mut().expect("still open").base_job = None;
+    let (state, _) = update(&state, sized(80, 12));
+    assert!(
+        state.harness.prelude.is_empty(),
+        "nothing in flight: o was fed"
+    );
+}
+
 /// m4-remotes/06: the one exception to the rule above. A credential prompt
 /// is a text field waiting for a key, and the write that asked for it *is*
 /// still in flight — a prelude that waited for `operating` to clear would
@@ -4210,6 +4274,7 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         top: 0,
         base_shown: false,
         job: None,
+        reading: false,
         base_job: None,
         staging: None,
         restarting: None,
@@ -4249,6 +4314,7 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         top: 0,
         base_shown: false,
         job: None,
+        reading: false,
         base_job: None,
         staging: None,
         restarting: None,

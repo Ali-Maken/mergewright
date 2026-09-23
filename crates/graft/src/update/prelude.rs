@@ -6,7 +6,8 @@
 //! history window, the refs answer and the working-tree status are on hand,
 //! and nothing an earlier key started is still in flight (the radar context,
 //! a search, the pane's file list or diff, a write and its undo, a journal
-//! or stash read, the commit editor's prefill, a Ghost Preview's plan). So
+//! or stash read, the commit editor's prefill, a Ghost Preview's plan, the
+//! resolver's opening read or base load). So
 //! `Enter` opens on a real row and not on nothing, `j` after it moves the
 //! files cursor and not an empty list, `k` finds the uncommitted row once
 //! the status says the tree is dirty, `u` after `Space` undoes the stage
@@ -65,5 +66,13 @@ fn settled(state: &AppState) -> bool {
         .preview
         .as_ref()
         .is_none_or(|preview| !matches!(preview.plan, Loading::Pending(_)));
-    window && refs && status && quiet && writes_landed && planned
+    // M6's resolver: its opening read and a `B` base load are jobs a key
+    // started. `o`/`t`/`b` fed before the read lands is refused — a capture
+    // would show the refusal, not the take (m6-conflicts/07 F6). Its
+    // `staging` and `restarting` writes are `operating`, covered above.
+    let resolver_read = state
+        .resolver
+        .as_ref()
+        .is_none_or(|open| open.job.is_none() && open.base_job.is_none());
+    window && refs && status && quiet && writes_landed && planned && resolver_read
 }

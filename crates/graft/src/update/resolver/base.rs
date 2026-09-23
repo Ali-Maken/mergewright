@@ -33,8 +33,12 @@ pub(super) fn toggle_base(
         }
         return;
     }
-    if open.job.is_some() || open.base_job.is_some() {
-        state.status = Status::sticky("still writing the last take");
+    if let Some(words) = open.busy_words() {
+        state.status = Status::sticky(words);
+        return;
+    }
+    if open.base_job.is_some() {
+        state.status = Status::sticky("still loading the base");
         return;
     }
     let Some(file) = open.file.clone() else {
