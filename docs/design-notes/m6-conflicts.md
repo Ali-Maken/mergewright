@@ -201,3 +201,190 @@ Groups: **7** → one pass. G1 `git-conflict-model` (Fable sig; graft-git + graf
 (brownfield; graft, + `hints.rs` at the seam close), G5 `app-resolver-whole-files-and-base` (brownfield; graft), G6
 `app-answers-beat-rereads` (brownfield; graft), G7 `acceptance-conflicts` (Fable; graft tests + docs). Disjoint sets:
 G1 ∥ G2 ∥ G3 can run concurrently; G4 → G5 → G6 → G7 are all `graft` and serial.
+
+---
+
+## Amendment 2026-09-23 — the journeys (pipeline steps 1–4, done late)
+
+Read: CLAUDE.md "The feature pipeline"; `docs/research/conflict-resolution.md` (**CR**); `docs/research/ux-principles.md`
+(**UX**); `docs/field-notes.md` 2026-09-23; `.scratch/m6-conflicts/scout-stuck-after-merge.md` (**scout**); 02-keymap
+§2.1, §2.2, §2.6, §2.6a; ADR-0038 §1, ADR-0042; graft MAP (`update::banner`, `::resolver`, `::relaunch`, `::preview`,
+`Status`), graft-ui MAP (`conflict_resolver`, `hints`, `preview_box`), graft-ops MAP (`apply`, `preview`); TESTING.md
+:104-109, :2110-2144. No source. Nothing above is withdrawn unless named here.
+
+**Promise (unchanged), now counted:** every journey below has a key count; the acceptance walk replays it and fails
+over the count in the `journey-counts` block.
+
+### Need
+- **Who / task:** the user, daily, Zed's terminal, team on dependent branches. A merge (or a pull) stops on a conflict;
+  get it resolved and committed.
+- **What hurt, his words** (field notes 2026-09-23): stuck after the stop — `Esc`, move to the uncommitted row, open it,
+  before reaching the conflicts. *"A human needs not take 5 to 6 steps; whatever is enough is enough."* In the
+  resolver: numbers on OURS only; a stray `2` before `── conflict 1 of 1`; key bar not in his screenshot
+  (**unconfirmed** — may be below his window; ask his terminal size before the prototype).
+- **Why** (scout, file:lines): path A — the stop's sticky line (`view/status.rs:56`) takes the bottom row and shows only
+  `esc dismiss`; `Esc` hands focus away (`banner.rs:302` → `:265-279`); the preview opens on Cancel, so `m ⏎` cancels.
+  Path B — `update/relaunch.rs:43` returns early with no journal entry, so a shell-begun merge never focuses the
+  banner. **Which path he took is unknown**; both are fixed.
+
+### Prior art (CR §3 · T take · R reject · I invent)
+| Aspect | Best answer | Ours | Rec · why |
+|---|---|---|---|
+| Landing on a stop | JetBrains opens its dialog itself; lazygit "Conflicts!" menu (CR 1.1, 1.5) | banner focused, keys hidden | **T.** In-spec: the banner's keys own the bottom row. **P5**: open the resolver itself (UX 3.1) |
+| Landing on launch, op begun in the shell | not in CR | nothing focused | **I**: git's state decides the landing, not the journal; same landing as a stop |
+| Keys at the point of use | lazygit's bottom line (UX 3.4) | a sticky line replaced them | **T**: a stop is a state (H1) and never replaces keys (H6) |
+| Way back after `Esc` | not in CR | `Tab` works (`banner::take_focus`), shown nowhere | **I**: `⇥ banner` leads the bar while an op is live (H3, H6). No new key |
+| Confirm a previewed op | not in CR; ADR-0038 §1 (his): cursor on Cancel, everywhere | `m → ⏎` | **Keep §1. I, P1**: the verb key again confirms (`m m`). The decision was made at `m` and while reading the picture; the confirm is anticipated (UX 1.1 Rule 1), and `→` is a K with no work in it |
+| Advance after a take | KDiff3 auto-advance (CR 1.8) | stays; `n` | **T, P2** — with `n`/`N` reaching taken blocks, so a take stays fixable by keyboard (H3) |
+| Whole-file take (text) | JetBrains Accept Theirs; Tower; asked of Sublime #316, lazygit #1608 | none | **T, P3** as "every open block", not `checkout --theirs` (lazygit maintainer's caveat, CR 1.5); `Ctrl+O`/`Ctrl+T` (§2.1: bulk = modifier) |
+| Line numbers | each pane its own file (JetBrains/KDiff3, **(?)**) | OURS only | **I**: every line that is on disk carries its disk number, both sides — what `e` and his editor show (H2) |
+| Number on the marker | nobody numbers a marker | `2` on the header | **I**: rows that stand for markers carry no number |
+| Finish | lazygit's "Continue the merge?" (1 key) | `c` (A); refused when begun in the shell (TESTING.md:108) | Keep A. **P4**: `c` finishes a shell-begun merge |
+| Landing after finish | UX 3.1: cursor on the new commit | unspecified | **T**: cursor on the merge commit, `merged … ✓` |
+| Three columns / AI | VS Code went back to inline (#160806) | document (ADR-0042) | **R**, unchanged |
+
+### Journeys
+UX 1.3: key = one chord (`⇥` = Tab); `[M]` = a decision. CR counts are read from docs, not measured. "As built" = scout.
+
+- **J1 merge in the app until it stops.** Start: graph, cursor on `feature` (under the cursor, as the scout found).
+  1 `m` → preview, cursor on Cancel [M: read the picture] · 2 `→` · 3 `⏎` → merge runs and stops. **3** (P1: `m m`, 2).
+  Lands: banner focused; bottom row `merge stopped · 1 file conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`.
+  CR: no start counts.
+- **J2 stop → first conflict.** 1 `⏎` → resolver on the first conflicted file, cursor on block 1. **1** (P5: **0**).
+  As built: 1 but unhinted; he took ~5. CR: JetBrains 0 + 1; lazygit 2.
+- **J3 begun in the shell → first conflict.** Start: `git merge feature` or `git pull` stopped; he runs `graft`. Lands
+  on launch: banner focused, pane on CONFLICTS, bottom row `merge in progress · begun outside Graft · 1 file conflicted
+  · ⏎ resolve …`. 1 `⏎` → resolver. **1**. As built: unfocused; `⏎` opened `main`'s commit (scout B). CR: none.
+- **J4 one file, one conflict.** Start: resolver on it. 1 `o` [M] · 2 `⏎` → staged. **2**. Lands: next conflicted file;
+  none left → banner focused, `all conflicts resolved · c continue`. CR: lazygit 1 + auto-stage; JetBrains 2; Sublime 2.
+- **J5 one file, 3 conflicts, theirs everywhere.** Start: resolver on it, cursor on block 1. In-spec `t n t n t ⏎`
+  **6**; P2 `t t t ⏎` **4**; P3 `Ctrl+T ⏎` **2**. Lands as J4. CR: KDiff3 "B everywhere" 1 + save **(?)**; JetBrains
+  Accept Theirs 1 (whole-file semantics, not the same act).
+- **J6 finish the merge.** Start: J4's landing. 1 `c` → `merge --continue`. **1**. Lands: graph focused, cursor on the
+  new merge commit, `merged feature into main ✓`. Begun in the shell: in-spec refused with `merge begun in the shell —
+  finish it there: git commit` (Times I left stays open); P4 **1**. CR: lazygit 1.
+- **J7 back after `Esc`.** Start: J1's landing, `Esc` pressed → graph focused, bar led by `⇥ banner`. 1 `⇥` → banner ·
+  2 `⏎` → resolver. **2**. As built: nothing on screen said how.
+- **Whole, 1 file 1 conflict.** Path A `m → ⏎ ⏎ o ⏎ c` **7** (from the stop **4** = lazygit 4); P1 6; P1+P5 5.
+  Path B `⏎ o ⏎` **3 + shell**; P4 **4**.
+
+**Landing per event:** stop → banner focused, its keys on the bottom row (P5: resolver on the first conflicted file;
+`Esc` → banner). Rebase stops again → same, `rebase stopped again at step 4 of 7 · …`. Last file's `⏎` → banner,
+`all conflicts resolved · c continue`. Committed → graph, cursor on the new commit. `c` refused or failed → banner stays
+focused; the reason leads its key row (H9). Launch into a live op, journal or not → banner focused, pane on CONFLICTS.
+
+```journey-counts
+# id                          keys  once approved
+a-merge-to-stop               3     P1:2
+a-stop-to-first-conflict      1     P5:0
+b-launch-to-first-conflict    1
+one-file-one-conflict         2
+three-conflicts-all-theirs    6     P2:4 P3:2
+a-finish                      1
+b-finish                      -     P4:1
+back-after-esc                2
+```
+`-` = leaves the app: the walk asserts the refusal words, not a count. When a P is approved, the conductor moves its
+number into `keys` (a spec edit), and the walk tightens with it.
+
+### Interfaces and data shapes (amendment)
+```rust
+// graft-git/src/conflict.rs                                                     fix-resolver-line-numbers
+pub struct SideLines { pub ours: Option<usize>, pub base: Option<usize>, pub theirs: Option<usize> }  // 1-based line in render() of each side's first line; None = no line on disk (empty side, attached base)
+impl ConflictFile { pub fn side_lines(&self, block: usize) -> Option<SideLines>; }   // None: no such block, or Resolved
+// graft-ui/src/conflict_resolver.rs
+pub struct SideNumbers { pub ours: Option<usize>, pub base: Option<usize>, pub theirs: Option<usize> }
+pub struct BlockView { …, pub numbers: SideNumbers }   // Header, Labels, End rows never draw a number
+
+// graft/src/update/mod.rs                                                       fix-landing-after-a-stop
+pub enum Status { …, Stopped { reason: String } }   // a state: leads the bottom row, never replaces keys, no `esc dismiss`; cleared when the op ends
+// graft/src/update/relaunch.rs
+pub enum LiveOrigin { ThisRun, PreviousRun, OutsideGraft }
+pub(super) fn land_on_live_operation(state: &mut AppState, commands: &mut Vec<Command>, origin: LiveOrigin, next_id: /* launch_into_live's type */) -> bool;  // replaces launch_into_live; gate = in_progress.is_some()
+// graft/src/update/banner.rs
+pub fn stop_reason(state: &AppState, origin: LiveOrigin, again: bool) -> String;
+pub fn one_tab_to_banner(state: &AppState) -> bool;   // take_focus lands on the banner in one Tab from here
+// graft-ui/src/graph_screen/hints.rs
+pub enum HintContext { …, OperationLive(Box<HintContext>) }   // the row's list, `⇥ banner` (Live) first
+pub fn stopped_row(reason: &str, hints: &[Hint], columns: u16) -> String;   // bar fitted first; reason takes the rest, cut with …, dropped under 12 cells
+
+// graft/src/update/resolver (walk.rs, take.rs)                                   fix-take-advances-to-next-block (P2)
+pub fn next_block(file: &ConflictFile, from: Option<usize>, forward: bool) -> Option<usize>;   // any state
+pub fn after_take(file: &ConflictFile, taken: usize) -> Option<usize>;   // next open after `taken`, wrapping; None = none open
+pub struct ResolverState { …, pub queued: VecDeque<(usize, Take)> }   // takes pressed while one is in flight, in order, cap 64
+
+// graft-ui/src/preview_box.rs                                                   fix-preview-verb-confirms (P1)
+pub struct PreviewBox { …, pub again: Option<(SanitizedText, SanitizedText)> }   // ("m", "merge"), drawn first in the footer border
+
+// graft-git conflict.rs + graft-ops conflict.rs                                  fix-take-every-open-block (P3)
+impl ConflictFile { pub fn take_all(&mut self, take: Take) -> usize; }   // every Conflict region; how many
+pub fn apply_take_all(repo: &RepoHandle, path: &Path, expected: Oid, take: Take) -> Result<ConflictFile, TakeError>;
+
+// graft-core journal + graft-ops                                                fix-continue-a-merge-begun-in-the-shell (P4)
+pub enum OperationKind { …, FinishMerge }
+pub enum Operation { …, FinishMerge(FinishMergeParams) }   pub struct FinishMergeParams { pub merge_head: Oid }
+pub struct MergeState { pub merge_head: Oid, pub merge_msg: Vec<u8>, pub merge_mode: Option<Vec<u8>> }  // recorded in the entry's before-state
+// restore: InversePlan step `RestoreMergeState(MergeState)` — writes MERGE_HEAD/MERGE_MSG/MERGE_MODE back
+```
+
+### Hard-to-reverse choices (amendment)
+1. **What decides the landing: git's state or the journal.** Options: journal live entry (as built) · git's
+   `in_progress`. **Git's state**; the journal only picks the words. A shell-begun op has no entry, ever.
+2. **Line numbers: the file on disk, markers unnumbered** · vs each side numbered in its stage file. **Disk.** It is
+   what `e` and his editor show, and `side_lines` is exact against `render()`; stage numbering needs the alignment
+   ADR-0042 reason 1 refused.
+3. **(P4) What `u` after finishing a shell-begun merge restores.** Options: the resolved result as uncommitted changes,
+   not merging · the exact mid-merge state, `MERGE_HEAD` included. **Exact.** Every other `u` puts back what was; losing
+   the second parent turns the next `c` into a plain commit, silently. Cost: a new inverse step writing git's own files.
+
+### Where I'd differ (Proposed changes — not decided; fix specs marked *gated* wait for them)
+- **P1 — preview: the verb key again confirms** (`m m`, `r r`), only once the plan has landed. ADR-0038 §1 is kept
+  (cursor on Cancel everywhere, `⏎` = the choice under the cursor). Keymap: Ghost Preview gains `m`/`r` for `.`-less
+  opens only (`.` still closes what `.` opened). Trade-off: a double tap merges after one glance — the same glance
+  `→ ⏎` needed.
+- **P2 — takes advance; `n`/`N` walk every block**, taken ones included (§2.6 row "next/previous *open* block").
+  Past the last block: first open block if any (`wrapped · 2 still open`), else today's `no more conflicts` notice.
+  TESTING.md scenario 1's `n t n b` becomes `t b`. Trade-off: `n` stops on taken blocks; the title's count says what
+  is left.
+- **P3 — `Ctrl+O` / `Ctrl+T`: ours / theirs in every open block of this file**, one write, then `⏎` as usual. No
+  bulk-both (`Ctrl+B` is tmux's prefix). **(?)** Zed's terminal may claim `Ctrl+T` — check before approving.
+- **P4 — `c` finishes a merge begun in the shell** (reverses ruling F5; pulls TESTING.md:108 from M7). Merge only;
+  shell-begun rebase and cherry-pick stay M7. Journaled as its own entry, exact inverse (choice 3).
+- **P5 — a stop with anything unmerged lands in the resolver** on the first conflicted file (§2.6a says the banner
+  takes focus). UX 3.1; saves the `⏎` on every stop. `Esc` → banner. A stop with nothing unmerged, and any launch,
+  keep the banner. Trade-off: abort from there is `Esc a`, 2 keys, for the rarer act.
+
+### New UI (amendment)
+Resolver per §New UI above; bottom rows and numbering change:
+```
+stop, 120 cols      │ merge stopped · 1 file conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph │
+after Esc           │ merge stopped · 1 file conflicted · ⇥ banner  ⏎ open  c commit  . more  …                        │
+launch, begun in shell  merge in progress · begun outside Graft · 1 file conflicted · ⏎ resolve  c continue  a abort …
+card, ≥100:         │   1 line-one                                                                                  │
+                    │▏    ── conflict 1 of 3 · open ── o ours  t theirs  b both ───────────────────                 │
+                    │▏    OURS · HEAD                             │ THEIRS · feature                                 │
+                    │▏  3 one-ours                                │    5 one-theirs                                  │
+                    │▏    ────────────────────────────────────────┴─────────────────────────                        │
+                    │   7 b1                                                                                        │
+after t (P2)        │     ── conflict 1 of 3 · took theirs ── o ours  b both ──   then  │   2 one-theirs  │  cursor on 2 │
+preview (P1)        ╰ m merge  ←→ choose  ⏎ act  esc cancel ╯
+```
+- Eye first: the bottom row's keys after any stop; in the card, the cursor header, then both numbered sides.
+- Stacked (<100): THEIRS lines numbered like OURS. BASE numbered only when its lines are on disk (diff3/zdiff3 markers).
+- Focus is still shown by reverse video on `MERGING` — **colour, unverified in captures (rule 5)**; the text tell is
+  which keys the bottom row lists.
+
+### Genuinely risky tickets (amendment)
+- **fix-continue-a-merge-begun-in-the-shell (P4)** — **Fable**, all three tests: a new journal kind and inverse step
+  every later shell-begun op (M7 rebase, pick) builds on; whether `u` truly restores a merging repository is not
+  readable from a diff; the builder decides which of git's merge files are state and how they are written back.
+- **fix-take-advances-to-next-block (P2)** — Opus: the take queue is new state; judged by tests.
+- Acceptance on Fable. **One Fable build if P4 is approved, none otherwise.** Not underspecified.
+
+### Prototype (pipeline step 5) — before any fix builds
+Wizard-of-Oz (UX §4): canned 120x40 text frames, a script steps on his keys; one task in his words — *"merge
+`feature` into `main` and get it finished."* Ask his terminal size first; add that size. Frames, smallest set:
+1 after the stop (bottom row with keys) · 2 after `Esc` (`⇥ banner`) · 3 launch into a shell-begun merge · 4 the card,
+both sides numbered, no header number · 5 after `t` with advance (P2) and after `Ctrl+T` (P3) · 6 after `c`, cursor on
+the merge commit · 7 the preview footer with `m merge` (P1). Record first key per frame and every stall (UX 4.1);
+field notes the same day; findings → ADR.
