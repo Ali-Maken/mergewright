@@ -5,10 +5,11 @@ Task, in the user's words: "merge `feature` into `main` and get it finished."
 Repo pictured: /tmp/graft-conflict — notes.txt with 2 conflict blocks, gone.txt modified on main / deleted on feature.
 Nothing here touches git. Frames are canned text; the script only steps on keys.
 
-  python3 prototypes/m6-conflict-journey/walk.py                 # path A, in-spec keys only
-  python3 prototypes/m6-conflict-journey/walk.py --proposed      # P1-P5 on
+  python3 prototypes/m6-conflict-journey/walk.py                 # v2: --layout jb (file list, 3 panes >=180 cols)
+  python3 prototypes/m6-conflict-journey/walk.py --layout card   # v1, path A, in-spec keys only
+  python3 prototypes/m6-conflict-journey/walk.py --layout card --proposed   # v1 with P1-P5 on
   python3 prototypes/m6-conflict-journey/walk.py --start shell   # path B: merge begun in the shell
-  python3 prototypes/m6-conflict-journey/walk.py --capture OUT   # write every scripted frame at 120x40
+  python3 prototypes/m6-conflict-journey/walk.py --capture OUT   # write every scripted frame (jb 200x50 + 120x40, v1 120x40)
 q quits. Colour: none (plain text; reverse video etc. is not prototyped).
 """
 import argparse
@@ -244,7 +245,7 @@ class Walk:
             rows.append("   all blocks taken · ⏎ stage notes.txt")
         return rows
 
-    def resolver_bar(self):
+    def resolver_bar(self, w=0):
         if self.file == 0:
             return " o ours  t theirs  ⏎ stage  e edit  esc banner"
         extra = "  Ctrl+O all ours  Ctrl+T all theirs" if self.p else ""
@@ -285,11 +286,11 @@ class Walk:
             body = self.resolver_rows(w)
         elif s == "merged":
             body = self.graph_rows(None, merged=True)
-        out += body
         if s == "preview":
             foot = self.preview_box(w)
-        bar = self.resolver_bar() if s == "resolver" else self.bottom()
+        bar = self.resolver_bar(w) if s == "resolver" else self.bottom()
         tail = foot + [(" " + self.msg) if self.msg else "", bar]
+        out += body[: max(0, h - 1 - len(tail))]  # never push the key bar off the bottom
         while len(out) + len(tail) < h:
             out.append("")
         out += tail
@@ -347,6 +348,270 @@ class Walk:
         ]
 
 
+YOURS, THEIRS = "main (yours)", "feature (theirs)"  # one name per side, everywhere (audit C)
+FILES = ["gone.txt", "notes.txt"]
+# notes.txt as each side has it on disk: context lines and the 2 blocks. Both sides number 1-6 contiguously.
+NOTES_LAYOUT = ["one", 0, "three", "four", 1, "six"]
+
+
+def fit(s, n):
+    return s.ljust(n) if len(s) <= n else s[: n - 1] + "…"
+
+
+class JbWalk(Walk):
+    """--layout jb: JetBrains-style resolver. File list always on screen; 3 panes at >=180 cols, card below.
+
+    Keys are --proposed's (P1-P5) plus two list keys: j/k move between files, O/T take a whole file
+    as main (yours) / feature (theirs) and mark it done (audit A: 1 key per file)."""
+
+    def __init__(self, start):
+        super().__init__(True, start)
+        self.staged = [False, False]
+
+    def title(self, w):
+        tag = "" if self.screen in ("graph", "preview", "merged") else "MERGING"
+        left = f" graft {REPO}   PROTOTYPE  --layout jb"
+        return left + " " * max(1, w - len(left) - len(tag) - 1) + tag
+
+    def on_banner(self, k):
+        if k == "c" and self.banner == "resolved":
+            self.screen, self.done, self.outcome = "merged", True, "merged in the app"
+            return True
+        return super().on_banner(k)
+
+    # ---------- resolver ----------
+    def file_open(self, f):
+        if f == 0:
+            return 0 if self.gone else 1
+        return sum(1 for x in self.blocks if x is None)
+
+    def stage(self):
+        prev = self.file
+        self.staged[prev] = True
+        nxt = [f for f in range(2) if not self.staged[f]]
+        if nxt:
+            self.file, self.cur = nxt[0], 0
+            self.msg = f"{FILES[prev]} done ✓ · ▸ moved to {FILES[self.file]}"
+        else:
+            self.msg = "every file done ✓ · c finishes the merge"
+
+    def on_resolver(self, k):
+        f = self.file
+        if k == "\x1b":
+            self.screen, self.banner = "banner", "stopped"
+            return True
+        if k in ("j", "k"):
+            nf = min(1, f + 1) if k == "j" else max(0, f - 1)
+            if nf == f:
+                return False
+            self.file, self.cur = nf, 0
+            return True
+        if k == "c":
+            if all(self.staged):
+                self.screen, self.done, self.outcome = "merged", True, "merged in the app"
+                return True
+            return False
+        if k in ("O", "T"):  # whole file from the list
+            side = "ours" if k == "O" else "theirs"
+            if f == 0:
+                self.gone = side
+            else:
+                self.blocks = [side, side]
+            self.stage()
+            return True
+        if f == 0:
+            if k in ("o", "t"):
+                self.gone = "ours" if k == "o" else "theirs"
+                self.staged[0] = False
+            elif k == "\r" and self.gone:
+                self.stage()
+            else:
+                return False
+            return True
+        b = self.blocks
+        if k in ("o", "t", "b"):
+            b[self.cur] = {"o": "ours", "t": "theirs", "b": "both"}[k]
+            self.staged[1] = False
+            nxt = [i for i in range(len(b)) if b[i] is None]
+            if nxt:
+                self.cur = nxt[0]
+        elif k in ("\x0f", "\x14"):
+            for i in range(len(b)):
+                if b[i] is None:
+                    b[i] = "ours" if k == "\x0f" else "theirs"
+        elif k in ("n", "N"):
+            self.cur = 1 - self.cur
+        elif k == "\r" and all(b):
+            self.stage()
+        else:
+            return False
+        return True
+
+    def state_word(self, f):
+        if self.staged[f]:
+            return "done ✓"
+        n = self.file_open(f)
+        total = 1 if f == 0 else 2
+        return f"{n} of {total} open" if n else "⏎ to mark done"
+
+    def list_column(self):
+        rows = [" FILES · 2 conflicted", ""]
+        for f, name in enumerate(FILES):
+            m = "▸" if f == self.file else " "
+            rows.append(f" {m} {name:<10} {self.state_word(f)}")
+        rows += ["", "  j/k file", "  O/T whole file"]
+        return rows
+
+    def list_strip(self):
+        parts = [f"{'▸' if f == self.file else ' '} {n} · {self.state_word(f)}" for f, n in enumerate(FILES)]
+        return " files:  " + "   │   ".join(parts)
+
+    def took(self, side):
+        return {"ours": YOURS, "theirs": THEIRS, "both": "both"}[side]
+
+    def kind_row(self):
+        if self.file == 0:
+            return f"▸ gone.txt · modified on {YOURS}, deleted on {THEIRS}"
+        return f"▸ notes.txt · 2 conflicts · {self.file_open(1)} open"
+
+    # 3 panes: main (yours) │ result │ feature (theirs)
+    def panes(self, w):
+        pw = (w - 1 - 2) // 3
+        L, M, R = [f"  {YOURS}"], ["  result"], [f"  {THEIRS}"]
+        cur = []
+        num = lambda n, t: f"{n:>4} {t}"
+        if self.file == 0:
+            g = self.gone
+            L += ["── taken ✓" if g == "ours" else ("── not taken" if g else "── o keep"),
+                  num(1, "keep me, edited on main")]
+            M += [f"── {'took ' + self.took(g) if g else 'open · o keep  t delete'}",
+                  num(1, "keep me, edited on main") if g == "ours" else ("     (file deleted)" if g else "     ?")]
+            R += ["── taken ✓" if g == "theirs" else ("── not taken" if g else "── t delete"),
+                  "     (deleted on feature)"]
+            cur = [False, True, True]
+        else:
+            n, rn = 1, 1
+            for item in NOTES_LAYOUT:
+                if isinstance(item, str):
+                    L.append(num(n, item)); R.append(num(n, item)); M.append(num(rn, item))
+                    cur.append(False)
+                    n += 1; rn += 1
+                    continue
+                i, blk = item, self.blocks[item]
+                on = i == self.cur
+                tag = lambda s: "── taken ✓" if blk in (s, "both") else ("── not taken" if blk else f"── {'o' if s == 'ours' else 't'} take")
+                L.append(tag("ours")); R.append(tag("theirs"))
+                M.append(f"── conflict {i+1} of 2 · " + (f"took {self.took(blk)}" if blk else "open"))
+                o, t = NOTES[i]["ours"][0], NOTES[i]["theirs"][0]
+                res = {"ours": [o], "theirs": [t], "both": [o, t], None: []}[blk]
+                L.append(num(n, o)); R.append(num(n, t))
+                if res:
+                    M.append(num(rn, res[0]))
+                else:
+                    M.append("     ? open")
+                cur += [on, on]
+                for extra in res[1:]:
+                    rn += 1
+                    L.append(""); R.append(""); M.append(num(rn, extra)); cur.append(on)
+                n += 1; rn += 1
+            cur = [False] + cur
+        rows = []
+        for j in range(max(len(L), len(M), len(R))):
+            g = lambda col: col[j] if j < len(col) else ""
+            c = "▏" if j < len(cur) and cur[j] else " "
+            rows.append(c + fit(g(L), pw) + "│" + fit(g(M), pw) + "│" + fit(g(R), pw))
+        return rows, 1 + 3 * pw + 2
+
+    # card below 180 cols, with audit C's fixes: one name per side, contiguous numbers
+    def card(self, w):
+        half = (w - 9) // 2
+        rows = []
+        if self.file == 0:
+            g = self.gone
+            state = f"took {self.took(g)}" if g else "open"
+            head = f"▏ ── {state} ── o keep, as {YOURS}  t delete, as {THEIRS} "
+            rows.append((head + "─" * w)[: w - 1])
+            rows.append("▏      " + fit(YOURS, half) + "│ " + THEIRS)
+            rows.append("▏    1 " + fit("keep me, edited on main", half) + "│      (deleted)")
+            return rows
+        n = 1
+        for item in NOTES_LAYOUT:
+            if isinstance(item, str):
+                rows.append(f"  {n:>4} {item}")
+                n += 1
+                continue
+            i, blk = item, self.blocks[item]
+            c = "▏" if i == self.cur else " "
+            if blk is None:
+                head = f"{c} ── conflict {i+1} of 2 · open ── o {YOURS}  t {THEIRS}  b both "
+                rows.append((head + "─" * w)[: w - 1])
+                rows.append(f"{c}      " + fit(YOURS, half) + "│      " + THEIRS)
+                rows.append(f"{c} {n:>4} " + fit(NOTES[i]["ours"][0], half) + f"│ {n:>4} " + NOTES[i]["theirs"][0])
+                n += 1
+            else:
+                head = f"{c} ── conflict {i+1} of 2 · took {self.took(blk)} "
+                rows.append((head + "─" * w)[: w - 1])
+                lines = {"ours": NOTES[i]["ours"], "theirs": NOTES[i]["theirs"],
+                         "both": NOTES[i]["ours"] + NOTES[i]["theirs"]}[blk]
+                for ln in lines:
+                    rows.append(f"{c} {n:>4} {ln}")
+                    n += 1
+        return rows
+
+    def resolver_rows(self, w):
+        col = w >= 160
+        colw = 30 if col else 0
+        rw = w - colw - (1 if col else 0)
+        body = [self.kind_row(), ""]
+        if w >= 180:
+            prow, _ = self.panes(rw)
+            body += prow
+        else:
+            body += self.card(rw)
+        if all(self.staged):
+            body += ["", "  every file done ✓ · c finishes the merge"]
+        elif self.file_open(self.file) == 0 and not self.staged[self.file]:
+            body += ["", f"  all taken · ⏎ marks {FILES[self.file]} done"]
+        if not col:
+            return [self.list_strip(), "─" * w] + body
+        lst = self.list_column()
+        return [fit(lst[j] if j < len(lst) else "", colw) + "│" + (body[j] if j < len(body) else "")
+                for j in range(max(len(lst), len(body)))]
+
+    def resolver_bar(self, w=0):
+        if self.file == 0:
+            core = f" o keep, as {YOURS}  t delete, as {THEIRS}  ⏎ done"
+        else:
+            core = f" o {YOURS}  t {THEIRS}  b both  ⏎ done"
+        wide = "  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner"
+        narrow = "  O/T file  j/k  c finish"
+        return core + (wide if len(core + wide) <= w else narrow)
+
+    def caption(self):
+        s = self.screen
+        if s != "resolver":
+            if s == "preview" and self.sel == 0:
+                return "preview, cursor on Cancel · next: m (P1)"
+            return super().caption()
+        f = FILES[self.file]
+        if all(self.staged):
+            return "list shows both files done ✓ · next: c"
+        if self.file == 0 and self.gone:
+            return f"took main (yours) in {f}; both sides marked · next: ⏎ marks it done"
+        if self.file == 0:
+            return f"stop lands in the resolver (P5); list ▸ on {f} · next: O (keep whole file as {YOURS}) or o ⏎"
+        if self.blocks == [None, None]:
+            return f"list ▸ moved to {f}, gone.txt shows done ✓ · next: T (whole file) or t t ⏎"
+        if all(self.blocks):
+            return "both blocks taken, result pane filled · next: ⏎"
+        return "took block 1, cursor advanced to block 2 (P2) · next: t"
+
+    def note_count(self):
+        if self.start == "shell":
+            return "launch ⏎ 1 + gone O 1 + notes T 1 + finish c 1 = 4 (v1 in-spec 7 + shell, v1 proposed 6)"
+        return "merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)"
+
+
 def pick_size():
     try:
         c, r = os.get_terminal_size()
@@ -370,13 +635,14 @@ def interactive(args):
     import tty
 
     w, h = pick_size()
-    walk = Walk(args.proposed, args.start)
+    walk = make(args.layout, args.proposed, args.start)
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     sys.stdout.write("\x1b[?1049h\x1b[?25l")
     try:
         tty.setraw(fd)
         while True:
+            w, h = pick_size()  # follow resizes
             lines = walk.frame(w, h)
             sys.stdout.write("\x1b[H\x1b[2J" + "\r\n".join(lines))
             sys.stdout.flush()
@@ -404,6 +670,33 @@ SCRIPTS = [
 ]
 
 
+JB_SCRIPTS = [
+    ("jb A, whole-file route", "app", ["m", "m", "O", "T", "c"]),
+    ("jb A, per-conflict route", "app", ["m", "m", "o", "\r", "t", "t", "\r", "c"]),
+    ("jb A, out of order", "app", ["m", "m", "j", "\x14", "\r", "O", "c"]),
+    ("jb B, shell-begun", "shell", ["\r", "O", "T", "c"]),
+]
+
+
+def make(layout, proposed, start):
+    return JbWalk(start) if layout == "jb" else Walk(proposed, start)
+
+
+def run_script(out, walk, name, keys, w, h):
+    out.append("#" * min(w, 120))
+    out.append(f"# RUN: {name} at {w}x{h}   (keys: {' '.join(kname(k) for k in keys)})")
+    out.append("#" * min(w, 120))
+    step = 0
+    while True:
+        out.append(f"=== PROTOTYPE {name} · {w}x{h} · frame {step} · {walk.caption()}")
+        out += [ln.rstrip() for ln in walk.frame(w, h)]
+        if step >= len(keys):
+            break
+        walk.press(keys[step])
+        step += 1
+    out += ["", *("# " + s for s in walk.summary()), ""]
+
+
 def capture(path):
     out = [
         "# M6 conflict journey — PROTOTYPE captures (walk.py --capture), 120x40",
@@ -412,27 +705,26 @@ def capture(path):
         "# Each frame sits under one line: what you should see / what key next.",
         "",
     ]
+    out.append("# v2 --layout jb (default): file list always on screen; 3 panes at >=180 cols, card below.")
+    out.append("# Sizes: 200x50 (list column + 3 panes) and 120x40 (list strip + card). First row title, last row keys.")
+    out.append("")
+    for w, h in ((200, 50), (120, 40)):
+        for name, start, keys in JB_SCRIPTS:
+            if w == 120 and "out of order" in name:
+                continue
+            run_script(out, JbWalk(start), name, keys, w, h)
+    out.append("# v1 --layout card (unchanged behaviour), 120x40")
+    out.append("")
     for name, prop, start, keys in SCRIPTS:
-        walk = Walk(prop, start)
-        out.append("#" * 120)
-        out.append(f"# RUN: {name}   (keys: {' '.join(kname(k) for k in keys)})")
-        out.append("#" * 120)
-        step = 0
-        while True:
-            out.append(f"=== PROTOTYPE {name} · frame {step} · {walk.caption()}")
-            out += [ln.rstrip() for ln in walk.frame(120, 40)]
-            if step >= len(keys):
-                break
-            walk.press(keys[step])
-            step += 1
-        out += ["", *("# " + s for s in walk.summary()), ""]
+        run_script(out, Walk(prop, start), "v1 " + name, keys, 120, 40)
     with open(path, "w") as f:
         f.write("\n".join(out) + "\n")
 
 
 def main():
     ap = argparse.ArgumentParser(description="PROTOTYPE: M6 conflict journey walk")
-    ap.add_argument("--proposed", action="store_true", help="turn on P1-P5")
+    ap.add_argument("--layout", choices=["jb", "card"], default="jb", help="jb: file list + 3 panes (v2); card: v1")
+    ap.add_argument("--proposed", action="store_true", help="card layout: turn on P1-P5 (jb always has them)")
     ap.add_argument("--start", choices=["app", "shell"], default="app")
     ap.add_argument("--capture", metavar="OUT")
     args = ap.parse_args()

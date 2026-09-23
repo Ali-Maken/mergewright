@@ -3,11 +3,1482 @@
 # Colour: none. These are plain text; reverse video / colour is not prototyped and not verifiable here.
 # Each frame sits under one line: what you should see / what key next.
 
+# v2 --layout jb (default): file list always on screen; 3 panes at >=180 cols, card below.
+# Sizes: 200x50 (list column + 3 panes) and 120x40 (list strip + card). First row title, last row keys.
+
 ########################################################################################################################
-# RUN: A in-spec   (keys: m → ⏎ ⏎ o ⏎ t n t ⏎ c)
+# RUN: jb A, whole-file route at 200x50   (keys: m m O T c)
 ########################################################################################################################
-=== PROTOTYPE A in-spec · frame 0 · graph, cursor on `feature` · next: m
- graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+=== PROTOTYPE jb A, whole-file route · 200x50 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE jb A, whole-file route · 200x50 · frame 1 · preview, cursor on Cancel · next: m (P1)
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                                                                                                       │
+│ main e25730c → 1 new commit                                                                                                                                                                          │
+│ working tree: 2 files updated                                                                                                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                                                                                                    │
+│ undo: u takes this back                                                                                                                                                                              │
+│ git merge --no-edit feature                                                                                                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE jb A, whole-file route · 200x50 · frame 2 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  2 of 2 open     │▏── o keep                                              │── open · o keep  t delete                             │── t delete
+                              │▏   1 keep me, edited on main                           │     ?                                                 │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, whole-file route · 200x50 · frame 3 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 2 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  2 of 2 open     │    1 one                                               │   1 one                                               │   1 one
+                              │▏── o take                                              │── conflict 1 of 2 · open                              │── t take
+  j/k file                    │▏   2 two from main                                     │     ? open                                            │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── o take                                              │── conflict 2 of 2 · open                              │── t take
+                              │    5 five from main                                    │     ? open                                            │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ gone.txt done ✓ · ▸ moved to notes.txt
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, whole-file route · 200x50 · frame 4 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  done ✓          │    1 one                                               │   1 one                                               │   1 one
+                              │▏── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │▏   2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │    5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, whole-file route · 200x50 · frame 5 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 5  (m m O T c)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb A, per-conflict route at 200x50   (keys: m m o ⏎ t t ⏎ c)
+########################################################################################################################
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 1 · preview, cursor on Cancel · next: m (P1)
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                                                                                                       │
+│ main e25730c → 1 new commit                                                                                                                                                                          │
+│ working tree: 2 files updated                                                                                                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                                                                                                    │
+│ undo: u takes this back                                                                                                                                                                              │
+│ git merge --no-edit feature                                                                                                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 2 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  2 of 2 open     │▏── o keep                                              │── open · o keep  t delete                             │── t delete
+                              │▏   1 keep me, edited on main                           │     ?                                                 │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 3 · took main (yours) in gone.txt; both sides marked · next: ⏎ marks it done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   ⏎ to mark done  │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  2 of 2 open     │▏── taken ✓                                             │── took main (yours)                                   │── not taken
+                              │▏   1 keep me, edited on main                           │   1 keep me, edited on main                           │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │  all taken · ⏎ marks gone.txt done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 4 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 2 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  2 of 2 open     │    1 one                                               │   1 one                                               │   1 one
+                              │▏── o take                                              │── conflict 1 of 2 · open                              │── t take
+  j/k file                    │▏   2 two from main                                     │     ? open                                            │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── o take                                              │── conflict 2 of 2 · open                              │── t take
+                              │    5 five from main                                    │     ? open                                            │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ gone.txt done ✓ · ▸ moved to notes.txt
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 5 · took block 1, cursor advanced to block 2 (P2) · next: t
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 1 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  1 of 2 open     │    1 one                                               │   1 one                                               │   1 one
+                              │ ── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │    2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │▏── o take                                              │── conflict 2 of 2 · open                              │── t take
+                              │▏   5 five from main                                    │     ? open                                            │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 6 · both blocks taken, result pane filled · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  ⏎ to mark done  │    1 one                                               │   1 one                                               │   1 one
+                              │ ── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │    2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │▏── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │▏   5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  all taken · ⏎ marks notes.txt done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 7 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  done ✓          │    1 one                                               │   1 one                                               │   1 one
+                              │ ── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │    2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │▏── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │▏   5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, per-conflict route · 200x50 · frame 8 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 8  (m m o ⏎ t t ⏎ c)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb A, out of order at 200x50   (keys: m m j Ctrl+T ⏎ O c)
+########################################################################################################################
+=== PROTOTYPE jb A, out of order · 200x50 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE jb A, out of order · 200x50 · frame 1 · preview, cursor on Cancel · next: m (P1)
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                                                                                                       │
+│ main e25730c → 1 new commit                                                                                                                                                                          │
+│ working tree: 2 files updated                                                                                                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                                                                                                    │
+│ undo: u takes this back                                                                                                                                                                              │
+│ git merge --no-edit feature                                                                                                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE jb A, out of order · 200x50 · frame 2 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  2 of 2 open     │▏── o keep                                              │── open · o keep  t delete                             │── t delete
+                              │▏   1 keep me, edited on main                           │     ?                                                 │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, out of order · 200x50 · frame 3 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 2 open
+                              │
+   gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  2 of 2 open     │    1 one                                               │   1 one                                               │   1 one
+                              │▏── o take                                              │── conflict 1 of 2 · open                              │── t take
+  j/k file                    │▏   2 two from main                                     │     ? open                                            │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── o take                                              │── conflict 2 of 2 · open                              │── t take
+                              │    5 five from main                                    │     ? open                                            │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, out of order · 200x50 · frame 4 · both blocks taken, result pane filled · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  ⏎ to mark done  │    1 one                                               │   1 one                                               │   1 one
+                              │▏── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │▏   2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │    5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  all taken · ⏎ marks notes.txt done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, out of order · 200x50 · frame 5 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  done ✓          │▏── o keep                                              │── open · o keep  t delete                             │── t delete
+                              │▏   1 keep me, edited on main                           │     ?                                                 │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ notes.txt done ✓ · ▸ moved to gone.txt
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, out of order · 200x50 · frame 6 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  done ✓          │▏── taken ✓                                             │── took main (yours)                                   │── not taken
+                              │▏   1 keep me, edited on main                           │   1 keep me, edited on main                           │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb A, out of order · 200x50 · frame 7 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 7  (m m j Ctrl+T ⏎ O c)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb B, shell-begun at 200x50   (keys: ⏎ O T c)
+########################################################################################################################
+=== PROTOTYPE jb B, shell-begun · 200x50 · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · begun outside Graft · 2 files conflicted · ⏎ resolve  c continue  a abort  ⇥ graph
+=== PROTOTYPE jb B, shell-begun · 200x50 · frame 1 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+                              │
+ ▸ gone.txt   1 of 1 open     │   main (yours)                                         │  result                                               │  feature (theirs)
+   notes.txt  2 of 2 open     │▏── o keep                                              │── open · o keep  t delete                             │── t delete
+                              │▏   1 keep me, edited on main                           │     ?                                                 │     (deleted on feature)
+  j/k file                    │
+  O/T whole file              │
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb B, shell-begun · 200x50 · frame 2 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 2 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  2 of 2 open     │    1 one                                               │   1 one                                               │   1 one
+                              │▏── o take                                              │── conflict 1 of 2 · open                              │── t take
+  j/k file                    │▏   2 two from main                                     │     ? open                                            │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── o take                                              │── conflict 2 of 2 · open                              │── t take
+                              │    5 five from main                                    │     ? open                                            │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ gone.txt done ✓ · ▸ moved to notes.txt
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb B, shell-begun · 200x50 · frame 3 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                                                                                                             MERGING
+ FILES · 2 conflicted         │▸ notes.txt · 2 conflicts · 0 open
+                              │
+   gone.txt   done ✓          │   main (yours)                                         │  result                                               │  feature (theirs)
+ ▸ notes.txt  done ✓          │    1 one                                               │   1 one                                               │   1 one
+                              │▏── not taken                                           │── conflict 1 of 2 · took feature (theirs)             │── taken ✓
+  j/k file                    │▏   2 two from main                                     │   2 TWO from feature                                  │   2 TWO from feature
+  O/T whole file              │    3 three                                             │   3 three                                             │   3 three
+                              │    4 four                                              │   4 four                                              │   4 four
+                              │ ── not taken                                           │── conflict 2 of 2 · took feature (theirs)             │── taken ✓
+                              │    5 five from main                                    │   5 FIVE from feature                                 │   5 FIVE from feature
+                              │    6 six                                               │   6 six                                               │   6 six
+                              │
+                              │  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  ^O/^T rest of file  O/T whole file  j/k file  n next  c finish  esc banner
+=== PROTOTYPE jb B, shell-begun · 200x50 · frame 4 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=shell · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 4  (⏎ O T c)
+# stalls: 0
+# design note count: launch ⏎ 1 + gone O 1 + notes T 1 + finish c 1 = 4 (v1 in-spec 7 + shell, v1 proposed 6)
+
+########################################################################################################################
+# RUN: jb A, whole-file route at 120x40   (keys: m m O T c)
+########################################################################################################################
+=== PROTOTYPE jb A, whole-file route · 120x40 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -47,8 +1518,860 @@
 
 
  . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
-=== PROTOTYPE A in-spec · frame 1 · preview, cursor on Cancel · next: → then ⏎
- graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+=== PROTOTYPE jb A, whole-file route · 120x40 · frame 1 · preview, cursor on Cancel · next: m (P1)
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE jb A, whole-file route · 120x40 · frame 2 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:  ▸ gone.txt · 1 of 1 open   │     notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+
+▏ ── open ── o keep, as main (yours)  t delete, as feature (theirs) ───────────────────────────────────────────────────
+▏      main (yours)                                           │ feature (theirs)
+▏    1 keep me, edited on main                                │      (deleted)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, whole-file route · 120x40 · frame 3 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 2 open
+
+     1 one
+▏ ── conflict 1 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+▏      main (yours)                                           │      feature (theirs)
+▏    2 two from main                                          │    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+       main (yours)                                           │      feature (theirs)
+     5 five from main                                         │    5 FIVE from feature
+     6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ gone.txt done ✓ · ▸ moved to notes.txt
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, whole-file route · 120x40 · frame 4 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+▏ ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     5 FIVE from feature
+     6 six
+
+  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, whole-file route · 120x40 · frame 5 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 5  (m m O T c)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb A, per-conflict route at 120x40   (keys: m m o ⏎ t t ⏎ c)
+########################################################################################################################
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 1 · preview, cursor on Cancel · next: m (P1)
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 2 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:  ▸ gone.txt · 1 of 1 open   │     notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+
+▏ ── open ── o keep, as main (yours)  t delete, as feature (theirs) ───────────────────────────────────────────────────
+▏      main (yours)                                           │ feature (theirs)
+▏    1 keep me, edited on main                                │      (deleted)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 3 · took main (yours) in gone.txt; both sides marked · next: ⏎ marks it done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:  ▸ gone.txt · ⏎ to mark done   │     notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+
+▏ ── took main (yours) ── o keep, as main (yours)  t delete, as feature (theirs) ──────────────────────────────────────
+▏      main (yours)                                           │ feature (theirs)
+▏    1 keep me, edited on main                                │      (deleted)
+
+  all taken · ⏎ marks gone.txt done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 4 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 2 open
+
+     1 one
+▏ ── conflict 1 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+▏      main (yours)                                           │      feature (theirs)
+▏    2 two from main                                          │    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+       main (yours)                                           │      feature (theirs)
+     5 five from main                                         │    5 FIVE from feature
+     6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ gone.txt done ✓ · ▸ moved to notes.txt
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 5 · took block 1, cursor advanced to block 2 (P2) · next: t
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · 1 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 1 open
+
+     1 one
+  ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     2 TWO from feature
+     3 three
+     4 four
+▏ ── conflict 2 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+▏      main (yours)                                           │      feature (theirs)
+▏    5 five from main                                         │    5 FIVE from feature
+     6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 6 · both blocks taken, result pane filled · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · ⏎ to mark done
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+  ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     2 TWO from feature
+     3 three
+     4 four
+▏ ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    5 FIVE from feature
+     6 six
+
+  all taken · ⏎ marks notes.txt done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 7 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+  ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     2 TWO from feature
+     3 three
+     4 four
+▏ ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    5 FIVE from feature
+     6 six
+
+  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb A, per-conflict route · 120x40 · frame 8 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 8  (m m o ⏎ t t ⏎ c)
+# stalls: 0
+# design note count: merge m m 2 + gone O 1 + notes T 1 + finish c 1 = 5 (v1 in-spec 11, v1 proposed 7)
+
+########################################################################################################################
+# RUN: jb B, shell-begun at 120x40   (keys: ⏎ O T c)
+########################################################################################################################
+=== PROTOTYPE jb B, shell-begun · 120x40 · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · begun outside Graft · 2 files conflicted · ⏎ resolve  c continue  a abort  ⇥ graph
+=== PROTOTYPE jb B, shell-begun · 120x40 · frame 1 · stop lands in the resolver (P5); list ▸ on gone.txt · next: O (keep whole file as main (yours)) or o ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:  ▸ gone.txt · 1 of 1 open   │     notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on main (yours), deleted on feature (theirs)
+
+▏ ── open ── o keep, as main (yours)  t delete, as feature (theirs) ───────────────────────────────────────────────────
+▏      main (yours)                                           │ feature (theirs)
+▏    1 keep me, edited on main                                │      (deleted)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o keep, as main (yours)  t delete, as feature (theirs)  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb B, shell-begun · 120x40 · frame 2 · list ▸ moved to notes.txt, gone.txt shows done ✓ · next: T (whole file) or t t ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 2 open
+
+     1 one
+▏ ── conflict 1 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+▏      main (yours)                                           │      feature (theirs)
+▏    2 two from main                                          │    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · open ── o main (yours)  t feature (theirs)  b both ─────────────────────────────────────────────
+       main (yours)                                           │      feature (theirs)
+     5 five from main                                         │    5 FIVE from feature
+     6 six
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ gone.txt done ✓ · ▸ moved to notes.txt
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb B, shell-begun · 120x40 · frame 3 · list shows both files done ✓ · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb                                                             MERGING
+ files:    gone.txt · done ✓   │   ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 0 open
+
+     1 one
+▏ ── conflict 1 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+▏    2 TWO from feature
+     3 three
+     4 four
+  ── conflict 2 of 2 · took feature (theirs) ──────────────────────────────────────────────────────────────────────────
+     5 FIVE from feature
+     6 six
+
+  every file done ✓ · c finishes the merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ every file done ✓ · c finishes the merge
+ o main (yours)  t feature (theirs)  b both  ⏎ done  O/T file  j/k  c finish
+=== PROTOTYPE jb B, shell-begun · 120x40 · frame 4 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --layout jb
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=shell · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 4  (⏎ O T c)
+# stalls: 0
+# design note count: launch ⏎ 1 + gone O 1 + notes T 1 + finish c 1 = 4 (v1 in-spec 7 + shell, v1 proposed 6)
+
+# v1 --layout card (unchanged behaviour), 120x40
+
+########################################################################################################################
+# RUN: v1 A in-spec at 120x40   (keys: m → ⏎ ⏎ o ⏎ t n t ⏎ c)
+########################################################################################################################
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 1 · preview, cursor on Cancel · next: → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -88,8 +2411,8 @@
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
 
 
-=== PROTOTYPE A in-spec · frame 2 · preview, cursor on Confirm · next: ⏎
- graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 2 · preview, cursor on Confirm · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -129,7 +2452,7 @@
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
 
 
-=== PROTOTYPE A in-spec · frame 3 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 3 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -170,7 +2493,7 @@
 
 
  merge stopped · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-=== PROTOTYPE A in-spec · frame 4 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 4 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -211,7 +2534,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A in-spec · frame 5 · resolver on gone.txt (modify/delete) · next: ⏎
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 5 · resolver on gone.txt (modify/delete) · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -252,7 +2575,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A in-spec · frame 6 · notes.txt card, both sides numbered, no number on the header · next: t
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 6 · notes.txt card, both sides numbered, no number on the header · next: t
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 2 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -293,7 +2616,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A in-spec · frame 7 · after t: cursor stays on the taken block (in-spec) · next: n
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 7 · after t: cursor stays on the taken block (in-spec) · next: n
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 1 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -334,7 +2657,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A in-spec · frame 8 · notes.txt card, both sides numbered, no number on the header · next: t
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 8 · notes.txt card, both sides numbered, no number on the header · next: t
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 1 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -375,7 +2698,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A in-spec · frame 9 · notes.txt, both blocks taken · next: ⏎
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 9 · notes.txt, both blocks taken · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 0 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -416,7 +2739,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A in-spec · frame 10 · every file staged, banner focused · next: c
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 10 · every file staged, banner focused · next: c
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -457,7 +2780,7 @@ ours = main · theirs = the branch being merged in
 
 
  all conflicts resolved · c continue  a abort  ⇥ graph
-=== PROTOTYPE A in-spec · frame 11 · merged: graph focused, cursor on the new merge commit · done
+=== PROTOTYPE v1 A in-spec · 120x40 · frame 11 · merged: graph focused, cursor on the new merge commit · done
  graft /tmp/graft-conflict   PROTOTYPE
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
 │ ●    [feature] feature                                               MA now  d709ba8
@@ -506,10 +2829,10 @@ ours = main · theirs = the branch being merged in
 # design note count: a-merge-to-stop 3 + a-stop-to-first-conflict 1 + gone 2 + notes t n t ⏎ 4 + a-finish 1 = 11
 
 ########################################################################################################################
-# RUN: A in-spec, Esc detour (J7)   (keys: m → ⏎ Esc ⇥ ⏎)
+# RUN: v1 A in-spec, Esc detour (J7) at 120x40   (keys: m → ⏎ Esc ⇥ ⏎)
 ########################################################################################################################
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 0 · graph, cursor on `feature` · next: m
- graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -549,8 +2872,8 @@ ours = main · theirs = the branch being merged in
 
 
  . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 1 · preview, cursor on Cancel · next: → then ⏎
- graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 1 · preview, cursor on Cancel · next: → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -590,8 +2913,8 @@ ours = main · theirs = the branch being merged in
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
 
 
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 2 · preview, cursor on Confirm · next: ⏎
- graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 2 · preview, cursor on Confirm · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -631,7 +2954,7 @@ ours = main · theirs = the branch being merged in
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
 
 
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 3 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 3 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -672,7 +2995,7 @@ ours = main · theirs = the branch being merged in
 
 
  merge stopped · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 4 · after Esc: graph focused, bar led by `⇥ banner` · next: ⇥
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 4 · after Esc: graph focused, bar led by `⇥ banner` · next: ⇥
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -713,7 +3036,7 @@ ours = main · theirs = the branch being merged in
 
 
  merge stopped · 2 files conflicted · ⇥ banner  ⏎ open  c commit  . more  …
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 5 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 5 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -754,7 +3077,7 @@ ours = main · theirs = the branch being merged in
 
 
  merge stopped · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-=== PROTOTYPE A in-spec, Esc detour (J7) · frame 6 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+=== PROTOTYPE v1 A in-spec, Esc detour (J7) · 120x40 · frame 6 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -803,10 +3126,10 @@ ours = main · theirs = the branch being merged in
 # design note count: a-merge-to-stop 3 + a-stop-to-first-conflict 1 + gone 2 + notes t n t ⏎ 4 + a-finish 1 = 11
 
 ########################################################################################################################
-# RUN: A proposed   (keys: m m o ⏎ Ctrl+T ⏎ c)
+# RUN: v1 A proposed at 120x40   (keys: m m o ⏎ Ctrl+T ⏎ c)
 ########################################################################################################################
-=== PROTOTYPE A proposed · frame 0 · graph, cursor on `feature` · next: m
- graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+=== PROTOTYPE v1 A proposed · 120x40 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -846,8 +3169,8 @@ ours = main · theirs = the branch being merged in
 
 
  . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
-=== PROTOTYPE A proposed · frame 1 · preview, cursor on Cancel · next: m (P1) or → then ⏎
- graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+=== PROTOTYPE v1 A proposed · 120x40 · frame 1 · preview, cursor on Cancel · next: m (P1) or → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -887,7 +3210,7 @@ ours = main · theirs = the branch being merged in
 ╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
 
 
-=== PROTOTYPE A proposed · frame 2 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+=== PROTOTYPE v1 A proposed · 120x40 · frame 2 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -928,7 +3251,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed · frame 3 · resolver on gone.txt (modify/delete) · next: ⏎
+=== PROTOTYPE v1 A proposed · 120x40 · frame 3 · resolver on gone.txt (modify/delete) · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -969,7 +3292,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed · frame 4 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
+=== PROTOTYPE v1 A proposed · 120x40 · frame 4 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 2 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1010,7 +3333,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed · frame 5 · notes.txt, both blocks taken · next: ⏎
+=== PROTOTYPE v1 A proposed · 120x40 · frame 5 · notes.txt, both blocks taken · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 0 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1051,7 +3374,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed · frame 6 · every file staged, banner focused · next: c
+=== PROTOTYPE v1 A proposed · 120x40 · frame 6 · every file staged, banner focused · next: c
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -1092,7 +3415,7 @@ ours = main · theirs = the branch being merged in
 
 
  all conflicts resolved · c continue  a abort  ⇥ graph
-=== PROTOTYPE A proposed · frame 7 · merged: graph focused, cursor on the new merge commit · done
+=== PROTOTYPE v1 A proposed · 120x40 · frame 7 · merged: graph focused, cursor on the new merge commit · done
  graft /tmp/graft-conflict   PROTOTYPE  --proposed
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
 │ ●    [feature] feature                                               MA now  d709ba8
@@ -1141,10 +3464,10 @@ ours = main · theirs = the branch being merged in
 # design note count: a-merge-to-stop P1:2 + a-stop-to-first-conflict P5:0 + gone 2 + notes P3:2 (P2:3) + a-finish 1 = 7 (P2 route 8)
 
 ########################################################################################################################
-# RUN: A proposed, P2 route   (keys: m m o ⏎ t t ⏎ c)
+# RUN: v1 A proposed, P2 route at 120x40   (keys: m m o ⏎ t t ⏎ c)
 ########################################################################################################################
-=== PROTOTYPE A proposed, P2 route · frame 0 · graph, cursor on `feature` · next: m
- graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -1184,8 +3507,8 @@ ours = main · theirs = the branch being merged in
 
 
  . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
-=== PROTOTYPE A proposed, P2 route · frame 1 · preview, cursor on Cancel · next: m (P1) or → then ⏎
- graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 1 · preview, cursor on Cancel · next: m (P1) or → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
   ● ▏  [feature] feature                                               MA now  d709ba8
 ◆ │    [◆ main] main                                                  MA now  e25730c
 ◇─╯    base                                                            MA now  055b111
@@ -1225,7 +3548,7 @@ ours = main · theirs = the branch being merged in
 ╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
 
 
-=== PROTOTYPE A proposed, P2 route · frame 2 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 2 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -1266,7 +3589,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed, P2 route · frame 3 · resolver on gone.txt (modify/delete) · next: ⏎
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 3 · resolver on gone.txt (modify/delete) · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -1307,7 +3630,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed, P2 route · frame 4 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 4 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 2 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1348,7 +3671,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed, P2 route · frame 5 · after t: took theirs, cursor advanced to block 2 (P2) · next: t
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 5 · after t: took theirs, cursor advanced to block 2 (P2) · next: t
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 1 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1389,7 +3712,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed, P2 route · frame 6 · notes.txt, both blocks taken · next: ⏎
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 6 · notes.txt, both blocks taken · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 0 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1430,7 +3753,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE A proposed, P2 route · frame 7 · every file staged, banner focused · next: c
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 7 · every file staged, banner focused · next: c
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -1471,7 +3794,7 @@ ours = main · theirs = the branch being merged in
 
 
  all conflicts resolved · c continue  a abort  ⇥ graph
-=== PROTOTYPE A proposed, P2 route · frame 8 · merged: graph focused, cursor on the new merge commit · done
+=== PROTOTYPE v1 A proposed, P2 route · 120x40 · frame 8 · merged: graph focused, cursor on the new merge commit · done
  graft /tmp/graft-conflict   PROTOTYPE  --proposed
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
 │ ●    [feature] feature                                               MA now  d709ba8
@@ -1520,9 +3843,9 @@ ours = main · theirs = the branch being merged in
 # design note count: a-merge-to-stop P1:2 + a-stop-to-first-conflict P5:0 + gone 2 + notes P3:2 (P2:3) + a-finish 1 = 7 (P2 route 8)
 
 ########################################################################################################################
-# RUN: B in-spec   (keys: ⏎ o ⏎ t n t ⏎ c)
+# RUN: v1 B in-spec at 120x40   (keys: ⏎ o ⏎ t n t ⏎ c)
 ########################################################################################################################
-=== PROTOTYPE B in-spec · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -1563,7 +3886,7 @@ ours = main · theirs = the branch being merged in
 
 
  merge in progress · begun outside Graft · 2 files conflicted · ⏎ resolve  c continue  a abort  ⇥ graph
-=== PROTOTYPE B in-spec · frame 1 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 1 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -1604,7 +3927,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B in-spec · frame 2 · resolver on gone.txt (modify/delete) · next: ⏎
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 2 · resolver on gone.txt (modify/delete) · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -1645,7 +3968,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B in-spec · frame 3 · notes.txt card, both sides numbered, no number on the header · next: t
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 3 · notes.txt card, both sides numbered, no number on the header · next: t
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 2 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1686,7 +4009,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B in-spec · frame 4 · after t: cursor stays on the taken block (in-spec) · next: n
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 4 · after t: cursor stays on the taken block (in-spec) · next: n
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 1 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1727,7 +4050,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B in-spec · frame 5 · notes.txt card, both sides numbered, no number on the header · next: t
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 5 · notes.txt card, both sides numbered, no number on the header · next: t
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 1 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1768,7 +4091,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B in-spec · frame 6 · notes.txt, both blocks taken · next: ⏎
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 6 · notes.txt, both blocks taken · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 notes.txt · file 2 of 2 · 0 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -1809,7 +4132,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B in-spec · frame 7 · every file staged, banner focused · next: c
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 7 · every file staged, banner focused · next: c
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -1850,7 +4173,7 @@ ours = main · theirs = the branch being merged in
 
 
  all conflicts resolved · c continue  a abort  ⇥ graph
-=== PROTOTYPE B in-spec · frame 8 · in-spec: c refused for a shell-begun merge — journey leaves the app here · q
+=== PROTOTYPE v1 B in-spec · 120x40 · frame 8 · in-spec: c refused for a shell-begun merge — journey leaves the app here · q
  graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -1899,9 +4222,9 @@ ours = main · theirs = the branch being merged in
 # design note count: b-launch-to-first-conflict 1 + gone 2 + notes t n t ⏎ 4 + b-finish `-` (leaves app) = 7 + shell
 
 ########################################################################################################################
-# RUN: B proposed   (keys: ⏎ o ⏎ Ctrl+T ⏎ c)
+# RUN: v1 B proposed at 120x40   (keys: ⏎ o ⏎ Ctrl+T ⏎ c)
 ########################################################################################################################
-=== PROTOTYPE B proposed · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
+=== PROTOTYPE v1 B proposed · 120x40 · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -1942,7 +4265,7 @@ ours = main · theirs = the branch being merged in
 
 
  merge in progress · begun outside Graft · 2 files conflicted · ⏎ resolve  c continue  a abort  ⇥ graph
-=== PROTOTYPE B proposed · frame 1 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+=== PROTOTYPE v1 B proposed · 120x40 · frame 1 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -1983,7 +4306,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B proposed · frame 2 · resolver on gone.txt (modify/delete) · next: ⏎
+=== PROTOTYPE v1 B proposed · 120x40 · frame 2 · resolver on gone.txt (modify/delete) · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 gone.txt · file 1 of 2 · modified on main, deleted on feature
 ours = main · theirs = the branch being merged in
@@ -2024,7 +4347,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B proposed · frame 3 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
+=== PROTOTYPE v1 B proposed · 120x40 · frame 3 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 2 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -2065,7 +4388,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B proposed · frame 4 · notes.txt, both blocks taken · next: ⏎
+=== PROTOTYPE v1 B proposed · 120x40 · frame 4 · notes.txt, both blocks taken · next: ⏎
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 notes.txt · file 2 of 2 · 0 of 2 conflicts open
 ours = main · theirs = the branch being merged in
@@ -2106,7 +4429,7 @@ ours = main · theirs = the branch being merged in
 
 
  o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
-=== PROTOTYPE B proposed · frame 5 · every file staged, banner focused · next: c
+=== PROTOTYPE v1 B proposed · 120x40 · frame 5 · every file staged, banner focused · next: c
  graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
 ◌      Uncommitted changes (2 unmerged)
   ●    [feature] feature                                               MA now  d709ba8
@@ -2147,7 +4470,7 @@ ours = main · theirs = the branch being merged in
 
 
  all conflicts resolved · c continue  a abort  ⇥ graph
-=== PROTOTYPE B proposed · frame 6 · merged: graph focused, cursor on the new merge commit · done
+=== PROTOTYPE v1 B proposed · 120x40 · frame 6 · merged: graph focused, cursor on the new merge commit · done
  graft /tmp/graft-conflict   PROTOTYPE  --proposed
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
 │ ●    [feature] feature                                               MA now  d709ba8
