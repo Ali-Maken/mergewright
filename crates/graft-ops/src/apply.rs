@@ -55,6 +55,11 @@ pub struct Applied {
     /// journal** — it says what ran, for the caller's status line, and its
     /// command line was folded into the live entry instead. Read
     /// `description` and `refresh` from it; do not look its `id` up.
+    ///
+    /// The exception has an exception: inside an operation **begun in the
+    /// shell**, a step that can write the working tree (a whole-file take, a
+    /// restart) is an ordinary entry, because there is no entry of Graft's to
+    /// fold it into or chain its backup onto (`resume::folded_step`).
     pub entry: JournalEntry,
     /// What to re-read.
     pub refresh: Refresh,
@@ -370,8 +375,8 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     // finishes its gate — and it runs before the `Pending` line, because a
     // refusal must leave nothing behind.
     let prep = prepare_restart(ctx, op, &facts)?;
-    if let Some(live) = facts.in_progress {
-        return resume::inside_live_operation(ctx, op, &facts, live, &prep);
+    if let Some(folded) = resume::folded_step(ctx, op, &facts, &prep)? {
+        return Ok(folded);
     }
     guard_repush(ctx, op, &facts)?;
     let touches = op.touches(&facts);

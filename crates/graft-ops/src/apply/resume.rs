@@ -9,7 +9,9 @@
 //! The rule they share is M5 hard choice 2 and DESIGN.md §6.4: a stopped
 //! operation is **one entry**, `Pending` from the stop to the finish. Every
 //! step inside the span folds into that entry and writes no line of its own,
-//! so `u` after the finish takes the whole span back.
+//! so `u` after the finish takes the whole span back. An operation begun in
+//! the shell has no such entry: there, a step that can write the working
+//! tree is its own entry instead ([`folded_step`]).
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -42,10 +44,43 @@ pub enum Resume {
     Abort,
 }
 
+/// Run `op` folded into the operation git already has in progress, or answer
+/// `None`: it is not a folded step, and the caller journals it as an entry of
+/// its own.
+///
+/// Folding is for a span Graft opened: the step's line joins that entry and a
+/// chained backup keeps what it overwrites. An operation **begun in the
+/// shell** — a `git pull` that conflicted — has no entry of Graft's, so there
+/// is no span to join and no backup ref to chain onto. A step there that can
+/// write the working tree (a whole-file take, a restart) would run with no
+/// backup at all, and a hand edit it overwrote would be gone. So it is its
+/// own entry, with its own backup, exactly as it is when a conflicted stash
+/// pop leaves nothing live (m6-conflicts/03 scope 2: "folds into the live
+/// entry when one is live; with no live entry it is its own entry") — which
+/// is what closes the m6 g04/g08 review's M1.
+///
+/// A step that writes only the index still folds into nothing there, as it
+/// did before: `git add` and `restore --staged` move no byte on disk.
+pub(super) fn folded_step(
+    ctx: &mut Context<'_>,
+    op: &Operation,
+    facts: &RepoFacts,
+    prep: &RestartPrep,
+) -> Result<Option<Applied>, ApplyError> {
+    let Some(live) = facts.in_progress else {
+        return Ok(None);
+    };
+    let span = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?.cloned();
+    if span.is_none() && op.touches(facts).worktree {
+        return Ok(None);
+    }
+    inside_live_operation(ctx, op, facts, span.as_ref(), prep).map(Some)
+}
+
 /// Run a step that belongs to an operation git already has in progress.
 ///
-/// `check` admits exactly `Stage` and `Unstage` while a merge, rebase,
-/// cherry-pick or revert is open — the resolver's "mark resolved". Such a
+/// `check` admits `Stage`, `Unstage` and the two conflict operations while a
+/// merge, rebase, cherry-pick or revert is open — the resolver's steps. Such a
 /// step is **part of that operation, not an operation of its own**: DESIGN
 /// §6.4 ("a mid-flight operation … is not a journal entry yet … the undo
 /// journal picks up once there's a finished operation to reverse") and M5
@@ -77,23 +112,29 @@ pub enum Resume {
 /// repository as it stands, hung off the entry's own backup ref, no journal
 /// line. It is what `d` reads back after `⏎`, and it is the recovery point
 /// for that hand edit.
+///
+/// An operation begun in the shell has no entry to chain onto, so
+/// [`folded_step`] never sends a step that can write the working tree here:
+/// that one is its own entry (m6 g04/g08 review, M1). What does arrive with
+/// `span` `None` writes the index alone.
 pub(super) fn inside_live_operation(
     ctx: &mut Context<'_>,
     op: &Operation,
     facts: &RepoFacts,
-    live: InProgress,
+    span: Option<&JournalEntry>,
     prep: &RestartPrep,
 ) -> Result<Applied, ApplyError> {
-    // Before anything runs: the entry the step folds into, and the snapshot
-    // that keeps what the step is about to overwrite.
-    let span = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?.cloned();
+    // Before anything runs: the snapshot that keeps what the step is about
+    // to overwrite.
     let touches = op.touches(facts);
-    let step_backup = match &span {
+    let step_backup = match span {
         Some(entry) if touches.index || touches.worktree => {
             snapshot::chain_backup(ctx, entry).map_err(as_apply_error)?
         }
-        // No entry of Graft's to chain onto (an operation begun in the
-        // shell), or a step that writes neither: nothing to keep.
+        // A step that writes neither, or an index-only step inside an
+        // operation begun in the shell: `git add` and `restore --staged`
+        // leave every byte on disk where it was, and git's own state is the
+        // whole record of an operation Graft did not begin.
         _ => None,
     };
 
@@ -107,7 +148,7 @@ pub(super) fn inside_live_operation(
     let plan = op.plan(facts);
     commands.extend(plan.iter().map(Invocation::command_line));
     let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
-    fold_commands(ctx, span.as_ref(), commands.clone());
+    fold_commands(ctx, span, commands.clone());
 
     let mut record = JournalEntry {
         id: ctx.next_id(),

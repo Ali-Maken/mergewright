@@ -21,7 +21,7 @@ use crate::support::{NOW, TempRepo, run, try_run};
 /// Rename/rename is what produces `DD` (and the `AU`/`UA` pair that comes
 /// with it); every file's content differs from every other's so git's rename
 /// detection pairs the ones it is meant to.
-fn stopped_merge() -> TempRepo {
+pub(crate) fn stopped_merge() -> TempRepo {
     let repo = TempRepo::init();
     repo.write("both.txt", b"both base one\nboth base two\n");
     repo.write("theirs-deleted.txt", b"td base alpha\ntd base beta\n");
@@ -51,7 +51,7 @@ fn stopped_merge() -> TempRepo {
 }
 
 /// `git ls-files -u -- <path>`, as lines.
-fn unmerged_lines(repo: &TempRepo, path: &str) -> String {
+pub(crate) fn unmerged_lines(repo: &TempRepo, path: &str) -> String {
     repo.git(&["--literal-pathspecs", "ls-files", "-u", "--", path])
 }
 
@@ -302,28 +302,11 @@ fn deleted_by_us_taking_theirs_stages_the_bytes_git_left() {
     assert_eq!(unmerged_lines(&repo, "ours-deleted.txt"), String::new());
 }
 
-/// Inside a live merge the resolution is a step in that operation's span, so
-/// it writes no journal line of its own (m5 hard choice 2).
-#[test]
-fn whole_file_folds_into_live_entry() {
-    let repo = stopped_merge();
-    let before = journal_ids(&repo);
-    run(
-        &repo,
-        &Operation::ResolveWholeFile(ResolveWholeParams {
-            path: PathBuf::from("theirs-deleted.txt"),
-            side: Side::Ours,
-            how: UnmergedHow::DeletedByThem,
-        }),
-        NOW,
-    );
-    assert_eq!(
-        journal_ids(&repo),
-        before,
-        "a step inside a live merge writes no line"
-    );
-    assert_eq!(unmerged_lines(&repo, "theirs-deleted.txt"), String::new());
-}
+// `whole_file_folds_into_live_entry` lived here. Its merge was begun with
+// plain `git`, so there was no entry to fold into, and "no line" was the
+// data-loss path (m6 g04/g08 review, M1). A shell-begun merge is now
+// `shell_begun_merge.rs`; the fold into Graft's own entry is
+// `chained_backup::folded_step_chains_a_backup`.
 
 /// With nothing live — a conflicted `stash pop` leaves an unmerged index and
 /// no `MERGE_HEAD` — the resolution is its own entry, kind `ResolveConflict`.
@@ -469,14 +452,16 @@ fn restart_refuses_the_shapes_checkout_merge_cannot_merge() {
         }
     }
 
-    // And the two that do work still do.
-    for path in ["both.txt", "both-added.txt"] {
+    // And the two that do work still do. Each is an entry of its own in this
+    // shell-begun merge (m6 g04/g08 review, M1), so each needs its own
+    // moment: the test context mints an entry's id from `at`.
+    for (at, path) in [(NOW, "both.txt"), (NOW + 1, "both-added.txt")] {
         run(
             &repo,
             &Operation::RestartConflict(RestartParams {
                 path: PathBuf::from(path),
             }),
-            NOW,
+            at,
         );
     }
 }
@@ -489,7 +474,11 @@ fn restart_refuses_the_shapes_checkout_merge_cannot_merge() {
 /// A restart of one is not — that is `d` after `⏎`, the case
 /// m6-conflicts/08 scope 5(c) exists for — so it is refused only when the
 /// sides were not kept anywhere, and then by name: this merge was begun in
-/// the shell, so there is no entry of Graft's and no chain to read.
+/// the shell, so there is no entry of Graft's for it and no chain to read.
+/// (The resolution below is an entry of its own since the m6 g04/g08
+/// review's M1, and its `index_before` does hold the stages — but while an
+/// operation is live `stage_source` reads the chain, not the journal. A
+/// refusal, not a loss; filed in ticket 08's review-fix notes.)
 #[test]
 fn conflict_operations_refuse_a_path_that_is_not_conflicted() {
     let repo = stopped_merge();
@@ -610,7 +599,7 @@ fn conflicted_stash_pop() -> TempRepo {
 }
 
 /// The ids in the journal file, in order.
-fn journal_ids(repo: &TempRepo) -> Vec<String> {
+pub(crate) fn journal_ids(repo: &TempRepo) -> Vec<String> {
     let handle = repo.open();
     let journal = crate::support::journal_for(&handle);
     journal
