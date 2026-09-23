@@ -1,7 +1,7 @@
 m6 walk capture: m6-02-whole-file-card — scenario every-whole-file-shape, keys k ⏎ j j j j j j j j j j ⏎, unicode tier, 80x24
 
 MERGING
-theirs-deleted.txt · 0/0 open
+theirs-deleted.txt
 ours = main · theirs = the branch being merged in
 deleted by them · o keeps the file  t deletes it
       1 changed by us, deleted by them

@@ -188,10 +188,6 @@ pub enum Step {
     /// for [`Wait::ConflictOpened`]. A resolver already open on another
     /// file is closed with `Esc` first (m6-conflicts/07).
     Resolve(&'static str),
-    /// `Tab` round the focus cycle until the banner has the keyboard
-    /// (m6-conflicts/07): from the changes pane that is two presses, from
-    /// the graph one.
-    FocusBanner,
     /// Press a key whose commands hand the terminal over — `e`
     /// (`OpenExternalEditor`) or `M` (`OpenMergetool`) — and **carry the
     /// hand-over out**, as the frame loop does, with the loop's own command

@@ -386,7 +386,6 @@ impl Walk<'_> {
                     state
                 }
                 Step::Resolve(path) => self.resolve(state, path)?,
-                Step::FocusBanner => self.focus_banner(state)?,
                 Step::HandOver(what, key) => self.hand_over(&state, what, *key)?,
                 Step::Relaunch | Step::Kill => {
                     unreachable!("drive_app splits the steps at a relaunch or a kill")

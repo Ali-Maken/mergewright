@@ -22,7 +22,7 @@ LOG=$(mktemp)
   t1=$(date +%s)
   grep -E "Summary" "$LOG" | sed 's/^ */  /'
   grep -E "^\s+FAIL \[" "$LOG" | sort -u | sed 's/^ */  /'
-  echo "  wall $((t1 - t0)) s, exit $code (red rows are the ticket's findings F1-F5)"
+  echo "  wall $((t1 - t0)) s, exit $code (a red row is a finding: see the ticket)"
   echo
   echo "## release + heavy tier (ADR-0021; frame budgets fail only under --release)"
   t0=$(date +%s)

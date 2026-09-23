@@ -1,0 +1,26 @@
+m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ j j j j j j j j j j j j ⏎ N n, unicode tier, 80x24
+
+MERGING
+zdiff3.txt · 1/1 open
+ours = main · theirs = the branch being merged in
+      1 start
+▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────
+▏ OURS · ours
+▏     3 middle ours
+▏ THEIRS · theirs
+▏       middle theirs
+▏ ──────────────────────────────────────────────────────────────────────────────
+      9 end
+
+
+
+
+
+
+
+
+
+
+
+
+no more conflicts · ⏎ marks zdiff3.txt resolved

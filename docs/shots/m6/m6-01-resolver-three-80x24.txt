@@ -1,0 +1,26 @@
+m6 walk capture: m6-01-resolver-three — scenario zdiff3-and-base-on-demand, keys k ⏎ j j j j j j j j j j j ⏎ n t B, unicode tier, 80x24
+
+MERGING
+three.txt · 2/3 open
+ours = main · theirs = the branch being merged in
+      1 alpha
+   2 ── conflict 1 of 3 · open ── o ours  t theirs  b both ─────────────────────
+  OURS · HEAD
+      3 one-ours
+  BASE · merged common ancestor
+        one
+  THEIRS · feature
+        one-theirs
+  ──────────────────────────────────────────────────────────────────────────────
+      7 b1
+      8 b2
+      9 b3
+     10 b4
+▏  11 ── conflict 2 of 3 · took theirs ── o ours  b both ───────────────────────
+▏    11 two-theirs
+▏ ──────────────────────────────────────────────────────────────────────────────
+     12 c1
+     13 c2
+     14 c3
+     15 c4
+base shown for 3 conflicts ✓

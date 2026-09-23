@@ -8,15 +8,19 @@
 //! parents, the journal file.
 
 use graft_core::event::{KeyCode, KeyPress};
-use graft_core::journal::EntryStatus;
+use graft_core::journal::{EntryStatus, OperationKind};
 use graft_fixtures::Shape;
 
+use super::conflicts::merge_that_stops;
 use super::fixture::{
-    EDITED, Fixture, Remote, TOOL_WROTE, as_built, with_a_mergetool, with_an_editor,
+    EDITED, Fixture, Remote, TOOL_WROTE, as_built, merge_aborted, with_a_mergetool, with_an_editor,
 };
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::{Side, resolved_bytes, side_bytes, unmerged};
-use super::vocabulary::{branch, ch, chain, key, plain, same_files, status_containing, undo};
+use super::vocabulary::{
+    branch, ch, chain, entries_of, key, last_entry_committed, plain, same_files, status_containing,
+    undo,
+};
 use crate::repo_truth::{check, run_git};
 
 pub(super) fn resolving() -> Vec<Scenario> {
@@ -204,14 +208,13 @@ fn resolve_the_rest(done: &[&str]) -> Vec<Step> {
 
 // ───────────────────────────── the scenarios ─────────────────────────────
 
-/// Two files by the keys — `both.txt` ours; `three.txt` ours, theirs,
-/// both — the refusal while blocks are open, everything else resolved,
-/// then `c` where the line offers it and `c` from the banner: the ticket
-/// wants a merge commit whose parents are main and feature. Red today on
-/// findings F4 (`c` on the pane opens the commit editor) and F5 (the
-/// fixture's merge was begun in the shell, and `c` refuses it) — the
-/// ticket's `u` after the commit is covered by `u-right-after-continue-
-/// is-accepted` on a merge Graft began.
+/// A merge **the app begins** (`m` on `feature`, confirmed; the fixture's
+/// shell-begun merge is aborted in `setup` — ticket 07 ruling F5), resolved
+/// by the keys: `both.txt` ours; `three.txt` ours, theirs, both, with the
+/// refusal while blocks are open; everything else resolved; `c` from the
+/// banner the last file closes to. Then git says: a merge commit whose
+/// second parent is `feature`, no unmerged entry, one `Committed` merge in
+/// the journal — and `u` puts `HEAD` back on the pre-merge tip.
 #[allow(
     clippy::too_many_lines,
     reason = "one scenario: its steps and its verdict, read top to bottom"
@@ -222,9 +225,10 @@ fn merge_resolved_with_the_keys() -> Scenario {
         shape: Shape::StoppedMerge,
         remote: Remote::None,
         size: (120, 40),
-        setup: as_built,
+        setup: merge_aborted,
         steps: chain(vec![
-            vec![Step::WaitFor(Wait::Ready)],
+            merge_that_stops(),
+            vec![Step::Mark("stopped")],
             one_block("both.txt", 'o'),
             vec![Step::Resolve("three.txt")],
             take('o'),
@@ -246,40 +250,49 @@ fn merge_resolved_with_the_keys() -> Scenario {
             mark_resolved("three.txt"),
             resolve_the_rest(&["both.txt", "three.txt"]),
             vec![
-                Step::See("the last file closes to the banner", |state| {
-                    status_containing(state, "all conflicts resolved · c continue")?;
-                    // Opened from the pane, the resolver closes back to it
-                    // (the rebase scenarios, opened from the banner, close
-                    // to the banner). The line offers `c`; the next key is
-                    // `c`, pressed where the user now is.
-                    check(state.resolver.is_none(), || {
-                        format!(
-                            "resolver still open on {:?}",
-                            state.resolver.as_ref().map(|open| open.path.clone())
-                        )
-                    })
-                }),
+                Step::See(
+                    "the last file closes to the banner, which offers c",
+                    |state| {
+                        status_containing(state, "all conflicts resolved · c continue")?;
+                        check(state.resolver.is_none(), || {
+                            format!(
+                                "resolver still open on {:?}",
+                                state.resolver.as_ref().map(|open| open.path.clone())
+                            )
+                        })?;
+                        check(state.banner_focus, || {
+                            "the line offers c, but the banner does not have the keyboard"
+                                .to_owned()
+                        })
+                    },
+                ),
                 Step::Mark("resolved"),
-                // `c` where the line offers it — the pane — then, whatever
-                // that did, `⇥` round to the banner and `c` from there.
                 key(ch('c')),
-                Step::Settle("c on the pane"),
-                Step::Mark("c on the pane"),
-                // What `c` on the pane does today: the commit editor, which
-                // itself says `merge in progress — esc, then c continue`.
-                Step::See("c on the pane opened the commit editor", |state| {
-                    check(state.commit_editor.is_some(), || {
-                        format!("no commit editor; status {:?}", state.status)
+                Step::Write("c from the banner"),
+                Step::WaitFor(Wait::Ready),
+                Step::WaitFor(Wait::NotInProgress),
+                Step::Mark("merged"),
+                // Truth from git at this moment, before `u` moves anything.
+                Step::Shell(|fixture| {
+                    let unmerged = fixture.git(&["ls-files", "-u"])?;
+                    check(unmerged.trim().is_empty(), || {
+                        format!("ls-files -u after the merge commit: {unmerged:?}")
+                    })?;
+                    let second = fixture.git(&["rev-parse", "HEAD^2"])?;
+                    let feature = fixture.git(&["rev-parse", "feature"])?;
+                    check(second.trim() == feature.trim(), || {
+                        format!("HEAD^2 is {second:?}, feature is {feature:?}")
                     })
                 }),
-                key(KeyCode::Escape),
-                Step::FocusBanner,
-                key(ch('c')),
-                Step::Settle("c from the banner"),
-                Step::Mark("continued"),
             ],
+            undo(),
+            vec![Step::Mark("undone")],
         ]),
         expect: |fixture, marks| {
+            let stopped = marks.get("stopped")?;
+            check(stopped.in_progress.as_deref() == Some("merge"), || {
+                format!("the app's merge left git saying {:?}", stopped.in_progress)
+            })?;
             let pristine = pristine()?;
             let three = marks.get("three taken")?;
             let ours = side_bytes(pristine.repo(), "three.txt", Side::Ours)?;
@@ -312,45 +325,35 @@ fn merge_resolved_with_the_keys() -> Scenario {
                 *resolved_both == side_bytes(pristine.repo(), "both.txt", Side::Ours)?,
                 || "both.txt is not git's ours".to_owned(),
             )?;
-            // The ticket's `c` → a merge commit. Last, so everything above is
-            // proven whatever these say. Two findings in the ticket: F4 (the
-            // line offers `c continue` on the pane, where `c` opens the commit
-            // editor) and F5 (the fixture's merge was begun in the shell, and
-            // `c` from the banner refuses to finish it).
-            let on_the_pane = marks.get("c on the pane")?;
-            check(on_the_pane.in_progress.is_none(), || {
-                "F4: `all conflicts resolved · c continue` was on screen, and `c` on the \
-                 pane opened the commit editor; the merge is still in progress"
-                    .to_owned()
+            // `c` finished the merge as one entry, the one the stop left
+            // pending. Its parents by the oid the mark holds: `u` has moved
+            // `main` back by now.
+            let merged = marks.get("merged")?;
+            check(merged.in_progress.is_none(), || {
+                format!("git still says {:?}", merged.in_progress)
             })?;
-            let continued = marks.get("continued")?;
-            let parents = run_git(
-                fixture.repo(),
-                &["rev-list", "--parents", "-n", "1", "main"],
-            )?;
-            let parents: Vec<&str> = parents.split_whitespace().skip(1).collect();
+            let entries = entries_of(merged, OperationKind::Merge);
+            check(entries == 1, || format!("{entries} merge entries, not one"))?;
+            last_entry_committed(merged, OperationKind::Merge)?;
+            let merge_commit = branch(merged, "main")?;
+            let parents = fixture.git(&["log", "-1", "--format=%P", &merge_commit])?;
+            let parents: Vec<&str> = parents.split_whitespace().collect();
             let before_main = branch(&marks.before, "main")?;
             let feature = branch(&marks.before, "feature")?;
-            check(
-                continued.in_progress.is_none()
-                    && parents == [before_main.as_str(), feature.as_str()],
-                || {
-                    format!(
-                        "F5: `c` from the banner left git saying {:?}; main's parents {parents:?}; \
-                         the app said {:?}",
-                        continued.in_progress,
-                        continued.statuses.last()
-                    )
-                },
-            )
+            check(parents == [before_main.as_str(), feature.as_str()], || {
+                format!("the merge commit's parents are {parents:?}")
+            })?;
+            // One `u`: HEAD is the pre-merge tip again.
+            let head = fixture.git(&["rev-parse", "HEAD"])?;
+            check(head.trim() == before_main, || {
+                format!("after u HEAD is {head:?}, the pre-merge tip {before_main}")
+            })?;
+            let undone = marks.get("undone")?;
+            check(undone.in_progress.is_none(), || {
+                format!("after u git says {:?}", undone.in_progress)
+            })
         },
-        capture: Some(Capture {
-            stem: "m6-05-still-open-refusal",
-            headless: vec![],
-            keys: plain(&[open_nth(nth("three.txt")), vec![ch('o'), KeyCode::Enter]].concat()),
-            on_screen: "conflicts still open",
-            when: When::Settled,
-        }),
+        capture: None,
     }
 }
 
@@ -582,7 +585,17 @@ fn crlf_and_no_final_newline_survive() -> Scenario {
                 "nofinal.txt gained a final newline".to_owned()
             })
         },
-        capture: None,
+        // The refusal on `three.txt` belongs to `merge-resolved-with-the-keys`,
+        // but that scenario now begins its merge in the app (ruling F5), and
+        // a capture replays its scenario's setup: its prelude keys open the
+        // resolver on the shell-begun stop this scenario keeps.
+        capture: Some(Capture {
+            stem: "m6-05-still-open-refusal",
+            headless: vec![],
+            keys: plain(&[open_nth(nth("three.txt")), vec![ch('o'), KeyCode::Enter]].concat()),
+            on_screen: "conflicts still open",
+            when: When::Settled,
+        }),
     }
 }
 
@@ -711,55 +724,30 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
     }
 }
 
-/// `d` → `Start over` after a take: git's stages for `both.txt` are the
-/// ones the stop left (same blob ids), one marker block is on disk, the
-/// block is open again.
-fn started_over() -> Vec<Step> {
-    vec![
-        key(ch('d')),
-        Step::See("the box asks, naming the file", |state| {
-            let title = &state
-                .confirm
-                .as_ref()
-                .ok_or("no start-over box")?
-                .view
-                .title;
-            check(title.contains("Start both.txt over"), || {
-                format!("the box is titled {title:?}")
-            })
-        }),
-        Step::Confirm,
-        Step::Settle("start over"),
-        Step::WaitFor(Wait::ConflictOpened),
-        Step::See("the block is open again", |state| {
-            let open = state
-                .resolver
-                .as_ref()
-                .and_then(|open| open.file.as_ref())
-                .map(|file| file.open());
-            check(open == Some(1), || format!("{open:?} blocks open"))
-        }),
-        // Truth from git, mid-walk: the stages against a fresh build of the
-        // same stop (blob ids are content addresses, so the stop's own ids).
-        Step::Shell(|fixture| {
-            let stopped = unmerged(pristine()?.repo(), "both.txt")?;
-            check(stopped.len() == 3, || format!("the stop: {stopped:?}"))?;
-            let now = unmerged(fixture.repo(), "both.txt")?;
-            check(now == stopped, || {
-                format!("stages at the stop {stopped:?}, after d {now:?}")
-            })?;
-            check(
-                markers(&resolved_bytes(fixture.repo(), "both.txt")?) == 1,
-                || "both.txt has no markers after d".to_owned(),
-            )
-        }),
-    ]
+/// `(open, total)` blocks of the document the resolver has open — the two
+/// numbers its title row prints (`view/resolver.rs::resolver_view` passes
+/// `(file.open(), file.blocks().len())` to `resolver_title`).
+fn title_counts(state: &graft::update::AppState) -> Option<(usize, usize)> {
+    state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.file.as_ref())
+        .map(|file| (file.open(), file.blocks().len()))
 }
 
-/// A take then `d`: the markers come back with git's own stages. Then the
-/// ticket's harder half — a take, `⏎` (staged), back into the same file,
-/// `d` — which needs the stage undone first, since a staged path has no
-/// `CONFLICTS` row to open it from.
+/// Start over **before** `⏎` (ticket 07 ruling F3): `three.txt` opened
+/// from its `CONFLICTS` row, `o` on the first block, `Esc` back to the pane,
+/// `⏎` on the row again — still unmerged, the taken block now plain lines,
+/// two blocks left — then `d`, `Start over`. Git's stages come back with the
+/// stop's oids and modes, the file has the stop's three marker blocks, and
+/// the title counts all three. Start over **after** `⏎` has no entry point
+/// in the app (a staged path has no `CONFLICTS` row, and `u` is refused
+/// mid-merge, `update/undo.rs:102-108`); its ops half is proven in
+/// `graft-ops` (`chained_backup.rs::restart_after_stage_brings_the_conflict_back`).
+#[allow(
+    clippy::too_many_lines,
+    reason = "one scenario: its steps and its verdict, read top to bottom"
+)]
 fn start_over_brings_the_markers_back() -> Scenario {
     Scenario {
         name: "start-over-brings-the-markers-back",
@@ -767,41 +755,98 @@ fn start_over_brings_the_markers_back() -> Scenario {
         remote: Remote::None,
         size: (80, 24),
         setup: as_built,
-        steps: chain(vec![
-            vec![Step::WaitFor(Wait::Ready), Step::Resolve("both.txt")],
-            take('o'),
-            started_over(),
-            vec![Step::Mark("started over")],
-            take('o'),
-            mark_resolved("both.txt"),
-            // `⏎` moved the resolver on to the next file, and it is modal:
-            // `Esc` first, then `u` for the stage.
-            vec![key(KeyCode::Escape)],
-            undo(),
-            vec![
-                Step::WaitFor(Wait::ConflictedPath("both.txt")),
-                Step::Resolve("both.txt"),
-            ],
-            started_over(),
-        ]),
+        steps: vec![
+            Step::WaitFor(Wait::Ready),
+            Step::Resolve("three.txt"),
+            Step::See("the stop: three of three blocks open", |state| {
+                let counts = title_counts(state);
+                check(counts == Some((3, 3)), || format!("{counts:?} blocks"))
+            }),
+            key(ch('o')),
+            Step::WaitFor(Wait::ConflictOpened),
+            key(KeyCode::Escape),
+            Step::See("Esc returns to the pane", |state| {
+                check(state.resolver.is_none(), || {
+                    "the resolver is still open".to_owned()
+                })
+            }),
+            Step::Resolve("three.txt"),
+            Step::See(
+                "reopened: the taken block is plain lines, two left",
+                |state| {
+                    let counts = title_counts(state);
+                    check(counts == Some((2, 2)), || format!("{counts:?} blocks"))
+                },
+            ),
+            Step::Mark("reopened"),
+            key(ch('d')),
+            Step::See("the box asks, naming the file", |state| {
+                let title = &state
+                    .confirm
+                    .as_ref()
+                    .ok_or("no start-over box")?
+                    .view
+                    .title;
+                check(title.contains("Start three.txt over"), || {
+                    format!("the box is titled {title:?}")
+                })
+            }),
+            Step::Confirm,
+            Step::Settle("start over"),
+            Step::WaitFor(Wait::ConflictOpened),
+            Step::See("the title counts the stop's three blocks again", |state| {
+                let counts = title_counts(state);
+                check(counts == Some((3, 3)), || format!("{counts:?} blocks"))
+            }),
+            Step::Mark("started over"),
+        ],
         expect: |fixture, marks| {
+            let file = |truth: &super::truth::Truth| -> Result<Vec<u8>, String> {
+                truth
+                    .repo
+                    .files
+                    .get(std::path::Path::new("three.txt"))
+                    .cloned()
+                    .ok_or_else(|| "three.txt is gone".to_owned())
+            };
+            // `ls-files -s` lines: mode, oid, stage, path.
             let stages = |truth: &super::truth::Truth| -> Vec<String> {
                 truth
                     .repo
                     .index
                     .iter()
-                    .filter(|line| line.ends_with("\tboth.txt"))
+                    .filter(|line| line.ends_with("\tthree.txt"))
                     .cloned()
                     .collect()
             };
-            let before = stages(&marks.before);
-            check(before.len() == 3, || format!("before: {before:?}"))?;
-            check(stages(marks.get("started over")?) == before, || {
-                "after the first d the stages are not the stop's".to_owned()
+            let at_stop = stages(&marks.before);
+            check(at_stop.len() == 3, || format!("the stop: {at_stop:?}"))?;
+            let stop_markers = markers(&file(&marks.before)?);
+            check(stop_markers == 3, || {
+                format!("{stop_markers} marker blocks at the stop")
             })?;
-            let listed = unmerged(fixture.repo(), "both.txt")?;
-            check(listed == before, || {
-                format!("stages before the take {before:?}, after d {listed:?}")
+            // The take reached the disk before `d`: one block fewer.
+            let reopened = marks.get("reopened")?;
+            let taken = markers(&file(reopened)?);
+            check(taken == 2, || format!("{taken} marker blocks after o"))?;
+            check(stages(reopened) == at_stop, || {
+                "the take changed git's stages before ⏎".to_owned()
+            })?;
+            // After `d`: the stop's stages (oids and modes), its markers.
+            let started = marks.get("started over")?;
+            check(stages(started) == at_stop, || {
+                format!(
+                    "stages at the stop {at_stop:?}, after d {:?}",
+                    stages(started)
+                )
+            })?;
+            let back = markers(&file(started)?);
+            check(back == stop_markers, || {
+                format!("{back} marker blocks after d, {stop_markers} at the stop")
+            })?;
+            let listed = unmerged(fixture.repo(), "three.txt")?;
+            check(listed == at_stop, || {
+                format!("ls-files -u {listed:?}, the stop {at_stop:?}")
             })
         },
         capture: Some(Capture {

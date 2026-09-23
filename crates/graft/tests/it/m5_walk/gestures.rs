@@ -276,23 +276,6 @@ impl Walk<'_> {
         Ok(state)
     }
 
-    /// [`super::steps::Step::FocusBanner`]: `Tab` round the focus cycle
-    /// (graph → detail → banner, `banner::take_focus`) until the banner has
-    /// the keyboard — at most four presses, the cycle's length plus one.
-    pub(super) fn focus_banner(&mut self, state: AppState) -> Result<AppState, String> {
-        let mut state = state;
-        for _ in 0..4 {
-            if state.banner_focus {
-                return Ok(state);
-            }
-            state = self.app.key(&state, KeyCode::Tab);
-        }
-        check(state.banner_focus, || {
-            format!("four ⇥ never reached the banner; status {:?}", state.status)
-        })?;
-        Ok(state)
-    }
-
     /// [`super::steps::Step::HandOver`]: press `key`, carry out the
     /// terminal hand-over its commands ask for with the loop's own command
     /// builders, and feed the answer back — every other command goes to the

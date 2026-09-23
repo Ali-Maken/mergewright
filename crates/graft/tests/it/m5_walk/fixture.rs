@@ -312,6 +312,15 @@ pub fn as_built(_: &Fixture) -> Result<(), String> {
     Ok(())
 }
 
+/// [`Shape::StoppedMerge`] with its shell-begun merge aborted: `main`
+/// checked out at the pre-merge tip, `feature` beside it, the tree clean —
+/// so the walk can begin the same merge **in the app**, the only kind the
+/// banner's `c` finishes (`graft-ops/src/operation.rs:574-575`; ticket 07
+/// ruling F5). Fixture preparation, not a walk step.
+pub fn merge_aborted(fixture: &Fixture) -> Result<(), String> {
+    fixture.git(&["merge", "--abort"]).map(drop)
+}
+
 /// Where the walk's stand-in programs live: inside the git directory, so
 /// they are neither untracked files nor anything a status read lists.
 fn tool_path(fixture: &Fixture, name: &str) -> Result<PathBuf, String> {

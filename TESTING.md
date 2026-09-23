@@ -105,7 +105,8 @@ stays visible.
 | 2026-09-23 · walk | Fix a block by hand | Until M6: `$EDITOR` from a shell. M6: **0** — `e` in the resolver, re-read on return (`editor-edits-are-never-clobbered`) | m6-conflicts |
 | 2026-09-23 · walk | Keep one side of a whole file | Until M6: `git checkout --ours`/`--theirs` + `git add`. M6: **0** — `o`/`t` in the resolver (`every-whole-file-shape`, `crlf-and-no-final-newline-survive`) | m6-conflicts |
 | 2026-09-23 · walk | Accept a delete | Until M6: `git rm`. M6: **0** — `t` on the card (`every-whole-file-shape`) | m6-conflicts |
-| 2026-09-23 · walk | Finish a merge **begun in the shell** | M6: **still the shell** — `c` refuses it by design (finding F5, `graft-ops/src/operation.rs:574-575`) | open |
+| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **still the shell** — `git commit`. The banner's `c` refuses it by design (ruling F5, `graft-ops/src/operation.rs:574-575`), and the changes pane's commit editor refuses too, pointing back at `c continue` (`graft/src/update/commit_editor.rs:165-178`, submit guard `:637`; observed once in the headless walk, 2026-09-23, git 2.54.0). Expires M7 | open (M7) |
+| 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | M6: **still the shell** — `git checkout -m -- <path>`. A staged path has no `CONFLICTS` row, and `u` is refused while the operation is live (`graft/src/update/undo.rs:102-108`); the ops half is built (ruling F3). Expires M7 | open (M7) |
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
@@ -2062,7 +2063,10 @@ from `Shape::StoppedMerge`: a merge begun in the shell and stopped on
 with three blocks, `zdiff3.txt` written with `zdiff3` markers, `crlf.txt`,
 `nofinal.txt`, `md.md`, `both-added.txt` (`AA`), `pic.bin` (binary), and
 the five whole-file shapes `added-by-us/them`, `ours/theirs-deleted`,
-`both-deleted`). The bytes a take should leave are **git's own**: `git
+`both-deleted`). `merge-resolved-with-the-keys` aborts that merge in its
+setup and **begins the same merge in the app** (`m` on `feature`): the
+banner's `c` finishes only an operation Graft started (ruling F5). The
+bytes a take should leave are **git's own**: `git
 checkout --ours|--theirs` on a fresh copy of the same fixture
 (`truth::side_bytes`), never a string typed into the test.
 
@@ -2074,14 +2078,10 @@ cargo run -p graft --example m5_walk -- --matrix                  # also writes 
 cargo nextest run -p graft --test it m5_walk::every_scenario      # the fast tier's one test per scenario
 ```
 
-**15 of 19 pass; 4 are red on purpose** — each a finding in
-`.scratch/m6-conflicts/issues/07-acceptance-conflicts.md` with its file and
-line, the row left failing rather than skipped: `merge-resolved-with-the-keys`
-(F4, F5), `start-over-brings-the-markers-back` (F3),
-`undo-a-resolution-in-a-stash-pop-conflict` (F2),
-`resolver-is-modal-and-esc-returns` (F1). The 19 M6 rows take **5.3–5.4 s**
-in the fast tier (nextest, warm, two runs, 2026-09-23; `docs/perf/m6-07.txt`
-— the ticket's bar is 60 s).
+**All 19 pass** (2026-09-23, after fixes F1, F2, F4, F6–F8 and the
+rulings on F3 and F5; findings in
+`.scratch/m6-conflicts/issues/07-acceptance-conflicts.md`). The 19 M6 rows'
+fast-tier time is in `docs/perf/m6-07.txt` (the ticket's bar is 60 s).
 
 Captures: `docs/shots/m6/m6-<nn>-<what>-<WxH>.txt` at 120x40 and 80x24,
 Unicode tier, from `.scratch/m6-conflicts/pty-walk-m6.py <WxH>` (build
@@ -2089,11 +2089,12 @@ Unicode tier, from `.scratch/m6-conflicts/pty-walk-m6.py <WxH>` (build
 graft-fixtures` first; `GRAFT_TARGET` names the target directory;
 `GRAFT_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
 the **real `graft` binary** relaunched after the script sends the capture
-run `SIGKILL` and checks it died on signal 9. **Only the two card captures
-exist today** (`m6-02`, `m6-04`): every capture that presses a key after
-the resolver opens races its opening read, because the harness prelude's
-`settled` (`crates/graft/src/update/prelude.rs:31-65`) never looks at the
-resolver's `job` — finding F6. The contact sheet is
+run `SIGKILL` and checks it died on signal 9. All nine captures exist at
+both sizes (2026-09-23, after fix F6). **Four frames do not show what they
+are for**, each the capture of a finding, not a pass: `m6-06` and `m6-07`
+at 80x24 — below 100 columns the status line is not drawn on the Detail
+tab (F9); `m6-09` at both sizes — the start-over box is never drawn over
+the resolver (F10). The script's run is red on those four. The contact sheet is
 `docs/shots/m6/m6-contact-sheet.txt` (`scripts/contact-sheet.sh m6
 docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
 **A capture carries no colour** — the user judges by eye.
@@ -2115,20 +2116,29 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
   mergetool is a script** (`walk-mergetool.sh`), not a real tool;
   mergetool with a real tool is **unverified**. `kill -9` in the fast tier
   is `Step::Kill` — the app dropped with no shutdown — not a signal; only
-  the pty script sends a real `SIGKILL`.
+  the pty script sends a real `SIGKILL`. Start over **after** `⏎` is proven
+  at the ops level only (scenario 8); the app has no way in to it yet. A
+  merge **begun in the shell** is not finished in the app — neither the
+  banner's `c` nor the changes pane's commit editor will (Times I left).
+  What a box or a line looks like is proven only by the captures: the
+  headless walk reads `AppState`, where the start-over box and the Sticky
+  exist even when the frame does not draw them (F9, F10).
 
 ### The scenarios
 
-1. **merge-resolved-with-the-keys** (red: F4, F5) — `both.txt` by `o`;
-   `three.txt` `o`, then `⏎` refused with `2 conflicts still open in
-   three.txt` and `n next` on the line, nothing staged; `n t n b` then
-   `⏎`: `three.txt` on disk is block 1 ours, block 2 theirs, block 3 ours
-   then theirs, line for line against git's `--ours`/`--theirs` bytes;
-   every other path resolved, `ls-files -u` empty, the line says `all
-   conflicts resolved · c continue`. What the ticket wants and does not get:
-   `c` makes a merge commit whose parents are `main` and `feature` — `c` on
-   the pane opens the commit editor (F4), `c` from the banner refuses the
-   shell-begun merge (F5).
+1. **merge-resolved-with-the-keys** — the fixture's merge aborted in
+   setup; `m` on `feature`, confirmed: git stops (`MERGE_HEAD`), banner
+   focused. `both.txt` by `o`; `three.txt` `o`, then `⏎` refused with `2
+   conflicts still open in three.txt` and `n next` on the line, nothing
+   staged; `n t n b` then `⏎`: `three.txt` on disk is block 1 ours, block 2
+   theirs, block 3 ours then theirs, line for line against git's
+   `--ours`/`--theirs` bytes; every other path resolved, `ls-files -u`
+   empty; the last file closes **to the banner**, which has the keyboard
+   and says `all conflicts resolved · c continue`. `c`: `git rev-parse
+   HEAD^2` equals `feature`'s tip, `ls-files -u` prints nothing, the
+   journal has **one** `Merge` entry, `Committed`, whose commit's parents
+   are the pre-merge `main` and `feature`. `u`: `git rev-parse HEAD` is the
+   pre-merge tip, git not merging.
 2. **every-whole-file-shape** — `theirs-deleted` `o`, `ours-deleted` `o`,
    `added-by-us` `t`, `added-by-them` `t`, `both-deleted` `o`, `pic.bin`
    `t`, `both-added` `o`: `ls-files -s` over the seven paths and each file's
@@ -2153,11 +2163,20 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
    in git's order) `N` before the first block and `n` past the last both say
    `no more conflicts · ⏎ marks zdiff3.txt resolved`; the resolver stays on
    `zdiff3.txt`; nothing written. **The user decides that wording.**
-8. **start-over-brings-the-markers-back** (red: F3) — `o` on `both.txt`,
-   `d`: the box is titled `Start both.txt over`; confirmed, git's three
-   stages are the stop's (same blob ids) and one marker block is back.
-   What the ticket wants and does not get: the same after `⏎` — `u` to
-   bring the file back is refused during a merge (F3, a question).
+8. **start-over-brings-the-markers-back** — start over **before** `⏎`
+   (ruling F3): `⏎` on `three.txt`'s `CONFLICTS` row (`3 of 3` open), `o`,
+   `Esc` to the pane, `⏎` on the row again — still unmerged, the taken block
+   now plain lines, `2 of 2` open, two `<<<<<<< ` lines on disk; `d`: the
+   box is titled `Start three.txt over`; confirmed: `git ls-files -u` lists
+   `three.txt` with the **same stage oids and modes as at the stop**, the
+   file on disk has the stop's **three** `<<<<<<< ` lines, and the title's
+   count is `3 of 3` again (the resolver's `(open, blocks)`, which the title
+   prints). Start over **after** `⏎` is proven **at the ops level only**:
+   `graft-ops` `tests/it/chained_backup.rs::restart_after_stage_brings_the_conflict_back`
+   (git's REUC answers it) and `::restart_survives_a_relaunch` (the recorded
+   stage tree answers it). **The app's entry point is not built** — a
+   staged path has no `CONFLICTS` row and `u` is refused mid-operation; a
+   keymap decision for M7 (Times I left).
 9. **editor-edits-are-never-clobbered** — `e` on `three.txt` hands it to
    `core.editor` (a script replacing block 1 with `edited by hand`); back
    in the resolver the file is re-read, two blocks open; a take lands on
@@ -2180,13 +2199,13 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
     the shell conflicts: no banner; from the changes pane the resolver
     takes, `⏎` says `all conflicts resolved` with **no** `c continue`, and
     the journal has one `stage p` entry.
-13. **undo-a-resolution-in-a-stash-pop-conflict** (red: F2) — `S`, `p`
+13. **undo-a-resolution-in-a-stash-pop-conflict** — `S`, `p`
     in the app conflicts (the Sticky ends `Index was not unstashed.`, the
     stash stays); `o`, `⏎`; `u` brings back three stages and the bytes from
     before `⏎`; `u` again (the drift box `Undo “pop stash@{0}”?`, confirmed)
     takes the pop back — no stages, the files and stash list as before;
-    `U` puts the conflict back. What fails: after `U` the stash list is
-    empty — the redo dropped the stash the conflicted pop had kept (F2).
+    `U` puts the conflict back — markers on disk, `ls-files -u` three
+    lines — and the stash is **still listed**, where git left it (fix F2).
 14. **kill-9-mid-rebase-then-relaunch** — the rebase stops on `shared.txt`
     (two blocks), `o` on the first, then `Step::Kill`: `rebase-merge/`
     present (`truth::operation_on_disk`), the journal's last line
@@ -2206,10 +2225,10 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
     the tracking ref is fetched; `u`, `Re-push old tip`: the lease is the
     tip the journal entry recorded, git refuses in words, the bare keeps the
     teammate's commit.
-18. **resolver-is-modal-and-esc-returns** (red: F1) — opened from the
-    banner, `u` and `Tab` do nothing; `Esc` returns to the banner; opened
-    from the pane, `Esc` returns to the pane. What fails: `/` opens the
-    search prompt behind the open resolver (F1).
+18. **resolver-is-modal-and-esc-returns** — opened from the banner, `u`,
+    `Tab` and `/` do nothing (no search prompt behind the resolver, fix
+    F1); `Esc` returns to the banner; opened from the pane, `Esc` returns
+    to the pane.
 19. **tiny-frame-says-so** — at 50x8, below the resolver's floor, one line
     says so, a take does nothing, `Esc` closes.
 
@@ -2217,9 +2236,15 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
 
 | Capture | 120x40 | 80x24 | What right looks like |
 |---|---|---|---|
-| `m6-02-whole-file-card` | yes | yes | `deleted by them · o keeps the file  t deletes it`, the file's one line numbered under it, no halves |
-| `m6-04-card-binary` | yes | yes | `both modified · o keeps ours  t keeps theirs`, then `binary · 22 B` unnumbered, no bytes |
-| `m6-01`, `m6-03`, `m6-05`–`m6-09` | not captured | not captured | blocked on F6 (the prelude races the resolver's read) |
+| `m6-01-resolver-three` | yes | yes | title `2 of 3 conflicts open` (`2/3 open` at 80); block 2 `took theirs`, one line; blocks 1 and 3 open with their BASE; side by side at 120, stacked at 80 |
+| `m6-02-whole-file-card` | yes | yes | `deleted by them · o keeps the file  t deletes it`, the file's one line numbered under it, no halves; title with **no** count (`file 11 of 13` at 120, the path alone at 80) |
+| `m6-03-card-large-file` | yes | yes | after `G`: line 500 last, then the unnumbered `… first 500 lines of 8.1 KB · e opens the whole file` |
+| `m6-04-card-binary` | yes | yes | `both modified · o keeps ours  t keeps theirs`, then `binary · 22 B` unnumbered, no bytes; title with no count |
+| `m6-05-still-open-refusal` | yes | yes | `2 conflicts still open in three.txt · n next`; block 1 `took ours` |
+| `m6-06-relaunch-sticky` | yes | **F9** | after a real `SIGKILL`: `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort`, the pane on `CONFLICTS (1)`, one marker block left. At 80x24 the line is not on screen (F9) |
+| `m6-07-all-resolved` | yes | **F9** | `all conflicts resolved · c continue`, `STAGED (1)` `shared.txt`. At 80x24 the line is not on screen (F9) |
+| `m6-08-no-more-conflicts` | yes | yes | `no more conflicts · ⏎ marks zdiff3.txt resolved`, cursor unmoved |
+| `m6-09-start-over-box` | **F10** | **F10** | a box `Start both.txt over?`, `Cancel` / `Start over`. Not drawn at either size (F10) |
 
 **Times I left:** every reach for the shell during a conflict in daily use
 — `git mergetool` from a shell, `git checkout --ours`, `git rm` on a

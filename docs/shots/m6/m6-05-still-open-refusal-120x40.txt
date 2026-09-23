@@ -1,0 +1,42 @@
+m6 walk capture: m6-05-still-open-refusal — scenario crlf-and-no-final-newline-survive, keys k ⏎ j j j j j j j j j j j ⏎ o ⏎, unicode tier, 120x40
+
+MERGING
+three.txt · file 12 of 13 · 2 of 3 conflicts open
+ours = main · theirs = the branch being merged in
+      1 alpha
+▏  2 ── conflict 1 of 3 · took ours ── t theirs  b both ────────────────────────────────────────────────────────────────
+▏     2 one-ours
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+      3 b1
+      4 b2
+      5 b3
+      6 b4
+   7 ── conflict 2 of 3 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
+  OURS · HEAD                                               │THEIRS · feature
+      8 two-ours                                            │      two-theirs
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+     12 c1
+     13 c2
+     14 c3
+     15 c4
+   16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────────────────────────────────────────────
+  OURS · HEAD                                               │THEIRS · feature
+     17 three-ours                                          │      three-theirs
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+     21 delta
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2 conflicts still open in three.txt · n next
