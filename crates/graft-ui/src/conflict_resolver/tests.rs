@@ -96,6 +96,7 @@ fn block_kind(row: &ScreenRow) -> &'static str {
         ScreenRow::Side { .. } => "Side",
         ScreenRow::End { .. } => "End",
         ScreenRow::WholeFile { .. } => "WholeFile",
+        ScreenRow::Note { .. } => "Note",
     }
 }
 

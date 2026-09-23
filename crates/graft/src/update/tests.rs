@@ -3618,9 +3618,21 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         HintContext::Resolver {
             base: true,
             restart: true,
+            whole_file: false,
         } => Some(HintContext::Resolver {
             base: true,
             restart: true,
+            whole_file: false,
+        }),
+        // A whole-file card (m6-05 review, Major 1): the one other form.
+        HintContext::Resolver {
+            base: false,
+            restart: false,
+            whole_file: true,
+        } => Some(HintContext::Resolver {
+            base: false,
+            restart: false,
+            whole_file: true,
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
@@ -3860,7 +3872,12 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
         // The resolver open on a two-block conflict: every live key in
         // `resolver_list` has something to do in it.
-        HintContext::Resolver { .. } => vec![resolver_on_screen(walk)],
+        HintContext::Resolver {
+            whole_file: false, ..
+        } => vec![resolver_on_screen(walk)],
+        HintContext::Resolver {
+            whole_file: true, ..
+        } => vec![resolver_card_on_screen(walk)],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
@@ -4171,7 +4188,7 @@ fn status_entry(path: &str, unmerged: bool) -> graft_git::status::StatusEntry {
 /// `o`/`t`/`b` write, a second open block so `n` moves, a mergetool
 /// configured so `M` hands over instead of refusing, and a working tree that
 /// lists the file as unmerged so the title and `⏎` have a file to name.
-fn resolver_on_screen(walk: JobId) -> AppState {
+pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
     const CONFLICTED: &[u8] = b"one\n\
         <<<<<<< HEAD\nours a\n=======\ntheirs a\n>>>>>>> topic\n\
         two\n\
@@ -4190,6 +4207,45 @@ fn resolver_on_screen(walk: JobId) -> AppState {
         whole_file: None,
         how: None,
         cursor_block: Some(0),
+        top: 0,
+        base_shown: false,
+        job: None,
+        base_job: None,
+        staging: None,
+        restarting: None,
+        notice: None,
+    });
+    state
+}
+
+/// The resolver open on a whole-file card (`deleted by them`), the state
+/// every key a card's bar draws has to act in (m6-05 review, Major 1): a
+/// second conflicted file after it so `n` has somewhere to cross to, and a
+/// mergetool so `M` hands over.
+pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
+    let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![
+            status_entry("gone.txt", true),
+            status_entry("later.rs", true),
+        ],
+    }));
+    state.mergetool = Some("vimdiff".to_string());
+    state.resolver = Some(resolver::ResolverState {
+        path: PathBuf::from("gone.txt"),
+        opened_from: resolver::OpenedFrom::Pane,
+        file: None,
+        whole_file: Some(resolver::WholeFileShape {
+            how: graft_git::status::UnmergedHow::DeletedByThem,
+            binary: false,
+            on_disk: Some(crate::jobs::conflict::OnDisk {
+                size: 11,
+                head: Arc::from(vec![b"kept by us".to_vec()]),
+                cut: false,
+            }),
+        }),
+        how: Some(graft_git::status::UnmergedHow::DeletedByThem),
+        cursor_block: None,
         top: 0,
         base_shown: false,
         job: None,

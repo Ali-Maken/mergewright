@@ -1022,10 +1022,23 @@ fn every_context_lists_resolver() {
     for base in [false, true] {
         for restart in [false, true] {
             assert!(
-                contexts.contains(&HintContext::Resolver { base, restart }),
+                contexts.contains(&HintContext::Resolver {
+                    base,
+                    restart,
+                    whole_file: false
+                }),
                 "every_context() is missing Resolver {{ base: {base}, restart: {restart} }}"
             );
         }
+    }
+}
+
+/// A resolver open on a document, with `B`/`d` under the two flags.
+fn document(base: bool, restart: bool) -> HintContext {
+    HintContext::Resolver {
+        base,
+        restart,
+        whole_file: false,
     }
 }
 
@@ -1039,10 +1052,7 @@ fn every_context_lists_resolver() {
 /// and stay `Planned` — so `drawable` draws the nine and hides those two.
 #[test]
 fn resolver_hint_ladder() {
-    let list = context_list(&HintContext::Resolver {
-        base: false,
-        restart: false,
-    });
+    let list = context_list(&document(false, false));
     let words: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
     assert_eq!(
         words,
@@ -1063,20 +1073,14 @@ fn resolver_hint_ladder() {
         "every key the resolver's own list draws is bound (m6-conflicts/04): {list:?}"
     );
 
-    let with_base = context_list(&HintContext::Resolver {
-        base: true,
-        restart: false,
-    });
+    let with_base = context_list(&document(true, false));
     let base_at = with_base
         .iter()
         .position(|hint| (hint.key, hint.verb) == ("B", "base"))
         .expect("`B base` after `b both` while `base`");
     assert_eq!(with_base[base_at - 1].key, "b", "`B base` follows `b both`");
 
-    let with_restart = context_list(&HintContext::Resolver {
-        base: false,
-        restart: true,
-    });
+    let with_restart = context_list(&document(false, true));
     let restart_at = with_restart
         .iter()
         .position(|hint| (hint.key, hint.verb) == ("d", "start over"))
@@ -1115,6 +1119,29 @@ fn resolver_hint_ladder() {
     // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
     // there is no doorway to lead a dropped tail to.
     assert!(!text_80.contains("more"), "{text_80:?}");
+}
+
+/// A whole-file card draws only the keys a card answers (m6-05 review,
+/// Major 1): no `b`, `N`, `⏎`, `B` or `d`, whatever `base`/`restart` say,
+/// and it is one of the contexts every sweep reads.
+#[test]
+fn resolver_card_draws_only_what_a_card_answers() {
+    for (base, restart) in [(false, false), (true, true)] {
+        let card = HintContext::Resolver {
+            base,
+            restart,
+            whole_file: true,
+        };
+        assert_eq!(
+            hints_text(&hints_for(&card, Divider::Hidden, 160)),
+            " o ours  t theirs  e edit  n next  M mergetool  esc close"
+        );
+    }
+    assert!(every_context().contains(&HintContext::Resolver {
+        base: false,
+        restart: false,
+        whole_file: true,
+    }));
 }
 
 /// `⏎ resolve` leads `ChangesPane { unmerged: true }` and `Banner {
