@@ -207,3 +207,232 @@ fn the_credential_prompt_never_shows_what_was_under_it() {
         nothing_shows_through(&drawn, rect, &format!("credential at {columns}x{rows}"));
     }
 }
+
+// ─────────── the modal boxes are drawn wherever they are live ───────────
+
+/// The whole frame as `view` draws it, one string per row.
+fn whole_frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
+    let mut terminal =
+        Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| view(&session(), state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer();
+    (0..buffer.area.height)
+        .map(|y| {
+            (0..buffer.area.width)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect()
+        })
+        .collect()
+}
+
+/// A resolver open on a two-block conflict, as `d` finds it.
+fn an_open_resolver() -> crate::update::resolver::ResolverState {
+    const CONFLICTED: &[u8] = b"one\n\
+        <<<<<<< HEAD\nours a\n=======\ntheirs a\n>>>>>>> topic\n\
+        two\n\
+        <<<<<<< HEAD\nours b\n=======\ntheirs b\n>>>>>>> topic\n";
+    crate::update::resolver::ResolverState {
+        path: std::path::PathBuf::from("conflicted.rs"),
+        opened_from: crate::update::resolver::OpenedFrom::Pane,
+        file: Some(std::sync::Arc::new(
+            graft_git::conflict::parse(CONFLICTED).expect("two open blocks"),
+        )),
+        whole_file: None,
+        how: None,
+        cursor_block: Some(0),
+        top: 0,
+        base_shown: false,
+        job: None,
+        reading: false,
+        base_job: None,
+        staging: None,
+        restarting: None,
+        notice: None,
+    }
+}
+
+/// A state with `overlay` standing where the graph would be. The match is
+/// exhaustive on purpose: a new `GraphOverlay` stops this file compiling
+/// until the sweep below stands a confirm box on it too.
+fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
+    let mut state = AppState {
+        history: Some(crate::view::tests::history_of(5, 0)),
+        ..AppState::default()
+    };
+    match overlay {
+        None => {}
+        Some(GraphOverlay::Resolver) => state.resolver = Some(an_open_resolver()),
+        Some(GraphOverlay::CommitEditor) => {
+            state.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
+        }
+        Some(GraphOverlay::Map) => state.map.shown = true,
+        Some(GraphOverlay::Journal) => state.journal.shown = true,
+        Some(GraphOverlay::Stash) => state.stash.shown = true,
+    }
+    assert_eq!(state.graph_overlay(), overlay, "the state stands on it");
+    state
+}
+
+/// **A live confirm box is on screen, whatever it stands on** (m6-07 F10).
+///
+/// `confirm_key` is the first modal claim in `update::keys::key_event`, so
+/// a box in `state.confirm` takes the next key over every overlay and both
+/// screens. The resolver's `d` set one that `draw_resolver` never drew: the
+/// user pressed `d`, saw nothing change, and the next `→ ⏎` started the
+/// file over blind. So the sweep is every overlay `AppState::graph_overlay`
+/// can answer, the bare graph, and the status screen — each with the
+/// detail pane shut and open, at 120x40 and 80x24 — not the one case the
+/// finding named.
+#[test]
+fn a_live_confirm_box_is_drawn_over_every_overlay() {
+    let overlays = [
+        None,
+        Some(GraphOverlay::Resolver),
+        Some(GraphOverlay::CommitEditor),
+        Some(GraphOverlay::Map),
+        Some(GraphOverlay::Journal),
+        Some(GraphOverlay::Stash),
+    ];
+    let screens = overlays
+        .into_iter()
+        .map(|overlay| (format!("{overlay:?}"), standing_on(overlay)))
+        .chain(std::iter::once((
+            "the status screen".to_owned(),
+            AppState {
+                screen: Screen::Status,
+                ..AppState::default()
+            },
+        )));
+    let mut missing = Vec::new();
+    for (name, base) in screens {
+        for detail in [false, true] {
+            for (columns, rows) in [(120_u16, 40_u16), (80, 24)] {
+                let mut state = base.clone();
+                state.confirm = Some(a_confirm());
+                state.detail.shown = detail;
+                state.detail.focus = graft_ui::detail::DetailFocus::Files;
+                state.size = crate::update::Size { columns, rows };
+                let drawn = whole_frame(&state, columns, rows);
+                // The box stands over the resolver's document, not over a
+                // frame the resolver declined to draw.
+                if name.contains("Resolver") {
+                    assert!(
+                        drawn.iter().any(|row| row.contains("conflicted.rs")),
+                        "the resolver is under the box:\n{}",
+                        drawn.join("\n")
+                    );
+                }
+                if !drawn.iter().any(|row| row.contains("Discard changes?")) {
+                    missing.push(format!(
+                        "{name}, detail {detail}, {columns}x{rows}:\n{}",
+                        drawn.join("\n")
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "a live confirm box is not drawn on {} frame(s):\n\n{}",
+        missing.len(),
+        missing.join("\n\n")
+    );
+}
+
+// ─────────── the status line on the sub-100-column Detail tab ───────────
+
+/// The changes pane on the Detail tab at 80x24, mid-rebase with one path
+/// conflicted, the banner focused or not.
+fn detail_tab_mid_rebase(banner_focus: bool) -> AppState {
+    AppState {
+        history: Some(crate::view::tests::history_of(5, 0)),
+        size: crate::update::Size {
+            columns: 80,
+            rows: 24,
+        },
+        in_progress: Some(graft_git::state::InProgressDetail {
+            kind: graft_git::state::InProgress::Rebase,
+            step: Some((1, 2)),
+            head_name: None,
+            onto: None,
+        }),
+        banner_focus,
+        working_tree: Some(std::sync::Arc::new(graft_git::status::WorkingTreeStatus {
+            entries: vec![graft_git::status::StatusEntry {
+                path: "a.txt".into(),
+                original_path: None,
+                staged: None,
+                unstaged: None,
+                untracked: false,
+                unmerged: true,
+                unmerged_how: None,
+                submodule: false,
+            }],
+        })),
+        detail: crate::update::detail::DetailState {
+            shown: true,
+            focus: graft_ui::detail::DetailFocus::Files,
+            ..crate::update::detail::DetailState::default()
+        },
+        ..AppState::default()
+    }
+}
+
+/// **Below 100 columns the Detail tab still says what happened** (m6-07
+/// F9). The graph screen's footer is where the status line lives, and on
+/// the Detail tab the graph screen is not drawn: the bottom row is the
+/// pane's hints, or the focused banner's. The relaunch's `rebase still in
+/// progress from a previous run` and the resolver's `all conflicts resolved
+/// · c continue` were both on `state.status` and on no cell of the pty's
+/// 80x24 frames. Every status kind that line carries — a Sticky, a failure,
+/// a finished write — with the banner focused and not.
+#[test]
+fn the_detail_tab_below_100_columns_draws_the_status_line() {
+    let statuses = [
+        (
+            Status::Sticky {
+                reason: "rebase still in progress from a previous run".to_owned(),
+                keys: Some("⏎ resolve  c continue  a abort".to_owned()),
+            },
+            "rebase still in progress from a previous run",
+        ),
+        (Status::Failed("git said no".to_owned()), "git said no"),
+        (
+            Status::Done("all conflicts resolved · c continue".to_owned()),
+            "all conflicts resolved · c continue",
+        ),
+    ];
+    let mut missing = Vec::new();
+    for banner_focus in [true, false] {
+        for (status, words) in &statuses {
+            let mut state = detail_tab_mid_rebase(banner_focus);
+            state.status = status.clone();
+            assert!(
+                matches!(
+                    crate::update::detail::effective_layout(
+                        state.detail.focus,
+                        &state.detail.pane_size,
+                        (80, 24)
+                    ),
+                    DetailLayout::Tab { shown: true }
+                ),
+                "the fixture is on the Detail tab"
+            );
+            let drawn = whole_frame(&state, 80, 24);
+            if !drawn.iter().any(|row| row.contains(words)) {
+                missing.push(format!(
+                    "banner focused {banner_focus}, {words:?}:\n{}",
+                    drawn.join("\n")
+                ));
+            }
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "the status line is not drawn on {} frame(s):\n\n{}",
+        missing.len(),
+        missing.join("\n\n")
+    );
+}

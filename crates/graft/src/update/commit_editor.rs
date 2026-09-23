@@ -32,6 +32,37 @@ use super::state::{AppState, Status};
 /// The trailer `Ctrl+Shift+C` starts; the user types the name and address.
 const CO_AUTHOR: &str = "Co-authored-by: ";
 
+/// Who began the operation git is part-way through — which decides whether
+/// the operation banner's `c` and `a` can end it (m6-07 F12).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Begun {
+    /// Graft did: its journal entry is live, and the banner's keys end it.
+    InGraft,
+    /// The shell did: no entry of Graft's is live, and the banner's keys
+    /// refuse it (`Refusal::NotInProgress`) — it is finished in the shell.
+    InShell,
+}
+
+/// The operation git is part-way through and who began it, as
+/// [`CommitEditor::refusal`] needs it; `None` when nothing is in progress.
+///
+/// "Graft began it" is `AppState::live_entries` being non-empty — the last
+/// journal read's `Pending` entries git is still inside, the same fact the
+/// banner's `c`/`a` look up in `graft_ops` before they run. Until the first
+/// journal read lands it is empty, so an operation a previous run of Graft
+/// left is worded as the shell's for that moment: the refusal then names
+/// git's own command, which still works, rather than a key that might not.
+#[must_use]
+pub fn live_operation(state: &AppState) -> Option<(InProgress, Begun)> {
+    let kind = state.in_progress.as_ref()?.kind;
+    let begun = if state.live_entries.is_empty() {
+        Begun::InShell
+    } else {
+        Begun::InGraft
+    };
+    Some((kind, begun))
+}
+
 /// Everything the editor holds between keys.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommitEditor {
@@ -155,23 +186,33 @@ impl CommitEditor {
     pub fn refusal(
         &self,
         status: Option<&WorkingTreeStatus>,
-        in_progress: Option<InProgress>,
+        in_progress: Option<(InProgress, Begun)>,
     ) -> Option<String> {
-        // Finishing a merge, rebase, cherry-pick or revert is the operation
-        // banner's, from M5 (ADR-0034's shell command was the interim while
-        // there was nothing in the app to name). The keys are the banner's
-        // own (`docs/design/02-keymap.md` §2.6a); `Esc` first, because this
-        // editor is modal and holds every key while it is open.
-        if let Some(kind) = in_progress {
-            return Some(match kind {
+        // Finishing a merge, rebase, cherry-pick or revert Graft began is
+        // the operation banner's, from M5 (ADR-0034's shell command was the
+        // interim while there was nothing in the app to name). The keys are
+        // the banner's own (`docs/design/02-keymap.md` §2.6a); `Esc` first,
+        // because this editor is modal and holds every key while it is open.
+        if let Some((kind, begun)) = in_progress {
+            return Some(match (kind, begun) {
                 // A bisect draws no banner — that is M7's — so there are no
                 // keys to name and git's own command is still the way out.
-                InProgress::Bisect => format!(
+                (InProgress::Bisect, _) => format!(
                     "{} in progress — {} first",
                     kind.name(),
                     kind.continue_command()
                 ),
-                _ => format!(
+                // One begun in the shell has no entry of Graft's, and the
+                // banner's `c` and `a` both refuse it
+                // (`graft_ops::apply::resume`'s `resume_target`). Naming
+                // them offered two keys that do nothing (m6-07 F12), so the
+                // way out is git's own command, as for a bisect.
+                (_, Begun::InShell) => format!(
+                    "{} begun in the shell — finish it there: {}",
+                    kind.name(),
+                    kind.continue_command()
+                ),
+                (_, Begun::InGraft) => format!(
                     "{} in progress — esc, then c continue  a abort",
                     kind.name()
                 ),
@@ -630,7 +671,7 @@ fn button_key(
 /// title row, and pressing it again says nothing new.
 fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
     let status = state.working_tree.as_deref();
-    let in_progress = state.in_progress.as_ref().map(|detail| detail.kind);
+    let in_progress = live_operation(state);
     let Some(editor) = state.commit_editor.as_ref() else {
         return Vec::new();
     };

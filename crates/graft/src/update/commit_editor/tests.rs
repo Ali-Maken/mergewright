@@ -217,6 +217,8 @@ fn an_empty_subject_refuses() {
     );
 }
 
+/// A merge Graft began: its journal entry is live, so the banner's `c` and
+/// `a` end it.
 #[test]
 fn a_merge_in_progress_refuses_and_names_the_keys() {
     let mut state = ready(&["a.rs"]);
@@ -226,6 +228,7 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
         head_name: None,
         onto: None,
     });
+    state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let (open, _) = update(&state, key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
     let view = crate::view::commit_editor_view(&open).expect("open");
@@ -240,6 +243,37 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
         !refusal.contains("git commit"),
         "the shell command is no longer the only way out: {refusal}"
     );
+    let (_, commands) = update(&open, control(KeyCode::Enter));
+    assert!(operate(&commands).is_none(), "{commands:?}");
+}
+
+/// **A merge begun in the shell names no key that refuses it** (m6-07
+/// F12). No journal entry of Graft's is live, so the banner's `c` and `a`
+/// both refuse it (`graft-ops/src/apply/resume.rs`, `resume_target`:
+/// `Refusal::NotInProgress`, "an operation begun in the shell is finished
+/// there"). The editor said `esc, then c continue  a abort` — two keys that
+/// do nothing, the thing `resolver/answers.rs`'s last line refuses to do.
+/// It names git's own command instead, as the bisect arm does.
+#[test]
+fn a_merge_begun_in_the_shell_names_no_key_that_refuses_it() {
+    let mut state = ready(&["a.rs"]);
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+    });
+    assert!(state.live_entries.is_empty(), "nothing of Graft's is live");
+    let (open, _) = update(&state, key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let view = crate::view::commit_editor_view(&open).expect("open");
+    let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
+    assert!(refusal.contains("merge"), "{refusal}");
+    assert!(refusal.contains("shell"), "{refusal}");
+    assert!(refusal.contains("git commit"), "{refusal}");
+    for dead in ["c continue", "a abort", "esc, then"] {
+        assert!(!refusal.contains(dead), "offers {dead:?}: {refusal}");
+    }
     let (_, commands) = update(&open, control(KeyCode::Enter));
     assert!(operate(&commands).is_none(), "{commands:?}");
 }
