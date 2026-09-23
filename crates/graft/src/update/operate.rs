@@ -107,6 +107,20 @@ fn launch_with(
     opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    // The one site every write passes, so the one place a push's branch is
+    // checked against `HEAD` (gap row 550). Loud in a debug build, where
+    // reaching here with the wrong branch is a bug upstream; refused in
+    // words in a release build, never a push the journal would misname.
+    let invariant = super::remote::push_sends_head(next, &op);
+    debug_assert!(
+        invariant.is_ok(),
+        "invariant: a push sends HEAD's branch, because the journal names a \
+         push's branch by head_before: {invariant:?}"
+    );
+    if let Err(why) = invariant {
+        next.status = Status::Failed(why);
+        return;
+    }
     let id = next_id();
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));

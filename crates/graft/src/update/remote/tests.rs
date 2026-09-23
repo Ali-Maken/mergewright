@@ -96,6 +96,90 @@ fn fetch_refusal_in_words() {
     );
 }
 
+/// A push of `branch` to `origin`, as the app builds them.
+fn push_of(branch: &str) -> PushParams {
+    PushParams {
+        branch: branch.to_owned(),
+        remote: "origin".to_owned(),
+        remote_branch: branch.to_owned(),
+        set_upstream: false,
+        lease: None,
+        source_commit: None,
+    }
+}
+
+/// **Gap row 550.** The journal names a push's branch by `head_before`
+/// (`entry_branch`), so a push must send `HEAD`'s branch. The write site
+/// checks it: a push of any other branch is refused **in words** before a
+/// job exists — never a push whose entry would name the wrong branch.
+/// Asserted on the check itself: in a debug build the launch site's
+/// `debug_assert!` fires first (`the_write_site_asserts_the_push_invariant`).
+#[test]
+fn write_site_refuses_the_impossible_state() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &state,
+            &Operation::Push(push_of("refs/heads/main"))
+        ),
+        Ok(())
+    );
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &state,
+            &Operation::Push(push_of("refs/heads/feature"))
+        ),
+        Err("refused: a push of feature while HEAD is on main \u{2014} \
+             the undo journal would record it as main's"
+            .to_owned())
+    );
+    let detached = with_facts(vec![remote("origin")], None, None);
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &detached,
+            &Operation::Push(push_of("refs/heads/main"))
+        ),
+        Err("refused: a push of main while HEAD is detached \u{2014} \
+             the undo journal would record it as no branch's"
+            .to_owned())
+    );
+    // Not a push: nothing to check.
+    assert_eq!(
+        crate::update::remote::push_sends_head(
+            &detached,
+            &Operation::Fetch(graft_ops::operation::FetchParams {
+                remote: None,
+                prune: true,
+            })
+        ),
+        Ok(())
+    );
+}
+
+/// The launch site holds the invariant loudly in a debug build: a push of
+/// another branch reaching it is a bug upstream of it.
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic(expected = "a push sends HEAD's branch")]
+fn the_write_site_asserts_the_push_invariant() {
+    let mut state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let mut commands = Vec::new();
+    crate::update::operate::launch(
+        &mut state,
+        &mut commands,
+        Operation::Push(push_of("refs/heads/feature")),
+        &mut || graft_core::job::JobId::new(1),
+    );
+}
+
 /// `p` with an upstream launches the pull, one write at a time.
 #[test]
 fn pull_with_an_upstream_launches_it() {

@@ -304,6 +304,45 @@ pub fn fetch_key(
     true
 }
 
+/// The invariant the journal's reading of a push rests on (gap row 550):
+/// **a push sends `HEAD`'s branch**. `entry_branch` names a push entry's
+/// branch by its `head_before`, so a push of any other branch would be
+/// recorded as `HEAD`'s — and `u` would then explain, and re-push, the
+/// wrong one. Every `PushParams` the app builds today carries `HEAD`'s
+/// branch; this is where that stops being an accident.
+///
+/// `Ok` for anything that is not a push. `Err` carries the refusal's words.
+///
+/// # Errors
+/// The push names a branch `HEAD` is not on, `HEAD` is detached, or the
+/// remote facts that say where `HEAD` is have not been read.
+pub fn push_sends_head(state: &AppState, op: &Operation) -> Result<(), String> {
+    let Operation::Push(params) = op else {
+        return Ok(());
+    };
+    let facts = facts(state)
+        .map_err(|why| format!("refused: cannot confirm HEAD's branch \u{2014} {why}"))?;
+    if facts.head_branch.as_deref() == Some(params.branch.as_str()) {
+        return Ok(());
+    }
+    let head = facts
+        .head_branch
+        .as_deref()
+        .map_or("is detached".to_owned(), |name| {
+            format!("is on {}", short_branch(name))
+        });
+    let recorded = facts
+        .head_branch
+        .as_deref()
+        .map_or("no branch's".to_owned(), |name| {
+            format!("{}'s", short_branch(name))
+        });
+    Err(format!(
+        "refused: a push of {} while HEAD {head} \u{2014} the undo journal would record it as {recorded}",
+        short_branch(&params.branch)
+    ))
+}
+
 /// The refusal for a write key pressed while another write runs: `wait for
 /// <what is running> to finish`, the Ghost Preview's own words for it.
 fn wait_for_running(state: &AppState) -> String {
