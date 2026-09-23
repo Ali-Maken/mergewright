@@ -32,7 +32,7 @@ mod index_paths;
 mod plumbing;
 mod stage_tree;
 
-pub use chain::{backup_chain, chain_backup, recorded_index_state};
+pub use chain::{LinkKind, backup_chain, chain_backup, recorded_index_state};
 pub use index_paths::index_paths_changed;
 pub(crate) use index_paths::{index_paths, tracked_paths_now};
 
@@ -103,6 +103,16 @@ pub enum SnapshotError {
         /// Which command.
         what: &'static str,
         /// What it printed, first line, lossy.
+        printed: String,
+    },
+    /// A backup commit's `Graft-Link:` line names a kind this build does
+    /// not know (m6-conflicts/22) — written by a later Graft, so guessing
+    /// would bound a conflict set wrongly.
+    #[error("backup commit {commit} has an unknown link kind: {printed}")]
+    UnknownLink {
+        /// The backup commit.
+        commit: Oid,
+        /// The line as written, lossy.
         printed: String,
     },
     /// The caller asked to stop.

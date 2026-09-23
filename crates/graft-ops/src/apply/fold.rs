@@ -105,7 +105,7 @@ fn inside_live_operation(
     let touches = op.touches(facts);
     let step_backup = match span {
         Some(entry) if touches.index || touches.worktree => {
-            snapshot::chain_backup(ctx, entry).map_err(as_apply_error)?
+            snapshot::chain_backup(ctx, entry, snapshot::LinkKind::Step).map_err(as_apply_error)?
         }
         // A step that writes neither, or an index-only step inside an
         // operation begun in the shell: `git add` and `restore --staged`

@@ -1,6 +1,6 @@
 # ops-finish-message-and-step-bound: the user's `#` lines reach the commit; a multi-step operation's conflict set is this step's files only
 
-Status: ready (filed 2026-09-23 after review m6-amend-09)
+Status: done (2026-09-23)
 Blocked by: none (09 merged)
 Was: draft (2026-09-23, from `docs/reviews/m6-amend-09.md` Q1 = Minor 1 and Q2 = Minor 3; ruled by the conductor and the planner the same day)
 Blocked by: none (09 is merged). **Blocks** `13-resolver-file-list.md` and `19-finish-summary-screen.md`.
@@ -50,17 +50,25 @@ pub enum LinkKind { Step, Resume }
 ```
 
 ## Acceptance (name the verifying test when you tick; truth from git)
-- [ ] `tests/it/finish.rs::a_hash_line_the_user_typed_survives`: on the fixture's merge, `ContinueWith { message: b"Merge feature\n\n#123 fixes login\n" }` → `git log -1 --format=%B` contains the line `#123 fixes login`.
-- [ ] `tests/it/finish.rs::gits_comment_lines_never_reach_the_summary`: the fixture's `MERGE_MSG` carries git's `# Conflicts:` block → no line of `finish_summary().message` starts with the comment prefix. Run it with `core.commentChar` unset, and again set to `;`.
-- [ ] `tests/it/finish.rs::an_unedited_message_lands_as_shown`: `Resume::Continue` → `%B` equals the `finish_summary().message` read just before, modulo git's trailing-newline normalisation (say which). **If this fails, stop and report.** It means `⏎` on an unedited summary commits text the user never saw, and that is ticket 19's call, not this one's.
-- [ ] The Minor 7 assert, exact.
-- [ ] `tests/it/conflict_set.rs::a_rebase_lists_only_the_current_steps_files`: `TwoStopRebase`; resolve and stage `a.txt`; `Resume::Continue` stops at step 2 → `operation_conflicts().paths == [b.txt]`. **Write this first and run it against the unchanged code.** NOTES say whether it failed there. That settles review Minor 3, which the reviewer left unverified.
-- [ ] `…::a_rebase_step_keeps_its_resolved_files`: at step 2, resolve and stage `b.txt` → the set is still `[b.txt]`, `recorded`.
-- [ ] `…::a_merge_set_is_unchanged`: 09's merge ticks stay green; cite their exact test names.
-- [ ] `…::a_link_without_a_kind_reads_as_step`.
+- [x] `tests/it/finish.rs::a_hash_line_the_user_typed_survives`: on the fixture's merge, `ContinueWith { message: b"Merge feature\n\n#123 fixes login\n" }` → `git log -1 --format=%B` contains the line `#123 fixes login`.
+- [x] `tests/it/finish.rs::gits_comment_lines_never_reach_the_summary` (unset and `;` in one test; each asserts git's block is in `MERGE_MSG` first, so it is not vacuous): the fixture's `MERGE_MSG` carries git's `# Conflicts:` block → no line of `finish_summary().message` starts with the comment prefix. Run it with `core.commentChar` unset, and again set to `;`.
+- [x] `tests/it/finish.rs::an_unedited_message_lands_as_shown` — passed **byte for byte** against `cat-file commit HEAD`'s body, no normalisation needed: both end in exactly one `\n`: `Resume::Continue` → `%B` equals the `finish_summary().message` read just before, modulo git's trailing-newline normalisation (say which). **If this fails, stop and report.** It means `⏎` on an unedited summary commits text the user never saw, and that is ticket 19's call, not this one's.
+- [x] The Minor 7 assert, exact: `tests/it/finish.rs::an_edited_message_is_the_commit_message` (`assert_eq!(…last(), Some("git commit --cleanup=whitespace -F -"))`; its body check now compares with `git stripspace` without `--strip-comments` and asserts `# a comment line` landed).
+- [x] `tests/it/conflict_set.rs::a_rebase_lists_only_the_current_steps_files`: `TwoStopRebase`; resolve and stage `a.txt`; `Resume::Continue` stops at step 2 → `operation_conflicts().paths == [b.txt]`. **Write this first and run it against the unchanged code.** NOTES say whether it failed there. That settles review Minor 3, which the reviewer left unverified.
+- [x] `tests/it/conflict_set.rs::a_rebase_step_keeps_its_resolved_files` (also with `MERGE_MSG` removed, so the chain alone is judged): at step 2, resolve and stage `b.txt` → the set is still `[b.txt]`, `recorded`.
+- [x] `tests/it/conflict_set.rs::a_merge_set_is_unchanged` (new), plus 09's unchanged and green: `conflict_set.rs::a_merge_lists_resolved_files_too`, `a_graft_step_is_remembered_without_git_s_list`, `a_relaunch_lists_the_same_files`, `each_kind_says_what_git_records`.
+- [x] `tests/it/conflict_set.rs::a_link_without_a_kind_reads_as_step` (also: the writer puts `Graft-Link: step` last; the same link relabelled `resume` bounds the walk). Shape: `graft-fixtures` `shapes::conflicts::tests::two_stop_rebase_stops_at_step_one_on_a_alone`.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, workspace-wide.
 
 ## Size
 Small–medium: one flag and one assert in `resume.rs`; one enum, a message trailer and a walk bound in `chain.rs`/`set.rs`; one fixture; about 8 tests. One context.
+
+## NOTES (builder, 2026-09-23)
+- **No new scout**, on the conductor's word: read `scout-09.md`, 09's NOTES and `docs/reviews/m6-amend-09.md` instead. No compaction.
+- **Minor 3 was real.** `a_rebase_lists_only_the_current_steps_files` on the unchanged code: `left: ["b.txt", "a.txt"]`, `right: ["b.txt"]` — step 1's chain link leaked `a.txt` into step 2's set. Fixed at the cause (the walk bound), not by filtering paths.
+- **Trailer**: the kind is the backup commit message's last line; the walk reads it with one `cat-file commit` per link, which also gives the first parent (replaces the `rev-list --parents` spawn, so no extra spawn per link). An unknown value (`Graft-Link: foo`) is `SnapshotError::UnknownLink`, not read as `Step`: a later Graft's kind guessed wrong would mis-bound the set (rule 3).
+- **Fixture**: `Shape::TwoStopRebase` is in a new `Shape::STEPPED`, **not** `STOPPED` — `graft-git/src/conflict/tests.rs:685` iterates `STOPPED` expecting the marker files, and `graft-git` is outside this crate set. graft-ops tests fetch the shape's `main`/`feature` into a fresh repo so the rebase is Graft's own (entry + chain); the corpus's stopped repo is shell-begun and has no chain.
+- **Question (not changed, per scope): `apply::stage_source` walks the whole chain.** At step 2 of a rebase, `d` on a path step 1 conflicted on and step 2 did not: `check_restart` admits a path status does not call unmerged (MAP.md `RestartParams`), and `stage_source` would find step 1's stages on the chain and restore a finished step's conflict into this one. Not tested; the app only offers `d` on set paths, which no longer list it. Whether `stage_source` takes the same bound is the conductor's call.
+- **Edge, not a defect:** a `resume` that git refuses (hook) and leaves at the same step still wrote a `Resume` link, so the chain part of the set is empty afterwards; git's `Conflicts:` list (written for every kind that has a `resume`) still names the files. Not tested.

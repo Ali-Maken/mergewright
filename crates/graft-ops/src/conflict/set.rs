@@ -150,7 +150,14 @@ fn chained_conflicts(
         return Ok(Vec::new());
     };
     let mut paths = Vec::new();
-    for state in snapshot::backup_chain(repo, name, &())? {
+    // Only links written since the current step stopped: a `Resume` link is
+    // where the previous step was handed back to git, so it and everything
+    // older belong to a step that is over (m6-conflicts/22). A merge has one
+    // step, and no `Resume` link before its finish.
+    for (state, link) in snapshot::backup_chain(repo, name, &())? {
+        if link == snapshot::LinkKind::Resume {
+            break;
+        }
         paths.extend(snapshot::conflicted_paths(repo, state, &())?);
     }
     Ok(paths)

@@ -13,6 +13,30 @@ use super::plumbing::{read_ref, run_git, split_nul};
 use super::stage_tree::ls_tree_entry;
 use super::{SnapshotError, both_trees, commit_trees, move_backup_ref};
 
+/// Why a link of the backup chain was written (m6-conflicts/22). Recorded in
+/// the backup commit's message as its last line, `Graft-Link: step` or
+/// `Graft-Link: resume`, so the chain is readable without the journal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LinkKind {
+    /// Before a step folded into the live operation (a resolver write).
+    /// Also what a link written before m6-conflicts/22, with no
+    /// `Graft-Link:` line, reads as.
+    Step,
+    /// Before `resume` hands the operation back to git (`--continue`,
+    /// `--skip`, `--abort`, `commit`). For a multi-step operation it marks
+    /// where the previous step ended: everything newer is the current step's.
+    Resume,
+}
+
+impl LinkKind {
+    fn trailer(self) -> &'static str {
+        match self {
+            LinkKind::Step => "Graft-Link: step",
+            LinkKind::Resume => "Graft-Link: resume",
+        }
+    }
+}
+
 /// Decision 2's chained commit: the repository as it stands **now**, hung off
 /// the entry's backup ref, with no journal line of its own.
 ///
@@ -24,13 +48,20 @@ use super::{SnapshotError, both_trees, commit_trees, move_backup_ref};
 /// ([`crate::operation::Operation::RestartConflict`]) reads the stages back
 /// out of it instead of re-running the merge.
 ///
+/// `link` says why it was written, and goes into the commit's message
+/// ([`LinkKind`]).
+///
 /// `Ok(None)` when the entry names no backup ref: there is nothing to chain
 /// onto, which is exactly the case of an operation begun outside Graft.
 ///
 /// # Errors
 /// [`SnapshotError`] — the stop, or a `git` that would not run. Nothing is
 /// written when it fails: the ref moves last.
-pub fn chain_backup(ctx: &Context<'_>, entry: &JournalEntry) -> Result<Option<Oid>, SnapshotError> {
+pub fn chain_backup(
+    ctx: &Context<'_>,
+    entry: &JournalEntry,
+    link: LinkKind,
+) -> Result<Option<Oid>, SnapshotError> {
     let Some(name) = entry.backup_ref.as_deref() else {
         return Ok(None);
     };
@@ -39,7 +70,7 @@ pub fn chain_backup(ctx: &Context<'_>, entry: &JournalEntry) -> Result<Option<Oi
     }
     let (index, worktree_tree) = both_trees(ctx.repo, ctx.scratch(), ctx.stop)?;
     let parents: Vec<Oid> = read_ref(ctx.repo, name, ctx.stop)?.into_iter().collect();
-    let label = format!("step within: {}", entry.description);
+    let label = format!("step within: {}\n\n{}\n", entry.description, link.trailer());
     let commit = commit_trees(
         ctx.repo,
         Some(index),
@@ -98,66 +129,89 @@ pub fn recorded_index_state(
     Ok(None)
 }
 
-/// A backup ref's chain of recorded index states, **newest first**.
+/// A backup ref's chain of recorded index states, **newest first**, each with
+/// the [`LinkKind`] its commit was written as.
 ///
 /// The ref's own commit, then its first parent, and so on — the single linear
 /// chain [`chain_backup`] keeps: pre-operation → before step 1 → … The walk
 /// stops at the first commit that is not a backup commit
 /// ([`recorded_index_state`] gives `None`), which is where the pre-operation
 /// snapshot's parents hand over to the user's own history. An absent ref is
-/// an empty chain, not a failure.
+/// an empty chain, not a failure. The pre-operation snapshot and any link
+/// written before m6-conflicts/22 carry no `Graft-Link:` line and read as
+/// [`LinkKind::Step`].
 ///
 /// This is what `d` reads after `⏎`: the stages git dropped when it staged
 /// the path are in one of these, and nothing here re-runs the merge.
 ///
 /// # Errors
-/// [`SnapshotError`] — the stop, or a `git` that would not run.
+/// [`SnapshotError`] — the stop, a `git` that would not run, or a
+/// `Graft-Link:` line naming a kind this build does not know.
 pub fn backup_chain(
     repo: &RepoHandle,
     name: &str,
     stop: &dyn Stop,
-) -> Result<Vec<IndexState>, SnapshotError> {
+) -> Result<Vec<(IndexState, LinkKind)>, SnapshotError> {
     let mut chain = Vec::new();
     let mut at = read_ref(repo, name, stop)?;
     while let Some(commit) = at {
         let Some(state) = recorded_index_state(repo, commit, stop)? else {
             break;
         };
-        chain.push(state);
-        at = first_parent(repo, commit, stop)?;
+        let (parent, link) = parent_and_link(repo, commit, stop)?;
+        chain.push((state, link));
+        at = parent;
     }
     Ok(chain)
 }
 
-/// A commit's first parent, or `None` when it is a root.
-///
-/// `rev-list --parents -n 1` prints `<commit> <parent>…`, so one spawn
-/// answers it without `rev-parse <c>^1` failing loudly on a root commit.
-fn first_parent(
+/// A backup commit's first parent (`None` for a root) and its link kind,
+/// from one `cat-file commit`.
+fn parent_and_link(
     repo: &RepoHandle,
     commit: Oid,
     stop: &dyn Stop,
-) -> Result<Option<Oid>, SnapshotError> {
+) -> Result<(Option<Oid>, LinkKind), SnapshotError> {
     let output = run_git(
         repo,
         vec![
-            GitArg::Flag("rev-list"),
-            GitArg::Flag("--parents"),
-            GitArg::Flag("-n"),
-            GitArg::Flag("1"),
+            GitArg::Flag("cat-file"),
+            GitArg::Flag("commit"),
             GitArg::Oid(commit),
         ],
         None,
         stop,
     )?;
     let text = String::from_utf8_lossy(&output.stdout);
-    let Some(parent) = text.split_whitespace().nth(1) else {
-        return Ok(None);
+    let (headers, message) = text.split_once("\n\n").unwrap_or((&text, ""));
+    let parent = match headers
+        .lines()
+        .find_map(|line| line.strip_prefix("parent "))
+    {
+        Some(hex) => Some(Oid::from_hex(hex).map_err(|_| SnapshotError::NotAnOid {
+            what: "cat-file commit",
+            printed: hex.to_owned(),
+        })?),
+        None => None,
     };
-    Oid::from_hex(parent)
-        .map(Some)
-        .map_err(|_| SnapshotError::NotAnOid {
-            what: "rev-list --parents",
-            printed: parent.to_owned(),
-        })
+    Ok((parent, link_of(commit, message)?))
+}
+
+/// The kind a backup commit's message records: its last non-empty line, when
+/// that is a `Graft-Link:` line; [`LinkKind::Step`] when there is none (a
+/// link written before the kind was, or the pre-operation snapshot).
+fn link_of(commit: Oid, message: &str) -> Result<LinkKind, SnapshotError> {
+    let last = message.lines().rev().find(|line| !line.trim().is_empty());
+    let Some((line, value)) = last.and_then(|line| Some((line, line.strip_prefix("Graft-Link:")?)))
+    else {
+        return Ok(LinkKind::Step);
+    };
+    match value.trim() {
+        "step" => Ok(LinkKind::Step),
+        "resume" => Ok(LinkKind::Resume),
+        _ => Err(SnapshotError::UnknownLink {
+            commit,
+            printed: line.to_owned(),
+        }),
+    }
 }

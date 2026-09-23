@@ -10,10 +10,14 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use graft_ops::apply::{ApplyError, Resume};
+use graft_ops::snapshot::{LinkKind, backup_chain};
+
 use crate::conflict_fixtures::{
-    conflict_set, downstream_of, graft_merge_stops, graft_stage, paths, two_file_conflict,
+    conflict_set, downstream_of, graft_merge_stops, graft_rebase_stops, graft_stage, paths,
+    run_resume, two_file_conflict, two_stop_history,
 };
-use crate::support::{NOW, TempRepo};
+use crate::support::{NOW, Never, TempRepo};
 
 #[test]
 fn a_merge_lists_resolved_files_too() {
@@ -185,4 +189,118 @@ fn nothing_in_progress_is_an_empty_unrecorded_set() {
     let set = conflict_set(&repo);
     assert!(set.paths.is_empty());
     assert!(!set.recorded);
+}
+
+/// Graft's rebase of `TwoStopRebase`'s history, stopped at step 1 on
+/// `a.txt`, resolved and marked done through Graft, then continued: it
+/// stops again at step 2 on `b.txt`.
+fn at_step_two() -> TempRepo {
+    let repo = two_stop_history();
+    graft_rebase_stops(&repo);
+    assert_eq!(conflict_set(&repo).paths, paths(&["a.txt"]), "step 1");
+    repo.write("a.txt", b"1\nboth\n3\n");
+    graft_stage(&repo, "a.txt", NOW + 1);
+    let stopped = run_resume(&repo, Resume::Continue, NOW + 2);
+    assert!(
+        matches!(stopped, Err(ApplyError::Conflicted { .. })),
+        "step 2 stops: {stopped:?}"
+    );
+    repo
+}
+
+#[test]
+fn a_rebase_lists_only_the_current_steps_files() {
+    let repo = at_step_two();
+    let set = conflict_set(&repo);
+    // `a.txt` was step 1's; git's list and the index say only `b.txt` now.
+    assert_eq!(set.paths, paths(&["b.txt"]));
+    assert!(set.recorded);
+}
+
+#[test]
+fn a_rebase_step_keeps_its_resolved_files() {
+    let repo = at_step_two();
+    repo.write("b.txt", b"both\n");
+    graft_stage(&repo, "b.txt", NOW + 3);
+    let set = conflict_set(&repo);
+    assert_eq!(set.paths, paths(&["b.txt"]));
+    assert!(set.recorded);
+    // The chain alone, without git's list: step 2's link names `b.txt`, and
+    // the walk stops before step 1's.
+    std::fs::remove_file(repo.path().join(".git/MERGE_MSG")).expect("MERGE_MSG goes");
+    let set = conflict_set(&repo);
+    assert_eq!(set.paths, paths(&["b.txt"]));
+    assert!(set.recorded, "the chain is a record too");
+}
+
+/// A merge has one step and no `Resume` link before its finish: every link
+/// counts, as in 09 (`a_merge_lists_resolved_files_too`,
+/// `a_graft_step_is_remembered_without_git_s_list`,
+/// `a_relaunch_lists_the_same_files`).
+#[test]
+fn a_merge_set_is_unchanged() {
+    let repo = two_file_conflict();
+    graft_merge_stops(&repo);
+    repo.write("a.txt", b"1\nboth\n3\n");
+    graft_stage(&repo, "a.txt", NOW + 1);
+    repo.write("b.txt", b"both\n");
+    graft_stage(&repo, "b.txt", NOW + 2);
+    std::fs::remove_file(repo.path().join(".git/MERGE_MSG")).expect("MERGE_MSG goes");
+    let set = conflict_set(&repo);
+    // Newest link first: before `b.txt` was staged (only `b.txt` open), then
+    // before `a.txt` was (both open).
+    assert_eq!(set.paths, paths(&["b.txt", "a.txt"]));
+    assert!(set.recorded);
+}
+
+/// The one backup ref Graft's merge left.
+fn backup_ref(repo: &TempRepo) -> String {
+    let name = repo.git(&["for-each-ref", "--format=%(refname)", "refs/graft/backup/"]);
+    assert_eq!(name.lines().count(), 1, "one backup ref: {name}");
+    name
+}
+
+/// Rewrite the ref's newest link with `message` in place of its own, same
+/// tree and parent.
+fn relabel_newest(repo: &TempRepo, name: &str, message: &str) {
+    let tree = repo.git(&["rev-parse", &format!("{name}^{{tree}}")]);
+    let parent = repo.git(&["rev-parse", &format!("{name}^")]);
+    let commit = repo.git(&["commit-tree", &tree, "-p", &parent, "-m", message]);
+    repo.git(&["update-ref", name, &commit]);
+}
+
+#[test]
+fn a_link_without_a_kind_reads_as_step() {
+    let repo = two_file_conflict();
+    graft_merge_stops(&repo);
+    repo.write("a.txt", b"1\nboth\n3\n");
+    graft_stage(&repo, "a.txt", NOW + 1);
+    let name = backup_ref(&repo);
+    let written = repo.git(&["log", "-1", "--format=%B", &name]);
+    assert_eq!(
+        written.lines().last(),
+        Some("Graft-Link: step"),
+        "{written}"
+    );
+
+    let kinds = |repo: &TempRepo| -> Vec<LinkKind> {
+        backup_chain(&repo.open(), &name, &Never)
+            .expect("the chain reads")
+            .into_iter()
+            .map(|(_, link)| link)
+            .collect()
+    };
+    // The link as m6-conflicts/09 wrote it: no `Graft-Link:` line.
+    relabel_newest(&repo, &name, "graft x step within: merge feature");
+    assert_eq!(kinds(&repo), [LinkKind::Step, LinkKind::Step]);
+    // ...and so it bounds nothing: the set is 09's.
+    std::fs::remove_file(repo.path().join(".git/MERGE_MSG")).expect("MERGE_MSG goes");
+    assert_eq!(conflict_set(&repo).paths, paths(&["b.txt", "a.txt"]));
+
+    // The same link marked `resume` does bound the walk.
+    relabel_newest(&repo, &name, "graft x\n\nGraft-Link: resume");
+    assert_eq!(kinds(&repo), [LinkKind::Resume, LinkKind::Step]);
+    let set = conflict_set(&repo);
+    assert_eq!(set.paths, paths(&["b.txt"]));
+    assert!(!set.recorded, "only the index names b.txt now");
 }

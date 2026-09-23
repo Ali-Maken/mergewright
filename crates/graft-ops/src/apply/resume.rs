@@ -30,13 +30,15 @@ pub enum Resume {
     /// commits with git's own message, untouched.
     Continue,
     /// A merge finished with the message the user edited: `git commit
-    /// --cleanup=strip -F -`, the message on stdin (m6-conflicts/09,
-    /// Amendment 2 hard choice 3). git's `MERGE_MSG` is never written — git
+    /// --cleanup=whitespace -F -`, the message on stdin (m6-conflicts/09,
+    /// Amendment 2 hard choice 3; `whitespace` since m6-conflicts/22). git's `MERGE_MSG` is never written — git
     /// removes it itself once the commit lands. Merge only: any other kind
     /// is [`Refusal::MessageNotHere`] before anything runs.
     ContinueWith {
-        /// The message as the user left it; git strips comments and
-        /// trailing blank lines.
+        /// The message as the user left it. git trims trailing whitespace
+        /// and blank lines but keeps every `#` line: git's own comment lines
+        /// were removed once, when `finish_summary` read `MERGE_MSG`, so a
+        /// `#` line here is the user's (`#123 fixes login`) and lands.
         message: Vec<u8>,
     },
     /// `--skip`: drop the commit being replayed (rebase, cherry-pick,
@@ -171,7 +173,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     // What git is about to write over. `--abort` throws the span's work away
     // and `--continue` commits it, so in both cases the last state the user
     // saw is only in the chain after this (m6-conflicts/08 Decision 2).
-    snapshot::chain_backup(ctx, &entry).map_err(as_apply_error)?;
+    snapshot::chain_backup(ctx, &entry, snapshot::LinkKind::Resume).map_err(as_apply_error)?;
 
     let aborting = how == Resume::Abort;
     let flag = |flag| vec![GitArg::Flag(kind.name()), GitArg::Flag(flag)];
@@ -180,7 +182,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         Resume::ContinueWith { message } => (
             vec![
                 GitArg::Flag("commit"),
-                GitArg::Flag("--cleanup=strip"),
+                GitArg::Flag("--cleanup=whitespace"),
                 GitArg::Flag("-F"),
                 GitArg::Flag("-"),
             ],
