@@ -110,6 +110,7 @@ stays visible.
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
+| 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **still the shell** — `git merge --abort`, then `Ctrl+R`, `u` in the app. `u` and the banner's `a` both refuse while the merge is open (`crates/graft/tests/it/resolver/shell_begun.rs::a_hand_edit_taken_by_t_comes_back_after_the_merge_ends`). Source: ticket 08 `## Review fixes, part 2`. Expires M7 | open (M7) |
 
 _Rows marked `walk` are what the M6 acceptance walk says a reach used to be
 and is now; they are not daily use. Daily-use rows are dated plainly._
