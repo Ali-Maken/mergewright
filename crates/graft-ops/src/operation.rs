@@ -416,6 +416,13 @@ pub enum Refusal {
     },
     /// `Resume::Skip` on an operation that has no step to skip (a merge).
     CannotSkip(InProgress),
+    /// `Resume::ContinueWith` on an operation that is not a merge: a rebase,
+    /// cherry-pick or revert keeps each commit's own message, so there is no
+    /// one message to replace (m6-conflicts/09; a per-commit message is M7).
+    MessageNotHere {
+        /// What git has in progress.
+        kind: InProgress,
+    },
     /// The Ghost Preview has no picture for this operation: a stage, a
     /// commit, an ordinary push. The M4 confirm boxes cover those; the
     /// preview draws the operations that move history.
@@ -603,6 +610,12 @@ impl Refusal {
             Self::CannotSkip(kind) => {
                 format!(
                     "a {} has nothing to skip · c continues, a aborts",
+                    kind.name()
+                )
+            }
+            Self::MessageNotHere { kind } => {
+                format!(
+                    "a {} keeps each commit's own message · c continues",
                     kind.name()
                 )
             }

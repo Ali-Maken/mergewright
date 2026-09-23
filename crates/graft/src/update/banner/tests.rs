@@ -726,7 +726,7 @@ fn did_a_resume_verb(
                 .as_ref()
                 .unwrap_or_else(|| panic!("`{key} {verb}` opened no box"));
             assert!(
-                matches!(confirm.then, ConfirmThen::Resume(what) if what == want),
+                matches!(&confirm.then, ConfirmThen::Resume(what) if *what == want),
                 "`{key} {verb}` opened {:?}",
                 confirm.then
             );

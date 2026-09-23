@@ -25,6 +25,12 @@ use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 
 use crate::operation::Refusal;
 
+pub(crate) mod merge_msg;
+mod set;
+
+pub(crate) use set::conflicts_of;
+pub use set::{ConflictSet, ConflictSetError, operation_conflicts};
+
 /// What the resolver got when it opened a path.
 #[derive(Clone, Debug)]
 pub struct Opened {

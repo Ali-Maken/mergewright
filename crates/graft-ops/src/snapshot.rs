@@ -259,6 +259,24 @@ pub(crate) fn stage_entries_for(
     tree_stage_entries(repo, index, Some(paths), stop)
 }
 
+/// Every path a recorded index state holds at a stage above 0 — the paths
+/// that state records as conflicted — in path order. Empty for a merged
+/// state, which records resolutions, not conflicts (m6-conflicts/09).
+pub(crate) fn conflicted_paths(
+    repo: &RepoHandle,
+    index: IndexState,
+    stop: &dyn Stop,
+) -> Result<Vec<PathBuf>, SnapshotError> {
+    if !index.is_unmerged() {
+        return Ok(Vec::new());
+    }
+    Ok(tree_stage_entries(repo, index, None, stop)?
+        .into_iter()
+        .filter(|(_, entries)| entries.iter().any(|entry| entry.stage >= 1))
+        .map(|(path, _)| path)
+        .collect())
+}
+
 /// Join the trees into one backup commit, without touching any ref.
 ///
 /// `take` uses it for the before-snapshot; the protocol uses it again for the

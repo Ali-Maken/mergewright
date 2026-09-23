@@ -10,6 +10,7 @@
 pub mod apply;
 pub mod conflict;
 pub mod facts;
+pub mod finish;
 pub mod journal;
 pub mod mistake_radar;
 pub mod operation;
