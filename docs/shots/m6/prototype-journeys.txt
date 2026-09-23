@@ -1,0 +1,2197 @@
+# M6 conflict journey — PROTOTYPE captures (walk.py --capture), 120x40
+# Wizard-of-Oz: canned frames, no git. Task: "merge `feature` into `main` and get it finished."
+# Colour: none. These are plain text; reverse video / colour is not prototyped and not verifiable here.
+# Each frame sits under one line: what you should see / what key next.
+
+########################################################################################################################
+# RUN: A in-spec   (keys: m → ⏎ ⏎ o ⏎ t n t ⏎ c)
+########################################################################################################################
+=== PROTOTYPE A in-spec · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE A in-spec · frame 1 · preview, cursor on Cancel · next: → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE A in-spec · frame 2 · preview, cursor on Confirm · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│  [ Cancel ]  ▸[ Confirm ]                                                                                            │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE A in-spec · frame 3 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge stopped · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+=== PROTOTYPE A in-spec · frame 4 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · open ── o keep (ours)  t delete (theirs) ──────────────────────────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A in-spec · frame 5 · resolver on gone.txt (modify/delete) · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · keep main's edit ── o keep (ours)  t delete (theirs)  ⏎ stage ─────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A in-spec · frame 6 · notes.txt card, both sides numbered, no number on the header · next: t
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 2 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     3 two from main                        │   5 TWO from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+     7 three
+     8 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+     10 five from main                       │  12 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A in-spec · frame 7 · after t: cursor stays on the taken block (in-spec) · next: n
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 1 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     2 TWO from feature
+     3 three
+     4 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+      6 five from main                       │   8 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A in-spec · frame 8 · notes.txt card, both sides numbered, no number on the header · next: t
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 1 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+       ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      2 TWO from feature
+     3 three
+     4 four
+▏      ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     6 five from main                       │   8 FIVE from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A in-spec · frame 9 · notes.txt, both blocks taken · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 0 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+       ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      2 TWO from feature
+     3 three
+     4 four
+▏      ── conflict 2 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     5 FIVE from feature
+
+   all blocks taken · ⏎ stage notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A in-spec · frame 10 · every file staged, banner focused · next: c
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  all conflicts staged
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ all conflicts resolved · c continue  a abort  ⇥ graph
+=== PROTOTYPE A in-spec · frame 11 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · in-spec
+# outcome: merged in the app
+# keys pressed: 11  (m → ⏎ ⏎ o ⏎ t n t ⏎ c)
+# stalls: 0
+# design note count: a-merge-to-stop 3 + a-stop-to-first-conflict 1 + gone 2 + notes t n t ⏎ 4 + a-finish 1 = 11
+
+########################################################################################################################
+# RUN: A in-spec, Esc detour (J7)   (keys: m → ⏎ Esc ⇥ ⏎)
+########################################################################################################################
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 1 · preview, cursor on Cancel · next: → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 2 · preview, cursor on Confirm · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│  [ Cancel ]  ▸[ Confirm ]                                                                                            │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 3 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge stopped · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 4 · after Esc: graph focused, bar led by `⇥ banner` · next: ⇥
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge stopped · 2 files conflicted · ⇥ banner  ⏎ open  c commit  . more  …
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 5 · stop landed on the banner; its keys own the bottom row · next: ⏎ (or Esc to leave)
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge stopped · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+=== PROTOTYPE A in-spec, Esc detour (J7) · frame 6 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · open ── o keep (ours)  t delete (theirs) ──────────────────────────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+
+# PROTOTYPE walk · start=app · in-spec
+# outcome: quit before finishing
+# keys pressed: 6  (m → ⏎ Esc ⇥ ⏎)
+# stalls: 0
+# design note count: a-merge-to-stop 3 + a-stop-to-first-conflict 1 + gone 2 + notes t n t ⏎ 4 + a-finish 1 = 11
+
+########################################################################################################################
+# RUN: A proposed   (keys: m m o ⏎ Ctrl+T ⏎ c)
+########################################################################################################################
+=== PROTOTYPE A proposed · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE A proposed · frame 1 · preview, cursor on Cancel · next: m (P1) or → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE A proposed · frame 2 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · open ── o keep (ours)  t delete (theirs) ──────────────────────────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed · frame 3 · resolver on gone.txt (modify/delete) · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · keep main's edit ── o keep (ours)  t delete (theirs)  ⏎ stage ─────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed · frame 4 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 2 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     3 two from main                        │   5 TWO from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+     7 three
+     8 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+     10 five from main                       │  12 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed · frame 5 · notes.txt, both blocks taken · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 0 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     2 TWO from feature
+     3 three
+     4 four
+       ── conflict 2 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      5 FIVE from feature
+
+   all blocks taken · ⏎ stage notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed · frame 6 · every file staged, banner focused · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  all conflicts staged
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ all conflicts resolved · c continue  a abort  ⇥ graph
+=== PROTOTYPE A proposed · frame 7 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 7  (m m o ⏎ Ctrl+T ⏎ c)
+# stalls: 0
+# design note count: a-merge-to-stop P1:2 + a-stop-to-first-conflict P5:0 + gone 2 + notes P3:2 (P2:3) + a-finish 1 = 7 (P2 route 8)
+
+########################################################################################################################
+# RUN: A proposed, P2 route   (keys: m m o ⏎ t t ⏎ c)
+########################################################################################################################
+=== PROTOTYPE A proposed, P2 route · frame 0 · graph, cursor on `feature` · next: m
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q
+=== PROTOTYPE A proposed, P2 route · frame 1 · preview, cursor on Cancel · next: m (P1) or → then ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+  ● ▏  [feature] feature                                               MA now  d709ba8
+◆ │    [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ main e25730c → 1 new commit                                                                                          │
+│ working tree: 2 files updated                                                                                        │
+│ may conflict: gone.txt, notes.txt                                                                                    │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit feature                                                                                          │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ m merge  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
+
+=== PROTOTYPE A proposed, P2 route · frame 2 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · open ── o keep (ours)  t delete (theirs) ──────────────────────────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed, P2 route · frame 3 · resolver on gone.txt (modify/delete) · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · keep main's edit ── o keep (ours)  t delete (theirs)  ⏎ stage ─────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed, P2 route · frame 4 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 2 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     3 two from main                        │   5 TWO from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+     7 three
+     8 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+     10 five from main                       │  12 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed, P2 route · frame 5 · after t: took theirs, cursor advanced to block 2 (P2) · next: t
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 1 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+       ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      2 TWO from feature
+     3 three
+     4 four
+▏      ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     6 five from main                       │   8 FIVE from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed, P2 route · frame 6 · notes.txt, both blocks taken · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 0 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+       ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      2 TWO from feature
+     3 three
+     4 four
+▏      ── conflict 2 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     5 FIVE from feature
+
+   all blocks taken · ⏎ stage notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE A proposed, P2 route · frame 7 · every file staged, banner focused · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  all conflicts staged
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ all conflicts resolved · c continue  a abort  ⇥ graph
+=== PROTOTYPE A proposed, P2 route · frame 8 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=app · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 8  (m m o ⏎ t t ⏎ c)
+# stalls: 0
+# design note count: a-merge-to-stop P1:2 + a-stop-to-first-conflict P5:0 + gone 2 + notes P3:2 (P2:3) + a-finish 1 = 7 (P2 route 8)
+
+########################################################################################################################
+# RUN: B in-spec   (keys: ⏎ o ⏎ t n t ⏎ c)
+########################################################################################################################
+=== PROTOTYPE B in-spec · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · begun outside Graft · 2 files conflicted · ⏎ resolve  c continue  a abort  ⇥ graph
+=== PROTOTYPE B in-spec · frame 1 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · open ── o keep (ours)  t delete (theirs) ──────────────────────────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B in-spec · frame 2 · resolver on gone.txt (modify/delete) · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · keep main's edit ── o keep (ours)  t delete (theirs)  ⏎ stage ─────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B in-spec · frame 3 · notes.txt card, both sides numbered, no number on the header · next: t
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 2 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     3 two from main                        │   5 TWO from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+     7 three
+     8 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+     10 five from main                       │  12 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B in-spec · frame 4 · after t: cursor stays on the taken block (in-spec) · next: n
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 1 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     2 TWO from feature
+     3 three
+     4 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+      6 five from main                       │   8 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B in-spec · frame 5 · notes.txt card, both sides numbered, no number on the header · next: t
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 1 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+       ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      2 TWO from feature
+     3 three
+     4 four
+▏      ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     6 five from main                       │   8 FIVE from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B in-spec · frame 6 · notes.txt, both blocks taken · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+notes.txt · file 2 of 2 · 0 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+       ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      2 TWO from feature
+     3 three
+     4 four
+▏      ── conflict 2 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     5 FIVE from feature
+
+   all blocks taken · ⏎ stage notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B in-spec · frame 7 · every file staged, banner focused · next: c
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  all conflicts staged
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ all conflicts resolved · c continue  a abort  ⇥ graph
+=== PROTOTYPE B in-spec · frame 8 · in-spec: c refused for a shell-begun merge — journey leaves the app here · q
+ graft /tmp/graft-conflict   PROTOTYPE                                                                          MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge begun in the shell — finish it there: git commit · a abort  ⇥ graph
+
+# PROTOTYPE walk · start=shell · in-spec
+# outcome: left the app: `git commit` in the shell (in-spec refusal)
+# keys pressed: 8  (⏎ o ⏎ t n t ⏎ c)
+# stalls: 0
+# design note count: b-launch-to-first-conflict 1 + gone 2 + notes t n t ⏎ 4 + b-finish `-` (leaves app) = 7 + shell
+
+########################################################################################################################
+# RUN: B proposed   (keys: ⏎ o ⏎ Ctrl+T ⏎ c)
+########################################################################################################################
+=== PROTOTYPE B proposed · frame 0 · launched into a shell-begun merge: banner focused · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  CONFLICTS in the changes pane: gone.txt, notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · begun outside Graft · 2 files conflicted · ⏎ resolve  c continue  a abort  ⇥ graph
+=== PROTOTYPE B proposed · frame 1 · resolver on gone.txt (modify/delete) · next: o (keep main's edit)
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · open ── o keep (ours)  t delete (theirs) ──────────────────────────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B proposed · frame 2 · resolver on gone.txt (modify/delete) · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+gone.txt · file 1 of 2 · modified on main, deleted on feature
+ours = main · theirs = the branch being merged in
+▏  ── gone.txt · keep main's edit ── o keep (ours)  t delete (theirs)  ⏎ stage ─────────────────────────────────────────
+▏  OURS · HEAD (modified)                     │ THEIRS · feature
+▏    1 keep me, edited on main                │   (file deleted)
+▏ ────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B proposed · frame 3 · notes.txt card, both sides numbered, no number on the header · next: Ctrl+T (P3) or t (P2)
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 2 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+▏       OURS · HEAD                          │     THEIRS · feature
+▏     3 two from main                        │   5 TWO from feature
+▏       ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+     7 three
+     8 four
+       ── conflict 2 of 2 · open ── o ours  t theirs  b both ───────────────────────────────────────────────────────────
+        OURS · HEAD                          │     THEIRS · feature
+     10 five from main                       │  12 FIVE from feature
+        ─────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B proposed · frame 4 · notes.txt, both blocks taken · next: ⏎
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+notes.txt · file 2 of 2 · 0 of 2 conflicts open
+ours = main · theirs = the branch being merged in
+     1 one
+▏      ── conflict 1 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+▏     2 TWO from feature
+     3 three
+     4 four
+       ── conflict 2 of 2 · took theirs ── o ours  b both ──────────────────────────────────────────────────────────────
+      5 FIVE from feature
+
+   all blocks taken · ⏎ stage notes.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o ours  t theirs  b both  n/N next/prev  Ctrl+O all ours  Ctrl+T all theirs  ⏎ stage  e edit  esc banner
+=== PROTOTYPE B proposed · frame 5 · every file staged, banner focused · next: c
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed                                                              MERGING
+◌      Uncommitted changes (2 unmerged)
+  ●    [feature] feature                                               MA now  d709ba8
+◆ │ ▏  [◆ main] main                                                  MA now  e25730c
+◇─╯    base                                                            MA now  055b111
+
+  [banner focused]  all conflicts staged
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ all conflicts resolved · c continue  a abort  ⇥ graph
+=== PROTOTYPE B proposed · frame 6 · merged: graph focused, cursor on the new merge commit · done
+ graft /tmp/graft-conflict   PROTOTYPE  --proposed
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                         MA now  4c1e2d0
+│ ●    [feature] feature                                               MA now  d709ba8
+●─╯    main                                                            MA now  e25730c
+◇      base                                                            MA now  055b111
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓ · ⏎ open  u undo  P push  …
+
+# PROTOTYPE walk · start=shell · proposed P1-P5
+# outcome: merged in the app
+# keys pressed: 6  (⏎ o ⏎ Ctrl+T ⏎ c)
+# stalls: 0
+# design note count: b-launch-to-first-conflict 1 + gone 2 + notes P3:2 + b-finish P4:1 = 6
+
