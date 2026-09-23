@@ -635,7 +635,9 @@ fn ahead_behind_is_counted_on_a_worker_never_the_loops_thread() {
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::RefStates);
     let (runner, events, _store) = runner_at(&dir, 1);
 
-    runner.dispatch(Command::ReadRefs);
+    runner.dispatch(Command::ReadRefs(JobId::new(
+        crate::update::detail::LOCAL_JOB_BIT | 0x5a,
+    )));
 
     next_started(&events, &Task::ReadRefs);
     match next_report(&events) {

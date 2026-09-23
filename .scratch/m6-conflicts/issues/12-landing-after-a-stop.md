@@ -1,6 +1,6 @@
 # fix-landing-after-a-stop: after a stop, a launch into a live operation, an `Esc`, or a `c`, the next key is on screen and one press away
 
-Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: done (2026-09-23; filed 2026-09-23, P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 Blocked by: none
 Was: draft · **revised 2026-09-23 (Amendment 2)**: item 5 now covers rebase, cherry-pick and revert only. A merge's `c` opens the finish summary, and `fix-finish-summary-screen` asserts where its commit lands.
 **Revised after scout (2026-09-23, `.scratch/m6-conflicts/scout-12.md`):**
@@ -111,20 +111,20 @@ pub fn stopped_row(reason: &SanitizedText, hints: &[Hint], columns: u16) -> Stri
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] `update::banner::tests::a_stop_keeps_the_banner_keys_on_the_bottom_row`: a `Conflicted` answer, the frame drawn at 80x24, 120x40 and 200x50. The bottom row contains `⏎ resolve` and `a abort`, and not `esc dismiss`. At 120x40 it starts `merge stopped · 1 file conflicted ·`.
-- [ ] `update::banner::tests::the_stop_line_outlives_a_dismissed_problem`: a stop, then a failed resume (`Sticky`), then `Esc`. The bottom row starts with the stop's reason again.
-- [ ] `update::banner::tests::tab_keeps_a_failed_resumes_words`: `Sticky` from a failed resume, then `Tab` on the banner → `status` still `Sticky`.
-- [ ] `update::banner::tests::esc_on_the_banner_leaves_a_way_back_on_screen`: after `Esc` the bottom row contains `⇥ banner`; one `Tab` → `banner_focus`; `⏎` → the resolver opens on `first_conflicted`.
-- [ ] `update::banner::tests::stop_reason_words`: every row of scope item 2, including the fallback when the working-tree read's kind doesn't match (no step), a count of 0 (no count part), and `1 file` / `2 files`.
-- [ ] `update::banner::tests::the_count_follows_the_read`: a stop with 2 conflicted, then a working-tree read with 1 unmerged → the reason reads `1 file conflicted`.
-- [ ] `update::relaunch::tests::a_merge_begun_in_the_shell_lands_on_the_banner`: the first working-tree read has `in_progress: Some(Merge)` and the journal is empty. Result: `banner_focus`, the pane on `CONFLICTS`, and a reason containing `begun outside Graft`. One `⏎` opens the resolver.
-- [ ] `update::relaunch::tests::a_previous_runs_merge_still_lands_the_same_way` (scenario 26's shape keeps passing).
-- [ ] `update::relaunch::tests::a_modal_defers_the_landing`: a modal is open at the first read → `stopped` is set, the banner is not focused. The modal closes, the next working-tree read comes in → `banner_focus`.
-- [ ] `update::banner::tests::continue_lands_on_the_new_commit`, on a **rebase** whose last step was resolved: `c` → `Done`, then the refs answer. The cursor row's oid = the new `HEAD`, the graph is focused, and `stopped` is `None`.
-- [ ] `update::banner::tests::a_stale_refs_answer_does_not_spend_the_landing`: a refs answer from before the `c` arrives after `Done` → `land_on_head` is still true.
-- [ ] graft-ui `hints::tests::operation_live_leads_with_the_way_back`, `hints::tests::stopped_row_drops_the_reason_under_twelve_cells`, `hints::tests::stopped_row_keeps_the_bar_whole`, and `every_context_reaches_every_shape`, green with the new variant.
-- [ ] graft-ui `footer::tests::a_problem_still_wins_over_a_stop` and `footer::tests::a_search_line_still_wins_over_a_stop`.
-- [ ] Captures under `docs/shots/m6/`: `fix-landing-a-stop-{120x40,80x24}.txt`, `fix-landing-after-esc-120x40.txt`, `fix-landing-b-launch-120x40.txt`, `fix-landing-after-continue-rebase-120x40.txt`. **What right looks like:**
+- [x] `update::banner::tests::a_stop_keeps_the_banner_keys_on_the_bottom_row`: a `Conflicted` answer, the frame drawn at 80x24, 120x40 and 200x50. The bottom row contains `⏎ resolve` and `a abort`, and not `esc dismiss`. At 120x40 it starts `merge stopped · 1 file conflicted ·`.
+- [x] `update::banner::tests::the_stop_line_outlives_a_dismissed_problem`: a stop, then a failed resume (`Sticky`), then `Esc`. The bottom row starts with the stop's reason again. **As built:** `Esc` dismisses the problem *and* leaves the banner (scope item 6, "keep today's behaviour for `Esc`"), and beside the laddered bar at 120 the reason drops (item 3's accepted consequence). So the test asserts `Ready`, `stopped` still `Some`, then one `Tab` back → the row starts `merge stopped · 1 file conflicted`. See NOTES, deviation 4.
+- [x] `update::banner::tests::tab_keeps_a_failed_resumes_words`: `Sticky` from a failed resume, then `Tab` on the banner → `status` still `Sticky`.
+- [x] `update::banner::tests::esc_on_the_banner_leaves_a_way_back_on_screen`: after `Esc` the bottom row contains `⇥ banner`; one `Tab` → `banner_focus`; `⏎` → the resolver opens on `first_conflicted`.
+- [x] `update::banner::tests::stop_reason_words`: every row of scope item 2, including the fallback when the working-tree read's kind doesn't match (no step), a count of 0 (no count part), and `1 file` / `2 files`.
+- [x] `update::banner::tests::the_count_follows_the_read`: a stop with 2 conflicted, then a working-tree read with 1 unmerged → the reason reads `1 file conflicted`.
+- [x] `update::relaunch::tests::a_merge_begun_in_the_shell_lands_on_the_banner`: the first working-tree read has `in_progress: Some(Merge)` and the journal is empty. Result: `banner_focus`, the pane on `CONFLICTS`, and a reason containing `begun outside Graft`. One `⏎` opens the resolver.
+- [x] `update::relaunch::tests::a_previous_runs_merge_still_lands_the_same_way` (scenario 26's shape keeps passing).
+- [x] `update::relaunch::tests::a_modal_defers_the_landing`: a modal is open at the first read → `stopped` is set, the banner is not focused. The modal closes, the next working-tree read comes in → `banner_focus`.
+- [x] `update::banner::tests::continue_lands_on_the_new_commit`, on a **rebase** whose last step was resolved: `c` → `Done`, then the refs answer. The cursor row's oid = the new `HEAD`, the graph is focused, and `stopped` is `None`.
+- [x] `update::banner::tests::a_stale_refs_answer_does_not_spend_the_landing`: a refs answer from before the `c` arrives after `Done` → `land_on_head` is still true.
+- [x] graft-ui `hints::tests::operation_live_leads_with_the_way_back`, `hints::tests::stopped_row_drops_the_reason_under_twelve_cells`, `hints::tests::stopped_row_keeps_the_bar_whole`, and `every_context_reaches_every_shape`, green with the new variant.
+- [x] graft-ui `footer::tests::a_problem_still_wins_over_a_stop` and `footer::tests::a_search_line_still_wins_over_a_stop`.
+- [x] Captures under `docs/shots/m6/`: `fix-landing-a-stop-{120x40,80x24}.txt`, `fix-landing-after-esc-120x40.txt`, `fix-landing-b-launch-120x40.txt`, `fix-landing-after-continue-rebase-120x40.txt`, each also at 187x50 (and the stop at 80x24). Verified by `it::conflict_interim::landing_shots::{capture_a_merge_that_stops, capture_after_esc_on_the_banner, capture_a_launch_into_a_shell_merge, capture_after_continue_on_a_rebase}` — each asserts the row text below, then `check_shot`. The stop fixture has **2** conflicted files, so it reads `2 files conflicted`. **What right looks like:**
   - Stop: the last row starts `merge stopped · 1 file conflicted ·` and lists `⏎ resolve  c continue  a abort`. At 80x24 the keys are whole, and the reason is cut with `…` or absent.
   - After `Esc`: the last row lists `⇥ banner` first.
   - Launch: the last row starts `merge in progress · begun outside Graft`, and the pane shows `CONFLICTS` with the cursor on its first file.
@@ -137,3 +137,42 @@ pub fn stopped_row(reason: &SanitizedText, hints: &[Hint], columns: u16) -> Stri
 
 ## Size
 Medium to large: about 7 functions over `state.rs`, `banner.rs`, `relaunch.rs`, `operate.rs`, `undo.rs`, `view/rows.rs` and the refs-answer site. Plus one enum variant and `stopped_row` in `hints.rs`, one rung in `footer.rs`, and one `GraphView` field. One context. If it runs past ~80k tokens, stop after item 4 and hand off. Items 5–8 split cleanly.
+
+## NOTES (builder, 2026-09-23)
+
+**I compacted mid-ticket.** Nothing of the ticket is left undone; what remains is listed under "Gaps" and "Not verified" below.
+
+Scouts used: `.scratch/m6-conflicts/scout-12.md` and `scout-stuck-after-merge.md`.
+
+Fix type: **cause**. The stop is now a state (`AppState::stopped`), not a `Status` value, so nothing that takes the status slot can wipe it. The launch keys on git's `in_progress`, not on a journal entry.
+
+**The refs guard (item 7).** The refs answer was **not** guarded by `JobId`: `Command::ReadRefs` carried no id, and `took_fact` accepted any refs answer. Changes:
+- `ReadRefs(JobId)`: the id is chosen by `update` (`init`, `refresh_key`), and `jobs::runner::read_refs` queues under it.
+- `AppState::head_landing { refs, walk }` records the refresh's refs id **and** its walk id.
+- `land_on_head` runs only once both have come in: the refs answer with that id, and the walk has started. `History::seek` needs a window from the new walk; seeking in the old walk would put the cursor on a row that is about to be replaced.
+- A refs **failure** under that id drops the landing. The failure is on screen, and the stale refs are not used.
+
+### Deviations (the conductor should rule on each)
+1. **The stalled `Sticky` is kept.** When git gives a stalled reason (`Operated::Conflicted { stalled: Some }`), `operate` and `resumed` still set a `Sticky` with git's words (`stalled_line` / `stopped again: …`). The stop is set underneath. Dropping it would swallow git's own message (rule 3). With no stalled reason, the status is `Ready`, as the ticket says.
+2. **A second clearing path for `stopped`.** It is also cleared by a working-tree read with `in_progress: None` (`update::mod::working_tree_read`), not only by `undo::operation_ended`. An operation finished or aborted in another terminal never runs `operation_ended`, and without this clear the stop line would word an operation git no longer has.
+3. **`one_tab_to_banner` has a fifth condition:** the pane is hidden, or it is on its diff. `take_focus` sends `Tab` from the graph to the pane when the pane is open. Without this condition, `⇥ banner` would name a key that does something else (`update::tests::every_swept_state_is_the_context_it_claims` caught it).
+4. **`Esc` on a failed resume.** Scope item 6 says `Esc` keeps today's behaviour: it dismisses the `Sticky` and leaves the banner in one press. The acceptance line for `the_stop_line_outlives_a_dismissed_problem` expects the reason on the row right after `Esc`. That is impossible at 120 columns once the banner is left, because the ladder fills the row (item 3's accepted consequence). I kept `Esc` as it is today, and the test presses one `Tab` back before it reads the row.
+   - I briefly tried "`Esc` only dismisses", and reverted it. It cost the refused-`c` journey an extra `Esc`, and `continue_refuses_until_resolved…` failed on it.
+   - The comment in `hand_the_keyboard_back` records this.
+5. **`OperationLive` does not wrap `ChangesPane`.** The changes pane is one `Tab` from the banner only from its diff. With the diff focused, the pane's own bar draws `space stage` and `d discard`, which do nothing there (`every_key_the_bar_draws_is_answered` flagged 34 dead keys). That dead-key issue predates this ticket (the ChangesPane bar is drawn with Diff focus) and was **not fixed**. It is filed below.
+6. **Crate set.** Besides `graph_screen::hints`, I edited `graph_screen::footer`, `graph_screen::mod` (`GraphView::stopped`), `graph_screen::tests` and `tests/support/screen.rs`. The ticket's scope names them. The conductor's message named only `hints`.
+
+### Other changes the ticket forced
+- The m5 walk expected the old `Sticky` text or a manual `Tab` to reach the banner at launch. These now read `graft::update::banner::stop_line` (a new `pub fn`) or wait for `BannerFocused`: `conflicts.rs`, `resolved_operations.rs` (`kill_9_*`, `resolver_is_modal…`, `tiny_frame…`), `regressions.rs` (the `hints_at_80` bar now opens `⇥ banner  ⏎ changes  c commit`), and `gestures.rs` (the resolver walker leaves the banner with `Esc`).
+- `conflict_interim.rs`: the relaunch tests assert `Status::Ready` plus the stop row (`stop_line_reads`).
+- The m5 banner captures `docs/shots/m5-ui-banner-conflict-{80x24,120x40,160x48}.txt` were rewritten, one row each: the bottom row now leads with `merge stopped · …`.
+
+### Gaps (for KNOWN_GAPS, marked apart)
+- **Broken, pre-existing:** the `ChangesPane` bar drawn with the diff focused offers `space stage` / `d discard`, which do nothing there. Found by the sweep once a Diff-focus fixture existed.
+- **Missing:** there is no way-back hint while the changes pane's file list has focus. `⇧⇥` would reach the banner from there, but nothing says so.
+- **Missing:** a merge begun in the shell *mid-session* lands only on the first working-tree read, or on an owed landing. A later read that newly finds `in_progress` records nothing. Only launch is covered, as the ticket scoped it.
+- **Unverified:** colour. The focused banner's reverse video and the cursor row on the pane are not in a character grid (rule 5).
+- **Capture artefact:** in `fix-landing-after-continue-rebase-*`, the replayed commits' age reads `futu…`. Git stamps the commit time now, and the capture clock is fixed at 2021. Their ids are zeroed (`without_invented_id`). The committer is set to the fixture identity so no real name reaches the file.
+
+### Not strictly test-first
+The graft-ui work (`stopped_row`, `OperationLive`, the footer rung) was written with its tests in the same pass, not red first.

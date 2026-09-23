@@ -789,20 +789,29 @@ pub fn operated(
             // The answer names the live entry; the journal re-read the
             // refresh asks for will say the same (gap row 505).
             state.live_entries = vec![entry];
-            // Sticky, not `Failed` and not `Done`: git stopped and its state
-            // is still there, so the line has to outlive the full refresh it
-            // triggers (that refresh is exactly what puts the files under
-            // CONFLICTS) and has to read as a state, not an error.
-            state.status = Status::sticky(conflicted_line(
-                &description,
+            // A state, not a `Status` (m6-conflicts/12): git stopped and its
+            // state is still there, so the stop has to outlive the refresh
+            // it triggers, every line a later key puts on the status slot,
+            // and an `Esc` that dismisses one of them. The footer words it
+            // each frame (`banner::stop_reason`) beside the banner's keys —
+            // never `esc dismiss`, which read as the way on and dropped the
+            // banner's focus (`.scratch/m6-conflicts/scout-stuck-after-merge.md`).
+            state.stopped = Some(super::state::Stop {
+                origin: super::relaunch::LiveOrigin::ThisRun,
+                again: false,
                 kind,
-                &paths,
-                stalled.as_deref(),
-            ));
+                paths_at_stop: paths.len(),
+            });
+            // `Ready` also clears the launch's `Busy`, as the old line did.
+            // Why git would not continue (`stalled`) is a real problem, not
+            // the stop's state: it stays on the status line, dismissable.
+            state.status = match stalled.as_deref() {
+                Some(said) => Status::sticky(stalled_line(&description, kind, said)),
+                None => Status::Ready,
+            };
             // …and the banner takes the keyboard, so `c`/`s`/`a` are under
             // the user's fingers rather than something to go looking for
-            // (m5-history-and-ghost-preview/09). The line above stays: it
-            // names the operation, which the banner's own keys do not.
+            // (m5-history-and-ghost-preview/09).
             state.banner_focus = super::banner::banner_focusable(kind);
             // The editor and its draft are left alone, as on a failure: no
             // commit was made, so clearing a message the user typed would be
@@ -923,42 +932,18 @@ fn verb_of(description: &str) -> &str {
     description.split_whitespace().next().unwrap_or(description)
 }
 
-/// The status line for an operation git stopped part-way through.
+/// The status line for an operation git stopped part-way through **and
+/// would not carry on**: `git <kind> --continue` said why, in its own words.
 ///
-/// Worded as a **state**, not a failure (CLAUDE.md: a status field must never
-/// read as an error when nothing is wrong, and a conflict is not a bug —
-/// it is where the user now is). It says three things and no more: what was
-/// being done, that the operation is still open, and what is in front of
-/// them to act on. It names no key: `resume` has none yet
-/// (`docs/design/02-keymap.md` allocates it in the resolver's own group), and
-/// naming one that does nothing would be worse than naming none.
-fn conflicted_line(
-    description: &str,
-    kind: InProgress,
-    paths: &[PathBuf],
-    stalled: Option<&str>,
-) -> String {
+/// Only that case is a line now. A plain conflict stop is
+/// [`AppState::stopped`] and the footer words it beside the banner's keys
+/// (m6-conflicts/12); git's refusal is a real problem on top of the stop,
+/// and a sticky line is what keeps its words on screen until `Esc`.
+fn stalled_line(description: &str, kind: InProgress, said: &str) -> String {
     let what = kind.name();
-    if let Some(said) = stalled {
-        return format!(
-            "{description} \u{2014} git would not continue: {said}; the {what} is still in progress"
-        );
-    }
-    match paths.len() {
-        // A rebase can stop with nothing unmerged (an `edit` step, a commit
-        // that became empty). Saying "0 files conflict" would be a lie about
-        // why it stopped, so this says only what is certainly true.
-        0 => format!(
-            "{description} \u{2014} stopped part-way; the {what} is in progress, with no file left unmerged"
-        ),
-        1 => format!(
-            "{description} \u{2014} {} conflicts: resolve it and stage it; the {what} stays in progress until you do",
-            paths[0].display()
-        ),
-        n => format!(
-            "{description} \u{2014} {n} files conflict, under CONFLICTS in the changes pane: resolve and stage them; the {what} stays in progress until you do"
-        ),
-    }
+    format!(
+        "{description} \u{2014} git would not continue: {said}; the {what} is still in progress"
+    )
 }
 
 /// Re-read what the write changed.
@@ -2145,19 +2130,14 @@ mod tests {
             &mut ids(),
         );
         assert_eq!(state.operating, None);
-        let Status::Sticky { reason, .. } = &state.status else {
-            panic!(
-                "a live conflict must outlive its own refresh: {:?}",
-                state.status
-            );
-        };
-        assert!(reason.contains("merge feature into main"), "{reason}");
-        assert!(reason.contains("2 files conflict"), "{reason}");
-        assert!(reason.contains("CONFLICTS"), "{reason}");
-        assert!(
-            reason.contains("stays in progress"),
-            "the line must say the merge is still open: {reason}"
-        );
+        // m6-conflicts/12: the stop is state, not a status, so it outlives
+        // its own refresh and anything else that takes the status slot.
+        assert_eq!(state.status, Status::Ready);
+        let stop = state.stopped.as_ref().expect("a live conflict is a stop");
+        assert_eq!(stop.kind, InProgress::Merge);
+        assert!(!stop.again);
+        let reason = crate::update::banner::stop_reason(stop, None);
+        assert_eq!(reason, "merge stopped \u{b7} 2 files conflicted");
         assert!(
             !reason.contains("failed") && !reason.contains("error"),
             "a conflict is a state, not an error: {reason}"
@@ -2171,22 +2151,24 @@ mod tests {
                 .any(|command| matches!(command, Command::ReadHistory(..))),
             "refs moved: {commands:?}"
         );
-        assert!(commands.contains(&Command::ReadRefs), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadRefs(_))),
+            "{commands:?}"
+        );
     }
 
     #[test]
-    fn a_conflict_in_one_file_names_that_file() {
+    fn a_conflict_in_one_file_counts_one_file() {
         let mut state = AppState::default();
         let id = JobId::new(7);
         state.operating = Some(id);
         operated(&mut state, id, conflicted(&["src/a.rs"], None), &mut ids());
-        let Status::Sticky { reason, .. } = &state.status else {
-            panic!("{:?}", state.status)
-        };
-        assert!(reason.contains("src/a.rs conflicts"), "{reason}");
-        assert!(
-            !reason.contains("CONFLICTS"),
-            "one file needs no pane tour: {reason}"
+        let stop = state.stopped.as_ref().expect("a stop");
+        assert_eq!(
+            crate::update::banner::stop_reason(stop, None),
+            "merge stopped \u{b7} 1 file conflicted"
         );
     }
 
@@ -2198,10 +2180,9 @@ mod tests {
         let id = JobId::new(7);
         state.operating = Some(id);
         operated(&mut state, id, conflicted(&[], None), &mut ids());
-        let Status::Sticky { reason, .. } = &state.status else {
-            panic!("{:?}", state.status)
-        };
-        assert!(reason.contains("no file left unmerged"), "{reason}");
+        let stop = state.stopped.as_ref().expect("a stop");
+        let reason = crate::update::banner::stop_reason(stop, None);
+        assert_eq!(reason, "merge stopped");
         assert!(!reason.contains("conflict"), "{reason}");
     }
 

@@ -417,8 +417,9 @@ pub enum Command {
     /// (ADR-0008).
     ReadHistory(JobId, Order),
     /// Read the refs for the badges, counting ahead/behind off the loop's
-    /// thread.
-    ReadRefs,
+    /// thread, under an id `update` chose — so an answer can be told from
+    /// an older read still in flight (m6-conflicts/12's `land_on_head`).
+    ReadRefs(JobId),
     /// Read the working tree's staged/unstaged/untracked counts off the
     /// loop's thread.
     ReadWorkingTree,

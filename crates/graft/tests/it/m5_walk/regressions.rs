@@ -441,12 +441,10 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             Step::Confirm,
             Step::Settle("the rebase"),
             Step::WaitFor(Wait::BannerFocused),
-            // The stop wrote a sticky line, and a sticky line **is** the
-            // footer at 80 columns (the design note's own `80, sticky
-            // failure:` row) — so the hints are not drawn until it is
-            // dismissed. `Esc` dismisses it and hands the keyboard back at
-            // the same time, and `Tab` takes the banner's keyboard again
-            // (`banner::take_focus`).
+            // The stop is a state, not a sticky line (m6-conflicts/12), so
+            // the banner's keys are on the row already. `Esc` hands the
+            // keyboard back and `Tab` takes it again (`banner::take_focus`);
+            // the list is the same either way.
             key(KeyCode::Escape),
             key(KeyCode::Tab),
             Step::See("the focused banner", the_banners_whole_list),
@@ -457,7 +455,10 @@ fn hints_at_80_show_three_and_more() -> Scenario {
                 check(state.on_working_tree, || {
                     "`k` from the top did not select the uncommitted row".to_owned()
                 })?;
-                bar_is(state, "⏎ changes  c commit  S stash")
+                // With the rebase live and the banner one `Tab` away, the
+                // way back leads (m6-conflicts/12) and the row's own three
+                // become two.
+                bar_is(state, "⇥ banner  ⏎ changes  c commit")
             }),
             key(KeyCode::Enter),
             Step::WaitFor(Wait::ChangesPane),

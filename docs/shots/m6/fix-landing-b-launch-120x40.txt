@@ -1,0 +1,40 @@
+ graft /code/api    MERGING
+◌   ▏  Uncommitted changes (13 unmerged)
+◆      [◆ main] Change every file on main                                                                GF 2h   274c7d4
+│ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
+◇─╯    Add the files both sides will change                                                              GF 1y   9571fc9
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ merge in progress · begun outside Graft · 13 files conf… · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+UNCOMMITTED
+diff vs HEAD 274c7d4
+CONFLICTS (13)                ▎
+  added-by-them.txt added by…       1 + renamed to a different name by each side
+  added-by-us.txt added by us
+  both-added.txt   both added
+  both-deleted.txt both dele…
+  both.txt      both modified
+  crlf.txt      both modified
+  md.md         both modified
+  nofinal.txt   both modified
+  ours-deleted.txt deleted b…
+  pic.bin       both modified
+  theirs-deleted.txt deleted…
+  three.txt     both modified
+  zdiff3.txt    both modified

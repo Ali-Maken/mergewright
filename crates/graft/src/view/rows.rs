@@ -85,6 +85,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         notice: None,
         search: search_line(state),
         compare_footer: compare_footer_line(state),
+        stopped: stopped_line(state),
         commit_graph: state.commit_graph_line(),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
@@ -152,6 +153,7 @@ fn opening_view(
         notice: None,
         search: search_line(state),
         compare_footer: compare_footer_line(state),
+        stopped: stopped_line(state),
         commit_graph: state.commit_graph_line(),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
@@ -334,6 +336,13 @@ pub(crate) fn box_context(state: &AppState) -> Option<HintContext> {
     }
 }
 
+/// Why the live operation stopped, worded from this frame's working-tree
+/// read (`banner::stop_reason`) so the step and the count stay true as
+/// files get resolved. `None` while nothing is stopped.
+pub(crate) fn stopped_line(state: &AppState) -> Option<SanitizedText> {
+    crate::update::banner::stop_line(state).map(|line| sanitize_line(&line))
+}
+
 /// What the footer offers under this frame's rows.
 ///
 /// A focused banner owns the keyboard, so the footer must list the banner's
@@ -354,6 +363,25 @@ pub(crate) fn footer_context(
         // own bar is what `hint_context` answers (m6-conflicts/04).
         _ if state.resolver.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(banner),
+        // After `Esc` the banner is one `Tab` away and the bar says so
+        // first (m6-conflicts/12 scope item 5). Only over the bars a graph
+        // row draws: those are what `Tab` leaves. Not the changes pane's:
+        // it is one `Tab` from the banner only from its diff, where that
+        // bar's `space`/`d` are not answered (the sweep in `update::tests`).
+        Some(_) if crate::update::banner::one_tab_to_banner(state) => {
+            let row = hint_context(state, rows);
+            if matches!(
+                row,
+                HintContext::WorkingTreeRow
+                    | HintContext::BranchRow { .. }
+                    | HintContext::PlainRow
+                    | HintContext::Marked(_)
+            ) {
+                HintContext::OperationLive(Box::new(row))
+            } else {
+                row
+            }
+        }
         _ => hint_context(state, rows),
     }
 }
