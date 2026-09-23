@@ -231,6 +231,42 @@ fn redo_of_an_undone_stash_pop_drops_the_stash_after_the_generic_steps() {
     );
 }
 
+/// A pop git refused (a conflict) kept its stash, so the undo's `StashStore`
+/// found it listed and stored nothing: the undo entry's `refs/stash` did not
+/// move. Its redo must not drop the stash the pop never dropped
+/// (m6-conflicts/07, F2).
+#[test]
+fn redo_drops_only_the_stash_its_undo_stored() {
+    let mut pop = op(10, OperationKind::StashPop, 1, 2);
+    pop.pins = vec![oid(0x70)];
+    pop.status = EntryStatus::Aborted {
+        reason: "git exited 1".to_owned(),
+    };
+    pop.refs_after
+        .insert("refs/stash".to_owned(), Some(oid(0x70)));
+    let undo = reversal(20, OperationKind::Undo, &pop);
+
+    let redo = plan_redo(&[pop.clone(), undo.clone()]).unwrap();
+    assert_eq!(redo.steps, restores(2, 1, true, true));
+    assert_eq!(redo.pins, []);
+    assert_eq!(
+        redo.touches.refs,
+        Vec::<String>::new(),
+        "no stash step, so the redo does not touch refs/stash"
+    );
+
+    // An undo whose after-value of `refs/stash` was never read cannot say
+    // whether it stored anything: refused, not guessed.
+    let mut unread = undo;
+    unread.refs_after.remove("refs/stash");
+    assert_eq!(
+        plan_redo(&[pop, unread]),
+        Err(NotInvertible::Incomplete {
+            field: "refs_after[refs/stash]"
+        })
+    );
+}
+
 #[test]
 fn a_plan_pins_every_stash_commit_it_drops() {
     // Undo of a push drops the pushed stash: the Undo entry must pin it, or
