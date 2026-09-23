@@ -561,6 +561,56 @@ fn capture_the_name_prompt_for_docs_shots() {
     assert!(checked.is_ok(), "{}", checked.expect_err("it drifted"));
 }
 
+/// The stash's `b` → name → `Enter` preview: its footer names `y confirm`
+/// only — `b` again does not confirm (m6-conflicts/11). Regenerate on
+/// purpose with `GRAFT_UPDATE_SHOTS=1`.
+#[test]
+fn capture_fix_preview_verb_name_prompt_for_docs_shots() {
+    // Dated, so the stash's id and age are the same on every run.
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let repo = scratch.path();
+    let when = format!("@{} +0000", FORK_NOW - 120);
+    std::fs::write(repo.join("sample.txt"), "one\n").expect("the scratch repo is writable");
+    git(repo, &["add", "sample.txt"]);
+    graft_fixtures::git::run_at(repo, &["commit", "-m", "add sample"], &when)
+        .unwrap_or_else(|why| panic!("committing: {why}"));
+    std::fs::write(repo.join("sample.txt"), "one\ntwo\n").expect("the scratch repo is writable");
+    graft_fixtures::git::run_at(repo, &["stash", "push", "-m", "wip"], &when)
+        .unwrap_or_else(|why| panic!("stashing: {why}"));
+    let (app, state) = stash_overlay(repo);
+    let state = app.key(&state, KeyCode::Char('b'));
+    let state = type_in(&app, state, "rescued");
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the plan for `stash branch`", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| matches!(preview.plan, graft::update::detail::Loading::Ready(_)))
+    });
+    let caption = "# fix-preview-verb-name-prompt-120x40.txt: 120x40, drawn by `view::view` from a\n\
+         # real AppState over a real repository with one stash entry; the stash overlay\n\
+         # opened (`S`), `b` pressed, `rescued` typed, `Enter`, the real plan landed\n\
+         # (crates/graft/tests/it/name_and_drag.rs,\n\
+         # capture_fix_preview_verb_name_prompt_for_docs_shots). TestBackend character\n\
+         # grid: colour ships unverified (CLAUDE.md rule 5).\n\
+         #\n\
+         # What right looks like:\n\
+         #  - The box's bottom border reads `y confirm  ←→ choose  ⏎ act  esc cancel`\n\
+         #    (no `b` in it: pressing `b` again does not confirm).\n\
+         #  - The buttons row shows `▸[ Cancel ]`.\n";
+    let out = capture(&state, 120, 40, caption);
+    app.close();
+    assert!(
+        out.contains("╰ y confirm  ←→ choose  ⏎ act  esc cancel ─"),
+        "{out}"
+    );
+    assert!(out.contains("▸[ Cancel ]"), "{out}");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/shots/m6/fix-preview-verb-name-prompt-120x40.txt");
+    let checked = graft_fixtures::check(&path, &out);
+    assert!(checked.is_ok(), "{}", checked.expect_err("it drifted"));
+}
+
 fn shot(columns: u16, rows: u16, what: &str) -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/shots")

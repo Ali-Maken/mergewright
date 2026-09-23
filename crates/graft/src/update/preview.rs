@@ -395,6 +395,12 @@ pub fn preview_key(
     let Some(preview) = state.preview.as_mut() else {
         return false;
     };
+    if let PreviewSubject::Operation { opened_by, .. } = &preview.subject
+        && confirm_key(key, opened_by)
+    {
+        confirm_by_key(state, commands, next_id);
+        return true;
+    }
     match key.code {
         KeyCode::Left => preview.cursor = preview.cursor.saturating_sub(1),
         KeyCode::Right | KeyCode::Tab | KeyCode::BackTab => {
@@ -409,6 +415,57 @@ pub fn preview_key(
         _ => {}
     }
     true
+}
+
+/// `y` in any operation preview; the opening verb again in an `m`- or
+/// `r`-opened one. Nothing else — not `b` in a name-prompt preview, not `.`
+/// in a context-menu one, not the other verb (user ruling, 2026-09-23).
+fn confirm_key(key: KeyPress, opened_by: &str) -> bool {
+    if key.code == KeyCode::Char('y') && !key.modifiers.control && !key.modifiers.alt {
+        return true;
+    }
+    let again = match is_history_key(key) {
+        Some(HistoryKey::Merge) => "m",
+        Some(HistoryKey::Rebase) => "r",
+        None => return false,
+    };
+    again == opened_by
+}
+
+/// A confirm key: `Confirm` wherever the cursor is, but only over a picture
+/// that is on screen, landed and able to act. Otherwise swallowed, and the
+/// box stays open — unlike `Enter` on `Cancel`, a confirm key never closes
+/// it. Not queued while planning: the user sees the picture before he
+/// confirms (M5's promise), and the box already reads `predicting…`.
+fn confirm_by_key(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    if !fits(state) {
+        return;
+    }
+    let Some(preview) = state.preview.as_ref() else {
+        return;
+    };
+    if preview.planning() || !preview.acts() {
+        return;
+    }
+    confirm_preview(state, commands, next_id);
+}
+
+/// The footer keys a box for `subject` names: `y confirm` for any
+/// operation preview, and the opening verb when it confirms again.
+fn footer_keys(mut view: PreviewBox, subject: &PreviewSubject) -> PreviewBox {
+    if let PreviewSubject::Operation { opened_by, .. } = subject {
+        view.confirm_key = true;
+        view.again = match *opened_by {
+            "m" => Some((sanitize_line("m"), sanitize_line("merge"))),
+            "r" => Some((sanitize_line("r"), sanitize_line("rebase"))),
+            _ => None,
+        };
+    }
+    view
 }
 
 /// `Enter`: act on the choice under the cursor.
@@ -682,7 +739,10 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
             }
         }
     };
-    Some(with_cursor(view, preview.cursor))
+    Some(with_cursor(
+        footer_keys(view, &preview.subject),
+        preview.cursor,
+    ))
 }
 
 /// A box with nothing to confirm: one line saying why, and `Close`.

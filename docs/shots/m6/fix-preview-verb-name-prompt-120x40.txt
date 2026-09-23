@@ -1,0 +1,52 @@
+# fix-preview-verb-name-prompt-120x40.txt: 120x40, drawn by `view::view` from a
+# real AppState over a real repository with one stash entry; the stash overlay
+# opened (`S`), `b` pressed, `rescued` typed, `Enter`, the real plan landed
+# (crates/graft/tests/it/name_and_drag.rs,
+# capture_fix_preview_verb_name_prompt_for_docs_shots). TestBackend character
+# grid: colour ships unverified (CLAUDE.md rule 5).
+#
+# What right looks like:
+#  - The box's bottom border reads `y confirm  ←→ choose  ⏎ act  esc cancel`
+#    (no `b` in it: pressing `b` again does not confirm).
+#  - The buttons row shows `▸[ Cancel ]`.
+
+ graft /code/api  6 commits
+  ◉─╮ ▏  [stash@{0}] On main: wip                                                                        GF 2m   92f36bb
+  │ ●    index on main: da91a2e add sample                                                               GF 2m   d147c46
+◆─┴─╯    [◆ main] [rescued] add sample                                                                   GF 2m   da91a2e
+●        Correct the note                                                                                GF 1y   a82960b
+●        Add the first note                                                                              GF 1y   fadcfb3
+◇        Add a readme                                                                                    GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: branch rescued from stash@{0} ──────────────────────────────────────────────────────────────────────────────╮
+│ rescued (new) → da91a2e                                                                                              │
+│ HEAD → rescued                                                                                                       │
+│ working tree: 1 file updated                                                                                         │
+│ no conflicts expected                                                                                                │
+│ undo: u takes this back                                                                                              │
+│ git stash branch rescued 'stash@{0}'                                                                                 │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+

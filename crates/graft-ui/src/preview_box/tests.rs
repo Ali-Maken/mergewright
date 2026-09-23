@@ -344,3 +344,63 @@ fn capture_for_docs_shots() {
     );
     shots.finish();
 }
+
+// ── the footer's confirm keys (m6-conflicts/11) ──────────────────────────
+
+fn m_opened() -> PreviewBox {
+    let mut view = rebase_view();
+    view.confirm_key = true;
+    view.again = Some((sanitize_line("m"), sanitize_line("merge")));
+    view
+}
+
+const RUNG_1: &str = "y confirm  m merge  ←→ choose  ⏎ act  esc cancel";
+const RUNG_2: &str = "y confirm  m merge  ⏎ act  esc cancel";
+const RUNG_3: &str = "y confirm  ⏎ act  esc cancel";
+
+/// The narrowest box width at which `label` is drawn whole: the label, a
+/// space either side, and the two corners.
+fn width_for(label: &str) -> usize {
+    crate::frame_box::cells(label) + 4
+}
+
+#[test]
+fn the_footer_names_both_confirm_keys() {
+    let bottom = rows(&m_opened(), &theme(), 120, 12).pop().expect("a row");
+    assert!(bottom.contains(RUNG_1), "{bottom:?}");
+}
+
+#[test]
+fn the_footer_label_shrinks_by_its_ladder() {
+    let view = m_opened();
+    for (label, width) in [
+        (RUNG_1, width_for(RUNG_1)),
+        (RUNG_2, width_for(RUNG_2)),
+        (RUNG_3, width_for(RUNG_3)),
+    ] {
+        assert_eq!(footer_label(&view, width - 2), label);
+    }
+    assert_eq!(footer_label(&view, width_for(RUNG_1) - 3), RUNG_2);
+    assert_eq!(footer_label(&view, width_for(RUNG_2) - 3), RUNG_3);
+    assert_eq!(footer_label(&view, width_for(RUNG_3) - 3), FOOTER);
+}
+
+#[test]
+fn a_dot_opened_footer_names_only_y() {
+    let mut view = rebase_view();
+    view.confirm_key = true;
+    let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
+    assert!(
+        bottom.starts_with("╰ y confirm  ←→ choose  ⏎ act  esc cancel ─"),
+        "{bottom:?}"
+    );
+}
+
+#[test]
+fn a_revert_preview_draws_the_old_footer() {
+    let view = rebase_view();
+    let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
+    assert!(bottom.starts_with(&format!("╰ {FOOTER} ─")), "{bottom:?}");
+    assert!(!bottom.contains("y confirm"), "{bottom:?}");
+    assert_eq!(footer_label(&view, 200), FOOTER);
+}

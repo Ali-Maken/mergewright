@@ -1,0 +1,53 @@
+# fix-preview-verb-120x40.txt: 120x40, drawn by `view::view` from a real
+# AppState over a real repository (`main` three commits, `feature` forked off
+# the first with two of its own, `feature` checked out); cursor on `main`'s
+# row, `m` pressed through `update`, the real plan landed
+# (crates/graft/tests/it/preview.rs, capture_fix_preview_verb_for_docs_shots).
+# TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).
+#
+# What right looks like:
+#  - The box's bottom border reads
+#    `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.
+#  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.
+#
+
+ graft /code/api  8 commits
+  ● │    finish the feature                                                                              GF now  8d6cd28
+  ● │    start the feature                                                                               GF 2m   52f3b96
+●─│─╯ ▏  [main] main moves again                                                                         GF 3m   45fa51d
+● │      main moves on                                                                                   GF 4m   37926a7
+●─╯      add the base                                                                                    GF 5m   ed332bc
+●        Correct the note                                                                                GF 1y   a82960b
+●        Add the first note                                                                              GF 1y   fadcfb3
+◇        Add a readme                                                                                    GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: merge main into feature ────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit                                                                                                       │
+│ feature 8d6cd28 → 1 new commit                                                                                       │
+│ working tree: 2 files updated                                                                                        │
+│ no conflicts expected                                                                                                │
+│ undo: u takes this back                                                                                              │
+│ git merge --no-edit --ff -m 'Merge branch '\''main'\'' into feature' main                                            │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────╯
+
