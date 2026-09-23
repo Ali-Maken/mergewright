@@ -465,12 +465,11 @@ CONFLICTS (1)                 ▎keep 1
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-80x24.txt
-what right looks like: What right looks like: the same relaunch at 80 columns, with the line `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort` on screen. **Not what this frame shows — finding F9:** below 100 columns the changes pane takes the whole screen as the Detail tab, and the status line is not drawn there (`crates/graft/src/view/frame.rs:705-717`), so the line never reaches the screen. The banner `REBASING step 1 of 2`, the `CONFLICTS (1)` row and the one marker block left are there.
+what right looks like: The same relaunch at 80 columns: the changes pane is the whole screen (the Detail tab), `REBASING step 1 of 2` on the top row, `CONFLICTS (1)` `shared.txt` with the one marker block left, and on the bottom row the line `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort` (fix F9 — below 100 columns this row drew only the banner's keys before).
 ================================================================================
 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 80x24
 (the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
-(expected `still in progress from a previous run` is not on screen when the frame was taken)
 
 REBASING step 1 of 2
 Graph  [Detail]
@@ -495,7 +494,7 @@ CONFLICTS (1)
 
 
 
- ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-120x40.txt
@@ -547,11 +546,10 @@ STAGED (1)                    ▎
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-80x24.txt
-what right looks like: What right looks like: the same end state at 80 columns with `all conflicts resolved · c continue` on screen. **Not what this frame shows — finding F9** (the status line is not drawn on the Detail tab below 100 columns, `crates/graft/src/view/frame.rs:705-717`): `STAGED (1)` `shared.txt` and the banner's own keys `c continue  s skip  a abort` are there, the line saying all conflicts are resolved is not.
+what right looks like: The same end state at 80 columns: `STAGED (1)` `shared.txt`, no CONFLICTS section, and on the bottom row `all conflicts resolved · c continue ✓` (fix F9 — the row drew only the banner's keys before).
 ================================================================================
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
-(expected `all conflicts resolved` is not on screen when the frame was taken)
 
 REBASING step 1 of 2
 Graph  [Detail]
@@ -576,7 +574,7 @@ STAGED (1)
 
 
 
- c continue  s skip  a abort  ⇥ graph
+all conflicts resolved · c continue ✓
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-120x40.txt
@@ -660,11 +658,10 @@ no more conflicts · ⏎ marks zdiff3.txt resolved
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-120x40.txt
-what right looks like: What right looks like: TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `Cancel` / `Start over`. **Not what this frame shows — finding F10:** the box is in the app's state (the headless walk sees it) but the resolver's frame never draws a confirm box (`crates/graft/src/view/frame.rs:193-221`, `draw_resolver` has no `draw_confirm`), so the resolver is shown unchanged after `d`.
+what right looks like: TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected (fix F10 — the box was live but never drawn). Judge: the hint bar under the box still offers the resolver's keys, which the box swallows (a question).
 ================================================================================
 
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
-(expected `Start both.txt over` is not on screen when the frame was taken)
 
 MERGING
 both.txt · file 5 of 13 · 1 of 1 conflicts open
@@ -681,15 +678,15 @@ ours = main · theirs = the branch being merged in
 
 
 
-
-
-
-
-
-
-
-
-
+                            ╭ Start both.txt over? ────────────────────────────────────────╮
+                            │ the conflict comes back with all its markers                 │
+                            │ takes and edits in this file are lost · not undoable while   │
+                            │ the merge is open                                            │
+                            │                                                              │
+                            │ git checkout --merge -- both.txt                             │
+                            │                                                              │
+                            │ ▸[ Cancel ]   [ Start over ]                                 │
+                            ╰──────────────────────────────────────────────────────────────╯
 
 
 
@@ -709,11 +706,10 @@ ours = main · theirs = the branch being merged in
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-80x24.txt
-what right looks like: The same at 80 columns — the box should be on screen; the frame shows the resolver unchanged (finding F10).
+what right looks like: The same box at 80 columns, over the stacked OURS/THEIRS halves. Judge: the box does not clear the rows it stands on, so `▏ THEIRS` and the block's closing rule show cut off at its left and right edges (a question).
 ================================================================================
 
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 80x24
-(expected `Start both.txt over` is not on screen when the frame was taken)
 
 MERGING
 both.txt · 1/1 open
@@ -722,15 +718,15 @@ ours = main · theirs = the branch being merged in
 ▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────
 ▏ OURS · HEAD
 ▏     3 the line, as we changed it
-▏ THEIRS · feature
-▏       the line, as they changed it
-▏ ──────────────────────────────────────────────────────────────────────────────
-      7 and a tail
-
-
-
-
-
+▏ THEIRS╭ Start both.txt over? ────────────────────────────────────────╮
+▏       │ the conflict comes back with all its markers                 │
+▏ ──────│ takes and edits in this file are lost · not undoable while   │────────
+      7 │ the merge is open                                            │
+        │                                                              │
+        │ git checkout --merge -- both.txt                             │
+        │                                                              │
+        │ ▸[ Cancel ]   [ Start over ]                                 │
+        ╰──────────────────────────────────────────────────────────────╯
 
 
 
@@ -1182,4 +1178,145 @@ what right looks like: the uncommitted row has no `space fold` — the same at 1
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O
+
+================================================================================
+docs/shots/m6/../m4-credential-prompt-in-app.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: the status line on the 80-column Detail tab — changed by M6 (fix F9): in the `80x24 · username` frame the bottom row reads `push main → origin/main · esc cancels`, the push the question belongs to, where it drew the changes pane's keys, which the prompt swallows; the two 120x40 frames are unchanged.
+================================================================================
+
+# m4-credential-prompt-in-app.txt: TestBackend captures (not a pty), no
+# colour recorded. Fixture: capture_m4_credential_prompt_in_app in
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
+# The prompt as it appears *in the app*, over a running push — the widget on
+# its own is docs/shots/m4-credential-prompt-and-hints.txt.
+#
+# Judge by eye:
+# 1. 120x40, password ask with a 7-character password typed: the box is centred over the
+#    screen, the title names the host (not the user), git's own question is
+#    on the first line, the field shows a fixed 8 mask glyphs (never the
+#    typed length, ADR-0038 §2) and no plaintext, the note says the answer
+#    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
+#    naming the push it cancels. The line behind it still says the push is
+#    running.
+# 2. The same 7-character password again, with the prompt's pulse seed the
+#    other way up. The first mask glyph differs between 1 and 2 and nothing
+#    else does. That is the whole of ADR-0038 §2: the glyph flips on every
+#    keystroke so a key visibly lands, and where it rests is decided by a
+#    random bit drawn per prompt (`graft::jobs::askpass::pulse_seed`), not
+#    by the length — so a screenshot of either row says nothing about how
+#    long the password is. Both rows are 8 glyphs wide.
+#    It does not hide the length from somebody who watches the row from the
+#    moment the prompt opens and counts the flips.
+# 3. 80x24, username ask with `alice` typed: the same box, the answer in the
+#    open (a username is not a secret), no `•` anywhere.
+#
+=== 120x40 · password · pulse seed down ===
+" graft 3 commits                                                                                                        "
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                        ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮                        "
+"                        │ Password for 'http://user@127.0.0.1:8443':                           │                        "
+"                        │ ▏◦•••••••                                                            │                        "
+"                        │ typed here only · never stored by Graft                              │                        "
+"                        ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯                        "
+"                                                                                                                        "
+" push main → origin/main · esc cancels                                                                                  "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
+"diff vs HEAD 0303030                                                                                                    "
+"STAGED (1)                    fn routes()                                                                               "
+"  ▾ src/                       18  18       let mut app = Router::new();                                                "
+"    ▾ auth/                    19     -     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
+"UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
+"  ▾ src/                       20  21       app                                                                         "
+"    ▾ api/                     21  22   }                                                                               "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
+"    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
+"UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
+"                                                                                                                        "
+"                                                                                                                        "
+
+=== 120x40 · the same password · pulse seed up ===
+" graft 3 commits                                                                                                        "
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                        ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮                        "
+"                        │ Password for 'http://user@127.0.0.1:8443':                           │                        "
+"                        │ ▏••••••••                                                            │                        "
+"                        │ typed here only · never stored by Graft                              │                        "
+"                        ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯                        "
+"                                                                                                                        "
+" push main → origin/main · esc cancels                                                                                  "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
+"diff vs HEAD 0303030                                                                                                    "
+"STAGED (1)                    fn routes()                                                                               "
+"  ▾ src/                       18  18       let mut app = Router::new();                                                "
+"    ▾ auth/                    19     -     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
+"UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
+"  ▾ src/                       20  21       app                                                                         "
+"    ▾ api/                     21  22   }                                                                               "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
+"    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
+"UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
+"                                                                                                                        "
+"                                                                                                                        "
+
+=== 80x24 · username ===
+"Graph  [Detail]                                                                 "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                   "
+"diff vs HEAD 0303030                                                            "
+"                                                                                "
+"STAGED (1)                                                                      "
+"  ▾ src/                                                                        "
+"    ▾ auth/                                                                     "
+"      M token.rs                                                          +12 −4"
+"UNSTAGED (2)                                                                    "
+"    ╭ Credentials — 127.0.0.1:8443 ────────────────────────────────────────╮    "
+"    │ Username for 'http://127.0.0.1:8443':                                │    "
+"    │ ▏alice                                                               │    "
+"    │ typed here only · never stored by Graft                              │    "
+"    ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯    "
+"     19▎+     app.get("/health", health);                                       "
+"     20 +     app.get("/ready", ready);                                         "
+" 20  21       app                                                               "
+" 21  22   }                                                                     "
+"fn ready()                                                                      "
+" 44  45   async fn ready() -> Json<Status> {                                    "
+" 45     -     Json(Status::Ok)                                                  "
+"     46 +     Json(Status::from(&state))                                        "
+" 46  47   }                                                                     "
+"push main → origin/main · esc cancels                                           "
 

@@ -1,5 +1,4 @@
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
-(expected `Start both.txt over` is not on screen when the frame was taken)
 
 MERGING
 both.txt · file 5 of 13 · 1 of 1 conflicts open
@@ -16,15 +15,15 @@ ours = main · theirs = the branch being merged in
 
 
 
-
-
-
-
-
-
-
-
-
+                            ╭ Start both.txt over? ────────────────────────────────────────╮
+                            │ the conflict comes back with all its markers                 │
+                            │ takes and edits in this file are lost · not undoable while   │
+                            │ the merge is open                                            │
+                            │                                                              │
+                            │ git checkout --merge -- both.txt                             │
+                            │                                                              │
+                            │ ▸[ Cancel ]   [ Start over ]                                 │
+                            ╰──────────────────────────────────────────────────────────────╯
 
 
 

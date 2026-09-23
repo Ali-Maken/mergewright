@@ -105,7 +105,7 @@ stays visible.
 | 2026-09-23 · walk | Fix a block by hand | Until M6: `$EDITOR` from a shell. M6: **0** — `e` in the resolver, re-read on return (`editor-edits-are-never-clobbered`) | m6-conflicts |
 | 2026-09-23 · walk | Keep one side of a whole file | Until M6: `git checkout --ours`/`--theirs` + `git add`. M6: **0** — `o`/`t` in the resolver (`every-whole-file-shape`, `crlf-and-no-final-newline-survive`) | m6-conflicts |
 | 2026-09-23 · walk | Accept a delete | Until M6: `git rm`. M6: **0** — `t` on the card (`every-whole-file-shape`) | m6-conflicts |
-| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **still the shell** — `git commit`. The banner's `c` refuses it by design (ruling F5, `graft-ops/src/operation.rs:574-575`), and the changes pane's commit editor refuses too, pointing back at `c continue` (`graft/src/update/commit_editor.rs:165-178`, submit guard `:637`; observed once in the headless walk, 2026-09-23, git 2.54.0). Expires M7 | open (M7) |
+| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **still the shell** — `git commit`. The banner's `c` refuses it by design (ruling F5, `graft-ops/src/operation.rs:574-575`), and the changes pane's commit editor refuses too (`graft/src/update/commit_editor.rs`, `CommitEditor::refusal`, and the submit guard in `commit`; observed once in the headless walk, 2026-09-23, git 2.54.0). Its refusal pointed back at `c continue`, which refuses; since fix F12 it says `merge begun in the shell — finish it there: git commit` (`update::commit_editor::tests::a_merge_begun_in_the_shell_names_no_key_that_refuses_it`). Expires M7 | open (M7) |
 | 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | M6: **still the shell** — `git checkout -m -- <path>`. A staged path has no `CONFLICTS` row, and `u` is refused while the operation is live (`graft/src/update/undo.rs:102-108`); the ops half is built (ruling F3). Expires M7 | open (M7) |
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
@@ -2090,13 +2090,13 @@ graft-fixtures` first; `GRAFT_TARGET` names the target directory;
 `GRAFT_UPDATE_SHOTS=1` rewrites). `m6-06-relaunch-sticky` is taken from
 the **real `graft` binary** relaunched after the script sends the capture
 run `SIGKILL` and checks it died on signal 9. All nine captures exist at
-both sizes (2026-09-23, after fix F6). **Four frames do not show what they
-are for**, each the capture of a finding, not a pass: `m6-06` and `m6-07`
-at 80x24 — below 100 columns the status line is not drawn on the Detail
-tab (F9); `m6-09` at both sizes — the start-over box is never drawn over
-the resolver (F10). The script's run is red on those four. The contact sheet is
+both sizes, and every one shows the text it is for: the script's second
+run, without `GRAFT_UPDATE_SHOTS`, is green on all 18 (2026-09-23, after
+fixes F9 — the status line on the sub-100-column Detail tab — and F10 —
+the start-over box drawn over the resolver). The contact sheet is
 `docs/shots/m6/m6-contact-sheet.txt` (`scripts/contact-sheet.sh m6
-docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
+docs/shots/m6`), which also carries the four M5 hint captures and the M4
+credential capture M6 changed.
 **A capture carries no colour** — the user judges by eye.
 
 ### What the walk proves and what it does not
@@ -2122,7 +2122,9 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
   banner's `c` nor the changes pane's commit editor will (Times I left).
   What a box or a line looks like is proven only by the captures: the
   headless walk reads `AppState`, where the start-over box and the Sticky
-  exist even when the frame does not draw them (F9, F10).
+  existed while no frame drew them (F9, F10 — now fixed, and pinned in the
+  view by `view::frame::tests::a_live_confirm_box_is_drawn_over_every_overlay`
+  and `…::the_detail_tab_below_100_columns_draws_the_status_line`).
 
 ### The scenarios
 
@@ -2241,10 +2243,10 @@ docs/shots/m6`), which also carries the four M5 hint captures M6 changed.
 | `m6-03-card-large-file` | yes | yes | after `G`: line 500 last, then the unnumbered `… first 500 lines of 8.1 KB · e opens the whole file` |
 | `m6-04-card-binary` | yes | yes | `both modified · o keeps ours  t keeps theirs`, then `binary · 22 B` unnumbered, no bytes; title with no count |
 | `m6-05-still-open-refusal` | yes | yes | `2 conflicts still open in three.txt · n next`; block 1 `took ours` |
-| `m6-06-relaunch-sticky` | yes | **F9** | after a real `SIGKILL`: `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort`, the pane on `CONFLICTS (1)`, one marker block left. At 80x24 the line is not on screen (F9) |
-| `m6-07-all-resolved` | yes | **F9** | `all conflicts resolved · c continue`, `STAGED (1)` `shared.txt`. At 80x24 the line is not on screen (F9) |
+| `m6-06-relaunch-sticky` | yes | yes | after a real `SIGKILL`: `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort`, the pane on `CONFLICTS (1)`, one marker block left. At 80x24 the line is the Detail tab's bottom row (fix F9) |
+| `m6-07-all-resolved` | yes | yes | `all conflicts resolved · c continue ✓`, `STAGED (1)` `shared.txt`. At 80x24 the line is the Detail tab's bottom row (fix F9) |
 | `m6-08-no-more-conflicts` | yes | yes | `no more conflicts · ⏎ marks zdiff3.txt resolved`, cursor unmoved |
-| `m6-09-start-over-box` | **F10** | **F10** | a box `Start both.txt over?`, `Cancel` / `Start over`. Not drawn at either size (F10) |
+| `m6-09-start-over-box` | yes | yes | a box over the resolver, `Start both.txt over?`, `git checkout --merge -- both.txt`, `▸[ Cancel ]   [ Start over ]` (fix F10) |
 
 **Times I left:** every reach for the shell during a conflict in daily use
 — `git mergetool` from a shell, `git checkout --ours`, `git rm` on a

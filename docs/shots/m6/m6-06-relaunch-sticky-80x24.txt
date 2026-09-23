@@ -1,6 +1,5 @@
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 80x24
 (the capture run was sent SIGKILL after its keys; this is the real graft binary relaunched on the scratch it left)
-(expected `still in progress from a previous run` is not on screen when the frame was taken)
 
 REBASING step 1 of 2
 Graph  [Detail]
@@ -25,4 +24,4 @@ CONFLICTS (1)
 
 
 
- ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+rebase still in progress from a previous run · ⏎ resolve  c continue  a abort

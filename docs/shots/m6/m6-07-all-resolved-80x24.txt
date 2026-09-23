@@ -1,5 +1,4 @@
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
-(expected `all conflicts resolved` is not on screen when the frame was taken)
 
 REBASING step 1 of 2
 Graph  [Detail]
@@ -24,4 +23,4 @@ STAGED (1)
 
 
 
- c continue  s skip  a abort  ⇥ graph
+all conflicts resolved · c continue ✓
