@@ -658,6 +658,63 @@ fn stale_lease_refused() {
     app.close();
 }
 
+/// **m6-06, `KNOWN_GAPS` 550, clause (iii).** The push box is opened on
+/// `main`; `HEAD` then moves to `feature` outside Graft, with no re-read —
+/// the stale-facts state of the `Ctrl+R` race, made deterministic. `Enter`
+/// launches the box's push unchanged (the app holds no check of its own);
+/// `graft_ops::apply` re-reads `HEAD` and refuses it with
+/// `Refusal::BranchChanged` before the `Pending` line. So: the bare's
+/// `main` does not move, the journal has no push, and the refusal's words
+/// reach the status line.
+#[test]
+fn a_push_after_head_moved_is_refused_in_words() {
+    let remote = local();
+    let work = remote.work();
+    let main = main_ref(&remote);
+    // One commit ahead, so a push that went through would move the bare.
+    let ours = remote.commit_locally("ours").expect("a local commit");
+    let bare_before = rev(remote.bare(), &main);
+    assert_ne!(bare_before, ours, "the push would have something to send");
+
+    let (app, state) = App::open(work);
+    let state = ready(&app, state);
+    let state = app.press(&state, plain('P'));
+    assert!(state.confirm.is_some(), "P opened the push box");
+
+    // Outside Graft, no re-read pumped: the box still holds `main`.
+    run(&remote, work, &["switch", "-q", "-c", "feature"]);
+    assert_eq!(
+        git(work, &["symbolic-ref", "HEAD"]).trim(),
+        "refs/heads/feature"
+    );
+
+    let state = confirm(&app, &state);
+    let state = finish(&app, state, "the refused push");
+    // A refusal is sticky, like the stale lease's: it stays until read.
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "HEAD moved to another branch since it was read — look again".to_owned(),
+            keys: None,
+        }
+    );
+    assert_eq!(
+        rev(remote.bare(), &main),
+        bare_before,
+        "the bare's main is unmoved"
+    );
+    let pushes: Vec<_> = journal(work)
+        .into_iter()
+        .filter(|entry| entry.kind == OperationKind::Push)
+        .collect();
+    assert!(
+        pushes.is_empty(),
+        "no Pending line for the push: {pushes:?}"
+    );
+    drop(state);
+    app.close();
+}
+
 /// Every `*.lock` under `.git`.
 fn locks(dir: &Path) -> Vec<std::path::PathBuf> {
     let mut found = Vec::new();
