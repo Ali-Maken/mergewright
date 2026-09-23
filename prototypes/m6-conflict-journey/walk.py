@@ -156,7 +156,7 @@ class Walk:
 
     # ---------- drawing ----------
     def title(self, w):
-        tag = "MERGING" if self.screen != "merged" else ""
+        tag = "" if self.screen in ("graph", "preview", "merged") else "MERGING"
         left = f" graft {REPO}   PROTOTYPE{'  --proposed' if self.p else ''}"
         return left + " " * max(1, w - len(left) - len(tag) - 1) + tag
 
@@ -352,7 +352,8 @@ def pick_size():
         c, r = os.get_terminal_size()
     except OSError:
         return 120, 40
-    return min([(120, 40), (200, 50)], key=lambda s: abs(s[0] - c) + abs(s[1] - r))
+    # Draw at the real size: a frame taller than the window scrolls its top rows away.
+    return c, r
 
 
 def read_key(fd):
