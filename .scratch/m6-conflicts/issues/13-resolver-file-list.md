@@ -1,10 +1,11 @@
-# fix-resolver-file-list: every file the operation conflicted on stays on screen, with its state and the current file marked
+# fix-resolver-file-list: every file this step conflicted on stays on screen, with its state and the current file marked
 
 Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
-Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md
+Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 22-ops-finish-message-and-step-bound.md
 Was: draft · new 2026-09-23 (Amendment 2, ADR-0043 §1). Not gated: the list's display and mouse selection are in-spec. `j`/`k` on it are P7 (`fix-resolver-file-keys`).
+**Revised 2026-09-23 (review `docs/reviews/m6-amend-09.md` Minor 3, ruled by the planner).** For a rebase, cherry-pick or revert, the list shows **the current step's files only**: what is unmerged now, plus what was resolved since this step stopped. Files an earlier step conflicted on are already inside a commit, so they are not listed. Listing them as `done ✓` would claim work on this step that never happened. It would also disagree with the stop line (`rebase stopped at step 4 of 7 · 2 files conflicted`) and with what `c` continues. A merge is one step, so it keeps its whole set. The bound is built in graft-ops (`ops-finish-message-and-step-bound`). This ticket proves it end to end.
 Build with: blank — brownfield (ADR-0035): **scout first**. Expected **Opus**: new resolver state across a file switch, and a strip and a column with shared hit-testing.
-Needs: `fix-ops-conflict-set-and-summary` (`operation_conflicts`, `ConflictSet`); `fix-resolver-line-numbers` (`DocView.names`, which lands first in the same files).
+Needs: `fix-ops-conflict-set-and-summary` (`operation_conflicts`, `ConflictSet`); `ops-finish-message-and-step-bound` (the step-bounded set, `Shape::TwoStopRebase`); `fix-resolver-line-numbers` (`DocView.names`, which lands first in the same files).
 Crates: graft-ui, graft.
 
 ## Read first
@@ -23,6 +24,8 @@ In:
    - On `open_resolver`, and again after every `Stage`/`ResolveWholeFile` answer, issue `Command::ReadConflictSet(JobId)`. It runs `graft_ops::conflict::operation_conflicts`.
    - The answer is `Product::ConflictSet` → `ResolverState.files`. Until it lands, the list shows the unmerged paths from `AppState::working_tree`.
    - `file_cursor` stays on the same path across re-reads.
+   - A multi-step operation's set is the current step's only (see Revised above). The app takes `ConflictSet` as given: no filtering here.
+   - Opening the resolver on a new step re-reads the set, so the list never carries the previous step's rows.
 2. **Row states.** Each file shows one state:
    - `Open { open, of }`: from the document when it is the open file. Other unmerged text files show `…` (`Unread`) until visited, then their last-known counts.
    - `AllTaken`: every block is taken but the file is still unmerged. Drawn `⏎ marks done`.
@@ -51,6 +54,7 @@ Out:
 - `j`/`k` (P7) and `O`/`T` (P6).
 - The three panes. The column is placed here but drawn beside the card until `fix-resolver-three-panes` lands, so a 200-column capture from this ticket shows column + card.
 - The summary.
+- Bounding the set (graft-ops, `ops-finish-message-and-step-bound`).
 
 ## Signatures
 ```rust
@@ -79,16 +83,23 @@ pub enum Product { /* existing */ ConflictSet(Result<Arc<ConflictSet>, String>) 
 - [ ] graft-ui `…::file_at_matches_what_is_drawn`: render into a buffer and read each cell's name back at the offset `file_at` returns, for both placements.
 - [ ] graft `update::resolver::tests::a_done_file_stays_listed`: two-file merge, `o` on `gone.txt` → the list reads `gone.txt done ✓`, `▸ notes.txt …`.
 - [ ] graft `…::the_list_survives_a_relaunch`: the same after `Relaunch` in the walk harness (`recorded` from git).
+- [ ] graft `…::a_rebase_lists_only_this_steps_files`, in the walk harness on `Shape::TwoStopRebase` against real git:
+  - resolve `a.txt`, `⏎`, `c`, which stops at step 2;
+  - if the resolver is not already open, `⏎` on the banner opens it (P5, `fix-stop-opens-the-resolver`, may have opened it already; the test copes with either);
+  - it is open on `b.txt`;
+  - the drawn list has exactly one row, `▸ b.txt …`, and no row names `a.txt`;
+  - resolve `b.txt` → the list reads `b.txt done ✓`, and `a.txt` is still absent.
 - [ ] graft `…::a_click_on_a_file_opens_it` and `…::a_click_mid_take_is_refused_in_words`.
 - [ ] graft `…::after_the_last_file_the_banner_says_c_finishes` (merge) and `…::after_the_last_file_a_rebase_says_c_continues`.
-- [ ] Captures `docs/shots/m6/fix-file-list-{120x40,160x48,80x24}.txt` (two-file merge, after `o` on `gone.txt`) and `…-many-120x40.txt` (12 files). **What right looks like:**
+- [ ] Captures `docs/shots/m6/fix-file-list-{120x40,160x48,80x24}.txt` (two-file merge, after `o` on `gone.txt`), `…-many-120x40.txt` (12 files) and `…-rebase-step2-120x40.txt` (`TwoStopRebase` at step 2). **What right looks like:**
   - At 120, the second row reads `files   gone.txt · done ✓    ▸ notes.txt · 2 of 2 open`. A rule follows, then `▸ notes.txt · 2 conflicts · 2 open`.
   - At 80, the compact strip reads `✓ gone.txt   ▸ notes.txt 2/2 open`.
   - Many: 3 grid rows, the last cell `… N more`.
+  - Rebase step 2: the strip names `b.txt` only; `a.txt` appears nowhere on screen.
   - The user judges by eye.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, workspace-wide.
 
 ## Size
-Medium: one widget + placement, one job wire-up, a resolver state change, ~9 tests, 4 captures. One context. If it will not fit, split at the seam: the graft-ui widget first, then the app.
+Medium: one widget + placement, one job wire-up, a resolver state change, ~10 tests, 5 captures. One context. If it won't fit, split at the seam: the graft-ui widget first, then the app.

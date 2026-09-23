@@ -88,6 +88,10 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   - The **first-run / empty state** (§2.13) binds `o`/`i`/`c` to
     Open/Init/Clone — no repo is open yet, so the whole repo vocabulary
     (`c` commit included) is off duty.
+  - The **Ghost Preview** (§2.3b; added 2026-09-23, m6-conflicts/11). It
+    already answered every key and swallowed the rest; with `m`/`r`/`y`
+    confirming it now has letters of its own, so it joins this list. The
+    graph's `y` (copy SHA) is not live while it is open.
 - **An overlay that needs only a cursor is not a modal pane** (decided
   2026-09-20, from the M5/12 captures; closes the gap the `.` menu fell
   through). The modal panes above claim the alphabet because they need
@@ -132,8 +136,8 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     columns and invisible at 80, which is precisely the failure ADR-0039
     exists to prevent.
 
-  A future overlay that genuinely needs letters of its own becomes a sixth
-  modal pane by amending the list above, not by quietly claiming them.
+  A future overlay that genuinely needs letters of its own becomes a ninth
+  modal-pane entry by amending the list above, not by quietly claiming them.
 
 - **Bulk variants use a modifier, not a different letter.** `Ctrl+A` stages
   everything; plain `a` stays "amend" everywhere. This avoids growing the
@@ -215,7 +219,8 @@ and any redo prompt should lead with.
 
 | Key | Action |
 |---|---|
-| `m` / `r` | Confirm, when the preview was opened by that same key and its plan has landed (`m m`, `r r`). The cursor still rests on Cancel (ADR-0038 §1); a `.`-opened preview is unchanged — `.` still closes what `.` opened (P1, approved 2026-09-23) |
+| `m` / `r` | Confirm, when the preview was opened by that same key and its plan has landed (`m m`, `r r`). The cursor still rests on Cancel (ADR-0038 §1); a preview opened any other way gains only `y` — `.` still closes what `.` opened (P1, approved 2026-09-23) |
+| `y` | Confirm, in any merge/rebase/operation preview (opened by `m`, `r`, `.` or the name prompt) once its plan has landed. The cursor still rests on Cancel (ADR-0038 §1). Not in a journal revert preview (user ruling 2026-09-23, `docs/field-notes.md`) |
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
 

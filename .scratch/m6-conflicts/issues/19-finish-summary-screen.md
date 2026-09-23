@@ -1,10 +1,14 @@
 # fix-finish-summary-screen: `c` on a merge shows what will land — what you resolved, what git combined on its own, the message — and `⏎` commits it
 
 Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
-Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md
+Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 22-ops-finish-message-and-step-bound.md
 Was: draft · new 2026-09-23. **Part A is approved** (the user, field notes 2026-09-23: *"yes build it that way"*). §2.6b keymap rows (P9) are to be written before the binding lands. **Part B is gated on P8** (`c` inside the resolver; the resolver stays open after the last file). Do not build Part B until P8 is approved.
+**Revised 2026-09-23 (review `docs/reviews/m6-amend-09.md` Minor 1, the conductor's direction).** The message the user sees is the message that lands, character for character.
+- git's comment lines come out when `MERGE_MSG` is **read**: `finish_summary`, as today.
+- The commit keeps whatever the user typed: `ContinueWith` now sends `--cleanup=whitespace`. That change is in graft-ops, in `ops-finish-message-and-step-bound`. This ticket proves it end to end.
+- A `#123 fixes login` line the user types survives.
 Build with: blank — brownfield (ADR-0035): **scout first** (banner `c`, commit editor fields, overlay precedence). Expected **Opus**: a new modal overlay with a text field, a job and an expandable diff.
-Needs: `fix-ops-conflict-set-and-summary` (`finish_summary`, `FinishSummary`, `Resume::ContinueWith`); `fix-resolver-line-numbers` (`SideNames`, for the row wording).
+Needs: `fix-ops-conflict-set-and-summary` (`finish_summary`, `FinishSummary`, `Resume::ContinueWith`); `ops-finish-message-and-step-bound` (`--cleanup=whitespace`); `fix-resolver-line-numbers` (`SideNames`, for the row wording).
 Crates: graft-ui, graft.
 
 ## Read first
@@ -13,14 +17,18 @@ Crates: graft-ui, graft.
 - `docs/design/02-keymap.md` §2.2, §2.6a, §2.10 (the keys reused).
 - `crates/graft/MAP.md` §`update::banner` (`banner_key`, `resume`, `resumed`, `continue_refusal`), §`update::commit_editor` (`CommitEditor`, `editor_key`, `paste`, `EditCommitMessage`), §update (`AppState::text_field_open`, `modal_owns_keys`, `graph_overlay`, `GraphOverlay`, `Command::ReadFileDiff`), §`update::resolver` (`resolved_advance`); `crates/graft-ui/MAP.md` `commit_editor`, `text_input`, `detail_pane` (the diff body), `graph_screen::hints` (`HintContext`, `every_context`, `coverage_slot`).
 - **Scout questions:**
-  1. What `c` on the focused banner calls today and where its refusal words come from.
+  1. What `c` on the focused banner calls today, and where its refusal words come from.
   2. How the commit editor's `Esc` keeps a draft.
   3. Whether the detail pane's diff body can be drawn into an arbitrary `Rect` from `DiffView`.
   4. How `ReadFileDiff`'s `DiffKey`/`FileEntry` are built for a staged path.
+  5. Whether the `EditCommitMessage` path adds comment lines (a help template) to the file it hands `$EDITOR`.
 
 ## Scope
 **Part A: the summary (approved).**
-1. **Open.** `c` on the banner, for a merge with nothing unmerged, calls `open_finish(ReturnTo::Banner)` instead of `resume(Continue)`. Rebase, cherry-pick and revert keep today's `c` (gap row → M7: no summary for them). With files unmerged, today's refusal stands. `open_finish` sets `AppState::finish`, restores `finish_draft` if any, and issues `Command::ReadFinishSummary`.
+1. **Open.** `c` on the banner, for a merge with nothing unmerged, calls `open_finish(ReturnTo::Banner)` instead of `resume(Continue)`.
+   - Rebase, cherry-pick and revert keep today's `c` (gap row → M7: no summary for them).
+   - With files unmerged, today's refusal stands.
+   - `open_finish` sets `AppState::finish`, restores `finish_draft` if any, and issues `Command::ReadFinishSummary`.
 2. **Draw** (`graft-ui/src/finish_summary.rs`), per the note's mockups:
    - Title `Finish · merging <from> → <into> · nothing is written until ⏎`.
    - `RESOLVED BY YOU · n`: each row's wording comes first from `AppState::choices`, else from `ResultIs` (the note's list).
@@ -29,7 +37,7 @@ Crates: graft-ui, graft.
    - One column below `TWO_COLUMN_MIN` (160). At 160 and wider, the file lists on the left (60 %) and the message on the right.
    - The cursor opens on the first `by_git` row (else the first `by_you` row).
 3. **`Choices`.** `AppState::choices` is written on every take answer (per block), every `ResolveWholeFile` (`whole`), and every `$EDITOR`/mergetool return (`edited`). It is cleared when the operation ends (`undo::operation_ended`) or aborts.
-4. **Keys** (`finish_key`, modal, checked before `resolver_key`; `modal_owns_keys` and, for subject/body focus, `text_field_open` include it):
+4. **Keys** (`finish_key`, modal, checked before `resolver_key`; `modal_owns_keys` includes it, and so does `text_field_open` while the subject or body has focus):
 
    | Focus | Key | Does |
    |---|---|---|
@@ -46,23 +54,35 @@ Crates: graft-ui, graft.
 
    A click on a row moves the cursor there and toggles its diff.
 5. **Commit.**
-   - Message unchanged from `FinishSummary::message` → `Resume::Continue`. Changed → `Resume::ContinueWith { message }`.
+   - Message unchanged from `FinishSummary::message` → `Resume::Continue`. Changed → `Resume::ContinueWith { message }`, sent as typed: the app strips nothing.
+   - `Ctrl+E`: what `$EDITOR` returns is the user's message.
+     - If the `EditCommitMessage` path writes comment lines of its own into the file (scout question 5), strip exactly those lines on return, matched as the whole lines it wrote.
+     - Never strip a line by its first character: the user's `#123` stays.
    - Empty subject → `the message is empty · ⇥ to write one`, no write.
    - While `committing`, the bar reads `committing…` and keys other than `Ctrl+C` are swallowed.
-   - `Done` → the summary closes, `finish_draft` is cleared, and the graph is focused with the cursor on `HEAD`'s row and `Status::Done("merged <from> into <into>")`.
+   - `Done` → the summary closes, `finish_draft` is cleared, and the graph is focused, with the cursor on `HEAD`'s row and `Status::Done("merged <from> into <into>")`.
    - A failure (a hook) → the summary stays open, with the reason as `notice` (problem) above the bar and the draft kept.
 6. **States:**
    - loading: `⏎` → `still reading · wait`;
    - `StillUnmerged` / other read failure: `summary unavailable: <why> · ⏎ commits with git's message`, and `⏎` → `Resume::Continue`;
    - `recorded: false` → one `CHANGED BY THIS MERGE` section;
    - frame < `FINISH_MIN` (60×14) → one line `finish needs 60x14 · esc back`, and only `Esc` acts.
-7. **Hints.** `HintContext::Finish { focus, expandable }`: `⏎ commit  space diff  j/k move  ⇥ message  esc back` in files focus; `⏎ commit  ⇥ body  ^E editor  esc back` in subject; `^⏎ commit  ⇥ files  ^E editor  esc back` in body. Joins `every_context`, `coverage_slot`, `BOUND_ACTIONS`.
+7. **Hints.** `HintContext::Finish { focus, expandable }`:
+   - files focus: `⏎ commit  space diff  j/k move  ⇥ message  esc back`;
+   - subject focus: `⏎ commit  ⇥ body  ^E editor  esc back`;
+   - body focus: `^⏎ commit  ⇥ files  ^E editor  esc back`.
+
+   It joins `every_context`, `coverage_slot` and `BOUND_ACTIONS`.
 
 **Part B: gated on P8.**
 
-8. `c` in `resolver_key`: every file done → `open_finish(ReturnTo::Resolver)` for a merge, `resume(Continue)` otherwise. With files open → `<n> file(s) still conflicted · ⏎ marks done`. The resolver no longer closes after the last file: it stays with the notice `every file done ✓ · c finishes the merge`. `Esc` from the summary returns to it. The Resolver hint table gains `c finish`.
+8. `c` in `resolver_key`:
+   - Every file done → `open_finish(ReturnTo::Resolver)` for a merge, `resume(Continue)` otherwise.
+   - Files still open → `<n> file(s) still conflicted · ⏎ marks done`.
+   - The resolver no longer closes after the last file. It stays, with the notice `every file done ✓ · c finishes the merge`, and `Esc` from the summary returns to it.
+   - The Resolver hint table gains `c finish`.
 
-Out: rebase/cherry-pick/revert summaries; P4's `FinishMerge` (that ticket routes its `c` through `open_finish`); horizontal scroll in the diff.
+Out: rebase/cherry-pick/revert summaries; P4's `FinishMerge` (that ticket routes its `c` through `open_finish`); horizontal scroll in the diff; the cleanup mode itself (graft-ops, `ops-finish-message-and-step-bound`).
 
 ## Signatures
 ```rust
@@ -92,6 +112,9 @@ pub enum Product { /* existing */ FinishSummary(Result<Arc<FinishSummary>, Strin
 ## Acceptance (name the verifying test when you tick; truth from git)
 - [ ] graft `update::finish::tests::c_on_a_resolved_merge_opens_the_summary_not_the_commit`: no `Resume` command, `finish` is `Some`, `ReadFinishSummary` issued.
 - [ ] `…::enter_commits_with_gits_message_when_unedited` (`Resume::Continue`) and `…::an_edited_subject_commits_with_that_message` (`ContinueWith`, with `git log -1 --format=%B` read back in the walk harness).
+- [ ] `…::a_hash_line_typed_in_the_body_lands`, in the walk harness against real git: `⇥ ⇥` into the body, type `#123 fixes login`, `Ctrl+Enter` → `git log -1 --format=%B` contains the line `#123 fixes login`.
+- [ ] `…::a_hash_line_from_the_editor_lands`: `Ctrl+E` with a fake `$EDITOR` that appends `#123 fixes login` → the body holds that line, and after `Ctrl+Enter` `%B` contains it.
+- [ ] `…::the_summary_shows_no_git_comment_lines`: the fixture's `MERGE_MSG` has git's `# Conflicts:` block → no line of the drawn message starts with `#`.
 - [ ] `…::esc_goes_back_and_keeps_the_draft`: `⇥`, type, `Esc`, `c` → the typed subject is back.
 - [ ] `…::space_expands_a_git_combined_file`: one `ReadFileDiff` for that path, `DiffSpec::Staged`.
 - [ ] `…::a_hook_refusal_keeps_the_summary_open`.
@@ -104,6 +127,7 @@ pub enum Product { /* existing */ FinishSummary(Result<Arc<FinishSummary>, Strin
   - `RESOLVED BY YOU · 2` lists `gone.txt` and `notes.txt` with the words above.
   - `COMBINED BY GIT ON ITS OWN · 1` lists `▸ README.md  modified  +1 −1`.
   - The message's first line is the first line of the fixture's `MERGE_MSG`. Read it with `head -1 .git/MERGE_MSG` in the fixture and quote it in the TESTING line; do not assume the wording.
+  - No message line starts with `#`.
   - The bar starts `⏎ commit`.
   - At 160 and 200 the message is to the right of the lists.
   - Expanded: the diff rows sit under `README.md`, indented, and the rows after them move down.
@@ -113,4 +137,4 @@ pub enum Product { /* existing */ FinishSummary(Result<Arc<FinishSummary>, Strin
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, workspace-wide.
 
 ## Size
-Medium–large. If it will not fit one context, split at the seam: the graft-ui widget and hints first, the app second. Say so, and do not compress.
+Medium–large. If it won't fit one context, split at the seam: the graft-ui widget and hints first, the app second. Say so, and do not compress.

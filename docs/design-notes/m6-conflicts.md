@@ -539,7 +539,7 @@ pub enum Change { Added, Modified, Deleted, Renamed { from: PathBuf }, TypeChang
 pub enum SummaryError { NotMerging, StillUnmerged { count: usize }, Facts(FactsError), Run(RunError), Io(io::Error) }
 pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError>;
 // graft-ops/src/apply/resume.rs
-pub enum Resume { Continue, ContinueWith { message: Vec<u8> }, Skip, Abort }   // ContinueWith: merge only → `git commit --cleanup=strip -F <scratch>/MSG`
+pub enum Resume { Continue, ContinueWith { message: Vec<u8> }, Skip, Abort }   // ContinueWith: merge only → `git commit --cleanup=whitespace -F -` (review m6-amend-09 Q1)
 pub enum Refusal { …, MessageNotHere { kind: InProgress } }                       // ContinueWith on a rebase / pick / revert (M7)
 // fix-continue-a-merge-begun-in-the-shell: FinishMergeParams gains `pub message: Option<Vec<u8>>`
 
