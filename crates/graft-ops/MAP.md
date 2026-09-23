@@ -100,6 +100,7 @@ The resolver's job-side half (m6-conflicts/03): no `Operation`, no journal line.
 - `journal_path` (fn) — `git rev-parse --git-path graft/undo-journal.jsonl`: per-worktree by git's own layout (ADR-0010) (m3/03).
 
 ## snapshot
+`snapshot.rs` takes the snapshot; `snapshot/stage_tree.rs` is the stage-tree codec, `snapshot/chain.rs` the backup chain, `snapshot/index_paths.rs` the path diffing, `snapshot/plumbing.rs` the temporary index and the `git` they share. Every public item is re-exported from `snapshot`, so no path below moved (m6 g04/g08 review, M3: 976 lines split).
 - `SnapshotScope` (enum) — `None` or `Full`; hard choice 3's one knob (m3/03).
 - `scope` (fn) — `Full` whenever the operation touches the index or the working tree, `None` otherwise (ADR-0009: unconditional) (m3/03).
 - `Snapshot` (struct) — `index: IndexState`, `worktree_tree`, `commit` (m3/03; `IndexState` m6-conflicts/08).
@@ -125,6 +126,7 @@ The resolver's job-side half (m6-conflicts/03): no `Operation`, no journal line.
 - `FactsError` (enum) — `Status`, `Head`, `Refs`, `Stash`, `State`, `Snapshot`, `NonUtf8Ref` (a ref name the journal cannot record as text; never mangled silently), `Markers { path, source }`, `Ancestry(RunError)` (an ancestry read the re-push guard needed failed — refusing to guess is the point of the guard, m5/07 review fix M5), `Stopped`, `Remote(RemoteError)` (m4/04); `explain` (m3/03).
 
 ## apply
+`apply.rs` holds `Context`, `apply` and its gates; `apply/record.rs` the protocol's two halves (`begin`, `finish`, after-state, `kind_name`), `apply/run.rs` running a plan, `apply/error.rs` `ApplyError`/`AfterState`, `apply/restart.rs` `d` after `⏎`, `apply/fold.rs` a step inside a stopped operation (`folded_step`), `apply/resume.rs` `resume` and `live_entry`, `apply/recover.rs` `recover_interrupted`, `apply/remote.rs` askpass and progress. Every public item is re-exported from `apply`, so no path below moved (m6 g04/g08 review, M3: 1230 lines split).
 - `Context` (struct) — one operation's world: `repo`, `git`, `worktree`, `scratch`, `journal`, `now_unix_ms`, `random`, `stop`, `remote: Option<RemoteHooks>` (`open` leaves it `None`: headless, no prompt, no progress, m4/04); `open`, `next_id`. One context per operation (and per undo, itself an operation) (m3/03).
 - `Context::advance` (fn) — mint the next entry id inside one call: the random half incremented as an 80-bit counter, ULID's own rule for entries sharing a millisecond. Only the time machine needs it — every other call journals one entry (m5/07).
 - `Resume` (enum) — `Continue`, `Skip`, `Abort`: how a stopped operation goes on. `resume` (fn) finds the one `Pending` entry whose kind git's state still says is live, runs `git <kind> --continue|--skip|--abort` with `GIT_EDITOR=true`, and closes **that same entry** — `Committed` when it finishes, `Aborted { reason }` on `--abort`, or another `Conflicted` when the next commit stops too (m5/07, design note hard choice 2).

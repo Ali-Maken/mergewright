@@ -1,35 +1,24 @@
-//! Everything about an operation git already has in progress.
-//!
-//! Three things live here, and they are one subject: the steps a user takes
-//! *while* a merge, rebase, cherry-pick or revert is stopped
-//! ([`inside_live_operation`]), the way that operation is taken on or called
-//! off ([`resume`]), and what a relaunch makes of an entry a previous run
-//! left `Pending` ([`recover_interrupted`]).
+//! Taking a stopped operation on or calling it off (`--continue`, `--skip`,
+//! `--abort`), and the one question the steps, the resume and a relaunch all
+//! ask: which `Pending` entry is *this* live operation of Graft's
+//! ([`live_entry`]).
 //!
 //! The rule they share is M5 hard choice 2 and DESIGN.md §6.4: a stopped
-//! operation is **one entry**, `Pending` from the stop to the finish. Every
-//! step inside the span folds into that entry and writes no line of its own,
-//! so `u` after the finish takes the whole span back. An operation begun in
-//! the shell has no such entry: there, a step that can write the working
-//! tree is its own entry instead ([`folded_step`]).
+//! operation is **one entry**, `Pending` from the stop to the finish.
 
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry};
-use graft_core::oid::Oid;
+use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
 use crate::facts::{self, FactsError};
-use crate::operation::{Invocation, Operation, Refusal, RepoFacts, opens_in_progress};
+use crate::operation::{Refusal, opens_in_progress};
 use crate::snapshot;
-use crate::undo::RepoStateNow;
 
 use super::{
-    AfterState, Applied, ApplyError, Context, Pending, PlanRun, Refresh, RestartPrep, anchors,
-    as_apply_error, finish, reason_for, run_plan, run_restart_prep,
+    AfterState, Applied, ApplyError, Context, Pending, Refresh, as_apply_error, finish, reason_for,
 };
 
 /// How [`resume`] takes a stopped history operation on (m5/07).
@@ -42,256 +31,6 @@ pub enum Resume {
     Skip,
     /// `--abort`: back to where the operation started.
     Abort,
-}
-
-/// Run `op` folded into the operation git already has in progress, or answer
-/// `None`: it is not a folded step, and the caller journals it as an entry of
-/// its own.
-///
-/// Folding is for a span Graft opened: the step's line joins that entry and a
-/// chained backup keeps what it overwrites. An operation **begun in the
-/// shell** — a `git pull` that conflicted — has no entry of Graft's, so there
-/// is no span to join and no backup ref to chain onto. A step there that can
-/// write the working tree (a whole-file take, a restart) would run with no
-/// backup at all, and a hand edit it overwrote would be gone. So it is its
-/// own entry, with its own backup, exactly as it is when a conflicted stash
-/// pop leaves nothing live (m6-conflicts/03 scope 2: "folds into the live
-/// entry when one is live; with no live entry it is its own entry") — which
-/// is what closes the m6 g04/g08 review's M1.
-///
-/// A step that writes only the index still folds into nothing there, as it
-/// did before: `git add` and `restore --staged` move no byte on disk.
-pub(super) fn folded_step(
-    ctx: &mut Context<'_>,
-    op: &Operation,
-    facts: &RepoFacts,
-    prep: &RestartPrep,
-) -> Result<Option<Applied>, ApplyError> {
-    let Some(live) = facts.in_progress else {
-        return Ok(None);
-    };
-    let span = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?.cloned();
-    if span.is_none() && op.touches(facts).worktree {
-        return Ok(None);
-    }
-    inside_live_operation(ctx, op, facts, span.as_ref(), prep).map(Some)
-}
-
-/// Run a step that belongs to an operation git already has in progress.
-///
-/// `check` admits `Stage`, `Unstage` and the two conflict operations while a
-/// merge, rebase, cherry-pick or revert is open — the resolver's steps. Such a
-/// step is **part of that operation, not an operation of its own**: DESIGN
-/// §6.4 ("a mid-flight operation … is not a journal entry yet … the undo
-/// journal picks up once there's a finished operation to reverse") and M5
-/// hard choice 2 (one entry, `Pending` from the stop to the finish). So it
-/// runs, its command line joins the live entry, and it writes **no journal
-/// line of its own**. `u` after the finish takes the whole span back.
-///
-/// Journaling it as an ordinary entry is what killed `u` outright (m5/07
-/// review, C1): `write-tree` has no tree for an unmerged index, so the
-/// entry's `index_before` was `None` and its inverse `NoBackup` — and undo
-/// is linear, so the merge behind it became unreachable. The rule is "an
-/// operation is in progress", not "the index cannot be snapshotted": the
-/// last file a user resolves leaves the index clean, and that step must fold
-/// into the span like every one before it.
-///
-/// **Writing no line is not the same as keeping no backup.** This used to say
-/// nothing was at risk here, on the grounds that every admitted step wrote
-/// only the index. That stopped being true when the resolver landed: a
-/// whole-file take is `checkout --ours|--theirs` + `add`, or `rm --quiet`,
-/// and a restart is `checkout --merge` — all of them write the working tree
-/// (`touches.worktree`), and all of them are admitted here. A hand edit made
-/// in `$EDITOR` and then resolved the other way was overwritten with no
-/// confirmation, no line and no snapshot, and the span's own entry predates
-/// the edit (m6 g03 review, M2).
-///
-/// So the span's entry stays one entry, and every step whose `touches` names
-/// the index or the working tree takes a **chained backup commit** first
-/// ([`snapshot::chain_backup`], Decision 2 of m6-conflicts/08): the
-/// repository as it stands, hung off the entry's own backup ref, no journal
-/// line. It is what `d` reads back after `⏎`, and it is the recovery point
-/// for that hand edit.
-///
-/// An operation begun in the shell has no entry to chain onto, so
-/// [`folded_step`] never sends a step that can write the working tree here:
-/// that one is its own entry (m6 g04/g08 review, M1). What does arrive with
-/// `span` `None` writes the index alone.
-pub(super) fn inside_live_operation(
-    ctx: &mut Context<'_>,
-    op: &Operation,
-    facts: &RepoFacts,
-    span: Option<&JournalEntry>,
-    prep: &RestartPrep,
-) -> Result<Applied, ApplyError> {
-    // Before anything runs: the snapshot that keeps what the step is about
-    // to overwrite.
-    let touches = op.touches(facts);
-    let step_backup = match span {
-        Some(entry) if touches.index || touches.worktree => {
-            snapshot::chain_backup(ctx, entry).map_err(as_apply_error)?
-        }
-        // A step that writes neither, or an index-only step inside an
-        // operation begun in the shell: `git add` and `restore --staged`
-        // leave every byte on disk where it was, and git's own state is the
-        // whole record of an operation Graft did not begin.
-        _ => None,
-    };
-
-    // A restart of a path `⏎` already staged needs its stages back in the
-    // index before `checkout --merge` has anything to merge (scope 5(c)).
-    // After the chained backup, so what it is about to overwrite is kept.
-    // `prepare_restart` decided this before a byte was written; this is the
-    // write half.
-    let mut commands = run_restart_prep(ctx, prep)?;
-
-    let plan = op.plan(facts);
-    commands.extend(plan.iter().map(Invocation::command_line));
-    let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
-    fold_commands(ctx, span, commands.clone());
-
-    let mut record = JournalEntry {
-        id: ctx.next_id(),
-        at_unix_ms: ctx.now_unix_ms,
-        kind: op.kind(),
-        description: op.describe(),
-        status: EntryStatus::Committed,
-        touches,
-        head_before: facts.head.clone(),
-        head_after: Some(facts.head.clone()),
-        refs_before: BTreeMap::default(),
-        refs_after: BTreeMap::default(),
-        index_before: None,
-        index_after: None,
-        worktree_before: None,
-        worktree_after: None,
-        backup_ref: None,
-        pins: Vec::new(),
-        commands,
-        reverses: None,
-    };
-    match failure {
-        None => Ok(Applied {
-            entry: record,
-            refresh: Refresh::WorkingTree,
-            step_backup,
-        }),
-        Some(failed) => {
-            record.status = EntryStatus::Aborted {
-                reason: failed.reason(),
-            };
-            Err(failed.into_error(record))
-        }
-    }
-}
-
-/// Record a folded step on the live entry: its command line after the ones
-/// already held, so the Command Log shows the span in the order it happened.
-///
-/// A `Pending` entry's commands live in memory until its outcome line is
-/// written, so a caller that opens a fresh journal per job sees only the
-/// step it just ran (the same limitation the stop itself has — the plan's
-/// own lines do not reach disk either until `resume` closes the entry).
-///
-/// `None` is an operation begun outside Graft: there is no entry of Graft's
-/// to record the step on. Nothing is dropped that was ever ours — git's own
-/// state is the whole record of that operation, and the step is reported to
-/// the caller on the returned `Applied`.
-fn fold_commands(ctx: &mut Context<'_>, span: Option<&JournalEntry>, commands: Vec<String>) {
-    let Some(entry) = span else {
-        return;
-    };
-    let mut held = entry.commands.clone();
-    held.extend(commands);
-    ctx.journal.hold_commands(&entry.id, held);
-}
-
-/// Close every entry left `Pending` by a previous run as `interrupted`,
-/// recording the repository as it stands now (DESIGN.md §6.2 step 3).
-///
-/// Run this at launch, before the user can touch anything: the state read
-/// here is recorded as the interrupted operation's after-state, so the later
-/// it runs, the more of the user's own work it attributes to that operation.
-/// When the repository cannot be read at all, the entry is closed with no
-/// after-state — `u` then offers to restore the whole tree, and says so.
-///
-/// Returns what it closed **and** what it could not read, so the caller can
-/// surface both: an entry closed with no after-state is one whose `u` will
-/// offer to overwrite the whole working tree, and the reason for that belongs
-/// on screen, not on the floor (m3/03 review, M1).
-pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyError> {
-    // A conflict that survived a relaunch: git's own state says the
-    // operation is still live, so its entry stays `Pending` and the banner
-    // takes over (m5/07, hard choice 2). Only the newest matching entry is
-    // live — an older one of the same kind was left behind by something
-    // else and closes as interrupted like any other.
-    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
-    let live_id = match live {
-        Some(kind) => live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?
-            .map(|entry| entry.id.clone()),
-        None => None,
-    };
-    let open: Vec<(EntryId, Vec<String>, Option<String>)> = ctx
-        .journal
-        .unresolved()
-        .into_iter()
-        .filter(|entry| Some(&entry.id) != live_id.as_ref())
-        .map(|entry| {
-            (
-                entry.id.clone(),
-                entry.refs_before.keys().cloned().collect(),
-                entry.backup_ref.clone(),
-            )
-        })
-        .collect();
-    let mut recovered = Recovered {
-        live: live_id.into_iter().collect(),
-        ..Recovered::default()
-    };
-    for (id, refs, backup_ref) in open {
-        let read = facts::read_state_now(ctx.repo, ctx.scratch(), &refs, ctx.stop);
-        // The repository being unreadable must not leave the entry `Pending`
-        // for ever, which blocks `u` outright. `None` is the honest record
-        // and the widest restore, and the user is asked before it runs
-        // (`Drift::unknown`) — and told why, here.
-        let now = match read {
-            Ok(now) => match seal_recovered(ctx, &id, backup_ref.as_deref(), &now) {
-                Ok(()) => Some(now),
-                // The trees were read but nothing keeps them alive, so
-                // recording them would name objects `git gc` will prune.
-                Err(why) => {
-                    recovered.unreadable.push((id.clone(), why));
-                    None
-                }
-            },
-            Err(FactsError::Stopped) => return Err(ApplyError::Stopped),
-            Err(unreadable) => {
-                recovered.unreadable.push((id.clone(), unreadable));
-                None
-            }
-        };
-        ctx.journal
-            .mark_interrupted(&id, now.as_ref())
-            .map_err(|error| ApplyError::Journal { error, after: None })?;
-        recovered.closed.push(id);
-    }
-    Ok(recovered)
-}
-
-/// What [`recover_interrupted`] did at launch.
-#[derive(Debug, Default)]
-pub struct Recovered {
-    /// The entries closed as `interrupted`, in journal order.
-    pub closed: Vec<EntryId>,
-    /// The ones whose after-state could not be read or kept reachable, and
-    /// why. Each is closed with no after-state, so its `u` restores the whole
-    /// tree after asking.
-    pub unreadable: Vec<(EntryId, FactsError)>,
-    /// The entry left `Pending` on purpose: a history operation still
-    /// stopped on a conflict by git's own account (`MERGE_HEAD`,
-    /// `rebase-merge/` …). The banner offers `resume`; nothing was closed
-    /// (m5/07). At most one.
-    pub live: Vec<EntryId>,
 }
 
 /// The newest `Pending` entry that is genuinely *this* live operation of
@@ -572,43 +311,4 @@ fn close_resume(
             unread,
         })
     }
-}
-
-/// Hang a recovered entry's after-trees off its backup ref before they are
-/// recorded, so `git gc` cannot prune what the entry is about to name.
-///
-/// Nothing to do when the entry took no backup: such an entry records no tree
-/// (`mark_interrupted` copies its before-fields, which are `None`), and the
-/// refs it names are live refs.
-fn seal_recovered(
-    ctx: &Context<'_>,
-    id: &EntryId,
-    backup_ref: Option<&str>,
-    now: &RepoStateNow,
-) -> Result<(), FactsError> {
-    let Some(name) = backup_ref else {
-        return Ok(());
-    };
-    let at = facts::read_refs(ctx.repo, std::slice::from_ref(&name.to_owned()))?
-        .get(name)
-        .copied()
-        .flatten();
-    let mut parents: Vec<Oid> = at.into_iter().collect();
-    for anchor in anchors(Some(&now.head), &now.refs) {
-        if !parents.contains(&anchor) {
-            parents.push(anchor);
-        }
-    }
-    let label = format!("interrupted, recovered: {id}");
-    let commit = snapshot::commit_trees(
-        ctx.repo,
-        Some(now.index),
-        Some(now.worktree_tree),
-        id,
-        &label,
-        &parents,
-        &(),
-    )?;
-    snapshot::move_backup_ref(ctx.repo, name, commit, &())?;
-    Ok(())
 }
