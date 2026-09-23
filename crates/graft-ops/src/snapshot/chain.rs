@@ -152,6 +152,48 @@ pub fn backup_chain(
     name: &str,
     stop: &dyn Stop,
 ) -> Result<Vec<(IndexState, LinkKind)>, SnapshotError> {
+    walk(repo, name, Bound::Whole, stop)
+}
+
+/// The recorded index states of the **current step** only, newest first:
+/// [`backup_chain`] cut at its first [`LinkKind::Resume`] link, which is left
+/// out. A `Resume` link is written as the previous step is handed back to
+/// git, so it and every older link belong to a step that is over
+/// (m6-conflicts/22). A merge has one step and no `Resume` link before its
+/// finish, so for it this is the whole chain.
+///
+/// Every reader that asks "what did *this* step conflict on" goes through
+/// here — the conflict set and `d`'s stage source — so a finished step's
+/// conflict can neither be listed nor restored into the current one (review
+/// m6-amend-10-22 M1).
+///
+/// # Errors
+/// As [`backup_chain`].
+pub fn current_step_chain(
+    repo: &RepoHandle,
+    name: &str,
+    stop: &dyn Stop,
+) -> Result<Vec<IndexState>, SnapshotError> {
+    let chain = walk(repo, name, Bound::CurrentStep, stop)?;
+    Ok(chain.into_iter().map(|(state, _)| state).collect())
+}
+
+/// How far [`walk`] goes.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Bound {
+    /// To the pre-operation snapshot.
+    Whole,
+    /// To the first `Resume` link, not included.
+    CurrentStep,
+}
+
+/// The one chain walk both public readers share.
+fn walk(
+    repo: &RepoHandle,
+    name: &str,
+    bound: Bound,
+    stop: &dyn Stop,
+) -> Result<Vec<(IndexState, LinkKind)>, SnapshotError> {
     let mut chain = Vec::new();
     let mut at = read_ref(repo, name, stop)?;
     while let Some(commit) = at {
@@ -159,6 +201,9 @@ pub fn backup_chain(
             break;
         };
         let (parent, link) = parent_and_link(repo, commit, stop)?;
+        if bound == Bound::CurrentStep && link == LinkKind::Resume {
+            break;
+        }
         chain.push((state, link));
         at = parent;
     }

@@ -11,13 +11,14 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use graft_ops::apply::{ApplyError, Resume};
+use graft_ops::operation::{Operation, Refusal, RestartParams};
 use graft_ops::snapshot::{LinkKind, backup_chain};
 
 use crate::conflict_fixtures::{
     conflict_set, downstream_of, graft_merge_stops, graft_rebase_stops, graft_stage, paths,
     run_resume, two_file_conflict, two_stop_history,
 };
-use crate::support::{NOW, Never, TempRepo};
+use crate::support::{NOW, Never, TempRepo, try_run};
 
 #[test]
 fn a_merge_lists_resolved_files_too() {
@@ -231,6 +232,51 @@ fn a_rebase_step_keeps_its_resolved_files() {
     let set = conflict_set(&repo);
     assert_eq!(set.paths, paths(&["b.txt"]));
     assert!(set.recorded, "the chain is a record too");
+}
+
+/// `d` at step 2 on the file step 1 conflicted on: step 1 is over, so its
+/// stages are not this step's to restore (review m6-amend-10-22 M1). Before
+/// the bound, step 1's link on the chain restored `M` against `F` into step
+/// 2's index, and taking a side silently undid step 1's resolution.
+#[test]
+fn a_restart_never_reaches_a_finished_step() {
+    let repo = at_step_two();
+    let before = repo.read("a.txt");
+    let path = std::path::PathBuf::from("a.txt");
+    match try_run(
+        &repo,
+        &Operation::RestartConflict(RestartParams { path: path.clone() }),
+        NOW + 3,
+    ) {
+        Err(ApplyError::Refused(Refusal::NoStagesKept { path: refused })) => {
+            assert_eq!(refused, path);
+        }
+        other => panic!("expected NoStagesKept, got {other:?}"),
+    }
+    assert_eq!(repo.read("a.txt"), before, "step 1's resolution stays");
+    assert!(
+        !repo.git(&["status", "--porcelain"]).contains("UU a.txt"),
+        "a.txt is not unmerged again"
+    );
+}
+
+/// The bound does not cost the current step its own restart: `b.txt`,
+/// resolved and staged at step 2, comes back from step 2's link.
+#[test]
+fn a_restart_reaches_the_current_steps_file() {
+    let repo = at_step_two();
+    repo.write("b.txt", b"both\n");
+    graft_stage(&repo, "b.txt", NOW + 3);
+    try_run(
+        &repo,
+        &Operation::RestartConflict(RestartParams {
+            path: std::path::PathBuf::from("b.txt"),
+        }),
+        NOW + 4,
+    )
+    .expect("step 2's own file restarts");
+    let back = String::from_utf8_lossy(&repo.read("b.txt")).into_owned();
+    assert!(back.contains("<<<<<<<"), "the markers are back: {back}");
 }
 
 /// A merge has one step and no `Resume` link before its finish: every link
