@@ -32,7 +32,7 @@ mod index_paths;
 mod plumbing;
 mod stage_tree;
 
-pub use chain::{LinkKind, backup_chain, chain_backup, recorded_index_state};
+pub use chain::{LinkKind, backup_chain, chain_backup, current_step_chain, recorded_index_state};
 pub use index_paths::index_paths_changed;
 pub(crate) use index_paths::{index_paths, tracked_paths_now};
 

@@ -43,7 +43,9 @@ pub enum StageSource {
 /// 1. the index, when the status still calls the path unmerged;
 /// 2. an operation being live, its entry's backup ref chain — the commit
 ///    [`snapshot::chain_backup`] took before each folded step, which is the
-///    only place the stages survive once `git add` dropped them;
+///    only place the stages survive once `git add` dropped them — read back
+///    only as far as the current step began: a finished step's conflict is
+///    not this step's to restore;
 /// 3. otherwise the journal's in-force entries, `index_after` then
 ///    `index_before` — the conflicted stash pop, where each resolution is its
 ///    own entry (03's rule) and there is no live span to chain onto.
@@ -91,7 +93,8 @@ pub fn stage_source(
     Ok(None)
 }
 
-/// The live entry's backup ref chain, newest first. Empty when the operation
+/// The live entry's backup ref chain **for the current step**, newest first
+/// ([`snapshot::current_step_chain`]). Empty when the operation
 /// is not one of Graft's, or was begun in the shell: there is no chain of
 /// ours to read, which is an honest "nobody kept them".
 fn chain_states(ctx: &Context<'_>, live: InProgress) -> Result<Vec<IndexState>, FactsError> {
@@ -105,11 +108,10 @@ fn chain_states(ctx: &Context<'_>, live: InProgress) -> Result<Vec<IndexState>, 
     let Some(name) = span.and_then(|entry| entry.backup_ref.as_deref()) else {
         return Ok(Vec::new());
     };
-    // Every link, whatever its kind: bounding this walk to the current step
-    // is a separate question (m6-conflicts/22 NOTES).
-    snapshot::backup_chain(ctx.repo, name, ctx.stop)
-        .map(|chain| chain.into_iter().map(|(state, _)| state).collect())
-        .map_err(as_facts)
+    // The current step's links only: an earlier step's conflict is resolved
+    // and committed, and restoring its stages here would put that step's
+    // sides into this step's index (review m6-amend-10-22 M1).
+    snapshot::current_step_chain(ctx.repo, name, ctx.stop).map_err(as_facts)
 }
 
 /// The in-force entries' recorded index states, newest entry first and
