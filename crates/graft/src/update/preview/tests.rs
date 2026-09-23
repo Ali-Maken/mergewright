@@ -157,12 +157,17 @@ fn subject() -> PreviewSubject {
 
 /// Opens a preview and answers its job with `plan`.
 pub(in crate::update) fn opened_with(plan: PreviewPlan) -> (AppState, Vec<Command>) {
+    opened_over(subject(), plan)
+}
+
+/// Opens a preview of `subject` and answers its job with `plan`.
+fn opened_over(subject: PreviewSubject, plan: PreviewPlan) -> (AppState, Vec<Command>) {
     let mut state = on_screen();
     let mut commands = Vec::new();
     assert!(open_preview(
         &mut state,
         &mut commands,
-        subject(),
+        subject,
         false,
         &mut ids()
     ));
@@ -835,4 +840,138 @@ fn u_over_an_open_preview_does_nothing_through_the_real_key_path() {
     );
     assert!(after.preview.is_some(), "and the preview is still open");
     assert!(after.operating.is_none(), "nothing was launched");
+}
+
+// ── confirm keys: `y`, and `m m` / `r r` (m6-conflicts/11) ───────────────
+
+fn opened_by(opener: &'static str) -> PreviewSubject {
+    PreviewSubject::Operation {
+        op: Box::new(a_rebase()),
+        opened_by: opener,
+    }
+}
+
+fn operated(commands: &[Command]) -> Vec<&Operation> {
+    commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::Operate(_, op) => Some(op.as_ref()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn char_key(c: char) -> KeyPress {
+    press(KeyCode::Char(c))
+}
+
+/// Presses `key` on a fresh `opener`-opened preview whose plan landed.
+fn pressed_on(opener: &'static str, plan: PreviewPlan, key: KeyPress) -> (AppState, Vec<Command>) {
+    let (mut state, _) = opened_over(opened_by(opener), plan);
+    let mut commands = Vec::new();
+    assert!(preview_key(&mut state, &mut commands, key, &mut ids()));
+    (state, commands)
+}
+
+#[test]
+fn the_opening_key_again_confirms() {
+    let (state, _) = opened_over(opened_by("m"), a_plan());
+    assert_eq!(
+        preview_box(&state).expect("a box").selected(),
+        0,
+        "on Cancel"
+    );
+    let (state, commands) = pressed_on("m", a_plan(), char_key('m'));
+    assert_eq!(operated(&commands), vec![&a_rebase()]);
+    assert!(state.preview.is_none(), "the box closes as it acts");
+}
+
+#[test]
+fn y_confirms_every_operation_preview() {
+    for opener in ["m", "r", ".", "b"] {
+        let (_, commands) = pressed_on(opener, a_plan(), char_key('y'));
+        assert_eq!(operated(&commands), vec![&a_rebase()], "opened by {opener}");
+    }
+}
+
+#[test]
+fn y_does_not_confirm_a_journal_revert() {
+    let subject = PreviewSubject::RevertTo(graft_core::journal::EntryId::new(1, [0; 10]));
+    let (mut state, _) = opened_over(subject, a_plan());
+    let mut commands = Vec::new();
+    preview_key(&mut state, &mut commands, char_key('y'), &mut ids());
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_some());
+    let view = preview_box(&state).expect("a box");
+    assert!(!view.confirm_key && view.again.is_none());
+}
+
+#[test]
+fn b_again_does_not_confirm() {
+    let (state, commands) = pressed_on("b", a_plan(), char_key('b'));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_some());
+}
+
+#[test]
+fn the_opening_key_waits_for_the_picture() {
+    for key in ['m', 'y'] {
+        let mut state = on_screen();
+        let mut commands = Vec::new();
+        assert!(open_preview(
+            &mut state,
+            &mut commands,
+            opened_by("m"),
+            false,
+            &mut ids()
+        ));
+        let before = state.status.clone();
+        commands.clear();
+        preview_key(&mut state, &mut commands, char_key(key), &mut ids());
+        assert!(commands.is_empty(), "{key}: {commands:?}");
+        assert!(state.preview.is_some(), "{key}");
+        assert_eq!(state.status, before, "{key}");
+        assert!(
+            preview_box(&state).expect("a box").planning,
+            "{key}: predicting…"
+        );
+    }
+}
+
+#[test]
+fn the_confirm_key_does_not_close_a_preview_that_cannot_act() {
+    let (state, commands) = pressed_on("m", an_empty_plan(), char_key('y'));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_some());
+}
+
+#[test]
+fn the_cursor_still_opens_on_cancel() {
+    let (state, commands) = pressed_on("m", a_plan(), press(KeyCode::Enter));
+    assert!(operated(&commands).is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+}
+
+#[test]
+fn the_other_verb_stays_swallowed() {
+    let (state, commands) = pressed_on("m", a_plan(), char_key('r'));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_some());
+}
+
+#[test]
+fn confirm_key_refuses_modifiers() {
+    let with = |c: char, control: bool, alt: bool| KeyPress {
+        code: KeyCode::Char(c),
+        modifiers: Modifiers {
+            control,
+            alt,
+            ..Modifiers::default()
+        },
+    };
+    assert!(!confirm_key(with('m', true, false), "m"));
+    assert!(!confirm_key(with('r', false, true), "r"));
+    assert!(!confirm_key(with('y', true, false), "m"));
+    assert!(confirm_key(with('y', false, false), "."));
+    assert!(confirm_key(with('r', false, false), "r"));
 }

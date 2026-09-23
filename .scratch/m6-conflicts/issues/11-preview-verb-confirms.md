@@ -1,6 +1,6 @@
 # fix-preview-verb-confirms: `y` confirms any Operation preview; in one opened by `m` or `r`, the same key again confirms too; the cursor still rests on Cancel
 
-Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: done (2026-09-23). Was: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 Blocked by: the conductor's keymap edit, below. `02-keymap.md` must carry the `y` row before this is built (CLAUDE.md: a key the doc does not name is not free).
 Was: draft · **P1 approved** (user, 2026-09-23: "keep all 5"). The conductor writes the Ghost Preview row into `02-keymap.md` (the note's "Keymap rows owed"). ADR-0038 §1 is kept, not amended.
 **Revised after scout (2026-09-23, `.scratch/m6-conflicts/scout-11.md`, plus the user's ruling the same day):**
@@ -80,22 +80,22 @@ fn confirm_key(key: KeyPress, opened_by: &str) -> bool;
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] `update::preview::tests::the_opening_key_again_confirms`: `m` on `feature`, the plan lands, `m` → one `Command::Operate` whose `Operation` equals `PreviewState.plan`'s. The cursor was on Cancel when `m` was pressed.
-- [ ] `…::y_confirms_every_operation_preview`: previews opened by `m`, `r`, `.` and the name prompt (`b`), each with its plan landed. `y` → one `Command::Operate` each.
-- [ ] `…::y_does_not_confirm_a_journal_revert`: a `RevertTo` preview, plan landed, `y` → no command, preview still open.
-- [ ] `…::b_again_does_not_confirm`: a `b`-opened preview, plan landed, `b` → no command, preview still open.
-- [ ] `…::the_opening_key_waits_for_the_picture`: `m m` and `m y` with the plan `Pending` → no command, the preview still open, `state.status` unchanged, and the drawn box still reads `predicting…`.
-- [ ] `…::the_confirm_key_does_not_close_a_preview_that_cannot_act`: plan landed with `acts() == false`, `y` → no command, preview still open.
-- [ ] `…::the_cursor_still_opens_on_cancel`: `m` then `⏎` → the box closes with no command (ADR-0038 §1 held).
-- [ ] `…::the_other_verb_stays_swallowed`: `m`-opened, plan landed, `r` → no command, preview open.
-- [ ] `…::confirm_key_refuses_modifiers`: `Ctrl+m`, `Alt+r`, `Ctrl+y` → false.
-- [ ] graft-ui:
+- [x] `update::preview::tests::the_opening_key_again_confirms` (passes): `m`-opened subject over the unit fixture's op, plan landed, cursor asserted on Cancel, `m` → exactly that `Operation`. Real `m m` end to end: `tests/it/preview.rs::m_again_merges_through_the_real_path` (HEAD moves).
+- [x] `…::y_confirms_every_operation_preview` (passes): openers `m`, `r`, `.`, `b`.
+- [x] `…::y_does_not_confirm_a_journal_revert` (passes; also asserts the box has no `y`/verb footer fields).
+- [x] `…::b_again_does_not_confirm` (passes).
+- [x] `…::the_opening_key_waits_for_the_picture` (passes): `m m`, `m y` while `Pending`; status unchanged, `planning` still set on the drawn box.
+- [x] `…::the_confirm_key_does_not_close_a_preview_that_cannot_act` (passes; `an_empty_plan`).
+- [x] `…::the_cursor_still_opens_on_cancel` (passes).
+- [x] `…::the_other_verb_stays_swallowed` (passes).
+- [x] `…::confirm_key_refuses_modifiers` (passes).
+- [x] graft-ui, all in `crates/graft-ui/src/preview_box/tests.rs`, passing:
   - `preview_box::tests::the_footer_names_both_confirm_keys` (rung 1, `m`-opened, wide box);
   - `…::the_footer_label_shrinks_by_its_ladder` (rungs 2, 3 and 4, each at the width where it first applies);
   - `…::a_dot_opened_footer_names_only_y` (`y confirm  ←→ choose  ⏎ act  esc cancel`);
   - `…::a_revert_preview_draws_the_old_footer`.
 - [ ] Journey `a-merge-to-stop` at 2 keys (acceptance ticket).
-- [ ] Captures under `docs/shots/m6/`: `fix-preview-verb-120x40.txt` (`m`-opened) and `fix-preview-verb-name-prompt-120x40.txt` (`b`-opened). **What right looks like:**
+- [x] Captures under `docs/shots/m6/`: `fix-preview-verb-120x40.txt` (`m`-opened) and `fix-preview-verb-name-prompt-120x40.txt` (`b`-opened). Golden, asserted by `preview::capture_fix_preview_verb_for_docs_shots` and `name_and_drag::capture_fix_preview_verb_name_prompt_for_docs_shots`. Colour unverified; the user judges by eye. **What right looks like:**
   - `m`-opened: the box's bottom border reads `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.
   - `b`-opened: it reads `y confirm  ←→ choose  ⏎ act  esc cancel`.
   - Both: the buttons row shows `▸[ Cancel ]`.
@@ -106,3 +106,10 @@ fn confirm_key(key: KeyPress, opened_by: &str) -> bool;
 
 ## Size
 Small. One context.
+
+## NOTES (builder, 2026-09-23)
+- Scout used (`scout-11.md`). No compaction.
+- Scope 5, `BOUND_ACTIONS` (`crates/graft/src/update/keys.rs:754`): it has no preview-context rows (graph, pane, banner and resolver only), so none added, per scope. The main footer's `HintContext::Preview` is unchanged.
+- Journey `a-merge-to-stop` left unticked: the acceptance ticket counts it.
+- Four m5 golden captures regenerated. Only the box footer line changed (`r`-opened, now `y confirm  r rebase  ←→ choose  ⏎ act  esc cancel`): `docs/shots/m5-ui-preview-{rebase,scrolled}-{80x24,160x48}.txt`.
+- The name-prompt capture builds its own dated stash repo (`run_at`), because `a_repo_with_a_stash` stamps the wall clock and the frame drifted between runs.

@@ -61,5 +61,5 @@
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash old-release                       │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
 

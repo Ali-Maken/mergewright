@@ -328,7 +328,7 @@ Ghost Preview's state machine (PROMPT.md §1.7, ADR-0038, design note hard choic
 - `preview_produced` (fn) — builds the slice, lays it out once with `graft_graph::layout`, fills `rows`/`ghost_index`/`clipped`/`undrawable`. Stale job ids dropped.
 - `confirm_preview` (fn) — runs the **same** `Operation` the picture was drawn from, moved across rather than rebuilt (hard choice 3); `RevertTo` becomes `Command::RevertTo`.
 - `close_preview`, `preview_badges`, `preview_box`, `preview_box_rect`, `preview_rows_taken`, `fits` (fn).
-- `HistoryKey` (enum) + `is_history_key`, `history_key` (fn) — `m` (merge the selected branch into the current one) and `r` (rebase the current branch onto the selection), `docs/design/02-keymap.md` §2.3. Both end in a preview, never in a write. Refusals are sentences: `m needs a commit row`, `r needs a branch checked out`, `already on it`.
+- `HistoryKey` (enum) + `is_history_key`, `history_key` (fn) — `m` (merge the selected branch into the current one) and `r` (rebase the current branch onto the selection), `docs/design/02-keymap.md` §2.3. Both end in a preview, never in a write. Refusals are sentences: `m needs a commit row`, `r needs a branch checked out`, `already on it`. Inside an open `Operation` preview (m6-conflicts/11, keymap §2.3b), `preview_key` treats a plain `y`, or the opening `m`/`r` again (private `confirm_key`), as Confirm wherever the cursor is — swallowed while planning, below `PREVIEW_MIN` or when the plan cannot act; never in a journal `RevertTo` preview. `preview_box` sets `PreviewBox::confirm_key`/`again` for the footer.
 
 ## update::preview::slice
 The bounded slice (design note hard choice 1), pure over what it is handed.

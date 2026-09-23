@@ -95,6 +95,11 @@ pub fn opened(app: &App, state: AppState) -> AppState {
 /// Presses `j` until the cursor's row carries `main`'s badge, then `r`, then
 /// waits for the plan.
 fn preview_of_a_rebase(app: &App, state: AppState) -> AppState {
+    preview_opened_by(app, state, 'r')
+}
+
+/// `key` (`m` or `r`) on `main`'s row, and the plan landed.
+fn preview_opened_by(app: &App, state: AppState, key: char) -> AppState {
     let mut state = opened(app, state);
     let mut guard = 0;
     loop {
@@ -109,10 +114,10 @@ fn preview_of_a_rebase(app: &App, state: AppState) -> AppState {
         state = app.key(&state, KeyCode::Char('j'));
         guard += 1;
     }
-    let state = app.key(&state, KeyCode::Char('r'));
+    let state = app.key(&state, KeyCode::Char(key));
     assert!(
         state.preview.is_some(),
-        "`r` opens a preview: {:?}",
+        "`{key}` opens a preview: {:?}",
         state.status
     );
     app.pump(state, "the preview's plan", |state| {
@@ -294,6 +299,65 @@ fn capture_preview_for_docs_shots() {
     }
     app.close();
     assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
+}
+
+/// `m` on `main`'s row: the box names both confirm keys in its footer, and
+/// the cursor still rests on `Cancel` (m6-conflicts/11). Regenerate on
+/// purpose with `GRAFT_UPDATE_SHOTS=1`.
+#[test]
+fn capture_fix_preview_verb_for_docs_shots() {
+    let scratch = forked();
+    let (app, state) = App::open(scratch.path());
+    let state = preview_opened_by(&app, state, 'm');
+    let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
+    app.close();
+    let text = drawn.join("\n");
+    assert!(
+        text.contains("y confirm  m merge  ←→ choose  ⏎ act  esc cancel"),
+        "{text}"
+    );
+    assert!(text.contains("▸[ Cancel ]"), "{text}");
+    let mut out = String::from(
+        "# fix-preview-verb-120x40.txt: 120x40, drawn by `view::view` from a real\n\
+         # AppState over a real repository (`main` three commits, `feature` forked off\n\
+         # the first with two of its own, `feature` checked out); cursor on `main`'s\n\
+         # row, `m` pressed through `update`, the real plan landed\n\
+         # (crates/graft/tests/it/preview.rs, capture_fix_preview_verb_for_docs_shots).\n\
+         # TestBackend character grid: colour ships unverified (CLAUDE.md rule 5).\n\
+         #\n\
+         # What right looks like:\n\
+         #  - The box's bottom border reads\n\
+         #    `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.\n\
+         #  - The buttons row shows `▸[ Cancel ]`: the cursor still rests on Cancel.\n\
+         #\n\n",
+    );
+    for line in &drawn {
+        out.push_str(line.trim_end());
+        out.push('\n');
+    }
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/shots/m6/fix-preview-verb-120x40.txt");
+    let checked = graft_fixtures::check(&path, &out);
+    assert!(checked.is_ok(), "{}", checked.expect_err("it drifted"));
+}
+
+/// `m m` on the real path: the second `m` confirms, the cursor never moved.
+#[test]
+fn m_again_merges_through_the_real_path() {
+    let scratch = forked();
+    let before = git(scratch.path(), &["rev-parse", "HEAD"]);
+    let (app, state) = App::open(scratch.path());
+    let state = preview_opened_by(&app, state, 'm');
+    let state = app.key(&state, KeyCode::Char('m'));
+    assert!(state.preview.is_none(), "the second `m` confirmed");
+    let state = app.settle_write(state, "`git merge`");
+    drop(state);
+    app.close();
+    assert_ne!(
+        git(scratch.path(), &["rev-parse", "HEAD"]),
+        before,
+        "HEAD moved"
+    );
 }
 
 // ---------------------------------------------------------------------------

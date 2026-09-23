@@ -17,7 +17,7 @@ use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::widgets::Widget;
 
-use crate::frame_box::{border_row, buttons_row, content_row, reverse_button};
+use crate::frame_box::{border_row, buttons_row, cells, content_row, reverse_button};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -40,6 +40,45 @@ const MIN_BOX_ROWS: u16 = 4;
 
 /// The box's own footer, shown in its bottom border while it is open.
 const FOOTER: &str = "←→ choose  ⏎ act  esc cancel";
+
+/// The widest footer rung whose padded label fits `inner` cells:
+/// `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`, then without the
+/// arrows, then without the verb, then plain [`FOOTER`]. Parts whose field
+/// is off are left out of every rung.
+pub(crate) fn footer_label(view: &PreviewBox, inner: usize) -> String {
+    let confirm = view.confirm_key.then_some("y confirm");
+    let again = view
+        .again
+        .as_ref()
+        .map(|(key, verb)| format!("{} {}", key.as_str(), verb.as_str()));
+    let join = |parts: &[Option<&str>]| -> String {
+        parts
+            .iter()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>()
+            .join("  ")
+    };
+    if confirm.is_none() && again.is_none() {
+        return FOOTER.to_owned();
+    }
+    let again = again.as_deref();
+    let rungs = [
+        join(&[
+            confirm,
+            again,
+            Some("←→ choose"),
+            Some("⏎ act"),
+            Some("esc cancel"),
+        ]),
+        join(&[confirm, again, Some("⏎ act"), Some("esc cancel")]),
+        join(&[confirm, Some("⏎ act"), Some("esc cancel")]),
+    ];
+    rungs
+        .into_iter()
+        .find(|label| cells(label) + 2 <= inner)
+        .unwrap_or_else(|| FOOTER.to_owned())
+}
 
 /// The message drawn instead of the box when the frame is smaller than
 /// [`PREVIEW_MIN`].
@@ -69,6 +108,12 @@ pub struct PreviewBox {
     /// `lines`, for up to about a second while the plan is worked out. The
     /// ghost rows themselves appear only once this turns false.
     pub planning: bool,
+    /// Draw `y confirm` in the footer: true for every operation preview,
+    /// false for a journal revert (which `y` does not confirm).
+    pub confirm_key: bool,
+    /// The opening verb, when pressing it again confirms: `("m", "merge")`
+    /// or `("r", "rebase")`; `None` for every other opener.
+    pub again: Option<(SanitizedText, SanitizedText)>,
 }
 
 impl PreviewBox {
@@ -85,6 +130,8 @@ impl PreviewBox {
             choices: vec![sanitize_line("Cancel"), sanitize_line("Confirm")],
             cursor: 0,
             planning: false,
+            confirm_key: false,
+            again: None,
         }
     }
 
@@ -215,7 +262,12 @@ impl PreviewBoxWidget<'_> {
         buf.set_string(
             area.x,
             area.bottom().saturating_sub(1),
-            border_row('╰', '╯', FOOTER, width),
+            border_row(
+                '╰',
+                '╯',
+                &footer_label(view, width.saturating_sub(2)),
+                width,
+            ),
             muted,
         );
     }
