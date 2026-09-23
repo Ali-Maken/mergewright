@@ -146,7 +146,7 @@ fn on_feature(state: &AppState) -> bool {
 
 /// Cursor onto `feature`, `m`, through the preview and the confirm box, and
 /// wait for the merge to stop. The state it hands back is a real conflict.
-fn stopped_on_the_conflict(app: &App, state: AppState) -> AppState {
+pub(crate) fn stopped_on_the_conflict(app: &App, state: AppState) -> AppState {
     let mut state = opened(app, state);
     let mut guard = 0;
     loop {
