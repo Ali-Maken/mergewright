@@ -109,6 +109,11 @@ pub struct ResolverState {
     /// other id's answer belongs to a question that has been withdrawn and
     /// is dropped, the way [`AppState::awaiting`] drops a stale walk.
     pub job: Option<JobId>,
+    /// [`Self::job`] is a read of the file — the opening read, or the
+    /// re-read after a hand-back or an outside edit — not a take. Only
+    /// meaningful while `job` is `Some`; it words the refusal a key gets
+    /// meanwhile ([`Self::busy_words`], m6-conflicts/07 F7).
+    pub reading: bool,
     /// The `LoadBase` job `B` started, or `None`. Its own field rather than
     /// [`Self::job`]: a base load must never collide with an open read or a
     /// take answer in flight — the two would overwrite the id the other is
@@ -147,11 +152,24 @@ impl ResolverState {
             top: 0,
             base_shown: false,
             job: Some(job),
+            reading: true,
             base_job: None,
             staging: None,
             restarting: None,
             notice: None,
         }
+    }
+
+    /// What [`Self::job`] is doing, in the words a key refused meanwhile
+    /// gets — `None` when nothing is in flight.
+    pub(super) fn busy_words(&self) -> Option<&'static str> {
+        self.job.map(|_| {
+            if self.reading {
+                "still reading the file"
+            } else {
+                "still writing the last take"
+            }
+        })
     }
 }
 

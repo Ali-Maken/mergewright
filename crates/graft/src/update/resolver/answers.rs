@@ -9,7 +9,7 @@ use graft_core::job::JobId;
 use graft_git::conflict::{BlockState, ConflictFile};
 
 use super::walk::remaining_conflicted_file;
-use super::{OpenedFrom, WholeFileShape, next_open_block, reopen, scrolled_to, side_word};
+use super::{WholeFileShape, next_open_block, reopen, scrolled_to, side_word};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
@@ -133,6 +133,7 @@ pub fn taken(
                 let next = next_id();
                 if let Some(open) = state.resolver.as_mut() {
                     open.job = Some(next);
+                    open.reading = true;
                 }
                 commands.push(Command::OpenConflict(next, path));
             }
@@ -196,6 +197,7 @@ pub fn handed_back(
     let id = next_id();
     if let Some(open) = state.resolver.as_mut() {
         open.job = Some(id);
+        open.reading = true;
         // A base load still in flight carries the document from before the
         // hand-over; the re-read owns the document now, so its answer is
         // withdrawn rather than left to land over the fresh one (m6-05
@@ -233,10 +235,14 @@ pub fn resolved_advance(
         return;
     }
     state.resolver = None;
-    if from == OpenedFrom::Banner {
-        state.banner_focus = crate::update::banner::banner_view(state).is_some();
-    }
-    state.status = if crate::update::banner::banner_view(state).is_some() {
+    // The last file closes **to the banner** whichever way the resolver
+    // was opened (design note, m6-conflicts §resolver keys): the line below
+    // offers `c continue`, and `c` continues only with the banner focused —
+    // on the changes pane it opens the commit editor (m6-conflicts/07 F4).
+    // `Esc` still returns to where it was opened from; only the finished
+    // close differs.
+    state.banner_focus = crate::update::banner::banner_view(state).is_some();
+    state.status = if state.banner_focus {
         Status::Done("all conflicts resolved · c continue".to_owned())
     } else {
         // A conflicted `git stash pop` has no operation and so no banner
