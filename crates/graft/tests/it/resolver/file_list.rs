@@ -603,3 +603,21 @@ fn a_rebase_lists_only_this_steps_files() {
     app.close();
     drop(scratch);
 }
+
+/// J9's first step (m6-conflicts/15): `n` on `gone.txt`'s card crosses to
+/// the next file in the list, `notes.txt`, and lands on its block 0.
+#[test]
+fn n_on_a_card_crosses_to_the_next_file_in_list_order() {
+    let scratch = gone_and_notes_merge();
+    let (app, state) = opened_on(&scratch);
+    let state = resolver_on_whole_file(&app, state, "gone.txt");
+    let state = app.key(&state, KeyCode::Char('n'));
+    assert_eq!(open(&state).path, Path::new("notes.txt"));
+    let state = settled(&app, state);
+    assert_eq!(open(&state).path, Path::new("notes.txt"));
+    assert_eq!(open(&state).cursor_block, Some(0));
+    assert_eq!(open(&state).notice, Some(("▸ notes.txt".to_owned(), false)));
+    drop(state);
+    app.close();
+    drop(scratch);
+}

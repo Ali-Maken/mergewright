@@ -2133,7 +2133,9 @@ credential capture M6 changed.
    setup; `m` on `feature`, confirmed: git stops (`MERGE_HEAD`), banner
    focused. `both.txt` by `o`; `three.txt` `o`, then `⏎` refused with `2
    conflicts still open in three.txt` and `n next` on the line, nothing
-   staged; `n t n b` then `⏎`: `three.txt` on disk is block 1 ours, block 2
+   staged; `t b` then `⏎` (`o` on block 1 already moved the cursor to
+   block 2, and each take moves it on again — m6-conflicts/15): `three.txt`
+   on disk is block 1 ours, block 2
    theirs, block 3 ours then theirs, line for line against git's
    `--ours`/`--theirs` bytes; every other path resolved, `ls-files -u`
    empty; the last file closes **to the banner**, which has the keyboard
@@ -2163,10 +2165,13 @@ credential capture M6 changed.
    carry none until `B`, then all three do; `B` on `both-added.txt` says
    `no base (added on both sides)`, not as a problem. Index and files
    unchanged.
-7. **n-past-the-last-block-says-no-more** — on `zdiff3.txt` (the last file
-   in git's order) `N` before the first block and `n` past the last both say
-   `no more conflicts · ⏎ marks zdiff3.txt resolved`; the resolver stays on
-   `zdiff3.txt`; nothing written. **The user decides that wording.**
+7. **n-past-the-last-block-says-no-more** — setup stages every other path,
+   so `zdiff3.txt` is the only file not done. With its one block open, `n`
+   has no file to cross to and wraps: `wrapped · 1 still open`, cursor on
+   block 1. After `t`, `n` and `N` both say `no more conflicts · ⏎ marks
+   zdiff3.txt done`; the resolver stays on `zdiff3.txt`; `zdiff3.txt` on
+   disk is git's `--theirs`, still unmerged, index unchanged. **The user
+   decides that wording.**
 8. **start-over-brings-the-markers-back** — start over **before** `⏎`
    (ruling F3): `⏎` on `three.txt`'s `CONFLICTS` row (`3 of 3` open), `o`,
    `Esc` to the pane, `⏎` on the row again — still unmerged, the taken block
@@ -2249,7 +2254,7 @@ credential capture M6 changed.
 | `m6-05-still-open-refusal` | yes | yes | `2 conflicts still open in three.txt · n next`; block 1 `took ours` |
 | `m6-06-relaunch-sticky` | yes | yes | after a real `SIGKILL`: `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort`, the pane on `CONFLICTS (1)`, one marker block left. At 80x24 the line is the Detail tab's bottom row (fix F9) |
 | `m6-07-all-resolved` | yes | yes | `all conflicts resolved · c continue ✓`, `STAGED (1)` `shared.txt`. At 80x24 the line is the Detail tab's bottom row (fix F9) |
-| `m6-08-no-more-conflicts` | yes | yes | `no more conflicts · ⏎ marks zdiff3.txt resolved`, cursor unmoved |
+| `m6-08-no-more-conflicts` | yes | yes | `no more conflicts · ⏎ marks zdiff3.txt done`, cursor unmoved |
 | `m6-09-start-over-box` | yes | yes | a box over the resolver, `Start both.txt over?`, `git checkout --merge -- both.txt`, `▸[ Cancel ]   [ Start over ]` (fix F10) |
 
 **Times I left:** every reach for the shell during a conflict in daily use

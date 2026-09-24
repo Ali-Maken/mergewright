@@ -67,7 +67,7 @@ fn t_and_b_take() {
     non_snake_case,
     reason = "`n` and `N` are two different keys, and the test is named for them"
 )]
-fn n_and_N_walk_open_blocks_only() {
+fn n_and_N_walk_every_block() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let state = resolver_on(&app, state, "three.txt");
     assert_eq!(open(&state).cursor_block, Some(0));
@@ -77,26 +77,105 @@ fn n_and_N_walk_open_blocks_only() {
         "three.txt has three blocks"
     );
 
-    // Take block 0, then walk: `n` never stops on a block already taken.
+    // Take block 0: the cursor moves on to block 1 by itself
+    // (m6-conflicts/15), and `N` goes back to the block just taken, so a
+    // take can be fixed by keyboard.
     let state = app.key(&state, KeyCode::Char('o'));
+    assert_eq!(open(&state).cursor_block, Some(1), "on at the keypress");
     let state = settled(&app, state);
+    assert_eq!(open(&state).cursor_block, Some(1), "and still there after");
+    let state = app.key(&state, KeyCode::Char('N'));
+    assert_eq!(
+        open(&state).cursor_block,
+        Some(0),
+        "N reaches a taken block"
+    );
     let state = app.key(&state, KeyCode::Char('n'));
-    assert_eq!(open(&state).cursor_block, Some(1));
     let state = app.key(&state, KeyCode::Char('n'));
     assert_eq!(open(&state).cursor_block, Some(2));
 
-    // Backwards from block 2: block 0 is taken, so `N` twice stops at 1 and
-    // then refuses rather than landing on it.
-    let state = app.key(&state, KeyCode::Char('N'));
-    assert_eq!(open(&state).cursor_block, Some(1));
-    let state = app.key(&state, KeyCode::Char('N'));
-    assert_eq!(open(&state).cursor_block, Some(1), "0 is taken: no move");
-    let Status::Sticky { reason, keys } = &state.status else {
-        panic!("`N` past the first open block said {:?}", state.status)
-    };
-    assert_eq!(reason, "no more conflicts");
-    assert_eq!(keys.as_deref(), Some("⏎ marks three.txt resolved"));
+    drop(state);
+    app.close();
+    drop(scratch);
+}
 
+/// `t t t` on `three.txt` before any answer lands: one take out, two
+/// queued behind it, all three written in order — the bytes on disk are
+/// git's own `checkout --theirs` (m6-conflicts/15).
+#[test]
+fn a_queued_take_writes_what_git_would() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = resolver_on(&app, state, "three.txt");
+    // `app.key` sends each key's commands to the pool but lands no answer:
+    // answers are taken only by `pump`. So all three are pressed before
+    // the first take has answered.
+    let state = app.key(&state, KeyCode::Char('t'));
+    let state = app.key(&state, KeyCode::Char('t'));
+    let state = app.key(&state, KeyCode::Char('t'));
+    assert!(open(&state).in_flight.is_some(), "one take out");
+    assert_eq!(open(&state).queued.len(), 2, "the rest queued");
+    let state = app.pump(state, "every queued take", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.job.is_none() && open.queued.is_empty())
+    });
+    assert_eq!(open(&state).file.as_ref().expect("a document").open(), 0);
+    assert_eq!(
+        on_disk(&repo, "three.txt"),
+        git_theirs(&repo, "three.txt"),
+        "three queued takes wrote what git's --theirs does"
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// What `git checkout --theirs` writes for `path`, from a copy of the
+/// repository, so the one under test is left as it is.
+fn git_theirs(repo: &Path, path: &str) -> String {
+    let copy = tempfile::tempdir().expect("a scratch directory");
+    let status = std::process::Command::new("cp")
+        .args(["-R", "."])
+        .arg(copy.path())
+        .current_dir(repo)
+        .status()
+        .expect("cp runs");
+    assert!(status.success(), "copying the repository");
+    crate::app_harness::git(copy.path(), &["checkout", "--theirs", "--", path]);
+    on_disk(copy.path(), path)
+}
+
+/// `three.txt` after one `t`: block 1 took theirs, the cursor already on
+/// block 2 — the captures the user judges by eye (m6-conflicts/15).
+#[test]
+fn advance_capture() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let state = resolver_on(&app, state, "three.txt");
+    let state = app.key(&state, KeyCode::Char('t'));
+    let state = settled(&app, state);
+    assert_eq!(open(&state).cursor_block, Some(1), "{:?}", state.status);
+    for (columns, rows) in [(120u16, 40u16), (187, 50)] {
+        let frame = crate::captures::frame(&state, columns, rows);
+        let body = frame.join("\n");
+        assert!(
+            body.contains("▸ three.txt · 3 conflicts · 2 open"),
+            "{body}"
+        );
+        // The card's header, or the result pane's rule in the three panes.
+        let header = if columns < 180 {
+            "conflict 1 of 3 · took theirs · feature"
+        } else {
+            "── 1 of 3 · took theirs · feature"
+        };
+        assert!(body.contains(header), "{body}");
+        crate::captures::check_shot(
+            &format!("m6/fix-advance-{columns}x{rows}.txt"),
+            &format!("{body}\n"),
+        );
+    }
     drop(state);
     app.close();
     drop(scratch);
@@ -159,14 +238,10 @@ fn enter_stages_and_advances() {
     let state = resolver_on(&app, state, "three.txt");
     // Take all three, then mark it resolved.
     let mut state = state;
-    for block in 0..3 {
+    // Each take moves the cursor on by itself (m6-conflicts/15).
+    for _ in 0..3 {
         state = app.key(&state, KeyCode::Char('o'));
         state = settled(&app, state);
-        // Not after the last one: `n` with nothing open left in this file
-        // opens the next conflicted file, which is what this `⏎` is for.
-        if block < 2 {
-            state = app.key(&state, KeyCode::Char('n'));
-        }
     }
     assert_eq!(
         open(&state).file.as_ref().expect("a document").open(),

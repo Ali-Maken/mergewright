@@ -57,8 +57,9 @@ fn three_panes_capture() {
     let state = resolver_on(&app, state, "notes.txt");
     let state = app.key(&state, KeyCode::Char('t'));
     let state = settled(&app, state);
-    // `n`: the cursor on to the next open block, as the mockup draws it.
-    let state = app.key(&state, KeyCode::Char('n'));
+    // The take moved the cursor on to the next open block at the keypress
+    // (m6-conflicts/15), as the mockup draws it. An `n` here would now
+    // cross to `gone.txt`: block 1 is the last.
     assert_eq!(open(&state).cursor_block, Some(1), "{:?}", state.status);
     for columns in [200u16, 187, 180] {
         let frame = crate::captures::frame(&state, columns, 50);

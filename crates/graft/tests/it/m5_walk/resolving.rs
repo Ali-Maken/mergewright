@@ -195,11 +195,10 @@ fn resolve_the_rest(done: &[&str]) -> Vec<Step> {
             continue;
         }
         steps.push(Step::Resolve(path));
-        for block in 0..blocks {
+        // Each take moves the cursor on to the next open block by itself
+        // (m6-conflicts/15): no `n` between them.
+        for _ in 0..blocks {
             steps.extend(take(side));
-            if block + 1 < blocks {
-                steps.push(key(ch('n')));
-            }
         }
         steps.extend(mark_resolved(path));
     }
@@ -241,10 +240,10 @@ fn merge_resolved_with_the_keys() -> Scenario {
                         "⏎ staged a file with blocks still open".to_owned()
                     })
                 }),
-                key(ch('n')),
             ],
+            // `o` on block 0 already moved the cursor to block 1, and each
+            // take moves it on again (m6-conflicts/15): `t b`, no `n`.
             take('t'),
-            vec![key(ch('n'))],
             take('b'),
             vec![Step::Mark("three taken")],
             mark_resolved("three.txt"),
@@ -684,44 +683,99 @@ fn bases(state: &graft::update::AppState) -> (usize, usize) {
         })
 }
 
-/// On the last conflicted file in git's order, `N` before the first open
-/// block and `n` past the last have nowhere to go, and say what `⏎` does
-/// instead. Nothing is written.
+/// `zdiff3.txt` the only file not done (every other path staged by
+/// `setup`): `n` past its one block has no file to cross to, so it wraps to
+/// the block still open; once that is taken, `n` and `N` have nowhere to go
+/// and say what `⏎` does instead (m6-conflicts/15). Nothing is staged.
 fn n_past_the_last_block_says_no_more() -> Scenario {
     Scenario {
         name: "n-past-the-last-block-says-no-more",
         shape: Shape::StoppedMerge,
         remote: Remote::None,
         size: (120, 40),
-        setup: as_built,
-        steps: vec![
-            Step::WaitFor(Wait::Ready),
-            Step::Resolve("zdiff3.txt"),
-            key(ch('N')),
-            Step::See("N before the first block", |state| {
-                status_containing(state, "no more conflicts · ⏎ marks zdiff3.txt resolved")
-            }),
-            key(ch('n')),
-            Step::WaitFor(Wait::ConflictOpened),
-            Step::See("n past the last block of the last file", |state| {
-                status_containing(state, "no more conflicts · ⏎ marks zdiff3.txt resolved")?;
-                let on = state.resolver.as_ref().map(|open| open.path.clone());
-                check(
-                    on.as_deref() == Some(std::path::Path::new("zdiff3.txt")),
-                    || format!("the resolver moved to {on:?}"),
-                )
-            }),
-            Step::Mark("walked"),
-        ],
-        expect: |_, marks| same_files("n and N", &marks.before, marks.get("walked")?),
+        setup: all_but_zdiff3_done,
+        steps: chain(vec![
+            vec![
+                Step::WaitFor(Wait::Ready),
+                Step::Resolve("zdiff3.txt"),
+                key(ch('n')),
+                Step::See("n with its block open wraps", |state| {
+                    notice_is(state, "wrapped · 1 still open")?;
+                    let open = state.resolver.as_ref().ok_or("no resolver")?;
+                    check(open.cursor_block == Some(0), || {
+                        format!("the cursor is on {:?}", open.cursor_block)
+                    })
+                }),
+            ],
+            take('t'),
+            vec![
+                key(ch('n')),
+                Step::See("n with nothing open", |state| {
+                    status_containing(state, "no more conflicts · ⏎ marks zdiff3.txt done")
+                }),
+                key(ch('N')),
+                Step::See("N with nothing open", |state| {
+                    status_containing(state, "no more conflicts · ⏎ marks zdiff3.txt done")?;
+                    let on = state.resolver.as_ref().map(|open| open.path.clone());
+                    check(
+                        on.as_deref() == Some(std::path::Path::new("zdiff3.txt")),
+                        || format!("the resolver moved to {on:?}"),
+                    )
+                }),
+                Step::Mark("walked"),
+            ],
+        ]),
+        expect: |fixture, marks| {
+            let walked = marks.get("walked")?;
+            check(walked.repo.index == marks.before.repo.index, || {
+                "walking and taking changed the index".to_owned()
+            })?;
+            check(!unmerged(fixture.repo(), "zdiff3.txt")?.is_empty(), || {
+                "zdiff3.txt is no longer unmerged".to_owned()
+            })?;
+            let theirs = side_bytes(pristine()?.repo(), "zdiff3.txt", Side::Theirs)?;
+            check(
+                resolved_bytes(fixture.repo(), "zdiff3.txt")? == theirs,
+                || "zdiff3.txt is not git's theirs after `t`".to_owned(),
+            )
+        },
         capture: Some(Capture {
             stem: "m6-08-no-more-conflicts",
             headless: vec![],
-            keys: plain(&[open_nth(nth("zdiff3.txt")), vec![ch('N'), ch('n')]].concat()),
+            // The only row under CONFLICTS: the first.
+            keys: plain(&[open_nth(0), vec![ch('t'), ch('n')]].concat()),
             on_screen: "no more conflicts",
             when: When::Settled,
         }),
     }
+}
+
+/// The resolver's notice is exactly `words`.
+fn notice_is(state: &graft::update::AppState, words: &str) -> Result<(), String> {
+    let notice = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.notice.as_ref());
+    check(notice.is_some_and(|(said, _)| said == words), || {
+        format!("the notice is {notice:?}, not {words:?}")
+    })
+}
+
+/// Every stopped path but `zdiff3.txt` marked resolved by git itself, so
+/// `zdiff3.txt` is the only file in the list not done. Fixture
+/// preparation, not a walk step.
+///
+/// The paths are named one by one: `git add --all -- . ':(exclude)…'`
+/// stages the excluded unmerged path too (git 2.x, seen 2026-09-24).
+fn all_but_zdiff3_done(fixture: &Fixture) -> Result<(), String> {
+    let mut args = vec!["add", "--all", "--"];
+    args.extend(
+        STOPPED
+            .iter()
+            .map(|(path, _, _)| *path)
+            .filter(|path| *path != "zdiff3.txt"),
+    );
+    fixture.git(&args).map(drop)
 }
 
 /// `(open, total)` blocks of the document the resolver has open — the two

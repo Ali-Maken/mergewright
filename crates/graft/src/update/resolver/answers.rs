@@ -10,8 +10,9 @@ use graft_git::conflict::{BlockState, ConflictFile};
 
 use super::done::{done_arrived, done_unreadable};
 use super::files::{RowState, listed_files, remember, reread_set};
-use super::{WholeFileShape, next_open_block, reopen, scrolled_to, side_word};
-use crate::update::events::Command;
+use super::take::all_taken;
+use super::{WholeFileShape, next_block, reopen, scrolled_to, side_word};
+use crate::update::events::{Command, TakeRequest};
 use crate::update::state::{AppState, Status};
 
 /// The opening read answered.
@@ -75,11 +76,16 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
         remember(open);
         return;
     };
-    let cursor_block = next_open_block(&file, None, true);
+    let land_last = state.resolver.as_ref().is_some_and(|open| open.land_last);
+    // A fresh read has every block open (a take lives only in memory until
+    // written, and the file on disk has it collapsed), so its first block
+    // is its first open one. `N` crossed here → its last.
+    let cursor_block = next_block(&file, None, !land_last);
     let empty = file.blocks().is_empty();
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
+    open.land_last = false;
     open.job = None;
     // A fresh read replaces the document any base load was loading into.
     open.base_job = None;
@@ -157,11 +163,19 @@ pub fn taken(
     }
     let path = open.path.clone();
     match result {
-        Ok(file) => take_landed(state, &file),
+        Ok(file) => take_landed(state, &file, commands, next_id),
         Err(failure) => {
+            let mut words = failure.words.clone();
             if let Some(open) = state.resolver.as_mut() {
                 open.job = None;
-                open.notice = Some((failure.words.clone(), true));
+                // The queue was chosen against a document that did not
+                // land: every take behind the failed one is dropped, and
+                // the line says how many.
+                let dropped = open.drop_takes();
+                if dropped > 0 {
+                    words = format!("{words} · {dropped} queued takes dropped");
+                }
+                open.notice = Some((words, true));
             }
             if failure.reread {
                 // Something else wrote the file between the read and the
@@ -180,13 +194,24 @@ pub fn taken(
     }
 }
 
-/// The document came back with one more block taken.
-pub(super) fn take_landed(state: &mut AppState, file: &Arc<ConflictFile>) {
+/// The document came back with one more block taken: the next queued take
+/// is sent against it in the same update, so the queue is never waiting
+/// with nothing in flight. The cursor stays wherever the keys put it.
+pub(super) fn take_landed(
+    state: &mut AppState,
+    file: &Arc<ConflictFile>,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     let blocks = file.blocks();
     let open_left = file.open();
     let total = blocks.len();
-    let cursor = state.resolver.as_ref().and_then(|open| open.cursor_block);
-    let side = cursor
+    let landed = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.in_flight)
+        .map(|(block, _)| block);
+    let side = landed
         .and_then(|block| blocks.get(block))
         .and_then(|at| match at.state {
             BlockState::Took(take) => Some(side_word(state, take)),
@@ -197,12 +222,29 @@ pub(super) fn take_landed(state: &mut AppState, file: &Arc<ConflictFile>) {
     };
     let path = open.path.clone();
     open.job = None;
+    open.in_flight = None;
     open.file = Some(Arc::clone(file));
-    open.notice = None;
     remember(open);
-    // Only now, with the new document in place, so the layout the cursor
-    // block is found in is the one the next frame draws.
-    if let Some(block) = cursor {
+    if let Some((block, take)) = open.queued.pop_front() {
+        let id = next_id();
+        open.job = Some(id);
+        open.reading = false;
+        open.in_flight = Some((block, take));
+        commands.push(Command::TakeSide(
+            id,
+            TakeRequest {
+                path: path.clone(),
+                file: Arc::clone(file),
+                block,
+                take,
+            },
+        ));
+    }
+    open.notice = (open_left == 0 && open.in_flight.is_none()).then(|| (all_taken(&path), false));
+    // The new document may draw in a different number of rows: the cursor
+    // block, wherever the keys put it, is kept on screen — moved as little
+    // as it must, never back to the block that landed.
+    if let Some(block) = open.cursor_block {
         let top = scrolled_to(state, block);
         if let Some(open) = state.resolver.as_mut() {
             open.top = top;
@@ -238,12 +280,16 @@ pub fn handed_back(
     if let Some(open) = state.resolver.as_mut() {
         open.job = Some(id);
         open.reading = true;
+        // The re-read replaces the document every take in flight or queued
+        // was chosen against; their answers are withdrawn with it, and the
+        // line says how many queued ones went.
+        let dropped = open.drop_takes();
         // A base load still in flight carries the document from before the
         // hand-over; the re-read owns the document now, so its answer is
         // withdrawn rather than left to land over the fresh one (m6-05
         // review, Major 2).
         open.base_job = None;
-        open.notice = None;
+        open.notice = (dropped > 0).then(|| (format!("{dropped} queued takes dropped"), false));
     }
     commands.push(Command::OpenConflict(id, path));
     // The `CONFLICTS` list behind the resolver is as stale as the document

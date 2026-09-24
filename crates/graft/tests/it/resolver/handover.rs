@@ -134,11 +134,14 @@ fn changed_on_disk_rereads_once() {
     .expect("writing the file");
 
     let state = app.key(&state, KeyCode::Char('o'));
+    // The keypress itself leaves a notice (`all blocks taken`, the one
+    // block taken); the refusal's is the one marked a problem.
     let state = app.pump(state, "the refused take", |state| {
         state
             .resolver
             .as_ref()
-            .is_some_and(|open| open.notice.is_some())
+            .and_then(|open| open.notice.as_ref())
+            .is_some_and(|(_, problem)| *problem)
     });
     let (words, problem) = open(&state).notice.clone().expect("a notice");
     assert!(words.contains("changed"), "{words:?}");

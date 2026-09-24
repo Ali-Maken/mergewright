@@ -1,14 +1,17 @@
-m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ j j j j j j j j j j j j ⏎ N n, unicode tier, 120x40
+m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ ⏎ t n, unicode tier, 120x40
 
 MERGING
-zdiff3.txt · file 13 of 13 · 1 of 1 conflicts open
-ours = main · theirs = the branch being merged in
-      1 start
-▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-▏ OURS · ours                                               │THEIRS · theirs
-▏     3 middle ours                                         │      middle theirs
+files · 13 · 12 done     crlf.txt done ✓               md.md done ✓                  nofinal.txt done ✓
+                         ours-deleted.txt done ✓       pic.bin done ✓                theirs-deleted.txt done ✓
+                         three.txt done ✓            ▸ zdiff3.txt ⏎ marks done     … 5 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ zdiff3.txt · 1 conflict · 0 open
+all blocks taken · ⏎ marks zdiff3.txt done
+  1 start
+▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
+▏ 2 middle theirs
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      9 end
+  3 end
 
 
 
@@ -36,7 +39,4 @@ ours = main · theirs = the branch being merged in
 
 
 
-
-
-
- no more conflicts · ⏎ marks zdiff3.txt resolved
+ no more conflicts · ⏎ marks zdiff3.txt done
