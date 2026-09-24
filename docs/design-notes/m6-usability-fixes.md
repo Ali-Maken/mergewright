@@ -4,18 +4,19 @@ Companion to `m6-conflicts.md` and its "Amendment 2026-09-24: look and finish" (
 - **Input:** `docs/reviews/m6-usability.md` :63–:110, the Majors M1–M4.
 - **Studies:** `docs/research/commit-stash.md` (**CS**), `docs/research/push-pull.md` (**PP**),
   `docs/research/conflict-visuals-and-finish.md` (**CV**), `docs/research/ux-principles.md` (**UX**).
-- **Specs:** six, unnumbered, in `.scratch/m6-conflicts/issues/`.
+- **Specs:** six, unnumbered, in `.scratch/m6-conflicts/issues/`. 47–49 amended 2026-09-24 after their scouts
+  (`.scratch/m6-conflicts/scouts/47.md`, `48.md`, `49.md`).
 
-**What I read in source.** Only the lines the review cites, each re-read for this note (rule 7), all under
+**What I read in source.** Only the lines the review and the scouts cite, each re-read (rule 7), all under
 `crates/graft/src/update/`:
-- `confirm.rs:103-111`, `:173`
-- `commit_editor.rs:200-229`, `:289-318`, `:597-611`
+- `confirm.rs:88-176`, `:173`; `preview.rs:377-418`; `keys.rs:45-56`, `:116-130`, `:257-262`, `:359-400`
+- `commit_editor.rs:200-229`, `:289-318`, `:597-611`; `undo.rs:103-109`; `../view/status.rs:40-89`
 - `finish/keys.rs:89-107`
-- `remote/in_flight.rs:121-139`, `:150-171`
-- `remote.rs:249-274`
-- `remote/push_box.rs:13-108`
+- `remote/in_flight.rs:121-139`, `:150-171`; `remote.rs:219-285`; `remote/push_box.rs:13-134`;
+  `remote/after_push.rs:195-251`
+- `operate.rs:749-872`, `:963-997`; `mod.rs:90-108`, `:670-694`, `:785-816`; `state.rs:255-278`
 
-Every one holds as the review states it.
+Every one holds as the review and scouts state it.
 
 **Where `last_rejected_push` is touched** (`grep last_rejected_push crates`):
 - Written at `in_flight.rs:129` (cleared when a push lands), `:169` (set on a non-fast-forward), and `remote.rs:266`
@@ -59,45 +60,59 @@ Every one holds as the review states it.
 
 **Where each event lands him.**
 - **`c` or `a` in the graph or the changes pane while an operation is live:** focus stays where it was, the editor stays
-  closed and the draft is kept. The status line gives the words (below).
+  closed and the draft is kept. The footer gives the words (below).
 - **Under P14, `c` goes where the banner's `c` goes:**
   - a merge → the summary, and `Esc` returns to the banner;
   - a rebase, cherry-pick or revert begun in Graft → `continuing…`;
   - anything else → the banner's refusal, in words.
-- **A key a confirm box does not bind:** the box stays open, and the status line is unchanged.
+- **A key a confirm box does not bind:** the box stays open, and the status line is unchanged. `Ctrl+C` quits, as over
+  every modal (keymap §2.1 :59).
 - **`P` after the rebase:** the plain push box.
+- **`P` after a rejection, pressed before a write's refs read has landed:** no box; the status line says
+  `still reading the refs — try again in a moment`. The read is local and lands in milliseconds, so no count changes.
 
 ## Decided here (these are not key meanings, so they are not Proposed changes)
 1. **A confirm box swallows every key it does not bind.**
-   - Bound: `←`/`→` (clamped), `Tab`/`BackTab`, `Enter`, `Esc`.
-   - This removes an accident (`_ => close`) and matches the preview. It closes review m1 for the box.
+   - Bound: `←`/`→` (clamped), `Tab`/`BackTab`, `Enter`, `Esc`. `Ctrl+C` passes through and quits, as keymap §2.1
+     :59 already says of every modal; today the catch-all closes the box on it instead.
+   - This removes an accident (`_ => close`) and matches the preview (`preview.rs:386-390`, `:414-415`). It closes
+     review m1 for the box.
 2. **The words when `c` or `a` refuses from a pane** are the editor's refusal without its leading `esc, `, since no
-   editor is open:
-   - `merge in progress — ⇥ banner, then c continue  a abort`
-   - `merge begun in the shell — ⇥ banner, then c finishes it`
-   - The shell-begun rebase, cherry-pick and revert arms, and the bisect arm: unchanged.
-   - One function makes both forms, so they cannot drift apart.
-3. **The lease rule** (M4, a git-write safety path). `P` offers the lease variant only when **both** of these hold:
+   editor is open. They take the `u` refusal's form, `Status::Sticky { reason, keys }` (`undo.rs:105-108`), split at
+   the editor's em dash, so they draw like every other sticky line (`view/status.rs:45-48`, `:85-88`):
+   - `merge in progress` · `⇥ banner, then c continue  a abort`
+   - `merge begun in the shell` · `⇥ banner, then c finishes it`
+   - The shell-begun rebase, cherry-pick and revert arms, and the bisect arm: the whole sentence as the reason, no keys.
+   - One value (`OperationRefusal`) makes both forms, so they cannot drift apart.
+3. **The lease rule** (M4, a git-write safety path). `P` offers the lease variant only when **all** of these hold:
    - **(a)** The last non-fast-forward rejection was of this same push: the same branch, remote and remote branch
      (`push_box.rs:88-96`, unchanged).
-   - **(b)** `HEAD`'s tip, as the refs read reports it now, is **the tip that push sent**. That tip is recorded at the
-     moment `in_flight.rs:168-170` records the rejection.
+   - **(b)** The refs are the answer to the last refs read asked for, and the remote facts are not being re-read.
+   - **(c)** `HEAD`'s tip in those refs is **the tip that push sent**, recorded when `in_flight.rs:168-170` records
+     the rejection, and only from current refs.
+
+   When (a) holds and (b) fails because a read is **in flight**, `P` answers in words and opens no box. The scout found
+   the window real: `operated` clears `operating` (`operate.rs:758`) before its refresh asks for refs with an id nobody
+   keeps (`keys.rs:391`), and any refs answer is stored (`mod.rs:681`). A new state, `AppState::refs_read`
+   (`Unknown` / `Pending` / `Current`), tracks it. Words rather than the plain box, because the plain box in that window
+   would be a guess the next millisecond may contradict.
 
    Anything else gets the plain box:
    - the tip moved (a pull, merge, rebase, commit or undo, or a command in the shell);
-   - or the tip is unknown (no refs, no recorded tip, or no refs read landed since the last write).
+   - or the tip is unknown (no refs, no recorded tip, a failed refs read, or an older answer that overwrote a newer).
 
    Why the plain box is the safe side:
    - Git itself refuses a plain push that is not a fast-forward.
    - That rejection sets (a) again, this time with a known tip.
 
-   Why (b) is enough:
+   Why (c) is enough:
    - A tip that has not moved still lacks the commits the remote refused it for.
-   - So (b) is the review's "the local tip does not contain the rejected remote tip", decided without walking the history.
+   - So (c) is the review's "the local tip does not contain the rejected remote tip", decided without walking the history.
 
    What stays the same:
    - The existing clears (`in_flight.rs:129`, `remote.rs:260-267`).
    - TESTING scenarios 10 and 11 (`:1502-1516`): nothing moves in either, so both behave as before.
+   - Every other reader of refs or remote facts in the window (the spec lists them as findings).
 
 ## Proposed changes (not decided; the specs marked `Blocked by` wait for his answer)
 - **P14: `c` in the graph or the changes pane, while an operation is live, does what the banner's `c` does.**
@@ -116,10 +131,10 @@ Every one holds as the review states it.
   whether `y` is his confirm key everywhere.
   - Not in the undo-after-push box: it has two acting choices, so its answer is the cursor's.
   - Not in the journal's revert box: keymap §2.3b's exception, by his ruling.
-  - The box's footer leads with the key: `y push  ←→ choose  ⏎ act  esc cancel`.
-  - The force box has two options: (a) `y` works there too (one rule, H4); (b) `y` does not work there, and its footer
-    shows no `y`. **Recommend (b):** lazygit's users force-push out of habit on the one key (#3468), so the box that
-    rewrites other people's history keeps the cursor. Trade-off: one box behaves differently, but its footer says so.
+  - The box's hint bar leads with the key: `y push  ←/→ move  ⏎ choose  esc cancel`.
+  - The force box has two options: (a) `y` works there too (one rule, H4); (b) `y` does not work there, and its hint
+    bar shows no `y`. **Recommend (b):** lazygit's users force-push out of habit on the one key (#3468), so the box
+    that rewrites other people's history keeps the cursor. Trade-off: one box behaves differently, but its bar says so.
   - The push journey goes 3 → 2.
 - **P16: `⏎` in the commit editor's subject commits,** as it already does in the finish summary's subject (keymap :321).
   - `⇥` or `↓` reaches the body, where `⏎` is a newline. `⌃⏎` is unchanged.
@@ -141,26 +156,29 @@ None beyond P14–P17.
 
 ## Genuinely risky tickets
 - **The lease rule** (`lease-only-while-the-rejected-tip-stands`) is a git-write safety path.
-  - The rule is fixed above, so it needs no Fable build.
-  - What stays open is whether the refs can be stale: `P` pressed after a write lands but before its refs read does.
-    The spec turns this into a Step 0 test.
+  - The rule is fixed above, so it needs no Fable build; `builder-opus`, on the scout's word.
+  - The staleness question is closed: the window exists, and `RefsRead` is the state that closes it. What the builder
+    must still prove is that every refs ask and answer feeds it (two greps, in the spec).
 - The other specs are routing and words.
 
 ## Crates and parallelism
 - Every spec touches `graft`, so no two have disjoint crate sets (ADR-0036).
-- They share no files, except `update/keys.rs`, which M3a and M3b both touch.
+- They share no files, except `update/keys.rs` (M3a, M3b, and now the lease spec's `refresh_key` line) and
+  `update/mod.rs` (the lease spec's refs answer; M3a's `head_message_arrived` caller is read, not edited).
 - Suggested groups:
-  - **A** = `confirm-box-swallows-unknown-keys` + `lease-only-while-the-rejected-tip-stands` (confirm.rs, remote/*).
-  - **B** = `commit-key-never-opens-a-refusing-editor` (commit_editor.rs, keys).
+  - **A** = `confirm-box-swallows-unknown-keys` + `lease-only-while-the-rejected-tip-stands` (confirm.rs, remote/*,
+    state.rs, keys.rs:391, mod.rs). On `builder-opus`, the stricter of the two.
+  - **B** = `commit-key-never-opens-a-refusing-editor` (commit_editor.rs, tests/it).
   - A and B run one after the other, or in one worktree with one builder.
 - The three blocked specs also touch `graft-ui`: `confirm-box-takes-y`, `enter-in-commit-subject-commits`,
   `commit-key-finishes-the-live-operation`.
 
 ## For the conductor: edits to `m6-conflicts.md`
-This pass had no Edit tool, so the edits are given here as exact text.
+The planner has no Edit tool, and rewriting that 1,370-line note whole to change three lines risks it; the edits are
+given here as exact text.
 - **:505**, replace the comment after `5` with:
   `# M3a (usability M3): the editor never opens to refuse, so the walk starts in the changes pane: c (refused in words) + 2×⇥ + c + ⏎, still 5 · P14 → 2 (c ⏎; c y with P12)`
 - **:483**, append:
-  ` Superseded by usability fix M3a (m6-usability-fixes.md): the editor does not open; the pane answers in words, \`⇥ banner, then c …\`.`
-- **After :1366** (the end of "Proposed changes"), add:
+  ` Superseded by usability fix M3a (m6-usability-fixes.md): the editor does not open; the pane answers in words, \`merge in progress\` · \`⇥ banner, then c …\`.`
+- **After :1365** (the end of "Proposed changes", before "### Genuinely risky tickets" at :1367), add:
   `- **P14–P17:** see \`docs/design-notes/m6-usability-fixes.md\` (usability walk M1–M4).`
