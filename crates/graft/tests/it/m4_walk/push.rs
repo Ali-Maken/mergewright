@@ -1,8 +1,10 @@
 //! The push scenarios: the box, the upstream, the rejection and the lease.
 
+use graft::update::AppState;
 use graft_core::event::KeyCode;
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
+use graft_term::SanitizedText;
 
 use super::fixture::{Fixture, RemoteKind};
 use super::run::status_text;
@@ -181,7 +183,94 @@ fn push_detached_refused() -> Scenario {
 }
 
 pub(super) fn rejections() -> Vec<Scenario> {
-    vec![push_rejected_then_lease(), push_lease_refused_stale()]
+    vec![
+        push_rejected_then_lease(),
+        push_lease_refused_stale(),
+        push_rejected_rebased_then_plain(),
+    ]
+}
+
+/// TESTING.md scenario 13 (m6-conflicts/49): rejected, `p` names the
+/// divergence, `r r` rebases onto the teammate's work — now `P` is a plain
+/// push that fast-forwards, not a force-push.
+fn push_rejected_rebased_then_plain() -> Scenario {
+    Scenario {
+        name: "push-rejected-rebased-then-plain",
+        shape: Shape::Linear,
+        remote: RemoteKind::Local,
+        setup: |fixture| {
+            teammate_commits(fixture)?;
+            ours_locally(fixture)
+        },
+        steps: vec![
+            Step::WaitFor(Wait::Ready),
+            key(ch('P')),
+            Step::Confirm,
+            Step::Settle("the rejected push"),
+            Step::See("rejected", |state| {
+                sticky_containing(state, &["push rejected", "P force with lease"])
+            }),
+            Step::WaitFor(Wait::Ready),
+            key(ch('p')),
+            Step::Settle("the refused pull"),
+            Step::See("the line names the divergence and its keys", |state| {
+                sticky_containing(
+                    state,
+                    &[
+                        "main and origin/main have diverged",
+                        "m merge it",
+                        "r rebase onto it",
+                    ],
+                )
+            }),
+            Step::WaitFor(Wait::Ready),
+            key(ch('r')),
+            Step::WaitFor(Wait::PreviewPlanned),
+            key(ch('r')),
+            Step::Write("the rebase onto origin/main"),
+            Step::See("the rejection line is gone", |state| {
+                done_containing(state, "rebase")
+            }),
+            Step::WaitFor(Wait::Ready),
+            key(ch('P')),
+            Step::See("the plain box", the_plain_box),
+            Step::Confirm,
+            Step::Write("the plain push"),
+            Step::Mark("pushed"),
+        ],
+        expect: pushed_on_top_of_theirs,
+        capture: None,
+    }
+}
+
+/// The box `P` opened is the plain push: its title, no forced command, the
+/// action `Push`.
+fn the_plain_box(state: &AppState) -> Result<(), String> {
+    box_title_starts(state, "Push main → origin/main")?;
+    let pending = state.confirm.as_ref().ok_or_else(|| "no box".to_owned())?;
+    check(!pending.view.command.as_str().contains("--force"), || {
+        format!("a forced command: {}", pending.view.command.as_str())
+    })?;
+    check(
+        pending.view.choices.get(1).map(SanitizedText::as_str) == Some("Push"),
+        || format!("the action is {:?}", pending.view.choices),
+    )
+}
+
+/// The bare's `main` is the local tip, the teammate's commit its ancestor.
+fn pushed_on_top_of_theirs(fixture: &Fixture, marks: &Marks) -> Result<(), String> {
+    let theirs = bare_ref(&marks.before, &fixture.main_ref())?.to_owned();
+    let pushed = marks.get("pushed")?;
+    let local = head(pushed)?.to_owned();
+    check(bare_ref(pushed, &fixture.main_ref())? == local, || {
+        "the bare's main is not the local tip".to_owned()
+    })?;
+    run_git(
+        fixture.work(),
+        &["merge-base", "--is-ancestor", &theirs, &local],
+    )
+    .map(drop)
+    .map_err(|why| format!("the teammate's commit is not under the pushed tip: {why}"))
 }
 
 fn push_rejected_then_lease() -> Scenario {

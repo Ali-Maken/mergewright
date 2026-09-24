@@ -56,8 +56,8 @@ pub use events::{
 pub(crate) use geometry::context_menu_area;
 pub use relaunch::LiveOrigin;
 pub use state::{
-    AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, HeadLanding, Quit, Screen, Size, Status,
-    Stop,
+    AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, HeadLanding, Quit, RefsRead, Screen,
+    Size, Status, Stop,
 };
 
 use graft_core::event::{Event, KeyPress};
@@ -90,6 +90,7 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     let walk = state.local_jobs.next_id();
     state.awaiting = Some(walk);
     let refs = state.local_jobs.next_id();
+    state.refs_read.asked(refs);
     let tree = state.local_jobs.next_id();
     let read_tree = status_read::ask(&mut state, tree);
     let commands = vec![
@@ -679,6 +680,7 @@ fn took_fact(
         }
         Product::Refs(Ok(refs)) => {
             next.refs = Some(std::sync::Arc::new(refs));
+            next.refs_read.answered(id, true);
             // A finished `--continue` waits on this read for the new
             // `HEAD` (m6-conflicts/12); any other read passes it by.
             banner::refs_answered(next, commands, id);
@@ -687,6 +689,7 @@ fn took_fact(
             // The graph still draws without badges; the reason goes on the
             // status line rather than leaving them silently missing.
             next.status = Status::Failed(failure);
+            next.refs_read.answered(id, false);
             // The read a finished `--continue` waited on has no `HEAD` to
             // give: the landing is dropped (the failure is on screen)
             // rather than spent on the stale refs still held.

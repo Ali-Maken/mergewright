@@ -388,7 +388,9 @@ pub(super) fn refresh_key(
     next.awaiting = Some(walk);
     commands.push(Command::OpenRepository);
     commands.push(Command::ReadHistory(walk, Order::Topological));
-    commands.push(Command::ReadRefs(next_id()));
+    let refs = next_id();
+    next.refs_read.asked(refs);
+    commands.push(Command::ReadRefs(refs));
     super::remote::request(next, commands, next_id);
     let tree = next_id();
     commands.push(super::status_read::ask(next, tree));

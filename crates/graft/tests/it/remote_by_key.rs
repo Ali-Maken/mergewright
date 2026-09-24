@@ -16,7 +16,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use graft::update::detail::Loading;
-use graft::update::{AppState, Status};
+use graft::update::{AppState, RefsRead, Status};
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 use graft_fixtures::Shape;
@@ -97,6 +97,9 @@ fn ready(app: &App, state: AppState) -> AppState {
     app.pump(state, "the first rows, refs and remote facts", |state| {
         state.working_tree.is_some()
             && state.refs.is_some()
+            // The refs the last read asked for: after a write's refresh `P`
+            // refuses in words until they land (m6-conflicts/49).
+            && !matches!(state.refs_read, RefsRead::Pending(_))
             && matches!(state.remotes, Loading::Ready(_))
             && state.remote.reading.is_none()
             && state
@@ -967,4 +970,104 @@ fn undo_after_push_header() -> String {
      # this file, at the width it was drawn at, so the capture can be\n\
      # compared to the code. Nothing else here is normalised.\n"
         .to_owned()
+}
+
+/// The caption of `fix-plain-box-after-rebase-187x50.txt`: what right looks
+/// like, and what the capture cannot show.
+const PLAIN_BOX_AFTER_REBASE_HEADER: &str = "\
+# TestBackend capture (not a pty), 187x50, no colour recorded. Fixture:
+# capture_fix_plain_box_after_rebase in crates/graft/tests/it/remote_by_key.rs
+# (asserted). A teammate pushed; `P` `→` `⏎` was rejected; `p` named the
+# divergence; `r` `r` rebased onto origin/main; then `P` (m6-conflicts/49).
+# The rebased commit is drawn moments before the frame, so its id is new
+# every run: it is zeroed to `0000000` here. Nothing else is normalised.
+#
+# Judge by eye:
+# - The box is titled `Push main → origin/main`, not `Force-push`.
+# - Its line starts with the ahead count (`1 commit`).
+# - The command row has no `--force-with-lease`.
+# - The action reads `Push`, not `Force push`.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+";
+
+/// `P` `→` `⏎` rejected, then `p` refused as diverged: the state `r` answers.
+fn rejected_then_diverged(app: &App, state: AppState, branch: &str) -> AppState {
+    let state = ready(app, state);
+    let state = app.press(&state, plain('P'));
+    let state = confirm(app, &state);
+    let state = finish(app, state, "the rejected push");
+    assert_eq!(state.status, rejected_status(branch));
+
+    let state = ready(app, state);
+    let state = app.press(&state, plain('p'));
+    let state = finish(app, state, "the refused pull");
+    let Status::Sticky { reason, .. } = &state.status else {
+        panic!("a diverged pull is a sticky line: {:?}", state.status);
+    };
+    assert!(reason.contains("have diverged"), "{reason}");
+    state
+}
+
+/// Regenerates `docs/shots/m6/fix-plain-box-after-rebase-187x50.txt`
+/// (m6-conflicts/49): a teammate pushed, `P` was rejected, `p` named the
+/// divergence, `r r` rebased onto their work — now `P` opens the plain box.
+///
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it remote_by_key::capture_fix_plain_box_after_rebase`.
+#[test]
+fn capture_fix_plain_box_after_rebase() {
+    let remote = local();
+    let work = remote.work();
+    remote
+        .commit_on_remote("theirs")
+        .expect("a teammate's push");
+    remote.commit_locally("ours").expect("a local commit");
+    let branch = remote.default_branch();
+
+    let (app, state) = App::open(work);
+    let state = rejected_then_diverged(&app, state, branch);
+
+    let state = ready(&app, state);
+    let state = app.press(&state, plain('r'));
+    let state = app.pump(state, "the preview's plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !matches!(preview.plan, Loading::Pending(_) | Loading::Idle))
+    });
+    let state = app.press(&state, plain('r'));
+    let state = app.settle_write(state, "the rebase");
+    let state = ready(&app, state);
+    let rebased = rev(work, "HEAD");
+
+    let state = app.press(&state, plain('P'));
+    let pending = state.confirm.as_ref().expect("P opened a box");
+    assert_eq!(
+        pending.view.title.as_str(),
+        format!("Push {branch} → origin/{branch}")
+    );
+    assert!(
+        !pending.view.command.as_str().contains("--force"),
+        "{}",
+        pending.view.command.as_str()
+    );
+    assert_eq!(
+        pending
+            .view
+            .choices
+            .get(1)
+            .map(graft_term::SanitizedText::as_str),
+        Some("Push")
+    );
+
+    let drawn = frame(&state, 187, 50).join("\n");
+    check_shot(
+        "m6/fix-plain-box-after-rebase-187x50.txt",
+        &format!(
+            "{PLAIN_BOX_AFTER_REBASE_HEADER}{}\n",
+            without_invented_id(&drawn, &rebased)
+        ),
+    );
+    drop(state);
+    app.close();
 }

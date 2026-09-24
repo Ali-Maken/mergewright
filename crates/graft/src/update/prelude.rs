@@ -19,7 +19,7 @@
 use graft_core::event::KeyPress;
 
 use super::detail::Loading;
-use super::state::AppState;
+use super::state::{AppState, RefsRead};
 
 /// The next prelude key to feed, taken off the front; `None` while the
 /// prelude is empty or the state has something in flight to wait for.
@@ -42,7 +42,9 @@ fn settled(state: &AppState) -> bool {
         .history
         .as_ref()
         .is_some_and(|history| history.window.is_some());
-    let refs = state.refs.is_some();
+    // The refs the last read asked for, not the ones from before a write:
+    // `P` refuses in words while that read is pending (m6-conflicts/49).
+    let refs = state.refs.is_some() && !matches!(state.refs_read, RefsRead::Pending(_));
     let status = state.working_tree.is_some();
     let quiet = !matches!(state.radar.context, Loading::Pending(_))
         && state
@@ -53,8 +55,11 @@ fn settled(state: &AppState) -> bool {
         && !matches!(state.detail.diff, Loading::Pending(_));
     // M3's writes and reads: a key pressed while one of these is in flight
     // would act on the state before it, which is exactly the race a capture
-    // must not show.
+    // must not show. The remote facts a write's refresh re-reads count too:
+    // `P` after a rejection refuses in words until they land
+    // (m6-conflicts/49).
     let writes_landed = state.operating.is_none()
+        && state.remote.reading.is_none()
         && state.journal.reading.is_none()
         && !matches!(state.stash.entries, Loading::Pending(_))
         && state.head_message.is_none()

@@ -68,6 +68,11 @@ pub struct AppState {
     /// owned: every event clones the state, and a repository with 50k refs
     /// made copying them the dearest part of a frame (m1-the-graph/69).
     pub refs: Option<Arc<crate::refs::RefBadges>>,
+    /// Whether [`AppState::refs`] answers the last refs read asked for.
+    /// Asked beside every `Command::ReadRefs` (the launch, `keys::refresh_key`),
+    /// answered where the refs land (`took_fact`). `P` reads it: the lease is
+    /// offered only on current refs (m6-conflicts/49).
+    pub refs_read: RefsRead,
     /// The working tree's full status, once that job has answered. `None`
     /// until then, and while it fails: a failed read goes on the status line
     /// rather than showing a stale count. Shared, not owned — the changes
@@ -723,6 +728,46 @@ pub struct Stop {
     pub kind: graft_git::state::InProgress,
     /// Unmerged paths when it stopped — the count until a read says more.
     pub paths_at_stop: usize,
+}
+
+/// Whether [`AppState::refs`] is the answer to the last refs read asked for.
+///
+/// Every refs answer is stored whatever its id (`took_fact`), so an older read
+/// can land after a newer one; this is what tells the two apart without
+/// dropping the answer (`head_landing` waits on its own id).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RefsRead {
+    /// No read asked, the read asked failed, or an older answer overwrote a
+    /// newer one.
+    #[default]
+    Unknown,
+    /// This read was asked and has not answered.
+    Pending(JobId),
+    /// `refs` holds this read's answer, and no read has been asked since.
+    Current(JobId),
+}
+
+impl RefsRead {
+    /// A `Command::ReadRefs(id)` was issued: it supersedes whatever was
+    /// asked or held before.
+    pub fn asked(&mut self, id: JobId) {
+        *self = Self::Pending(id);
+    }
+
+    /// A refs answer under `id` landed (`ok`: it was stored).
+    ///
+    /// `Ok`: the read asked → `Current`; while a newer read is pending the
+    /// answer is older and stays `Pending`; over a current answer it is an
+    /// older one overwriting it → `Unknown`. `Err`: the read asked failed →
+    /// `Unknown` (the refs held are from before it); any other stays.
+    pub fn answered(&mut self, id: JobId, ok: bool) {
+        *self = match (*self, ok) {
+            (Self::Pending(asked), true) if asked == id => Self::Current(id),
+            (Self::Pending(asked), false) if asked == id => Self::Unknown,
+            (Self::Current(_), true) => Self::Unknown,
+            (other, _) => other,
+        };
+    }
 }
 
 /// The reads a pending [`AppState::land_on_head`] still waits on.

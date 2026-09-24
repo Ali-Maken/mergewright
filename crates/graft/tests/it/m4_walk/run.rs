@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use graft::jobs::Dispatch as _;
 use graft::update::detail::Loading;
-use graft::update::{AppState, Status, update};
+use graft::update::{AppState, RefsRead, Status, update};
 use graft_core::event::KeyCode;
 
 use super::fixture::{Fixture, SECRETS};
@@ -271,6 +271,11 @@ impl Walk<'_> {
                 })?;
                 Ok(state)
             }
+            Wait::PreviewPlanned => self.pump(state, "the preview's plan", |state| {
+                state.preview.as_ref().is_some_and(|preview| {
+                    !matches!(preview.plan, Loading::Pending(_) | Loading::Idle)
+                })
+            }),
             Wait::JournalHas(kind) => self.pump(state, "the journal re-read", move |state| {
                 matches!(&state.journal.entries, Loading::Ready(read)
                     if read.entries.iter().any(|entry| entry.kind == kind))
@@ -347,6 +352,9 @@ impl Walk<'_> {
 fn ready(state: &AppState) -> bool {
     state.working_tree.is_some()
         && state.refs.is_some()
+        // The refs answer the last read asked, not the ones before a write:
+        // `P` refuses in words while a read is pending (m6-conflicts/49).
+        && !matches!(state.refs_read, RefsRead::Pending(_))
         && matches!(state.remotes, Loading::Ready(_))
         && state.remote.reading.is_none()
         && state.operating.is_none()
