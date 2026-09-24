@@ -331,7 +331,7 @@ pub fn apply_take_all(repo: &RepoHandle, path: &Path, file: &ConflictFile, take:
 
 // graft-core journal + graft-ops                                                fix-continue-a-merge-begun-in-the-shell (P4)
 pub enum OperationKind { …, FinishMerge }
-pub enum Operation { …, FinishMerge(FinishMergeParams) }   pub struct FinishMergeParams { pub merge_head: Oid }
+pub enum Operation { …, FinishMerge(FinishMergeParams) }   pub struct FinishMergeParams { pub merge_head: Oid, pub message: Option<Vec<u8>> }
 pub struct MergeState { pub merge_head: Oid, pub merge_msg: Vec<u8>, pub merge_mode: Option<Vec<u8>> }  // JournalEntry gains merge_before / merge_after, recorded on every entry
 // undo: Step::SetMergeState(Option<MergeState>) — last step; Some writes MERGE_HEAD/MERGE_MSG/MERGE_MODE back, None removes them (redo) (ticket 20, spec pass 2026-09-24)
 ```
