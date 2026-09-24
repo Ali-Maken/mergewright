@@ -18,7 +18,7 @@ In:
 9. Real-git tests and captures: `tests/it/finish.rs` (extend `gone_and_notes_merge` so `feature` also changes one `README.md` line cleanly, if 34 hasn't); captures `docs/shots/m6/fix-finish-summary-{120x40,160x48,200x50}.txt` and `…-expanded-120x40.txt`. Look is the user's; colour unverified.
 
 ## Acceptance
-Tick **in ticket 19's list** (19 `:169`–`:172`, `:182`), each naming its test at tick time.
+Tick **in ticket 19's list** (19 `:169`–`:172`, `:182`, and `:161` — left by 34: its test fed the editor's answer, no real `$EDITOR` ran; the box wants a fake `$EDITOR` script that appends the line. 19's gotcha: the harness JobRunner panics on handover commands — run the real handover in `tests/it`, or say why it can't and stop that box), each naming its test at tick time.
 - [ ] 19's boxes above ticked with tests
 - [ ] 19's Status set to done once 34 and 35 hold every box but `:181` (ticket 21's)
 - [ ] Gates workspace-wide: fmt, clippy `-D warnings`, nextest, doctests
