@@ -485,23 +485,23 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 a-merge-to-stop               2
 a-stop-to-first-conflict      0                     # JetBrains 0
 b-launch-to-first-conflict    1
-one-file-one-conflict         2     P6:1            # JetBrains 2
-three-conflicts-all-theirs    2     P6:1            # JetBrains Accept Theirs 1
+one-file-one-conflict         1                    # JetBrains 2
+three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1
 modify-delete-keep-yours      1                     # JetBrains 1
-two-files-in-order            3     P6:2            # JetBrains 2
-two-files-out-of-order        4     P6:3
+two-files-in-order            2                    # JetBrains 2
+two-files-out-of-order        3
 a-finish                      2                     # lazygit 1 (bare confirm, rejected)
 b-finish                      2
 summary-open-git-combined     1
 back-after-esc                2
 open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
 walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?)
-a-whole-one-file              6     P6:5            # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish
-a-whole-two-files             7     P6:6            # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish
-b-whole-two-files             6     P6:5            # b-launch-to-first-conflict + two-files-in-order + b-finish
+a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish
+a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish
+b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish
 ```
-The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. When P6 is
-approved, the conductor moves the `P6:` numbers into `keys`.
+The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
+moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.
 
 ### Interfaces and data shapes (amendment 2)
 ```rust
