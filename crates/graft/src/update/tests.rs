@@ -4604,6 +4604,8 @@ fn journal_entry() -> graft_core::journal::JournalEntry {
         pins: Vec::new(),
         commands: vec!["git commit".to_owned()],
         reverses: None,
+        merge_before: None,
+        merge_after: None,
     }
 }
 

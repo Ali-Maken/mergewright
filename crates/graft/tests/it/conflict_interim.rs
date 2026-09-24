@@ -942,6 +942,8 @@ fn killed_mid_rebase() -> graft_fixtures::Scratch {
             pins: Vec::new(),
             commands: Vec::new(),
             reverses: None,
+            merge_before: None,
+            merge_after: None,
         })
         .expect("the pending line is written");
     scratch
