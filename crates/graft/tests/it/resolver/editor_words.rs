@@ -221,3 +221,19 @@ fn the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge() {
     app.close();
     drop(scratch);
 }
+
+/// **The 80x24 check (ticket 40):** on a merge Graft began, the whole
+/// sentence shows at the narrow breakpoint.
+#[test]
+fn the_graft_merge_words_fit_at_80_by_24() {
+    let (scratch, app, state) = resolved_graft_merge();
+    let open = editor_open(&app, state);
+    super::shell_begun::the_words_fit(
+        &open,
+        "merge in progress — esc, ⇥ banner, then c continue  a abort",
+        80,
+        24,
+    );
+    app.close();
+    drop(scratch);
+}

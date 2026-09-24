@@ -99,10 +99,41 @@ fn the_grid_says_which_options_are_on() {
     assert!(drawn.contains("[ ] allow empty"), "{drawn}");
 }
 
+/// The options row: the one holding `[ Commit ]`.
+fn options_row(lines: &[&str]) -> usize {
+    lines
+        .iter()
+        .position(|line| line.contains("[ Commit ]"))
+        .expect("the options row is drawn")
+}
+
+/// m6-conflicts/40: at 80 columns nothing fits beside `[ Commit ]`, so the
+/// refusal has a full-width row of its own directly above the options row.
 #[test]
-fn a_refusal_is_drawn_beside_the_button() {
-    let drawn = draw(&view(Field::CommitButton, Some("nothing staged")), 100, 20);
-    assert!(drawn.contains("[ Commit ]  nothing staged"), "{drawn}");
+fn the_refusal_has_its_own_row_above_the_options() {
+    let words = "merge begun in the shell — esc, ⇥ banner, then c finishes it";
+    let drawn = draw(&view(Field::Subject, Some(words)), 80, 24);
+    let lines: Vec<&str> = drawn.lines().collect();
+    let options = options_row(&lines);
+    assert_eq!(lines[options - 1], format!("  {words}"), "{drawn}");
+    assert!(lines[options].trim_end().ends_with("[ Commit ]"), "{drawn}");
+}
+
+/// Not refused, the layout is what it was before ticket 40: the body block
+/// keeps the row the refusal would take — 18 rows (label + 17 lines) at
+/// 80x24, from row 4 up to the options row at 22.
+#[test]
+fn without_a_refusal_the_body_keeps_the_row() {
+    let drawn = draw(&view(Field::Subject, None), 80, 24);
+    let lines: Vec<&str> = drawn.lines().collect();
+    let options = options_row(&lines);
+    let body_top = lines
+        .iter()
+        .position(|line| line.contains(" Body"))
+        .expect("the body label");
+    assert_eq!((body_top, options), (4, 22), "{drawn}");
+    assert_eq!(options - body_top, 18, "body rows: {drawn}");
+    assert_eq!(lines[options - 1], "", "a body row, nothing on it: {drawn}");
 }
 
 #[test]
@@ -120,8 +151,9 @@ fn a_tiny_area_still_draws_the_title_and_never_panics() {
             assert!(!drawn.is_empty() || columns == 0, "{columns}×{rows}");
         }
     }
-    assert!(!fits(Rect::new(0, 0, 80, 6)));
-    assert!(fits(Rect::new(0, 0, 80, 7)));
+    // The refusal row is budgeted always (m6-conflicts/40): 8, not 7.
+    assert!(!fits(Rect::new(0, 0, 80, 7)));
+    assert!(fits(Rect::new(0, 0, 80, 8)));
 }
 
 #[test]

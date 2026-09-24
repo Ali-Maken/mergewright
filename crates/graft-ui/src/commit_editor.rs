@@ -174,6 +174,11 @@ const FOOTER: &str = "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-of
 /// blank, then the options row and the footer at the bottom.
 const CHROME_ROWS: u16 = 6;
 
+/// The refusal's own row above the options row (m6-conflicts/40): budgeted
+/// always, so `fits` needs no view; drawn only when refused, and the body
+/// keeps it otherwise.
+const REFUSAL_ROWS: u16 = 1;
+
 impl Widget for &CommitEditorScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.width == 0 || area.height == 0 {
@@ -219,21 +224,37 @@ impl Widget for &CommitEditorScreen<'_> {
         if area.height == 2 {
             return;
         }
-        self.draw_options(buf, area, footer_row - 1);
+        let options_row = footer_row - 1;
+        self.draw_options(buf, area, options_row);
         if area.height == 3 {
             return;
         }
 
-        self.draw_text(buf, area, footer_row);
+        // Refused, the reason takes the row above the options and the body
+        // ends one row higher; it never shares the subject's row.
+        let text_bottom = match &self.view.refusal {
+            Some(refusal) if options_row - 1 > area.y + 2 => {
+                buf.set_string(
+                    area.x,
+                    options_row - 1,
+                    fit(&format!("  {}", refusal.as_str()), width),
+                    foreground(self.theme, Token::TextMuted),
+                );
+                options_row - 1
+            }
+            _ => options_row,
+        };
+        self.draw_text(buf, area, text_bottom);
     }
 }
 
 impl CommitEditorScreen<'_> {
     /// The subject line, and the body in whatever rows are left between it
-    /// and the options row. Either is skipped when there is no room.
-    fn draw_text(&self, buf: &mut Buffer, area: Rect, footer_row: u16) {
+    /// and `bottom`, the first row below them (the refusal's or the
+    /// options'). Either is skipped when there is no room.
+    fn draw_text(&self, buf: &mut Buffer, area: Rect, bottom: u16) {
         let subject_row = area.y + 2;
-        if subject_row >= footer_row - 1 {
+        if subject_row >= bottom {
             return;
         }
         (&FieldWidget {
@@ -252,7 +273,7 @@ impl CommitEditorScreen<'_> {
             );
 
         let body_top = subject_row + 2;
-        let Some(body_height) = (footer_row - 1).checked_sub(body_top) else {
+        let Some(body_height) = bottom.checked_sub(body_top) else {
             return;
         };
         if body_height == 0 {
@@ -273,7 +294,9 @@ impl CommitEditorScreen<'_> {
             );
     }
 
-    /// `▸ [x] amend   [ ] sign-off …   ▸ [ Commit ]  nothing staged`.
+    /// `▸ [x] amend   [ ] sign-off …   ▸ [ Commit ]` — a refusal's reason
+    /// has its own row above (m6-conflicts/40); only `committing…` follows
+    /// the button.
     fn draw_options(&self, buf: &mut Buffer, area: Rect, row: u16) {
         let mut line = String::new();
         for (field, on) in &self.view.options {
@@ -291,10 +314,7 @@ impl CommitEditorScreen<'_> {
             ' '
         };
         line.push_str(&format!("{marker} [ Commit ]"));
-        if let Some(refusal) = &self.view.refusal {
-            line.push_str("  ");
-            line.push_str(refusal.as_str());
-        } else if self.view.busy {
+        if self.view.busy && self.view.refusal.is_none() {
             line.push_str("  committing…");
         }
         let token = if self.view.refusal.is_some() || self.view.busy {
@@ -313,10 +333,11 @@ impl CommitEditorScreen<'_> {
 
 /// Whether an area is tall enough for the editor to draw a body line at all.
 /// Below this it still draws — title, subject, options, footer — but the body
-/// is off screen, so the caller can say so.
+/// is off screen, so the caller can say so. The refusal's row is counted
+/// whether or not there is a refusal.
 #[must_use]
 pub fn fits(area: Rect) -> bool {
-    area.height > CHROME_ROWS && area.width > 0
+    area.height > CHROME_ROWS + REFUSAL_ROWS && area.width > 0
 }
 
 #[cfg(test)]
