@@ -138,7 +138,7 @@ pub fn open(state: &mut AppState, amend: bool, next_id: &mut impl FnMut() -> Job
   route sentence.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `the_editor_words_are_unchanged` (`src/update/commit_editor/tests.rs`): green **after** only. Not run before the refactor — the same edit added `operation_refusal`, so the file did not compile against the old code. The table's strings were copied from the base's literals (`commit_editor.rs:213`, `:225`, `continue_command`); the pre-existing `a_merge_in_progress_*`/`a_bisect_*`/shell tests on the editor row are green. Left unticked: the "before" half is unobserved.
+- [x] `the_editor_words_are_unchanged` (`src/update/commit_editor/tests.rs`): green on the base 9dae37a8 (temp worktree, the table and test copied in minus the `operation_refusal` line, which does not exist there; `cargo test -p graft --lib`, own target, 1 passed) and green on 39e92ddd (1 passed). Temp worktree and target removed.
 - [x] `c_and_a_with_a_merge_live_answer_in_words` (`tests/it/resolver/editor_words.rs`): red with the impl stashed (`` `c` opened the editor``), then green.
 - [x] `the_pane_status_is_the_editor_words_split` (`commit_editor/tests.rs`)
 - [x] `every_way_to_open_the_editor_refuses_mid_operation` (`editor_words.rs`): graph and changes pane × `c`, `a`; the grep in NOTES.
