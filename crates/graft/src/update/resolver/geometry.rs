@@ -8,9 +8,9 @@ use graft_ui::conflict_resolver::{
 
 use crate::update::state::AppState;
 
-/// `top` moved as little as it must for `block`'s header row to be on
-/// screen — and, when it must move at all, with the header on the **first**
-/// row, since everything the block is about is below it.
+/// `top` moved as little as it must for `block`'s header (card) or rule
+/// (three panes) row to be on screen — and, when it must move at all, with
+/// that row **first**, since everything the block is about is below it.
 #[must_use]
 pub fn scroll_block_into_view(layout: &Layout, block: usize, top: usize, height: u16) -> usize {
     let height = usize::from(height).max(1);
@@ -66,11 +66,27 @@ pub fn fits(state: &AppState) -> bool {
             >= MIN_ROWS
 }
 
-/// The document laid out at this frame's width, with the rows on screen.
+/// The document laid out at this frame's width, in the arrangement the
+/// draw uses (both from `resolver_split`), with the rows on screen.
 pub(super) fn body(state: &AppState) -> Option<(Layout, u16)> {
-    let doc = areas(state).2.doc;
-    let layout = crate::view::resolver::resolver_layout(state, doc.width)?;
-    Some((layout, doc.height.saturating_sub(HEADER_ROWS)))
+    let (_, placed, split) = areas(state);
+    let layout = crate::view::resolver::resolver_layout(state, placed, split.doc.width)?;
+    Some((layout, split.doc.height.saturating_sub(HEADER_ROWS)))
+}
+
+/// After a resize: the cursor block back in view, and the window no
+/// further down than the document goes. Crossing
+/// [`THREE_PANE_MIN`](graft_ui::conflict_resolver::THREE_PANE_MIN) swaps the
+/// card's rows for the panes' (or back), so the old `top` can land
+/// anywhere.
+pub fn resized(state: &mut AppState) {
+    let Some(block) = state.resolver.as_ref().and_then(|open| open.cursor_block) else {
+        return;
+    };
+    let top = scrolled_to(state, block).min(max_top(state));
+    if let Some(open) = state.resolver.as_mut() {
+        open.top = top;
+    }
 }
 
 /// The largest `top` that still shows a full window of document.

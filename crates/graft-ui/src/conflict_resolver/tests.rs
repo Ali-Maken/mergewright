@@ -67,7 +67,11 @@ fn three_block_doc(base_shown: bool) -> DocView {
         names: names(),
         regions: vec![
             RegionView::Plain {
-                first_line: 38,
+                numbers: BlockNumbers {
+                    ours: 38,
+                    theirs: 38,
+                    result: 38,
+                },
                 lines: lines(&["fn refresh(&mut self) {"]),
             },
             RegionView::Block(open_block(
@@ -78,7 +82,11 @@ fn three_block_doc(base_shown: bool) -> DocView {
                 &["if is_expired() {", "self.do_refresh();"],
             )),
             RegionView::Plain {
-                first_line: 41,
+                numbers: BlockNumbers {
+                    ours: 41,
+                    theirs: 41,
+                    result: 41,
+                },
                 lines: lines(&["}"]),
             },
             RegionView::Block(BlockView {
@@ -113,6 +121,8 @@ fn block_kind(row: &ScreenRow) -> &'static str {
         ScreenRow::End { .. } => "End",
         ScreenRow::WholeFile { .. } => "WholeFile",
         ScreenRow::Note { .. } => "Note",
+        ScreenRow::PaneTitles => "PaneTitles",
+        ScreenRow::Aligned { .. } => "Aligned",
     }
 }
 
@@ -123,7 +133,7 @@ fn block_kind(row: &ScreenRow) -> &'static str {
 #[test]
 fn layout_wide_rows_in_order() {
     let doc = three_block_doc(true);
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     let shape: Vec<&'static str> = laid.rows.iter().map(block_kind).collect();
 
     // Region 0: one Plain line.
@@ -171,7 +181,7 @@ fn layout_wide_rows_in_order() {
 #[test]
 fn layout_narrow_stacks() {
     let doc = three_block_doc(true);
-    let laid = layout(&doc, 80);
+    let laid = layout(&doc, Arrangement::Card, 80);
     assert!(
         !laid
             .rows
@@ -214,7 +224,7 @@ fn layout_narrow_stacks() {
 fn block_row_points_at_headers() {
     let doc = three_block_doc(false);
     for columns in [80u16, 120] {
-        let laid = layout(&doc, columns);
+        let laid = layout(&doc, Arrangement::Card, columns);
         for (index, &row_index) in laid.block_row.iter().enumerate() {
             assert_eq!(
                 laid.rows[row_index],
@@ -229,7 +239,7 @@ fn block_row_points_at_headers() {
 #[test]
 fn row_at_is_offset() {
     let doc = three_block_doc(false);
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     for top in [0usize, 3, laid.rows.len()] {
         for r in 0u16..3 {
             assert_eq!(row_at(&laid, top, r), laid.rows.get(top + usize::from(r)));
@@ -248,7 +258,7 @@ fn a_taken_block_never_draws_base() {
         block.base = Some((text("base"), lines(&["old_way_base();"])));
     }
     for columns in [80u16, 120] {
-        let laid = layout(&doc, columns);
+        let laid = layout(&doc, Arrangement::Card, columns);
         let block1_rows: Vec<&ScreenRow> = laid
             .rows
             .iter()
@@ -303,7 +313,7 @@ fn draw(
 #[test]
 fn resolver_tiny_frame_says_so() {
     let doc = three_block_doc(false);
-    let laid = layout(&doc, 50);
+    let laid = layout(&doc, Arrangement::Card, 50);
     let buf = draw(&doc, &laid, 0, 50, 8, false);
     let first_row: String = (0..50)
         .map(|x| buf[(x, 0)].symbol().chars().next().unwrap_or(' '))
@@ -340,7 +350,7 @@ fn resolver_ascii_tier_is_ascii() {
         }
     }
     for columns in [80u16, 120] {
-        let laid = layout(&doc, columns);
+        let laid = layout(&doc, Arrangement::Card, columns);
         let buf = draw(&doc, &laid, 0, columns, 24, true);
         for cell in buf.content() {
             for ch in cell.symbol().chars() {
@@ -364,7 +374,11 @@ fn resolver_ascii_tier_is_ascii() {
 #[test]
 fn resolver_draws_only_the_window() {
     let mut regions = vec![RegionView::Plain {
-        first_line: 1,
+        numbers: BlockNumbers {
+            ours: 1,
+            theirs: 1,
+            result: 1,
+        },
         lines: (1..=4000).map(|n| text(&format!("line {n}"))).collect(),
     }];
     let doc = DocView {
@@ -376,7 +390,7 @@ fn resolver_draws_only_the_window() {
         base_shown: false,
         notice: None,
     };
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     assert_eq!(laid.rows.len(), 4000);
 
     let full = Rect::new(0, 0, 140, 30);
@@ -472,6 +486,8 @@ fn whole_file_doc() -> DocView {
             keys: text("o keeps the file  t deletes it"),
             lines: lines(&["one", "two"]),
             note: Some(text("and 3 more lines unread")),
+            ours_absent: None,
+            theirs_absent: Some(text("(deleted on theirs · feature)")),
         }],
         cursor_block: None,
         base_shown: false,
@@ -487,7 +503,7 @@ fn no_marker_row_draws_a_number() {
     for doc in [three_block_doc(true), whole_file_doc()] {
         for columns in WIDTHS {
             for ascii in [false, true] {
-                let laid = layout(&doc, columns);
+                let laid = layout(&doc, Arrangement::Card, columns);
                 let rows = u16::try_from(laid.rows.len()).unwrap() + HEADER_ROWS;
                 let buf = draw(&doc, &laid, 0, columns, rows, ascii);
                 for (index, row) in laid.rows.iter().enumerate() {
@@ -596,7 +612,7 @@ fn both_sides_are_numbered_at_every_width() {
     let doc = three_block_doc(true);
     for columns in WIDTHS {
         for ascii in [false, true] {
-            let laid = layout(&doc, columns);
+            let laid = layout(&doc, Arrangement::Card, columns);
             let rows = u16::try_from(laid.rows.len()).unwrap() + HEADER_ROWS;
             let buf = draw(&doc, &laid, 0, columns, rows, ascii);
             let divider = if ascii { '|' } else { '│' };
@@ -613,7 +629,7 @@ fn both_sides_are_numbered_at_every_width() {
         }
     }
     // The taken block (took theirs, result 42) reads 42, not its theirs 128.
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     let buf = draw(&doc, &laid, 0, 120, 40, false);
     let y = HEADER_ROWS + u16::try_from(laid.block_row[1]).unwrap() + 1;
     assert!(starts_with_number(&content_text(&buf, y, 120), 42));
@@ -627,7 +643,7 @@ fn both_sides_are_numbered_at_every_width() {
 #[test]
 fn plain_and_block_numbers_share_one_column() {
     let doc = three_block_doc(false);
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     let buf = draw(&doc, &laid, 0, 120, 24, false);
 
     // Row 0 (`Plain`, "38 fn refresh…") and the first `Pair` row of block 0
@@ -660,7 +676,7 @@ fn first_digit_x(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> Option<u1
 #[test]
 fn only_the_cursor_headers_reverses() {
     let doc = three_block_doc(false); // cursor_block: Some(0)
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     let buf = draw(&doc, &laid, 0, 120, 24, false);
 
     let is_reversed = |y: u16| {
@@ -698,7 +714,7 @@ fn a_layout_naming_a_block_the_doc_no_longer_has_does_not_panic() {
     let doc = three_block_doc(false);
     // Lay out the full three-block doc, then drop block 0 from the doc
     // without re-laying-out — exactly the shape a stale `Layout` takes.
-    let laid = layout(&doc, 120);
+    let laid = layout(&doc, Arrangement::Card, 120);
     let mut stale_doc = doc.clone();
     stale_doc.regions.remove(1); // RegionView::Block(0)
 
@@ -713,3 +729,5 @@ fn arrangement_turns_at_180() {
     assert_eq!(arrangement(180), Arrangement::ThreePane);
     assert_eq!(arrangement(THREE_PANE_MIN), Arrangement::ThreePane);
 }
+
+mod three_panes;

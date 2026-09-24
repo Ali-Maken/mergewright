@@ -61,8 +61,9 @@ pub struct SideNames {
     pub roles: SideRoles,
 }
 
-/// Where an open block's lines start in each projection, 1-based
-/// (`graft_git::conflict::ConflictFile::first_lines`).
+/// This region's first line in each projection, 1-based
+/// (`graft_git::conflict::ConflictFile::first_lines`): a block's, or a plain
+/// region's (`RegionView::Plain::numbers`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BlockNumbers {
     /// Its first yours line, counted in the ours projection.
@@ -82,7 +83,7 @@ pub fn number_width(doc: &DocView) -> usize {
         .regions
         .iter()
         .map(|region| match region {
-            RegionView::Plain { first_line, lines } => last(*first_line, lines.len()),
+            RegionView::Plain { numbers, lines } => last(numbers.result, lines.len()),
             RegionView::WholeFile { lines, .. } => lines.len(),
             RegionView::Block(block) => last(block.numbers.ours, block.ours.len())
                 .max(last(block.numbers.theirs, block.theirs.len()))

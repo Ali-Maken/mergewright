@@ -315,8 +315,10 @@ fn a_click_on_the_document_still_picks_its_block() {
             "{} files",
             paths.len()
         );
-        let laid =
-            crate::view::resolver::resolver_layout(&state, state.size.columns).expect("a document");
+        let (_, placed, split) =
+            crate::view::resolver::resolver_split(&state, super::super::banner_rows(&state));
+        let laid = crate::view::resolver::resolver_layout(&state, placed, split.doc.width)
+            .expect("a document");
         let header = u16::try_from(laid.block_row[1]).expect("a small document");
         // Banner, strip, its rule, the title and notice rows, then the
         // document from its first row.

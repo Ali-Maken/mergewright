@@ -644,4 +644,5 @@ fn frame_text(state: &AppState) -> String {
 }
 
 mod file_list;
+mod three_panes;
 mod words_and_c;

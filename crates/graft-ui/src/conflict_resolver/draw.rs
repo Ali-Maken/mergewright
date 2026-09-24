@@ -17,11 +17,11 @@ use crate::paint::foreground;
 use crate::theme::Token;
 
 impl ResolverScreen<'_> {
-    fn rule(&self) -> char {
+    pub(super) fn rule(&self) -> char {
         if self.ascii { '-' } else { '─' }
     }
 
-    fn divider(&self) -> char {
+    pub(super) fn divider(&self) -> char {
         if self.ascii { '|' } else { '│' }
     }
 
@@ -29,7 +29,7 @@ impl ResolverScreen<'_> {
         if self.ascii { '+' } else { '┴' }
     }
 
-    fn cursor_mark(&self) -> &'static str {
+    pub(super) fn cursor_mark(&self) -> &'static str {
         if self.ascii { "|" } else { "\u{258f}" }
     }
 
@@ -38,7 +38,7 @@ impl ResolverScreen<'_> {
     /// every box-drawing glyph here. App-supplied text (`doc.title`,
     /// `ours_label`, …) is drawn verbatim either way: sanitizing *that* is
     /// `term::sanitize`'s job, not this widget's.
-    fn dot(&self) -> &'static str {
+    pub(super) fn dot(&self) -> &'static str {
         if self.ascii { "-" } else { "\u{b7}" }
     }
 
@@ -52,7 +52,7 @@ impl ResolverScreen<'_> {
         }
     }
 
-    fn is_cursor_block(&self, block: usize) -> bool {
+    pub(super) fn is_cursor_block(&self, block: usize) -> bool {
         self.doc.cursor_block == Some(block)
     }
 
@@ -60,7 +60,7 @@ impl ResolverScreen<'_> {
     /// from a previous `DocView` (a re-read after `e`/`M` can shrink
     /// `blocks()`, `retake_replaces` shows 3 → 2). Draw call sites must stay
     /// total: they draw a blank row rather than unwrap this.
-    fn block(&self, index: usize) -> Option<&BlockView> {
+    pub(super) fn block(&self, index: usize) -> Option<&BlockView> {
         self.doc.regions.iter().find_map(|region| match region {
             RegionView::Block(block) if block.index == index => Some(block),
             _ => None,
@@ -112,13 +112,13 @@ impl ResolverScreen<'_> {
     /// is the design note's own split ("the cursor block's header (reversed,
     /// `▏` rule on its lines)"). A whole reversed card is a worse version of
     /// the m5/44 problem this design already fixed once.
-    fn base_style(&self) -> ratatui::style::Style {
+    pub(super) fn base_style(&self) -> ratatui::style::Style {
         foreground(self.theme, Token::Text)
     }
 
     /// [`Self::base_style`], reversed when `cursor` — the header's own
     /// style, and the only place reversal happens.
-    fn header_style(&self, cursor: bool) -> ratatui::style::Style {
+    pub(super) fn header_style(&self, cursor: bool) -> ratatui::style::Style {
         if cursor {
             self.base_style().add_modifier(Modifier::REVERSED)
         } else {
@@ -179,6 +179,9 @@ impl ResolverScreen<'_> {
             } => self.draw_pair(buf, area, y, *block, *ours, *theirs),
             ScreenRow::Side { block, side, i } => self.draw_side(buf, area, y, *block, *side, *i),
             ScreenRow::End { block } => self.draw_end(buf, area, y, *block),
+            ScreenRow::PaneTitles | ScreenRow::Aligned { .. } => {
+                self.draw_pane_row(buf, area, y, row);
+            }
         }
     }
 
@@ -361,7 +364,7 @@ impl ResolverScreen<'_> {
         );
     }
 
-    fn side_style(&self, muted: bool) -> ratatui::style::Style {
+    pub(super) fn side_style(&self, muted: bool) -> ratatui::style::Style {
         if muted {
             foreground(self.theme, Token::TextMuted)
         } else {

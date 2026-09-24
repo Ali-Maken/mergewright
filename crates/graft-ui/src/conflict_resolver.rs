@@ -9,6 +9,11 @@
 //! keeps its header (`took ours`/`took theirs`/`took both`) and shows only
 //! the taken side's lines, full width, until the resolver closes.
 //!
+//! That is the **card** arrangement, below [`THREE_PANE_MIN`] frame
+//! columns. At it and up the same document is **three panes** — yours |
+//! result | theirs, rows level by git's own regions (`panes`, ADR-0043
+//! §2) — beside the file-list column; [`Placement::arrangement`] says which.
+//!
 //! [`layout`] is pure and total: it lays out `doc` into [`ScreenRow`]s for
 //! any `columns >= 1`, and [`ResolverScreen`] — the [`Widget`] — draws only
 //! `layout.rows[top..top + height]`, nothing outside its `Rect`. The app
@@ -42,6 +47,7 @@ mod draw;
 mod files;
 mod layout;
 mod names;
+mod panes;
 
 use draw::set_text;
 pub use files::{
@@ -50,6 +56,7 @@ pub use files::{
 };
 pub use layout::{Layout, ScreenRow, layout, row_at};
 pub use names::{BlockNumbers, SideNames, SideRoles, number_width};
+pub use panes::{Cell, LineRef, three_panes};
 
 /// Columns at or above which a block's OURS/THEIRS draw side by side.
 /// Below it they stack. Decision 1's numbers: halves at 120 columns are 58
@@ -139,8 +146,9 @@ pub struct DocView {
 pub enum RegionView {
     /// Lines outside any conflict block, drawn as-is.
     Plain {
-        /// The first line's number in the result projection.
-        first_line: usize,
+        /// This region's first line in each projection: the card draws
+        /// `numbers.result`, each of the three panes its own.
+        numbers: BlockNumbers,
         /// The lines themselves.
         lines: Vec<SanitizedText>,
     },
@@ -161,6 +169,12 @@ pub enum RegionView {
         /// file's size in place of its bytes. Not a line of the file, so
         /// it never carries a line number that would claim it is one.
         note: Option<SanitizedText>,
+        /// What the yours pane says in place of the file when the file is
+        /// not on that side (`(deleted on yours · main)`); `None` when it is.
+        /// The app words it; only the three panes draw it.
+        ours_absent: Option<SanitizedText>,
+        /// `ours_absent`'s twin, for the theirs pane.
+        theirs_absent: Option<SanitizedText>,
     },
 }
 
