@@ -610,6 +610,13 @@ fn working_tree_read(
         // (m6-conflicts/12).
         next.stopped = None;
         next.live_landing_owed = false;
+        // Nor is there a merge left for the finish summary's memory: one
+        // finished in the shell (`git commit`) ends here, not in
+        // `undo::operation_ended`, and its choices and draft would otherwise
+        // word — and an unedited `⏎` commit — the next merge
+        // (m6-conflicts/36, review m6-amend-35 Major 1).
+        next.choices.clear();
+        next.finish_draft = None;
     } else {
         // The launch lands on git's word alone; the journal only says whose
         // operation it is (m6-conflicts/12).

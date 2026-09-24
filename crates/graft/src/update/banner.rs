@@ -666,10 +666,6 @@ pub fn resumed(
     }
 }
 
-/// A `--continue` the finish summary started, refused with nothing moved
-/// (a hook said no): the summary already shows why, so the status line
-/// stays quiet and the banner does not re-announce the stop. What might
-/// have been written is re-read all the same.
 /// The operation finished: the entry ends, the scope re-reads and the
 /// cursor lands on HEAD. A merge committed from the finish summary says so
 /// in its own words (`merged feature into main`).
@@ -689,6 +685,10 @@ fn resumed_done(
     commands
 }
 
+/// A `--continue` the finish summary started, refused with nothing moved
+/// (a hook said no): the summary already shows why, so the status line
+/// stays quiet and the banner does not re-announce the stop. What might
+/// have been written is re-read all the same.
 fn kept_open(
     state: &mut AppState,
     outcome: crate::jobs::operate::Operated,
