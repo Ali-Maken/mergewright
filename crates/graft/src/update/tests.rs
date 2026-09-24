@@ -807,7 +807,12 @@ fn coming_back_to_the_window_re_reads_the_working_tree_and_nothing_else() {
     // repository, whatever the event; what matters is the working-tree read
     // and that no history walk starts.
     let (next, commands) = update(&opened_at(10), core(Event::FocusGained));
-    assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+        "{commands:?}"
+    );
     assert!(
         !commands
             .iter()
@@ -824,7 +829,9 @@ fn a_second_focus_report_within_half_a_second_is_ignored() {
     state.last_focus_refresh = Some(10_000 - 100);
     let (next, commands) = update(&state, core(Event::FocusGained));
     assert!(
-        !commands.contains(&Command::ReadWorkingTree),
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadWorkingTree(_))),
         "{commands:?}"
     );
     assert_eq!(next.last_focus_refresh, Some(10_000 - 100), "untouched");
@@ -832,7 +839,9 @@ fn a_second_focus_report_within_half_a_second_is_ignored() {
     state.last_focus_refresh = Some(10_000 - 600);
     let (_, commands) = update(&state, core(Event::FocusGained));
     assert!(
-        commands.contains(&Command::ReadWorkingTree),
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadWorkingTree(_))),
         "600 ms later: {commands:?}"
     );
 }
@@ -991,7 +1000,7 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             Command::ReadRefs(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
             // The remote facts, beside the refs (m4-remotes/05).
             Command::ReadRemotes(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 4)),
-            Command::ReadWorkingTree,
+            Command::ReadWorkingTree(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 5)),
         ]
     );
     // Asking for work is all it does — apart from remembering which job the
@@ -1014,6 +1023,8 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
         },
         // The walk is named at once, not when its `Started` event lands.
         awaiting: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
+        // The working-tree read is named too: the status waits on it.
+        status_read: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 5)),
         local_jobs: next.local_jobs,
         ..state.clone()
     };
@@ -1175,6 +1186,7 @@ fn every_field_spelled_out() -> AppState {
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
         live_landing_owed: false,
+        status_read: None,
         head_message: None,
         commit_template: None,
         external_editor: None,

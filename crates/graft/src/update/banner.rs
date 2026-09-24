@@ -396,14 +396,27 @@ fn continue_pressed(
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    // The status may not have caught up with the last write: counting it
+    // now would refuse on a file just staged. The line says the same words
+    // until the read lands (`status_read`, review m6-amend-13 Minor 1).
+    if super::status_read::owed(state) {
+        state.status = Status::Busy(super::status_read::CHECKING.to_owned());
+        return;
+    }
     if let Some(reason) = continue_refusal(state) {
-        state.status = Status::Sticky {
-            reason,
-            keys: Some(RESOLVE_KEYS.to_owned()),
-        };
+        state.status = continue_refused(reason);
         return;
     }
     resume(state, commands, Resume::Continue, next_id);
+}
+
+/// `c`'s refusal as the status line says it: the reason, and the keys that
+/// get the user out of it.
+pub(super) fn continue_refused(reason: String) -> Status {
+    Status::Sticky {
+        reason,
+        keys: Some(RESOLVE_KEYS.to_owned()),
+    }
 }
 
 /// `s`: a confirm box naming the commit that gets left out, or — on a merge

@@ -428,8 +428,10 @@ pub enum Command {
     /// an older read still in flight (m6-conflicts/12's `land_on_head`).
     ReadRefs(JobId),
     /// Read the working tree's staged/unstaged/untracked counts off the
-    /// loop's thread.
-    ReadWorkingTree,
+    /// loop's thread, under an id `update` chose — so the answer to the read
+    /// a write asked for can be told from an older one still in flight
+    /// (`update::status_read`, review m6-amend-13 Minor 1).
+    ReadWorkingTree(JobId),
     /// Work out the whole range's strict topological order, for a walk whose
     /// order is provisional (ADR-0008). Only the newest such job's answer is
     /// used.

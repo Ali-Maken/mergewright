@@ -221,7 +221,8 @@ pub fn handed_back(
     commands.push(Command::OpenConflict(id, path));
     // The `CONFLICTS` list behind the resolver is as stale as the document
     // was. `M` already did this; `e` never did (m6-conflicts/04).
-    commands.push(Command::ReadWorkingTree);
+    let tree = next_id();
+    commands.push(crate::update::status_read::ask(state, tree));
 }
 
 /// The `Stage` that `⏎` launched landed: on to the next file not done, in
@@ -240,6 +241,12 @@ pub fn resolved_advance(
     }
     let done = open.path.clone();
     let from = open.opened_from;
+    // The write has landed. Cleared here, not left to the fresh resolver
+    // `reopen` builds: a refused `reopen` keeps this one, and a stale id
+    // would refuse every later switch as "a write is already running".
+    if let Some(open) = state.resolver.as_mut() {
+        open.staging = None;
+    }
     // The working tree behind this has not been re-read yet — the refresh
     // the write asked for is still in flight — so the file just staged is
     // still unmerged in it and is skipped by name.
@@ -279,6 +286,20 @@ pub fn resolved_advance(
     // still returns to where it was opened from; only the finished close
     // differs. Ticket 19 Part B keeps the resolver open instead.
     state.banner_focus = crate::update::banner::banner_view(state).is_some();
+    // The status the `Stage` asked for is still out and still calls this
+    // file unmerged, so `c` would count it. The line says what `c` says
+    // meanwhile, and `status_read::settle` says the rest when it lands
+    // (review m6-amend-13, Minor 1).
+    state.status = if crate::update::status_read::owed(state) {
+        Status::Busy(crate::update::status_read::CHECKING.to_owned())
+    } else {
+        every_file_done(state)
+    };
+}
+
+/// `every file done ✓`, and the key that carries the operation on when
+/// there is one to carry on and the banner has the keyboard.
+pub(crate) fn every_file_done(state: &AppState) -> Status {
     let what = state
         .in_progress
         .as_ref()
@@ -290,11 +311,11 @@ pub fn resolved_advance(
             graft_git::state::InProgress::Revert => Some("c continues the revert"),
             graft_git::state::InProgress::Bisect => None,
         });
-    state.status = Status::Done(match what {
+    Status::Done(match what {
         Some(keys) => format!("every file done ✓ · {keys}"),
         // A conflicted `git stash pop` has no operation and so no banner
         // (`KNOWN_GAPS.md` row 229): there is nothing to continue, and a
         // line offering `c` would name a key that does nothing.
         None => "every file done ✓".to_owned(),
-    });
+    })
 }

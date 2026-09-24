@@ -48,7 +48,7 @@ fn e_hands_over_and_rereads() {
     assert!(
         commands
             .iter()
-            .any(|command| matches!(command, Command::ReadWorkingTree)),
+            .any(|command| matches!(command, Command::ReadWorkingTree(_))),
         "and the CONFLICTS list behind it is as stale as the document was"
     );
 

@@ -385,7 +385,8 @@ pub(super) fn refresh_key(
     commands.push(Command::ReadHistory(walk, Order::Topological));
     commands.push(Command::ReadRefs(next_id()));
     super::remote::request(next, commands, next_id);
-    commands.push(Command::ReadWorkingTree);
+    let tree = next_id();
+    commands.push(super::status_read::ask(next, tree));
     // The default branch's tip may have moved: a stale chain would
     // misclassify a foxtrot merge against a tip that is no longer real.
     // `radar::request_context` asks for a fresh one once the refreshed refs

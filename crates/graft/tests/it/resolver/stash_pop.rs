@@ -40,7 +40,7 @@ fn stash_pop_conflict_resolves_without_a_banner() {
     );
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the stage and the close", |state| {
-        state.operating.is_none() && state.resolver.is_none()
+        state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
     });
     let after = journal_entries(scratch.path());
     assert_eq!(after.len(), before + 1, "`⏎` adds exactly one entry");
@@ -90,7 +90,7 @@ fn stash_pop_whole_file_journals_its_own_row() {
 
     let state = app.key(&state, KeyCode::Char('o'));
     let state = app.pump(state, "the whole-file resolve and the close", |state| {
-        state.operating.is_none() && state.resolver.is_none()
+        state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
     });
     let after = journal_entries(scratch.path());
     assert_eq!(after.len(), before + 1, "`o` is exactly one entry");

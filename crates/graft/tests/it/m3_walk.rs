@@ -340,9 +340,12 @@ fn cursor_to(app: &App, state: AppState, name: &str, nth: usize) -> Result<AppSt
 fn focus_gained(app: &App, state: &AppState) -> Result<AppState, String> {
     let old = state.working_tree.clone();
     let (next, commands) = update(state, AppEvent::Core(Event::FocusGained));
-    check(commands.contains(&Command::ReadWorkingTree), || {
-        format!("focus did not re-read the working tree: {commands:?}")
-    })?;
+    check(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+        || format!("focus did not re-read the working tree: {commands:?}"),
+    )?;
     check(
         !commands
             .iter()

@@ -33,7 +33,13 @@ pub fn resolver_mouse(
     if state.resolver.is_none() {
         return false;
     }
-    if !fits(state) {
+    // A box up over the resolver (`d`'s "Start … over?") owns the input,
+    // the mouse as much as the keys: `keys::key_event` hands every key to
+    // `confirm_key` first, so the resolver sees none of them. A click or a
+    // wheel under it does nothing either — before, a click on another
+    // file's row closed the resolver and left the box standing over the
+    // graph (review m6-amend-13, Major 1).
+    if !fits(state) || super::box_open(state) {
         return true;
     }
     match mouse.kind {
