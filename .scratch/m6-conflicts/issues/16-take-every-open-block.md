@@ -27,6 +27,7 @@ In:
    - The answer records `AppState::choices` for every block it took.
 4. **Hints.** The Resolver table gains `^O all yours  ^T all theirs` after `b both`, with the short rung `^O/^T all`. Update `BOUND_ACTIONS`.
 
+- **From ticket 25 (planner, 2026-09-24):** on a done file, refuse through `done_refusal` first.
 Out: `Ctrl+B` (tmux's prefix); staging (still `⏎`, or P6's `O`/`T`); any other file.
 
 ## Signatures

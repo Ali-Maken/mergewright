@@ -83,6 +83,7 @@ pub fn base_for(repo: &RepoHandle, path: &Path, file: &mut ConflictFile) -> Resu
 // graft-ui/src/conflict_resolver.rs (new)                                              G3 ui-conflict-resolver
 pub struct DocView { pub title: SanitizedText, pub explainer: Option<SanitizedText>, pub regions: Vec<RegionView>, pub cursor_block: Option<usize>, pub base_shown: bool, pub notice: Option<(SanitizedText, bool)> }
 pub enum RegionView { Plain { first_line: usize, lines: Vec<SanitizedText> }, Block(BlockView), WholeFile { how: SanitizedText, keys: SanitizedText, lines: Vec<SanitizedText> } }
+// amended 2026-09-24 (ticket 14 D1): WholeFile also carries `ours_absent, theirs_absent: Option<SanitizedText>` — the words a side with no file shows in its pane, sanitised in `view`
 pub struct BlockView { pub index: usize, pub of: usize, pub state: BlockState, pub ours_label: SanitizedText, pub theirs_label: SanitizedText, pub ours: Vec<SanitizedText>, pub base: Option<(SanitizedText, Vec<SanitizedText>)>, pub theirs: Vec<SanitizedText>, pub first_line: usize }
 pub enum BlockState { Open, Took(TakeView) }   pub enum TakeView { Ours, Theirs, Both }
 pub enum ScreenRow { Plain { line_no, text }, Header { block }, Pair { block, ours: Option<usize>, theirs: Option<usize> } /* ≥100 */, Side { block, side: SideKind, i } /* <100, and BASE at every width */, End { block }, WholeFile { .. } }
@@ -175,6 +176,8 @@ footer = its own complete key list (modal, no `. more`, ADR-0039). Eye lands on 
   `base unavailable after edits` / `no base (added on both sides)` as the notice line when not attachable.
 - **Whole-file shapes** (UD/DU/AU/UA/DD, binary): the document is the file as it is (or empty), one card at the top:
   `deleted by them · o keeps the file  t deletes it` — `o`/`t` here are `ResolveWholeFile` and also mark it resolved.
+  At ≥180 columns (ticket 14, 2026-09-24): the card row and its note span all three panes full width (D4); the pane of a
+  side with no file reads `(not on <side>)` for added-by shapes, `(deleted on <side>)` for deleted ones (D1, D2).
 - **Empty/error states**: a file with no markers → `no conflict markers · ⏎ marks it resolved`; `TooLarge` → `too large to
   show (9 MB) · e edit  M mergetool`; `Changed` on a take → `token.rs changed on disk · re-read` and the doc re-reads;
   frame < 60×10 → one line `resolver needs 60x10 · esc closes`, no key acts.
@@ -656,6 +659,11 @@ is a third of the rest.
   open, and `taken ✓` / `not taken` once taken.
 - `B` puts the block's BASE lines in the result placeholder, unnumbered, headed `base`. Text too long for a pane is cut
   with `…` (no horizontal scroll this milestone; gap row → M7).
+- As built (ticket 14 D3, D5, 2026-09-24): with `B` on, the placeholder head reads `base` over muted base lines instead
+  of `? open · o t b`; a binary result reads `? open · o t` (no `b`). The rule row starts at the pane's mark column + 1,
+  padded, not `─`-filled to the edge; `│` separators draw only on rows with content.
+- **Not yet built (ticket 14 D6):** a take does not advance the cursor; `n` is still needed after `t` until
+  `fix-take-advances-to-next-block` (ticket 15, P2) lands. The captures press `t` then `n`.
 - Mouse: a click on a list row selects that file; a click on any pane's block row makes it the cursor block; the wheel
   scrolls all three panes together.
 

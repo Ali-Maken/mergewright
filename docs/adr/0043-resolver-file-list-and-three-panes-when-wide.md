@@ -79,6 +79,14 @@ The audit (`conflict-layout-audit.md`) found:
    is built (`e` is `$EDITOR`). `B` shows base, `d` starts the file over, `Esc` closes
    the resolver and never aborts, and `⏎` marks the file done.
 
+   **Amended 2026-09-24** (ticket `14-resolver-three-panes`, D1–D6): whole-file shapes
+   at ≥180 columns draw their card row and note full width across the panes; a side
+   with no file shows `(not on <side>)` (added-by) or `(deleted on <side>)` (deleted),
+   carried as `RegionView::WholeFile { ours_absent, theirs_absent: Option<SanitizedText> }`.
+   With `B` on, the §2 placeholder reads `base` over muted base lines, not `? open · o t b`;
+   a binary result reads `? open · o t`. A take does not yet advance the cursor (`n`
+   follows `t`) until ticket 15 (P2).
+
 ## Consequences
 
 - **The yours and theirs panes are projections of the conflicted file, not git's
