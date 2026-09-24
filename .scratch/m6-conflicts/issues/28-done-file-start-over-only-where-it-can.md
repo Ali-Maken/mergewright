@@ -74,6 +74,7 @@ In:
 5. graft-ui: `HintContext::Resolver { done: true, restart: false }` gives exactly `e edit`, `esc close`. Add it to `every_context` and to `coverage_slot`.
 6. R5's split. MAP.md for graft-ops §apply and graft §`update::resolver`/§`jobs`.
 
+- **Conductor ruling 2026-09-24 (from ticket 15 NOTES):** `e`/`M` while a take is in flight or queued are **refused in words** (`a take is still landing` or similar), not handed over. Today `edit_here` has no refusal and `handed_back` drops the queue with `<n> queued takes dropped` — the editor would open a file a take is still writing, and the user's typed takes are lost. Fix at the cause: `edit_here`/mergetool check `in_flight`/`queued`. Failing test first.
 Out:
 - Making `d` **work** on whole-file shapes, or in shell-begun merges. See the note amendment's P10 and gap row M6/25.
 - Review 25 Minors 2–5. `e` on a removed card.
@@ -106,6 +107,7 @@ pub(crate) fn start_over_refusal(state: &AppState) -> Option<String>;
 ```
 
 ## Acceptance (name the verifying test when you tick)
+- [ ] `e`/`M` refused while a take is in flight or queued; nothing dropped — test:
 - [ ] graft-ops `it::restart_gate::*`, real git, one test per row. Each asserts the value, and that the journal's line count and every `refs/graft/backup/*` are unchanged:
   - `an_unmerged_marker_file_is_index` → `Ok(Index)`.
   - `an_unmerged_whole_file_is_not_marker_shape` → `Refused(NotMarkerShape)`.
