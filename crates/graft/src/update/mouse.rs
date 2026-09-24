@@ -19,6 +19,11 @@ pub(super) const WHEEL_LINES: isize = 3;
 
 /// The half of [`super::core_event`] that answers the mouse (DESIGN.md §2.15).
 pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
+    // A click acknowledges a status line exactly as a key does; motion, the
+    // wheel and a release do not (the pointer passing over is not an act).
+    if matches!(mouse.kind, MouseKind::Down(_)) {
+        super::keys::acknowledge(next);
+    }
     // The conflict resolver first, and it claims **every** mouse event
     // while it is open (m6-conflicts/04). Nothing below this line checks
     // `graph_overlay()`: `left_click` goes straight to `graph_row_at`, so a

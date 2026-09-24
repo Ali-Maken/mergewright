@@ -165,11 +165,11 @@ fn file_keys_capture() {
     // so the bottom row is the card's bar again (review m6-amend-17 C1).
     let state = app.key(&state, KeyCode::PageUp);
 
-    // At 120 the files are a strip; at 200 a side list, whose name column
-    // is cut to the widest state's room (`…tes.txt`).
+    // At 120 the files are a strip; at 200 a side list, wide enough for
+    // every name beside the widest state (m6-conflicts/42).
     for (columns, rows, shot, done_row) in [
         (120, 40, "m6/fix-file-keys-120x40.txt", "notes.txt · done ✓"),
-        (200, 50, "m6/fix-file-keys-200x50.txt", "…tes.txt  done ✓"),
+        (200, 50, "m6/fix-file-keys-200x50.txt", "notes.txt  done ✓"),
     ] {
         let frame = crate::captures::frame(&state, columns, rows);
         let body = frame.join("\n");

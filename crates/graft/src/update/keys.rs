@@ -96,20 +96,25 @@ fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -
     claimed
 }
 
+/// Clears what only acknowledges something the user just did: the copy
+/// notice, a finished write's `<description> done` line and the
+/// commit-graph written line. Each lasts until the next key **or click**,
+/// whatever that key or click does (m6-conflicts/42) — one rule, called
+/// from [`key_event`] and from `mouse::mouse_event` on a button press.
+pub(super) fn acknowledge(next: &mut AppState) {
+    if matches!(next.status, Status::Copied { .. } | Status::Done { .. }) {
+        next.status = Status::Ready;
+    }
+    if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
+        next.commit_graph = CommitGraphOffer::NotNeeded;
+    }
+}
+
 /// The half of [`super::core_event`] that answers a key.
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
 pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
-    // The copy notice lasts until the next key, whatever that key does, and
-    // so does a finished write's `<description> done` line — both are
-    // acknowledgements of something the user just did, not state.
-    if matches!(next.status, Status::Copied { .. } | Status::Done { .. }) {
-        next.status = Status::Ready;
-    }
-    // So does the commit-graph written line.
-    if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
-        next.commit_graph = CommitGraphOffer::NotNeeded;
-    }
+    acknowledge(next);
     // The modal claims, in order, each returning `true` once it has taken
     // the key: a badge in the air is dropped by any key before that key
     // means anything (`drag::drag_key`; only `Esc` is spent doing it), then

@@ -15,17 +15,29 @@ const COLUMN_MAX: u16 = 32;
 /// blank row where ticket 14's pane titles sit.
 const COLUMN_HEAD: u16 = 2;
 
-/// The column's width: its longest row, clamped to 22..=32.
+/// The column's width: the longest name beside the widest state, clamped
+/// to 22..=32. The same rule [`column_plan`] lays rows out by (states
+/// aligned in one column), so a name is only cut when the clamp bites
+/// (m6-conflicts/42).
 pub(super) fn column_width(view: &FileListView) -> u16 {
     let g = Glyphs::UNICODE;
-    let longest = view
-        .rows
-        .iter()
-        .map(|row| 3 + row.name.as_str().width() + 2 + row.state.words(false, g).width())
-        .chain(std::iter::once(column_header(view, g).width()))
-        .max()
-        .unwrap_or(0);
-    cells_u16(longest).clamp(COLUMN_MIN, COLUMN_MAX)
+    let (name_w, state_w) = name_and_state_widths(view, g);
+    let row = if view.rows.is_empty() {
+        0
+    } else {
+        3 + name_w + 2 + state_w
+    };
+    cells_u16(row.max(column_header(view, g).width())).clamp(COLUMN_MIN, COLUMN_MAX)
+}
+
+/// The longest name and the widest state, each over every row.
+fn name_and_state_widths(view: &FileListView, g: Glyphs) -> (usize, usize) {
+    view.rows.iter().fold((0, 0), |(n, s), row| {
+        (
+            n.max(row.name.as_str().width()),
+            s.max(row.state.words(false, g).width()),
+        )
+    })
 }
 
 fn column_header(view: &FileListView, g: Glyphs) -> String {

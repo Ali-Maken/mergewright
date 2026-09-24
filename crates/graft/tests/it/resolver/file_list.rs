@@ -409,6 +409,32 @@ fn done_open_capture() {
     drop(scratch);
 }
 
+/// A click acknowledges a finished write's status line the way a key does
+/// (m6-conflicts/42): after the list click that opens the done file, the
+/// bottom row is the bar, not `resolved gone.txt (ours) ✓`.
+#[test]
+fn a_click_clears_the_done_status_like_a_key() {
+    let scratch = gone_and_notes_merge();
+    let (app, state) = opened_on(&scratch);
+    let state = gone_kept(&app, state);
+    assert!(
+        matches!(state.status, graft::update::Status::Done { .. }),
+        "{:?}",
+        state.status
+    );
+    let state = done_open(&app, &state, "gone.txt");
+    let frame = crate::captures::frame(&state, 120, 40);
+    assert_eq!(
+        frame.last().map(|bar| bar.trim()),
+        Some("e edit  esc close"),
+        "{}",
+        frame.join("\n")
+    );
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
 /// ADR-0043's list at every width the ticket names, and the user's own
 /// 187×50.
 #[test]
