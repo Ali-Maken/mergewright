@@ -1,0 +1,26 @@
+m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 80x24
+
+MERGING
+Graph  [Detail]
+UNCOMMITTED · 1 staged
+diff vs HEAD 1e78110
+
+CONFLICTS (2)
+  gone.txt                                                       deleted by them
+  notes.txt                                                        both modified
+STAGED (1)
+  M README.md                                                              +1 −0
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph

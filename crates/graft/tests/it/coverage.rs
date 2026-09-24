@@ -23,7 +23,10 @@ pub const SIZES: [&str; 2] = ["80x24", "160x48"];
 
 /// The sizes the M6 walk captures at (m6-conflicts/07): the resolver's
 /// mockups are drawn at 120×40, and 80×24 is the floor a person meets.
-pub const M6_SIZES: [&str; 2] = ["120x40", "80x24"];
+/// The journeys' landings (m6-conflicts/21, 43) are also taken at 160×48,
+/// at 187×50 (the user's own window, field notes) and at 200×50, where the
+/// list column and the three panes appear; the earlier stems read `—` there.
+pub const M6_SIZES: [&str; 5] = ["120x40", "80x24", "160x48", "187x50", "200x50"];
 
 /// Where `m5_walk --matrix` writes the M6 table alone.
 pub const M6_MATRIX_PATH: &str = ".scratch/m6-conflicts/matrix.txt";
@@ -66,8 +69,9 @@ pub const M5_STEMS: [&str; 8] = [
 ];
 
 /// The M6 walk's capture stems, sorted (`tests/it/m5_walk/resolving.rs`,
-/// `resolved_operations.rs`); their files live under `docs/shots/m6/`.
-pub const M6_STEMS: [&str; 9] = [
+/// `resolved_operations.rs`, and the journeys' landings in
+/// `conflict_journeys.rs`); their files live under `docs/shots/m6/`.
+pub const M6_STEMS: [&str; 19] = [
     "m6-01-resolver-three",
     "m6-02-whole-file-card",
     "m6-03-card-large-file",
@@ -77,6 +81,16 @@ pub const M6_STEMS: [&str; 9] = [
     "m6-07-all-resolved",
     "m6-08-no-more-conflicts",
     "m6-09-start-over-box",
+    "m6-10-stop-lands-in-resolver",
+    "m6-11-card-on-notes",
+    "m6-12-after-t",
+    "m6-13-after-ctrl-t",
+    "m6-14-last-file-done",
+    "m6-15-finish-summary",
+    "m6-16-summary-expanded",
+    "m6-17-after-commit",
+    "m6-18-launch-shell-begun",
+    "m6-19-after-esc-esc",
 ];
 
 /// Every table, in the order the file has them.
@@ -323,7 +337,7 @@ mod tests {
                 .split_whitespace()
                 .skip(1)
                 .collect::<Vec<_>>(),
-            ["C", "—"],
+            ["C", "—", "—", "—", "—"],
             "M6 reads docs/shots/m6/, 120x40 first"
         );
     }

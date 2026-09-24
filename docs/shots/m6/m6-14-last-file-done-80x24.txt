@@ -1,0 +1,26 @@
+m6 walk capture: m6-14-last-file-done — scenario two-files-in-order, keys m m o T, unicode tier, 80x24
+
+MERGING
+files   ✓ gone.txt   ▸ ✓ notes.txt
+────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · done ✓ · d starts it over
+every file done ✓ · c finishes the merge
+  1 one
+  2 TWO from feature
+  3 three
+  4 four
+  5 five
+  6 six
+  7 SEVEN from feature
+  8 eight
+
+
+
+
+
+
+
+
+
+
+ stage notes.txt ✓

@@ -7,7 +7,8 @@
 //! and nothing an earlier key started is still in flight (the radar context,
 //! a search, the pane's file list or diff, a write and its undo, a journal
 //! or stash read, the commit editor's prefill, a Ghost Preview's plan, the
-//! resolver's opening read or base load). So
+//! resolver's opening read or base load, the finish summary's read or a
+//! row's diff). So
 //! `Enter` opens on a real row and not on nothing, `j` after it moves the
 //! files cursor and not an empty list, `k` finds the uncommitted row once
 //! the status says the tree is dirty, `u` after `Space` undoes the stage
@@ -70,9 +71,21 @@ fn settled(state: &AppState) -> bool {
     // started. `o`/`t`/`b` fed before the read lands is refused — a capture
     // would show the refusal, not the take (m6-conflicts/07 F6). Its
     // `staging` and `restarting` writes are `operating`, covered above.
-    let resolver_read = state
-        .resolver
+    // Its file list is the conflict set (`set_job`) and the working tree's
+    // unmerged paths (`status_read`), both re-read after a stop beside the
+    // opening read: `n` fed before they land sees a list of one, says `no
+    // more conflicts`, and the next key takes the wrong file
+    // (m6-conflicts/43, `resolver/files.rs::listed_files`).
+    let resolver_read =
+        state.resolver.as_ref().is_none_or(|open| {
+            open.job.is_none() && open.base_job.is_none() && open.set_job.is_none()
+        }) && (state.resolver.is_none() || state.status_read.is_none());
+    // M6's finish summary: `c` starts its read, `Space` a row's diff. `⏎`
+    // fed before the read lands is refused ("wait") — a capture would show
+    // the summary still loading, not the commit (m6-conflicts/43).
+    let finish_read = state
+        .finish
         .as_ref()
-        .is_none_or(|open| open.job.is_none() && open.base_job.is_none());
-    window && refs && status && quiet && writes_landed && planned && resolver_read
+        .is_none_or(|open| open.job.is_none() && open.diff_job.is_none());
+    window && refs && status && quiet && writes_landed && planned && resolver_read && finish_read
 }

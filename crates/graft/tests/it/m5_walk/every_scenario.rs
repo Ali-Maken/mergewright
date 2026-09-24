@@ -153,7 +153,15 @@ fn captures_are_named_keyed_and_listed_in_the_matrix() {
             "{}",
             capture.stem
         );
-        assert!(!capture.keys.is_empty(), "{} presses nothing", capture.stem);
+        // The launch into a merge begun in the shell is the app's first
+        // frame: the landing is the launch itself, so no key reaches it.
+        let first_frame = capture.stem == "m6-18-launch-shell-begun";
+        assert_eq!(
+            capture.keys.is_empty(),
+            first_frame,
+            "{} presses nothing, or a first-frame capture presses keys",
+            capture.stem
+        );
         assert!(
             !capture.on_screen.is_empty(),
             "{} expects nothing on screen",
@@ -266,26 +274,31 @@ fn contact_sheet_captions_cover_every_m5_capture() {
     captions_cover_every_capture(
         &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots"),
         "m5",
+        &[],
     );
 }
 
-/// The same for M6: every `docs/shots/m6/m6-*.txt` has a caption in
+/// The same for M6: every `docs/shots/m6/m6-*.txt` and every fix ticket's
+/// `docs/shots/m6/fix-*.txt` has a caption in
 /// `docs/shots/m6/m6-contact-sheet-captions.tsv`, and every caption names
-/// a file under `docs/shots/m6/` (m6-conflicts/07).
+/// a file under `docs/shots/m6/` (m6-conflicts/07, 43).
 #[test]
 fn contact_sheet_captions_cover_every_m6_capture() {
     captions_cover_every_capture(
         &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/shots/m6"),
         "m6",
+        &["fix-"],
     );
 }
 
 /// `<shots>/<milestone>-contact-sheet-captions.tsv` captions exactly the
-/// `<milestone>-*.txt` captures in `shots`, the sheet itself aside. A
-/// caption may name a file in a subdirectory or a parent (`../m5-…`): it
-/// must exist, and it does not have to be one of the milestone's own.
-fn captions_cover_every_capture(shots: &std::path::Path, milestone: &str) {
-    let sheet = format!("{milestone}-contact-sheet.txt");
+/// `<milestone>-*.txt` captures in `shots` — and those named by any prefix
+/// in `also` — the sheet itself aside, whole or in parts
+/// (`<milestone>-contact-sheet*.txt`). A caption may name a file in a
+/// subdirectory or a parent (`../m5-…`): it must exist, and it does not have
+/// to be one of the milestone's own.
+fn captions_cover_every_capture(shots: &std::path::Path, milestone: &str, also: &[&str]) {
+    let sheet = format!("{milestone}-contact-sheet");
     let tsv = format!("{milestone}-contact-sheet-captions.tsv");
     let captions = std::fs::read_to_string(shots.join(&tsv))
         .unwrap_or_else(|why| panic!("{}: {why}", shots.join(&tsv).display()));
@@ -321,11 +334,12 @@ fn captions_cover_every_capture(shots: &std::path::Path, milestone: &str) {
                 .into_owned()
         })
         .filter(|name| {
-            name.starts_with(&format!("{milestone}-"))
+            (name.starts_with(&format!("{milestone}-"))
+                || also.iter().any(|prefix| name.starts_with(prefix)))
                 && std::path::Path::new(name)
                     .extension()
                     .is_some_and(|extension| extension.eq_ignore_ascii_case("txt"))
-                && *name != sheet
+                && !name.starts_with(&sheet)
         })
         .collect();
     captures.sort();

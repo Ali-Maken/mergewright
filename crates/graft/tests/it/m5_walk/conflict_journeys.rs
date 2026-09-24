@@ -13,7 +13,7 @@
 //! shell (`*_in_the_shell`) and the app then opened fresh.
 
 use graft::update::AppState;
-use graft_core::event::KeyCode;
+use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
@@ -22,9 +22,9 @@ use super::fixture::{
     three_blocks_in_the_shell, two_files, two_files_in_the_shell, two_files_pulled_in_the_shell,
 };
 use super::gestures::on_badge;
-use super::steps::{Scenario, Sees, Step, Wait};
+use super::steps::{Capture, Scenario, Sees, Step, Wait, When};
 use super::vocabulary::{
-    branch, ch, chain, entries_of, key, notice_containing, status_containing, undo,
+    branch, ch, chain, entries_of, key, notice_containing, plain, status_containing, undo,
 };
 use crate::repo_truth::check;
 
@@ -36,29 +36,74 @@ pub(super) fn journeys() -> Vec<Scenario> {
     vec![
         a_merge_to_stop(),
         a_merge_to_stop_two_files(),
-        a_stop_to_first_conflict(),
-        b_launch_to_first_conflict(),
+        captured(a_stop_to_first_conflict(), "m6-10-stop-lands-in-resolver"),
+        captured(b_launch_to_first_conflict(), "m6-18-launch-shell-begun"),
         b_launch_to_first_conflict_after_a_pull(),
         b_launch_to_first_conflict_one_file(),
         b_launch_to_first_conflict_three_blocks(),
         one_file_one_conflict(),
-        three_conflicts_all_theirs(),
-        modify_delete_keep_yours(),
-        two_files_in_order(CARD),
+        captured(three_conflicts_all_theirs(), "m6-13-after-ctrl-t"),
+        captured(modify_delete_keep_yours(), "m6-11-card-on-notes"),
+        captured(two_files_in_order(CARD), "m6-14-last-file-done"),
         two_files_in_order(WIDE),
-        two_files_out_of_order(),
-        a_finish(),
+        captured(two_files_out_of_order(), "m6-12-after-t"),
+        captured(a_finish(), "m6-15-finish-summary"),
         b_finish(),
         b_finish_again_after_undo(),
-        summary_open_git_combined(),
-        back_after_esc(),
+        captured(summary_open_git_combined(), "m6-16-summary-expanded"),
+        captured(back_after_esc(), "m6-19-after-esc-esc"),
         open_a_done_file(),
         walk_back_a_done_file(),
         a_whole_one_file(),
-        a_whole_two_files(),
+        captured(a_whole_two_files(), "m6-17-after-commit"),
         b_whole_two_files(),
         editor_to_finish(),
     ]
+}
+
+/// `scenario` with the pty capture named `stem` (m6-conflicts/21 Scope 7,
+/// taken by ticket 43): one frame per landing. A capture run starts fresh on
+/// the scenario's fixture and presses its keys through the real loop, so
+/// each capture's keys are the whole way to its landing from the app's
+/// first frame; the frame is taken once the screen settles with the
+/// landing's words on it.
+fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
+    let m = || KeyPress::plain(ch('m'));
+    // `m m`: the banner's merge, then its confirm — the merge stops.
+    let mm = || vec![m(), m()];
+    // …then `o` keeps yours of `gone.txt` and `T` takes theirs of `notes.txt`.
+    let both_done = || [mm(), plain(&[ch('o'), ch('T')])].concat();
+    let then = |first: Vec<KeyPress>, more: &[KeyCode]| [first, plain(more)].concat();
+    let (keys, on_screen) = match stem {
+        "m6-10-stop-lands-in-resolver" => (mm(), "▸ gone.txt"),
+        "m6-11-card-on-notes" => (then(mm(), &[ch('o')]), "▸ notes.txt"),
+        "m6-12-after-t" => (then(mm(), &[ch('n'), ch('t')]), "took theirs"),
+        "m6-13-after-ctrl-t" => (
+            [mm(), vec![KeyPress::control(ch('t'))]].concat(),
+            "took theirs",
+        ),
+        "m6-14-last-file-done" => (both_done(), "every file done"),
+        "m6-15-finish-summary" => (then(both_done(), &[ch('c')]), "RESOLVED BY YOU"),
+        "m6-16-summary-expanded" => (then(both_done(), &[ch('c'), ch(' ')]), "feature's line"),
+        "m6-17-after-commit" => (
+            then(both_done(), &[ch('c'), KeyCode::Enter]),
+            "merged feature into main",
+        ),
+        // The launch's first frame: the app opens on the shell-begun merge.
+        "m6-18-launch-shell-begun" => (vec![], "CONFLICTS"),
+        "m6-19-after-esc-esc" => (then(mm(), &[KeyCode::Escape, KeyCode::Escape]), "⇥ banner"),
+        other => panic!("no capture keys for {other}"),
+    };
+    Scenario {
+        capture: Some(Capture {
+            stem,
+            headless: vec![],
+            keys,
+            on_screen,
+            when: When::Settled,
+        }),
+        ..scenario
+    }
 }
 
 fn journey(name: &'static str, setup: super::steps::Fix, steps: Vec<Vec<Step>>) -> Scenario {

@@ -49,6 +49,11 @@ RELAUNCH = "m6-06-relaunch-sticky"
 # What the capture run shows once `o` has landed, before the kill.
 BEFORE_KILL = "took ours"
 SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024
+# A commit the captured run makes (m6-17's merge commit) is dated like the
+# fixture's own commits (`m5_walk/fixture.rs` EPOCH + 10 minutes, after its
+# last), so its id and age are the same every run and the capture can be
+# asserted (m6-conflicts/43). The wall clock made a new id each run.
+COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 
 config_home = tempfile.mkdtemp(prefix="graft-walk-m6-")
 os.makedirs(os.path.join(config_home, "graft"))
@@ -98,7 +103,8 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color")
+            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color",
+                       GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             env.update(extra_env or {})
             os.execve(argv[0], argv, env)
