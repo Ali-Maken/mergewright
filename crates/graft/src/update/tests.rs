@@ -3734,8 +3734,10 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
-        // never reach the app.
-        HintContext::Preview | HintContext::Resolver { .. } => None,
+        // never reach the app. Nothing in the app draws `Finish` yet: ticket
+        // 19 was split at the seam (graft-ui first), and the app half gives
+        // it its own arm and a fixture in `screen_for`.
+        HintContext::Preview | HintContext::Resolver { .. } | HintContext::Finish { .. } => None,
         // The wrapper classifies as its row does.
         HintContext::OperationLive(row) => {
             classified_form(row).map(|row| HintContext::OperationLive(Box::new(row)))
@@ -4044,6 +4046,9 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::ConfirmBox | HintContext::NamePrompt { .. } | HintContext::Credential => {
             vec![box_over_the_graph(walk, context)]
         }
+        // No state draws the finish summary yet: ticket 19 was split at the
+        // seam (graft-ui first), and the app half adds its fixture here.
+        HintContext::Finish { .. } => Vec::new(),
     }
 }
 

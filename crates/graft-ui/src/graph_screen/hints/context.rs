@@ -1,6 +1,7 @@
 //! [`HintContext`]: where the cursor or focus is, which picks the list.
 
 use crate::conflict_resolver::SideRoles;
+use crate::finish_summary::SummaryFocus;
 
 /// Where the cursor or focus is, for the footer's hint list. `Preview` is
 /// the one context allowed an empty list (the Ghost Preview box carries its
@@ -110,6 +111,16 @@ pub enum HintContext {
         /// (`o yours  t theirs`; rebase `o upstream  t yours`), never as a
         /// branch name or sha (ADR-0043 §4).
         roles: SideRoles,
+    },
+    /// The finish summary has the keyboard (m6-conflicts/19, keymap §2.6b):
+    /// modal, its own whole list, no `. more`. What `⏎` and `⇥` do depends
+    /// on which part has focus, so the list follows `focus`.
+    Finish {
+        /// Files, subject or body.
+        focus: SummaryFocus,
+        /// The cursor row can show a diff (`space diff`): it is a file git
+        /// combined on its own.
+        expandable: bool,
     },
     /// A branch badge is being dragged (`docs/design/02-keymap.md` §2.15).
     /// The gesture ends with the button, not a key, so the bar says what

@@ -1,8 +1,9 @@
 //! The design note's priority table: one list of hints per context, and
 //! [`TAIL`], what the whole screen answers after them.
 
-use super::{Hint, HintContext, hint};
+use super::{Hint, HintContext, hint, planned};
 use crate::conflict_resolver::SideRoles;
+use crate::finish_summary::SummaryFocus;
 
 /// The design note's priority table, one context at a time, including the
 /// entries no group has built yet ([`drawable`] filters those out).
@@ -30,6 +31,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             roles,
             done: false,
         } => resolver_bar(*base, *restart, *whole_file, *roles),
+        HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         // Keymap §2.9: `b` (branch from this stash) is named there as
@@ -316,4 +318,43 @@ fn resolver_done_list(restart: bool) -> Vec<Hint> {
     list.push(hint("e", "edit"));
     list.push(hint("esc", "close"));
     list
+}
+
+/// The finish summary's bar (keymap §2.6b), by focus (m6-conflicts/19).
+/// `⏎` commits from the files and the subject; in the body it is a newline,
+/// so `⌃⏎` commits there. `⇥` names where focus goes next. `space diff` is
+/// drawn only on a row git combined, the only rows with a diff to show.
+///
+/// **Every entry is `Planned`** until the app binds them: ticket 19 was
+/// split at the seam, and this half builds the widget and the table only.
+/// The app half flips them to `hint(..)` in the commit that binds them
+/// (`graft`'s `every_planned_hint_is_still_unbound` holds this).
+fn finish_list(focus: SummaryFocus, expandable: bool) -> Vec<Hint> {
+    match focus {
+        SummaryFocus::Files if expandable => vec![
+            planned("⏎", "commit"),
+            planned("space", "diff"),
+            planned("j/k", "move"),
+            planned("⇥", "message"),
+            planned("esc", "back"),
+        ],
+        SummaryFocus::Files => vec![
+            planned("⏎", "commit"),
+            planned("j/k", "move"),
+            planned("⇥", "message"),
+            planned("esc", "back"),
+        ],
+        SummaryFocus::Subject => vec![
+            planned("⏎", "commit"),
+            planned("⇥", "body"),
+            planned("⌃E", "editor"),
+            planned("esc", "back"),
+        ],
+        SummaryFocus::Body => vec![
+            planned("⌃⏎", "commit"),
+            planned("⇥", "files"),
+            planned("⌃E", "editor"),
+            planned("esc", "back"),
+        ],
+    }
 }

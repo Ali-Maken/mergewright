@@ -192,14 +192,8 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
 }
 
 /// A hint the keymap names for this context that no group has built yet.
-/// Never drawn (see the module comment).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "no key is planned-but-unbound today (m6-conflicts/05 bound the last two); kept for the next one a design names ahead of its group, and used by the tests' positive control"
-    )
-)]
+/// Never drawn (see the module comment). In use again for the finish
+/// summary's table (m6-conflicts/19, split at the seam: graft-ui first).
 const fn planned(key: &'static str, verb: &'static str) -> Hint {
     Hint {
         key,
@@ -269,6 +263,10 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
     {
         return vec![hint("esc", "close")];
     }
+    // The finish summary has a floor too (`finish_summary::FINISH_MIN`), but
+    // in both dimensions, and this is told only the width: the app draws
+    // `esc back` alone below it (`graft::view::finish`), so the width sweep
+    // here stays monotone.
     let (list, trailer) = whole_bar(context, divider);
     fit_list(&list, trailer, columns)
 }
@@ -314,7 +312,8 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::Stash
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
-        | HintContext::Resolver { .. } => (drawable(context, divider), None),
+        | HintContext::Resolver { .. }
+        | HintContext::Finish { .. } => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -405,6 +404,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Map
                 | HintContext::PaneOverOverlay { .. }
                 | HintContext::Resolver { .. }
+                | HintContext::Finish { .. }
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the

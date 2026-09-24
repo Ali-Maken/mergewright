@@ -1929,7 +1929,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 32;
+const COVERAGE_SLOTS: usize = 36;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1987,6 +1987,19 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::NamePrompt { toggle: true } => 27,
         HintContext::Credential => 28,
         HintContext::OperationLive(_) => 29,
+        // Only the files focus reads `expandable`.
+        HintContext::Finish {
+            focus: crate::finish_summary::SummaryFocus::Files,
+            expandable,
+        } => 32 + usize::from(*expandable),
+        HintContext::Finish {
+            focus: crate::finish_summary::SummaryFocus::Subject,
+            ..
+        } => 34,
+        HintContext::Finish {
+            focus: crate::finish_summary::SummaryFocus::Body,
+            ..
+        } => 35,
     }
 }
 
