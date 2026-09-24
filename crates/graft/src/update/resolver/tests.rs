@@ -584,7 +584,10 @@ fn took_line(kind: graft_git::state::InProgress) -> String {
     state.in_progress = Some(operation(kind, Some(commit(oid(3), "Add OAuth provider"))));
     let open = state.resolver.as_mut().expect("the resolver is open");
     open.cursor_block = Some(0);
-    open.in_flight = Some((0, graft_git::conflict::Take::Theirs));
+    open.in_flight = Some((
+        crate::update::TakeAt::Block(0),
+        graft_git::conflict::Take::Theirs,
+    ));
     let mut file = (**open.file.as_ref().expect("a document")).clone();
     file.take(0, graft_git::conflict::Take::Theirs)
         .expect("block 0 exists");
@@ -651,5 +654,6 @@ fn frame_text(state: &AppState) -> String {
 mod advance;
 mod cross;
 mod file_list;
+mod take_all;
 mod three_panes;
 mod words_and_c;

@@ -168,6 +168,30 @@ pub fn apply_take(
     }
 }
 
+/// [`apply_take`] for every block still open in `file`: one write, against
+/// `file.fingerprint`. Blocks already taken keep their take and their index
+/// — which is why this takes the document, not an `Oid` (ticket m6-16 D1).
+///
+/// # Errors
+/// [`TakeError::Changed`] leaving the bytes untouched, or the write error.
+pub fn apply_take_all(
+    repo: &RepoHandle,
+    path: &Path,
+    file: &ConflictFile,
+    take: Take,
+) -> Result<ConflictFile, TakeError> {
+    let mut next = file.clone();
+    next.take_all(take);
+    match graft_git::conflict::write_back(&in_worktree(repo, path), &next, file.fingerprint) {
+        Ok(fingerprint) => {
+            next.fingerprint = fingerprint;
+            Ok(next)
+        }
+        Err(WriteError::Changed { now }) => Err(TakeError::Changed { now }),
+        Err(error) => Err(TakeError::Write(error)),
+    }
+}
+
 /// Why the base could not be attached.
 #[derive(Debug, thiserror::Error)]
 pub enum BaseError {

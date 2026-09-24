@@ -7,7 +7,9 @@ use graft_git::conflict::{BlockState, ParseErrorKind, Take};
 use graft_git::repo::RepoHandle;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 
-use super::{BaseError, OpenError, TakeError, apply_take, base_for, mark_resolved_refusal};
+use super::{
+    BaseError, OpenError, TakeError, apply_take, apply_take_all, base_for, mark_resolved_refusal,
+};
 use crate::operation::Refusal;
 
 /// A writable copy of the corpus repository left stopped on a merge.
@@ -114,6 +116,48 @@ fn take_never_clobbers_an_edit() {
         edited,
         "the edit survives byte for byte"
     );
+}
+
+#[test]
+fn take_all_never_clobbers_a_changed_file() {
+    let (_scratch, repo, status) = stopped();
+    let file = open(&repo, &status, "three.txt")
+        .expect("it opens")
+        .file
+        .expect("parsed");
+    let workdir = repo.workdir().expect("a working tree");
+    let edited = b"edited outside\n";
+    std::fs::write(workdir.join("three.txt"), edited).expect("the edit is written");
+    match apply_take_all(&repo, Path::new("three.txt"), &file, Take::Theirs) {
+        Err(TakeError::Changed { now }) => {
+            assert_eq!(now, graft_git::conflict::blob_id(edited));
+        }
+        other => panic!("expected Changed, got {other:?}"),
+    }
+    assert_eq!(
+        std::fs::read(workdir.join("three.txt")).expect("it reads"),
+        edited
+    );
+}
+
+#[test]
+fn apply_take_all_after_a_take_keeps_it() {
+    let (_scratch, repo, status) = stopped();
+    let file = open(&repo, &status, "three.txt")
+        .expect("it opens")
+        .file
+        .expect("parsed");
+    let mut expected = file.clone();
+    for (index, take) in [(0, Take::Ours), (1, Take::Theirs), (2, Take::Theirs)] {
+        expected.take(index, take).expect("the block exists");
+    }
+    let landed =
+        apply_take(&repo, Path::new("three.txt"), &file, 0, Take::Ours).expect("the take applies");
+    let all = apply_take_all(&repo, Path::new("three.txt"), &landed, Take::Theirs)
+        .expect("the bulk take applies");
+    assert_eq!(all.render(), expected.render());
+    assert_eq!(all.blocks().len(), 3);
+    assert_eq!(reread(&repo, "three.txt").render(), expected.render());
 }
 
 #[test]

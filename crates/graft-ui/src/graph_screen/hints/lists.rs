@@ -261,6 +261,8 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
         hint("o", roles.ours()),
         hint("t", roles.theirs()),
         hint("b", "both"),
+        hint("^O", all_of(roles.ours())),
+        hint("^T", all_of(roles.theirs())),
     ];
     if base {
         list.push(hint("B", "base"));
@@ -277,6 +279,20 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
     }
     list.push(hint("esc", "close"));
     list
+}
+
+/// `all <role>` for `^O`/`^T` (m6-conflicts/16): the same role word as
+/// that table's `o`/`t`, as a `'static` verb.
+const fn all_of(role: &'static str) -> &'static str {
+    match role.as_bytes() {
+        b"yours" => "all yours",
+        b"upstream" => "all upstream",
+        b"theirs" => "all theirs",
+        b"picked" => "all picked",
+        b"reverting" => "all reverting",
+        b"stashed" => "all stashed",
+        _ => "all",
+    }
 }
 
 /// A whole-file card's own list (m6-conflicts/05, m6-05 review Major 1):

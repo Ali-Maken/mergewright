@@ -462,6 +462,13 @@ fn every_short_rung_is_the_users_own_word() {
         ("status", "stat"),
         ("revert", "rev"),
         ("lanes", "lane"),
+        // m6-conflicts/16, P3 approved by the user 2026-09-23: `^O/^T all`.
+        ("all yours", "all"),
+        ("all upstream", "all"),
+        ("all theirs", "all"),
+        ("all picked", "all"),
+        ("all reverting", "all"),
+        ("all stashed", "all"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
@@ -1071,6 +1078,8 @@ fn resolver_hint_ladder() {
             ("o", "yours"),
             ("t", "theirs"),
             ("b", "both"),
+            ("^O", "all yours"),
+            ("^T", "all theirs"),
             ("e", "edit"),
             ("n", "next"),
             ("N", "prev"),
@@ -1089,7 +1098,9 @@ fn resolver_hint_ladder() {
         .iter()
         .position(|hint| (hint.key, hint.verb) == ("B", "base"))
         .expect("`B base` after `b both` while `base`");
-    assert_eq!(with_base[base_at - 1].key, "b", "`B base` follows `b both`");
+    // `^O`/`^T` sit between (m6-conflicts/16): `B base` follows the takes.
+    assert_eq!(with_base[base_at - 3].key, "b", "`B base` follows `b both`");
+    assert_eq!(with_base[base_at - 1].key, "^T");
 
     let with_restart = context_list(&document(false, true));
     let restart_at = with_restart
@@ -1111,20 +1122,17 @@ fn resolver_hint_ladder() {
     let at_160 = fit_list(&whole, None, 160);
     assert_eq!(
         hints_text(&at_160),
-        " o yours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close"
+        " o yours  t theirs  b both  ^O all yours  ^T all theirs  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close"
     );
-    // Observed (cargo test -p graft-ui --lib graph_screen::hints::tests::resolver_hint_ladder
-    // -- --nocapture, with a temporary eprintln probe): the 160-column line is
-    // 85 cells; at 80 columns the ladder only needs to drop the least relevant
-    // word — `close` off the tail `esc close` — to reach 79 cells. Every other
-    // hint, `N prev` and `M mergetool` included, keeps its verb at 80 columns;
-    // the floor-of-3-relevant-hints mechanics never engage here because the
-    // full list already nearly fits.
+    // Since m6-conflicts/16 the line is 113 cells. The ladder raises hints
+    // in relevance order, so at 80 columns `^O all yours  ^T all theirs`
+    // keep their full rung and the tail (`n N ⏎ M esc`) is drawn bare
+    // (observed by this assertion, 2026-09-24).
     let at_80 = fit_list(&whole, None, 80);
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,
-        " o yours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc"
+        " o yours  t theirs  b both  ^O all yours  ^T all theirs  e edit  n  N  ⏎  M  esc"
     );
     assert!(text_80.width() <= 80, "{text_80:?}");
     // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
@@ -1297,6 +1305,62 @@ fn resolver_verbs_are_role_words() {
             };
             assert_eq!(short.text(), format!("o {word}"), "{word}");
         }
+    }
+}
+
+/// `^O`/`^T` (m6-conflicts/16): after `b both` on a document, in the same
+/// role words as `o`/`t`; the short rung keeps `all`; never on a card or a
+/// done file.
+#[test]
+fn resolver_offers_take_all() {
+    let list = context_list(&document(false, false));
+    let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
+    let both = keys
+        .iter()
+        .position(|pair| *pair == ("b", "both"))
+        .expect("b both");
+    assert_eq!(keys[both + 1], ("^O", "all yours"));
+    assert_eq!(keys[both + 2], ("^T", "all theirs"));
+    assert_eq!(
+        hints_text(&[
+            list[both + 1].at(Rung::Short),
+            list[both + 2].at(Rung::Short)
+        ]),
+        " ^O all  ^T all"
+    );
+
+    let rebase = context_list(&HintContext::Resolver {
+        base: false,
+        restart: false,
+        whole_file: false,
+        done: false,
+        roles: SideRoles::Rebase,
+    });
+    assert!(
+        rebase
+            .iter()
+            .any(|hint| (hint.key, hint.verb) == ("^O", "all upstream"))
+    );
+    assert!(
+        rebase
+            .iter()
+            .any(|hint| (hint.key, hint.verb) == ("^T", "all yours"))
+    );
+
+    for (whole_file, done) in [(true, false), (false, true)] {
+        let other = context_list(&HintContext::Resolver {
+            base: false,
+            restart: false,
+            whole_file,
+            done,
+            roles: SideRoles::Merge,
+        });
+        assert!(
+            other
+                .iter()
+                .all(|hint| hint.key != "^O" && hint.key != "^T"),
+            "{other:?}"
+        );
     }
 }
 

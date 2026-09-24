@@ -14,7 +14,7 @@ use graft_git::status::UnmergedHow;
 use super::{WALK, base_loading, press, resolver_on_screen, sticky, takes};
 use crate::jobs::conflict::{OpenedFile, Opening, TakeFailure};
 use crate::update::resolver::{DoneOpen, DoneShape, TAKE_QUEUE_CAP};
-use crate::update::{AppEvent, AppState, Command, Product, Status, update};
+use crate::update::{AppEvent, AppState, Command, Product, Status, TakeAt, update};
 
 /// Three open blocks, one line a side each.
 const THREE: &[u8] = b"a\n\
@@ -41,7 +41,7 @@ pub(super) fn on(path: &str, file: ConflictFile, paths: &[&str], unmerged: &[&st
 }
 
 /// `three.txt` alone.
-fn three_alone() -> AppState {
+pub(super) fn three_alone() -> AppState {
     on("three.txt", three(), &["three.txt"], &["three.txt"])
 }
 
@@ -65,14 +65,14 @@ pub(super) fn open_path(state: &AppState) -> &Path {
 /// document it was chosen against.
 /// A take the resolver sent: its id, block, side and the document it was
 /// chosen against.
-pub(super) type Sent = (JobId, usize, Take, Arc<ConflictFile>);
+pub(super) type Sent = (JobId, TakeAt, Take, Arc<ConflictFile>);
 
 pub(super) fn sent(commands: &[Command]) -> Vec<Sent> {
     commands
         .iter()
         .filter_map(|command| match command {
             Command::TakeSide(id, request) => {
-                Some((*id, request.block, request.take, Arc::clone(&request.file)))
+                Some((*id, request.at, request.take, Arc::clone(&request.file)))
             }
             _ => None,
         })
@@ -81,13 +81,15 @@ pub(super) fn sent(commands: &[Command]) -> Vec<Sent> {
 
 /// The worker's answer to one `TakeSide`: the take applied to the document
 /// it carried.
-pub(super) fn landed(
-    state: &AppState,
-    take: &(JobId, usize, Take, Arc<ConflictFile>),
-) -> (AppState, Vec<Command>) {
-    let (id, block, side, file) = take;
+pub(super) fn landed(state: &AppState, take: &Sent) -> (AppState, Vec<Command>) {
+    let (id, at, side, file) = take;
     let mut file = (**file).clone();
-    file.take(*block, *side).expect("the block exists");
+    match at {
+        TakeAt::Block(block) => file.take(*block, *side).expect("the block exists"),
+        TakeAt::Every => {
+            file.take_all(*side);
+        }
+    }
     update(
         state,
         AppEvent::Produced(*id, Product::Taken(Ok(Arc::new(file)))),
@@ -95,7 +97,7 @@ pub(super) fn landed(
 }
 
 /// `keys` pressed in order, every command collected.
-fn keys(state: &AppState, keys: &str) -> (AppState, Vec<Command>) {
+pub(super) fn keys(state: &AppState, keys: &str) -> (AppState, Vec<Command>) {
     let mut state = state.clone();
     let mut all = Vec::new();
     for key in keys.chars() {
@@ -125,16 +127,12 @@ fn a_take_moves_to_the_next_open_block() {
 }
 
 /// `take` lands, and exactly one `TakeSide` goes out for `block`.
-fn lands_and_sends(
-    state: &AppState,
-    take: &(JobId, usize, Take, Arc<ConflictFile>),
-    block: usize,
-) -> (AppState, (JobId, usize, Take, Arc<ConflictFile>)) {
+fn lands_and_sends(state: &AppState, take: &Sent, block: usize) -> (AppState, Sent) {
     let (state, commands) = landed(state, take);
     let mut out = sent(&commands);
     assert_eq!(out.len(), 1, "{commands:?}");
     let next = out.remove(0);
-    assert_eq!((next.1, next.2), (block, Take::Theirs));
+    assert_eq!((next.1, next.2), (TakeAt::Block(block), Take::Theirs));
     (state, next)
 }
 
@@ -145,7 +143,7 @@ fn takes_typed_faster_than_the_disk_are_queued_in_order() {
     assert_eq!(out.len(), 1, "one TakeSide out: {commands:?}");
     let open = state.resolver.as_ref().expect("open");
     assert_eq!(open.queued.len(), 2);
-    assert_eq!(open.in_flight, Some((0, Take::Theirs)));
+    assert_eq!(open.in_flight, Some((TakeAt::Block(0), Take::Theirs)));
     assert_eq!(cursor(&state), Some(2), "the cursor is already on 2");
 
     let (state, next) = lands_and_sends(&state, &out[0], 1);
@@ -234,7 +232,7 @@ fn a_take_while_another_job_runs_keeps_its_own_words() {
     assert_eq!(state.status, before, "no refusal");
     assert_eq!(
         state.resolver.as_ref().expect("open").queued,
-        [(1, Take::Theirs)]
+        [(TakeAt::Block(1), Take::Theirs)]
     );
 }
 

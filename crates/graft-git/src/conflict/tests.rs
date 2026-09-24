@@ -183,6 +183,43 @@ fn take_matches_git_checkout_sides() {
     }
 }
 
+#[test]
+fn take_all_equals_taking_each_block() {
+    let dir = borrowed(Shape::StoppedMerge);
+    for name in MARKER_FILES {
+        let input = bytes(&dir.join(name));
+        for take in [Take::Ours, Take::Theirs, Take::Both] {
+            let parsed = parse(&input).unwrap_or_else(|why| panic!("{name}: {why}"));
+            let mut each = parsed.clone();
+            let open: Vec<usize> = each
+                .blocks()
+                .iter()
+                .filter(|at| at.state == BlockState::Open)
+                .map(|at| at.index)
+                .collect();
+            for index in &open {
+                each.take(*index, take).expect("the block exists");
+            }
+            let mut all = parsed;
+            assert_eq!(all.take_all(take), open.len(), "{name} {take:?}");
+            assert_eq!(all.render(), each.render(), "{name} {take:?}");
+        }
+    }
+}
+
+#[test]
+fn take_all_keeps_blocks_already_taken() {
+    let dir = borrowed(Shape::StoppedMerge);
+    let mut file = parse(&bytes(&dir.join("three.txt"))).expect("three.txt parses");
+    file.take(0, Take::Ours).expect("block 0 exists");
+    assert_eq!(file.take_all(Take::Theirs), 2);
+    let blocks = file.blocks();
+    assert_eq!(blocks.len(), 3);
+    assert_eq!(blocks[0].state, BlockState::Took(Take::Ours));
+    assert_eq!(blocks[1].state, BlockState::Took(Take::Theirs));
+    assert_eq!(blocks[2].state, BlockState::Took(Take::Theirs));
+}
+
 /// What taking both sides of a one-block file must give, built from git's
 /// two checkouts alone: the lines they share at the start, ours' own lines,
 /// theirs' own lines, the lines they share at the end.

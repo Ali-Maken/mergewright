@@ -635,10 +635,21 @@ pub struct TakeRequest {
     /// The document the take was chosen against — the resolver's own copy,
     /// shared rather than cloned into the command.
     pub file: std::sync::Arc<graft_git::conflict::ConflictFile>,
-    /// Which block, counting `Conflict` and `Resolved` regions in order.
-    pub block: usize,
+    /// Where the take lands: one block, or every open one.
+    pub at: TakeAt,
     /// Which side it keeps.
     pub take: graft_git::conflict::Take,
+}
+
+/// Where a take lands (m6-conflicts/16 D2): one block, counting `Conflict`
+/// and `Resolved` regions in order, or every block still open
+/// (`Ctrl+O`/`Ctrl+T`) — one queue entry, one write, one keypress.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TakeAt {
+    /// The `n`-th block.
+    Block(usize),
+    /// Every block still open in the document the take is applied to.
+    Every,
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

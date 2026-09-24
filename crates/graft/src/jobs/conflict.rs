@@ -283,7 +283,8 @@ fn start_over(handle: &RepoHandle, path: &Path, stop: &dyn Stop) -> StartOver {
     }
 }
 
-/// Takes one side of one block and writes the file back, returning the
+/// Takes one side of one block — or of every open block (`TakeAt::Every`)
+/// — and writes the file back once, returning the
 /// document as it now stands.
 ///
 /// # Errors
@@ -294,18 +295,25 @@ pub fn take(
     store: &RepoStore,
     path: &Path,
     file: &ConflictFile,
-    block: usize,
+    at: crate::update::TakeAt,
     side: Take,
 ) -> Result<ConflictFile, TakeFailure> {
     let repo = store.shared().map_err(|error| TakeFailure {
         words: error.to_string(),
         reread: false,
     })?;
-    graft_ops::conflict::apply_take(&repo.handle(), path, file, block, side).map_err(|error| {
-        TakeFailure {
-            words: error.to_string(),
-            reread: matches!(error, graft_ops::conflict::TakeError::Changed { .. }),
+    let handle = repo.handle();
+    let taken = match at {
+        crate::update::TakeAt::Block(block) => {
+            graft_ops::conflict::apply_take(&handle, path, file, block, side)
         }
+        crate::update::TakeAt::Every => {
+            graft_ops::conflict::apply_take_all(&handle, path, file, side)
+        }
+    };
+    taken.map_err(|error| TakeFailure {
+        words: error.to_string(),
+        reread: matches!(error, graft_ops::conflict::TakeError::Changed { .. }),
     })
 }
 

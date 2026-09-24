@@ -37,4 +37,4 @@ files   ▸ b.txt · 1 of 1 open
 
 
 
- o upstream  t yours  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ o upstream  t yours  b both  ^O all upstream  ^T all yours  B base  e edit  n next  N prev  ⏎ resolved  M  d  esc

@@ -33,7 +33,11 @@ fn n_and_N_reach_a_taken_block() {
     let (state, commands) = press(&state, KeyCode::Char('o'));
     let out = sent(&commands);
     assert_eq!(out.len(), 1);
-    assert_eq!((out[0].1, out[0].2), (0, Take::Ours), "a re-take");
+    assert_eq!(
+        (out[0].1, out[0].2),
+        (crate::update::TakeAt::Block(0), Take::Ours),
+        "a re-take"
+    );
     assert_eq!(cursor(&state), Some(1), "and on to block 1");
     let (state, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(cursor(&state), Some(2));
