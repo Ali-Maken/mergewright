@@ -13,6 +13,39 @@ use super::{STUCK_KEYS, banner_focusable, live, unmerged_paths};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
+/// **A stop lands in the resolver** (m6-conflicts/18, P5): with anything
+/// unmerged, the resolver opens on `paths`' first — the stop's own answer,
+/// read from git's status in its order, the same source and order as
+/// [`super::first_conflicted`] — opened from the banner so `Esc` returns
+/// there. Nothing unmerged (an `edit` step, an empty pick) keeps the banner.
+///
+/// Called once `Stopped` and the banner focus are set. A resolver already
+/// open is left as it is: `open_resolver` would word a refusal over the
+/// stop.
+pub(in crate::update) fn land_in_resolver(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    paths: &[std::path::PathBuf],
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(first) = paths.first() else {
+        return;
+    };
+    if state.resolver.is_some() {
+        return;
+    }
+    // The returned bool only says whether a key was spent; there is no key
+    // here. Its refusals (`operating`, a box) cannot hold: both callers
+    // clear `operating` first, and a box would have refused the launch.
+    crate::update::resolver::open_resolver(
+        state,
+        commands,
+        first.clone(),
+        crate::update::resolver::OpenedFrom::Banner,
+        next_id,
+    );
+}
+
 /// A resume that stopped on a later step: the banner keeps the keyboard and
 /// the stop is recorded as a state (m6-conflicts/12), which the footer
 /// words `… stopped again at step 4 of 7 · …` beside the banner's keys.

@@ -820,7 +820,11 @@ pub fn operated(
             // Refs moved and the working tree moved. `Everything` is also
             // the only scope that re-reads `AppState::in_progress`, which is
             // what the commit editor's refusal names.
-            refresh_scope(state, Refresh::Everything, next_id)
+            let mut commands = refresh_scope(state, Refresh::Everything, next_id);
+            // …and, with anything unmerged, lands in the resolver on the
+            // first conflicted file (m6-conflicts/18).
+            super::banner::land_in_resolver(state, &mut commands, &paths, next_id);
+            commands
         }
         failed @ Operated::Failed { .. } => {
             operation_failed(state, remote_op.as_ref(), failed, next_id)
@@ -2201,6 +2205,69 @@ mod tests {
         let reason = crate::update::banner::stop_reason(stop, None);
         assert_eq!(reason, "merge stopped");
         assert!(!reason.contains("conflict"), "{reason}");
+    }
+
+    /// m6-conflicts/18 (P5): a stop with something unmerged lands in the
+    /// resolver on the answer's first path — git's status order, the same
+    /// source `first_conflicted` reads — opened from the banner.
+    #[test]
+    fn a_conflicted_merge_lands_in_the_resolver() {
+        let mut state = AppState::default();
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        let commands = operated(
+            &mut state,
+            id,
+            conflicted(&["src/a.rs", "src/b.rs"], None),
+            &mut ids(),
+        );
+        let open = state
+            .resolver
+            .as_ref()
+            .expect("the stop lands in the resolver");
+        assert_eq!(open.path, PathBuf::from("src/a.rs"));
+        assert_eq!(
+            open.opened_from,
+            crate::update::resolver::OpenedFrom::Banner
+        );
+        // Block 0 is set when the opening read lands (`answers.rs`), as for
+        // any open; before it, no block is claimed.
+        assert_eq!(open.cursor_block, None);
+        assert!(state.banner_focus, "Esc goes back to the banner");
+        assert!(state.stopped.is_some());
+        assert_eq!(state.status, Status::Ready, "no refusal was worded");
+        assert!(
+            commands.iter().any(|command| matches!(
+                command,
+                Command::OpenConflict(_, path) if path == &PathBuf::from("src/a.rs")
+            )),
+            "{commands:?}"
+        );
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+            "the wide refresh still runs: {commands:?}"
+        );
+        // Before the file list lands, `file_cursor` is 0 — the first row,
+        // which is where `src/a.rs` will sit once it does.
+        assert_eq!(crate::update::resolver::file_cursor(&state), 0);
+    }
+
+    #[test]
+    fn an_edit_stop_with_nothing_unmerged_keeps_the_banner() {
+        let mut state = AppState::default();
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        let commands = operated(&mut state, id, conflicted(&[], None), &mut ids());
+        assert!(state.resolver.is_none(), "nothing to resolve");
+        assert!(state.stopped.is_some());
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::OpenConflict(..))),
+            "{commands:?}"
+        );
     }
 
     #[test]

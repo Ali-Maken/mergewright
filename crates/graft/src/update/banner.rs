@@ -42,6 +42,7 @@ use super::state::{AppState, Status};
 
 mod stop;
 
+pub(super) use stop::land_in_resolver;
 use stop::{finished_lands_on_head, stopped_again};
 pub use stop::{one_tab_to_banner, stop_line, stop_line_wordings, stop_reason, stop_wordings};
 pub(super) use stop::{refs_answered, walk_started};
@@ -625,7 +626,13 @@ pub fn resumed(
         } => {
             state.live_entries = vec![entry];
             stopped_again(state, kind, paths.len(), stalled.as_deref());
-            super::operate::refresh_scope(state, graft_ops::apply::Refresh::Everything, next_id)
+            let mut commands = super::operate::refresh_scope(
+                state,
+                graft_ops::apply::Refresh::Everything,
+                next_id,
+            );
+            land_in_resolver(state, &mut commands, &paths, next_id);
+            commands
         }
         crate::jobs::operate::Operated::Failed {
             error,
