@@ -1196,6 +1196,7 @@ fn every_field_spelled_out() -> AppState {
         choices: std::collections::BTreeMap::new(),
         finish: None,
         finish_draft: None,
+        conflict_editing: Some(std::path::PathBuf::from("notes.txt")),
     }
 }
 
@@ -4483,6 +4484,7 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         land_last: false,
         dropped: 0,
         settling: None,
+        whole_side: None,
     });
     state
 }
@@ -4539,6 +4541,7 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         land_last: false,
         dropped: 0,
         settling: None,
+        whole_side: None,
     });
     state
 }

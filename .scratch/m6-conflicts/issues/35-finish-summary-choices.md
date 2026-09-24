@@ -1,6 +1,6 @@
 # finish-summary-choices: the summary words what you chose; captures of the finish summary
 
-Status: ready
+Status: done
 Blocked by: 34-finish-summary-app.md (same crate, ADR-0036).
 Was: split by the conductor 2026-09-24 from `19-finish-summary-screen.md` (builder NOTES "Next", steps 6 and 9's captures). Scope, signatures and model are 19's, unchanged.
 Build with: **Opus** (19's).
@@ -19,8 +19,16 @@ In:
 
 ## Acceptance
 Tick **in ticket 19's list** (19 `:169`–`:172`, `:182`), each naming its test at tick time.
-- [ ] 19's boxes above ticked with tests
-- [ ] 19's Status set to done once 34 and 35 hold every box but `:181` (ticket 21's)
-- [ ] Gates workspace-wide: fmt, clippy `-D warnings`, nextest, doctests
+- [x] 19's boxes above ticked with tests — `:161`, `:169`–`:172`, `:182`, each naming its `it::finish::…` test.
+- [x] 19's Status set to done once 34 and 35 hold every box but `:181` (ticket 21's)
+- [x] Gates workspace-wide: fmt, clippy `-D warnings`, nextest (2949/2949), doctests — run 2026-09-24 in the worktree.
 
 ## NOTES
+- Status: **done**. No compaction. Scout: none new — `scout-19.md` plus 19's and 34's NOTES named every hook point, and each was read at its line before editing.
+- **Recording** (`update/finish/choices.rs`, new, `pub(crate)`): `record_take` from `resolver::answers::take_landed` (via `record_landed`, before `open.file` is replaced); `record_whole` from `resolved_advance`, off new `ResolverState.whole_side` (set by `whole_file_take` only when the write launched; cleared by `⏎`'s stage and `write_not_landed`); `record_edited` on `Ok` handovers — resolver `e` (the `HandedOver` arm), mergetool (`mergetool_returned`), banner/changes-pane `e` via new `AppState.conflict_editing` (set in `banner::edit_conflict`, taken on the `HandedOver` answer); `forget` in `restart_landed`. Clearing was already in `undo::operation_ended`; the abort path reaches it (observed by the test).
+- **Deviation — fixture.** `gone_and_notes_merge` is **not** extended: its captures (`fix-file-keys-*`, `fix-file-list-*`) are already judged and would churn. A sibling `resolver::gone_notes_and_readme_merge` adds the `README.md` change and a fixture identity. Conductor may prefer the edit; say so.
+- **`choices_and_draft_clear_when_the_merge_ends` uses 34's `about_to_merge` (the app's own `m` merge)**, not the gone/notes fixture: that merge is begun in the shell, and `⏎` there answers `nothing Graft started is in progress; an operation begun in the shell is finished there` (observed). Existing behaviour, not changed.
+- **`:161`**: the editor now runs as a real process; only the terminal suspend is untested (see the box).
+- Extra test: `it::finish::a_clean_handover_marks_the_file_edited` (a failed handover marks nothing; the three `Ok` routes do). Unit: `update::finish::choices::tests::*` (3).
+- **For the user's eye** (captures, not defects): the expanded diff starts with a blank row under `▸ README.md` (the hunk's heading row; this hunk has no function context); the body field shows a `┊` guide column. `TESTING.md` line for the capture, quoting `Merge branch 'feature'`, is left to ticket 21's checklist; the contact sheet (ADR-0037) too.
+- MAP: graft `Choices` line rewritten; `AppState.conflict_editing`, `ResolverState.whole_side` added.

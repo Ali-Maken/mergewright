@@ -50,6 +50,7 @@ pub(super) fn mark_resolved(
     let operating = state.operating;
     if let Some(open) = state.resolver.as_mut() {
         open.staging = operating;
+        open.whole_side = None;
     }
 }
 
@@ -69,11 +70,16 @@ pub fn resolved_advance(
     }
     let done = open.path.clone();
     let from = open.opened_from;
+    let whole = open.whole_side;
     // The write has landed. Cleared here, not left to the fresh resolver
     // `reopen` builds: a refused `reopen` keeps this one, and a stale id
     // would refuse every later switch as "a write is already running".
     if let Some(open) = state.resolver.as_mut() {
         open.staging = None;
+        open.whole_side = None;
+    }
+    if let Some(side) = whole {
+        crate::update::finish::record_whole(state, &done, side);
     }
     // The working tree behind this has not been re-read yet — the refresh
     // the write asked for is still in flight — so the file just staged is

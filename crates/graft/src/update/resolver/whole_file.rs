@@ -90,6 +90,8 @@ pub(super) fn whole_file_take(
     let operating = state.operating;
     if let Some(open) = state.resolver.as_mut() {
         open.staging = operating;
+        // Only when the write launched: a refused launch leaves no id.
+        open.whole_side = operating.map(|_| side);
     }
     true
 }

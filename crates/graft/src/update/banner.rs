@@ -556,10 +556,10 @@ pub fn edit_conflict(
     commands: &mut Vec<Command>,
     path: Option<&Path>,
 ) -> bool {
-    let _ = state;
     let Some(path) = path else {
         return false;
     };
+    state.conflict_editing = Some(path.to_path_buf());
     commands.push(Command::OpenConflictEditor {
         path: path.to_path_buf(),
     });

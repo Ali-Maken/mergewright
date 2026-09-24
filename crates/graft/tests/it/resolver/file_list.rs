@@ -9,11 +9,32 @@ use super::*;
 /// A merge of `feature` into `main` stopped on two files: `gone.txt`
 /// (changed on `main`, deleted on `feature` — a whole-file card) and
 /// `notes.txt` (two one-line blocks, lines 2 and 7).
-pub(super) fn gone_and_notes_merge() -> Scratch {
+pub(crate) fn gone_and_notes_merge() -> Scratch {
+    gone_and_notes_merge_with(false)
+}
+
+/// [`gone_and_notes_merge`], and `feature` also changes one line of
+/// `README.md`, which git merges on its own: the finish summary's
+/// `COMBINED BY GIT ON ITS OWN` row (m6-conflicts/19, built by 35). A
+/// sibling rather than a change to the fixture above, whose captures the
+/// user has already judged.
+pub(crate) fn gone_notes_and_readme_merge() -> Scratch {
+    gone_and_notes_merge_with(true)
+}
+
+fn gone_and_notes_merge_with(readme: bool) -> Scratch {
     use crate::app_harness::{git, git_as_graft};
     let scratch = graft_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
     let write = |name: &str, text: &str| std::fs::write(repo.join(name), text).expect("writable");
+    if readme {
+        // The merge commit is the app's `git merge --continue`: the
+        // fixture's own name, so no machine's identity decides whether it
+        // can commit.
+        git(repo, &["config", "user.name", "Graft Fixture"]);
+        git(repo, &["config", "user.email", "fixture@example.invalid"]);
+        write("README.md", "# Project\n\nline one\nline two\nline three\n");
+    }
     write("notes.txt", "one\ntwo\nthree\nfour\nfive\nsix\nseven\n");
     write("gone.txt", "the plan\n");
     git(repo, &["add", "--all"]);
@@ -24,6 +45,9 @@ pub(super) fn gone_and_notes_merge() -> Scratch {
         "one\nTWO from feature\nthree\nfour\nfive\nsix\nSEVEN from feature\n",
     );
     git(repo, &["rm", "--quiet", "gone.txt"]);
+    if readme {
+        write("README.md", "# Project\n\nline one\nline TWO\nline three\n");
+    }
     git(repo, &["add", "--all"]);
     git_as_graft(repo, &["commit", "-m", "shout, drop the plan"]);
     git(repo, &["checkout", "-q", "main"]);

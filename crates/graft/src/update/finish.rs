@@ -827,5 +827,8 @@ pub(crate) fn by_you_words(
     }
 }
 
+mod choices;
+pub(crate) use choices::{forget, record_edited, record_take, record_whole};
+
 #[cfg(test)]
 mod tests;
