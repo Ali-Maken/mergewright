@@ -268,22 +268,46 @@ fn shell_refusal(kind: graft_git::state::InProgress) -> String {
     refusal
 }
 
-/// **A merge begun in the shell names no key that does not reach its
-/// finish** (m6-07 F12; m6-conflicts/20 B2 blocked). The banner's `c`
-/// finishes it since ticket 20, but `esc, then c` from this editor reopens
-/// the editor (`update::keys::graph_key` → `is_commit_key`), so naming
-/// those keys would offer ones that do nothing. It names git's own command,
-/// which is still true, as the bisect arm does.
+/// **A merge begun in the shell points at the banner's `c`** (m6-conflicts/39).
+/// The banner's `c` finishes it since ticket 20; after `Esc` the pane's `c`
+/// is Commit (keymap §2.4), so the words name `⇥ banner` to reach it. No
+/// `a abort`: the banner's `a` still refuses a shell merge (M6/08).
 #[test]
-fn a_merge_begun_in_the_shell_names_no_key_that_refuses_it() {
+fn a_merge_in_progress_points_at_c() {
     let refusal = shell_refusal(graft_git::state::InProgress::Merge);
     assert_eq!(
         refusal,
-        "merge begun in the shell — finish it there: git commit"
+        "merge begun in the shell — esc, ⇥ banner, then c finishes it"
     );
-    for dead in ["c continue", "a abort", "esc, then"] {
+    for dead in ["git commit", "a abort"] {
         assert!(!refusal.contains(dead), "offers {dead:?}: {refusal}");
     }
+    assert!(refusal.contains("⇥ banner"), "{refusal}");
+}
+
+/// **Every operation Graft began names the way to the banner**
+/// (m6-conflicts/39): `esc, ⇥ banner, then `, never `esc, then c`, because
+/// after `Esc` the pane's `c`/`a` are Commit/Amend (keymap §2.4).
+#[test]
+fn a_graft_begun_operation_names_the_banner() {
+    use graft_git::state::InProgress;
+    let editor = CommitEditor::new();
+    for kind in [
+        InProgress::Merge,
+        InProgress::Rebase,
+        InProgress::CherryPick,
+        InProgress::Revert,
+    ] {
+        let refusal = editor
+            .refusal(None, Some((kind, Begun::InGraft)))
+            .expect("a refusal");
+        assert!(refusal.contains("esc, ⇥ banner, then "), "{refusal}");
+        assert!(!refusal.contains("esc, then c"), "{refusal}");
+    }
+    assert_eq!(
+        editor.refusal(None, Some((InProgress::Merge, Begun::InGraft))),
+        Some("merge in progress — esc, ⇥ banner, then c continue  a abort".to_owned())
+    );
 }
 
 /// A rebase begun in the shell keeps git's own command: the banner's `c`
