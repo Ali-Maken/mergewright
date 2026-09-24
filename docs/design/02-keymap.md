@@ -267,7 +267,7 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts` (P2) |
 | `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G`, the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open; the resolver stays open after the last file is done (P8) |
-| `Enter` | Mark this file resolved and move to the next conflicted file, or close if none left |
+| `Enter` | Mark this file done and move to the next conflicted file, or close if none left |
 | `e` | Open `$EDITOR` at the cursor block |
 | `M` | Launch the configured external mergetool on this file |
 | `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |

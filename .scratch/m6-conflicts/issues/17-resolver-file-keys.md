@@ -32,7 +32,7 @@ In:
 4. **Hints.** The Resolver table gains `O/T file` after `^O/^T all` (P6) and `j/k file` after `⏎ done` (P7), per the mockups. Short rungs are `O/T` and `j/k`. Update `BOUND_ACTIONS`.
 5. **TESTING.md** "Conflicts walk": each scenario that used `↑`/`↓` to scroll the document switches to `PgUp`/`PgDn`. List which ones in NOTES.
 
-- **From ticket 25 (planner, 2026-09-24):** moving between files walks the list's order (`listed_files`) and starts from a done file too.
+- **From ticket 25 (planner, 2026-09-24):** ~~moving between files walks the list's order (`listed_files`) and starts from a done file too.~~ Superseded 2026-09-24: `n` crossing in list order is ticket 15's (`cross_target`). This ticket keeps only `n` crossing *from* a done file.
 Out: `Ctrl+O`/`Ctrl+T` themselves (P3's ticket); `c` in the resolver (P8, `fix-finish-summary-screen` Part B); any key outside the resolver.
 
 ## Signatures

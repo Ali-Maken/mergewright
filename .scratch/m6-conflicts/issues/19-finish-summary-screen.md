@@ -38,7 +38,7 @@ Crates: graft-ui, graft.
    - `MESSAGE · ⇥ edit`.
    - One column below `TWO_COLUMN_MIN` (160). At 160 and wider, the file lists on the left (60 %) and the message on the right.
    - The cursor opens on the first `by_git` row (else the first `by_you` row).
-3. **`Choices`.** `AppState::choices` is written on every take answer (per block), every `ResolveWholeFile` (`whole`), and every `$EDITOR`/mergetool return (`edited`). It is cleared when the operation ends (`undo::operation_ended`) or aborts.
+3. **`Choices`.** `AppState::choices` is written on every take answer (per block — recorded in `take_landed`, the one site every take answer passes, queued ones included), every `ResolveWholeFile` (`whole`), and every `$EDITOR`/mergetool return (`edited`). It is cleared when the operation ends (`undo::operation_ended`) or aborts.
 4. **Keys** (`finish_key`, modal, checked before `resolver_key`; `modal_owns_keys` includes it, and so does `text_field_open` while the subject or body has focus):
 
    | Focus | Key | Does |

@@ -166,7 +166,7 @@ footer = its own complete key list (modal, no `. more`, ADR-0039). Eye lands on 
 - **Line numbers** are the file's current line numbers (`render()`); a taken block keeps its header (`took ours`, keys
   reduced to the other takes) until the resolver closes; reopening shows plain lines — the title then says `0 open`.
 - **Keys** (§2.6): `o t b` act on the cursor block **and scroll it into view in the same press**; `n`/`N` next/previous
-  *open* block, crossing to the next conflicted file at the end (`no more conflicts · ⏎ marks token.rs resolved` at the
+  *open* block, crossing to the next conflicted file at the end (`no more conflicts · ⏎ marks token.rs done` at the
   very end); `⏎` = `Stage` of this file (refusal `2 conflicts still open · n next`), then the next conflicted file, or —
   none left — closes to the banner with `all conflicts resolved · c continue` (no banner: to the pane, `all conflicts
   resolved`); `e` `$EDITOR` at the cursor block's first line, file re-read on return; `M` mergetool on this file, same;
@@ -320,7 +320,7 @@ pub fn stopped_row(reason: &str, hints: &[Hint], columns: u16) -> String;   // b
 // graft/src/update/resolver (walk.rs, take.rs)                                   fix-take-advances-to-next-block (P2)
 pub fn next_block(file: &ConflictFile, from: Option<usize>, forward: bool) -> Option<usize>;   // any state
 pub fn after_take(file: &ConflictFile, taken: usize) -> Option<usize>;   // next open after `taken`, wrapping; None = none open
-pub struct ResolverState { …, pub queued: VecDeque<(usize, Take)> }   // takes pressed while one is in flight, in order, cap 64
+pub struct ResolverState { …, pub in_flight: Option<(usize, Take)>, pub queued: VecDeque<(usize, Take)> }   // in graft/src/update/resolver.rs; in_flight = the take whose TakeSide is out; queued = takes pressed while one is in flight, in order, cap 64, excluding the one in flight
 
 // graft-ui/src/preview_box.rs                                                   fix-preview-verb-confirms (P1)
 pub struct PreviewBox { …, pub again: Option<(SanitizedText, SanitizedText)> }   // ("m", "merge"), drawn first in the footer border
@@ -353,7 +353,9 @@ Keymap rows are still to be written into `docs/design/02-keymap.md` (the conduct
   opens only (`.` still closes what `.` opened). Trade-off: a double tap merges after one glance — the same glance
   `→ ⏎` needed.
 - **P2 — takes advance; `n`/`N` walk every block**, taken ones included (§2.6 row "next/previous *open* block").
-  Past the last block: first open block if any (`wrapped · 2 still open`), else today's `no more conflicts` notice.
+  ~~Past the last block: first open block if any (`wrapped · 2 still open`), else today's `no more conflicts` notice.~~
+  Amended by the user 2026-09-24 (field notes): past the last block, the next file not done, in list order; else this
+  file's first open block (`wrapped · 2 still open`); else `no more conflicts · ⏎ marks <file> done`. Crosses first, then wraps.
   TESTING.md scenario 1's `n t n b` becomes `t b`. Trade-off: `n` stops on taken blocks; the title's count says what
   is left.
 - **P3 — `Ctrl+O` / `Ctrl+T`: ours / theirs in every open block of this file**, one write, then `⏎` as usual. No
@@ -463,7 +465,8 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
   (P6 `m m O T c ⏎`: **6**; v1 in-spec was 11). B, two files: `⏎ o ^T ⏎ c ⏎` **6** (P6: 5).
 
 **Where each event lands him (additions).**
-- A take → the cursor moves to the next open block (P2).
+- ~~A take → the cursor moves to the next open block (P2).~~ A take → the cursor moves to the next open block **at the
+  keypress** (P2); takes typed faster than the disk queue, and a failed one drops the queue with a count.
 - A file done (`⏎`, `O`/`T`, or `o`/`t` on a whole-file card) → the next file not done.
 - The last file done → the banner, status line `every file done ✓ · c finishes the merge` (rebase / cherry-pick /
   revert: `c continues the …`); stash pop → the graph, `every file done ✓` (ticket 13 R4/R5). ~~P8: the resolver, with
@@ -609,8 +612,9 @@ pub enum HintContext { …, Finish { focus: SummaryFocus, expandable: bool } }
 ### Keymap rows owed for P1–P5 (the conductor writes them into `02-keymap.md`)
 - **Ghost Preview** (a new row under §2.3 or its own section): `m` / `r`, when the preview was opened by that key and
   its plan has landed, is Confirm. The cursor still rests on Cancel, and `.`-opened previews are unchanged.
-- **§2.6**: `n` / `N` become "next / previous block, taken ones included; past the end, the first open block; at the
-  last block, cross to the next file". A new line: `o`/`t`/`b` move the cursor to the next open block.
+- **§2.6** (written, `02-keymap.md:267`): `n` / `N` become "next / previous block, taken ones included; at the file's
+  last block, cross to the next file; past the end, wrap to the first open block". ~~past the end, the first open block;
+  at the last block, cross to the next file~~ (order fixed 2026-09-24). A new line: `o`/`t`/`b` move the cursor to the next open block.
 - **§2.6**: new row `Ctrl+O` / `Ctrl+T`: yours / theirs in every open block of this file (no staging).
 - **§2.6a**: `c` also finishes a merge begun in the shell. For a merge, `c` opens the finish summary (§2.6b).
 - **§2.6a**: replace "It takes focus the moment an operation stops" with "A stop with anything unmerged opens the
