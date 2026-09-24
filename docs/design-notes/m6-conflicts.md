@@ -488,22 +488,23 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 a-merge-to-stop               2
 a-stop-to-first-conflict      0                     # JetBrains 0
 b-launch-to-first-conflict    1
-one-file-one-conflict         1                    # JetBrains 2
-three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1
+one-file-one-conflict         1                    # JetBrains 2 · P11 (Amendment 2026-09-24): lands on the summary, count unchanged
+three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1 · P11: lands on the summary, count unchanged
 modify-delete-keep-yours      1                     # JetBrains 1
-two-files-in-order            2                    # JetBrains 2
-two-files-out-of-order        3
-a-finish                      2                     # lazygit 1 (bare confirm, rejected)
-b-finish                      2
+two-files-in-order            2                    # JetBrains 2 · P11: lands on the summary, count unchanged
+two-files-out-of-order        3                    # P11: lands on the summary, count unchanged
+a-finish                      2                     # lazygit 1 (bare confirm, rejected) · P11+P12 → 1: `y` in the summary the last file opened
+b-finish                      2                     # P11+P12 → 1 (`y`)
 summary-open-git-combined     1
 back-after-esc                2
 open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
 walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?)
-a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish
-a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish
-b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish
-editor-to-finish  5  # esc + 2×⇥ + c + ⏎ (ticket 39)
-b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41)
+a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`)
+a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`)
+b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`)
+editor-to-finish  5  # esc + 2×⇥ + c + ⏎ (ticket 39) · P12: `c y`, still 5
+b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2
+# last-block-to-finished      4                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Commented out until the walk has its scenario
 ```
 The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
 moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.
@@ -844,3 +845,529 @@ cannot, 120x40   ▸ gone.txt · done ✓
 
 ### Genuinely risky tickets (amendment 3)
 None. Ticket 28 goes on Opus: every rule is fixed here, and `d_is_in_the_bar_exactly_when_the_box_opens` judges it.
+
+---
+
+## Amendment 2026-09-24: look and finish
+
+Read: `docs/research/conflict-visuals-and-finish.md` (**CV**, whole); `docs/research/ux-principles.md` (**UX**) 1.3, 1.4, 2,
+3.1, 3.4, 3.5, §5; field notes :48–50, :54, :57, :58, :60, :61; 02-keymap §2.1, §2.2, §2.3b, §2.6, §2.6a, §2.6b; ADR-0038
+§1, ADR-0041, ADR-0043 §2 §4; PROMPT.md §5; design 04 §4.6; CONTEXT.md "Ghost Preview"; graft-ui MAP (`theme`,
+`conflict_resolver`, `finish_summary`, `hints`, `preview_box`); captures `docs/shots/m6/` m6-12, m6-14, m6-15 (187, 120,
+80), `fix-finish-from-the-resolver-120x40`, `fix-preview-verb-120x40`; TESTING.md :2307–:2381;
+`.scratch/m6-conflicts/user-batch.md` (his 11 open questions); `.scratch/m6-conflicts/user-facts-m632.md`;
+docs/log/m6.md:78. No source. **Pipeline step 5 comes before specs:** no ticket is written from this until he has run
+the prototype below.
+
+### Need
+- **Who / task:** unchanged. A merge stopped; he resolves it in the three panes (187 columns, Zed, dark theme — field
+  notes :48–49, :57) and commits it.
+- **His words** (field notes :60–61, 2026-09-24): *"after enter, the c part was confusing"*: he did not know to press
+  `c`, and the finish screen did not read as a preview, so the `⏎` that committed surprised him. *"also the left middle
+  and right. there was no color and lines like there on other tools on market."*
+- **What the captures show** (textual, so they stand on the capture):
+  - After the last `⏎` the bottom row is `stage b.txt ✓`, with no keys. `c finish` shows only after the next key
+    (`fix-finish-from-the-resolver-120x40.txt:40` vs `:81`; at 187, `m6-14-last-file-done-187x50.txt:52`).
+  - The only pointer to `c` is one plain notice row (`fix-finish-from-the-resolver-120x40.txt:5`), drawn with the same
+    weight as every other row.
+  - The summary opens with the cursor on a file row (`m6-15-finish-summary-187x50.txt:9`), where `⏎` commits. Everywhere
+    else `⏎` acts on what is under the cursor (§2.2, ADR-0038 §1) and `y` confirms a preview (§2.3b, field notes :58).
+  - The summary has no frame and no `Preview:` title. The merge preview he has already seen has both
+    (`fix-preview-verb-120x40.txt:44–52`).
+  - The panes' only styling is muted titles and a reversed cursor rule row (graft-ui MAP, `panes/draw.rs`).
+- **Why this is not M8's colour pass:** whether a block is open or taken, and which side a result line came from, is
+  **state**. That falls under ADR-0041's carve-out ("can the user tell") and heuristic H1. It is not a colour scheme.
+- **His setup is known:** Zed's terminal, dark theme, 187 columns (field notes :49, :50, :57). The prototype runs there
+  and does not ask.
+
+### Prior art (CV · T take · R reject · I invent)
+| Aspect | Best answer | Ours before | Rec · why |
+|---|---|---|---|
+| Side colours | VS Code teal / blue. BC teal / magenta. ediff red / green tints. JetBrains colours by change type, not by side (CV §1.1, §1.2, §2.3) | none | **T** BC's pair: the left pane in a sky blue, the right in a purple-magenta. Never red / green (colour-blind complaints, CV §1.3). **T** tint the background and leave the text in the theme's own colour (VS Code, ediff, Neovim; CV §1.3). **I** the exact values (Okabe–Ito-like). CV does not give them, so the prototype judges them |
+| Open, taken, resolved | VS Code: the border goes orange → grey. Araxis: a resolved block loses its colour. JetBrains: the band goes from filled to a dotted outline (CV §1.1, §2.1) | a reversed cursor rule | **T**: an open block is amber (alarm). A taken block carries the chosen side's hue into the result, and the other side is muted. A done file has no tint (Araxis) |
+| Without colour | KDiff3's `A/B/C/?` column; ediff's inverse video (CV §1.3) | — | **T**: every state has a glyph (`? ┃ ▶ ◀ ┊ ✓`), and position already names the side. Captures prove the glyphs, buffer tests prove the style (ADR-0041), and only legibility is left to his eye |
+| Connectors | JetBrains: curved bands, dotted once resolved. VS Code: no bands, a gutter bracket. Meld: segments. No terminal tool draws links (CV §2) | a plain `│` | **R** curves: a cell grid cannot draw them, and no terminal tool tries. **I**: on a block's rows, the existing 1-cell pane separator becomes the link, and the taken side's tint runs through it into the result. That is JetBrains' band, one cell wide, in VS Code's state colours. No width change (ADR-0043 §2 holds) |
+| Finding `c` | JetBrains enables Accept and Finish at 0; KDiff3 enables Save; lazygit asks on its own at 0 (CV §3) | a status hint, then a plain notice row | **T** lazygit's landing, but with the preview instead of the bare confirm (**P11**): finishing the last file opens the summary. **T** JetBrains' labelled control for when he is back in the resolver: a finish row, with `c finish` first in the bar. **R** a status-line hint alone (field notes :60) |
+| The summary reads as a preview | git's editor and JetBrains' Commit dialog: the last screen is the commit, with its own verb (CV §3). Graft's merge preview: `Preview: …`, `1 merge commit`, `undo: u takes this back` | an unframed screen, `nothing is written until ⏎` | **T** our own preview's frame and words (H4): a border, `Preview: finish merging feature into main`, `1 merge commit on main`, `undo: u takes this back`. The key names its verb: `y commit` |
+| `⏎` vs `y` | VS Code: the word on the button matters (#162043), and Complete Merge could not be reached from the keyboard (#183244) (CV §3) | `⏎` commits from the file list | **T** Graft's own rule (**P12**): `y` confirms every preview (§2.3b, field notes :58), and `⏎` acts on what is under the cursor, here a file row, so it opens that file's diff (§2.2, ADR-0038 §1). In the subject field `⏎` still commits: he has just typed the message, so the key is anticipated (KLM Rule 3) |
+| Bare yes/no | lazygit (CV §3) | — | **R**, unchanged (note :422) |
+
+### Journeys (UX 1.3; `[M]` = a decision)
+- **J13 resolve the last block → a finished merge.** Start: a merge begun in the app, the last file open, the cursor on
+  its last open block.
+  - As built: `o` [M: which side] · `⏎` · [M: what now? He stalled here] `c` · [M: read] `⏎`. **4** keys.
+  - With P11 and P12: `o` [M] · `⏎`, and the summary opens on its own · [M: read] `y`. **3**. Taking the whole file:
+    `O` [M] → summary · `y`. **2** (was `O c ⏎`, 3).
+  - Best tools: JetBrains about 4 (take, Apply, Accept and Finish, Commit; CV §3, `(?)`). VS Code 3–4 (accept, Complete
+    Merge, commit, maybe a message). lazygit 2 (a bare confirm, rejected).
+  - Decisions: 3. The one removed is the one he stalled on.
+- **J6 `a-finish`.** The summary is already open: `y`. **1** (was `c ⏎`, 2).
+- **J6b `b-finish`.** A merge begun in the shell, the last file done in the app: `y`. **1**. From the banner (resolved in
+  the shell, or after `u`): `c` [M] · `y`. **2**, unchanged.
+- **J14 back to a file from the summary, then finish.** `Esc` → the resolver, finish row showing · `c` · `y`. **3**. Not
+  in the block: it is rare, and `walk-back-a-done-file` already covers the correction.
+- **Unchanged:** `editor-to-finish` `Esc ⇥ ⇥ c y` **5**; `summary-open-git-combined` `space` (or `⏎`) **1**.
+- **Whole journeys:** `a-whole-one-file` `m m O y` **4** (was 5); `a-whole-two-files` `m m o T y` **5** (was 6);
+  `b-whole-two-files` `⏎ o T y` **4** (was 5).
+- **The journey-counts block:** the `keys` column is unchanged until P11 and P12 are approved and built. The
+  once-approved numbers sit in its comments. `last-block-to-finished` is added commented out, because the walk has no
+  scenario for it yet.
+
+**Where each event lands him (changes to Amendment 2's list).**
+- **The last file of a merge done in the resolver** (by `⏎`, `O`/`T`, or `o`/`t` on a whole-file card): once its
+  `Stage` lands, the summary opens.
+  - Focus on the file list, the cursor on the first row git combined, or on the first row if git combined nothing.
+  - Status: `notes.txt done ✓ · every file done`.
+  - It opens only after a take still landing (`settling`, `in_flight`) has settled.
+- **A stash pop:** → the graph, unchanged.
+- **A rebase, cherry-pick or revert:** the resolver stays, with the finish row `✓ every file done — c continue the
+  rebase`. The bar starts `c continue`. There is no auto-open, because `c` writes.
+- **The last `Stage` fails:** → the resolver, with its own words, unchanged. No summary.
+- **The last file done outside the resolver** (`space` on a `CONFLICTS` row): → the banner, `every file done ✓ · c
+  finishes the merge`, unchanged.
+  - **The trigger is the event, never the state.** A relaunch, a `u` or an `Esc` does not reopen the summary.
+- **In the summary:**
+  - `y` → as `⏎` did before: `committing…`, then the graph, cursor on the merge commit, `merged feature into main ✓`.
+  - `⏎` on a file row → its diff opens or closes, as `space` does.
+  - `Esc` → the resolver with the finish row; the bar starts `c finish`, and the draft is kept.
+  - An unreadable summary → `summary unavailable: <why> · y commits with git's message`.
+  - `y` while loading → `still reading · wait`.
+
+### Design
+**Colour roles: six new tokens (P13).** Colour follows **position**: the left pane is git's stage 2 (`yours · main`, or
+`upstream · main` in a rebase) and the right pane is stage 3. So a pane's hue never moves, and the role word says whose
+side it is (ADR-0043 §4).
+
+| token | used for | dark, truecolor | 256 | 16 | `NO_COLOR` |
+|---|---|---|---|---|---|
+| `ours` | left title, left rule words, left separator glyphs | `#56B4E9` | 74 | 6 cyan | no colour: glyphs |
+| `theirs` | right title, right rule words, right separator glyphs | `#CC79A7` | 175 | 5 magenta | no colour: glyphs |
+| `open` | `? open`, separators of open blocks, list `n of m open` / `keep or delete` | `#E69F00` | 214 | 3 yellow | BOLD |
+| `ours-tint` | background of the left block rows, and of result rows taken from the left | `#284559` | 23 | none | none |
+| `theirs-tint` | the same for the right | `#4B3445` | 53 | none | none |
+| `open-tint` | background of the result placeholder rows | `#533F13` | 58 | none | none |
+
+- **Tint = mix(fg, `bg`, α).** α is 0.30 by default; he picks 0.20, 0.30 or 0.40 in the prototype, and all three tints
+  share it.
+  - Targets: tint against `bg` between 1.5:1 and 2.5:1, and `text` on a tint at least 4.5:1.
+  - Why that range: a cursor fill at 1.21:1 was invisible to him (field notes :48), and `selection` at 3.04:1 was seen
+    (:50). A tint stays below `selection`, so "you are here" stays the strongest cue.
+  - At 0.30 on `#14161B`: 1.8, 1.6 and 1.8 (computed with the WCAG formula).
+- **Light theme:** the same α over the light `bg`, with darker foregrounds (`#0072B2`, `#A8467F`, `#B36B00`).
+  **Unverified**, since he runs dark. The high-contrast theme uses the 16-colour rule.
+- **256 colours:** the fixed entries above, not the nearest-colour mapping. The nearest entry to a dark tint is on the
+  grey ramp (232–255), and the hue is lost (P13).
+- **16 colours:** no background tints. ANSI backgrounds are full-strength blocks, and text on them is hard to read.
+  Colour goes only on titles, rule words and separator glyphs, and the side not taken is `text-muted`. Precedent:
+  `Theme::syntax` and the side-by-side diff go plain at `Palette16` (graft-ui MAP).
+- **`NO_COLOR`:** glyphs and modifiers only. DIM on the side not taken, BOLD on `? open`, and the reversed cursor rule
+  as built.
+- **Not used:** `added` / `removed`, because they are red / green (CV §1.3), and the lane hues, which mean a branch, not
+  a side.
+
+**Three panes (≥180 columns).** The separator between yours | result and result | theirs stays 1 cell (ADR-0043 §2). On
+plain rows it is `│` in `border`, as built. On a block's rows it is the link:
+
+| block | left separator | right separator | yours rows | result rows | theirs rows |
+|---|---|---|---|---|---|
+| open | `?` on the rule row, `┃` below, in `open` | the same | `ours-tint` | `open-tint`; `? open · o t b` in `open`, BOLD | `theirs-tint` |
+| took yours | `▶` on the rule row, `┃` below, in `ours` on `ours-tint` | `┊` in `text-muted` | `ours-tint` | `ours-tint` | no tint, `text-muted` |
+| took theirs | `┊` in `text-muted` | `◀` on the rule row, `┃` below, in `theirs` on `theirs-tint` | no tint, `text-muted` | `theirs-tint` | `theirs-tint` |
+| took both | `▶` / `┃` in `ours` | `◀` / `┃` in `theirs` | `ours-tint` | the first `ours.len()` lines `ours-tint`, then `theirs-tint` (git's order, `Take::Both`) | `theirs-tint` |
+| file done | `│` | `│` | one card, as built, with no tint | | |
+
+- **Tints fill the pane's full width** on those rows, separator cell included (ediff `:extend`). That makes the band
+  across two panes.
+- **The cursor block:** as built (`▏`, rule row reversed), with its separator glyphs BOLD. Other blocks get the same
+  colours, not bold.
+- **Titles:** `yours · main` in `ours` BOLD, `theirs · feature` in `theirs` BOLD, `result` in `text` BOLD.
+- **Rule words:**
+  - `── o take` in `ours`, `── t take` in `theirs`.
+  - `── taken ✓` in the taken side's hue, `── not taken` in `text-muted`.
+  - In the result: `── 2 of 2 · open` in `open`, `── 1 of 2 · took theirs` in `theirs`.
+- **Both, then a hand edit** (`Choices.edited`): the result rows get no tint, because the line origin is unknown.
+- **ASCII tier:** `?`, `|`, `>`, `<` and `:` stand for `?`, `┃`, `▶`, `◀` and `┊`.
+- **Data:** `BlockState`, `TakeView` and the block's `ours.len()`. No new git or ops read.
+
+The mockup is not to scale; panes are about 51 cells wide, as built:
+```
+187x50
+MERGING
+FILES · 2 conflicted        │▸ notes.txt · 2 conflicts · 1 open
+                            │
+   gone.txt   done ✓        │ yours · main                   │ result                          │ theirs · feature
+▏▸ notes.txt  1 of 2 open   │ 1 one                          │ 1 one                           │ 1 one
+                            │ ── not taken                   ┊ ── 1 of 2 · took theirs         ◀ ── taken ✓
+                            │ 2 two from main                ┊ 2 TWO from feature              ┃ 2 TWO from feature
+                            │ 3 three                        │ 3 three                         │ 3 three
+                            │▏── o take                      ? ── 2 of 2 · open                ? ── t take
+                            │▏7 seven from main              ┃   ? open · o t b                ┃ 7 SEVEN from feature
+                            │ 8 eight                        │ 8 eight                         │ 8 eight
+ o yours  t theirs  b both  ^O/^T all  O/T file  ⏎ done  j/k file  n next  B base  e edit  esc close
+```
+- **Block 1 (taken):** one purple band runs from theirs' row 2 through `◀┃` into the result's row 2. Yours' row 2 and
+  `not taken` are muted.
+- **Block 2 (open):** left rows sky blue, right rows purple, the result placeholder amber, and both separators amber
+  `?` / `┃`.
+- **Where the eye goes:** first to the amber `?` pair on the cursor block (the open work), then to the purple band (the
+  finished work), then to the list's `▸`.
+
+**Card (below 180 columns) and file list.**
+- **No glyph changes in the card.** Its words already carry the state (`conflict 2 of 2 · open`, `took theirs ·
+  feature`).
+- **Colour at 120 and 160** (sides paired): the open block's left half `ours-tint` and its right half `theirs-tint`.
+  Labels are in their hue, BOLD. The header's `open` is in `open`. A taken block's lines are in the taken side's tint,
+  and its header's `theirs · feature` is in `theirs`.
+- **Colour at 80** (stacked): each side's rows in its own tint, and the labels in their hue.
+- **File list:**
+  - `1 of 2 open`, `keep or delete` and `⏎ marks done` in `open`; `done ✓` in `text-muted`.
+  - Once every file is done, the column head reads `FILES · all 2 done ✓`, and the strip label reads `files · all done
+    ✓`.
+
+**The finish row** (in the resolver when every file is done and the summary is not open: after `Esc`, for a rebase,
+cherry-pick or revert, or if P11 is refused).
+- It takes the notice row, under the identity row, and replaces `every file done ✓ · c finishes the merge`.
+- **Text:**
+  - At 187 and 120: `✓ every file done — c review and finish the merge`.
+  - For a rebase: `✓ every file done — c continue the rebase`.
+  - At 80: `✓ every file done — c review & finish`.
+- **Style:** `accent` in BOLD on a full-width `selection` fill, the strongest fill because it is the next action.
+  `NO_COLOR`: REVERSED.
+- **Mouse:** a click on the row does what `c` does.
+- **Bar:** `c finish` moves first (Hick, UX 1.4): `c finish  d start over  e edit  esc close`.
+- **Status after the last `⏎`,** wherever there is no summary: `notes.txt done ✓ · every file done · c finishes the
+  merge`. The key is named the moment he lands, never `stage notes.txt ✓` alone.
+```
+187x50, after Esc from the summary
+MERGING
+FILES · all 2 done ✓        │▸ notes.txt · done ✓ · d starts it over
+                            │✓ every file done — c review and finish the merge
+   gone.txt   done ✓        │  1 one
+▏▸ notes.txt  done ✓        │  2 TWO from feature
+ c finish  d start over  e edit  esc close
+```
+
+**The finish summary is a preview.** It fills the frame under the header inside the merge preview's box (`frame_box`,
+rounded, `accent` border because it has focus), and uses the same words. The old title row `Finish · merging … ·
+nothing is written until ⏎` goes.
+```
+187x50 (two columns inside the frame from 160, as built)
+MERGING
+╭ Preview: finish merging feature into main ─────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                                                          │
+│ undo: u takes this back                                                                                        │
+│ RESOLVED BY YOU · 2                                                  MESSAGE · ⇥ edit                          │
+│   gone.txt   kept · yours · main                                     Subject Merge branch 'feature' into ┊ 32/50│
+│   notes.txt  theirs · feature in 2 of 2 conflicts                    Body                                      │
+│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                            │
+│ ▸ README.md  modified  +1 −0                                                                                   │
+╰ y commit  ⏎ diff  j/k move  ⇥ message  esc back ──────────────────────────────────────────────────────────────╯
+
+80x24 (and 120x40: one column, same order, the message under the list)
+MERGING
+╭ Preview: finish merging feature into main ───────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                        │
+│ undo: u takes this back                                                      │
+│ RESOLVED BY YOU · 2                                                          │
+│   gone.txt   kept · yours · main                                             │
+│   notes.txt  theirs · feature in 2 of 2 conflicts                            │
+│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                          │
+│ ▸ README.md  modified  +1 −0                                                 │
+│ MESSAGE · ⇥ edit                                                             │
+│  Subject Merge branch 'feature' into main                ┊           32/50   │
+│  Body                                                                        │
+╰ y commit  ⏎ diff  j/k move  ⇥ message  esc back ─────────────────────────────╯
+```
+- **Title:** `Preview: finish merging <from> into <into>`. Where the frame is narrower than the title, it becomes
+  `Preview: merge <from> → <into>` and is then cut with `…`.
+- **Where the eye goes:** first to the title (`accent` BOLD), then to the cursor row, then to `y commit`, which leads
+  the footer border with its key in `accent` BOLD.
+- **Colour:**
+  - The words `yours · main` in `ours` and `theirs · feature` in `theirs`, which ties the rows back to the panes.
+  - `+n` in `added` and `−n` in `removed`, as in diffs.
+  - Section heads in `text-muted` BOLD.
+- **Bar by focus:**
+  - Files: `y commit  ⏎ diff  j/k move  ⇥ message  esc back`. `space` still toggles the diff, and is drawn as
+    `⏎/space diff` if `every_bound_action_is_hinted_live_or_is_named_here` needs it named (as `^O/^T all` is).
+  - Subject: `⏎ commit  ⇥ body  ⌃E editor  esc back`, as built.
+  - Body: `⌃⏎ commit  ⇥ files  ⌃E editor  esc back`, as built.
+  - In the subject and the body, `y` is typed text.
+- **`FINISH_MIN`** grows by the frame's 2 columns and 4 rows (2 border rows, 2 preview lines) to (62, 18). Below that,
+  as built: `finish needs 62x18 · esc back`.
+- **`hit()`** is offset by the frame (1, 1) and the 2 preview lines, so a click still lands on the right row.
+
+**Hard-to-reverse, this amendment.**
+1. **The token names are config names he may set.** Options: named by position (`ours` / `theirs` = stage 2 / 3), or by
+   owner (`yours` / `theirs`, which swap in a rebase). **By position:** a pane's hue never moves, and they are git's own
+   stage names.
+2. **Opening the summary on the last file (P11).** Options: stay in the resolver (P8), or open the summary. **Open it.**
+   The code is easy to reverse, but it trains his hands, so he decides on the prototype.
+
+### Touches (each, and how a builder checks it)
+- **Crates:** `graft-ui` and `graft` only. `graft-ops`, `graft-git`, `graft-core` and `graft-term` get no signature
+  change, and `FinishSummary` is unchanged. Check: `git diff --stat` names none of them.
+- **graft-ui `theme`:** `Token`, `Token::ALL` and `Token::name`, the dark, light and high-contrast values, and the
+  256 / 16 / `NO_COLOR` reduction. Also the status screen (F2, `RenderingView`) and any config round-trip that lists
+  tokens. Check: grep the users of `Token::ALL`; run the theme tests.
+- **graft-ui `conflict_resolver`:**
+  - What changes: `panes/draw.rs` (separator per state, tints, titles), `draw/block.rs` (card colours), `files` (state
+    colours, the all-done head) and the ASCII glyph gate.
+  - Check: the golden and row tests, plus new buffer style assertions (ADR-0041): for each state row in the table
+    above, the cell's fg, bg and modifier.
+- **graft-ui `finish_summary`:**
+  - What changes: the frame, the title, the preview lines, `FINISH_MIN`, `layout` and `hit`.
+  - Check: a `hit` round trip at 80, 120 and 187.
+- **graft-ui hints:**
+  - What changes: the order of `Resolver { finishable }` (`c` first) and the list for `Finish { focus: Files }`.
+  - Check: `every_context` and its coverage slots, `every_key_the_bar_draws_is_answered`, and
+    `every_bound_action_is_hinted_live_or_is_named_here`.
+- **graft app:**
+  - What changes:
+    - `finish_key`: `y` commits in Files, and `⏎` toggles the diff.
+    - The path where the last file's `Stage` lands calls `open_finish(…, ReturnTo::Resolver, …)` for a merge only. It
+      must wait on `settling` and `in_flight`, leave a stash pop closing and a rebase with no auto-open, and open
+      nothing after `u` or a relaunch.
+    - A click on the finish row does what `c` does.
+    - The status words after the last `⏎`.
+  - Check: every string that says `⏎ commit…` (grep `crates/graft` and `crates/graft-ui` for `⏎ commit`, including
+    `summary unavailable…` and `still reading`).
+- **Other screens that draw the same state:**
+  - The banner's `every file done ✓ · c finishes the merge`: unchanged. Check: grep the literal.
+  - The changes pane's `CONFLICTS` rows: unchanged.
+  - The commit editor's refusal `esc, ⇥ banner, then c` (tickets 39 and 40): unchanged, because `c` still opens the
+    summary, whose bar then says `y`.
+  - The Ghost Preview box: unchanged, and `y` means the same thing there.
+  - The header `MERGING`: unchanged.
+- **Journal and undo:**
+  - Nothing new: no new entry or step, and the summary writes nothing. `b-finish` still makes exactly one
+    `FinishMerge` entry, and `u` still lands on the banner (ticket 41).
+  - Check: the existing tests, such as `c_enter_finishes_a_shell_begun_merge`, moved to `y`, plus one new test: after
+    `u`, no summary opens.
+- **Keymap `02-keymap.md`** (the conductor edits it after approval):
+  - §2.1 :65 (`c` to finish).
+  - §2.3b, the `y` row: add the finish summary.
+  - §2.6, the `c` and `Enter` rows (the P8 text becomes P11).
+  - §2.6b: `Enter` becomes "diff", and a new `y` row. `Ctrl+Enter` is unchanged.
+- **This note:** Amendment 2's summary mockup, J6, and its `⏎`-commits event lines are superseded where P11 and P12
+  are approved. The conductor marks them.
+- **TESTING.md, the M6 walk:**
+  - `one-file-one-conflict`, `three-conflicts-all-theirs`, `two-files-in-order` and `two-files-out-of-order` now land
+    on the summary, not "the resolver stays".
+  - `a-finish`, `b-finish`, `b-finish-again-after-undo`, the `a-whole-*` rows, `b-whole-two-files` and
+    `editor-to-finish` change `⏎` to `y`, and some of their counts change.
+  - The capture table rows m6-14, m6-15 and m6-17.
+  - The colour paragraph at :2364–:2366: buffer tests now prove the style, and legibility stays his to judge.
+  - The "Times I left" row at :108: `c ⏎` becomes `c y`.
+- **Captures in `docs/shots/m6/`:**
+  - The separator glyphs change on the block rows of every three-pane capture: m6-10 to m6-13 at 187 and 200,
+    `fix-three-panes-*`, `fix-advance-187`, `fix-file-keys-200`, `fix-stop-lands-in-resolver-187`,
+    `fix-file-list-187` / `-200` (the list head), and `fix-done-*-200`.
+  - The finish captures: m6-14 to m6-17 at all five sizes, `fix-finish-summary-*`, `fix-finish-from-the-resolver`,
+    `fix-finish-shell-merge` and `fix-every-file-done-footer`.
+  - Then the contact sheet `docs/shots/m6/m6-contact-sheet-<n>.txt`, rebuilt with `scripts/contact-sheet.sh
+    --captions-order m6 docs/shots/m6`.
+  - Check: each capture's "What right looks like" line against the new text, and the stem list before and after, so no
+    stale stem is left.
+- **The walk:**
+  - The key strings in `.scratch/m6-conflicts/pty-walk-m6.py`.
+  - The Rust test that parses `journey-counts`. Before uncommenting `last-block-to-finished`, the builder checks
+    whether an id without a scenario fails it.
+- **KNOWN_GAPS:** the conductor re-words the "colour unverified" rows for the resolver and the summary: the style is now
+  proven by tests, and legibility is his to judge.
+- **PROMPT.md §5:** the token list (P13), edited by the conductor after approval.
+
+### Prototype (pipeline step 5): he answers his open questions by trying them
+He wants to answer by trying, not by reading. One throwaway lets him try every open question that is a choice between
+options: this amendment's look and finish (P11, P12, P13) and his list of 11 (`.scratch/m6-conflicts/user-batch.md`),
+items 2, 3, 4, 6, 7, 8, 9, 10 and 11. Items 1 and 5 are his verdicts after trying it.
+
+- **Where:** `prototypes/m6-conflict-look/look.py`. Python 3, standard library only (`tty`, `termios`, ANSI escapes),
+  like `prototypes/m6-conflict-journey/walk.py`. It is outside the workspace, needs no cargo, and reads no repository:
+  every frame is canned text. It is deleted when the specs land.
+- **Run, one command:** `python3 prototypes/m6-conflict-look/look.py`. It draws at the window's width; his is 187.
+- **What its builder copies:**
+  - Graft's dark `bg` `#14161B`, and `text`, `text-muted`, `border`, `accent` and `selection` from `graft-ui`'s dark
+    theme. The six new tokens come from the Design table above.
+  - Every **as-built** string, byte for byte, from the capture or file named in its scene, or from the running app.
+  - A string not built yet carries the tag `draft` on the knob row, so he knows the words are a proposal.
+
+**Controls, the same in every scene**
+| key | does |
+|---|---|
+| `]` / `[` | next / previous scene. `0` opens "What you're deciding" |
+| `1`–`4` | cycle the scene's knobs, one knob per digit |
+| `<` / `>` | redraw the scene at 80 · 100 · 120 · 160 · 187 columns (drawn from the left, the rest blank) |
+| `*` | mark the option now on screen as his pick for this scene |
+| `Backspace` | restart the scene |
+| `q` | quit; prints the picks and writes them to `.scratch/m6-conflicts/look-picks.txt` |
+| any other key | the app's own key, acted out on the canned frames (Wizard of Oz, UX §4) |
+
+- **Row 1:** `scene n/10 · <the question> · keys k`. `k` counts his keys since the scene started (UX 1.3), so a
+  journey can be counted as he walks it.
+- **Row 2:** the knobs, `1 <name>: <value>`, with the current value reversed and tagged `as built` or `draft`.
+- **Below:** the app's frame, exactly as it would draw.
+
+**Task first (UX 4.1).** It opens in task mode: rows 1–2 are hidden, and scene 1 runs straight into scene 2 with the
+recommended settings (the band, the Okabe pair, 30 %, the summary opens itself, `y` commits, the preview frame). The
+conductor says only: *"the merge stopped on notes.txt — take theirs on what's left and get it committed."* The script
+logs every key and every pause over 3 seconds to the picks file. The two that matter are his first key after the last
+file is done, and his first key on the summary (`⏎` or `y`). When the commit lands, or on `]`, the rows appear and the
+scenes follow in order.
+
+**Scenes.** Each gives what he presses, what he sees, and the question it answers.
+
+1. **Colours and lines between the panes** (field notes :61; P13).
+   - Frame: `notes.txt` at the stop, both blocks open, the three-pane mockup above.
+   - He presses `o`, `t`, `b`, `n`, `N`. Each take redraws the band live, and `⏎` once every block is taken goes to
+     scene 2. The bottom row reads, for example, `tint 30% · 1.8:1 · text 7.0:1 · truecolor · lines A · pair okabe`.
+   - Knobs:
+     - `1` tint: 20 / 30 / 40 %.
+     - `2` depth: truecolor / 256 fixed entries / 256 nearest / 16 / no colour. The 256 escapes draw the real palette
+       entries, so he sees whether the hue survives.
+     - `3` lines: glyphs and band / VS Code's bracket `┐│┘` beside each side's block / colour only, `│` unchanged.
+     - `4` pair: Okabe `#56B4E9` / `#CC79A7`; teal–magenta `#2AA198` / `#D33682`; VS Code `#40C8AE` / `#40A6FF`.
+   - Answers: without reading, which blocks are open and which taken? Which side did the middle's line 2 come from?
+     Which tint shows without leaning in, and is any too loud? Which lines, which pair? At 256, fixed or nearest?
+2. **Finishing the merge** (item 11; P11; P12; the summary's look).
+   - Frame: `gone.txt` done, `notes.txt` open on its last open block, the cursor on it.
+   - He presses `o ⏎`, then whatever he would press next. On the summary: `y` or `⏎` as the knob says, then a canned
+     graph row `merged feature into main ✓`. `Esc` goes back to the resolver with the finish row. `⏎` on a file row
+     opens a canned diff when `y` commits.
+   - Knobs:
+     - `1` after the last file:
+       - as built: the bar reads `stage notes.txt ✓` until the next key, with the notice row `every file done ✓ · c
+         finishes the merge` (`fix-finish-from-the-resolver-120x40.txt:5`, `:40`);
+       - `c finish` at once: the finish row, and `c finish` first in the bar;
+       - the summary opens by itself.
+     - `2` commit key: `⏎` commits (as built) / `y` commits and `⏎` shows the file's change.
+     - `3` summary look: as built, no frame, `nothing is written until ⏎` (`m6-15-finish-summary-187x50.txt`) / inside
+       the preview frame.
+   - Answers: after the last file, did you know what to press? Did the last screen read as "not committed yet"? Which
+     key did your hand reach for?
+3. **Keys on the "what will land" screen** (item 8).
+   - Frame: the summary in scene 2's chosen look, with 30 canned files git combined, so it scrolls.
+   - He presses `↑`, `↓`, `PgUp`, `PgDn`, `⇧⇥`, and the listed `j`, `k`, `⇥`. A key that is off flashes `does nothing
+     here` on row 2, as the app does today (nothing).
+   - Knobs: `1` `↑`/`↓` · `2` `PgUp`/`PgDn` · `3` `⇧⇥` back. Each is off (as built) or on.
+   - Answers: which did your hand reach for, and should they work?
+4. **The conflict screen's key row at 120 columns** (item 9).
+   - Frame: the resolver at 120, a merge with `B base` and `d start over` offered.
+   - He looks at the bottom row; `<` / `>` show it at 100 and 160.
+   - Knobs:
+     - `1`:
+       - C, as built: `… ⏎ done  j/k file  M mergetool  d  esc` (`fix-stop-lands-in-resolver-120x40.txt`);
+       - A, drop words from everyday keys first (`j/k`, `M` go bare), `d start over  esc close` kept whole (draft);
+       - B, shorter words, `M tool`, `d restart`, everything whole (draft).
+     - `2`: merge / rebase (137 columns wanted instead of 135, `user-facts-m632.md:3`).
+   - Answers: at 120, does the row still tell you what `d` does and how to get out?
+5. **Short key words on narrow screens** (item 4).
+   - Frame: the changes pane's key row, its longest context. Here `<` / `>` step the width 10 columns at a time,
+     from 187 down to 60.
+   - Beside it, the 22 pairs of the 2026-09-21 draft
+     (`.scratch/m5-history-and-ghost-preview/issues/24-the-ladder-and-the-stale-banner.md:24-36`). `j` / `k` move
+     through them, `x` strikes a pair, and `w` retypes its short word. The bar redraws live.
+   - Knob `1`: as built, the 9 short words kept (copied from `graft-ui`'s `short_form` table) / the whole draft /
+     no short words (words drop whole).
+   - Answers: which short words read without thinking? Which would you change or strike? Struck and retyped pairs go
+     to the picks file.
+6. **The stop line with the changes pane open** (item 6).
+   - Frame: a merge begun in the shell, 13 files conflicted, the changes pane open, at 187. `<` shows 120.
+   - Knobs:
+     - `1` origin: `begun outside Graft` / `from a previous run`.
+     - `2`: as built, the origin dropped so the count fits / keep the origin, and cut the count with `…` first
+       (draft) / shorten both, `from the shell · 13 conflicted`, `from last run · 13 conflicted` (draft).
+   - Answers: on that line, do you need to know where the merge began?
+7. **What `n` says after the last block** (item 2).
+   - Frame: the case at `docs/log/m6.md:78`: he walked back with `N`, a block behind him in `zdiff3.txt` is still
+     open, and he presses `n` past the last one. The builder reproduces it on the running app first. If it no longer
+     happens (the 2026-09-24 order fix, P2 above), the scene says so on row 2 and the item closes.
+   - Knob `1`:
+     - as built: `no more conflicts · ⏎ marks zdiff3.txt done`, also in the key row, so it shows twice;
+     - `no more conflicts this way`;
+     - `last block · 1 still open above · N goes back` (draft);
+     - his own: `w`, type it, `⏎`, and it shows at once.
+   - Answers: after `n`, did you think the file was finished?
+8. **Starting over a file one side deleted or added whole** (item 7; P10 in Amendment 3).
+   - Frame: `gone.txt` done (kept yours), opened read-only, in a merge begun in the app.
+   - He presses `d`, then `→ ⏎` if a box opens.
+   - Knobs:
+     - `1`:
+       - as built: no `d` in the bar; `d` answers `can't start over · gone.txt: deleted by them — no markers to take
+         from`;
+       - offered: bar `d start over  e edit  esc close`; `d` opens a box with the words `the choice comes back: keep or
+         delete`, cursor on Cancel; `→ ⏎` → the card `deleted by them · o keeps the file  t deletes it` (draft).
+     - `2`: begun in the app / begun in the shell (refused either way; it shows what he would get there).
+   - Answers: would you walk back a keep-or-delete choice this way?
+9. **Undo and abort on a merge begun in the shell** (item 3).
+   - Frame: a `git pull` begun in the shell, stopped. In Graft, `t` on `notes.txt` overwrote his hand edit. The banner
+     has focus.
+   - He presses `u`, then `a`, then `y` if a preview opens.
+   - Knob `1`:
+     - keep the shell step (as built): both refuse, with the running app's words;
+     - abort only: `u` refuses; `a` opens a preview `Preview: abort the merge · main goes back to before the pull`
+       (draft), and `y` → the graph, `merge aborted ✓`;
+     - both: `u` → `undo: take theirs on notes.txt · your edit is back ✓` (draft), then `a` as in "abort only".
+   - Answers: before the merge is finished, which of these do you expect to work?
+10. **The mark on a file you haven't opened** (item 10).
+    - Frame: 9 files conflicted, 2 opened. The strip at 120 ends with `… 7 more`; `>` shows the column at 187.
+    - Knob `1`: `…` (as built) / `○` / `new` / no mark.
+    - Answers: does any name look cut off?
+
+**After the scenes**, the conductor asks his two verdicts, one line each: does the conflict screen look right (item 1:
+the whole screen, the note row on a whole-file card, the `┴` on a taken block's closing line)? Go on to the next
+milestone (item 5)?
+
+**Record.**
+- The picks file and the task-mode log go to `docs/field-notes.md` the same day, one line per scene in his words.
+- The colour decision (tokens, values, lines) becomes an ADR. His answers settle P11, P12 and P13 and items 2–11, and
+  the specs follow them.
+- Nothing goes to `docs/shots/`: the colour can't be captured (rule 5), and a prototype is not the product.
+
+#### What you're deciding (the page `0` shows; his terms)
+1. **Colours on the conflict screen:** which blue and purple, how strong, and what the line between the panes looks
+   like.
+2. **When the last file is done:** stay where you are, show `c finish` straight away, or go straight to the screen
+   showing what will land.
+3. **On that screen:** `y` commits and `⏎` shows a file's change, or `⏎` commits as now.
+4. **How that screen looks:** framed like the merge preview, or as now.
+5. **Arrow keys, Page Up / Page Down and Shift+Tab on that screen:** all, some, or none.
+6. **The key row at 120 columns:** drop words from keys you use every day, use shorter words, or leave it.
+7. **Short key words on narrow screens:** keep the draft, change some, or drop the idea.
+8. **The line after a stop, with the changes pane open:** drop "begun outside Graft", keep it, or shorten both.
+9. **What `n` says after the last conflict** in a file.
+10. **Starting over a file where one side deleted it or added it whole:** yes or no.
+11. **Undo and abort on a merge you started in the shell:** both, abort only, or keep doing it in the shell.
+12. **The mark on a file you haven't opened yet.**
+
+Then two answers: does the conflict screen look right? Go on to the next milestone?
+
+### Proposed changes (not decided; specs wait for his word on the prototype)
+- **P11: finishing the last file of a merge in the resolver opens the summary on its own.**
+  - What it reverses: P8's "the resolver stays open after the last file is done", for merges only. P8 still holds for
+    a rebase, cherry-pick or revert, which have no summary, and after `Esc`.
+  - Why: the next action is finishing (UX 3.1); lazygit asks on its own at 0 (CV §3); he did not find `c` (field notes
+    :60). It saves one key on every merge (J13: 4 → 3).
+  - Trade-off: going back to a done file before committing costs an `Esc` first. The summary writes nothing, so nothing
+    is lost.
+- **P12: the summary confirms with `y`, and `⏎` on a file row shows its diff.**
+  - What it changes: his approved `⏎ commits` (field notes :54) and keymap §2.6b.
+  - Why: `y` confirms every other preview (§2.3b, field notes :58), and `⏎` acts on what is under the cursor (§2.2,
+    ADR-0038 §1), which here is a file row, not the commit. His surprise came from that clash (field notes :60).
+  - No count changes. In the subject field `⏎` still commits.
+  - Trade-off: the confirm key depends on focus: `y` in the list, `⏎` in the subject, `⌃⏎` anywhere. Each focus's bar
+    shows its own.
+- **P13: six colour tokens added to PROMPT.md §5.**
+  - The tokens: `ours`, `theirs`, `open`, `ours-tint`, `theirs-tint`, `open-tint`.
+  - The tints get fixed 256-colour entries instead of the nearest-colour mapping in PROMPT.md §5 "Colour depth" and
+    design 04 §4.6. Why: the nearest entry to a dark tint is on the grey ramp, and the hue is lost.
+  - Trade-off: six more values to keep in every theme. The high-contrast theme drops the tints.
+- **ADR-0041** puts "colour schemes" in M8. This is not that: whether a block is open or taken, and which side a line
+  came from, is state, which falls under its carve-out. The M8 pass may retune these values, but the roles stay.
+
+### Genuinely risky tickets (for the spec pass)
+- **No Fable build expected.** Every rule is fixed here, and the prototype picks the values.
+- **The band** is a pure draw, judged by buffer tests.
+- **P11's trigger** (the last `Stage` has landed, the operation is a merge, and the resolver is open) is one decision
+  point in `graft`, judged by the walk. Its spec must name the `settling` / `in_flight` interplay, so that a take still
+  landing cannot open the summary early.
+- **Acceptance** stays on Fable.
