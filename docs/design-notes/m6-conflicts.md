@@ -423,7 +423,7 @@ counted as in-spec below. ADR-0043 supersedes ADR-0042. New proposals are P6–P
 | Aspect | Best answer | Ours before | Rec · why |
 |---|---|---|---|
 | File list | JetBrains Conflicts dialog, Accept Yours/Theirs per file (LA §0, §A); lazygit files panel | one header row | **T**: strip below 180 columns, column at 180 and wider (ADR-0043 §1). H1, H6 |
-| Three panes | JetBrains yours / result / theirs (LA §0); lazygit #2133 asks for it | card | **T at ≥180 columns** (LA §B: 46–52 chars a pane). **I**: rows line up by git's regions, with no diff (ADR-0043 §2) |
+| Three panes | JetBrains yours / result / theirs (LA §0); lazygit #2133 asks for it | card | **T at ≥180 columns** (LA §B; 48–53 columns a pane at 180, gutter included — ADR-0043 §2; was "46–52 chars", superseded 2026-09-24). **I**: rows line up by git's regions, with no diff (ADR-0043 §2) |
 | Names per side | JetBrains: one label per pane | 3–4 names per side | **T + I**: `role · name`, the same everywhere; no parentheses (§2.1) |
 | Line numbers | each pane numbers its own file (JetBrains) | skipped the markers | **T**: every pane is numbered with no gaps, by projection (ADR-0043 §5) |
 | Whole-file take | JetBrains Accept Theirs, 1 key a file; asked of Sublime (#316) | P3 `Ctrl+T ⏎`, 2 keys | **P6**: `O`/`T` take every open block and mark the file done, 1 key |
@@ -440,7 +440,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 - **J2 stop → first conflict.** **0**. JetBrains 0 + 1; lazygit 2.
 - **J3 begun in the shell → first conflict.** Lands on the banner (a launch is not a stop). `⏎`. **1**.
 - **J4 one file, one conflict.** `o` [M] · `⏎`. **2**; P6 `O` **1**. JetBrains 2. Lands on the next file not yet done
-  (list order, wrapping), with the list `▸` moved and the notice `notes.txt done ✓ · ▸ gone.txt`. If no file is left,
+  (list order = git's byte-wise path order, stable as files become done — fix-stable-file-order-and-done-file-open D1; wrapping), with the list `▸` moved and the notice `notes.txt done ✓ · ▸ gone.txt`. If no file is left,
   the resolver closes to the banner, status line `every file done ✓ · c finishes the merge` (`fix-resolver-file-list`
   R4/R5). After `fix-finish-summary-screen` Part B (P8) it stays in the resolver instead, the words on its notice row; a
   stash pop still closes to the graph, status line `every file done ✓`.
@@ -509,7 +509,8 @@ pub struct SideNames { pub ours: SanitizedText, pub theirs: SanitizedText, pub o
 pub struct BlockNumbers { pub ours: usize, pub theirs: usize, pub result: usize }   // this block's first line in each projection
 pub struct DocView { …, pub names: SideNames }        // `explainer` removed
 pub struct BlockView { …, pub numbers: BlockNumbers }  // `ours_label`/`theirs_label` removed: `DocView::names` carries them
-// RegionView::Plain.first_line now = the Result projection's number
+// was: RegionView::Plain.first_line now = the Result projection's number — superseded 2026-09-24:
+// RegionView::Plain { numbers: BlockNumbers, .. } replaces first_line (fix-resolver-three-panes, S1); the card draws numbers.result
 
 // graft-ui/src/conflict_resolver.rs                                    fix-resolver-file-list (owns these, R1; three-panes consumes)
 pub const THREE_PANE_MIN: u16 = 180;
@@ -532,6 +533,8 @@ pub enum LineRef { Plain { region: usize, i: usize }, Ours { block: usize, i: us
 pub enum Cell { Line { line_no: Option<usize>, text: LineRef }, Pad, Placeholder, Rule }
 pub enum ScreenRow { /* existing */ PaneTitles, Aligned { block: Option<usize>, ours: Cell, result: Cell, theirs: Cell } }
 pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout;   // was (doc, columns); Card == today's rows
+impl Placement { pub const fn arrangement(self) -> Arrangement; }   // width from state.size.columns via resolver_split
+pub fn three_panes(doc: Rect) -> [Rect; 3];   // doc minus two `│`, thirds, remainder to the result; gutters included (ADR-0043 §2)
 
 // graft-ops/src/conflict.rs                                            fix-ops-conflict-set-and-summary
 pub struct ConflictSet { pub paths: Vec<PathBuf>, pub recorded: bool }   // unmerged in git's status order, then resolved ones in MERGE_MSG order; recorded = git's list was found
@@ -551,14 +554,23 @@ pub enum Refusal { …, MessageNotHere { kind: InProgress } }                   
 // fix-continue-a-merge-begun-in-the-shell: FinishMergeParams gains `pub message: Option<Vec<u8>>`
 
 // graft (app)                                                          fix-resolver-file-list, fix-finish-summary-screen
-pub struct ResolverState { …, pub files: Loading<Arc<ConflictSet>>, pub set_job: Option<JobId>, pub seen: BTreeMap<PathBuf, RowState> }
+pub struct ResolverState { …, pub done: Option<DoneShape> /* ticket 25 */, pub files: Loading<Arc<ConflictSet>>, pub set_job: Option<JobId>, pub seen: BTreeMap<PathBuf, RowState> }
 // was `pub file_cursor: usize` — superseded 2026-09-24 (ticket 13 R2): a function of the open path, cannot drift
 // graft/src/update/resolver/files.rs (new)                              fix-resolver-file-list
 pub enum RowState { Open { open: usize, of: usize }, AllTaken, Done, WholeFile { how: UnmergedHow }, Binary, Unread }
 pub struct ListedFile { pub path: PathBuf, pub state: RowState }
-pub fn listed_files(state: &AppState) -> Vec<ListedFile>;
+pub fn listed_files(state: &AppState) -> Vec<ListedFile>;   // sorted once here, git's path order (byte-wise), over set ∪ extra unmerged ∪ open path; a done file keeps its row (was: ops' order, done files after open — superseded 2026-09-24, ticket 25 D1)
 pub fn file_cursor(state: &AppState) -> usize;   // index of ResolverState::path in listed_files; 0 when absent
-pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k` if P7
+pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k` if P7; a Done row opens read-only (ticket 25; 13's refusal dropped)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)] pub enum DoneShape { Text { unstaged: bool }, Binary { unstaged: bool }, Removed }   // fix-stable-file-order-and-done-file-open
+// the Product answering Command::OpenConflict carries Result<graft_ops::conflict::Opening, …> (was Opened)
+// graft-ops/src/conflict/done.rs (new; re-exported from `conflict`)     fix-stable-file-order-and-done-file-open
+pub enum DoneFile { Text { file: graft_git::conflict::ConflictFile, unstaged: bool }, Binary { unstaged: bool }, Removed }
+pub enum Opening { Unmerged(Opened), Done(DoneFile) }
+pub fn open_done(repo: &RepoHandle, status: &WorkingTreeStatus, path: &Path) -> Result<DoneFile, OpenError>;
+pub fn open_listed(repo: &RepoHandle, path: &Path) -> Result<Opening, OpenError>;   // reads the status itself; open_conflict unchanged
+// OpenError gains Status(<graft-git status reader's error>)
+// graft-ui hints: HintContext::Resolver { base, restart, whole_file, done: bool, roles }
 pub struct Choices { pub takes: Vec<Option<Take>>, pub whole: Option<Side>, pub edited: bool }
 pub struct AppState { …, pub choices: BTreeMap<PathBuf, Choices>, pub finish: Option<FinishState>, pub finish_draft: Option<(String, String)> }
 pub struct FinishState { pub summary: Loading<Arc<FinishSummary>>, pub job: Option<JobId>, pub cursor: usize, pub expanded: Option<(usize, Loading<Arc<DiffView>>)>,
@@ -673,6 +685,10 @@ many files:  files · 7 · 2 done   ▸ src/auth/token.rs 2 of 3 open   src/api/
   card.
 - Empty and error states are unchanged from the ADR-0042 section above. A file the resolver has not read yet shows
   `Unread` as `…`. If the set could not be read, the strip reads `files: git's list unavailable · the unmerged ones below`.
+- A done file clicked opens **read-only** (fix-stable-file-order-and-done-file-open D2): identity row
+  `▸ <path> · done ✓ · d starts it over` (+ ` · edited since done` when unstaged), the working-tree file's plain lines;
+  binary / removed draw a card `done ✓ · binary` / `done ✓ · removed`. Takes refused: `<path> is done · d starts it over`.
+  Bar: `d start over  n next  N prev  e edit  esc close`.
 
 **Finish summary** (full frame under the header, like the resolver; modal).
 ```

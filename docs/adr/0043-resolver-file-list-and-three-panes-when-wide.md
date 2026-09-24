@@ -41,8 +41,12 @@ The audit (`conflict-layout-audit.md`) found:
    (`? open · o t b`, or its BASE lines when `B` is on). A take fills that placeholder
    in: the chosen side goes into the middle. This removes ADR-0042's reason 1. That
    reason was about aligning three *independent* files, and this design never does.
-   At 180 columns each pane is 46 characters; at 200 columns, 52. The number is a
-   constant that the user's eye tunes.
+   ~~At 180 columns each pane is 46 characters; at 200 columns, 52. The number is a
+   constant that the user's eye tunes.~~ **Amended 2026-09-24** (ticket
+   `14-resolver-three-panes` S2; 46 did not follow from the list column): Each pane is a
+   third of what the list column and two `│` separators leave, the remainder to the
+   result, its line-number gutter included: 48–53 columns at 180, 55–59 at 200. The list
+   column's clamp (22–32) is the knob the user's eye tunes.
 3. **Below 180 columns, the card** (ADR-0042's document, unchanged in shape: sides
    paired at 100 columns and wider, stacked below 100), with the fixes from §C:
 4. **One name per side, everywhere:** pane titles, card labels, headers, hint verbs,
