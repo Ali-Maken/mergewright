@@ -260,7 +260,7 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `o` | Take ours (cursor block), then move the cursor to the next open block (P2) |
 | `t` | Take theirs (cursor block), then move the cursor to the next open block (P2) |
 | `b` | Take both, then move the cursor to the next open block (P2) |
-| `Ctrl+O` / `Ctrl+T` | Yours / theirs in every open block of this file, one write; does not mark it done — `Enter` as usual (P3) |
+| `Ctrl+O` / `Ctrl+T` | Yours / theirs in every open block of this file, one write; does not mark it done — `Enter` as usual (P3). On a whole-file card or a done file, refused in words. |
 | `O` / `T` | Yours / theirs in every open block of this file, mark it done, move to the next file; on a whole-file card, same as `o`/`t` (P6; the named §2.1 exception) |
 | `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
 | `d` | Start this file over (`git checkout --merge`), behind a confirm box — not undoable while the operation is open (the box says so) |

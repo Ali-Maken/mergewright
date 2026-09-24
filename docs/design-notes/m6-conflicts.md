@@ -320,14 +320,14 @@ pub fn stopped_row(reason: &str, hints: &[Hint], columns: u16) -> String;   // b
 // graft/src/update/resolver (walk.rs, take.rs)                                   fix-take-advances-to-next-block (P2)
 pub fn next_block(file: &ConflictFile, from: Option<usize>, forward: bool) -> Option<usize>;   // any state
 pub fn after_take(file: &ConflictFile, taken: usize) -> Option<usize>;   // next open after `taken`, wrapping; None = none open
-pub struct ResolverState { …, pub in_flight: Option<(usize, Take)>, pub queued: VecDeque<(usize, Take)> }   // in graft/src/update/resolver.rs; in_flight = the take whose TakeSide is out; queued = takes pressed while one is in flight, in order, cap 64, excluding the one in flight
+pub struct ResolverState { …, pub in_flight: Option<(TakeAt, Take)>, pub queued: VecDeque<(TakeAt, Take)> }   // in graft/src/update/resolver.rs; in_flight = the take whose TakeSide is out; queued = takes pressed while one is in flight, in order, cap 64, excluding the one in flight; pub enum TakeAt { Block(usize), Every } in update/events.rs (ticket 16); a bulk take is one queue entry   // supersedes (usize, Take)
 
 // graft-ui/src/preview_box.rs                                                   fix-preview-verb-confirms (P1)
 pub struct PreviewBox { …, pub again: Option<(SanitizedText, SanitizedText)> }   // ("m", "merge"), drawn first in the footer border
 
 // graft-git conflict.rs + graft-ops conflict.rs                                  fix-take-every-open-block (P3)
 impl ConflictFile { pub fn take_all(&mut self, take: Take) -> usize; }   // every Conflict region; how many
-pub fn apply_take_all(repo: &RepoHandle, path: &Path, expected: Oid, take: Take) -> Result<ConflictFile, TakeError>;
+pub fn apply_take_all(repo: &RepoHandle, path: &Path, file: &ConflictFile, take: Take) -> Result<ConflictFile, TakeError>;   // the document, as apply_take (ticket 16 D1; supersedes `expected: Oid`)
 
 // graft-core journal + graft-ops                                                fix-continue-a-merge-begun-in-the-shell (P4)
 pub enum OperationKind { …, FinishMerge }
