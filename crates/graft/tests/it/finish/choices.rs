@@ -28,18 +28,33 @@ pub(super) fn advanced_to(app: &App, state: AppState, path: &str) -> AppState {
     })
 }
 
-/// `o` on `gone.txt`'s card, the last file: the resolver closes to the
-/// banner, and the status the stage asked for has landed.
+/// `o` on `gone.txt`'s card, the last file: the resolver stays on it, read
+/// back as done (m6-conflicts/31), and the status the stage asked for has
+/// landed.
 pub(super) fn gone_kept_last(app: &App, state: &AppState) -> AppState {
     let state = app.key(state, KeyCode::Char('o'));
     app.pump(state, "the last file done", |state| {
-        state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
+        state.operating.is_none() && state.status_read.is_none() && last_file_read_back(state)
     })
 }
 
-/// `c` on the banner and the summary read.
-pub(super) fn c_on_the_banner(app: &App, state: AppState) -> AppState {
-    let state = crate::resolver::on_the_banner(app, state);
+/// The resolver is on a done file with its read landed — where every file
+/// done leaves it (m6-conflicts/31).
+fn last_file_read_back(state: &AppState) -> bool {
+    state
+        .resolver
+        .as_ref()
+        .is_some_and(|open| open.done.is_some() && open.job.is_none())
+}
+
+/// `c` where the user is — the resolver after the last file
+/// (m6-conflicts/31), else the banner — and the summary read.
+pub(super) fn c_for_the_summary(app: &App, state: AppState) -> AppState {
+    let state = if state.resolver.is_some() {
+        state
+    } else {
+        crate::resolver::on_the_banner(app, state)
+    };
     let state = app.key(&state, KeyCode::Char('c'));
     assert!(
         state.finish.is_some(),
@@ -85,7 +100,7 @@ fn the_summary_words_what_you_chose() {
     let state = app.key(&state, KeyCode::Enter);
     let state = advanced_to(&app, state, "gone.txt");
     let state = gone_kept_last(&app, &state);
-    let state = c_on_the_banner(&app, state);
+    let state = c_for_the_summary(&app, state);
 
     let notes = row_for(&state, "notes.txt");
     assert!(
@@ -103,7 +118,7 @@ fn the_summary_words_what_you_chose() {
         state.in_progress.is_some() && state.working_tree.is_some()
     });
     assert!(state.choices.is_empty(), "nothing carried across");
-    let state = c_on_the_banner(&app, state);
+    let state = c_for_the_summary(&app, state);
     let notes = row_for(&state, "notes.txt");
     assert!(notes.contains("same as theirs · feature"), "{notes}");
     let gone = row_for(&state, "gone.txt");
@@ -116,7 +131,7 @@ fn the_summary_words_what_you_chose() {
 fn shift_t_records_its_choices() {
     let (scratch, app, state) = stopped_on_gone_and_notes();
     let state = both_resolved_in_the_app(&app, state);
-    let state = c_on_the_banner(&app, state);
+    let state = c_for_the_summary(&app, state);
 
     let notes = row_for(&state, "notes.txt");
     assert!(
@@ -135,7 +150,7 @@ fn shift_t_records_its_choices() {
 fn space_on_a_kept_yours_row_warns_nothing() {
     let (scratch, app, state) = stopped_on_gone_and_notes();
     let state = both_resolved_in_the_app(&app, state);
-    let state = c_on_the_banner(&app, state);
+    let state = c_for_the_summary(&app, state);
     let row = match &state.finish.as_ref().expect("the summary").summary {
         graft::update::detail::Loading::Ready(summary) => summary
             .by_you
@@ -212,21 +227,30 @@ fn a_start_over_forgets_the_choices() {
 }
 
 /// The app's own merge of [`about_to_merge`], landed in the resolver, and
-/// `T` on each file until the last closes to the banner: `choices` holds
-/// both. A merge begun in the shell is not the app's to commit or abort.
+/// `T` on each file until every one is done — the resolver stays on the
+/// last (m6-conflicts/31): `choices` holds both. A merge begun in the shell
+/// is not the app's to commit or abort.
 fn every_file_theirs(app: &App, state: AppState) -> AppState {
     let mut state = crate::conflict_interim::landed_in_the_resolver(app, state);
     let mut guard = 0;
-    while let Some(was) = state.resolver.as_ref().map(|open| open.path.clone()) {
-        assert!(guard < 4, "`T` never closed the resolver");
+    while let Some(was) = state
+        .resolver
+        .as_ref()
+        .filter(|open| open.done.is_none())
+        .map(|open| open.path.clone())
+    {
+        assert!(guard < 4, "`T` never reached every file done");
         guard += 1;
         state = app.press(&state, KeyPress::plain(KeyCode::Char('T')));
         state = app.pump(state, "the file done and the next", |state| {
             state.operating.is_none()
                 && state.resolver.as_ref().is_none_or(|open| {
-                    open.path != was
-                        && open.job.is_none()
-                        && (open.file.is_some() || open.whole_file.is_some())
+                    open.job.is_none()
+                        && if open.path == was {
+                            open.done.is_some()
+                        } else {
+                            open.file.is_some() || open.whole_file.is_some()
+                        }
                 })
         });
     }
@@ -239,7 +263,7 @@ fn every_file_theirs(app: &App, state: AppState) -> AppState {
 /// the draft is kept.
 fn choices_and_a_draft(app: &App, state: AppState) -> AppState {
     let state = every_file_theirs(app, state);
-    let state = c_on_the_banner(app, state);
+    let state = c_for_the_summary(app, state);
     let state = app.key(&state, KeyCode::Tab);
     let state = typed(app, state, " (draft)");
     let state = app.key(&state, KeyCode::Escape);
@@ -254,7 +278,7 @@ fn choices_and_draft_clear_when_the_merge_ends() {
     let scratch = about_to_merge();
     let (app, state) = App::open(scratch.path());
     let state = choices_and_a_draft(&app, state);
-    let state = c_on_the_banner(&app, state);
+    let state = c_for_the_summary(&app, state);
     let state = committed(&app, &state, KeyPress::plain(KeyCode::Enter));
     assert!(
         !scratch.path().join(".git/MERGE_HEAD").exists(),
@@ -271,6 +295,10 @@ fn choices_and_draft_clear_when_the_merge_ends() {
     let scratch = about_to_merge();
     let (app, state) = App::open(scratch.path());
     let state = choices_and_a_draft(&app, state);
+    // `Esc` from the summary went back to the resolver; its own `Esc`
+    // lands on the banner, where `a` aborts.
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none() && state.banner_focus);
     let state = app.key(&state, KeyCode::Char('a'));
     assert!(state.confirm.is_some(), "`a` asks first");
     let state = app.key(&state, KeyCode::Right);
@@ -302,6 +330,9 @@ fn choices_and_draft_clear_when_the_merge_ends_outside() {
     let (app, state) = App::open(repo);
     let state = choices_and_a_draft(&app, state);
     git(repo, &["commit", "-q", "--no-edit"]);
+    // The resolver the summary went back to is modal: `Esc` closes it.
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none());
     // The focused banner swallows `Ctrl+R` (`update/keys.rs::banner_key`);
     // `Tab` gives the keyboard back first.
     let state = if state.banner_focus {

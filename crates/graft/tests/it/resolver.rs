@@ -343,13 +343,20 @@ fn take_all_and_mark(app: &App, state: AppState) -> AppState {
         path.display(),
         state.status
     );
+    // Where the stage lands: the next file's document, or — the last file
+    // (m6-conflicts/31) — the same file reopened read-only as done, or the
+    // resolver closed (a stash pop).
     app.pump(state, "the stage and what follows it", |state| {
         state.operating.is_none()
             && state.status_read.is_none()
-            && state
-                .resolver
-                .as_ref()
-                .is_none_or(|open| open.path != path && open.file.is_some() && open.job.is_none())
+            && state.resolver.as_ref().is_none_or(|open| {
+                open.job.is_none()
+                    && if open.path == path {
+                        open.done.is_some()
+                    } else {
+                        open.file.is_some()
+                    }
+            })
     })
 }
 

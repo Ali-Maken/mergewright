@@ -1,6 +1,6 @@
 //! The finish summary's captures (m6-conflicts/35).
 
-use super::choices::{advanced_to, c_on_the_banner, gone_kept_last, stopped_on_gone_and_notes};
+use super::choices::{advanced_to, c_for_the_summary, gone_kept_last, stopped_on_gone_and_notes};
 use super::*;
 
 /// The finish summary the user judges by eye (m6-conflicts/19, built by
@@ -17,7 +17,7 @@ fn summary_captures() {
     let state = app.key(&state, KeyCode::Enter);
     let state = advanced_to(&app, state, "gone.txt");
     let state = gone_kept_last(&app, &state);
-    let state = c_on_the_banner(&app, state);
+    let state = c_for_the_summary(&app, state);
 
     closed_captures(&state, &repo);
     let state = expanded_capture(&app, &state);

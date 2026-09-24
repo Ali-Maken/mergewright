@@ -55,7 +55,18 @@ pub(super) fn answered(state: &mut AppState, id: JobId) -> bool {
 /// [`CHECKING`] becomes the verdict — every file done and `c` offered, or
 /// `c`'s own refusal when something is conflicted after all (an edit from
 /// outside). Any other line was put up since, and stays.
+///
+/// The same for the resolver's notice row, where the words go while the
+/// resolver is open after the last file (m6-conflicts/31): a notice still
+/// saying [`CHECKING`] becomes the verdict in the notice's own words.
 pub(super) fn settle(state: &mut AppState) {
+    if notice_checking(state) {
+        let verdict = match super::banner::continue_refusal(state) {
+            None => (super::resolver::every_file_done_words(state), false),
+            Some(reason) => super::resolver::finish_refused_notice(&reason),
+        };
+        super::resolver::set_notice(state, verdict);
+    }
     if !checking(state) {
         return;
     }
@@ -65,9 +76,15 @@ pub(super) fn settle(state: &mut AppState) {
     };
 }
 
-/// The owed read ended with no status to give: the line stops saying it is
-/// checking. Nothing is claimed either way — the next read decides.
+/// The owed read ended with no status to give: the line — or the
+/// resolver's notice — stops saying it is checking. Nothing is claimed
+/// either way — the next read decides.
 pub(super) fn abandon(state: &mut AppState) {
+    if notice_checking(state)
+        && let Some(open) = state.resolver.as_mut()
+    {
+        open.notice = None;
+    }
     if checking(state) {
         state.status = Status::Ready;
     }
@@ -75,4 +92,15 @@ pub(super) fn abandon(state: &mut AppState) {
 
 fn checking(state: &AppState) -> bool {
     matches!(&state.status, Status::Busy(words) if words == CHECKING)
+}
+
+/// The open resolver's notice row says [`CHECKING`]. A notice cleared or
+/// replaced meanwhile (a scroll, a take) is not resurrected: the next `c`
+/// asks again.
+fn notice_checking(state: &AppState) -> bool {
+    state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.notice.as_ref())
+        .is_some_and(|(words, problem)| words == CHECKING && !problem)
 }

@@ -515,8 +515,9 @@ fn at_step_two(app: &App, state: AppState) -> AppState {
             .is_some_and(|open| open.path == Path::new("a.txt") && open.file.is_some())
     });
     let state = take_all_and_mark(app, state);
-    assert!(state.resolver.is_none(), "a.txt was step 1's only file");
-    assert!(state.banner_focus, "the banner has the keyboard for `c`");
+    // a.txt was step 1's only file: the resolver stays on it, done, and
+    // `c` works from there (m6-conflicts/31).
+    assert!(open(&state).done.is_some(), "a.txt was step 1's only file");
     // The status refresh after the stage lands on its own; `c` counts
     // conflicts from it.
     let state = app.pump(state, "the status after the stage", |state| {
@@ -531,6 +532,9 @@ fn at_step_two(app: &App, state: AppState) -> AppState {
         "`c` ran nothing: {:?}",
         state.status
     );
+    // A rebase's `c` closes the resolver to the banner as it sends, so the
+    // next stop opens it fresh (P5).
+    assert!(state.resolver.is_none() && state.banner_focus);
     let state = app.pump(state, "the continue", |state| state.operating.is_none());
     let state = app.pump(state, "the continue stopping at step 2", |state| {
         state.operating.is_none()
@@ -642,17 +646,23 @@ fn a_rebase_lists_only_this_steps_files() {
     let body = crate::captures::frame(&state, 120, 40).join("\n");
     assert!(!body.contains("a.txt"), "{body}");
 
-    // `⏎` stages the step's last file: the resolver closes to the banner,
-    // which says `c` goes on.
+    // `⏎` stages the step's last file: the resolver stays on it, read back
+    // as done, and its notice says `c` goes on (m6-conflicts/31).
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the stage", |state| {
-        state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
+        state.operating.is_none()
+            && state.status_read.is_none()
+            && state
+                .resolver
+                .as_ref()
+                .is_none_or(|open| open.done.is_some() && open.job.is_none())
     });
-    assert!(
-        matches!(&state.status, Status::Done(line)
-            if line == "every file done ✓ · c continues the rebase"),
-        "{:?}",
-        state.status
+    assert_eq!(
+        open(&state).notice,
+        Some((
+            "every file done ✓ · c continues the rebase".to_owned(),
+            false
+        ))
     );
     drop(state);
     app.close();

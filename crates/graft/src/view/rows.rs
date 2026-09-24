@@ -504,6 +504,10 @@ pub fn resolver_context(state: &AppState) -> HintContext {
         whole_file: card,
         done,
         roles: crate::update::resolver::side_names(state).roles,
+        // `c` would act rather than refuse (m6-conflicts/31): the bar
+        // never names a key that answers "not yet".
+        finishable: crate::update::banner::banner_view(state).is_some()
+            && crate::update::banner::continue_refusal(state).is_none(),
     }
 }
 

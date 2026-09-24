@@ -111,6 +111,12 @@ pub enum HintContext {
         /// (`o yours  t theirs`; rebase `o upstream  t yours`), never as a
         /// branch name or sha (ADR-0043 §4).
         roles: SideRoles,
+        /// `c` would act (m6-conflicts/31, P8): an operation is live and
+        /// nothing is conflicted. Every table then offers `c finish` (a
+        /// merge) or `c continue` just before `esc close`. Gated, not drawn
+        /// always: the bar never names a key that would refuse. In practice
+        /// only a done file is ever finishable.
+        finishable: bool,
     },
     /// The finish summary has the keyboard (m6-conflicts/19, keymap §2.6b):
     /// modal, its own whole list, no `. more`. What `⏎` and `⇥` do depends

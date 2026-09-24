@@ -77,8 +77,10 @@ pub(crate) use names::fixtures;
 pub use names::side_names;
 pub(in crate::update) use open::box_open;
 pub use open::open_resolver;
-pub(crate) use resolved::every_file_done;
 pub use resolved::resolved_advance;
+pub(crate) use resolved::{
+    every_file_done, every_file_done_words, finish_refused_notice, set_notice,
+};
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
 pub use scroll::resolver_mouse;
@@ -359,11 +361,32 @@ fn act(
         KeyCode::Char('e') if plain => edit_here(state, commands),
         KeyCode::Char('d') if plain => restart_box(state),
         KeyCode::Char('M') if plain => mergetool_here(state, commands),
+        KeyCode::Char('c') if plain => finish_pressed(state, commands, next_id),
         _ if plain => scroll_key(state, key.code),
         // Swallowed on purpose and silently: §2.1's modal rule. The bar
         // under the document is what says which keys apply here.
         _ => {}
     }
+}
+
+/// `c`: finish (a merge's summary) or continue, from here (§2.6, P8).
+/// Refused first while a take or write on this file is landing, in the
+/// resolver's own words and the hand-over's order — the summary reads what
+/// is staged, so a write still landing would not be in it. Then the
+/// banner's own `c`, with its words on the notice row.
+///
+/// Not gated on a done file ([`done::refuses`]): after the last file, a
+/// done file is exactly where the user is.
+fn finish_pressed(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    if let Some(words) = handover::handover_refusal(state) {
+        state.status = Status::sticky(words);
+        return;
+    }
+    super::banner::continue_pressed(state, commands, super::finish::ReturnTo::Resolver, next_id);
 }
 
 /// `Esc`: close — once the takes have landed. Closing drops the resolver

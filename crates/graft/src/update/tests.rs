@@ -3721,6 +3721,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             restart: true,
             whole_file: false,
             done: false,
+            finishable: false,
             ..
         }
         | HintContext::Resolver {
@@ -3728,19 +3729,28 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             restart: false,
             whole_file: true,
             done: false,
+            finishable: false,
             ..
         }
         | HintContext::Finish { .. }) => Some(same.clone()),
         // A done file (m6-conflicts/25): `resolver_context` answers the
-        // document's flags with `done` set.
+        // document's flags with `done` set. Finishable (m6-conflicts/31)
+        // is the done file after the last one, every file done — the one
+        // place `c` acts in the resolver; a document or a card open is a
+        // file still conflicted, so `c` refuses there and those forms
+        // never reach the app.
         HintContext::Resolver {
-            done: true, roles, ..
+            done: true,
+            roles,
+            finishable,
+            ..
         } => Some(HintContext::Resolver {
             base: true,
             restart: true,
             whole_file: false,
             done: true,
             roles: *roles,
+            finishable: *finishable,
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
@@ -4003,12 +4013,7 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         | HintContext::PlainRow
         | HintContext::Marked(_)
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
-        HintContext::Resolver {
-            whole_file,
-            done,
-            roles,
-            ..
-        } => vec![resolver_screen_for(walk, *whole_file, *done, *roles)],
+        HintContext::Resolver { .. } => vec![resolver_for(walk, context)],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
@@ -5017,6 +5022,43 @@ fn resolver_screen_for(
         open.cursor_block = None;
     }
     state
+}
+
+/// [`screen_for`]'s resolver screen for a `Resolver` context.
+fn resolver_for(walk: JobId, context: &HintContext) -> AppState {
+    let HintContext::Resolver {
+        whole_file,
+        done,
+        roles,
+        finishable,
+        ..
+    } = *context
+    else {
+        panic!("not a resolver context: {context:?}");
+    };
+    let mut state = resolver_screen_for(walk, whole_file, done, roles);
+    // Only a done file is ever finishable in the app (see
+    // `classified_form`): a document or a card open is a file still
+    // conflicted, where `c` refuses in words — still an answer — and the
+    // fixture keeps the second file `j`/`n` step to.
+    if finishable && done {
+        every_file_staged(&mut state);
+    }
+    state
+}
+
+/// Nothing unmerged any more: every path the fixture listed is staged, so
+/// `c` acts (m6-conflicts/31).
+fn every_file_staged(state: &mut AppState) {
+    let entries = state
+        .working_tree
+        .as_ref()
+        .expect("the resolver fixtures list their files")
+        .entries
+        .iter()
+        .map(|entry| status_entry(&entry.path.display().to_string(), false))
+        .collect();
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus { entries }));
 }
 
 fn in_roles(mut state: AppState, roles: graft_ui::conflict_resolver::SideRoles) -> AppState {

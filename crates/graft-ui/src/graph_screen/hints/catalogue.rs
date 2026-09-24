@@ -139,47 +139,42 @@ fn operation_live_form(context: &HintContext) -> Option<HintContext> {
 /// Every [`HintContext::Resolver`] form [`every_context`] names: the four
 /// `base`/`restart` combinations of a document, a whole-file card and a done
 /// file (whose lists read neither flag, so one form covers each) — each under
-/// every [`SideRoles`].
+/// every [`SideRoles`]. Each once more with `finishable` (m6-conflicts/31),
+/// except under [`SideRoles::StashPop`]: a stash pop has no operation to
+/// finish, so no `c`.
 fn resolver_forms() -> Vec<HintContext> {
     ALL_ROLES
         .iter()
         .flat_map(|&roles| {
-            let document = move |base, restart| HintContext::Resolver {
-                base,
-                restart,
-                whole_file: false,
-                done: false,
-                roles,
+            let finishables: &[bool] = if roles == SideRoles::StashPop {
+                &[false]
+            } else {
+                &[false, true]
             };
-            [
-                document(false, false),
-                document(true, false),
-                document(false, true),
-                document(true, true),
-                HintContext::Resolver {
-                    base: false,
-                    restart: false,
-                    whole_file: true,
-                    done: false,
+            finishables.iter().flat_map(move |&finishable| {
+                let form = move |base, restart, whole_file, done| HintContext::Resolver {
+                    base,
+                    restart,
+                    whole_file,
+                    done,
                     roles,
-                },
-                // A done file, read-only (m6-conflicts/25): its list reads
-                // `restart` alone (m6-conflicts/28), so two forms cover it.
-                HintContext::Resolver {
-                    base: false,
-                    restart: true,
-                    whole_file: false,
-                    done: true,
-                    roles,
-                },
-                HintContext::Resolver {
-                    base: false,
-                    restart: false,
-                    whole_file: false,
-                    done: true,
-                    roles,
-                },
-            ]
+                    finishable,
+                };
+                [
+                    // A document: the four `base`/`restart` combinations.
+                    form(false, false, false, false),
+                    form(true, false, false, false),
+                    form(false, true, false, false),
+                    form(true, true, false, false),
+                    // A whole-file card.
+                    form(false, false, true, false),
+                    // A done file, read-only (m6-conflicts/25): its list
+                    // reads `restart` alone (m6-conflicts/28), so two forms
+                    // cover it.
+                    form(false, true, false, true),
+                    form(false, false, false, true),
+                ]
+            })
         })
         .collect()
 }

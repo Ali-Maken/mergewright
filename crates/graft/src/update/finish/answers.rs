@@ -140,6 +140,10 @@ pub(crate) fn resume_answered(
         state.finish = None;
         state.finish_draft = None;
         state.external_editor = None;
+        // A summary opened from the resolver (m6-conflicts/31) has it still
+        // open underneath: the merge is committed, nothing is left to
+        // resolve, and the landing is the graph on the merge commit (J6).
+        state.resolver = None;
         return Some(FinishAnswer::Merged(words));
     }
     close_keeping_draft(state);

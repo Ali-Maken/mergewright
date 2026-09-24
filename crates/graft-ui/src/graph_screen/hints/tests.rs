@@ -1036,6 +1036,7 @@ fn every_context_lists_resolver() {
                     whole_file: false,
                     done: false,
                     roles: SideRoles::Merge,
+                    finishable: false,
                 }),
                 "every_context() is missing Resolver {{ base: {base}, restart: {restart} }}"
             );
@@ -1051,6 +1052,7 @@ fn document(base: bool, restart: bool) -> HintContext {
         whole_file: false,
         done: false,
         roles: SideRoles::Merge,
+        finishable: false,
     }
 }
 
@@ -1166,6 +1168,7 @@ fn resolver_offers_file_keys() {
             whole_file,
             done,
             roles: SideRoles::Merge,
+            finishable: false,
         });
         assert!(list.iter().all(|hint| hint.verb != "resolved"), "{list:?}");
         if whole_file || done {
@@ -1211,6 +1214,7 @@ fn resolver_card_draws_only_what_a_card_answers() {
             whole_file: true,
             done: false,
             roles: SideRoles::Merge,
+            finishable: false,
         };
         assert_eq!(
             hints_text(&hints_for(&card, Divider::Hidden, 160)),
@@ -1223,6 +1227,7 @@ fn resolver_card_draws_only_what_a_card_answers() {
         whole_file: true,
         done: false,
         roles: SideRoles::Merge,
+        finishable: false,
     }));
 }
 
@@ -1242,6 +1247,7 @@ fn a_done_file_offers_start_over_edit_and_close() {
             whole_file,
             done: true,
             roles: SideRoles::Rebase,
+            finishable: false,
         };
         assert_eq!(
             hints_text(&hints_for(&done, Divider::Hidden, 160)),
@@ -1267,6 +1273,7 @@ fn a_done_file_that_cannot_start_over_offers_edit_and_close() {
             whole_file,
             done: true,
             roles: SideRoles::Merge,
+            finishable: false,
         };
         assert_eq!(
             hints_text(&hints_for(&done, Divider::Hidden, 160)),
@@ -1278,6 +1285,56 @@ fn a_done_file_that_cannot_start_over_offers_edit_and_close() {
         HintContext::Resolver {
             done: true,
             restart: false,
+            ..
+        }
+    )));
+}
+
+/// Every file done, an operation waiting (m6-conflicts/31, P8): the done
+/// file's bar offers `c` just before `esc close` — `c finish` in a merge,
+/// `c continue` otherwise — and only while `finishable`.
+#[test]
+fn a_finishable_done_file_offers_c() {
+    let done = |roles, finishable| HintContext::Resolver {
+        base: true,
+        restart: true,
+        whole_file: false,
+        done: true,
+        roles,
+        finishable,
+    };
+    let bar = |context: &HintContext| hints_text(&hints_for(context, Divider::Hidden, 160));
+    assert_eq!(
+        bar(&done(SideRoles::Merge, true)),
+        " d start over  e edit  c finish  esc close"
+    );
+    assert_eq!(
+        bar(&done(SideRoles::Rebase, true)),
+        " d start over  e edit  c continue  esc close"
+    );
+    assert_eq!(
+        bar(&done(SideRoles::Merge, false)),
+        " d start over  e edit  esc close"
+    );
+    // Every table, not the done one only: `c` sits just before `esc close`.
+    for whole_file in [false, true] {
+        let list = context_list(&HintContext::Resolver {
+            base: true,
+            restart: true,
+            whole_file,
+            done: false,
+            roles: SideRoles::Merge,
+            finishable: true,
+        });
+        let keys: Vec<&str> = list.iter().map(|hint| hint.key).collect();
+        assert_eq!(keys[keys.len() - 2..], ["c", "esc"], "{keys:?}");
+    }
+    assert!(every_context().iter().any(|context| matches!(
+        context,
+        HintContext::Resolver {
+            done: true,
+            finishable: true,
+            roles: SideRoles::Merge,
             ..
         }
     )));
@@ -1344,6 +1401,7 @@ fn resolver_verbs_are_role_words() {
             whole_file: false,
             done: false,
             roles,
+            finishable: false,
         };
         hints_text(&hints_for(&context, Divider::Hidden, 200))
     };
@@ -1380,6 +1438,7 @@ fn resolver_offers_take_all() {
             whole_file: false,
             done: false,
             roles,
+            finishable: false,
         });
         let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
         let both = keys
@@ -1397,6 +1456,7 @@ fn resolver_offers_take_all() {
             whole_file,
             done,
             roles: SideRoles::Merge,
+            finishable: false,
         });
         assert!(other.iter().all(|hint| hint.key != "⌃O/⌃T"), "{other:?}");
     }
