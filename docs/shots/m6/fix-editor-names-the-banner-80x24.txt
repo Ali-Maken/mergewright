@@ -1,0 +1,40 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_editor_names_the_banner in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the commit editor opened from the changes
+# pane with `c` (m6-conflicts/40).
+#
+# Judge by eye:
+# - The row directly above the options row reads, from column 3, exactly
+#   `merge begun in the shell — esc, ⇥ banner, then c finishes it` — whole at 80 columns.
+# - The options row ends at `[ Commit ]`, nothing after it.
+# - `git commit` and `…` appear nowhere in the editor's rows.
+# - The title row reads `COMMIT ── ⎇ main ── 2 files staged`.
+# - The reason and the button are dimmed; colour is unverified (CLAUDE.md
+#   rule 5), so the words carry it here.
+#
+=== 80x24 ===
+COMMIT ── ⎇ main ── 2 files staged
+
+▸Subject                                                   ┊                0/50
+
+ Body
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  merge begun in the shell — esc, ⇥ banner, then c finishes it
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel

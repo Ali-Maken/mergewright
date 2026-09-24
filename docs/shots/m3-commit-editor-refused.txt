@@ -3,7 +3,7 @@
 # (asserted). The same editor with nothing staged.
 #
 # Judge by eye:
-# - `nothing staged` sits immediately after [ Commit ] on the options row.
+# - `nothing staged` sits on its own row directly above the options row.
 #   The button is also dimmed, and no capture in this repo can show that
 #   (CLAUDE.md) — the words are what has to carry it.
 # - The title row still reads `nothing staged` as its count, so the reason
@@ -31,8 +31,8 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"                                                                                                                        "
-"  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]  nothing staged                           "
+"  nothing staged                                                                                                        "
+"  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]                                           "
 "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel                                                           "
 "UNCOMMITTED                                                                                                             "
 "diff vs HEAD 0303030                                                                                                    "

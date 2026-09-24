@@ -2450,7 +2450,7 @@ fn capture_m3_commit_editor_rejected() {
 fn capture_m3_commit_editor_refused() {
     let mut state = commit_editor_state(120, 40);
     // Nothing staged: the same editor, with the button dimmed and the reason
-    // beside it. The dimming is colour, which a capture cannot record — the
+    // on its own row above it (m6-conflicts/40). The dimming is colour, which a capture cannot record — the
     // reason in characters is what makes it legible here.
     state.working_tree = Some(std::sync::Arc::new(
         graft_git::status::WorkingTreeStatus::default(),
@@ -2463,7 +2463,7 @@ fn capture_m3_commit_editor_refused() {
 # (asserted). The same editor with nothing staged.
 #
 # Judge by eye:
-# - `nothing staged` sits immediately after [ Commit ] on the options row.
+# - `nothing staged` sits on its own row directly above the options row.
 #   The button is also dimmed, and no capture in this repo can show that
 #   (CLAUDE.md) — the words are what has to carry it.
 # - The title row still reads `nothing staged` as its count, so the reason

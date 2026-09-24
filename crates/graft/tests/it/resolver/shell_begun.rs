@@ -470,3 +470,83 @@ fn the_keys_the_commit_editor_names_reach_the_summary() {
     drop(state);
     app.close();
 }
+
+/// Asserts the editor's frame at `columns`x`rows` carries `words` whole:
+/// one row holds the exact sentence, no row names `git commit`, no row is
+/// cut with `…` (m6-conflicts/40).
+pub(super) fn the_words_fit(state: &AppState, words: &str, columns: u16, rows: u16) -> Vec<String> {
+    let frame = crate::captures::frame(state, columns, rows);
+    let body = frame.join("\n");
+    assert!(
+        frame.iter().any(|row| row.contains(words)),
+        "no row holds `{words}` whole at {columns}x{rows}:\n{body}"
+    );
+    assert!(!body.contains("git commit"), "{body}");
+    assert!(
+        !frame.iter().any(|row| row.trim_end().ends_with('…')),
+        "a row is cut at {columns}x{rows}:\n{body}"
+    );
+    frame
+}
+
+/// **The 80x24 check (ticket 39, then 40):** over J3 the whole sentence
+/// shows at the narrow breakpoint, on its own row above the options row.
+#[test]
+fn the_shell_merge_words_fit_at_80_by_24() {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let open = super::editor_words::editor_open(&app, state);
+    the_words_fit(&open, SHELL_WORDS, 80, 24);
+    app.close();
+}
+
+/// Regenerates `docs/shots/m6/fix-editor-names-the-banner-{120x40,80x24}.txt`
+/// (m6-conflicts/40): the commit editor over J3, its refusal on its own row.
+#[test]
+fn capture_fix_editor_names_the_banner() {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let open = settled_frame(&app, super::editor_words::editor_open(&app, state));
+    let mut captures = graft_fixtures::Captures::new();
+    for (columns, rows) in [(120_u16, 40_u16), (80, 24)] {
+        let sized = app.resize(&open, columns, rows);
+        let frame = crate::captures::frame_at(
+            &sized,
+            columns,
+            rows,
+            Some(graft::session::Clock::Fixed(
+                crate::conflict_interim::CONFLICT_NOW,
+            )),
+        );
+        the_words_fit(&sized, SHELL_WORDS, columns, rows);
+        let header = format!(
+            "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_editor_names_the_banner in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the commit editor opened from the changes
+# pane with `c` (m6-conflicts/40).
+#
+# Judge by eye:
+# - The row directly above the options row reads, from column 3, exactly
+#   `{SHELL_WORDS}` — whole at {columns} columns.
+# - The options row ends at `[ Commit ]`, nothing after it.
+# - `git commit` and `…` appear nowhere in the editor's rows.
+# - The title row reads `COMMIT ── ⎇ main ── 2 files staged`.
+# - The reason and the button are dimmed; colour is unverified (CLAUDE.md
+#   rule 5), so the words carry it here.
+#
+=== {columns}x{rows} ===
+"
+        );
+        captures.check(
+            format!(
+                "{}/../../docs/shots/m6/fix-editor-names-the-banner-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            format!("{header}{}\n", frame.join("\n")),
+        );
+    }
+    app.close();
+    captures.finish();
+}

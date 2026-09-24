@@ -784,3 +784,47 @@ fn esc_dismisses_the_reason_first_and_closes_the_editor_second() {
     let (closed, _) = update(&dismissed, key(KeyCode::Escape));
     assert!(closed.commit_editor.is_none(), "the second Esc closes it");
 }
+
+/// m6-conflicts/40: at 80 columns the refusal's own row has 78 columns after
+/// its 2-column indent, and every arm of `refusal` fits in them whole.
+#[test]
+fn every_refusal_fits_80_columns() {
+    use graft_git::state::InProgress;
+    use unicode_width::UnicodeWidthStr;
+
+    let editor = CommitEditor::new();
+    let empty = WorkingTreeStatus::default();
+    let with_staged = staged(&["a.rs"]);
+    let mut arms: Vec<String> = Vec::new();
+    for kind in [
+        InProgress::Merge,
+        InProgress::Rebase,
+        InProgress::CherryPick,
+        InProgress::Revert,
+        InProgress::Bisect,
+    ] {
+        for begun in [Begun::InGraft, Begun::InShell] {
+            arms.extend(editor.refusal(Some(&empty), Some((kind, begun))));
+        }
+    }
+    arms.extend(editor.refusal(None, None)); // working tree not read yet
+    arms.extend(editor.refusal(Some(&empty), None)); // nothing staged
+    arms.extend(editor.refusal(Some(&with_staged), None)); // subject empty
+    assert_eq!(arms.len(), 13, "every arm answered: {arms:#?}");
+    let widest = arms.iter().max_by_key(|words| words.width()).expect("arms");
+    for words in &arms {
+        assert!(
+            words.width() <= 78,
+            "{} cols at 80 — {words}",
+            words.width()
+        );
+    }
+    assert_eq!(
+        (widest.width(), widest.as_str()),
+        (
+            76,
+            "cherry-pick begun in the shell — finish it there: git cherry-pick --continue"
+        ),
+        "the widest arm"
+    );
+}
