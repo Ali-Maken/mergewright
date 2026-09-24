@@ -38,7 +38,7 @@ mod lists;
 pub use catalogue::{every_context, every_hint};
 pub use context::HintContext;
 use fitting::fit_list;
-pub use fitting::{fit_status_line, hints_text, stopped_row};
+pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row};
 use lists::{TAIL, context_list};
 
 /// Whether the key a hint names actually does the verb it names, today.

@@ -689,7 +689,8 @@ pub struct Stop {
 pub struct HeadLanding {
     /// The refresh's refs read, until it answers.
     pub refs: Option<JobId>,
-    /// The refresh's history walk, until it starts.
+    /// The refresh's history walk, until it — or a walk a later refresh put
+    /// in its place — starts (`banner::walk_started`).
     pub walk: Option<JobId>,
 }
 

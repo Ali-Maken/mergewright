@@ -338,9 +338,17 @@ pub(crate) fn box_context(state: &AppState) -> Option<HintContext> {
 
 /// Why the live operation stopped, worded from this frame's working-tree
 /// read (`banner::stop_reason`) so the step and the count stay true as
-/// files get resolved. `None` while nothing is stopped.
-pub(crate) fn stopped_line(state: &AppState) -> Option<SanitizedText> {
-    crate::update::banner::stop_line(state).map(|line| sanitize_line(&line))
+/// files get resolved, with the shorter wordings the footer falls back to
+/// (`banner::stop_wordings`). `None` while nothing is stopped.
+pub(crate) fn stopped_line(state: &AppState) -> Option<graft_ui::graph_screen::StopWording> {
+    let mut wordings = crate::update::banner::stop_line_wordings(state)?
+        .into_iter()
+        .map(|line| sanitize_line(&line));
+    let full = wordings.next()?;
+    Some(graft_ui::graph_screen::StopWording::new(
+        full,
+        wordings.collect(),
+    ))
 }
 
 /// What the footer offers under this frame's rows.

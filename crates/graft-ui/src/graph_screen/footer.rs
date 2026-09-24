@@ -234,7 +234,7 @@ mod tests {
     use graft_term::sanitize_line;
 
     use crate::graph_screen::tests::{draw, linear, text, view};
-    use crate::graph_screen::{HintContext, ProblemLine, SearchLine, WalkView};
+    use crate::graph_screen::{HintContext, ProblemLine, SearchLine, StopWording, WalkView};
 
     fn last_row(view: &crate::graph_screen::GraphView<'_>) -> String {
         text(&draw(view, 120, 8)).pop().expect("eight rows")
@@ -244,7 +244,10 @@ mod tests {
     fn a_problem_still_wins_over_a_stop() {
         let rows = linear(3);
         let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
-        shown.stopped = Some(sanitize_line("merge stopped · 1 file conflicted"));
+        shown.stopped = Some(StopWording::new(
+            sanitize_line("merge stopped · 1 file conflicted"),
+            Vec::new(),
+        ));
         // The focused banner's short list, which leaves the reason room.
         shown.hint_context = HintContext::Banner {
             skippable: false,
@@ -271,7 +274,10 @@ mod tests {
     fn a_search_line_still_wins_over_a_stop() {
         let rows = linear(3);
         let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
-        shown.stopped = Some(sanitize_line("merge stopped · 1 file conflicted"));
+        shown.stopped = Some(StopWording::new(
+            sanitize_line("merge stopped · 1 file conflicted"),
+            Vec::new(),
+        ));
         shown.search = Some(SearchLine::Prompt(sanitize_line("fix")));
         let row = last_row(&shown);
         assert!(row.starts_with(" /fix_"), "{row}");

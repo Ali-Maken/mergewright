@@ -115,7 +115,7 @@ fn a_merge_begun_in_the_shell_lands_on_the_banner() {
     );
     let reason = crate::view::rows::stopped_line(&state).expect("a stop is standing");
     assert!(
-        reason.as_str().contains("begun outside Graft"),
+        reason.full().as_str().contains("begun outside Graft"),
         "{reason:?}"
     );
     // A journal that never heard of it changes nothing.
@@ -150,7 +150,7 @@ fn a_previous_runs_merge_still_lands_the_same_way() {
     let (state, _) = update(&state, working_tree_read(&["a.rs", "b.rs"]));
     landed_on(&state, "a.rs");
     assert_eq!(
-        crate::view::rows::stopped_line(&state).map(|line| line.as_str().to_owned()),
+        crate::view::rows::stopped_line(&state).map(|line| line.full().as_str().to_owned()),
         Some("merge still in progress from a previous run · 2 files conflicted".to_owned())
     );
 
@@ -162,7 +162,7 @@ fn a_previous_runs_merge_still_lands_the_same_way() {
     let event = journal_read(&mut state, true);
     let (state, _) = update(&state, event);
     assert_eq!(
-        crate::view::rows::stopped_line(&state).map(|line| line.as_str().to_owned()),
+        crate::view::rows::stopped_line(&state).map(|line| line.full().as_str().to_owned()),
         Some("merge still in progress from a previous run · 1 file conflicted".to_owned())
     );
 }

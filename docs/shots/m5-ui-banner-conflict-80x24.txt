@@ -93,4 +93,4 @@
 ●      Ship release 14                                              2h   0f8d5d6
 ●      Ship release 13                                              2h   78ddfac
  no commit-graph file · B build one · X never here
- merge stopped ·… · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph

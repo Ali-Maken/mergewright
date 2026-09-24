@@ -1291,7 +1291,7 @@ fn stopped_row_drops_the_reason_under_twelve_cells() {
     );
     let bar = hints_text(&hints);
     let bar_width = bar.width();
-    let why = reason("merge stopped · 1 file conflicted");
+    let why = StopWording::new(reason("merge stopped · 1 file conflicted"), Vec::new());
     // Exactly eleven cells of room: dropped.
     let columns = u16::try_from(bar_width + 3 + 11).expect("fits u16");
     assert_eq!(stopped_row(&why, &hints, columns), bar);
@@ -1316,7 +1316,10 @@ fn stopped_row_keeps_the_bar_whole() {
         let hints = hints_for(&context, Divider::Hidden, columns);
         let bar = hints_text(&hints);
         let row = stopped_row(
-            &reason("rebase stopped at step 3 of 7 · 2 files conflicted"),
+            &StopWording::new(
+                reason("rebase stopped at step 3 of 7 · 2 files conflicted"),
+                Vec::new(),
+            ),
             &hints,
             columns,
         );
@@ -1324,9 +1327,86 @@ fn stopped_row_keeps_the_bar_whole() {
         assert!(row.width() <= usize::from(columns), "{columns}: {row}");
     }
     let hints = hints_for(&context, Divider::Hidden, 200);
-    let row = stopped_row(&reason("rebase stopped at step 3 of 7"), &hints, 200);
+    let row = stopped_row(
+        &StopWording::new(reason("rebase stopped at step 3 of 7"), Vec::new()),
+        &hints,
+        200,
+    );
     assert_eq!(
         row,
         format!(" rebase stopped at step 3 of 7 ·{}", hints_text(&hints))
     );
+}
+
+/// Review m6-amend-11-12 M1: at the user's 187 columns with the changes pane
+/// open the footer is about 108 cells, and a blind cut from the end drew
+/// `1…` for 13 files. The row now takes the fullest wording that fits — the
+/// shorter ones drop whole parts, so the count is drawn whole or not at all.
+#[test]
+fn stopped_row_keeps_the_count_whole_at_108_cells() {
+    let hints = hints_for(
+        &HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        Divider::Hidden,
+        108,
+    );
+    let why = StopWording::new(
+        reason("merge in progress · begun outside Graft · 13 files conflicted"),
+        vec![
+            reason("merge in progress · 13 files conflicted"),
+            reason("merge in progress"),
+        ],
+    );
+    let row = stopped_row(&why, &hints, 108);
+    assert!(
+        row.starts_with(" merge in progress · 13 files conflicted ·"),
+        "{row}"
+    );
+    assert!(row.ends_with(&hints_text(&hints)), "{row}");
+    assert!(row.width() <= 108, "{row}");
+    // Every width: the count is either all there or not there at all, and
+    // nothing but the last wording is ever cut.
+    for columns in 60u16..=200 {
+        let hints = hints_for(
+            &HintContext::Banner {
+                skippable: false,
+                conflicted: true,
+            },
+            Divider::Hidden,
+            columns,
+        );
+        let row = stopped_row(&why, &hints, columns);
+        assert!(
+            row.contains("13 files conflicted") || !row.contains(" 1"),
+            "{columns}: {row}"
+        );
+        assert!(!row.contains("files conflicted…"), "{columns}: {row}");
+        assert!(row.width() <= usize::from(columns), "{columns}: {row}");
+    }
+}
+
+/// When no wording fits whole, the last (shortest) one is cut with `…`,
+/// under the same twelve-cell floor as before.
+#[test]
+fn stopped_row_cuts_only_the_last_wording() {
+    let hints = hints_for(
+        &HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        Divider::Hidden,
+        80,
+    );
+    let bar_width = hints_text(&hints).width();
+    let why = StopWording::new(
+        reason("rebase still in progress from a previous run · 2 files conflicted"),
+        vec![reason("rebase still in progress")],
+    );
+    let columns = u16::try_from(bar_width + 3 + 14).expect("fits u16");
+    let row = stopped_row(&why, &hints, columns);
+    assert!(row.starts_with(" rebase still"), "{row}");
+    assert!(row.contains('…'), "{row}");
+    assert!(!row.contains("conflicted"), "{row}");
 }

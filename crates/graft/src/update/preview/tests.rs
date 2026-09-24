@@ -945,6 +945,72 @@ fn the_confirm_key_does_not_close_a_preview_that_cannot_act() {
     assert!(state.preview.is_some());
 }
 
+/// Review m6-amend-11-12 Minor 1 (`02-keymap.md:111`: a key the menu
+/// displays must work): the box names `y confirm` and the opening verb only
+/// where they act — a plan that landed and can act — or while planning,
+/// where the key is waiting for the picture, not dead. A closing box (failed
+/// or undrawable) and a can't-act plan draw neither. And every box that
+/// draws `y confirm` over a landed plan acts on `y`.
+#[test]
+fn y_confirm_is_drawn_only_where_y_acts() {
+    let failed = {
+        let mut state = on_screen();
+        let mut commands = Vec::new();
+        assert!(open_preview(
+            &mut state,
+            &mut commands,
+            opened_by("m"),
+            false,
+            &mut ids()
+        ));
+        let id = state.preview.as_ref().expect("open").job;
+        preview_produced(&mut state, id, Err("diverged".to_owned()));
+        state
+    };
+    let undrawable = {
+        let (mut state, _) = opened_over(opened_by("m"), a_plan());
+        state.preview.as_mut().expect("open").undrawable = Some(oid(200));
+        state
+    };
+    let (cannot_act, _) = opened_over(opened_by("m"), an_empty_plan());
+    for (what, state) in [
+        ("failed", failed),
+        ("undrawable", undrawable),
+        ("cannot act", cannot_act),
+    ] {
+        let view = preview_box(&state).expect("a box");
+        assert!(!view.confirm_key, "{what}: `y confirm` drawn");
+        assert!(view.again.is_none(), "{what}: `m merge` drawn");
+        // And `y` really does nothing there: no drawn key is dead.
+        let mut state = state;
+        let mut commands = Vec::new();
+        preview_key(&mut state, &mut commands, char_key('y'), &mut ids());
+        assert!(operated(&commands).is_empty(), "{what}: {commands:?}");
+    }
+
+    let (acting, _) = opened_over(opened_by("m"), a_plan());
+    let view = preview_box(&acting).expect("a box");
+    assert!(view.confirm_key && view.again.is_some(), "a plan that acts");
+    let mut state = acting;
+    let mut commands = Vec::new();
+    preview_key(&mut state, &mut commands, char_key('y'), &mut ids());
+    assert_eq!(operated(&commands), vec![&a_rebase()], "drawn, so it acts");
+
+    let mut planning = on_screen();
+    assert!(open_preview(
+        &mut planning,
+        &mut Vec::new(),
+        opened_by("m"),
+        false,
+        &mut ids()
+    ));
+    let view = preview_box(&planning).expect("a box");
+    assert!(
+        view.planning && view.confirm_key,
+        "while planning the key is waiting, not dead"
+    );
+}
+
 #[test]
 fn the_cursor_still_opens_on_cancel() {
     let (state, commands) = pressed_on("m", a_plan(), press(KeyCode::Enter));
