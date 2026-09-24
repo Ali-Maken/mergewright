@@ -1,7 +1,7 @@
 # fix-finish-from-the-resolver: `c` in the resolver finishes; the resolver stays open after the last file, with the words on its notice row
 
 Status: ready (filed 31 by the conductor 2026-09-24) — was draft (new 2026-09-24, split out of `19-finish-summary-screen.md` Part B, ruling S8). **P8 is approved** (`02-keymap.md:269`, `:275`), so this isn't gated.
-Blocked by: 19-finish-summary-screen.md (`open_finish`, `ReturnTo`), 13-resolver-file-list.md (R4/R5 and their landing tests), 17-resolver-file-keys.md (same crate set, ADR-0036: not concurrent)
+Blocked by: 19-finish-summary-screen.md (now 34 + 35, conductor split 2026-09-24) (`open_finish`, `ReturnTo`), 13-resolver-file-list.md (R4/R5 and their landing tests), 17-resolver-file-keys.md (same crate set, ADR-0036: not concurrent)
 Build with: blank — brownfield (ADR-0035). `scout-19.md` item 8 covers `resolved_advance`'s tail. **Scout first** on what it doesn't cover: how `status_read::settle` writes `CHECKING` → `every_file_done` (MAP §`status_read`), and whether the notice row survives a re-read. Expected **Sonnet**: every rule is fixed below, and the tests judge it.
 Needs: 19 (`open_finish(.., ReturnTo::Resolver, ..)`, `finish_key`'s `Esc`); 13 (`resolved_advance`, `every_file_done`, the tests named below); banner `continue_pressed`, `continue_refusal`.
 Crates: graft-ui (`graph_screen::hints` Resolver table only), graft.
