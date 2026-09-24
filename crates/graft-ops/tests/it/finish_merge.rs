@@ -127,6 +127,7 @@ fn records(repo: &TempRepo) -> Records {
 fn merge_state_on_disk(repo: &TempRepo) -> MergeState {
     MergeState {
         merge_head: oid(repo, "MERGE_HEAD"),
+        other_heads: Vec::new(),
         merge_msg: maybe_read(&git_path(repo, "MERGE_MSG")).expect("MERGE_MSG"),
         merge_mode: maybe_read(&git_path(repo, "MERGE_MODE")),
     }

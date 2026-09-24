@@ -8,6 +8,7 @@ mod finish;
 mod finish_merge;
 mod history_ops;
 mod mistake_radar;
+mod octopus_merge;
 mod ops_execution;
 mod ops_execution_hard;
 mod remote_ops;

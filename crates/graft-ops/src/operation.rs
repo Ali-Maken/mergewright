@@ -431,6 +431,15 @@ pub enum Refusal {
         /// What git has in progress.
         kind: InProgress,
     },
+    /// `c` on an **octopus** merge begun in the shell (`git merge a b`:
+    /// `MERGE_HEAD` names several commits). Graft finishes a merge of one
+    /// branch; the finish summary compares each path against one
+    /// `MERGE_HEAD`, so for an octopus it would show a result that is not
+    /// the one being committed (m6-conflicts/38).
+    OctopusMerge {
+        /// How many commits `MERGE_HEAD` names: branches being merged in.
+        heads: usize,
+    },
     /// The Ghost Preview has no picture for this operation: a stage, a
     /// commit, an ordinary push. The M4 confirm boxes cover those; the
     /// preview draws the operations that move history.
@@ -627,6 +636,10 @@ impl Refusal {
                     kind.name()
                 )
             }
+            Self::OctopusMerge { heads } => format!(
+                "this merges {heads} branches at once (an octopus merge); finish it in the \
+                 shell: git commit"
+            ),
             Self::NotFastForward { branch } => {
                 format!("{branch} has diverged; a fast-forward is not possible — m merges instead")
             }

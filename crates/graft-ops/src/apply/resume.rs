@@ -8,13 +8,13 @@
 
 use std::path::PathBuf;
 
-use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
+use graft_core::journal::{EntryStatus, HeadRef, JournalEntry, MergeState};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
 use crate::facts::{self, FactsError};
-use crate::merge_state::{MergeStateError, read_merge_state};
+use crate::merge_state::read_merge_state;
 use crate::operation::{FinishMergeParams, Operation, Refusal, opens_in_progress};
 use crate::snapshot;
 
@@ -285,16 +285,17 @@ fn resume_target(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> 
 }
 
 /// Step 3 of [`resume_target`]: a merge begun in the shell, being continued.
-/// An octopus merge (several `MERGE_HEAD` lines) is not one Graft records,
-/// so it keeps `NotInProgress`.
+/// An octopus merge (several `MERGE_HEAD` lines) is refused by name,
+/// `OctopusMerge`, before anything is written (m6-conflicts/38).
 fn shell_merge(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> {
     let merge_head = match read_merge_state(ctx.repo) {
-        Ok(Some(merge)) => merge.merge_head,
-        // `in_progress` saw `MERGE_HEAD` a moment ago and it is gone now,
-        // or it names several commits: not a merge this can finish.
-        Ok(None) | Err(MergeStateError::Octopus { .. }) => {
-            return Err(ApplyError::Refused(Refusal::NotInProgress));
+        Ok(Some(merge)) => {
+            refuse_octopus(&merge)?;
+            merge.merge_head
         }
+        // `in_progress` saw `MERGE_HEAD` a moment ago and it is gone now:
+        // not a merge this can finish.
+        Ok(None) => return Err(ApplyError::Refused(Refusal::NotInProgress)),
         Err(other) => return Err(ApplyError::Facts(FactsError::MergeState(other))),
     };
     refuse_unmerged(ctx)?;
@@ -306,6 +307,18 @@ fn shell_merge(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> {
         merge_head,
         message,
     }))
+}
+
+/// `c` on an octopus merge: refused `OctopusMerge`, whichever route asked
+/// (`resume`'s shell merge, or `apply(FinishMerge)` directly).
+pub(super) fn refuse_octopus(merge: &MergeState) -> Result<(), ApplyError> {
+    if merge.other_heads.is_empty() {
+        Ok(())
+    } else {
+        Err(ApplyError::Refused(Refusal::OctopusMerge {
+            heads: merge.heads().count(),
+        }))
+    }
 }
 
 /// `Continue` over unmerged paths: refused before git runs, the same words

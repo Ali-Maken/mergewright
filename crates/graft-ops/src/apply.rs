@@ -335,14 +335,16 @@ fn finishing_merge(ctx: &Context<'_>, op: &Operation) -> Result<Option<String>, 
         return Err(ApplyError::Refused(Refusal::InProgress(InProgress::Merge)));
     }
     let merge = match read_merge_state(ctx.repo) {
-        Ok(Some(merge)) if merge.merge_head == params.merge_head => merge,
-        // Another merge than the one asked about, none at all, or an
-        // octopus Graft does not record: not the merge the user saw.
-        Ok(_) | Err(MergeStateError::Octopus { .. }) => {
-            return Err(ApplyError::Refused(Refusal::NotInProgress));
-        }
+        Ok(Some(merge)) => merge,
+        // None at all: not the merge the user saw.
+        Ok(None) => return Err(ApplyError::Refused(Refusal::NotInProgress)),
         Err(other) => return Err(ApplyError::Facts(FactsError::MergeState(other))),
     };
+    resume::refuse_octopus(&merge)?;
+    if merge.merge_head != params.merge_head {
+        // Another merge than the one asked about.
+        return Err(ApplyError::Refused(Refusal::NotInProgress));
+    }
     // git applies a `--autostash` stash when the merge is finished, which a
     // `u` of this entry could not give back: finished in the shell.
     if autostash_waits(ctx.repo).map_err(|why| ApplyError::Facts(FactsError::MergeState(why)))? {

@@ -472,6 +472,7 @@ fn drift_says_which_way_the_index_shape_went() {
 fn drift_names_the_way_the_merge_state_moved() {
     let state = |mode: &[u8]| graft_core::journal::MergeState {
         merge_head: oid(7),
+        other_heads: Vec::new(),
         merge_msg: b"Merge branch 'feature'\n".to_vec(),
         merge_mode: Some(mode.to_vec()),
     };

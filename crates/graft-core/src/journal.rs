@@ -332,9 +332,15 @@ impl IndexState {
 /// "…"}` when it is not, so a message in any encoding round-trips exactly.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MergeState {
-    /// `MERGE_HEAD`'s one line: the commit being merged in. An octopus
-    /// merge (several lines) is not recorded.
+    /// `MERGE_HEAD`'s first line: the commit being merged in — the first of
+    /// them for an octopus merge.
     pub merge_head: Oid,
+    /// `MERGE_HEAD`'s further lines, in order: the other commits of an
+    /// octopus merge (`git merge a b`), empty for an ordinary one
+    /// (m6-conflicts/38). Left out of the journal line when empty, so every
+    /// entry written before it reads back unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub other_heads: Vec<Oid>,
     /// `MERGE_MSG`'s exact bytes. Empty when git's file was missing, which
     /// happens only when it was removed by hand.
     #[serde(with = "text_bytes")]
@@ -343,6 +349,26 @@ pub struct MergeState {
     /// `Some(vec![])` = an empty one; git writes `no-ff` for `--no-ff`).
     #[serde(with = "text_bytes::option")]
     pub merge_mode: Option<Vec<u8>>,
+}
+
+impl MergeState {
+    /// Every commit `MERGE_HEAD` names, in its order: `merge_head` first.
+    pub fn heads(&self) -> impl Iterator<Item = Oid> + '_ {
+        std::iter::once(self.merge_head).chain(self.other_heads.iter().copied())
+    }
+
+    /// `MERGE_HEAD` as git writes it: each commit's full hex id and a
+    /// newline, one line per head. Byte-exact for any file git wrote; a
+    /// hand-edited one (blank lines, trailing spaces) comes back in git's
+    /// form.
+    pub fn merge_head_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for head in self.heads() {
+            bytes.extend_from_slice(head.to_string().as_bytes());
+            bytes.push(b'\n');
+        }
+        bytes
+    }
 }
 
 /// Bytes as JSON: a plain string when they are UTF-8 (the everyday case,
@@ -611,6 +637,7 @@ mod tests {
         let head = Oid::from_hex("acf15d58a3b48e5878fe281a624fb5c688dcaee1").expect("a hex oid");
         let text = MergeState {
             merge_head: head,
+            other_heads: Vec::new(),
             merge_msg: b"Merge branch 'x'\n".to_vec(),
             merge_mode: Some(Vec::new()),
         };
@@ -626,6 +653,7 @@ mod tests {
 
         let latin1 = MergeState {
             merge_head: head,
+            other_heads: Vec::new(),
             merge_msg: b"caf\xe9\n".to_vec(),
             merge_mode: None,
         };
@@ -640,6 +668,40 @@ mod tests {
             latin1
         );
         assert!(serde_json::from_str::<MergeState>(&json.replace("636166e90a", "6361f")).is_err());
+    }
+
+    /// An octopus merge's further heads go in `other_heads`, in order, and
+    /// `MERGE_HEAD` comes back as git wrote it; a line without the field
+    /// (every entry before m6-conflicts/38) reads as one head.
+    #[test]
+    fn an_octopus_merge_state_keeps_every_head_in_order() {
+        let first = Oid::from_hex("acf15d58a3b48e5878fe281a624fb5c688dcaee1").expect("a hex oid");
+        let second = Oid::from_hex("0123456789abcdef0123456789abcdef01234567").expect("a hex oid");
+        let octopus = MergeState {
+            merge_head: first,
+            other_heads: vec![second],
+            merge_msg: b"Merge branches 'a' and 'b'\n".to_vec(),
+            merge_mode: Some(b"no-ff".to_vec()),
+        };
+        assert_eq!(octopus.heads().collect::<Vec<_>>(), vec![first, second]);
+        assert_eq!(
+            octopus.merge_head_bytes(),
+            format!("{first}\n{second}\n").into_bytes()
+        );
+        let json = serde_json::to_string(&octopus).expect("it renders");
+        assert!(
+            json.contains(r#""other_heads":["0123456789abcdef0123456789abcdef01234567"]"#),
+            "{json}"
+        );
+        assert_eq!(
+            serde_json::from_str::<MergeState>(&json).expect("it parses"),
+            octopus
+        );
+
+        let old = r#"{"merge_head":"acf15d58a3b48e5878fe281a624fb5c688dcaee1","merge_msg":"m\n","merge_mode":null}"#;
+        let read = serde_json::from_str::<MergeState>(old).expect("an old line parses");
+        assert!(read.other_heads.is_empty());
+        assert_eq!(serde_json::to_string(&read).expect("it renders"), old);
     }
 
     #[test]
