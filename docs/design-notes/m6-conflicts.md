@@ -455,10 +455,11 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 - **J8 two files in order.** gone `o` · notes `Ctrl+T ⏎`. **3**; P6 `O T` **2**. JetBrains 2.
 - **J9 two files, notes first.** Resolver on gone: `n` (the card crosses to the next file) · `Ctrl+T ⏎` (lands on
   gone, the next file not done) · `o`. **4**; P6 `n T O` **3** (P7's `j T O` is also 3).
-- **J6 finish, merge begun in the app.** From `every file done`: `c` → summary, cursor on the first row git combined ·
-  `⏎` → commit. **2**. lazygit 1: the extra key is his choice. Lands: graph focused, cursor on the merge commit,
-  `merged feature into main ✓`.
-- **J6b finish, merge begun in the shell (P4).** `c ⏎`. **2**. Same landing, and one `FinishMerge` entry.
+- ~~**J6 finish, merge begun in the app.** From `every file done`: `c` → summary, cursor on the first row git combined ·
+  `⏎` → commit. **2**.~~ Superseded 2026-09-24 (P11, P12 approved): the summary is already open, `y`, **1**
+  (Amendment 2026-09-24, J6). Landing unchanged: graph focused, cursor on the merge commit, `merged feature into main ✓`.
+- ~~**J6b finish, merge begun in the shell (P4).** `c ⏎`. **2**.~~ Superseded 2026-09-24: `y` **1** when the last file
+  was done in the app; `c y` **2** from the banner. Same landing, and one `FinishMerge` entry.
 - **J10 see a change git combined on its own.** In the summary: `space` expands that file's diff under its row. **1**.
 - **J7 back after `Esc`.** Resolver `Esc` → banner, `Esc` → graph with `⇥ banner` leading the bar: `⇥ ⏎`. **2**.
 - **Whole journeys.** A, one file, one conflict: `m m o ⏎ c ⏎` **6** (P6: 5). A, two files: `m m o ^T ⏎ c ⏎` **7**
@@ -476,10 +477,12 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 - `c` on a rebase, cherry-pick or revert → continues with no summary (merge only this milestone; gap row → M7). From the resolver it closes to the banner as it sends, so the next stop opens the resolver fresh (P5).
 - In the summary:
   - `Esc` → back to where `c` was pressed, with the draft message kept.
-  - `⏎` → `committing…`, then the graph with the cursor on the merge commit.
+  - `⏎` → `committing…`, then the graph with the cursor on the merge commit. Superseded 2026-09-24 (P12): `y` in the
+    file list, `⏎` in the subject; `⏎` on a file row shows its diff.
   - A hook refuses → the summary stays, the reason goes above its bar, and the draft is kept.
-  - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`.
-  - `⏎` on a merge begun in the shell → as J6; one `FinishMerge` entry. `u` after it → the merge is back in progress, resolved; header `MERGING`, banner focused, status `undo: finish merge of <from> ✓ · c finishes the merge`; `c ⏎` finishes it again, 2 (ticket 41).
+  - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`. Superseded
+    2026-09-24 (P12): `· y commits with git's message`.
+  - `y` on a merge begun in the shell → as J6; one `FinishMerge` entry. `u` after it → the merge is back in progress, resolved; header `MERGING`, banner focused, status `undo: finish merge of <from> ✓ · c finishes the merge`; `c y` finishes it again, 2 (ticket 41; P12, 2026-09-24: was `c ⏎`, still 2). No summary opens by itself after `u` (P11: the trigger is the event).
 - `c`/`a` in the changes pane while an operation is live → the commit/amend editor, `[ Commit ]` dimmed, words `… esc, ⇥ banner, then c …`. `Esc` → the pane; `⇥` (×n, ticket 39 NOTES) → the banner; `c` → the summary (ticket 39). Superseded by usability fix M3a (m6-usability-fixes.md): the editor does not open; the pane answers in words, `merge in progress` · `⇥ banner, then c …`.
 - The commit editor's refusal has its own row above the options row, full width, budgeted always and drawn only when refused; at 80 columns every refusal fits whole (ticket 40).
 
@@ -488,23 +491,23 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 a-merge-to-stop               2
 a-stop-to-first-conflict      0                     # JetBrains 0
 b-launch-to-first-conflict    1
-one-file-one-conflict         1                    # JetBrains 2 · P11 (Amendment 2026-09-24): lands on the summary, count unchanged
-three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1 · P11: lands on the summary, count unchanged
+one-file-one-conflict         1                    # JetBrains 2 · P11 (approved 2026-09-24): lands on the summary, count unchanged
+three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1 · P11 (approved): lands on the summary, count unchanged
 modify-delete-keep-yours      1                     # JetBrains 1
-two-files-in-order            2                    # JetBrains 2 · P11: lands on the summary, count unchanged
-two-files-out-of-order        3                    # P11: lands on the summary, count unchanged
-a-finish                      2                     # lazygit 1 (bare confirm, rejected) · P11+P12 → 1: `y` in the summary the last file opened
-b-finish                      2                     # P11+P12 → 1 (`y`)
+two-files-in-order            2                    # JetBrains 2 · P11 (approved): lands on the summary, count unchanged
+two-files-out-of-order        3                    # P11 (approved): lands on the summary, count unchanged
+a-finish                      2                     # lazygit 1 (bare confirm, rejected) · P11+P12 approved 2026-09-24 → 1: `y` in the summary the last file opened · lowered by last-file-opens-the-summary
+b-finish                      2                     # P11+P12 approved → 1 (`y`) · lowered by last-file-opens-the-summary
 summary-open-git-combined     1
 back-after-esc                2
 open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
-walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?)
-a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`)
-a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`)
-b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`)
-editor-to-finish  5  # M3a (usability M3): the editor never opens to refuse, so the walk starts in the changes pane: c (refused in words) + 2×⇥ + c + ⏎, still 5 · P14 → 2 (c ⏎; c y with P12)
-b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2
-# last-block-to-finished      4                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Commented out until the walk has its scenario
+walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?) · P15 approved → 3 (`j d y`) · lowered by ticket 50
+a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`) · approved; lowered by last-file-opens-the-summary
+a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`) · approved; lowered by last-file-opens-the-summary
+b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`) · approved; lowered by last-file-opens-the-summary
+editor-to-finish  5  # M3a (usability M3): the editor never opens to refuse, so the walk starts in the changes pane: c (refused in words) + 2×⇥ + c + ⏎, still 5 · P14 → 2 (c ⏎; c y with P12) · P14 approved 2026-09-24 → 2 (`c y`); lowered by ticket 52
+b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2 · approved; keys re-sent by finish-summary-is-a-preview
+# last-block-to-finished      4                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Approved 2026-09-24; un-commented at 3 by last-file-opens-the-summary, which adds its scenario
 ```
 The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
 moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.
@@ -857,7 +860,8 @@ Read: `docs/research/conflict-visuals-and-finish.md` (**CV**, whole); `docs/rese
 80), `fix-finish-from-the-resolver-120x40`, `fix-preview-verb-120x40`; TESTING.md :2307–:2381;
 `.scratch/m6-conflicts/user-batch.md` (his 11 open questions); `.scratch/m6-conflicts/user-facts-m632.md`;
 docs/log/m6.md:78. No source. **Pipeline step 5 comes before specs:** no ticket is written from this until he has run
-the prototype below.
+the prototype below. **Met 2026-09-24:** he ran it ("demo looks better than before", field notes :62-:63) and approved
+the picks (:65, `.scratch/m6-conflicts/user-picks-2026-09-24.md`). Specs: "Specs, 2026-09-24" below.
 
 ### Need
 - **Who / task:** unchanged. A merge stopped; he resolves it in the three panes (187 columns, Zed, dark theme — field
@@ -909,9 +913,23 @@ the prototype below.
 - **Unchanged:** `editor-to-finish` `Esc ⇥ ⇥ c y` **5**; `summary-open-git-combined` `space` (or `⏎`) **1**.
 - **Whole journeys:** `a-whole-one-file` `m m O y` **4** (was 5); `a-whole-two-files` `m m o T y` **5** (was 6);
   `b-whole-two-files` `⏎ o T y` **4** (was 5).
-- **The journey-counts block:** the `keys` column is unchanged until P11 and P12 are approved and built. The
-  once-approved numbers sit in its comments. `last-block-to-finished` is added commented out, because the walk has no
-  scenario for it yet.
+- **The journey-counts block:** P11 and P12 approved 2026-09-24. The `keys` column still holds the as-built counts;
+  each spec lowers its own rows in the commit that makes the walk send the new keys, because the walk fails a journey
+  over its row and an id with no scenario. `last-block-to-finished` stays commented until
+  `last-file-opens-the-summary` adds its scenario and un-comments it at 3.
+
+- **J15 abort a merge begun in the shell** (batch 3, approved 2026-09-24). The banner focused: `a` · `→ ⏎` **3**; `a y`
+  **2** once ticket 50 lands. Lands: the graph, the abort's `Done` line, no `MERGING`; one `AbortMerge` journal entry,
+  and `u` puts the merge back, conflicted, his hand edits included. Best: lazygit `m` → abort → confirm, 3 (?).
+- **J16 get a file back after a whole-file take, in a merge begun in the shell** (batch 3). A whole-file `t` on
+  `gone.txt` deleted what he had kept by hand; the banner focused (after `Esc` from the resolver): `u` **1** (from the
+  resolver: `Esc u`, 2 — the resolver does not bind `u`, keymap §2.6). Lands: the banner stays focused, status
+  `undo: <the take's description> ✓`; the file on disk is his again. Only Graft's journaled steps come back this way
+  (whole-file choices, `d`); a block take is an fs write inside the merge, not an entry. JetBrains: `⌃Z` in the merge
+  dialog, 1.
+- **J17 walk back a whole-file choice** (batch 7). The resolver on `notes.txt` after `gone.txt` was kept: `k` · `d` ·
+  `→ ⏎` **4**; `k d y` **3** once ticket 50 lands. Lands: the card `deleted by them · o keeps the file  t deletes it`,
+  the list `keep or delete`, `git ls-files -u` shows the file's stages again. Tower reset-to-unmerged, count (?).
 
 **Where each event lands him (changes to Amendment 2's list).**
 - **The last file of a merge done in the resolver** (by `⏎`, `O`/`T`, or `o`/`t` on a whole-file card): once its
@@ -947,8 +965,7 @@ side it is (ADR-0043 §4).
 | `theirs-tint` | the same for the right | `#4B3445` | 53 | none | none |
 | `open-tint` | background of the result placeholder rows | `#533F13` | 58 | none | none |
 
-- **Tint = mix(fg, `bg`, α).** α is 0.30 by default; he picks 0.20, 0.30 or 0.40 in the prototype, and all three tints
-  share it.
+- **Tint = mix(fg, `bg`, α).** α = 0.30, his pick 2026-09-24 ("medium"), shared by all three tints (ADR-0044 §1).
   - Targets: tint against `bg` between 1.5:1 and 2.5:1, and `text` on a tint at least 4.5:1.
   - Why that range: a cursor fill at 1.21:1 was invisible to him (field notes :48), and `selection` at 3.04:1 was seen
     (:50). A tint stays below `selection`, so "you are here" stays the strongest cue.
@@ -1101,11 +1118,13 @@ MERGING
    owner (`yours` / `theirs`, which swap in a rebase). **By position:** a pane's hue never moves, and they are git's own
    stage names.
 2. **Opening the summary on the last file (P11).** Options: stay in the resolver (P8), or open the summary. **Open it.**
-   The code is easy to reverse, but it trains his hands, so he decides on the prototype.
+   The code is easy to reverse, but it trains his hands, so he decides on the prototype. **Decided 2026-09-24: open it**
+   (his pick; task-mode log: the summary opened by itself and his first keys there were `k`, `⏎`, then `y`).
 
 ### Touches (each, and how a builder checks it)
-- **Crates:** `graft-ui` and `graft` only. `graft-ops`, `graft-git`, `graft-core` and `graft-term` get no signature
-  change, and `FinishSummary` is unchanged. Check: `git diff --stat` names none of them.
+- **Crates:** for P11–P13, `graft-ui` and `graft` only. `graft-git`, `graft-core` and `graft-term` get no signature
+  change, and `FinishSummary` is unchanged. Check: `git diff --stat` names none of them. The batch items 3 and 7
+  (approved 2026-09-24) touch `graft-ops`; their specs say how.
 - **graft-ui `theme`:** `Token`, `Token::ALL` and `Token::name`, the dark, light and high-contrast values, and the
   256 / 16 / `NO_COLOR` reduction. Also the status screen (F2, `RenderingView`) and any config round-trip that lists
   tokens. Check: grep the users of `Token::ALL`; run the theme tests.
@@ -1143,13 +1162,13 @@ MERGING
     `FinishMerge` entry, and `u` still lands on the banner (ticket 41).
   - Check: the existing tests, such as `c_enter_finishes_a_shell_begun_merge`, moved to `y`, plus one new test: after
     `u`, no summary opens.
-- **Keymap `02-keymap.md`** (the conductor edits it after approval):
+- **Keymap `02-keymap.md`** (edited in the spec pass, 2026-09-24; ADR-0044):
   - §2.1 :65 (`c` to finish).
   - §2.3b, the `y` row: add the finish summary.
   - §2.6, the `c` and `Enter` rows (the P8 text becomes P11).
   - §2.6b: `Enter` becomes "diff", and a new `y` row. `Ctrl+Enter` is unchanged.
 - **This note:** Amendment 2's summary mockup, J6, and its `⏎`-commits event lines are superseded where P11 and P12
-  are approved. The conductor marks them.
+  are approved. Marked 2026-09-24 (spec pass, E2-E3).
 - **TESTING.md, the M6 walk:**
   - `one-file-one-conflict`, `three-conflicts-all-theirs`, `two-files-in-order` and `two-files-out-of-order` now land
     on the summary, not "the resolver stays".
@@ -1174,7 +1193,7 @@ MERGING
     whether an id without a scenario fails it.
 - **KNOWN_GAPS:** the conductor re-words the "colour unverified" rows for the resolver and the summary: the style is now
   proven by tests, and legibility is his to judge.
-- **PROMPT.md §5:** the token list (P13), edited by the conductor after approval.
+- **PROMPT.md §5:** the token list and the colour-depth exception (P13); exact text in ADR-0044 §5, applied by the conductor.
 
 ### Prototype (pipeline step 5): he answers his open questions by trying them
 He wants to answer by trying, not by reading. One throwaway lets him try every open question that is a choice between
@@ -1341,22 +1360,22 @@ milestone (item 5)?
 
 Then two answers: does the conflict screen look right? Go on to the next milestone?
 
-### Proposed changes (not decided; specs wait for his word on the prototype)
-- **P11: finishing the last file of a merge in the resolver opens the summary on its own.**
+### Proposed changes (P11–P13 approved 2026-09-24: "ok i guess", field notes :65; ADR-0044)
+- **P11 — approved 2026-09-24: finishing the last file of a merge in the resolver opens the summary on its own.**
   - What it reverses: P8's "the resolver stays open after the last file is done", for merges only. P8 still holds for
     a rebase, cherry-pick or revert, which have no summary, and after `Esc`.
   - Why: the next action is finishing (UX 3.1); lazygit asks on its own at 0 (CV §3); he did not find `c` (field notes
     :60). It saves one key on every merge (J13: 4 → 3).
   - Trade-off: going back to a done file before committing costs an `Esc` first. The summary writes nothing, so nothing
     is lost.
-- **P12: the summary confirms with `y`, and `⏎` on a file row shows its diff.**
+- **P12 — approved 2026-09-24: the summary confirms with `y`, and `⏎` on a file row shows its diff.**
   - What it changes: his approved `⏎ commits` (field notes :54) and keymap §2.6b.
   - Why: `y` confirms every other preview (§2.3b, field notes :58), and `⏎` acts on what is under the cursor (§2.2,
     ADR-0038 §1), which here is a file row, not the commit. His surprise came from that clash (field notes :60).
   - No count changes. In the subject field `⏎` still commits.
   - Trade-off: the confirm key depends on focus: `y` in the list, `⏎` in the subject, `⌃⏎` anywhere. Each focus's bar
     shows its own.
-- **P13: six colour tokens added to PROMPT.md §5.**
+- **P13 — approved 2026-09-24: six colour tokens added to PROMPT.md §5** (exact text: ADR-0044 §5).
   - The tokens: `ours`, `theirs`, `open`, `ours-tint`, `theirs-tint`, `open-tint`.
   - The tints get fixed 256-colour entries instead of the nearest-colour mapping in PROMPT.md §5 "Colour depth" and
     design 04 §4.6. Why: the nearest entry to a dark tint is on the grey ramp, and the hue is lost.
@@ -1372,3 +1391,21 @@ Then two answers: does the conflict screen look right? Go on to the next milesto
   point in `graft`, judged by the walk. Its spec must name the `settling` / `in_flight` interplay, so that a take still
   landing cannot open the summary early.
 - **Acceptance** stays on Fable.
+
+```
+### Specs, 2026-09-24 (unnumbered, `.scratch/m6-conflicts/issues/`)
+Wave 1, two lanes in parallel (disjoint crates, ADR-0036):
+- **Lane U — `graft-ui` only, in order:** `conflict-colour-tokens` → `conflict-band-and-state-colours` →
+  `hint-words-keep-the-way-out`. One builder can take all three in one worktree. If a scout finds a `graft` source test
+  (not a capture) that pins what a U spec changes, that spec reports `blocked: needs graft` and runs after lane O.
+  Both lanes regenerate files under `docs/shots/m6/`; after the second lane merges, the conductor re-runs the capture
+  tests once and regenerates any file both touched.
+- **Lane O — `graft-ops` + `graft`, in order:** `undo-and-abort-a-shell-begun-merge` →
+  `start-over-a-whole-file-choice`.
+Wave 2, one at a time (`graft` + `graft-ui`): `finish-summary-is-a-preview` → `last-file-opens-the-summary` → 52
+(P14) → 50 (P15) → 51 (P16) → `resolver-words-and-marks`.
+Blocked: `short-words-from-the-draft` (batch 4 against the m5/27 prefixes-only ruling; a question).
+Last: `acceptance-look-and-finish` (Fable).
+Genuinely risky: `undo-and-abort-a-shell-begun-merge` (a git-write safety path: the undo gate while a merge is live
+decides what `u` may rewrite under it; correctness is not visible in a diff). `last-file-opens-the-summary`'s trigger
+(one decision point; the walk judges it).
