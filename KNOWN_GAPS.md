@@ -792,3 +792,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M6/r47-49 | **Two lease tests are the same test** (`lease.rs:232-238`, `:395-401`); the commit test's name promises a descendant the fixture can't express. Review 47–49 m5. | broken | M7 |
 | M6/r47-49 | **49's "captures byte-identical" tick title overstates**: pty m4 captures were compared normalised only (body says so). Review 47–49 m7. | unverified | M7 |
 | M6/r47-49 | **Contact sheet part 1 is 198 194 B, 1.8 KB under the 200 KB cap**; the next capture in part 1 breaks it (`scripts/contact-sheet.sh`). Review 47–49 m8. | broken | M7 |
+| M6/57 | **Question: `u` of an abort of a shell-begun merge will not restore rerere's `MERGE_RR`** (ticket 57 spec). Recorded resolutions stay; the pending-resolution list does not come back. Is that acceptable? | question | M7 |
