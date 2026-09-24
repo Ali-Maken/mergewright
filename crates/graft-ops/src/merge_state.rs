@@ -41,17 +41,11 @@ pub enum MergeStateError {
         /// What the filesystem said.
         source: io::Error,
     },
-    /// `MERGE_HEAD` names more than one commit: an octopus merge, which
-    /// Graft does not record (its `MergeState` holds one commit).
-    #[error("an octopus merge is in progress ({heads} heads); Graft records one MERGE_HEAD")]
-    Octopus {
-        /// How many commits it names.
-        heads: usize,
-    },
-    /// `MERGE_HEAD` holds something that is not an object id.
+    /// `MERGE_HEAD` holds a line that is not an object id, or no line at
+    /// all. (Several ids is an octopus merge, and is read — m6-conflicts/38.)
     #[error("MERGE_HEAD holds {printed:?}, which is not an object id")]
     NotAnOid {
-        /// What it holds, first line.
+        /// The offending line (empty when there was none).
         printed: String,
     },
     /// A `git` read of the merge failed (or was stopped): where its files
@@ -74,20 +68,27 @@ pub enum MergeStateError {
 /// cherry-pick's or a revert's, not a merge. A missing `MERGE_MSG` beside a
 /// `MERGE_HEAD` (removed by hand) reads as an empty message.
 ///
+/// An octopus merge (`git merge a b`: one `MERGE_HEAD` line per commit) is
+/// read like any other, every head in order — this runs as every journaled
+/// operation begins, so refusing a merge shape here would refuse every `u`
+/// while that merge is open (m6-conflicts/38). Whether an octopus merge can
+/// be *finished* is `resume`'s question, not this one's.
+///
 /// # Errors
 /// [`MergeStateError::Io`] for a file that exists and will not read;
-/// [`MergeStateError::Octopus`] / [`MergeStateError::NotAnOid`] for a
-/// `MERGE_HEAD` that is not one commit.
+/// [`MergeStateError::NotAnOid`] for a `MERGE_HEAD` line that is not a
+/// commit id, or no line at all.
 pub(crate) fn read_merge_state(repo: &RepoHandle) -> Result<Option<MergeState>, MergeStateError> {
     let dir = repo.git_dir();
     let Some(head) = read_file(dir, "MERGE_HEAD")? else {
         return Ok(None);
     };
-    let merge_head = one_commit(&head)?;
+    let (merge_head, other_heads) = commits(&head)?;
     let merge_msg = read_file(dir, "MERGE_MSG")?.unwrap_or_default();
     let merge_mode = read_file(dir, "MERGE_MODE")?;
     Ok(Some(MergeState {
         merge_head,
+        other_heads,
         merge_msg,
         merge_mode,
     }))
@@ -139,7 +140,7 @@ pub(crate) fn write_merge_state(
     let paths = git_paths(repo, stop, commands)?;
     match state {
         Some(state) => {
-            let head = format!("{}\n", state.merge_head).into_bytes();
+            let head = state.merge_head_bytes();
             let contents = [
                 Some(state.merge_msg.as_slice()),
                 state.merge_mode.as_deref(),
@@ -179,22 +180,24 @@ fn read_file(dir: &Path, file: &'static str) -> Result<Option<Vec<u8>>, MergeSta
     }
 }
 
-/// `MERGE_HEAD`'s bytes as the one commit they must name.
-fn one_commit(bytes: &[u8]) -> Result<Oid, MergeStateError> {
+/// `MERGE_HEAD`'s bytes as the commits they name, in order: the first, and
+/// the rest (an octopus merge's; empty for an ordinary merge).
+fn commits(bytes: &[u8]) -> Result<(Oid, Vec<Oid>), MergeStateError> {
     let text = String::from_utf8_lossy(bytes);
-    let lines: Vec<&str> = text
+    let mut heads = text
         .lines()
         .filter(|line| !line.trim().is_empty())
-        .collect();
-    match lines.as_slice() {
-        [one] => Oid::from_hex(one.trim()).map_err(|_why| MergeStateError::NotAnOid {
-            printed: (*one).to_owned(),
-        }),
-        [] => Err(MergeStateError::NotAnOid {
+        .map(|line| {
+            Oid::from_hex(line.trim()).map_err(|_why| MergeStateError::NotAnOid {
+                printed: line.to_owned(),
+            })
+        });
+    let Some(first) = heads.next() else {
+        return Err(MergeStateError::NotAnOid {
             printed: String::new(),
-        }),
-        many => Err(MergeStateError::Octopus { heads: many.len() }),
-    }
+        });
+    };
+    Ok((first?, heads.collect::<Result<_, _>>()?))
 }
 
 /// Where git keeps the three files, in [`FILES`] order: one `rev-parse` with
@@ -291,22 +294,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn merge_head_is_one_commit_or_refused_in_words() {
+    fn merge_head_is_its_commits_in_order_or_refused_in_words() {
         let id = "acf15d58a3b48e5878fe281a624fb5c688dcaee1";
+        let other = "0123456789abcdef0123456789abcdef01234567";
+        let oid = |hex: &str| Oid::from_hex(hex).expect("hex");
         assert_eq!(
-            one_commit(format!("{id}\n").as_bytes()).expect("one line"),
-            Oid::from_hex(id).expect("hex")
+            commits(format!("{id}\n").as_bytes()).expect("one line"),
+            (oid(id), Vec::new())
+        );
+        assert_eq!(
+            commits(format!("{id}\n{other}\n").as_bytes()).expect("an octopus"),
+            (oid(id), vec![oid(other)])
         );
         assert!(matches!(
-            one_commit(format!("{id}\n{id}\n").as_bytes()),
-            Err(MergeStateError::Octopus { heads: 2 })
+            commits(format!("{id}\nnot an id\n").as_bytes()),
+            Err(MergeStateError::NotAnOid { printed }) if printed == "not an id"
         ));
         assert!(matches!(
-            one_commit(b"not an id\n"),
+            commits(b"not an id\n"),
             Err(MergeStateError::NotAnOid { .. })
         ));
         assert!(matches!(
-            one_commit(b""),
+            commits(b""),
             Err(MergeStateError::NotAnOid { .. })
         ));
     }

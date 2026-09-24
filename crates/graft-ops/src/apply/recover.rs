@@ -2,7 +2,7 @@
 //! `interrupted` with the repository as it stands, unless git's own state
 //! says its operation is still under way.
 
-use graft_core::journal::EntryId;
+use graft_core::journal::{EntryId, MergeState};
 use graft_core::oid::Oid;
 use graft_git::state;
 
@@ -122,7 +122,7 @@ fn seal_recovered(
         .copied()
         .flatten();
     let mut parents: Vec<Oid> = at.into_iter().collect();
-    let merging = now.merge.as_ref().map(|merge| merge.merge_head);
+    let merging = now.merge.iter().flat_map(MergeState::heads);
     for anchor in anchors(Some(&now.head), &now.refs)
         .into_iter()
         .chain(merging)

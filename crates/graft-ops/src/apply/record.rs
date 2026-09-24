@@ -266,7 +266,8 @@ fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Optio
 }
 
 /// A backup commit's parents: `first` (the pins, or the ref's current tip),
-/// then every [`anchors`] commit and `MERGE_HEAD`'s, each once.
+/// then every [`anchors`] commit and every commit `MERGE_HEAD` names (all
+/// of an octopus merge's, m6-conflicts/38), each once.
 ///
 /// `MERGE_HEAD`'s commit is anchored because a `git pull <url> <branch>`
 /// leaves one that only `FETCH_HEAD` reaches, and `u` of the finish has to
@@ -278,7 +279,7 @@ fn with_anchors(
     merge: Option<&MergeState>,
 ) -> Vec<Oid> {
     let mut parents = first;
-    let merging = merge.map(|merge| merge.merge_head);
+    let merging = merge.into_iter().flat_map(MergeState::heads);
     for anchor in anchors(head, refs).into_iter().chain(merging) {
         if !parents.contains(&anchor) {
             parents.push(anchor);
