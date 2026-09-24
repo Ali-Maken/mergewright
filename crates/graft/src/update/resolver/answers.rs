@@ -13,7 +13,7 @@ use super::done::{done_arrived, done_unreadable};
 use super::files::remember;
 use super::take::all_taken;
 use super::{WholeFileShape, next_block, scrolled_to, side_word};
-use crate::update::events::{Command, TakeRequest};
+use crate::update::events::{Command, TakeAt, TakeRequest};
 use crate::update::state::{AppState, Status};
 
 /// The opening read answered.
@@ -218,6 +218,37 @@ pub fn taken(
     }
 }
 
+/// What the landing take says: for an `Every` entry its side and how many
+/// blocks it took — the blocks the request's document had open, read at
+/// landing rather than carried (m6-16 D2): `take_landed` sends each request
+/// against the document that landed before it, so that document is the one
+/// this write was applied to. For a `Block` entry, the side that block now
+/// shows.
+fn landed_words(
+    state: &AppState,
+    blocks: &[graft_git::conflict::BlockAt],
+) -> (Option<(String, usize)>, Option<String>) {
+    let landed = state.resolver.as_ref().and_then(|open| open.in_flight);
+    match landed {
+        Some((TakeAt::Every, take)) => {
+            let before = state
+                .resolver
+                .as_ref()
+                .and_then(|open| open.file.as_ref())
+                .map_or(0, |was| was.open());
+            (Some((side_word(state, take), before)), None)
+        }
+        Some((TakeAt::Block(block), _)) => (
+            None,
+            blocks.get(block).and_then(|at| match at.state {
+                BlockState::Took(take) => Some(side_word(state, take)),
+                BlockState::Open => None,
+            }),
+        ),
+        None => (None, None),
+    }
+}
+
 /// The document came back with one more block taken: the next queued take
 /// is sent against it in the same update, so the queue is never waiting
 /// with nothing in flight. The cursor stays wherever the keys put it.
@@ -230,17 +261,7 @@ pub(super) fn take_landed(
     let blocks = file.blocks();
     let open_left = file.open();
     let total = blocks.len();
-    let landed = state
-        .resolver
-        .as_ref()
-        .and_then(|open| open.in_flight)
-        .map(|(block, _)| block);
-    let side = landed
-        .and_then(|block| blocks.get(block))
-        .and_then(|at| match at.state {
-            BlockState::Took(take) => Some(side_word(state, take)),
-            BlockState::Open => None,
-        });
+    let (bulk, side) = landed_words(state, &blocks);
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -249,22 +270,33 @@ pub(super) fn take_landed(
     open.in_flight = None;
     open.file = Some(Arc::clone(file));
     remember(open);
-    if let Some((block, take)) = open.queued.pop_front() {
+    if let Some((at, take)) = open.queued.pop_front() {
         let id = next_id();
         open.job = Some(id);
         open.reading = false;
-        open.in_flight = Some((block, take));
+        open.in_flight = Some((at, take));
         commands.push(Command::TakeSide(
             id,
             TakeRequest {
                 path: path.clone(),
                 file: Arc::clone(file),
-                block,
+                at,
                 take,
             },
         ));
     }
-    open.notice = (open_left == 0 && open.in_flight.is_none()).then(|| (all_taken(&path), false));
+    let settled = open_left == 0 && open.in_flight.is_none();
+    open.notice = match bulk {
+        Some((side, n)) => {
+            let blocks = if n == 1 { "block" } else { "blocks" };
+            let mut words = format!("took {side} in {n} {blocks}");
+            if settled {
+                words.push_str(&format!(" · ⏎ marks {} done", path.display()));
+            }
+            Some((words, false))
+        }
+        None => settled.then(|| (all_taken(&path), false)),
+    };
     // The new document may draw in a different number of rows: the cursor
     // block, wherever the keys put it, is kept on screen — moved as little
     // as it must, never back to the block that landed.

@@ -21,4 +21,4 @@ files   ▸ notes.txt 2/2 open
   7 SEVEN from feature
   ──────────────────────────────────────────────────────────────────────────────
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎  M  d  esc
+ o yours  t theirs  b both  ^O all yours  ^T all  B  e  n  N  ⏎  M  d  esc

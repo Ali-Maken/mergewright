@@ -81,6 +81,25 @@ impl ConflictFile {
         Ok(())
     }
 
+    /// Takes `take` for every block still open: each `Conflict` region
+    /// becomes `Resolved { take }`, and a `Resolved` one keeps its take and
+    /// its index. Returns how many blocks changed. The render equals taking
+    /// each open block in turn (`conflict::tests`).
+    pub fn take_all(&mut self, take: Take) -> usize {
+        let mut changed = 0;
+        for region in &mut self.regions {
+            if matches!(region, Region::Conflict(_)) {
+                let previous = std::mem::replace(region, Region::Plain(Vec::new()));
+                let Region::Conflict(inner) = previous else {
+                    unreachable!("matched Conflict above")
+                };
+                *region = Region::Resolved { block: inner, take };
+                changed += 1;
+            }
+        }
+        changed
+    }
+
     /// Every block, open or taken, with the line it starts on.
     #[must_use]
     pub fn blocks(&self) -> Vec<BlockAt> {

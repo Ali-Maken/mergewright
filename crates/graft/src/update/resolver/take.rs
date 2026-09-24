@@ -11,7 +11,7 @@ use graft_ops::operation::Side;
 use super::walk::after_take;
 use super::whole_file::{whole_file_both_refused, whole_file_take};
 use super::{ResolverState, TAKE_QUEUE_CAP, scrolled_to};
-use crate::update::events::{Command, TakeRequest};
+use crate::update::events::{Command, TakeAt, TakeRequest};
 use crate::update::state::{AppState, Status};
 
 /// `o`/`t`/`b`: a whole-file card's own take when one is open, else the
@@ -25,17 +25,17 @@ pub(super) fn take_key(
     match code {
         KeyCode::Char('o') => {
             if !whole_file_take(state, commands, Side::Ours, next_id) {
-                take_side(state, commands, Take::Ours, next_id);
+                take_block(state, commands, Take::Ours, next_id);
             }
         }
         KeyCode::Char('t') => {
             if !whole_file_take(state, commands, Side::Theirs, next_id) {
-                take_side(state, commands, Take::Theirs, next_id);
+                take_block(state, commands, Take::Theirs, next_id);
             }
         }
         KeyCode::Char('b') => {
             if !whole_file_both_refused(state) {
-                take_side(state, commands, Take::Both, next_id);
+                take_block(state, commands, Take::Both, next_id);
             }
         }
         _ => unreachable!("act only calls take_key for o/t/b"),
@@ -48,7 +48,7 @@ pub(super) fn take_key(
 /// While a take is in flight the new one is queued behind it rather than
 /// refused, so takes typed faster than the disk all land, in order. Any
 /// other job in flight — a read, a base load, a git write — still refuses.
-pub(super) fn take_side(
+fn take_block(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     take: Take,
@@ -61,7 +61,6 @@ pub(super) fn take_side(
     let Some(open) = state.resolver.as_ref() else {
         return;
     };
-    let queueing = open.in_flight.is_some();
     let (Some(block), Some(pending)) = (open.cursor_block, pending_file(open)) else {
         state.status = Status::Sticky {
             reason: "no conflict under the cursor".to_owned(),
@@ -82,33 +81,91 @@ pub(super) fn take_side(
             return;
         }
     };
-    if queueing {
-        if let Some(open) = state.resolver.as_mut() {
-            open.queued.push_back((block, take));
-        }
-    } else {
-        let Some(file) = open.file.clone() else {
-            return;
-        };
-        let path = open.path.clone();
-        let id = next_id();
-        let Some(open) = state.resolver.as_mut() else {
-            return;
-        };
-        open.job = Some(id);
-        open.reading = false;
-        open.in_flight = Some((block, take));
-        commands.push(Command::TakeSide(
-            id,
-            TakeRequest {
-                path,
-                file,
-                block,
-                take,
-            },
-        ));
-    }
+    take_side(state, commands, TakeAt::Block(block), take, next_id);
     advance(state, &pending, block);
+}
+
+/// `Ctrl+O`/`Ctrl+T`: take one side in **every** block still open, in one
+/// write (m6-conflicts/16 D3). The cursor stays; the notice is set when the
+/// write lands (`answers::take_landed`). A done file was refused before
+/// this, in `act`.
+pub(super) fn take_all_key(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    take: Take,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    if open.whole_file.is_some() {
+        state.status = Status::sticky(format!(
+            "this card is one choice · {}",
+            super::names::side_keys(state)
+        ));
+        return;
+    }
+    if let Some(words) = take_refusal(state) {
+        state.status = Status::sticky(words);
+        return;
+    }
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    let pending = match pending_file(open) {
+        // Still reading: `take_refusal` answered that; nothing to take.
+        None => return,
+        Some(Ok(file)) => file,
+        Some(Err(missing)) => {
+            if let Some(open) = state.resolver.as_mut() {
+                open.notice = Some((super::walk::no_block(missing.0), true));
+            }
+            return;
+        }
+    };
+    if pending.open() == 0 {
+        let words = format!("nothing open in {}", open.path.display());
+        if let Some(open) = state.resolver.as_mut() {
+            open.notice = Some((words, false));
+        }
+        return;
+    }
+    take_side(state, commands, TakeAt::Every, take, next_id);
+}
+
+/// Send a take whose checks have passed — or queue it behind the take in
+/// flight. The one site a `TakeSide` leaves the keys from.
+pub(super) fn take_side(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    at: TakeAt,
+    take: Take,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_mut() else {
+        return;
+    };
+    if open.in_flight.is_some() {
+        open.queued.push_back((at, take));
+        return;
+    }
+    let Some(file) = open.file.clone() else {
+        return;
+    };
+    let path = open.path.clone();
+    let id = next_id();
+    open.job = Some(id);
+    open.reading = false;
+    open.in_flight = Some((at, take));
+    commands.push(Command::TakeSide(
+        id,
+        TakeRequest {
+            path,
+            file,
+            at,
+            take,
+        },
+    ));
 }
 
 /// Why a take may not go ahead now, or `None` when it may — queued behind
@@ -156,14 +213,22 @@ pub(super) fn all_taken(path: &Path) -> String {
 }
 
 /// The document as it will stand once every take sent or queued has
-/// landed: `file`, then the take in flight, then the queue, in order.
+/// landed: `file`, then the take in flight, then the queue, in order — a
+/// `TakeAt::Every` entry replayed as `take_all`.
 /// `None` while no document is open; `Err` names a block the document
 /// lacks.
 pub(super) fn pending_file(resolver: &ResolverState) -> Option<Result<ConflictFile, NoSuchBlock>> {
     let mut file = (**resolver.file.as_ref()?).clone();
-    for (block, take) in resolver.in_flight.iter().chain(resolver.queued.iter()) {
-        if let Err(missing) = file.take(*block, *take) {
-            return Some(Err(missing));
+    for (at, take) in resolver.in_flight.iter().chain(resolver.queued.iter()) {
+        match at {
+            TakeAt::Block(block) => {
+                if let Err(missing) = file.take(*block, *take) {
+                    return Some(Err(missing));
+                }
+            }
+            TakeAt::Every => {
+                file.take_all(*take);
+            }
         }
     }
     Some(Ok(file))

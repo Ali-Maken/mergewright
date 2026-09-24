@@ -816,14 +816,22 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("t", "reverting"), // the same, in a revert
     ("t", "stashed"),   // the same, after a stash pop
     ("b", "both"),      // the same, `Take::Both`
-    ("n", "next"),      // `walk_blocks`, forward
-    ("N", "prev"),      // the same, backward
-    ("⏎", "resolved"),  // `mark_resolved`: `git add` on the open file
-    ("S", "stash"),     // `stash::stash_key`: opens the overlay
-    ("J", "journal"),   // `journal::journal_key`: opens the browser
-    ("M", "map"),       // `map::map_key`
-    ("O", "overview"),  // `strip::strip_key`
-    ("/", "search"),    // `search::search_key`, before `key_event`
+    // `Ctrl+O`/`Ctrl+T`, every open block (m6-conflicts/16): `take_all_key`.
+    ("^O", "all yours"),
+    ("^O", "all upstream"),
+    ("^T", "all theirs"),
+    ("^T", "all yours"),
+    ("^T", "all picked"),
+    ("^T", "all reverting"),
+    ("^T", "all stashed"),
+    ("n", "next"),     // `walk_blocks`, forward
+    ("N", "prev"),     // the same, backward
+    ("⏎", "resolved"), // `mark_resolved`: `git add` on the open file
+    ("S", "stash"),    // `stash::stash_key`: opens the overlay
+    ("J", "journal"),  // `journal::journal_key`: opens the browser
+    ("M", "map"),      // `map::map_key`
+    ("O", "overview"), // `strip::strip_key`
+    ("/", "search"),   // `search::search_key`, before `key_event`
     // Inside the three overlays, which hint their own lists.
     ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip
     ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry

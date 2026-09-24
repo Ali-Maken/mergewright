@@ -50,7 +50,7 @@ mod strip;
 pub mod undo;
 
 pub use events::{
-    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeRequest, Task,
+    AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeAt, TakeRequest, Task,
 };
 pub(crate) use geometry::context_menu_area;
 pub use relaunch::LiveOrigin;

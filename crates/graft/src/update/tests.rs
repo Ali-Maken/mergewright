@@ -3879,6 +3879,8 @@ fn presses_for(name: &str) -> Vec<Press> {
         "⇥" => vec![plain(KeyCode::Tab)],
         "⌃A" => vec![Press::Key(KeyPress::control(KeyCode::Char('a')))],
         "⌃R" => vec![Press::Key(KeyPress::control(KeyCode::Char('r')))],
+        "^O" => vec![Press::Key(KeyPress::control(KeyCode::Char('o')))],
+        "^T" => vec![Press::Key(KeyPress::control(KeyCode::Char('t')))],
         "F2" => vec![plain(KeyCode::Function(2))],
         "F3" => vec![plain(KeyCode::Function(3))],
         "j/k" => vec![plain(KeyCode::Char('j')), plain(KeyCode::Char('k'))],

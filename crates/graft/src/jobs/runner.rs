@@ -576,10 +576,10 @@ impl<S: JobEvents> JobRunner<S> {
                 let crate::update::TakeRequest {
                     path,
                     file,
-                    block,
+                    at,
                     take,
                 } = request;
-                let taken = super::conflict::take(&repos, &path, &file, block, take).map(Arc::new);
+                let taken = super::conflict::take(&repos, &path, &file, at, take).map(Arc::new);
                 Outcome::Produced(Product::Taken(taken))
             })
         });

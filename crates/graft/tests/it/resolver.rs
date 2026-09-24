@@ -19,6 +19,7 @@ mod modal;
 mod restart;
 mod shell_begun;
 mod stash_pop;
+mod take_all;
 mod takes;
 mod three_panes;
 mod whole_file;
@@ -143,7 +144,16 @@ fn enter_on_conflicts_row_opens_the_resolver() {
     // The bar under the document is the resolver's own, not the pane's.
     let drawn = crate::captures::frame(&state, 120, 40);
     let footer = drawn.last().expect("a footer row").to_owned();
-    for key in ["o yours", "t theirs", "b both", "n next", "esc close"] {
+    // Since m6-conflicts/16 `^O`/`^T` take their room at 120 columns and
+    // `esc` is drawn bare.
+    for key in [
+        "o yours",
+        "t theirs",
+        "b both",
+        "^T all theirs",
+        "n next",
+        " esc",
+    ] {
         assert!(footer.contains(key), "{key} missing from {footer:?}");
     }
 

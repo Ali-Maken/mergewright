@@ -37,4 +37,4 @@ files   ▸ notes.md · 1 of 1 open    shared.rs · …
 
 
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ o yours  t theirs  b both  ^O all yours  ^T all theirs  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d  esc

@@ -66,14 +66,16 @@ pub fn done_refusal(state: &AppState) -> Option<String> {
 
 /// `act`'s done gate: the keys a done file refuses through [`done_refusal`]
 /// — every one that would take, stage, load a base, hand to a mergetool or
-/// walk. `d`, `e`, `Esc` and the scroll keys act as ever.
+/// walk, `Ctrl+O`/`Ctrl+T` included (m6-conflicts/16). `d`, `e`, `Esc` and the scroll keys act as ever.
 pub(super) fn refuses(key: &KeyPress) -> bool {
     let plain = !key.modifiers.control && !key.modifiers.alt;
-    plain
+    let bulk = key.modifiers.control && !key.modifiers.alt;
+    (plain
         && matches!(
             key.code,
             KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'n' | 'N') | KeyCode::Enter
-        )
+        ))
+        || (bulk && matches!(key.code, KeyCode::Char('o' | 't')))
 }
 
 /// The done route's read landed.

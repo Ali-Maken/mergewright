@@ -1,6 +1,6 @@
 # fix-take-every-open-block: `Ctrl+O` / `Ctrl+T` take yours / theirs in every open block of this file, in one write
 
-Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: done 2026-09-24 (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 **Revised 2026-09-24 in place (planner, spec-only), from `.scratch/m6-conflicts/scout-16.md` (main `f585af1`), items 1–5:**
 - 1: `apply_take_all` takes the **document**, like `apply_take` (`graft-ops/src/conflict.rs:151`; MAP §conflict `apply_take`). `expected: Oid` is dropped: a re-read renders taken blocks as plain lines, so they would vanish and the rest re-index.
 - 2: the queue element becomes `(TakeAt, Take)`. `TakeAt::Every` is one entry, one write, one keypress (D2).
@@ -104,29 +104,29 @@ pub(super) fn take_all_key(state: &mut AppState, commands: &mut Vec<Command>, ta
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] graft-git `conflict::tests::take_all_equals_taking_each_block`: for every fixture file and each `Take`, `take_all` renders byte-identical to `take(i)` over every open `i`, and returns that count.
-- [ ] graft-git `conflict::tests::take_all_keeps_blocks_already_taken`: `three.txt`, `take(0, Ours)`, then `take_all(Theirs)` → returns 2, block 0 is still `Ours`, and `blocks().len() == 3`.
-- [ ] graft-ops `conflict::tests::take_all_never_clobbers_a_changed_file`: the bytes change on disk → `Changed { now }`, and the file's bytes are unchanged.
-- [ ] graft-ops `conflict::tests::apply_take_all_after_a_take_keeps_it`: `apply_take(.., 0, Ours)`, then `apply_take_all(&landed, Theirs)` → the render equals per-block (ours, theirs, theirs), and `blocks().len() == 3` (D1: the case the `Oid` form lost).
-- [ ] graft `update::resolver::tests::ctrl_t_takes_theirs_everywhere_then_enter_resolves`, real git: on `three.txt`, `Ctrl+T ⏎` → the bytes equal per-block theirs (not `checkout --theirs` where the two differ), and `ls-files -u` no longer lists the file.
-- [ ] graft `…::ctrl_t_waits_behind_a_queued_take`: `o` (in flight, block 0), then `Ctrl+T`:
+- [x] graft-git `conflict::tests::take_all_equals_taking_each_block` (verified: `conflict::tests::take_all_equals_taking_each_block`, all 7 marker files × 3 takes): for every fixture file and each `Take`, `take_all` renders byte-identical to `take(i)` over every open `i`, and returns that count.
+- [x] graft-git `conflict::tests::take_all_keeps_blocks_already_taken` (verified: same name): `three.txt`, `take(0, Ours)`, then `take_all(Theirs)` → returns 2, block 0 is still `Ours`, and `blocks().len() == 3`.
+- [x] graft-ops `conflict::tests::take_all_never_clobbers_a_changed_file` (verified: same name): the bytes change on disk → `Changed { now }`, and the file's bytes are unchanged.
+- [x] graft-ops `conflict::tests::apply_take_all_after_a_take_keeps_it` (verified: same name; also re-reads disk): `apply_take(.., 0, Ours)`, then `apply_take_all(&landed, Theirs)` → the render equals per-block (ours, theirs, theirs), and `blocks().len() == 3` (D1: the case the `Oid` form lost).
+- [x] (verified: `it::resolver::take_all::ctrl_t_takes_theirs_everywhere_then_enter_resolves` — real git lives in the `it` harness, not `update::resolver::tests`; expected bytes are the parser's per-block theirs; for `three.txt` these equal `checkout --theirs`, so the "differ" case is not exercised) graft `update::resolver::tests::ctrl_t_takes_theirs_everywhere_then_enter_resolves`, real git: on `three.txt`, `Ctrl+T ⏎` → the bytes equal per-block theirs (not `checkout --theirs` where the two differ), and `ls-files -u` no longer lists the file.
+- [x] (verified: `update::resolver::tests::take_all::ctrl_t_waits_behind_a_queued_take`) graft `…::ctrl_t_waits_behind_a_queued_take`: `o` (in flight, block 0), then `Ctrl+T`:
   - `queued == [(Every, Theirs)]`, one `TakeSide` out.
   - The first landing sends `at: Every` against the landed document.
   - The final render is ours, theirs, theirs.
-- [ ] graft `…::a_bulk_take_is_one_queued_entry`:
+- [x] (verified: `update::resolver::tests::take_all::a_bulk_take_is_one_queued_entry`) graft `…::a_bulk_take_is_one_queued_entry`:
   - With `in_flight` set and 63 queued, `Ctrl+T` queues (64). The next `t` or `Ctrl+O` → `still writing the last take`.
   - A `Changed` answer with `[Block, Every]` queued → `… · 2 queued takes dropped`, and the count survives the re-read (28's review-15 M2).
-- [ ] graft `…::ctrl_t_with_nothing_open_writes_nothing`: all blocks taken (pending included) → notice `nothing open in three.txt`, no command, `queued` unchanged.
-- [ ] graft `…::ctrl_t_notice_counts_the_blocks`:
+- [x] (verified: `update::resolver::tests::take_all::ctrl_t_with_nothing_open_writes_nothing`) graft `…::ctrl_t_with_nothing_open_writes_nothing`: all blocks taken (pending included) → notice `nothing open in three.txt`, no command, `queued` unchanged.
+- [x] (verified: `update::resolver::tests::take_all::ctrl_t_notice_counts_the_blocks`; queued case `…::ctrl_t_notice_waits_while_takes_are_queued`) graft `…::ctrl_t_notice_counts_the_blocks`:
   - Merge: `Ctrl+T` lands → `took theirs · feature in 3 blocks · ⏎ marks three.txt done`, and the cursor block is unchanged from before the press.
   - After `t` on block 0 has landed, `Ctrl+O` → `… in 2 blocks …`.
   - One open block → `in 1 block`.
-- [ ] graft `…::ctrl_t_on_a_card_is_one_choice`: a whole-file card and a binary card → `this card is one choice · o yours  t theirs`, no command.
-- [ ] graft `…::ctrl_t_on_a_done_file_is_refused`: `Ctrl+O` and `Ctrl+T` on a done file → `done_refusal`'s words (28 R5, the can and cannot forms), no command.
-- [ ] graft `…::ctrl_alt_t_does_nothing`: no take, no words (the swallow is unchanged for Alt).
-- [ ] graft-ui `graph_screen::hints::tests::resolver_offers_take_all`: the table has `^O all …  ^T all …` after `b both`, the short rung is `^O/^T all`, and it is absent from the card and done lists.
+- [x] (verified: `update::resolver::tests::take_all::ctrl_t_on_a_card_is_one_choice`) graft `…::ctrl_t_on_a_card_is_one_choice`: a whole-file card and a binary card → `this card is one choice · o yours  t theirs`, no command.
+- [x] (verified: `update::resolver::tests::take_all::ctrl_t_on_a_done_file_is_refused`) graft `…::ctrl_t_on_a_done_file_is_refused`: `Ctrl+O` and `Ctrl+T` on a done file → `done_refusal`'s words (28 R5, the can and cannot forms), no command.
+- [x] (verified: `update::resolver::tests::take_all::ctrl_alt_t_does_nothing`; asserts no TakeSide/Operate, resolver and status unchanged) graft `…::ctrl_alt_t_does_nothing`: no take, no words (the swallow is unchanged for Alt).
+- [x] (verified: `graph_screen::hints::tests::resolver_offers_take_all` — short rung is per hint: `^O all  ^T all`, not one `^O/^T all`; see NOTES) graft-ui `graph_screen::hints::tests::resolver_offers_take_all`: the table has `^O all …  ^T all …` after `b both`, the short rung is `^O/^T all`, and it is absent from the card and done lists.
 - [ ] Journey `three-conflicts-all-theirs` at 2 keys (acceptance ticket 21).
-- [ ] Capture `docs/shots/m6/fix-take-all-120x40.txt`, pinned by `it::resolver::take_all_capture`. **What right looks like:**
+- [x] (written and pinned: `it::resolver::take_all::take_all_capture`; look NOT judged — user's eye, rule 6) Capture `docs/shots/m6/fix-take-all-120x40.txt`, pinned by `it::resolver::take_all_capture`. **What right looks like:**
   - All three block headers read `took theirs · feature`.
   - The notice reads `took theirs · feature in 3 blocks · ⏎ marks three.txt done`.
   - The bar shows `^T all theirs` or `^O/^T all`.
@@ -143,3 +143,13 @@ Small–medium across four crates. One context: two leaf functions, one enum thr
 - `docs/design-notes/m6-conflicts.md:323` → replace both `(usize, Take)` with `(TakeAt, Take)`, and append `; pub enum TakeAt { Block(usize), Every } in update/events.rs (ticket 16); a bulk take is one queue entry`.
 - `docs/design/02-keymap.md:263`: append `On a whole-file card or a done file, refused in words.`
 - Ticket 19: add "a take lands through `take_landed` as `TakeAt::Block` or `TakeAt::Every`; `Every` records a choice for every block the landed document took that the request's document had open."
+
+## NOTES (builder, 2026-09-24)
+Scout: used `scout-16.md` (pre-28); re-found sites by name. No compaction.
+- Ticks 14/15. Journey `three-conflicts-all-theirs` left to acceptance ticket 21.
+- `handover_refusal`/`Esc` refusal: read only `in_flight.is_some()` / `queued.is_empty()` (`handover.rs:21`) — unchanged, confirmed.
+- **Bar cost (by eye, user's call):** two new full hints push the resolver bar past its room. At 120 cols it now reads `… ^O all yours  ^T all theirs  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d  esc` (`d start over`/`esc close` lose verbs); at 80 `… ^T all  B  e  n  N  ⏎  M  d  esc`. Ladder raises in list order, so the takes keep full rungs ahead of the tail. 7 committed captures regenerated (`fix-card-names-numbers-*`, `fix-file-list-many-120x40`, `fix-file-list-rebase-step2-120x40`, `fix-stop-lands-in-resolver-*`); `it::resolver::enter_on_conflicts_row_opens_the_resolver` now looks for ` esc`, not `esc close`.
+- **Short rung deviation:** the ladder has per-hint rungs; `^O/^T all` as one entry is not expressible. Built `^O all  ^T all` (short form `all` for the six `all <role>` verbs, added to `short_form` and to the user's-table test with a comment citing P3). Flag for conductor.
+- **Glyph:** spec says `^O`/`^T`; the rest of the app writes `⌃A`, `⌃R`. Followed the spec; likely wording drift — conductor's call.
+- Status line: an `Every` landing sets only the notice (no `took … · k of m open` status), as D4 names only the notice.
+- `Ctrl+T` in Zed's terminal: unverified. Colour unverified.

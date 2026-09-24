@@ -63,7 +63,7 @@ use graft_git::conflict::{ConflictFile, Take};
 use graft_git::status::UnmergedHow;
 
 use super::detail::Loading;
-use super::events::Command;
+use super::events::{Command, TakeAt};
 use super::state::{AppState, Status};
 
 pub use answers::{conflict_opened, handed_back, taken, write_not_landed};
@@ -91,7 +91,7 @@ use open::reopen;
 use resolved::mark_resolved;
 use restart::restart_box;
 use scroll::scroll_key;
-use take::take_key;
+use take::{take_all_key, take_key};
 use walk::walk_blocks;
 
 /// Where `⏎` opened the resolver from, and so where `Esc` gives the
@@ -182,12 +182,12 @@ pub struct ResolverState {
     pub done: Option<DoneOpen>,
     /// The take whose `TakeSide` is out (m6-conflicts/15): its block and
     /// side. `Some` exactly when [`Self::job`] is a take.
-    pub in_flight: Option<(usize, Take)>,
+    pub in_flight: Option<(TakeAt, Take)>,
     /// Takes pressed while [`Self::in_flight`] is `Some`, in order, at most
     /// [`TAKE_QUEUE_CAP`]. **Empty whenever `in_flight` is `None`**: the
     /// answer that clears `in_flight` sends the front of this, so every
     /// refusal keyed on [`Self::job`] covers the queue too.
-    pub queued: VecDeque<(usize, Take)>,
+    pub queued: VecDeque<(TakeAt, Take)>,
     /// `N` crossed to this file: when its opening read lands the cursor goes
     /// to the last block rather than the first.
     pub land_last: bool,
@@ -326,6 +326,14 @@ fn act(
     match key.code {
         KeyCode::Escape => escape(state),
         KeyCode::Char('o' | 't' | 'b') if plain => take_key(state, commands, key.code, next_id),
+        // Ahead of the swallow below: `Ctrl+O`/`Ctrl+T`, every open block
+        // (m6-conflicts/16). `Ctrl+Alt+…` is still swallowed.
+        KeyCode::Char('o') if key.modifiers.control && !key.modifiers.alt => {
+            take_all_key(state, commands, Take::Ours, next_id);
+        }
+        KeyCode::Char('t') if key.modifiers.control && !key.modifiers.alt => {
+            take_all_key(state, commands, Take::Theirs, next_id);
+        }
         KeyCode::Char('B') if plain => toggle_base(state, commands, next_id),
         KeyCode::Char('n') if plain => walk_blocks(state, commands, true, next_id),
         KeyCode::Char('N') if plain => walk_blocks(state, commands, false, next_id),

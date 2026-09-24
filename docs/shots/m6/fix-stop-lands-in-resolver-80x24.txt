@@ -21,4 +21,4 @@ files   ▸ notes.md 1/1 open   shared.rs …
 
 
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎  M  d  esc
+ o yours  t theirs  b both  ^O all yours  ^T all  B  e  n  N  ⏎  M  d  esc

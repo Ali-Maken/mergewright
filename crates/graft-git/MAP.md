@@ -51,6 +51,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `Take` (enum) — `Ours`, `Theirs`, `Both` (ours then theirs).
 - `Region` (enum) — `Plain(lines)`, `Conflict(Block)`, `Resolved { block, take }`.
 - `ConflictFile` (struct) — `regions`, `fingerprint` (blob id of the bytes parsed); `render`, `take(block, take) -> Result<(), NoSuchBlock>` (the index counts `Conflict` and `Resolved` regions in order; re-taking replaces), `blocks() -> Vec<BlockAt>`, `open()` (blocks still `Conflict`), `first_lines(Projection) -> Vec<usize>` (one per region, its 1-based first line in that projection; each numbers 1..=n with no gap — m6-conflicts/10).
+- `ConflictFile::take_all(take) -> usize` (m6-conflicts/16) — every `Conflict` region becomes `Resolved { take }`; `Resolved` ones keep their take and index. Returns how many changed; renders byte-identical to `take(i)` over every open `i`.
 - `Projection` (enum) — `Ours` (plain + every block's ours lines), `Theirs` (plain + theirs lines), `Result` (plain, taken lines, an open block's ours lines).
 - `BlockAt` (struct) — `index`, `state`, `first_line` (1-based, in `render()`); `BlockState` (enum) — `Open`, `Took(Take)`.
 - `ParseError` (struct) — `line` (1-based), `what: ParseErrorKind`: `Unterminated` (a block still open at EOF, at its `<<<<<<<` line), `StrayMarker` (`<<<<<<<` inside a block; `=======`, `|||||||` or `>>>>>>>` outside one, bare or labelled; `>>>>>>>` before the separator), `MarkerSize` (a conflict opened with markers longer than seven characters).
