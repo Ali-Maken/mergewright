@@ -494,6 +494,8 @@ a-finish                      2                     # lazygit 1 (bare confirm, r
 b-finish                      2
 summary-open-git-combined     1
 back-after-esc                2
+open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
+walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?)
 a-whole-one-file              6     P6:5            # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish
 a-whole-two-files             7     P6:6            # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish
 b-whole-two-files             6     P6:5            # b-launch-to-first-conflict + two-files-in-order + b-finish
@@ -568,11 +570,11 @@ pub struct ListedFile { pub path: PathBuf, pub state: RowState }
 pub fn listed_files(state: &AppState) -> Vec<ListedFile>;   // sorted once here, git's path order (byte-wise), over set ∪ extra unmerged ∪ open path; a done file keeps its row (was: ops' order, done files after open — superseded 2026-09-24, ticket 25 D1)
 pub fn file_cursor(state: &AppState) -> usize;   // index of ResolverState::path in listed_files; 0 when absent
 pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k` if P7; a Done row opens read-only (ticket 25; 13's refusal dropped)
-#[derive(Clone, Copy, Debug, PartialEq, Eq)] pub enum DoneShape { Text { unstaged: bool }, Binary { unstaged: bool }, Removed }   // fix-stable-file-order-and-done-file-open
+#[derive(Clone, Debug, PartialEq, Eq)] pub enum DoneShape { Text { unstaged: bool }, Binary { unstaged: bool }, Removed, Unreadable { why: String } }   // wrapped in DoneOpen { shape, start_over } (ticket 28)
 // the Product answering Command::OpenConflict carries Result<graft_ops::conflict::Opening, …> (was Opened)
 // graft-ops/src/conflict/done.rs (new; re-exported from `conflict`)     fix-stable-file-order-and-done-file-open
 pub enum DoneFile { Text { file: graft_git::conflict::ConflictFile, unstaged: bool }, Binary { unstaged: bool }, Removed }
-pub enum Opening { Unmerged(Opened), Done(DoneFile) }
+pub enum Opening { Unmerged(Arc<OpenedFile>), Done(Arc<DoneFile>, StartOver) }   // graft jobs::conflict (built: 25; StartOver: 28)
 pub fn open_done(repo: &RepoHandle, status: &WorkingTreeStatus, path: &Path) -> Result<DoneFile, OpenError>;
 pub fn open_listed(repo: &RepoHandle, path: &Path) -> Result<Opening, OpenError>;   // reads the status itself; open_conflict unchanged
 // OpenError gains Status(<graft-git status reader's error>)
@@ -700,7 +702,7 @@ many files:  files · 7 · 2 done   ▸ src/auth/token.rs 2 of 3 open   src/api/
 - A done file clicked opens **read-only** (fix-stable-file-order-and-done-file-open D2): identity row
   `▸ <path> · done ✓ · d starts it over` (+ ` · edited since done` when unstaged), the working-tree file's plain lines;
   binary / removed draw a card `done ✓ · binary` / `done ✓ · removed`. Takes refused: `<path> is done · d starts it over`.
-  Bar: `d start over  n next  N prev  e edit  esc close`.
+  Bar: `d start over  e edit  esc close`, or `e edit  esc close` where ops cannot start it over (Amendment 3). A done file is one card at every width (ticket 25, ruling 4).
 
 **Finish summary** (full frame under the header, like the resolver; modal).
 ```
@@ -781,3 +783,59 @@ many files:  files · 7 · 2 done   ▸ src/auth/token.rs 2 of 3 open   src/api/
   9. acceptance, last
 
   The pure `graft-ui` and `graft-git` halves of steps 2–4 can be built ahead in a worktree limited to those crates.
+
+---
+
+## Amendment 3 — 2026-09-24 — a done file: read it, start it over (review m6-amend-25 M1, M2)
+
+Read: `docs/reviews/m6-amend-25.md`; `docs/research/conflict-resolution.md` (**CR**) 1.10, 1.11, §3 :287; `docs/research/ux-principles.md` (**UX**) 1.3, 2, 3.1, 3.5, §5; 02-keymap :111, §2.6 `d`; ticket 25 (spec + NOTES); graft-ops, graft MAPs. No source. Ticket: `28-done-file-start-over-only-where-it-can`.
+
+### Need
+- **Who / task:** he pressed `⏎` on a file and then saw he took the wrong side. Or he wants to look again at what he chose before `c`.
+- **What hurts:** 25 built it, but `d` is offered on every done file. ops refuses after the confirm on a whole-file shape, and on **any** done file of a merge begun in the shell (J3's start). No field note yet: this comes from review 25, not from his use.
+
+### Prior art (CR · T take · R reject · I invent)
+| Aspect | Best answer | Ours before | Rec · why |
+|---|---|---|---|
+| See a done file | Fork: an open request to show how each conflict was resolved in the file list (CR 1.10, #1304, **(?)** title only); JetBrains: a resolved file leaves the list (CR 1.1) | a done row keeps its place and opens read-only (25) | **T** the Fork ask, as built. H1: what he chose stays one click away |
+| Walk back a `⏎` | Tower: "reset a merge conflict to its unmerged state, even after it has been resolved" (CR 1.11 :207; CR §3 :287 recommends **T**) | `d` on every done file; ops refuses two shapes after the confirm | **T** Tower's reset, **only where ops can do it**. **I**: ops' own gate decides the offer when the file opens (UX H5: block the impossible, don't warn after; keymap :111) |
+| Why it can't | not in CR | a false promise, then a refusal | **I**: `d` is not drawn, and pressing it answers ops' words with no box (H9) |
+| Confirm the walk-back | Tower: **(?)**, not in CR | the box, cursor on Cancel (ADR-0038 §1) | **Keep.** It is not undoable while the operation is open, so the confirm is required (UX 3.5) |
+
+### Journeys (UX 1.3; `[M]` = a decision)
+- **J11 walk back a mistaken `⏎`.** Start: the landing after `⏎` (the next file open, the done row above it). Steps: click the done row (or `k` once 17/P7 lands) · `d` [M: read the box] · `→` · `⏎`. **4**. Tower: the count is not in CR **(?)**.
+  - Lands: the same file, unmerged again, open blocks, cursor on block 0, `▸` on its row in the same cell.
+- **J12 open a done file to read it.** Click its row (or `k`/`j`, P7). **1**. Lands: the file's working-tree lines, read-only; bar `d start over  e edit  esc close`, or `e edit  esc close` where it cannot start over. The Fork ask; no count in CR.
+- **As built, where it can't:** `d → ⏎` = 3 keys, the box's false promise, then the refusal. **Now:** no `d` in the bar, and `d` answers in words. **0** keys wasted.
+
+**Where each event lands him (additions).**
+- A done row opened → the done file, as J12.
+- `d` where ops can → the box; `→ ⏎` → J11's landing.
+- `d` where ops can't → no box. Status line `can't start over · <ops' words>`. Stays on the done file.
+- ops refuses after the confirm (the repo changed behind the app) → stays on the done file, ops' words, the write released.
+
+### Interfaces (amendment 3)
+Ticket 28's Signatures: `graft_ops::apply::restart_gate`, `jobs::conflict::StartOver`, `Opening::Done(Arc<DoneFile>, StartOver)`, `OpenFailure.done: Option<StartOver>`, `DoneOpen`, `start_over_refusal`.
+
+### Hard-to-reverse choices (amendment 3)
+1. **Who decides "can `d` start this over"?** Options: the app mirrors ops' rules, or ops' own gate, called by both the offer and the act. **Ops' gate.** The mirror has drifted twice (m6-05 M1, m6-amend-25 M1).
+2. **When is it asked?** Options: when the file opens (in the job), or when `d` is pressed (a check job before the box). **When it opens.** The bar is right before he looks (H6). Cost: it can go stale, and ops' refusal after the confirm is the backstop.
+
+### Where I'd differ (Proposed, not decided)
+- **P10: `d` starts a whole-file shape over**, in an app-begun merge. `restore::restore_stages` already puts a path's recorded stages back; the working tree goes back to the side git left. The box would read `the choice comes back: keep or delete`. Why: J11 fails today on every modify/delete, which is J5b's shape. Trade-off: a second restart path in ops, and new box words. A merge begun in the shell still cannot, because nothing kept the stages (gap M6/25; REUC rejected, graft-ops MAP §apply `stage_source`).
+
+### New UI (amendment 3)
+The done file per Amendment 2 "A done file clicked opens read-only". The identity row and the bar now follow the gate:
+```
+can, 120x40      ▸ both.txt · done ✓ · d starts it over
+                 d start over  e edit  esc close
+cannot, 120x40   ▸ gone.txt · done ✓
+                 e edit  esc close
+   after d       can't start over · gone.txt: deleted by them — no markers to take from      (status row, no box)
+```
+- The eye goes first to the identity row. Whether `d starts it over` is there is the answer.
+- The card (removed / binary / unreadable) carries `d starts it over` as its keys only when the gate says yes.
+- Other refused keys: `<path> is done · d starts it over` when it can, `<path> is done` when it can't.
+
+### Genuinely risky tickets (amendment 3)
+None. Ticket 28 goes on Opus: every rule is fixed here, and `d_is_in_the_bar_exactly_when_the_box_opens` judges it.
