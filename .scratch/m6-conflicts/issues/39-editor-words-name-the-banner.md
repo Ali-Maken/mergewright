@@ -1,6 +1,6 @@
 # editor-words-name-the-banner: the commit editor's in-progress words name keys that actually reach the banner — `esc, ⇥ banner, then c`
 
-Status: draft
+Status: partial (Step 4 blocked)
 Was: ticket 20 B2, blocked by its own stop condition (20 NOTES "Part B": `esc, then c` from the commit editor reopens the editor). Spec-only pass 2026-09-24.
 Blocked by: 20 (Part B merged).
 Build with: **Sonnet** — a words fix with the exact strings given and every stop condition spelled out; no route, no state, no design choice left to the builder.
@@ -68,16 +68,16 @@ impl CommitEditor {
 ```
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Step 0 run on unchanged code, both legs; outcome in NOTES with lines; kept as `editor_words.rs::after_esc_the_panes_c_and_a_are_commit_and_amend`, green after the fix.
-- [ ] `shell_begun.rs::the_keys_the_commit_editor_names_reach_the_summary`: red before Step 3 (say on which assertion), green after; `n` recorded.
-- [ ] `editor_words.rs::the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge`: `c` → summary; `a` → the banner's abort, no amend editor.
-- [ ] `update::commit_editor::tests::a_merge_in_progress_points_at_c` replaces `a_merge_begun_in_the_shell_names_no_key_that_refuses_it`: InShell merge words exact; contain neither `git commit` nor `a abort`; contain `⇥ banner`.
-- [ ] `update::commit_editor::tests::a_graft_begun_operation_names_the_banner`: every InGraft arm contains `esc, ⇥ banner, then ` and not `esc, then c`.
-- [ ] `a_rebase_begun_in_the_shell_still_names_gits_command` still green, unchanged.
-- [ ] The 80×24 check (Step 4), named.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-editor-names-the-banner-120x40.txt`, the commit editor open over 20's J3 state. **What right looks like:** the editor's refusal row reads exactly `merge begun in the shell — esc, ⇥ banner, then c finishes it`; the header reads `MERGING`; the words `git commit` appear nowhere in the frame. The user judges by eye.
-- [ ] MAP.md, graft §`update::commit_editor`: the `refusal` line's quoted words, and the `Begun` line's "ticket 20 B2, blocked" sentence replaced with the route and words as built (ticket 39).
-- [ ] NOTES: Step 0's outcome; `n`; every file whose old words changed; any `TESTING.md` / design-doc hit.
+- [x] Step 0 run on unchanged code, both legs; outcome in NOTES with lines; kept as `editor_words.rs::after_esc_the_panes_c_and_a_are_commit_and_amend`, green after the fix. — `resolver::editor_words::after_esc_the_panes_c_and_a_are_commit_and_amend`
+- [x] `shell_begun.rs::the_keys_the_commit_editor_names_reach_the_summary`: red before Step 3 (say on which assertion), green after; `n` recorded. — `resolver::shell_begun::the_keys_the_commit_editor_names_reach_the_summary`: red on assertion 1 (words), n=2
+- [x] `editor_words.rs::the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge`: `c` → summary; `a` → the banner's abort, no amend editor. — `resolver::editor_words::the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge`; `a` → confirm box, `ConfirmThen::Resume(Resume::Abort)`
+- [x] `update::commit_editor::tests::a_merge_in_progress_points_at_c` replaces `a_merge_begun_in_the_shell_names_no_key_that_refuses_it`: InShell merge words exact; contain neither `git commit` nor `a abort`; contain `⇥ banner`. — `update::commit_editor::tests::a_merge_in_progress_points_at_c`
+- [x] `update::commit_editor::tests::a_graft_begun_operation_names_the_banner`: every InGraft arm contains `esc, ⇥ banner, then ` and not `esc, then c`. — `update::commit_editor::tests::a_graft_begun_operation_names_the_banner`
+- [x] `a_rebase_begun_in_the_shell_still_names_gits_command` still green, unchanged. — `update::commit_editor::tests::a_rebase_begun_in_the_shell_still_names_gits_command`
+- [ ] The 80×24 check (Step 4), named. — **BLOCKED**, see NOTES
+- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-editor-names-the-banner-120x40.txt`, the commit editor open over 20's J3 state. **What right looks like:** the editor's refusal row reads exactly `merge begun in the shell — esc, ⇥ banner, then c finishes it`; the header reads `MERGING`; the words `git commit` appear nowhere in the frame. The user judges by eye. — **not taken**: blocked with Step 4
+- [x] MAP.md, graft §`update::commit_editor`: the `refusal` line's quoted words, and the `Begun` line's "ticket 20 B2, blocked" sentence replaced with the route and words as built (ticket 39). — doc, no test
+- [x] NOTES: Step 0's outcome; `n`; every file whose old words changed; any `TESTING.md` / design-doc hit. — doc, no test
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` — workspace-wide.
@@ -97,3 +97,11 @@ Small. One context.
 - Optional, if the acceptance walk should count it: the `journey-counts` block gains `editor-to-finish  <n+3>  # esc + n×⇥ + c + ⏎ (ticket 39)`.
 
 ## NOTES
+### Builder, 2026-09-24 — **partial: Steps 0–3 done, Step 4 blocked (its own stop condition)**
+- No scout: ticket names every function and line; read the named source directly (`commit_editor.rs` refusal arms, `keys.rs:273-278`, `predicates.rs:114-123`, the shell_begun/conflict_interim helpers). No compaction.
+- **Step 4 `blocked: words don't fit at 80 cols — the options row shows `[ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]  …`, the refusal fully cut.** The refusal is drawn beside the button on that row (`graft-ui/src/commit_editor.rs:294-296`). Observed at 80×24 over J3's state. Not observed at 120×40; by width arithmetic (row ~78 cols before the words, words 61) it is cut there too, so the capture's "what right looks like" cannot hold either — **unverified**. Note the old words were cut the same way; this is not new. The test (`the_shell_merge_words_fit_at_80_by_24` + the capture) was removed, not committed red, not disabled. Wording/placement is the conductor's.
+- **Step 0 (unchanged code):** both legs as keymap `:239` says. After `Esc` the editor closes, `banner_focus` off; `c` → commit editor, `amend false`, `finish None`; `a` → amend editor (`amend true`, after `ReadHeadMessage` lands — `commit_editor.rs` `open`, `amend` branch), `finish None`, banner off. InGraft = InShell. Kept as the pin.
+- **n = 2** (Files → Diff → banner), both legs.
+- Step 1 red before the fix on assertion 1 (words: `finish it there: git commit`).
+- Files whose old words changed: `crates/graft/src/update/commit_editor.rs`, `crates/graft/src/update/commit_editor/tests.rs`, `crates/graft/MAP.md`. No `docs/shots` capture pinned `esc, then`.
+- **For the conductor (not edited):** `TESTING.md:108` names the removed test `a_merge_begun_in_the_shell_names_no_key_that_refuses_it` and the old words; `docs/design-notes/m6-conflicts.md:272` quotes `finish it there: git commit`.

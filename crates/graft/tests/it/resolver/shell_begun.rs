@@ -125,7 +125,7 @@ fn unreachable_while_the_merge_is_open(app: &App, state: &AppState, repo: &Path)
 /// commits are `about_to_conflict`'s, stamped at fixed instants, so the
 /// graph draws the same every run; the merge commit the app makes is the
 /// fixture's name, never whoever runs the test.
-fn resolved_shell_merge() -> graft_fixtures::Scratch {
+pub(super) fn resolved_shell_merge() -> graft_fixtures::Scratch {
     use crate::app_harness::git;
     let scratch = crate::conflict_interim::about_to_conflict();
     let repo = scratch.path();
@@ -142,7 +142,7 @@ fn resolved_shell_merge() -> graft_fixtures::Scratch {
 
 /// The app launched into [`resolved_shell_merge`]: the working tree, the
 /// journal, the refs and the first rows read — J3's landing.
-fn launched_into(repo: &Path) -> (App, AppState) {
+pub(super) fn launched_into(repo: &Path) -> (App, AppState) {
     let (app, state) = App::open(repo);
     let state = crate::conflict_interim::launched(&app, state);
     let state = app.pump(state, "the refs and the first rows", |state| {
@@ -441,4 +441,32 @@ fn undo_through_the_drift_box(app: &App, state: &AppState) -> AppState {
         state.status
     );
     state
+}
+
+// ------------------------ the editor's words reach the banner (m6-conflicts/39)
+
+/// The words ticket 39 gives a merge begun in the shell.
+const SHELL_WORDS: &str = "merge begun in the shell — esc, ⇥ banner, then c finishes it";
+
+/// **The keys the commit editor names reach the summary** (ticket 39): from
+/// J3's state, the editor opened from the changes pane says `esc, ⇥ banner,
+/// then c`, and exactly those keys open the summary, returning to the banner.
+#[test]
+fn the_keys_the_commit_editor_names_reach_the_summary() {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let open = super::editor_words::editor_open(&app, state);
+    assert_eq!(super::editor_words::editor_words(&open), SHELL_WORDS);
+
+    let (banner, tabs) = super::editor_words::esc_then_tabs_to_the_banner(&app, &open);
+    assert_eq!(tabs, 2, "Files → Diff → banner");
+    let state = app.key(&banner, KeyCode::Char('c'));
+    assert_eq!(
+        state.finish.as_ref().map(|finish| finish.return_to),
+        Some(graft::update::finish::ReturnTo::Banner),
+        "`c` opens the summary: {:?}",
+        state.status
+    );
+    drop(state);
+    app.close();
 }

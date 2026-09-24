@@ -194,7 +194,9 @@ impl CommitEditor {
         // the operation banner's, from M5 (ADR-0034's shell command was the
         // interim while there was nothing in the app to name). The keys are
         // the banner's own (`docs/design/02-keymap.md` §2.6a); `Esc` first,
-        // because this editor is modal and holds every key while it is open.
+        // because this editor is modal and holds every key while it is open,
+        // then `⇥` to the banner, because after `Esc` the pane has the keys
+        // and its `c`/`a` are Commit/Amend (§2.4; m6-conflicts/39).
         if let Some((kind, begun)) = in_progress {
             return Some(match (kind, begun) {
                 // A bisect draws no banner — that is M7's — so there are no
@@ -204,25 +206,24 @@ impl CommitEditor {
                     kind.name(),
                     kind.continue_command()
                 ),
-                // One begun in the shell has no entry of Graft's. The
+                // A merge begun in the shell: the banner's `c` finishes it
+                // since m6-conflicts/20. Its `a` still refuses one Graft did
+                // not start (`resume_target`), so no `a abort`.
+                (InProgress::Merge, Begun::InShell) => {
+                    "merge begun in the shell — esc, ⇥ banner, then c finishes it".to_owned()
+                }
+                // Any other begun in the shell has no entry of Graft's. The
                 // banner's `a` refuses it (`resume_target`), and so does
                 // its `c` on a rebase, pick or revert (M7). Naming them
                 // offered keys that do nothing (m6-07 F12), so the way out
                 // is git's own command, as for a bisect.
-                //
-                // A merge's `c` finishes it since m6-conflicts/20, but
-                // `esc, then c` from here does not reach the banner: after
-                // `Esc` the pane has the keys and `c` reopens this editor
-                // (`update::keys::graph_key`, `is_commit_key`). Until that
-                // is decided (ticket 20 Part B NOTES) the words stay git's
-                // command, which is still true.
                 (_, Begun::InShell) => format!(
                     "{} begun in the shell — finish it there: {}",
                     kind.name(),
                     kind.continue_command()
                 ),
                 (_, Begun::InGraft) => format!(
-                    "{} in progress — esc, then c continue  a abort",
+                    "{} in progress — esc, ⇥ banner, then c continue  a abort",
                     kind.name()
                 ),
             });
