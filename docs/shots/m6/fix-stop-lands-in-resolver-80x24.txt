@@ -1,0 +1,24 @@
+MERGING
+files   ▸ notes.md 1/1 open   shared.rs …
+────────────────────────────────────────────────────────────────────────────────
+▸ notes.md · 1 conflict · 1 open
+
+▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────
+▏ yours · main
+▏ 1 our plan
+▏ theirs · feature
+▏ 1 their plan
+▏ ──────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+ o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎  M  d  esc

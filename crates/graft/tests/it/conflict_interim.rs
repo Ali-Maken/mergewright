@@ -146,9 +146,33 @@ fn on_feature(state: &AppState) -> bool {
     )
 }
 
-/// Cursor onto `feature`, `m`, through the preview and the confirm box, and
-/// wait for the merge to stop. The state it hands back is a real conflict.
+/// A merge that stopped, on the banner: the stop lands in the resolver
+/// (m6-conflicts/18), and `Esc` once its opening read is in is the way back
+/// to the banner these tests are about.
 pub(crate) fn stopped_on_the_conflict(app: &App, state: AppState) -> AppState {
+    let state = landed_in_the_resolver(app, state);
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none(), "Esc closes the landed resolver");
+    assert!(state.banner_focus, "and hands the keyboard to the banner");
+    state
+}
+
+/// Cursor onto `feature`, `m`, through the preview and the confirm box, and
+/// wait for the merge to stop and the resolver it lands in to read its
+/// first file. The state it hands back is a real conflict.
+pub(crate) fn landed_in_the_resolver(app: &App, state: AppState) -> AppState {
+    let state = merge_stopped(app, state);
+    app.pump(state, "the landed resolver's first file", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.file.is_some() || open.whole_file.is_some())
+    })
+}
+
+/// Cursor onto `feature`, `m`, through the preview and the confirm box, and
+/// wait for the merge to stop and the working tree to come back.
+fn merge_stopped(app: &App, state: AppState) -> AppState {
     let mut state = opened(app, state);
     let mut guard = 0;
     loop {

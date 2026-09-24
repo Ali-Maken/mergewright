@@ -512,6 +512,9 @@ impl Walk<'_> {
                     !matches!(preview.plan, Loading::Pending(_) | Loading::Idle)
                 })
             }),
+            Wait::ResolverLanded => {
+                self.pump(state, "the stop's landing in the resolver", resolver_landed)
+            }
             Wait::BannerFocused => self.pump(state, "the stop on the conflict", |state| {
                 state.operating.is_none()
                     && state.in_progress.is_some()
@@ -679,4 +682,13 @@ pub(super) fn status_text(state: &AppState) -> String {
             keys: Some(keys),
         } => format!("{reason} · {keys}"),
     }
+}
+
+/// The stop landed in the resolver (m6-conflicts/18) and its first read is in.
+fn resolver_landed(state: &AppState) -> bool {
+    state.operating.is_none()
+        && state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.file.is_some() || open.whole_file.is_some())
 }

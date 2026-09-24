@@ -1,13 +1,14 @@
 m5 walk capture: m5-06-banner-conflicts — scenario conflict-focuses-banner-and-lists-files, keys m → ⏎, unicode tier, 160x48
 
- graft <scratch____________________________________________________________>    MERGING
-◌      Uncommitted changes (1 unmerged)
-  ● ▏ⓘ [feature] feature rewrites it                                                                                                             GF 6y   41d4d46
-◆ │    [◆ main] main rewrites it                                                                                                                 GF 6y   3bb5569
-●─╯    add the shared file                                                                                                                       GF 6y   f435fe3
-●      Correct the note                                                                                                                          GF 7y   a82960b
-●      Add the first note                                                                                                                        GF 7y   fadcfb3
-◇      Add a readme                                                                                                                              GF 7y   64ded19
+MERGING
+files   ▸ shared.txt · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ shared.txt · 1 conflict · 1 open
+
+▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────────────────────────────────────────────
+▏ yours · main                                                                  │theirs · feature
+▏ 1 main's line                                                                 │1 feature's line
+▏ ──────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────
 
 
 
@@ -46,5 +47,4 @@ m5 walk capture: m5-06-banner-conflicts — scenario conflict-focuses-banner-and
 
 
 
-
- merge feature into main — shared.txt conflicts: resolve it and stage it; the merge stays in progress until you do · esc dismiss
+ o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close

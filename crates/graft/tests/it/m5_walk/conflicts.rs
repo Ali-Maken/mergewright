@@ -40,6 +40,10 @@ pub(super) fn merge_that_stops() -> Vec<Step> {
         Step::WaitFor(Wait::PreviewReady),
         Step::Confirm,
         Step::Settle("the merge"),
+        // m6-conflicts/18: the stop lands in the resolver; `Esc` is the way
+        // back to the banner these scenarios are about.
+        Step::WaitFor(Wait::ResolverLanded),
+        key(graft_core::event::KeyCode::Escape),
         Step::WaitFor(Wait::BannerFocused),
     ]
 }
@@ -102,8 +106,8 @@ fn conflict_focuses_banner_and_lists_files() -> Scenario {
                 graft_core::event::KeyCode::Right,
                 graft_core::event::KeyCode::Enter,
             ]),
-            // The banner shares the header row: `MERGING` at its end. `CONFLICTS
-            // (1)` is the Detail tab's, not this frame's.
+            // The stop lands in the resolver (m6-conflicts/18); the header
+            // row still says `MERGING`.
             on_screen: "MERGING",
             when: When::Settled,
         }),
@@ -370,6 +374,10 @@ fn rebase_stops_twice_same_entry() -> Scenario {
                 Step::WaitFor(Wait::PreviewReady),
                 Step::Confirm,
                 Step::Settle("the rebase"),
+                // m6-conflicts/18: the stop lands in the resolver; `Esc` is
+                // the way back to the banner.
+                Step::WaitFor(Wait::ResolverLanded),
+                key(graft_core::event::KeyCode::Escape),
                 Step::WaitFor(Wait::BannerFocused),
                 Step::Mark("first-stop"),
             ],
@@ -377,6 +385,10 @@ fn rebase_stops_twice_same_entry() -> Scenario {
             vec![
                 key(ch('c')),
                 Step::Settle("the first continue"),
+                // m6-conflicts/18: the stop lands in the resolver; `Esc` is
+                // the way back to the banner.
+                Step::WaitFor(Wait::ResolverLanded),
+                key(graft_core::event::KeyCode::Escape),
                 Step::WaitFor(Wait::BannerFocused),
                 Step::Mark("second-stop"),
             ],

@@ -1006,9 +1006,65 @@ fn step(state: &AppState, code: KeyCode) -> AppState {
     crate::update::update(state, AppEvent::Core(Event::Key(key(code)))).0
 }
 
+/// m6-conflicts/18: a rebase stopping on its next step lands in the
+/// resolver on that step's first conflicted file.
+#[test]
+fn a_rebase_stopping_again_lands_in_the_resolver() {
+    let mut state = stopped(InProgress::Rebase, &["a.rs"]);
+    let id = JobId::new(7);
+    state.operating = Some(id);
+    let commands = resumed(
+        &mut state,
+        id,
+        crate::jobs::operate::Operated::Conflicted {
+            description: "rebase feature onto main".to_owned(),
+            kind: InProgress::Rebase,
+            paths: vec!["b.rs".into(), "c.rs".into()],
+            stalled: None,
+            entry: graft_core::journal::EntryId::new(1, [0; 10]),
+        },
+        &mut || JobId::new(8),
+    );
+    let open = state.resolver.as_ref().expect("lands in the resolver");
+    assert_eq!(open.path, std::path::PathBuf::from("b.rs"));
+    assert_eq!(
+        open.opened_from,
+        crate::update::resolver::OpenedFrom::Banner
+    );
+    assert!(state.banner_focus);
+    assert_eq!(state.status, Status::Ready);
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenConflict(..))),
+        "{commands:?}"
+    );
+}
+
+/// m6-conflicts/18: `Esc` from the resolver a stop landed in shows the
+/// banner, focused, with the stop line and its keys on the bottom row.
+/// Lives here rather than in `resolver::tests` for `a_merge_stops`.
+#[test]
+fn esc_from_a_landed_resolver_shows_the_banner_keys() {
+    let state = a_merge_stops();
+    assert!(state.resolver.is_some(), "the stop landed in the resolver");
+    let state = step(&state, KeyCode::Escape);
+    assert!(state.resolver.is_none());
+    assert!(state.banner_focus);
+    let row = bottom_row(&state, 120, 40);
+    assert!(row.contains("⏎ resolve"), "{row}");
+    assert!(
+        row.trim_start()
+            .starts_with("merge stopped · 1 file conflicted ·"),
+        "{row}"
+    );
+}
+
 #[test]
 fn a_stop_keeps_the_banner_keys_on_the_bottom_row() {
-    let state = a_merge_stops();
+    // m6-conflicts/18: the stop lands in the resolver; `Esc` is the way
+    // back to the banner these assertions are about.
+    let state = step(&a_merge_stops(), KeyCode::Escape);
     assert!(state.banner_focus);
     assert_eq!(
         state.status,
@@ -1031,7 +1087,9 @@ fn a_stop_keeps_the_banner_keys_on_the_bottom_row() {
 
 #[test]
 fn the_stop_line_outlives_a_dismissed_problem() {
-    let mut state = a_merge_stops();
+    // m6-conflicts/18: the stop lands in the resolver; `Esc` back to the
+    // banner this test is about.
+    let mut state = step(&a_merge_stops(), KeyCode::Escape);
     let id = JobId::new(8);
     state.operating = Some(id);
     let (state, _) = crate::update::update(
@@ -1087,7 +1145,9 @@ fn tab_keeps_a_failed_resumes_words() {
 
 #[test]
 fn esc_on_the_banner_leaves_a_way_back_on_screen() {
-    let state = a_merge_stops();
+    // m6-conflicts/18: the first `Esc` leaves the resolver the stop landed
+    // in; this one is on the banner.
+    let state = step(&a_merge_stops(), KeyCode::Escape);
     let state = step(&state, KeyCode::Escape);
     assert!(
         !state.banner_focus,

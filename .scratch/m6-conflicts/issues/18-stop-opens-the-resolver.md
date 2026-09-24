@@ -31,12 +31,12 @@ In:
 Out: any new key.
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] `update::operate::tests::a_conflicted_merge_lands_in_the_resolver`: `m m` → the resolver is open on `first_conflicted`, `opened_from == Banner`, the cursor is on block 0, and `file_cursor` is that file's index.
-- [ ] `update::banner::tests::a_rebase_stopping_again_lands_in_the_resolver`.
-- [ ] `update::resolver::tests::esc_from_a_landed_resolver_shows_the_banner_keys`.
-- [ ] `…::an_edit_stop_with_nothing_unmerged_keeps_the_banner`.
+- [x] `update::operate::tests::a_conflicted_merge_lands_in_the_resolver`: `m m` → the resolver is open on `first_conflicted`, `opened_from == Banner`, the cursor is on block 0, and `file_cursor` is that file's index.
+- [x] `update::banner::tests::a_rebase_stopping_again_lands_in_the_resolver`.
+- [x] `update::resolver::tests::esc_from_a_landed_resolver_shows_the_banner_keys` — lives at `update::banner::tests::esc_from_a_landed_resolver_shows_the_banner_keys` (needs `a_merge_stops`).
+- [x] `…::an_edit_stop_with_nothing_unmerged_keeps_the_banner` — `update::operate::tests::an_edit_stop_with_nothing_unmerged_keeps_the_banner`.
 - [ ] Journey `a-stop-to-first-conflict` at 0 keys (acceptance ticket).
-- [ ] Capture `docs/shots/m6/fix-stop-lands-in-resolver-120x40.txt`, the two-file fixture. **What right looks like:**
+- [x] Capture `docs/shots/m6/fix-stop-lands-in-resolver-120x40.txt` (+80x24, 187x50; `conflict_interim::landing_shots::capture_a_merge_that_stops` asserts header `MERGING`, `▸ <first>`, bar starts `o yours`; by-eye judgement is the user's), the two-file fixture. **What right looks like:**
   - The frame right after the stop is the resolver, with the header still `MERGING`.
   - The strip lists both files, with `▸` on the first.
   - The identity row reads `▸ <that file> · …`.
@@ -48,3 +48,44 @@ Out: any new key.
 
 ## Size
 Small. One context.
+
+## NOTES (builder, 2026-09-24) — PARTIAL, gates fail (superseded by continuation 1 below)
+
+Scout used (`scout-18.md`), lines re-checked at `4a6703d`. No compaction.
+
+**Done (code + unit tests, green):**
+- `banner/stop.rs` `land_in_resolver(state, commands, paths, next_id)`: opens on `paths[0]` with `OpenedFrom::Banner`; no-op when `paths` empty or a resolver is already open (else `open_resolver` would word "already open" over the stop). Called after `Stopped`+focus in `operate::operated` (Conflicted arm) and `banner::resumed` (Conflicted arm).
+- `first` = **the answer's paths** (not the re-read): both come from `status.entries` filtered `unmerged`, same order (`graft_ops apply/resume.rs unmerged_paths` vs `banner.rs unmerged_paths`).
+- `file_cursor` before the list loads: `listed_files` empty → `unwrap_or(0)` (`resolver/files.rs file_cursor`) = 0 = the first file's row once it lands.
+- Block 0: `cursor_block` is `None` until the opening read lands; `answers.rs conflict_arrived` sets it (existing path, not re-tested here).
+- Stash-pop: cannot reach either arm — `Operated::Conflicted.kind` is `InProgress` (Merge/Rebase/CherryPick/Revert/Bisect), no stash variant; `update/stash.rs` has no conflict handling.
+- Ticket 12's test lives in `update/banner/tests.rs`; `a_stop_keeps_the_banner_keys_on_the_bottom_row` now presses `Escape` first, assertions unchanged. Same for `esc_on_the_banner_leaves_a_way_back_on_screen` (one more `Escape`).
+- New tests passing: `operate::tests::a_conflicted_merge_lands_in_the_resolver`, `operate::tests::an_edit_stop_with_nothing_unmerged_keeps_the_banner`, `banner::tests::a_rebase_stopping_again_lands_in_the_resolver`, `banner::tests::esc_from_a_landed_resolver_shows_the_banner_keys` (in `banner::tests`, not `resolver::tests`: needs `a_merge_stops`).
+
+**Why partial:** ~30 existing tests assume a stop lands on the banner. Failing at this commit:
+- unit: `banner::tests::the_stop_line_outlives_a_dismissed_problem`.
+- `tests/it/conflict_interim.rs`: ~21 tests, most via `stopped_on_the_conflict` (:151) — plus `landing_shots::capture_a_merge_that_stops`, `capture_after_esc_on_the_banner`, `capture_banner_for_docs_shots` (their captures change meaning).
+- `tests/it/m5_walk/*`: 8 scenarios (step DSL over many files; M5 journey step counts may grow by one `Esc`).
+- `tests/it/resolver.rs` `file_list::a_rebase_lists_only_this_steps_files` (helpers :52/:64 loop on `banner_focus`).
+
+**Exact next step:** decide per test: (a) banner-subject tests → helper presses `Esc` after the resolver's opening read lands (fix `stopped_on_the_conflict` once); (b) captures of "the stop" → now show the resolver (this ticket's capture); (c) m5_walk scenarios → add an `Esc` step, and rule whether M5 step counts may grow. Then the capture `docs/shots/m6/fix-stop-lands-in-resolver-120x40.txt` (+187x50).
+
+Acceptance: none ticked — gates red.
+
+## NOTES (continuation 1, 2026-09-24) — DONE, gates green
+
+Merged `5f3f95f4`. No scout (the previous builder's `scout-18.md` and handoff covered it). No compaction.
+
+Conductor's rulings applied — old-landing tests updated, none disabled or deleted:
+- `tests/it/conflict_interim.rs`: `stopped_on_the_conflict` changed once — now `landed_in_the_resolver` (new: merge stops, pump until the resolver's first read lands) then `Esc`, asserting resolver closed + banner focused. Fixes its ~21 callers (plus `resolver/restart.rs`, `resolver/file_list.rs` users) — all mean "on the banner".
+- `update/banner/tests.rs` `the_stop_line_outlives_a_dismissed_problem`: `Esc` first.
+- `tests/it/m5_walk`: new `Wait::ResolverLanded`; `conflicts.rs merge_that_stops` (shared by 6 scenarios) + `rebase_stops_twice_same_entry` (both stops) + `regressions.rs hints_at_80_show_three_and_more` gain `ResolverLanded, Esc` before `BannerFocused`. `rebase_that_stops` and other passing stops untouched.
+- `tests/it/resolver/file_list.rs at_step_two`: waits for the landed resolver on `a.txt` instead of Tab-ing from the banner; the old "may or may not have opened the resolver; cope with either" branch is now an assert that the second stop opened it.
+- Step counts: no m5_walk scenario counts a journey against `journey-counts`; the added `Esc`s are harness steps to reach the banner, not journey steps. No count exceeded — nothing to report.
+
+Captures:
+- `capture_a_merge_that_stops` now captures the resolver: `docs/shots/m6/fix-stop-lands-in-resolver-{80x24,120x40,187x50}.txt`; old `fix-landing-a-stop-*` removed (the banner after a stop is still in `fix-landing-after-esc-*`, reached via the helper's `Esc`).
+- `m5-06-banner-conflicts-{80x24,120x40,160x48}` regenerated with the pty script (`pty-walk-m5.py`); now show the resolver. TESTING.md row for it rewritten. No 187x50 for m5-06 (that walk's sizes are 80/120/160).
+- Contact sheet not rebuilt (conductor's step).
+
+Seen (by reading the capture files, not by eye in a terminal): 120x40 header `MERGING`, strip `files ▸ notes.md · 1 of 1 open  shared.rs · …`, identity `▸ notes.md · 1 conflict · 1 open`, bar `o yours  t theirs …`. Colour unverified (rule 5). Journey `a-stop-to-first-conflict` tick left to the acceptance ticket.
