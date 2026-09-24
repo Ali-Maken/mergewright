@@ -562,6 +562,8 @@ pub(crate) fn settled(app: &App, state: AppState) -> AppState {
             state.radar.context,
             graft::update::detail::Loading::Ready(_)
         ) && !frame(state, 160, 48)[0].contains("sorting")
+            // The footer's commit-graph line waits on `git --version`.
+            && state.system_git.is_some()
     })
 }
 

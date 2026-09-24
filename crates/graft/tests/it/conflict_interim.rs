@@ -119,6 +119,8 @@ fn opened(app: &App, state: AppState) -> AppState {
     app.pump(state, "the first rows and the refs", |state| {
         state.refs.is_some()
             && state.working_tree.is_some()
+            // The footer's commit-graph line waits on `git --version`.
+            && state.system_git.is_some()
             && state
                 .history
                 .as_ref()

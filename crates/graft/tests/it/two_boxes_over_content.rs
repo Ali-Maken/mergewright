@@ -106,6 +106,9 @@ fn ready(app: &App, state: AppState) -> AppState {
         |state| {
             state.working_tree.is_some()
                 && state.refs.is_some()
+                // The footer's commit-graph line and the graph's height
+                // wait on `git --version` (`update/state.rs` `commit_graph_line`).
+                && state.system_git.is_some()
                 && matches!(state.remotes, Loading::Ready(_))
                 && state.remote.reading.is_none()
                 && state.history.as_ref().is_some_and(|history| {
