@@ -255,6 +255,9 @@ fn an_open_resolver() -> crate::update::resolver::ResolverState {
         set_job: None,
         seen: std::collections::BTreeMap::new(),
         done: None,
+        in_flight: None,
+        queued: std::collections::VecDeque::new(),
+        land_last: false,
     }
 }
 

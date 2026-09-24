@@ -3090,6 +3090,9 @@ fn the_prelude_holds_a_key_while_the_resolver_is_reading() {
         set_job: None,
         seen: std::collections::BTreeMap::new(),
         done: None,
+        in_flight: None,
+        queued: std::collections::VecDeque::new(),
+        land_last: false,
     });
 
     let (state, _) = update(&state, working_tree_read(JobId::new(10)));
@@ -4418,6 +4421,9 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         set_job: None,
         seen: std::collections::BTreeMap::new(),
         done: None,
+        in_flight: None,
+        queued: std::collections::VecDeque::new(),
+        land_last: false,
     });
     state
 }
@@ -4462,6 +4468,9 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         set_job: None,
         seen: std::collections::BTreeMap::new(),
         done: None,
+        in_flight: None,
+        queued: std::collections::VecDeque::new(),
+        land_last: false,
     });
     state
 }

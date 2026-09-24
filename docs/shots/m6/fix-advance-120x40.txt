@@ -1,0 +1,40 @@
+MERGING
+files · 13     added-by-us.txt …         both-added.txt …          both-deleted.txt …        both.txt …
+               crlf.txt …                md.md …                   nofinal.txt …             ours-deleted.txt …
+               pic.bin …                 theirs-deleted.txt …    ▸ three.txt 2 of 3 open   … 2 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ three.txt · 3 conflicts · 2 open
+
+   1 alpha
+  ── conflict 1 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
+   2 one-theirs
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+   3 b1
+   4 b2
+   5 b3
+   6 b4
+▏ ── conflict 2 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏  7 two-ours                                               │ 7 two-theirs
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+   8 c1
+   9 c2
+  10 c3
+  11 c4
+  ── conflict 3 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+  yours · main                                              │theirs · feature
+  12 three-ours                                             │12 three-theirs
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+  13 delta
+
+
+
+
+
+
+
+
+
+
+
+ took theirs · feature in three.txt · 2 of 3 open ✓

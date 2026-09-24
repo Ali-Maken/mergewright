@@ -96,6 +96,9 @@ fn open_on(bytes: &[u8], path: &str) -> AppState {
             set_job: None,
             seen: std::collections::BTreeMap::new(),
             done: None,
+            in_flight: None,
+            queued: std::collections::VecDeque::new(),
+            land_last: false,
         }),
         ..AppState::default()
     }

@@ -375,21 +375,9 @@ fn a_key_during_the_hand_back_reread_says_it_is_reading() {
     assert_eq!(sticky(&state).0, "still reading the file");
 }
 
-/// A take in flight keeps its own words, and `B` over a base load says the
-/// base is loading, not that a take is being written.
-#[test]
-fn a_take_or_a_base_in_flight_keeps_its_own_words() {
-    let (state, commands) = press(&resolver_on_screen(WALK), KeyCode::Char('o'));
-    assert_eq!(takes(&commands), 1);
-    let (state, _) = press(&state, KeyCode::Char('t'));
-    assert_eq!(sticky(&state).0, "still writing the last take");
-
-    let (state, _) = base_loading(&resolver_on_screen(WALK));
-    let mut state = state;
-    state.resolver.as_mut().expect("open").base_shown = false;
-    let (state, _) = press(&state, KeyCode::Char('B'));
-    assert_eq!(sticky(&state).0, "still loading the base");
-}
+// `a_take_or_a_base_in_flight_keeps_its_own_words` became
+// `advance::a_take_while_another_job_runs_keeps_its_own_words`: a take in
+// flight now queues the next one (m6-conflicts/15).
 
 // ----------------------------------- m6-07 F1: the modal owns `/`, `n`, `N`
 
@@ -596,10 +584,13 @@ fn took_line(kind: graft_git::state::InProgress) -> String {
     state.in_progress = Some(operation(kind, Some(commit(oid(3), "Add OAuth provider"))));
     let open = state.resolver.as_mut().expect("the resolver is open");
     open.cursor_block = Some(0);
+    open.in_flight = Some((0, graft_git::conflict::Take::Theirs));
     let mut file = (**open.file.as_ref().expect("a document")).clone();
     file.take(0, graft_git::conflict::Take::Theirs)
         .expect("block 0 exists");
-    super::answers::take_landed(&mut state, &Arc::new(file));
+    super::answers::take_landed(&mut state, &Arc::new(file), &mut Vec::new(), &mut || {
+        JobId::new(4_600)
+    });
     match &state.status {
         Status::Done(words) => words.clone(),
         other => panic!("expected a done status, got {other:?}"),
@@ -643,6 +634,7 @@ fn frame_text(state: &AppState) -> String {
         .join("\n")
 }
 
+mod advance;
 mod file_list;
 mod three_panes;
 mod words_and_c;

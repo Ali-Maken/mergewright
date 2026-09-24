@@ -578,20 +578,23 @@ STAGED (1)
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-120x40.txt
-what right looks like: TESTING.md "Conflicts walk", n-past-the-last-block-says-no-more: on `zdiff3.txt` (the last file in git's order), `N` then `n`: the footer says `no more conflicts · ⏎ marks zdiff3.txt resolved`; the cursor stays on the one block. The user decides that wording. Judge: the halves read `OURS · ours` / `THEIRS · theirs` here (the fixture's own zdiff3 labels), not `HEAD` / `feature`; and no BASE is drawn although zdiff3 markers carry one — the walk proves the block holds it, not that it is on screen (a question).
+what right looks like: TESTING.md "Conflicts walk", n-past-the-last-block-says-no-more (m6-conflicts/15): every other file done, `zdiff3.txt` the only one open; `t` then `n`: the notice under the title says `all blocks taken · ⏎ marks zdiff3.txt done`, the footer `no more conflicts · ⏎ marks zdiff3.txt done`; the cursor stays on the one block, which reads `took theirs · feature`. The user decides that wording.
 ================================================================================
 
-m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ j j j j j j j j j j j j ⏎ N n, unicode tier, 120x40
+m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ ⏎ t n, unicode tier, 120x40
 
 MERGING
-zdiff3.txt · file 13 of 13 · 1 of 1 conflicts open
-ours = main · theirs = the branch being merged in
-      1 start
-▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-▏ OURS · ours                                               │THEIRS · theirs
-▏     3 middle ours                                         │      middle theirs
+files · 13 · 12 done     crlf.txt done ✓               md.md done ✓                  nofinal.txt done ✓
+                         ours-deleted.txt done ✓       pic.bin done ✓                theirs-deleted.txt done ✓
+                         three.txt done ✓            ▸ zdiff3.txt ⏎ marks done     … 5 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ zdiff3.txt · 1 conflict · 0 open
+all blocks taken · ⏎ marks zdiff3.txt done
+  1 start
+▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
+▏ 2 middle theirs
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      9 end
+  3 end
 
 
 
@@ -619,29 +622,27 @@ ours = main · theirs = the branch being merged in
 
 
 
-
-
-
- no more conflicts · ⏎ marks zdiff3.txt resolved
+ no more conflicts · ⏎ marks zdiff3.txt done
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-80x24.txt
-what right looks like: The same at 80 columns: `no more conflicts · ⏎ marks zdiff3.txt resolved` on the last row, OURS above THEIRS, title `zdiff3.txt · 1/1 open`.
+what right looks like: The same at 80 columns: `no more conflicts · ⏎ marks zdiff3.txt done` on the last row, `all blocks taken · ⏎ marks zdiff3.txt done` under the title.
 ================================================================================
 
-m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ j j j j j j j j j j j j ⏎ N n, unicode tier, 80x24
+m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ ⏎ t n, unicode tier, 80x24
 
 MERGING
-zdiff3.txt · 1/1 open
-ours = main · theirs = the branch being merged in
-      1 start
-▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────
-▏ OURS · ours
-▏     3 middle ours
-▏ THEIRS · theirs
-▏       middle theirs
+files · 13 · 12 done     ours-deleted.txt ✓       pic.bin ✓
+                         theirs-deleted.txt ✓     three.txt ✓
+                       ▸ zdiff3.txt ⏎           … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ zdiff3.txt · 1 conflict · 0 open
+all blocks taken · ⏎ marks zdiff3.txt done
+  1 start
+▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────
+▏ 2 middle theirs
 ▏ ──────────────────────────────────────────────────────────────────────────────
-      9 end
+  3 end
 
 
 
@@ -653,8 +654,7 @@ ours = main · theirs = the branch being merged in
 
 
 
-
- no more conflicts · ⏎ marks zdiff3.txt resolved
+ no more conflicts · ⏎ marks zdiff3.txt done
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-120x40.txt

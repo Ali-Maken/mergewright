@@ -24,7 +24,7 @@
 //! - `base` — `B`: show/hide the merged common ancestor.
 //! - `restart` — `d`: start this file over, behind a confirm box.
 //! - `take` — `o`/`t`/`b`: a side of the block under the cursor.
-//! - `walk` — `n`/`N`: the next open block, then the next file.
+//! - `walk` — `n`/`N`: the next block, taken or not, then the next file.
 //! - `scroll` — the window over the document: keys, wheel and click.
 //! - `answers` — the jobs' answers: the opening read, a take, a
 //!   hand-back, and the `⏎` stage landing.
@@ -47,7 +47,7 @@ mod take;
 mod walk;
 mod whole_file;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -72,7 +72,7 @@ pub use names::side_names;
 pub use open::open_resolver;
 pub use restart::restart_landed;
 pub use scroll::resolver_mouse;
-pub use walk::next_open_block;
+pub use walk::{after_take, next_block};
 pub use whole_file::{WholeFileShape, whole_file_keys};
 
 use base::toggle_base;
@@ -169,7 +169,22 @@ pub struct ResolverState {
     /// shown read-only (m6-conflicts/25): what the opening read found, or
     /// why it could not be read. `None` for a file still conflicted.
     pub done: Option<DoneShape>,
+    /// The take whose `TakeSide` is out (m6-conflicts/15): its block and
+    /// side. `Some` exactly when [`Self::job`] is a take.
+    pub in_flight: Option<(usize, Take)>,
+    /// Takes pressed while [`Self::in_flight`] is `Some`, in order, at most
+    /// [`TAKE_QUEUE_CAP`]. **Empty whenever `in_flight` is `None`**: the
+    /// answer that clears `in_flight` sends the front of this, so every
+    /// refusal keyed on [`Self::job`] covers the queue too.
+    pub queued: VecDeque<(usize, Take)>,
+    /// `N` crossed to this file: when its opening read lands the cursor goes
+    /// to the last block rather than the first.
+    pub land_last: bool,
 }
+
+/// The most takes held behind the one in flight; the next is refused
+/// with `still writing the last take`.
+pub const TAKE_QUEUE_CAP: usize = 64;
 
 impl ResolverState {
     /// A resolver waiting on its opening read.
@@ -193,7 +208,20 @@ impl ResolverState {
             set_job: None,
             seen: BTreeMap::new(),
             done: None,
+            in_flight: None,
+            queued: VecDeque::new(),
+            land_last: false,
         }
+    }
+
+    /// Drop the take in flight and every take behind it — its answer
+    /// failed, or the document it was written against is being read again.
+    /// How many queued takes were dropped, for the words that say so.
+    pub(super) fn drop_takes(&mut self) -> usize {
+        self.in_flight = None;
+        let dropped = self.queued.len();
+        self.queued.clear();
+        dropped
     }
 
     /// What [`Self::job`] is doing, in the words a key refused meanwhile
