@@ -128,6 +128,13 @@ pub(crate) fn resume_answered(
         finish.notice = Some((reason, true));
         return Some(FinishAnswer::Kept);
     }
+    // A summary opened from the resolver (m6-conflicts/31) has it still
+    // open underneath. Any answer but a refusal ends that resolver's stop:
+    // committed (`Done`, `Incomplete`), nothing is left to resolve and the
+    // landing is the graph (J6); stopped again (`Conflicted`), the new stop
+    // opens its own resolver, which an open one would refuse (review
+    // m6-amend-31).
+    state.resolver = None;
     if let Operated::Done(_) = outcome {
         let words = match &finish.summary {
             Loading::Ready(summary) => Some(format!(
@@ -140,10 +147,6 @@ pub(crate) fn resume_answered(
         state.finish = None;
         state.finish_draft = None;
         state.external_editor = None;
-        // A summary opened from the resolver (m6-conflicts/31) has it still
-        // open underneath: the merge is committed, nothing is left to
-        // resolve, and the landing is the graph on the merge commit (J6).
-        state.resolver = None;
         return Some(FinishAnswer::Merged(words));
     }
     close_keeping_draft(state);
