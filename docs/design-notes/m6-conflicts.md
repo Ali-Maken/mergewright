@@ -472,8 +472,8 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
   revert: `c continues the …`); stash pop → the graph, `every file done ✓` (ticket 13 R4/R5). ~~P8: the resolver, with
   the notice~~ superseded 2026-09-24: that is ticket 31's (split from 19 Part B), words on the resolver's notice row; stash pop still closes.
 - `c` while files are still open → refused with `1 file still conflicted · ⏎ marks done`.
-- `c` on a rebase, cherry-pick or revert → continues with no summary (merge only this milestone; gap row → M7), and the
-  next stop lands in the resolver.
+- `c` while a take or write is landing → refused in the resolver's own words (`a take is still landing …` / `still writing the last take`), nothing sent.
+- `c` on a rebase, cherry-pick or revert → continues with no summary (merge only this milestone; gap row → M7). From the resolver it closes to the banner as it sends, so the next stop opens the resolver fresh (P5).
 - In the summary:
   - `Esc` → back to where `c` was pressed, with the draft message kept.
   - `⏎` → `committing…`, then the graph with the cursor on the merge commit.
