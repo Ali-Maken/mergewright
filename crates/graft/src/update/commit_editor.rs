@@ -65,6 +65,84 @@ pub fn live_operation(state: &AppState) -> Option<(InProgress, Begun)> {
     Some((kind, begun))
 }
 
+/// Why a commit cannot start while an operation is live: a reason, and the
+/// keys that lead on from it (m6-conflicts/48).
+///
+/// One value makes both the editor's row and the pane's `Sticky` status, so
+/// the two cannot drift.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OperationRefusal {
+    /// What is live: `merge in progress`, `merge begun in the shell`, or a
+    /// whole sentence where there are no keys.
+    pub reason: String,
+    /// `None` where there is no banner to point at (bisect; a shell-begun
+    /// rebase, cherry-pick or revert).
+    pub keys: Option<String>,
+}
+
+impl OperationRefusal {
+    /// The editor's row: `{reason} — esc, {keys}`, or `reason` alone. `Esc`
+    /// first, because the editor is modal and holds every key while open.
+    #[must_use]
+    pub fn editor_words(&self) -> String {
+        match &self.keys {
+            Some(keys) => format!("{} — esc, {keys}", self.reason),
+            None => self.reason.clone(),
+        }
+    }
+
+    /// The pane's answer: `Status::Sticky { reason, keys }`, the `u`
+    /// refusal's variant.
+    #[must_use]
+    pub fn status(&self) -> Status {
+        Status::Sticky {
+            reason: self.reason.clone(),
+            keys: self.keys.clone(),
+        }
+    }
+}
+
+/// The refusal for a live operation. Finishing a merge, rebase, cherry-pick
+/// or revert Graft began is the operation banner's (keymap §2.6a); `⇥` leads
+/// there from the panes.
+#[must_use]
+pub fn operation_refusal((kind, begun): (InProgress, Begun)) -> OperationRefusal {
+    let (reason, keys) = match (kind, begun) {
+        // A bisect draws no banner — that is M7's — so there are no keys to
+        // name and git's own command is still the way out.
+        (InProgress::Bisect, _) => (
+            format!(
+                "{} in progress — {} first",
+                kind.name(),
+                kind.continue_command()
+            ),
+            None,
+        ),
+        // A merge begun in the shell: the banner's `c` finishes it since
+        // m6-conflicts/20. Its `a` still refuses one Graft did not start
+        // (`resume_target`), so no `a abort`.
+        (InProgress::Merge, Begun::InShell) => (
+            "merge begun in the shell".to_owned(),
+            Some("⇥ banner, then c finishes it".to_owned()),
+        ),
+        // Any other begun in the shell has no entry of Graft's; the banner's
+        // keys refuse it (m6-07 F12), so the way out is git's own command.
+        (_, Begun::InShell) => (
+            format!(
+                "{} begun in the shell — finish it there: {}",
+                kind.name(),
+                kind.continue_command()
+            ),
+            None,
+        ),
+        (_, Begun::InGraft) => (
+            format!("{} in progress", kind.name()),
+            Some("⇥ banner, then c continue  a abort".to_owned()),
+        ),
+    };
+    OperationRefusal { reason, keys }
+}
+
 /// Everything the editor holds between keys.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommitEditor {
@@ -190,43 +268,10 @@ impl CommitEditor {
         status: Option<&WorkingTreeStatus>,
         in_progress: Option<(InProgress, Begun)>,
     ) -> Option<String> {
-        // Finishing a merge, rebase, cherry-pick or revert Graft began is
-        // the operation banner's, from M5 (ADR-0034's shell command was the
-        // interim while there was nothing in the app to name). The keys are
-        // the banner's own (`docs/design/02-keymap.md` §2.6a); `Esc` first,
-        // because this editor is modal and holds every key while it is open,
-        // then `⇥` to the banner, because after `Esc` the pane has the keys
-        // and its `c`/`a` are Commit/Amend (§2.4; m6-conflicts/39).
-        if let Some((kind, begun)) = in_progress {
-            return Some(match (kind, begun) {
-                // A bisect draws no banner — that is M7's — so there are no
-                // keys to name and git's own command is still the way out.
-                (InProgress::Bisect, _) => format!(
-                    "{} in progress — {} first",
-                    kind.name(),
-                    kind.continue_command()
-                ),
-                // A merge begun in the shell: the banner's `c` finishes it
-                // since m6-conflicts/20. Its `a` still refuses one Graft did
-                // not start (`resume_target`), so no `a abort`.
-                (InProgress::Merge, Begun::InShell) => {
-                    "merge begun in the shell — esc, ⇥ banner, then c finishes it".to_owned()
-                }
-                // Any other begun in the shell has no entry of Graft's. The
-                // banner's `a` refuses it (`resume_target`), and so does
-                // its `c` on a rebase, pick or revert (M7). Naming them
-                // offered keys that do nothing (m6-07 F12), so the way out
-                // is git's own command, as for a bisect.
-                (_, Begun::InShell) => format!(
-                    "{} begun in the shell — finish it there: {}",
-                    kind.name(),
-                    kind.continue_command()
-                ),
-                (_, Begun::InGraft) => format!(
-                    "{} in progress — esc, ⇥ banner, then c continue  a abort",
-                    kind.name()
-                ),
-            });
+        // Finishing an operation is the banner's (m6-conflicts/39, 48);
+        // the words are `operation_refusal`'s, shared with the pane.
+        if let Some(live) = in_progress {
+            return Some(operation_refusal(live).editor_words());
         }
         // An amend with nothing staged is a reword, which is allowed
         // (`Operation::check`).
@@ -294,6 +339,13 @@ pub fn open(
     if state.commit_editor.is_some() {
         return Vec::new();
     }
+    // An operation is live: the editor would open only to refuse, so the
+    // pane answers in words instead (m6-conflicts/48). Nothing is read and
+    // the draft stays where `Esc` left it.
+    if let Some(live) = live_operation(state) {
+        state.status = operation_refusal(live).status();
+        return Vec::new();
+    }
     if amend {
         let id = next_id();
         state.head_message = Some(id);
@@ -323,6 +375,12 @@ pub fn head_message_arrived(state: &mut AppState, id: JobId, message: Result<Str
         return;
     }
     state.head_message = None;
+    // An operation became live while the read was in flight: refuse as
+    // `open` would have, whatever the read said.
+    if let Some(live) = live_operation(state) {
+        state.status = operation_refusal(live).status();
+        return;
+    }
     match message {
         Ok(message) => {
             let short = head_short(state);
