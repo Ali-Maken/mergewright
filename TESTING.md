@@ -105,7 +105,7 @@ stays visible.
 | 2026-09-23 · walk | Fix a block by hand | Until M6: `$EDITOR` from a shell. M6: **0** — `e` in the resolver, re-read on return (`editor-edits-are-never-clobbered`) | m6-conflicts |
 | 2026-09-23 · walk | Keep one side of a whole file | Until M6: `git checkout --ours`/`--theirs` + `git add`. M6: **0** — `o`/`t` in the resolver (`every-whole-file-shape`, `crlf-and-no-final-newline-survive`) | m6-conflicts |
 | 2026-09-23 · walk | Accept a delete | Until M6: `git rm`. M6: **0** — `t` on the card (`every-whole-file-shape`) | m6-conflicts |
-| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **still the shell** — `git commit`. The banner's `c` refuses it by design (ruling F5, `graft-ops/src/operation.rs:574-575`), and the changes pane's commit editor refuses too (`graft/src/update/commit_editor.rs`, `CommitEditor::refusal`, and the submit guard in `commit`; observed once in the headless walk, 2026-09-23, git 2.54.0). Its refusal pointed back at `c continue`, which refuses; since fix F12 it says `merge begun in the shell — finish it there: git commit` (`update::commit_editor::tests::a_merge_begun_in_the_shell_names_no_key_that_refuses_it`). Expires M7 | open (M7) |
+| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **0** — `c ⏎` on the banner (P4; `crates/graft/tests/it/resolver/shell_begun.rs::c_enter_finishes_a_shell_begun_merge`). Was: the shell, ruling F5 (`graft-ops/src/operation.rs:581-585`). | closed (m6-conflicts, shell_begun::c_enter_finishes_a_shell_begun_merge) |
 | 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | M6: **still the shell** — `git checkout -m -- <path>`. A staged path has no `CONFLICTS` row, and `u` is refused while the operation is live (`graft/src/update/undo.rs:102-108`); the ops half is built (ruling F3). Expires M7 | open (M7) |
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
@@ -2119,8 +2119,7 @@ credential capture M6 changed.
   is `Step::Kill` — the app dropped with no shutdown — not a signal; only
   the pty script sends a real `SIGKILL`. Start over **after** `⏎` is proven
   at the ops level only (scenario 8); the app has no way in to it yet. A
-  merge **begun in the shell** is not finished in the app — neither the
-  banner's `c` nor the changes pane's commit editor will (Times I left).
+  merge **begun in the shell** finishes through the banner's `c` and the summary, journaled as its own entry that `u` puts back mid-merge. The commit editor never finishes an operation: `c`/`a` in the panes stay commit/amend (keymap §2.4), and its words name the way to the banner — `esc, ⇥ banner, then c` (ticket 39); at 80 columns they are cut off (ticket 40).
   What a box or a line looks like is proven only by the captures: the
   headless walk reads `AppState`, where the start-over box and the Sticky
   existed while no frame drew them (F9, F10 — now fixed, and pinned in the

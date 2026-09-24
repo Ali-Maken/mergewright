@@ -268,8 +268,8 @@ UX 1.3: key = one chord (`⇥` = Tab); `[M]` = a decision. CR counts are read fr
   **6**; P2 `t t t ⏎` **4**; P3 `Ctrl+T ⏎` **2**. Lands as J4. CR: KDiff3 "B everywhere" 1 + save **(?)**; JetBrains
   Accept Theirs 1 (whole-file semantics, not the same act).
 - **J6 finish the merge.** Start: J4's landing. 1 `c` → `merge --continue`. **1**. Lands: graph focused, cursor on the
-  new merge commit, `merged feature into main ✓`. Begun in the shell: in-spec refused with `merge begun in the shell —
-  finish it there: git commit` (Times I left stays open); P4 **1**. CR: lazygit 1.
+  new merge commit, `merged feature into main ✓`. Begun in the shell: in-spec refused; as built (ticket 39) the commit editor's words
+  name the banner, `esc, ⇥ banner, then c`; P4 **1**. CR: lazygit 1.
 - **J7 back after `Esc`.** Start: J1's landing, `Esc` pressed → graph focused, bar led by `⇥ banner`. 1 `⇥` → banner ·
   2 `⏎` → resolver. **2**. As built: nothing on screen said how.
 - **Whole, 1 file 1 conflict.** Path A `m → ⏎ ⏎ o ⏎ c` **7** (from the stop **4** = lazygit 4); P1 6; P1+P5 5.
@@ -480,6 +480,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
   - A hook refuses → the summary stays, the reason goes above its bar, and the draft is kept.
   - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`.
   - `⏎` on a merge begun in the shell → as J6; one `FinishMerge` entry. `u` after it → the merge is back in progress, resolved; header `MERGING`, status `undo: finish merge of <from>`, focus unchanged; `c ⏎` finishes it again (ticket 20).
+- `c`/`a` in the changes pane while an operation is live → the commit/amend editor, `[ Commit ]` dimmed, words `… esc, ⇥ banner, then c …`. `Esc` → the pane; `⇥` (×n, ticket 39 NOTES) → the banner; `c` → the summary (ticket 39).
 
 ```journey-counts
 # id                          keys  once-approved   # parts (whole rows) · best tool
@@ -500,6 +501,7 @@ walk-back-a-done-file         4                     # Tower reset-to-unmerged (C
 a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish
 a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish
 b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish
+editor-to-finish  5  # esc + 2×⇥ + c + ⏎ (ticket 39)
 ```
 The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
 moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.

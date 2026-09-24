@@ -74,8 +74,8 @@ impl CommitEditor {
 - [x] `update::commit_editor::tests::a_merge_in_progress_points_at_c` replaces `a_merge_begun_in_the_shell_names_no_key_that_refuses_it`: InShell merge words exact; contain neither `git commit` nor `a abort`; contain `⇥ banner`. — `update::commit_editor::tests::a_merge_in_progress_points_at_c`
 - [x] `update::commit_editor::tests::a_graft_begun_operation_names_the_banner`: every InGraft arm contains `esc, ⇥ banner, then ` and not `esc, then c`. — `update::commit_editor::tests::a_graft_begun_operation_names_the_banner`
 - [x] `a_rebase_begun_in_the_shell_still_names_gits_command` still green, unchanged. — `update::commit_editor::tests::a_rebase_begun_in_the_shell_still_names_gits_command`
-- [ ] The 80×24 check (Step 4), named. — **BLOCKED**, see NOTES
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-editor-names-the-banner-120x40.txt`, the commit editor open over 20's J3 state. **What right looks like:** the editor's refusal row reads exactly `merge begun in the shell — esc, ⇥ banner, then c finishes it`; the header reads `MERGING`; the words `git commit` appear nowhere in the frame. The user judges by eye. — **not taken**: blocked with Step 4
+- [ ] The 80×24 check (Step 4), named. — **BLOCKED**, see NOTES — moved to 40
+- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-editor-names-the-banner-120x40.txt`, the commit editor open over 20's J3 state. **What right looks like:** the editor's refusal row reads exactly `merge begun in the shell — esc, ⇥ banner, then c finishes it`; the header reads `MERGING`; the words `git commit` appear nowhere in the frame. The user judges by eye. — **not taken**: blocked with Step 4 — moved to 40
 - [x] MAP.md, graft §`update::commit_editor`: the `refusal` line's quoted words, and the `Begun` line's "ticket 20 B2, blocked" sentence replaced with the route and words as built (ticket 39). — doc, no test
 - [x] NOTES: Step 0's outcome; `n`; every file whose old words changed; any `TESTING.md` / design-doc hit. — doc, no test
 
