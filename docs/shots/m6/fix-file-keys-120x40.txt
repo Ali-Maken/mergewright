@@ -1,0 +1,40 @@
+MERGING
+files   ▸ gone.txt · keep or delete    notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on yours · main, deleted on theirs · feature
+notes.txt done ✓ · ▸ gone.txt
+deleted by them · o keeps the file  t deletes it
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ stage notes.txt ✓

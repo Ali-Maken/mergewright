@@ -133,6 +133,62 @@ pub(super) fn take_all_key(
     take_side(state, commands, TakeAt::Every, take, next_id);
 }
 
+/// `O`/`T`: settle the whole file in one key (m6-conflicts/17 D1) —
+/// every open block to `take`, then the `Stage`, then on to the next file
+/// (`resolved::resolved_advance`). Not `take_all_key`: that stops at
+/// `nothing open`, where this stages. First check that applies answers:
+/// a done file was refused in `act`; a card is its own `o`/`t`; then
+/// [`take_refusal`]; then take every open block, stage now, or wait for the
+/// take in flight.
+pub(super) fn settle_key(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    take: Take,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    if open.whole_file.is_some() {
+        let code = match take {
+            Take::Ours => KeyCode::Char('o'),
+            _ => KeyCode::Char('t'),
+        };
+        take_key(state, commands, code, next_id);
+        return;
+    }
+    if let Some(words) = take_refusal(state) {
+        state.status = Status::sticky(words);
+        return;
+    }
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    let pending = match pending_file(open) {
+        // Still reading: `take_refusal` answered that.
+        None => return,
+        Some(Ok(file)) => file,
+        Some(Err(missing)) => {
+            if let Some(open) = state.resolver.as_mut() {
+                open.notice = Some((super::walk::no_block(missing.0), true));
+            }
+            return;
+        }
+    };
+    let in_flight = open.in_flight.is_some();
+    if pending.open() > 0 {
+        take_side(state, commands, TakeAt::Every, take, next_id);
+    } else if !in_flight {
+        // Nothing to take: exactly `⏎`, refusals and words included.
+        super::resolved::mark_resolved(state, commands, next_id);
+        return;
+    }
+    // The Stage goes out when the last take lands (`answers::take_landed`).
+    if let Some(open) = state.resolver.as_mut() {
+        open.settling = Some(take);
+    }
+}
+
 /// Send a take whose checks have passed — or queue it behind the take in
 /// flight. The one site a `TakeSide` leaves the keys from.
 pub(super) fn take_side(
@@ -173,6 +229,11 @@ pub(super) fn take_side(
 /// in flight keeps its own words.
 fn take_refusal(state: &AppState) -> Option<&'static str> {
     let open = state.resolver.as_ref()?;
+    // An `O`/`T` is waiting for its Stage: nothing more joins the queue
+    // behind it (m6-conflicts/17 D1 step 3).
+    if open.settling.is_some() {
+        return Some("still writing the last take");
+    }
     if open.in_flight.is_some() {
         return (open.queued.len() >= TAKE_QUEUE_CAP).then_some("still writing the last take");
     }

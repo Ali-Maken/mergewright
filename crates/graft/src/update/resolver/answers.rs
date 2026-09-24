@@ -194,9 +194,15 @@ pub fn taken(
                 // The queue was chosen against a document that did not
                 // land: every take behind the failed one is dropped, and
                 // the line says how many.
+                let settling = open.settling.is_some();
                 dropped = open.drop_takes();
                 if dropped > 0 {
                     words = format!("{words} · {dropped} queued takes dropped");
+                }
+                // An `O`/`T` was waiting on this: nothing is staged, and
+                // the line says so (m6-conflicts/17 D3).
+                if settling {
+                    words.push_str(" · nothing staged");
                 }
                 open.notice = Some((words, true));
             }
@@ -311,6 +317,33 @@ pub(super) fn take_landed(
             "took {side} in {} · {open_left} of {total} open",
             path.display()
         ));
+    }
+    settle_landed(state, open_left, commands, next_id);
+}
+
+/// An `O`/`T` was waiting on the take that just landed: with nothing left
+/// in flight, send its `Stage` — the same one `⏎` sends, so the advance to
+/// the next file is `resolved_advance`'s (m6-conflicts/17 D2).
+fn settle_landed(
+    state: &mut AppState,
+    open_left: usize,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_mut() else {
+        return;
+    };
+    if open.in_flight.is_some() {
+        return;
+    }
+    let Some(_) = open.settling.take() else {
+        return;
+    };
+    // `open_left > 0` cannot happen — every take ahead of the Stage was in
+    // `pending_file` when `O`/`T` saw nothing open past them. Should it,
+    // nothing is staged: the blocks still open are on screen.
+    if open_left == 0 {
+        super::resolved::mark_resolved(state, commands, next_id);
     }
 }
 

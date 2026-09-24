@@ -193,6 +193,28 @@ pub fn select_file(
     true
 }
 
+/// `j`/`↓` (`forward`) or `k`/`↑`: open the next or previous row of
+/// [`listed_files`] (m6-conflicts/17 D4). No wrap (§2.2): at either end
+/// nothing is sent and the words stay — the list's `▸` on the end row says
+/// so. Refusals are [`select_file`]'s own. `true` always: the key is spent.
+pub(super) fn step_file(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    forward: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    let at = file_cursor(state);
+    let target = if forward {
+        Some(at + 1).filter(|next| *next < listed_files(state).len())
+    } else {
+        at.checked_sub(1)
+    };
+    if let Some(index) = target {
+        select_file(state, commands, index, next_id);
+    }
+    true
+}
+
 /// Why the open file cannot be left right now: a box is waiting for an
 /// answer about it, or a read, a take, a base load or a write on it is in
 /// flight, and its answer would land on the next.

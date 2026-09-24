@@ -1080,10 +1080,12 @@ fn resolver_hint_ladder() {
             ("b", "both"),
             ("^O", "all yours"),
             ("^T", "all theirs"),
+            ("O/T", "file"),
             ("e", "edit"),
             ("n", "next"),
             ("N", "prev"),
-            ("⏎", "resolved"),
+            ("⏎", "done"),
+            ("j/k", "file"),
             ("M", "mergetool"),
             ("esc", "close"),
         ]
@@ -1099,8 +1101,9 @@ fn resolver_hint_ladder() {
         .position(|hint| (hint.key, hint.verb) == ("B", "base"))
         .expect("`B base` after `b both` while `base`");
     // `^O`/`^T` sit between (m6-conflicts/16): `B base` follows the takes.
-    assert_eq!(with_base[base_at - 3].key, "b", "`B base` follows `b both`");
-    assert_eq!(with_base[base_at - 1].key, "^T");
+    // and `O/T file` (17).
+    assert_eq!(with_base[base_at - 4].key, "b", "`B base` follows `b both`");
+    assert_eq!(with_base[base_at - 1].key, "O/T");
 
     let with_restart = context_list(&document(false, true));
     let restart_at = with_restart
@@ -1122,22 +1125,81 @@ fn resolver_hint_ladder() {
     let at_160 = fit_list(&whole, None, 160);
     assert_eq!(
         hints_text(&at_160),
-        " o yours  t theirs  b both  ^O all yours  ^T all theirs  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close"
+        " o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
     );
-    // Since m6-conflicts/16 the line is 113 cells. The ladder raises hints
-    // in relevance order, so at 80 columns `^O all yours  ^T all theirs`
-    // keep their full rung and the tail (`n N ⏎ M esc`) is drawn bare
-    // (observed by this assertion, 2026-09-24).
+    // Since m6-conflicts/17 (`O/T file`, `j/k file`) the full line no
+    // longer fits 80: the ladder raises hints in relevance order, so `^T`
+    // drops to `all` and everything from `O/T` on is drawn bare (observed
+    // by this assertion, 2026-09-24).
     let at_80 = fit_list(&whole, None, 80);
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,
-        " o yours  t theirs  b both  ^O all yours  ^T all theirs  e edit  n  N  ⏎  M  esc"
+        " o yours  t theirs  b both  ^O all yours  ^T all  O/T  e  n  N  ⏎  j/k  M  esc"
     );
     assert!(text_80.width() <= 80, "{text_80:?}");
     // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
     // there is no doorway to lead a dropped tail to.
     assert!(!text_80.contains("more"), "{text_80:?}");
+}
+
+/// `O/T file` and `j/k file` (m6-conflicts/17 D7): on the document's bar,
+/// right after `^T all …` and `⏎ done`; never on a card's or a done file's;
+/// and `resolved` is no verb anywhere in the resolver's tables. The bar
+/// string at 80, 120 and 200 columns is pinned (ticket 17 NOTES).
+#[test]
+fn resolver_offers_file_keys() {
+    for (base, restart) in [(false, false), (true, true)] {
+        let list = context_list(&document(base, restart));
+        let at = |key: &str| {
+            list.iter()
+                .position(|hint| hint.key == key)
+                .unwrap_or_else(|| panic!("`{key}` in {list:?}"))
+        };
+        assert_eq!(list[at("O/T")].verb, "file");
+        assert_eq!(at("O/T"), at("^T") + 1, "`O/T file` right after `^T all …`");
+        assert_eq!(list[at("j/k")].verb, "file");
+        assert_eq!(list[at("⏎")].verb, "done");
+        assert_eq!(at("j/k"), at("⏎") + 1, "`j/k file` right after `⏎ done`");
+    }
+    for (whole_file, done) in [(false, false), (true, false), (false, true)] {
+        let list = context_list(&HintContext::Resolver {
+            base: true,
+            restart: true,
+            whole_file,
+            done,
+            roles: SideRoles::Merge,
+        });
+        assert!(list.iter().all(|hint| hint.verb != "resolved"), "{list:?}");
+        if whole_file || done {
+            assert!(
+                list.iter()
+                    .all(|hint| hint.key != "O/T" && hint.key != "j/k"),
+                "neither on the card or done bar: {list:?}"
+            );
+        }
+    }
+    let bar = |columns| {
+        hints_text(&hints_for(
+            &document(false, false),
+            Divider::Hidden,
+            columns,
+        ))
+    };
+    assert_eq!(
+        bar(80),
+        " o yours  t theirs  b both  ^O all yours  ^T all  O/T  e  n  N  ⏎  j/k  M  esc"
+    );
+    assert_eq!(
+        bar(120),
+        " o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M  esc"
+    );
+    let at_200 = bar(200);
+    assert_eq!(
+        at_200,
+        " o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
+    );
+    assert!(at_200.contains("O/T file") && at_200.contains("j/k file"));
 }
 
 /// A whole-file card draws only the keys a card answers (m6-05 review,

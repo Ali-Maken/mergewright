@@ -824,9 +824,12 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("^T", "all picked"),
     ("^T", "all reverting"),
     ("^T", "all stashed"),
-    ("n", "next"),     // `walk_blocks`, forward
-    ("N", "prev"),     // the same, backward
-    ("⏎", "resolved"), // `mark_resolved`: `git add` on the open file
+    ("n", "next"), // `walk_blocks`, forward
+    ("N", "prev"), // the same, backward
+    ("⏎", "done"), // `mark_resolved`: `git add` on the open file
+    // `O`/`T`: settle the whole file, then the next (m6-conflicts/17).
+    ("O/T", "file"),   // `take::settle_key`
+    ("j/k", "file"),   // `files::step_file`, `↓`/`↑` too
     ("S", "stash"),    // `stash::stash_key`: opens the overlay
     ("J", "journal"),  // `journal::journal_key`: opens the browser
     ("M", "map"),      // `map::map_key`

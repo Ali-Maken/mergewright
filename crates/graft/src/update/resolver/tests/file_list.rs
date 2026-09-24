@@ -785,7 +785,7 @@ fn an_unmerged_open_failure_still_closes() {
 
 #[test]
 fn a_done_file_refuses_in_words() {
-    // Long enough that `j` has somewhere to scroll.
+    // Long enough that `PgDn` has somewhere to scroll.
     let long = (0..200).fold(String::new(), |mut text, n| {
         text.push_str(&format!("line {n}\n"));
         text
@@ -798,8 +798,8 @@ fn a_done_file_refuses_in_words() {
         KeyCode::Enter,
         KeyCode::Char('B'),
         KeyCode::Char('M'),
-        KeyCode::Char('n'),
-        KeyCode::Char('N'),
+        KeyCode::Char('O'),
+        KeyCode::Char('T'),
     ] {
         let (after, commands) = super::press(&state, code);
         assert!(commands.is_empty(), "{code:?}: {commands:?}");
@@ -810,8 +810,15 @@ fn a_done_file_refuses_in_words() {
         );
         assert_eq!(after.resolver, state.resolver, "{code:?}");
     }
-    let (after, _) = super::press(&state, KeyCode::Char('j'));
-    assert_eq!(after.resolver.as_ref().expect("open").top, 1, "j scrolls");
+    // `j` steps files since m6-conflicts/17; `PgDn` is the scroll now.
+    let (after, _) = super::press(&state, KeyCode::PageDown);
+    // A page is the document window's height less one row of overlap
+    // (`scroll::scroll_key`): 41 in this fixture's window.
+    assert_eq!(
+        after.resolver.as_ref().expect("open").top,
+        41,
+        "PgDn scrolls"
+    );
 }
 
 #[test]

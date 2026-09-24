@@ -9,7 +9,7 @@ use super::*;
 /// A merge of `feature` into `main` stopped on two files: `gone.txt`
 /// (changed on `main`, deleted on `feature` — a whole-file card) and
 /// `notes.txt` (two one-line blocks, lines 2 and 7).
-fn gone_and_notes_merge() -> Scratch {
+pub(super) fn gone_and_notes_merge() -> Scratch {
     use crate::app_harness::{git, git_as_graft};
     let scratch = graft_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();
@@ -349,8 +349,9 @@ fn done_open_capture() {
     let state = gone_kept(&app, state);
     let state = done_open(&app, &state, "gone.txt");
     // The status line (`resolved gone.txt (ours) ✓`) holds the bar's row
-    // until the next key; `k` at the top scrolls nowhere and gives it back.
-    let state = app.key(&state, KeyCode::Char('k'));
+    // until the next key; `PgUp` at the top scrolls nowhere and gives it
+    // back (`k` steps files since m6-conflicts/17).
+    let state = app.key(&state, KeyCode::PageUp);
     for (columns, rows) in [(120u16, 40u16), (200, 50), (187, 50)] {
         let frame = crate::captures::frame(&state, columns, rows);
         let body = frame.join("\n");

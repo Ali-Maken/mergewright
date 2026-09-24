@@ -737,6 +737,210 @@ ours = main · theirs = the branch being merged in
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
+docs/shots/m6/fix-file-keys-before-120x40.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: Ticket 17, before `T`: the resolver on `notes.txt`; the bar offers `O/T` and `j/k` (bare at 120). Colour unverified.
+================================================================================
+
+MERGING
+files   gone.txt · …    ▸ notes.txt · 2 of 2 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · 2 conflicts · 2 open
+
+  1 one
+▏ ── conflict 1 of 2 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏ 2 two from main                                           │2 TWO from feature
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+  3 three
+  4 four
+  5 five
+  6 six
+  ── conflict 2 of 2 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+  yours · main                                              │theirs · feature
+  7 seven from main                                         │7 SEVEN from feature
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  B base  e edit  n next  N prev  ⏎  j/k  M  d  esc
+
+================================================================================
+docs/shots/m6/fix-file-keys-before-200x50.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: The same at 200 columns: `O/T file`, `⏎ done`, `j/k file` in full.
+================================================================================
+
+MERGING
+FILES · 2 conflicted     │▸ notes.txt · 2 conflicts · 2 open
+                         │
+   gone.txt   …          │ yours · main                                            │ result                                                   │ theirs · feature
+▏▸ notes.txt  2 of 2 open│ 1 one                                                   │ 1 one                                                    │ 1 one
+                         │▏── o take                                               │ ── 1 of 2 · open                                         │ ── t take
+                         │▏2 two from main                                         │   ? open · o t b                                         │ 2 TWO from feature
+                         │ 3 three                                                 │ 3 three                                                  │ 3 three
+                         │ 4 four                                                  │ 4 four                                                   │ 4 four
+                         │ 5 five                                                  │ 5 five                                                   │ 5 five
+                         │ 6 six                                                   │ 6 six                                                    │ 6 six
+                         │ ── o take                                               │ ── 2 of 2 · open                                         │ ── t take
+                         │ 7 seven from main                                       │   ? open · o t b                                         │ 7 SEVEN from feature
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+ o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
+
+================================================================================
+docs/shots/m6/fix-file-keys-120x40.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: Ticket 17: `T` on `notes.txt` settles the whole file and moves on — strip `notes.txt · done ✓` with `▸ gone.txt`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, notice `notes.txt done ✓ · ▸ gone.txt`. The bottom row is the stage's status line, not the bar. Colour unverified.
+================================================================================
+
+MERGING
+files   ▸ gone.txt · keep or delete    notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on yours · main, deleted on theirs · feature
+notes.txt done ✓ · ▸ gone.txt
+deleted by them · o keeps the file  t deletes it
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ stage notes.txt ✓
+
+================================================================================
+docs/shots/m6/fix-file-keys-200x50.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: The same steps at 200 columns.
+================================================================================
+
+MERGING
+FILES · 2 conflicted       │▸ gone.txt · modified on yours · main, deleted on theirs · feature
+                           │notes.txt done ✓ · ▸ gone.txt
+▏▸ gone.txt  keep or delete│ yours · main                                           │ result                                                   │ theirs · feature
+   …tes.txt  done ✓        │deleted by them · o keeps the file  t deletes it
+                           │ 1 our plan                                             │   ? keep or delete · o t                                 │   (deleted on theirs · feature)
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+ stage notes.txt ✓
+
+================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)
 what right looks like: the uncommitted row has no `space fold` — changed by M6 (a6a47ee): on the uncommitted-changes row the hint ladder no longer offers `space fold` (`space` now needs a commit row, `NEEDS_A_COMMIT` in graft-ui hints.rs); every other rung as the M5 sheet showed it.
 ================================================================================

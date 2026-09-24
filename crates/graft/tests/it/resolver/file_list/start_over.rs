@@ -23,15 +23,16 @@ fn gone_kept_and_opened(app: &App, state: &AppState) -> AppState {
     });
     let state = done_open(app, &state, "gone.txt");
     // The status line (`resolved gone.txt (ours) ✓`) holds the bar's row
-    // until the next key; `k` at the top scrolls nowhere and gives it back.
-    app.key(&state, KeyCode::Char('k'))
+    // until the next key; `PgUp` at the top scrolls nowhere and gives it
+    // back (`k` steps files since m6-conflicts/17).
+    app.key(&state, KeyCode::PageUp)
 }
 
 /// `shared.rs` done ([`shared_done`]), then clicked open read-only.
 fn shared_done_and_opened(app: &App, state: &AppState) -> AppState {
     let state = shared_done(app, state);
     let state = done_open(app, &state, "shared.rs");
-    app.key(&state, KeyCode::Char('k'))
+    app.key(&state, KeyCode::PageUp)
 }
 
 /// The journal file's bytes, read without opening it (opening cuts a torn
