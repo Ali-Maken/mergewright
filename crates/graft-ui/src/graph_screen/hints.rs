@@ -983,10 +983,12 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
 }
 
 /// The resolver's own key list (`docs/design-notes/m6-conflicts.md`, "New
-/// UI" footer mockups): `o ours  t theirs  b both  [B base]  e edit
+/// UI" footer mockups): `o <ours>  t <theirs>  b both  [B base]  e edit
 /// n next  N prev  ⏎ resolved  M mergetool  [d start over]  esc close`,
 /// `B base` after `b both` only while `base` (Proposed change 2b), `d start
 /// over` before `esc close` only while `restart` (Proposed change 2c).
+/// `o`/`t` read as `roles` ([`SideRoles`]): `o upstream  t yours` in a
+/// rebase, never git's own `ours`/`theirs`.
 ///
 /// Live since m6-conflicts/04, which built `update::resolver` — every one
 /// of these is answered by `resolver_key`, the two in brackets included
@@ -1015,7 +1017,8 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
 }
 
 /// A whole-file card's own list (m6-conflicts/05, m6-05 review Major 1):
-/// `o ours  t theirs  e edit  n next  M mergetool  esc close`.
+/// `o <ours>  t <theirs>  e edit  n next  M mergetool  esc close`, `o`/`t`
+/// read as `roles` ([`SideRoles`]), as on [`resolver_list`].
 ///
 /// Only the keys a card answers. `b` is refused in words (there is no
 /// "both" of a path), `⏎` has nothing to mark — `o`/`t` already stage —

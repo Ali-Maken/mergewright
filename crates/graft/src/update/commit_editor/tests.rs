@@ -227,7 +227,7 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let (open, _) = update(&state, key(KeyCode::Char('c')));
@@ -263,7 +263,7 @@ fn a_merge_begun_in_the_shell_names_no_key_that_refuses_it() {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     assert!(state.live_entries.is_empty(), "nothing of Graft's is live");
     let (open, _) = update(&state, key(KeyCode::Char('c')));
@@ -291,7 +291,7 @@ fn a_bisect_in_progress_still_names_the_shell_command() {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     let (open, _) = update(&state, key(KeyCode::Char('c')));
     let open = typed(&open, "subject");

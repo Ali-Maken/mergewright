@@ -176,6 +176,7 @@ fn incoming_of(fixture: &Fixture) -> Option<(Oid, String)> {
         .expect("state reads")
         .expect("an operation is in progress")
         .theirs
+        .expect("theirs is named")
         .map(|summary| (summary.id, summary.subject))
 }
 
@@ -219,4 +220,38 @@ fn in_progress_detail_reads_the_incoming_commit() {
 
     let idle = diverged();
     assert_eq!(in_progress_detail(&open(&idle)).expect("state reads"), None);
+}
+
+/// A head file naming a commit git cannot read (Minor 2 of
+/// `docs/reviews/m6-amend-10-22.md`): theirs' name is optional detail, so
+/// the operation itself must still read — it is what offers `--abort`.
+#[test]
+fn an_unreadable_incoming_commit_still_reads_the_operation() {
+    let merge = diverged();
+    assert!(!run_expecting_maybe_failure(&merge, &["merge", "side", "-m", "m"]).success());
+    let missing = "1111111111111111111111111111111111111111";
+    fs::write(merge.root().join(".git/MERGE_HEAD"), format!("{missing}\n")).expect("written");
+
+    let detail = in_progress_detail(&open(&merge))
+        .expect("the operation reads though theirs cannot be named")
+        .expect("a merge is in progress");
+    assert_eq!(detail.kind, InProgress::Merge);
+    // Not swallowed: the failure is carried where the name would be.
+    let error = detail.theirs.expect_err("theirs cannot be named");
+    assert_eq!(error.file, "MERGE_HEAD");
+    assert!(error.reason.contains(missing), "{error}");
+}
+
+/// A stop ends the one git run the detail makes, and says so on theirs.
+#[test]
+fn a_stopped_incoming_read_is_carried_on_theirs() {
+    let merge = diverged();
+    assert!(!run_expecting_maybe_failure(&merge, &["merge", "side", "-m", "m"]).success());
+    let stopped = std::sync::atomic::AtomicBool::new(true);
+
+    let detail = in_progress_detail_with_stop(&open(&merge), &stopped)
+        .expect("the operation reads")
+        .expect("a merge is in progress");
+    let error = detail.theirs.expect_err("the listing was stopped");
+    assert_eq!(error.reason, RunError::Stopped.to_string());
 }

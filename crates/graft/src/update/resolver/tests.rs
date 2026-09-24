@@ -85,10 +85,97 @@ fn n_on_the_last_card_says_no_more() {
     }));
     let (state, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(open_path(&state), Path::new("gone.txt"));
+    // No operation in progress with the resolver open: a stash pop's roles.
     assert_eq!(
         sticky(&state),
-        ("no more conflicts", Some("o ours  t theirs"))
+        ("no more conflicts", Some("o yours  t stashed"))
     );
+}
+
+/// `resolver_card_on_screen` as the only conflicted file, mid-rebase.
+fn last_card_in_a_rebase() -> AppState {
+    use crate::update::resolver::fixtures::{commit, oid, operation, refs};
+    let mut state = resolver_card_on_screen(WALK);
+    state.refs = Some(refs(false));
+    state.in_progress = Some(operation(
+        graft_git::state::InProgress::Rebase,
+        Some(commit(oid(3), "Add OAuth provider")),
+    ));
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![graft_git::status::StatusEntry {
+            path: "gone.txt".into(),
+            original_path: None,
+            staged: None,
+            unstaged: None,
+            untracked: false,
+            unmerged: true,
+            unmerged_how: None,
+            submodule: false,
+        }],
+    }));
+    state
+}
+
+/// Review m6-amend-10-22 M2 (`walk.rs`): in a rebase git's `ours` is
+/// upstream, so `n` past the last card offers the rebase's own role words.
+#[test]
+fn n_on_the_last_card_in_a_rebase_uses_the_side_names() {
+    let (state, _) = press(&last_card_in_a_rebase(), KeyCode::Char('n'));
+    assert_eq!(
+        sticky(&state),
+        ("no more conflicts", Some("o upstream  t yours"))
+    );
+}
+
+/// Review m6-amend-10-22 M2 (`restart.rs`): `d` on a card in a rebase is
+/// refused with the rebase's role words on its keys.
+#[test]
+fn d_on_a_card_in_a_rebase_uses_the_side_names() {
+    let (state, _) = press(&last_card_in_a_rebase(), KeyCode::Char('d'));
+    assert!(state.confirm.is_none(), "no box");
+    assert_eq!(sticky(&state).1, Some("o upstream  t yours"));
+}
+
+/// No string the resolver's update code writes names a side `ours` or
+/// `theirs` outright: every side word comes from `side_names`' roles, which
+/// a rebase swaps (ADR-0043 §4). Scans the non-test source for literals;
+/// `{ours}` placeholders are the side names themselves and pass.
+#[test]
+fn no_resolver_status_carries_a_bare_ours_or_theirs() {
+    let sources = [
+        ("resolver.rs", include_str!("../resolver.rs")),
+        ("answers.rs", include_str!("answers.rs")),
+        ("base.rs", include_str!("base.rs")),
+        ("geometry.rs", include_str!("geometry.rs")),
+        ("names.rs", include_str!("names.rs")),
+        ("restart.rs", include_str!("restart.rs")),
+        ("scroll.rs", include_str!("scroll.rs")),
+        ("take.rs", include_str!("take.rs")),
+        ("walk.rs", include_str!("walk.rs")),
+        ("whole_file.rs", include_str!("whole_file.rs")),
+    ];
+    let bare = |literal: &str| {
+        let unplaced = literal.replace("{ours}", "").replace("{theirs}", "");
+        unplaced
+            .split(|c: char| !c.is_alphanumeric() && c != '_')
+            .any(|word| word == "ours" || word == "theirs")
+    };
+    for (name, source) in sources {
+        let code = source.split("#[cfg(test)]").next().unwrap_or(source);
+        for (number, line) in code.lines().enumerate() {
+            if line.trim_start().starts_with("//") {
+                continue;
+            }
+            // Odd-numbered pieces between `"` are the literals on the line.
+            for literal in line.split('"').skip(1).step_by(2) {
+                assert!(
+                    !bare(literal),
+                    "{name}:{}: {literal:?} names a side outright",
+                    number + 1
+                );
+            }
+        }
+    }
 }
 
 /// `d` on a card is refused in words, before any box: `checkout --merge`
@@ -348,7 +435,7 @@ fn last_file_staged_from_the_pane() -> AppState {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     state.banner_focus = false;
     let staged = JobId::new(4_500);

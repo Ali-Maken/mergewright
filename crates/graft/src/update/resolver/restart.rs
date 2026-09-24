@@ -36,7 +36,7 @@ pub(super) fn restart_box(state: &mut AppState) {
         };
         state.status = Status::Sticky {
             reason: refusal.explain(),
-            keys: Some("o ours  t theirs".to_owned()),
+            keys: Some(super::names::side_keys(state)),
         };
         return;
     }

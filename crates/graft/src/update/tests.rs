@@ -4001,7 +4001,7 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
                     step: None,
                     head_name: None,
                     onto: None,
-                    theirs: None,
+                    theirs: Ok(None),
                 });
                 state.banner_focus = false;
                 state
@@ -4229,7 +4229,7 @@ fn stopped_operation(walk: JobId, skippable: bool, conflicted: bool) -> AppState
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     state.banner_focus = true;
     if conflicted {
@@ -4714,7 +4714,7 @@ fn the_tab_strip_comes_out_of_the_graphs_row_budget() {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     assert_eq!(
         live.graph_rows(),
@@ -4821,7 +4821,7 @@ fn the_mirror_agrees_at(
             step: None,
             head_name: None,
             onto: None,
-            theirs: None,
+            theirs: Ok(None),
         });
     }
     let layout =

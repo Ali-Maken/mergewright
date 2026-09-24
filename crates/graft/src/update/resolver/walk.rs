@@ -60,7 +60,7 @@ pub(super) fn walk_blocks(
         reason: "no more conflicts".to_owned(),
         // A card is resolved by its own `o`/`t`; it has no `⏎` to offer.
         keys: Some(if card {
-            "o ours  t theirs".to_owned()
+            super::names::side_keys(state)
         } else {
             format!("⏎ marks {} resolved", path.display())
         }),
