@@ -16,6 +16,12 @@ theme dark
   removed         #E06C75     167   9
   warning         #E5A94E     179   3
   info            #6FB3D2     74    7
+  ours            #56B4E9     74    6
+  theirs          #CC79A7     175   5
+  open            #E69F00     214   3
+  ours-tint       #284559     23    default
+  theirs-tint     #4B3445     53    default
+  open-tint       #533F13     58    default
   lane-1          #0077BB     32    6
   lane-2          #EE8866     209   9
   lane-3          #AA3377     125   5
@@ -43,6 +49,12 @@ theme light
   removed         #B4232B     124   1
   warning         #8A5A00     94    3
   info            #1C6B8C     24    6
+  ours            #0072B2     25    6
+  theirs          #A8467F     132   5
+  open            #B36B00     130   3
+  ours-tint       #B0D2E6     152   default
+  theirs-tint     #E2C5D7     224   default
+  open-tint       #E5D0B0     187   default
   lane-1          #0077BB     32    6
   lane-2          #EE8866     209   9
   lane-3          #AA3377     125   5
@@ -70,6 +82,12 @@ theme high-contrast
   removed         #FF5252     203   9
   warning         #FF9E1F     214   3
   info            #40C4FF     81    14
+  ours            #56B4E9     74    6
+  theirs          #CC79A7     175   5
+  open            #E69F00     214   3
+  ours-tint       default     default default
+  theirs-tint     default     default default
+  open-tint       default     default default
   lane-1          #0077BB     32    6
   lane-2          #EE8866     209   9
   lane-3          #AA3377     125   5

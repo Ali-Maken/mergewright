@@ -1,6 +1,6 @@
 # conflict-colour-tokens: six colour roles for the conflict resolver, with their depth fallbacks
 
-Status: ready
+Status: done
 From: user picks 2026-09-24 item 1 and P13 (`.scratch/m6-conflicts/user-picks-2026-09-24.md`); ADR-0044 §1.
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/54-56.md`. The planner re-read
 `theme/mod.rs:141-196`, `theme/chrome.rs:25-133`, `theme/depth.rs:130-138` and `theme/tests.rs:26-49`.
@@ -116,15 +116,15 @@ pub(super) fn nearest_256_cube(color: Rgb) -> u8;                          // 16
   `pinned`, `nearest_256_cube`; the six tokens.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `conflict_tokens_resolve_per_depth`: red first, then green.
-- [ ] `dark_tints_equal_the_mix_rule`, `light_tints_equal_the_mix_rule`
-- [ ] `dark_tints_meet_their_contrast_targets`, `high_contrast_hues_clear_4_5_on_bg`
-- [ ] `no_conflict_token_maps_to_the_grey_ramp`
-- [ ] `existing_tokens_reduce_as_before`
-- [ ] `tint_is_none_at_sixteen_colours_under_no_color_and_in_high_contrast`
-- [ ] `every_token_prompt_md_names_is_present_exactly_once`, with 18 names.
-- [ ] No capture: nothing is drawn with the tokens yet (ticket 55 ends with the capture).
-- [ ] MAP.md updated (doc, no test).
+- [x] `conflict_tokens_resolve_per_depth`: red first (compile failure: variants and `tint` missing), then green.
+- [x] `dark_tints_equal_the_mix_rule`, `light_tints_equal_the_mix_rule`
+- [x] `dark_tints_meet_their_contrast_targets`, `high_contrast_hues_clear_4_5_on_bg`
+- [x] `no_conflict_token_maps_to_the_grey_ramp`
+- [x] `existing_tokens_reduce_as_before` (also: `resolved_values` snapshot diff is 18 added rows, zero changed)
+- [x] `tint_is_none_at_sixteen_colours_under_no_color_and_in_high_contrast`
+- [x] `every_token_prompt_md_names_is_present_exactly_once`, with 18 names.
+- [x] No capture: nothing is drawn with the tokens yet (grep `Token::Ours|Open|Theirs` → theme only).
+- [x] MAP.md updated (doc, no test).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -134,3 +134,14 @@ workspace-wide.
 Small. One context.
 
 ## NOTES
+- Built 2026-09-24, lane U. Scout used: `.scratch/m6-conflicts/scouts/54-56.md`. No compaction.
+- Red: compile failure (no `Token::Ours`…, no `TINT_ALPHA`, no `Theme::tint`), as expected.
+- No-colour variant is `TokenColor::Default`: `Theme::token(tint)` gives it where tints are dropped.
+- High contrast hues on `#000000` (WCAG): ours 9.10, theirs 6.86, open 9.32.
+- Dark tints vs bg / text on tint: ours 1.80 / 7.24, theirs 1.62 / 8.05, open 1.80 / 7.23. All under selection's 3.04.
+- Light (unverified, he runs dark): hues `#0072B2` `#A8467F` `#B36B00` → 256: 25, 132, 130; 16: 6, 5, 3 (nearest_16, unverified).
+  Tints `#B0D2E6` `#E2C5D7` `#E5D0B0` → 256: 152, 224, 187 (cube). theirs-tint blue is 214.5 before rounding; `#D7` pasted, test allows ±1.
+- Sweep exclusion: only `near_neutral_chrome_does_not_pick_up_a_hue_at_sixteen_colours` skips the tints (by `is_tint`, comment cites ADR-0044 §1). `readable_tokens_…` uses its own list, untouched. `no_color_empties_every_token…` and `paint.rs:63` pass with 18 tokens. No hue failed any sweep.
+- `TOKEN_COUNT` made `pub` per signature.
+- Colour is **unverified** by capture (rule 5); values checked only by the unit tests above.
+- **Touches:** `Token::ALL` readers — grep before/after same hits (`theme/mod.rs`, `theme/tests.rs`, `paint.rs:63`); `resolved_values` snapshot re-accepted, diff is additions only; exhaustive `Token` matches — workspace clippy clean; other widgets — grep shows no draw of new tokens; lane O — `git diff --stat` only `crates/graft-ui`; MAP.md §theme updated.

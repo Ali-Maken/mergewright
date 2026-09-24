@@ -132,6 +132,12 @@ pub(super) fn nearest_256(color: Rgb) -> u8 {
     nearest(color, 16..=255, palette_256_entry)
 }
 
+/// The nearest entry in the 6×6×6 cube (16–231), never the grey ramp: a
+/// conflict colour must keep its hue (ADR-0044 §1).
+pub(super) fn nearest_256_cube(color: Rgb) -> u8 {
+    nearest(color, 16..=231, palette_256_entry)
+}
+
 /// The nearest of the 16 ANSI system colours, at their xterm default values.
 pub(super) fn nearest_16(color: Rgb) -> u8 {
     nearest(color, 0..=15, |index| SYSTEM_16[usize::from(index)])

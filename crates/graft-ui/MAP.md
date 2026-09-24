@@ -268,10 +268,14 @@ carries none and neither does a `NO_COLOR` terminal.
 
 ## theme
 - `LANE_COUNT` (const) — number of lane hues; lanes beyond reuse them.
-- `Token` (enum) — a chrome colour role.
+- `TOKEN_COUNT` (const) — 18: PROMPT.md §5's twelve plus the six conflict roles.
+- `TINT_ALPHA` (const) — 0.30, the one α every conflict tint is mixed at (ADR-0044 §1).
+- `mix` (fn) — `fg` over `bg` at `alpha`, per channel, rounded; ties the tint literals to the rule.
+- `Token` (enum) — a chrome colour role; ends with the conflict roles `Ours`, `Theirs`, `Open`, `OursTint`, `TheirsTint`, `OpenTint` (named by pane position, ADR-0044 §1).
 - `Token::ALL` (const) — every token, in PROMPT.md §5's order.
 - `Token::name` (fn) — the token's name as PROMPT.md §5 and config spell it.
-- `ThemeKind` (enum) — dark or light.
+- `Token::is_tint` (fn) — true for the three conflict tints (backgrounds).
+- `ThemeKind` (enum) — dark, light, or high contrast (override only).
 - `ThemeKind::select` (fn) — resolve theme from an override and a terminal hint; unknown → dark.
 - `ThemeKind::name` (fn) — the theme's name as the config file spells it.
 - `TokenColor` (enum) — a resolved colour, `NO_COLOR`-aware.
@@ -279,7 +283,8 @@ carries none and neither does a `NO_COLOR` terminal.
 - `Theme::new` (fn) — resolve a theme for a kind and terminal capabilities.
 - `Theme::kind` (fn) — which theme this is (diagnostics, config round-trips).
 - `Theme::color_depth` (fn) — how much colour this terminal has, `NO_COLOR`-reduced like every token; widgets use it to reach for a non-colour separator at `Palette16`.
-- `Theme::token` (fn) — the colour for one chrome token.
+- `Theme::token` (fn) — the colour for one chrome token. Conflict tokens use private `pinned` (fixed 256/16 entries, dark and high contrast) then `depth::nearest_256_cube` (16–231, never the grey ramp); a dropped tint is `TokenColor::Default`.
+- `Theme::tint` (fn) — a tint token's background, `None` at 16 colours, under `NO_COLOR` and in high contrast; widgets ask this, never the depth.
 - `Theme::lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
 - `Theme::raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.
 - `Theme::raster_muted` (fn) — the unreduced `text-muted` hue, for a pixel `+N` marker.

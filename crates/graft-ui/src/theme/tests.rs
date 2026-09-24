@@ -13,7 +13,7 @@ use crate::test_support::terminal;
 
 use super::depth::{Oklab, linearize, nearest_16, nearest_256, oklab, oklab_from_linear};
 use super::lanes::LANE_HUES;
-use super::{LANE_COUNT, Theme, ThemeKind, Token, TokenColor};
+use super::{LANE_COUNT, TINT_ALPHA, Theme, ThemeKind, Token, TokenColor, mix};
 
 const EVERY_THEME: [ThemeKind; 3] = [ThemeKind::Dark, ThemeKind::Light, ThemeKind::HighContrast];
 
@@ -42,6 +42,12 @@ fn every_token_prompt_md_names_is_present_exactly_once() {
             "removed",
             "warning",
             "info",
+            "ours",
+            "theirs",
+            "open",
+            "ours-tint",
+            "theirs-tint",
+            "open-tint",
         ],
         "the token set is PROMPT.md §5's list, in its order \
          (`selection` added m5-history-and-ghost-preview/44)"
@@ -576,6 +582,11 @@ fn near_neutral_chrome_does_not_pick_up_a_hue_at_sixteen_colours() {
         let sixteen = Theme::new(kind, &terminal(ColorDepth::Palette16, false));
 
         for token in Token::ALL {
+            // The tints are backgrounds, dropped at 16 colours (ADR-0044 §1:
+            // 1.5–2.5:1 against bg), not colours reduced here.
+            if token.is_tint() {
+                continue;
+            }
             if oklab(hue(&truecolor, token)).chroma() > NEUTRAL {
                 continue;
             }
@@ -645,4 +656,205 @@ fn raster_lanes_are_truecolor_hues_at_any_depth_and_one_muted_hue_without_colour
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, true));
     assert_eq!(theme.raster_lanes(), vec![theme.raster_muted()]);
     assert_eq!(theme.raster_muted(), rgb(0x8A, 0x91, 0x9C));
+}
+
+// ------------------------------------------------------ conflict colours
+
+const HUES: [Token; 3] = [Token::Ours, Token::Theirs, Token::Open];
+const TINTS: [(Token, Token); 3] = [
+    (Token::OursTint, Token::Ours),
+    (Token::TheirsTint, Token::Theirs),
+    (Token::OpenTint, Token::Open),
+];
+
+/// ADR-0044 §1 and ticket 54 decision 1: the six conflict tokens at every
+/// depth, in the dark and high-contrast themes. A tint where tints are dropped
+/// is the no-colour variant, and `tint` answers `None` there.
+#[test]
+fn conflict_tokens_resolve_per_depth() {
+    use TokenColor::{Default as No, Indexed as I, Rgb as C};
+    let hues = [
+        (Token::Ours, rgb(0x56, 0xB4, 0xE9), 74, 6),
+        (Token::Theirs, rgb(0xCC, 0x79, 0xA7), 175, 5),
+        (Token::Open, rgb(0xE6, 0x9F, 0x00), 214, 3),
+    ];
+    let tints = [
+        (Token::OursTint, rgb(0x28, 0x45, 0x59), 23),
+        (Token::TheirsTint, rgb(0x4B, 0x34, 0x45), 53),
+        (Token::OpenTint, rgb(0x53, 0x3F, 0x13), 58),
+    ];
+
+    for kind in [ThemeKind::Dark, ThemeKind::HighContrast] {
+        let themes = depths(kind);
+        let n = kind.name();
+
+        for (token, truecolor, pin256, pin16) in hues {
+            let want = [C(truecolor), I(pin256), I(pin16), No];
+            let got = themes.each_ref().map(|theme| theme.token(token));
+            assert_eq!(got, want, "{n} {}", token.name());
+        }
+
+        for (token, truecolor, pin256) in tints {
+            let dark = kind == ThemeKind::Dark;
+            let want = if dark {
+                [C(truecolor), I(pin256), No, No]
+            } else {
+                [No; 4]
+            };
+            let want_tint = want.map(|color| (dark && color != No).then_some(color));
+            let got = themes.each_ref().map(|theme| theme.token(token));
+            let got_tint = themes.each_ref().map(|theme| theme.tint(token));
+            assert_eq!(got, want, "{n} {}", token.name());
+            assert_eq!(got_tint, want_tint, "{n} {}", token.name());
+        }
+    }
+}
+
+/// Truecolor, 256, 16, then `NO_COLOR` on a truecolor terminal.
+fn depths(kind: ThemeKind) -> [Theme; 4] {
+    [
+        (ColorDepth::TrueColor, false),
+        (ColorDepth::Palette256, false),
+        (ColorDepth::Palette16, false),
+        (ColorDepth::TrueColor, true),
+    ]
+    .map(|(depth, no_color)| Theme::new(kind, &terminal(depth, no_color)))
+}
+
+fn assert_tints_follow_the_mix_rule(kind: ThemeKind) {
+    let theme = Theme::new(kind, &terminal(ColorDepth::TrueColor, false));
+    let bg = hue(&theme, Token::Bg);
+    for (tint, of) in TINTS {
+        let want = mix(hue(&theme, of), bg, TINT_ALPHA);
+        let got = hue(&theme, tint);
+        for (a, b) in [
+            (got.red, want.red),
+            (got.green, want.green),
+            (got.blue, want.blue),
+        ] {
+            assert!(
+                a.abs_diff(b) <= 1,
+                "{} in {} is {got:?}, mix gives {want:?}",
+                tint.name(),
+                kind.name()
+            );
+        }
+    }
+}
+
+#[test]
+fn dark_tints_equal_the_mix_rule() {
+    assert_tints_follow_the_mix_rule(ThemeKind::Dark);
+}
+
+#[test]
+fn light_tints_equal_the_mix_rule() {
+    assert_tints_follow_the_mix_rule(ThemeKind::Light);
+}
+
+/// ADR-0044 §1: a tint is a quiet background, 1.5:1–2.5:1 against `bg`, below
+/// `selection` (the "you are here" fill), and `text` stays readable on it.
+#[test]
+fn dark_tints_meet_their_contrast_targets() {
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    let bg = hue(&theme, Token::Bg);
+    let selection = contrast(hue(&theme, Token::Selection), bg);
+    for (tint, _) in TINTS {
+        let fill = hue(&theme, tint);
+        let against_bg = contrast(fill, bg);
+        let text = contrast(hue(&theme, Token::Text), fill);
+        assert!(
+            (1.5..=2.5).contains(&against_bg),
+            "{} is {against_bg:.2}:1 on bg",
+            tint.name()
+        );
+        assert!(
+            against_bg < selection,
+            "{} outshouts selection",
+            tint.name()
+        );
+        assert!(text >= 4.5, "text on {} is {text:.2}:1", tint.name());
+    }
+}
+
+#[test]
+fn high_contrast_hues_clear_4_5_on_bg() {
+    let theme = Theme::new(
+        ThemeKind::HighContrast,
+        &terminal(ColorDepth::TrueColor, false),
+    );
+    let bg = hue(&theme, Token::Bg);
+    for token in HUES {
+        let ratio = contrast(hue(&theme, token), bg);
+        assert!(ratio >= 4.5, "{} is {ratio:.2}:1", token.name());
+    }
+}
+
+/// ADR-0044 §1: the grey ramp would lose a tint's hue. The high-contrast theme's tints
+/// resolve to no colour, which is not on the ramp either.
+#[test]
+fn no_conflict_token_maps_to_the_grey_ramp() {
+    for kind in EVERY_THEME {
+        let theme = Theme::new(kind, &terminal(ColorDepth::Palette256, false));
+        for token in HUES.into_iter().chain(TINTS.map(|(tint, _)| tint)) {
+            if let TokenColor::Indexed(index) = theme.token(token) {
+                assert!(
+                    (16..=231).contains(&index),
+                    "{} in {} is {index}",
+                    token.name(),
+                    kind.name()
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn existing_tokens_reduce_as_before() {
+    for kind in EVERY_THEME {
+        for depth in [ColorDepth::Palette256, ColorDepth::Palette16] {
+            let theme = Theme::new(kind, &terminal(depth, false));
+            let truecolor = Theme::new(kind, &terminal(ColorDepth::TrueColor, false));
+            for token in Token::ALL.into_iter().take(12) {
+                let old = match depth {
+                    ColorDepth::Palette256 => nearest_256(hue(&truecolor, token)),
+                    _ => nearest_16(hue(&truecolor, token)),
+                };
+                assert_eq!(
+                    theme.token(token),
+                    TokenColor::Indexed(old),
+                    "{} in {} moved",
+                    token.name(),
+                    kind.name()
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn tint_is_none_at_sixteen_colours_under_no_color_and_in_high_contrast() {
+    for kind in EVERY_THEME {
+        for (depth, no_color) in [
+            (ColorDepth::TrueColor, false),
+            (ColorDepth::Palette256, false),
+            (ColorDepth::Palette16, false),
+            (ColorDepth::None, false),
+            (ColorDepth::TrueColor, true),
+        ] {
+            let theme = Theme::new(kind, &terminal(depth, no_color));
+            let dropped = kind == ThemeKind::HighContrast
+                || no_color
+                || matches!(depth, ColorDepth::Palette16 | ColorDepth::None);
+            for (tint, _) in TINTS {
+                assert_eq!(
+                    theme.tint(tint).is_none(),
+                    dropped,
+                    "{} in {} at {depth:?}, NO_COLOR {no_color}",
+                    tint.name(),
+                    kind.name()
+                );
+            }
+        }
+    }
 }
