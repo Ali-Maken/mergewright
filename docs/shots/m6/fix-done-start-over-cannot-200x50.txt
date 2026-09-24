@@ -1,0 +1,50 @@
+MERGING
+FILES · 2 conflicted     │▸ gone.txt · done ✓
+                         │
+▏▸ gone.txt   done ✓     │  1 our plan
+   shared.rs  1 of 1 open│
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+                         │
+ e edit  esc close

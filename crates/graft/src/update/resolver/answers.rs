@@ -1,5 +1,6 @@
 //! The resolver's jobs answering: the opening read, a take, `$EDITOR` or a
-//! mergetool handing the terminal back, and `⏎`'s stage landing. Each one
+//! mergetool handing the terminal back, and a write that did not land
+//! (`⏎`'s stage landing is `resolved.rs`). Each one
 //! is matched against the id the resolver is waiting on, so a withdrawn
 //! question's answer is dropped.
 
@@ -9,9 +10,9 @@ use graft_core::job::JobId;
 use graft_git::conflict::{BlockState, ConflictFile};
 
 use super::done::{done_arrived, done_unreadable};
-use super::files::{RowState, listed_files, remember, reread_set};
+use super::files::remember;
 use super::take::all_taken;
-use super::{WholeFileShape, next_block, reopen, scrolled_to, side_word};
+use super::{WholeFileShape, next_block, scrolled_to, side_word};
 use crate::update::events::{Command, TakeRequest};
 use crate::update::state::{AppState, Status};
 
@@ -37,12 +38,14 @@ pub fn conflict_opened(
     let resolved_outside = open.file.is_some() && open.done.is_none();
     match result {
         Ok(Opening::Unmerged(opened)) => conflict_arrived(state, &opened),
-        Ok(Opening::Done(_)) if resolved_outside => closed_resolved_outside(state),
-        Ok(Opening::Done(done)) => done_arrived(state, &done),
+        Ok(Opening::Done(..)) if resolved_outside => closed_resolved_outside(state),
+        Ok(Opening::Done(done, start_over)) => done_arrived(state, &done, start_over),
         // The done route's own failure keeps the resolver open on the path
         // (m6-conflicts/25): the list it was clicked in stays.
-        Err(failure) if failure.done => done_unreadable(state, &failure.words),
-        Err(failure) => open_failed(state, &failure),
+        Err(failure) => match failure.done.clone() {
+            Some(start_over) => done_unreadable(state, &failure.words, start_over),
+            None => open_failed(state, &failure),
+        },
     }
 }
 
@@ -72,7 +75,7 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
         open.cursor_block = None;
         open.top = 0;
         open.base_shown = false;
-        open.notice = landing_notice(open.notice.take());
+        open.notice = landing_notice(open);
         remember(open);
         return;
     };
@@ -99,7 +102,7 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     // leave a stale `true` claiming blocks it has not actually loaded one
     // into (scope 2, "a re-read clears them and `base_shown`").
     open.base_shown = false;
-    let landing = landing_notice(open.notice.take());
+    let landing = landing_notice(open);
     open.notice = empty
         .then(|| {
             (
@@ -113,9 +116,20 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
 
 /// What of the notice set before a read survives its landing: the words a
 /// finished file left (`gone.txt done ✓ · ▸ notes.txt`), which are not a
-/// problem. A problem's words were about the document the read replaces.
-fn landing_notice(before: Option<(String, bool)>) -> Option<(String, bool)> {
-    before.filter(|(_, problem)| !problem)
+/// problem. A problem's words were about the document the read replaces —
+/// but the takes a failed take dropped are the user's own, and their count
+/// outlives them (review m6-amend-15 M2).
+pub(super) fn landing_notice(open: &mut super::ResolverState) -> Option<(String, bool)> {
+    let kept = open.notice.take().filter(|(_, problem)| !problem);
+    let dropped = std::mem::take(&mut open.dropped);
+    if dropped == 0 {
+        return kept;
+    }
+    let count = format!("{dropped} queued takes dropped");
+    Some(match kept {
+        Some((words, _)) => (format!("{words} · {count}"), false),
+        None => (count, false),
+    })
 }
 
 /// The opening read failed, or refused.
@@ -166,12 +180,13 @@ pub fn taken(
         Ok(file) => take_landed(state, &file, commands, next_id),
         Err(failure) => {
             let mut words = failure.words.clone();
+            let mut dropped = 0;
             if let Some(open) = state.resolver.as_mut() {
                 open.job = None;
                 // The queue was chosen against a document that did not
                 // land: every take behind the failed one is dropped, and
                 // the line says how many.
-                let dropped = open.drop_takes();
+                dropped = open.drop_takes();
                 if dropped > 0 {
                     words = format!("{words} · {dropped} queued takes dropped");
                 }
@@ -187,6 +202,7 @@ pub fn taken(
                 if let Some(open) = state.resolver.as_mut() {
                     open.job = Some(next);
                     open.reading = true;
+                    open.dropped = dropped;
                 }
                 commands.push(Command::OpenConflict(next, path));
             }
@@ -298,78 +314,6 @@ pub fn handed_back(
     commands.push(crate::update::status_read::ask(state, tree));
 }
 
-/// The `Stage` that `⏎` launched landed: on to the next file not done, in
-/// the list's order, or out of the resolver altogether.
-pub fn resolved_advance(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    id: JobId,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    let Some(open) = state.resolver.as_ref() else {
-        return;
-    };
-    if open.staging != Some(id) {
-        return;
-    }
-    let done = open.path.clone();
-    let from = open.opened_from;
-    // The write has landed. Cleared here, not left to the fresh resolver
-    // `reopen` builds: a refused `reopen` keeps this one, and a stale id
-    // would refuse every later switch as "a write is already running".
-    if let Some(open) = state.resolver.as_mut() {
-        open.staging = None;
-    }
-    // The working tree behind this has not been re-read yet — the refresh
-    // the write asked for is still in flight — so the file just staged is
-    // still unmerged in it and is skipped by name.
-    //
-    // **Stale by one stage at most**: a path staged by an *earlier* `⏎`
-    // whose refresh has not yet landed would still be offered. Its read
-    // then answers "not conflicted".
-    let listed = listed_files(state);
-    let at = listed
-        .iter()
-        .position(|file| file.path == done)
-        .unwrap_or(0);
-    let next = listed
-        .iter()
-        .cycle()
-        .skip(at + 1)
-        .take(listed.len())
-        .find(|file| file.path != done && file.state != RowState::Done)
-        .map(|file| file.path.clone());
-    if let Some(next) = next {
-        reopen(state, commands, next.clone(), from, next_id);
-        if let Some(open) = state.resolver.as_mut() {
-            open.notice = Some((
-                format!("{} done ✓ · ▸ {}", done.display(), next.display()),
-                false,
-            ));
-        }
-        // The stage changed what git calls unmerged: the list is read again.
-        reread_set(state, commands, next_id);
-        return;
-    }
-    state.resolver = None;
-    // The last file closes **to the banner** whichever way the resolver
-    // was opened (design note, m6-conflicts §resolver keys): the line below
-    // offers `c`, and `c` acts only with the banner focused — on the
-    // changes pane it opens the commit editor (m6-conflicts/07 F4). `Esc`
-    // still returns to where it was opened from; only the finished close
-    // differs. Ticket 19 Part B keeps the resolver open instead.
-    state.banner_focus = crate::update::banner::banner_view(state).is_some();
-    // The status the `Stage` asked for is still out and still calls this
-    // file unmerged, so `c` would count it. The line says what `c` says
-    // meanwhile, and `status_read::settle` says the rest when it lands
-    // (review m6-amend-13, Minor 1).
-    state.status = if crate::update::status_read::owed(state) {
-        Status::Busy(crate::update::status_read::CHECKING.to_owned())
-    } else {
-        every_file_done(state)
-    };
-}
-
 /// A write the resolver launched (`⏎`'s stage, a whole-file `o`/`t`, `d`'s
 /// restart) came back **without** running — refused or failed. Its id is
 /// released, and the resolver stays where it is: a held id would refuse
@@ -386,27 +330,4 @@ pub fn write_not_landed(state: &mut AppState, id: JobId) {
     if open.restarting == Some(id) {
         open.restarting = None;
     }
-}
-
-/// `every file done ✓`, and the key that carries the operation on when
-/// there is one to carry on and the banner has the keyboard.
-pub(crate) fn every_file_done(state: &AppState) -> Status {
-    let what = state
-        .in_progress
-        .as_ref()
-        .filter(|_| state.banner_focus)
-        .and_then(|detail| match detail.kind {
-            graft_git::state::InProgress::Merge => Some("c finishes the merge"),
-            graft_git::state::InProgress::Rebase => Some("c continues the rebase"),
-            graft_git::state::InProgress::CherryPick => Some("c continues the cherry-pick"),
-            graft_git::state::InProgress::Revert => Some("c continues the revert"),
-            graft_git::state::InProgress::Bisect => None,
-        });
-    Status::Done(match what {
-        Some(keys) => format!("every file done ✓ · {keys}"),
-        // A conflicted `git stash pop` has no operation and so no banner
-        // (`KNOWN_GAPS.md` row 229): there is nothing to continue, and a
-        // line offering `c` would name a key that does nothing.
-        None => "every file done ✓".to_owned(),
-    })
 }

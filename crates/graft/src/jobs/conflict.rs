@@ -83,10 +83,28 @@ pub struct OpenFailure {
     /// user resolved it in `$EDITOR` or a mergetool; on a first open it
     /// means the row was never a conflict.
     pub not_unmerged: bool,
-    /// The read failed on the done route ([`Opening::Done`]'s): the path is
-    /// not unmerged, and the resolver keeps it open as a card saying why
-    /// rather than closing (m6-conflicts/25).
-    pub done: bool,
+    /// `Some` when the read failed on the done route ([`Opening::Done`]'s):
+    /// the path is not unmerged, and the resolver keeps it open as a card
+    /// saying why rather than closing (m6-conflicts/25). It carries the
+    /// start-over answer, asked before the read, so the card offers `d`
+    /// exactly where ops would take it (m6-conflicts/28).
+    pub done: Option<StartOver>,
+}
+
+/// Whether `d` can start a done file over: ops' own answer
+/// (`graft_ops::apply::restart_gate`), asked when the file opens
+/// (m6-conflicts/28). The act's refusal after the confirm stays the backstop
+/// for a repository that changed since.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StartOver {
+    /// `d` opens the box, and ops would restart it.
+    Can,
+    /// `d` answers in words: ops' refusal, or `could not check: …` when the
+    /// question could not be asked. Raw; sanitised where drawn.
+    Cannot {
+        /// Why, ready to follow `can't start over · `.
+        why: String,
+    },
 }
 
 /// What [`open`] found, by the route git's status picked at open time
@@ -95,8 +113,9 @@ pub struct OpenFailure {
 pub enum Opening {
     /// git calls the path unmerged: a document or a whole-file card.
     Unmerged(Arc<OpenedFile>),
-    /// git no longer calls it unmerged: the file on disk, read-only.
-    Done(Arc<graft_ops::conflict::DoneFile>),
+    /// git no longer calls it unmerged: the file on disk, read-only, and
+    /// whether `d` can start it over.
+    Done(Arc<graft_ops::conflict::DoneFile>, StartOver),
 }
 
 /// Why a take did not land, with the same distinction kept the same way.
@@ -129,13 +148,16 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, 
     // still comes back `NotUnmerged` (m6-conflicts/25).
     let unmerged = status.entry(path).is_some_and(|entry| entry.unmerged);
     if !unmerged {
-        return graft_ops::conflict::open_done(&handle, &status, path)
-            .map(|done| Opening::Done(Arc::new(done)))
-            .map_err(|error| OpenFailure {
+        // Asked before the read, so a read that fails still carries it.
+        let start_over = start_over(&handle, path, stop);
+        return match graft_ops::conflict::open_done(&handle, &status, path) {
+            Ok(done) => Ok(Opening::Done(Arc::new(done), start_over)),
+            Err(error) => Err(OpenFailure {
                 words: error.to_string(),
                 not_unmerged: false,
-                done: true,
-            });
+                done: Some(start_over),
+            }),
+        };
     }
     let opened = graft_ops::conflict::open_conflict(&handle, &status, path).map_err(|error| {
         OpenFailure {
@@ -146,7 +168,7 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, 
                     graft_ops::operation::Refusal::NotUnmerged { .. }
                 )
             ),
-            done: false,
+            done: None,
         }
     })?;
     let on_disk = if opened.file.is_none() {
@@ -222,7 +244,34 @@ fn failed(error: &impl std::fmt::Display) -> OpenFailure {
     OpenFailure {
         words: error.to_string(),
         not_unmerged: false,
-        done: false,
+        done: None,
+    }
+}
+
+/// Ask ops whether `d` can start `path` over, with facts of its own read the
+/// way [`conflict_set`] reads them. A question that could not be asked is
+/// [`StartOver::Cannot`] saying so — never `Can` on an error.
+fn start_over(handle: &RepoHandle, path: &Path, stop: &dyn Stop) -> StartOver {
+    let could_not = |why: String| StartOver::Cannot {
+        why: format!("could not check: {why}"),
+    };
+    let git = match graft_git::version::system_git() {
+        Ok(found) => found.version(),
+        Err(error) => return could_not(error.to_string()),
+    };
+    // No remotes, no named refs: the gate reads the status and the
+    // operation in progress only.
+    let scope = graft_ops::operation::FactsScope::default();
+    let facts = match graft_ops::facts::read_facts(handle, git, stop, &scope) {
+        Ok(facts) => facts,
+        Err(error) => return could_not(error.explain()),
+    };
+    match graft_ops::apply::restart_gate(handle, &facts, path) {
+        Ok(Ok(_)) => StartOver::Can,
+        Ok(Err(refusal)) => StartOver::Cannot {
+            why: refusal.explain(),
+        },
+        Err(error) => could_not(error.explain()),
     }
 }
 
@@ -317,7 +366,18 @@ mod tests {
     use graft_git::conflict::{BaseMismatch, Diff3Error};
     use graft_ops::conflict::BaseError;
 
-    use super::{CARD_BYTES, CARD_LINES, Opening, base_refusal, glimpse, open};
+    use std::path::{Path, PathBuf};
+
+    use graft_core::oid::Oid;
+    use graft_git::repo::RepoHandle;
+    use graft_git::status::UnmergedHow;
+    use graft_ops::apply::{Applied, ApplyError, Context, apply};
+    use graft_ops::journal::{Journal, journal_path};
+    use graft_ops::operation::{
+        FastForward, MergeParams, Operation, ResolveWholeParams, Side, Source, Target, Tip,
+    };
+
+    use super::{CARD_BYTES, CARD_LINES, Opening, StartOver, base_refusal, glimpse, open};
 
     /// Ticket 25: the job picks the route from the status it reads itself.
     /// The same path is an unmerged document before `git add` and a done
@@ -329,7 +389,7 @@ mod tests {
         let path = std::path::Path::new("both.txt");
         match open(&store, path, &()).expect("it opens") {
             Opening::Unmerged(opened) => assert!(opened.file.is_some(), "a parsed document"),
-            Opening::Done(done) => panic!("still unmerged, got {done:?}"),
+            Opening::Done(done, _) => panic!("still unmerged, got {done:?}"),
         }
         std::fs::write(scratch.path().join(path), b"settled\n").expect("the file is written");
         let added = std::process::Command::new("git")
@@ -339,7 +399,7 @@ mod tests {
             .expect("git runs");
         assert!(added.success());
         match open(&store, path, &()).expect("it opens") {
-            Opening::Done(done) => assert!(
+            Opening::Done(done, _) => assert!(
                 matches!(
                     *done,
                     graft_ops::conflict::DoneFile::Text {
@@ -351,6 +411,119 @@ mod tests {
             ),
             Opening::Unmerged(opened) => panic!("git add made it done, got {opened:?}"),
         }
+    }
+
+    /// Ticket 28: the done route asks ops whether `d` can start the file
+    /// over, when the file opens. An app-begun merge keeps a marker file's
+    /// stages on its backup chain (`Can`); a whole-file shape kept with `o`
+    /// has only one side to restore (`Cannot`, in ops' words).
+    #[test]
+    fn a_done_open_carries_the_gate() {
+        let scratch = app_merge_with_a_whole_file_conflict();
+        let repo = scratch.path();
+        std::fs::write(repo.join("both.txt"), b"settled\n").expect("the file is written");
+        apply_in(
+            repo,
+            &Operation::Stage(Target::Paths(vec![PathBuf::from("both.txt")])),
+            2,
+        );
+        apply_in(
+            repo,
+            &Operation::ResolveWholeFile(ResolveWholeParams {
+                path: PathBuf::from("gone.txt"),
+                side: Side::Ours,
+                how: UnmergedHow::DeletedByThem,
+            }),
+            3,
+        );
+        let store = crate::repos::RepoStore::new(repo.to_path_buf(), None);
+
+        match open(&store, Path::new("both.txt"), &()).expect("it opens") {
+            Opening::Done(_, start_over) => assert_eq!(start_over, StartOver::Can),
+            Opening::Unmerged(opened) => panic!("staged, so done: {opened:?}"),
+        }
+        match open(&store, Path::new("gone.txt"), &()).expect("it opens") {
+            Opening::Done(_, StartOver::Cannot { why }) => {
+                assert!(why.contains("no markers"), "ops' own words: {why}");
+            }
+            other => panic!("gone.txt cannot start over: {other:?}"),
+        }
+    }
+
+    /// `main` edits `both.txt` and `gone.txt`; `feature` edits `both.txt`
+    /// and deletes `gone.txt`; Graft's own merge of `feature` stops on both.
+    fn app_merge_with_a_whole_file_conflict() -> graft_fixtures::Scratch {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let repo = scratch.path();
+        let write = |name: &str, body: &str| {
+            std::fs::write(repo.join(name), body).expect("writable scratch");
+        };
+        write("both.txt", "base\n");
+        write("gone.txt", "the plan\n");
+        git(repo, &["add", "--all"]);
+        git(repo, &["commit", "-q", "-m", "shared"]);
+        git(repo, &["switch", "-q", "-c", "feature"]);
+        write("both.txt", "theirs\n");
+        git(repo, &["rm", "-q", "gone.txt"]);
+        git(repo, &["commit", "-q", "-am", "theirs"]);
+        git(repo, &["switch", "-q", "main"]);
+        write("both.txt", "ours\n");
+        write("gone.txt", "our plan\n");
+        git(repo, &["commit", "-q", "-am", "ours"]);
+        let tip = |rev: &str| Oid::from_hex(git(repo, &["rev-parse", rev]).trim()).expect("an id");
+        let merge = Operation::Merge(MergeParams {
+            source: Source::Branch("feature".to_owned()),
+            into: Tip {
+                name: "refs/heads/main".to_owned(),
+                oid: tip("main"),
+            },
+            source_tip: tip("feature"),
+            ff: FastForward::Default,
+        });
+        let stopped = try_apply(repo, &merge, 1);
+        assert!(
+            matches!(stopped, Err(ApplyError::Conflicted { .. })),
+            "the merge stops: {stopped:?}"
+        );
+        scratch
+    }
+
+    fn git(repo: &Path, args: &[&str]) -> String {
+        let out = std::process::Command::new("git")
+            .current_dir(repo)
+            .args([
+                "-c",
+                "user.name=Graft Test",
+                "-c",
+                "user.email=test@example.invalid",
+            ])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(out.status.success(), "git {args:?}: {out:?}");
+        String::from_utf8(out.stdout).expect("utf-8")
+    }
+
+    fn try_apply(repo: &Path, op: &Operation, at: i64) -> Result<Applied, ApplyError> {
+        let handle = RepoHandle::open(repo).expect("the repo opens");
+        let git = graft_git::version::system_git().expect("git").version();
+        let mut journal =
+            Journal::open(&journal_path(&handle).expect("the path")).expect("the journal opens");
+        let mut ctx = Context::open(
+            &handle,
+            git,
+            &mut journal,
+            1_700_000_000_000 + at,
+            [0; 10],
+            &(),
+        )
+        .expect("the context opens");
+        apply(&mut ctx, op)
+    }
+
+    fn apply_in(repo: &Path, op: &Operation, at: i64) {
+        try_apply(repo, op, at).unwrap_or_else(|why| panic!("{}", why.explain()));
     }
 
     /// A file of `lines` numbered lines, and its size.

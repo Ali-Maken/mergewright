@@ -481,7 +481,9 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
 /// `B`/`d` act the moment they are pressed (`update::resolver::toggle_base`
 /// / `restart_box`, m6-conflicts/05), so a document passes `true` for both.
 /// A whole-file card has no blocks for either to act on, and draws its own
-/// shorter list.
+/// shorter list. `restart` is `start_over_refusal`'s answer, the same one
+/// `d` itself asks (m6-conflicts/28): the bar offers `d` exactly where it
+/// opens the box.
 #[must_use]
 pub fn resolver_context(state: &AppState) -> HintContext {
     let card = state
@@ -494,7 +496,7 @@ pub fn resolver_context(state: &AppState) -> HintContext {
         .is_some_and(|open| open.done.is_some());
     HintContext::Resolver {
         base: !card,
-        restart: !card,
+        restart: crate::update::resolver::start_over_refusal(state).is_none(),
         whole_file: card,
         done,
         roles: crate::update::resolver::side_names(state).roles,

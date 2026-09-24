@@ -610,6 +610,20 @@ fn took_line_uses_the_side_name() {
     );
 }
 
+/// The resolver's bar as `key verb` strings: the context the footer draws
+/// from (`view::rows::resolver_context`), through the same table.
+fn bar(state: &AppState) -> Vec<String> {
+    use graft_ui::graph_screen::{Divider, hints_for};
+    hints_for(
+        &crate::view::rows::resolver_context(state),
+        Divider::Hidden,
+        200,
+    )
+    .iter()
+    .map(|hint| format!("{} {}", hint.key, hint.verb))
+    .collect()
+}
+
 // Kept here, not in `file_list.rs`: `update_cannot_reach_the_world` skips
 // only files named `tests.rs`, and this one draws through ratatui.
 /// Every row `state` draws at its own size, joined by newlines.
@@ -635,6 +649,7 @@ fn frame_text(state: &AppState) -> String {
 }
 
 mod advance;
+mod cross;
 mod file_list;
 mod three_panes;
 mod words_and_c;

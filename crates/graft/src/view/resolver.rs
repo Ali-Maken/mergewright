@@ -29,7 +29,9 @@ use whole_file::{done_card, whole_file_view};
 
 use crate::update::AppState;
 use crate::update::detail::Loading;
-use crate::update::resolver::{DoneShape, RowState, file_cursor, listed_files, side_names};
+use crate::update::resolver::{
+    DoneShape, RowState, file_cursor, listed_files, side_names, start_over_refusal,
+};
 
 /// Everything the resolver draws for the file it has open, laid out for a
 /// document `columns` wide, or `None` when it is closed or still waiting
@@ -43,17 +45,20 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
     if let Some(done) = open.done.as_ref()
         && open.file.is_none()
     {
-        return Some(done_card(state, open, done));
+        return Some(done_card(state, open, &done.shape));
     }
     let file = open.file.as_ref()?;
     let blocks = file.blocks();
-    let identity = match open.done {
-        Some(DoneShape::Text { unstaged } | DoneShape::Binary { unstaged }) => {
-            Identity::Done { unstaged }
-        }
-        Some(DoneShape::Removed | DoneShape::Unreadable { .. }) => {
-            Identity::Done { unstaged: false }
-        }
+    let restart = start_over_refusal(state).is_none();
+    let identity = match open.done.as_ref().map(|done| &done.shape) {
+        Some(DoneShape::Text { unstaged } | DoneShape::Binary { unstaged }) => Identity::Done {
+            unstaged: *unstaged,
+            restart,
+        },
+        Some(DoneShape::Removed | DoneShape::Unreadable { .. }) => Identity::Done {
+            unstaged: false,
+            restart,
+        },
         None => Identity::Blocks {
             open: file.open(),
             of: blocks.len(),
@@ -119,6 +124,9 @@ pub enum Identity<'a> {
     Done {
         /// The status shows a working-tree change for it.
         unstaged: bool,
+        /// `d` opens the box (`update::resolver::start_over_refusal`,
+        /// m6-conflicts/28): the row offers it only then.
+        restart: bool,
     },
 }
 
@@ -135,9 +143,14 @@ pub fn resolver_title(path: &Path, identity: Identity<'_>) -> String {
             format!("{name} · {of} {noun} · {open} open")
         }
         Identity::Whole(how) => format!("{name} · {how}"),
-        Identity::Done { unstaged: false } => format!("{name} · done ✓ · d starts it over"),
-        Identity::Done { unstaged: true } => {
-            format!("{name} · done ✓ · d starts it over · edited since done")
+        Identity::Done { unstaged, restart } => {
+            let offer = if restart { " · d starts it over" } else { "" };
+            let edited = if unstaged {
+                " · edited since done"
+            } else {
+                ""
+            };
+            format!("{name} · done ✓{offer}{edited}")
         }
     }
 }

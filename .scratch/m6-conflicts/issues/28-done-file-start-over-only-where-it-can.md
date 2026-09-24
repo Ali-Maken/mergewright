@@ -1,6 +1,6 @@
 # fix-done-file-start-over-only-where-it-can: `d` is offered on a done file only where ops can start it over; the box never promises what ops refuses
 
-Status: draft (filed 2026-09-24 by the planner from `docs/reviews/m6-amend-25.md` Major 1, 2, 3; main `0f7fb66`)
+Status: done (built 2026-09-24 on main `f585af1`; see NOTES) — filed 2026-09-24 by the planner from `docs/reviews/m6-amend-25.md` Major 1, 2, 3; main `0f7fb66`)
 **Revised 2026-09-24 in place, from `.scratch/m6-conflicts/scout-28.md` (main `4a6703d`), items 1–4:**
 - 1: `stage_source` reads `ctx.journal`. The gate reads the journal itself, read-only, through `journal::parse`, the way `operation_conflicts` does. It never calls `Journal::open`, which writes.
 - 2: "One gate" is restated against the real chain: `check_restart` (inside `Operation::check`), then `prepare_restart`.
@@ -148,40 +148,40 @@ pub(super) fn handover_refusal(state: &AppState) -> Option<String>;   // write_r
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] Review-15 M1: `Esc` refused while a take is in flight or queued; nothing dropped — test:
-- [ ] Review-15 M2: dropped-takes count survives a `Changed` re-read — test:
-- [ ] Review-15 M3: answers.rs, advance.rs ≤ ~400 or no-seam noted — (counts in NOTES)
-- [ ] `e`/`M` refused while a take is in flight or queued, and nothing dropped. Tests `update::resolver::tests::advance::e_waits_for_the_takes_in_flight` and `…::m_waits_for_the_takes_in_flight`: `t t` with no answer, then `e` / `M` → status `a take is still landing · …`, no `OpenConflictEditor`/`OpenMergetool` command, `in_flight` and `queued` unchanged. After the takes land, `e` hands over.
-- [ ] graft-ops `it::restart_gate::*`, real git, one test per row. Each asserts the value, and that the journal file's bytes and every `refs/graft/backup/*` are unchanged:
+- [x] Review-15 M1: `Esc` refused while a take is in flight or queued; nothing dropped — test: `update::resolver::tests::advance::esc_waits_for_the_takes_in_flight` (red first).
+- [x] Review-15 M2: dropped-takes count survives a `Changed` re-read — test: `update::resolver::tests::advance::a_changed_reread_keeps_the_dropped_count` (red first).
+- [x] Review-15 M3: answers.rs, advance.rs ≤ ~400 or no-seam noted — answers.rs 412 → 333, advance.rs 430 → 394 (counts in NOTES); verified by `wc -l`, no test.
+- [x] `e`/`M` refused while a take is in flight or queued, and nothing dropped. Tests `update::resolver::tests::advance::e_waits_for_the_takes_in_flight` and `…::m_waits_for_the_takes_in_flight`: `t t` with no answer, then `e` / `M` → status `a take is still landing · …`, no `OpenConflictEditor`/`OpenMergetool` command, `in_flight` and `queued` unchanged. After the takes land, `e` hands over. Ticked by those two tests (red first); each asserts **nothing** is sent (stronger than no editor/mergetool command).
+- [x] graft-ops `it::restart_gate::*`, real git, one test per row (the five names below, as written; `gate()` asserts the journal bytes, `refs/graft/backup/*` and `git status` unchanged). Each asserts the value, and that the journal file's bytes and every `refs/graft/backup/*` are unchanged:
   - `an_unmerged_marker_file_is_index` → `Ok(Ok(Index))`.
   - `an_unmerged_whole_file_is_not_marker_shape` → `Ok(Err(NotMarkerShape))`.
   - `a_marker_file_done_in_an_app_merge_is_backup` → `Ok(Ok(Backup { .. }))`.
   - `a_whole_file_done_in_an_app_merge_is_not_marker_shape`: `gone.txt` kept with `o`.
   - `a_done_file_in_a_shell_merge_is_no_stages_kept`.
-- [ ] graft-ops `it::restart_gate::a_torn_journal_tail_is_read_not_cut`: a torn last line gives an answer, and the file's bytes are unchanged afterwards (no `Journal::open`).
-- [ ] graft-ops `it::restart_gate::the_gate_and_the_restart_agree`: for each path above, `restart_gate` gives `Ok(Err(r))` ⇔ `apply(RestartConflict)` answers `Refused(r)`, with the same `r`. An `Ok(Ok(_))` path restarts to `UU`/`AA`.
-- [ ] graft `jobs::conflict::tests::a_done_open_carries_the_gate`, real git, app-begun merge: a done marker file → `Done(_, Can)`, and `gone.txt` → `Done(_, Cannot { why })` with `why` containing `no markers`.
-- [ ] graft `update::resolver::tests::file_list::a_done_file_that_cannot_start_over_hides_d`:
+- [x] graft-ops `it::restart_gate::a_torn_journal_tail_is_read_not_cut`: a torn last line gives an answer, and the file's bytes are unchanged afterwards (no `Journal::open`).
+- [x] graft-ops `it::restart_gate::the_gate_and_the_restart_agree`: for each path above, `restart_gate` gives `Ok(Err(r))` ⇔ `apply(RestartConflict)` answers `Refused(r)`, with the same `r`. An `Ok(Ok(_))` path restarts to `UU`/`AA` (asserted as ≥ 2 stage lines in `ls-files -u` plus `<<<<<<<` back in the file).
+- [x] graft `jobs::conflict::tests::a_done_open_carries_the_gate`, real git, app-begun merge: a done marker file → `Done(_, Can)`, and `gone.txt` → `Done(_, Cannot { why })` with `why` containing `no markers`.
+- [x] graft `update::resolver::tests::file_list::start_over::a_done_file_that_cannot_start_over_hides_d` (child module `start_over`, not `file_list` itself — file_list.rs was already long):
   - Identity row `▸ gone.txt · done ✓` with no `d`.
   - Hint table exactly `e edit`, `esc close`.
   - `d` → status `can't start over · …`, `confirm` is `None`, no command pushed.
   - `t` → `gone.txt is done`.
-- [ ] graft `…::file_list::a_done_file_that_can_start_over_offers_d`: 25's words and bar, unchanged.
-- [ ] graft `…::file_list::an_unreadable_done_file_keeps_its_gate`: `OpenFailure { done: Some(Can) }` → the card's keys `d starts it over`. With `Cannot`, the keys are empty.
-- [ ] graft `…::file_list::a_gate_that_could_not_be_read_hides_d`: `Cannot { why: "could not check: …" }` → no `d`, and the words on `d` carry the why.
-- [ ] graft `…::d_is_in_the_bar_exactly_when_the_box_opens`. Over these fixtures: document, unmerged whole-file card, done text Can/Cannot, removed Can/Cannot, binary, unreadable. For each: the hint table contains `d` ⇔ `d` sets `confirm` to the restart box. **The guard against a third repeat.**
-- [ ] graft-ui `graph_screen::hints::tests::a_done_file_that_cannot_start_over_offers_edit_and_close`, and `every_context_reaches_every_shape` with the new slot.
-- [ ] graft `it::resolver::file_list`, the existing pins changed (scout item 4):
+- [x] graft `…::file_list::start_over::a_done_file_that_can_start_over_offers_d`: 25's words and bar, unchanged.
+- [x] graft `…::file_list::start_over::an_unreadable_done_file_keeps_its_gate`: `OpenFailure { done: Some(Can) }` → the card's keys `d starts it over`. With `Cannot`, the keys are empty.
+- [x] graft `…::file_list::start_over::a_gate_that_could_not_be_read_hides_d`: `Cannot { why: "could not check: …" }` → no `d`, and the words on `d` carry the why.
+- [x] graft `…::file_list::start_over::d_is_in_the_bar_exactly_when_the_box_opens` (10 fixtures; also asserts 5 offer `d`). Over these fixtures: document, unmerged whole-file card, done text Can/Cannot, removed Can/Cannot, binary, unreadable. For each: the hint table contains `d` ⇔ `d` sets `confirm` to the restart box. **The guard against a third repeat.**
+- [x] graft-ui `graph_screen::hints::tests::a_done_file_that_cannot_start_over_offers_edit_and_close`, and `every_context_reaches_every_shape` with the new slot (`COVERAGE_SLOTS` 32).
+- [x] graft `it::resolver::file_list`, the existing pins changed (scout item 4) — tests `a_shell_merge_done_file_answers_d_in_words` (renamed from `a_done_file_opens_read_only_and_d_starts_it_over`), `a_done_marker_file_starts_over_in_place` (the can path, kept, helper inlined and counted), `done_open_capture` (3 shots re-taken). Also changed: `it::resolver::last_file`'s pin on shell-merge `added-by-them.txt` → `▸ added-by-them.txt · done ✓` (same cause, not listed by the scout):
   - The `start_over` helper (`:194`) at its shell-merge use (`:204`, `gone.txt`) → no box, the words on `d`, `restarting` never set. Rename the test to say so.
   - Its other use (`:245`) is kept if it is the can-start-over path; otherwise the same change.
   - `done_open_capture` (`:314–:328`): shell-merge `gone.txt` now reads `▸ gone.txt · done ✓` with bar `e edit  esc close`. Re-take `docs/shots/m6/fix-file-list-done-open-{120x40,200x50,187x50}.txt`.
-- [ ] graft `it::resolver::file_list::a_whole_file_done_file_offers_no_start_over`, real git (`app_merge_with_a_whole_file_conflict`, `o` on `gone.txt`, click its row):
+- [x] graft `it::resolver::file_list::start_over::a_whole_file_done_file_offers_no_start_over`, real git (`app_merge_with_a_whole_file_conflict`, `o` on `gone.txt`, click its row):
   - No `d` on the identity row or the bar.
   - `d` → the words, no box.
   - `git status` and the journal are unchanged.
-- [ ] graft `it::resolver::file_list::a_done_marker_file_starts_over_in_place` asserts the journey count. The inputs from the landing after `⏎` are click row · `d` · `→` · `⏎` = **4**, the note's `walk-back-a-done-file`. After them: `UU`, the same cell, and the cursor on block 0.
-- [ ] R7: `update/resolver.rs` line count in NOTES, 442 → ≤ 400 (or the reason). Gates green, and the existing `update::resolver::tests::*` pass unchanged apart from the renamed pins.
-- [ ] Captures, pinned by `it::resolver::file_list::done_start_over_capture`: `docs/shots/m6/fix-done-start-over-{can,cannot}-120x40.txt` and `…-cannot-200x50.txt`. **The look is the user's call (rule 6); colour is unverified (rule 5).** What right looks like:
+- [x] graft `it::resolver::file_list::a_done_marker_file_starts_over_in_place` asserts the journey count. The inputs from the landing after `⏎` are click row · `d` · `→` · `⏎` = **4**, the note's `walk-back-a-done-file`. After them: `UU`, the same cell, and the cursor on block 0.
+- [x] R7: `update/resolver.rs` line count in NOTES (442 → 385, `wc -l`), 442 → ≤ 400 (or the reason). Gates green, and the existing `update::resolver::tests::*` pass unchanged apart from the renamed pins — gates green (nextest 2869/2869, 1 skipped). **Not strictly unchanged**: fixtures moved to `DoneOpen`/`StartOver::Can` and `dropped: 0`; the walk tests moved verbatim from `advance.rs` to `tests/cross.rs`; one literal in `update/tests.rs` became `ResolverState::opening` (clippy `too_many_lines`). No assertion changed.
+- [x] Captures, pinned by `it::resolver::file_list::start_over::done_start_over_capture` (files written and matching; **the look is not ticked** — the user's): `docs/shots/m6/fix-done-start-over-{can,cannot}-120x40.txt` and `…-cannot-200x50.txt`. **The look is the user's call (rule 6); colour is unverified (rule 5).** What right looks like:
   - can, 120x40: `▸ <marker file> · done ✓ · d starts it over`, and bar `d start over  e edit  esc close`.
   - cannot, 120x40: `▸ gone.txt · done ✓` with nothing after it, bar `e edit  esc close`, and after `d` the status row `can't start over · gone.txt: deleted by them — no markers to take from`.
   - cannot, 200x50: the same identity row beside the list column, one card (25's ruling 4).
@@ -284,3 +284,20 @@ walk-back-a-done-file         4                     # Tower reset-to-unmerged (C
 - `:571` → `#[derive(Clone, Debug, PartialEq, Eq)] pub enum DoneShape { Text { unstaged: bool }, Binary { unstaged: bool }, Removed, Unreadable { why: String } }   // wrapped in DoneOpen { shape, start_over } (ticket 28)`
 - `:575` → `pub enum Opening { Unmerged(Arc<OpenedFile>), Done(Arc<DoneFile>, StartOver) }   // graft jobs::conflict (built: 25; StartOver: 28)`
 - `:701–:703`: in the done-file bullet, replace `Bar: \`d start over  n next  N prev  e edit  esc close\`.` with ``Bar: `d start over  e edit  esc close`, or `e edit  esc close` where ops cannot start it over (Amendment 3). A done file is one card at every width (ticket 25, ruling 4).``
+
+## NOTES (builder, 2026-09-24)
+
+- **Scout used:** `.scratch/m6-conflicts/scout-28.md`; cited lines re-checked against `f585af1`.
+- **Compacted once mid-ticket.** Nothing remains; everything after the compaction (split, clippy, gates, MAP, ticks) was done in the second context.
+- **Cause, not symptom.** The app no longer mirrors ops' rule: `graft_ops::apply::restart_gate` runs `check_restart` then `restart_source`, and `prepare_restart` matches on the same `restart_source`. The job asks it before the read; `start_over_refusal` is the one app predicate behind the box, the bar, the identity row, the card keys and `done_refusal`. Cost to the user: one extra git read (facts + journal parse) per done-file open.
+- **Deviations (rule on these):**
+  1. `RestartReadError` has a fourth variant, `Run(RunError)`: `journal_path` returns `RunError`, so the ticket's three variants could not carry it without swallowing.
+  2. `handover_refusal` asks the takes **before** `write_refusal`, not after as the signature comment says: a take in flight *is* `ResolverState::job`, so `write_refusal` would answer `still writing the last take` and the `a take is still landing` words could never show. Returns `Option<&'static str>`, not `String`.
+  3. The unit tests live in `update::resolver::tests::file_list::start_over`, and the new it tests in `it::resolver::file_list::start_over` (child modules), not in `file_list` itself.
+  4. `it::resolver::last_file` had a pin on a shell-merge done file offering `d`; changed the same way.
+  5. graft-ui's existing done-bar test now builds `restart: true` explicitly.
+- **Splits (`wc -l`):** `update/resolver.rs` 442 → 385 (`e`/`M` to new `handover.rs`; `⏎`'s `mark_resolved` + `resolved_advance` + `every_file_done` to new `resolved.rs`, 149). `answers.rs` 412 → 333. `tests/advance.rs` 430 → 394 (walk tests to new `tests/cross.rs`, 164).
+- **Verified:** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run` (2869 passed, 1 skipped), `cargo test --doc`, all workspace-wide. Red-first seen for the 4 advance tests and 4 of 5 `file_list::start_over` unit tests (the fifth pins behaviour 25 already had).
+- **Gaps — unverified:** colour of every changed row (rule 5); the look of the 6 captures is the user's call (rule 6).
+- **Gaps — broken (unchanged by this ticket, now refused honestly):** `d` still cannot start over a whole-file done file or any done file of a shell-begun merge (ops refuses: `NotMarkerShape` / `NoStagesKept`); the user now sees that before the box instead of after it.
+- **Not done here (conductor's, outside the crate set):** the design-note and keymap edits under "For the conductor" and "Note amendment".

@@ -137,7 +137,14 @@ fn resolver_forms() -> Vec<HintContext> {
                     roles,
                 },
                 // A done file, read-only (m6-conflicts/25): its list reads
-                // no other flag, so one form covers it.
+                // `restart` alone (m6-conflicts/28), so two forms cover it.
+                HintContext::Resolver {
+                    base: false,
+                    restart: true,
+                    whole_file: false,
+                    done: true,
+                    roles,
+                },
                 HintContext::Resolver {
                     base: false,
                     restart: false,

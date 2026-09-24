@@ -32,8 +32,8 @@ use graft_git::state::InProgress;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-pub(crate) use conflict::shape_of_stages;
 pub use conflict::{ResolveWholeParams, RestartParams, Side};
+pub(crate) use conflict::{check_restart, shape_of_stages};
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,

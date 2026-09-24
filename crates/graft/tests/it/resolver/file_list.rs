@@ -190,18 +190,13 @@ fn porcelain(repo: &Path, name: &str) -> String {
         .to_owned()
 }
 
-/// `d`, then `Start over` in its box, and the write settled.
-fn start_over(app: &App, state: &AppState) -> AppState {
-    let state = app.key(state, KeyCode::Char('d'));
-    assert!(state.confirm.is_some(), "d's box: {:?}", state.status);
-    let state = app.key(&state, KeyCode::Right);
-    let state = app.key(&state, KeyCode::Enter);
-    assert!(state.operating.is_some(), "{:?}", state.status);
-    app.pump(state, "the restart", |state| state.operating.is_none())
-}
-
+/// A done file of a merge **begun in the shell**: nothing kept its stages,
+/// so ops cannot start it over (`NoStagesKept`) — and `d` is not offered.
+/// Pressed anyway, it answers ops' words with no box and no write
+/// (m6-conflicts/28; before, the box promised the markers and ops refused
+/// after the confirm).
 #[test]
-fn a_done_file_opens_read_only_and_d_starts_it_over() {
+fn a_shell_merge_done_file_answers_d_in_words() {
     let scratch = gone_and_notes_merge();
     let (app, state) = opened_on(&scratch);
     let state = gone_kept(&app, state);
@@ -209,32 +204,70 @@ fn a_done_file_opens_read_only_and_d_starts_it_over() {
     let state = done_open(&app, &state, "gone.txt");
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
-    assert!(
-        frame[3].starts_with("▸ gone.txt · done ✓ · d starts it over"),
-        "{body}"
-    );
+    assert_eq!(frame[3].trim_end(), "▸ gone.txt · done ✓", "{body}");
     assert_eq!(listed_names(&state), order, "the row order is unchanged");
-    // `gone.txt` was resolved by `o` on a modify/delete. `graft_ops` does
-    // not start that one over: here it refuses with `NoStagesKept`
-    // (`apply/restart.rs:178`/`:201`; and a modify/delete shape found would
-    // be `NotMarkerShape`, `:194`). The resolver stays on the done file, its
-    // write released.
-    let state = start_over(&app, &state);
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_none(), "no box");
+    assert!(state.operating.is_none(), "no write");
     // Kept as ours, which is `HEAD`'s: no status line at all, and above all
     // not an unmerged one.
     assert_eq!(porcelain(scratch.path(), "gone.txt"), "");
     let open_now = open(&state);
     assert_eq!(open_now.path, Path::new("gone.txt"));
     assert!(open_now.done.is_some());
-    assert_eq!(open_now.restarting, None, "the refused write let go");
+    assert_eq!(open_now.restarting, None, "never set");
     assert!(
-        matches!(&state.status, Status::Sticky { reason, .. } if reason == "gone.txt: the conflict's sides were not kept"),
+        matches!(&state.status, Status::Sticky { reason, .. } if reason == "can't start over · gone.txt: the conflict's sides were not kept"),
         "{:?}",
         state.status
     );
     drop(state);
     app.close();
     drop(scratch);
+}
+
+/// Graft's own merge stopped on `gone.txt` (modify/delete, a card) and
+/// `shared.rs` (one block), with the banner's `⏎` landed on `gone.txt`'s
+/// card and the list read.
+fn on_gone_card(scratch: &Scratch) -> (App, AppState) {
+    let (app, state) = App::open(scratch.path());
+    let state = crate::conflict_interim::stopped_on_the_conflict(&app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the card and the set", |state| {
+        state.resolver.as_ref().is_some_and(|open| {
+            open.path == Path::new("gone.txt")
+                && open.whole_file.is_some()
+                && open.set_job.is_none()
+        })
+    });
+    (app, state)
+}
+
+/// From [`on_gone_card`]: `shared.rs` taken and marked done with `⏎`, the
+/// resolver landed back on `gone.txt`'s card.
+fn shared_done(app: &App, state: &AppState) -> AppState {
+    let state = click_file(app, state, "shared.rs");
+    let state = app.pump(state, "shared.rs", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.path == Path::new("shared.rs") && open.file.is_some())
+    });
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = settled(app, state);
+    assert_eq!(open(&state).file.as_ref().expect("a document").open(), 0);
+    let state = app.key(&state, KeyCode::Enter);
+    app.pump(state, "shared.rs staged, on to gone.txt", |state| {
+        state.operating.is_none()
+            && state.status_read.is_none()
+            && state
+                .resolver
+                .as_ref()
+                .is_some_and(|open| open.path == Path::new("gone.txt") && open.whole_file.is_some())
+            && rows(state)
+                .iter()
+                .any(|(path, row)| path == "shared.rs" && *row == RowState::Done)
+    })
 }
 
 /// The journey `d` exists for: a marker file taken, marked done, opened
@@ -245,43 +278,34 @@ fn a_done_file_opens_read_only_and_d_starts_it_over() {
 fn a_done_marker_file_starts_over_in_place() {
     let scratch = super::restart::app_merge_with_a_whole_file_conflict();
     let repo = scratch.path().to_owned();
-    let (app, state) = crate::app_harness::App::open(&repo);
-    let state = crate::conflict_interim::stopped_on_the_conflict(&app, state);
-    // `⏎` on the banner opens git's first conflicted path, `gone.txt`'s card.
-    let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the card and the set", |state| {
-        state
-            .resolver
-            .as_ref()
-            .is_some_and(|open| open.whole_file.is_some() && open.set_job.is_none())
-    });
-    let state = click_file(&app, &state, "shared.rs");
-    let state = app.pump(state, "shared.rs", |state| {
-        state
-            .resolver
-            .as_ref()
-            .is_some_and(|open| open.path == Path::new("shared.rs") && open.file.is_some())
-    });
-    let state = app.key(&state, KeyCode::Char('o'));
-    let state = settled(&app, state);
-    assert_eq!(open(&state).file.as_ref().expect("a document").open(), 0);
-    let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "shared.rs staged, on to gone.txt", |state| {
-        state.operating.is_none()
-            && state.status_read.is_none()
-            && state
-                .resolver
-                .as_ref()
-                .is_some_and(|open| open.path == Path::new("gone.txt") && open.whole_file.is_some())
-            && rows(state)
-                .iter()
-                .any(|(path, row)| path == "shared.rs" && *row == RowState::Done)
-    });
+    let (app, state) = on_gone_card(&scratch);
+    let state = shared_done(&app, &state);
     let before = listed_names(&state);
     assert_eq!(before, ["gone.txt", "shared.rs"]);
-    let state = done_open(&app, &state, "shared.rs");
+    // The journey from the landing after `⏎` (design note J11,
+    // `walk-back-a-done-file`): click row · `d` · `→` · `⏎` = 4 inputs.
+    // Every input the user gives goes through `input`, which counts it; the
+    // pumps between them are the app answering, not the user.
+    let mut inputs = 0;
+    let mut input = |state: &AppState, step: &dyn Fn(&AppState) -> AppState| {
+        inputs += 1;
+        step(state)
+    };
+    let state = input(&state, &|state| click_file(&app, state, "shared.rs"));
+    let state = app.pump(state, "the done file's read", |state| {
+        state.resolver.as_ref().is_some_and(|open| {
+            open.path == Path::new("shared.rs") && open.job.is_none() && open.done.is_some()
+        })
+    });
+    let cell = gone_like_column(&crate::captures::frame(&state, 120, 40), "shared.rs");
     assert!(!porcelain(&repo, "shared.rs").contains('U'));
-    let state = start_over(&app, &state);
+    let state = input(&state, &|state| app.key(state, KeyCode::Char('d')));
+    assert!(state.confirm.is_some(), "d's box: {:?}", state.status);
+    let state = input(&state, &|state| app.key(state, KeyCode::Right));
+    let state = input(&state, &|state| app.key(state, KeyCode::Enter));
+    assert!(state.operating.is_some(), "{:?}", state.status);
+    assert_eq!(inputs, 4, "the note's walk-back-a-done-file count");
+    let state = app.pump(state, "the restart", |state| state.operating.is_none());
     let state = app.pump(state, "shared.rs read again, and the status", |state| {
         state.status_read.is_none()
             && state.resolver.as_ref().is_some_and(|open| {
@@ -293,9 +317,15 @@ fn a_done_marker_file_starts_over_in_place() {
     });
     assert_eq!(porcelain(&repo, "shared.rs"), "UU");
     assert_eq!(open(&state).done, None);
+    assert_eq!(open(&state).cursor_block, Some(0), "the cursor on block 0");
     let frame = crate::captures::frame(&state, 120, 40);
     let body = frame.join("\n");
     assert!(frame[1].contains("▸ shared.rs · 1 of 1 open"), "{body}");
+    assert_eq!(
+        gone_like_column(&frame, "shared.rs"),
+        cell,
+        "the same cell: {body}"
+    );
     // Its place in the list, not its column: the strip packs its cells, and
     // `gone.txt`'s cell is two narrower once its `▸` has gone.
     assert_eq!(
@@ -309,7 +339,9 @@ fn a_done_marker_file_starts_over_in_place() {
 }
 
 /// A done file opened read-only: the list with `▸` on the done row, its
-/// identity row, its plain lines, and the done bar.
+/// identity row, its plain lines, and the done bar. The merge was begun in
+/// the shell, so nothing kept `gone.txt`'s stages: no `d` on the row or the
+/// bar (m6-conflicts/28).
 #[test]
 fn done_open_capture() {
     let scratch = gone_and_notes_merge();
@@ -322,10 +354,8 @@ fn done_open_capture() {
     for (columns, rows) in [(120u16, 40u16), (200, 50), (187, 50)] {
         let frame = crate::captures::frame(&state, columns, rows);
         let body = frame.join("\n");
-        assert!(
-            body.contains("▸ gone.txt · done ✓ · d starts it over"),
-            "{body}"
-        );
+        assert!(body.contains("▸ gone.txt · done ✓"), "{body}");
+        assert!(!body.contains("d starts it over"), "{body}");
         // `o` kept ours: the file on disk is main's plan.
         assert!(body.contains("our plan"), "{body}");
         // A done file has no sides left: one document at every width, never
@@ -335,7 +365,7 @@ fn done_open_capture() {
         assert!(
             frame
                 .last()
-                .is_some_and(|bar| bar.trim() == "d start over  e edit  esc close"),
+                .is_some_and(|bar| bar.trim() == "e edit  esc close"),
             "{body}"
         );
         if columns == 120 {
@@ -621,3 +651,5 @@ fn n_on_a_card_crosses_to_the_next_file_in_list_order() {
     app.close();
     drop(scratch);
 }
+
+mod start_over;

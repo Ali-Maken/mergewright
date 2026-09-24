@@ -18,7 +18,11 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             conflicted,
         } => banner_list(*skippable, *conflicted),
         HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
-        HintContext::Resolver { done: true, .. } => resolver_done_list(),
+        HintContext::Resolver {
+            done: true,
+            restart,
+            ..
+        } => resolver_done_list(*restart),
         HintContext::Resolver {
             base,
             restart,
@@ -296,11 +300,15 @@ fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
 }
 
 /// A done file, read-only (m6-conflicts/25): `d start over  e edit  esc
-/// close`. Every other resolver key is refused there in words.
-fn resolver_done_list() -> Vec<Hint> {
-    vec![
-        hint("d", "start over"),
-        hint("e", "edit"),
-        hint("esc", "close"),
-    ]
+/// close`, or `e edit  esc close` where ops cannot start it over
+/// (m6-conflicts/28: a key shown must work). Every other resolver key is
+/// refused there in words.
+fn resolver_done_list(restart: bool) -> Vec<Hint> {
+    let mut list = Vec::with_capacity(3);
+    if restart {
+        list.push(hint("d", "start over"));
+    }
+    list.push(hint("e", "edit"));
+    list.push(hint("esc", "close"));
+    list
 }

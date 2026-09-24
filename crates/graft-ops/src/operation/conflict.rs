@@ -235,7 +235,7 @@ pub(super) fn plan_resolve(params: &ResolveWholeParams) -> Vec<Invocation> {
 ///
 /// The way out of a one-sided shape is the whole-file resolution the resolver
 /// already offers, which is what the refusal's words say.
-pub(super) fn check_restart(path: &Path, facts: &RepoFacts) -> Result<(), Refusal> {
+pub(crate) fn check_restart(path: &Path, facts: &RepoFacts) -> Result<(), Refusal> {
     let Some(how) = facts
         .status
         .entry(path)

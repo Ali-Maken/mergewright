@@ -1,14 +1,26 @@
 //! A **done** file, open read-only (m6-conflicts/25): one git no longer
-//! calls unmerged, shown as it stands on disk. `d` starts it over, `e`
-//! edits it, `Esc` closes; every key that would take, stage or walk is
-//! refused in words by [`done_refusal`].
+//! calls unmerged, shown as it stands on disk. `d` starts it over where ops
+//! can (m6-conflicts/28), `e` edits it, `Esc` closes; every key that would
+//! take, stage or walk is refused in words by [`done_refusal`].
 
 use std::sync::Arc;
 
+use graft_core::event::{KeyCode, KeyPress};
 use graft_ops::conflict::DoneFile;
 
 use super::files::remember;
+use crate::jobs::conflict::StartOver;
 use crate::update::state::AppState;
+
+/// A done file as the resolver holds it: what it is, and whether `d` can
+/// start it over — ops' answer, asked when it opened (m6-conflicts/28).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DoneOpen {
+    /// What the read found.
+    pub shape: DoneShape,
+    /// Whether `d` opens the box.
+    pub start_over: StartOver,
+}
 
 /// What the resolver shows of a done file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,21 +45,39 @@ pub enum DoneShape {
 }
 
 /// **The one site for the words a done file refuses a key with**: `Some`
-/// while the open file is done, `None` otherwise.
+/// while the open file is done, `None` otherwise. `<path> is done · d starts
+/// it over` where `d` would open the box, `<path> is done` where it would
+/// not (m6-conflicts/28) — the words never offer a key that answers "can't".
 ///
-/// The resolver's `o t b ⏎ B M n N` ask it first. A ticket binding another
-/// key that would take or stage (`Ctrl+O`/`Ctrl+T`, `O`/`T`) calls it first
-/// too.
+/// The resolver's `o t b ⏎ B n N` ask it first (see [`refuses`]); `M` is
+/// asked here too, ahead of the hand-over's own refusal. A ticket binding
+/// another key that would take or stage (`Ctrl+O`/`Ctrl+T`, `O`/`T`) calls
+/// it first too.
 #[must_use]
 pub fn done_refusal(state: &AppState) -> Option<String> {
     let open = state.resolver.as_ref()?;
-    open.done
-        .as_ref()
-        .map(|_| format!("{} is done · d starts it over", open.path.display()))
+    open.done.as_ref()?;
+    let path = open.path.display();
+    Some(match super::restart::start_over_refusal(state) {
+        None => format!("{path} is done · d starts it over"),
+        Some(_) => format!("{path} is done"),
+    })
+}
+
+/// `act`'s done gate: the keys a done file refuses through [`done_refusal`]
+/// — every one that would take, stage, load a base, hand to a mergetool or
+/// walk. `d`, `e`, `Esc` and the scroll keys act as ever.
+pub(super) fn refuses(key: &KeyPress) -> bool {
+    let plain = !key.modifiers.control && !key.modifiers.alt;
+    plain
+        && matches!(
+            key.code,
+            KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'n' | 'N') | KeyCode::Enter
+        )
 }
 
 /// The done route's read landed.
-pub(super) fn done_arrived(state: &mut AppState, done: &DoneFile) {
+pub(super) fn done_arrived(state: &mut AppState, done: &DoneFile, start_over: StartOver) {
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -66,28 +96,26 @@ pub(super) fn done_arrived(state: &mut AppState, done: &DoneFile) {
         ),
         DoneFile::Removed => (None, DoneShape::Removed),
     };
-    settle(open, file, shape);
+    settle(open, file, DoneOpen { shape, start_over });
 }
 
 /// The done route's read failed: kept open on that path, as a card saying
-/// why. Closing would lose the list the user clicked in.
-pub(super) fn done_unreadable(state: &mut AppState, why: &str) {
+/// why. Closing would lose the list the user clicked in. The start-over
+/// answer was asked before the read, so the card still carries it.
+pub(super) fn done_unreadable(state: &mut AppState, why: &str, start_over: StartOver) {
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
-    settle(
-        open,
-        None,
-        DoneShape::Unreadable {
-            why: why.to_owned(),
-        },
-    );
+    let shape = DoneShape::Unreadable {
+        why: why.to_owned(),
+    };
+    settle(open, None, DoneOpen { shape, start_over });
 }
 
 fn settle(
     open: &mut super::ResolverState,
     file: Option<Arc<graft_git::conflict::ConflictFile>>,
-    shape: DoneShape,
+    done: DoneOpen,
 ) {
     open.job = None;
     open.base_job = None;
@@ -98,7 +126,7 @@ fn settle(
     open.cursor_block = None;
     open.top = 0;
     open.base_shown = false;
-    open.done = Some(shape);
-    open.notice = open.notice.take().filter(|(_, problem)| !problem);
+    open.done = Some(done);
+    open.notice = super::answers::landing_notice(open);
     remember(open);
 }

@@ -1929,7 +1929,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 31;
+const COVERAGE_SLOTS: usize = 32;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1965,7 +1965,11 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,
-        HintContext::Resolver { done: true, .. } => 30,
+        HintContext::Resolver {
+            done: true,
+            restart,
+            ..
+        } => 30 + usize::from(!*restart),
         HintContext::Resolver {
             base,
             restart,
