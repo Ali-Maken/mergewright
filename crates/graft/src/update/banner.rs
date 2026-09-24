@@ -43,7 +43,7 @@ use super::state::{AppState, Status};
 mod stop;
 
 use stop::{finished_lands_on_head, stopped_again};
-pub use stop::{one_tab_to_banner, stop_line, stop_reason};
+pub use stop::{one_tab_to_banner, stop_line, stop_line_wordings, stop_reason, stop_wordings};
 pub(super) use stop::{refs_answered, walk_started};
 
 /// The banner's word for an operation, as the header draws it.

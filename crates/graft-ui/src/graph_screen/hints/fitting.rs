@@ -179,21 +179,49 @@ pub fn hints_text(hints: &[Hint]) -> String {
     line
 }
 
+/// Why the live operation stopped, as wordings from fullest to shortest
+/// (m6-conflicts/24, review m6-amend-11-12 M1).
+///
+/// `graft` writes the ladder because only it knows which parts matter
+/// least: each shorter wording drops whole parts (`begun outside Graft`,
+/// then `from a previous run`, then the step, then the count), so a number
+/// is drawn whole or not at all. [`stopped_row`] takes the first that fits
+/// and only ever cuts the **last**, which must therefore carry no number.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StopWording {
+    full: SanitizedText,
+    shorter: Vec<SanitizedText>,
+}
+
+impl StopWording {
+    /// `full` first, then each `shorter` wording in the order to try them.
+    #[must_use]
+    pub fn new(full: SanitizedText, shorter: Vec<SanitizedText>) -> Self {
+        Self { full, shorter }
+    }
+
+    /// The fullest wording.
+    #[must_use]
+    pub fn full(&self) -> &SanitizedText {
+        &self.full
+    }
+}
+
 /// The bottom row while an operation is stopped: `<reason> · <bar>`
 /// (m6-conflicts/12, scope item 3).
 ///
 /// `hints` is the bar **already fitted at `columns`** by its own ladder
 /// ([`hints_for`]), so the keys are never what gives: the reason takes what
-/// the bar leaves, cut with `…`, and only while that is at least twelve
-/// cells — a reason shorter than that says nothing a reader can use.
-/// Otherwise the row is the bar alone; the header banner still names the
-/// operation.
+/// the bar leaves — the fullest [`StopWording`] that fits whole, else the
+/// shortest cut with `…` — and only while that is at least twelve cells; a
+/// reason shorter than that says nothing a reader can use. Otherwise the row
+/// is the bar alone; the header banner still names the operation.
 ///
 /// Beside the focused banner's short fixed list the reason shows. Beside a
 /// laddered row bar (after `Esc`) the ladder usually fills the row and the
 /// reason drops — accepted in the ticket.
 #[must_use]
-pub fn stopped_row(reason: &SanitizedText, hints: &[Hint], columns: u16) -> String {
+pub fn stopped_row(reason: &StopWording, hints: &[Hint], columns: u16) -> String {
     /// The narrowest reason worth drawing.
     const MIN_REASON: usize = 12;
     let bar = hints_text(hints);
@@ -205,13 +233,20 @@ pub fn stopped_row(reason: &SanitizedText, hints: &[Hint], columns: u16) -> Stri
     if room < MIN_REASON {
         return bar;
     }
-    // `fit` pads as well as cuts; a reason that already fits is drawn as
-    // it is, so the ` ·` sits right after it.
-    let reason = if text_width(reason.as_str()) <= room {
-        reason.as_str().to_owned()
-    } else {
-        fit(reason.as_str(), room)
-    };
+    let whole = std::iter::once(&reason.full)
+        .chain(&reason.shorter)
+        .map(SanitizedText::as_str)
+        .find(|wording| text_width(wording) <= room);
+    // `fit` pads as well as cuts, so it is kept for the one wording that
+    // really needs cutting; a wording that fits is drawn as it is, so the
+    // ` ·` sits right after it.
+    let reason = whole.map_or_else(
+        || {
+            let shortest = reason.shorter.last().unwrap_or(&reason.full);
+            fit(shortest.as_str(), room)
+        },
+        str::to_owned,
+    );
     format!(" {reason} ·{bar}")
 }
 

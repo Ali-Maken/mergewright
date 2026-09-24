@@ -33,8 +33,8 @@ use graft_term::SanitizedText;
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use columns::{absolute_date, initials, relative_date, short_sha};
 pub use hints::{
-    Divider, Hint, HintContext, HintState, Rung, every_context, every_hint, fit_status_line,
-    hints_for, hints_text, stopped_row,
+    Divider, Hint, HintContext, HintState, Rung, StopWording, every_context, every_hint,
+    fit_status_line, hints_for, hints_text, stopped_row,
 };
 pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,
@@ -143,7 +143,7 @@ pub struct GraphView<'a> {
     /// of the key hints on their row ([`stopped_row`]) — the last rung of
     /// the footer, so a problem, a search, a notice, the compare base and a
     /// reveal all still win. `None` while nothing is stopped.
-    pub stopped: Option<SanitizedText>,
+    pub stopped: Option<StopWording>,
     /// The commit-graph offer's footer line (m1-the-graph/54): directly above
     /// the hints, below a notice. Costs one graph row while `Some`; `None`
     /// for a repository with a commit-graph, the common case.

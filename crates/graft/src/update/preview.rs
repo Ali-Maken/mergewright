@@ -454,10 +454,17 @@ fn confirm_by_key(
     confirm_preview(state, commands, next_id);
 }
 
-/// The footer keys a box for `subject` names: `y confirm` for any
-/// operation preview, and the opening verb when it confirms again.
-fn footer_keys(mut view: PreviewBox, subject: &PreviewSubject) -> PreviewBox {
-    if let PreviewSubject::Operation { opened_by, .. } = subject {
+/// The footer keys a box for `preview` names: `y confirm` for an operation
+/// preview, and the opening verb when it confirms again — but only where
+/// [`confirm_by_key`] answers them: a plan that can act, or one still
+/// planning, where the key is waiting for the picture rather than dead. A
+/// closing box and a can't-act plan name neither (`02-keymap.md:111`,
+/// review m6-amend-11-12 Minor 1).
+fn footer_keys(mut view: PreviewBox, preview: &PreviewState) -> PreviewBox {
+    if !(preview.acts() || preview.planning()) {
+        return view;
+    }
+    if let PreviewSubject::Operation { opened_by, .. } = &preview.subject {
         view.confirm_key = true;
         view.again = match *opened_by {
             "m" => Some((sanitize_line("m"), sanitize_line("merge"))),
@@ -739,10 +746,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
             }
         }
     };
-    Some(with_cursor(
-        footer_keys(view, &preview.subject),
-        preview.cursor,
-    ))
+    Some(with_cursor(footer_keys(view, preview), preview.cursor))
 }
 
 /// A box with nothing to confirm: one line saying why, and `Close`.

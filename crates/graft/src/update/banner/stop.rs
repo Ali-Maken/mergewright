@@ -80,14 +80,18 @@ pub(in crate::update) fn refs_answered(
     }
 }
 
-/// A history walk started. The one [`AppState::head_landing`] waits on is
-/// spent here, after `update::history_started` has put the fresh walk in.
-pub(in crate::update) fn walk_started(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    id: JobId,
-) {
-    if state.land_on_head && state.head_landing.walk == Some(id) {
+/// A history walk started, and `update::history_started` has put it in.
+///
+/// Spends [`AppState::head_landing`]'s walk whether or not this is the walk
+/// the landing named: `history_started` only lets through the walk
+/// `AppState::awaiting` names, and after `resumed`'s refresh that is its
+/// walk or one a later refresh put in its place — either way a walk begun
+/// after the `c`, so fresh enough to land in. Matching the id alone left the
+/// landing owed for good when `Ctrl+R` replaced the walk before it started:
+/// the superseded `Started` never gets here (m6-conflicts/24, review
+/// m6-amend-11-12 Minor 3; `a_refresh_before_the_walk_starts_still_lands_on_head`).
+pub(in crate::update) fn walk_started(state: &mut AppState, commands: &mut Vec<Command>) {
+    if state.land_on_head && state.head_landing.walk.is_some() {
         state.head_landing.walk = None;
         land_on_head(state, commands);
     }
@@ -111,9 +115,18 @@ fn land_on_head(state: &mut AppState, commands: &mut Vec<Command>) {
     state.on_working_tree = false;
     let height = state.graph_rows();
     let Some(history) = state.history.as_mut() else {
+        // Not reached: the walk half of the landing is spent only in
+        // `walk_started`, which `update::history_started` calls just after
+        // putting the fresh history in, and nothing clears it after. Were
+        // it `None`, there would be no rows to put a cursor on, so dropping
+        // the landing loses nothing the screen could show.
         return;
     };
     let request = history.seek(head, height);
+    // With no walk running (it finished, failed or was cancelled) nothing
+    // can answer a request, so it is dropped, the same way every cursor
+    // motion drops one (`keys::move_cursor`); the seek has already moved the
+    // cursor as far as the resident rows allow.
     if let (Some(request), Some(walk)) = (request, state.awaiting) {
         commands.push(Command::ShowRows(walk, request));
     }
@@ -134,35 +147,94 @@ pub fn stop_reason(
     stop: &crate::update::state::Stop,
     live: Option<(&InProgressDetail, usize)>,
 ) -> String {
-    use crate::update::relaunch::LiveOrigin;
+    Wording::of(stop, live).words(true, true, true)
+}
 
-    let same_kind = live.filter(|(detail, _)| detail.kind == stop.kind);
-    let at_step = same_kind.and_then(|(detail, _)| detail.step);
-    let count = same_kind.map_or(stop.paths_at_stop, |(_, count)| count);
-    let name = stop.kind.name();
-    let mut reason = match stop.origin {
-        LiveOrigin::ThisRun => {
-            let again = if stop.again { " again" } else { "" };
-            let at = at_step.map_or_else(String::new, |(at, of)| format!(" at step {at} of {of}"));
-            format!("{name} stopped{again}{at}")
+/// [`stop_reason`] and the shorter wordings the footer falls back to when
+/// the full one does not fit (m6-conflicts/24, review m6-amend-11-12 M1),
+/// fullest first. Each drops whole parts, lowest value first: `begun outside
+/// Graft` / `from a previous run`, then the step, then the count. So the
+/// count is drawn whole or not at all, and the last wording — the only one
+/// the footer ever cuts — carries no number.
+#[must_use]
+pub fn stop_wordings(
+    stop: &crate::update::state::Stop,
+    live: Option<(&InProgressDetail, usize)>,
+) -> Vec<String> {
+    let wording = Wording::of(stop, live);
+    let mut rungs: Vec<String> = Vec::with_capacity(4);
+    for (origin, step, count) in [
+        (true, true, true),
+        (false, true, true),
+        (false, false, true),
+        (false, false, false),
+    ] {
+        let words = wording.words(origin, step, count);
+        // A part the stop does not have drops nothing: skip the repeat.
+        if rungs.last() != Some(&words) {
+            rungs.push(words);
         }
-        LiveOrigin::PreviousRun | LiveOrigin::OutsideGraft => {
-            let mut words = if stop.origin == LiveOrigin::PreviousRun {
-                format!("{name} still in progress from a previous run")
-            } else {
-                format!("{name} in progress \u{b7} begun outside Graft")
-            };
-            if let Some((at, of)) = at_step {
-                words.push_str(&format!(" \u{b7} step {at} of {of}"));
-            }
-            words
-        }
-    };
-    if count > 0 {
-        let files = if count == 1 { "file" } else { "files" };
-        reason.push_str(&format!(" \u{b7} {count} {files} conflicted"));
     }
-    reason
+    rungs
+}
+
+/// The facts [`stop_reason`] words, gathered once for every wording.
+struct Wording {
+    name: &'static str,
+    origin: crate::update::relaunch::LiveOrigin,
+    again: bool,
+    at_step: Option<(u32, u32)>,
+    count: usize,
+}
+
+impl Wording {
+    /// `live` counts only when its kind is the stop's (see [`stop_reason`]).
+    fn of(stop: &crate::update::state::Stop, live: Option<(&InProgressDetail, usize)>) -> Self {
+        let same_kind = live.filter(|(detail, _)| detail.kind == stop.kind);
+        Self {
+            name: stop.kind.name(),
+            origin: stop.origin,
+            again: stop.again,
+            at_step: same_kind.and_then(|(detail, _)| detail.step),
+            count: same_kind.map_or(stop.paths_at_stop, |(_, count)| count),
+        }
+    }
+
+    /// The words with or without each droppable part: who began it
+    /// (`origin`), the step, the count.
+    fn words(&self, origin: bool, step: bool, count: bool) -> String {
+        use crate::update::relaunch::LiveOrigin;
+
+        let name = self.name;
+        let at_step = self.at_step.filter(|_| step);
+        let mut reason = match self.origin {
+            LiveOrigin::ThisRun => {
+                let again = if self.again { " again" } else { "" };
+                let at =
+                    at_step.map_or_else(String::new, |(at, of)| format!(" at step {at} of {of}"));
+                format!("{name} stopped{again}{at}")
+            }
+            LiveOrigin::PreviousRun | LiveOrigin::OutsideGraft => {
+                let mut words = match (self.origin, origin) {
+                    (LiveOrigin::PreviousRun, true) => {
+                        format!("{name} still in progress from a previous run")
+                    }
+                    (LiveOrigin::PreviousRun, false) => format!("{name} still in progress"),
+                    (_, true) => format!("{name} in progress \u{b7} begun outside Graft"),
+                    (_, false) => format!("{name} in progress"),
+                };
+                if let Some((at, of)) = at_step {
+                    words.push_str(&format!(" \u{b7} step {at} of {of}"));
+                }
+                words
+            }
+        };
+        if count && self.count > 0 {
+            let files = if self.count == 1 { "file" } else { "files" };
+            reason.push_str(&format!(" \u{b7} {} {files} conflicted", self.count));
+        }
+        reason
+    }
 }
 
 /// [`stop_reason`] for the stop standing in `state`, worded from its last
@@ -173,6 +245,17 @@ pub fn stop_line(state: &AppState) -> Option<String> {
     let count = unmerged_paths(state).len();
     let live = state.in_progress.as_ref().map(|detail| (detail, count));
     Some(stop_reason(stop, live))
+}
+
+/// [`stop_wordings`] for the stop standing in `state`, worded like
+/// [`stop_line`] (whose words are the first). `None` while nothing is
+/// stopped.
+#[must_use]
+pub fn stop_line_wordings(state: &AppState) -> Option<Vec<String>> {
+    let stop = state.stopped.as_ref()?;
+    let count = unmerged_paths(state).len();
+    let live = state.in_progress.as_ref().map(|detail| (detail, count));
+    Some(stop_wordings(stop, live))
 }
 
 /// One `Tab` from here lands on the banner, and nothing modal stands in the

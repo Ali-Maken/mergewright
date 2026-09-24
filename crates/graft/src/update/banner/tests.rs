@@ -1208,7 +1208,7 @@ fn the_count_follows_the_read() {
     };
     let line = crate::view::rows::stopped_line(&state).expect("a stop is standing");
     assert_eq!(
-        line.as_str(),
+        line.full().as_str(),
         "merge stopped · 2 files conflicted",
         "the control"
     );
@@ -1217,7 +1217,55 @@ fn the_count_follows_the_read() {
         working_tree(Some(detail(InProgress::Merge, None)), &["b.rs"]),
     );
     let line = crate::view::rows::stopped_line(&state).expect("a stop is standing");
-    assert_eq!(line.as_str(), "merge stopped · 1 file conflicted");
+    assert_eq!(line.full().as_str(), "merge stopped · 1 file conflicted");
+}
+
+/// Review m6-amend-11-12 M1: the shorter wordings the footer falls back to
+/// drop whole parts — who began it, then the step, then the count — so the
+/// count is never cut inside, and the last wording carries no number.
+#[test]
+fn stop_wordings_drop_whole_parts_lowest_value_first() {
+    let merge = detail(InProgress::Merge, None);
+    assert_eq!(
+        super::stop_wordings(
+            &stop(LiveOrigin::OutsideGraft, false, InProgress::Merge, 13),
+            Some((&merge, 13)),
+        ),
+        [
+            "merge in progress · begun outside Graft · 13 files conflicted",
+            "merge in progress · 13 files conflicted",
+            "merge in progress",
+        ]
+    );
+    let rebase = detail(InProgress::Rebase, Some((3, 7)));
+    assert_eq!(
+        super::stop_wordings(
+            &stop(LiveOrigin::PreviousRun, false, InProgress::Rebase, 2),
+            Some((&rebase, 2)),
+        ),
+        [
+            "rebase still in progress from a previous run · step 3 of 7 · 2 files conflicted",
+            "rebase still in progress · step 3 of 7 · 2 files conflicted",
+            "rebase still in progress · 2 files conflicted",
+            "rebase still in progress",
+        ]
+    );
+    let again = detail(InProgress::Rebase, Some((4, 7)));
+    let this_run = stop(LiveOrigin::ThisRun, true, InProgress::Rebase, 1);
+    let wordings = super::stop_wordings(&this_run, Some((&again, 1)));
+    assert_eq!(
+        wordings,
+        [
+            "rebase stopped again at step 4 of 7 · 1 file conflicted",
+            "rebase stopped again · 1 file conflicted",
+            "rebase stopped again",
+        ]
+    );
+    // The first wording is `stop_reason`'s, always.
+    assert_eq!(
+        wordings[0],
+        super::stop_reason(&this_run, Some((&again, 1)))
+    );
 }
 
 fn oid(byte: u8) -> graft_core::oid::Oid {
@@ -1328,4 +1376,63 @@ fn a_stale_refs_answer_does_not_spend_the_landing() {
     );
     assert!(state.land_on_head, "an older read leaves the landing owed");
     assert_eq!(state.head_landing.refs, Some(refs));
+}
+
+/// Review m6-amend-11-12 Minor 3's question: `Ctrl+R` straight after `c`
+/// replaces the walk the landing waits on before it starts, and
+/// `update::history_started` drops the superseded walk's `Started` before
+/// `walk_started` sees it. The landing must still be spent — on the walk
+/// that replaced it — not left owed for good.
+#[test]
+fn a_refresh_before_the_walk_starts_still_lands_on_head() {
+    let (state, refs, first_walk) = continued_rebase();
+    // `Ctrl+R` before the refresh's walk has started.
+    let (state, commands) = crate::update::update(
+        &state,
+        AppEvent::Core(graft_core::event::Event::Key(KeyPress {
+            code: KeyCode::Char('r'),
+            modifiers: graft_core::event::Modifiers {
+                control: true,
+                ..graft_core::event::Modifiers::default()
+            },
+        })),
+    );
+    let second_walk = state.awaiting.expect("the refresh restarts the walk");
+    assert_ne!(second_walk, first_walk, "{commands:?}");
+    // The superseded walk's `Started` still arrives; the new one follows.
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Started(first_walk, crate::update::Task::ReadHistory),
+    );
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Started(second_walk, crate::update::Task::ReadHistory),
+    );
+    let new_head = oid(6);
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Produced(refs, Product::Refs(Ok(refs_at(new_head)))),
+    );
+    assert!(!state.land_on_head, "spent, not owed for good");
+    let asked = state.history.as_ref().expect("a walk").asked;
+    let mut window = crate::view::tests::history_of(6, 0)
+        .window
+        .expect("the fixture has rows");
+    window.request = asked;
+    let (state, _) = crate::update::update(
+        &state,
+        AppEvent::Progress(
+            second_walk,
+            crate::update::Progress::History(crate::history::HistoryUpdate::Window(window)),
+        ),
+    );
+    assert_eq!(
+        state
+            .history
+            .as_ref()
+            .and_then(|history| history.selected())
+            .map(|row| row.commit.id),
+        Some(new_head),
+        "the cursor row is the new HEAD"
+    );
 }

@@ -533,11 +533,9 @@ fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_c
     next.history = Some(history);
     // A finished `--continue` waits on this walk too: a seek into the
     // walk it replaced would be thrown away with it (m6-conflicts/12).
-    banner::walk_started(next, commands, id);
+    banner::walk_started(next, commands);
 }
 
-/// A fact about the repository beside the graph arrived: the system git
-/// check, the refs, or the working tree counts. `answer` routes only those.
 /// A working-tree read came back: the status, git's in-progress state and
 /// the mergetool, and whatever landing they settle.
 fn working_tree_read(
@@ -577,6 +575,8 @@ fn working_tree_read(
     }
 }
 
+/// A fact about the repository beside the graph arrived: the system git
+/// check, the refs, or the working tree counts. `answer` routes only those.
 fn took_fact(
     next: &mut AppState,
     commands: &mut Vec<Command>,

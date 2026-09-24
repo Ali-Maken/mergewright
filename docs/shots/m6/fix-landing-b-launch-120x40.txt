@@ -21,7 +21,7 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- merge in progress · begun outside Graft · 13 files conf… · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · 13 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 274c7d4
 CONFLICTS (13)                ▎

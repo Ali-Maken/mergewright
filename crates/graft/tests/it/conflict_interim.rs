@@ -792,7 +792,7 @@ fn relaunch_into_a_live_conflict() {
     assert_eq!(state.status, Status::Ready);
     stop_line_reads(
         &state,
-        "merge still in progress from a previous run",
+        "merge still in progress",
         &["\u{23ce} resolve", "c continue", "a abort"],
     );
     // Still open on disk: the launch read recovered nothing (as-built §1).
@@ -898,7 +898,7 @@ fn relaunch_lands_on_the_conflict() {
     assert_eq!(state.status, Status::Ready);
     stop_line_reads(
         &state,
-        "rebase still in progress from a previous run",
+        "rebase still in progress",
         &["\u{23ce} resolve", "c continue", "a abort"],
     );
     assert!(
@@ -946,13 +946,13 @@ fn relaunch_with_nothing_conflicted() {
     assert_eq!(state.status, Status::Ready);
     stop_line_reads(
         &state,
-        "rebase still in progress from a previous run",
+        "rebase still in progress",
         &["c continue", "a abort"],
     );
     let drawn = frame(&state, 120, 40);
     let bottom = drawn
         .iter()
-        .find(|line| line.contains("from a previous run"))
+        .find(|line| line.contains("still in progress"))
         .expect("the stop row is drawn");
     assert!(!bottom.contains("resolve"), "nothing to resolve: {bottom}");
     assert!(state.on_changes_pane());
@@ -1533,11 +1533,9 @@ fn capture_banner_for_docs_shots() {
     // Cloned before the pane is opened, because the banner keeps the
     // keyboard through all of it (`detail.focus` is what the tab strip
     // reads, and it is still `Graph` here).
-    // Tab out of the banner and round to it again: the cycle is banner ->
-    // graph -> banner while the pane is closed. Since m6-conflicts/12 the
-    // stop is no sticky line, so the round trip changes nothing on the
-    // footer; it is kept so the shot is taken the way it always was.
-    let on_the_graph = tab_back_to_the_banner(&app, app.key(&state, KeyCode::Tab));
+    let on_the_graph = state.clone();
+    // The focused banner is modal: `Tab` out of it first, or the `k`s that
+    // walk to the changes row are the banner's to swallow.
     let state = app.key(&state, KeyCode::Tab);
     let state = open_changes_pane(&app, state);
     let state = tab_back_to_the_banner(&app, state);

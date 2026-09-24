@@ -21,4 +21,4 @@
 
 
  no commit-graph file · B build one · X never here
- merge stopped ·… · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph

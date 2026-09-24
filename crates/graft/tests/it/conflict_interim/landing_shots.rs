@@ -106,10 +106,14 @@ fn capture_a_launch_into_a_shell_merge() {
 
     for (columns, rows) in [(120u16, 40u16), (187, 50)] {
         let frame = drawn(&app, &state, columns, rows);
-        let row = footer(&frame, "begun outside Graft");
+        let row = footer(&frame, "a abort");
+        // With the pane open the footer is the graph column's width, too
+        // narrow for the whole wording: `begun outside Graft` is dropped
+        // whole, and the count is drawn whole — at 187 it once read `1…`
+        // for 13 (m6-conflicts/24, review m6-amend-11-12 M1).
         assert!(
             row.trim_start()
-                .starts_with("merge in progress \u{b7} begun outside Graft"),
+                .starts_with("merge in progress \u{b7} 13 files conflicted \u{b7}"),
             "{row}"
         );
         assert!(
