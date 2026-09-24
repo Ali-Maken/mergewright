@@ -1023,6 +1023,9 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
         },
         // The walk is named at once, not when its `Started` event lands.
         awaiting: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
+        // So is the refs read: `P` waits on it after a rejection
+        // (m6-conflicts/49).
+        refs_read: RefsRead::Pending(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
         // The working-tree read is named too: the status waits on it.
         status_read: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 5)),
         local_jobs: next.local_jobs,
@@ -1145,6 +1148,7 @@ fn every_field_spelled_out() -> AppState {
         promoting: None,
         history: None,
         refs: None,
+        refs_read: RefsRead::Pending(JobId::new(3)),
         working_tree: None,
         operating: None,
         screen: Screen::Graph,
