@@ -441,7 +441,9 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 - **J3 begun in the shell → first conflict.** Lands on the banner (a launch is not a stop). `⏎`. **1**.
 - **J4 one file, one conflict.** `o` [M] · `⏎`. **2**; P6 `O` **1**. JetBrains 2. Lands on the next file not yet done
   (list order, wrapping), with the list `▸` moved and the notice `notes.txt done ✓ · ▸ gone.txt`. If no file is left,
-  the resolver closes to the banner: `every file done ✓ · c finishes the merge` (P8: it stays in the resolver instead).
+  the resolver closes to the banner, status line `every file done ✓ · c finishes the merge` (`fix-resolver-file-list`
+  R4/R5). After `fix-finish-summary-screen` Part B (P8) it stays in the resolver instead, the words on its notice row; a
+  stash pop still closes to the graph, status line `every file done ✓`.
 - **J5 one file, 3 conflicts, theirs everywhere.** `Ctrl+T ⏎` **2** (the P2 route, `t t t ⏎`, is 4); P6 `T` **1**.
   JetBrains Accept Theirs 1.
 - **J5b modify/delete, keep yours.** `o` on the whole-file card (a git write, marks it done). **1**. JetBrains 1.
@@ -460,7 +462,9 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 **Where each event lands him (additions).**
 - A take → the cursor moves to the next open block (P2).
 - A file done (`⏎`, `O`/`T`, or `o`/`t` on a whole-file card) → the next file not done.
-- The last file done → the banner (P8: the resolver), with the notice `every file done ✓ · c finishes the merge`.
+- The last file done → the banner, status line `every file done ✓ · c finishes the merge` (rebase / cherry-pick /
+  revert: `c continues the …`); stash pop → the graph, `every file done ✓` (ticket 13 R4/R5). ~~P8: the resolver, with
+  the notice~~ superseded 2026-09-24: that is ticket 19 Part B's, words on the resolver's notice row; stash pop still closes.
 - `c` while files are still open → refused with `1 file still conflicted · ⏎ marks done`.
 - `c` on a rebase, cherry-pick or revert → continues with no summary (merge only this milestone; gap row → M7), and the
   next stop lands in the resolver.
@@ -507,20 +511,23 @@ pub struct DocView { …, pub names: SideNames }        // `explainer` removed
 pub struct BlockView { …, pub numbers: BlockNumbers }  // `ours_label`/`theirs_label` removed: `DocView::names` carries them
 // RegionView::Plain.first_line now = the Result projection's number
 
-// graft-ui/src/conflict_resolver/files.rs (new)                         fix-resolver-file-list
-pub struct FileRow { pub name: SanitizedText, pub state: FileState }
-pub enum FileState { Open { open: usize, of: usize }, AllTaken, Done, WholeFile { how: SanitizedText }, Binary, Unread }
-pub struct FileListView { pub rows: Vec<FileRow>, pub cursor: usize }
-pub enum Placement { Column { width: u16 }, Strip { rows: u16 } }
-pub fn placement(view: &FileListView, frame_columns: u16) -> Placement;          // Column iff arrangement(frame_columns) == ThreePane
-pub fn file_at(view: &FileListView, placement: Placement, width: u16, dx: u16, dy: u16) -> Option<usize>;  // offsets from the list's origin
-pub struct FileList<'a> { pub view: &'a FileListView, pub placement: Placement, pub theme: &'a Theme, pub ascii: bool }  // Widget
-pub struct DocView { …, pub files: FileListView }
-
-// graft-ui/src/conflict_resolver.rs                                    fix-resolver-three-panes
+// graft-ui/src/conflict_resolver.rs                                    fix-resolver-file-list (owns these, R1; three-panes consumes)
 pub const THREE_PANE_MIN: u16 = 180;
 pub enum Arrangement { ThreePane, Card }
 pub fn arrangement(frame_columns: u16) -> Arrangement;
+// graft-ui/src/conflict_resolver/files.rs (new)                         fix-resolver-file-list
+pub struct FileRow { pub name: SanitizedText, pub state: FileState }
+pub enum FileState { Open { open: usize, of: usize }, AllTaken, Done, WholeFile { how: SanitizedText }, Binary, Unread }
+pub struct FileListView { pub rows: Vec<FileRow>, pub cursor: usize, pub unavailable: bool }
+pub enum Placement { Column { width: u16 }, Strip { rows: u16 } }
+pub fn placement(view: &FileListView, frame_columns: u16) -> Placement;          // Column iff arrangement(frame_columns) == ThreePane
+pub struct ResolverAreas { pub list: Rect, pub doc: Rect }
+pub fn resolver_areas(area: Rect, placement: Placement) -> ResolverAreas;        // draw and hit-test split the area through this
+pub fn file_at(view: &FileListView, placement: Placement, width: u16, dx: u16, dy: u16) -> Option<usize>;  // offsets from `list`'s origin
+pub struct FileList<'a> { pub view: &'a FileListView, pub placement: Placement, pub theme: &'a Theme, pub ascii: bool }  // Widget
+pub struct DocView { …, pub files: FileListView }
+
+// graft-ui/src/conflict_resolver.rs                                    fix-resolver-three-panes (THREE_PANE_MIN/Arrangement/arrangement moved to file-list above, 2026-09-24)
 pub enum LineRef { Plain { region: usize, i: usize }, Ours { block: usize, i: usize }, Theirs { block: usize, i: usize }, Taken { block: usize, i: usize }, Base { block: usize, i: usize } }
 pub enum Cell { Line { line_no: Option<usize>, text: LineRef }, Pad, Placeholder, Rule }
 pub enum ScreenRow { /* existing */ PaneTitles, Aligned { block: Option<usize>, ours: Cell, result: Cell, theirs: Cell } }
@@ -544,7 +551,13 @@ pub enum Refusal { …, MessageNotHere { kind: InProgress } }                   
 // fix-continue-a-merge-begun-in-the-shell: FinishMergeParams gains `pub message: Option<Vec<u8>>`
 
 // graft (app)                                                          fix-resolver-file-list, fix-finish-summary-screen
-pub struct ResolverState { …, pub files: Loading<Arc<ConflictSet>>, pub file_cursor: usize }
+pub struct ResolverState { …, pub files: Loading<Arc<ConflictSet>>, pub set_job: Option<JobId>, pub seen: BTreeMap<PathBuf, RowState> }
+// was `pub file_cursor: usize` — superseded 2026-09-24 (ticket 13 R2): a function of the open path, cannot drift
+// graft/src/update/resolver/files.rs (new)                              fix-resolver-file-list
+pub enum RowState { Open { open: usize, of: usize }, AllTaken, Done, WholeFile { how: UnmergedHow }, Binary, Unread }
+pub struct ListedFile { pub path: PathBuf, pub state: RowState }
+pub fn listed_files(state: &AppState) -> Vec<ListedFile>;
+pub fn file_cursor(state: &AppState) -> usize;   // index of ResolverState::path in listed_files; 0 when absent
 pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k` if P7
 pub struct Choices { pub takes: Vec<Option<Take>>, pub whole: Option<Side>, pub edited: bool }
 pub struct AppState { …, pub choices: BTreeMap<PathBuf, Choices>, pub finish: Option<FinishState>, pub finish_draft: Option<(String, String)> }
