@@ -197,6 +197,13 @@ fn the_open_files_row_follows_its_document() {
             how: UnmergedHow::DeletedByUs,
             binary,
             on_disk: None,
+            start_over: crate::jobs::conflict::StartOver::Cannot {
+                why: graft_ops::operation::Refusal::NotMarkerShape {
+                    path: std::path::PathBuf::from("gone.txt"),
+                    how: UnmergedHow::DeletedByUs,
+                }
+                .explain(),
+            },
         });
         assert_eq!(states(&card)[0].1, want, "binary {binary}");
     }
@@ -855,6 +862,7 @@ fn d_on_a_done_file_starts_it_over() {
                     how: UnmergedHow::BothModified,
                     binary: false,
                     on_disk: None,
+                    start_over: None,
                 },
             )))),
         ),

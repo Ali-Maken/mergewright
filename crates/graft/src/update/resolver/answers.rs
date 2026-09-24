@@ -71,6 +71,14 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
             how: opened.how,
             binary: opened.binary,
             on_disk: opened.on_disk.clone(),
+            // The job asks ops for every `file: None` open; a missing answer
+            // is a job bug, and hides `d` rather than offer a key ops might
+            // refuse.
+            start_over: opened.start_over.clone().unwrap_or_else(|| {
+                crate::jobs::conflict::StartOver::Cannot {
+                    why: "could not check: not asked".to_owned(),
+                }
+            }),
         });
         open.cursor_block = None;
         open.top = 0;

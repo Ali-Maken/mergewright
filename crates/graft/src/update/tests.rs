@@ -4436,6 +4436,13 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
                 head: Arc::from(vec![b"kept by us".to_vec()]),
                 cut: false,
             }),
+            start_over: crate::jobs::conflict::StartOver::Cannot {
+                why: graft_ops::operation::Refusal::NotMarkerShape {
+                    path: std::path::PathBuf::from("gone.txt"),
+                    how: graft_git::status::UnmergedHow::DeletedByThem,
+                }
+                .explain(),
+            },
         }),
         how: Some(graft_git::status::UnmergedHow::DeletedByThem),
         cursor_block: None,

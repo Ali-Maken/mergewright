@@ -78,18 +78,19 @@ pub(super) fn restart_box(state: &mut AppState) {
 /// Structural only: [`super::write_refusal`] (a write in flight) stays
 /// ahead of it in `restart_box`, and is not a reason to hide `d`.
 ///
-/// - A whole-file card: ops restarts only a shape with markers
-///   (`Refusal::NotMarkerShape`, m6-05 review Major 1).
+/// - A whole-file card: ops' own answer, asked when it opened — a
+///   one-sided shape is `Refusal::NotMarkerShape`; a binary `UU`/`AA` is
+///   whatever ops says (ticket 30: no app copy of the rule).
 /// - A done file: ops' own answer, asked when it opened
 ///   (`jobs::conflict::StartOver`).
 pub(crate) fn start_over_refusal(state: &AppState) -> Option<String> {
     let open = state.resolver.as_ref()?;
     if let Some(whole) = open.whole_file.as_ref() {
-        let refusal = graft_ops::operation::Refusal::NotMarkerShape {
-            path: open.path.clone(),
-            how: whole.how,
+        // Ops' answer, raw: its refusal already names the file and shape.
+        return match &whole.start_over {
+            StartOver::Cannot { why } => Some(why.clone()),
+            StartOver::Can => None,
         };
-        return Some(refusal.explain());
     }
     match open.done.as_ref().map(|done| &done.start_over) {
         Some(StartOver::Cannot { why }) => Some(format!("can't start over · {why}")),

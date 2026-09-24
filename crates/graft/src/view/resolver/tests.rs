@@ -261,6 +261,13 @@ fn whole_file_card_names_theirs_without_markers() {
             how: graft_git::status::UnmergedHow::DeletedByUs,
             binary: false,
             on_disk: None,
+            start_over: crate::jobs::conflict::StartOver::Cannot {
+                why: graft_ops::operation::Refusal::NotMarkerShape {
+                    path: std::path::PathBuf::from("gone.txt"),
+                    how: graft_git::status::UnmergedHow::DeletedByUs,
+                }
+                .explain(),
+            },
         });
     }
     let drawn = frame(&state, 120, 30);
@@ -299,6 +306,13 @@ fn a_card_title_says_what_each_side_did() {
             how: graft_git::status::UnmergedHow::DeletedByThem,
             binary,
             on_disk: None,
+            start_over: crate::jobs::conflict::StartOver::Cannot {
+                why: graft_ops::operation::Refusal::NotMarkerShape {
+                    path: std::path::PathBuf::from("gone.txt"),
+                    how: graft_git::status::UnmergedHow::DeletedByThem,
+                }
+                .explain(),
+            },
         });
         let card = resolver_view(&state, 120).expect("a card");
         let words = "gone.txt · modified on yours · main, deleted on theirs · feature";
