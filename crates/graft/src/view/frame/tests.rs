@@ -260,6 +260,7 @@ fn an_open_resolver() -> crate::update::resolver::ResolverState {
         land_last: false,
         dropped: 0,
         settling: None,
+        whole_side: None,
     }
 }
 

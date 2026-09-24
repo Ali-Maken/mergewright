@@ -225,6 +225,20 @@ pub fn taken(
     }
 }
 
+/// What landed is recorded for the finish summary's words, against the
+/// document the request was applied to — still `open.file` when
+/// `take_landed` calls this (m6-conflicts/19 scope 3). `O`/`T` land here
+/// too, as `Every`.
+fn record_landed(state: &mut AppState, file: &ConflictFile) {
+    if let Some((path, was, Some((at, take)))) = state
+        .resolver
+        .as_ref()
+        .map(|open| (open.path.clone(), open.file.clone(), open.in_flight))
+    {
+        crate::update::finish::record_take(state, &path, was.as_deref(), file, at, take);
+    }
+}
+
 /// What the landing take says: for an `Every` entry its side and how many
 /// blocks it took — the blocks the request's document had open, read at
 /// landing rather than carried (m6-16 D2): `take_landed` sends each request
@@ -270,6 +284,7 @@ pub(super) fn take_landed(
     let total = blocks.len();
     let (bulk, side) = landed_words(state, &blocks);
     let was_bulk = bulk.is_some();
+    record_landed(state, file);
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
@@ -380,6 +395,7 @@ pub fn write_not_landed(state: &mut AppState, id: JobId) {
     };
     if open.staging == Some(id) {
         open.staging = None;
+        open.whole_side = None;
     }
     if open.restarting == Some(id) {
         open.restarting = None;

@@ -14,6 +14,7 @@ mod base;
 mod card_names;
 mod file_keys;
 mod file_list;
+pub(crate) use file_list::gone_notes_and_readme_merge;
 mod handover;
 mod last_file;
 mod modal;
@@ -48,7 +49,7 @@ fn stopped(shape: Shape) -> (Scratch, App, AppState) {
 }
 
 /// The banner has the keyboard, as it does the moment a stop is discovered.
-fn on_the_banner(app: &App, state: AppState) -> AppState {
+pub(crate) fn on_the_banner(app: &App, state: AppState) -> AppState {
     let mut state = state;
     let mut guard = 0;
     while !state.banner_focus {
@@ -60,7 +61,7 @@ fn on_the_banner(app: &App, state: AppState) -> AppState {
 }
 
 /// The changes pane, with the cursor on `path`'s row.
-fn on_the_row(app: &App, state: AppState, path: &str) -> AppState {
+pub(crate) fn on_the_row(app: &App, state: AppState, path: &str) -> AppState {
     let mut state = state;
     let mut guard = 0;
     while state.banner_focus {
@@ -73,7 +74,7 @@ fn on_the_row(app: &App, state: AppState, path: &str) -> AppState {
 }
 
 /// The resolver open on `path`, its first read landed.
-fn resolver_on(app: &App, state: AppState, path: &str) -> AppState {
+pub(crate) fn resolver_on(app: &App, state: AppState, path: &str) -> AppState {
     let state = on_the_row(app, state, path);
     let state = app.key(&state, KeyCode::Enter);
     app.pump(state, "the conflict file", |state| {
@@ -86,7 +87,7 @@ fn resolver_on(app: &App, state: AppState, path: &str) -> AppState {
 
 /// The resolver open on `path`, its first read landed — a whole-file shape
 /// (`file` stays `None` forever; [`resolver_on`] waits for it and hangs).
-fn resolver_on_whole_file(app: &App, state: AppState, path: &str) -> AppState {
+pub(crate) fn resolver_on_whole_file(app: &App, state: AppState, path: &str) -> AppState {
     let state = on_the_row(app, state, path);
     let state = app.key(&state, KeyCode::Enter);
     app.pump(state, "the whole-file card", |state| {
@@ -99,12 +100,12 @@ fn resolver_on_whole_file(app: &App, state: AppState, path: &str) -> AppState {
 
 /// The open resolver. Panics if it is closed, which is never what a test
 /// that calls this meant.
-fn open(state: &AppState) -> &graft::update::resolver::ResolverState {
+pub(crate) fn open(state: &AppState) -> &graft::update::resolver::ResolverState {
     state.resolver.as_ref().expect("the resolver is open")
 }
 
 /// Waits for the take or the read in flight to land.
-fn settled(app: &App, state: AppState) -> AppState {
+pub(crate) fn settled(app: &App, state: AppState) -> AppState {
     app.pump(state, "the job the resolver started", |state| {
         state
             .resolver

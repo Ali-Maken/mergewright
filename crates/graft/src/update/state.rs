@@ -324,6 +324,12 @@ pub struct AppState {
     /// was the user's: the next `c` puts it back. Apart from
     /// `commit_draft` (ticket 19 S7). Cleared when the operation ends.
     pub finish_draft: Option<(String, String)>,
+    /// The conflicted path the banner's or changes pane's `e` handed to
+    /// `$EDITOR`, until the terminal comes back: `Product::HandedOver`
+    /// carries no path, and a clean return marks the file `edited` in
+    /// [`Self::choices`] (m6-conflicts/19 scope 3). The resolver's own `e`
+    /// needs none — its open path is the one.
+    pub conflict_editing: Option<std::path::PathBuf>,
 }
 
 /// The screens Graft can show.

@@ -203,6 +203,11 @@ pub struct ResolverState {
     /// inside the one update that sends the Stage — so every refusal keyed
     /// on a take in flight covers a settling file too.
     pub settling: Option<Take>,
+    /// The side a whole-file `o`/`t` asked for, riding with its write in
+    /// [`Self::staging`]: recorded for the finish summary when that write
+    /// lands (`resolved::resolved_advance`), never on the key. `None` for
+    /// `⏎`'s plain stage (m6-conflicts/19 scope 3).
+    pub whole_side: Option<graft_ops::operation::Side>,
 }
 
 /// The most takes held behind the one in flight; the next is refused
@@ -236,6 +241,7 @@ impl ResolverState {
             land_last: false,
             dropped: 0,
             settling: None,
+            whole_side: None,
         }
     }
 

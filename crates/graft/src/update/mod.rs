@@ -287,12 +287,27 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         // other handover this can be (`Ctrl+Z` is swallowed by
         // `resolver_key`, which runs before `suspend_on_ctrl_z`).
         AppEvent::Produced(_, Product::HandedOver(result)) if next.resolver.is_some() => {
-            if let Err(why) = result {
-                next.status = Status::sticky(why);
+            match result {
+                Ok(()) => {
+                    if let Some(path) = next.resolver.as_ref().map(|open| open.path.clone()) {
+                        finish::record_edited(next, &path);
+                    }
+                }
+                Err(why) => next.status = Status::sticky(why),
             }
             let mut local_jobs = next.local_jobs;
             resolver::handed_back(next, commands, &mut || local_jobs.next_id());
             next.local_jobs = local_jobs;
+        }
+        // The banner's (or changes pane's) `e` on a conflicted file came
+        // back: a clean return marks it edited for the finish summary, and
+        // the rest is the commit editor arm's, as before.
+        AppEvent::Produced(id, Product::HandedOver(result)) if next.conflict_editing.is_some() => {
+            let path = next.conflict_editing.take();
+            if let (Ok(()), Some(path)) = (&result, path) {
+                finish::record_edited(next, &path);
+            }
+            commit_editor_answer(next, AppEvent::Produced(id, Product::HandedOver(result)));
         }
         event @ AppEvent::Produced(
             _,
@@ -320,8 +335,10 @@ fn mergetool_returned(
     match result {
         // Nothing to report: the banner and the file list say what the
         // state is now, and a "mergetool ok" line would be a status field
-        // reading like news when nothing happened.
+        // reading like news when nothing happened. The tool had the file:
+        // the finish summary says so (m6-conflicts/19 scope 3).
         Ok(()) => {
+            finish::record_edited(next, path);
             if matches!(next.status, Status::Busy(_)) {
                 next.status = Status::Ready;
             }

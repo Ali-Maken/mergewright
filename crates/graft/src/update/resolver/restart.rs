@@ -119,5 +119,7 @@ pub fn restart_landed(
     if let Some(open) = state.resolver.as_mut() {
         open.restarting = None;
     }
+    // Conflicted afresh: nothing chosen before describes it now.
+    crate::update::finish::forget(state, &path);
     reopen(state, commands, path, from, next_id);
 }

@@ -101,6 +101,7 @@ fn open_on(bytes: &[u8], path: &str) -> AppState {
             land_last: false,
             dropped: 0,
             settling: None,
+            whole_side: None,
         }),
         ..AppState::default()
     }
