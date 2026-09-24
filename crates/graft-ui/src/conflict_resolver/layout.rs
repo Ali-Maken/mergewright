@@ -5,7 +5,8 @@
 use graft_term::SanitizedText;
 
 use super::{
-    BlockState, BlockView, DocView, LabelOf, RegionView, SIDE_BY_SIDE_MIN, SideKind, TakeView,
+    Arrangement, BlockState, BlockView, Cell, DocView, LabelOf, RegionView, SIDE_BY_SIDE_MIN,
+    SideKind, TakeView,
 };
 
 /// One row of the document, as [`layout`] plans it. Carries indices into
@@ -68,6 +69,21 @@ pub enum ScreenRow {
         /// The note.
         text: SanitizedText,
     },
+    /// Three panes: the titles row, `yours · main │ result │ theirs ·
+    /// feature`. A body row: it scrolls with the document.
+    PaneTitles,
+    /// Three panes: one row, level across them. `block` is the block it
+    /// belongs to (its rule row included), `None` for a plain line.
+    Aligned {
+        /// The block this row belongs to, if any.
+        block: Option<usize>,
+        /// The yours pane's cell.
+        ours: Cell,
+        /// The result pane's cell.
+        result: Cell,
+        /// The theirs pane's cell.
+        theirs: Cell,
+    },
 }
 
 /// `doc` laid out at `columns`: every row the widget can draw, and where
@@ -76,25 +92,41 @@ pub enum ScreenRow {
 pub struct Layout {
     /// Every row, in draw order.
     pub rows: Vec<ScreenRow>,
-    /// `block_row[i]` is the row index of block `i`'s [`ScreenRow::Header`].
+    /// `block_row[i]` is the row index of block `i`'s [`ScreenRow::Header`]
+    /// in the card, of its rule row ([`ScreenRow::Aligned`], all
+    /// [`Cell::Rule`]) in the three panes.
     pub block_row: Vec<usize>,
     /// The width this layout was built for.
     pub columns: u16,
 }
 
-/// `doc` laid out at `columns`. Pure and total: returns rows for any
-/// `columns >= 1`, including below [`MIN_COLUMNS`](super::MIN_COLUMNS) (the widget, not the
-/// layout, is what refuses to draw there).
+/// `doc` laid out in `arrangement` at `columns` (the document's own width).
+/// Pure and total: returns rows for any `columns >= 1`, including below
+/// [`MIN_COLUMNS`](super::MIN_COLUMNS) (the widget, not the layout, is what
+/// refuses to draw there).
 #[must_use]
-pub fn layout(doc: &DocView, columns: u16) -> Layout {
+pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout {
+    let (rows, block_row) = match arrangement {
+        Arrangement::Card => card_rows(doc, columns),
+        Arrangement::ThreePane => super::panes::pane_rows(doc),
+    };
+    Layout {
+        rows,
+        block_row,
+        columns,
+    }
+}
+
+/// The card's rows, and each block's header-row index.
+fn card_rows(doc: &DocView, columns: u16) -> (Vec<ScreenRow>, Vec<usize>) {
     let mut rows = Vec::new();
     let mut block_row = Vec::new();
     for region in &doc.regions {
         match region {
-            RegionView::Plain { first_line, lines } => {
+            RegionView::Plain { numbers, lines } => {
                 for (offset, text) in lines.iter().enumerate() {
                     rows.push(ScreenRow::Plain {
-                        line_no: first_line + offset,
+                        line_no: numbers.result + offset,
                         text: text.clone(),
                     });
                 }
@@ -104,6 +136,7 @@ pub fn layout(doc: &DocView, columns: u16) -> Layout {
                 keys,
                 lines,
                 note,
+                ..
             } => {
                 rows.push(ScreenRow::WholeFile {
                     how: how.clone(),
@@ -127,11 +160,7 @@ pub fn layout(doc: &DocView, columns: u16) -> Layout {
             }
         }
     }
-    Layout {
-        rows,
-        block_row,
-        columns,
-    }
+    (rows, block_row)
 }
 
 /// The rows between a block's header and its closing rule.

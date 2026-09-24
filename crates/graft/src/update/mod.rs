@@ -741,6 +741,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
                 commands.push(Command::ShowRows(id, request));
             }
             map::resized(next, commands);
+            resolver::resized(next);
         }
         event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
             if search::searching(next, id) || commit_graph::commit_graph_job(next, id) =>

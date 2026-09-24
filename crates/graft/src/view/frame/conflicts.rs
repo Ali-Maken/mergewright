@@ -38,14 +38,14 @@ pub(super) fn draw_resolver(
         height: body.height.saturating_sub(1),
         ..body
     };
-    // The list first: where it goes decides how wide the document is. The
-    // mouse splits the same area the same way
-    // (`update::resolver::geometry::areas`).
-    let files = crate::view::resolver::file_list_view(state);
-    let placed = graft_ui::conflict_resolver::placement(&files, document.width);
-    let doc_area = graft_ui::conflict_resolver::resolver_areas(document, placed).doc;
-    let doc = crate::view::resolver::resolver_view(state, doc_area.width)?;
-    let laid_out = graft_ui::conflict_resolver::layout(&doc, doc_area.width);
+    // Where the list goes, and so the arrangement and the document's
+    // width, from the one split the mouse uses too (m6-conflicts/14 S5):
+    // `resolver_split` measures `state.size`, which is this frame's area
+    // (seeded from the terminal at startup, updated on every resize), and
+    // it splits the same rows `draw_resolver_banner` and the footer leave.
+    let (_, placed, split) = crate::view::resolver::resolver_split(state, banner_rows);
+    let doc = crate::view::resolver::resolver_view(state, split.doc.width)?;
+    let laid_out = graft_ui::conflict_resolver::layout(&doc, placed.arrangement(), split.doc.width);
     let tier = tier_in_force(session, state);
     frame.render_widget(
         graft_ui::conflict_resolver::ResolverScreen {

@@ -83,6 +83,8 @@ fn whole_file_view(
             )),
             lines: whole_file_lines(whole),
             note: whole_file_note(whole),
+            ours_absent: absent_on(whole.how, Side::Ours, &names),
+            theirs_absent: absent_on(whole.how, Side::Theirs, &names),
         }],
         cursor_block: None,
         base_shown: false,
@@ -91,6 +93,33 @@ fn whole_file_view(
             .as_ref()
             .map(|(text, error)| (sanitize_line(text), *error)),
     }
+}
+
+/// Which side of a whole-file shape a pane shows.
+#[derive(Clone, Copy)]
+enum Side {
+    Ours,
+    Theirs,
+}
+
+/// What `side`'s pane says in place of the file when the file is not on
+/// that side (three panes only): `(deleted on theirs · feature)`, or `(not
+/// on …)` where the other side added it. `None` when the file is there.
+fn absent_on(how: UnmergedHow, side: Side, names: &SideNames) -> Option<SanitizedText> {
+    let name = match side {
+        Side::Ours => names.ours.as_str(),
+        Side::Theirs => names.theirs.as_str(),
+    };
+    let words = match (how, side) {
+        (UnmergedHow::BothDeleted, _)
+        | (UnmergedHow::DeletedByUs, Side::Ours)
+        | (UnmergedHow::DeletedByThem, Side::Theirs) => format!("(deleted on {name})"),
+        (UnmergedHow::AddedByUs, Side::Theirs) | (UnmergedHow::AddedByThem, Side::Ours) => {
+            format!("(not on {name})")
+        }
+        _ => return None,
+    };
+    Some(sanitize_line(&words))
 }
 
 /// A whole-file card's plain-text tail: what is on disk, as far as the
@@ -151,12 +180,15 @@ pub fn size_words(bytes: u64) -> String {
     format!("{}.{} {}", tenths / 10, tenths % 10, UNITS[unit])
 }
 
-/// The open document, laid out at `columns` — the same rows the widget will
-/// draw, so a key that scrolls and a click that lands agree with the
-/// picture by construction (`graft_ui::conflict_resolver::row_at`).
+/// The open document, laid out in the arrangement `placed` belongs to at
+/// `columns` (the document's width) — the same rows the widget will draw,
+/// so a key that scrolls and a click that lands agree with the picture by
+/// construction (`graft_ui::conflict_resolver::row_at`). Both `placed` and
+/// `columns` come from [`resolver_split`], the draw's as much as the
+/// mouse's: the frame's width is measured once, there (m6-conflicts/14 S5).
 #[must_use]
-pub fn resolver_layout(state: &AppState, columns: u16) -> Option<Layout> {
-    resolver_view(state, columns).map(|doc| layout(&doc, columns))
+pub fn resolver_layout(state: &AppState, placed: Placement, columns: u16) -> Option<Layout> {
+    resolver_view(state, columns).map(|doc| layout(&doc, placed.arrangement(), columns))
 }
 
 /// What the file identity row says after the path.
@@ -267,8 +299,9 @@ pub fn file_list_view(state: &AppState) -> FileListView {
 }
 
 /// The document's regions, in file order, with every byte sanitised. Each
-/// line is numbered by its own projection (ADR-0043 §5): plain lines by the
-/// result, an open block's sides by ours and theirs.
+/// region carries its first line in every projection (ADR-0043 §5): the
+/// card numbers plain lines by the result, the three panes each pane by its
+/// own.
 fn regions(file: &ConflictFile) -> Vec<RegionView> {
     let at = file.blocks();
     let ours = file.first_lines(Projection::Ours);
@@ -285,7 +318,7 @@ fn regions(file: &ConflictFile) -> Vec<RegionView> {
         let (block, state) = match region {
             Region::Plain(lines) => {
                 out.push(RegionView::Plain {
-                    first_line: result[r],
+                    numbers,
                     lines: lines.iter().map(text_of).collect(),
                 });
                 continue;
@@ -368,6 +401,23 @@ fn take_view(take: Take) -> TakeView {
     }
 }
 
+/// The whole frame as `view` draws it at `state.size`, one string per row
+/// — for `update`'s tests, which must not name the terminal library
+/// themselves (`update::tests::update_cannot_reach_the_world`).
+#[cfg(test)]
+pub(crate) fn drawn_for_tests(state: &AppState) -> Vec<String> {
+    let (columns, rows) = (state.size.columns, state.size.rows);
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))
+        .expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| crate::view::view(&crate::session::for_tests::session(), state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer();
+    (0..rows)
+        .map(|y| (0..columns).map(|x| buffer[(x, y)].symbol()).collect())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -380,8 +430,14 @@ mod tests {
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
-    /// The whole frame as `view` draws it, one string per row.
+    /// The whole frame as `view` draws it, one string per row — with
+    /// `state.size` the terminal's, as the app keeps it (seeded at startup,
+    /// updated on every resize): the resolver's split reads it.
     fn frame(state: &AppState, columns: u16, rows: u16) -> String {
+        let state = &AppState {
+            size: crate::update::Size { columns, rows },
+            ..state.clone()
+        };
         let mut terminal =
             Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
         terminal

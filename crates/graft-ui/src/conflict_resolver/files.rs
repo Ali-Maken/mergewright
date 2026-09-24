@@ -111,6 +111,20 @@ pub enum Placement {
     },
 }
 
+impl Placement {
+    /// The arrangement this placement belongs to: a column beside three
+    /// panes, a strip above the card. The draw and the hit-test both read
+    /// the arrangement here, from the one placement `resolver_split`
+    /// made, so they can never measure a width twice and disagree.
+    #[must_use]
+    pub const fn arrangement(self) -> Arrangement {
+        match self {
+            Placement::Column { .. } => Arrangement::ThreePane,
+            Placement::Strip { .. } => Arrangement::Card,
+        }
+    }
+}
+
 /// Where the list goes at this frame width: a column at
 /// [`super::THREE_PANE_MIN`] and up, else a strip as tall as it needs.
 #[must_use]

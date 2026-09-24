@@ -299,7 +299,7 @@ fn the_column_sits_beside_the_card() {
     let placed = placement(&doc.files, 200);
     let area = Rect::new(0, 0, 200, 20);
     let areas = resolver_areas(area, placed);
-    let laid = layout(&doc, areas.doc.width);
+    let laid = layout(&doc, placed.arrangement(), areas.doc.width);
     let theme = theme();
     let mut buf = Buffer::empty(area);
     ResolverScreen {

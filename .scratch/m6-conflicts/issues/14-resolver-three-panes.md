@@ -1,6 +1,6 @@
 # fix-resolver-three-panes: at 180 columns and wider, yours | result | theirs, rows level by git's own regions, the chosen side landing in the middle
 
-Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: done 2026-09-24 (builder, see NOTES; filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 Blocked by: 10-resolver-line-numbers.md, 13-resolver-file-list.md
 Was: draft · new 2026-09-23 (Amendment 2, ADR-0043 §2, §5). Not gated.
 **Revised 2026-09-24 (spec-only pass on `scout-13.md`, ruling R1 in `13-resolver-file-list.md`).** `THREE_PANE_MIN`, `Arrangement` and `arrangement()` are built by `fix-resolver-file-list`; this ticket uses them and does not redefine them. The document's `Rect` comes from 13's `resolver_areas`.
@@ -67,19 +67,19 @@ pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout; 
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] graft-ui `conflict_resolver::tests::card_rows_are_unchanged`: goldens `resolver-{120,80}.txt` are byte-identical through `Arrangement::Card` (S1's `numbers.result` included).
-- [ ] graft-ui `…::three_panes_stay_level`: for every fixture file × {nothing taken, block 0 ours, all theirs, block 1 both, block 0 open with `base_shown`}, every region starts on the same screen row in all three panes, and a block spans `max` of its panes' lines + 1.
-- [ ] graft-ui `…::each_pane_is_numbered_without_gaps`: the numbers read down each pane, skipping `Pad`/`Placeholder`/`Rule`/`Base`. Yours and theirs run 1..=n for their projection in every state. The result runs 1..=`render()` line count when every block is taken. With a block open, the result's next number after its placeholder = the number before it + that block's ours count + 1 (the `Result` rule, note :503–504; mockup :637–639, `3` → `5`).
-- [ ] graft-ui `…::plain_regions_number_each_pane_by_its_projection` (S1): build (or pick) a fixture with a block whose theirs is longer than its ours; after `t` on it, the next plain region's row shows `first_lines(Ours)[region]`, `first_lines(Result)[region]`, `first_lines(Theirs)[region]` in the three panes, and the result's differs from the yours'.
-- [ ] graft-ui `…::the_chosen_side_lands_in_the_middle`: after `t` on block 0, the result cells of that block are its theirs lines.
-- [ ] graft-ui `…::the_rule_row_is_the_block_row` (S4): in ThreePane, for every block `i`, `rows[block_row[i]]` is `Aligned { block: Some(i), .. Cell::Rule }`.
-- [ ] graft-ui `…::panes_split_by_the_rule` (S2): for doc widths 147..=157 and 167..=177, `three_panes` gives two separators, sides equal, result = sides + remainder, sum = width. With `resolver_areas` at 180 frame columns and `Placement::Column { width }` for every width in 22..=32, no pane is narrower than **48** columns, gutter included.
-- [ ] graft-ui golden `tests/shots/resolver-three-200.txt` (with a header saying it is generated, not a mockup match).
-- [ ] graft `update::resolver::tests::a_click_in_any_pane_picks_the_block`: a click on the rule row in each of the three panes and on a separator sets the same cursor block.
-- [ ] graft `…::draw_and_click_agree_across_180` (S5): at 179, 180 and 181 frame columns, the arrangement the draw uses and the one `geometry` uses are equal, and a click on the first body row of block 1 picks block 1.
-- [ ] graft `…::next_block_scrolls_three_panes_to_its_rule_row` (S4): with a file longer than the body, `scroll_block_into_view` on the last block puts its rule row on screen.
-- [ ] graft `…::resize_across_180_keeps_the_cursor_block_in_view`.
-- [ ] Captures `docs/shots/m6/fix-three-panes-200x50.txt` (two-file merge, `notes.txt`, after `t` on block 1) and `…-180x50.txt`. **What right looks like:**
+- [x] graft-ui `tests/resolver_layout.rs::card_rows_are_unchanged` (an integration test beside the goldens, not in `conflict_resolver::tests`): goldens `resolver-{120,80}.txt` are byte-identical through `Arrangement::Card` (S1's `numbers.result` included).
+- [x] graft-ui `conflict_resolver::tests::three_panes::three_panes_stay_level`: for every fixture file × {nothing taken, block 0 ours, all theirs, block 1 both, block 0 open with `base_shown`}, every region starts on the same screen row in all three panes, and a block spans `max` of its panes' lines + 1.
+- [x] graft-ui `conflict_resolver::tests::three_panes::each_pane_is_numbered_without_gaps`: the numbers read down each pane, skipping `Pad`/`Placeholder`/`Rule`/`Base`. Yours and theirs run 1..=n for their projection in every state. The result runs 1..=`render()` line count when every block is taken. With a block open, the result's next number after its placeholder = the number before it + that block's ours count + 1 (the `Result` rule, note :503–504; mockup :637–639, `3` → `5`).
+- [x] graft-ui `conflict_resolver::tests::three_panes::plain_regions_number_each_pane_by_its_projection` (S1): build (or pick) a fixture with a block whose theirs is longer than its ours; after `t` on it, the next plain region's row shows `first_lines(Ours)[region]`, `first_lines(Result)[region]`, `first_lines(Theirs)[region]` in the three panes, and the result's differs from the yours'.
+- [x] graft-ui `conflict_resolver::tests::three_panes::the_chosen_side_lands_in_the_middle`: after `t` on block 0, the result cells of that block are its theirs lines.
+- [x] graft-ui `conflict_resolver::tests::three_panes::the_rule_row_is_the_block_row` (S4): in ThreePane, for every block `i`, `rows[block_row[i]]` is `Aligned { block: Some(i), .. Cell::Rule }`.
+- [x] graft-ui `conflict_resolver::tests::three_panes::panes_split_by_the_rule` (S2): for doc widths 147..=157 and 167..=177, `three_panes` gives two separators, sides equal, result = sides + remainder, sum = width. With `resolver_areas` at 180 frame columns and `Placement::Column { width }` for every width in 22..=32, no pane is narrower than **48** columns, gutter included.
+- [x] graft-ui `tests/resolver_layout.rs::resolver_layout_is_pinned_three_200`, golden `tests/shots/resolver-three-200.txt` (with a header saying it is generated, not a mockup match).
+- [x] graft `update::resolver::tests::three_panes::a_click_in_any_pane_picks_the_block`: a click on the rule row in each of the three panes and on a separator sets the same cursor block.
+- [x] graft `update::resolver::tests::three_panes::draw_and_click_agree_across_180` (S5): at 179, 180 and 181 frame columns, the arrangement the draw uses and the one `geometry` uses are equal, and a click on the first body row of block 1 picks block 1.
+- [x] graft `update::resolver::tests::three_panes::next_block_scrolls_three_panes_to_its_rule_row` (S4): with a file longer than the body, `scroll_block_into_view` on the last block puts its rule row on screen.
+- [x] graft `update::resolver::tests::three_panes::resize_across_180_keeps_the_cursor_block_in_view` (mutation-checked: fails with the `resized` call removed).
+- [x] graft `it::resolver::three_panes::three_panes_capture` asserts each line below on each capture. Captures `docs/shots/m6/fix-three-panes-200x50.txt` (two-file merge, `notes.txt`, after `t` on block 1, then `n` — NOTES D6) and `…-180x50.txt`, plus `…-187x50.txt`. **What right looks like:**
   - The titles row reads `yours · main │ result │ theirs · feature`.
   - Block 1's result cell reads `2 TWO from feature` on the same row as `2 two from main` and `2 TWO from feature`.
   - Block 2's result reads `? open · o t b`. The result pane's first plain line after block 2 is numbered: the result's line before block 2's rule row + block 2's yours line count + 1.
@@ -98,3 +98,48 @@ pub fn layout(doc: &DocView, arrangement: Arrangement, columns: u16) -> Layout; 
 
 ## Size
 Medium: one layout arm, one draw path, the `Plain` numbers field, two `block_of` arms, the draw moving onto `resolver_split`, ~11 tests, a golden, 2 captures. One context. If the conflicts.rs:56 move turns out to be more than a call-site swap, commit the layout half (scope 1–5) and report the split.
+
+## NOTES (builder, 2026-09-24)
+**Context compacted once** mid-ticket, after the build and the green gates, before MAP/ticket/commit. Nothing left undone; the remainder was docs, gates and the commit.
+
+Scout used (`scout-14.md`); its line citations predate ticket 26's splits and were re-checked in the code.
+
+**Cause or symptom.**
+- S5 / review-13 Minor 2: **cause**. `draw_resolver` (`view/frame/conflicts.rs`) now takes placement and doc width from `resolver_split`, the same call geometry uses, not a second split. Checked, not assumed: the frame area equals `state.size` (startup seeds it, the Resize handler updates it), so both read one width.
+- The `view::resolver` test `one_name_per_side` failed once the draw read `state.size`: its fixture left the size at 0×0. Fixed the fixture (**cause**: it lied about the size).
+- Cursor block lost across a resize over 180: **cause**. A new `update::resolver::resized` re-scrolls to the cursor block on `Event::Resize`.
+
+**Deviations** (the conductor rules on them):
+- D1: `RegionView::WholeFile` gains `ours_absent` and `theirs_absent: Option<SanitizedText>`. These fields are not in the ticket's signatures. The pane of a side with no file needs words, and the words are built in `view` (sanitised there).
+- D2: the added-by shapes read `(not on <side>)`. The deleted shapes read `(deleted on <side>)`. Both wordings are mine.
+- D3: placeholders and rule words.
+  - Binary result reads `? open · o t` (no `b`).
+  - With `base_shown`, the result placeholder head reads `base`, with the base lines muted under it, instead of `? open · o t b`.
+- D4: the whole-file card row and its note are drawn full width across the panes, not split in three.
+- D5: the rule row starts at the pane's mark column + 1 and is padded, not `─`-filled to the edge. `│` separators are drawn only on rows that have content.
+- D6: the captures press `n` after `t`, because the cursor does not auto-advance after a take. The ticket's journey implied it would. Not changed; it is key behaviour, out of scope.
+- D7: `update/mod.rs` Resize arm now calls `resolver::resized`. This file is outside the listed modules but inside the graft crate.
+- D8: `card_rows_are_unchanged` lives in `graft-ui/tests/resolver_layout.rs` (next to the goldens), not `conflict_resolver::tests`.
+- D9: `view::resolver::drawn_for_tests` (cfg(test)) exists so the update tests can see the frame without naming ratatui (`update_cannot_reach_the_world`).
+
+**What right looks like** (captures, not text inside them):
+- `docs/shots/m6/fix-three-panes-200x50.txt`: the titles row `yours · main │ result │ theirs · feature`.
+  - Block 1's rule reads `── not taken │ ── 1 of 2 · took theirs · feature │ ── taken ✓`, and under it `2 two from main │ 2 TWO from feature │ 2 TWO from feature`.
+  - Block 2's rule reads `── o take │ ── 2 of 2 · open │ ── t take`, with the result `? open · o t b`.
+  - After block 2, `8 eight │ 8 eight │ 9 eight`.
+  - `▸ notes.txt` in the list column.
+- `…-187x50.txt`: the same content, with wider panes.
+- `…-180x50.txt`: the same content. List column + `│` + three panes + two `│` = 180. Panes are about 50/52/50; the test asserts all ≥ 48.
+- The user judges by eye.
+
+**Unverified:** colour everywhere, including the cursor rule's reversal and the muted titles and base (rule 5). Whether it looks right (rule 6).
+
+**Broken:** none known.
+
+**Gaps (for rows):**
+- Lines wider than a pane are cut with `…`. Horizontal scroll is M7.
+- At 180 and 200 alike, the file list column cuts `gone.txt`'s state to `gone.txt …`. That is ticket 13's column width clamp, visible in every capture.
+- The capture `two_boxes_over_content` failed once in one full nextest run under load. It passed alone and in every later full run. Possible flake, not investigated.
+- `graft-ui/src/conflict_resolver/tests/three_panes.rs` is 467 lines and `conflict_resolver/draw.rs` is 402. Both are over the ~400 guideline.
+
+Proposed doc edits above: not applied (the conductor's).

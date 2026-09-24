@@ -110,7 +110,11 @@ pub(super) fn block_of(row: &ScreenRow) -> Option<usize> {
         | ScreenRow::Pair { block, .. }
         | ScreenRow::Side { block, .. }
         | ScreenRow::End { block } => Some(*block),
-        ScreenRow::Plain { .. } | ScreenRow::WholeFile { .. } | ScreenRow::Note { .. } => None,
+        ScreenRow::Aligned { block, .. } => *block,
+        ScreenRow::Plain { .. }
+        | ScreenRow::WholeFile { .. }
+        | ScreenRow::Note { .. }
+        | ScreenRow::PaneTitles => None,
     }
 }
 

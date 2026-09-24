@@ -63,7 +63,7 @@ pub(crate) use answers::every_file_done;
 pub use answers::{conflict_opened, handed_back, resolved_advance, taken};
 pub use base::base_loaded;
 pub use files::{ListedFile, RowState, conflict_set_read, file_cursor, listed_files, select_file};
-pub use geometry::{banner_rows, fits, scroll_block_into_view};
+pub use geometry::{banner_rows, fits, resized, scroll_block_into_view};
 #[cfg(test)]
 pub(crate) use names::fixtures;
 pub use names::side_names;
