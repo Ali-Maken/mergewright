@@ -12,6 +12,7 @@ pub mod conflict;
 pub mod facts;
 pub mod finish;
 pub mod journal;
+pub mod merge_state;
 pub mod mistake_radar;
 pub mod operation;
 pub mod preview;

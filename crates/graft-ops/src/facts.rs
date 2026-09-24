@@ -69,6 +69,10 @@ pub enum FactsError {
     /// to guess is the point of the guard (ADR-0038 §4).
     #[error("checking the commit is on the branch: {0}")]
     Ancestry(RunError),
+    /// git's merge state (`MERGE_HEAD`, `MERGE_MSG`, `MERGE_MODE`) could not
+    /// be read (m6-conflicts/20).
+    #[error("the merge in progress: {0}")]
+    MergeState(#[from] crate::merge_state::MergeStateError),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
@@ -216,11 +220,13 @@ pub fn read_state_now(
     let named = read_refs(repo, refs)?;
     let index = snapshot::index_state(repo, scratch, stop)?;
     let worktree_tree = snapshot::worktree_tree(repo, scratch, stop)?;
+    let merge = crate::merge_state::read_merge_state(repo)?;
     Ok(RepoStateNow {
         head,
         refs: named,
         index,
         worktree_tree,
+        merge,
     })
 }
 

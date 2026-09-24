@@ -10,7 +10,7 @@
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::{HeadRef, IndexState};
+use graft_core::journal::{HeadRef, IndexState, MergeState};
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
 
@@ -31,6 +31,9 @@ pub(super) struct Before {
     pub(super) head: HeadRef,
     pub(super) index: Option<IndexState>,
     pub(super) worktree: Option<Oid>,
+    /// git's merge state when the restore began. `None` is a recorded state
+    /// here ("not merging"), not a gap, so it never reads as `NoBefore`.
+    pub(super) merge: Option<MergeState>,
 }
 
 /// What a cancelled restore left behind.
@@ -212,6 +215,9 @@ fn reverse_of(step: &Step, before: &Before) -> Result<Step, RestoreError> {
         },
         Step::StashStore { commit } => Step::StashDrop { commit: *commit },
         Step::StashDrop { commit } => Step::StashStore { commit: *commit },
+        // Idempotent like the restores: writing the state the restore found
+        // is right whether or not the forward step landed.
+        Step::SetMergeState(_) => Step::SetMergeState(before.merge.clone()),
     })
 }
 
@@ -265,6 +271,7 @@ fn step_name(step: &Step) -> String {
         Step::RestoreIndex { .. } => "the index".to_owned(),
         Step::RestoreWorktree { .. } => "the working tree".to_owned(),
         Step::StashStore { .. } | Step::StashDrop { .. } => "the stash".to_owned(),
+        Step::SetMergeState(_) => "the merge in progress".to_owned(),
     }
 }
 

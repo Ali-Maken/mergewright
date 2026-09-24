@@ -49,6 +49,8 @@ pub(crate) fn committed(at: i64, kind: OperationKind, before: u8, after: u8) -> 
         pins: vec![],
         commands: vec![format!("git {kind:?}")],
         reverses: None,
+        merge_before: None,
+        merge_after: None,
     }
 }
 
@@ -74,6 +76,8 @@ pub(crate) fn reversal(at: i64, kind: OperationKind, target: &JournalEntry) -> J
         pins: vec![],
         commands: vec![],
         reverses: Some(target.id.clone()),
+        merge_before: target.merge_after.clone(),
+        merge_after: target.merge_before.clone(),
     }
 }
 

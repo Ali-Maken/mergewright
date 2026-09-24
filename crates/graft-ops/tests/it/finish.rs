@@ -177,7 +177,7 @@ fn summary_is_merge_only() {
 }
 
 /// A `pre-commit` hook that refuses, installed through `core.hooksPath`.
-fn refuse_commits(repo: &TempRepo) -> PathBuf {
+pub(crate) fn refuse_commits(repo: &TempRepo) -> PathBuf {
     let hooks = repo.path().join("hooks");
     std::fs::create_dir_all(&hooks).expect("the hooks directory");
     let hook = hooks.join("pre-commit");
@@ -215,7 +215,7 @@ fn merge_msg_mtime(repo: &TempRepo) -> std::time::SystemTime {
 
 /// `git stripspace`: what `--cleanup=whitespace` makes of a message, from
 /// git itself. Comment lines are kept.
-fn stripspace(message: &[u8]) -> String {
+pub(crate) fn stripspace(message: &[u8]) -> String {
     use std::io::Write;
     let mut child = std::process::Command::new("git")
         .arg("stripspace")
@@ -235,7 +235,7 @@ fn stripspace(message: &[u8]) -> String {
 
 /// `HEAD`'s message, byte for byte: `git cat-file commit`, everything after
 /// the header's blank line. `%B` would add a newline of its own.
-fn head_message(repo: &TempRepo) -> Vec<u8> {
+pub(crate) fn head_message(repo: &TempRepo) -> Vec<u8> {
     let output = std::process::Command::new("git")
         .arg("-C")
         .arg(repo.path())
