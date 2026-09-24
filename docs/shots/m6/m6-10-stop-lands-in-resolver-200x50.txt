@@ -4,7 +4,7 @@ MERGING
 FILES · 2 conflicted        │▸ gone.txt · modified on yours · main, deleted on theirs · feature
                             │
 ▏▸ gone.txt   keep or delete│ yours · main                                           │ result                                                  │ theirs · feature
-   notes.txt  …             │deleted by them · o keeps the file  t deletes it
+   notes.txt  •             │deleted by them · o keeps the file  t deletes it
                             │ 1 gone, changed on main                                │   ? keep or delete · o t                                │   (deleted on theirs · feature)
                             │
                             │

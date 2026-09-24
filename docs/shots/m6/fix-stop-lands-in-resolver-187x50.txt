@@ -2,8 +2,8 @@ MERGING
 FILES · 2 conflicted     │▸ notes.md · 1 conflict · 1 open
                          │
 ▏▸ notes.md   1 of 1 open│ yours · main                                        │ result                                              │ theirs · feature
-   shared.rs  …          │▏── o take                                           │ ── 1 of 1 · open                                    │ ── t take
-                         │▏1 our plan                                          │   ? open · o t b                                    │ 1 their plan
+   shared.rs  •          │▏── o take                                           ? ── 1 of 1 · open                                    ? ── t take
+                         │▏1 our plan                                          ┃   ? open · o t b                                    ┃ 1 their plan
                          │
                          │
                          │

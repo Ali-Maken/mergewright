@@ -10,6 +10,7 @@ use graft_git::conflict::{Projection, Region, Take, parse};
 
 use super::*;
 
+mod band;
 mod fixtures;
 
 use fixtures::{CORPUS, SWEEPS, doc_of, swept};

@@ -15,7 +15,7 @@
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::Modifier;
+use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
@@ -26,7 +26,7 @@ mod strip;
 
 use super::draw::set_text;
 use super::{Arrangement, arrangement};
-use crate::paint::foreground;
+use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
 use column::{column_plan, column_width};
 use strip::strip_plan;
@@ -80,9 +80,32 @@ impl FileState {
             (FileState::WholeFile { .. }, true) => "keep?".to_owned(),
             (FileState::Binary, false) => "binary".to_owned(),
             (FileState::Binary, true) => "bin".to_owned(),
-            (FileState::Unread, _) => g.more.to_string(),
+            (FileState::Unread, _) => g.unread.to_string(),
         }
     }
+
+    /// The colour the state's words take (ADR-0044 §1): the work still to
+    /// do in `open`, a done file's `done ✓` muted, the rest as the name.
+    fn tone(&self) -> WordsTone {
+        match self {
+            FileState::Open { .. } | FileState::AllTaken | FileState::WholeFile { .. } => {
+                WordsTone::Open
+            }
+            FileState::Done => WordsTone::Muted,
+            FileState::Binary | FileState::Unread => WordsTone::Plain,
+        }
+    }
+}
+
+/// How a cell's state words are coloured, apart from its name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WordsTone {
+    /// `open`: `n of m open`, `keep or delete`, `⏎ marks done`.
+    Open,
+    /// `text-muted`: `done ✓`.
+    Muted,
+    /// The name's own style: `binary`, the unread `•`.
+    Plain,
 }
 
 /// The list, ready to draw.
@@ -258,6 +281,22 @@ impl Widget for FileList<'_> {
             }
             .intersection(area);
             set_text(buf, at.x, at.y, at, &cell.text, style);
+            // The state words in their tone, restyled over the text just
+            // drawn: the characters stay put, the cursor's BOLD stays on.
+            let tone = match cell.tone {
+                WordsTone::Open => Some(Token::Open),
+                WordsTone::Muted => Some(Token::TextMuted),
+                WordsTone::Plain => None,
+            };
+            if let (Some(token), Some((from, width))) = (tone, cell.words) {
+                let words = Rect {
+                    x: at.x.saturating_add(from),
+                    width,
+                    ..at
+                }
+                .intersection(at);
+                buf.set_style(words, Style::new().fg(color(self.theme.token(token))));
+            }
         }
     }
 }
@@ -273,6 +312,9 @@ struct Glyphs {
     dot: char,
     more: char,
     enter: char,
+    /// A file not read yet. Its own glyph: `more` also marks overflow and
+    /// a left-cut path.
+    unread: char,
 }
 
 impl Glyphs {
@@ -283,6 +325,7 @@ impl Glyphs {
         dot: '·',
         more: '…',
         enter: '⏎',
+        unread: '•',
     };
     const ASCII: Glyphs = Glyphs {
         mark: '>',
@@ -291,6 +334,7 @@ impl Glyphs {
         dot: '-',
         more: '~',
         enter: '<',
+        unread: '~',
     };
 }
 
@@ -303,6 +347,10 @@ struct Cell {
     /// `None` for `… N more`.
     index: Option<usize>,
     cursor: bool,
+    /// Where the state words sit in `text`, `(column, width)` in cells;
+    /// `None` when there are none, or a cut took them.
+    words: Option<(u16, u16)>,
+    tone: WordsTone,
 }
 
 /// Everything the list draws, positioned.
@@ -348,6 +396,12 @@ fn fit_left(text: &str, width: usize, g: Glyphs) -> String {
     out.push(g.more);
     out.extend(tail.into_iter().rev());
     out
+}
+
+/// Where `words` sit when they end `text`: `(column, width)` in cells.
+fn words_at_end(text: &str, words: &str) -> Option<(u16, u16)> {
+    let at = text.width().checked_sub(words.width())?;
+    Some((cells_u16(at), cells_u16(words.width())))
 }
 
 /// Which files `slots` places show: `(first, shown, hidden)`. Everything

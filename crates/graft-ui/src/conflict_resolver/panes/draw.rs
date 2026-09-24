@@ -2,14 +2,17 @@
 //!
 //! Each pane is `mark column · number · space · text`. The mark column is
 //! the cursor block's `▏`, drawn in the yours pane only; the number column
-//! is as wide as that pane's widest number ([`pane_number_widths`]).
+//! is as wide as that pane's widest number ([`pane_number_widths`]). A
+//! block's rows carry the band ([`super::band`]); the titles row and plain
+//! rows keep `│` in `border`.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::style::{Modifier, Style};
 
 use super::super::draw::set_text;
 use super::super::{BlockState, BlockView, RegionView, ResolverScreen, ScreenRow, TakeView};
+use super::band::{self, RowKind, Side, Stand};
 use super::{Cell, LineRef, Pane, pane_number_widths, three_panes};
 use crate::fit::fit;
 use crate::paint::foreground;
@@ -34,17 +37,20 @@ impl ResolverScreen<'_> {
         row: &ScreenRow,
     ) {
         let panes = three_panes(area);
-        let bar = self.divider().to_string();
-        let border = foreground(self.theme, Token::Border);
-        for pane in &panes[..2] {
-            set_text(buf, pane.right(), y, area, &bar, border);
-        }
         match row {
             ScreenRow::PaneTitles => {
+                self.draw_plain_separators(buf, area, y, &panes);
+                // By position: the left title in `ours`, the right in
+                // `theirs`, whoever's side each is (ADR-0044 §1).
                 let names = &self.doc.names;
-                let titles = [names.ours.as_str(), "result", names.theirs.as_str()];
-                for (pane, title) in panes.iter().zip(titles) {
-                    Self::draw_in_pane(buf, *pane, y, title, self.side_style(true));
+                let titles = [
+                    (names.ours.as_str(), Token::Ours),
+                    ("result", Token::Text),
+                    (names.theirs.as_str(), Token::Theirs),
+                ];
+                for (pane, (title, token)) in panes.iter().zip(titles) {
+                    let style = foreground(self.theme, token).add_modifier(Modifier::BOLD);
+                    Self::draw_in_pane(buf, *pane, y, title, style);
                 }
             }
             ScreenRow::Aligned {
@@ -53,6 +59,10 @@ impl ResolverScreen<'_> {
                 result,
                 theirs,
             } => {
+                match block.and_then(|b| self.block(b)) {
+                    Some(view) => self.draw_band(buf, area, y, &panes, view, *result),
+                    None => self.draw_plain_separators(buf, area, y, &panes),
+                }
                 if block.is_some_and(|b| self.is_cursor_block(b)) {
                     let accent = foreground(self.theme, Token::Accent);
                     set_text(buf, panes[0].x, y, panes[0], self.cursor_mark(), accent);
@@ -73,6 +83,104 @@ impl ResolverScreen<'_> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// `│` in `border` between the panes: the titles row and plain rows.
+    fn draw_plain_separators(&self, buf: &mut Buffer, area: Rect, y: u16, panes: &[Rect; 3]) {
+        let bar = self.divider().to_string();
+        let border = foreground(self.theme, Token::Border);
+        for pane in &panes[..2] {
+            set_text(buf, pane.right(), y, area, &bar, border);
+        }
+    }
+
+    /// A block's row of the band: each pane's tint across its full width,
+    /// then the two separators. The text is drawn over it afterwards, with
+    /// foreground-only styles, so the tint stays under it.
+    fn draw_band(
+        &self,
+        buf: &mut Buffer,
+        area: Rect,
+        y: u16,
+        panes: &[Rect; 3],
+        view: &BlockView,
+        result: Cell,
+    ) {
+        // Which kept line of the result this row is: a `both` take's tint
+        // turns from ours to theirs after `ours.len()` of them. The rule row
+        // counts as the first; a pad past the kept lines as the last.
+        let result_row = match result {
+            Cell::Line {
+                text: LineRef::Taken { i, .. },
+                ..
+            } => i,
+            Cell::Rule => 0,
+            _ => usize::MAX,
+        };
+        let kinds = [Pane::Yours, Pane::Result, Pane::Theirs];
+        for (rect, pane) in panes.iter().zip(kinds) {
+            let tint = band::row_tint(view.state, pane, result_row, view.ours.len(), self.theme);
+            if let Some(bg) = tint {
+                buf.set_style(
+                    Rect {
+                        y,
+                        height: 1,
+                        ..*rect
+                    },
+                    Style::new().bg(bg),
+                );
+            }
+        }
+        let kind = if result == Cell::Rule {
+            RowKind::Rule
+        } else {
+            RowKind::Body
+        };
+        let cursor = self.is_cursor_block(view.index);
+        for (x, side) in [
+            (panes[0].right(), Side::Left),
+            (panes[1].right(), Side::Right),
+        ] {
+            let (glyph, style) =
+                band::separator(view.state, side, kind, cursor, self.theme, self.ascii);
+            set_text(buf, x, y, area, &glyph.to_string(), style);
+        }
+    }
+
+    /// A line's style in `pane`: `text`, muted for BASE and for the side
+    /// not taken.
+    fn line_style(&self, block: Option<usize>, pane: Pane, text: LineRef) -> Style {
+        let not_taken = block
+            .and_then(|b| self.block(b))
+            .is_some_and(|view| band::stand(view.state, pane) == Stand::NotTaken);
+        if not_taken {
+            band::not_taken(self.theme)
+        } else {
+            self.side_style(matches!(text, LineRef::Base { .. }))
+        }
+    }
+
+    /// A rule's words' style in `pane`: the side's hue while open or kept,
+    /// the result's by what it took, `text-muted` for the side not taken;
+    /// reversed on the cursor block, as built.
+    fn rule_style(&self, view: &BlockView, pane: Pane) -> Style {
+        let style = match (pane, view.state) {
+            (Pane::Result, BlockState::Open) => foreground(self.theme, Token::Open),
+            (Pane::Result, BlockState::Took(TakeView::Ours)) => foreground(self.theme, Token::Ours),
+            (Pane::Result, BlockState::Took(TakeView::Theirs)) => {
+                foreground(self.theme, Token::Theirs)
+            }
+            (Pane::Result, BlockState::Took(TakeView::Both)) => foreground(self.theme, Token::Text),
+            (side, state) if band::stand(state, side) == Stand::NotTaken => {
+                band::not_taken(self.theme)
+            }
+            (side, _) => foreground(self.theme, band::side_hue(side)),
+        };
+        if self.is_cursor_block(view.index) {
+            style.add_modifier(Modifier::REVERSED)
+        } else {
+            style
         }
     }
 
@@ -100,13 +208,24 @@ impl ResolverScreen<'_> {
                     Some(n) => format!("{n:>width$} {words}"),
                     None => format!("{}{words}", blank()),
                 };
-                let muted = matches!(text, LineRef::Base { .. });
-                Self::draw_in_pane(buf, area, y, &line, self.side_style(muted));
+                let style = self.line_style(block, pane, *text);
+                Self::draw_in_pane(buf, area, y, &line, style);
             }
             Cell::Placeholder => {
                 let words = self.placeholder(block, pane);
                 let line = format!("{}{words}", blank());
-                Self::draw_in_pane(buf, area, y, &line, self.side_style(true));
+                // An open block's `? open · o t b` is the work still to do:
+                // `open`, BOLD (BOLD alone under `NO_COLOR`). Its `base`
+                // and a whole-file card's words stay muted.
+                let open = block.and_then(|b| self.block(b)).is_some_and(|view| {
+                    view.state == BlockState::Open && !(self.doc.base_shown && view.base.is_some())
+                });
+                let style = if open {
+                    foreground(self.theme, Token::Open).add_modifier(Modifier::BOLD)
+                } else {
+                    self.side_style(true)
+                };
+                Self::draw_in_pane(buf, area, y, &line, style);
             }
             Cell::Rule => {
                 let Some(view) = block.and_then(|b| self.block(b)) else {
@@ -117,8 +236,7 @@ impl ResolverScreen<'_> {
                 // all three panes (colour unverified, CLAUDE.md rule 5).
                 let room = usize::from(area.width.saturating_sub(1));
                 let line = format!("{words:room$}");
-                let cursor = self.is_cursor_block(view.index);
-                Self::draw_in_pane(buf, area, y, &line, self.header_style(cursor));
+                Self::draw_in_pane(buf, area, y, &line, self.rule_style(view, pane));
             }
         }
     }

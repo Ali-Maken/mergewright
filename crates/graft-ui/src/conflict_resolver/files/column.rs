@@ -4,7 +4,7 @@
 
 use unicode_width::UnicodeWidthStr;
 
-use super::{Cell, FileListView, Glyphs, Plan, cells_u16, fit_left, window};
+use super::{Cell, FileListView, Glyphs, Plan, WordsTone, cells_u16, fit_left, window};
 use crate::fit::fit;
 
 /// The column's narrowest and widest (design note, "≥180 columns").
@@ -48,6 +48,13 @@ fn column_header(view: &FileListView, g: Glyphs) -> String {
     }
 }
 
+/// `words` at column `at` of a row `full` cells wide, as `(column, width)`;
+/// `None` when the row's cut at `full` reaches them (left uncoloured).
+fn words_within(at: usize, words: &str, full: usize) -> Option<(u16, u16)> {
+    let width = words.width();
+    (at + width <= full).then(|| (cells_u16(at), cells_u16(width)))
+}
+
 /// The column: header, blank, then one file per row, states aligned.
 pub(super) fn column_plan(view: &FileListView, width: u16, height: u16, g: Glyphs) -> Plan {
     let full = usize::from(width);
@@ -81,6 +88,8 @@ pub(super) fn column_plan(view: &FileListView, width: u16, height: u16, g: Glyph
             &format!("{gutter}{mark} {name}{}  {}", " ".repeat(pad), states[i]),
             full,
         );
+        // The state starts after `gutter mark space name pad two-spaces`.
+        let words = words_within(3 + name.width() + pad + 2, &states[i], full);
         cells.push(Cell {
             x: 0,
             y: COLUMN_HEAD + cells_u16(slot),
@@ -88,6 +97,8 @@ pub(super) fn column_plan(view: &FileListView, width: u16, height: u16, g: Glyph
             text,
             index: Some(i),
             cursor,
+            words,
+            tone: row.state.tone(),
         });
     }
     if hidden > 0 && slots > 0 {
@@ -98,6 +109,8 @@ pub(super) fn column_plan(view: &FileListView, width: u16, height: u16, g: Glyph
             text: fit(&format!("   {} {hidden} more", g.more), full),
             index: None,
             cursor: false,
+            words: None,
+            tone: WordsTone::Plain,
         });
     }
     Plan {

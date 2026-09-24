@@ -1,8 +1,18 @@
 //! A conflict block's rows in the card arrangements: its header, the side
 //! labels, the pair, each side's lines and the end rule.
+//!
+//! Colour (ADR-0044 §2, "Card"): no glyph changes. An open block's left
+//! side sits on `ours-tint`, its right on `theirs-tint`, each label in its
+//! hue, BOLD; a taken block's lines on the taken side's tint, with the
+//! header's name in that hue; the header's `open` in `open`. Tints come
+//! from [`Theme::tint`](crate::theme::Theme::tint), so they drop out at 16
+//! colours, in high contrast and under `NO_COLOR`. Colour unverified by
+//! capture (CLAUDE.md rule 5).
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
+use ratatui::style::{Modifier, Style};
+use unicode_width::UnicodeWidthStr;
 
 use super::{
     BlockState, LabelOf, ResolverScreen, SIDE_BY_SIDE_MIN, SideKind, TakeView, ruled_line, set_text,
@@ -10,6 +20,8 @@ use super::{
 use graft_term::SanitizedText;
 
 use crate::fit::fit;
+use crate::paint::{color, foreground};
+use crate::theme::Token;
 
 impl ResolverScreen<'_> {
     pub(super) fn draw_header(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
@@ -35,17 +47,52 @@ impl ResolverScreen<'_> {
                 ("took both".to_owned(), format!("o {ours}  t {theirs}"))
             }
         };
+        // Where the state words' coloured part starts in them, how wide it
+        // is, and its hue: `open`, or the taken side's name.
+        let hue = match block.state {
+            BlockState::Open => Some((0, "open".width(), Token::Open)),
+            BlockState::Took(TakeView::Ours) => {
+                Some(("took ".width(), names.ours.as_str().width(), Token::Ours))
+            }
+            BlockState::Took(TakeView::Theirs) => Some((
+                "took ".width(),
+                names.theirs.as_str().width(),
+                Token::Theirs,
+            )),
+            BlockState::Took(TakeView::Both) => None,
+        };
         let rule2 = self.rule().to_string().repeat(2);
-        let middle = format!(
-            " conflict {} of {} {} {state_word} {rule2} {keys} ",
+        let lead = format!(
+            " conflict {} of {} {} ",
             block.index + 1,
             block.of,
-            self.dot(),
+            self.dot()
         );
+        let middle = format!("{lead}{state_word} {rule2} {keys} ");
         // No number: a marker row is not a line of any side (ADR-0043 §5).
         let line = ruled_line(&middle, self.rule(), usize::from(content.width));
         let cursor = self.is_cursor_block(block_index);
         set_text(buf, content.x, y, content, &line, self.header_style(cursor));
+        if let Some((skip, width, token)) = hue {
+            // `ruled_line` leads with two rule cells. Restyled, not redrawn:
+            // the text (and its cut, if any) stays as drawn, and the
+            // cursor's reversal stays under the new colour.
+            let x = 2 + lead.width() + skip;
+            restyle(buf, content, x, y, width, foreground(self.theme, token));
+        }
+    }
+
+    /// Lays `token`'s tint under `width` cells from `x` cells into
+    /// `content` on row `y` — nothing where the theme drops tints.
+    fn tint(&self, buf: &mut Buffer, content: Rect, x: usize, y: u16, width: usize, token: Token) {
+        if let Some(tint) = self.theme.tint(token) {
+            restyle(buf, content, x, y, width, Style::new().bg(color(tint)));
+        }
+    }
+
+    /// A side's label style: its hue, BOLD.
+    fn label_style(&self, token: Token) -> Style {
+        foreground(self.theme, token).add_modifier(Modifier::BOLD)
     }
 
     pub(super) fn draw_labels(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
@@ -64,6 +111,18 @@ impl ResolverScreen<'_> {
         );
         let line = format!("{left}{}{right}", self.divider());
         set_text(buf, content.x, y, content, &line, self.side_style(false));
+        let rest = width.saturating_sub(half + 1);
+        restyle(buf, content, 0, y, half, self.label_style(Token::Ours));
+        restyle(
+            buf,
+            content,
+            half + 1,
+            y,
+            rest,
+            self.label_style(Token::Theirs),
+        );
+        self.tint(buf, content, 0, y, half, Token::OursTint);
+        self.tint(buf, content, half + 1, y, rest, Token::TheirsTint);
     }
 
     pub(super) fn draw_pair(
@@ -101,6 +160,9 @@ impl ResolverScreen<'_> {
         );
         let line = format!("{left}{}{right}", self.divider());
         set_text(buf, content.x, y, content, &line, self.base_style());
+        self.tint(buf, content, 0, y, half, Token::OursTint);
+        let rest = width.saturating_sub(half + 1);
+        self.tint(buf, content, half + 1, y, rest, Token::TheirsTint);
     }
 
     pub(super) fn draw_side(
@@ -165,6 +227,19 @@ impl ResolverScreen<'_> {
             &fit(&line, width),
             self.side_style(muted),
         );
+        // Stacked, or a taken block's kept lines: each side in its tint,
+        // its label in its hue. BASE stays as built.
+        match side {
+            SideKind::Label(LabelOf::Ours) => {
+                restyle(buf, content, 0, y, width, self.label_style(Token::Ours));
+            }
+            SideKind::Label(LabelOf::Theirs) => {
+                restyle(buf, content, 0, y, width, self.label_style(Token::Theirs));
+            }
+            SideKind::Ours => self.tint(buf, content, 0, y, width, Token::OursTint),
+            SideKind::Theirs => self.tint(buf, content, 0, y, width, Token::TheirsTint),
+            SideKind::Label(LabelOf::Base) | SideKind::Base => {}
+        }
     }
 
     pub(super) fn draw_end(&self, buf: &mut Buffer, area: Rect, y: u16, block_index: usize) {
@@ -190,4 +265,16 @@ impl ResolverScreen<'_> {
             self.base_style(),
         );
     }
+}
+
+/// Patches `style` onto `width` cells from `x` cells into `content` on row
+/// `y`, clipped to `content`: only the fields `style` sets change.
+fn restyle(buf: &mut Buffer, content: Rect, x: usize, y: u16, width: usize, style: Style) {
+    // Past `u16::MAX` is past any terminal: the clip below leaves nothing.
+    let x = content
+        .x
+        .saturating_add(u16::try_from(x).unwrap_or(u16::MAX));
+    let width = u16::try_from(width).unwrap_or(u16::MAX);
+    let span = Rect::new(x, y, width, 1).intersection(content);
+    buf.set_style(span, style);
 }
