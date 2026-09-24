@@ -247,7 +247,7 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
 
 /// The resolver's own key list (`docs/design-notes/m6-conflicts.md`, "New
 /// UI" footer mockups): `o <ours>  t <theirs>  b both  [B base]  e edit
-/// n next  N prev  ⏎ resolved  M mergetool  [d start over]  esc close`,
+/// O/T file  n next  N prev  ⏎ done  j/k file  M mergetool  [d start over]  esc close`,
 /// `B base` after `b both` only while `base` (Proposed change 2b), `d start
 /// over` before `esc close` only while `restart` (Proposed change 2c).
 /// `o`/`t` read as `roles` ([`SideRoles`]): `o upstream  t yours` in a
@@ -263,6 +263,7 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
         hint("b", "both"),
         hint("^O", all_of(roles.ours())),
         hint("^T", all_of(roles.theirs())),
+        hint("O/T", "file"),
     ];
     if base {
         list.push(hint("B", "base"));
@@ -271,7 +272,8 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
         hint("e", "edit"),
         hint("n", "next"),
         hint("N", "prev"),
-        hint("⏎", "resolved"),
+        hint("⏎", "done"),
+        hint("j/k", "file"),
         hint("M", "mergetool"),
     ]);
     if restart {

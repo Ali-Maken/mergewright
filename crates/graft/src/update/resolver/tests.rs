@@ -426,6 +426,8 @@ fn last_file_staged_from_the_pane() -> AppState {
         theirs: Ok(None),
     });
     state.banner_focus = false;
+    // The last file: nothing else unmerged.
+    state.working_tree = Some(file_list::status(&[("conflicted.rs", true)]));
     let staged = JobId::new(4_500);
     state.resolver.as_mut().expect("open").staging = Some(staged);
     let mut commands = Vec::new();
@@ -653,6 +655,7 @@ fn frame_text(state: &AppState) -> String {
 
 mod advance;
 mod cross;
+mod file_keys;
 mod file_list;
 mod take_all;
 mod three_panes;

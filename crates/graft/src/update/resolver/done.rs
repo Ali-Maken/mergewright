@@ -1,7 +1,7 @@
 //! A **done** file, open read-only (m6-conflicts/25): one git no longer
 //! calls unmerged, shown as it stands on disk. `d` starts it over where ops
 //! can (m6-conflicts/28), `e` edits it, `Esc` closes; every key that would
-//! take, stage or walk is refused in words by [`done_refusal`].
+//! take or stage is refused in words by [`done_refusal`].
 
 use std::sync::Arc;
 
@@ -49,7 +49,7 @@ pub enum DoneShape {
 /// it over` where `d` would open the box, `<path> is done` where it would
 /// not (m6-conflicts/28) — the words never offer a key that answers "can't".
 ///
-/// The resolver's `o t b ⏎ B n N` ask it first (see [`refuses`]); `M` is
+/// The resolver's `o t b O T ⏎ B` ask it first (see [`refuses`]); `M` is
 /// asked here too, ahead of the hand-over's own refusal. A ticket binding
 /// another key that would take or stage (`Ctrl+O`/`Ctrl+T`, `O`/`T`) calls
 /// it first too.
@@ -66,14 +66,16 @@ pub fn done_refusal(state: &AppState) -> Option<String> {
 
 /// `act`'s done gate: the keys a done file refuses through [`done_refusal`]
 /// — every one that would take, stage, load a base, hand to a mergetool or
-/// walk, `Ctrl+O`/`Ctrl+T` included (m6-conflicts/16). `d`, `e`, `Esc` and the scroll keys act as ever.
+/// `Ctrl+O`/`Ctrl+T` (m6-conflicts/16) and `O`/`T` (17) included. `d`, `e`,
+/// `Esc`, the scroll keys, `j`/`k` and `n`/`N` act — `n`/`N` cross straight
+/// to the next file (17 D6).
 pub(super) fn refuses(key: &KeyPress) -> bool {
     let plain = !key.modifiers.control && !key.modifiers.alt;
     let bulk = key.modifiers.control && !key.modifiers.alt;
     (plain
         && matches!(
             key.code,
-            KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'n' | 'N') | KeyCode::Enter
+            KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'O' | 'T') | KeyCode::Enter
         ))
         || (bulk && matches!(key.code, KeyCode::Char('o' | 't')))
 }

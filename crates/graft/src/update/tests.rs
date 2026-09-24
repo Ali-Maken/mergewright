@@ -3884,6 +3884,7 @@ fn presses_for(name: &str) -> Vec<Press> {
         "F2" => vec![plain(KeyCode::Function(2))],
         "F3" => vec![plain(KeyCode::Function(3))],
         "j/k" => vec![plain(KeyCode::Char('j')), plain(KeyCode::Char('k'))],
+        "O/T" => vec![plain(KeyCode::Char('O')), plain(KeyCode::Char('T'))],
         "g/G" => vec![plain(KeyCode::Char('g')), plain(KeyCode::Char('G'))],
         "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],
         "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
@@ -4373,7 +4374,9 @@ fn status_entry(path: &str, unmerged: bool) -> graft_git::status::StatusEntry {
 /// `resolver_list`'s live keys has to act in: a cursor on the first block so
 /// `o`/`t`/`b` write, a second open block so `n` moves, a mergetool
 /// configured so `M` hands over instead of refusing, and a working tree that
-/// lists the file as unmerged so the title and `⏎` have a file to name.
+/// lists the file as unmerged so the title and `⏎` have a file to name —
+/// and a second unmerged file after it, so `j` has a row to step to
+/// (m6-conflicts/17).
 pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
     const CONFLICTED: &[u8] = b"one\n\
         <<<<<<< HEAD\nours a\n=======\ntheirs a\n>>>>>>> topic\n\
@@ -4383,7 +4386,10 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
     let file = graft_git::conflict::parse(CONFLICTED).expect("two open blocks");
     let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
     state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
-        entries: vec![status_entry("conflicted.rs", true)],
+        entries: vec![
+            status_entry("conflicted.rs", true),
+            status_entry("later.rs", true),
+        ],
     }));
     state.mergetool = Some("vimdiff".to_string());
     state.resolver = Some(resolver::ResolverState {
@@ -4409,6 +4415,7 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         queued: std::collections::VecDeque::new(),
         land_last: false,
         dropped: 0,
+        settling: None,
     });
     state
 }
@@ -4464,6 +4471,7 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         queued: std::collections::VecDeque::new(),
         land_last: false,
         dropped: 0,
+        settling: None,
     });
     state
 }

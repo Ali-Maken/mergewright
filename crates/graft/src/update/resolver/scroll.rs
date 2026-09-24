@@ -118,8 +118,9 @@ pub(super) fn block_of(row: &ScreenRow) -> Option<usize> {
     }
 }
 
-/// `j`/`k`, the arrows, `PgUp`/`PgDn`, `g`/`G`: move the document under the
-/// window. Anything else is swallowed.
+/// `PgUp`/`PgDn`, `g`/`G`, `Home`/`End`: move the document under the
+/// window. `j`/`k` and the arrows step between files instead
+/// (m6-conflicts/17 D5). Anything else is swallowed.
 pub(super) fn scroll_key(state: &mut AppState, code: KeyCode) {
     // A page keeps one row of overlap, so the eye has something to land on.
     let page = isize::try_from(usize::from(view_height(state)))
@@ -127,8 +128,6 @@ pub(super) fn scroll_key(state: &mut AppState, code: KeyCode) {
         .saturating_sub(1)
         .max(1);
     match code {
-        KeyCode::Char('j') | KeyCode::Down => scroll_by(state, 1),
-        KeyCode::Char('k') | KeyCode::Up => scroll_by(state, -1),
         KeyCode::PageDown => scroll_by(state, page),
         KeyCode::PageUp => scroll_by(state, -page),
         KeyCode::Char('g') | KeyCode::Home => {

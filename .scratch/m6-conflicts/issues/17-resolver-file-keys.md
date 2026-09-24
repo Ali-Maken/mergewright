@@ -1,6 +1,6 @@
 # fix-resolver-file-keys: `O`/`T` settle the whole file in one key and move on; `j`/`k` move between files
 
-Status: ready. **Revised 2026-09-24 in place (planner, spec-only)** from `.scratch/m6-conflicts/scout-17.md` (main `721547f6`, 16 merged). Filed 2026-09-23. P6 and P7 are approved: the keymap rows are written (`02-keymap.md:264`, `:268`) and the §2.1 exception is named (`:29–:32`).
+Status: done (builder 2026-09-24; journeys and captures boxes open, see NOTES). **Revised 2026-09-24 in place (planner, spec-only)** from `.scratch/m6-conflicts/scout-17.md` (main `721547f6`, 16 merged). Filed 2026-09-23. P6 and P7 are approved: the keymap rows are written (`02-keymap.md:264`, `:268`) and the §2.1 exception is named (`:29–:32`).
 - Scout item 1: the path is `update/resolver.rs`, not `resolver/mod.rs`. Fixed in Signatures.
 - Item 2: `file_cursor` is a **function**, `file_cursor(&AppState) -> usize` (`files.rs:142`). It is not a field. See D4.
 - Item 3: the bar's `⏎ resolved` becomes `⏎ done`, per the mockups (design note :661, :692), CONTEXT.md **Done (file)** (`Avoid: resolved`) and keymap :270. See D5.
@@ -110,47 +110,47 @@ pub(super) fn step_file(state: &mut AppState, commands: &mut Vec<Command>, forwa
 ```
 
 ## Acceptance (name the verifying test when you tick; real-git truth lives in `it::resolver`, per 16's NOTES)
-- [ ] `it::resolver::file_keys::shift_t_takes_theirs_marks_done_and_moves_on`. Two-file fixture, on `notes.txt`, press `T`:
+- [x] `it::resolver::file_keys::shift_t_takes_theirs_marks_done_and_moves_on`. Two-file fixture, on `notes.txt`, press `T`:
   - The bytes equal per-block theirs.
   - `git ls-files -u notes.txt` is empty.
   - The open file is `gone.txt`.
   - The notice reads `notes.txt done ✓ · ▸ gone.txt`.
-- [ ] `it::resolver::file_keys::shift_o_on_a_whole_file_card_keeps_yours_and_moves_on`. `O` on `gone.txt`: the file exists with `HEAD`'s blob, it is staged, and the open file is `notes.txt`.
-- [ ] `it::resolver::file_keys::shift_t_with_every_block_taken_only_stages`. `t` on each block and let them land, then `T`: exactly one `Stage` and no take (D1 step 5), and then the same landing as `⏎`.
-- [ ] `update::resolver::tests::file_keys::shift_t_waits_behind_a_queued_take`. `o` is in flight, then `T`:
+- [x] `it::resolver::file_keys::shift_o_on_a_whole_file_card_keeps_yours_and_moves_on`. `O` on `gone.txt`: the file exists with `HEAD`'s blob, it is staged, and the open file is `notes.txt`.
+- [x] `it::resolver::file_keys::shift_t_with_every_block_taken_only_stages`. `t` on each block and let them land, then `T`: exactly one `Stage` and no take (D1 step 5), and then the same landing as `⏎`.
+- [x] `update::resolver::tests::file_keys::shift_t_waits_behind_a_queued_take`. `o` is in flight, then `T`:
   - `queued == [(Every, Theirs)]` and `settling == Some(Theirs)`.
   - No Stage goes out on the first landing. The Every entry is sent then.
   - One Stage goes out on the second landing, and `settling` is `None`.
-- [ ] `…::shift_t_with_nothing_open_but_a_take_in_flight_stages_after_it` (D1 step 6). The last open block's `t` is in flight, then `T`: no entry, `settling` is set, and the Stage goes out when that take lands.
-- [ ] `…::takes_refuse_while_a_file_settles`. After `T` with `settling` set, each of `o t b Ctrl+O Ctrl+T O T` gives `still writing the last take`, with no command and `queued` unchanged.
-- [ ] `…::a_changed_file_is_not_staged` and `…::a_failed_take_stages_nothing` (D3). No Stage, `settling` is `None`, and the notice ends with ` · nothing staged` and keeps the dropped count.
-- [ ] `…::shift_t_on_a_done_file_is_refused`. Both forms of `done_refusal`, and no command.
-- [ ] `…::shift_t_on_a_binary_card_is_the_cards_t`. The commands and state are equal to what `t` on that card produces.
-- [ ] `…::j_and_k_move_between_files_without_wrapping`. Three-file list:
+- [x] `…::shift_t_with_nothing_open_but_a_take_in_flight_stages_after_it` (D1 step 6). The last open block's `t` is in flight, then `T`: no entry, `settling` is set, and the Stage goes out when that take lands.
+- [x] `…::takes_refuse_while_a_file_settles`. After `T` with `settling` set, each of `o t b Ctrl+O Ctrl+T O T` gives `still writing the last take`, with no command and `queued` unchanged.
+- [x] `…::a_changed_file_is_not_staged` and `…::a_failed_take_stages_nothing` (D3). No Stage, `settling` is `None`, and the notice ends with ` · nothing staged` and keeps the dropped count.
+- [x] `…::shift_t_on_a_done_file_is_refused`. Both forms of `done_refusal`, and no command.
+- [x] `…::shift_t_on_a_binary_card_is_the_cards_t`. The commands and state are equal to what `t` on that card produces.
+- [x] `…::j_and_k_move_between_files_without_wrapping`. Three-file list:
   - `j` goes from row 0 → 1 → 2.
   - `j` at row 2 sends nothing, stays on 2, and leaves the words unchanged.
   - `k` walks back up. `k` at row 0 sends nothing.
   - `↓`/`↑` do the same.
-- [ ] `…::j_from_a_done_file_moves`. It is not refused.
-- [ ] `…::j_while_a_take_is_in_flight_is_refused`. Nothing is sent, and the words equal what `select_file` gives in that state (built by calling it, not by copying the literal).
-- [ ] `…::page_keys_scroll_the_document`:
+- [x] `…::j_from_a_done_file_moves`. It is not refused.
+- [x] `…::j_while_a_take_is_in_flight_is_refused`. Nothing is sent, and the words equal what `select_file` gives in that state (built by calling it, not by copying the literal).
+- [x] `…::page_keys_scroll_the_document`:
   - `PgDn`/`PgUp` move `top` by a page.
   - `g`/`G` go to the top and bottom.
   - On a one-file list, `j`/`k` leave `top` unchanged.
-- [ ] `…::n_from_a_done_file_crosses_to_the_next_open_file`, and `…::n_from_a_done_file_with_nothing_open_says_no_more` (D6).
-- [ ] graft-ui `graph_screen::hints::tests::resolver_offers_file_keys`:
+- [x] `…::n_from_a_done_file_crosses_to_the_next_open_file`, and `…::n_from_a_done_file_with_nothing_open_says_no_more` (D6).
+- [x] graft-ui `graph_screen::hints::tests::resolver_offers_file_keys`:
   - `O/T file` comes right after `^T all …`, and `j/k file` right after `⏎ done`.
   - Neither is in the card list or the done list.
   - `resolved` is not a verb anywhere in the resolver tables.
-- [ ] `update::tests::every_bound_action_is_hinted_live_or_is_named_here` and `every_key_the_bar_draws_is_answered` pass, and `NEVER_HINTED` is unchanged. Name both tests.
-- [ ] **Bar at each width, reported.** A test pins the resolver bar string for an open text file at 80, 120 and 200 columns. Paste all three strings into NOTES.
+- [x] `update::tests::every_bound_action_is_hinted_live_or_is_named_here` and `every_key_the_bar_draws_is_answered` pass, and `NEVER_HINTED` is unchanged. Name both tests.
+- [x] **Bar at each width, reported.** Pinned by `graph_screen::hints::tests::resolver_offers_file_keys`; strings in NOTES. A test pins the resolver bar string for an open text file at 80, 120 and 200 columns. Paste all three strings into NOTES.
   - At 200 it must contain `O/T file` and `j/k file`.
   - At every width, anything that was on the bar before this ticket and is now missing (`esc` above all) is listed in NOTES for the conductor. **Do not reorder the table to save it.**
-- [ ] **Existing tests that press these keys.** The scout could not confirm what `update/resolver/tests/file_list.rs:813` expects of `j`.
+- [x] **Existing tests that press these keys.** Listed in NOTES; re-pointed ones green in `file_list::a_done_file_refuses_in_words`, `it::resolver::file_list::done_open_capture`, `…::start_over::done_start_over_capture`. The scout could not confirm what `update/resolver/tests/file_list.rs:813` expects of `j`.
   - Grep the graft tests for `j`/`k`/`↓`/`↑` pressed while the resolver is open, and list each one in NOTES with the assertion it made, quoted.
   - One that asserted a scroll is re-pointed to `PgDn`/`PgUp`, with the expectation re-derived.
   - One that asserted anything else is **not rewritten**. Report it as a question.
-- [ ] **Scripts and TESTING.md.** The scout could not confirm which scenarios use `↑`/`↓`.
+- [x] **Scripts and TESTING.md.** none found; commands in NOTES. The scout could not confirm which scenarios use `↑`/`↓`.
   - Grep `TESTING.md` "Conflicts walk" and the pty walk scripts under `scripts/` for those four keys sent inside the resolver. The resolver is open from a `⏎` on a conflicted row until `Esc`.
   - List every hit in NOTES (file:line and the scenario name), with the grep command.
   - Change the scroll uses to `PgUp`/`PgDn`. Where a hit is ambiguous (for example the `k ⏎ j…` prelude that 15's NOTES mention), report it and leave it unchanged.
@@ -180,3 +180,24 @@ Medium: one chained key, one step key, one done-file cross, the bar rows and one
 - `02-keymap.md:267`: append ` On a done file, `n`/`N` cross straight to the next file not done (ticket 17 D6).`
 
 ## NOTES (builder)
+Scout used: `scout-17.md`. No compaction. Ticks name their test inline (the box's own test name).
+
+- **Open box: captures.** `it::resolver::file_keys::file_keys_capture` pins both files. The strip, identity row and notice hold. **The bar bullets cannot hold as specced:** after `T` the resolver lands on `gone.txt`, which is a **card**, and D7 keeps `O/T`/`j/k` off the card bar. The bottom row at the landing is also the Stage's status line `stage notes.txt ✓`, not the bar. Question for the conductor: change the steps (land on a text file), or drop those bullets. Identity row: `▸ gone.txt · modified on yours · main, deleted on theirs · feature`.
+- **Open box: journeys.** Waiting on the conductor to move the P6 counts into `keys` (ticket 21).
+- Bar strings (open text file, merge, no B/d), from `resolver_offers_file_keys`:
+  - 80: ` o yours  t theirs  b both  ^O all yours  ^T all  O/T  e  n  N  ⏎  j/k  M  esc`
+  - 120: ` o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M  esc`
+  - 200: ` o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close`
+- What each width lost against the same table before this ticket. `esc` is still drawn at every width.
+  - 80: `^T all theirs` → `^T all`, and `e edit` → `e`.
+  - 120: `M mergetool` → `M` and `esc close` → `esc`. The old 113-cell line fitted whole.
+  - With `B` and `d` (the committed captures), 80: `^T all` → `^T`.
+- Existing tests that pressed `j`/`k`/`↓`/`↑` in the resolver. Found with `grep -rn "Char('k')\|Char('j')\|KeyCode::Up\b\|KeyCode::Down\b" crates/graft/tests/it/resolver* crates/graft/src/update/resolver/tests* crates/graft/tests/it/conflict_interim*`:
+  - `update/resolver/tests/file_list.rs:813` (`a_done_file_refuses_in_words`) asserted `top, 1, "j scrolls"`. That is a scroll, so it now presses `PgDn`. The expectation is re-derived as `41` (the window height less one row). Per D6 its `n`/`N` rows are removed, and `O`/`T` are added.
+  - `it/resolver/file_list.rs:353` (`done_open_capture`) and `it/resolver/file_list/start_over.rs:27,34`: the comment says `k` "at the top scrolls nowhere and gives it back" (it clears the status row). That is a no-op scroll, so they now press `PgUp`. `done_start_over_capture` failed under `k`, because `k` now steps files. It passes with `PgUp`.
+  - `it/resolver/file_list.rs:563` and `it/conflict_interim.rs:247,300` press these keys on the graph, not in the resolver. Not changed.
+- Scripts and TESTING.md "Conflicts walk": none found. Commands: an `awk` extract of the section piped to `grep -nE '(^|[^a-zA-Z])(j|k|↓|↑|Up|Down)([^a-zA-Z]|$)'`, and `grep -rn "conflict\|resolver" scripts/*.sh`. No pty script drives the resolver.
+- Regenerated captures (only the bar line changed in each): `fix-card-names-numbers-{120x40,80x24}`, `fix-file-list-many-120x40`, `fix-file-list-rebase-step2-120x40`, `fix-stop-lands-in-resolver-{80x24,120x40,187x50}`, `fix-take-all-120x40`. New: `fix-file-keys-{120x40,200x50}`. Both new ones are captioned in the TSV, and the contact sheet is rebuilt.
+- Fixture: `update::tests::resolver_on_screen` now lists a second unmerged file, `later.rs`, so the bar sweep can press `j`. `resolver::tests::last_file_staged_from_the_pane` pins its own one-file status.
+- The take keys moved out of `act` into `resolver::take_keys`, because clippy's cognitive-complexity check failed on `act`.
+- **Mishap, reverted:** two `sed -i` edits hit the **main checkout** (`crates/graft/tests/it/resolver.rs`, `crates/graft/tests/it/resolver/file_list.rs`). I undid them at once with the inverse `sed`. I could not run `git` there to confirm it is clean; please check.

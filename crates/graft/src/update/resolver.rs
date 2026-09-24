@@ -85,13 +85,14 @@ pub use walk::{after_take, next_block};
 pub use whole_file::{WholeFileShape, whole_file_keys};
 
 use base::toggle_base;
+use files::step_file;
 use geometry::scrolled_to;
 use handover::{edit_here, mergetool_here, takes_refusal};
 use open::reopen;
 use resolved::mark_resolved;
 use restart::restart_box;
 use scroll::scroll_key;
-use take::{take_all_key, take_key};
+use take::{settle_key, take_all_key, take_key};
 use walk::walk_blocks;
 
 /// Where `⏎` opened the resolver from, and so where `Esc` gives the
@@ -195,6 +196,12 @@ pub struct ResolverState {
     /// once the re-read lands, which clears the failure's own words (review
     /// m6-amend-15 M2). `0` otherwise.
     pub dropped: usize,
+    /// An `O`/`T` waiting for its `Stage` (m6-conflicts/17): the side, from
+    /// the keypress until the last take in flight lands and the Stage is
+    /// sent. **Invariant:** `Some` ⇒ [`Self::in_flight`] is `Some`, except
+    /// inside the one update that sends the Stage — so every refusal keyed
+    /// on a take in flight covers a settling file too.
+    pub settling: Option<Take>,
 }
 
 /// The most takes held behind the one in flight; the next is refused
@@ -227,6 +234,7 @@ impl ResolverState {
             queued: VecDeque::new(),
             land_last: false,
             dropped: 0,
+            settling: None,
         }
     }
 
@@ -235,6 +243,8 @@ impl ResolverState {
     /// How many queued takes were dropped, for the words that say so.
     pub(super) fn drop_takes(&mut self) -> usize {
         self.in_flight = None;
+        // An `O`/`T` waiting on these takes stages nothing now (17 D3).
+        self.settling = None;
         let dropped = self.queued.len();
         self.queued.clear();
         dropped
@@ -323,16 +333,17 @@ fn act(
         state.status = Status::sticky(words);
         return;
     }
+    if take_keys(state, commands, key, next_id) {
+        return;
+    }
     match key.code {
         KeyCode::Escape => escape(state),
-        KeyCode::Char('o' | 't' | 'b') if plain => take_key(state, commands, key.code, next_id),
-        // Ahead of the swallow below: `Ctrl+O`/`Ctrl+T`, every open block
-        // (m6-conflicts/16). `Ctrl+Alt+…` is still swallowed.
-        KeyCode::Char('o') if key.modifiers.control && !key.modifiers.alt => {
-            take_all_key(state, commands, Take::Ours, next_id);
+        // `j`/`k`/`↓`/`↑` step between files (m6-conflicts/17 D4).
+        KeyCode::Char('j') | KeyCode::Down if plain => {
+            step_file(state, commands, true, next_id);
         }
-        KeyCode::Char('t') if key.modifiers.control && !key.modifiers.alt => {
-            take_all_key(state, commands, Take::Theirs, next_id);
+        KeyCode::Char('k') | KeyCode::Up if plain => {
+            step_file(state, commands, false, next_id);
         }
         KeyCode::Char('B') if plain => toggle_base(state, commands, next_id),
         KeyCode::Char('n') if plain => walk_blocks(state, commands, true, next_id),
@@ -346,6 +357,29 @@ fn act(
         // under the document is what says which keys apply here.
         _ => {}
     }
+}
+
+/// The keys that take a side: `o`/`t`/`b`, `Ctrl+O`/`Ctrl+T` (every open
+/// block, m6-conflicts/16) and `O`/`T` (the whole file, then the Stage —
+/// m6-conflicts/17, keymap §2.1's named exception). `true` when `key` was
+/// one of them. `Ctrl+Alt+…` is not, and is swallowed by `act`.
+fn take_keys(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    key: KeyPress,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    let plain = !key.modifiers.control && !key.modifiers.alt;
+    let bulk = key.modifiers.control && !key.modifiers.alt;
+    match key.code {
+        KeyCode::Char('o' | 't' | 'b') if plain => take_key(state, commands, key.code, next_id),
+        KeyCode::Char('o') if bulk => take_all_key(state, commands, Take::Ours, next_id),
+        KeyCode::Char('t') if bulk => take_all_key(state, commands, Take::Theirs, next_id),
+        KeyCode::Char('O') if plain => settle_key(state, commands, Take::Ours, next_id),
+        KeyCode::Char('T') if plain => settle_key(state, commands, Take::Theirs, next_id),
+        _ => return false,
+    }
+    true
 }
 
 /// `Esc`: close — once the takes have landed. Closing drops the resolver

@@ -26,6 +26,19 @@ pub(super) fn walk_blocks(
     forward: bool,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    // A done file has no blocks: it is past its own end, so rule 1 only,
+    // and nothing to mark done in rule 3 (m6-conflicts/17 D6).
+    if state
+        .resolver
+        .as_ref()
+        .is_some_and(|open| open.done.is_some())
+    {
+        match cross_target(state, forward) {
+            Some(index) => cross(state, commands, index, forward, next_id),
+            None => state.status = Status::sticky("no more conflicts"),
+        }
+        return;
+    }
     let (pending, card, cursor, path) = {
         let Some(open) = state.resolver.as_ref() else {
             return;

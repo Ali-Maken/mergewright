@@ -737,6 +737,108 @@ ours = main · theirs = the branch being merged in
  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
+docs/shots/m6/fix-file-keys-120x40.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: Ticket 17: `T` on `notes.txt` settles the whole file and moves on — strip `notes.txt · done ✓` with `▸ gone.txt`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, notice `notes.txt done ✓ · ▸ gone.txt`. The bottom row is the stage's status line, not the bar. Colour unverified.
+================================================================================
+
+MERGING
+files   ▸ gone.txt · keep or delete    notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on yours · main, deleted on theirs · feature
+notes.txt done ✓ · ▸ gone.txt
+deleted by them · o keeps the file  t deletes it
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ stage notes.txt ✓
+
+================================================================================
+docs/shots/m6/fix-file-keys-200x50.txt   (an earlier milestone's capture, changed by m6)
+what right looks like: The same steps at 200 columns.
+================================================================================
+
+MERGING
+FILES · 2 conflicted       │▸ gone.txt · modified on yours · main, deleted on theirs · feature
+                           │notes.txt done ✓ · ▸ gone.txt
+▏▸ gone.txt  keep or delete│ yours · main                                           │ result                                                   │ theirs · feature
+   …tes.txt  done ✓        │deleted by them · o keeps the file  t deletes it
+                           │ 1 our plan                                             │   ? keep or delete · o t                                 │   (deleted on theirs · feature)
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+                           │
+ stage notes.txt ✓
+
+================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)
 what right looks like: the uncommitted row has no `space fold` — changed by M6 (a6a47ee): on the uncommitted-changes row the hint ladder no longer offers `space fold` (`space` now needs a commit row, `NEEDS_A_COMMIT` in graft-ui hints.rs); every other rung as the M5 sheet showed it.
 ================================================================================
