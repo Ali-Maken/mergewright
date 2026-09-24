@@ -258,6 +258,7 @@ fn an_open_resolver() -> crate::update::resolver::ResolverState {
         in_flight: None,
         queued: std::collections::VecDeque::new(),
         land_last: false,
+        dropped: 0,
     }
 }
 

@@ -12,6 +12,7 @@ use graft_ops::conflict::ConflictSet;
 use graft_ui::conflict_resolver::{HEADER_ROWS, Placement, file_at};
 
 use super::{WALK, resolver_on_screen, sticky};
+use crate::jobs::conflict::StartOver;
 use crate::update::detail::Loading;
 use crate::update::resolver::{
     ListedFile, RowState, WholeFileShape, file_cursor, listed_files, resolved_advance,
@@ -658,10 +659,10 @@ fn open_gone(
 
 fn done_text(unstaged: bool, text: &str) -> crate::jobs::conflict::Opening {
     let file = graft_git::conflict::parse(text.as_bytes()).expect("plain text parses");
-    crate::jobs::conflict::Opening::Done(Arc::new(graft_ops::conflict::DoneFile::Text {
-        file,
-        unstaged,
-    }))
+    crate::jobs::conflict::Opening::Done(
+        Arc::new(graft_ops::conflict::DoneFile::Text { file, unstaged }),
+        StartOver::Can,
+    )
 }
 
 /// The resolver's identity row, as drawn: the line starting `▸ gone.txt ·`.
@@ -682,8 +683,8 @@ fn a_click_on_a_done_file_opens_it_read_only() {
     let open = state.resolver.as_ref().expect("the resolver stays open");
     assert_eq!(open.path, Path::new("gone.txt"));
     assert_eq!(
-        open.done,
-        Some(crate::update::resolver::DoneShape::Text { unstaged: false })
+        open.done.as_ref().map(|done| &done.shape),
+        Some(&crate::update::resolver::DoneShape::Text { unstaged: false })
     );
     assert_eq!(
         identity_row(&state),
@@ -704,22 +705,24 @@ fn a_done_card_for_removed_binary_and_unreadable() {
     use graft_ops::conflict::DoneFile;
     for (answer, words) in [
         (
-            Ok(crate::jobs::conflict::Opening::Done(Arc::new(
-                DoneFile::Removed,
-            ))),
+            Ok(crate::jobs::conflict::Opening::Done(
+                Arc::new(DoneFile::Removed),
+                StartOver::Can,
+            )),
             "done ✓ · removed",
         ),
         (
-            Ok(crate::jobs::conflict::Opening::Done(Arc::new(
-                DoneFile::Binary { unstaged: false },
-            ))),
+            Ok(crate::jobs::conflict::Opening::Done(
+                Arc::new(DoneFile::Binary { unstaged: false }),
+                StartOver::Can,
+            )),
             "done ✓ · binary",
         ),
         (
             Err(crate::jobs::conflict::OpenFailure {
                 words: "the file is 9 bytes, which is more than the resolver handles".to_owned(),
                 not_unmerged: false,
-                done: true,
+                done: Some(StartOver::Can),
             }),
             "done ✓ · could not read: the file is 9 bytes",
         ),
@@ -756,7 +759,7 @@ fn an_unmerged_open_failure_still_closes() {
             Product::ConflictOpened(Err(crate::jobs::conflict::OpenFailure {
                 words: "could not read the file: denied".to_owned(),
                 not_unmerged: false,
-                done: false,
+                done: None,
             })),
         ),
     );
@@ -927,7 +930,9 @@ fn a_done_file_handed_back_stays_open() {
     );
     let open = state.resolver.as_ref().expect("the resolver is open");
     assert_eq!(
-        open.done,
-        Some(crate::update::resolver::DoneShape::Text { unstaged: true })
+        open.done.as_ref().map(|done| &done.shape),
+        Some(&crate::update::resolver::DoneShape::Text { unstaged: true })
     );
 }
+
+mod start_over;

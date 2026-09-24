@@ -1,6 +1,7 @@
-//! A take moves the cursor on at the keypress, takes typed faster than the
-//! disk queue, and `n`/`N` reach every block and cross files in the list's
-//! order (m6-conflicts/15).
+//! A take moves the cursor on at the keypress, and takes typed faster than
+//! the disk queue (m6-conflicts/15); what waits for that queue to drain —
+//! `e`, `M`, `Esc` (m6-conflicts/28). `n`/`N` over the same fixtures are in
+//! `cross.rs`.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -12,7 +13,7 @@ use graft_git::status::UnmergedHow;
 
 use super::{WALK, base_loading, press, resolver_on_screen, sticky, takes};
 use crate::jobs::conflict::{OpenedFile, Opening, TakeFailure};
-use crate::update::resolver::{DoneShape, TAKE_QUEUE_CAP};
+use crate::update::resolver::{DoneOpen, DoneShape, TAKE_QUEUE_CAP};
 use crate::update::{AppEvent, AppState, Command, Product, Status, update};
 
 /// Three open blocks, one line a side each.
@@ -24,13 +25,13 @@ const THREE: &[u8] = b"a\n\
     <<<<<<< HEAD\nours 3\n=======\ntheirs 3\n>>>>>>> topic\n\
     d\n";
 
-fn three() -> ConflictFile {
+pub(super) fn three() -> ConflictFile {
     graft_git::conflict::parse(THREE).expect("three open blocks")
 }
 
 /// The resolver on `path` holding `file`, cursor on block 0, in a merge
 /// whose list is `paths` — `unmerged` of them still unmerged, the rest done.
-fn on(path: &str, file: ConflictFile, paths: &[&str], unmerged: &[&str]) -> AppState {
+pub(super) fn on(path: &str, file: ConflictFile, paths: &[&str], unmerged: &[&str]) -> AppState {
     let mut state = super::file_list::listing(paths, unmerged);
     let open = state.resolver.as_mut().expect("open");
     open.path = path.into();
@@ -44,11 +45,11 @@ fn three_alone() -> AppState {
     on("three.txt", three(), &["three.txt"], &["three.txt"])
 }
 
-fn cursor(state: &AppState) -> Option<usize> {
+pub(super) fn cursor(state: &AppState) -> Option<usize> {
     state.resolver.as_ref().and_then(|open| open.cursor_block)
 }
 
-fn notice(state: &AppState) -> Option<&str> {
+pub(super) fn notice(state: &AppState) -> Option<&str> {
     state
         .resolver
         .as_ref()
@@ -56,13 +57,17 @@ fn notice(state: &AppState) -> Option<&str> {
         .map(|(words, _)| words.as_str())
 }
 
-fn open_path(state: &AppState) -> &Path {
+pub(super) fn open_path(state: &AppState) -> &Path {
     &state.resolver.as_ref().expect("open").path
 }
 
 /// Every `TakeSide` in `commands`, as `(id, block, take)`, plus the
 /// document it was chosen against.
-fn sent(commands: &[Command]) -> Vec<(JobId, usize, Take, Arc<ConflictFile>)> {
+/// A take the resolver sent: its id, block, side and the document it was
+/// chosen against.
+pub(super) type Sent = (JobId, usize, Take, Arc<ConflictFile>);
+
+pub(super) fn sent(commands: &[Command]) -> Vec<Sent> {
     commands
         .iter()
         .filter_map(|command| match command {
@@ -76,7 +81,7 @@ fn sent(commands: &[Command]) -> Vec<(JobId, usize, Take, Arc<ConflictFile>)> {
 
 /// The worker's answer to one `TakeSide`: the take applied to the document
 /// it carried.
-fn landed(
+pub(super) fn landed(
     state: &AppState,
     take: &(JobId, usize, Take, Arc<ConflictFile>),
 ) -> (AppState, Vec<Command>) {
@@ -255,153 +260,12 @@ fn the_65th_queued_take_is_refused() {
 }
 
 #[test]
-#[allow(
-    non_snake_case,
-    reason = "`n` and `N` are two different keys, and the test is named for them"
-)]
-fn n_and_N_reach_a_taken_block() {
-    let (state, commands) = press(&three_alone(), KeyCode::Char('t'));
-    let (state, _) = landed(&state, &sent(&commands)[0]);
-    assert_eq!(cursor(&state), Some(1));
-    let (state, _) = press(&state, KeyCode::Char('N'));
-    assert_eq!(cursor(&state), Some(0), "N lands on the taken block");
-    let (state, commands) = press(&state, KeyCode::Char('o'));
-    let out = sent(&commands);
-    assert_eq!(out.len(), 1);
-    assert_eq!((out[0].1, out[0].2), (0, Take::Ours), "a re-take");
-    assert_eq!(cursor(&state), Some(1), "and on to block 1");
-    let (state, _) = press(&state, KeyCode::Char('n'));
-    assert_eq!(cursor(&state), Some(2));
-}
-
-/// The opening read of the file the walk crossed to lands with `file`.
-fn crossed_read_lands(state: &AppState, commands: &[Command], file: ConflictFile) -> AppState {
-    let id = commands
-        .iter()
-        .find_map(|command| match command {
-            Command::OpenConflict(id, _) => Some(*id),
-            _ => None,
-        })
-        .unwrap_or_else(|| panic!("no OpenConflict: {commands:?}"));
-    update(
-        state,
-        AppEvent::Produced(
-            id,
-            Product::ConflictOpened(Ok(Opening::Unmerged(Arc::new(OpenedFile {
-                file: Some(file),
-                how: UnmergedHow::BothModified,
-                binary: false,
-                on_disk: None,
-            })))),
-        ),
-    )
-    .0
-}
-
-#[test]
-fn n_at_the_last_block_crosses_in_list_order() {
-    let mut state = on("c", three(), &["a", "b", "c"], &["a", "c"]);
-    state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    let (state, commands) = press(&state, KeyCode::Char('n'));
-    assert_eq!(open_path(&state), Path::new("a"), "wrapped, b skipped");
-    assert_eq!(notice(&state), Some("▸ a"));
-    let state = crossed_read_lands(&state, &commands, three());
-    assert_eq!(cursor(&state), Some(0));
-    assert_eq!(notice(&state), Some("▸ a"));
-
-    let (state, commands) = press(&state, KeyCode::Char('N'));
-    assert_eq!(open_path(&state), Path::new("c"), "backward, wrapped");
-    assert_eq!(notice(&state), Some("▸ c"));
-    let state = crossed_read_lands(&state, &commands, three());
-    assert_eq!(cursor(&state), Some(2), "N lands on the last block");
-}
-
-#[test]
-fn n_crosses_before_it_wraps() {
-    let mut state = on("a", three(), &["a", "b"], &["a", "b"]);
-    state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    let (state, _) = press(&state, KeyCode::Char('n'));
-    assert_eq!(open_path(&state), Path::new("b"));
-    assert_eq!(notice(&state), Some("▸ b"));
-}
-
-/// `three.txt` alone, blocks 1 and 2 taken, block 0 still open, the
-/// cursor on the last block.
-fn only_block_0_open() -> AppState {
-    let mut file = three();
-    file.take(1, Take::Ours).expect("block 1");
-    file.take(2, Take::Ours).expect("block 2");
-    let mut state = on("three.txt", file, &["three.txt"], &["three.txt"]);
-    state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    state
-}
-
-#[test]
-fn n_wraps_when_no_other_file_is_open() {
-    let (state, commands) = press(&only_block_0_open(), KeyCode::Char('n'));
-    assert!(
-        !commands
-            .iter()
-            .any(|command| matches!(command, Command::OpenConflict(..))),
-        "{commands:?}"
-    );
-    assert_eq!(cursor(&state), Some(0));
-    assert_eq!(notice(&state), Some("wrapped · 1 still open"));
-}
-
-#[test]
-fn n_past_the_end_with_nothing_open_says_no_more() {
-    let mut file = three();
-    for block in 0..3 {
-        file.take(block, Take::Ours).expect("the block");
-    }
-    let mut state = on("three.txt", file, &["three.txt"], &["three.txt"]);
-    state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    let (state, _) = press(&state, KeyCode::Char('n'));
-    assert_eq!(cursor(&state), Some(2), "unmoved");
-    assert_eq!(
-        sticky(&state),
-        ("no more conflicts", Some("⏎ marks three.txt done"))
-    );
-    let mut back = state.clone();
-    back.resolver.as_mut().expect("open").cursor_block = Some(0);
-    let (back, _) = press(&back, KeyCode::Char('N'));
-    assert_eq!(cursor(&back), Some(0), "unmoved");
-    assert_eq!(
-        sticky(&back),
-        ("no more conflicts", Some("⏎ marks three.txt done"))
-    );
-}
-
-#[test]
-fn a_cross_waits_for_the_take_in_flight() {
-    let mut state = on("a", three(), &["a", "b"], &["a", "b"]);
-    state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    // Blocks 0 and 1 taken already, so `t` on 2 takes the last open one.
-    {
-        let open = state.resolver.as_mut().expect("open");
-        let mut file = (**open.file.as_ref().expect("a document")).clone();
-        file.take(0, Take::Ours).expect("block 0");
-        file.take(1, Take::Ours).expect("block 1");
-        open.file = Some(Arc::new(file));
-    }
-    let (state, first) = press(&state, KeyCode::Char('t'));
-    assert_eq!(takes(&first), 1);
-    let (state, second) = press(&state, KeyCode::Char('n'));
-    assert!(
-        !second
-            .iter()
-            .any(|command| matches!(command, Command::OpenConflict(..))),
-        "{second:?}"
-    );
-    assert_eq!(open_path(&state), Path::new("a"), "nothing selected");
-    assert_eq!(sticky(&state).0, "still writing the last take");
-}
-
-#[test]
 fn a_take_on_a_done_file_is_refused_by_done_refusal() {
     let mut state = three_alone();
-    state.resolver.as_mut().expect("open").done = Some(DoneShape::Removed);
+    state.resolver.as_mut().expect("open").done = Some(DoneOpen {
+        shape: DoneShape::Removed,
+        start_over: crate::jobs::conflict::StartOver::Can,
+    });
     let before = state.resolver.clone();
     let (state, commands) = press(&state, KeyCode::Char('t'));
     assert_eq!(takes(&commands), 0);
@@ -427,4 +291,104 @@ fn a_block_the_document_lacks_is_refused_in_words() {
     assert_eq!(open.in_flight, None, "nothing sent");
     assert_eq!(cursor(&state), Some(7), "the cursor stays");
     assert!(!matches!(state.status, Status::Done(_)));
+}
+
+// ------------------------------------ what waits for the takes (ticket 28)
+
+/// `keys` pressed on `three.txt` with nothing answered, then `code`: refused
+/// in words, nothing sent, the takes in flight and queued exactly as they
+/// were. Returns the state after, and the takes that were out.
+fn waits_for_the_takes(keys_first: &str, code: KeyCode) -> (AppState, Vec<Sent>) {
+    let (state, commands) = keys(&three_alone(), keys_first);
+    let before = state.resolver.clone().expect("open");
+    let (after, pressed) = press(&state, code);
+    assert!(pressed.is_empty(), "nothing sent: {pressed:?}");
+    assert_eq!(
+        sticky(&after).0,
+        "a take is still landing · try again in a moment"
+    );
+    let open = after.resolver.as_ref().expect("the resolver stays open");
+    assert_eq!(
+        open.in_flight, before.in_flight,
+        "the take in flight is kept"
+    );
+    assert_eq!(open.queued, before.queued, "the queue is kept");
+    (after, sent(&commands))
+}
+
+/// R6: `e` would hand the terminal over and re-read on return, dropping the
+/// queue; it waits instead. Once the takes land, it hands over.
+#[test]
+fn e_waits_for_the_takes_in_flight() {
+    let (state, out) = waits_for_the_takes("tt", KeyCode::Char('e'));
+    let (state, next) = lands_and_sends(&state, &out[0], 1);
+    let (state, _) = landed(&state, &next);
+    let (_, commands) = press(&state, KeyCode::Char('e'));
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenExternalEditor { .. })),
+        "the takes landed, so `e` hands over: {commands:?}"
+    );
+}
+
+/// R6: `M` the same.
+#[test]
+fn m_waits_for_the_takes_in_flight() {
+    waits_for_the_takes("tt", KeyCode::Char('M'));
+    waits_for_the_takes("t", KeyCode::Char('M'));
+}
+
+/// Review m6-amend-15 M1: `Esc` with takes queued dropped them silently
+/// (`t t t Esc` sent one, dropped two, said nothing). It waits too — with
+/// one take in flight and none queued as well.
+#[test]
+fn esc_waits_for_the_takes_in_flight() {
+    waits_for_the_takes("ttt", KeyCode::Escape);
+    waits_for_the_takes("t", KeyCode::Escape);
+}
+
+/// Review m6-amend-15 M2: a take answered `Changed` re-reads the file and
+/// drops the queue. The count was on a problem notice, which the re-read's
+/// landing clears; the count must outlive it.
+#[test]
+fn a_changed_reread_keeps_the_dropped_count() {
+    let (state, commands) = keys(&three_alone(), "ttt");
+    let (id, ..) = sent(&commands)[0].clone();
+    let (state, commands) = update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Taken(Err(TakeFailure {
+                words: "three.txt changed on disk · read again".to_owned(),
+                reread: true,
+            })),
+        ),
+    );
+    let reread = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, _) => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("a Changed take re-reads: {commands:?}"));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            reread,
+            Product::ConflictOpened(Ok(Opening::Unmerged(Arc::new(OpenedFile {
+                file: Some(three()),
+                how: UnmergedHow::BothModified,
+                binary: false,
+                on_disk: None,
+            })))),
+        ),
+    );
+    let open = state.resolver.as_ref().expect("open");
+    assert!(open.file.is_some(), "the re-read landed");
+    assert!(
+        notice(&state).is_some_and(|words| words.contains("2 queued takes dropped")),
+        "the count survives the landing: {:?}",
+        open.notice
+    );
 }

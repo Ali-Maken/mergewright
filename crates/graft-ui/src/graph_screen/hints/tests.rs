@@ -1159,14 +1159,15 @@ fn resolver_card_draws_only_what_a_card_answers() {
     }));
 }
 
-/// A done file, read-only (m6-conflicts/25): exactly `d`, `e`, `esc`,
-/// whatever the other flags say, and a form every sweep reads.
+/// A done file, read-only (m6-conflicts/25): exactly `d`, `e`, `esc` where
+/// ops can start it over (`restart`, m6-conflicts/28), whatever the other
+/// flags say, and a form every sweep reads.
 #[test]
 fn a_done_file_offers_start_over_edit_and_close() {
     for (base, restart, whole_file) in [
-        (false, false, false),
+        (false, true, false),
         (true, true, false),
-        (false, false, true),
+        (false, true, true),
     ] {
         let done = HintContext::Resolver {
             base,
@@ -1185,6 +1186,34 @@ fn a_done_file_offers_start_over_edit_and_close() {
             .iter()
             .any(|context| matches!(context, HintContext::Resolver { done: true, .. }))
     );
+}
+
+/// A done file ops cannot start over (m6-conflicts/28): exactly `e edit
+/// esc close` — `d` is not offered where it would only answer "can't" — and
+/// a form every sweep reads.
+#[test]
+fn a_done_file_that_cannot_start_over_offers_edit_and_close() {
+    for (base, whole_file) in [(false, false), (true, false), (false, true)] {
+        let done = HintContext::Resolver {
+            base,
+            restart: false,
+            whole_file,
+            done: true,
+            roles: SideRoles::Merge,
+        };
+        assert_eq!(
+            hints_text(&hints_for(&done, Divider::Hidden, 160)),
+            " e edit  esc close"
+        );
+    }
+    assert!(every_context().iter().any(|context| matches!(
+        context,
+        HintContext::Resolver {
+            done: true,
+            restart: false,
+            ..
+        }
+    )));
 }
 
 /// `⏎ resolve` leads `ChangesPane { unmerged: true }` and `Banner {

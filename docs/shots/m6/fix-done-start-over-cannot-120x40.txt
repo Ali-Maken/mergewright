@@ -1,0 +1,81 @@
+MERGING
+files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · done ✓
+
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ e edit  esc close
+── after d ──
+MERGING
+files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · done ✓
+
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ can't start over · gone.txt: deleted by them — no markers to take from · esc dismiss

@@ -3071,29 +3071,11 @@ fn the_prelude_holds_a_key_while_the_resolver_is_reading() {
     let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
     let mut state = state;
     let reading = JobId::new(79);
-    state.resolver = Some(resolver::ResolverState {
-        path: PathBuf::from("conflicted.rs"),
-        opened_from: resolver::OpenedFrom::Pane,
-        file: None,
-        whole_file: None,
-        how: None,
-        cursor_block: None,
-        top: 0,
-        base_shown: false,
-        job: Some(reading),
-        reading: true,
-        base_job: None,
-        staging: None,
-        restarting: None,
-        notice: None,
-        files: crate::update::detail::Loading::Idle,
-        set_job: None,
-        seen: std::collections::BTreeMap::new(),
-        done: None,
-        in_flight: None,
-        queued: std::collections::VecDeque::new(),
-        land_last: false,
-    });
+    state.resolver = Some(resolver::ResolverState::opening(
+        PathBuf::from("conflicted.rs"),
+        resolver::OpenedFrom::Pane,
+        reading,
+    ));
 
     let (state, _) = update(&state, working_tree_read(JobId::new(10)));
     assert_eq!(
@@ -4424,6 +4406,7 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         in_flight: None,
         queued: std::collections::VecDeque::new(),
         land_last: false,
+        dropped: 0,
     });
     state
 }
@@ -4471,6 +4454,7 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         in_flight: None,
         queued: std::collections::VecDeque::new(),
         land_last: false,
+        dropped: 0,
     });
     state
 }
@@ -4939,7 +4923,10 @@ fn resolver_screen_for(
     let mut state = in_roles(resolver_on_screen(walk), roles);
     if done {
         let open = state.resolver.as_mut().expect("open");
-        open.done = Some(resolver::DoneShape::Text { unstaged: false });
+        open.done = Some(resolver::DoneOpen {
+            shape: resolver::DoneShape::Text { unstaged: false },
+            start_over: crate::jobs::conflict::StartOver::Can,
+        });
         open.cursor_block = None;
     }
     state

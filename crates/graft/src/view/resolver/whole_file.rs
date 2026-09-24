@@ -8,7 +8,7 @@ use graft_ui::conflict_resolver::{DocView, RegionView, SideNames};
 use super::{Identity, file_list_view, how_words, resolver_title};
 use crate::update::AppState;
 use crate::update::resolver::{
-    DoneShape, ResolverState, WholeFileShape, side_names, whole_file_keys,
+    DoneShape, ResolverState, WholeFileShape, side_names, start_over_refusal, whole_file_keys,
 };
 
 /// A whole-file shape's own card (m6-conflicts/05): one region, no blocks,
@@ -52,7 +52,8 @@ pub(super) fn whole_file_view(
 }
 
 /// A done file with no text to show — binary, removed, or not readable —
-/// as a card (m6-conflicts/25): what it is, and `d` to start it over.
+/// as a card (m6-conflicts/25): what it is, and `d` to start it over where
+/// `d` opens the box (m6-conflicts/28).
 pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape) -> DocView {
     let unstaged = matches!(done, DoneShape::Binary { unstaged: true });
     let how = match done {
@@ -62,13 +63,20 @@ pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape
         // Text is drawn as its document, never as a card.
         DoneShape::Text { .. } => "done ✓".to_owned(),
     };
+    let restart = start_over_refusal(state).is_none();
     DocView {
-        title: sanitize_line(&resolver_title(&open.path, Identity::Done { unstaged })),
+        title: sanitize_line(&resolver_title(
+            &open.path,
+            Identity::Done { unstaged, restart },
+        )),
         files: file_list_view(state),
         names: side_names(state),
         regions: vec![RegionView::WholeFile {
             how: sanitize_line(&how),
-            keys: sanitize_line("d starts it over"),
+            // The card offers `d` exactly where it opens the box
+            // (m6-conflicts/28); otherwise it offers nothing — `e` and
+            // `esc` are on the bar.
+            keys: sanitize_line(if restart { "d starts it over" } else { "" }),
             lines: vec![],
             note: None,
             ours_absent: None,

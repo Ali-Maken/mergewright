@@ -159,11 +159,13 @@ fn open_on_a_path_git_no_longer_calls_unmerged_shows_it_done() {
     let open = state.resolver.as_ref().expect("the resolver stays open");
     assert_eq!(open.path, Path::new("added-by-them.txt"));
     assert!(open.done.is_some(), "{:?}", open.done);
+    // Begun in the shell, so nothing kept the stages: no `d` offered
+    // (m6-conflicts/28).
     let frame = crate::captures::frame(&state, 120, 40);
     assert!(
         frame
             .iter()
-            .any(|row| row.starts_with("▸ added-by-them.txt · done ✓ · d starts it over")),
+            .any(|row| row.trim_end() == "▸ added-by-them.txt · done ✓"),
         "{}",
         frame.join("\n")
     );

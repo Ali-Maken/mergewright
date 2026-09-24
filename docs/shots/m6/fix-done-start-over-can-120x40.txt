@@ -1,0 +1,40 @@
+MERGING
+files   gone.txt · keep or delete    ▸ shared.rs · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ shared.rs · done ✓ · d starts it over
+
+  1 fn main() { ours() }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ d start over  e edit  esc close

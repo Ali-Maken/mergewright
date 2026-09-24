@@ -3,13 +3,17 @@
 //! gate asked of those stages before anything is written, and the write that
 //! puts them back after the backup.
 
+use std::io;
 use std::path::{Path, PathBuf};
 
-use graft_core::journal::{EntryStatus, IndexState};
+use graft_core::journal::{EntryStatus, IndexState, JournalEntry};
 use graft_core::oid::Oid;
+use graft_git::repo::RepoHandle;
+use graft_git::run::{RunError, Stop};
 use graft_git::state::InProgress;
 
 use crate::facts::FactsError;
+use crate::journal::{JournalError, journal_path, parse};
 use crate::operation::{Operation, Refusal, RepoFacts};
 use crate::snapshot::{self, SnapshotError};
 
@@ -69,6 +73,18 @@ pub fn stage_source(
     facts: &RepoFacts,
     path: &Path,
 ) -> Result<Option<StageSource>, FactsError> {
+    find_source(ctx.repo, ctx.journal.entries(), facts, path, ctx.stop)
+}
+
+/// [`stage_source`] over any journal-entry slice: the lookup the act (through
+/// its `Context`) and the gate (through a read-only parse) share.
+fn find_source(
+    repo: &RepoHandle,
+    entries: &[JournalEntry],
+    facts: &RepoFacts,
+    path: &Path,
+    stop: &dyn Stop,
+) -> Result<Option<StageSource>, FactsError> {
     if facts
         .status
         .entry(path)
@@ -78,14 +94,14 @@ pub fn stage_source(
         return Ok(Some(StageSource::Index));
     }
     let recorded = match facts.in_progress {
-        Some(live) => chain_states(ctx, live)?,
-        None => journal_states(ctx),
+        Some(live) => chain_states(repo, entries, live, stop)?,
+        None => journal_states(entries),
     };
     for state in recorded {
         if !state.is_unmerged() {
             continue;
         }
-        let held = snapshot::stage_entries(ctx.repo, state, path, ctx.stop).map_err(as_facts)?;
+        let held = snapshot::stage_entries(repo, state, path, stop).map_err(as_facts)?;
         if held.iter().any(|entry| entry.stage >= 1) {
             return Ok(Some(StageSource::Backup { tree: state.tree() }));
         }
@@ -93,31 +109,135 @@ pub fn stage_source(
     Ok(None)
 }
 
+/// The not-unmerged half of "can `d` start this path over": where the
+/// stages are ([`stage_source`]'s lookup), then the marker gate asked of a
+/// recovered stage set. Shared by [`prepare_restart`] (the act) and
+/// [`restart_gate`] (the offer), so the rule is written once.
+///
+/// Outer `Err`: a read failed or the caller stopped. Inner `Err`: the
+/// refusal the act returns. `Index` is not shape-checked here — an unmerged
+/// path is [`crate::operation::Operation::check`]'s (`check_restart`).
+pub(crate) fn restart_source(
+    repo: &RepoHandle,
+    entries: &[JournalEntry],
+    facts: &RepoFacts,
+    path: &Path,
+    stop: &dyn Stop,
+) -> Result<Result<StageSource, Refusal>, FactsError> {
+    let no_stages = || Refusal::NoStagesKept {
+        path: path.to_path_buf(),
+    };
+    let tree = match find_source(repo, entries, facts, path, stop)? {
+        None => return Ok(Err(no_stages())),
+        Some(StageSource::Index) => return Ok(Ok(StageSource::Index)),
+        Some(StageSource::Backup { tree }) => tree,
+    };
+    // Read again rather than have the lookup hand the entries back: one
+    // `ls-tree` on one path, against a public answer that stays a plain
+    // "where from".
+    let index = IndexState::Unmerged { unmerged: tree };
+    let held = snapshot::stage_entries(repo, index, path, stop).map_err(as_facts)?;
+    Ok(match crate::operation::shape_of_stages(&held) {
+        Some(how) if how.has_markers() => Ok(StageSource::Backup { tree }),
+        Some(how) => Err(Refusal::NotMarkerShape {
+            path: path.to_path_buf(),
+            how,
+        }),
+        // The lookup only returns `Backup` for a state holding a stage above
+        // 0, so an empty set cannot arise — and saying "the sides were not
+        // kept" is the truth if it ever does.
+        None => Err(no_stages()),
+    })
+}
+
+/// Why [`restart_gate`] could not tell.
+#[derive(Debug, thiserror::Error)]
+pub enum RestartReadError {
+    /// A `git` read would not run, or the chain could not be settled.
+    #[error("{}", .0.explain())]
+    Facts(FactsError),
+    /// The journal's path could not be asked of git.
+    #[error("{0}")]
+    Run(#[from] RunError),
+    /// The journal did not parse.
+    #[error("the undo journal is unreadable: {0}")]
+    Journal(#[from] JournalError),
+    /// The journal exists and could not be read.
+    #[error("could not read the undo journal: {0}")]
+    Io(#[from] io::Error),
+}
+
+impl RestartReadError {
+    /// The words the app shows.
+    #[must_use]
+    pub fn explain(&self) -> String {
+        self.to_string()
+    }
+}
+
+/// Can `d` start this path over? Read-only: no journal line, no ref moved, no
+/// file written, and never `Journal::open` (which cuts a torn tail).
+///
+/// The same two rules the act runs, reached directly: `check_restart` (what
+/// [`Operation::check`] asks of an unmerged path), then [`restart_source`]
+/// (what [`prepare_restart`] asks of the rest). The answer can go stale if
+/// the repository changes behind the caller; the act's own refusal is the
+/// backstop.
+///
+/// # Errors
+/// Outer `Err`: could not tell. Inner `Err`: the refusal the act would
+/// return, the same value.
+pub fn restart_gate(
+    repo: &RepoHandle,
+    facts: &RepoFacts,
+    path: &Path,
+) -> Result<Result<StageSource, Refusal>, RestartReadError> {
+    if let Err(refusal) = crate::operation::check_restart(path, facts) {
+        return Ok(Err(refusal));
+    }
+    let entries = journal_entries(repo)?;
+    // `&()` never stops: the gate is a short read nobody cancels.
+    restart_source(repo, &entries, facts, path, &()).map_err(RestartReadError::Facts)
+}
+
+/// The journal's entries, read without opening it. No journal is no entries;
+/// a torn last line is left out by `parse` and left on disk here.
+fn journal_entries(repo: &RepoHandle) -> Result<Vec<JournalEntry>, RestartReadError> {
+    let path = journal_path(repo)?;
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(parse(&bytes)?.entries),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(error) => Err(error.into()),
+    }
+}
+
 /// The live entry's backup ref chain **for the current step**, newest first
 /// ([`snapshot::current_step_chain`]). Empty when the operation
 /// is not one of Graft's, or was begun in the shell: there is no chain of
 /// ours to read, which is an honest "nobody kept them".
-fn chain_states(ctx: &Context<'_>, live: InProgress) -> Result<Vec<IndexState>, FactsError> {
-    let span = resume::live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop).map_err(
-        |why| match why {
-            ApplyError::Facts(error) => error,
-            // `live_entry`'s only other failure is the stop it checks first.
-            _ => FactsError::Stopped,
-        },
-    )?;
+fn chain_states(
+    repo: &RepoHandle,
+    entries: &[JournalEntry],
+    live: InProgress,
+    stop: &dyn Stop,
+) -> Result<Vec<IndexState>, FactsError> {
+    let span = resume::live_entry(repo, entries, live, stop).map_err(|why| match why {
+        ApplyError::Facts(error) => error,
+        // `live_entry`'s only other failure is the stop it checks first.
+        _ => FactsError::Stopped,
+    })?;
     let Some(name) = span.and_then(|entry| entry.backup_ref.as_deref()) else {
         return Ok(Vec::new());
     };
     // The current step's links only: an earlier step's conflict is resolved
     // and committed, and restoring its stages here would put that step's
     // sides into this step's index (review m6-amend-10-22 M1).
-    snapshot::current_step_chain(ctx.repo, name, ctx.stop).map_err(as_facts)
+    snapshot::current_step_chain(repo, name, stop).map_err(as_facts)
 }
 
 /// The in-force entries' recorded index states, newest entry first and
 /// `index_after` before `index_before` within one entry.
-fn journal_states(ctx: &Context<'_>) -> Vec<IndexState> {
-    let entries = ctx.journal.entries();
+fn journal_states(entries: &[JournalEntry]) -> Vec<IndexState> {
     let flags = crate::journal::in_force_all(entries);
     entries
         .iter()
@@ -173,36 +293,15 @@ pub(crate) fn prepare_restart(
         return Ok(RestartPrep::Nothing);
     };
     let path = params.path.as_path();
-    let refused = |refusal| Err(ApplyError::Refused(refusal));
-    match stage_source(ctx, facts, path).map_err(as_apply_facts)? {
-        None => refused(Refusal::NoStagesKept {
+    match restart_source(ctx.repo, ctx.journal.entries(), facts, path, ctx.stop)
+        .map_err(as_apply_facts)?
+    {
+        Err(refusal) => Err(ApplyError::Refused(refusal)),
+        Ok(StageSource::Index) => Ok(RestartPrep::Nothing),
+        Ok(StageSource::Backup { tree }) => Ok(RestartPrep::Restore {
+            index: IndexState::Unmerged { unmerged: tree },
             path: path.to_path_buf(),
         }),
-        Some(StageSource::Index) => Ok(RestartPrep::Nothing),
-        Some(StageSource::Backup { tree }) => {
-            let index = IndexState::Unmerged { unmerged: tree };
-            // Read again rather than have `stage_source` hand the entries
-            // back: one `ls-tree` on one path, against a public answer that
-            // stays a plain "where from".
-            let held =
-                snapshot::stage_entries(ctx.repo, index, path, ctx.stop).map_err(as_apply_error)?;
-            match crate::operation::shape_of_stages(&held) {
-                Some(how) if how.has_markers() => Ok(RestartPrep::Restore {
-                    index,
-                    path: path.to_path_buf(),
-                }),
-                Some(how) => refused(Refusal::NotMarkerShape {
-                    path: path.to_path_buf(),
-                    how,
-                }),
-                // `stage_source` only returns `Backup` for a state holding a
-                // stage above 0, so an empty set cannot arise — and saying
-                // "the sides were not kept" is the truth if it ever does.
-                None => refused(Refusal::NoStagesKept {
-                    path: path.to_path_buf(),
-                }),
-            }
-        }
     }
 }
 

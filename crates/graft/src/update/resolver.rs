@@ -33,14 +33,20 @@
 //!   refusal both ask first.
 //! - `files` — the file list: its order and states, a click on a file, and
 //!   the conflict set it is read from (m6-conflicts/13).
+//! - `done` — a done file, open read-only (m6-conflicts/25), and the keys
+//!   it refuses.
+//! - `handover` — `e`/`M`, and what waits for the takes still landing
+//!   (m6-conflicts/28).
 
 mod answers;
 mod base;
 mod done;
 mod files;
 mod geometry;
+mod handover;
 mod names;
 mod open;
+mod resolved;
 mod restart;
 mod scroll;
 mod take;
@@ -60,24 +66,28 @@ use super::detail::Loading;
 use super::events::Command;
 use super::state::{AppState, Status};
 
-pub(crate) use answers::every_file_done;
-pub use answers::{conflict_opened, handed_back, resolved_advance, taken, write_not_landed};
+pub use answers::{conflict_opened, handed_back, taken, write_not_landed};
 pub use base::base_loaded;
-pub use done::{DoneShape, done_refusal};
+pub use done::{DoneOpen, DoneShape, done_refusal};
 pub use files::{ListedFile, RowState, conflict_set_read, file_cursor, listed_files, select_file};
 pub use geometry::{banner_rows, fits, resized, scroll_block_into_view};
 #[cfg(test)]
 pub(crate) use names::fixtures;
 pub use names::side_names;
 pub use open::open_resolver;
+pub(crate) use resolved::every_file_done;
+pub use resolved::resolved_advance;
 pub use restart::restart_landed;
+pub(crate) use restart::start_over_refusal;
 pub use scroll::resolver_mouse;
 pub use walk::{after_take, next_block};
 pub use whole_file::{WholeFileShape, whole_file_keys};
 
 use base::toggle_base;
 use geometry::scrolled_to;
+use handover::{edit_here, mergetool_here, takes_refusal};
 use open::{box_open, reopen};
+use resolved::mark_resolved;
 use restart::restart_box;
 use scroll::scroll_key;
 use take::take_key;
@@ -168,7 +178,7 @@ pub struct ResolverState {
     /// The open file is **done** — git no longer calls it unmerged — and
     /// shown read-only (m6-conflicts/25): what the opening read found, or
     /// why it could not be read. `None` for a file still conflicted.
-    pub done: Option<DoneShape>,
+    pub done: Option<DoneOpen>,
     /// The take whose `TakeSide` is out (m6-conflicts/15): its block and
     /// side. `Some` exactly when [`Self::job`] is a take.
     pub in_flight: Option<(usize, Take)>,
@@ -180,6 +190,10 @@ pub struct ResolverState {
     /// `N` crossed to this file: when its opening read lands the cursor goes
     /// to the last block rather than the first.
     pub land_last: bool,
+    /// Queued takes a failed take dropped while its re-read is out: said
+    /// once the re-read lands, which clears the failure's own words (review
+    /// m6-amend-15 M2). `0` otherwise.
+    pub dropped: usize,
 }
 
 /// The most takes held behind the one in flight; the next is refused
@@ -188,7 +202,7 @@ pub const TAKE_QUEUE_CAP: usize = 64;
 
 impl ResolverState {
     /// A resolver waiting on its opening read.
-    fn opening(path: PathBuf, opened_from: OpenedFrom, job: JobId) -> Self {
+    pub(super) fn opening(path: PathBuf, opened_from: OpenedFrom, job: JobId) -> Self {
         ResolverState {
             path,
             opened_from,
@@ -211,6 +225,7 @@ impl ResolverState {
             in_flight: None,
             queued: VecDeque::new(),
             land_last: false,
+            dropped: 0,
         }
     }
 
@@ -282,7 +297,7 @@ pub fn resolver_key(
     // rule the Ghost Preview's `fits` applies (m5/08).
     if !fits(state) {
         if key.code == KeyCode::Escape {
-            close(state);
+            escape(state);
         }
         return true;
     }
@@ -299,22 +314,16 @@ fn act(
     next_id: &mut impl FnMut() -> JobId,
 ) {
     let plain = !key.modifiers.control && !key.modifiers.alt;
-    // A done file is read-only (m6-conflicts/25): every key that would take,
-    // stage, load a base, hand to a mergetool or walk is refused in words,
-    // with nothing sent. `d`, `e`, `Esc` and the scroll keys act as ever.
-    let refused_when_done = matches!(
-        key.code,
-        KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'n' | 'N') | KeyCode::Enter
-    );
-    if plain
-        && refused_when_done
+    // A done file is read-only (m6-conflicts/25): refused in words, with
+    // nothing sent.
+    if done::refuses(&key)
         && let Some(words) = done_refusal(state)
     {
         state.status = Status::sticky(words);
         return;
     }
     match key.code {
-        KeyCode::Escape => close(state),
+        KeyCode::Escape => escape(state),
         KeyCode::Char('o' | 't' | 'b') if plain => take_key(state, commands, key.code, next_id),
         KeyCode::Char('B') if plain => toggle_base(state, commands, next_id),
         KeyCode::Char('n') if plain => walk_blocks(state, commands, true, next_id),
@@ -330,85 +339,19 @@ fn act(
     }
 }
 
-/// `M`: the banner's own mergetool handover, refusal and all — `no
-/// merge.tool configured · e edits <path>` is the same answer here.
-fn mergetool_here(state: &mut AppState, commands: &mut Vec<Command>) {
-    if let Some(path) = state.resolver.as_ref().map(|open| open.path.clone()) {
-        let launched = super::banner::open_mergetool(state, commands, Some(&path));
-        debug_assert!(launched, "a path was passed, so `M` was answered");
-    }
-}
-
-/// `⏎`: mark the file resolved, which is `git add` on it — git's own way of
-/// recording a resolution.
-///
-/// Refused **in words, without a job**, while any block is still open:
-/// `graft_ops::conflict::mark_resolved_refusal` reads the document the user
-/// is looking at, so the answer arrives in the same keystroke rather than
-/// as a `git add` that runs and comes back refused.
-fn mark_resolved(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    let (file, path) = {
-        let Some(open) = state.resolver.as_ref() else {
-            return;
-        };
-        (open.file.clone(), open.path.clone())
-    };
-    let Some(file) = file else {
-        return;
-    };
-    if let Some(refusal) = graft_ops::conflict::mark_resolved_refusal(&path, &file) {
-        state.status = Status::Sticky {
-            reason: refusal.explain(),
-            keys: Some("n next".to_owned()),
-        };
-        return;
-    }
-    if let Some(words) = write_refusal(state) {
+/// `Esc`: close — once the takes have landed. Closing drops the resolver
+/// that holds the queue, so a take still queued would never be sent (review
+/// m6-amend-15 M1).
+fn escape(state: &mut AppState) {
+    if let Some(words) = takes_refusal(state) {
         state.status = Status::sticky(words);
         return;
     }
-    super::operate::launch(
-        state,
-        commands,
-        graft_ops::operation::Operation::Stage(graft_ops::operation::Target::Paths(vec![path])),
-        next_id,
-    );
-    let operating = state.operating;
-    if let Some(open) = state.resolver.as_mut() {
-        open.staging = operating;
-    }
+    close(state);
 }
 
-/// `e`: hand the terminal to `$EDITOR` on this file, at the cursor block's
-/// own marker line.
-///
-/// [`Command::OpenExternalEditor`], not `OpenConflictEditor`: the banner's
-/// `e` asks the loop to find the first `<<<<<<< ` because `update` opens no
-/// files, but the resolver is *holding* the parsed document and knows
-/// exactly which line the user is looking at.
-fn edit_here(state: &mut AppState, commands: &mut Vec<Command>) {
-    let Some(open) = state.resolver.as_ref() else {
-        return;
-    };
-    let path = open.path.clone();
-    let line = match (open.file.as_ref(), open.cursor_block) {
-        (Some(file), Some(block)) => file
-            .blocks()
-            .get(block)
-            .and_then(|at| u32::try_from(at.first_line).ok()),
-        // Nothing under the cursor to aim at: no line, which opens the file
-        // at its top, as `$EDITOR` would anyway.
-        _ => None,
-    };
-    commands.push(Command::OpenExternalEditor { path, line });
-}
-
-/// `Esc`: close the resolver and give the keyboard back to where `⏎` came
-/// from. **Never** aborts the operation underneath (§2.6).
+/// Close the resolver and give the keyboard back to where `⏎` came from.
+/// **Never** aborts the operation underneath (§2.6).
 fn close(state: &mut AppState) {
     let Some(open) = state.resolver.take() else {
         return;

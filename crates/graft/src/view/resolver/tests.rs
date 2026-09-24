@@ -99,6 +99,7 @@ fn open_on(bytes: &[u8], path: &str) -> AppState {
             in_flight: None,
             queued: std::collections::VecDeque::new(),
             land_last: false,
+            dropped: 0,
         }),
         ..AppState::default()
     }
