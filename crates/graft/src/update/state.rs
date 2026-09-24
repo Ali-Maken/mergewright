@@ -276,6 +276,12 @@ pub struct AppState {
     /// landing runs on the first working-tree read after the modal closes;
     /// cleared then, or by `undo::operation_ended`.
     pub live_landing_owed: bool,
+    /// The newest working-tree read asked for and not yet answered, or
+    /// `None` when [`AppState::working_tree`] is as fresh as anything
+    /// asked for. While it is `Some`, what the status says may be stale —
+    /// a write that just landed is not in it yet — so `c` does not count
+    /// on it (`update::status_read`).
+    pub status_read: Option<JobId>,
     /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).

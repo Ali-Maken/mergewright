@@ -185,10 +185,15 @@ pub fn select_file(
     true
 }
 
-/// Why the open file cannot be left right now: a read, a take, a base load
-/// or a write on it is in flight, and its answer would land on the next.
+/// Why the open file cannot be left right now: a box is waiting for an
+/// answer about it, or a read, a take, a base load or a write on it is in
+/// flight, and its answer would land on the next.
 fn switch_refusal(state: &AppState) -> Option<&'static str> {
     let open = state.resolver.as_ref()?;
+    if super::box_open(state) {
+        // `open_refusal`'s words: the box's question is about this file.
+        return Some("finish the box first");
+    }
     if let Some(words) = open.busy_words() {
         return Some(words);
     }

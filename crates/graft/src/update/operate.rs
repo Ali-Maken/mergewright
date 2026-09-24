@@ -43,7 +43,8 @@ pub(super) fn write_job_ended(
         return Vec::new();
     }
     state.operating = None;
-    let mut commands = vec![Command::ReadWorkingTree];
+    let tree = next_id();
+    let mut commands = vec![super::status_read::ask(state, tree)];
     commands.extend(state.detail.refresh(next_id));
     commands
 }
@@ -970,7 +971,8 @@ pub(super) fn refresh_scope(
             // overlay is what the user is looking at when they press one
             // (m3-working-tree-undo-and-stash/06).
             super::stash::refresh(state, &mut commands, next_id);
-            commands.push(Command::ReadWorkingTree);
+            let tree = next_id();
+            commands.push(super::status_read::ask(state, tree));
             commands.extend(state.detail.refresh(next_id));
             commands
         }
@@ -1896,7 +1898,12 @@ mod tests {
             );
             if ended {
                 assert_eq!(state.operating, None);
-                assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+                assert!(
+                    commands
+                        .iter()
+                        .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+                    "{commands:?}"
+                );
                 // Every write key's first line is this check, so clearing it
                 // is exactly what brings them back.
                 assert!(!operation_in_flight(&state));
@@ -2040,7 +2047,12 @@ mod tests {
             },
             &mut ids(),
         );
-        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+            "{commands:?}"
+        );
         assert!(
             !commands
                 .iter()
@@ -2144,7 +2156,12 @@ mod tests {
         );
         // The wide refresh, which is `Ctrl+R`'s own path: the working tree
         // (unmerged flags and `in_progress`) and the graph both.
-        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+            "{commands:?}"
+        );
         assert!(
             commands
                 .iter()
@@ -2226,7 +2243,12 @@ mod tests {
             &mut ids(),
         );
         assert_eq!(state.status, Status::Done("stage src/a.rs".into()));
-        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+            "{commands:?}"
+        );
         assert!(
             !commands
                 .iter()

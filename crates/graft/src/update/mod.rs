@@ -45,6 +45,7 @@ mod search;
 mod selection;
 pub mod stash;
 mod state;
+mod status_read;
 mod strip;
 pub mod undo;
 
@@ -88,6 +89,8 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
     let walk = state.local_jobs.next_id();
     state.awaiting = Some(walk);
     let refs = state.local_jobs.next_id();
+    let tree = state.local_jobs.next_id();
+    let read_tree = status_read::ask(&mut state, tree);
     let commands = vec![
         Command::OpenRepository,
         Command::CheckSystemGit,
@@ -98,7 +101,7 @@ pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Comm
         // Badges: ahead/behind walks commits.
         Command::ReadRefs(refs),
         // The uncommitted-changes row.
-        Command::ReadWorkingTree,
+        read_tree,
     ];
     (state, commands)
 }
@@ -313,7 +316,8 @@ fn mergetool_returned(
             };
         }
     }
-    commands.push(Command::ReadWorkingTree);
+    let tree = next.local_jobs.next_id();
+    commands.push(status_read::ask(next, tree));
     commands.extend(next.detail.refresh(&mut || next.local_jobs.next_id()));
     // The resolver's `M`: its document is as stale as the file list was.
     // Both handovers land here now — `e` through `Product::HandedOver` in
@@ -609,8 +613,17 @@ fn took_fact(
                 next.head_landing = state::HeadLanding::default();
             }
         }
-        Product::WorkingTree(Ok(read)) => working_tree_read(next, commands, *read),
+        Product::WorkingTree(Ok(read)) => {
+            let owed = status_read::answered(next, id);
+            working_tree_read(next, commands, *read);
+            if owed {
+                status_read::settle(next);
+            }
+        }
         Product::WorkingTree(Err(failure)) => {
+            // The read the line waited on has no status to give; the
+            // failure below replaces the line either way.
+            let _owed: bool = status_read::answered(next, id);
             // The graph still draws without the uncommitted row; the reason
             // goes on the status line rather than leaving it silently
             // missing.
@@ -812,7 +825,8 @@ fn focus_gained(next: &mut AppState, commands: &mut Vec<Command>) {
         return;
     }
     next.last_focus_refresh = Some(now);
-    commands.push(Command::ReadWorkingTree);
+    let tree = next.local_jobs.next_id();
+    commands.push(status_read::ask(next, tree));
     // Another window may have stashed or popped while this one was away.
     // Only while the overlay is up: nothing else on screen reads the list.
     let mut local_jobs = next.local_jobs;
@@ -832,6 +846,10 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     }
     if next.promoting == Some(id) {
         history::give_up_promotion(next, commands);
+    }
+    // The status read the line waited on will not answer.
+    if status_read::answered(next, id) {
+        status_read::abandon(next);
     }
     let mut local_jobs = next.local_jobs;
     // The write `Esc` stopped: the answer the user asked for. Any other
@@ -864,6 +882,10 @@ fn job_failed(
     // Surfaced, not swallowed: the user is told which job failed and why. A
     // panicking job says so in the same place — it is still a failure, and
     // the crash report's path rides along with it.
+    //
+    // A status read the line waited on stops being waited on; the failure
+    // replaces the line, so whether it was that read changes nothing more.
+    let _owed: bool = status_read::answered(next, id);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;
     commands.extend(operate::write_job_ended(next, id, &mut || {

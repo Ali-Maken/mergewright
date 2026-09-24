@@ -86,5 +86,9 @@ pub fn restart_landed(
     }
     let path = open.path.clone();
     let from = open.opened_from;
+    // Landed: see `resolved_advance`, which clears its id the same way.
+    if let Some(open) = state.resolver.as_mut() {
+        open.restarting = None;
+    }
     reopen(state, commands, path, from, next_id);
 }

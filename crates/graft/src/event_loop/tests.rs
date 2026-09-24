@@ -733,7 +733,9 @@ fn a_command_from_update_reaches_the_job_runner() {
             Command::ReadRemotes(graft_core::job::JobId::new(
                 crate::update::detail::LOCAL_JOB_BIT | 4,
             )),
-            Command::ReadWorkingTree,
+            Command::ReadWorkingTree(graft_core::job::JobId::new(
+                crate::update::detail::LOCAL_JOB_BIT | 5
+            )),
         ]
     );
 }

@@ -720,7 +720,12 @@ mod tests {
             Status::Done("undo: stage src/a.rs".to_owned())
         );
         assert!(state.operating.is_none());
-        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadWorkingTree(_))),
+            "{commands:?}"
+        );
         assert!(
             commands
                 .iter()

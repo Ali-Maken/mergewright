@@ -330,6 +330,7 @@ fn take_all_and_mark(app: &App, state: AppState) -> AppState {
     );
     app.pump(state, "the stage and what follows it", |state| {
         state.operating.is_none()
+            && state.status_read.is_none()
             && state
                 .resolver
                 .as_ref()

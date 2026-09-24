@@ -31,7 +31,7 @@ fn entry(path: &str, unmerged: bool) -> StatusEntry {
     }
 }
 
-fn status(entries: &[(&str, bool)]) -> Arc<WorkingTreeStatus> {
+pub(super) fn status(entries: &[(&str, bool)]) -> Arc<WorkingTreeStatus> {
     Arc::new(WorkingTreeStatus {
         entries: entries
             .iter()
@@ -63,7 +63,7 @@ fn states(state: &AppState) -> Vec<(String, RowState)> {
 
 /// The resolver on `conflicted.rs` (two open blocks) in a merge whose set
 /// is `paths`, `unmerged` of them still unmerged.
-fn listing(paths: &[&str], unmerged: &[&str]) -> AppState {
+pub(super) fn listing(paths: &[&str], unmerged: &[&str]) -> AppState {
     let mut state = resolver_on_screen(WALK);
     merging(&mut state);
     let entries: Vec<(&str, bool)> = paths
@@ -522,4 +522,39 @@ fn an_unreadable_set_says_so() {
         drawn.contains("files: git's list unavailable · the unmerged ones below"),
         "{drawn}"
     );
+}
+
+/// Review m6-amend-13, Major 1: `d`'s box is up over the resolver, and a
+/// click lands on another file's row. The box owns the input, as it owns
+/// every key: the click does nothing. Before, it closed the resolver
+/// (`reopen` took it before `open_refusal` refused) and left the box up
+/// over the graph.
+#[test]
+fn a_list_click_under_the_box_leaves_both_as_they_were() {
+    let state = listing(
+        &["conflicted.rs", "later.rs"],
+        &["conflicted.rs", "later.rs"],
+    );
+    let (x, y) = cell_of(&state, 1);
+    let (boxed, _) = super::press(&state, graft_core::event::KeyCode::Char('d'));
+    assert!(boxed.confirm.is_some(), "d put its box up");
+    let (after, commands) = click(&boxed, x, y);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(after.resolver, boxed.resolver, "the resolver is as it was");
+    assert_eq!(after.confirm, boxed.confirm, "the box is as it was");
+    assert_eq!(after.status, boxed.status, "nothing said");
+
+    // The switch itself, reached any other way, refuses without closing:
+    // `reopen` decides before it takes the resolver.
+    let mut switched = boxed.clone();
+    let mut commands = Vec::new();
+    let answered =
+        crate::update::resolver::select_file(&mut switched, &mut commands, 1, &mut || {
+            JobId::new(9_900)
+        });
+    assert!(answered);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(switched.resolver, boxed.resolver, "still on conflicted.rs");
+    assert_eq!(switched.confirm, boxed.confirm);
+    assert_eq!(sticky(&switched).0, "finish the box first");
 }

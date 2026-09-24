@@ -358,7 +358,7 @@ fn a_rebase_lists_only_this_steps_files() {
     // which says `c` goes on.
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the stage", |state| {
-        state.operating.is_none() && state.resolver.is_none()
+        state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
     });
     assert!(
         matches!(&state.status, Status::Done(line)

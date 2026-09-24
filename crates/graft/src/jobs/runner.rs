@@ -527,16 +527,20 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
-    /// Reads the working tree's full status off the loop's thread.
-    fn read_working_tree(&self) {
+    /// Reads the working tree's full status off the loop's thread, under an
+    /// id `update` chose so the read a write asked for can be told from an
+    /// older one (`update::status_read`).
+    fn read_working_tree(&self, id: JobId) {
         let repos = Arc::clone(&self.repos);
-        self.announce(Task::ReadWorkingTree, move |cancel| {
-            if cancel.is_cancelled() {
-                return Outcome::Cancelled;
-            }
-            Outcome::Produced(Product::WorkingTree(
-                crate::working_tree::read(&repos, cancel).map(Box::new),
-            ))
+        self.queue_as(id, Some(Task::ReadWorkingTree), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::WorkingTree(
+                    crate::working_tree::read(&repos, cancel).map(Box::new),
+                ))
+            })
         });
     }
 
@@ -949,7 +953,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.announce(Task::CheckSystemGit, check_system_git());
             }
             Command::ReadRefs(id) => self.read_refs(id),
-            Command::ReadWorkingTree => self.read_working_tree(),
+            Command::ReadWorkingTree(id) => self.read_working_tree(id),
             Command::PromoteHistory => self.promote_history(),
             Command::WriteCommitGraph => self.write_commit_graph(),
             Command::DeclineCommitGraph => self.decline_commit_graph(),
