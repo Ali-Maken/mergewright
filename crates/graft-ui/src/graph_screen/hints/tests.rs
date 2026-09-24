@@ -21,11 +21,20 @@ use super::*;
 ///
 /// Taken from `hints::every_context` rather than written out again: this
 /// file's own copy of the list missed `Dragging` for two tickets (m5/31).
+///
+/// `Finish` is out for the reason `Resolver` once was: ticket 19 was split
+/// at the seam, so every entry of its table is `Planned` and draws nothing.
+/// The app half removes it from this filter in the commit that binds the
+/// keys and flips the table to `Live`.
 fn all_contexts() -> Vec<HintContext> {
     every_context()
         .into_iter()
         .filter(|context| {
-            *context != HintContext::Preview && !matches!(context, HintContext::Resolver { .. })
+            *context != HintContext::Preview
+                && !matches!(
+                    context,
+                    HintContext::Resolver { .. } | HintContext::Finish { .. }
+                )
         })
         .collect()
 }
@@ -864,7 +873,8 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Stash
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
-        | HintContext::Resolver { .. } => None,
+        | HintContext::Resolver { .. }
+        | HintContext::Finish { .. } => None,
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
         // still leads to everything, the dropped `⏎` included. So does the

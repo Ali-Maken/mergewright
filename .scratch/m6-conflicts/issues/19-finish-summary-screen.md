@@ -1,6 +1,6 @@
 # fix-finish-summary-screen: `c` on a merge shows what will land — what you resolved, what git combined on its own, the message — and `⏎` commits it
 
-Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: partial — graft-ui half built, split at the seam (see NOTES). (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 22-ops-finish-message-and-step-bound.md, 13-resolver-file-list.md, **16-take-every-open-block.md** (`TakeAt`, `apply_take_all`), **17-resolver-file-keys.md** (`O`/`T` land through the same `take_landed`; same crate set, ADR-0036: not concurrent)
 Was: draft · new 2026-09-23. Part A approved (field notes 2026-09-23: *"yes build it that way"*).
 **Revised 2026-09-23 (review `m6-amend-09` Minor 1).** The message the user sees is the message that lands, character for character. git's comment lines come out when `MERGE_MSG` is **read** (`finish_summary`). The commit keeps what he typed (`ContinueWith` sends `--cleanup=whitespace`, graft-ops, ticket 22). A `#123 fixes login` line he types survives.
@@ -223,3 +223,73 @@ Medium–large, one context: one widget, one modal state machine, two jobs, thre
 4. **Design note :450 and :473.** Replace `fix-finish-summary-screen` Part B with `fix-finish-from-the-resolver`.
 5. **Ticket 17, Scope 1, last bullet.** Replace it with: "`AppState::choices` is ticket 19's; `O`/`T` land through `take_landed` as `TakeAt::Every`, which 19 records. Nothing here."
 6. **New spec** `finish-from-the-resolver.md`, written beside this one. It numbers after 19.
+
+## NOTES (builder, 2026-09-24)
+
+**Compacted mid-ticket.** Split at the seam the Size section names: the graft-ui widget and hints are built and committed; the app half remains. No acceptance box is ticked, because every box needs the app half.
+
+### Done (graft-ui half; gates green workspace-wide: nextest 2912/2912, doctests, clippy, fmt)
+- `crates/graft-ui/src/finish_summary.rs` (+ `finish_summary/tests.rs`) holds:
+  - the ticket's types and the `FinishScreen` widget;
+  - pure layout that the app's hit-testing shares: `list_lines`, `layout`, `fits`, `hit -> FinishHit{Row,Subject,Body}`, `list_height`, `max_top`, `top_for_cursor`.
+- Its tests pass: `one_column_below_160`, `two_columns_from_160`, `too_small_says_so`, `a_long_diff_stops_at_12_rows_and_says_space_hides` (asserts no `load all`), plus `a_click_lands_on_what_is_drawn` and `the_cursor_row_is_kept_on_screen`.
+- `… N more` counts the rows not drawn plus the lines the job cut (`truncated`).
+- `HintContext::Finish { focus, expandable }` is wired in:
+  - lists in `hints/lists.rs::finish_list`;
+  - modal in `whole_bar` / `drawable`;
+  - `finish_forms` in `every_context`, plus the exhaustive arms;
+  - coverage slots 32–35 (`every_context_reaches_every_shape` green).
+- **Every Finish hint is `planned(..)`**, and `Finish` is filtered out of `hints/tests.rs::all_contexts`, as `Resolver` once was, because nothing binds them yet. `every_planned_hint_is_still_unbound` enforces this.
+- In graft `update/tests.rs`, Finish gets `classified_form` → `None` and `screen_for` → `Vec::new()`. Each carries a comment naming the app half.
+- graft-ui MAP.md: two lines added.
+
+### Next (app half, graft crate), in this order
+1. **Events.**
+   - `Command::ReadFinishSummary(JobId)` and `ReadFinishDiff(JobId, PathBuf)`.
+   - `Product::FinishSummary` and `FinishDiff`, plus the Task variants.
+   - `took_fact` in `update/mod.rs`.
+2. **`jobs/finish.rs`.**
+   - Summary: `graft_ops::finish::finish_summary(&handle)`.
+   - Diff: `list_files(&handle, &DiffSpec::Staged, ..)`, find the entry by path, `file_diff(.., MAX_LINES, stop)`, then `jobs::detail::assemble_diff(&diff, true)`.
+   - Dispatch in `jobs/runner.rs`; `read_conflict_set` is the pattern.
+   - Test: `jobs::finish::tests::the_diff_is_the_staged_change`.
+3. **`update/finish.rs`** per the Signatures.
+   - State fields `choices`, `finish`, `finish_draft`.
+   - `GraphOverlay::Finish` goes first in `graph_overlay()`.
+   - Add it to `text_field_open` (when the focus is Subject or Body) and to `modal_owns_keys`.
+4. **Keys and the banner.**
+   - `keys.rs::key_event`: `finish_key` after `boxes_key`, before `resolver_key`.
+   - `banner.rs::continue_pressed`: for `InProgress::Merge`, call `open_finish(.., ReturnTo::Banner, ..)` instead of `resume`.
+   - `resumed`: call `finish::resume_answered` first.
+     - Done: close, clear the draft, focus the graph, status `merged <from> into <into> ✓`.
+     - Failed: keep the summary open, notice = the reason, not the `a abort` Sticky.
+5. **`update/mod.rs` editor route.**
+   - Add an `ExternalEditor` arm that asks `finish::editor_returned` first (it matches `finish.editing == Some(id)`), else `commit_editor_answer`.
+   - No `strip_comments` on the finish route (S3).
+   - Also fix graft MAP line 115, which says comments are "already stripped": `commit_editor::strip_comments` strips them.
+6. **Choices.**
+   - Record in `resolver/answers.rs::take_landed`. `open.in_flight` is the landing `(TakeAt, Take)`, and `open.file` still holds the old document at that point.
+   - Add `whole_side` on ResolverState, recorded in `resolved_advance`.
+   - Remove the entry in `restart_landed`.
+   - Set `edited` on Ok handovers: resolver `handed_back`, mergetool, and banner `e`. Banner `e` needs the path kept by `banner::edit_conflict`.
+   - Clear in `undo::operation_ended`.
+7. **View, mouse, paste.**
+   - `view/finish.rs` builds `FinishView`.
+   - `view/frame.rs`: a Finish arm, with the banner row on top and its own bar (`committing…` or the hints, never the status).
+   - `view/rows.rs::overlay_context`.
+   - Below `fits()`, draw `esc back` alone.
+   - Mouse routing in `update/mouse.rs`; paste into the fields.
+8. **Bind and flip.**
+   - Flip `finish_list` to `hint(..)` and drop Finish from `all_contexts`' filter.
+   - Add `BOUND_ACTIONS` entries: `⏎ commit`, `space diff`, `⇥ message/body/files`, `⌃E editor`, `⌃⏎ commit`, `esc back`.
+   - `presses_for` `⌃E` / `⌃⏎`, and Finish fixtures in `classified_form` / `screen_for`.
+9. **Real-git tests and captures.**
+   - `tests/it/finish.rs` against real git. Extend `resolver/file_list.rs::gone_and_notes_merge` so `feature` also changes one `README.md` line cleanly.
+   - Captures `docs/shots/m6/fix-finish-summary-*`.
+
+### Gotchas and questions
+- The harness JobRunner panics on handover commands. The Ctrl+E test must intercept `EditCommitMessage` and feed `Product::ExternalEditor(Ok(..))` itself.
+- `diff_body` pins a hunk heading when `top` is inside a hunk, so the widget draws each diff run in a single call. Don't draw it row by row.
+- **Question:** the ticket writes `^E` / `^⏎`. The table uses `⌃E` / `⌃⏎`, matching the app's `⌃O/⌃T`.
+- **Deviation:** in the files focus, with no git-combined row under the cursor, the bar drops `space diff` but keeps `j/k move`, which is still needed to reach the combined rows.
+- The bar is told only the width, so the too-small `esc back` bar is the app's to draw. A width floor inside `hints_for` broke the monotone-width sweeps.

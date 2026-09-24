@@ -14,6 +14,7 @@ pub mod credential_prompt;
 pub mod detail;
 pub mod detail_pane;
 pub mod diff_words;
+pub mod finish_summary;
 pub mod fit;
 mod frame_box;
 pub mod graph_column;

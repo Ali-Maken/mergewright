@@ -69,12 +69,38 @@ pub fn every_context() -> Vec<HintContext> {
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
     all.extend(resolver_forms());
+    all.extend(finish_forms());
     all.extend(plain.iter().filter_map(marked_form));
     let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
     all.extend(rows);
     let live: Vec<HintContext> = all.iter().filter_map(operation_live_form).collect();
     all.extend(live);
     all
+}
+
+/// Every [`HintContext::Finish`] form: each focus, a git-combined row under
+/// the cursor or not. Only the files focus reads `expandable`, so the other
+/// two are named once.
+fn finish_forms() -> Vec<HintContext> {
+    use crate::finish_summary::SummaryFocus;
+    vec![
+        HintContext::Finish {
+            focus: SummaryFocus::Files,
+            expandable: true,
+        },
+        HintContext::Finish {
+            focus: SummaryFocus::Files,
+            expandable: false,
+        },
+        HintContext::Finish {
+            focus: SummaryFocus::Subject,
+            expandable: false,
+        },
+        HintContext::Finish {
+            focus: SummaryFocus::Body,
+            expandable: false,
+        },
+    ]
 }
 
 /// `context` wrapped in [`HintContext::OperationLive`], for the contexts
@@ -104,6 +130,7 @@ fn operation_live_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Finish { .. }
         | HintContext::PaneFocused { .. }
         | HintContext::OperationLive(_) => None,
     }
@@ -191,6 +218,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Finish { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
         | HintContext::OperationLive(_) => None,
@@ -237,6 +265,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
+        | HintContext::Finish { .. }
         | HintContext::PaneFocused { .. }
         | HintContext::OperationLive(_) => Vec::new(),
     }
