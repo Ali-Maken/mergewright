@@ -17,43 +17,43 @@
 
 ================================================================================
 docs/shots/m6/m6-01-resolver-three-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", the resolver on `three.txt` (keys `⏎ n t B`): title `three.txt · file 12 of 13 · 2 of 3 conflicts open`; block 1 open, OURS and THEIRS side by side with its BASE (`one`) under them; block 2 `took theirs`, one line `two-theirs`, the key line offering only `o ours  b both`; block 3 open with its BASE (`three`); the footer says `base shown for 3 conflicts`. Judge: the taken block's closing rule carries a `┴` although that block has no two columns (finding F11, a question).
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", the resolver on `three.txt` (keys `⏎ n t B`). Top: the file list, `files · 13`, the cursor `▸ three.txt 2 of 3 open`, `… 8 more`; then the identity row `▸ three.txt · 3 conflicts · 2 open` (ticket 13; no `file 12 of 13` title, no `ours = main` legend — ticket 10). Block 1 open, `yours · main │ theirs · feature` side by side, each side numbered on its own (`2 one-ours │ 2 one-theirs`), its BASE (`one`) under them. Block 2 `took theirs · feature`, one line `7 two-theirs`, its keys only `o yours  b both`. The cursor (`▏`) is on block 3 — `t` moved it to the next open block (ticket 15) — open, with its BASE (`three`). Marker rows carry no number. Footer `base shown for 3 conflicts ✓`. Judge: the taken block's closing rule still carries a `┴` although it has one column (F11, a question).
 ================================================================================
 
 m6 walk capture: m6-01-resolver-three — scenario zdiff3-and-base-on-demand, keys k ⏎ j j j j j j j j j j j ⏎ n t B, unicode tier, 120x40
 
 MERGING
-three.txt · file 12 of 13 · 2 of 3 conflicts open
-ours = main · theirs = the branch being merged in
-      1 alpha
-   2 ── conflict 1 of 3 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-  OURS · HEAD                                               │THEIRS · feature
-      3 one-ours                                            │      one-theirs
+files · 13     nofinal.txt 1 of 1 open               ours-deleted.txt keep or delete
+               pic.bin binary                        theirs-deleted.txt keep or delete
+             ▸ three.txt 2 of 3 open               … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ three.txt · 3 conflicts · 2 open
+
+   1 alpha
+  ── conflict 1 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+  yours · main                                              │theirs · feature
+   2 one-ours                                               │ 2 one-theirs
   BASE · merged common ancestor
-        one
+     one
   ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      7 b1
-      8 b2
-      9 b3
-     10 b4
-▏  11 ── conflict 2 of 3 · took theirs ── o ours  b both ───────────────────────────────────────────────────────────────
-▏    11 two-theirs
+   3 b1
+   4 b2
+   5 b3
+   6 b4
+  ── conflict 2 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
+   7 two-theirs
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+   8 c1
+   9 c2
+  10 c3
+  11 c4
+▏ ── conflict 3 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏ 12 three-ours                                             │12 three-theirs
+▏ BASE · merged common ancestor
+▏    three
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-     12 c1
-     13 c2
-     14 c3
-     15 c4
-   16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────────────────────────────────────────────
-  OURS · HEAD                                               │THEIRS · feature
-     17 three-ours                                          │      three-theirs
-  BASE · merged common ancestor
-        three
-  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-     21 delta
-
-
-
-
+  13 delta
 
 
 
@@ -65,48 +65,52 @@ ours = main · theirs = the branch being merged in
 
 ================================================================================
 docs/shots/m6/m6-01-resolver-three-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same at 80 columns: the short title `three.txt · 2/3 open`; below 100 columns OURS, BASE and THEIRS stack one above the other instead of side by side; block 2 `took theirs`; the frame ends at line 15 (`c4`), block 3 below the fold, then the footer line.
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same at 80 columns: the file list in compact words (`three.txt 2/3 open`, `pic.bin bin`, `keep?`), the identity row `▸ three.txt · 3 conflicts · 2 open`; below 100 columns `yours · main`, BASE and `theirs · feature` stack one above the other. The view has followed the cursor down: from `6 b4`, block 2 `took theirs · feature`, then block 3 (cursor `▏`) whole, with `12 three-ours`, `BASE`, `12 three-theirs`. Footer `base shown for 3 conflicts ✓`.
 ================================================================================
 
 m6 walk capture: m6-01-resolver-three — scenario zdiff3-and-base-on-demand, keys k ⏎ j j j j j j j j j j j ⏎ n t B, unicode tier, 80x24
 
 MERGING
-three.txt · 2/3 open
-ours = main · theirs = the branch being merged in
-      1 alpha
-   2 ── conflict 1 of 3 · open ── o ours  t theirs  b both ─────────────────────
-  OURS · HEAD
-      3 one-ours
-  BASE · merged common ancestor
-        one
-  THEIRS · feature
-        one-theirs
+files · 13     nofinal.txt 1/1 open         ours-deleted.txt keep?
+               pic.bin bin                  theirs-deleted.txt keep?
+             ▸ three.txt 2/3 open         … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ three.txt · 3 conflicts · 2 open
+
+   6 b4
+  ── conflict 2 of 3 · took theirs · feature ── o yours  b both ────────────────
+   7 two-theirs
   ──────────────────────────────────────────────────────────────────────────────
-      7 b1
-      8 b2
-      9 b3
-     10 b4
-▏  11 ── conflict 2 of 3 · took theirs ── o ours  b both ───────────────────────
-▏    11 two-theirs
+   8 c1
+   9 c2
+  10 c3
+  11 c4
+▏ ── conflict 3 of 3 · open ── o yours  t theirs  b both ───────────────────────
+▏ yours · main
+▏ 12 three-ours
+▏ BASE · merged common ancestor
+▏    three
+▏ theirs · feature
+▏ 12 three-theirs
 ▏ ──────────────────────────────────────────────────────────────────────────────
-     12 c1
-     13 c2
-     14 c3
-     15 c4
  base shown for 3 conflicts ✓
 
 ================================================================================
 docs/shots/m6/m6-02-whole-file-card-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", every-whole-file-shape: `theirs-deleted.txt` (we changed it, the branch deleted it) opens as a card, not a document. Title `theirs-deleted.txt · file 11 of 13` — **no conflict count** on a card (fix F8; it said `0 of 0 conflicts open` before). Then `deleted by them · o keeps the file  t deletes it`, the file's one line `changed by us, deleted by them` numbered 1, no OURS/THEIRS halves; the hint bar has no `b` and no `B`.
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", every-whole-file-shape: `theirs-deleted.txt` (we changed it, the branch deleted it) opens as a card, not a document. The file list above, its row `▸ theirs-deleted.txt keep or delete`; the identity row `▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature` (ticket 13) — no conflict count on a card (F8). Then `deleted by them · o keeps the file  t deletes it`, the file's one line `1 changed by us, deleted by them`, no halves; the hint bar `o yours  t theirs  e edit  n next  M mergetool  esc close` — no `b`, no `B`.
 ================================================================================
 
 m6 walk capture: m6-02-whole-file-card — scenario every-whole-file-shape, keys k ⏎ j j j j j j j j j j ⏎, unicode tier, 120x40
 
 MERGING
-theirs-deleted.txt · file 11 of 13
-ours = main · theirs = the branch being merged in
+files · 13     md.md 1 of 1 open                     nofinal.txt 1 of 1 open
+               ours-deleted.txt keep or delete       pic.bin binary
+             ▸ theirs-deleted.txt keep or delete   … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature
+
 deleted by them · o keeps the file  t deletes it
-      1 changed by us, deleted by them
+  1 changed by us, deleted by them
 
 
 
@@ -137,24 +141,24 @@ deleted by them · o keeps the file  t deletes it
 
 
 
-
-
-
-
- o ours  t theirs  e edit  n next  M mergetool  esc close
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/m6-02-whole-file-card-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same card at 80 columns: the title is the path alone, `theirs-deleted.txt` (it said `0/0 open` before fix F8).
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same card at 80 columns: the list's compact words (`keep?`, `bin`, `1/1 open`), the same identity row, `deleted by them · o keeps the file  t deletes it`, the one numbered line.
 ================================================================================
 
 m6 walk capture: m6-02-whole-file-card — scenario every-whole-file-shape, keys k ⏎ j j j j j j j j j j ⏎, unicode tier, 80x24
 
 MERGING
-theirs-deleted.txt
-ours = main · theirs = the branch being merged in
+files · 13     md.md 1/1 open               nofinal.txt 1/1 open
+               ours-deleted.txt keep?       pic.bin bin
+             ▸ theirs-deleted.txt keep?   … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature
+
 deleted by them · o keeps the file  t deletes it
-      1 changed by us, deleted by them
+  1 changed by us, deleted by them
 
 
 
@@ -169,104 +173,104 @@ deleted by them · o keeps the file  t deletes it
 
 
 
-
-
-
-
- o ours  t theirs  e edit  n next  M mergetool  esc close
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/m6-03-card-large-file-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", whole-file-card-glimpses-a-large-file: `theirs-deleted.txt` grown to 600 lines, `G` pressed: the card shows lines up to 500 and stops; the last row is the **unnumbered** note `… first 500 lines of 8.1 KB · e opens the whole file`. Title `theirs-deleted.txt · file 11 of 13`, no count.
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", whole-file-card-glimpses-a-large-file: `theirs-deleted.txt` grown to 600 lines, `G` pressed: the card (under the file list and the identity row `▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature`) shows lines up to `500 kept line 500` and stops; the last row is the **unnumbered** note `… first 500 lines of 8.1 KB · e opens the whole file`. No count on a card.
 ================================================================================
 
 m6 walk capture: m6-03-card-large-file — scenario whole-file-card-glimpses-a-large-file, keys k ⏎ j j j j j j j j j j ⏎ G, unicode tier, 120x40
 
 MERGING
-theirs-deleted.txt · file 11 of 13
-ours = main · theirs = the branch being merged in
-    466 kept line 466
-    467 kept line 467
-    468 kept line 468
-    469 kept line 469
-    470 kept line 470
-    471 kept line 471
-    472 kept line 472
-    473 kept line 473
-    474 kept line 474
-    475 kept line 475
-    476 kept line 476
-    477 kept line 477
-    478 kept line 478
-    479 kept line 479
-    480 kept line 480
-    481 kept line 481
-    482 kept line 482
-    483 kept line 483
-    484 kept line 484
-    485 kept line 485
-    486 kept line 486
-    487 kept line 487
-    488 kept line 488
-    489 kept line 489
-    490 kept line 490
-    491 kept line 491
-    492 kept line 492
-    493 kept line 493
-    494 kept line 494
-    495 kept line 495
-    496 kept line 496
-    497 kept line 497
-    498 kept line 498
-    499 kept line 499
-    500 kept line 500
-        … first 500 lines of 8.1 KB · e opens the whole file
- o ours  t theirs  e edit  n next  M mergetool  esc close
+files · 13     md.md 1 of 1 open                     nofinal.txt 1 of 1 open
+               ours-deleted.txt keep or delete       pic.bin binary
+             ▸ theirs-deleted.txt keep or delete   … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature
+
+  470 kept line 470
+  471 kept line 471
+  472 kept line 472
+  473 kept line 473
+  474 kept line 474
+  475 kept line 475
+  476 kept line 476
+  477 kept line 477
+  478 kept line 478
+  479 kept line 479
+  480 kept line 480
+  481 kept line 481
+  482 kept line 482
+  483 kept line 483
+  484 kept line 484
+  485 kept line 485
+  486 kept line 486
+  487 kept line 487
+  488 kept line 488
+  489 kept line 489
+  490 kept line 490
+  491 kept line 491
+  492 kept line 492
+  493 kept line 493
+  494 kept line 494
+  495 kept line 495
+  496 kept line 496
+  497 kept line 497
+  498 kept line 498
+  499 kept line 499
+  500 kept line 500
+      … first 500 lines of 8.1 KB · e opens the whole file
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/m6-03-card-large-file-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same at 80 columns: lines 482–500, then the same unnumbered note row; the title is the path alone.
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same at 80 columns: lines 486–500 (the file list takes the top rows now — ticket 13), then the same unnumbered note row.
 ================================================================================
 
 m6 walk capture: m6-03-card-large-file — scenario whole-file-card-glimpses-a-large-file, keys k ⏎ j j j j j j j j j j ⏎ G, unicode tier, 80x24
 
 MERGING
-theirs-deleted.txt
-ours = main · theirs = the branch being merged in
-    482 kept line 482
-    483 kept line 483
-    484 kept line 484
-    485 kept line 485
-    486 kept line 486
-    487 kept line 487
-    488 kept line 488
-    489 kept line 489
-    490 kept line 490
-    491 kept line 491
-    492 kept line 492
-    493 kept line 493
-    494 kept line 494
-    495 kept line 495
-    496 kept line 496
-    497 kept line 497
-    498 kept line 498
-    499 kept line 499
-    500 kept line 500
-        … first 500 lines of 8.1 KB · e opens the whole file
- o ours  t theirs  e edit  n next  M mergetool  esc close
+files · 13     md.md 1/1 open               nofinal.txt 1/1 open
+               ours-deleted.txt keep?       pic.bin bin
+             ▸ theirs-deleted.txt keep?   … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature
+
+  486 kept line 486
+  487 kept line 487
+  488 kept line 488
+  489 kept line 489
+  490 kept line 490
+  491 kept line 491
+  492 kept line 492
+  493 kept line 493
+  494 kept line 494
+  495 kept line 495
+  496 kept line 496
+  497 kept line 497
+  498 kept line 498
+  499 kept line 499
+  500 kept line 500
+      … first 500 lines of 8.1 KB · e opens the whole file
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/m6-04-card-binary-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", binary-card-shows-its-size: `pic.bin`, changed on both sides, opens as a card — `both modified · o keeps ours  t keeps theirs` — and in place of its bytes one unnumbered note row, `binary · 22 B`. No byte of the file is drawn. Title `pic.bin · file 10 of 13`, no count (fix F8).
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", binary-card-shows-its-size: `pic.bin`, changed on both sides, opens as a card. The list row `▸ pic.bin binary`; the identity row `▸ pic.bin · binary · modified on yours · main, modified on theirs · feature`; `both modified · o keeps yours · main  t keeps theirs · feature` (side names, ticket 10); in place of its bytes one unnumbered note row, `binary · 22 B`. No byte of the file is drawn; no count.
 ================================================================================
 
 m6 walk capture: m6-04-card-binary — scenario binary-card-shows-its-size, keys k ⏎ j j j j j j j j j ⏎, unicode tier, 120x40
 
 MERGING
-pic.bin · file 10 of 13
-ours = main · theirs = the branch being merged in
-both modified · o keeps ours  t keeps theirs
-        binary · 22 B
+files · 13     crlf.txt 1 of 1 open                 md.md 1 of 1 open
+               nofinal.txt 1 of 1 open              ours-deleted.txt keep or delete
+             ▸ pic.bin binary                     … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ pic.bin · binary · modified on yours · main, modified on theirs · feature
+
+both modified · o keeps yours · main  t keeps theirs · feature
+    binary · 22 B
 
 
 
@@ -297,24 +301,24 @@ both modified · o keeps ours  t keeps theirs
 
 
 
-
-
-
-
- o ours  t theirs  e edit  n next  M mergetool  esc close
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/m6-04-card-binary-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same binary card at 80 columns: the title is `pic.bin` alone (it said `0/0 open` before fix F8).
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same binary card at 80 columns: the list row `▸ pic.bin bin`, the same identity row, `binary · 22 B`.
 ================================================================================
 
 m6 walk capture: m6-04-card-binary — scenario binary-card-shows-its-size, keys k ⏎ j j j j j j j j j ⏎, unicode tier, 80x24
 
 MERGING
-pic.bin
-ours = main · theirs = the branch being merged in
-both modified · o keeps ours  t keeps theirs
-        binary · 22 B
+files · 13     crlf.txt 1/1 open           md.md 1/1 open
+               nofinal.txt 1/1 open        ours-deleted.txt keep?
+             ▸ pic.bin bin               … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ pic.bin · binary · modified on yours · main, modified on theirs · feature
+
+both modified · o keeps yours · main  t keeps theirs · feature
+    binary · 22 B
 
 
 
@@ -329,47 +333,43 @@ both modified · o keeps ours  t keeps theirs
 
 
 
-
-
-
-
- o ours  t theirs  e edit  n next  M mergetool  esc close
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/m6-05-still-open-refusal-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", merge-resolved-with-the-keys: `three.txt`, `o` on block 1, then `⏎` with two blocks still open: nothing is staged, and the footer says `2 conflicts still open in three.txt · n next`. Block 1 reads `took ours` with one line `one-ours`; blocks 2 and 3 open; title `2 of 3 conflicts open`. (Taken in the `crlf-and-no-final-newline-survive` run: a capture replays its scenario's setup, and the merge scenario now begins its merge in the app.)
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", merge-resolved-with-the-keys: `three.txt`, `o` on block 1, then `⏎` with two blocks still open: nothing is staged, and the footer says `2 conflicts still open in three.txt · n next`. Block 1 reads `took yours · main` with one line `2 one-ours`; the cursor (`▏`) has moved on to block 2, open (ticket 15); identity row `▸ three.txt · 3 conflicts · 2 open`. (Taken in the `crlf-and-no-final-newline-survive` run: a capture replays its scenario's setup, and the merge scenario begins its merge in the app.)
 ================================================================================
 
 m6 walk capture: m6-05-still-open-refusal — scenario crlf-and-no-final-newline-survive, keys k ⏎ j j j j j j j j j j j ⏎ o ⏎, unicode tier, 120x40
 
 MERGING
-three.txt · file 12 of 13 · 2 of 3 conflicts open
-ours = main · theirs = the branch being merged in
-      1 alpha
-▏  2 ── conflict 1 of 3 · took ours ── t theirs  b both ────────────────────────────────────────────────────────────────
-▏     2 one-ours
+files · 13     nofinal.txt 1 of 1 open               ours-deleted.txt keep or delete
+               pic.bin binary                        theirs-deleted.txt keep or delete
+             ▸ three.txt 2 of 3 open               … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ three.txt · 3 conflicts · 2 open
+
+   1 alpha
+  ── conflict 1 of 3 · took yours · main ── t theirs  b both ───────────────────────────────────────────────────────────
+   2 one-ours
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+   3 b1
+   4 b2
+   5 b3
+   6 b4
+▏ ── conflict 2 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏  7 two-ours                                               │ 7 two-theirs
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      3 b1
-      4 b2
-      5 b3
-      6 b4
-   7 ── conflict 2 of 3 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-  OURS · HEAD                                               │THEIRS · feature
-      8 two-ours                                            │      two-theirs
+   8 c1
+   9 c2
+  10 c3
+  11 c4
+  ── conflict 3 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+  yours · main                                              │theirs · feature
+  12 three-ours                                             │12 three-theirs
   ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-     12 c1
-     13 c2
-     14 c3
-     15 c4
-   16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────────────────────────────────────────────
-  OURS · HEAD                                               │THEIRS · feature
-     17 three-ours                                          │      three-theirs
-  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-     21 delta
-
-
-
-
+  13 delta
 
 
 
@@ -385,39 +385,39 @@ ours = main · theirs = the branch being merged in
 
 ================================================================================
 docs/shots/m6/m6-05-still-open-refusal-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same refusal at 80 columns: `2 conflicts still open in three.txt · n next` on the last row, title `three.txt · 2/3 open`.
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same refusal at 80 columns: `2 conflicts still open in three.txt · n next` on the last row; block 1 `took yours · main`, block 2 (cursor) with `yours · main` over `theirs · feature`.
 ================================================================================
 
 m6 walk capture: m6-05-still-open-refusal — scenario crlf-and-no-final-newline-survive, keys k ⏎ j j j j j j j j j j j ⏎ o ⏎, unicode tier, 80x24
 
 MERGING
-three.txt · 2/3 open
-ours = main · theirs = the branch being merged in
-      1 alpha
-▏  2 ── conflict 1 of 3 · took ours ── t theirs  b both ────────────────────────
-▏     2 one-ours
-▏ ──────────────────────────────────────────────────────────────────────────────
-      3 b1
-      4 b2
-      5 b3
-      6 b4
-   7 ── conflict 2 of 3 · open ── o ours  t theirs  b both ─────────────────────
-  OURS · HEAD
-      8 two-ours
-  THEIRS · feature
-        two-theirs
+files · 13     nofinal.txt 1/1 open         ours-deleted.txt keep?
+               pic.bin bin                  theirs-deleted.txt keep?
+             ▸ three.txt 2/3 open         … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ three.txt · 3 conflicts · 2 open
+
+   1 alpha
+  ── conflict 1 of 3 · took yours · main ── t theirs  b both ───────────────────
+   2 one-ours
   ──────────────────────────────────────────────────────────────────────────────
-     12 c1
-     13 c2
-     14 c3
-     15 c4
-   16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────
-  OURS · HEAD
+   3 b1
+   4 b2
+   5 b3
+   6 b4
+▏ ── conflict 2 of 3 · open ── o yours  t theirs  b both ───────────────────────
+▏ yours · main
+▏  7 two-ours
+▏ theirs · feature
+▏  7 two-theirs
+▏ ──────────────────────────────────────────────────────────────────────────────
+   8 c1
+   9 c2
  2 conflicts still open in three.txt · n next
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the capture run cannot reach this state any more — `took ours` never appears before the kill (pty re-run 2026-09-24, ticket 43); not re-taken. — TESTING.md "Conflicts walk", kill-9-mid-rebase-then-relaunch: the capture run took `o` on the first block of `shared.txt`, was sent **SIGKILL** (the script's log: `died on signal 9`, `.git/rebase-merge present: True`), and this is the real `graft` binary relaunched on what it left: `REBASING step 1 of 2` in the header, the line `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort`, the changes pane on `CONFLICTS (1)` `shared.txt`, whose diff shows **one** marker block left (the other was taken before the kill).
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", kill-9-mid-rebase-then-relaunch: the capture run took `o` on the first block of `shared.txt` (`took upstream · main` on its screen), was sent **SIGKILL** (the script's log: `died on signal 9`, `.git/rebase-merge present: True`), and this is the real `graft` binary relaunched on what it left: `REBASING step 1 of 2` in the header; the footer `rebase still in progress · 1 file conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph` — the stop line's `from a previous run` is dropped first when the keys need the room (ticket 24; the full wording is asserted from state by the walk); the changes pane on `CONFLICTS (1)` `shared.txt`, whose diff shows **one** marker block left (the other was taken before the kill).
 ================================================================================
 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 120x40
@@ -446,7 +446,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
+ rebase still in progress · 1 file conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 2e2d51c
 CONFLICTS (1)                 ▎keep 1
@@ -466,7 +466,7 @@ CONFLICTS (1)                 ▎keep 1
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the capture run cannot reach this state any more — `took ours` never appears before the kill (pty re-run 2026-09-24, ticket 43); not re-taken. — The same relaunch at 80 columns: the changes pane is the whole screen (the Detail tab), `REBASING step 1 of 2` on the top row, `CONFLICTS (1)` `shared.txt` with the one marker block left, and on the bottom row the line `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort` (fix F9 — below 100 columns this row drew only the banner's keys before).
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same relaunch at 80 columns: the changes pane is the whole screen (the Detail tab), `REBASING step 1 of 2` on the top row, `CONFLICTS (1)` `shared.txt` with the one marker block left, and on the bottom row the banner's keys only, `⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph` — **no words say the rebase is from a previous run** (ticket 12 accepts the reason absent at 80x24; see ticket 45 NOTES, question 1).
 ================================================================================
 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 80x24
@@ -495,24 +495,21 @@ CONFLICTS (1)
 
 
 
- rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
+ ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", rebase-stops-twice-resolved-twice: on the first stop `⏎` on the banner, `t`, `⏎`: the resolver closes to the banner, and the line reads `all conflicts resolved · c continue ✓`; the changes pane shows `STAGED (1)` `shared.txt`, no CONFLICTS section.
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", rebase-stops-twice-resolved-twice, keys `⏎ t ⏎`: the stop lands in the resolver (ticket 18), `t` takes yours — in a rebase `t` is the replayed commit (ticket 10) — `⏎` marks the file done, and the resolver **stays open** with the words on its notice row (ticket 31): the list `▸ shared.txt · done ✓`, the identity row `▸ shared.txt · done ✓ · d starts it over`, then `every file done ✓ · c continues the rebase`, the file's one line `1 feature's first line`; the footer `stage shared.txt ✓`.
 ================================================================================
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 120x40
 
- graft <scratch____________________________________________________________>    REBASING step 1 of 2
-◌   ▏  Uncommitted changes (1 staged)
-  ●  ⓘ [feature] feature writes again                                                                    GF 6y   4d548b9
-  ●    feature writes                                                                                    GF 6y   0104e16
-◆ │  ⓘ [HEAD] [main] main rewrites it                                                                    GF 6y   3bb5569
-●─╯    add the shared file                                                                               GF 6y   f435fe3
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
+REBASING step 1 of 2
+files   ▸ shared.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ shared.txt · done ✓ · d starts it over
+every file done ✓ · c continues the rebase
+  1 feature's first line
 
 
 
@@ -527,12 +524,6 @@ m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twi
 
 
 
- all conflicts resolved · c continue ✓
-UNCOMMITTED · 1 staged
-diff vs HEAD 4d548b9
-STAGED (1)                    ▎
-  M shared.txt          +1 −1   1     - main's line
-                                    1 + feature's first line
 
 
 
@@ -544,24 +535,29 @@ STAGED (1)                    ▎
 
 
 
+
+
+
+
+
+
+
+
+ stage shared.txt ✓
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same end state at 80 columns: `STAGED (1)` `shared.txt`, no CONFLICTS section, and on the bottom row `all conflicts resolved · c continue ✓` (fix F9 — the row drew only the banner's keys before).
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same end state at 80 columns: the list `▸ ✓ shared.txt`, `▸ shared.txt · done ✓ · d starts it over`, `every file done ✓ · c continues the rebase`, the footer `stage shared.txt ✓`.
 ================================================================================
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
 
 REBASING step 1 of 2
-Graph  [Detail]
-UNCOMMITTED · 1 staged
-diff vs HEAD 4d548b9
-
-STAGED (1)
-  M shared.txt                                                             +1 −1
-▎
-  1     - main's line
-      1 + feature's first line
+files   ▸ ✓ shared.txt
+────────────────────────────────────────────────────────────────────────────────
+▸ shared.txt · done ✓ · d starts it over
+every file done ✓ · c continues the rebase
+  1 feature's first line
 
 
 
@@ -575,7 +571,11 @@ STAGED (1)
 
 
 
- all conflicts resolved · c continue ✓
+
+
+
+
+ stage shared.txt ✓
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-120x40.txt
@@ -659,24 +659,24 @@ all blocks taken · ⏎ marks zdiff3.txt done
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-120x40.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected (fix F10 — the box was live but never drawn). The bottom row is the box's own keys and nothing else: `←/→ move  ⏎ choose  esc cancel` (rulings 07b Q1 — it offered the resolver's keys, which the box swallows).
+what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected. **The bottom row is not the box's keys**: it reads `1 conflicts still open in both.txt · n next`, the refusal of the capture's second `⏎` — since ticket 17 `j` moves between files inside the resolver, so that `⏎` lands on an open file and is refused, and a problem takes the bar before a box's keys (rulings 07b Q1). See ticket 45 NOTES (keys to re-cut; `1 conflicts`).
 ================================================================================
 
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
 
 MERGING
-both.txt · file 5 of 13 · 1 of 1 conflicts open
-ours = main · theirs = the branch being merged in
-      1 same on both sides
-▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-▏ OURS · HEAD                                               │THEIRS · feature
-▏     3 the line, as we changed it                          │      the line, as they changed it
+files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or delete
+               both-added.txt 1 of 1 open           both-deleted.txt keep or delete
+             ▸ both.txt 1 of 1 open               … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ both.txt · 1 conflict · 1 open
+
+  1 same on both sides
+▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏ 2 the line, as we changed it                              │2 the line, as they changed it
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      7 and a tail
-
-
-
-
+  3 and a tail
 
 
                             ╭ Start both.txt over? ────────────────────────────────────────╮
@@ -703,22 +703,22 @@ ours = main · theirs = the branch being merged in
 
 
 
- ←/→ move  ⏎ choose  esc cancel
+ 1 conflicts still open in both.txt · n next
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-80x24.txt
-what right looks like: STALE FRAME (ticket 07, 2026-09-23): the current app draws this state differently (a pty re-run on 2026-09-24 drifted; not re-taken by ticket 43). Judge the words below against the app, not this frame. — The same box at 80 columns, over the stacked OURS/THEIRS halves: the rows it stands on are blank from the left edge to the right (rulings 07b Q2, ADR-0040 — `▏ THEIRS` and the block's closing rule showed cut off at its edges before), and the bottom row is `←/→ move  ⏎ choose  esc cancel`.
+what right looks like: Re-taken 2026-09-24 (ticket 45): The same box at 80 columns, the rows it stands on blank edge to edge (rulings 07b Q2); the bottom row is the same `1 conflicts still open in both.txt · n next`, not `←/→ move  ⏎ choose  esc cancel`.
 ================================================================================
 
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 80x24
 
 MERGING
-both.txt · 1/1 open
-ours = main · theirs = the branch being merged in
-      1 same on both sides
-▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────
-▏ OURS · HEAD
-▏     3 the line, as we changed it
+files · 13     added-by-them.txt keep?     added-by-us.txt keep?
+               both-added.txt 1/1 open     both-deleted.txt keep?
+             ▸ both.txt 1/1 open         … 8 more
+────────────────────────────────────────────────────────────────────────────────
+▸ both.txt · 1 conflict · 1 open
+
         ╭ Start both.txt over? ────────────────────────────────────────╮
         │ the conflict comes back with all its markers                 │
         │ takes and edits in this file are lost · not undoable while   │
@@ -735,7 +735,7 @@ ours = main · theirs = the branch being merged in
 
 
 
- ←/→ move  ⏎ choose  esc cancel
+ 1 conflicts still open in both.txt · n next
 
 ================================================================================
 docs/shots/m6/fix-card-names-numbers-120x40.txt
@@ -4071,140 +4071,4 @@ FILES · 1 conflicted      │▸ three.txt · 3 conflicts · 0 open
                           │
                           │
  o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
-
-================================================================================
-docs/shots/m6/m6-13-after-ctrl-t-80x24.txt
-what right looks like: The same at 80x24: compact strip `files   ▸ three.txt ⏎`, identity row `▸ three.txt · 3 conflicts · 0 open`, the same notice.
-================================================================================
-
-m6 walk capture: m6-13-after-ctrl-t — scenario three-conflicts-all-theirs, keys m m ⌃t, unicode tier, 80x24
-
-MERGING
-files   ▸ three.txt ⏎
-────────────────────────────────────────────────────────────────────────────────
-▸ three.txt · 3 conflicts · 0 open
-took theirs · feature in 3 blocks · ⏎ marks three.txt done
-▏ ── conflict 1 of 3 · took theirs · feature ── o yours  b both ────────────────
-▏  1 ONE from feature
-▏ ──────────────────────────────────────────────────────────────────────────────
-   2 a
-   3 b
-   4 c
-   5 d
-  ── conflict 2 of 3 · took theirs · feature ── o yours  b both ────────────────
-   6 TWO from feature
-  ──────────────────────────────────────────────────────────────────────────────
-   7 e
-   8 f
-   9 g
-  10 h
-  ── conflict 3 of 3 · took theirs · feature ── o yours  b both ────────────────
-  11 THREE from feature
-  ──────────────────────────────────────────────────────────────────────────────
-
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B  e  n  N  ⏎  j/k  M  d  esc
-
-================================================================================
-docs/shots/m6/m6-14-last-file-done-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", two-files-in-order: `o` then `T` — the last file done, the resolver stays (P8): strip `files   gone.txt · done ✓    ▸ notes.txt · done ✓`; identity row `▸ notes.txt · done ✓ · d starts it over`; notice `every file done ✓ · c finishes the merge`; bottom row `stage notes.txt ✓`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
-================================================================================
-
-m6 walk capture: m6-14-last-file-done — scenario two-files-in-order, keys m m o T, unicode tier, 120x40
-
-MERGING
-files   gone.txt · done ✓    ▸ notes.txt · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ notes.txt · done ✓ · d starts it over
-every file done ✓ · c finishes the merge
-  1 one
-  2 TWO from feature
-  3 three
-  4 four
-  5 five
-  6 six
-  7 SEVEN from feature
-  8 eight
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- stage notes.txt ✓
-
-================================================================================
-docs/shots/m6/m6-14-last-file-done-160x48.txt
-what right looks like: The same at 160x48: strip `files   gone.txt · done ✓    ▸ notes.txt · done ✓`, notice `every file done ✓ · c finishes the merge`.
-================================================================================
-
-m6 walk capture: m6-14-last-file-done — scenario two-files-in-order, keys m m o T, unicode tier, 160x48
-
-MERGING
-files   gone.txt · done ✓    ▸ notes.txt · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ notes.txt · done ✓ · d starts it over
-every file done ✓ · c finishes the merge
-  1 one
-  2 TWO from feature
-  3 three
-  4 four
-  5 five
-  6 six
-  7 SEVEN from feature
-  8 eight
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- stage notes.txt ✓
 

@@ -2094,13 +2094,19 @@ run `SIGKILL` and checks it died on signal 9. All nine captures exist at
 both sizes, and every one shows the text it is for: the script's second
 run, without `GRAFT_UPDATE_SHOTS`, is green on all 18 (2026-09-23, after
 fixes F9 — the status line on the sub-100-column Detail tab — and F10 —
-the start-over box drawn over the resolver). **Since then the resolver
-changed under them** (the file list, tickets 13 and 25; a stop opens the
-resolver, ticket 18): a pty re-run on 2026-09-24 without
-`GRAFT_UPDATE_SHOTS` drifted on `m6-01`, `m6-02`, `m6-03`, `m6-04`,
-`m6-05`, `m6-07` and `m6-09` at both sizes, held on `m6-08`, and could not reach
-`m6-06`'s kill point. They are not re-taken; the contact sheet marks each
-**STALE FRAME** (m6-conflicts/43 NOTES). The contact sheet is
+the start-over box drawn over the resolver). The resolver then changed
+under them (side names, ticket 10; the file list and identity row, 13; a
+take moves the cursor on, 15; `j`/`k` between files, 17; a stop opens the
+resolver, 18; the resolver stays open after the last file, 31; the stop
+line's shorter wordings, 12 and 24), and on 2026-09-24 **all eighteen were
+re-taken** (m6-conflicts/45): each diff read and named to those tickets,
+then a second run without `GRAFT_UPDATE_SHOTS` green on all 18.
+`m6-06`'s kill point had moved because `o` in a rebase now reads `took
+upstream`, not `took ours` (the script waits for the new word). Two
+frames no longer show all their ticket-07 words, and their captions say
+so: `m6-06` at 80x24 draws no words saying the rebase is from a previous
+run, and `m6-09`'s bottom row is the capture's stray `⏎` refusal, not the
+box's keys (m6-conflicts/45 NOTES). The contact sheet is
 `docs/shots/m6/m6-contact-sheet-<n>.txt`, in parts of at most 200 KB
 (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): every M6
 capture in ticket order — these nine, every fix ticket's `fix-*`, the

@@ -542,7 +542,14 @@ fn kill_9_mid_rebase_then_relaunch() -> Scenario {
             stem: "m6-06-relaunch-sticky",
             headless: rebase_that_stops(),
             keys: plain(&[KeyCode::Enter, ch('o')]),
-            on_screen: "still in progress from a previous run",
+            // What both sizes draw once the relaunch has read the half-taken
+            // file. Not the stop line's `from a previous run`: the footer
+            // drops that part first when the keys need the room
+            // (m6-conflicts/24, `banner::stop_wordings`), and below 100
+            // columns the Detail tab draws keys and no reason
+            // (m6-conflicts/12, "absent" at 80x24). The stop line itself is
+            // checked above, from state (m6-conflicts/45).
+            on_screen: "CONFLICTS (1)",
             when: When::Settled,
         }),
     }

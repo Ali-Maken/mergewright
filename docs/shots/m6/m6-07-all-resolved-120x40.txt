@@ -1,14 +1,11 @@
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 120x40
 
- graft <scratch____________________________________________________________>    REBASING step 1 of 2
-◌   ▏  Uncommitted changes (1 staged)
-  ●  ⓘ [feature] feature writes again                                                                    GF 6y   4d548b9
-  ●    feature writes                                                                                    GF 6y   0104e16
-◆ │  ⓘ [HEAD] [main] main rewrites it                                                                    GF 6y   3bb5569
-●─╯    add the shared file                                                                               GF 6y   f435fe3
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
+REBASING step 1 of 2
+files   ▸ shared.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ shared.txt · done ✓ · d starts it over
+every file done ✓ · c continues the rebase
+  1 feature's first line
 
 
 
@@ -23,12 +20,6 @@ m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twi
 
 
 
- all conflicts resolved · c continue ✓
-UNCOMMITTED · 1 staged
-diff vs HEAD 4d548b9
-STAGED (1)                    ▎
-  M shared.txt          +1 −1   1     - main's line
-                                    1 + feature's first line
 
 
 
@@ -40,3 +31,12 @@ STAGED (1)                    ▎
 
 
 
+
+
+
+
+
+
+
+
+ stage shared.txt ✓

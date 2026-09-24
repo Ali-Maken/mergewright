@@ -1,10 +1,14 @@
 m6 walk capture: m6-02-whole-file-card — scenario every-whole-file-shape, keys k ⏎ j j j j j j j j j j ⏎, unicode tier, 120x40
 
 MERGING
-theirs-deleted.txt · file 11 of 13
-ours = main · theirs = the branch being merged in
+files · 13     md.md 1 of 1 open                     nofinal.txt 1 of 1 open
+               ours-deleted.txt keep or delete       pic.bin binary
+             ▸ theirs-deleted.txt keep or delete   … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature
+
 deleted by them · o keeps the file  t deletes it
-      1 changed by us, deleted by them
+  1 changed by us, deleted by them
 
 
 
@@ -35,8 +39,4 @@ deleted by them · o keeps the file  t deletes it
 
 
 
-
-
-
-
- o ours  t theirs  e edit  n next  M mergetool  esc close
+ o yours  t theirs  e edit  n next  M mergetool  esc close

@@ -1,18 +1,18 @@
 m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
 
 MERGING
-both.txt · file 5 of 13 · 1 of 1 conflicts open
-ours = main · theirs = the branch being merged in
-      1 same on both sides
-▏  2 ── conflict 1 of 1 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-▏ OURS · HEAD                                               │THEIRS · feature
-▏     3 the line, as we changed it                          │      the line, as they changed it
+files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or delete
+               both-added.txt 1 of 1 open           both-deleted.txt keep or delete
+             ▸ both.txt 1 of 1 open               … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ both.txt · 1 conflict · 1 open
+
+  1 same on both sides
+▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏ 2 the line, as we changed it                              │2 the line, as they changed it
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      7 and a tail
-
-
-
-
+  3 and a tail
 
 
                             ╭ Start both.txt over? ────────────────────────────────────────╮
@@ -39,4 +39,4 @@ ours = main · theirs = the branch being merged in
 
 
 
- ←/→ move  ⏎ choose  esc cancel
+ 1 conflicts still open in both.txt · n next
