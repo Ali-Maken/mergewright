@@ -264,8 +264,8 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `O` / `T` | Yours / theirs in every open block of this file, mark it done, move to the next file; on a whole-file card, same as `o`/`t` (P6; the named §2.1 exception) |
 | `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
 | `d` | Start this file over (`git checkout --merge`), behind a confirm box — not undoable while the operation is open (the box says so) |
-| `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts` (P2) |
-| `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G`, the wheel |
+| `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts` (P2). On a done file, `n`/`N` cross straight to the next file not done (ticket 17 D6). |
+| `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G` (`Home`/`End` as `g`/`G`; conductor 2026-09-24: they scroll today, kept), the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open; the resolver stays open after the last file is done (P8) |
 | `Enter` | Mark this file done and move to the next conflicted file; after the last, stay on it with `every file done ✓ · c finishes …` (a stash pop closes to the graph) (P8) |
 | `e` | Open `$EDITOR` at the cursor block |

@@ -467,7 +467,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 **Where each event lands him (additions).**
 - ~~A take → the cursor moves to the next open block (P2).~~ A take → the cursor moves to the next open block **at the
   keypress** (P2); takes typed faster than the disk queue, and a failed one drops the queue with a count.
-- A file done (`⏎`, `O`/`T`, or `o`/`t` on a whole-file card) → the next file not done.
+- A file done (`⏎`, `O`/`T`, or `o`/`t` on a whole-file card) → the next file not done. A failed or changed-on-disk take under `O`/`T` → the same file, notice `… · nothing staged` (ticket 17 D3).
 - The last file done → the banner, status line `every file done ✓ · c finishes the merge` (rebase / cherry-pick /
   revert: `c continues the …`); stash pop → the graph, `every file done ✓` (ticket 13 R4/R5). ~~P8: the resolver, with
   the notice~~ superseded 2026-09-24: that is ticket 31's (split from 19 Part B), words on the resolver's notice row; stash pop still closes.
@@ -562,14 +562,14 @@ pub enum Refusal { …, MessageNotHere { kind: InProgress } }                   
 // fix-continue-a-merge-begun-in-the-shell: FinishMergeParams gains `pub message: Option<Vec<u8>>`
 
 // graft (app)                                                          fix-resolver-file-list, fix-finish-summary-screen
-pub struct ResolverState { …, pub done: Option<DoneShape> /* ticket 25 */, pub files: Loading<Arc<ConflictSet>>, pub set_job: Option<JobId>, pub seen: BTreeMap<PathBuf, RowState> }
+pub struct ResolverState { …, pub done: Option<DoneShape> /* ticket 25 */, pub files: Loading<Arc<ConflictSet>>, pub set_job: Option<JobId>, pub seen: BTreeMap<PathBuf, RowState>, pub settling: Option<Take> /* ticket 17: an O/T waiting for its Stage; Some ⇒ in_flight.is_some() */ }
 // was `pub file_cursor: usize` — superseded 2026-09-24 (ticket 13 R2): a function of the open path, cannot drift
 // graft/src/update/resolver/files.rs (new)                              fix-resolver-file-list
 pub enum RowState { Open { open: usize, of: usize }, AllTaken, Done, WholeFile { how: UnmergedHow }, Binary, Unread }
 pub struct ListedFile { pub path: PathBuf, pub state: RowState }
 pub fn listed_files(state: &AppState) -> Vec<ListedFile>;   // sorted once here, git's path order (byte-wise), over set ∪ extra unmerged ∪ open path; a done file keeps its row (was: ops' order, done files after open — superseded 2026-09-24, ticket 25 D1)
 pub fn file_cursor(state: &AppState) -> usize;   // index of ResolverState::path in listed_files; 0 when absent
-pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k` if P7; a Done row opens read-only (ticket 25; 13's refusal dropped)
+pub fn select_file(state: &mut AppState, commands: &mut Vec<Command>, index: usize, next_id: /* resolver's type */) -> bool;  // click; `j`/`k`/`↓`/`↑` step file_cursor(state) ± 1, no wrap (ticket 17 D4); a Done row opens read-only (ticket 25; 13's refusal dropped)
 #[derive(Clone, Debug, PartialEq, Eq)] pub enum DoneShape { Text { unstaged: bool }, Binary { unstaged: bool }, Removed, Unreadable { why: String } }   // wrapped in DoneOpen { shape, start_over } (ticket 28)
 // the Product answering Command::OpenConflict carries Result<graft_ops::conflict::Opening, …> (was Opened)
 // graft-ops/src/conflict/done.rs (new; re-exported from `conflict`)     fix-stable-file-order-and-done-file-open
