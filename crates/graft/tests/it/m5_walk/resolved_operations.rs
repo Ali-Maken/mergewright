@@ -593,6 +593,10 @@ fn u_right_after_continue_is_accepted() -> Scenario {
             last_file_resolved("shared.txt"),
             vec![
                 key(ch('c')),
+                // A merge's `c` shows the finish summary; its `⏎` commits
+                // (m6-conflicts/19).
+                Step::WaitFor(Wait::FinishReady),
+                key(KeyCode::Enter),
                 Step::Write("the merge commit"),
                 key(ch('u')),
                 Step::See("u is taken at once, not refused", |state| {

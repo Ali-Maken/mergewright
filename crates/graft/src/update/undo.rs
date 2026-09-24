@@ -125,6 +125,10 @@ pub fn operation_ended(state: &mut AppState) {
     state.stopped = None;
     state.live_landing_owed = false;
     state.ended_by_answer = true;
+    // What the finish summary remembered belongs to the operation that
+    // just ended (m6-conflicts/19): the next merge starts clean.
+    state.choices.clear();
+    state.finish_draft = None;
 }
 
 /// The working-tree read after [`operation_ended`]: spends the mark, and

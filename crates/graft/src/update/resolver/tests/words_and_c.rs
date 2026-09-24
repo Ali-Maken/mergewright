@@ -60,12 +60,13 @@ fn invites_c(state: &AppState) -> bool {
     matches!(&state.status, Status::Done(words) if words.contains("· c "))
 }
 
-/// `c` ran `--continue`.
+/// `c` ran `--continue` — or, on a merge, opened the finish summary whose
+/// `⏎` does (m6-conflicts/19).
 fn continued(commands: &[Command]) -> bool {
     commands.iter().any(|command| {
         matches!(
             command,
-            Command::Resume(_, graft_ops::apply::Resume::Continue)
+            Command::Resume(_, graft_ops::apply::Resume::Continue) | Command::ReadFinishSummary(_)
         )
     })
 }

@@ -12,8 +12,8 @@ use super::fixture::{Remote, conflicting, twice_conflicting};
 use super::steps::{Capture, Fix, Scenario, Step, Wait, When};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{
-    a_status_said, branch, ch, chain, entries_of, file_was, key, last_entry, plain, same_files,
-    same_refs, status_containing, stop_line_is, undo,
+    a_status_said, branch, ch, chain, entries_of, file_was, finish_the_merge, key, last_entry,
+    plain, same_files, same_refs, status_containing, stop_line_is, undo,
 };
 use crate::repo_truth::check;
 
@@ -290,9 +290,8 @@ fn continue_refuses_until_resolved_then_one_entry_undoes() -> Scenario {
             vec![Step::Mark("stopped")],
             c_is_refused(),
             resolve(resolve_shared),
+            finish_the_merge("the continue"),
             vec![
-                key(ch('c')),
-                Step::Write("the continue"),
                 Step::WaitFor(Wait::Ready),
                 Step::WaitFor(Wait::NotInProgress),
                 Step::Mark("merged"),

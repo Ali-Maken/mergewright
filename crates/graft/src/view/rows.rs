@@ -369,7 +369,8 @@ pub(crate) fn footer_context(
         // The resolver stands over the banner as well as the graph, and it
         // is modal: `c`, `s`, `a` reach the file, not the operation. Its
         // own bar is what `hint_context` answers (m6-conflicts/04).
-        _ if state.resolver.is_some() => hint_context(state, rows),
+        // The finish summary likewise, over the resolver too (m6-conflicts/19).
+        _ if state.resolver.is_some() || state.finish.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(banner),
         // After `Esc` the banner is one `Tab` away and the bar says so
         // first (m6-conflicts/12 scope item 5). Only over the bars a graph
@@ -463,6 +464,9 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         // there is no pane on screen to have the keyboard.
         //
         GraphOverlay::Resolver => return Some(resolver_context(state)),
+        // Modal, covers the detail pane, draws its own bar: the resolver's
+        // case (m6-conflicts/19).
+        GraphOverlay::Finish => return Some(super::finish::finish_context(state)),
     };
     if state.graph_has_focus() {
         return Some(overlay);

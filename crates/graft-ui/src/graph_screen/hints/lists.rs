@@ -1,7 +1,7 @@
 //! The design note's priority table: one list of hints per context, and
 //! [`TAIL`], what the whole screen answers after them.
 
-use super::{Hint, HintContext, hint, planned};
+use super::{Hint, HintContext, hint};
 use crate::conflict_resolver::SideRoles;
 use crate::finish_summary::SummaryFocus;
 
@@ -325,36 +325,34 @@ fn resolver_done_list(restart: bool) -> Vec<Hint> {
 /// so `⌃⏎` commits there. `⇥` names where focus goes next. `space diff` is
 /// drawn only on a row git combined, the only rows with a diff to show.
 ///
-/// **Every entry is `Planned`** until the app binds them: ticket 19 was
-/// split at the seam, and this half builds the widget and the table only.
-/// The app half flips them to `hint(..)` in the commit that binds them
-/// (`graft`'s `every_planned_hint_is_still_unbound` holds this).
+/// Bound by `graft`'s `update::finish::finish_key` (m6-conflicts/34, the
+/// app half of ticket 19).
 fn finish_list(focus: SummaryFocus, expandable: bool) -> Vec<Hint> {
     match focus {
         SummaryFocus::Files if expandable => vec![
-            planned("⏎", "commit"),
-            planned("space", "diff"),
-            planned("j/k", "move"),
-            planned("⇥", "message"),
-            planned("esc", "back"),
+            hint("⏎", "commit"),
+            hint("space", "diff"),
+            hint("j/k", "move"),
+            hint("⇥", "message"),
+            hint("esc", "back"),
         ],
         SummaryFocus::Files => vec![
-            planned("⏎", "commit"),
-            planned("j/k", "move"),
-            planned("⇥", "message"),
-            planned("esc", "back"),
+            hint("⏎", "commit"),
+            hint("j/k", "move"),
+            hint("⇥", "message"),
+            hint("esc", "back"),
         ],
         SummaryFocus::Subject => vec![
-            planned("⏎", "commit"),
-            planned("⇥", "body"),
-            planned("⌃E", "editor"),
-            planned("esc", "back"),
+            hint("⏎", "commit"),
+            hint("⇥", "body"),
+            hint("⌃E", "editor"),
+            hint("esc", "back"),
         ],
         SummaryFocus::Body => vec![
-            planned("⌃⏎", "commit"),
-            planned("⇥", "files"),
-            planned("⌃E", "editor"),
-            planned("esc", "back"),
+            hint("⌃⏎", "commit"),
+            hint("⇥", "files"),
+            hint("⌃E", "editor"),
+            hint("esc", "back"),
         ],
     }
 }

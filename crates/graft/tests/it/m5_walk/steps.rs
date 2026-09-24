@@ -71,6 +71,9 @@ pub enum Wait {
     /// after a `--continue` that finished is refused with `finish or abort
     /// the merge first` for an operation git has already finished.
     NotInProgress,
+    /// `c` on a resolved merge opened the finish summary and its read has
+    /// landed (m6-conflicts/19): `⏎` commits from here.
+    FinishReady,
     /// The working tree, re-read, has no unmerged path left: what `c`
     /// checks before it will resume (`banner::continue_refusal`). Marking a
     /// file resolved is a write like any other, and the banner decides from

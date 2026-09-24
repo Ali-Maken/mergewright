@@ -26,6 +26,14 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     // of the graph behind them (`docs/reviews/m5-10-30-31.md:291-296`, open
     // since m5). Fixing those three is a separate change; what this does is
     // make sure the resolver is not a fourth.
+    // The finish summary before it, and for the same reason: modal, every
+    // mouse event is its own (m6-conflicts/19).
+    let mut local_jobs = next.local_jobs;
+    let finish = super::finish::finish_mouse(next, commands, mouse, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    if finish {
+        return;
+    }
     let mut local_jobs = next.local_jobs;
     let resolver =
         super::resolver::resolver_mouse(next, commands, mouse, &mut || local_jobs.next_id());

@@ -131,3 +131,48 @@ pub(super) fn draw_resolver_footer(
         hints,
     );
 }
+
+/// The finish summary over the whole frame (m6-conflicts/19). Always
+/// `None`: it draws no pixels.
+///
+/// Laid out like the resolver: the banner line on the first row, the
+/// summary under it ([`crate::view::finish::summary_area`], which the keys
+/// and the mouse measure from too), and its own bar on the last row —
+/// `committing…` while the commit runs, else the summary's keys. **Never
+/// the status line**: the summary says what went wrong in its own notice
+/// row, and a status left over from before it opened is not about it.
+pub(super) fn draw_finish(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
+    let banner_rows = crate::update::resolver::banner_rows(state);
+    let body = draw_resolver_banner(frame, state, area, &session.theme, banner_rows);
+    let view = crate::view::finish::finish_view(state)?;
+    let summary = Rect {
+        height: body.height.saturating_sub(1),
+        ..body
+    };
+    let tier = tier_in_force(session, state);
+    frame.render_widget(
+        &graft_ui::finish_summary::FinishScreen {
+            view: &view,
+            theme: &session.theme,
+            ascii: tier == RenderingTier::Ascii,
+        },
+        summary,
+    );
+    if body.height > 0 && body.width > 0 {
+        frame.buffer_mut().set_string(
+            body.x,
+            body.bottom() - 1,
+            graft_ui::fit::fit(
+                &crate::view::finish::finish_bar(state, body.width),
+                usize::from(body.width),
+            ),
+            Style::default().fg(color(session.theme.token(Token::TextMuted))),
+        );
+    }
+    None
+}

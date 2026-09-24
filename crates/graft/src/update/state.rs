@@ -314,6 +314,16 @@ pub struct AppState {
     /// banner's, so a resolver opened *from* the banner keeps the keyboard
     /// the banner would otherwise claim.
     pub resolver: Option<super::resolver::ResolverState>,
+    /// What the user chose for each conflicted file, for the finish
+    /// summary's words (m6-conflicts/19). Cleared when the operation ends.
+    pub choices: std::collections::BTreeMap<std::path::PathBuf, super::finish::Choices>,
+    /// The finish summary (`c` on a merge, m6-conflicts/19): `None` while
+    /// closed. Modal, and first in [`AppState::graph_overlay`].
+    pub finish: Option<super::finish::FinishState>,
+    /// The summary's message as `Esc` left it, `(subject, body)`, when it
+    /// was the user's: the next `c` puts it back. Apart from
+    /// `commit_draft` (ticket 19 S7). Cleared when the operation ends.
+    pub finish_draft: Option<(String, String)>,
 }
 
 /// The screens Graft can show.
@@ -496,7 +506,12 @@ impl AppState {
     /// covers the Map, the Map covers the journal, and so on down.
     #[must_use]
     pub fn graph_overlay(&self) -> Option<GraphOverlay> {
-        if self.resolver.is_some() {
+        if self.finish.is_some() {
+            // Above the resolver: finish-from-the-resolver opens the summary
+            // with the resolver still open underneath, and `Esc` goes back
+            // to it (m6-conflicts/19).
+            Some(GraphOverlay::Finish)
+        } else if self.resolver.is_some() {
             // Above the commit editor and the three overlays alike: the
             // resolver is the only one that covers the **detail pane** as
             // well as the graph, and `⏎` on a `CONFLICTS` row reaches
@@ -526,6 +541,9 @@ impl AppState {
 /// live.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GraphOverlay {
+    /// The finish summary (`c` on a merge, m6-conflicts/19). Covers the
+    /// detail pane too, and keeps the banner line, as the resolver does.
+    Finish,
     /// The conflict resolver (`⏎` on a conflicted file, m6-conflicts/04).
     /// The one overlay that takes the detail pane's area too.
     Resolver,
@@ -647,6 +665,10 @@ impl AppState {
             || self.stash.prompt.is_some()
             || self.credential.is_some()
             || self.name_prompt.is_some()
+            || self
+                .finish
+                .as_ref()
+                .is_some_and(|finish| finish.focus != super::finish::FinishFocus::Files)
     }
 
     /// Is a modal pane or box taking the keyboard right now
@@ -670,6 +692,7 @@ impl AppState {
             || self.confirm.is_some()
             || self.preview.is_some()
             || self.resolver.is_some()
+            || self.finish.is_some()
             || (self.banner_focus && super::banner::banner_view(self).is_some())
     }
 }

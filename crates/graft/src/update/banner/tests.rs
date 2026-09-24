@@ -716,6 +716,15 @@ fn did_a_resume_verb(
                 },
                 "`{key} {verb}`"
             ),
+            // A merge shows the finish summary first (m6-conflicts/19):
+            // nothing is written until its `⏎`.
+            None if live(before).is_some_and(|detail| detail.kind == InProgress::Merge) => {
+                assert!(after.finish.is_some(), "`{key} {verb}` opened no summary");
+                assert!(
+                    matches!(commands, [Command::ReadFinishSummary(_)]),
+                    "`{key} {verb}` queued {commands:?}"
+                );
+            }
             None => assert!(
                 matches!(commands, [Command::Resume(_, Resume::Continue)]),
                 "`{key} {verb}` queued {commands:?}"
