@@ -267,6 +267,10 @@ fn merge_resolved_with_the_keys() -> Scenario {
                 ),
                 Step::Mark("resolved"),
                 key(ch('c')),
+                // A merge's `c` shows the finish summary; its `⏎` commits
+                // (m6-conflicts/19).
+                Step::WaitFor(Wait::FinishReady),
+                key(KeyCode::Enter),
                 Step::Write("c from the banner"),
                 Step::WaitFor(Wait::Ready),
                 Step::WaitFor(Wait::NotInProgress),

@@ -1193,6 +1193,9 @@ fn every_field_spelled_out() -> AppState {
         suspend_on_ctrl_z: false,
         preview: None,
         resolver: None,
+        choices: std::collections::BTreeMap::new(),
+        finish: None,
+        finish_draft: None,
     }
 }
 
@@ -3545,6 +3548,23 @@ fn dead_keys_on(
         .collect()
 }
 
+/// The hints `bar` draws at `columns`. The finish summary draws its own
+/// bar, which below the widget's floor is `esc back` alone
+/// (`view::finish::finish_hints`): that is the bar to press, not the
+/// table's whole list.
+fn bar_hints(
+    state: &AppState,
+    bar: &HintContext,
+    divider: Divider,
+    columns: u16,
+) -> Vec<graft_ui::graph_screen::Hint> {
+    if matches!(bar, HintContext::Finish { .. }) {
+        crate::view::finish::finish_hints(state, columns)
+    } else {
+        graft_ui::graph_screen::hints_for(bar, divider, columns)
+    }
+}
+
 /// [`dead_keys_on`] against one of the screens that context can be the bar
 /// for — every hint the bar draws that this screen's focused handler does
 /// nothing with.
@@ -3555,8 +3575,6 @@ fn dead_keys_in(
     columns: u16,
     bound: &[(&str, &str)],
 ) -> Vec<String> {
-    use graft_ui::graph_screen::hints_for;
-
     let state = state.clone();
     // Both bars this state can be under: the one the enum names, and the one
     // `view::rows` actually asks for when handed the state (they differ only
@@ -3618,7 +3636,7 @@ fn dead_keys_in(
     let mut dead = Vec::new();
     let mut pressed: Vec<(&str, &str)> = Vec::new();
     for bar in &drawn {
-        for hint in hints_for(bar, drawn_divider, columns) {
+        for hint in bar_hints(&state, bar, drawn_divider, columns) {
             assert!(
                 bound.contains(&(hint.key, hint.verb)),
                 "{bar:?} at {columns} columns hints `{} {}`, which nothing binds",
@@ -3694,33 +3712,24 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // produces — the other three have no state to classify and are
         // left unswept (their two hints are `Planned`, which `drawable`
         // filters out, so nothing dead can hide there).
-        HintContext::Resolver {
+        // A whole-file card (m6-05 review, Major 1) is the one other form.
+        // The finish summary is an overlay too, and `overlay_context`
+        // answers exactly its form (m6-conflicts/19).
+        same @ (HintContext::Resolver {
             base: true,
             restart: true,
             whole_file: false,
             done: false,
-            roles,
-        } => Some(HintContext::Resolver {
-            base: true,
-            restart: true,
-            whole_file: false,
-            done: false,
-            roles: *roles,
-        }),
-        // A whole-file card (m6-05 review, Major 1): the one other form.
-        HintContext::Resolver {
+            ..
+        }
+        | HintContext::Resolver {
             base: false,
             restart: false,
             whole_file: true,
             done: false,
-            roles,
-        } => Some(HintContext::Resolver {
-            base: false,
-            restart: false,
-            whole_file: true,
-            done: false,
-            roles: *roles,
-        }),
+            ..
+        }
+        | HintContext::Finish { .. }) => Some(same.clone()),
         // A done file (m6-conflicts/25): `resolver_context` answers the
         // document's flags with `done` set.
         HintContext::Resolver {
@@ -3734,10 +3743,8 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it. The three `Resolver` forms above this arm
-        // never reach the app. Nothing in the app draws `Finish` yet: ticket
-        // 19 was split at the seam (graft-ui first), and the app half gives
-        // it its own arm and a fixture in `screen_for`.
-        HintContext::Preview | HintContext::Resolver { .. } | HintContext::Finish { .. } => None,
+        // never reach the app.
+        HintContext::Preview | HintContext::Resolver { .. } => None,
         // The wrapper classifies as its row does.
         HintContext::OperationLive(row) => {
             classified_form(row).map(|row| HintContext::OperationLive(Box::new(row)))
@@ -3881,6 +3888,8 @@ fn presses_for(name: &str) -> Vec<Press> {
         "⇥" => vec![plain(KeyCode::Tab)],
         "⌃A" => vec![Press::Key(KeyPress::control(KeyCode::Char('a')))],
         "⌃R" => vec![Press::Key(KeyPress::control(KeyCode::Char('r')))],
+        "⌃E" => vec![Press::Key(KeyPress::control(KeyCode::Char('e')))],
+        "⌃⏎" => vec![Press::Key(KeyPress::control(KeyCode::Enter))],
         "⌃O/⌃T" => vec![
             Press::Key(KeyPress::control(KeyCode::Char('o'))),
             Press::Key(KeyPress::control(KeyCode::Char('t'))),
@@ -4046,10 +4055,61 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::ConfirmBox | HintContext::NamePrompt { .. } | HintContext::Credential => {
             vec![box_over_the_graph(walk, context)]
         }
-        // No state draws the finish summary yet: ticket 19 was split at the
-        // seam (graft-ui first), and the app half adds its fixture here.
-        HintContext::Finish { .. } => Vec::new(),
+        // The summary open over a resolved merge, read: one row the user
+        // resolved, one git combined. `expandable` is the cursor on the
+        // combined one.
+        HintContext::Finish { focus, expandable } => {
+            vec![finish_screen_for(walk, *focus, *expandable)]
+        }
     }
+}
+
+/// [`screen_for`]'s finish summary: a merge stopped with nothing left
+/// unmerged, `c` pressed on its banner and the summary read.
+fn finish_screen_for(
+    walk: JobId,
+    focus: graft_ui::finish_summary::SummaryFocus,
+    expandable: bool,
+) -> AppState {
+    use graft_ui::finish_summary::SummaryFocus;
+
+    let mut state = stopped_operation(walk, false, false);
+    let job = JobId::new(702);
+    assert!(super::finish::open_finish(
+        &mut state,
+        &mut Vec::new(),
+        super::finish::ReturnTo::Banner,
+        &mut || job
+    ));
+    super::finish::summary_landed(
+        &mut state,
+        job,
+        Ok(Arc::new(graft_ops::finish::FinishSummary {
+            into: b"main".to_vec(),
+            from: b"feature".to_vec(),
+            by_you: vec![graft_ops::finish::ByYou {
+                path: "notes.txt".into(),
+                result: graft_ops::finish::ResultIs::Theirs,
+            }],
+            by_git: vec![graft_ops::finish::ByGit {
+                path: "README.md".into(),
+                change: graft_ops::finish::Change::Modified,
+                added: 1,
+                removed: 1,
+            }],
+            message: b"Merge branch 'feature'\n".to_vec(),
+            recorded: true,
+        })),
+    );
+    if let Some(open) = state.finish.as_mut() {
+        open.cursor = usize::from(expandable);
+        open.focus = match focus {
+            SummaryFocus::Files => super::finish::FinishFocus::Files,
+            SummaryFocus::Subject => super::finish::FinishFocus::Subject,
+            SummaryFocus::Body => super::finish::FinishFocus::Body,
+        };
+    }
+    state
 }
 
 /// [`screen_for`]'s live boxes, each over the graph with a merge under the

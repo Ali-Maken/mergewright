@@ -273,6 +273,15 @@ fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
     };
     match overlay {
         None => {}
+        Some(GraphOverlay::Finish) => {
+            let job = graft_core::job::JobId::new(77);
+            assert!(crate::update::finish::open_finish(
+                &mut state,
+                &mut Vec::new(),
+                crate::update::finish::ReturnTo::Banner,
+                &mut || job,
+            ));
+        }
         Some(GraphOverlay::Resolver) => state.resolver = Some(an_open_resolver()),
         Some(GraphOverlay::CommitEditor) => {
             state.commit_editor = Some(crate::update::commit_editor::CommitEditor::new());
@@ -299,6 +308,7 @@ fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
 fn a_live_confirm_box_is_drawn_over_every_overlay() {
     let overlays = [
         None,
+        Some(GraphOverlay::Finish),
         Some(GraphOverlay::Resolver),
         Some(GraphOverlay::CommitEditor),
         Some(GraphOverlay::Map),
@@ -560,6 +570,7 @@ fn a_name_prompt() -> crate::update::name_prompt::NamePrompt {
 fn every_screen() -> Vec<(String, AppState)> {
     let overlays = [
         None,
+        Some(GraphOverlay::Finish),
         Some(GraphOverlay::Resolver),
         Some(GraphOverlay::CommitEditor),
         Some(GraphOverlay::Map),

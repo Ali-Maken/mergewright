@@ -464,12 +464,14 @@ fn all_resolved_from_the_pane_offers_c_where_c_continues() {
         state.commit_editor.is_none(),
         "c did not open the commit editor"
     );
+    // A merge's `c` shows the finish summary, whose `⏎` commits
+    // (m6-conflicts/19): nothing is written by `c` itself.
+    assert!(state.finish.is_some(), "c opened the finish summary");
     assert!(
-        commands.iter().any(|command| matches!(
-            command,
-            Command::Resume(_, graft_ops::apply::Resume::Continue)
-        )),
-        "c continued the merge: {commands:?}"
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadFinishSummary(_))),
+        "c on the merge reads the summary: {commands:?}"
     );
 }
 

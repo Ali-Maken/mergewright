@@ -25,6 +25,9 @@ pub const LOCAL_JOB_BIT: u64 = 1 << 63;
 pub(crate) use control::detail_event;
 pub use control::{LocalJobs, close_explain, effective_layout, open_explain, tab_hint_rows};
 pub(crate) use keys::{detail_key, enter_opens};
+/// How many diff lines a read carries before it is cut short; the finish
+/// summary's diff reads use the same budget (m6-conflicts/19).
+pub(crate) use state::MAX_LINES;
 pub use state::{
     Bounded, CompareBase, DetailSpec, DetailState, DiffKey, KeptCursor, Loading, PaneSize,
     toggle_compare,

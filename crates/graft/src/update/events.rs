@@ -192,6 +192,12 @@ pub enum Task {
     /// Read the set of files the operation in progress conflicted on, for
     /// the resolver's file list (m6-conflicts/13).
     ReadConflictSet,
+    /// Read what the merge about to be committed changes, for the finish
+    /// summary (m6-conflicts/19).
+    ReadFinishSummary,
+    /// Read one staged file's diff for the finish summary's `space`
+    /// (m6-conflicts/19).
+    ReadFinishDiff,
 }
 
 /// What a job brought back.
@@ -350,6 +356,14 @@ pub enum Product {
     /// (`graft_ops::conflict::operation_conflicts`, m6-conflicts/13), or why
     /// they could not be read, in `graft_ops`' own words.
     ConflictSet(Result<std::sync::Arc<graft_ops::conflict::ConflictSet>, String>),
+    /// What the merge about to be committed changes
+    /// (`graft_ops::finish::finish_summary`, m6-conflicts/19), or why it
+    /// could not be read, in `graft_ops`' own words.
+    FinishSummary(Result<std::sync::Arc<graft_ops::finish::FinishSummary>, String>),
+    /// One staged file's diff for the finish summary, or why not
+    /// (m6-conflicts/19): the same view model the detail pane draws, built
+    /// by the same code (`jobs::detail::assemble_diff`).
+    FinishDiff(Result<std::sync::Arc<graft_ui::detail::DiffView>, String>),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.

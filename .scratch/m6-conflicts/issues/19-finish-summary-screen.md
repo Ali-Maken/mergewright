@@ -152,32 +152,32 @@ pub enum Product { /* existing */ FinishSummary(Result<Arc<FinishSummary>, Strin
 ```
 
 ## Acceptance (name the verifying test when you tick; truth from git)
-- [ ] `update::finish::tests::c_on_a_resolved_merge_opens_the_summary_not_the_commit`: no `Resume` command, `finish` is `Some`, `ReadFinishSummary` issued.
-- [ ] `…::c_with_a_file_unmerged_is_still_refused`: `continue_refusal`'s words, no `finish`.
-- [ ] `…::a_rebase_c_still_continues_directly`: `Resume::Continue`, `finish` is `None`.
-- [ ] `…::enter_commits_with_gits_message_when_unedited`: `Resume::Continue`.
-- [ ] `…::an_edited_subject_commits_with_that_message`, walk harness, real git: `ContinueWith`; `git log -1 --format=%B` reads back the typed subject.
-- [ ] `…::a_hash_line_typed_in_the_body_lands`, real git: `⇥ ⇥`, type `#123 fixes login`, `Ctrl+Enter` → `%B` contains the line `#123 fixes login`.
-- [ ] `…::a_hash_line_from_the_editor_lands`, real git: `Ctrl+E` with a fake `$EDITOR` that appends `#123 fixes login` → the body holds that line; after `Ctrl+Enter`, `%B` contains it (S3).
-- [ ] `…::the_editor_answer_for_the_commit_editor_is_unchanged`: an `ExternalEditor` answer under the commit editor's id still reaches `commit_editor::editor_returned`, and the finish is untouched.
-- [ ] `…::the_summary_shows_no_git_comment_lines`: the fixture's `MERGE_MSG` has git's `# Conflicts:` block → no drawn message line starts with `#`.
-- [ ] `…::esc_goes_back_and_keeps_the_draft`: `⇥`, type, `Esc` → the banner is focused; `c` → the typed subject is back.
-- [ ] `…::esc_with_nothing_typed_keeps_no_draft`: `Esc` → `finish_draft` is `None`.
-- [ ] `…::space_expands_a_git_combined_file`: one `ReadFinishDiff` for `README.md`; `space` again collapses; a stale answer is dropped.
-- [ ] `jobs::finish::tests::the_diff_is_the_staged_change`, real git: `README.md` → one hunk, whose removed and added lines equal `git diff --cached README.md`'s.
-- [ ] `update::finish::tests::a_hook_refusal_keeps_the_summary_open`: a failing `commit-msg` hook → `finish` is `Some`, the notice holds the hook's words, and the draft is kept.
+- [x] `update::finish::tests::c_on_a_resolved_merge_opens_the_summary_not_the_commit`: no `Resume` command, `finish` is `Some`, `ReadFinishSummary` issued. **Ticked by 34:** `update::finish::tests::c_on_a_resolved_merge_opens_the_summary_not_the_commit`.
+- [x] `…::c_with_a_file_unmerged_is_still_refused`: `continue_refusal`'s words, no `finish`. **Ticked by 34:** `update::finish::tests::c_with_a_file_unmerged_is_still_refused`.
+- [x] `…::a_rebase_c_still_continues_directly`: `Resume::Continue`, `finish` is `None`. **Ticked by 34:** `update::finish::tests::a_rebase_c_still_continues_directly`.
+- [x] `…::enter_commits_with_gits_message_when_unedited`: `Resume::Continue`. **Ticked by 34:** `update::finish::tests::enter_commits_with_gits_message_when_unedited`.
+- [x] `…::an_edited_subject_commits_with_that_message`, walk harness, real git: `ContinueWith`; `git log -1 --format=%B` reads back the typed subject. **Ticked by 34:** `it::finish::an_edited_subject_commits_with_that_message` (real git); the `ContinueWith` form: `update::finish::tests::an_edited_subject_commits_continue_with`.
+- [x] `…::a_hash_line_typed_in_the_body_lands`, real git: `⇥ ⇥`, type `#123 fixes login`, `Ctrl+Enter` → `%B` contains the line `#123 fixes login`. **Ticked by 34:** `it::finish::a_hash_line_typed_in_the_body_lands` (real git).
+- [ ] `…::a_hash_line_from_the_editor_lands`, real git: `Ctrl+E` with a fake `$EDITOR` that appends `#123 fixes login` → the body holds that line; after `Ctrl+Enter`, `%B` contains it (S3). **Not ticked (34):** `it::finish::a_hash_line_from_the_editor_lands` passes, but it answers `EditCommitMessage` with what a fake editor would write; no `$EDITOR` process runs (the harness job pool cannot hand the terminal over). Body line and `%B` verified against real git; the editor round trip itself is not.
+- [x] `…::the_editor_answer_for_the_commit_editor_is_unchanged`: an `ExternalEditor` answer under the commit editor's id still reaches `commit_editor::editor_returned`, and the finish is untouched. **Ticked by 34:** `update::finish::tests::the_editor_answer_for_the_commit_editor_is_unchanged`.
+- [x] `…::the_summary_shows_no_git_comment_lines`: the fixture's `MERGE_MSG` has git's `# Conflicts:` block → no drawn message line starts with `#`. **Ticked by 34:** `it::finish::the_summary_shows_no_git_comment_lines` (real git).
+- [x] `…::esc_goes_back_and_keeps_the_draft`: `⇥`, type, `Esc` → the banner is focused; `c` → the typed subject is back. **Ticked by 34:** `update::finish::tests::esc_goes_back_and_keeps_the_draft`.
+- [x] `…::esc_with_nothing_typed_keeps_no_draft`: `Esc` → `finish_draft` is `None`. **Ticked by 34:** `update::finish::tests::esc_with_nothing_typed_keeps_no_draft`.
+- [x] `…::space_expands_a_git_combined_file`: one `ReadFinishDiff` for `README.md`; `space` again collapses; a stale answer is dropped. **Ticked by 34:** `update::finish::tests::space_expands_a_git_combined_file`.
+- [x] `jobs::finish::tests::the_diff_is_the_staged_change`, real git: `README.md` → one hunk, whose removed and added lines equal `git diff --cached README.md`'s. **Ticked by 34:** `jobs::finish::tests::the_diff_is_the_staged_change` (real git).
+- [x] `update::finish::tests::a_hook_refusal_keeps_the_summary_open`: a failing `commit-msg` hook → `finish` is `Some`, the notice holds the hook's words, and the draft is kept. **Ticked by 34:** `it::finish::a_hook_refusal_keeps_the_summary_open` (real git, real `commit-msg` hook).
 - [ ] `…::the_summary_words_what_you_chose`: `Ctrl+T ⏎` on `notes.txt`, `o` on `gone.txt` → `theirs · feature in 2 of 2 conflicts`, `kept · yours · main`. After a relaunch (no `choices`), the rows read `ResultIs` words.
 - [ ] `…::shift_t_records_its_choices`: `T` on `notes.txt` → `theirs · feature in 2 of 2 conflicts` (ticket 17's `O`/`T` through `take_landed`).
 - [ ] `…::a_start_over_forgets_the_choices`: `t`, then `d` confirmed → no `choices` entry for the file.
 - [ ] `…::choices_and_draft_clear_when_the_merge_ends`: after `Done`, and after an abort, `choices` is empty and `finish_draft` is `None`.
-- [ ] `…::done_lands_on_the_merge_commit`, walk harness, real git (S9, J6's landing):
+- [x] `…::done_lands_on_the_merge_commit`, walk harness, real git (S9, J6's landing): **Ticked by 34:** `it::finish::done_lands_on_the_merge_commit` (observed passing; no finish-only landing added).
   - after `⏎`, with every read the landing owes answered, `finish` is `None`, the graph is focused, and the cursor row's oid equals `git rev-parse HEAD`;
   - `git rev-list --parents -1 HEAD` shows two parents;
   - the status reads `merged feature into main ✓`.
 
   If it fails, report the line where the cursor goes elsewhere. Add no finish-only landing.
-- [ ] `…::keys_outside_2_6b_do_nothing`: `↑`, `PgDn`, `⇧⇥` in files focus → no state change, no command (S6).
-- [ ] graft-ui `finish_summary::tests::{one_column_below_160, two_columns_from_160, too_small_says_so, a_long_diff_stops_at_12_rows_and_says_space_hides}`. The last one: no `L load all` anywhere in the buffer. Plus `hints::tests::every_context_reaches_every_shape`, and `update::tests::every_bound_action_is_hinted_live_or_is_named_here`, green.
+- [x] `…::keys_outside_2_6b_do_nothing`: `↑`, `PgDn`, `⇧⇥` in files focus → no state change, no command (S6). **Ticked by 34:** `update::finish::tests::keys_outside_2_6b_do_nothing`.
+- [x] graft-ui `finish_summary::tests::{one_column_below_160, two_columns_from_160, too_small_says_so, a_long_diff_stops_at_12_rows_and_says_space_hides}`. The last one: no `L load all` anywhere in the buffer. Plus `hints::tests::every_context_reaches_every_shape`, and `update::tests::every_bound_action_is_hinted_live_or_is_named_here`, green. **Ticked by 34:** graft-ui `finish_summary::tests::{one_column_below_160, two_columns_from_160, too_small_says_so, a_long_diff_stops_at_12_rows_and_says_space_hides}`, graft-ui `graph_screen::tests::every_context_reaches_every_shape` (the box says `hints::tests`; this is its real path), `update::tests::every_bound_action_is_hinted_live_or_is_named_here`.
 - [ ] Journeys `a-finish` 2 and `summary-open-git-combined` 1 hold in the walk (ticket 21 counts them).
 - [ ] Captures `docs/shots/m6/fix-finish-summary-{120x40,160x48,200x50}.txt` and `…-expanded-120x40.txt`, pinned by `it::finish::summary_captures`. The fixture is a two-file merge where `feature` also changes one line of `README.md` cleanly. **What right looks like:**
   - The title reads `Finish · merging feature → main · nothing is written until ⏎`.

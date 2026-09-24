@@ -408,6 +408,14 @@ fn continue_pressed(
         state.status = continue_refused(reason);
         return;
     }
+    // A merge shows what will land before anything is written, and only
+    // the summary's `⏎` commits (m6-conflicts/19). Rebase, cherry-pick and
+    // revert continue straight away until M7 gives them a summary.
+    if live(state).is_some_and(|detail| detail.kind == InProgress::Merge) {
+        let _opened: bool =
+            super::finish::open_finish(state, commands, super::finish::ReturnTo::Banner, next_id);
+        return;
+    }
     resume(state, commands, Resume::Continue, next_id);
 }
 
@@ -596,13 +604,15 @@ pub fn resumed(
     }
     state.operating = None;
     state.remote.running = None;
+    // The finish summary's own `--continue` first: a refusal keeps the
+    // summary open with git's words, and nothing below runs for it.
+    let finish = super::finish::resume_answered(state, id, &outcome);
+    if finish == Some(super::finish::FinishAnswer::Kept) {
+        return kept_open(state, outcome, next_id);
+    }
     match outcome {
         crate::jobs::operate::Operated::Done(applied) => {
-            super::undo::operation_ended(state);
-            state.status = Status::Done(applied.entry.description.clone());
-            let commands = super::operate::refresh_scope(state, applied.refresh, next_id);
-            finished_lands_on_head(state, &commands);
-            commands
+            resumed_done(state, &applied, finish, next_id)
         }
         // It ran; only its record is short. The re-read confirms the end
         // the same way it does for `Done`.
@@ -653,6 +663,50 @@ pub fn resumed(
                 None => Vec::new(),
             }
         }
+    }
+}
+
+/// A `--continue` the finish summary started, refused with nothing moved
+/// (a hook said no): the summary already shows why, so the status line
+/// stays quiet and the banner does not re-announce the stop. What might
+/// have been written is re-read all the same.
+/// The operation finished: the entry ends, the scope re-reads and the
+/// cursor lands on HEAD. A merge committed from the finish summary says so
+/// in its own words (`merged feature into main`).
+fn resumed_done(
+    state: &mut AppState,
+    applied: &graft_ops::apply::Applied,
+    finish: Option<super::finish::FinishAnswer>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    super::undo::operation_ended(state);
+    state.status = Status::Done(applied.entry.description.clone());
+    let commands = super::operate::refresh_scope(state, applied.refresh, next_id);
+    finished_lands_on_head(state, &commands);
+    if let Some(super::finish::FinishAnswer::Merged(Some(words))) = finish {
+        state.status = Status::Done(words);
+    }
+    commands
+}
+
+fn kept_open(
+    state: &mut AppState,
+    outcome: crate::jobs::operate::Operated,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    state.status = Status::Ready;
+    match outcome {
+        crate::jobs::operate::Operated::Conflicted { entry, .. } => {
+            state.live_entries = vec![entry];
+            super::operate::refresh_scope(state, graft_ops::apply::Refresh::Everything, next_id)
+        }
+        crate::jobs::operate::Operated::Failed {
+            refresh: Some(what),
+            ..
+        } => super::operate::refresh_scope(state, what, next_id),
+        crate::jobs::operate::Operated::Failed { refresh: None, .. }
+        | crate::jobs::operate::Operated::Done(_)
+        | crate::jobs::operate::Operated::Incomplete { .. } => Vec::new(),
     }
 }
 

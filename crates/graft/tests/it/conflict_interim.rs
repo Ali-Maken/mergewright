@@ -292,7 +292,7 @@ fn commands_for(state: &AppState, key: KeyPress) -> Vec<Command> {
 /// The changes pane, reached from wherever the cursor happens to be — the
 /// shared harness helper assumes the cursor is on the top row, and after a
 /// merge it is on the row the merge came from.
-fn open_changes_pane(app: &App, state: AppState) -> AppState {
+pub(crate) fn open_changes_pane(app: &App, state: AppState) -> AppState {
     let mut state = state;
     let mut guard = 0;
     while !state.on_working_tree {
@@ -319,7 +319,7 @@ fn open_changes_pane(app: &App, state: AppState) -> AppState {
 }
 
 /// `Tab` round the cycle until the banner has the keyboard again.
-fn tab_back_to_the_banner(app: &App, state: AppState) -> AppState {
+pub(crate) fn tab_back_to_the_banner(app: &App, state: AppState) -> AppState {
     let mut state = state;
     let mut guard = 0;
     while !state.banner_focus {
@@ -332,7 +332,7 @@ fn tab_back_to_the_banner(app: &App, state: AppState) -> AppState {
 
 /// Marks `name` resolved the way the user does: cursor onto its `CONFLICTS`
 /// row, `Space`, and wait for the working tree to come back without it.
-fn mark_resolved(app: &App, state: AppState, name: &str) -> AppState {
+pub(crate) fn mark_resolved(app: &App, state: AppState, name: &str) -> AppState {
     let state = crate::app_harness::cursor_to(app, state, name);
     let state = app.key(&state, KeyCode::Char(' '));
     let state = app.settle_write(state, &format!("marking {name} resolved"));
@@ -471,6 +471,19 @@ fn banner_is_modal_when_focused() {
 // Piece 3: the three verbs.
 // ---------------------------------------------------------------------------
 
+/// `c` on a resolved merge's banner shows the finish summary
+/// (m6-conflicts/19); `⏎` in it runs the continue, pumped to its answer.
+fn committed_from_the_summary(app: &App, state: &AppState) -> AppState {
+    let state = app.key(state, KeyCode::Char('c'));
+    assert!(state.finish.is_some(), "`c` on a merge shows the summary");
+    let state = app.pump(state, "the finish summary", |state| {
+        state.finish.as_ref().is_some_and(|open| open.job.is_none())
+    });
+    let state = app.key(&state, KeyCode::Enter);
+    assert!(state.operating.is_some(), "`⏎` commits");
+    app.pump(state, "the continue", |state| state.operating.is_none())
+}
+
 #[test]
 fn continue_refuses_while_unmerged_then_finishes() {
     let scratch = about_to_conflict();
@@ -514,11 +527,11 @@ fn continue_refuses_while_unmerged_then_finishes() {
         "both files are marked resolved"
     );
 
-    // Back into the banner the same way the user left it, and `c` runs.
-    // The banner lets go only when git does.
+    // Back into the banner the same way the user left it. On a merge `c`
+    // shows the finish summary (m6-conflicts/19) and its `⏎` runs the
+    // continue. The banner lets go only when git does.
     let state = tab_back_to_the_banner(&app, state);
-    let state = app.key(&state, KeyCode::Char('c'));
-    let state = app.pump(state, "the continue", |state| state.operating.is_none());
+    let state = committed_from_the_summary(&app, &state);
     let state = app.pump(state, "the working tree after the merge", |state| {
         state.in_progress.is_none()
     });

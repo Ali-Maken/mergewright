@@ -544,9 +544,6 @@ impl Walk<'_> {
             Wait::NotInProgress => self.pump(state, "the in-progress re-read", |state| {
                 state.in_progress.is_none() && state.operating.is_none()
             }),
-            Wait::Resolved => self.pump(state, "the resolved tree", |state| {
-                state.operating.is_none() && graft::update::banner::unmerged_paths(state).is_empty()
-            }),
             Wait::JournalRead => self.pump(state, "the journal's entries", |state| {
                 matches!(state.journal.entries, Loading::Ready(_))
                     && state.journal.reading.is_none()
@@ -560,13 +557,16 @@ impl Walk<'_> {
             Wait::ConflictOpened
             | Wait::ResolvedPath(_)
             | Wait::ResolverClosed
-            | Wait::ConflictedPath(_) => self.wait_for_resolver(state, wait),
+            | Wait::ConflictedPath(_)
+            | Wait::Resolved
+            | Wait::FinishReady => self.wait_for_resolver(state, wait),
         }
     }
 
-    /// M6's waits (m6-conflicts/07): the resolver's reads and takes, and a
-    /// path's conflict leaving or coming back — the last two checked
-    /// against git as well as the app's re-read.
+    /// The conflict waits (m6-conflicts/07): the resolver's reads and takes,
+    /// a path's conflict leaving or coming back — those two checked against
+    /// git as well as the app's re-read — the whole tree resolved, and the
+    /// finish summary's read (m6-conflicts/19).
     fn wait_for_resolver(&mut self, state: AppState, wait: Wait) -> Result<AppState, String> {
         match wait {
             Wait::ConflictOpened => self.pump(state, "the resolver's read or take", |state| {
@@ -607,6 +607,12 @@ impl Walk<'_> {
                 })?;
                 Ok(state)
             }
+            Wait::Resolved => self.pump(state, "the resolved tree", |state| {
+                state.operating.is_none() && graft::update::banner::unmerged_paths(state).is_empty()
+            }),
+            Wait::FinishReady => self.pump(state, "the finish summary", |state| {
+                state.finish.as_ref().is_some_and(|open| open.job.is_none())
+            }),
             other => unreachable!("wait_for_state answers {other:?}"),
         }
     }

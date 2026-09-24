@@ -55,6 +55,16 @@ fn boxes_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     claimed
 }
 
+/// The finish summary, right after the boxes and before the resolver
+/// (m6-conflicts/19): modal, every key but `Ctrl+C` is its own. Before the
+/// resolver because finish-from-the-resolver opens it over one.
+fn finish_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::finish::finish_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
 /// The conflict resolver, right after the preview and before the banner
 /// (m6-conflicts/04). Modal: while it is open every key but `Ctrl+C` is
 /// its own.
@@ -107,6 +117,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // banner. `||` is the early return, one claim per line.
     if super::drag::drag_key(next, key)
         || boxes_key(next, commands, key)
+        || finish_key(next, commands, key)
         || resolver_key(next, commands, key)
         || banner_key(next, commands, key)
     {

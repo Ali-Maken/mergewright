@@ -73,6 +73,7 @@ mod askpass;
 pub(crate) mod commit_message;
 pub(crate) mod conflict;
 pub(crate) mod detail;
+mod finish;
 mod kinds;
 mod map;
 pub(crate) mod operate;

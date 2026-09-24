@@ -622,6 +622,35 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads what the merge about to be committed changes, for the finish
+    /// summary, under an id `update` chose (m6-conflicts/19).
+    fn read_finish_summary(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadFinishSummary), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::FinishSummary(super::finish::summary(&repos)))
+            })
+        });
+    }
+
+    /// Reads one staged file's diff for the finish summary's `space`, under
+    /// an id `update` chose (m6-conflicts/19).
+    fn read_finish_diff(&self, id: JobId, path: std::path::PathBuf) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadFinishDiff), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let diff = super::finish::staged_diff(&repos, &path, cancel);
+                Outcome::Produced(Product::FinishDiff(diff))
+            })
+        });
+    }
+
     /// Reads `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     fn read_commit_template(&self, id: JobId) {
@@ -897,6 +926,14 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Starts a search. The id names the search on screen; `update` tells a
+    /// superseded one apart by the order searches start in.
+    fn start_search(&self, query: crate::search::Query) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        self.queue_job(Some(Task::Search), |id| search(repos, query, sink, id));
+    }
+
     /// Reads the remote facts `f`/`p`/`P` decide from, under an id `update`
     /// already chose (m4-remotes/05).
     fn read_remotes(&self, id: JobId) {
@@ -959,13 +996,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::DeclineCommitGraph => self.decline_commit_graph(),
             Command::ReadHistory(id, order) => self.read_history(id, order),
             Command::ShowRows(id, request) => self.show_rows(id, request),
-            Command::Search(query) => {
-                let repos = Arc::clone(&self.repos);
-                let sink = self.sink.clone();
-                // The id names the search on screen; `update` tells a
-                // superseded one apart by the order searches start in.
-                self.queue_job(Some(Task::Search), |id| search(repos, query, sink, id));
-            }
+            Command::Search(query) => self.start_search(query),
             command @ (Command::ListFiles(..)
             | Command::ReadFileDiff(..)
             | Command::ContainedIn(..)
@@ -990,6 +1021,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::TakeSide(id, request) => self.take_side(id, request),
             Command::LoadBase(id, path, file) => self.load_base(id, path, *file),
             Command::ReadConflictSet(id) => self.read_conflict_set(id),
+            Command::ReadFinishSummary(id) => self.read_finish_summary(id),
+            Command::ReadFinishDiff(id, path) => self.read_finish_diff(id, path),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),

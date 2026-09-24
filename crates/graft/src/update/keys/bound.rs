@@ -133,4 +133,14 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("⏎", "create"), // `name_prompt::name_prompt_key` → `create`
     ("⇥", "toggle"), // `name_prompt::name_prompt_key`: check out after
     ("⏎", "send"),   // `credential::credential_key`: the answer to git
+    // The finish summary (`finish::finish_key`, m6-conflicts/19). `j/k move`
+    // above is its cursor too (`move_cursor`).
+    ("⏎", "commit"),   // `files_key`/`subject_key` → `commit`
+    ("⌃⏎", "commit"),  // `control_key` → `commit`, from any focus
+    ("space", "diff"), // `files_key` → `toggle_diff`
+    ("⇥", "message"),  // `finish_key`: files → subject
+    ("⇥", "body"),     // the same, subject → body
+    ("⇥", "files"),    // the same, body → files
+    ("⌃E", "editor"),  // `control_key` → `edit_outside`
+    ("esc", "back"),   // `finish_key` → `escape`
 ];

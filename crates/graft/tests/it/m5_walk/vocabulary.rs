@@ -49,6 +49,17 @@ pub(super) fn undo() -> Vec<Step> {
     ]
 }
 
+/// `c` on a resolved merge: it shows the finish summary, whose `⏎` runs
+/// the commit (m6-conflicts/19). `write` names that commit.
+pub(super) fn finish_the_merge(write: &'static str) -> Vec<Step> {
+    vec![
+        key(ch('c')),
+        Step::WaitFor(Wait::FinishReady),
+        key(KeyCode::Enter),
+        Step::Write(write),
+    ]
+}
+
 /// `U`, the write, everything re-read.
 pub(super) fn redo() -> Vec<Step> {
     vec![

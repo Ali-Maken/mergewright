@@ -241,6 +241,15 @@ pub enum Command {
     /// Read the operation's conflict set for the resolver's file list
     /// (m6-conflicts/13), under an id `update` chose.
     ReadConflictSet(JobId),
+    /// Read what a merge about to be committed changes, for the finish
+    /// summary (`c` on a merge, m6-conflicts/19), under an id `update`
+    /// chose so a stale answer can be dropped.
+    ReadFinishSummary(JobId),
+    /// Read one staged file's diff for the finish summary's `space`, under
+    /// an id `update` chose (m6-conflicts/19 S4). Its own command rather
+    /// than [`Command::ReadFileDiff`]: that one carries the detail pane's
+    /// `DiffKey`, and its answer always goes to the detail pane.
+    ReadFinishDiff(JobId, std::path::PathBuf),
 }
 
 /// One block's take, as the resolver asks for it.

@@ -47,7 +47,7 @@ use self::bars::{
 use self::boxes::{
     draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_preview, row_columns,
 };
-use self::conflicts::draw_resolver;
+use self::conflicts::{draw_finish, draw_resolver};
 use self::layout::{
     pixels_above_overlays, render_graph_screen, render_graph_with_detail, split_for_detail,
     tab_banner_area,
@@ -137,6 +137,10 @@ pub fn view_with_graphics(
             // Above them all: the resolver covers the detail pane too, and
             // it is the one overlay that keeps the operation banner
             // (`draw_resolver`).
+            // Over everything, the resolver included: the finish summary
+            // (m6-conflicts/19), with the banner line on top as the
+            // resolver keeps it.
+            Some(GraphOverlay::Finish) => (draw_finish(session, state, frame, area), Vec::new()),
             Some(GraphOverlay::Resolver) => {
                 (draw_resolver(session, state, frame, area), Vec::new())
             }

@@ -102,7 +102,9 @@ pub(super) fn bar_rows(state: &AppState, area: Rect) -> Vec<Rect> {
     };
     match state.screen {
         Screen::Status => Vec::new(),
-        Screen::Graph if state.resolver.is_some() => vec![bottom_of(area)],
+        Screen::Graph if state.resolver.is_some() || state.finish.is_some() => {
+            vec![bottom_of(area)]
+        }
         Screen::Graph => vec![bottom_of(primary_pane_area(state, area).unwrap_or(area))],
     }
 }

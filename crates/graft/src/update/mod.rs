@@ -27,6 +27,7 @@ pub mod credential;
 pub mod detail;
 pub mod drag;
 mod events;
+pub mod finish;
 mod geometry;
 mod history;
 pub mod journal;
@@ -247,6 +248,22 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, Product::ConflictSet(result)) => {
             resolver::conflict_set_read(next, id, result);
         }
+        AppEvent::Produced(id, Product::FinishSummary(result)) => {
+            finish::summary_landed(next, id, result);
+        }
+        AppEvent::Produced(id, Product::FinishDiff(result)) => {
+            finish::diff_landed(next, id, result);
+        }
+        // `Ctrl+E` from the finish summary: its own answer, with nothing
+        // stripped (ticket 19 S3). Any other id is the commit editor's.
+        AppEvent::Produced(id, Product::ExternalEditor(result))
+            if next
+                .finish
+                .as_ref()
+                .is_some_and(|open| open.editing == Some(id)) =>
+        {
+            let _finishes: bool = finish::editor_returned(next, id, result);
+        }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);
         }
@@ -407,6 +424,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::TakeSide
         | Task::LoadBase
         | Task::ReadConflictSet
+        | Task::ReadFinishSummary
+        | Task::ReadFinishDiff
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -660,7 +679,9 @@ fn took_fact(
         | Product::ConflictOpened(_)
         | Product::Taken(_)
         | Product::BaseLoaded(_)
-        | Product::ConflictSet(_) => {}
+        | Product::ConflictSet(_)
+        | Product::FinishSummary(_)
+        | Product::FinishDiff(_) => {}
     }
 }
 
@@ -691,6 +712,27 @@ fn name_prompt_claimed(next: &mut AppState, commands: &mut Vec<Command>, key: Ke
     let claimed = name_prompt::name_prompt_key(next, commands, key, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     claimed
+}
+
+/// The terminal changed size: every open surface re-fits.
+fn resized(next: &mut AppState, commands: &mut Vec<Command>, size: Size) {
+    // Ticket 10 piece 4: a resize cancels a drag, the same as any other
+    // event that moves the badge out from under the pointer. Harmless today
+    // (the next `Drag` re-reads `over` against the new layout), but a resize
+    // mid-drag is cheap to get right and leaving it in the air is one more
+    // state the next reader has to reason about (review m5-10-30-31 m2).
+    next.drag = None;
+    next.size = size;
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut()
+        && let Some(request) = history.show(height)
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
+    }
+    map::resized(next, commands);
+    resolver::resized(next);
+    finish::resized(next);
 }
 
 /// The half of [`answer`] that answers the events `core` defines.
@@ -726,25 +768,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
                 next.quit = Some(Quit::HandedBack(key.code));
             }
         }
-        Event::Resize { columns, rows } => {
-            // Ticket 10 piece 4: a resize cancels a drag, the same as any
-            // other event that moves the badge out from under the pointer.
-            // Harmless today (the next `Drag` re-reads `over` against the
-            // new layout), but a resize mid-drag is cheap to get right and
-            // leaving it in the air is one more state the next reader has
-            // to reason about (review m5-10-30-31 m2).
-            next.drag = None;
-            next.size = Size { columns, rows };
-            let height = next.graph_rows();
-            if let Some(history) = next.history.as_mut()
-                && let Some(request) = history.show(height)
-                && let Some(id) = next.awaiting
-            {
-                commands.push(Command::ShowRows(id, request));
-            }
-            map::resized(next, commands);
-            resolver::resized(next);
-        }
+        Event::Resize { columns, rows } => resized(next, commands, Size { columns, rows }),
         event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
             if search::searching(next, id) || commit_graph::commit_graph_job(next, id) =>
         {
@@ -790,6 +814,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // with no text field on it.
             if !credential::credential_paste(next, &text)
                 && !name_prompt::name_prompt_paste(next, &text)
+                && !finish::paste(next, &text)
             {
                 let _taken: bool = commit_editor::paste(next, &text);
             }
@@ -889,6 +914,7 @@ fn job_failed(
     // A status read the line waited on stops being waited on; the failure
     // replaces the line, so whether it was that read changes nothing more.
     let _owed: bool = status_read::answered(next, id);
+    finish::job_ended(next, id, failure);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;
     commands.extend(operate::write_job_ended(next, id, &mut || {
