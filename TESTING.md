@@ -1514,6 +1514,10 @@ at the next refresh.
     sticky `push refused: … stale lease … f to fetch`; the bare's refs
     identical to before the scenario — the lease protected the teammate's
     commit.
+11a. **push-rejected-rebased-then-plain** — as 11 (the teammate pushed, ours locally); `P` `→` `⏎`: sticky `push
+    rejected …`; `p`: `main and origin/main have diverged · m merge it  r rebase onto it`; `r` `r`: rebased; `P`:
+    a box titled `Push main → origin/main` (not `Force-push`), its command without `--force-with-lease`; `⏎`: the
+    bare's `main` is the local tip, the teammate's commit its ancestor.
 12. **wrong-password-then-right** — `HttpRemote` with `tester` /
     `correct-…`; ours locally; `P` `⏎`: a masked prompt `Password for
     'http://tester@127.0.0.1:<port>':`; the wrong password: sticky
@@ -2135,7 +2139,7 @@ credential capture M6 changed.
   is `Step::Kill` — the app dropped with no shutdown — not a signal; only
   the pty script sends a real `SIGKILL`. Start over **after** `⏎` is proven
   at the ops level only (scenario 8); the app has no way in to it yet. A
-  merge **begun in the shell** finishes through the banner's `c` and the summary, journaled as its own entry that `u` puts back mid-merge. The commit editor never finishes an operation: `c`/`a` in the panes stay commit/amend (keymap §2.4), and its words name the way to the banner — `esc, ⇥ banner, then c` (ticket 39).
+  merge **begun in the shell** finishes through the banner's `c` and the summary, journaled as its own entry that `u` puts back mid-merge. `c`/`a` in the panes never open the editor while an operation is live: the footer names the way to the banner — `merge in progress` · `⇥ banner, then c …` (usability fix M3a).
   What a box or a line looks like is proven only by the captures: the
   headless walk reads `AppState`, where the start-over box and the Sticky
   existed while no frame drew them (F9, F10 — now fixed, and pinned in the
@@ -2329,7 +2333,7 @@ count from the note's `journey-counts` block, where it records one.
 | `a-whole-one-file` | the graph, cursor on `feature` (one-file) | `m m O c ⏎` | 5 | — | the merge commit landing, as in `a-finish`; the row equals the sum of its parts |
 | `a-whole-two-files` | the graph, cursor on `feature` (two-files) | `m m o T c ⏎` | 6 | — | the same; equals the sum of its parts |
 | `b-whole-two-files` | the app launched on a shell-begun two-files merge | `⏎ o T c ⏎` | 5 | — | the same; equals the sum of its parts |
-| `editor-to-finish` | a shell-begun merge resolved in the shell, the commit editor open from the changes pane | `Esc ⇥ ⇥ c ⏎` | 5 | — | `⇥ ⇥` reaches the banner; `c ⏎` → the merge commit landing, as in `a-finish` |
+| `editor-to-finish` | a shell-begun merge resolved in the shell, the changes pane focused | `c ⇥ ⇥ c ⏎` | 5 | — | the first `c` answers in words, no editor; `⇥ ⇥` reaches the banner; `c ⏎` → the merge commit landing, as in `a-finish` |
 
 The note's own journeys moved on from the ticket's first text, and the walk
 follows the note: `O`/`T` settle a whole file (P6, ticket 17 — no `⏎`

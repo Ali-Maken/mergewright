@@ -224,6 +224,10 @@ and any redo prompt should lead with.
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
 
+### 2.3c Confirm box
+
+`←`/`→` choose (clamped, Cancel first, ADR-0038 §1) · `Tab` cycles · `Enter` the choice under the cursor · `Esc` cancels · `Ctrl+C` passes through (quits, §2.1) · **any other key is swallowed: the box stays** (usability walk M1).
+
 ### 2.4 Working tree / staging (detail pane)
 
 | Key | Action |

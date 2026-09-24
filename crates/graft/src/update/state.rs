@@ -837,6 +837,12 @@ pub enum Status {
         /// The SHA's first seven hex digits.
         short: String,
     },
+    /// A key could not act yet because a read it needs is still in flight
+    /// (`still reading the refs — try again in a moment`). Nothing is
+    /// wrong, so it is drawn as a notice, never as a failure (CLAUDE.md: a
+    /// status must never read as an error when nothing is wrong; review
+    /// 47-49, m1). Cleared by the next key, like `Copied`.
+    Waiting(String),
     /// A working-tree write is running: `<description>…`
     /// (m3-working-tree-undo-and-stash/04).
     Busy(String),

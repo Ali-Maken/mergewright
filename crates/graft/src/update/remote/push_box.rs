@@ -5,11 +5,11 @@ use graft_ops::operation::{Lease, Operation, PushParams};
 use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
 
-use super::{REMOTES_PENDING, facts, short_branch, short_oid};
+use super::{REMOTES_PENDING, facts, refusal, short_branch, short_oid};
 use crate::jobs::remote::RemoteFacts;
 use crate::refs::Upstream;
 use crate::update::confirm::{ConfirmThen, PendingConfirm};
-use crate::update::state::{AppState, RefsRead, Status};
+use crate::update::state::{AppState, RefsRead};
 
 /// `P` while the refs read a write asked for has not answered, when the
 /// answer would otherwise be the lease: the refs held are from before the
@@ -32,7 +32,7 @@ pub fn push_key(state: &mut AppState) -> bool {
                 then: ConfirmThen::Operate(Operation::Push(params)),
             });
         }
-        Err(why) => state.status = Status::Failed(why),
+        Err(why) => state.status = refusal(why),
     }
     true
 }

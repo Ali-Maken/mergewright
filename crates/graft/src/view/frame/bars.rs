@@ -283,6 +283,8 @@ pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<San
         Status::Copied { short } => {
             return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
         }
+        // A key waiting on a read in flight: a notice, not a failure.
+        Status::Waiting(words) => return Some(sanitize_line(words)),
         Status::Ready | Status::Failed(_) | Status::Sticky { .. } => {}
     }
     // An operation a previous run left half-done. Louder than the renderer
@@ -311,4 +313,22 @@ pub(in crate::view) fn banner_lines(state: &AppState) -> Vec<SanitizedText> {
         .chain(banner.lines.iter().cloned())
         .map(|line| sanitize_line(&line))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A wait's words show in the footer as a notice — the problem line no
+    /// longer carries them (review 47-49, m1).
+    #[test]
+    fn a_wait_is_the_footer_notice() {
+        let words = "still reading the refs \u{2014} try again in a moment";
+        let state = AppState {
+            status: Status::Waiting(words.to_owned()),
+            ..AppState::default()
+        };
+        let notice = footer_notice(&state, RenderingTier::Unicode).expect("a notice");
+        assert_eq!(notice.as_str(), words);
+    }
 }

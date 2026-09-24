@@ -928,6 +928,9 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     if status_read::answered(next, id) {
         status_read::abandon(next);
     }
+    // A refs read that will never answer: the refs are `Unknown`, not
+    // still being read (review 47-49, M2).
+    next.refs_read.answered(id, false);
     let mut local_jobs = next.local_jobs;
     // The write `Esc` stopped: the answer the user asked for. Any other
     // cancelled write (shutdown) is cleared as before.
@@ -966,6 +969,9 @@ fn job_failed(
     if status_read::answered(next, id) {
         status_read::abandon(next);
     }
+    // A refs read that failed as a job (a panic, a stopped runner) is one
+    // that failed: the refs are `Unknown` (review 47-49, M2).
+    next.refs_read.answered(id, false);
     finish::job_ended(next, id, failure);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;

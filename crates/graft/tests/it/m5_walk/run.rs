@@ -750,6 +750,7 @@ pub(super) fn status_text(state: &AppState) -> String {
         Status::Copied { short } => format!("copied {short}"),
         Status::Failed(text)
         | Status::Busy(text)
+        | Status::Waiting(text)
         | Status::Done {
             what: text,
             keys: None,
