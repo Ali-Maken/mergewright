@@ -267,7 +267,7 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts` (P2) |
 | `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G`, the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open; the resolver stays open after the last file is done (P8) |
-| `Enter` | Mark this file done and move to the next conflicted file, or close if none left |
+| `Enter` | Mark this file done and move to the next conflicted file; after the last, stay on it with `every file done ✓ · c finishes …` (a stash pop closes to the graph) (P8) |
 | `e` | Open `$EDITOR` at the cursor block |
 | `M` | Launch the configured external mergetool on this file |
 | `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |
@@ -320,7 +320,7 @@ meanings (§2.2, §2.10), so it adds no letter (P9, approved 2026-09-23;
 |---|---|
 | `Enter` | Commit — in the file list and the subject; in the body it is a newline |
 | `Ctrl+Enter` | Commit, from any focus (§2.10) |
-| `Esc` | Back to the resolver, from any focus; the draft message is kept |
+| `Esc` | Back to where `c` was pressed — the resolver or the banner — from any focus; the draft message is kept |
 | `Space` | Show / hide the cursor file's diff |
 | `j` / `k` | Move between files (§2.2) |
 | `Tab` | Move focus files → subject → body → files |

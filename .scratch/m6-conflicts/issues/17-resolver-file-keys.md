@@ -26,7 +26,7 @@ In:
    - On a `Done` file: `<file> is done · d starts it over`, and nothing is written.
    - Pressed while a take is in flight or queued: the key waits behind the queue (appended as one entry). A failed take drops it with P2's words, and nothing is staged.
    - `apply_take_all` returning `Changed`: re-read, no stage, notice `the file changed on disk · re-read · nothing staged`.
-   - `AppState::choices` records the file as P3's `Ctrl+O`/`Ctrl+T` would, so the summary reads `theirs · feature in 2 of 2 conflicts`.
+   - `AppState::choices` is ticket 19's; `O`/`T` land through `take_landed` as `TakeAt::Every`, which 19 records. Nothing here.
 2. **`j` / `k`, `↓` / `↑` (P7):** `select_file(file_cursor ± 1)`, with no wrap at the ends. While a take is in flight: `still writing the last take`.
 3. **Document scroll (P7):** `PgUp`/`PgDn` scroll the document a page, `g`/`G` go to its top and bottom, and the wheel is unchanged. `n`/`N` still move between blocks (P2), and the cursor block keeps scrolling itself into view.
 4. **Hints.** The Resolver table gains `O/T file` after `^O/^T all` (P6) and `j/k file` after `⏎ done` (P7), per the mockups. Short rungs are `O/T` and `j/k`. Update `BOUND_ACTIONS`.

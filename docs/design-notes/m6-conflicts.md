@@ -447,7 +447,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 - **J4 one file, one conflict.** `o` [M] · `⏎`. **2**; P6 `O` **1**. JetBrains 2. Lands on the next file not yet done
   (list order = git's byte-wise path order, stable as files become done — fix-stable-file-order-and-done-file-open D1; wrapping), with the list `▸` moved and the notice `notes.txt done ✓ · ▸ gone.txt`. If no file is left,
   the resolver closes to the banner, status line `every file done ✓ · c finishes the merge` (`fix-resolver-file-list`
-  R4/R5). After `fix-finish-summary-screen` Part B (P8) it stays in the resolver instead, the words on its notice row; a
+  R4/R5). After `31-finish-from-the-resolver` (P8) it stays in the resolver instead, the words on its notice row; a
   stash pop still closes to the graph, status line `every file done ✓`.
 - **J5 one file, 3 conflicts, theirs everywhere.** `Ctrl+T ⏎` **2** (the P2 route, `t t t ⏎`, is 4); P6 `T` **1**.
   JetBrains Accept Theirs 1.
@@ -470,7 +470,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
 - A file done (`⏎`, `O`/`T`, or `o`/`t` on a whole-file card) → the next file not done.
 - The last file done → the banner, status line `every file done ✓ · c finishes the merge` (rebase / cherry-pick /
   revert: `c continues the …`); stash pop → the graph, `every file done ✓` (ticket 13 R4/R5). ~~P8: the resolver, with
-  the notice~~ superseded 2026-09-24: that is ticket 19 Part B's, words on the resolver's notice row; stash pop still closes.
+  the notice~~ superseded 2026-09-24: that is ticket 31's (split from 19 Part B), words on the resolver's notice row; stash pop still closes.
 - `c` while files are still open → refused with `1 file still conflicted · ⏎ marks done`.
 - `c` on a rebase, cherry-pick or revert → continues with no summary (merge only this milestone; gap row → M7), and the
   next stop lands in the resolver.
@@ -579,15 +579,15 @@ pub fn open_done(repo: &RepoHandle, status: &WorkingTreeStatus, path: &Path) -> 
 pub fn open_listed(repo: &RepoHandle, path: &Path) -> Result<Opening, OpenError>;   // reads the status itself; open_conflict unchanged
 // OpenError gains Status(<graft-git status reader's error>)
 // graft-ui hints: HintContext::Resolver { base, restart, whole_file, done: bool, roles }
-pub struct Choices { pub takes: Vec<Option<Take>>, pub whole: Option<Side>, pub edited: bool }
-pub struct AppState { …, pub choices: BTreeMap<PathBuf, Choices>, pub finish: Option<FinishState>, pub finish_draft: Option<(String, String)> }
-pub struct FinishState { pub summary: Loading<Arc<FinishSummary>>, pub job: Option<JobId>, pub cursor: usize, pub expanded: Option<(usize, Loading<Arc<DiffView>>)>,
-    pub subject: TextField, pub body: TextArea, pub focus: FinishFocus, pub return_to: ReturnTo, pub committing: Option<JobId> }
+pub struct Choices { pub takes: Vec<Option<graft_git::conflict::Take>>, pub whole: Option<graft_ops::operation::conflict::Side>, pub edited: bool }
+pub struct AppState { …, pub choices: BTreeMap<PathBuf, Choices>, pub finish: Option<FinishState>, pub finish_draft: Option<(String, String)> }   // (subject, body); apart from commit_draft (ticket 19 S7)
+pub struct FinishState { pub summary: Loading<Arc<FinishSummary>>, pub job: Option<JobId>, pub cursor: usize, pub top: usize, pub expanded: Option<(usize, Loading<Arc<DiffView>>)>, pub diff_job: Option<JobId>,
+    pub subject: TextField, pub body: TextArea, pub focus: FinishFocus, pub return_to: ReturnTo, pub committing: Option<JobId>, pub editing: Option<JobId>, pub notice: Option<(String, bool)> }
 pub enum FinishFocus { Files, Subject, Body }   pub enum ReturnTo { Banner, Resolver }
-pub fn open_finish(state: &mut AppState, commands: &mut Vec<Command>, from: ReturnTo, next_id: /* same */) -> bool;  // `c` on a merge, nothing unmerged
-pub fn finish_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress, next_id: /* same */) -> bool;    // modal; before resolver_key
-pub enum GraphOverlay { …, Finish }   pub enum Command { …, ReadConflictSet(JobId), ReadFinishSummary(JobId) }
-pub enum Product { …, ConflictSet(Result<Arc<ConflictSet>, String>), FinishSummary(Result<Arc<FinishSummary>, String>) }
+pub fn open_finish(state: &mut AppState, commands: &mut Vec<Command>, from: ReturnTo, next_id: &mut impl FnMut() -> JobId) -> bool;
+pub fn finish_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress, next_id: &mut impl FnMut() -> JobId) -> bool;    // modal; before resolver_key
+pub enum GraphOverlay { Finish, … }   pub enum Command { …, ReadConflictSet(JobId), ReadFinishSummary(JobId), ReadFinishDiff(JobId, PathBuf) }   // own diff route (ticket 19 S4)
+pub enum Product { …, ConflictSet(Result<Arc<ConflictSet>, String>), FinishSummary(Result<Arc<FinishSummary>, String>), FinishDiff(Result<Arc<DiffView>, String>) }
 // graft-ui/src/finish_summary.rs (new)
 pub struct SummaryRow { pub path: SanitizedText, pub what: SanitizedText }
 pub struct FinishView<'a> { pub title: SanitizedText, pub by_you: Vec<SummaryRow>, pub by_git: Vec<SummaryRow>, pub recorded: bool, pub cursor: usize,
