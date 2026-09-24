@@ -479,7 +479,7 @@ fn finishing_clears_the_focus() {
         !state.banner_focus,
         "a finished operation has no banner to hold the keyboard"
     );
-    assert_eq!(state.status, Status::Done("continue rebase".to_owned()));
+    assert_eq!(state.status, Status::done("continue rebase"));
 }
 
 /// **Gap row 569.** The answer to `--continue` already says the rebase
@@ -1427,7 +1427,7 @@ fn continued_rebase() -> (AppState, JobId, JobId) {
 #[test]
 fn continue_lands_on_the_new_commit() {
     let (state, refs, walk) = continued_rebase();
-    assert_eq!(state.status, Status::Done("continue rebase".to_owned()));
+    assert_eq!(state.status, Status::done("continue rebase"));
     assert_eq!(state.stopped, None);
     assert!(state.land_on_head);
     assert_eq!(

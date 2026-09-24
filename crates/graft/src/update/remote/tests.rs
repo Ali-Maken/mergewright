@@ -420,10 +420,7 @@ fn esc_cancels_the_running_write_once() {
 
     let (done, commands) = update(&still, AppEvent::Core(Event::JobCancelled(id)));
     assert_eq!(done.operating, None);
-    assert_eq!(
-        done.status,
-        Status::Done("fetch all remotes cancelled".to_owned())
-    );
+    assert_eq!(done.status, Status::done("fetch all remotes cancelled"));
     assert!(
         commands
             .iter()
@@ -492,7 +489,7 @@ fn failures_are_worded_and_remembered() {
             &RemoteFailure::Cancelled,
             "push main → origin/main cancelled"
         ),
-        Status::Done("push main → origin/main cancelled".to_owned())
+        Status::done("push main → origin/main cancelled")
     );
     // A push that lands forgets the rejection.
     assert_eq!(
@@ -786,7 +783,7 @@ fn the_remembered_upstream_dies_with_the_line_that_explained_it() {
     };
 
     // Any event at all, with the line replaced by something else first.
-    state.status = Status::Done("fetched origin".to_owned());
+    state.status = Status::done("fetched origin");
     let (after, _) = press(&state, plain('k'));
 
     assert_eq!(

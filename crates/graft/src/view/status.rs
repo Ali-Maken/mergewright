@@ -39,13 +39,26 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
 #[must_use]
 pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     match status {
-        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
+        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done { .. } => None,
         Status::Failed(message) => Some(sanitize_line(message)),
         Status::Sticky { reason, keys: None } => Some(sanitize_line(reason)),
         Status::Sticky {
             reason,
             keys: Some(keys),
         } => Some(sanitize_line(&format!("{reason} · {keys}"))),
+    }
+}
+
+/// The one rendering of a [`Status::Done`]: `<what> ✓`, or
+/// `<what> ✓ · <keys>`. The tick says `what` finished, so it goes after
+/// `what` and never after the key still to press (ticket 41). Every draw
+/// site calls this, and so does the resolver's notice row, so none can
+/// place the tick apart.
+#[must_use]
+pub(crate) fn done_line(what: &str, keys: Option<&str>) -> String {
+    match keys {
+        Some(keys) => format!("{what} ✓ · {keys}"),
+        None => format!("{what} ✓"),
     }
 }
 
@@ -64,7 +77,7 @@ const DISMISS: &str = "esc dismiss";
 #[must_use]
 pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
     match status {
-        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
+        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done { .. } => None,
         Status::Failed(message) => Some(ProblemLine {
             reason: sanitize_line(message),
             keys: Some(sanitize_line(DISMISS)),
@@ -133,4 +146,18 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
 
     notes.extend(session.notes.iter().cloned());
     notes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::done_line;
+
+    #[test]
+    fn done_line_puts_the_tick_after_what_and_before_keys() {
+        assert_eq!(done_line("x", None), "x ✓");
+        assert_eq!(
+            done_line("x", Some("c finishes the merge")),
+            "x ✓ · c finishes the merge"
+        );
+    }
 }

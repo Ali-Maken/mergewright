@@ -227,10 +227,7 @@ fn a_merge_committed_from_the_resolver_lands_on_the_graph() {
     );
     assert!(state.finish.is_none(), "the summary closed");
     assert!(state.resolver.is_none(), "and the resolver with it");
-    assert_eq!(
-        state.status,
-        Status::Done("merged feature into main".to_owned())
-    );
+    assert_eq!(state.status, Status::done("merged feature into main"));
 }
 
 /// The commit ran but its record is short: the merge is over, so the

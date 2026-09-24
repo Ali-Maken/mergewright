@@ -623,7 +623,7 @@ impl Walk<'_> {
         })?;
         let state = self.pump(state, what, |state| state.operating.is_none())?;
         match &state.status {
-            Status::Done(_) => Ok(state),
+            Status::Done { .. } => Ok(state),
             other => Err(format!("{what} did not succeed: {other:?}")),
         }
     }
@@ -681,7 +681,16 @@ pub(super) fn status_text(state: &AppState) -> String {
     match &state.status {
         Status::Ready => String::new(),
         Status::Copied { short } => format!("copied {short}"),
-        Status::Failed(text) | Status::Busy(text) | Status::Done(text) => text.clone(),
+        Status::Failed(text)
+        | Status::Busy(text)
+        | Status::Done {
+            what: text,
+            keys: None,
+        } => text.clone(),
+        Status::Done {
+            what,
+            keys: Some(keys),
+        } => format!("{what} · {keys}"),
         Status::Sticky { reason, keys: None } => reason.clone(),
         Status::Sticky {
             reason,

@@ -213,7 +213,7 @@ fn make_the_commit(app: &App, repo: &Path, state: &AppState) -> AppState {
     );
     assert!(state.commit_draft.is_none(), "and the draft goes with it");
     assert!(
-        matches!(state.status, Status::Done(_)),
+        matches!(state.status, Status::Done { .. }),
         "{:?}",
         state.status,
     );

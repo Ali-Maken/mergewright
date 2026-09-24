@@ -628,6 +628,43 @@ fn working_tree_read(
     }
 }
 
+/// Working-tree read `id` answered, with a status or a failure. Only the
+/// newest read settles what waited on it — the status line's verdict and an
+/// undo's landing — because an older one read the repository before the
+/// write it would be judging (`status_read`, ticket 41).
+fn working_tree_answered(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: graft_core::job::JobId,
+    answer: Result<Box<crate::working_tree::WorkingTree>, String>,
+) {
+    let newest = status_read::answered(next, id);
+    match answer {
+        Ok(read) => {
+            working_tree_read(next, commands, *read);
+            if newest {
+                undo::land_after_undo(next);
+                status_read::settle(next);
+            }
+        }
+        Err(failure) => {
+            if newest {
+                // The read the line waited on has no status to give: the
+                // resolver's notice stops saying it is checking, and the
+                // failure below replaces the line. An undo's landing that
+                // waited on it is dropped (the failure is on screen), not
+                // paid by some later read that is no longer its answer.
+                status_read::abandon(next);
+                next.undo_landing_owed = false;
+            }
+            // The graph still draws without the uncommitted row; the reason
+            // goes on the status line rather than leaving it silently
+            // missing.
+            next.status = Status::Failed(failure);
+        }
+    }
+}
+
 /// A fact about the repository beside the graph arrived: the system git
 /// check, the refs, or the working tree counts. `answer` routes only those.
 fn took_fact(
@@ -658,25 +695,7 @@ fn took_fact(
                 next.head_landing = state::HeadLanding::default();
             }
         }
-        Product::WorkingTree(Ok(read)) => {
-            let owed = status_read::answered(next, id);
-            working_tree_read(next, commands, *read);
-            if owed {
-                status_read::settle(next);
-            }
-        }
-        Product::WorkingTree(Err(failure)) => {
-            // The read the line waited on has no status to give: the
-            // resolver's notice stops saying it is checking, and the
-            // failure below replaces the line.
-            if status_read::answered(next, id) {
-                status_read::abandon(next);
-            }
-            // The graph still draws without the uncommitted row; the reason
-            // goes on the status line rather than leaving it silently
-            // missing.
-            next.status = Status::Failed(failure);
-        }
+        Product::WorkingTree(answer) => working_tree_answered(next, commands, id, answer),
         // Not a fact: `answer`'s pattern keeps these from arriving.
         Product::Repository(_)
         | Product::Resumed(_)

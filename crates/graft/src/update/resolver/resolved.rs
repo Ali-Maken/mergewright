@@ -180,33 +180,37 @@ fn stay_after_last(
 
 /// `every file done ✓`, and the key that carries the operation on when
 /// there is one to carry on and `c` is live where the user is: the banner
-/// has the keyboard, or the resolver does (m6-conflicts/31).
+/// has the keyboard, or the resolver does (m6-conflicts/31). The resolver's
+/// notice row says it in these words; the status line is [`every_file_done`].
 pub(crate) fn every_file_done_words(state: &AppState) -> String {
-    let c_live = crate::update::banner::banner_view(state).is_some()
-        && (state.banner_focus || state.resolver.is_some());
-    let what = state
-        .in_progress
-        .as_ref()
-        .filter(|_| c_live)
-        .and_then(|detail| match detail.kind {
-            graft_git::state::InProgress::Merge => Some("c finishes the merge"),
-            graft_git::state::InProgress::Rebase => Some("c continues the rebase"),
-            graft_git::state::InProgress::CherryPick => Some("c continues the cherry-pick"),
-            graft_git::state::InProgress::Revert => Some("c continues the revert"),
-            graft_git::state::InProgress::Bisect => None,
-        });
-    match what {
-        Some(keys) => format!("every file done ✓ · {keys}"),
-        // A conflicted `git stash pop` has no operation and so no banner
-        // (`KNOWN_GAPS.md` row 229): there is nothing to continue, and a
-        // line offering `c` would name a key that does nothing.
-        None => "every file done ✓".to_owned(),
+    let (what, keys) = every_file_done_parts(state);
+    crate::view::status::done_line(what, keys.as_deref())
+}
+
+/// [`every_file_done_words`] as the status line holds it: the tick is the
+/// renderer's, so the keys stay apart (ticket 41).
+pub(crate) fn every_file_done(state: &AppState) -> Status {
+    let (what, keys) = every_file_done_parts(state);
+    Status::Done {
+        what: what.to_owned(),
+        keys,
     }
 }
 
-/// [`every_file_done_words`] as the status line says it.
-pub(crate) fn every_file_done(state: &AppState) -> Status {
-    Status::Done(every_file_done_words(state))
+const EVERY_FILE_DONE: &str = "every file done";
+
+fn every_file_done_parts(state: &AppState) -> (&'static str, Option<String>) {
+    let c_live = crate::update::banner::banner_view(state).is_some()
+        && (state.banner_focus || state.resolver.is_some());
+    // A conflicted `git stash pop` has no operation and so no banner
+    // (`KNOWN_GAPS.md` row 229): there is nothing to continue, and a line
+    // offering `c` would name a key that does nothing.
+    let keys = state
+        .in_progress
+        .as_ref()
+        .filter(|_| c_live)
+        .and_then(|detail| crate::update::banner::continue_words(detail.kind));
+    (EVERY_FILE_DONE, keys)
 }
 
 /// `c`'s refusal as the resolver's notice row says it: the reason, and the

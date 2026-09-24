@@ -166,11 +166,11 @@ pub(in crate::update::resolver) fn take_landed(
         }
     }
     if let Some(side) = side {
-        state.status = Status::Done(format!(
+        state.status = Status::done(format!(
             "took {side} in {} · {open_left} of {total} open",
             path.display()
         ));
-    } else if was_bulk && matches!(state.status, Status::Done(_)) {
+    } else if was_bulk && matches!(state.status, Status::Done { .. }) {
         // An earlier block's `k of m open` must not outlive this landing
         // (review m6-amend-16 M1): the notice carries the bulk take's words,
         // so the footer goes back to the hints rather than a stale count.

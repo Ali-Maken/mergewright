@@ -193,7 +193,7 @@ fn u_on_a_repository_nothing_has_written_says_there_is_nothing_to_undo() {
         state.operating.is_none()
     });
     let said = match &state.status {
-        graft::update::Status::Done(said) => said.clone(),
+        graft::update::Status::Done { what: said, .. } => said.clone(),
         other => panic!("nothing to undo is an answer, not a failure: {other:?}"),
     };
     drop(state);

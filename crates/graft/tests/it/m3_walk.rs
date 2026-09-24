@@ -276,7 +276,7 @@ fn settle_write(app: &App, state: AppState, what: &str) -> Result<AppState, Stri
     })?;
     let state = app.pump(state, what, |state| state.operating.is_none());
     match &state.status {
-        Status::Done(_) => Ok(state),
+        Status::Done { .. } => Ok(state),
         other => Err(format!(
             "{what} did not succeed: {other:?}; confirm box: {}",
             state.confirm.is_some()

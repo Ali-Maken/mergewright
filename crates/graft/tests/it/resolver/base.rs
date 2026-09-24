@@ -52,7 +52,7 @@ fn B_shows_and_hides_base() {
         );
     }
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "base shown for 3 conflicts"),
+        matches!(&state.status, Status::Done { what: line, .. } if line == "base shown for 3 conflicts"),
         "{:?}",
         state.status
     );

@@ -50,7 +50,7 @@ fn stash_pop_conflict_resolves_without_a_banner() {
         "the one entry is the stage"
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "every file done ✓"),
+        matches!(&state.status, Status::Done { what: line, keys: None } if line == "every file done"),
         "no banner, so no `c continue`: {:?}",
         state.status
     );
@@ -99,7 +99,7 @@ fn stash_pop_whole_file_journals_its_own_row() {
         Some("resolved sample.txt (ours)".to_owned())
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "every file done ✓"),
+        matches!(&state.status, Status::Done { what: line, keys: None } if line == "every file done"),
         "no banner, so no `c continue`: {:?}",
         state.status
     );

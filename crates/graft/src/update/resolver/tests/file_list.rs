@@ -476,7 +476,7 @@ fn after_the_last_stash_file_the_status_says_every_file_done() {
     let state = last_file_lands(None);
     assert!(state.resolver.is_none());
     assert!(!state.banner_focus, "no banner: back on the graph");
-    assert_eq!(state.status, Status::Done("every file done ✓".to_owned()));
+    assert_eq!(state.status, Status::done("every file done"));
 }
 
 /// A file done, another left: the resolver lands on it, says so on its
@@ -916,7 +916,7 @@ fn an_unmerged_document_resolved_outside_still_closes() {
     );
     assert!(state.resolver.is_none(), "{:?}", state.resolver);
     assert!(
-        matches!(&state.status, Status::Done(line) if *line == format!("{} resolved outside", path.display())),
+        matches!(&state.status, Status::Done { what: line, .. } if *line == format!("{} resolved outside", path.display())),
         "{:?}",
         state.status
     );

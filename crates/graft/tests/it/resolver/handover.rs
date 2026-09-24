@@ -80,7 +80,7 @@ fn resolved_outside_closes() {
         state.resolver.is_none()
     });
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "both.txt resolved outside"),
+        matches!(&state.status, Status::Done { what: line, .. } if line == "both.txt resolved outside"),
         "{:?}",
         state.status
     );

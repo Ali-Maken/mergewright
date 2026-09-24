@@ -761,7 +761,7 @@ pub fn operated(
             let done = remote_op
                 .as_ref()
                 .and_then(|op| super::remote::remote_done(state, op));
-            state.status = Status::Done(done.unwrap_or_else(|| applied.entry.description.clone()));
+            state.status = Status::done(done.unwrap_or_else(|| applied.entry.description.clone()));
             // The write the editor was open for landed, so the editor and
             // the draft behind it are about a commit that now exists
             // (m3-working-tree-undo-and-stash/05). A failure leaves both
@@ -2331,7 +2331,7 @@ mod tests {
             Operated::Done(applied("stage src/a.rs", Refresh::WorkingTree)),
             &mut ids(),
         );
-        assert_eq!(state.status, Status::Done("stage src/a.rs".into()));
+        assert_eq!(state.status, Status::done("stage src/a.rs"));
         assert!(
             commands
                 .iter()

@@ -224,6 +224,22 @@ pub fn banner_focusable(kind: InProgress) -> bool {
     kind_word(kind).is_some()
 }
 
+/// The key words the status line carries when it holds the footer row over
+/// a focused banner: `c finishes the merge`, or `c continues the <kind>`.
+/// `None` for a bisect, which has no banner and so no `c` (ticket 41).
+///
+/// One source for `resolver::every_file_done` and
+/// `undo::land_after_undo`, so the two lines cannot word `c` apart.
+pub(crate) fn continue_words(kind: InProgress) -> Option<String> {
+    match kind {
+        InProgress::Merge => Some("c finishes the merge".to_owned()),
+        InProgress::Rebase | InProgress::CherryPick | InProgress::Revert => {
+            Some(format!("c continues the {}", kind.name()))
+        }
+        InProgress::Bisect => None,
+    }
+}
+
 /// `Tab`/`Shift+Tab` **into** the banner: the door back in.
 ///
 /// The detail pane cycles Graph → Files → Diff → Graph. While a banner is
@@ -701,11 +717,11 @@ fn resumed_done(
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     super::undo::operation_ended(state);
-    state.status = Status::Done(applied.entry.description.clone());
+    state.status = Status::done(applied.entry.description.clone());
     let commands = super::operate::refresh_scope(state, applied.refresh, next_id);
     finished_lands_on_head(state, &commands);
     if let Some(super::finish::FinishAnswer::Merged(Some(words))) = finish {
-        state.status = Status::Done(words);
+        state.status = Status::done(words);
     }
     commands
 }

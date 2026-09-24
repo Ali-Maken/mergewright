@@ -1,5 +1,13 @@
-//! A hand edit lost to a whole-file take in a merge **begun in the shell**,
-//! and the way the user gets it back (m6 g04/g08 review, M1).
+//! A merge **begun in the shell**, in four groups:
+//!
+//! - a hand edit lost to a whole-file take, and the way the user gets it
+//!   back (m6 g04/g08 review, M1);
+//! - finishing it from Graft: `c ⏎` from J3's banner landing, a hook's
+//!   refusal keeping the summary (ticket 20);
+//! - `u` on that finish: the merge put back, the landing on the banner, and
+//!   `c ⏎` finishing it again (tickets 20, 41);
+//! - the commit editor's words naming the banner, and their fit at 80x24
+//!   (tickets 39, 40).
 
 use super::*;
 
@@ -213,11 +221,22 @@ fn cursor_commit(state: &AppState) -> Option<String> {
 /// The merge commit is made now, so its id and its date are new every run:
 /// each is zeroed where it shows, width kept.
 fn shot(app: &App, state: &AppState, repo: &Path, merge: &str) -> (Vec<String>, String) {
-    let sized = app.resize(state, 120, 40);
+    shot_at(app, state, repo, merge, (120, 40))
+}
+
+/// [`shot`] at another size.
+fn shot_at(
+    app: &App,
+    state: &AppState,
+    repo: &Path,
+    merge: &str,
+    (columns, rows): (u16, u16),
+) -> (Vec<String>, String) {
+    let sized = app.resize(state, columns, rows);
     let frame = crate::captures::frame_at(
         &sized,
-        120,
-        40,
+        columns,
+        rows,
         Some(graft::session::Clock::Fixed(
             crate::conflict_interim::CONFLICT_NOW,
         )),
@@ -253,7 +272,11 @@ fn c_enter_finishes_a_shell_begun_merge() {
     let repo = scratch.path().to_owned();
     let before = journal_entries(&repo).len();
     let (app, state) = launched_into(&repo);
+    // J3 lands on the banner (keymap §2.6a), so the count of 2 starts
+    // here: `on_the_banner` below presses no `Tab` (review Minor 9).
+    assert!(state.banner_focus, "the launch landed on the banner");
     let state = on_the_banner(&app, state);
+    assert!(state.banner_focus);
 
     let state = app.key(&state, KeyCode::Char('c'));
     let state = app.pump(state, "the finish summary", |state| {
@@ -276,10 +299,7 @@ fn c_enter_finishes_a_shell_begun_merge() {
     assert!(state.graph_has_focus(), "the graph has the keyboard");
     let head = crate::app_harness::git(&repo, &["rev-parse", "HEAD"]);
     assert_eq!(cursor_commit(&state).as_deref(), Some(head.trim()));
-    assert_eq!(
-        state.status,
-        Status::Done("merged feature into main".to_owned())
-    );
+    assert_eq!(state.status, Status::done("merged feature into main"));
 
     let (frame, body) = shot(&app, &state, &repo, head.trim());
     assert!(!frame[0].contains("MERGING"), "{body}");
@@ -296,40 +316,85 @@ fn c_enter_finishes_a_shell_begun_merge() {
     app.close();
 }
 
-/// **`u` after a shell-begun finish puts the merge back.** git: `MERGE_HEAD`
-/// is back, naming `feature`, and `main` is on its pre-merge tip. App: B3's
-/// `u` landing — `undo: finish merge of feature`, `in_progress` a merge
-/// again after the refresh, the header `MERGING` and the banner drawn, the
-/// focus where `u` found it, and no stop line (`stopped` stays unset,
-/// `KNOWN_GAPS.md` row M6/12).
-#[test]
-fn u_after_a_shell_begun_finish_puts_the_merge_back() {
+/// The words the `u` landing's footer row reads (ticket 41): 55 columns.
+const UNDO_LANDING_WORDS: &str = "undo: finish merge of feature ✓ · c finishes the merge";
+
+/// Where `u` on a shell-begun finish lands, with what the tests below need
+/// to check it against.
+struct UndoLanding {
+    scratch: graft_fixtures::Scratch,
+    app: App,
+    state: AppState,
+    /// `main` before the merge was finished.
+    pre_merge: String,
+    /// The merge commit `u` took back.
+    merge: String,
+}
+
+/// Launch into J3, `c ⏎` to finish, then `u`, run to its refresh.
+fn u_landing() -> UndoLanding {
     let scratch = resolved_shell_merge();
     let repo = scratch.path().to_owned();
     let pre_merge = crate::app_harness::git(&repo, &["rev-parse", "main"]);
     let (app, state) = launched_into(&repo);
     let state = c_on_the_banner(&app, state);
     let state = enter_to_the_landing(&app, &state);
+    assert!(state.graph_has_focus(), "the finish landed on the graph");
     let merge = crate::app_harness::git(&repo, &["rev-parse", "HEAD"]);
-    let focused_graph = state.graph_has_focus();
-    let banner_focus = state.banner_focus;
 
     let state = app.key(&state, KeyCode::Char('u'));
     assert!(state.operating.is_some(), "`u` ran: {:?}", state.status);
     let state = app.pump(state, "the undo and its refresh", |state| {
-        state.operating.is_none() && state.in_progress.is_some()
+        state.operating.is_none() && state.in_progress.is_some() && state.status_read.is_none()
     });
     let state = settled_frame(&app, state);
+    UndoLanding {
+        scratch,
+        app,
+        state,
+        pre_merge,
+        merge,
+    }
+}
+
+/// The one drawn row naming the undo, checked whole: the words, and one
+/// tick — the renderer's, after `what` and before the key (ticket 41).
+fn the_undo_row(frame: &[String], body: &str) {
+    let row = frame
+        .iter()
+        .find(|row| row.contains("undo: finish merge of feature"))
+        .unwrap_or_else(|| panic!("no row names the undo:\n{body}"));
+    assert_eq!(row.trim(), UNDO_LANDING_WORDS, "{body}");
+    assert_eq!(row.matches('✓').count(), 1, "one tick: {row:?}");
+}
+
+/// **`u` after a shell-begun finish puts the merge back.** git: `MERGE_HEAD`
+/// is back, naming `feature`, and `main` is on its pre-merge tip. App: the
+/// `u` landing (ticket 41) — `in_progress` a merge again after the refresh,
+/// the header `MERGING`, **the banner focused**, as J3's launch into the
+/// same state is, and the footer row `undo: finish merge of feature ✓ · c
+/// finishes the merge`; no stop line (`stopped` stays unset, an undo is not
+/// a stop). Captured at 120x40 and 80x24.
+#[test]
+fn u_after_a_shell_begun_finish_puts_the_merge_back() {
+    let UndoLanding {
+        scratch,
+        app,
+        state,
+        pre_merge,
+        merge,
+    } = u_landing();
+    let repo = scratch.path();
 
     let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD")).expect("MERGE_HEAD");
-    let feature = crate::app_harness::git(&repo, &["rev-parse", "feature"]);
+    let feature = crate::app_harness::git(repo, &["rev-parse", "feature"]);
     assert_eq!(merge_head.trim(), feature.trim(), "MERGE_HEAD is back");
-    let main = crate::app_harness::git(&repo, &["rev-parse", "main"]);
+    let main = crate::app_harness::git(repo, &["rev-parse", "main"]);
     assert_eq!(main, pre_merge, "main is on its pre-merge tip");
 
     assert_eq!(
         state.status,
-        Status::Done("undo: finish merge of feature".to_owned())
+        Status::done_with_keys("undo: finish merge of feature", "c finishes the merge")
     );
     assert_eq!(
         state.in_progress.as_ref().map(|detail| detail.kind),
@@ -339,16 +404,112 @@ fn u_after_a_shell_begun_finish_puts_the_merge_back() {
         graft::update::banner::banner_view(&state).is_some(),
         "the banner is drawn"
     );
-    assert_eq!(state.graph_has_focus(), focused_graph, "focus unchanged");
-    assert_eq!(state.banner_focus, banner_focus, "focus unchanged");
-    assert!(state.stopped.is_none(), "no stop line: KNOWN_GAPS M6/12");
+    assert!(state.banner_focus, "the banner has the keyboard");
+    assert!(state.stopped.is_none(), "an undo is not a stop");
+    assert!(state.commit_editor.is_none(), "no commit editor");
 
-    let (frame, body) = shot(&app, &state, &repo, merge.trim());
+    let (frame, body) = shot(&app, &state, repo, merge.trim());
     assert!(frame[0].trim_end().ends_with("MERGING"), "{body}");
-    assert!(body.contains("undo: finish merge of feature"), "{body}");
+    the_undo_row(&frame, &body);
     crate::captures::check_shot("m6/fix-undo-shell-merge-120x40.txt", &body);
+
+    let (frame, body) = shot_at(&app, &state, repo, merge.trim(), (80, 24));
+    // The narrow tier's tab strip is row 0; the header is under it.
+    assert!(frame[1].trim_end().ends_with("MERGING"), "{body}");
+    the_undo_row(&frame, &body);
+    assert!(
+        !body.contains(&format!("{}…", &UNDO_LANDING_WORDS[..20])),
+        "{body}"
+    );
+    crate::captures::check_shot("m6/fix-undo-shell-merge-80x24.txt", &body);
     drop(state);
     app.close();
+}
+
+/// **`c ⏎` from the `u` landing finishes the merge again: 2 keys**
+/// (`b-finish-again-after-undo`, ticket 41). `c` opens the finish summary,
+/// not the commit editor; `⏎` commits a merge whose parents are the
+/// pre-merge tip and `feature`, journaled as a `FinishMerge`.
+#[test]
+fn c_enter_after_u_finishes_the_merge_again() {
+    let UndoLanding {
+        scratch,
+        app,
+        state,
+        pre_merge,
+        ..
+    } = u_landing();
+    let repo = scratch.path();
+    let merge_head = std::fs::read_to_string(repo.join(".git/MERGE_HEAD")).expect("MERGE_HEAD");
+    let mut keys = 0;
+
+    let state = app.key(&state, KeyCode::Char('c'));
+    keys += 1;
+    assert!(state.finish.is_some(), "`c` opened the summary");
+    assert!(state.commit_editor.is_none(), "not the commit editor");
+    let state = app.pump(state, "the finish summary", |state| {
+        state.finish.as_ref().is_some_and(|open| open.job.is_none())
+    });
+    let state = app.key(&state, KeyCode::Enter);
+    keys += 1;
+    assert!(state.operating.is_some(), "`⏎` commits");
+    let state = app.pump(state, "the finish and its landing", |state| {
+        state.operating.is_none() && state.in_progress.is_none() && !state.land_on_head
+    });
+
+    assert_eq!(keys, 2, "the note's count");
+    assert!(!repo.join(".git/MERGE_HEAD").exists(), "git finished it");
+    let first = crate::app_harness::git(repo, &["rev-parse", "HEAD^1"]);
+    let second = crate::app_harness::git(repo, &["rev-parse", "HEAD^2"]);
+    assert_eq!(first, pre_merge, "first parent: the pre-merge tip");
+    assert_eq!(
+        second.trim(),
+        merge_head.trim(),
+        "second parent: MERGE_HEAD"
+    );
+    let newest = journal_entries(repo)
+        .into_iter()
+        .rev()
+        .find(|entry| entry.status == graft_core::journal::EntryStatus::Committed)
+        .expect("an entry in force");
+    assert_eq!(
+        newest.kind,
+        graft_core::journal::OperationKind::FinishMerge,
+        "{newest:?}"
+    );
+    drop(state);
+    app.close();
+}
+
+/// **`U` on the banner at the `u` landing refuses in words** (ticket 41):
+/// the focused banner claims `u`/`U`, and neither an undo nor a redo is
+/// sent while the merge is open.
+#[test]
+fn u_on_the_banner_after_the_landing_refuses_in_words() {
+    let UndoLanding {
+        scratch,
+        app,
+        state,
+        ..
+    } = u_landing();
+    assert!(state.banner_focus);
+    let (after, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('U')));
+    assert_eq!(
+        after.status,
+        Status::Sticky {
+            reason: "finish or abort the merge first".to_owned(),
+            keys: Some("⇥ banner".to_owned()),
+        }
+    );
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::Undo(..) | Command::Redo(..))),
+        "{commands:?}"
+    );
+    drop(state);
+    app.close();
+    drop(scratch);
 }
 
 /// **A hook refusing keeps the summary** on a shell-begun merge, as on one
@@ -436,7 +597,7 @@ fn undo_through_the_drift_box(app: &App, state: &AppState) -> AppState {
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the undo", |state| state.operating.is_none());
     assert!(
-        matches!(&state.status, Status::Done(said) if said.starts_with("undo:")),
+        matches!(&state.status, Status::Done { what: said, .. } if said.starts_with("undo:")),
         "{:?}",
         state.status
     );

@@ -230,7 +230,7 @@ impl App {
         );
         let state = self.pump(state, what, |state| state.operating.is_none());
         match &state.status {
-            Status::Done(_) => state,
+            Status::Done { .. } => state,
             other => panic!(
                 "{what} did not succeed: {other:?}; confirm box: {:?}",
                 state.confirm.as_ref().map(|pending| &pending.view)

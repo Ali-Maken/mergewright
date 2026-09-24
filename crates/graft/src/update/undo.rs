@@ -149,6 +149,39 @@ pub(super) fn reread_disagrees(
     })
 }
 
+/// Pays [`AppState::undo_landing_owed`]: called on the **newest**
+/// working-tree read only, after it has replaced `in_progress` — an older
+/// read looked at the repository before the undo wrote (ticket 41).
+///
+/// When the undo put an operation back (a finish taken back leaves git
+/// mid-merge), the banner takes the keyboard, exactly as a launch into that
+/// state lands (keymap §2.6a), and the `Done` line names the key that
+/// finishes it again: `undo: finish merge of feature ✓ · c finishes the
+/// merge`. Not under a modal or an overlay that hides the banner (the Map,
+/// the journal browser, the stash list): the keyboard is not taken from
+/// under them, and the landing is dropped rather than kept, because a later
+/// read is no longer the undo's answer. Spends the flag in every case.
+pub(super) fn land_after_undo(state: &mut AppState) {
+    if !std::mem::take(&mut state.undo_landing_owed) {
+        return;
+    }
+    let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) else {
+        return;
+    };
+    if !super::banner::banner_focusable(kind)
+        || state.modal_owns_keys()
+        || state.graph_overlay().is_some()
+    {
+        return;
+    }
+    state.banner_focus = true;
+    // A key pressed since the answer cleared the line; the focus still
+    // lands, and there is no line to add keys to.
+    if let Status::Done { keys, .. } = &mut state.status {
+        *keys = super::banner::continue_words(kind);
+    }
+}
+
 /// The same key again, past the drift guard: the user has read what moved
 /// and chosen `[ Undo ]`.
 pub(super) fn forced(
@@ -220,7 +253,13 @@ pub fn undone(
             // taken back here may still be on the remote: say so, or the
             // graph's `origin/main` badge reads as a bug.
             let still_there = super::remote::pushed_since(state, &applied.entry);
-            state.status = Status::Done(format!("{}{still_there}", applied.entry.description));
+            state.status = Status::done(format!("{}{still_there}", applied.entry.description));
+            // Taking back a finish leaves git mid-operation again, and only
+            // the read this asks for can say so: it pays the landing
+            // (`land_after_undo`, ticket 41). `in_progress` is always `None`
+            // here in practice — `launch` refuses while one is live — but
+            // the check keeps the flag honest if that ever changes.
+            state.undo_landing_owed = state.in_progress.is_none();
             refresh(state, applied.refresh, next_id)
         }
         Undone::Incomplete { applied, error } => {
@@ -233,7 +272,7 @@ pub fn undone(
         // Not a failure: the journal simply has nothing in force to take
         // back. Cleared by the next key, like any other acknowledgement.
         Undone::Nothing(why) => {
-            state.status = Status::Done(why);
+            state.status = Status::done(why);
             Vec::new()
         }
         // `Esc`, answered. A clean cancel is an acknowledgement — `Done`,
@@ -247,7 +286,7 @@ pub fn undone(
             refresh: what,
         } => {
             state.status = if clean {
-                Status::Done(why)
+                Status::done(why)
             } else {
                 Status::sticky(why)
             };
@@ -336,7 +375,7 @@ pub(super) fn reverted_to(
             total,
             steps,
         } => {
-            state.status = Status::Done(format!(
+            state.status = Status::done(format!(
                 "reverted to before \u{201c}{description}\u{201d} ({total} {})",
                 if total == 1 { "step" } else { "steps" }
             ));
@@ -721,10 +760,7 @@ mod tests {
             Undone::Done(applied("undo: stage src/a.rs", Refresh::WorkingTree)),
             &mut ids(),
         );
-        assert_eq!(
-            state.status,
-            Status::Done("undo: stage src/a.rs".to_owned())
-        );
+        assert_eq!(state.status, Status::done("undo: stage src/a.rs"));
         assert!(state.operating.is_none());
         assert!(
             commands
@@ -790,7 +826,7 @@ mod tests {
             Undone::Nothing("nothing to undo".to_owned()),
             &mut ids(),
         );
-        assert_eq!(state.status, Status::Done("nothing to undo".to_owned()));
+        assert_eq!(state.status, Status::done("nothing to undo"));
         assert!(commands.is_empty());
     }
 
@@ -1112,6 +1148,167 @@ mod tests {
         assert!(
             matches!(commands.as_slice(), [Command::RevertTo(_, _, true)]),
             "{commands:?}"
+        );
+    }
+
+    // ── ticket 41: the landing after an undo that puts an operation back ──
+
+    const FINISH_UNDONE: &str = "undo: finish merge of feature";
+
+    /// `u` on a finish, answered `Done` with nothing live yet: the read the
+    /// answer asked for, and the state waiting on it. A working tree has
+    /// been read before, as it has in any running app: the first read is
+    /// the launch's landing (`relaunch`), not the undo's.
+    fn finish_undone(state: AppState) -> (AppState, JobId) {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            working_tree: Some(Arc::new(graft_git::status::WorkingTreeStatus {
+                entries: Vec::new(),
+            })),
+            ..state
+        };
+        let mut next = {
+            let mut raw = 100;
+            move || {
+                raw += 1;
+                JobId::new(raw)
+            }
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Done(applied(FINISH_UNDONE, Refresh::WorkingTree)),
+            &mut next,
+        );
+        let read = commands
+            .iter()
+            .find_map(|command| match command {
+                Command::ReadWorkingTree(id) => Some(*id),
+                _ => None,
+            })
+            .expect("the answer asks for the working tree");
+        (state, read)
+    }
+
+    /// Read `id` lands, reporting `kind` live (or nothing).
+    fn read_lands(
+        state: &AppState,
+        id: JobId,
+        kind: Option<graft_git::state::InProgress>,
+    ) -> AppState {
+        let read = crate::working_tree::WorkingTree {
+            status: Arc::new(graft_git::status::WorkingTreeStatus {
+                entries: Vec::new(),
+            }),
+            in_progress: kind.map(|kind| graft_git::state::InProgressDetail {
+                kind,
+                step: None,
+                head_name: None,
+                onto: None,
+                theirs: Ok(None),
+            }),
+            mergetool: None,
+        };
+        crate::update::update(
+            state,
+            crate::update::AppEvent::Produced(
+                id,
+                crate::update::Product::WorkingTree(Ok(Box::new(read))),
+            ),
+        )
+        .0
+    }
+
+    fn done_line_of(status: &Status) -> String {
+        match status {
+            Status::Done { what, keys } => crate::view::status::done_line(what, keys.as_deref()),
+            other => panic!("not a done line: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn an_undo_that_puts_a_merge_back_lands_on_the_banner() {
+        let (state, read) = finish_undone(AppState::default());
+        assert!(state.in_progress.is_none(), "nothing live when it answers");
+        let state = read_lands(&state, read, Some(graft_git::state::InProgress::Merge));
+        assert!(state.banner_focus, "the banner has the keyboard");
+        assert!(!state.undo_landing_owed, "the landing is spent");
+        assert_eq!(
+            state.status,
+            Status::done_with_keys(FINISH_UNDONE, "c finishes the merge")
+        );
+        assert_eq!(
+            done_line_of(&state.status),
+            "undo: finish merge of feature ✓ · c finishes the merge"
+        );
+    }
+
+    #[test]
+    fn an_undo_with_nothing_put_back_leaves_focus_alone() {
+        let (state, read) = finish_undone(AppState::default());
+        assert!(state.undo_landing_owed, "owed while the read is out");
+        let focus = (state.graph_has_focus(), state.banner_focus);
+        let state = read_lands(&state, read, None);
+        assert_eq!((state.graph_has_focus(), state.banner_focus), focus);
+        assert_eq!(state.status, Status::done(FINISH_UNDONE));
+        assert!(!state.undo_landing_owed, "spent all the same");
+    }
+
+    #[test]
+    fn a_stale_read_does_not_spend_the_landing() {
+        // A read asked before the undo's own refresh: older, so it read the
+        // repository before the undo wrote.
+        let older = JobId::new(50);
+        let (state, read) = finish_undone(AppState {
+            status_read: Some(older),
+            ..AppState::default()
+        });
+        assert_ne!(read, older);
+        let state = read_lands(&state, older, None);
+        assert!(!state.banner_focus, "no focus on a stale read");
+        assert!(state.undo_landing_owed, "the stale read did not spend it");
+        let state = read_lands(&state, read, Some(graft_git::state::InProgress::Merge));
+        assert!(state.banner_focus, "the undo's own read lands it");
+        assert!(!state.undo_landing_owed);
+    }
+
+    /// The Map, the journal browser and the stash list replace the graph
+    /// screen and its banner, and `u` works under the journal browser, where
+    /// the key that ran the undo was pressed; any of the three can also be
+    /// opened while the undo runs.
+    #[test]
+    fn under_a_modal_the_landing_is_dropped() {
+        let (mut state, read) = finish_undone(AppState::default());
+        state.journal.shown = true;
+        assert_eq!(
+            state.graph_overlay(),
+            Some(crate::update::GraphOverlay::Journal)
+        );
+        let state = read_lands(&state, read, Some(graft_git::state::InProgress::Merge));
+        assert!(!state.banner_focus, "no focus under the overlay");
+        assert_eq!(state.status, Status::done(FINISH_UNDONE), "no keys added");
+        assert!(!state.undo_landing_owed, "dropped, not kept for later");
+    }
+
+    #[test]
+    fn a_rebase_put_back_says_continues() {
+        let (state, read) = finish_undone(AppState::default());
+        let state = read_lands(&state, read, Some(graft_git::state::InProgress::Rebase));
+        assert!(state.banner_focus);
+        let Status::Done { keys, .. } = &state.status else {
+            panic!("{:?}", state.status);
+        };
+        assert_eq!(keys.as_deref(), Some("c continues the rebase"));
+        let Status::Done {
+            keys: every_file_done_keys,
+            ..
+        } = crate::update::resolver::every_file_done(&state)
+        else {
+            panic!("every_file_done is a done line");
+        };
+        assert_eq!(
+            *keys, every_file_done_keys,
+            "the same words as every file done"
         );
     }
 }

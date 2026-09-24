@@ -598,7 +598,7 @@ fn took_line(kind: graft_git::state::InProgress) -> String {
         JobId::new(4_600)
     });
     match &state.status {
-        Status::Done(words) => words.clone(),
+        Status::Done { what: words, .. } => words.clone(),
         other => panic!("expected a done status, got {other:?}"),
     }
 }

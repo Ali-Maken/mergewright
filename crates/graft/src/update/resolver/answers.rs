@@ -167,7 +167,7 @@ fn closed_resolved_outside(state: &mut AppState) {
     let Some(open) = state.resolver.take() else {
         return;
     };
-    state.status = Status::Done(format!("{} resolved outside", open.path.display()));
+    state.status = Status::done(format!("{} resolved outside", open.path.display()));
 }
 
 /// `$EDITOR` or a mergetool gave the terminal back: **re-read the open

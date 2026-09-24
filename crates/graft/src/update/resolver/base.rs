@@ -83,7 +83,7 @@ pub fn base_loaded(
             open.base_job = None;
             open.file = Some(file);
             open.base_shown = true;
-            state.status = Status::Done(format!("base shown for {attached} conflicts"));
+            state.status = Status::done(format!("base shown for {attached} conflicts"));
         }
         Err((words, problem)) => {
             let Some(open) = state.resolver.as_mut() else {

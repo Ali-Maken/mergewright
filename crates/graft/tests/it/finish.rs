@@ -356,7 +356,7 @@ fn done_lands_on_the_merge_commit() {
     );
     assert_eq!(
         state.status,
-        Status::Done("merged feature into main".to_owned()),
+        Status::done("merged feature into main"),
         "drawn as `merged feature into main ✓`"
     );
     drop(state);
