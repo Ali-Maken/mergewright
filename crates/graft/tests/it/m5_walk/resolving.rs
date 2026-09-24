@@ -910,7 +910,17 @@ fn start_over_brings_the_markers_back() -> Scenario {
         capture: Some(Capture {
             stem: "m6-09-start-over-box",
             headless: vec![],
-            keys: plain(&[open_nth(nth("both.txt")), vec![ch('d')]].concat()),
+            // m6-conflicts/46: `k ⏎` opens the resolver, `j` moves to
+            // both.txt (ticket 17), `d` asks. No second `⏎`: on an open
+            // file it is refused, and the refusal took the bottom row.
+            keys: plain(
+                &[
+                    vec![ch('k'), KeyCode::Enter],
+                    vec![ch('j'); nth("both.txt")],
+                    vec![ch('d')],
+                ]
+                .concat(),
+            ),
             on_screen: "Start both.txt over",
             when: When::Settled,
         }),

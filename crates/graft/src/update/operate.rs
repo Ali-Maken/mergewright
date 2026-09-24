@@ -687,6 +687,15 @@ fn selected_counts(state: &AppState) -> Option<(u32, u32)> {
 ///
 /// PROMPT.md section 3 asks for the consequence named. The exact command is
 /// the line below this one, but this is the line that gets read.
+/// ` — 1 line` / ` — 7 lines`: "1 lines" reads as a bug in the counter.
+fn untracked_size(added: u32) -> String {
+    if added == 1 {
+        " \u{2014} 1 line".to_owned()
+    } else {
+        format!(" \u{2014} {added} lines")
+    }
+}
+
 fn discard_consequence(entry: &StatusEntry, counts: Option<(u32, u32)>) -> Vec<String> {
     let lines = match counts {
         Some((added, removed)) => format!(" (+{added} \u{2212}{removed})"),
@@ -697,7 +706,7 @@ fn discard_consequence(entry: &StatusEntry, counts: Option<(u32, u32)>) -> Vec<S
         // reports no lines at all. "0 lines" would read as a fact; silence is
         // the truth.
         let size = match counts {
-            Some((added, _)) if added > 0 => format!(" \u{2014} {added} lines"),
+            Some((added, _)) if added > 0 => untracked_size(added),
             Some(_) | None => String::new(),
         };
         return vec![format!("Deletes the file from the working tree{size}.")];
@@ -2450,5 +2459,12 @@ mod tests {
             target.1.is_some(),
             "the added line has a new-side number: {target:?}"
         );
+    }
+
+    /// m6-conflicts/46: an untracked file of one line says `1 line`.
+    #[test]
+    fn untracked_size_is_singular_at_one() {
+        assert_eq!(untracked_size(1), " \u{2014} 1 line");
+        assert_eq!(untracked_size(7), " \u{2014} 7 lines");
     }
 }

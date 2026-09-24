@@ -646,7 +646,8 @@ impl Refusal {
             // The M6 conflict refusals, in the design note's words.
             Self::NotUnmerged { path } => format!("{} is not conflicted", path.display()),
             Self::ConflictsOpen { path, open } => {
-                format!("{open} conflicts still open in {}", path.display())
+                let noun = if *open == 1 { "conflict" } else { "conflicts" };
+                format!("{open} {noun} still open in {}", path.display())
             }
             Self::NotMarkerShape { path, how } => format!(
                 "{}: {} — no markers to take from",

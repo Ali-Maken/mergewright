@@ -1065,6 +1065,15 @@ fn conflict_refusals_in_words() {
         .explain(),
         "2 conflicts still open in src/a.rs"
     );
+    // m6-conflicts/46: one open block reads as one, not "1 conflicts".
+    assert_eq!(
+        Refusal::ConflictsOpen {
+            path: PathBuf::from("both.txt"),
+            open: 1,
+        }
+        .explain(),
+        "1 conflict still open in both.txt"
+    );
     assert_eq!(
         Refusal::NotMarkerShape {
             path: PathBuf::from("src/a.rs"),
