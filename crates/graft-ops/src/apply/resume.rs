@@ -164,13 +164,18 @@ pub(super) fn unmerged_paths(ctx: &Context<'_>) -> Result<Vec<PathBuf>, ApplyErr
 /// `ContinueWith` finish it all the same, as an operation of its own:
 /// [`Operation::FinishMerge`], through [`apply`], so it gets its own entry
 /// and backup and `u` puts the merge back (m6-conflicts/20). Unmerged paths
-/// are refused first, in the same words as a merge Graft began.
+/// are refused first, in the same words as a merge Graft began. `Abort`
+/// aborts it the same way, as [`Operation::AbortMerge`]: `git merge
+/// --abort` behind a full backup, so `u` puts the merge back as it stood
+/// (m6-conflicts/57).
 ///
 /// # Errors
 /// [`Refusal::NotInProgress`] when git has no operation in progress, or no
-/// `Pending` entry of Graft's matches it and it is not a one-parent merge
-/// being continued (an abort or skip of one begun in the shell, a shell
-/// rebase, cherry-pick or revert, an octopus merge);
+/// `Pending` entry of Graft's matches it and it is not a merge being
+/// continued or aborted (a skip of one begun in the shell, a shell rebase,
+/// cherry-pick or revert); [`Refusal::OctopusMerge`] for an octopus merge
+/// begun in the shell, either end; [`Refusal::AutostashWaits`] while
+/// `MERGE_AUTOSTASH` waits;
 /// [`Refusal::CannotSkip`] for `Skip` on a merge;
 /// [`Refusal::Unmerged`] for `Continue` or `ContinueWith` over unmerged
 /// paths; [`Refusal::MessageNotHere`] for `ContinueWith` on anything but a
@@ -184,6 +189,7 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     let (kind, entry) = match resume_target(ctx, &how)? {
         Target::Live { kind, entry } => (kind, *entry),
         Target::ShellMerge(params) => return apply(ctx, &Operation::FinishMerge(params)),
+        Target::ShellAbort(params) => return apply(ctx, &Operation::AbortMerge(params)),
     };
 
     // What git is about to write over. `--abort` throws the span's work away
@@ -245,7 +251,8 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
 /// 3. No live entry, `Continue`/`ContinueWith`, git merging with one
 ///    `MERGE_HEAD` → unmerged paths refused first, then
 ///    [`Target::ShellMerge`]. Before this, a shell merge reached
-///    `NotInProgress` ahead of its unmerged check.
+///    `NotInProgress` ahead of its unmerged check. `Abort` there →
+///    [`Target::ShellAbort`], unmerged paths and all (m6-conflicts/57).
 /// 4. Everything else → [`Refusal::NotInProgress`], in its old words, which
 ///    stay true for every case that still reaches them.
 fn resume_target(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> {
@@ -258,8 +265,10 @@ fn resume_target(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> 
     }
     let continuing = matches!(how, Resume::Continue | Resume::ContinueWith { .. });
     let Some(entry) = live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?.cloned() else {
-        return match (kind, continuing) {
-            (InProgress::Merge, true) => shell_merge(ctx, how),
+        return match (kind, how) {
+            (InProgress::Merge, Resume::Continue | Resume::ContinueWith { .. } | Resume::Abort) => {
+                shell_merge(ctx, how)
+            }
             _ => Err(ApplyError::Refused(Refusal::NotInProgress)),
         };
     };

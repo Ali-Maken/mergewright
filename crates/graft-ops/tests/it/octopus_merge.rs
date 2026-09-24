@@ -7,10 +7,16 @@
 //! Which operations *begin* during a merge begun in the shell: not the
 //! forward ones `check` admits (stage, unstage, fetch) — with no entry of
 //! Graft's behind the merge they fold as steps inside it and write no line
-//! (`apply::fold::folded_step`). What begins is `u`/redo/revert-to, which
-//! journal an entry of their own through `restore::execute`, and `c`
-//! (`FinishMerge`). So the unrelated operation here is `u` of an entry made
-//! before the merge.
+//! (`apply::fold::folded_step`) — and not `c`/`a`, which refuse an octopus
+//! merge by name before they begin. What begins is a restore
+//! (`restore::execute`), journaling an entry of its own. So the unrelated
+//! operation here is the restore that takes back an entry made before the
+//! merge, run at the recording layer.
+//!
+//! Since m6-conflicts/57 the undo **executor** refuses that same `u`
+//! (`NotInvertible::OperationLive`: the entry is older than the merge), so
+//! the key never reaches the restore; these tests drive the restore
+//! directly, which is where `begin` reads git's merge state.
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
@@ -18,10 +24,11 @@ use std::path::{Path, PathBuf};
 
 use graft_core::journal::{JournalEntry, OperationKind, Touches};
 use graft_core::oid::Oid;
+use graft_git::state::InProgress;
 use graft_ops::apply::{ApplyError, Resume};
-use graft_ops::operation::{BranchCreateParams, Operation, Refusal};
+use graft_ops::operation::{BranchCreateParams, MergeEnd, Operation, Refusal};
 use graft_ops::restore;
-use graft_ops::undo::{InversePlan, Step};
+use graft_ops::undo::{self, InversePlan, NotInvertible, Step, UndoError};
 
 use crate::conflict_fixtures::run_resume;
 use crate::support::{NOW, Never, TempRepo, context, journal_for, run_undo, try_run};
@@ -80,18 +87,30 @@ fn merge_files(repo: &TempRepo) -> Vec<Option<Vec<u8>>> {
         .collect()
 }
 
-/// `u`, then `u` again: the merge begun since the entry is drift, which
-/// the first `u` names and the second goes ahead over — the user's own
-/// two keys. The first must be that question, never a failure to read the
-/// merge.
-fn undo_confirmed(repo: &TempRepo) {
-    let asked = run_undo(repo, NOW + 1, false).expect_err("the merge begun since is drift");
-    assert!(
-        asked.explain().contains("a merge is in progress now"),
-        "{}",
-        asked.explain()
-    );
-    run_undo(repo, NOW + 1, true).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+/// The restore that takes back `topic`'s creation, run straight through
+/// `restore::execute` — `begin` reads the octopus merge and records it.
+/// The executor's `u` is refused first, and must be the gate's refusal,
+/// never a failure to read the merge.
+fn undo_restored(repo: &TempRepo) {
+    for force in [false, true] {
+        let refused = run_undo(repo, NOW + 1, force).expect_err("older than the merge");
+        assert!(
+            matches!(
+                refused,
+                UndoError::Nothing(NotInvertible::OperationLive {
+                    kind: InProgress::Merge
+                })
+            ),
+            "{}",
+            refused.explain()
+        );
+    }
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let plan = undo::plan_undo(journal.entries()).expect("topic's creation is undoable");
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
+    restore::execute(&mut ctx, &plan).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
 }
 
 fn last_entry(repo: &TempRepo) -> JournalEntry {
@@ -111,7 +130,7 @@ fn an_unrelated_operation_begins_and_records_during_an_octopus_merge() {
     let repo = octopus_in_progress();
     let before = merge_files(&repo);
 
-    undo_confirmed(&repo);
+    undo_restored(&repo);
     assert!(
         repo.try_git(&["rev-parse", "-q", "--verify", "refs/heads/topic"])
             .is_err(),
@@ -136,7 +155,7 @@ fn undo_during_an_octopus_merge_keeps_merge_head_byte_exact() {
     let repo = octopus_in_progress();
     let before = merge_files(&repo);
 
-    undo_confirmed(&repo);
+    undo_restored(&repo);
     assert_eq!(
         merge_files(&repo),
         before,
@@ -152,7 +171,7 @@ fn undo_during_an_octopus_merge_keeps_merge_head_byte_exact() {
 fn set_merge_state_writes_an_octopus_merge_head_back_byte_exact() {
     let repo = octopus_in_progress();
     let before = merge_files(&repo);
-    undo_confirmed(&repo);
+    undo_restored(&repo);
     let recorded = last_entry(&repo).merge_before;
     assert!(recorded.is_some(), "the octopus merge is recorded");
     repo.git(&["merge", "--quit"]);
@@ -194,7 +213,13 @@ fn c_on_an_octopus_merge_names_its_refusal() {
 
     let why = run_resume(&repo, Resume::Continue, NOW + 1).expect_err("refused");
     assert!(
-        matches!(why, ApplyError::Refused(Refusal::OctopusMerge { heads: 2 })),
+        matches!(
+            why,
+            ApplyError::Refused(Refusal::OctopusMerge {
+                heads: 2,
+                end: MergeEnd::Finish
+            })
+        ),
         "{}",
         why.explain()
     );
@@ -209,4 +234,41 @@ fn c_on_an_octopus_merge_names_its_refusal() {
         "no entry"
     );
     assert_eq!(merge_files(&repo), before, "the merge is untouched");
+}
+
+/// `a` on an octopus merge begun in the shell is refused by name too, and
+/// the words name `git merge --abort`: `u` of an abort could not be checked
+/// to put every head back (m6-conflicts/57). Nothing is journaled, nothing
+/// moves.
+#[test]
+fn abort_of_an_octopus_shell_merge_is_refused() {
+    let repo = octopus_in_progress();
+    let before = merge_files(&repo);
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    let entries = journal_for(&repo.open()).entries().len();
+
+    let why = run_resume(&repo, Resume::Abort, NOW + 1).expect_err("refused");
+    assert!(
+        matches!(
+            why,
+            ApplyError::Refused(Refusal::OctopusMerge {
+                heads: 2,
+                end: MergeEnd::Abort
+            })
+        ),
+        "{}",
+        why.explain()
+    );
+    assert_eq!(
+        why.explain(),
+        "this merges 2 branches at once (an octopus merge); abort it in the shell: git merge \
+         --abort"
+    );
+    assert_eq!(
+        journal_for(&repo.open()).entries().len(),
+        entries,
+        "no entry"
+    );
+    assert_eq!(merge_files(&repo), before, "the merge is untouched");
+    assert_eq!(repo.git(&["rev-parse", "HEAD"]), head, "HEAD unmoved");
 }

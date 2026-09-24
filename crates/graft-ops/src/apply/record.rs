@@ -339,7 +339,8 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
         | Operation::RestartConflict(_)
         // `MERGE_HEAD`'s commit is anchored by the backup from the entry's
         // `merge_before` (`begin`), not pinned.
-        | Operation::FinishMerge(_) => Vec::new(),
+        | Operation::FinishMerge(_)
+        | Operation::AbortMerge(_) => Vec::new(),
     }
 }
 
@@ -372,6 +373,7 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::ResolveConflict => "resolve conflict",
         OperationKind::RestartConflict => "restart conflict",
         OperationKind::FinishMerge => "finish merge",
+        OperationKind::AbortMerge => "abort merge",
         OperationKind::RevertTo => "revert to",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",

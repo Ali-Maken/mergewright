@@ -91,6 +91,11 @@ pub enum OperationKind {
     /// Always its own entry — there is no entry of Graft's to close — and
     /// its `u` puts the merge back in progress (m6-conflicts/20).
     FinishMerge,
+    /// A merge **begun in the shell** aborted from Graft: `git merge
+    /// --abort`. Its own entry with a full backup, so `u` puts the merge
+    /// back as it stood — the stages, the hand edits, git's merge files
+    /// (m6-conflicts/57).
+    AbortMerge,
     /// The journal's time machine: every in-force entry back to a target,
     /// reversed one `Undo` entry at a time (DESIGN.md §6.6).
     ///

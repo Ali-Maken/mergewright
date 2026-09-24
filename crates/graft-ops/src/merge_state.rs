@@ -97,11 +97,12 @@ pub(crate) fn read_merge_state(repo: &RepoHandle) -> Result<Option<MergeState>, 
 /// Whether a `git merge --autostash` left its stash waiting in
 /// `MERGE_AUTOSTASH`, for the merge's finish to apply.
 ///
-/// Verified against git (`finish_merge::git_applies_merge_autostash_when_the_merge_is_finished`):
-/// both `git merge --continue` and `git commit` apply it. A finish Graft
-/// journals would then write the stash's changes into the working tree and
-/// use the stash up, and `u` would put the tree back without them — so
-/// `apply` refuses such a finish, and it is finished in the shell.
+/// Verified against git (`finish_merge::git_applies_merge_autostash_when_the_merge_is_finished`,
+/// `…_when_the_merge_is_aborted`): `git merge --continue`, `git commit` and
+/// `git merge --abort` all apply it. A finish or abort Graft journals would
+/// then write the stash's changes into the working tree and use the stash
+/// up, and `u` would put the tree back without them — so `apply` refuses
+/// either end (`Refusal::AutostashWaits`), and it is ended in the shell.
 ///
 /// # Errors
 /// [`MergeStateError::Io`] when the file's presence cannot be read.

@@ -1,7 +1,8 @@
-//! Finishing a merge **begun in the shell** (m6-conflicts/20): a `git merge`
-//! or `git pull` that stopped on a conflict, resolved, and committed from
-//! Graft. A merge Graft began is finished by `apply::resume` on its own
-//! entry; this one has none, so it is an operation of its own.
+//! Ending a merge **begun in the shell**: a `git merge` or `git pull` that
+//! stopped on a conflict, then finished (m6-conflicts/20) or aborted
+//! (m6-conflicts/57) from Graft. A merge Graft began is ended by
+//! `apply::resume` on its own entry; this one has none, so each end is an
+//! operation of its own, with its own entry and backup.
 
 use graft_core::oid::Oid;
 use graft_git::run::GitArg;
@@ -61,4 +62,50 @@ pub(super) fn plan(params: &FinishMergeParams) -> Vec<Invocation> {
 /// (`finish merge of feature`), which needs `MERGE_MSG`.
 pub(super) fn describe(params: &FinishMergeParams) -> String {
     format!("finish merge of {}", super::short(params.merge_head))
+}
+
+/// What aborting a shell-begun merge needs (m6-conflicts/57).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AbortMergeParams {
+    /// The commit `MERGE_HEAD` named when the user asked: `apply` refuses
+    /// [`Refusal::NotInProgress`] when it names another by the time the
+    /// operation runs, so the merge aborted is the merge the user saw.
+    pub merge_head: Oid,
+}
+
+/// Which end of a shell-begun merge a refusal is about, so its words name
+/// the command that does it in the shell (m6-conflicts/57).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MergeEnd {
+    /// `c`: finishing it, `git commit`.
+    Finish,
+    /// `a`: aborting it, `git merge --abort`.
+    Abort,
+}
+
+impl MergeEnd {
+    /// The tail of a refusal: where this end is done instead.
+    #[must_use]
+    pub fn in_the_shell(self) -> &'static str {
+        match self {
+            MergeEnd::Finish => "finish it in the shell: git commit",
+            MergeEnd::Abort => "abort it in the shell: git merge --abort",
+        }
+    }
+}
+
+/// `git merge --abort`: git puts the index and the working tree back to
+/// `HEAD` and removes its merge files. The backup taken before it keeps
+/// everything the abort throws away, which is what `u` puts back.
+pub(super) fn plan_abort() -> Vec<Invocation> {
+    vec![Invocation::new(vec![
+        GitArg::Flag("merge"),
+        GitArg::Flag("--abort"),
+    ])]
+}
+
+/// `abort merge of <short id>`: the fallback, as for [`describe`]; `apply`
+/// names it `abort merge of feature`.
+pub(super) fn describe_abort(params: &AbortMergeParams) -> String {
+    format!("abort merge of {}", super::short(params.merge_head))
 }
