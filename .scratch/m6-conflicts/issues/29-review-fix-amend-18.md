@@ -1,6 +1,6 @@
 # review-fix-amend-18: a false tick on the landing test; a box opened mid-merge turns the stop into a refusal; old-landing names
 
-Status: ready
+Status: done
 Blocked by: 28-done-file-start-over-only-where-it-can.md (building; same crate, ADR-0036). Runs before 16.
 Was: filed by the conductor 2026-09-24 from `docs/reviews/m6-amend-18.md` Critical 1, Major 1, Major 2, Minor 1.
 Build with: **Opus** (low).
@@ -22,12 +22,17 @@ In:
 Out: review-18 Minors 2–7 (→ KNOWN_GAPS).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] C1: cursor `Some(0)` and `file_cursor` = first file's listed position (non-zero in the fixture), after the read and set land — test:
-- [ ] C1: ticket 18 box 1 names the tests that check each of its claims — (textual; line)
-- [ ] M1: failing test first, red on unchanged code — test:
-- [ ] M1: a box open when the stop arrives → no refusal words, no resolver, the box untouched; comment corrected — test:
-- [ ] M2: renames done — (list them)
-- [ ] Minor 1: banner asserts restored at 80/120/187; ticket 12 box fixed — test:
-- [ ] Gates workspace-wide: fmt, clippy `-D warnings`, nextest, doctests
+- [x] C1: cursor `Some(0)` and `file_cursor` = first file's listed position (row 1: `alpha.md`, conflicted then resolved+staged by rerere, heads the list as done; the test asserts `at != 0`), after the read and set land — test: `it::conflict_interim::the_landing_puts_both_cursors_on_the_first_conflicted_file`
+- [x] C1: ticket 18 box 1 names the tests that check each of its claims — `18-stop-opens-the-resolver.md:34`
+- [x] M1: failing test first, red on unchanged code (`Sticky { reason: "finish the box first" }` vs `Ready`) — test: `update::operate::tests::a_box_opened_mid_merge_keeps_the_stop_on_the_banner_without_words`
+- [x] M1: a box open when the stop arrives → no refusal words, no resolver, the box untouched; comment corrected (`update/banner/stop.rs` `land_in_resolver`) — test: same as above
+- [x] M2: renames done — `conflict_focuses_the_banner_and_lists_the_files` → `esc_from_the_landing_shows_the_banner_and_lists_the_files` (+ message); m5_walk `conflict_focuses_banner_and_lists_files` / `conflict-focuses-banner-and-lists-files` → `stop_then_esc_lists_files` / `stop-then-esc-lists-files` (+ See text); capture stem `m5-06-banner-conflicts` → `m5-06-stop-lands-in-resolver` (3 files, TESTING.md:2019, coverage.rs, 35-coverage-matrix, contact sheet, captions TSV keys)
+- [x] Minor 1: banner asserts restored at 80/120/187; ticket 12 box fixed (`12-landing-after-a-stop.md:127`) — test: `it::conflict_interim::landing_shots::esc_from_the_landing_shows_the_banner_row_on_a_real_merge`
+- [x] Gates workspace-wide: fmt, clippy `-D warnings`, nextest 2872/2872 (1 skipped), doctests pass
 
 ## NOTES
+- No scout: the review names every line.
+- Scenario name chose `stop-then-esc-lists-files`, not the resolver name: its See runs after `merge_that_stops`' `Esc`, on the banner. The capture (keys `m ⏎`) shows the resolver, hence stem `m5-06-stop-lands-in-resolver`.
+- Captions TSV rows 10-12 keys renamed only; their stale wording is review Minor 3 (out of scope).
+- `resolver::box_open` widened to `pub(in crate::update)`; not public, MAP.md unchanged.
+- No compaction.

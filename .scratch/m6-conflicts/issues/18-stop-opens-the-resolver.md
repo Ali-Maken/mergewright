@@ -31,7 +31,7 @@ In:
 Out: any new key.
 
 ## Acceptance (name the verifying test when you tick)
-- [x] `update::operate::tests::a_conflicted_merge_lands_in_the_resolver`: `m m` → the resolver is open on `first_conflicted`, `opened_from == Banner`, the cursor is on block 0, and `file_cursor` is that file's index.
+- [x] The stop → the resolver is open on `first_conflicted`, `opened_from == Banner`: `update::operate::tests::a_conflicted_merge_lands_in_the_resolver` (calls `operated` directly, not `m m`). The cursor is on block 0 and `file_cursor` is that file's listed position (row 1 in its fixture, behind a done file), after the read and the set land: `it::conflict_interim::the_landing_puts_both_cursors_on_the_first_conflicted_file` (re-ticked by 29; the unit test's `cursor_block == None` / `file_cursor == 0` asserts did not check these).
 - [x] `update::banner::tests::a_rebase_stopping_again_lands_in_the_resolver`.
 - [x] `update::resolver::tests::esc_from_a_landed_resolver_shows_the_banner_keys` — lives at `update::banner::tests::esc_from_a_landed_resolver_shows_the_banner_keys` (needs `a_merge_stops`).
 - [x] `…::an_edit_stop_with_nothing_unmerged_keeps_the_banner` — `update::operate::tests::an_edit_stop_with_nothing_unmerged_keeps_the_banner`.

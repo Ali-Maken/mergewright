@@ -20,8 +20,8 @@ use crate::update::state::{AppState, Status};
 /// there. Nothing unmerged (an `edit` step, an empty pick) keeps the banner.
 ///
 /// Called once `Stopped` and the banner focus are set. A resolver already
-/// open is left as it is: `open_resolver` would word a refusal over the
-/// stop.
+/// open, or a box, is left as it is: `open_resolver` would word a refusal
+/// over the stop.
 pub(in crate::update) fn land_in_resolver(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -31,12 +31,16 @@ pub(in crate::update) fn land_in_resolver(
     let Some(first) = paths.first() else {
         return;
     };
-    if state.resolver.is_some() {
+    // A box opened while the operation ran (`c` has no `operating` guard)
+    // owns the input: the stop stays on the banner, as without a resolver,
+    // and `open_resolver`'s refusal is never worded over it (review
+    // m6-amend-18, Major 1).
+    if state.resolver.is_some() || crate::update::resolver::box_open(state) {
         return;
     }
     // The returned bool only says whether a key was spent; there is no key
-    // here. Its refusals (`operating`, a box) cannot hold: both callers
-    // clear `operating` first, and a box would have refused the launch.
+    // here. Its refusals cannot hold: both callers clear `operating` first,
+    // and a box was ruled out above.
     crate::update::resolver::open_resolver(
         state,
         commands,

@@ -74,6 +74,7 @@ pub use geometry::{banner_rows, fits, resized, scroll_block_into_view};
 #[cfg(test)]
 pub(crate) use names::fixtures;
 pub use names::side_names;
+pub(in crate::update) use open::box_open;
 pub use open::open_resolver;
 pub(crate) use resolved::every_file_done;
 pub use resolved::resolved_advance;
@@ -86,7 +87,7 @@ pub use whole_file::{WholeFileShape, whole_file_keys};
 use base::toggle_base;
 use geometry::scrolled_to;
 use handover::{edit_here, mergetool_here, takes_refusal};
-use open::{box_open, reopen};
+use open::reopen;
 use resolved::mark_resolved;
 use restart::restart_box;
 use scroll::scroll_key;

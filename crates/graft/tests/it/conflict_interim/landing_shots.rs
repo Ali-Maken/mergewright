@@ -85,6 +85,38 @@ fn capture_a_merge_that_stops() {
     app.close();
 }
 
+/// m6-conflicts/29 (review-18 Minor 1): `Esc` from the landing, on a real
+/// two-file merge, shows the banner's keys and the plural count — the
+/// asserts `capture_a_merge_that_stops` carried before the landing moved.
+#[test]
+fn esc_from_the_landing_shows_the_banner_row_on_a_real_merge() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let state = settled(
+        &app,
+        stopped_on_the_conflict(&app, state),
+        "the banner after Esc",
+    );
+    for (columns, rows) in [(80u16, 24u16), (120, 40), (187, 50)] {
+        let frame = drawn(&app, &state, columns, rows);
+        let body = frame.join("\n");
+        let row = footer(&frame, "\u{23ce} resolve");
+        assert!(
+            row.contains("\u{23ce} resolve  c continue  a abort"),
+            "{columns}x{rows}: {body}"
+        );
+        assert!(!body.contains("esc dismiss"), "{columns}x{rows}: {body}");
+        if columns >= 120 {
+            assert!(
+                row.contains("merge stopped \u{b7} 2 files conflicted \u{b7}"),
+                "{columns}x{rows}: {row}"
+            );
+        }
+    }
+    drop(state);
+    app.close();
+}
+
 #[test]
 fn capture_after_esc_on_the_banner() {
     let scratch = about_to_conflict();

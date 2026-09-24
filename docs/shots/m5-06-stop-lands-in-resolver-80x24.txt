@@ -1,4 +1,4 @@
-m5 walk capture: m5-06-banner-conflicts — scenario conflict-focuses-banner-and-lists-files, keys m → ⏎, unicode tier, 80x24
+m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 80x24
 
 MERGING
 files   ▸ shared.txt 1/1 open

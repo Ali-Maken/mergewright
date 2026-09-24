@@ -94,7 +94,7 @@ m5-02-preview-merge         C         C
 m5-03-preview-reset-hard    C         C       
 m5-04-time-machine          C         C       
 m5-05-preview-too-small     —         —       
-m5-06-banner-conflicts      C         C       
+m5-06-stop-lands-in-resolver      C         C       
 m5-07-branch-row-hints      C         C       
 m5-11-diverged-pull-sticky  C         C       
 
