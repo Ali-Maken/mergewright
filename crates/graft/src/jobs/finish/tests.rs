@@ -68,7 +68,9 @@ fn the_diff_is_the_staged_change() {
     assert_eq!(ours(LineKindView::Added), git_lines(repo, "README.md", '+'));
     assert_eq!(ours(LineKindView::Added), vec!["TWO".to_owned()]);
 
-    let missing = staged_diff(&store, Path::new("nowhere.md"), &())
-        .expect_err("a path with no staged change");
-    assert_eq!(missing, "nowhere.md is not staged");
+    // Staged but equal to `HEAD` (what keeping yours leaves): no change,
+    // not an error.
+    let same =
+        staged_diff(&store, Path::new("nowhere.md"), &()).expect("no change is not an error");
+    assert!(same.hunks.is_empty() && same.binary.is_none(), "{same:?}");
 }

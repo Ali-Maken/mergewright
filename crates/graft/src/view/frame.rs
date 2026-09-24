@@ -129,21 +129,21 @@ pub fn view_with_graphics(
         // until it is drawn, while the banner's condition is that function
         // and needs no edit at all.
         Screen::Graph => match state.graph_overlay() {
+            // Over everything, the resolver included: the finish summary
+            // (m6-conflicts/19), with the banner line on top as the
+            // resolver keeps it.
+            Some(GraphOverlay::Finish) => (draw_finish(session, state, frame, area), Vec::new()),
+            // Above the rest: the resolver covers the detail pane too, and
+            // it is the one overlay that keeps the operation banner
+            // (`draw_resolver`).
+            Some(GraphOverlay::Resolver) => {
+                (draw_resolver(session, state, frame, area), Vec::new())
+            }
             // The commit editor replaces the graph and leaves the detail
             // pane alone — the rule for every M3 overlay (design note, hard
             // choice 4). It comes before the Map view because `c` is
             // answered wherever the cursor is, the Map view included;
             // `AppState::graph_overlay` holds that order.
-            // Above them all: the resolver covers the detail pane too, and
-            // it is the one overlay that keeps the operation banner
-            // (`draw_resolver`).
-            // Over everything, the resolver included: the finish summary
-            // (m6-conflicts/19), with the banner line on top as the
-            // resolver keeps it.
-            Some(GraphOverlay::Finish) => (draw_finish(session, state, frame, area), Vec::new()),
-            Some(GraphOverlay::Resolver) => {
-                (draw_resolver(session, state, frame, area), Vec::new())
-            }
             Some(GraphOverlay::CommitEditor) => {
                 (draw_commit_editor(session, state, frame, area), Vec::new())
             }

@@ -60,7 +60,7 @@ pub(super) fn settle_key(
         super::resolved::mark_resolved(state, commands, next_id);
         return;
     }
-    // The Stage goes out when the last take lands (`answers::take_landed`).
+    // The Stage goes out when the last take lands (`answers::taken::take_landed`).
     if let Some(open) = state.resolver.as_mut() {
         open.settling = Some(take);
     }

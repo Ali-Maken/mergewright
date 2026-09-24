@@ -88,7 +88,7 @@ fn take_block(
 
 /// `Ctrl+O`/`Ctrl+T`: take one side in **every** block still open, in one
 /// write (m6-conflicts/16 D3). The cursor stays; the notice is set when the
-/// write lands (`answers::take_landed`). A done file was refused before
+/// write lands (`answers::taken::take_landed`). A done file was refused before
 /// this, in `act`.
 pub(super) fn take_all_key(
     state: &mut AppState,

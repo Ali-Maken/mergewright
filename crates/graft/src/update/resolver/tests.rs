@@ -595,7 +595,7 @@ fn took_line(kind: graft_git::state::InProgress) -> String {
     let mut file = (**open.file.as_ref().expect("a document")).clone();
     file.take(0, graft_git::conflict::Take::Theirs)
         .expect("block 0 exists");
-    super::answers::take_landed(&mut state, &Arc::new(file), &mut Vec::new(), &mut || {
+    super::answers::taken::take_landed(&mut state, &Arc::new(file), &mut Vec::new(), &mut || {
         JobId::new(4_600)
     });
     match &state.status {

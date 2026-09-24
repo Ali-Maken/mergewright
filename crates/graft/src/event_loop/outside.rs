@@ -82,6 +82,28 @@ impl std::fmt::Debug for Handover<'_> {
 /// terminal owns.
 const MESSAGE_FILE: &str = "graft/COMMIT_EDITMSG";
 
+/// [`Handover::edit_message`] without the terminal: `message` written to
+/// the message file under `git_dir`, `open` run on that file, and what it
+/// left read back — exactly, nothing stripped. `open` is the editor; the
+/// loop passes one that hands the terminal over, a test one that does not.
+///
+/// # Errors
+/// The file could not be written or read, or as `open`.
+pub fn edit_message_in(
+    git_dir: &Path,
+    message: &str,
+    open: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<String, String> {
+    let path = git_dir.join(MESSAGE_FILE);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| format!("{}: {error}", parent.display()))?;
+    }
+    std::fs::write(&path, message).map_err(|error| format!("{}: {error}", path.display()))?;
+    open(&path)?;
+    std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))
+}
+
 impl Handover<'_> {
     /// `Ctrl+E`: write `message` out, open it in the user's editor, and read
     /// back what was saved.
@@ -94,10 +116,7 @@ impl Handover<'_> {
     /// There is no repository, the file could not be written or read, the
     /// editor could not be found or started, or it exited non-zero.
     pub fn edit_message(&self, message: &str) -> Result<String, String> {
-        let path = self.message_path()?;
-        std::fs::write(&path, message).map_err(|error| format!("{}: {error}", path.display()))?;
-        self.open(&path, None)?;
-        std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))
+        edit_message_in(self.repository()?, message, |path| self.open(path, None))
     }
 
     /// `e` on the changes pane: the file under the cursor, at its line.
@@ -206,16 +225,6 @@ impl Handover<'_> {
     }
 
     /// The message file's path, its `graft/` directory made.
-    fn message_path(&self) -> Result<PathBuf, String> {
-        let dir = self.repository()?;
-        let path = dir.join(MESSAGE_FILE);
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|error| format!("{}: {error}", parent.display()))?;
-        }
-        Ok(path)
-    }
-
     /// The editor git itself would run: `GIT_EDITOR`, then `core.editor`,
     /// then `VISUAL`, then `EDITOR`, then git's built-in default — in one
     /// spawn, rather than four lookups Graft would have to keep in step with
