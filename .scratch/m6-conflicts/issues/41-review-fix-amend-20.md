@@ -166,3 +166,21 @@ A: small–medium, one context. B: small, one context.
 - `docs/design/02-keymap.md:289`: after `A launch mid-operation keeps the banner.` add ` So does an undo that puts an operation back (ticket 41).`
 - `docs/design-notes/m6-conflicts.md:334`: `FinishMergeParams` gains `message: Option<Vec<u8>>` (review Minor 7).
 - Review Minors 1–6 and Q1–Q3: not in this ticket.
+
+## NOTES — Part A (builder, 2026-09-24)
+**Status A: blocked at Step 2's stop condition.** `blocked: status shape Status::Done(String) crates/graft/src/view/frame/bars.rs:275-276`. No code changed. No scout: Step 0 needed only a handful of targeted reads (MAP-directed). No compaction.
+
+Step 0, observed on unchanged code (temporary `eprintln!` in `u_after_a_shell_begun_finish_puts_the_merge_back`, reverted; `cargo nextest run -p graft` for observation only):
+1. `in_progress` returns to `Some` only at `crates/graft/src/update/mod.rs:599` (`working_tree_read`, reached from `took_fact` `Product::WorkingTree(Ok)` at `mod.rs:661-667`). The only other writer is `undo.rs:121` (sets `None`). The read is asked by `undone` → `refresh` (`undo.rs:530`) → `operate::refresh_scope` (`operate.rs:962`) → `status_read::ask` (`operate.rs:979`, or `keys.rs:389` for `Everything`). Stop condition 1 does not fire.
+2. Yes: at the landing, observed `status_read=None` (the landing read was the newest; nothing else out).
+3. `U` at the landing (graph focus): observed `Sticky { reason: "finish or abort the merge first", keys: Some("⇥ banner") }`, commands `[]` — `in_progress_refusal` (`undo.rs:101-107`) via `launch` (`undo.rs:173`).
+4. `every_file_done` produces `Status::Done("every file done ✓ · c finishes the merge")` (`update/resolver/resolved.rs:199,208-209`).
+
+**Why blocked.** The footer renders every `Status::Done(d)` as `d ✓` (`view/frame/bars.rs:275-276`; `view/stash.rs:107` the same). Observed: the existing capture `docs/shots/m6/fix-undo-shell-merge-120x40.txt:24` reads `undo: finish merge of feature ✓` from `Done("undo: finish merge of feature")`. So no `Done` string renders exactly `undo: finish merge of feature ✓ · c finishes the merge`: `Done("undo: … ✓ · c finishes the merge")` draws `… merge ✓` (two ticks), `Done("undo: … · c finishes the merge")` draws the tick at the end. `Sticky { reason, keys }` renders the exact words (`view/status.rs:47`) but is the warning line, survives the next key, and reads as a problem when nothing is wrong (CLAUDE.md status rule). Changing the renderer or `Done`'s payload is a shape change the ticket forbids.
+
+**Same cause, pre-existing (question, not verified by a capture):** `every_file_done` on the graph footer (resolver closed) should, by the same two lines (`resolved.rs:199` + `bars.rs:276`), draw `every file done ✓ · c finishes the merge ✓`. No capture in `docs/shots/` shows the footer form (all hits are the resolver's notice row, drawn without the appended tick). Unobserved.
+
+**Options for the conductor/planner** (pick one; then A is small):
+- (a) Accept the words `undo: finish merge of feature · c finishes the merge ✓` (tick last, `Done` unchanged). Test and capture adjust; every_file_done untouched.
+- (b) Shape change: `Done` gains the key words apart (e.g. `Done { what, keys: Option<String> }`, drawn `what ✓ · keys`). Fixes the double tick in (question above) too; touches every `Status::Done` site.
+- (c) Renderer rule: `Done` text already containing ` ✓ · ` is drawn as-is. Rejected by me as a special case (rule 2).
