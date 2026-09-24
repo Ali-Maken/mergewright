@@ -21,7 +21,7 @@ listed in §5.
 | Tool | Yours / theirs | Base | Conflict | Resolved vs open | Source |
 |---|---|---|---|---|---|
 | **VS Code merge editor** | Current = teal `#40C8AE`, incoming = blue `#40A6FF`. Header at 50% alpha, content at 40% | grey `#606060` at 40% | `conflictingLines.background` yellow `#ffea0047` | **Border by state:** unresolved = orange `#ffa600` (dimmer `#ffa6007a` when not focused); resolved = grey `#c1c1c1cc` (focused), `#86868649` (not focused). Overview ruler: unresolved `#fcba03`, resolved `#adaca8ee` | `src/vs/platform/theme/common/colors/editorColors.ts:389-391`; `src/vs/workbench/contrib/mergeEditor/browser/view/colors.ts:33-84` (raw GitHub, main); key list https://code.visualstudio.com/api/references/theme-color |
-| **JetBrains** | Diff viewer: "Green - Added, Blue - Modified, Gray - Deleted" | not stated | red, per a support-forum answer (seen only as a search snippet, page 403) `(?)` | Docs: "If there are no remaining conflicts, the Conflicts dialog enables the Accept and Finish option." Whether a resolved block's colour changes `(?)` | https://www.jetbrains.com/help/idea/differences-viewer.html ; https://www.jetbrains.com/help/idea/resolve-conflicts.html |
+| **JetBrains** | Diff viewer: "Green - Added, Blue - Modified, Gray - Deleted" | not stated | salmon `ffd5cc` / dark `45302b`; yellow for deuteranopia/protanopia (confirmed, §2.3) | Docs: "If there are no remaining conflicts, the Conflicts dialog enables the Accept and Finish option." Whether a resolved block's colour changes `(?)` | https://www.jetbrains.com/help/idea/differences-viewer.html ; https://www.jetbrains.com/help/idea/resolve-conflicts.html |
 | **Beyond Compare** | "Changes on the left are marked in teal, and changes on the right are marked in magenta" | Centre pane | "Overlapping changes are considered conflicts and are marked in red" | Editing the output by hand "will change the section to yellow" | https://www.scootersoftware.com/v4help/using_text_merge.html |
 | **KDiff3** | Per input A/B/C (hex values not read `(?)`) | A | `<Merge Conflict>` "all in red", with a red `?` in the summary column | The summary column shows which input each line came from: `A`/`B`/`C`, `m` for a hand edit, `?` for a conflict. **A letter tells you the state, not only the colour.** "Saving is disabled until all conflicts are resolved" | https://kdiff3.sourceforge.net/doc/merging.html |
 | **Araxis Merge** | not stated | Centre pane | "a red conflict icon"; after an automatic merge "only lines within conflicting changes will retain their original colours" | Resolved blocks lose their colour | https://www.araxis.com/merge/documentation-windows/three-way-file-comparison-and-merging.en |
@@ -72,9 +72,26 @@ tools uses red/green for yours/theirs.
 |---|---|---|---|
 | **Araxis** | "linking lines connect the changes from the derived files to the same section of the ancestor file". Overlap is recognisable because both sides' lines land on one ancestor section | resolved blocks lose their colour (§1.1) | Araxis 3-way page |
 | **Meld** | Between each pair of panes, "a segment that shows how the changed sections between your files correspond to each other". The segments are filled bands | "click on the arrows in a segment to replace sections in one file with sections from the other" | https://meldmerge.org/help/file-mode.html |
-| **JetBrains** | Filled curved bands in the gutters between panes, with `>>` / `<<` / `X` controls (the controls are in `conflict-resolution.md:27`). The docs do not describe the bands in words `(?)` | the controls on that side disappear, and the colour after resolving is `(?)` | resolve-conflicts page |
-| **VS Code merge editor** | Checkbox-style accept actions sit above each block, and the state is shown by a border colour (§1.1). Whether bands are drawn between inputs and result `(?)` | handled border turns grey | colors.ts |
+| **JetBrains** | **Confirmed (source):** a filled trapezium between the editors, "which indicates the change flow from one editor to another", drawn curved by default (`paintPolygons(..., curved=true, ...)`). Its colour is the block's change type (§2.3) | **Confirmed:** once resolved, the band **loses its fill** and becomes a **dotted outline** in the same colour, and it is no longer always visible | `intellij-community` `platform/diff-impl/src/com/intellij/diff/util/DiffDividerDrawUtil.java:65-83, 345-373, 439-491` (master) |
+| **VS Code merge editor** | **Confirmed (source): no bands between panes.** Rows are aligned with spacer view zones (`view/viewZones.ts:192` `class Spacer`, `view/lineAlignment.ts:16`). Each block gets a **gutter bracket**, a left-open box 10 px wide for the block's height, with an accept checkbox in it | **Confirmed:** the bracket and block border go orange → grey when handled. The checkbox shows `check` (first side taken) / `checkAll` (both) | `mergeEditor/browser/view/media/mergeEditor.css:98-111, 128-181`; `view/editors/inputCodeEditorView.ts:420-447` (main) |
 | **Sublime Merge** | `▶` / `◀` buttons beside the hunk (`conflict-resolution.md:77`) | `(?)` | getting_started |
+
+### 2.3 JetBrains colours (confirmed, source)
+
+JetBrains colours a band and a block by **change type, not by side**: `INSERTED`, `DELETED`, `MODIFIED`, `CONFLICT`
+(`platform/diff-impl/src/com/intellij/diff/util/TextDiffTypeFactory.java:23-33`). The default backgrounds come from
+`platform/platform-resources/src/DefaultColorSchemesManager.xml` (master):
+
+| Type | Light (Default, :489-520) | Dark (Darcula, :2255-2276) | Colour-blind variant |
+|---|---|---|---|
+| Conflict | `ffd5cc` salmon | `45302b` | `deuteranopia`/`protanopia` = `ffec8c` / `453900` (yellow) |
+| Inserted | `BEE6BE` green | `294436` | dark `29452e` |
+| Modified | `CAD9FA` blue | `385570` | same |
+| Deleted | `D6D6D6` grey | `484a4a` | — |
+
+**The shipped schemes carry explicit deuteranopia/protanopia overrides: conflict turns from red to yellow.** Sublime Merge's
+side colours are still `(?)`. Its app is closed source, and https://www.sublimemerge.com/docs/themes (search result only)
+says only that diff colours come from colour schemes.
 
 ### 2.2 What a terminal can do, cell by cell
 
@@ -151,7 +168,8 @@ is the **commit message editor with the file list**, and it has its own "Commit"
 | Conflict = warm alarm, resolved = alarm removed | **Take** (Araxis, VS Code borders, BC red) | It shows open vs done at a glance (heuristic 1, ux-principles.md:51) |
 | A non-colour state glyph per block (`?` open, `◀`/`▶` or `Y`/`T` taken, `m` edited) | **Take** (KDiff3 column) | It works for colour-blind users, and captures can verify it where they cannot verify colour |
 | Curved ribbons | **Reject** | A character grid cannot draw curves, and no terminal peer tries |
-| Gutter brackets plus a joining bar toward the middle for a taken side | **Invent** (nearest: Meld/Araxis links, delta boxes) | Rows already align (ADR-0043 §2), so a 1–2-cell gutter carries the "link" |
+| Gutter brackets per block (orange while open, grey once done) | **Take** (VS Code, confirmed §2.1) | |
+| A joining bar toward the middle for a taken side; open = solid, taken = dotted or thin | **Take the idea / invent the cells** (JetBrains' band goes from filled to a dotted outline, §2.1) | Rows already align (ADR-0043 §2), so a 1–2-cell gutter carries the "link" |
 | Finish signal: a labelled row in the resolver when the count hits 0, e.g. `all 2 files done — c  review & finish` | **Take** (JetBrains' Accept and Finish appearing) | A status-line hint alone was missed (field-notes.md:60). Recognition over recall (heuristic 6) |
 | Finish screen reads as a preview: a title such as `Review merge — nothing committed yet`, and the commit key labelled with its verb | **Take** (git's editor, JetBrains' Commit dialog) | He did not read it as a preview (field-notes.md:60). Whether the confirm key should be `y` to match other previews (field-notes.md:58): **question** |
 | Bare yes/no confirm | **Reject** (lazygit) | Already rejected in note :422, and nothing found reverses that |
@@ -166,6 +184,8 @@ is the **commit message editor with the file list**, and it has its own "Commit"
 - 403: intellij-support forum posts. Their content came from search snippets only.
 - Not fetched: the Gerrit/GitLab/Gitea colour-blind issues (search snippets only).
 - Colours not documented: Sublime Merge, Kaleidoscope, JetBrains conflict/resolved colours, Meld hex values.
-- Whether JetBrains and VS Code draw bands between panes is known from memory of the products, not from docs, so it
-  stays `(?)`.
+- Bands between panes: now **confirmed from source** (§2.1, §2.3). JetBrains draws curved bands, which become dotted
+  outlines once resolved. VS Code draws no bands, only gutter brackets. No JetBrains help page or screenshot alt-text was
+  used; the source answered it.
+- Sublime Merge side colours: still not confirmed.
 - lazygit selected-hunk styling: not in `rendering.go`. Where it lives is not traced.
