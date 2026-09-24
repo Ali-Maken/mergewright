@@ -106,7 +106,7 @@ pub(super) fn sticky_containing(state: &AppState, texts: &[&str]) -> Result<(), 
 }
 
 pub(super) fn done_containing(state: &AppState, text: &str) -> Result<(), String> {
-    let Status::Done(line) = &state.status else {
+    let Status::Done { what: line, .. } = &state.status else {
         return Err(format!("not a Done line: {:?}", state.status));
     };
     check(line.contains(text), || {

@@ -83,7 +83,7 @@ pub(in crate::update) fn cancelled(
     }
     state.operating = None;
     state.remote.cancelling = None;
-    state.status = Status::Done(format!("{} cancelled", running_words(state, id)));
+    state.status = Status::done(format!("{} cancelled", running_words(state, id)));
     Some(crate::update::operate::refresh_scope(
         state,
         graft_ops::apply::Refresh::Everything,
@@ -164,7 +164,7 @@ pub fn remote_failed(
         // here. Kept because `RemoteFailure` can carry it from `ops` on any
         // other route, and dropping the arm would make that a silent
         // wrong-worded failure line (m4-remotes/05 review, Minor 4).
-        (RemoteFailure::Cancelled, _) => Status::Done(format!("{} cancelled", op.describe())),
+        (RemoteFailure::Cancelled, _) => Status::done(format!("{} cancelled", op.describe())),
         (RemoteFailure::NonFastForward, Operation::Push(params)) => {
             state.remote.last_rejected_push = Some(params.clone());
             sticky()

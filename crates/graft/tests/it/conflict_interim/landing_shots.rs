@@ -191,7 +191,7 @@ fn capture_after_continue_on_a_rebase() {
         state.operating.is_none()
             && state.in_progress.is_none()
             && !state.land_on_head
-            && matches!(state.status, Status::Done(_))
+            && matches!(state.status, Status::Done { .. })
             && state
                 .working_tree
                 .as_ref()

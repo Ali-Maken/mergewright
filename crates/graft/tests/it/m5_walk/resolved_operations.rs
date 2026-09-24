@@ -245,10 +245,9 @@ fn stash_pop_conflict_resolves_without_a_banner() -> Scenario {
                 Step::Settle("the stage behind ⏎"),
                 Step::WaitFor(Wait::ResolvedPath(POPPED)),
                 Step::See("resolved, with nothing to continue", |state| {
-                    check(
-                        super::run::status_text(state) == "every file done ✓",
-                        || format!("the status is {:?}", state.status),
-                    )?;
+                    check(super::run::status_text(state) == "every file done", || {
+                        format!("the status is {:?}", state.status)
+                    })?;
                     check(state.resolver.is_none() && !state.banner_focus, || {
                         "the resolver is open, or a banner took focus".to_owned()
                     })
@@ -329,7 +328,7 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
                 Step::Settle("the stage behind ⏎"),
                 Step::WaitFor(Wait::ResolvedPath(POPPED)),
                 Step::See("every file done", |state| {
-                    status_containing(state, "every file done ✓")
+                    status_containing(state, "every file done")
                 }),
             ],
             undo(),

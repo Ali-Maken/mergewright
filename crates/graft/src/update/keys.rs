@@ -103,7 +103,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // The copy notice lasts until the next key, whatever that key does, and
     // so does a finished write's `<description> done` line — both are
     // acknowledgements of something the user just did, not state.
-    if matches!(next.status, Status::Copied { .. } | Status::Done(_)) {
+    if matches!(next.status, Status::Copied { .. } | Status::Done { .. }) {
         next.status = Status::Ready;
     }
     // So does the commit-graph written line.

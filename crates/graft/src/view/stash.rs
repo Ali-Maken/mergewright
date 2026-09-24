@@ -104,7 +104,13 @@ fn prompt(state: &AppState) -> Option<StashPromptView<'_>> {
 fn notice(state: &AppState) -> (Option<graft_term::sanitize::SanitizedText>, bool) {
     match &state.status {
         Status::Busy(description) => (Some(sanitize_line(&format!("{description}…"))), false),
-        Status::Done(description) => (Some(sanitize_line(&format!("{description} ✓"))), false),
+        Status::Done { what, keys } => (
+            Some(sanitize_line(&crate::view::status::done_line(
+                what,
+                keys.as_deref(),
+            ))),
+            false,
+        ),
         Status::Failed(message) => (Some(sanitize_line(message)), true),
         Status::Sticky { reason, keys: None } => (Some(sanitize_line(reason)), true),
         Status::Sticky {

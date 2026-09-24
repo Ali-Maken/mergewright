@@ -422,7 +422,7 @@ fn the_detail_tab_below_100_columns_draws_the_status_line() {
         ),
         (Status::Failed("git said no".to_owned()), "git said no"),
         (
-            Status::Done("all conflicts resolved · c continue".to_owned()),
+            Status::done("all conflicts resolved · c continue"),
             "all conflicts resolved · c continue",
         ),
     ];

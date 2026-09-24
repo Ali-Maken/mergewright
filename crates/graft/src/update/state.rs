@@ -276,6 +276,12 @@ pub struct AppState {
     /// landing runs on the first working-tree read after the modal closes;
     /// cleared then, or by `undo::operation_ended`.
     pub live_landing_owed: bool,
+    /// An undo or redo answered `Done` with no operation live; the newest
+    /// working-tree read after it decides whether it put one back — a
+    /// finish taken back leaves git mid-merge again — and if so the banner
+    /// takes the keyboard, as a launch into that state would (ticket 41).
+    /// Spent by `update::undo::land_after_undo`.
+    pub(crate) undo_landing_owed: bool,
     /// The newest working-tree read asked for and not yet answered, or
     /// `None` when [`AppState::working_tree`] is as fresh as anything
     /// asked for. While it is `Some`, what the status says may be stale —
@@ -789,9 +795,21 @@ pub enum Status {
     /// A working-tree write is running: `<description>…`
     /// (m3-working-tree-undo-and-stash/04).
     Busy(String),
-    /// A working-tree write finished, in the journal's own words (`stage
-    /// src/a.rs`). Cleared by the next key, like `Copied`.
-    Done(String),
+    /// It finished: a working-tree write in the journal's own words (`stage
+    /// src/a.rs`), or a verdict (`every file done`). Drawn `<what> ✓`, then
+    /// ` · <keys>` when there is a next key to name (`c finishes the merge`),
+    /// by `view::status::done_line` — the one place that draws a `Done`.
+    /// Cleared by the next key, like `Copied`.
+    ///
+    /// The keys are kept apart, as `Sticky`'s are, because the tick is the
+    /// renderer's: glued into `what`, it landed after the key words
+    /// (`… · c finishes the merge ✓`, ticket 41). `what` never holds `✓`.
+    Done {
+        /// What finished, without the tick.
+        what: String,
+        /// The next key, worded as it reads in the hint bar, if any.
+        keys: Option<String>,
+    },
 }
 
 impl Status {
@@ -801,6 +819,22 @@ impl Status {
         Status::Sticky {
             reason: reason.into(),
             keys: None,
+        }
+    }
+
+    /// `Done` with no keys: drawn `<what> ✓`.
+    pub fn done(what: impl Into<String>) -> Status {
+        Status::Done {
+            what: what.into(),
+            keys: None,
+        }
+    }
+
+    /// `Done` whose line names the next key: drawn `<what> ✓ · <keys>`.
+    pub fn done_with_keys(what: impl Into<String>, keys: impl Into<String>) -> Status {
+        Status::Done {
+            what: what.into(),
+            keys: Some(keys.into()),
         }
     }
 }

@@ -30,7 +30,7 @@ pub(crate) mod radar;
 pub(crate) mod resolver;
 pub(crate) mod rows;
 mod stash;
-mod status;
+pub(crate) mod status;
 pub(crate) mod strip;
 
 pub mod strips;

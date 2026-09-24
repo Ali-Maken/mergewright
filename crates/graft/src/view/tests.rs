@@ -320,7 +320,7 @@ fn a_running_write_and_a_finished_one_both_say_so_in_the_footer() {
     assert!(screen.contains("stage src/a.rs\u{2026}"), "{screen}");
 
     let done = AppState {
-        status: Status::Done("stage src/a.rs".to_owned()),
+        status: Status::done("stage src/a.rs"),
         ..running
     };
     let screen = draw(&done, 60, 5);

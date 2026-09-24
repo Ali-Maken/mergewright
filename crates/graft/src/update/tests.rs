@@ -1186,6 +1186,7 @@ fn every_field_spelled_out() -> AppState {
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
         live_landing_owed: false,
+        undo_landing_owed: false,
         status_read: None,
         head_message: None,
         commit_template: None,
@@ -1247,7 +1248,7 @@ fn only_a_read_failure_is_cleared_when_the_repository_opens() {
     );
     let busy = Status::Busy("fetch all remotes · esc cancels".to_owned());
     assert_eq!(opened(busy.clone()), busy, "a running write's line stays");
-    let done = Status::Done("pushed main → origin/main".to_owned());
+    let done = Status::done("pushed main → origin/main");
     assert_eq!(opened(done.clone()), done, "a finished write's line stays");
     assert_eq!(opened(Status::Ready), Status::Ready);
 }

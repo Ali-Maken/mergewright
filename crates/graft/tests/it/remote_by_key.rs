@@ -144,7 +144,7 @@ fn fetch_key_moves_tracking_ref() {
     let state = ready(&app, state);
     let state = app.press(&state, plain('f'));
     let state = app.settle_write(state, "the fetch");
-    assert_eq!(state.status, Status::Done("fetched".to_owned()));
+    assert_eq!(state.status, Status::done("fetched"));
     assert_eq!(
         rev(work, &tracking(&remote)),
         theirs,
@@ -199,7 +199,7 @@ fn pull_then_undo_redo() {
     let state = app.settle_write(state, "the pull");
     assert_eq!(
         state.status,
-        Status::Done(format!("pulled origin/{}", remote.default_branch()))
+        Status::done(format!("pulled origin/{}", remote.default_branch()))
     );
     assert_eq!(rev(work, &main), theirs, "main fast-forwarded");
     assert_eq!(rev(work, &tracking(&remote)), theirs);
@@ -280,7 +280,7 @@ fn push_then_undo_is_local_only() {
     let branch = remote.default_branch();
     assert_eq!(
         state.status,
-        Status::Done(format!("pushed {branch} → origin/{branch}"))
+        Status::done(format!("pushed {branch} → origin/{branch}"))
     );
     assert_eq!(rev(remote.bare(), &main), committed, "the bare has it");
 
@@ -305,7 +305,7 @@ fn push_then_undo_is_local_only() {
     );
     let state = confirm(&app, &state);
     let state = app.settle_write(state, "the undo");
-    let Status::Done(line) = &state.status else {
+    let Status::Done { what: line, .. } = &state.status else {
         unreachable!("settle_write insists on Done");
     };
     assert!(
@@ -773,10 +773,7 @@ fn esc_cancels_hung_fetch() {
         "{:?}",
         pressed.elapsed()
     );
-    assert_eq!(
-        state.status,
-        Status::Done("fetch all remotes cancelled".to_owned())
-    );
+    assert_eq!(state.status, Status::done("fetch all remotes cancelled"));
 
     let last = journal(work).pop().expect("the fetch was journaled");
     assert_eq!(last.kind, OperationKind::Fetch);
@@ -835,10 +832,7 @@ fn esc_cancels_local_write() {
         "{:?}",
         pressed.elapsed()
     );
-    assert_eq!(
-        state.status,
-        Status::Done("commit \"slow\" cancelled".to_owned())
-    );
+    assert_eq!(state.status, Status::done("commit \"slow\" cancelled"));
     assert_eq!(rev(work, &main), before, "no commit landed");
 
     let last = journal(work).pop().expect("the commit was journaled");
@@ -883,7 +877,7 @@ fn progress_reaches_the_status_line() {
                 && line != "fetch all remotes · esc cancels")
     });
     assert!(progressed, "no progress line among {seen:?}");
-    assert_eq!(state.status, Status::Done("fetched".to_owned()));
+    assert_eq!(state.status, Status::done("fetched"));
     app.close();
 }
 

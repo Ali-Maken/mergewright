@@ -208,7 +208,7 @@ fn settle_write(app: &App, state: AppState) -> AppState {
         state.operating.is_none()
     });
     match &state.status {
-        Status::Done(_) => state,
+        Status::Done { .. } => state,
         other => panic!("the write did not succeed: {other:?}"),
     }
 }

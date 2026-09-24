@@ -157,7 +157,7 @@ fn last_file_without_one() {
         "the only file closes the resolver"
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "every file done ✓"),
+        matches!(&state.status, Status::Done { what: line, keys: None } if line == "every file done"),
         "no banner, so no `c continue`: {:?}",
         state.status
     );
@@ -187,6 +187,57 @@ fn resolving_the_last_listed_file_first_goes_back_for_the_rest() {
     assert_eq!(open.path, Path::new("a.txt"), "back to the one left");
     assert_eq!(still_unmerged(scratch.path()).trim(), "a.txt");
 
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// **The footer draws one tick** (ticket 41). The last file staged from
+/// the resolver, the resolver closed back to the banner, and the banner's
+/// `c` pressed while the status that stage asked for is still out: the
+/// line says it is checking, and the read landing settles it to
+/// `every file done ✓ · c finishes the merge`. Read from the drawn footer,
+/// not from `Status`: the renderer owns the tick, so only the frame shows
+/// where it lands.
+#[test]
+fn the_last_file_done_draws_one_tick_on_the_footer() {
+    let scratch = two_file_merge();
+    let (app, state) = opened_on(&scratch);
+    let state = last_file_marked(&app, state);
+    let between = stage_landed(&app, state);
+    let state = app.key(&between, KeyCode::Escape);
+    assert!(state.resolver.is_none(), "Esc closed the resolver");
+    assert!(state.banner_focus, "back on the banner");
+    let state = app.key(&state, KeyCode::Char('c'));
+    let state = app.pump(state, "the status the stage asked for", |state| {
+        state.status_read.is_none()
+    });
+    assert!(state.banner_focus, "still on the banner");
+    assert_eq!(still_unmerged(scratch.path()), "", "and git agrees");
+
+    let frame = crate::captures::frame(&state, 120, 40);
+    let body = frame.join("\n");
+    let footer = frame
+        .iter()
+        .find(|row| row.contains("every file done"))
+        .unwrap_or_else(|| panic!("no row names it:\n{body}"));
+    assert!(
+        footer.contains("every file done ✓ · c finishes the merge"),
+        "{footer:?}"
+    );
+    assert_eq!(footer.matches('✓').count(), 1, "one tick: {footer:?}");
+    assert_eq!(
+        footer.trim_end(),
+        " every file done ✓ · c finishes the merge",
+        "nothing after `merge`"
+    );
+    // Trimmed to the two rows the check is about: the header with the
+    // banner's `MERGING`, and the footer. The graph rows between them are
+    // commits the fixture makes now, so their ids, dates and the order of
+    // two made in the same second change every run.
+    assert!(frame[0].trim_end().ends_with("MERGING"), "{body}");
+    let shot = format!("{}\n⋮\n{}\n", frame[0].trim_end(), footer.trim_end());
+    crate::captures::check_shot("m6/fix-every-file-done-footer-120x40.txt", &shot);
     drop(state);
     app.close();
     drop(scratch);

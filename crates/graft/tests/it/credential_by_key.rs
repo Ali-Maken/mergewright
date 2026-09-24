@@ -242,7 +242,7 @@ fn wrong_then_right_password_pushes() {
     let state = push_answering(&app, &state, "the push", PASSWORD, &mut seen);
 
     assert!(
-        matches!(&state.status, Status::Done(line) if line.starts_with("pushed")),
+        matches!(&state.status, Status::Done { what: line, .. } if line.starts_with("pushed")),
         "{:?}",
         state.status
     );
@@ -403,7 +403,7 @@ fn username_then_password() {
         seen.prompts
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line.starts_with("pushed")),
+        matches!(&state.status, Status::Done { what: line, .. } if line.starts_with("pushed")),
         "{:?}",
         state.status
     );

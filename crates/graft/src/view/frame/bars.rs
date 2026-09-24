@@ -272,8 +272,11 @@ pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<San
             return Some(sanitize_line(&format!("{description}…")));
         }
         // It finished. Lasts until the next key, like the copy line.
-        Status::Done(description) => {
-            return Some(sanitize_line(&format!("{description} ✓")));
+        Status::Done { what, keys } => {
+            return Some(sanitize_line(&crate::view::status::done_line(
+                what,
+                keys.as_deref(),
+            )));
         }
         // `y`'s notice, worded as what was sent: whether the terminal honoured
         // it is unknowable.

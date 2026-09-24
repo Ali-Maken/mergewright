@@ -502,7 +502,7 @@ fn journal_enter_on_an_older_row_previews_and_confirm_really_reverts() {
     assert!(state.preview.is_none(), "the picture has been answered");
     let state = app.settle_write(state, "the revert");
     let said = match &state.status {
-        graft::update::Status::Done(line) => line.clone(),
+        graft::update::Status::Done { what: line, .. } => line.clone(),
         other => panic!("the revert did not report Done: {other:?}"),
     };
     drop(state);

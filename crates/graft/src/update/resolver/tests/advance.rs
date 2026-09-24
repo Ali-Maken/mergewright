@@ -288,7 +288,7 @@ fn a_block_the_document_lacks_is_refused_in_words() {
     );
     assert_eq!(open.in_flight, None, "nothing sent");
     assert_eq!(cursor(&state), Some(7), "the cursor stays");
-    assert!(!matches!(state.status, Status::Done(_)));
+    assert!(!matches!(state.status, Status::Done { .. }));
 }
 
 // ------------------------------------ what waits for the takes (ticket 28)
