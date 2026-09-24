@@ -1,6 +1,6 @@
 # fix-resolver-file-keys: `O`/`T` settle the whole file in one key and move on; `j`/`k` move between files
 
-Status: done (builder 2026-09-24; journeys and captures boxes open, see NOTES). **Revised 2026-09-24 in place (planner, spec-only)** from `.scratch/m6-conflicts/scout-17.md` (main `721547f6`, 16 merged). Filed 2026-09-23. P6 and P7 are approved: the keymap rows are written (`02-keymap.md:264`, `:268`) and the §2.1 exception is named (`:29–:32`).
+Status: done (builder 2026-09-24; journeys box open for ticket 21, see NOTES). **Revised 2026-09-24 in place (planner, spec-only)** from `.scratch/m6-conflicts/scout-17.md` (main `721547f6`, 16 merged). Filed 2026-09-23. P6 and P7 are approved: the keymap rows are written (`02-keymap.md:264`, `:268`) and the §2.1 exception is named (`:29–:32`).
 - Scout item 1: the path is `update/resolver.rs`, not `resolver/mod.rs`. Fixed in Signatures.
 - Item 2: `file_cursor` is a **function**, `file_cursor(&AppState) -> usize` (`files.rs:142`). It is not a field. See D4.
 - Item 3: the bar's `⏎ resolved` becomes `⏎ done`, per the mockups (design note :661, :692), CONTEXT.md **Done (file)** (`Avoid: resolved`) and keymap :270. See D5.
@@ -156,14 +156,10 @@ pub(super) fn step_file(state: &mut AppState, commands: &mut Vec<Command>, forwa
   - Change the scroll uses to `PgUp`/`PgDn`. Where a hit is ambiguous (for example the `k ⏎ j…` prelude that 15's NOTES mention), report it and leave it unchanged.
   - If there are no hits, write `none found` and the command.
 - [ ] Journeys at their `P6:` counts in the acceptance walk (ticket 21): `one-file-one-conflict` 1, `three-conflicts-all-theirs` 1, `two-files-in-order` 2, `two-files-out-of-order` 3. This box waits until the conductor has moved those numbers into `keys`. Until then, leave it unticked and say so.
-- [ ] Captures, pinned by `it::resolver::file_keys::file_keys_capture`. The look is the user's to judge (rule 6). Colour is unverified (rule 5).
-  - `docs/shots/m6/fix-file-keys-120x40.txt`: two-file fixture, `T` on `notes.txt`. **What right looks like:**
-    - The strip contains `notes.txt · done ✓` and `▸ gone.txt`.
-    - The identity row starts `▸ gone.txt`. Quote the whole row in NOTES.
-    - The notice reads `notes.txt done ✓ · ▸ gone.txt`.
-    - The bar contains `O/T` and `j/k` at some rung.
-  - `docs/shots/m6/fix-file-keys-200x50.txt`: the same steps. The bar contains `O/T file`, `⏎ done` and `j/k file`.
-  - Every committed capture whose bar changes is regenerated and listed in NOTES. Update the captions TSV and rebuild the contact sheet (`scripts/contact-sheet.sh m6 docs/shots/m6`).
+- [x] Captures, pinned by `it::resolver::file_keys::file_keys_capture` (revised per conductor ruling 2026-09-24: two frames per width). The look is the user's to judge (rule 6). Colour is unverified (rule 5).
+  - (a) **Before** `T`, on `notes.txt`: `docs/shots/m6/fix-file-keys-before-120x40.txt`, where the bar has `O/T` and `j/k` at some rung; `…-before-200x50.txt`, where the bar has `O/T file`, `⏎ done` and `j/k file`.
+  - (b) **After** `T`, landed on the `gone.txt` card: `fix-file-keys-120x40.txt` and `fix-file-keys-200x50.txt`. The strip has `notes.txt · done ✓` and `▸ gone.txt`, the identity row starts `▸ gone.txt`, and the notice reads `notes.txt done ✓ · ▸ gone.txt`. The card bar has no `O/T`/`j/k` (D7).
+  - Regenerated captures are listed in NOTES; the TSV is updated and the contact sheet rebuilt.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, workspace-wide.
@@ -182,8 +178,9 @@ Medium: one chained key, one step key, one done-file cross, the bar rows and one
 ## NOTES (builder)
 Scout used: `scout-17.md`. No compaction. Ticks name their test inline (the box's own test name).
 
-- **Open box: captures.** `it::resolver::file_keys::file_keys_capture` pins both files. The strip, identity row and notice hold. **The bar bullets cannot hold as specced:** after `T` the resolver lands on `gone.txt`, which is a **card**, and D7 keeps `O/T`/`j/k` off the card bar. The bottom row at the landing is also the Stage's status line `stage notes.txt ✓`, not the bar. Question for the conductor: change the steps (land on a text file), or drop those bullets. Identity row: `▸ gone.txt · modified on yours · main, deleted on theirs · feature`.
-- **Open box: journeys.** Waiting on the conductor to move the P6 counts into `keys` (ticket 21).
+- **Captures (resolved by conductor ruling):** split into before/after frames; ticked. Earlier note: `it::resolver::file_keys::file_keys_capture` pins both files. The strip, identity row and notice hold. **The bar bullets cannot hold as specced:** after `T` the resolver lands on `gone.txt`, which is a **card**, and D7 keeps `O/T`/`j/k` off the card bar. The bottom row at the landing is also the Stage's status line `stage notes.txt ✓`, not the bar. Question for the conductor: change the steps (land on a text file), or drop those bullets. Identity row: `▸ gone.txt · modified on yours · main, deleted on theirs · feature`.
+- **Open box: journeys, left for ticket 21.** No test parses the note's journey-counts block yet (`grep -rl journey-counts crates` finds none), so there is nothing to name. The counts are the conductor's.
+- Ticket 32 owns the 120-column bar (`M mergetool`, `esc close` lose their words); not fixed here.
 - Bar strings (open text file, merge, no B/d), from `resolver_offers_file_keys`:
   - 80: ` o yours  t theirs  b both  ^O all yours  ^T all  O/T  e  n  N  ⏎  j/k  M  esc`
   - 120: ` o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M  esc`

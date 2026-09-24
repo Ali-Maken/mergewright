@@ -140,6 +140,25 @@ fn shift_t_with_every_block_taken_only_stages() {
 #[test]
 fn file_keys_capture() {
     let (scratch, app, state) = on_notes();
+    // (a) Before `T`, on `notes.txt`: the bar offers both file keys.
+    let before = crate::captures::frame(&state, 120, 40);
+    let bar = before.last().expect("a bar").clone();
+    assert!(bar.contains("O/T") && bar.contains("j/k"), "{bar}");
+    crate::captures::check_shot(
+        "m6/fix-file-keys-before-120x40.txt",
+        &format!("{}\n", before.join("\n")),
+    );
+    let before = crate::captures::frame(&state, 200, 50);
+    let bar = before.last().expect("a bar").clone();
+    for hint in ["O/T file", "⏎ done", "j/k file"] {
+        assert!(bar.contains(hint), "{hint}: {bar}");
+    }
+    crate::captures::check_shot(
+        "m6/fix-file-keys-before-200x50.txt",
+        &format!("{}\n", before.join("\n")),
+    );
+
+    // (b) After `T`: landed on the `gone.txt` card.
     let state = app.press(&state, shift('T'));
     let state = landed_on(&app, state, "gone.txt", true);
 
