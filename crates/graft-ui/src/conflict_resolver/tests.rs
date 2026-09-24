@@ -2,6 +2,7 @@ use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize_line;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::style::Modifier;
 
 use super::*;
 use crate::test_support::terminal as test_capabilities;
