@@ -488,10 +488,15 @@ pub fn resolver_context(state: &AppState) -> HintContext {
         .resolver
         .as_ref()
         .is_some_and(|open| open.whole_file.is_some());
+    let done = state
+        .resolver
+        .as_ref()
+        .is_some_and(|open| open.done.is_some());
     HintContext::Resolver {
         base: !card,
         restart: !card,
         whole_file: card,
+        done,
         roles: crate::update::resolver::side_names(state).roles,
     }
 }

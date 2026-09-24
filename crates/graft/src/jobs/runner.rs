@@ -553,7 +553,7 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                let opened = super::conflict::open(&repos, &path, cancel).map(Arc::new);
+                let opened = super::conflict::open(&repos, &path, cancel);
                 Outcome::Produced(Product::ConflictOpened(opened))
             })
         });

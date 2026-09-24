@@ -323,12 +323,10 @@ pub enum Product {
     /// the layout is built from it, so it is shared rather than copied per
     /// event (mirroring [`Product::Preview`]). The id it answers under
     /// rides on [`AppEvent::Produced`], like every other product's.
-    ConflictOpened(
-        Result<
-            std::sync::Arc<crate::jobs::conflict::OpenedFile>,
-            crate::jobs::conflict::OpenFailure,
-        >,
-    ),
+    ///
+    /// The route — an unmerged document or card, or a done file read-only —
+    /// is picked by the job from the status it reads (m6-conflicts/25).
+    ConflictOpened(Result<crate::jobs::conflict::Opening, crate::jobs::conflict::OpenFailure>),
     /// One conflict block took a side and the file was written back
     /// (m6-conflicts/04): the document as it now stands, with its new
     /// fingerprint, or why nothing was written

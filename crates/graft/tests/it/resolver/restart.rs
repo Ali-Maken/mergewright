@@ -219,7 +219,7 @@ fn each_working_tree_step_is_its_own_entry_in_a_shell_begun_merge() {
 /// A merge begun **through the app** that stopped on `shared.rs` (both
 /// modified) and `gone.txt` (deleted by them): `feature` rewrote the one and
 /// deleted the other, `main` rewrote both.
-fn app_merge_with_a_whole_file_conflict() -> Scratch {
+pub(super) fn app_merge_with_a_whole_file_conflict() -> Scratch {
     use crate::app_harness::{git, git_as_graft};
     let scratch = graft_fixtures::copy_into_temp(Shape::Trivial);
     let repo = scratch.path();

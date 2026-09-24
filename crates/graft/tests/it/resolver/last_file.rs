@@ -131,10 +131,14 @@ fn open_refused_while_a_box_is_open() {
 }
 
 #[test]
-fn open_refused_on_a_path_git_does_not_call_unmerged() {
+fn open_on_a_path_git_no_longer_calls_unmerged_shows_it_done() {
     // The list on screen says `added-by-them.txt` is conflicted; git, by
     // the time the read runs, does not — it was staged behind the app's
-    // back. The read's `Refusal::NotUnmerged` is what answers.
+    // back. The job reads the status itself and routes the path to the done
+    // side (m6-conflicts/25 D2): the resolver opens on it read-only, where
+    // before this ticket `Refusal::NotUnmerged` closed it with
+    // `… is not conflicted`. That refusal now answers only the race between
+    // the job's status read and its open.
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     crate::app_harness::git(scratch.path(), &["add", "added-by-them.txt"]);
     let state = on_the_banner(&app, state);
@@ -145,15 +149,24 @@ fn open_refused_on_a_path_git_does_not_call_unmerged() {
         "the stale list still names it: {commands:?}"
     );
     let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the read's refusal", |state| {
-        state.resolver.is_none()
+    let state = app.pump(state, "the done read", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.job.is_none())
     });
 
-    let Status::Sticky { reason, keys } = &state.status else {
-        panic!("a path git does not call unmerged said {:?}", state.status)
-    };
-    assert_eq!(reason, "added-by-them.txt is not conflicted");
-    assert_eq!(keys.as_deref(), Some("e edit  M mergetool"));
+    let open = state.resolver.as_ref().expect("the resolver stays open");
+    assert_eq!(open.path, Path::new("added-by-them.txt"));
+    assert!(open.done.is_some(), "{:?}", open.done);
+    let frame = crate::captures::frame(&state, 120, 40);
+    assert!(
+        frame
+            .iter()
+            .any(|row| row.starts_with("▸ added-by-them.txt · done ✓ · d starts it over")),
+        "{}",
+        frame.join("\n")
+    );
 
     drop(state);
     app.close();

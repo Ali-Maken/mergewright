@@ -7,7 +7,7 @@
 //! from the working-tree status and the resolver's own document, so it
 //! cannot disagree with what the rest of the app shows.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use graft_core::job::JobId;
@@ -54,11 +54,12 @@ pub struct ListedFile {
 
 /// **The one source of the list's order and states.**
 ///
-/// Order: the conflict set's paths once it has arrived, then every unmerged
-/// path it does not name, in git's order; before it arrives (or when it
-/// could not be read) the unmerged paths alone. The open file is listed
-/// even when neither names it yet — the status may not have arrived — so
-/// the cursor always has a row.
+/// Rows: the conflict set's paths once it has arrived, and every unmerged
+/// path it does not name; before it arrives (or when it could not be read)
+/// the unmerged paths alone. The open file is listed even when neither
+/// names it yet — the status may not have arrived — so the cursor always
+/// has a row. **Order: git's path order** (byte-wise), over all of them, so
+/// a file becoming done keeps its row (m6-conflicts/25).
 ///
 /// State, first match wins: status not arrived → `Unread` (but for the open
 /// file); not unmerged → `Done`; the open file → what its document or card
@@ -79,6 +80,10 @@ pub fn listed_files(state: &AppState) -> Vec<ListedFile> {
             paths.push(path.clone());
         }
     }
+    // git's path order, over the whole union, so a row never moves when its
+    // file becomes done (m6-conflicts/25 D1): the set lists unmerged paths
+    // first, and a file staged would otherwise jump to the end.
+    paths.sort_by(|a, b| git_order(a, b));
     let arrived = state.working_tree.is_some();
     paths
         .into_iter()
@@ -98,9 +103,21 @@ pub fn listed_files(state: &AppState) -> Vec<ListedFile> {
         .collect()
 }
 
+/// git's own path order — the index's and `status`'s: byte-wise over the
+/// path's bytes. **Not** `Path`'s `Ord`, which compares by component and so
+/// puts `a/b` before `a.b`.
+fn git_order(a: &Path, b: &Path) -> std::cmp::Ordering {
+    a.as_os_str()
+        .as_encoded_bytes()
+        .cmp(b.as_os_str().as_encoded_bytes())
+}
+
 /// The open file's own state, from its document or card; `None` while its
 /// read is still in flight.
 pub(super) fn open_state(open: &ResolverState) -> Option<RowState> {
+    if open.done.is_some() {
+        return Some(RowState::Done);
+    }
     if let Some(file) = open.file.as_ref() {
         let left = file.open();
         return Some(if left == 0 {
@@ -165,17 +182,8 @@ pub fn select_file(
         state.status = Status::sticky(words);
         return true;
     }
-    if target.state == RowState::Done {
-        // git no longer calls the path unmerged, so the opening read would
-        // be refused (`graft_ops::conflict::open_conflict`'s `NotUnmerged`)
-        // and close the resolver. Refused here, in words, instead — see the
-        // ticket's NOTES: the spec's read-only open needs graft-ops.
-        state.status = Status::Sticky {
-            reason: format!("{} is already done", target.path.display()),
-            keys: None,
-        };
-        return true;
-    }
+    // A `Done` row opens too: the job's route reads it read-only
+    // (m6-conflicts/25).
     let from = open.opened_from;
     // The file left keeps its row's state as it stands now.
     if let Some(open) = state.resolver.as_mut() {

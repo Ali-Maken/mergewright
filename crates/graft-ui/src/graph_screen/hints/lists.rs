@@ -18,18 +18,14 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             conflicted,
         } => banner_list(*skippable, *conflicted),
         HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
+        HintContext::Resolver { done: true, .. } => resolver_done_list(),
         HintContext::Resolver {
             base,
             restart,
             whole_file,
             roles,
-        } => {
-            if *whole_file {
-                resolver_card_list(*roles)
-            } else {
-                resolver_list(*base, *restart, *roles)
-            }
-        }
+            done: false,
+        } => resolver_bar(*base, *restart, *whole_file, *roles),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         // Keymap §2.9: `b` (branch from this stash) is named there as
@@ -84,6 +80,16 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         | HintContext::PaneFocused { .. }
         | HintContext::OperationLive(_)
         | HintContext::Preview => Vec::new(),
+    }
+}
+
+/// The resolver's bar over a file still unmerged: a whole-file card or a
+/// document.
+fn resolver_bar(base: bool, restart: bool, whole_file: bool, roles: SideRoles) -> Vec<Hint> {
+    if whole_file {
+        resolver_card_list(roles)
+    } else {
+        resolver_list(base, restart, roles)
     }
 }
 
@@ -285,6 +291,16 @@ fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
         hint("e", "edit"),
         hint("n", "next"),
         hint("M", "mergetool"),
+        hint("esc", "close"),
+    ]
+}
+
+/// A done file, read-only (m6-conflicts/25): `d start over  e edit  esc
+/// close`. Every other resolver key is refused there in words.
+fn resolver_done_list() -> Vec<Hint> {
+    vec![
+        hint("d", "start over"),
+        hint("e", "edit"),
         hint("esc", "close"),
     ]
 }
