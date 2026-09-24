@@ -350,7 +350,9 @@ for raising it, rather than silently overriding it.
 
 Groups model (ADR-0029): 8 groups (01–08; 08 added mid-milestone), fix rounds,
 `planner-fable` rulings. Start `47b55c2`; final fixes merged `902a742` at 2674
-passed, 1 skipped (conductor's own gate run). Tool-use counts are the harness's,
+passed, 1 skipped (conductor's own gate run). The M6 stop came at m6:152, followed by an
+**amendment stretch** (tickets 09–46, start `2184642`, m6:165), covered below. Its last gate line is
+3047 passed, 1 skipped (m6:318), and 46 merged at `981fc58e` (m6:320). Tool-use counts are the harness's,
 as logged in `docs/log/m6.md` (cited `m6:<line>`); "no count" means the log gives none.
 
 **Model changes during M6** (both recorded, not silent): resumed 2026-09-22 with
@@ -363,11 +365,11 @@ definitions (Opus low) close the "scouts cannot write" gap (m6:85). So
 | Role | Model | Detail |
 |---|---|---|
 | Designed | Fable (`planner-fable`) | Note + 7 group specs + ADR-0042, `3d90471`, turn count logged with M5's close (m6:9). Group 08 spec later, 20 tool uses (m6:35). |
-| Specified | `planner-fable`; conductor | Rulings passes: g05 box 74/no-base notice, 12 tool uses (m6:98); g06 relaunch/fetch, 4 (m6:105); g06 box 550 re-ruling, 5 (m6:117); g06 repush question, no count (m6:121); g07 F3/F5 rulings, no count (m6:124); g07 design rulings 07b, no count (m6:134). Conductor widened g02's crate set from the scout (m6:11), set g04 → Opus (m6:45), g05 Sonnet / g06 Opus (m6:80–81). |
+| Specified | `planner-fable`; conductor | Rulings passes: g05 box 74/no-base notice, 12 tool uses (m6:98); g06 relaunch/fetch, 4 (m6:105); g06 box 550 re-ruling, 5 (m6:117); g06 repush question, 10 (m6:121, count m6:141); g07 F3/F5 rulings, 10 (m6:124, m6:141); g07 design rulings 07b, 13 (m6:134, m6:141). Conductor widened g02's crate set from the scout (m6:11), set g04 → Opus (m6:45), g05 Sonnet / g06 Opus (m6:80–81). |
 | Scouts | Explore, sonnet (read-only; conductor wrote their files) | ui 47 (m6:10); app g04 50 (m6:42); app g05 54 (m6:80); app g06 55 (m6:81). |
 | Built | see table below | |
 | Reviewed | Fable, then Opus high (reviewer) | g01 (m6:22), g02+g03 (m6:47), g05 (m6:102), g06 (m6:110), g07 + milestone runs (m6:135). |
-| Researcher (Opus low) | — | history audit (m6:86), false-tick sort (m6:87), KNOWN_GAPS ×2 (m6:114, m6:137); no counts logged. |
+| Researcher (Opus low) | — | history audit (m6:86), false-tick sort (m6:87), KNOWN_GAPS ×2 (m6:114, m6:137; m6-07 gaps 6, m6:141), AUTHORSHIP regen 7 (m6:141), gap triage of 67 rows (m6:143), g04/g08 minors 14 rows (m6:152). |
 
 ### M6 builds
 
@@ -376,19 +378,20 @@ definitions (Opus low) close the "scouts cannot write" gap (m6:85). So
 | 01 git-conflict-model | builder-fable (signature) | build, **COMPACTED** once, `partial` → `blocked: needs graft, graft-ops` (m6:12); review fix round, builder-opus, merged `421b4ec`, no scout (m6:31) | 136 + 113 = **249** |
 | 02 ui-conflict-resolver | builder-sonnet | build + continuation 1 (m6:15); continuation 2 (m6:18); continuation 3, golden files (m6:19); review fix round (m6:52) | 155 + 32 + ? + ? + 50 = **237** (cont. 2, 3 no count) |
 | 03 ops-conflict-operations | builder-opus | build `partial`, no scout (m6:26); continuation, merged (m6:39) | ? + 32 = **32** (build no count) |
-| 08 ops-undo-an-unmerged-index | builder-opus | piece A, **COMPACTED** once, `partial`, `blocked: needs graft` (m6:54); Scope 5(c) continuation, `done` (m6:60); seam closed by conductor (m6:65) | 241 + 106 = **347** |
-| 04 app-conflict-resolver | builder-opus | build, **COMPACTED twice**, `partial`, scout used (m6:67); continuation 1 (medium), `done`, merged `421593c` (m6:82) | 363 + 42 = **405** |
+| 08 ops-undo-an-unmerged-index | builder-opus | piece A, **COMPACTED** once, `partial`, `blocked: needs graft` (m6:54); Scope 5(c) continuation, `done` (m6:60); seam closed by conductor (m6:65); review fix M1+M3, builder-opus-xhigh, `partial`, **COMPACTED**, scout used, no count (m6:148); continuation, builder-opus (medium), merged `31fbaaf` (m6:150) | 241 + 106 + ? + 54 = **401** (xhigh fix no count; m6:152 gives 541) |
+| 04 app-conflict-resolver | builder-opus | build, **COMPACTED twice**, `partial`, scout used (m6:67); continuation 1 (medium), `done`, merged `421593c` (m6:82); review fix M2 (medium), merged `1cda3fb` (m6:146) | 363 + 42 + 34 = **439** |
 | 05 app-resolver-whole-files-and-base | builder-sonnet (**Sonnet**, dispatched before the switch) | build, **COMPACTED** once, reported `done` but all 9 boxes blank — not merged (m6:88–89); continuation 1, Opus low, `partial` 5/9 (m6:92); continuation 2, Opus low, `partial` 8/9 (m6:94); fix round after ruling, Opus low, `done` (m6:100), merged `e6c92cd` (m6:101); review fix round, **escalated to builder-opus** (medium) because Major 3 is two concurrent git writes, COMPACTED (reply vs ticket disagree; logged compacted) (m6:109, m6:111) | 271 + 34 + 57 + 26 + 138 = **526** |
 | 06 answers-beat-rereads | builder-opus (medium) | build `partial` 5/8, no compaction (m6:103); continuation 1, `done` (m6:107), merged `e2b6f56`; review fix round, no compaction (m6:115); (iii) round after re-ruling (m6:118), merged `3662e79` | 183 + 32 + 71 + 27 = **313** |
-| 07 acceptance | builder-fable (Opus high) | build, **COMPACTED ×2**, `partial` 4/6 (m6:122); F1/F4/F6/F7/F8 fixes, builder-opus medium (m6:125); F2 fix, **builder-opus-xhigh** (undo) (m6:123, m6:127); continuation 1 `partial` 5/6 (m6:129); continuation 2 `done` 6/6 (m6:131), merged `c309b45` | 388 + ? + 57 + ? + 143 = **588** (fixes and cont. 1 no count) |
+| 07 acceptance | builder-fable (Opus high) | build, **COMPACTED ×2**, `partial` 4/6 (m6:122); F1/F4/F6/F7/F8 fixes, builder-opus medium (m6:125); F2 fix, **builder-opus-xhigh** (undo) (m6:123, m6:127); continuation 1 `partial` 5/6 (m6:129); continuation 2 `done` 6/6 (m6:131), merged `c309b45` | 388 + 90 + 57 + 156 + 143 = **834** (fixes and cont. 1 added at m6:141) |
 | M6 final fix round (g07 review Majors + rulings 07b) | builder-opus (medium) | `done`, **COMPACTED** once, no scout (m6:138), merged `902a742` | **261** |
 
-Builder total, counted entries only: **2958**. Not counted (no number in the
-log): g02 continuations 2 and 3, g03 build, g07 fixes round, g07 continuation 1.
+Builder total to the final fix round: **3204** as corrected at m6:141 (first pass 2958 missed five counts). The log's
+own tally at the M6 stop (m6:152) is ≈ **3432**, with the g04/g08 review fixes included. Still not counted: g02 continuations 2 and 3,
+the g03 build and the g08 xhigh review fix.
 
 **Compacted:** g01 build (once), g04 build (twice), g05 build (once), g05
 review fix round (once, disputed by its own ticket), g07 build (twice), g08
-piece A (once), final fix round (once).
+piece A (once), final fix round (once), g08 review fix (once, m6:148).
 
 **Escalations (model):** g05 review fix round Sonnet-tier → builder-opus
 (m6:109); g07 F2 → builder-opus-xhigh, undo class (m6:123).
@@ -403,5 +406,82 @@ piece A (once), final fix round (once).
 - **g02 + g03** — reviewer (Fable), 45 tool uses: g02 1 Critical, 5 Major, 4 Minor, 13 checked / 11 held, 1 false; g03 0 Critical, 2 Major, 4 Minor, 16/16 held (m6:47).
 - **g05** — reviewer (Opus high), 56 tool uses: 0 Critical, 6 Major, 9 Minor; 9/9 held (m6:102).
 - **g06** — reviewer (Opus high), 84 tool uses: 0 Critical, 2 Major, 9 Minor; 8/8 held (m6:110).
-- **g07** — reviewer (Opus high), no count: 0 Critical, 5 Major, 8 Minor; 9/9 held. Milestone runs: heavy 2701/0, release 13/13 frame p99 ≤ 8.9 ms, fuzz 4×60 s 0 crashes (m6:135).
-- g04 and g08 have no review round recorded in the log.
+- **g07** — reviewer (Opus high), 97 tool uses (m6:141): 0 Critical, 5 Major, 8 Minor; 9/9 held. Milestone runs: heavy 2701/0, release 13/13 frame p99 ≤ 8.9 ms, fuzz 4×60 s 0 crashes (m6:135).
+- **g04 + g08** (missed round, found by the AUTHORSHIP pass, m6:142) — reviewer (Opus high), no count: g04 0 Critical, 1 Major, 5 Minor; g08 0 Critical, 2 Major, 6 Minor; 17/17 + 18/18 held. g08 M1 can lose work. It was fixed by the xhigh + opus rounds above (m6:144–150).
+
+### M6 amendment (tickets 09–46)
+
+This stretch came after the M6 stop. The trigger was the user's stuck-after-merge report and the feature pipeline added to CLAUDE.md (`f65c14f`, m6:153). Tool-use counts come from the harness as logged; "no count" means the log gives none.
+
+| Role | Model | Detail |
+|---|---|---|
+| Prior art / research | researcher (Opus low) | UX principles `6b9c806`; conflict-resolution prior art, 55 (`84a745d`); layout audit, 14 (m6:153, m6:160–161). |
+| Prototype | builder-sonnet (Opus low) | v1 14 (`e7cdd0f`), v2 15 (`1f74ec8`), finish summary 9 (`87cd71b`) (m6:158–162). The conductor's hotfix is `c4ac7c6`. |
+| Designed | planner-fable (Opus high) | Amendment 39 (m6:157) and amendment 2, 77: ADR-0043 supersedes 0042, P1–P9 (m6:163). The user approved P1–P5. Amendment 3 (J11/J12) came with the 28 spec (m6:222). |
+| Specified | conductor; planner-fable (Opus high) | The conductor filed 09–21 from the `fix-*` specs (m6:164) and later 22–46. Spec-only passes, mostly after scout contradictions: 10 17, 11+12 plus review-09 Q1/Q2 53 total, 13 22, 25 17+3, 14 20, 15 24, 28 31+5, 16 16, 19 25, 17 26, 31 11, 20 32, 39 18, 40 28, 41 35+11. |
+| Scouts | scout (Opus low) | For 09, 10, 11+12, 13, 14, 25, 15+18, 28, 16, 19, 17, 31, 20, plus the stuck-start repro (m6:155). All have counts except 16's. |
+| Doc edits, gap rows | researcher (Opus low) | Keymap and §1.5 rows, design-note edits, and gap rows after each review (their definition forbids editing KNOWN_GAPS, so the conductor appended the drafts, m6:183). |
+| Reviewed | reviewer (Opus high) | 15 reviews, listed below. |
+
+| Ticket | Agent (model) | As logged | Tool uses |
+|---|---|---|---|
+| 09 | builder-opus (medium) | `done`, merged `08a3656`, scout used (m6:171) | 116 |
+| 10 | builder-sonnet (Opus low) | `done`, scout used (m6:179) | 136 |
+| 11 | builder-sonnet (Opus low) | `done`, merged `c6d26ab` (m6:181) | 45 |
+| 12 | builder-opus (medium) | `done`, **COMPACTED**, merged `dd2a758` (m6:185) | 304 |
+| 13 | builder-opus (medium) | `done`, **COMPACTED**, merged `b0e08fd` (m6:199) | 198 |
+| 14 | builder-opus (medium) | `done`, **COMPACTED**, merged `7bef4b7a` (m6:209) | 167 |
+| 15 | builder-opus (medium) | `done`, merged `06788a5` (m6:223) | 113 |
+| 16 | builder-sonnet (Opus low) | `done`, merged (m6:249) | 93 |
+| 17 | builder-sonnet (Opus low) | `partial`, then resumed `done`, merged `20bcd77` (m6:257–258) | 79 + 5 |
+| 18 | builder-sonnet (Opus low) | `partial`, then continuation `done`, merged `0a1cb92` (m6:224, m6:228) | 40 + 57 |
+| 19 | builder-opus (medium) | `partial` 0/21, **COMPACTED**, split into 34 and 35 (m6:267) | 141 |
+| 20 | builder-fable (Opus high) | Part A `blocked: needs graft`, **COMPACTED**; follow-up; Part B `partial` (m6:288–291) | 180 + 2 + 86 |
+| 21 | builder-fable (Opus high) | part 1 `partial`, **COMPACTED**, split into 42, 43 and 44 (m6:309) | 197 |
+| 22 | builder-opus (medium) | `done` (m6:178) | 44 |
+| 23 | builder-opus (medium) | `done`, merged `4395547` (m6:189) | 144 |
+| 24 | builder-opus (medium) | `done`, merged `4b5b43a` (m6:197) | 122 |
+| 25 | builder-opus (medium) | `done`, **COMPACTED**, merged `798a176` (m6:217) | 269 |
+| 26 | builder-opus (medium) | `done`, merged `1d9a769` (m6:207) | 121 |
+| 27 | builder-sonnet (Opus low) | `done`, merged `1bb925a` (m6:218) | 57 |
+| 28 | builder-opus (medium) | `done`, **COMPACTED**, merged `6429b2a` (m6:234) | 162 |
+| 29 | builder-sonnet (Opus low) | `done`, merged `4ec8fd7` (m6:239) | 34 |
+| 30 | builder-sonnet (Opus low) | `done`, merged `c08bb8a` (m6:244) | 33 |
+| 31 | builder-opus (medium) | `done`, **COMPACTED**, merged `12e8ac2` (m6:284) | no count |
+| 32 | builder-sonnet (Opus low) | `partial` by design, merged `4a632c1` (m6:263) | 70 |
+| 33 | builder-sonnet (Opus low) | `done`, merged `18b11e1` (m6:265) | 50 |
+| 34 | builder-opus (medium) | `done`, **COMPACTED ×2** (m6:269) | no count |
+| 35 | builder-opus (medium) | `done`, merged `37045c8` (m6:273) | 93 |
+| 36 | builder-sonnet (Opus low) | `done`, merged `ba7d76f` (m6:279) | no count |
+| 37 | builder-sonnet (Opus low) | `done`, merged `ce69b5d5` (m6:290) | 41 |
+| 38 | builder-opus (medium) | `done`, merged `13886c74` (m6:297) | 81 |
+| 39 | builder-sonnet (Opus low) | `partial`, merged `27c133ce` (m6:294) | 47 |
+| 40 | builder-sonnet (Opus low) | `done`, merged `0f03dbcb` (m6:299) | 64 |
+| 41 | builder-opus (medium) A; builder-sonnet (Opus low) B | A `done`, merged `c01403fd`; B `done`, merged `1bd9217d` (m6:306–307) | 136 + 37 |
+| 42 | builder-sonnet (Opus low) | `done`, merged `b1504477` (m6:313) | 23 |
+| 43 | builder-fable (Opus high) | `done`, **COMPACTED**, merged `237d674f` (m6:315) | 199 |
+| 44 | builder-sonnet (Opus low) | perf, merged (m6:311) | 11 |
+| 45 | builder-opus (medium) | `done`, merged `e6d3d43b` (m6:317) | 90 |
+| 46 | builder-sonnet (Opus low) | `done`, merged `981fc58e` (m6:320) | 63 |
+| review fix 10+22 M1 | builder-opus (medium) | `done`, merged `28aa0c2` (m6:184) | 18 |
+
+Builder total, counted entries only: **3968**, of which tickets 16–46 account for 2871. Tickets 31, 34 and 36 are not counted because the log gives no number for them.
+
+**Amendment reviews** (reviewer, Opus high). All figures are Critical / Major / Minor.
+- 09: 32 tool uses, 0 / 0 / 9 (m6:174).
+- 10+22: 64 tool uses, **1** / 3 / 8. The Critical is a false tick (m6:182).
+- 11+12: 74 tool uses, 0 / 3 / 11 (m6:190).
+- 13: 77 tool uses, 0 / 2 / 13 (m6:201).
+- 14: 74 tool uses, 0 / 3 / 7 (m6:215).
+- 25: 60 tool uses, 0 / 3 / 8 (m6:220).
+- 15: no count, 0 / 3 / 8 (m6:226).
+- 18: 76 tool uses, **1** / 2 / 7. The Critical is a false tick (m6:229).
+- 28: 47 tool uses, 0 / 1 / 7 (m6:236).
+- 16: 43 tool uses, 0 / 3 / 7 (m6:254).
+- 17: 43 tool uses, **1** / 1 / 8. The Critical is a false tick (m6:261).
+- 19+34: 52 tool uses, 0 / 3 / 9 (m6:271).
+- 35: 35 tool uses, 0 / 2 / 9 (m6:275).
+- 31: 35 tool uses, 0 / 2 / 7 (m6:286).
+- 20: 95 tool uses, 0 / 2 / 9 (m6:301).
+
+Totals: **3 Critical, 33 Major, 127 Minor**, across 807 counted tool uses. Majors went to fix tickets 23, 24, 26, 27, 28, 29, 30, 32, 33, 36, 37 and 41. Fix tickets 37 and 41 got no re-review (m6:290, m6:308).
