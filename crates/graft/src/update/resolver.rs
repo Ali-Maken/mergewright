@@ -49,6 +49,7 @@ mod open;
 mod resolved;
 mod restart;
 mod scroll;
+mod settle;
 mod take;
 mod walk;
 mod whole_file;
@@ -92,7 +93,7 @@ use open::reopen;
 use resolved::mark_resolved;
 use restart::restart_box;
 use scroll::scroll_key;
-use take::{settle_key, take_all_key, take_key};
+use take::take_keys;
 use walk::walk_blocks;
 
 /// Where `⏎` opened the resolver from, and so where `Esc` gives the
@@ -357,29 +358,6 @@ fn act(
         // under the document is what says which keys apply here.
         _ => {}
     }
-}
-
-/// The keys that take a side: `o`/`t`/`b`, `Ctrl+O`/`Ctrl+T` (every open
-/// block, m6-conflicts/16) and `O`/`T` (the whole file, then the Stage —
-/// m6-conflicts/17, keymap §2.1's named exception). `true` when `key` was
-/// one of them. `Ctrl+Alt+…` is not, and is swallowed by `act`.
-fn take_keys(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    key: KeyPress,
-    next_id: &mut impl FnMut() -> JobId,
-) -> bool {
-    let plain = !key.modifiers.control && !key.modifiers.alt;
-    let bulk = key.modifiers.control && !key.modifiers.alt;
-    match key.code {
-        KeyCode::Char('o' | 't' | 'b') if plain => take_key(state, commands, key.code, next_id),
-        KeyCode::Char('o') if bulk => take_all_key(state, commands, Take::Ours, next_id),
-        KeyCode::Char('t') if bulk => take_all_key(state, commands, Take::Theirs, next_id),
-        KeyCode::Char('O') if plain => settle_key(state, commands, Take::Ours, next_id),
-        KeyCode::Char('T') if plain => settle_key(state, commands, Take::Theirs, next_id),
-        _ => return false,
-    }
-    true
 }
 
 /// `Esc`: close — once the takes have landed. Closing drops the resolver

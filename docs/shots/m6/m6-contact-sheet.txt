@@ -780,7 +780,7 @@ files   gone.txt · …    ▸ notes.txt · 2 of 2 open
 
 
 
- o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  B base  e edit  n next  N prev  ⏎  j/k  M  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
 
 ================================================================================
 docs/shots/m6/fix-file-keys-before-200x50.txt   (an earlier milestone's capture, changed by m6)
@@ -836,11 +836,11 @@ FILES · 2 conflicted     │▸ notes.txt · 2 conflicts · 2 open
                          │
                          │
                          │
- o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-file-keys-120x40.txt   (an earlier milestone's capture, changed by m6)
-what right looks like: Ticket 17: `T` on `notes.txt` settles the whole file and moves on — strip `notes.txt · done ✓` with `▸ gone.txt`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, notice `notes.txt done ✓ · ▸ gone.txt`. The bottom row is the stage's status line, not the bar. Colour unverified.
+what right looks like: Ticket 17: `T` on `notes.txt` settles the whole file and moves on — strip `notes.txt · done ✓` with `▸ gone.txt`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, notice `notes.txt done ✓ · ▸ gone.txt`. After `PgUp` (changes nothing, clears the stage's status line), the bottom row is the card's bar: `o`/`t`, no `O/T`, no `j/k`. Colour unverified.
 ================================================================================
 
 MERGING
@@ -882,11 +882,11 @@ deleted by them · o keeps the file  t deletes it
 
 
 
- stage notes.txt ✓
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/fix-file-keys-200x50.txt   (an earlier milestone's capture, changed by m6)
-what right looks like: The same steps at 200 columns.
+what right looks like: The same steps at 200 columns: side list `…tes.txt  done ✓`, identity row, notice, and the card's bar with no `O/T` or `j/k`.
 ================================================================================
 
 MERGING
@@ -938,7 +938,7 @@ FILES · 2 conflicted       │▸ gone.txt · modified on yours · main, delete
                            │
                            │
                            │
- stage notes.txt ✓
+ o yours  t theirs  e edit  n next  M mergetool  esc close
 
 ================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)

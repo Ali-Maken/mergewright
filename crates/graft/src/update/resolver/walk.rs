@@ -33,10 +33,7 @@ pub(super) fn walk_blocks(
         .as_ref()
         .is_some_and(|open| open.done.is_some())
     {
-        match cross_target(state, forward) {
-            Some(index) => cross(state, commands, index, forward, next_id),
-            None => state.status = Status::sticky("no more conflicts"),
-        }
+        cross_from_done(state, commands, forward, next_id);
         return;
     }
     let (pending, card, cursor, path) = {
@@ -83,6 +80,12 @@ pub(super) fn walk_blocks(
         move_cursor(state, block, Some(format!("wrapped · {left} still open")));
         return;
     }
+    no_more_conflicts(state, card, &path);
+}
+
+/// Rule 3: nothing open anywhere — say so, with the key that finishes
+/// this file.
+fn no_more_conflicts(state: &mut AppState, card: bool, path: &std::path::Path) {
     state.status = Status::Sticky {
         reason: "no more conflicts".to_owned(),
         // A card is resolved by its own `o`/`t`; it has no `⏎` to offer.
@@ -92,6 +95,20 @@ pub(super) fn walk_blocks(
             format!("⏎ marks {} done", path.display())
         }),
     };
+}
+
+/// `n`/`N` on a done file: cross to the next (previous) file not done, or
+/// say there is none (m6-conflicts/17 D6).
+fn cross_from_done(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    forward: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    match cross_target(state, forward) {
+        Some(index) => cross(state, commands, index, forward, next_id),
+        None => state.status = Status::sticky("no more conflicts"),
+    }
 }
 
 /// Rule 2: this file's first (`N`: last) open block, and how many are
