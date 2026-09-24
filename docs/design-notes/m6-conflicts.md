@@ -332,8 +332,8 @@ pub fn apply_take_all(repo: &RepoHandle, path: &Path, file: &ConflictFile, take:
 // graft-core journal + graft-ops                                                fix-continue-a-merge-begun-in-the-shell (P4)
 pub enum OperationKind { …, FinishMerge }
 pub enum Operation { …, FinishMerge(FinishMergeParams) }   pub struct FinishMergeParams { pub merge_head: Oid }
-pub struct MergeState { pub merge_head: Oid, pub merge_msg: Vec<u8>, pub merge_mode: Option<Vec<u8>> }  // recorded in the entry's before-state
-// restore: InversePlan step `RestoreMergeState(MergeState)` — writes MERGE_HEAD/MERGE_MSG/MERGE_MODE back
+pub struct MergeState { pub merge_head: Oid, pub merge_msg: Vec<u8>, pub merge_mode: Option<Vec<u8>> }  // JournalEntry gains merge_before / merge_after, recorded on every entry
+// undo: Step::SetMergeState(Option<MergeState>) — last step; Some writes MERGE_HEAD/MERGE_MSG/MERGE_MODE back, None removes them (redo) (ticket 20, spec pass 2026-09-24)
 ```
 
 ### Hard-to-reverse choices (amendment)
@@ -479,6 +479,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
   - `⏎` → `committing…`, then the graph with the cursor on the merge commit.
   - A hook refuses → the summary stays, the reason goes above its bar, and the draft is kept.
   - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`.
+  - `⏎` on a merge begun in the shell → as J6; one `FinishMerge` entry. `u` after it → the merge is back in progress, resolved; header `MERGING`, status `undo: finish merge of <from>`, focus unchanged; `c ⏎` finishes it again (ticket 20).
 
 ```journey-counts
 # id                          keys  once-approved   # parts (whole rows) · best tool
@@ -608,7 +609,7 @@ pub enum HintContext { …, Finish { focus: SummaryFocus, expandable: bool } }
    parse a comment block git writes. The builder verifies it per operation kind in a throwaway repo. When it is absent,
    `recorded: false`, and the screen says so instead of guessing.
 3. **How an edited message reaches git.** Options: rewrite `MERGE_MSG` and run `--continue`, or
-   `git commit --cleanup=strip -F`. **`commit -F`**: git's own state files are written only by git, and P4's inverse
+   `git commit --cleanup=whitespace -F` (m6-conflicts/22). **`commit -F`**: git's own state files are written only by git, and P4's inverse
    restores `MERGE_MSG` exactly as git left it. An unedited message uses today's `--continue`, byte for byte.
 
 ### Keymap rows owed for P1–P5 (the conductor writes them into `02-keymap.md`)
