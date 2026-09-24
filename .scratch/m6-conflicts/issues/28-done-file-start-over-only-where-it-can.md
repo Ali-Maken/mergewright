@@ -201,7 +201,7 @@ If it will not fit, split at the crate seam: graft-ops first (the gate, the core
 
 ## For the conductor (outside this ticket)
 - **Note amendment, below: apply it to `docs/design-notes/m6-conflicts.md`** (the planner had Write only, no Edit). It fixes review 25 Major 2. If it is already applied, replace its "Interfaces (amendment 3)" line and "Hard-to-reverse" choice 1 with the text below.
-- Ticket 21: walk the two new `journey-counts` rows. `open-a-done-file` asserts 1 input. `walk-back-a-done-file` asserts 4 inputs, and uses `k` in place of the click once 17 (P7) has landed.
+- Ticket 21: walk the two new `journey-counts` rows. `open-a-done-file` asserts 1 input. `walk-back-a-done-file` asserts 4 inputs, and uses `k` in place of the click once 17 (P7) has landed. **Done by ticket 21:** `every_scenario::journey_open_a_done_file` (route `k`, 1) and `journey_walk_back_a_done_file` (route `j d → ⏎`, 4 — `j`, since `notes.txt` is below the file it lands on).
 - Gap row M6/25: once 28 lands, change "the refusal comes after the box" to "no box: `d` is not offered and answers in words". The row stays **broken** (the capability is still missing) until P10, or until 20 gives shell-begun merges a backup.
 - The m6-05 Major 1 row, if one is open: the root cause was the app mirroring ops' rule. R1/R4 remove the mirror.
 

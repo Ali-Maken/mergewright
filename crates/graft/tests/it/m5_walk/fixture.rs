@@ -481,3 +481,133 @@ pub fn diverged(fixture: &Fixture) -> Result<(), String> {
         .map_err(|why| format!("the teammate's push: {why}"))?;
     fixture.commit("ours.txt", "ours\n", "ours locally", 1)
 }
+
+// ───────────────────────────── journeys (m6-conflicts/21) ─────────────────────────────
+
+/// `three.txt` as the fork left it: three one-line changes four plain lines
+/// apart, so git stops on **three** blocks, not one.
+const THREE_BASE: &str = "one\na\nb\nc\nd\ntwo\ne\nf\ng\nh\nthree\n";
+
+/// `three_blocks`: `main` and `feature` each rewrote the three lines of
+/// `three.txt` their own way, `main` checked out: merging `feature` stops
+/// on one file with three blocks.
+pub fn three_blocks(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit("three.txt", THREE_BASE, "add three", 1)?;
+    fixture.git(&["branch", "feature"])?;
+    let main = THREE_BASE
+        .replace("one\n", "one from main\n")
+        .replace("two\n", "two from main\n")
+        .replace("three\n", "three from main\n");
+    fixture.commit("three.txt", &main, "main's three", 2)?;
+    fixture.git(&["switch", "feature"])?;
+    let feature = THREE_BASE
+        .replace("one\n", "ONE from feature\n")
+        .replace("two\n", "TWO from feature\n")
+        .replace("three\n", "THREE from feature\n");
+    fixture.commit("three.txt", &feature, "feature's three", 3)?;
+    fixture.git(&["switch", "main"]).map(drop)
+}
+
+/// `notes.txt` at the fork: two lines the sides both rewrite, four plain
+/// lines apart.
+const NOTES_BASE: &str = "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\n";
+
+/// `two_files` — the prototype's fixture: `gone.txt` changed on `main` and
+/// deleted on `feature` (a modify/delete card); `notes.txt` with two
+/// one-line blocks; and a clean one-line change to `README.md` that
+/// `feature` made and git combines on its own. `main` checked out.
+pub fn two_files(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit("gone.txt", "gone\n", "add gone", 1)?;
+    fixture.commit("notes.txt", NOTES_BASE, "add notes", 2)?;
+    fixture.commit("README.md", "readme\n", "add the readme", 3)?;
+    fixture.git(&["branch", "feature"])?;
+    fixture.commit(
+        "gone.txt",
+        "gone, changed on main\n",
+        "main changes gone",
+        4,
+    )?;
+    let main = NOTES_BASE
+        .replace("two\n", "two from main\n")
+        .replace("seven\n", "seven from main\n");
+    fixture.commit("notes.txt", &main, "main's notes", 5)?;
+    fixture.git(&["switch", "feature"])?;
+    fixture.git(&["rm", "-q", "--", "gone.txt"])?;
+    let when = format!("@{} +0000", EPOCH + 6 * 60);
+    graft_fixtures::git::run_at(
+        fixture.repo(),
+        &["commit", "-m", "feature drops gone"],
+        &when,
+    )
+    .map_err(|why| format!("committing the delete: {why}"))?;
+    let feature = NOTES_BASE
+        .replace("two\n", "TWO from feature\n")
+        .replace("seven\n", "SEVEN from feature\n");
+    fixture.commit("notes.txt", &feature, "feature's notes", 7)?;
+    fixture.commit(
+        "README.md",
+        "readme\nfeature's line\n",
+        "feature's readme",
+        8,
+    )?;
+    fixture.git(&["switch", "main"]).map(drop)
+}
+
+/// `git merge feature` run by git, as the user would in the shell, and
+/// stopped: the app then opens fresh on it, with no journal entry.
+fn merge_in_the_shell(fixture: &Fixture) -> Result<(), String> {
+    // Meant to fail: a merge that stops on a conflict exits non-zero. What
+    // proves it stopped, and not on anything else, is `MERGE_HEAD` naming
+    // `feature` just below.
+    if let Ok(out) = fixture.git(&["merge", "--no-edit", "feature"]) {
+        return Err(format!(
+            "git merge feature was meant to stop and did not: {out}"
+        ));
+    }
+    stopped_on(fixture, "feature")
+}
+
+/// `MERGE_HEAD` is `theirs`' tip and git lists unmerged paths.
+fn stopped_on(fixture: &Fixture, theirs: &str) -> Result<(), String> {
+    let merge_head = fixture.git(&["rev-parse", "-q", "--verify", "MERGE_HEAD"])?;
+    let tip = fixture.git(&["rev-parse", theirs])?;
+    crate::repo_truth::check(merge_head.trim() == tip.trim(), || {
+        format!("MERGE_HEAD {merge_head:?} is not {theirs} {tip:?}")
+    })?;
+    let unmerged = fixture.git(&["ls-files", "-u"])?;
+    crate::repo_truth::check(!unmerged.trim().is_empty(), || {
+        "the merge stopped with nothing unmerged".to_owned()
+    })
+}
+
+/// [`conflicting`], merged in the shell: one file, one block, begun
+/// outside Graft.
+pub fn one_conflict_in_the_shell(fixture: &Fixture) -> Result<(), String> {
+    conflicting(fixture)?;
+    merge_in_the_shell(fixture)
+}
+
+/// [`three_blocks`], merged in the shell.
+pub fn three_blocks_in_the_shell(fixture: &Fixture) -> Result<(), String> {
+    three_blocks(fixture)?;
+    merge_in_the_shell(fixture)
+}
+
+/// [`two_files`], merged in the shell.
+pub fn two_files_in_the_shell(fixture: &Fixture) -> Result<(), String> {
+    two_files(fixture)?;
+    merge_in_the_shell(fixture)
+}
+
+/// [`two_files`] in a work clone, with `feature`'s side pushed as
+/// `origin/main` and `git pull --no-rebase origin main` run by git and
+/// stopped: the shell-begun merge a pull leaves (`Remote::Local`).
+pub fn two_files_pulled_in_the_shell(fixture: &Fixture) -> Result<(), String> {
+    two_files(fixture)?;
+    fixture.git(&["push", "-q", "origin", "feature:main"])?;
+    // Meant to fail, as in `merge_in_the_shell`: the pull's merge stops.
+    if let Ok(out) = fixture.git(&["pull", "-q", "--no-rebase", "origin", "main"]) {
+        return Err(format!("git pull was meant to stop and did not: {out}"));
+    }
+    stopped_on(fixture, "origin/main")
+}
