@@ -1,20 +1,22 @@
 # commit-key-finishes-the-live-operation: `c` in the graph or the changes pane, mid-operation, does what the banner's `c` does
 
-Status: blocked (user answer)
+Status: ready (unblocked 2026-09-24: P14 approved, picks item 12; the keymap is edited — §2.4, §2.6a)
 From: `docs/reviews/m6-usability.md` M3 (:96-97), the rest of the direction.
-Blocked by: user answer on P14 (`docs/design-notes/m6-usability-fixes.md`). It does not depend on P12: `c` opens the
-summary either way, and the summary's own confirm key is P12's business.
 Build with: *(blank: brownfield; the conductor sets it after the scout, ADR-0035)*
 Scout brief: what the banner's `c` handler (`banner::continue_pressed`) needs from state and focus, what `ReturnTo`
 `Esc` from the summary uses, and how the graph and changes-pane bars label `c` while an operation is live.
 Needs: `commit-key-never-opens-a-refusing-editor` merged (`operation_refusal`, `RefusedFrom`, and the `live_operation`
-check in `open`); `graft::update::banner::continue_pressed` and `graft::update::finish::open_finish`, as merged.
+check in `open`); `finish-summary-is-a-preview` and `last-file-opens-the-summary` merged (the summary's `y`; shared
+files `update/finish`, `update/resolver`); `graft::update::banner::continue_pressed` and
+`graft::update::finish::open_finish`, as merged.
 Crates: graft, graft-ui (hints only).
+Lane: wave 2, third.
 
 ## Read first
-- `docs/design-notes/m6-usability-fixes.md`: P14, the Journeys row "Finish a merge from the pane", "Where each event
-  lands him".
-- `docs/design/02-keymap.md` §2.4 :239, §2.6 :269, §2.6a :278-310, §2.6b :312-327.
+- `docs/design-notes/m6-usability-fixes.md`: P14 (approved), the Journeys row "Finish a merge from the pane", "Where
+  each event lands him".
+- `docs/design/02-keymap.md` §2.4 (`c` / `a` row), §2.6 `c`, §2.6a (the `c` row; "Amend refuses …; `c` is the banner's
+  `c`"), §2.6b.
 - `crates/graft/MAP.md` §`update::banner` (`continue_pressed`, `take_focus`), §`update::finish` (`open_finish`,
   `ReturnTo`), §`update::commit_editor` (`open`, `operation_refusal`).
 - `crates/graft-ui/MAP.md`: the graph and changes-pane `HintContext` entries.
@@ -33,7 +35,7 @@ Crates: graft, graft-ui (hints only).
   `c continue` for the others. A kind where `c` refuses shows no `c` label.
 
 **Out:**
-- The summary's confirm key (P12).
+- The summary's confirm key (`finish-summary-is-a-preview`).
 - The banner's own keys.
 - A `ReturnTo::Pane` variant. `Esc` goes to the banner, the operation's home. If the builder finds `ReturnTo::Banner`
   wrong from a pane (for example, the banner is not drawn), stop and report it.
@@ -51,8 +53,10 @@ Crates: graft, graft-ui (hints only).
 ```rust
 // graft: no new public signature. The `c` route in update/keys.rs (graph_key / is_commit_key) gains, before
 // commit_editor::open:
-//   if live_operation(state).is_some() && !amend { return banner::continue_pressed(state, commands, next_id); }
-// (the real argument list is whatever continue_pressed takes; the scout names it). `a` keeps M3a's refusal.
+//   if live_operation(state).is_some() && !amend {
+//       banner::continue_pressed(state, commands, ReturnTo::Banner, next_id); return true;
+//   }
+// `continue_pressed` is `(&mut AppState, &mut Vec<Command>, ReturnTo, next_id)` (graft MAP :301). `a` keeps M3a's refusal.
 // graft-ui: the graph/changes-pane hint list gains a live-operation form: `c finish` / `c continue` / no `c`.
 ```
 
@@ -65,9 +69,8 @@ Crates: graft, graft-ui (hints only).
   - Check: `finishing_from_the_pane_journals_once_and_u_lands_on_the_banner`.
 - **The summary's `Esc`.**
   - Check: `esc_from_a_summary_opened_in_the_pane_lands_on_the_banner`: banner focused, draft kept.
-- **The walk.** `editor-to-finish` becomes `c ⏎` (or `c y` if P12 was built first) = 2.
-  - Change the note's `keys` column to 2 in the same commit (the conductor's edit, text below).
-  - Check: `journey_counts_match_the_note` green. Update `.scratch/m6-conflicts/pty-walk-m6.py`.
+- **The walk.** `editor-to-finish` becomes `c y` = 2 (the summary's `y` is built by then).
+  - Check: `journey_counts_match_the_note` green with the row below; update `.scratch/m6-conflicts/pty-walk-m6.py`.
 - **Hints.**
   - Check: `every_key_the_bar_draws_is_answered`, `every_context` coverage, and
     `every_bound_action_is_hinted_live_or_is_named_here`.
@@ -76,10 +79,8 @@ Crates: graft, graft-ui (hints only).
 - **Other screens that draw the same state.** The banner's `every file done ✓ · c finishes the merge`: unchanged.
   M3a's pane words for `c` are now only for kinds where the banner's `c` refuses.
   - Check: `the_pane_form_drops_only_esc` is still green.
-- **Keymap** (the conductor edits it): §2.4 :239 becomes `| \`c\` / \`a\` | Commit / amend; while an operation is live, \`c\`
-  is the banner's \`c\` (§2.6a) and \`a\` refuses (P14) |`. §2.6a :309's "Commit and amend refuse" becomes "Amend
-  refuses; `c` is the banner's `c`".
-- **TESTING.md** (the conductor edits it): :2332, the `editor-to-finish` row → keys `c ⏎`, count 2.
+- **Keymap:** already edited in the spec pass (§2.4, §2.6a). Check: the builder reads them; no edit.
+- **TESTING.md** (the acceptance ticket edits it): the `editor-to-finish` row → keys `c y`, count 2.
 - **MAP.md:** graft §`update::keys` (the `c` route) and graft-ui hints.
 
 ## Acceptance (name the verifying test at tick time)
@@ -94,12 +95,15 @@ Crates: graft, graft-ui (hints only).
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-c-in-pane-finishes-187x50.txt`.
   - Scene: two frames. The changes pane over a resolved shell merge, bar showing `c finish`; then after `c`, the
     summary.
-  - **What right looks like:** frame 1's bar contains `c finish` and not `c commit`. Frame 2 is the finish summary
-    titled for the merge, as in `m6-15-finish-summary-187x50.txt`.
+  - **What right looks like:** frame 1's bar contains `c finish` and not `c commit`. Frame 2's top border is
+    `╭ Preview: finish merging feature into main`, and its bottom border starts `╰ y commit`.
 - [ ] MAP.md updated (doc, no test).
 
-## For the conductor (exact text)
-- `m6-conflicts.md` :505: `editor-to-finish             2                     # c ⏎ from the changes pane (P14; usability M3) · c y with P12`
+## For the conductor (exact text, in this spec's merge commit)
+In the `journey-counts` fence, replace the `editor-to-finish` row with:
+```
+editor-to-finish              2                     # c y from the changes pane (P14 approved 2026-09-24; usability M3) · was 5 (c ⇥ ⇥ c ⏎)
+```
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all

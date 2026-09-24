@@ -6,6 +6,9 @@ Companion to `m6-conflicts.md` and its "Amendment 2026-09-24: look and finish" (
   `docs/research/conflict-visuals-and-finish.md` (**CV**), `docs/research/ux-principles.md` (**UX**).
 - **Specs:** six, unnumbered, in `.scratch/m6-conflicts/issues/`. 47–49 amended 2026-09-24 after their scouts
   (`.scratch/m6-conflicts/scouts/47.md`, `48.md`, `49.md`).
+- **Status 2026-09-24:** P14, P15 (option b) and P16 approved (`.scratch/m6-conflicts/user-picks-2026-09-24.md`
+  items 12–14; field notes :65, "ok i guess"). Tickets 50–52 unblocked. P17 still open. Confirm-key rule recorded as
+  ADR-0044 §3; keymap §2.3c, §2.4, §2.6a, §2.10 edited.
 
 **What I read in source.** Only the lines the review and the scouts cite, each re-read (rule 7), all under
 `crates/graft/src/update/`:
@@ -24,8 +27,9 @@ Every one holds as the review and scouts state it.
 - Read only at `push_box.rs:90`.
 
 **Doc lines, verified:**
-- Keymap §2.6b :321: `⏎` commits "in the file list and the subject".
-- `m3-working-tree-undo-and-stash.md` :165: "Enter in Subject moves to Body".
+- Keymap §2.6b :321: `⏎` commits "in the file list and the subject". (Superseded 2026-09-24 by P12: `y` commits in
+  the file list, `⏎` there shows the diff; `⏎` in the subject still commits.)
+- `m3-working-tree-undo-and-stash.md` :165: "Enter in Subject moves to Body". (Superseded by P16.)
 - The build follows M3: `commit_editor.rs:601` (CS §3 raised this as a question).
 
 ## Need
@@ -44,37 +48,37 @@ Every one holds as the review and scouts state it.
 | Aspect | Best answer | Ours | Rec · why |
 |---|---|---|---|
 | An unknown key in a confirm box | Graft's own preview swallows it (`preview.rs:414-415`). lazygit's prompt answers only its two keys (PP §1.1, `sync_controller.go:255-262`) | closes the box and says nothing (`confirm.rs:173`) | **T** swallow it. A cancel he did not ask for is a status that lies (H1) |
-| The confirm key in a box | lazygit: `enter` confirms every prompt, force included. Its users force by habit (#3468), or forget to confirm (#5966) (PP §1.1) | `→ ⏎`, with the cursor on Cancel (ADR-0038 §1) | **P15**: `y`, as in every preview (keymap §2.3b). Not in the boxes whose answer is the cursor's. The force box: see P15 |
-| `⏎` in a commit subject | lazygit: the subject is one line, `Enter` commits, `Tab` goes to the body (CS §1.1, §2). VS Code, JetBrains, GitUp, Magit: `Enter` is a newline and a chord commits (CS §2) | Editor: `⏎` → body (`commit_editor.rs:601`). Summary: `⏎` commits (`finish/keys.rs:105-107`, keymap :321) | **P16**: **T** lazygit. **R** the chord camp for the subject: `⌃⏎` is unproven in Zed (KNOWN_GAPS :206), and lazygit's `Alt+Enter` was eaten by terminals (CS §2, #1700, #4530) |
-| `c` while an operation is live | lazygit asks on its own when the last conflict is gone. JetBrains enables Accept and Finish (CV §3) | an editor that opens only to refuse, then `esc ⇥ ⇥ c` (`commit_editor.rs:289-318`, `:212-228`) | **I** (now): the editor never opens to refuse. **P14**: `c` does what the banner's `c` does |
-| When the force push is offered | lazygit: whenever the branch is known to be behind its upstream, with no trip to the server first (PP §1.1, `sync_controller.go:237-252`). JetBrains and VS Code offer to merge or rebase, or nothing, after a rejection (PP §1.4, §1.2) | after any non-fast-forward, until a push lands or the branch changes | **T** the review's rule, made exact: offer the lease only while the rejected tip is still the tip. **P17** (not specced): lazygit's trigger |
+| The confirm key in a box | lazygit: `enter` confirms every prompt, force included. Its users force by habit (#3468), or forget to confirm (#5966) (PP §1.1) | `→ ⏎`, with the cursor on Cancel (ADR-0038 §1) | **P15** (approved): `y`, as in every preview (keymap §2.3b). Not in the boxes whose answer is the cursor's, nor the force box |
+| `⏎` in a commit subject | lazygit: the subject is one line, `Enter` commits, `Tab` goes to the body (CS §1.1, §2). VS Code, JetBrains, GitUp, Magit: `Enter` is a newline and a chord commits (CS §2) | Editor: `⏎` → body (`commit_editor.rs:601`). Summary: `⏎` commits (`finish/keys.rs:105-107`, keymap :321) | **P16** (approved): **T** lazygit. **R** the chord camp for the subject: `⌃⏎` is unproven in Zed (KNOWN_GAPS :206), and lazygit's `Alt+Enter` was eaten by terminals (CS §2, #1700, #4530) |
+| `c` while an operation is live | lazygit asks on its own when the last conflict is gone. JetBrains enables Accept and Finish (CV §3) | an editor that opens only to refuse, then `esc ⇥ ⇥ c` (`commit_editor.rs:289-318`, `:212-228`) | **I** (built, M3a): the editor never opens to refuse. **P14** (approved): `c` does what the banner's `c` does |
+| When the force push is offered | lazygit: whenever the branch is known to be behind its upstream, with no trip to the server first (PP §1.1, `sync_controller.go:237-252`). JetBrains and VS Code offer to merge or rebase, or nothing, after a rejection (PP §1.4, §1.2) | after any non-fast-forward, until a push lands or the branch changes | **T** the review's rule, made exact: offer the lease only while the rejected tip is still the tip. **P17** (open): lazygit's trigger |
 
 ## Journeys (UX §1.3; the counts are the review's table)
 | Task | Today | After the builds that need no answer | After P12, P14, P15, P16 | Best tool |
 |---|---|---|---|---|
 | Push | `P → ⏎` **3**. `P y` cancels without a word | `P → ⏎` **3**. `P y` leaves the box up | `P y` **2** (P15) | lazygit `P` 1, with no box (PP §1.1) |
 | Stage one file and commit (Zed) | `⏎ j space c <msg> ⇥ ⇥ ⇥ ⏎` **9** | **9** | `⏎ j space c <msg> ⏎` **6** (P16) | lazygit `space c <msg> ⏎` 4 (CS §4) |
-| Finish a merge from the pane (`editor-to-finish`) | `c Esc ⇥ ⇥ c ⏎`. The note counts from the editor: **5** | `c ⇥ ⇥ c ⏎` **5** from the pane. The first `c` answers in words | `c ⏎` **2** (P14). `c y` **2** with P12 | lazygit 1 (a bare confirm, rejected). JetBrains `(?)` |
+| Finish a merge from the pane (`editor-to-finish`) | `c Esc ⇥ ⇥ c ⏎`. The note counts from the editor: **5** | `c ⇥ ⇥ c ⏎` **5** from the pane. The first `c` answers in words | `c y` **2** (P14 with P12) | lazygit 1 (a bare confirm, rejected). JetBrains `(?)` |
 | Rejected push → pull → rebase → push | `p r r P → ⏎` **6**, and the box is the **force box** | **6**, and the box is the **plain box** | `p r r P y` **5** (P15) | JetBrains 3–4. VS Code 2, but it merges silently (#174198) (PP §4) |
-| Force push after his own rebase | `P → ⏎` (rejected), then `P → ⏎`: **6** | **6**, unchanged: the tip has not moved | **6**. With P17: `P → ⏎` **3** | lazygit `P enter` 2 |
+| Force push after his own rebase | `P → ⏎` (rejected), then `P → ⏎`: **6** | **6**, unchanged: the tip has not moved | **6** (the force box keeps `→ ⏎`). With P17: `P → ⏎` **3** | lazygit `P enter` 2 |
 
 **Where each event lands him.**
-- **`c` or `a` in the graph or the changes pane while an operation is live:** focus stays where it was, the editor stays
+- **`a` in the graph or the changes pane while an operation is live:** focus stays where it was, the editor stays
   closed and the draft is kept. The footer gives the words (below).
 - **Under P14, `c` goes where the banner's `c` goes:**
-  - a merge → the summary, and `Esc` returns to the banner;
+  - a merge → the finish summary, and `Esc` returns to the banner;
   - a rebase, cherry-pick or revert begun in Graft → `continuing…`;
   - anything else → the banner's refusal, in words.
 - **A key a confirm box does not bind:** the box stays open, and the status line is unchanged. `Ctrl+C` quits, as over
   every modal (keymap §2.1 :59).
-- **`P` after the rebase:** the plain push box.
+- **`P` after the rebase:** the plain push box; `y` pushes.
 - **`P` after a rejection, pressed before a write's refs read has landed:** no box; the status line says
   `still reading the refs — try again in a moment`. The read is local and lands in milliseconds, so no count changes.
 
 ## Decided here (these are not key meanings, so they are not Proposed changes)
 1. **A confirm box swallows every key it does not bind.**
-   - Bound: `←`/`→` (clamped), `Tab`/`BackTab`, `Enter`, `Esc`. `Ctrl+C` passes through and quits, as keymap §2.1
-     :59 already says of every modal; today the catch-all closes the box on it instead.
+   - Bound: `←`/`→` (clamped), `Tab`/`BackTab`, `Enter`, `Esc`, and `y` where P15 gives it. `Ctrl+C` passes through
+     and quits, as keymap §2.1 :59 already says of every modal; today the catch-all closes the box on it instead.
    - This removes an accident (`_ => close`) and matches the preview (`preview.rs:386-390`, `:414-415`). It closes
      review m1 for the box.
 2. **The words when `c` or `a` refuses from a pane** are the editor's refusal without its leading `esc, `, since no
@@ -84,6 +88,7 @@ Every one holds as the review and scouts state it.
    - `merge begun in the shell` · `⇥ banner, then c finishes it`
    - The shell-begun rebase, cherry-pick and revert arms, and the bisect arm: the whole sentence as the reason, no keys.
    - One value (`OperationRefusal`) makes both forms, so they cannot drift apart.
+   - Under P14 only `a` (and a `c` the banner itself refuses) still reaches these words.
 3. **The lease rule** (M4, a git-write safety path). `P` offers the lease variant only when **all** of these hold:
    - **(a)** The last non-fast-forward rejection was of this same push: the same branch, remote and remote branch
      (`push_box.rs:88-96`, unchanged).
@@ -114,39 +119,40 @@ Every one holds as the review and scouts state it.
    - TESTING scenarios 10 and 11 (`:1502-1516`): nothing moves in either, so both behave as before.
    - Every other reader of refs or remote facts in the window (the spec lists them as findings).
 
-## Proposed changes (not decided; the specs marked `Blocked by` wait for his answer)
-- **P14: `c` in the graph or the changes pane, while an operation is live, does what the banner's `c` does.**
-  - What it changes:
-    - keymap §2.4 :239 (`c` / `a`, "same verbs");
-    - keymap §2.6a :309 ("Commit and amend refuse");
+## Proposed changes (P14–P16 approved 2026-09-24; P17 open)
+- **P14 — approved 2026-09-24: `c` in the graph or the changes pane, while an operation is live, does what the
+  banner's `c` does.** (Ticket 52.)
+  - What it changes (done in the spec pass):
+    - keymap §2.4 (`c` / `a`, "same verbs");
+    - keymap §2.6a ("Amend refuses …; `c` is the banner's `c`");
     - `m6-conflicts.md` :483.
   - `a` does not change: it still refuses in words, and it never aborts.
   - Why: the review's M3; UX §3.1 (never land on a neutral step); CV §3 (the tools put him at the finish).
-    `editor-to-finish` goes 5 → 2.
+    `editor-to-finish` goes 5 → 2 (`c y`).
   - Trade-offs:
     - On a rebase begun in Graft, `c` writes at once (`--continue`), exactly as the banner's `c` does.
     - Splitting a commit during a rebase stop stays impossible, as it is today (`Operation::check` refuses a commit
       while an operation is live). M7's interactive rebase decides it.
-- **P15: `y` confirms a confirm box whatever the cursor is on, as it does in every preview.** It waits on P12: both ask
-  whether `y` is his confirm key everywhere.
+- **P15 — approved 2026-09-24, option (b): `y` confirms a confirm box whatever the cursor is on, as it does in every
+  preview.** (Ticket 50; ADR-0044 §3.)
   - Not in the undo-after-push box: it has two acting choices, so its answer is the cursor's.
   - Not in the journal's revert box: keymap §2.3b's exception, by his ruling.
+  - **Not in the force (lease) box** (option b): lazygit's users force-push out of habit on the one key (#3468), so
+    the box that rewrites other people's history keeps the cursor. Its hint bar shows no `y`.
   - The box's hint bar leads with the key: `y push  ←/→ move  ⏎ choose  esc cancel`.
-  - The force box has two options: (a) `y` works there too (one rule, H4); (b) `y` does not work there, and its hint
-    bar shows no `y`. **Recommend (b):** lazygit's users force-push out of habit on the one key (#3468), so the box
-    that rewrites other people's history keeps the cursor. Trade-off: one box behaves differently, but its bar says so.
   - The push journey goes 3 → 2.
-- **P16: `⏎` in the commit editor's subject commits,** as it already does in the finish summary's subject (keymap :321).
+- **P16 — approved 2026-09-24: `⏎` in the commit editor's subject commits,** as it does in the finish summary's
+  subject. (Ticket 51; ADR-0044 §3.)
   - `⇥` or `↓` reaches the body, where `⏎` is a newline. `⌃⏎` is unchanged.
-  - It waits on P12, which sets the summary's `⏎` rule.
   - Why: H4 (one rule for both subjects); lazygit (CS §1.1); KLM Rule 3, since `⏎` right after typing is anticipated
     (UX §1.1). The commit journey goes 9 → 6.
   - Trade-offs:
     - Habit sends `⏎` to the body, so a message with a body now needs `⇥` instead.
     - A slip commits a message with only a subject. `u` takes it back, and `a` rewords it.
-  - What it changes: keymap §2.10 (a new `Enter` row); `m3-working-tree-undo-and-stash.md` :165.
-- **P17 (not specced; for his next pass): offer the lease whenever the refs say `HEAD` is behind its upstream,** with no
-  rejection first (lazygit's trigger).
+  - What it changes: keymap §2.10 (a new `Enter` row, done); `m3-working-tree-undo-and-stash.md` :165 (ticket 51
+    edits it).
+- **P17 (open; not specced; for his next pass): offer the lease whenever the refs say `HEAD` is behind its upstream,**
+  with no rejection first (lazygit's trigger).
   - It is his daily force push after a chain rebase: 6 → 3.
   - Trade-off: lazygit's #3468 (forcing by habit) and #4077 (a lease that overwrote a teammate's fetched commit).
   - Recommend: decide once he has used the M4 fix for a week.
@@ -170,12 +176,11 @@ None beyond P14–P17.
     state.rs, keys.rs:391, mod.rs). On `builder-opus`, the stricter of the two.
   - **B** = `commit-key-never-opens-a-refusing-editor` (commit_editor.rs, tests/it).
   - A and B run one after the other, or in one worktree with one builder.
-- The three blocked specs also touch `graft-ui`: `confirm-box-takes-y`, `enter-in-commit-subject-commits`,
-  `commit-key-finishes-the-live-operation`.
+- The three unblocked specs 50–52 also touch `graft-ui`; they run in the look-and-finish wave 2 order
+  (`m6-conflicts.md`, "Specs, 2026-09-24").
 
-## For the conductor: edits to `m6-conflicts.md`
-The planner has no Edit tool, and rewriting that 1,370-line note whole to change three lines risks it; the edits are
-given here as exact text.
+## For the conductor: edits to `m6-conflicts.md` — applied
+The three edits below (:505, :483, after :1365) are in `m6-conflicts.md`. Kept for the record.
 - **:505**, replace the comment after `5` with:
   `# M3a (usability M3): the editor never opens to refuse, so the walk starts in the changes pane: c (refused in words) + 2×⇥ + c + ⏎, still 5 · P14 → 2 (c ⏎; c y with P12)`
 - **:483**, append:

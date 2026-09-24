@@ -1,20 +1,22 @@
 # confirm-box-takes-y: `y` confirms a confirm box, as in every preview
 
-Status: blocked (user answer)
-From: `docs/reviews/m6-usability.md` M1 (:65-75), the part that depends on P12.
-Blocked by: user answer on P12 (`m6-conflicts.md` :1352) **and** on P15 (`docs/design-notes/m6-usability-fixes.md`),
-including P15's force-box option (a) or (b). If P12 is refused, the conductor asks whether P15 still stands. Build
-nothing before both are answered.
+Status: ready (unblocked 2026-09-24: P12 and P15 approved, P15 **option (b)** — never in the force-push box; picks
+items 3 and 13; ADR-0044 §3; keymap §2.3b and §2.3c edited in the spec pass)
+From: `docs/reviews/m6-usability.md` M1 (:65-75), the part that depended on P12.
 Build with: *(blank: brownfield; the conductor sets it after the scout, ADR-0035)*
 Scout brief: where the box's footer (`←→ choose  ⏎ act  esc cancel`) is drawn in graft-ui, which captures and tests pin
-it, and every `PendingConfirm` construction site in `graft`.
-Needs: `confirm-box-swallows-unknown-keys` merged (it sets up the fall-through arm this spec adds `y` above).
+it, every `PendingConfirm` construction site in `graft`, and every `ConfirmThen` variant with the boxes that use it
+(including the shell-merge abort box from `undo-and-abort-a-shell-begun-merge` and the whole-file start-over box from
+`start-over-a-whole-file-choice`).
+Needs: `confirm-box-swallows-unknown-keys` merged (the fall-through arm this spec adds `y` above); lane O merged (its
+boxes); `last-file-opens-the-summary` merged (shared walk rows).
 Crates: graft-ui, graft.
+Lane: wave 2, fourth.
 
 ## Read first
-- `docs/design-notes/m6-usability-fixes.md`: P15, and the Journeys rows "Push" and "Rejected push".
-- `docs/design/02-keymap.md` §2.3b :218-225 (`y` in previews, and the journal exception), and §2.3c, which the
-  conductor adds with the swallow spec.
+- `docs/adr/0044-conflict-colours-and-the-confirm-key.md` §3 (the rule and its three exceptions).
+- `docs/design-notes/m6-usability-fixes.md`: P15 (approved, option b), the Journeys rows "Push" and "Rejected push".
+- `docs/design/02-keymap.md` §2.3b (`y` row) and §2.3c (edited 2026-09-24).
 - `docs/adr/0038-m5-spec-decisions.md` §1 and §4.
 - `crates/graft-ui/MAP.md` §`confirm` (line 9); `crates/graft/MAP.md` §`update::confirm` and §`update::remote`
   (`push_box`, `undo_after_push_box`).
@@ -25,24 +27,24 @@ Crates: graft-ui, graft.
 **In:**
 - **One decision point.** A single opener decides whether a box takes `y`. The footer and the key both read that one
   flag, so they cannot drift apart.
-- **The rule** (P15 as approved):
-  - `y` is live in every box except `ConfirmThen::UndoAfterPush`, `ConfirmThen::RevertTo`, and, if P15 option (b)
-    is approved, the lease variant of the push box (`PushParams::lease.is_some()`).
+- **The rule** (ADR-0044 §3):
+  - `y` is live in every box **except** `ConfirmThen::UndoAfterPush`, `ConfirmThen::RevertTo` (the journal revert and
+    its drift box), and the lease variant of the push box (`PushParams::lease.is_some()`).
   - Where it is live, `y` acts on the box's one acting choice (index 1), whatever the cursor is on.
-  - Where it is not live, `y` is swallowed (the swallow spec's rule).
+  - Where it is not live, `y` is swallowed (the swallow spec's rule) and the footer shows no `y`.
 - **The footer**, when the box takes `y`: `y <acting label, lowercased>  ←→ choose  ⏎ act  esc cancel`, for example
-  `y push`, `y discard`, `y abort`. The `y` hint is first, so it is the last thing a narrow box cuts.
+  `y push`, `y discard`, `y abort`, `y start over`. The `y` hint is first, so it is the last thing a narrow box cuts.
 - **Every construction site** moves to the opener.
 
 **Out:**
 - The preview's `y`.
-- The finish summary (P12's spec).
+- The finish summary (`finish-summary-is-a-preview`).
 - The undo-after-push box's cursor.
 - Anything a box does on `Enter`.
 
 ## The failing test first
 `graft/src/update/confirm.rs` tests: `y_confirms_the_push_box_from_cancel`.
-- Setup: a push box, cursor on Cancel. Press `y`.
+- Setup: a plain push box, cursor on Cancel. Press `y`.
 - Assert: one `Command::Operate(Push ..)` emitted, and `confirm.is_none()`.
 - Red after the swallow spec (it swallows `y`).
 
@@ -55,7 +57,7 @@ impl ConfirmView {
     #[must_use] pub fn takes_yes(&self) -> bool;
 }
 // graft/src/update/confirm.rs
-impl ConfirmThen { #[must_use] pub fn takes_yes(&self) -> bool; }   // the P15 exclusions, in one match
+impl ConfirmThen { #[must_use] pub fn takes_yes(&self) -> bool; }   // the three exclusions, in one match
 /// The one way a box opens: applies `with_yes` iff `then.takes_yes()`.
 pub(crate) fn open(state: &mut AppState, view: ConfirmView, then: ConfirmThen);
 // confirm_key gains: KeyCode::Char('y') if pending.view.takes_yes() => act on index 1 (the existing Enter body, shared)
@@ -64,45 +66,53 @@ pub(crate) fn open(state: &mut AppState, view: ConfirmView, then: ConfirmThen);
   cannot answer differently.
 
 ## Touches (each entry, and how the builder checks it)
-- **Construction sites** (the list the swallow spec's NOTES recorded).
+- **Construction sites** (the list the swallow spec's NOTES recorded, plus lane O's new boxes).
   - Check: `grep -rn "PendingConfirm {" crates/graft/src` returns only `confirm::open` after the change.
 - **graft-ui footer: every capture that shows a box.**
   - Check: `grep -rln "⏎ act" docs/shots`. Expect at least `m4-01-push-box-plain-*`, `m4-02-push-box-lease-*`,
-    `m5-ui-undo-after-push-80x24`, the m3 discard captures, the m5 banner-abort captures, and the m6 restart (`d`)
-    captures.
+    `m5-ui-undo-after-push-80x24`, the m3 discard captures, the m5 banner-abort captures, the m6 restart (`d`) captures,
+    `fix-shell-merge-abort-and-undo-*`, `fix-start-over-whole-file-*`.
   - Each capture is regenerated by its own test; list them in NOTES.
-  - The lease box and the undo-after-push box must come out byte-identical under option (b).
+  - The lease box, the undo-after-push box and the journal revert box must come out byte-identical.
 - **The contact sheets** that concatenate those captures: m3, m4, m5 and m6. The conductor rebuilds them with
   `scripts/contact-sheet.sh`; the builder lists which ones.
 - **The hint tests** (`every_key_the_bar_draws_is_answered`, and any footer test in graft-ui `confirm`).
   - Check: run them, and add `y` to whatever list they read for a box.
 - **The narrowest box.**
   - Check: `a_narrow_box_keeps_the_y_hint`, at 80×24, for the push box and the discard box.
-- **Walks.**
-  - Check: `grep -n "'→', *'⏎'\|Right.*Enter" .scratch/*/pty-walk*.py crates/graft/tests/it`. The walks keep `→ ⏎`
-    (it still works). Add one leg that uses `y`.
-- **Journeys.** Push goes 3 → 2. The conductor adds a `push` row to the next journey-counts block (the M6 block covers
-  conflicts only). The builder records the observed count in NOTES.
+- **Walks.** The walks keep `→ ⏎` where it still works; the counted conflict journeys that pass through a box move to
+  `y`: `walk-back-a-done-file` (`j d y`), `walk-back-a-whole-file-choice` (`k d y`), `b-abort-shell-merge` (`a y`).
+  - Check: `grep -n "'→', *'⏎'\|Right.*Enter" .scratch/*/pty-walk*.py crates/graft/tests/it`;
+    `journey_counts_match_the_note` with the rows below.
+- **Journeys outside the fence.** Push goes 3 → 2. The conductor adds a `push` row to the next journey-counts block
+  (the M6 block covers conflicts only). The builder records the observed count in NOTES.
 - **Journal and undo.** None: `y` runs the same `act` as `Enter`.
   - Check: `y_and_enter_emit_the_same_commands`, one table row per box kind.
-- **Keymap** (the conductor edits it): §2.3b's `y` row adds "and every confirm box (§2.3c) except undo-after-push,
-  journal revert[, and force push]", and §2.3c gains a `y` row.
-- **TESTING.md** (the conductor edits it): the push and discard scenarios that say `→ ⏎` gain "or `y`". The builder
-  greps `TESTING.md` for `→` `⏎` and lists the lines in NOTES.
+- **Keymap:** already edited (§2.3b, §2.3c). Check: read, no edit.
+- **TESTING.md** (the acceptance ticket edits it): the push and discard scenarios that say `→ ⏎` gain "or `y`". The
+  builder greps `TESTING.md` for `→ ⏎` and lists the lines in NOTES.
 - **MAP.md:** graft-ui §`confirm` (`with_yes`, `takes_yes`, the footer) and graft §`update::confirm` (`open`, `y`).
 
 ## Acceptance (name the verifying test at tick time)
 - [ ] `y_confirms_the_push_box_from_cancel`: red first, then green.
-- [ ] `y_is_swallowed_where_the_box_does_not_take_it`: UndoAfterPush, RevertTo, and the lease box if option (b).
+- [ ] `y_is_swallowed_where_the_box_does_not_take_it`: UndoAfterPush, RevertTo, the lease box.
 - [ ] `y_and_enter_emit_the_same_commands`: every box kind.
 - [ ] `every_box_opens_through_confirm_open`: the grep result in NOTES, and a test if one is possible.
 - [ ] `a_narrow_box_keeps_the_y_hint`.
+- [ ] `journey_counts_match_the_note` with the three rows below.
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-box-takes-y-120x40.txt` and `-80x24`.
-  - Scene: the push box.
-  - **What right looks like:** the bottom border reads `y push  ←→ choose  ⏎ act  esc cancel`, whole at 120 columns.
-    At 80 it starts `y push`. `[ Cancel ]` is under the cursor.
-  - Second frame (option (b) only): the lease box's footer has no `y`.
+  - Scene: the plain push box; second frame the lease box.
+  - **What right looks like:** the plain box's bottom border reads `y push  ←→ choose  ⏎ act  esc cancel`, whole at 120
+    columns; at 80 it starts `y push`; `[ Cancel ]` is under the cursor. The lease box's footer has no `y`.
 - [ ] MAP.md updated (doc, no test).
+
+## For the conductor (exact text, in this spec's merge commit)
+In the `journey-counts` fence, set these `keys` (comments unchanged):
+```
+walk-back-a-done-file         3
+walk-back-a-whole-file-choice 3
+b-abort-shell-merge           2
+```
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all

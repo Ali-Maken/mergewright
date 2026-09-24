@@ -1,42 +1,38 @@
 # enter-in-commit-subject-commits: `⏎` in the commit editor's subject commits, as it does in the finish summary
 
-Status: blocked (user answer)
+Status: ready (unblocked 2026-09-24: P16 approved, picks item 14; ADR-0044 §3; keymap §2.10 edited in the spec pass)
 From: `docs/reviews/m6-usability.md` M2 (:77-86).
-Blocked by: user answer on P12 (`m6-conflicts.md` :1352) **and** on P16 (`docs/design-notes/m6-usability-fixes.md`).
-- The rule "`⏎` in a subject commits" holds whichever way P12 goes. Both P12 and today's §2.6b keep the summary's
-  subject `⏎` as commit (keymap :321; P12's note, `m6-conflicts.md` :1356).
-- It is still a new key meaning for the editor, so P16 is needed. Present P12 and P16 to him together: both answer
-  "what does `⏎` do where I type a message".
-- If he answers P16 with "neither commits", this spec is void. The conductor asks the planner for a replacement.
 Build with: *(blank: brownfield; the conductor sets it after the scout, ADR-0035)*
 Scout brief: in the commit editor, list which keys each field answers, which function the `[ Commit ]` button and
 `Ctrl+Enter` call, where the editor's key footer is drawn, and what pins that footer (captures, hint tests).
-Needs: none. It calls the editor's existing submit path, as merged. The scout names it.
+Needs: none by signature. It calls the editor's existing submit path, as merged; the scout names it. Sequenced after
+ticket 50 only because both hold `graft` + `graft-ui` (ADR-0036).
 Crates: graft, graft-ui.
+Lane: wave 2, fifth.
 
 ## Read first
-- `docs/design-notes/m6-usability-fixes.md`: P16, and the Journeys row "Stage one file and commit".
+- `docs/design-notes/m6-usability-fixes.md`: P16 (approved), and the Journeys row "Stage one file and commit".
+- `docs/adr/0044-conflict-colours-and-the-confirm-key.md` §3 item 4.
 - `docs/research/commit-stash.md` §1.1 (lazygit: `Enter` commits from the summary, `Tab` goes to the description,
-  `commit_message_controller.go:~33`), §2 ("Enter vs commit", the two camps), §3 :169-171 (the inconsistency, raised as
-  a question), §4.
-- `docs/design/02-keymap.md` §2.6b :312-327 and §2.10 :361-370.
+  `commit_message_controller.go:~33`), §2 ("Enter vs commit", the two camps), §3 :169-171, §4.
+- `docs/design/02-keymap.md` §2.6b and §2.10 (both edited 2026-09-24).
 - `docs/design-notes/m3-working-tree-undo-and-stash.md` :159-166.
 - `crates/graft/MAP.md` §`update::commit_editor` (`editor_key`, `CommitEditor::refusal`, `committed`);
-  `crates/graft-ui/MAP.md` §`commit_editor`.
+  `crates/graft-ui/MAP.md` §`commit_editor` (:304-313).
 - Source, only after the MAPs: `graft/src/update/commit_editor.rs:595-612` (`subject_key`), and the submit path the
   scout names.
 
 ## Scope
 **In:**
 - `subject_key`: `KeyCode::Enter` submits exactly as `Ctrl+Enter` does (the same function), and `Down` still moves to
-  the body. The body's `Enter` stays a newline.
+  the body. `Tab` still moves to the body. The body's `Enter` stays a newline.
 - A refused `⏎` does what a refused `Ctrl+Enter` does today: nothing is sent, and the refusal row shows. That covers
   nothing staged, an empty subject, and an operation live.
-- The editor's footer in subject focus names `⏎ commit` first. In body focus it keeps `⌃⏎ commit` (the summary's
-  subject and body bars are the model: graft-ui MAP line 315).
+- The editor's footer in subject focus names `⏎ commit` first (`⏎ amend` in the amend editor). In body focus it keeps
+  `⌃⏎ commit` (the summary's subject and body bars are the model: graft-ui MAP line 315).
 
 **Out:**
-- The finish summary (P12's spec).
+- The finish summary (`finish-summary-is-a-preview`).
 - `Ctrl+Enter` delivery in Zed (KNOWN_GAPS :206).
 - Review m8 (`subject empty` shown on open): a separate Minor. But see the Touches entry on refusals.
 - The amend editor's prefill.
@@ -52,8 +48,8 @@ Crates: graft, graft-ui.
 ```rust
 // graft/src/update/commit_editor.rs: signatures unchanged
 fn subject_key(state: &mut AppState, key: &KeyPress) -> Vec<Command>;
-//   KeyCode::Enter => <the same submit Ctrl+Enter calls>,   KeyCode::Down => editor.focus = Field::Body
-// graft-ui: the commit editor footer's subject-focus list leads with `⏎ commit`
+//   KeyCode::Enter => <the same submit Ctrl+Enter calls>,   KeyCode::Down | KeyCode::Tab => editor.focus = Field::Body
+// graft-ui: the commit editor footer's subject-focus list leads with `⏎ commit` (`⏎ amend`)
 ```
 
 ## Touches (each entry, and how the builder checks it)
@@ -86,12 +82,11 @@ fn subject_key(state: &mut AppState, key: &KeyPress) -> Vec<Command>;
   - Check: run them.
 - **Journal and undo.** None new: the same commit operation, the same journal entry.
   - Check: the emitted `Command` is equal to the `Ctrl+Enter` one (the failing test).
-- **Keymap** (the conductor edits it): §2.10 gains `| Enter | In the subject: commit (as §2.6b). In the body: a newline |`;
-  `Tab` is unchanged.
+- **Keymap:** already edited (§2.10 `Enter` row). Check: read, no edit.
 - **Design note** (the conductor edits it): `m3-working-tree-undo-and-stash.md` :165, "Enter in Subject moves to Body",
-  is marked superseded by P16.
+  is marked superseded by P16 (ADR-0044 §3).
 - **TESTING.md.** The builder greps `TESTING.md` for `moves to the body\|Enter in Subject\|⇥ ⇥ ⇥` and lists the lines in
-  NOTES for the conductor.
+  NOTES for the acceptance ticket.
 - **MAP.md:** graft §`update::commit_editor` `editor_key`, and the graft-ui commit editor footer.
 
 ## Acceptance (name the verifying test at tick time)
@@ -101,7 +96,7 @@ fn subject_key(state: &mut AppState, key: &KeyPress) -> Vec<Command>;
 - [ ] `a_refused_enter_sends_nothing` (three rows)
 - [ ] `enter_in_the_subject_amends_in_the_amend_editor`
 - [ ] `a_pasted_newline_does_not_commit`
-- [ ] `down_still_moves_to_the_body` and `enter_in_the_body_is_a_newline`
+- [ ] `down_and_tab_still_move_to_the_body` and `enter_in_the_body_is_a_newline`
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-subject-enter-commits-120x40.txt` and `-80x24`.
   - Scene: the editor with `fix: x` typed, subject focused.
   - **What right looks like:** the footer starts `⏎ commit`. The body is empty. The options row ends `[ Commit ]`.
