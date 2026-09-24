@@ -39,6 +39,10 @@ pub struct OpenedFile {
     /// (`BothDeleted`, or a side that removed it) and always `None` when
     /// `file` is `Some` (m6-conflicts/05).
     pub on_disk: Option<OnDisk>,
+    /// Whether `d` can start a whole-file shape (`file: None`) over — ops'
+    /// own answer, asked when it opened (ticket 30: no app mirror of ops'
+    /// rule). `None` for a document, whose `d` is not gated here.
+    pub start_over: Option<StartOver>,
 }
 
 /// The most of a whole-file card's file that is read: its first
@@ -171,16 +175,20 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, 
             done: None,
         }
     })?;
-    let on_disk = if opened.file.is_none() {
-        worktree_glimpse(&handle, path, opened.binary)
+    let (on_disk, start_over) = if opened.file.is_none() {
+        (
+            worktree_glimpse(&handle, path, opened.binary),
+            Some(start_over(&handle, path, stop)),
+        )
     } else {
-        None
+        (None, None)
     };
     Ok(Opening::Unmerged(Arc::new(OpenedFile {
         file: opened.file,
         how: opened.how,
         binary: opened.binary,
         on_disk,
+        start_over,
     })))
 }
 
@@ -362,241 +370,4 @@ fn base_refusal(error: &graft_ops::conflict::BaseError) -> (String, bool) {
 }
 
 #[cfg(test)]
-mod tests {
-    use graft_git::conflict::{BaseMismatch, Diff3Error};
-    use graft_ops::conflict::BaseError;
-
-    use std::path::{Path, PathBuf};
-
-    use graft_core::oid::Oid;
-    use graft_git::repo::RepoHandle;
-    use graft_git::status::UnmergedHow;
-    use graft_ops::apply::{Applied, ApplyError, Context, apply};
-    use graft_ops::journal::{Journal, journal_path};
-    use graft_ops::operation::{
-        FastForward, MergeParams, Operation, ResolveWholeParams, Side, Source, Target, Tip,
-    };
-
-    use super::{CARD_BYTES, CARD_LINES, Opening, StartOver, base_refusal, glimpse, open};
-
-    /// Ticket 25: the job picks the route from the status it reads itself.
-    /// The same path is an unmerged document before `git add` and a done
-    /// file after it.
-    #[test]
-    fn open_routes_on_the_status_it_reads() {
-        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::StoppedMerge);
-        let store = crate::repos::RepoStore::new(scratch.path().to_path_buf(), None);
-        let path = std::path::Path::new("both.txt");
-        match open(&store, path, &()).expect("it opens") {
-            Opening::Unmerged(opened) => assert!(opened.file.is_some(), "a parsed document"),
-            Opening::Done(done, _) => panic!("still unmerged, got {done:?}"),
-        }
-        std::fs::write(scratch.path().join(path), b"settled\n").expect("the file is written");
-        let added = std::process::Command::new("git")
-            .current_dir(scratch.path())
-            .args(["add", "both.txt"])
-            .status()
-            .expect("git runs");
-        assert!(added.success());
-        match open(&store, path, &()).expect("it opens") {
-            Opening::Done(done, _) => assert!(
-                matches!(
-                    *done,
-                    graft_ops::conflict::DoneFile::Text {
-                        unstaged: false,
-                        ..
-                    }
-                ),
-                "{done:?}"
-            ),
-            Opening::Unmerged(opened) => panic!("git add made it done, got {opened:?}"),
-        }
-    }
-
-    /// Ticket 28: the done route asks ops whether `d` can start the file
-    /// over, when the file opens. An app-begun merge keeps a marker file's
-    /// stages on its backup chain (`Can`); a whole-file shape kept with `o`
-    /// has only one side to restore (`Cannot`, in ops' words).
-    #[test]
-    fn a_done_open_carries_the_gate() {
-        let scratch = app_merge_with_a_whole_file_conflict();
-        let repo = scratch.path();
-        std::fs::write(repo.join("both.txt"), b"settled\n").expect("the file is written");
-        apply_in(
-            repo,
-            &Operation::Stage(Target::Paths(vec![PathBuf::from("both.txt")])),
-            2,
-        );
-        apply_in(
-            repo,
-            &Operation::ResolveWholeFile(ResolveWholeParams {
-                path: PathBuf::from("gone.txt"),
-                side: Side::Ours,
-                how: UnmergedHow::DeletedByThem,
-            }),
-            3,
-        );
-        let store = crate::repos::RepoStore::new(repo.to_path_buf(), None);
-
-        match open(&store, Path::new("both.txt"), &()).expect("it opens") {
-            Opening::Done(_, start_over) => assert_eq!(start_over, StartOver::Can),
-            Opening::Unmerged(opened) => panic!("staged, so done: {opened:?}"),
-        }
-        match open(&store, Path::new("gone.txt"), &()).expect("it opens") {
-            Opening::Done(_, StartOver::Cannot { why }) => {
-                assert!(why.contains("no markers"), "ops' own words: {why}");
-            }
-            other => panic!("gone.txt cannot start over: {other:?}"),
-        }
-    }
-
-    /// `main` edits `both.txt` and `gone.txt`; `feature` edits `both.txt`
-    /// and deletes `gone.txt`; Graft's own merge of `feature` stops on both.
-    fn app_merge_with_a_whole_file_conflict() -> graft_fixtures::Scratch {
-        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
-        let repo = scratch.path();
-        let write = |name: &str, body: &str| {
-            std::fs::write(repo.join(name), body).expect("writable scratch");
-        };
-        write("both.txt", "base\n");
-        write("gone.txt", "the plan\n");
-        git(repo, &["add", "--all"]);
-        git(repo, &["commit", "-q", "-m", "shared"]);
-        git(repo, &["switch", "-q", "-c", "feature"]);
-        write("both.txt", "theirs\n");
-        git(repo, &["rm", "-q", "gone.txt"]);
-        git(repo, &["commit", "-q", "-am", "theirs"]);
-        git(repo, &["switch", "-q", "main"]);
-        write("both.txt", "ours\n");
-        write("gone.txt", "our plan\n");
-        git(repo, &["commit", "-q", "-am", "ours"]);
-        let tip = |rev: &str| Oid::from_hex(git(repo, &["rev-parse", rev]).trim()).expect("an id");
-        let merge = Operation::Merge(MergeParams {
-            source: Source::Branch("feature".to_owned()),
-            into: Tip {
-                name: "refs/heads/main".to_owned(),
-                oid: tip("main"),
-            },
-            source_tip: tip("feature"),
-            ff: FastForward::Default,
-        });
-        let stopped = try_apply(repo, &merge, 1);
-        assert!(
-            matches!(stopped, Err(ApplyError::Conflicted { .. })),
-            "the merge stops: {stopped:?}"
-        );
-        scratch
-    }
-
-    fn git(repo: &Path, args: &[&str]) -> String {
-        let out = std::process::Command::new("git")
-            .current_dir(repo)
-            .args([
-                "-c",
-                "user.name=Graft Test",
-                "-c",
-                "user.email=test@example.invalid",
-            ])
-            .args(["-c", "commit.gpgsign=false"])
-            .args(args)
-            .output()
-            .expect("git runs");
-        assert!(out.status.success(), "git {args:?}: {out:?}");
-        String::from_utf8(out.stdout).expect("utf-8")
-    }
-
-    fn try_apply(repo: &Path, op: &Operation, at: i64) -> Result<Applied, ApplyError> {
-        let handle = RepoHandle::open(repo).expect("the repo opens");
-        let git = graft_git::version::system_git().expect("git").version();
-        let mut journal =
-            Journal::open(&journal_path(&handle).expect("the path")).expect("the journal opens");
-        let mut ctx = Context::open(
-            &handle,
-            git,
-            &mut journal,
-            1_700_000_000_000 + at,
-            [0; 10],
-            &(),
-        )
-        .expect("the context opens");
-        apply(&mut ctx, op)
-    }
-
-    fn apply_in(repo: &Path, op: &Operation, at: i64) {
-        try_apply(repo, op, at).unwrap_or_else(|why| panic!("{}", why.explain()));
-    }
-
-    /// A file of `lines` numbered lines, and its size.
-    fn numbered(lines: usize) -> (Vec<u8>, u64) {
-        let bytes: Vec<u8> = (0..lines)
-            .flat_map(|n| format!("line {n}\n").into_bytes())
-            .collect();
-        let size = u64::try_from(bytes.len()).expect("fits");
-        (bytes, size)
-    }
-
-    #[test]
-    fn a_short_file_is_read_whole() {
-        let (bytes, size) = numbered(3);
-        let seen = glimpse(bytes.as_slice(), size, false).expect("reads");
-        assert_eq!(
-            &*seen.head,
-            [b"line 0".to_vec(), b"line 1".to_vec(), b"line 2".to_vec()]
-        );
-        assert!(!seen.cut);
-        assert_eq!(seen.size, size);
-    }
-
-    /// Many short lines: the line cap is what stops it.
-    #[test]
-    fn many_lines_stop_at_the_line_cap() {
-        let (bytes, size) = numbered(CARD_LINES * 3);
-        let seen = glimpse(bytes.as_slice(), size, false).expect("reads");
-        assert_eq!(seen.head.len(), CARD_LINES);
-        assert!(seen.cut);
-    }
-
-    /// A few long lines: the byte cap is what stops it, and the fragment it
-    /// cuts through is not shown as though it were a line.
-    #[test]
-    fn long_lines_stop_at_the_byte_cap() {
-        let line = vec![b'x'; 10_000];
-        let mut bytes = Vec::new();
-        for _ in 0..20 {
-            bytes.extend_from_slice(&line);
-            bytes.push(b'\n');
-        }
-        let size = u64::try_from(bytes.len()).expect("fits");
-        let seen = glimpse(bytes.as_slice(), size, false).expect("reads");
-        let held: usize = seen.head.iter().map(Vec::len).sum();
-        assert!(u64::try_from(held).expect("fits") <= CARD_BYTES);
-        assert!(
-            seen.head.iter().all(|kept| kept.len() == 10_000),
-            "no fragment"
-        );
-        assert!(seen.cut);
-    }
-
-    /// A binary file is not read at all: its size is the whole card.
-    #[test]
-    fn a_binary_file_reads_nothing() {
-        let (bytes, size) = numbered(10);
-        let seen = glimpse(bytes.as_slice(), size, true).expect("reads");
-        assert!(seen.head.is_empty());
-        assert_eq!(seen.size, size);
-    }
-
-    #[test]
-    fn no_base_and_mismatch_are_facts_not_problems() {
-        assert!(!base_refusal(&BaseError::NoBase).1);
-        assert!(!base_refusal(&BaseError::Mismatch(BaseMismatch { block: 0 })).1);
-    }
-
-    #[test]
-    fn a_diff3_failure_is_a_problem() {
-        let error = BaseError::Diff3(Diff3Error::Io(std::io::Error::other("disk full")));
-        let (words, problem) = base_refusal(&error);
-        assert!(problem, "git itself failed");
-        assert!(words.contains("disk full"), "{words}");
-    }
-}
+mod tests;

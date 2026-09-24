@@ -384,3 +384,35 @@ fn a_binary_card_shows_its_size_not_its_bytes() {
     app.close();
     drop(scratch);
 }
+
+/// Review-28 m2 (ticket 30): the app's answer to `d` on a binary `UU` card
+/// is ops' answer, not a rule of its own. `pic.bin` is the fixture's binary
+/// `UU`: `d` opens the box exactly when ops' `restart_gate` admits it.
+#[test]
+fn a_binary_uu_card_answers_d_by_ops_rule() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let handle = graft_git::repo::RepoHandle::open(scratch.path()).expect("the repo opens");
+    let git = graft_git::version::system_git().expect("git").version();
+    let facts = graft_ops::facts::read_facts(
+        &handle,
+        git,
+        &(),
+        &graft_ops::operation::FactsScope::default(),
+    )
+    .expect("facts read");
+    let ops_admits = graft_ops::apply::restart_gate(&handle, &facts, Path::new("pic.bin"))
+        .expect("the gate answers")
+        .is_ok();
+
+    let state = resolver_on_whole_file(&app, state, "pic.bin");
+    assert!(open(&state).whole_file.as_ref().is_some_and(|w| w.binary));
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert_eq!(
+        state.confirm.is_some(),
+        ops_admits,
+        "`d` on a binary UU: the box opens exactly when ops admits the restart"
+    );
+    drop(state);
+    app.close();
+    drop(scratch);
+}

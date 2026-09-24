@@ -57,6 +57,7 @@ fn crossed_read_lands(state: &AppState, commands: &[Command], file: ConflictFile
                 how: UnmergedHow::BothModified,
                 binary: false,
                 on_disk: None,
+                start_over: None,
             })))),
         ),
     )

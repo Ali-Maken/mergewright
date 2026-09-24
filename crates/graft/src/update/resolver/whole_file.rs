@@ -23,6 +23,9 @@ pub struct WholeFileShape {
     /// (`jobs::conflict::CARD_LINES`) — or `None` when there is nothing
     /// there to show (`BothDeleted`, or a side that removed it).
     pub on_disk: Option<crate::jobs::conflict::OnDisk>,
+    /// Whether `d` can start this card over: ops' answer, asked when it
+    /// opened (`jobs::conflict::OpenedFile::start_over`).
+    pub start_over: crate::jobs::conflict::StartOver,
 }
 
 /// The keys a whole-file card offers, per shape (m6-conflicts/05 scope 1).
