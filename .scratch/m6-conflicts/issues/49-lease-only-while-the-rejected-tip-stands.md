@@ -1,6 +1,6 @@
 # lease-only-while-the-rejected-tip-stands: `P` offers the force-with-lease box only while the tip that was rejected is still the tip
 
-Status: ready
+Status: blocked (the ticket's settle stop case, hit at the Touches check before any code; see NOTES)
 From: `docs/reviews/m6-usability.md` M4 (:99-110). A git-write safety path.
 Blocked by: none. This keeps DESIGN's trigger ("the lease is offered after a non-fast-forward rejection",
 `m4-remotes.md` :14) and stops offering it once the rejection no longer applies. P17 (lazygit's trigger, no rejection
@@ -241,3 +241,30 @@ workspace-wide.
 Medium. One context.
 
 ## NOTES
+**2026-09-24, builder (opus): stopped at the ticket's own stop case, before any code.** Scout used:
+`.scratch/m6-conflicts/scouts/49.md` (in the main checkout, not committed), plus the reads below.
+
+The Touches check for scenarios 10 and 11 says: name the harness line that settles between keys; if it does not
+settle, stop and report. **Neither harness settles on the pending states this ticket adds.** Code read, not run:
+- A rejected push refreshes `Everything`: `crates/graft/src/jobs/operate.rs:193-197` (`ApplyError::Remote` →
+  `Some(Refresh::Everything)`), applied at `update/operate.rs:868-870`. After the rejection a `ReadRefs` and a
+  `ReadRemotes` are both in flight.
+- **Walk** (`crates/graft/tests/it/m4_walk/run.rs:347-358`, `ready`, used by `Step::WaitFor(Wait::Ready)` before the
+  second `P`): waits on `state.remote.reading.is_none()` (the facts side settles) but only on `state.refs.is_some()`
+  for refs, which the old refs pass. The two reads are separate pool jobs with no order, so `P` can land while
+  `refs_read` is `Pending` → `REFS_PENDING` → `See("the lease box")` fails. Flaky, not deterministic.
+- **Capture prelude** (`crates/graft/src/update/prelude.rs:33-90`, `settled`, feeds `m4-02-push-box-lease`'s
+  `P → ⏎ P`): checks neither `remote.reading` nor a pending refs read (`let refs = state.refs.is_some();`, :45).
+  Harmless today (`facts()` serves the old facts, no refusal). With (b), the second `P` can hit
+  `still reading the remotes …` or `REFS_PENDING`, and the capture shows the status line, not the lease box.
+
+**Exact next step (conductor's call; both files are in crate `graft`, this ticket's set):** add
+`&& !matches!(state.refs_read, RefsRead::Pending(_))` to `run.rs::ready` and to `prelude.rs::settled`, and
+`&& state.remote.reading.is_none()` to `settled`. Both harnesses then wait for exactly the window this ticket opens:
+a cause fix, not a sleep. The prelude change touches every capture's timing (it can only wait longer, never feed a
+different key), so every capture should regenerate byte-identical; that has to be checked. Then build as specced.
+
+No other stop hit: the `last_rejected_push` grep matches the ticket (`remote.rs:35/262/266`, `push_box.rs:90`,
+`in_flight.rs:129/169`, `remote/tests.rs:281/343/483/498`, `view/tests.rs:3014`). Non-test `Command::ReadRefs(`
+issues: `mod.rs:103`, `keys.rs:391` only. One more for the spec: `view/tests.rs:3014`'s capture state
+(`changes_pane_state`) must get refs with a head for (c) to hold, so check whether that changes `m4-remote-keys.txt`.
