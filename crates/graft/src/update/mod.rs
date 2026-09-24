@@ -241,6 +241,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, Product::BaseLoaded(result)) => {
             resolver::base_loaded(next, id, result);
         }
+        AppEvent::Produced(id, Product::ConflictSet(result)) => {
+            resolver::conflict_set_read(next, id, result);
+        }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);
         }
@@ -399,6 +402,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::OpenConflict
         | Task::TakeSide
         | Task::LoadBase
+        | Task::ReadConflictSet
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -640,7 +644,8 @@ fn took_fact(
         | Product::HandedOver(_)
         | Product::ConflictOpened(_)
         | Product::Taken(_)
-        | Product::BaseLoaded(_) => {}
+        | Product::BaseLoaded(_)
+        | Product::ConflictSet(_) => {}
     }
 }
 

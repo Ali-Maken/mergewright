@@ -33,19 +33,26 @@ pub(super) fn draw_resolver(
 ) -> Option<Rect> {
     let banner_rows = crate::update::resolver::banner_rows(state);
     let body = draw_resolver_banner(frame, state, area, &session.theme, banner_rows);
-    let doc = crate::view::resolver::resolver_view(state, body.width)?;
-    let laid_out = graft_ui::conflict_resolver::layout(&doc, body.width);
-    let tier = tier_in_force(session, state);
     // The footer's row is not the document's.
     let document = Rect {
         height: body.height.saturating_sub(1),
         ..body
     };
+    // The list first: where it goes decides how wide the document is. The
+    // mouse splits the same area the same way
+    // (`update::resolver::geometry::areas`).
+    let files = crate::view::resolver::file_list_view(state);
+    let placed = graft_ui::conflict_resolver::placement(&files, document.width);
+    let doc_area = graft_ui::conflict_resolver::resolver_areas(document, placed).doc;
+    let doc = crate::view::resolver::resolver_view(state, doc_area.width)?;
+    let laid_out = graft_ui::conflict_resolver::layout(&doc, doc_area.width);
+    let tier = tier_in_force(session, state);
     frame.render_widget(
         graft_ui::conflict_resolver::ResolverScreen {
             doc: &doc,
             layout: &laid_out,
             top: state.resolver.as_ref().map_or(0, |open| open.top),
+            placement: placed,
             theme: &session.theme,
             ascii: tier == RenderingTier::Ascii,
         },

@@ -1,7 +1,10 @@
 //! How much room the resolver's document has: the banner line above it,
-//! the widget's own title rows, and the bar below it.
+//! the file list above or beside it, the widget's own title rows, and the
+//! bar below it.
 
-use graft_ui::conflict_resolver::{HEADER_ROWS, Layout, MIN_COLUMNS, MIN_ROWS};
+use graft_ui::conflict_resolver::{
+    FileListView, HEADER_ROWS, Layout, MIN_COLUMNS, MIN_ROWS, Placement, ResolverAreas,
+};
 
 use crate::update::state::AppState;
 
@@ -35,20 +38,16 @@ pub fn banner_rows(state: &AppState) -> u16 {
     u16::from(crate::update::banner::banner_view(state).is_some())
 }
 
-/// The first screen row of the resolver's document body: past the banner
-/// line and past the widget's own title and notice rows.
-pub(super) fn body_y(state: &AppState) -> u16 {
-    banner_rows(state).saturating_add(HEADER_ROWS)
+/// The file list as drawn, where it goes, and the widget's area split
+/// between it and the document — built by the view, through `graft_ui`'s
+/// own `resolver_areas`, so a click and the draw agree on every origin.
+pub(super) fn areas(state: &AppState) -> (FileListView, Placement, ResolverAreas) {
+    crate::view::resolver::resolver_split(state, banner_rows(state))
 }
 
 /// Rows of document on screen.
 pub(super) fn view_height(state: &AppState) -> u16 {
-    state
-        .size
-        .rows
-        .saturating_sub(body_y(state))
-        // The hint bar / status line the resolver draws under itself.
-        .saturating_sub(1)
+    areas(state).2.doc.height.saturating_sub(HEADER_ROWS)
 }
 
 /// Is there room to draw the resolver at all?
@@ -69,8 +68,9 @@ pub fn fits(state: &AppState) -> bool {
 
 /// The document laid out at this frame's width, with the rows on screen.
 pub(super) fn body(state: &AppState) -> Option<(Layout, u16)> {
-    let layout = crate::view::resolver::resolver_layout(state, state.size.columns)?;
-    Some((layout, view_height(state)))
+    let doc = areas(state).2.doc;
+    let layout = crate::view::resolver::resolver_layout(state, doc.width)?;
+    Some((layout, doc.height.saturating_sub(HEADER_ROWS)))
 }
 
 /// The largest `top` that still shows a full window of document.

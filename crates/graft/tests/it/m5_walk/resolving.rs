@@ -47,7 +47,7 @@ fn take(side: char) -> Vec<Step> {
 
 /// `⏎`: the stage, run to its answer, and git no longer listing `path`.
 /// `Settle`, not `Write`: the last file's answer is a `Sticky`
-/// (`all conflicts resolved · c continue`), not a `Done`.
+/// (`every file done ✓ · c finishes the merge`), not a `Done`.
 fn mark_resolved(path: &'static str) -> Vec<Step> {
     vec![
         key(KeyCode::Enter),
@@ -253,7 +253,7 @@ fn merge_resolved_with_the_keys() -> Scenario {
                 Step::See(
                     "the last file closes to the banner, which offers c",
                     |state| {
-                        status_containing(state, "all conflicts resolved · c continue")?;
+                        status_containing(state, "every file done ✓ · c finishes the merge")?;
                         check(state.resolver.is_none(), || {
                             format!(
                                 "resolver still open on {:?}",

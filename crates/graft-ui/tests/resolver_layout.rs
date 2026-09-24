@@ -30,8 +30,8 @@ use std::path::Path;
 use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize_line;
 use graft_ui::conflict_resolver::{
-    BlockNumbers, BlockState, BlockView, DocView, RegionView, ResolverScreen, SideNames, SideRoles,
-    TakeView, layout,
+    BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileState, RegionView,
+    ResolverScreen, SideNames, SideRoles, TakeView, layout, placement, resolver_areas,
 };
 use graft_ui::theme::ThemeKind;
 use ratatui::Terminal;
@@ -45,6 +45,24 @@ fn text(s: &str) -> graft_term::SanitizedText {
 
 fn lines(items: &[&str]) -> Vec<graft_term::SanitizedText> {
     items.iter().map(|s| text(s)).collect()
+}
+
+/// The scenario's file list: `token.rs` open, `routes.rs` not yet read.
+fn mockup_files() -> FileListView {
+    FileListView {
+        rows: vec![
+            FileRow {
+                name: text("src/auth/token.rs"),
+                state: FileState::Open { open: 2, of: 3 },
+            },
+            FileRow {
+                name: text("src/api/routes.rs"),
+                state: FileState::Unread,
+            },
+        ],
+        cursor: 0,
+        unavailable: false,
+    }
 }
 
 /// The §1.5 token.rs scenario: two blocks visible, one open with its OURS
@@ -79,7 +97,8 @@ fn mockup_doc() -> DocView {
         },
     };
     DocView {
-        title: text("src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open"),
+        title: text("src/auth/token.rs · 3 conflicts · 2 open"),
+        files: mockup_files(),
         names: SideNames {
             ours: text("upstream · main"),
             theirs: text("yours · 3f2a1b7 Add OAuth provider"),
@@ -105,7 +124,9 @@ fn mockup_doc() -> DocView {
 
 fn render(columns: u16, rows: u16) -> String {
     let doc = mockup_doc();
-    let laid = layout(&doc, columns);
+    let placed = placement(&doc.files, columns);
+    let areas = resolver_areas(ratatui::layout::Rect::new(0, 0, columns, rows), placed);
+    let laid = layout(&doc, areas.doc.width);
     let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
     let mut terminal = Terminal::new(TestBackend::new(columns, rows))
         .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));
@@ -116,6 +137,7 @@ fn render(columns: u16, rows: u16) -> String {
                     doc: &doc,
                     layout: &laid,
                     top: 0,
+                    placement: placed,
                     theme: &theme,
                     ascii: false,
                 },

@@ -1,0 +1,40 @@
+REBASING step 2 of 2
+files   ▸ b.txt · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ b.txt · 1 conflict · 1 open
+
+▏ ── conflict 1 of 1 · open ── o upstream  t yours  b both ─────────────────────────────────────────────────────────────
+▏ upstream · main                                           │yours · d93058b Change b on feature
+▏ 1 M                                                       │1 F
+▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o upstream  t yours  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close

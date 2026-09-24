@@ -246,6 +246,32 @@ pub fn load_base(
         .map_err(|error| base_refusal(&error))
 }
 
+/// The files the operation in progress conflicted on, for the resolver's
+/// file list (m6-conflicts/13): `graft_ops::conflict::operation_conflicts`
+/// over facts read now, so a relaunch or a shell-begun operation lists the
+/// same files as one begun here.
+///
+/// # Errors
+/// Why the repository, git, the facts or the set could not be read, in
+/// their own words — the list then falls back to the unmerged paths and
+/// says so.
+pub fn conflict_set(
+    store: &RepoStore,
+    stop: &dyn Stop,
+) -> Result<graft_ops::conflict::ConflictSet, String> {
+    let repo = store.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    let git = graft_git::version::system_git()
+        .map_err(|error| error.to_string())?
+        .version();
+    // No remotes, no named refs: the set needs the status and the
+    // operation in progress only.
+    let scope = graft_ops::operation::FactsScope::default();
+    let facts = graft_ops::facts::read_facts(&handle, git, stop, &scope)
+        .map_err(|error| error.to_string())?;
+    graft_ops::conflict::operation_conflicts(&handle, &facts).map_err(|error| error.to_string())
+}
+
 /// `B`'s refusal as the resolver's notice: the words, and whether they are
 /// a problem. No ancestor (`NoBase`) and a file edited past what git wrote
 /// (`Mismatch`) are facts of the file — nothing went wrong, so they must not

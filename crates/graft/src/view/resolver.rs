@@ -10,17 +10,23 @@
 use std::path::Path;
 
 use graft_git::conflict::{Block, ConflictFile, Projection, Region, Take};
+use graft_git::status::UnmergedHow;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::conflict_resolver::{
-    BlockNumbers, BlockState, BlockView, DocView, Layout, RegionView, SIDE_BY_SIDE_MIN, TakeView,
-    layout,
+    BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileState, Layout,
+    Placement, RegionView, ResolverAreas, SideNames, TakeView, layout, placement, resolver_areas,
 };
+use ratatui::layout::Rect;
 
 use crate::update::AppState;
-use crate::update::resolver::{ResolverState, WholeFileShape, side_names, whole_file_keys};
+use crate::update::detail::Loading;
+use crate::update::resolver::{
+    ResolverState, RowState, WholeFileShape, file_cursor, listed_files, side_names, whole_file_keys,
+};
 
-/// Everything the resolver draws for the file it has open, or `None` when
-/// it is closed or still waiting for its opening read.
+/// Everything the resolver draws for the file it has open, laid out for a
+/// document `columns` wide, or `None` when it is closed or still waiting
+/// for its opening read.
 #[must_use]
 pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
     let open = state.resolver.as_ref()?;
@@ -28,20 +34,16 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
         return Some(whole_file_view(state, open, whole, columns));
     }
     let file = open.file.as_ref()?;
-    let paths = crate::update::banner::unmerged_paths(state);
-    let index = paths
-        .iter()
-        .position(|path| path == &open.path)
-        .map_or(1, |at| at + 1);
     let blocks = file.blocks();
     Some(DocView {
         title: sanitize_line(&resolver_title(
             &open.path,
-            index,
-            paths.len().max(1),
-            Some((file.open(), blocks.len())),
-            columns >= SIDE_BY_SIDE_MIN,
+            Identity::Blocks {
+                open: file.open(),
+                of: blocks.len(),
+            },
         )),
+        files: file_list_view(state),
         names: side_names(state),
         regions: regions(file),
         cursor_block: open.cursor_block,
@@ -59,23 +61,18 @@ fn whole_file_view(
     state: &AppState,
     open: &ResolverState,
     whole: &WholeFileShape,
-    columns: u16,
+    _columns: u16,
 ) -> DocView {
-    let paths = crate::update::banner::unmerged_paths(state);
-    let index = paths
-        .iter()
-        .position(|path| path == &open.path)
-        .map_or(1, |at| at + 1);
+    let names = side_names(state);
     DocView {
+        // A card has no marker blocks to count: `0 conflicts` would read as
+        // nothing left to do (m6-conflicts/07 F8). It says what happened to
+        // the file on each side instead.
         title: sanitize_line(&resolver_title(
             &open.path,
-            index,
-            paths.len().max(1),
-            // A card has no marker blocks to count: `0 of 0 conflicts
-            // open` would read as nothing left to do (m6-conflicts/07 F8).
-            None,
-            columns >= SIDE_BY_SIDE_MIN,
+            Identity::Whole(&how_words(whole.how, whole.binary, &names)),
         )),
+        files: file_list_view(state),
         names: side_names(state),
         regions: vec![RegionView::WholeFile {
             how: sanitize_line(whole.how.words()),
@@ -162,26 +159,110 @@ pub fn resolver_layout(state: &AppState, columns: u16) -> Option<Layout> {
     resolver_view(state, columns).map(|doc| layout(&doc, columns))
 }
 
-/// The title row: `src/auth.rs · file 1 of 3 · 2 of 3 conflicts open`, or
-/// the short form when the screen is too narrow to carry all three.
-/// `blocks` is `(open, total)`, or `None` for a whole-file card, which has
-/// no blocks and so no count clause.
+/// What the file identity row says after the path.
+#[derive(Clone, Copy, Debug)]
+pub enum Identity<'a> {
+    /// A document: its blocks, and how many are still open.
+    Blocks {
+        /// Blocks still open.
+        open: usize,
+        /// Blocks in the file.
+        of: usize,
+    },
+    /// A whole-file card: what happened to the file on each side.
+    Whole(&'a str),
+}
+
+/// The file identity row (m6-conflicts/13): `notes.txt · 2 conflicts · 1
+/// open`, or `gone.txt · modified on yours · main, deleted on theirs ·
+/// feature`. The widget draws its own `▸` before it; where the file is in
+/// the list is the list's to say.
 #[must_use]
-pub fn resolver_title(
-    path: &Path,
-    file_index: usize,
-    files: usize,
-    blocks: Option<(usize, usize)>,
-    wide: bool,
-) -> String {
+pub fn resolver_title(path: &Path, identity: Identity<'_>) -> String {
     let name = path.display();
-    match (blocks, wide) {
-        (Some((open, total)), true) => {
-            format!("{name} · file {file_index} of {files} · {open} of {total} conflicts open")
+    match identity {
+        Identity::Blocks { open, of } => {
+            let noun = if of == 1 { "conflict" } else { "conflicts" };
+            format!("{name} · {of} {noun} · {open} open")
         }
-        (Some((open, total)), false) => format!("{name} · {open}/{total} open"),
-        (None, true) => format!("{name} · file {file_index} of {files}"),
-        (None, false) => name.to_string(),
+        Identity::Whole(how) => format!("{name} · {how}"),
+    }
+}
+
+/// What happened to a whole-file shape's file on each side, each side by
+/// its one name: `modified on yours · main, deleted on theirs · feature`.
+#[must_use]
+pub fn how_words(how: UnmergedHow, binary: bool, names: &SideNames) -> String {
+    let (ours, theirs) = (names.ours.as_str(), names.theirs.as_str());
+    let words = match how {
+        UnmergedHow::BothModified => format!("modified on {ours}, modified on {theirs}"),
+        UnmergedHow::BothAdded => format!("added on {ours}, added on {theirs}"),
+        UnmergedHow::BothDeleted => format!("deleted on {ours}, deleted on {theirs}"),
+        UnmergedHow::AddedByUs => format!("added on {ours}"),
+        UnmergedHow::AddedByThem => format!("added on {theirs}"),
+        UnmergedHow::DeletedByUs => format!("deleted on {ours}, modified on {theirs}"),
+        UnmergedHow::DeletedByThem => format!("modified on {ours}, deleted on {theirs}"),
+    };
+    if binary {
+        format!("binary · {words}")
+    } else {
+        words
+    }
+}
+
+/// The file list, where it goes, and the resolver's area split between it
+/// and the document, for a frame of `state.size` with `banner_rows` above
+/// the resolver and its own bar below — the same split
+/// `view::frame::draw_resolver` draws with, for the keys and the mouse.
+#[must_use]
+pub fn resolver_split(
+    state: &AppState,
+    banner_rows: u16,
+) -> (FileListView, Placement, ResolverAreas) {
+    let files = file_list_view(state);
+    let placed = placement(&files, state.size.columns);
+    let area = Rect {
+        x: 0,
+        y: banner_rows,
+        width: state.size.columns,
+        height: state
+            .size
+            .rows
+            .saturating_sub(banner_rows)
+            // The hint bar / status line the resolver draws under itself.
+            .saturating_sub(1),
+    };
+    let split = resolver_areas(area, placed);
+    (files, placed, split)
+}
+
+/// The resolver's file list, sanitised: [`listed_files`] in the widget's
+/// terms. The draw and the mouse both build it here.
+#[must_use]
+pub fn file_list_view(state: &AppState) -> FileListView {
+    let Some(open) = state.resolver.as_ref() else {
+        return FileListView::default();
+    };
+    let names = side_names(state);
+    FileListView {
+        rows: listed_files(state)
+            .into_iter()
+            .map(|file| FileRow {
+                name: sanitize_line(&file.path.display().to_string()),
+                state: match file.state {
+                    RowState::Open { open, of } => FileState::Open { open, of },
+                    RowState::AllTaken => FileState::AllTaken,
+                    RowState::Done => FileState::Done,
+                    RowState::WholeFile { how } => FileState::WholeFile {
+                        how: sanitize_line(&how_words(how, false, &names)),
+                    },
+                    RowState::Binary => FileState::Binary,
+                    RowState::Unread => FileState::Unread,
+                },
+            })
+            .collect(),
+        cursor: file_cursor(state),
+        unavailable: matches!(open.files, Loading::Failed(_)),
     }
 }
 
@@ -291,7 +372,7 @@ fn take_view(take: Take) -> TakeView {
 mod tests {
     use std::sync::Arc;
 
-    use super::{resolver_title, resolver_view};
+    use super::{Identity, resolver_title, resolver_view};
     use crate::update::AppState;
     use crate::update::resolver::fixtures::{commit, oid, operation, refs};
     use crate::update::resolver::{OpenedFrom, ResolverState, WholeFileShape};
@@ -358,6 +439,9 @@ mod tests {
                 staging: None,
                 restarting: None,
                 notice: None,
+                files: crate::update::detail::Loading::Idle,
+                set_job: None,
+                seen: std::collections::BTreeMap::new(),
             }),
             ..AppState::default()
         }
@@ -526,29 +610,30 @@ mod tests {
         assert_no_raw_label(&drawn);
     }
 
-    /// The title is the only place the file's own count is drawn, so it says
-    /// where in the list this file is and how much of it is left.
+    /// The identity row names the file and how much of it is left; where
+    /// it is in the list is the list's to say (m6-conflicts/13).
     #[test]
-    fn the_title_says_where_you_are() {
-        let path = std::path::Path::new("src/auth.rs");
+    fn the_title_says_what_is_left() {
+        let path = std::path::Path::new("notes.txt");
         assert_eq!(
-            resolver_title(path, 2, 5, Some((1, 3)), true),
-            "src/auth.rs · file 2 of 5 · 1 of 3 conflicts open"
+            resolver_title(path, Identity::Blocks { open: 1, of: 2 }),
+            "notes.txt · 2 conflicts · 1 open"
         );
         assert_eq!(
-            resolver_title(path, 2, 5, Some((1, 3)), false),
-            "src/auth.rs · 1/3 open",
-            "the short form is what fits under 100 columns"
+            resolver_title(path, Identity::Blocks { open: 1, of: 1 }),
+            "notes.txt · 1 conflict · 1 open"
         );
     }
 
     /// A whole-file or binary card has no marker blocks, so a count clause
-    /// reads `0 of 0 conflicts open` — "nothing to do" on a file that still
-    /// needs `o` or `t` (acceptance finding F8). The card's title drops it.
+    /// reads as nothing left to do on a file that still needs `o` or `t`
+    /// (acceptance finding F8). The card's row says what each side did.
     #[test]
-    fn a_card_title_has_no_count() {
+    fn a_card_title_says_what_each_side_did() {
         for binary in [false, true] {
             let mut state = open_on(b"a\n<<<<<<< HEAD\nx\n=======\ny\n>>>>>>> f\n", "gone.txt");
+            state.refs = Some(refs(false));
+            state.in_progress = Some(operation(InProgress::Merge, Some(commit(oid(3), "x"))));
             let open = state.resolver.as_mut().expect("open");
             open.file = None;
             open.cursor_block = None;
@@ -557,14 +642,17 @@ mod tests {
                 binary,
                 on_disk: None,
             });
-            let wide = resolver_view(&state, 120).expect("a card");
-            assert_eq!(
-                wide.title.as_str(),
-                "gone.txt · file 1 of 1",
-                "binary {binary}"
-            );
-            let narrow = resolver_view(&state, 80).expect("a card");
-            assert_eq!(narrow.title.as_str(), "gone.txt", "binary {binary}");
+            let card = resolver_view(&state, 120).expect("a card");
+            let words = "gone.txt · modified on yours · main, deleted on theirs · feature";
+            if binary {
+                assert_eq!(
+                    card.title.as_str(),
+                    "gone.txt · binary · modified on yours · main, deleted on theirs · feature"
+                );
+            } else {
+                assert_eq!(card.title.as_str(), words);
+            }
+            assert!(!card.title.as_str().contains("0 of 0"), "binary {binary}");
         }
     }
 }

@@ -602,6 +602,22 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads the set of files the operation in progress conflicted on, for
+    /// the resolver's file list, under an id `update` chose
+    /// (m6-conflicts/13).
+    fn read_conflict_set(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadConflictSet), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let set = super::conflict::conflict_set(&repos, cancel).map(Arc::new);
+                Outcome::Produced(Product::ConflictSet(set))
+            })
+        });
+    }
+
     /// Reads `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     fn read_commit_template(&self, id: JobId) {
@@ -969,6 +985,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::OpenConflict(id, path) => self.open_conflict(id, path),
             Command::TakeSide(id, request) => self.take_side(id, request),
             Command::LoadBase(id, path, file) => self.load_base(id, path, *file),
+            Command::ReadConflictSet(id) => self.read_conflict_set(id),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),

@@ -12,6 +12,7 @@
 
 mod base;
 mod card_names;
+mod file_list;
 mod handover;
 mod last_file;
 mod modal;
@@ -122,7 +123,8 @@ fn enter_on_conflicts_row_opens_the_resolver() {
     let state = on_the_row(&app, state, "both.txt");
 
     let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Enter));
-    let [Command::OpenConflict(_, path)] = commands.as_slice() else {
+    // The opening read, and the file list's conflict set (m6-conflicts/13).
+    let [Command::OpenConflict(_, path), Command::ReadConflictSet(_)] = commands.as_slice() else {
         panic!("`⏎` on a CONFLICTS row queued {commands:?}")
     };
     assert_eq!(path, Path::new("both.txt"));

@@ -2,10 +2,13 @@
 //! the wheel, and a click that puts the cursor on a block.
 
 use graft_core::event::{KeyCode, MouseButton, MouseInput, MouseKind};
-use graft_ui::conflict_resolver::{ScreenRow, row_at};
+use graft_core::job::JobId;
+use graft_ui::conflict_resolver::{HEADER_ROWS, ScreenRow, file_at, row_at};
 
+use super::files::select_file;
 use super::fits;
-use super::geometry::{body, body_y, max_top, view_height};
+use super::geometry::{areas, body, max_top, view_height};
+use crate::update::events::Command;
 use crate::update::state::AppState;
 
 /// Rows the wheel moves the document per notch — the same three rows the
@@ -21,7 +24,12 @@ const WHEEL_LINES: isize = 3;
 /// `graph_row_at` with no overlay check at all, so a click over one of them
 /// selects a row of the graph behind it. That is a separate defect,
 /// `docs/reviews/m5-10-30-31.md:291-296`, and not this ticket's to fix.)
-pub fn resolver_mouse(state: &mut AppState, mouse: MouseInput) -> bool {
+pub fn resolver_mouse(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    mouse: MouseInput,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
     if state.resolver.is_none() {
         return false;
     }
@@ -31,21 +39,51 @@ pub fn resolver_mouse(state: &mut AppState, mouse: MouseInput) -> bool {
     match mouse.kind {
         MouseKind::ScrollUp => scroll_by(state, -WHEEL_LINES),
         MouseKind::ScrollDown => scroll_by(state, WHEEL_LINES),
-        MouseKind::Down(MouseButton::Left) => click(state, mouse.row),
+        MouseKind::Down(MouseButton::Left) => {
+            click(state, commands, mouse.column, mouse.row, next_id);
+        }
         _ => {}
     }
     true
 }
 
-/// A left click: the block whose row was hit takes the cursor. The title
-/// and notice rows, and any row past the end of the document, name no
-/// block and so do nothing.
-pub(super) fn click(state: &mut AppState, row: u16) {
+/// A left click: a file in the list opens it; the block whose row was hit
+/// takes the cursor. The list's rule row or `│`, the title and notice rows,
+/// and any row past the end of the document name nothing and so do nothing.
+pub(super) fn click(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    column: u16,
+    row: u16,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let (files, placed, split) = areas(state);
+    let inside = |area: &graft_ui::conflict_resolver::ResolverAreas, list: bool| {
+        let rect = if list { area.list } else { area.doc };
+        column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
+    };
+    if inside(&split, true) {
+        if let Some(index) = file_at(
+            &files,
+            placed,
+            split.list.width,
+            split.list.height,
+            column - split.list.x,
+            row - split.list.y,
+        ) {
+            let answered = select_file(state, commands, index, next_id);
+            debug_assert!(answered, "`file_at` named a listed file");
+        }
+        return;
+    }
+    if !inside(&split, false) {
+        return;
+    }
     let Some((layout, _)) = body(state) else {
         return;
     };
     let top = state.resolver.as_ref().map_or(0, |open| open.top);
-    let Some(body_row) = row.checked_sub(body_y(state)) else {
+    let Some(body_row) = row.checked_sub(split.doc.y.saturating_add(HEADER_ROWS)) else {
         return;
     };
     let Some(block) = row_at(&layout, top, body_row).and_then(block_of) else {

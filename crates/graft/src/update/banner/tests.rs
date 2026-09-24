@@ -767,7 +767,12 @@ fn did_resolve(key: &str, before: &AppState, after: &AppState, commands: &[Comma
         .as_ref()
         .unwrap_or_else(|| panic!("`{key} resolve` opened no resolver"));
     assert_eq!(resolver.path, path, "`{key} resolve` opened the wrong file");
-    let [Command::OpenConflict(_, queued)] = commands else {
+    // The opening read, and the file list's conflict set (m6-conflicts/13).
+    let [
+        Command::OpenConflict(_, queued),
+        Command::ReadConflictSet(_),
+    ] = commands
+    else {
         panic!("`{key} resolve` queued {commands:?}")
     };
     assert_eq!(*queued, path, "`{key} resolve` read the wrong file");
