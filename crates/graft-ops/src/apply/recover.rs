@@ -122,7 +122,11 @@ fn seal_recovered(
         .copied()
         .flatten();
     let mut parents: Vec<Oid> = at.into_iter().collect();
-    for anchor in anchors(Some(&now.head), &now.refs) {
+    let merging = now.merge.as_ref().map(|merge| merge.merge_head);
+    for anchor in anchors(Some(&now.head), &now.refs)
+        .into_iter()
+        .chain(merging)
+    {
         if !parents.contains(&anchor) {
             parents.push(anchor);
         }

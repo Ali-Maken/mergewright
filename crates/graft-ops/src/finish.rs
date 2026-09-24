@@ -154,10 +154,7 @@ pub fn finish_summary(repo: &RepoHandle) -> Result<FinishSummary, SummaryError> 
         HeadRef::Branch(name) | HeadRef::Unborn(name) => short_branch(&name),
         HeadRef::Detached(oid) => short_id(repo, &oid.to_string())?,
     };
-    let from = match prepared.as_deref().and_then(merge_msg::merged_from) {
-        Some(name) => name,
-        None => short_id(repo, "MERGE_HEAD")?,
-    };
+    let from = merged_from(repo, prepared.as_deref())?;
     let message = match &prepared {
         Some(bytes) => merge_msg::without_comments(bytes, &merge_msg::comment_prefix(repo, stop)?),
         // git writes MERGE_MSG for every stopped merge; one removed by hand
@@ -295,6 +292,20 @@ fn records(
         found.insert(path_of(record[tab + 1..].to_vec()), oid);
     }
     Ok(found)
+}
+
+/// What a merge in progress is merging in, in [`FinishSummary::from`]'s
+/// words: the name `MERGE_MSG`'s first line gives, else `MERGE_HEAD`'s short
+/// id. One rule for the summary's title and for the journal's `finish merge
+/// of <from>` (m6-conflicts/20), so the two never name it differently.
+pub(crate) fn merged_from(
+    repo: &RepoHandle,
+    merge_msg: Option<&[u8]>,
+) -> Result<Vec<u8>, RunError> {
+    match merge_msg.and_then(merge_msg::merged_from) {
+        Some(name) => Ok(name),
+        None => short_id(repo, "MERGE_HEAD"),
+    }
 }
 
 /// `git rev-parse --short <rev>`.

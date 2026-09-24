@@ -7,8 +7,8 @@ use graft_core::journal::{EntryStatus, HeadRef, IndexState, OperationKind, Touch
 use crate::journal::tests::{MAIN, committed, oid, reversal};
 
 use super::{
-    Drift, IndexPaths, InversePlan, NotInvertible, PathScope, RepoStateNow, Step, drift, inverse,
-    plan_redo, plan_undo,
+    Drift, IndexPaths, InversePlan, MergeDrift, NotInvertible, PathScope, RepoStateNow, Step,
+    drift, inverse, plan_redo, plan_undo,
 };
 
 fn changed(from: u8, to: u8) -> PathScope {
@@ -439,6 +439,7 @@ fn drift_says_which_way_the_index_shape_went() {
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
         index: merged(0xa2),
         worktree_tree: oid(0xb2),
+        merge: None,
     };
 
     let unmerged = RepoStateNow {
@@ -465,6 +466,53 @@ fn drift_says_which_way_the_index_shape_went() {
     );
 }
 
+/// git's merge state is drift like any other field (m6-conflicts/20), and
+/// says which way it went.
+#[test]
+fn drift_names_the_way_the_merge_state_moved() {
+    let state = |mode: &[u8]| graft_core::journal::MergeState {
+        merge_head: oid(7),
+        merge_msg: b"Merge branch 'feature'\n".to_vec(),
+        merge_mode: Some(mode.to_vec()),
+    };
+    let mut entry = committed(10, OperationKind::FinishMerge, 1, 2);
+    let now = RepoStateNow {
+        head: HeadRef::Branch(MAIN.to_owned()),
+        refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
+        index: merged(0xa2),
+        worktree_tree: oid(0xb2),
+        merge: None,
+    };
+    assert!(drift(&entry, &now).is_clean(), "none recorded, none now");
+
+    let begun = RepoStateNow {
+        merge: Some(state(b"")),
+        ..now.clone()
+    };
+    let moved = drift(&entry, &begun);
+    assert_eq!(
+        moved,
+        Drift {
+            merge: Some(MergeDrift::Begun),
+            ..Drift::default()
+        }
+    );
+    assert_eq!(moved.explain(), "a merge is in progress now");
+
+    entry.merge_after = Some(state(b""));
+    assert!(drift(&entry, &begun).is_clean(), "the same merge");
+    assert_eq!(drift(&entry, &now).merge, Some(MergeDrift::Ended));
+    let other = RepoStateNow {
+        merge: Some(state(b"no-ff")),
+        ..now.clone()
+    };
+    assert_eq!(drift(&entry, &other).merge, Some(MergeDrift::Changed));
+    assert_eq!(
+        drift(&entry, &other).explain(),
+        "the merge in progress changed"
+    );
+}
+
 #[test]
 fn drift_sets_exactly_the_field_that_moved() {
     // `committed` records every field: a ref, `HEAD` and both trees.
@@ -474,6 +522,7 @@ fn drift_sets_exactly_the_field_that_moved() {
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
         index: merged(0xa2),
         worktree_tree: oid(0xb2),
+        merge: None,
     };
     let clean = drift(&entry, &now);
     assert!(clean.is_clean());
@@ -525,6 +574,7 @@ fn an_unrecorded_after_state_is_reported_as_unknown_never_as_clean() {
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
         index: merged(0xa2),
         worktree_tree: oid(0xb2),
+        merge: None,
     };
     assert!(drift(&entry, &now).is_clean());
 

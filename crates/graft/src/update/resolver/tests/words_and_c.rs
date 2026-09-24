@@ -38,6 +38,8 @@ pub(super) fn applied(description: &str) -> graft_ops::apply::Applied {
             pins: Vec::new(),
             commands: Vec::new(),
             reverses: None,
+            merge_before: None,
+            merge_after: None,
         },
         refresh: graft_ops::apply::Refresh::WorkingTree,
         step_backup: None,

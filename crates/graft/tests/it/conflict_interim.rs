@@ -38,14 +38,14 @@ const CONFLICT_EPOCH: i64 = 1_609_459_200;
 /// The instant the banner captures' relative dates are drawn against: a
 /// minute after the newest commit any of them makes, so an age reads the
 /// same forever instead of drifting with real time.
-const CONFLICT_NOW: i64 = CONFLICT_EPOCH + 120 * 60;
+pub(crate) const CONFLICT_NOW: i64 = CONFLICT_EPOCH + 120 * 60;
 
 /// Two branches that both rewrote the same two lines: merging `feature` into
 /// `main` stops with `shared.rs` and `notes.md` unmerged.
 ///
 /// Two files, not one, so `CONFLICTS (2)` and "2 files still conflicted" are
 /// read off a real count rather than a hard-coded singular.
-fn about_to_conflict() -> graft_fixtures::Scratch {
+pub(crate) fn about_to_conflict() -> graft_fixtures::Scratch {
     about_to_conflict_over(0, 0)
 }
 
@@ -833,7 +833,7 @@ fn an_unmerged_file_draws_its_conflict_in_the_body() {
 /// Both launch reads have landed: the working tree (which fills
 /// `in_progress`) and the journal (which fills `live_entries`). Either can
 /// land second, and the takeover needs both.
-fn launched(app: &App, state: AppState) -> AppState {
+pub(crate) fn launched(app: &App, state: AppState) -> AppState {
     app.pump(state, "the launch reads", |state| {
         state.working_tree.is_some()
             && matches!(
@@ -942,6 +942,8 @@ fn killed_mid_rebase() -> graft_fixtures::Scratch {
             pins: Vec::new(),
             commands: Vec::new(),
             reverses: None,
+            merge_before: None,
+            merge_after: None,
         })
         .expect("the pending line is written");
     scratch

@@ -1,0 +1,40 @@
+ graft /code/api    MERGING
+◌      Uncommitted changes (2 staged)
+◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+●─╯    the shared files                                                                                  GF 2h   b35b2f1
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ undo: finish merge of feature ✓
+COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+main's take
+M notes.md              +1 −1
+M shared.rs             +1 −1   1     - the plan
+                                    1 + our plan
+
+
+
+
+
+
+
+
+
+
+

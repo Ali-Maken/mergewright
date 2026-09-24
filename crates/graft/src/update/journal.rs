@@ -342,6 +342,8 @@ mod tests {
             pins: Vec::new(),
             commands: vec!["git add -- src/a.rs".to_owned()],
             reverses: None,
+            merge_before: None,
+            merge_after: None,
         }
     }
 

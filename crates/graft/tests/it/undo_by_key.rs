@@ -237,6 +237,8 @@ fn tear_the_journal(repo: &std::path::Path, description: &str) {
         pins: Vec::new(),
         commands: Vec::new(),
         reverses: None,
+        merge_before: None,
+        merge_after: None,
     };
     journal
         .append_pending(&entry)

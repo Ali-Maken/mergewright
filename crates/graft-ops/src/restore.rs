@@ -123,6 +123,11 @@ pub enum RestoreError {
         /// Which field: a ref name, `HEAD`, `the index`, `the working tree`.
         field: String,
     },
+    /// git's merge files could not be put back, or git does not see the
+    /// merge they describe afterwards ([`Step::SetMergeState`],
+    /// m6-conflicts/20).
+    #[error("{0}")]
+    MergeState(crate::merge_state::MergeStateError),
 }
 
 impl RestoreError {
@@ -234,6 +239,7 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
         head: pending.entry.head_before.clone(),
         index: pending.entry.index_before,
         worktree: pending.entry.worktree_before,
+        merge: pending.entry.merge_before.clone(),
     };
 
     let mut commands = Vec::new();

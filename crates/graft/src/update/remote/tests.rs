@@ -847,6 +847,8 @@ fn entry(
         pins: Vec::new(),
         commands: Vec::new(),
         reverses: None,
+        merge_before: None,
+        merge_after: None,
     }
 }
 

@@ -38,8 +38,10 @@ const CO_AUTHOR: &str = "Co-authored-by: ";
 pub enum Begun {
     /// Graft did: its journal entry is live, and the banner's keys end it.
     InGraft,
-    /// The shell did: no entry of Graft's is live, and the banner's keys
-    /// refuse it (`Refusal::NotInProgress`) — it is finished in the shell.
+    /// The shell did: no entry of Graft's is live. The banner's `c` finishes
+    /// a merge (as its own `FinishMerge` entry, m6-conflicts/20); every other
+    /// key, and `c` on any other kind, refuses it (`Refusal::NotInProgress`)
+    /// — that is finished in the shell.
     InShell,
 }
 
@@ -202,11 +204,18 @@ impl CommitEditor {
                     kind.name(),
                     kind.continue_command()
                 ),
-                // One begun in the shell has no entry of Graft's, and the
-                // banner's `c` and `a` both refuse it
-                // (`graft_ops::apply::resume`'s `resume_target`). Naming
-                // them offered two keys that do nothing (m6-07 F12), so the
-                // way out is git's own command, as for a bisect.
+                // One begun in the shell has no entry of Graft's. The
+                // banner's `a` refuses it (`resume_target`), and so does
+                // its `c` on a rebase, pick or revert (M7). Naming them
+                // offered keys that do nothing (m6-07 F12), so the way out
+                // is git's own command, as for a bisect.
+                //
+                // A merge's `c` finishes it since m6-conflicts/20, but
+                // `esc, then c` from here does not reach the banner: after
+                // `Esc` the pane has the keys and `c` reopens this editor
+                // (`update::keys::graph_key`, `is_commit_key`). Until that
+                // is decided (ticket 20 Part B NOTES) the words stay git's
+                // command, which is still true.
                 (_, Begun::InShell) => format!(
                     "{} begun in the shell — finish it there: {}",
                     kind.name(),

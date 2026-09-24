@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 
 use graft_core::journal::{
-    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, Touches,
 };
 use graft_core::oid::Oid;
 use serde::{Deserialize, Serialize};
@@ -53,6 +53,12 @@ pub struct PendingLine {
     pub pins: Vec<Oid>,
     /// The entry this one reverses, for `Undo`/`Redo`.
     pub reverses: Option<EntryId>,
+    /// git's merge in progress before, when there was one. Left out of the
+    /// line when there was none, so a line with nothing to say about a merge
+    /// reads exactly as one written before the field existed
+    /// (m6-conflicts/20).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub merge_before: Option<MergeState>,
 }
 
 /// The after-state, written once the operation finished or failed.
@@ -72,6 +78,9 @@ pub struct OutcomeLine {
     pub worktree_after: Option<Oid>,
     /// The Command Log.
     pub commands: Vec<String>,
+    /// git's merge in progress after, the same way.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub merge_after: Option<MergeState>,
 }
 
 /// Just enough of any line to know which record it is.
@@ -118,6 +127,7 @@ impl PendingLine {
             backup_ref: entry.backup_ref.clone(),
             pins: entry.pins.clone(),
             reverses: entry.reverses.clone(),
+            merge_before: entry.merge_before.clone(),
         }
     }
 
@@ -142,6 +152,8 @@ impl PendingLine {
             pins: self.pins,
             commands: Vec::new(),
             reverses: self.reverses,
+            merge_before: self.merge_before,
+            merge_after: None,
         }
     }
 }
@@ -156,6 +168,7 @@ impl OutcomeLine {
             index_after: entry.index_after,
             worktree_after: entry.worktree_after,
             commands: entry.commands.clone(),
+            merge_after: entry.merge_after.clone(),
         }
     }
 
@@ -167,5 +180,6 @@ impl OutcomeLine {
         entry.index_after = self.index_after;
         entry.worktree_after = self.worktree_after;
         entry.commands = self.commands;
+        entry.merge_after = self.merge_after;
     }
 }

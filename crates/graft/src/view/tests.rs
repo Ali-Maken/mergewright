@@ -2546,6 +2546,8 @@ fn journal_entry(
         pins: Vec::new(),
         commands: commands.iter().map(|line| (*line).to_owned()).collect(),
         reverses: None,
+        merge_before: None,
+        merge_after: None,
     }
 }
 

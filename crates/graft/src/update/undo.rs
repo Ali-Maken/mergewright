@@ -583,6 +583,8 @@ mod tests {
                 pins: Vec::new(),
                 commands: Vec::new(),
                 reverses: None,
+                merge_before: None,
+                merge_after: None,
             },
             refresh,
             step_backup: None,
@@ -993,6 +995,8 @@ mod tests {
             pins: Vec::new(),
             commands: Vec::new(),
             reverses: None,
+            merge_before: None,
+            merge_after: None,
         }
     }
 

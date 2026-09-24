@@ -210,6 +210,7 @@ impl Journal {
             } else {
                 closed.worktree_after = closed.worktree_before;
             }
+            closed.merge_after.clone_from(&now.merge);
         }
         self.append_outcome(&closed)
     }
