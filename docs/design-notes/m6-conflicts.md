@@ -481,6 +481,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
   - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`.
   - `⏎` on a merge begun in the shell → as J6; one `FinishMerge` entry. `u` after it → the merge is back in progress, resolved; header `MERGING`, status `undo: finish merge of <from>`, focus unchanged; `c ⏎` finishes it again (ticket 20).
 - `c`/`a` in the changes pane while an operation is live → the commit/amend editor, `[ Commit ]` dimmed, words `… esc, ⇥ banner, then c …`. `Esc` → the pane; `⇥` (×n, ticket 39 NOTES) → the banner; `c` → the summary (ticket 39).
+- The commit editor's refusal has its own row above the options row, full width, budgeted always and drawn only when refused; at 80 columns every refusal fits whole (ticket 40).
 
 ```journey-counts
 # id                          keys  once-approved   # parts (whole rows) · best tool

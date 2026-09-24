@@ -1328,7 +1328,7 @@ Every capture exists at 80x24 and 160x48; 120x40 was not captured.
 |---|---|---|---|
 | Changes pane (`m3-01-stage-file`, `m3-02-stage-hunk`) | tab strip, `Detail` tab is the whole screen: sections, files, diff | not run | pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below |
 | Confirm box (`m3-03-discard-confirm`) | centred over the pane, `[ Cancel ]   Discard` | not run | same box, graph and pane around it |
-| Commit editor (`m3-04-commit-editor`, `m3-05-commit-refused`) | replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`; refused: `nothing staged` on the title and beside the button | not run | same, wider; the pane stays |
+| Commit editor (`m3-04-commit-editor`, `m3-05-commit-refused`) | replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`; refused: `nothing staged` on the title and on its own row directly above the options row (ticket 40) | not run | same, wider; the pane stays |
 | Stash (`m3-06-stash-list`, `m3-07-stash-prompt`) | `STASHES (2)` and rows `stash@{0} …`; prompt: `▸message wip`, `(•) all incl. untracked ( ) staged only` | not run | same |
 | Journal (`m3-08-journal-after-unstage`) | the unstage entry with `← u` | not run | same |
 | Drift box (`m3-09-undo-drift-box`) | `Undo "commit …"?`, what drifted, `[ Stop ]   Undo` | not run | same |
@@ -2119,7 +2119,7 @@ credential capture M6 changed.
   is `Step::Kill` — the app dropped with no shutdown — not a signal; only
   the pty script sends a real `SIGKILL`. Start over **after** `⏎` is proven
   at the ops level only (scenario 8); the app has no way in to it yet. A
-  merge **begun in the shell** finishes through the banner's `c` and the summary, journaled as its own entry that `u` puts back mid-merge. The commit editor never finishes an operation: `c`/`a` in the panes stay commit/amend (keymap §2.4), and its words name the way to the banner — `esc, ⇥ banner, then c` (ticket 39); at 80 columns they are cut off (ticket 40).
+  merge **begun in the shell** finishes through the banner's `c` and the summary, journaled as its own entry that `u` puts back mid-merge. The commit editor never finishes an operation: `c`/`a` in the panes stay commit/amend (keymap §2.4), and its words name the way to the banner — `esc, ⇥ banner, then c` (ticket 39).
   What a box or a line looks like is proven only by the captures: the
   headless walk reads `AppState`, where the start-over box and the Sticky
   existed while no frame drew them (F9, F10 — now fixed, and pinned in the
