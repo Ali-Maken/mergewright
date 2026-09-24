@@ -35,7 +35,7 @@ use graft_git::version::GitVersion;
 
 pub use conflict::{ResolveWholeParams, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
-pub use finish_merge::FinishMergeParams;
+pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
@@ -125,6 +125,11 @@ pub enum Operation {
     /// sends it when no entry of Graft's is live; a merge Graft began is
     /// closed on its own entry instead.
     FinishMerge(FinishMergeParams),
+    /// A merge begun in the shell, aborted: `git merge --abort`. Its own
+    /// entry with a full backup, whose `u` puts the merge back as it stood
+    /// (m6-conflicts/57). `apply::resume(Abort)` sends it when no entry of
+    /// Graft's is live; a merge Graft began is aborted on its own entry.
+    AbortMerge(AbortMergeParams),
 }
 
 /// What [`crate::facts::read_facts`] must read for one operation, beyond
@@ -435,10 +440,23 @@ pub enum Refusal {
     /// `MERGE_HEAD` names several commits). Graft finishes a merge of one
     /// branch; the finish summary compares each path against one
     /// `MERGE_HEAD`, so for an octopus it would show a result that is not
-    /// the one being committed (m6-conflicts/38).
+    /// the one being committed (m6-conflicts/38). `a` on one is refused too:
+    /// `u` of the abort could not be checked to put every head back
+    /// (m6-conflicts/57). `end` says which, so the words name the command.
     OctopusMerge {
         /// How many commits `MERGE_HEAD` names: branches being merged in.
         heads: usize,
+        /// `c` or `a`.
+        end: MergeEnd,
+    },
+    /// `c` or `a` on a shell-begun merge while `MERGE_AUTOSTASH` waits
+    /// (`git merge --autostash`): git applies that stash when the merge
+    /// ends either way, and `u` of the end could not give it back
+    /// (m6-conflicts/57; before that, `c` said `NotInProgress` about a
+    /// merge standing in front of the user).
+    AutostashWaits {
+        /// `c` or `a`.
+        end: MergeEnd,
     },
     /// The Ghost Preview has no picture for this operation: a stage, a
     /// commit, an ordinary push. The M4 confirm boxes cover those; the
@@ -636,9 +654,13 @@ impl Refusal {
                     kind.name()
                 )
             }
-            Self::OctopusMerge { heads } => format!(
-                "this merges {heads} branches at once (an octopus merge); finish it in the \
-                 shell: git commit"
+            Self::OctopusMerge { heads, end } => format!(
+                "this merges {heads} branches at once (an octopus merge); {}",
+                end.in_the_shell()
+            ),
+            Self::AutostashWaits { end } => format!(
+                "git set your changes aside for this merge (autostash); {}",
+                end.in_the_shell()
             ),
             Self::NotFastForward { branch } => {
                 format!("{branch} has diverged; a fast-forward is not possible — m merges instead")
@@ -720,6 +742,7 @@ impl Operation {
             Self::ResolveWholeFile(_) => OperationKind::ResolveConflict,
             Self::RestartConflict(_) => OperationKind::RestartConflict,
             Self::FinishMerge(_) => OperationKind::FinishMerge,
+            Self::AbortMerge(_) => OperationKind::AbortMerge,
         }
     }
 
@@ -836,6 +859,7 @@ impl Operation {
             Self::ResolveWholeFile(params) => conflict::describe_resolve(params),
             Self::RestartConflict(params) => conflict::describe_restart(params),
             Self::FinishMerge(params) => finish_merge::describe(params),
+            Self::AbortMerge(params) => finish_merge::describe_abort(params),
         }
     }
 
@@ -860,7 +884,10 @@ impl Operation {
                 Self::Stage(Target::Paths(paths)) | Self::Unstage(Target::Paths(paths)) => {
                     paths.iter().all(|path| unmerged.contains(path))
                 }
-                Self::ResolveWholeFile(_) | Self::RestartConflict(_) => true,
+                // The two conflict operations are the resolution; aborting
+                // is one of the merge's two ends, and a merge stopped on a
+                // conflict is exactly what it ends.
+                Self::ResolveWholeFile(_) | Self::RestartConflict(_) | Self::AbortMerge(_) => true,
                 _ => false,
             };
             if !resolving {
@@ -870,7 +897,8 @@ impl Operation {
                 history::markers_in(paths, facts)?;
             }
         }
-        // Finishing the merge is what the in-progress state waits *for*.
+        // Finishing or aborting the merge is what the in-progress state
+        // waits *for*.
         let waits = !matches!(
             self,
             Self::Stage(_)
@@ -878,6 +906,7 @@ impl Operation {
                 | Self::ResolveWholeFile(_)
                 | Self::RestartConflict(_)
                 | Self::FinishMerge(_)
+                | Self::AbortMerge(_)
         );
         match facts.in_progress.filter(|_| waits) {
             Some(kind) => Err(Refusal::InProgress(kind)),
@@ -932,7 +961,7 @@ impl Operation {
             Self::BranchFromStash(params) => history::check_branch_from_stash(params, facts),
             Self::ResolveWholeFile(params) => conflict::check_resolve(params, facts),
             Self::RestartConflict(params) => conflict::check_restart(&params.path, facts),
-            Self::FinishMerge(_) => finish_merge::check(facts),
+            Self::FinishMerge(_) | Self::AbortMerge(_) => finish_merge::check(facts),
         }
     }
 
@@ -967,6 +996,7 @@ impl Operation {
             Self::ResolveWholeFile(params) => conflict::plan_resolve(params),
             Self::RestartConflict(params) => conflict::plan_restart(params),
             Self::FinishMerge(params) => finish_merge::plan(params),
+            Self::AbortMerge(_) => finish_merge::plan_abort(),
         }
     }
 
@@ -1034,13 +1064,17 @@ impl Operation {
             // A pull never records the tracking ref: undo must not move it
             // back, since the remote still has those commits. Finishing a
             // shell-begun merge commits the resolved index, so `u` has the
-            // resolved tree to put back.
+            // resolved tree to put back. Aborting one moves no ref, but the
+            // branch is recorded all the same: a commit made on it since is
+            // drift, and putting the merge back onto another `HEAD` would
+            // be a merge nobody began.
             Self::Pull(_)
             | Self::Merge(_)
             | Self::Rebase(_)
             | Self::CherryPick(_)
             | Self::Revert(_)
-            | Self::FinishMerge(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
+            | Self::FinishMerge(_)
+            | Self::AbortMerge(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
             Self::Reset(params) => return history::touches_reset(params),
             Self::Checkout(_) => return history::touches_checkout(),
             Self::BranchCreate(params) => return history::touches_branch_create(params),

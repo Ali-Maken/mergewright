@@ -16,10 +16,11 @@ const EDIT: &str = "my hand edit, not in any commit\n";
 /// The user hand-edits `theirs-deleted.txt` (`UD`), then `t` takes theirs:
 /// `git rm`, the file is gone. The take is its own journal entry with a
 /// backup, so the edit is kept — but the app cannot reach it while the
-/// merge is open: `u` is refused until the merge ends, and `a` on the
-/// banner refuses a merge Graft did not start. The walk the user has today:
-/// `git merge --abort` in the shell, back in the app (`Ctrl+R`), `u`,
-/// answer the drift box with `Undo`. The edit's bytes are back on disk.
+/// merge is open: `u` is refused until the merge ends. This walk ends the
+/// merge in the shell: `git merge --abort`, back in the app (`Ctrl+R`),
+/// `u`, answer the drift box with `Undo`. The edit's bytes are back on
+/// disk. (Since m6-conflicts/57 `a` on the banner is the in-app end; its
+/// app half makes `u` on the banner reach the take directly.)
 #[test]
 fn a_hand_edit_taken_by_t_comes_back_after_the_merge_ends() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
@@ -86,9 +87,14 @@ fn hand_edit_then_t(app: &App, state: AppState, repo: &Path) -> AppState {
     state
 }
 
-/// Out of the resolver, `u` is refused while the merge is open, and the
-/// banner's `a` will not end a merge Graft did not start. Leaves the banner
-/// focused.
+/// Out of the resolver, `u` is refused while the merge is open. Leaves the
+/// banner focused.
+///
+/// Until m6-conflicts/57 the banner's `a` refused here too ("begun in the
+/// shell is finished there"). Since 57's ops half `a` aborts the merge as an
+/// `AbortMerge` entry of its own, so this walk no longer presses it: the
+/// abort's own walk is `a_on_the_banner_aborts_a_shell_merge` (57's app
+/// half).
 fn unreachable_while_the_merge_is_open(app: &App, state: &AppState, repo: &Path) -> AppState {
     let state = app.key(state, KeyCode::Escape);
     assert!(state.resolver.is_none(), "back to the pane");
@@ -104,20 +110,6 @@ fn unreachable_while_the_merge_is_open(app: &App, state: &AppState, repo: &Path)
     );
 
     let state = on_the_banner(app, state);
-    let state = app.key(&state, KeyCode::Char('a'));
-    let state = app.key(&state, KeyCode::Right);
-    let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the abort's answer", |state| {
-        state.operating.is_none()
-    });
-    assert!(
-        matches!(
-            &state.status,
-            Status::Sticky { reason, .. } if reason.contains("begun in the shell is finished there")
-        ),
-        "{:?}",
-        state.status
-    );
     assert!(
         repo.join(".git/MERGE_HEAD").exists(),
         "the merge is still open"

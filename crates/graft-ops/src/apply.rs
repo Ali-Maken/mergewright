@@ -50,7 +50,7 @@ pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Pending, PrepareError, begin, finish, kind_name};
 pub(crate) use restart::{RestartPrep, prepare_restart, run_restart_prep};
 
-use finish_merge::finishing_merge;
+use finish_merge::ending_a_shell_merge;
 use record::pins_for;
 use restart::abandon_pending;
 use run::{PlanRun, run_plan, with_cleanup};
@@ -204,7 +204,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         return Ok(folded);
     }
     guard_repush(ctx, op, &facts)?;
-    let description = finishing_merge(ctx, op)?.unwrap_or_else(|| op.describe());
+    let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe());
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
 

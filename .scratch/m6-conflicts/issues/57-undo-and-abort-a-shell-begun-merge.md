@@ -1,6 +1,6 @@
 # undo-and-abort-a-shell-begun-merge: `a` aborts, and `u`/`U` undo Graft's own steps, in a merge begun in the shell
 
-Status: ready
+Status: partial — ops half done (m6-conflicts-57a); app half open (see NOTES, "What remains")
 From: user picks 2026-09-24 item 10 (batch 3, "both"); KNOWN_GAPS M6/08 :611 (the question), :612; TESTING.md
 "Times I left" row :113.
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/57-58.md`; the planner re-read the lines
@@ -217,16 +217,24 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status>;          
   `Undone::OperationLive`), §update::banner (`a` on a shell merge), §update::preview (the refusal's source).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `abort_of_a_shell_merge_is_journaled_and_undoable`: red first, then green.
-- [ ] `undo_refuses_an_entry_from_before_a_live_merge`: red first, then green.
-- [ ] `undo_of_an_abort_keeps_a_file_already_resolved`
-- [ ] `undo_of_an_abort_restores_exactly_the_merge_files_graft_knows` (NOTES lists the files that do not come back)
-- [ ] `abort_refuses_while_git_holds_an_autostash`, `finish_refuses_while_git_holds_an_autostash` (words, not
+- [x] `abort_of_a_shell_merge_is_journaled_and_undoable`: red first, then green.
+      Verified by `graft-ops tests/it/abort_merge.rs::abort_of_a_shell_merge_is_journaled_and_undoable` (red: `resume(Abort)` → `NotInProgress`).
+- [x] `undo_refuses_an_entry_from_before_a_live_merge`: red first, then green.
+      Verified by `graft-ops tests/it/undo_gate.rs::undo_refuses_an_entry_from_before_a_live_merge` (red: the drift box `…a merge is in progress now — u again to go ahead`).
+- [x] `undo_of_an_abort_keeps_a_file_already_resolved`
+      Verified by `abort_merge.rs::undo_of_an_abort_keeps_a_file_already_resolved` (whole `ls-files --stage` equal; green on first run, not seen red).
+- [x] `undo_of_an_abort_restores_exactly_the_merge_files_graft_knows` (NOTES lists the files that do not come back)
+      Verified by `abort_merge.rs::undo_of_an_abort_restores_exactly_the_merge_files_graft_knows` (missing after the undo = `AUTO_MERGE`, `MERGE_RR`; nothing changed or added).
+- [x] `abort_refuses_while_git_holds_an_autostash`, `finish_refuses_while_git_holds_an_autostash` (words, not
       `NotInProgress`)
-- [ ] `abort_of_an_octopus_shell_merge_is_refused` (words name `git merge --abort`)
-- [ ] `redo_refuses_while_a_rebase_is_live`, `revert_to_refuses_past_a_live_merge`,
+      Verified by `finish_merge.rs::abort_refuses_while_git_holds_an_autostash` and `::finish_refuses_while_git_holds_an_autostash` (exact words; plus `::git_applies_merge_autostash_when_the_merge_is_aborted`, plain git).
+- [x] `abort_of_an_octopus_shell_merge_is_refused` (words name `git merge --abort`)
+      Verified by `octopus_merge.rs::abort_of_an_octopus_shell_merge_is_refused` (exact words).
+- [x] `redo_refuses_while_a_rebase_is_live`, `revert_to_refuses_past_a_live_merge`,
       `redo_of_an_undone_abort_is_allowed_while_the_merge_is_back`
-- [ ] `journal_round_trips_an_abort_merge_entry`
+      Verified by `undo_gate.rs::redo_refuses_while_a_rebase_is_live`, `undo_gate.rs::revert_to_refuses_past_a_live_merge`, `abort_merge.rs::redo_of_an_undone_abort_is_allowed_while_the_merge_is_back` (the first two written after the gate, **not seen red**: see NOTES).
+- [x] `journal_round_trips_an_abort_merge_entry`
+      Verified by `abort_merge.rs::journal_round_trips_an_abort_merge_entry` (`"kind":"abort_merge"`, parsed equal, rendered byte-equal).
 - [ ] `a_on_the_banner_aborts_a_shell_merge`, `u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`,
       `u_in_the_graph_undoes_a_step_of_a_shell_merge`
 - [ ] `u_still_refuses_in_a_merge_begun_in_graft`, `u_still_refuses_after_relaunch_into_a_merge_begun_in_graft`,
@@ -258,3 +266,141 @@ outgrows that, split at the seam: ops first (the operation, the gates, `Operatio
 landings). Ops ships first and on its own: with nothing else changed, the app keeps refusing as today.
 
 ## NOTES
+
+**Compacted mid-ticket.** The builder's context compacted during the ops half. Per the Size note the ticket is split at
+the seam: the ops half is done and committed (`m6-conflicts-57a`), and the app half is open, listed below under "What
+remains". Scout: `.scratch/m6-conflicts/scouts/57-58.md` (the conductor's, as briefed).
+
+**The ops seam changes one app behaviour on its own.** The Size note says "with nothing else changed, the app keeps
+refusing as today". That holds for `u` inside the merge: the app still refuses it before sending. It does **not** hold
+for `a`. The banner's existing `a → ⏎` box already sends `Resume::Abort`, and ops now carries it out:
+- The shell merge is aborted as an `AbortMerge` entry. The status reads `Done { what: "abort merge of feature" }`,
+  observed in `shell_begun.rs` before that test was edited.
+- The box still says the old lines, `everything goes back to before it started` / `the journal keeps the entry`.
+  Both are true of an abort, but they are not 57's words.
+- After the abort nothing is live, so the app sends `u`, and `u` puts the merge back. This is tested in ops by
+  `abort_of_a_shell_merge_is_journaled_and_undoable`. It is **not** tested through the app.
+
+**Touches:**
+- **journal:**
+  - The new kind `abort_merge` is in graft-core (`OperationKind::AbortMerge`). `kind_name` returns `abort merge`.
+    Checked by `journal_round_trips_an_abort_merge_entry`.
+  - `pins_for` gives `[]`. `fold` never folds it: checked by `folded_step`'s match and the abort test, which gets
+    exactly one entry.
+  - `plan_revert_to` treats it as any operation. Not tested on its own.
+  - The `J` row and `interrupted_notice` belong to the app half. **Not checked.**
+- **undo:**
+  - The gate sits in `run_plan`, so all three entry points pass it. Checked by
+    `undo_refuses_an_entry_from_before_a_live_merge` (`undo`), `redo_refuses_while_a_rebase_is_live` (`redo`),
+    `revert_to_refuses_past_a_live_merge` (`revert_to` step 1) and
+    `redo_of_an_undone_abort_is_allowed_while_the_merge_is_back` (the "same merge" exception).
+  - Steps undone **inside** a shell merge: the existing tests stay green unedited (workspace nextest).
+  - `grep -rln "MergeDrift::Begun\|a merge is in progress now" crates` now matches `drift` itself and its pure unit
+    tests (`undo.rs`, `undo/tests.rs`), plus doc comments that name the old behaviour (`execute.rs`,
+    `finish_merge.rs`, `undo_gate.rs`, MAP). No test still asserts that drift box. The variant is kept, but `run_plan`
+    can no longer reach it.
+- **every refusal copy:**
+  - The words for `OctopusMerge{end: Finish}` are unchanged: `c_on_an_octopus_merge_names_its_refusal` still asserts
+    `git commit`.
+  - The words for `OctopusMerge{end: Abort}`, `AutostashWaits{Finish}` and `AutostashWaits{Abort}` are new. Each is
+    pinned exactly by its test.
+  - The words for `NotInProgress` are unchanged. It is still returned for Skip, for a shell rebase, cherry-pick or
+    revert, and when nothing is live.
+  - `OperationLive` reads `finish or abort the <kind> first`, pinned in `undo_gate.rs`.
+  - The app's single `live_refusal` is **not built**. Three copies still exist:
+    - ops `nothing_to_say`
+    - `update::undo::in_progress_refusal`
+    - `update::preview`
+- **captures:**
+  - None were regenerated. The ops half changes nothing that is drawn: `every_key_the_bar_draws_is_answered` and the
+    capture tests are green in the workspace run.
+  - The only new user-visible result is `a` actually aborting, which today's captures do not show past the box.
+- **crates:** graft-core, a crate outside the stated set, got one variant plus its MAP line. `Operation::kind()`
+  needs it. graft-ui was not touched: `git diff --stat` lists graft-core, graft-ops, one graft test, the ticket and
+  the MAPs.
+
+**Intended test changes (each named):**
+1. `finish_merge.rs`: `abort_and_skip_of_a_shell_merge_stay_not_in_progress` is now
+   `skip_of_a_shell_merge_stays_not_in_progress`. Abort no longer returns `NotInProgress`; it aborts.
+2. `finish_merge.rs`: `c_is_refused_while_merge_autostash_waits` is now
+   `finish_refuses_while_git_holds_an_autostash`. It asserts `AutostashWaits { end: Finish }` and the exact words;
+   it used to assert `NotInProgress`.
+3. `finish_merge.rs`: `undo_refuses_drift_when_a_new_merge_was_begun` is now
+   `undo_refuses_when_a_new_merge_was_begun`. It expects `OperationLive { Merge }` for both force values; it used to
+   expect `MergeDrift::Begun`.
+4. `history_ops.rs::a_shell_merge_is_not_adopted_as_grafts_own_entry`, leg 1: `Abort` now aborts the shell merge as
+   a new `AbortMerge` entry. It still asserts that Graft's stale entry stays `Pending`, so the entry is not adopted.
+5. `octopus_merge.rs`, three tests:
+   - `an_unrelated_operation_begins_and_records_during_an_octopus_merge`
+   - `undo_during_an_octopus_merge_keeps_merge_head_byte_exact`
+   - `set_merge_state_writes_an_octopus_merge_head_back_byte_exact`
+
+   They used to `u` a pre-merge entry through the drift box. Now they assert the gate refuses that `u` for both force
+   values, then run the same inverse directly with `plan_undo` + `restore::execute`. So they still prove that `begin`
+   records the two-line `MERGE_HEAD` byte-exact and that `SetMergeState` writes it back. The module doc is rewritten.
+6. `octopus_merge.rs::c_on_an_octopus_merge_names_its_refusal`: the pattern gained `end: MergeEnd::Finish`, forced
+   by the new field; its words are unchanged. The Touches item "stays green unedited" could not hold once the field
+   was added.
+7. graft `resolver/shell_begun.rs::a_hand_edit_taken_by_t_comes_back_after_the_merge_ends`: its helper no longer
+   presses `a` and no longer asserts `begun in the shell is finished there`, because `a` now aborts. Both doc
+   comments are updated. The Touches item "green, unedited" was wrong: scout contradiction 4 missed that the helper
+   presses `a`.
+
+**Files `u` of an abort does not put back** (observed with git 2.54.0, `rerere.enabled=true`). The conductor opens
+one KNOWN_GAPS row per file, marked as a known limit, not broken:
+- `MERGE_RR`: rerere's map from each conflicted path to its `rr-cache/<id>/`. After the undo, rerere will not record
+  the resolution. The preimage stays in `rr-cache/`.
+- `AUTO_MERGE`: the conflicted tree written by ort, used by `git diff AUTO_MERGE`.
+- These stay byte-equal throughout: `ORIG_HEAD`, `COMMIT_EDITMSG`, `rr-cache/*/preimage`.
+
+**Decisions taken in the build (question for the conductor if any is wrong):**
+- The gate lets a **bisect** through, as before. It is not an operation Graft ends (no banner), and the app sends
+  `u` during a bisect on purpose. Refusing it would change behaviour nobody asked to change.
+- In the gate, `AbortMerge` is exempt from `Unmerged`, because a stopped merge is exactly what it ends. It is also
+  exempt from the in-progress wait.
+- Gate order, shared by `c` and `a` (`ending_a_shell_merge`):
+  1. live entry → `InProgress`
+  2. no `MERGE_HEAD` → `NotInProgress`
+  3. octopus
+  4. head mismatch → `NotInProgress`
+  5. autostash
+- Decision 1 asked for the line where launch first fills `live_entries`: `crates/graft/src/update/journal.rs:112`.
+  Whether `live_operation` should carry the "no read yet" rule is **not decided**; it belongs to the app half.
+
+**Not verified:**
+- `redo_refuses_while_a_rebase_is_live` and `revert_to_refuses_past_a_live_merge` were written after the gate and
+  never seen red. A mutation run with the gate call disabled was refused by the sandbox's permission classifier, so
+  the gate was put back unchanged.
+- `undo_of_an_abort_keeps_a_file_already_resolved` passed on its first run. It tests backup capability that existed
+  before this ticket.
+- No app-level test covers `a` then `u` on a shell merge yet.
+
+**What remains (app half, graft only; ops needs nothing more):**
+- `update::undo::live_refusal(kind, keys) -> Status`. `in_progress_refusal` and `preview::open_preview` build
+  through it, and `preview::kind_word` is deleted. Afterwards `grep "finish or abort the" crates/graft/src` must
+  give one hit.
+- `in_progress_refusal` → `None` for `(Merge, InShell)`, but only once the launch journal read has answered
+  (`Loading::Ready`).
+- `jobs/undo.rs`: `Undone::OperationLive { kind }` plus its arm in `undone_from`, which today maps every
+  `UndoError::Nothing` to `Undone::Nothing`. `update::undo::undone` words it `Sticky` via
+  `live_refusal(kind, Some("⇥ banner"))`.
+- `banner_key` `u`/`U` sends the undo when `in_progress_refusal` is `None`.
+- `abort_pressed` on a shell merge shows two lines:
+  - `<into> goes back to before the merge`
+  - `u puts the merge back`
+
+  The cursor starts on `[ Cancel ]`. `<into>` is HEAD's branch, or the short sha when detached.
+- Tests:
+  - `a_on_the_banner_aborts_a_shell_merge`, driven with `→ ⏎`
+  - `u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`
+  - `u_in_the_graph_undoes_a_step_of_a_shell_merge`
+  - `u_still_refuses_in_a_merge_begun_in_graft`
+  - `u_still_refuses_after_relaunch_into_a_merge_begun_in_graft`
+  - `u_refuses_while_the_launch_journal_read_is_out`
+  - `operation_live_words_match_ops`
+  - `J` shows `abort merge of feature` (a row test)
+- Walk scenarios `b-abort-shell-merge` (3) and `b-undo-a-take-in-the-shell` (1), checked by
+  `journey_counts_match_the_note`. The note's fence edit is the conductor's.
+- Capture `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt`, three frames. Re-check
+  `every_key_the_bar_draws_is_answered` and the `m6-18-launch-shell-begun-*` captures.
+- `crates/graft/MAP.md`: §update::undo, §update::banner, §update::preview.
