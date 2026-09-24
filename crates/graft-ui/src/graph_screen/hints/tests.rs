@@ -21,20 +21,11 @@ use super::*;
 ///
 /// Taken from `hints::every_context` rather than written out again: this
 /// file's own copy of the list missed `Dragging` for two tickets (m5/31).
-///
-/// `Finish` is out for the reason `Resolver` once was: ticket 19 was split
-/// at the seam, so every entry of its table is `Planned` and draws nothing.
-/// The app half removes it from this filter in the commit that binds the
-/// keys and flips the table to `Live`.
 fn all_contexts() -> Vec<HintContext> {
     every_context()
         .into_iter()
         .filter(|context| {
-            *context != HintContext::Preview
-                && !matches!(
-                    context,
-                    HintContext::Resolver { .. } | HintContext::Finish { .. }
-                )
+            *context != HintContext::Preview && !matches!(context, HintContext::Resolver { .. })
         })
         .collect()
 }

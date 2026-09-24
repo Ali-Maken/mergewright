@@ -192,8 +192,16 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
 }
 
 /// A hint the keymap names for this context that no group has built yet.
-/// Never drawn (see the module comment). In use again for the finish
-/// summary's table (m6-conflicts/19, split at the seam: graft-ui first).
+/// Never drawn (see the module comment). No table holds one today — the
+/// finish summary's were the last, bound by m6-conflicts/34 — so only the
+/// tests' canary builds one until the next unbuilt key does.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no table has a planned entry today; the next unbuilt key uses it"
+    )
+)]
 const fn planned(key: &'static str, verb: &'static str) -> Hint {
     Hint {
         key,
