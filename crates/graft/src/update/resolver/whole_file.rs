@@ -106,10 +106,7 @@ pub(super) fn whole_file_both_refused(state: &mut AppState) -> bool {
     };
     state.status = Status::Sticky {
         reason: format!("no both for a {} file", whole.how.words()),
-        keys: Some({
-            let roles = super::side_names(state).roles;
-            format!("o {}  t {}", roles.ours(), roles.theirs())
-        }),
+        keys: Some(super::names::side_keys(state)),
     };
     true
 }

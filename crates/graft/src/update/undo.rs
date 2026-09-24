@@ -639,7 +639,7 @@ mod tests {
                     step: None,
                     head_name: None,
                     onto: None,
-                    theirs: None,
+                    theirs: Ok(None),
                 }),
                 ..AppState::default()
             };
@@ -671,7 +671,7 @@ mod tests {
                 step: None,
                 head_name: None,
                 onto: None,
-                theirs: None,
+                theirs: Ok(None),
             }),
             ..AppState::default()
         };

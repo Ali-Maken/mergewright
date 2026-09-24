@@ -13,7 +13,7 @@ use graft_core::oid::Oid;
 
 use crate::history_reads::{CommitSummary, rev_list};
 use crate::repo::RepoHandle;
-use crate::run::{GitArg, GitInvocation, RunError};
+use crate::run::{GitArg, GitInvocation, RunError, Stop};
 
 /// An operation partway through, blocking a plain commit until it is
 /// resolved, continued or aborted.
@@ -138,7 +138,25 @@ pub struct InProgressDetail {
     /// `REBASE_HEAD` (either rebase backend), with its subject. `None` for
     /// bisect, or when git has not written that file (a rebase stopped on
     /// an `edit`, say).
-    pub theirs: Option<CommitSummary>,
+    ///
+    /// A `Result` of its own, not a failure of the whole read: this is a
+    /// label, and an unreadable head file must not hide the operation — the
+    /// banner that offers `--abort` is drawn from it. The error is carried
+    /// here for the label to show, never dropped.
+    pub theirs: Result<Option<CommitSummary>, IncomingError>,
+}
+
+/// Why the incoming commit — [`InProgressDetail::theirs`] — could not be
+/// named: its head file does not hold a commit id, or git could not list the
+/// commit it names (or was stopped while it did).
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("could not read {file}: {reason}")]
+pub struct IncomingError {
+    /// The head file read: `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`
+    /// or `REBASE_HEAD`.
+    pub file: &'static str,
+    /// What went wrong, as text: kept `Clone`/`Eq` so the detail stays so.
+    pub reason: String,
 }
 
 /// Why [`in_progress_detail`] could not even check whether an operation is
@@ -158,9 +176,25 @@ pub enum StateError {
 /// # Errors
 /// [`StateError`] on the same terms as [`in_progress`]: a marker path could
 /// not be checked. Never for a rebase detail file that is missing or does
-/// not parse; those fields are simply `None`. Also [`StateError::Io`] when
-/// the incoming commit's head file names a commit git cannot read.
+/// not parse; those fields are simply `None`. Nor for an incoming commit git
+/// cannot read: that is [`InProgressDetail::theirs`]'s own `Err`.
+///
+/// Reads theirs with no way to stop git; a caller holding a [`Stop`] uses
+/// [`in_progress_detail_with_stop`].
 pub fn in_progress_detail(repo: &RepoHandle) -> Result<Option<InProgressDetail>, StateError> {
+    in_progress_detail_with_stop(repo, &())
+}
+
+/// [`in_progress_detail`], with `until` able to end the one git run it makes
+/// (listing the incoming commit). A stopped run is carried on
+/// [`InProgressDetail::theirs`] like any other failure to name it.
+///
+/// # Errors
+/// As [`in_progress_detail`].
+pub fn in_progress_detail_with_stop(
+    repo: &RepoHandle,
+    until: &dyn Stop,
+) -> Result<Option<InProgressDetail>, StateError> {
     let Some(kind) = in_progress(repo)? else {
         return Ok(None);
     };
@@ -180,7 +214,7 @@ pub fn in_progress_detail(repo: &RepoHandle) -> Result<Option<InProgressDetail>,
     } else {
         (None, None, None)
     };
-    let theirs = incoming(repo, kind)?;
+    let theirs = incoming(repo, kind, until);
     Ok(Some(InProgressDetail {
         kind,
         step,
@@ -192,9 +226,13 @@ pub fn in_progress_detail(repo: &RepoHandle) -> Result<Option<InProgressDetail>,
 
 /// The commit `kind` is bringing in, read from the head file git writes for
 /// it. A missing file is `None`; a file naming a commit git cannot read is
-/// an error, carried on [`StateError::Io`] (the one error path this call
-/// has).
-fn incoming(repo: &RepoHandle, kind: InProgress) -> Result<Option<CommitSummary>, StateError> {
+/// an [`IncomingError`], for the caller to keep beside the rest of the
+/// detail.
+fn incoming(
+    repo: &RepoHandle,
+    kind: InProgress,
+    stop: &dyn Stop,
+) -> Result<Option<CommitSummary>, IncomingError> {
     let file = match kind {
         InProgress::Merge => "MERGE_HEAD",
         InProgress::CherryPick => "CHERRY_PICK_HEAD",
@@ -202,25 +240,22 @@ fn incoming(repo: &RepoHandle, kind: InProgress) -> Result<Option<CommitSummary>
         InProgress::Rebase => "REBASE_HEAD",
         InProgress::Bisect => return Ok(None),
     };
+    let failed = |reason: String| IncomingError { file, reason };
     // `MERGE_HEAD` lists one id per merged head; the first is the one merged.
     let Some(hex) = read_field(&repo.git_dir().join(file))
         .and_then(|text| text.lines().next().map(str::to_owned))
     else {
         return Ok(None);
     };
-    let id = Oid::from_hex(hex.trim()).map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("{file} does not hold a commit id: {hex}"),
-        )
-    })?;
-    let range = rev_list(repo, 1, vec![GitArg::Oid(id)], &()).map_err(io::Error::other)?;
-    let summary = range.commits.into_iter().last().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("{file} names {id}, which git did not list"),
-        )
-    })?;
+    let id = Oid::from_hex(hex.trim())
+        .map_err(|_| failed(format!("it does not hold a commit id: {hex}")))?;
+    let range = rev_list(repo, 1, vec![GitArg::Oid(id)], stop)
+        .map_err(|error| failed(error.to_string()))?;
+    let summary = range
+        .commits
+        .into_iter()
+        .last()
+        .ok_or_else(|| failed(format!("it names {id}, which git did not list")))?;
     Ok(Some(summary))
 }
 

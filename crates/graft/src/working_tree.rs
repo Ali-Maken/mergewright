@@ -56,9 +56,11 @@ pub fn read(store: &RepoStore, stop: &dyn Stop) -> Result<WorkingTree, String> {
     let status = graft_git::status::read(&handle, stop).map_err(|error| error.to_string())?;
     // Not swallowed to `None`: an unreadable git directory is a real failure,
     // and reporting "nothing in progress" would let a commit be offered that
-    // git will refuse.
-    let in_progress =
-        graft_git::state::in_progress_detail(&handle).map_err(|error| error.to_string())?;
+    // git will refuse. An incoming commit git cannot name is not such a
+    // failure: it rides on the detail's `theirs`, and the banner (with its
+    // `--abort`) still draws.
+    let in_progress = graft_git::state::in_progress_detail_with_stop(&handle, stop)
+        .map_err(|error| error.to_string())?;
     // Likewise not swallowed. `merge.tool` unset is `Ok(None)` — a fact, and
     // the one `M`'s refusal is worded from. A config that could not be *read*
     // is a different thing, and reporting it as "unset" would tell the user
@@ -69,4 +71,34 @@ pub fn read(store: &RepoStore, stop: &dyn Stop) -> Result<WorkingTree, String> {
         in_progress,
         mergetool,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use graft_fixtures::Shape;
+    use graft_git::state::InProgress;
+
+    use super::*;
+
+    /// A `MERGE_HEAD` naming a commit git cannot read (Minor 2 of
+    /// `docs/reviews/m6-amend-10-22.md`). Theirs' name is a label; failing
+    /// the whole read on it would hide the banner, and with it `--abort`.
+    #[test]
+    fn an_unreadable_merge_head_still_reads_the_working_tree() {
+        let scratch = graft_fixtures::copy_into_temp(Shape::Linear);
+        let git_dir = scratch.path().join(".git");
+        assert!(git_dir.is_dir(), "the fixture copy is a plain repository");
+        std::fs::write(
+            git_dir.join("MERGE_HEAD"),
+            "1111111111111111111111111111111111111111\n",
+        )
+        .expect("written");
+        let store = RepoStore::new(scratch.path().to_path_buf(), None);
+
+        let read = read(&store, &()).expect("the working tree reads");
+        let detail = read.in_progress.expect("the merge is still seen");
+        assert_eq!(detail.kind, InProgress::Merge, "its banner, and --abort");
+        let error = detail.theirs.expect_err("carried, not swallowed");
+        assert_eq!(error.file, "MERGE_HEAD");
+    }
 }

@@ -138,7 +138,7 @@ fn boxes() -> Vec<Modal> {
         step: Some((1, 2)),
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     banner.banner_focus = true;
 

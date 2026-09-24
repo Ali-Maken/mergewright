@@ -33,34 +33,41 @@ const SHORT_OID: usize = 7;
 /// test the old explainer used: a conflicted `git stash pop` leaves no
 /// marker git writes for it. Nothing on disk says which entry was popped,
 /// so theirs is the role alone. A name that cannot be found (refs not read
-/// yet, a head file git has not written) leaves the role word alone too.
+/// yet, a head file git has not written) leaves the role word alone too; a
+/// head file naming a commit git cannot read shows that failure instead.
 #[must_use]
 pub fn side_names(state: &AppState) -> SideNames {
     let head = || state.refs.as_deref().and_then(crate::refs::RefBadges::head);
     let detail = state.in_progress.as_ref();
-    let incoming = detail.and_then(|detail| detail.theirs.as_ref());
+    // Theirs' name, or why it could not be read: the error is drawn where
+    // the name would be, not dropped (the operation itself still reads).
+    let incoming = |name: &dyn Fn(&CommitSummary) -> String| match detail.map(|d| &d.theirs) {
+        Some(Ok(Some(commit))) => Some(name(commit)),
+        Some(Err(error)) => Some(error.to_string()),
+        Some(Ok(None)) | None => None,
+    };
     let (roles, ours, theirs) = match detail.map(|detail| detail.kind) {
         Some(InProgress::Merge) => (
             SideRoles::Merge,
             head().map(|id| branch_like(state, id)),
-            incoming.map(|commit| branch_like(state, commit.id)),
+            incoming(&|commit| branch_like(state, commit.id)),
         ),
         Some(InProgress::Rebase) => (
             SideRoles::Rebase,
             detail
                 .and_then(|detail| detail.onto)
                 .map(|id| branch_like(state, id)),
-            incoming.map(commit_like),
+            incoming(&commit_like),
         ),
         Some(InProgress::CherryPick) => (
             SideRoles::CherryPick,
             head().map(|id| branch_like(state, id)),
-            incoming.map(commit_like),
+            incoming(&commit_like),
         ),
         Some(InProgress::Revert) => (
             SideRoles::Revert,
             head().map(|id| branch_like(state, id)),
-            incoming.map(commit_like),
+            incoming(&commit_like),
         ),
         None if state.resolver.is_some() => (
             SideRoles::StashPop,
@@ -78,6 +85,15 @@ pub fn side_names(state: &AppState) -> SideNames {
         theirs: sanitize_line(&named(roles.theirs(), theirs)),
         roles,
     }
+}
+
+/// `o <ours>  t <theirs>` in the operation's role words — the keys a
+/// status line offers for a card (`o upstream  t yours` in a rebase), never
+/// git's `ours`/`theirs`, which a rebase swaps.
+#[must_use]
+pub(crate) fn side_keys(state: &AppState) -> String {
+    let roles = side_names(state).roles;
+    format!("o {}  t {}", roles.ours(), roles.theirs())
 }
 
 /// `role · name`, or the role alone when there is no name.
@@ -199,7 +215,7 @@ pub(crate) mod fixtures {
             step: None,
             head_name: None,
             onto: (kind == InProgress::Rebase).then(|| oid(2)),
-            theirs,
+            theirs: Ok(theirs),
         }
     }
 }

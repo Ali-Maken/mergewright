@@ -1,4 +1,7 @@
+use graft_term::SanitizedText;
 use unicode_width::UnicodeWidthStr;
+
+use crate::conflict_resolver::SideRoles;
 
 use super::*;
 

@@ -358,7 +358,7 @@ fn detail_tab_mid_rebase(banner_focus: bool) -> AppState {
             step: Some((1, 2)),
             head_name: None,
             onto: None,
-            theirs: None,
+            theirs: Ok(None),
         }),
         banner_focus,
         working_tree: Some(std::sync::Arc::new(graft_git::status::WorkingTreeStatus {

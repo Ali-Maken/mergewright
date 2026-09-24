@@ -266,7 +266,7 @@ fn a_preview_refuses_while_git_has_an_operation_in_progress() {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     });
     let mut commands = Vec::new();
     assert!(!open_preview(

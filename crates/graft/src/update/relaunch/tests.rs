@@ -21,7 +21,7 @@ fn merge() -> InProgressDetail {
         step: None,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     }
 }
 

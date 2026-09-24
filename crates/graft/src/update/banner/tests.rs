@@ -18,7 +18,7 @@ fn detail(kind: InProgress, step: Option<(u32, u32)>) -> InProgressDetail {
         step,
         head_name: None,
         onto: None,
-        theirs: None,
+        theirs: Ok(None),
     }
 }
 

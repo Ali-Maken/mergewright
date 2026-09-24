@@ -451,14 +451,48 @@ mod tests {
             }
         }
 
-        // Stash pop: the resolver open with no operation in progress.
+        // Stash pop: the resolver open with no operation in progress. Below
+        // 100 columns the labels stack, one side per row: `stashed` must
+        // then be a row of its own, not a tail on ours' row.
         let mut state = open_on(TWO_BLOCKS, "notes.txt");
         state.refs = Some(refs(false));
+        for columns in [80, 120] {
+            let drawn = frame(&state, columns, 30);
+            assert!(drawn.contains("yours · main"), "{columns}:\n{drawn}");
+            assert!(!drawn.contains("stashed ·"), "{columns}:\n{drawn}");
+            assert_no_raw_label(&drawn);
+            if columns == 80 {
+                assert!(
+                    drawn.lines().any(|row| row.trim_end().ends_with("stashed")
+                        && !row.contains("yours")
+                        && row.trim_start().starts_with("stashed")),
+                    "`stashed` is not on a label row of its own at 80:\n{drawn}"
+                );
+            } else {
+                assert!(drawn.contains("│stashed"), "{columns}:\n{drawn}");
+            }
+        }
+    }
+
+    /// A head file naming a commit git cannot read: the operation still
+    /// draws, and theirs' label says why it has no name rather than hiding
+    /// the failure (review m6-amend-10-22, Minor 2).
+    #[test]
+    fn an_unreadable_theirs_is_named_as_such() {
+        let mut state = open_on(TWO_BLOCKS, "notes.txt");
+        state.refs = Some(refs(false));
+        let mut merge = operation(InProgress::Merge, None);
+        merge.theirs = Err(graft_git::state::IncomingError {
+            file: "MERGE_HEAD",
+            reason: "bad object".to_owned(),
+        });
+        state.in_progress = Some(merge);
         let drawn = frame(&state, 120, 30);
         assert!(drawn.contains("yours · main"), "{drawn}");
-        assert!(drawn.contains("│stashed"), "{drawn}");
-        assert!(!drawn.contains("stashed ·"), "{drawn}");
-        assert_no_raw_label(&drawn);
+        assert!(
+            drawn.contains("theirs · could not read MERGE_HEAD"),
+            "{drawn}"
+        );
     }
 
     /// Decision 2: HEAD with no branch on it reads as its short id.
