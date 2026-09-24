@@ -1782,6 +1782,262 @@ class UnvisitedMark(Scene):
         return "12 files, 2 opened (the as-built many-files shape) · > shows the column at 187"
 
 
+class CommitWhileMerging(Scene):
+    """`c` on the main screen while a merge is stopped (docs/reviews/m6-usability.md M3)."""
+    question = "c on the main screen while a merge is stopped"
+    knobs = [("c", [("opens the editor, which refuses", "as built"),
+                    ("goes where the banner's c goes", "draft")])]
+
+    def reset(self):
+        self.where = "pane"  # pane · editor · banner · summary · landed
+
+    def key(self, k):
+        w = self.where
+        if w == "pane":
+            if k == "c":
+                # as built: commit_editor::open ignores in_progress (crates/graft/src/update/commit_editor.rs:289-318)
+                self.where = "summary" if self.kv[0] == 1 else "editor"
+            elif k == "\t":
+                self.where = "banner"
+            else:
+                return False
+            return True
+        if w == "editor":
+            if k == "\x1b":
+                self.where = "pane"
+            return True  # anything else: the editor stays and keeps refusing
+        if w == "banner":
+            if k == "c":
+                self.where = "summary"
+            elif k == "\t":
+                self.where = "pane"
+            else:
+                return False
+            return True
+        if w == "summary":
+            if k == "\r":  # the summary's ⏎ commits (crates/graft/src/update/finish/keys.rs:105-107)
+                self.where = "landed"
+            elif k == "\x1b":
+                self.where = "banner"
+            else:
+                return False
+            return True
+        return False
+
+    def draw(self, cv):
+        W = cv.w
+        cv.put(0, 0, " graft /code/api    " + ("" if self.where == "landed" else "MERGING"))
+        if self.where == "landed":
+            cv.put(0, 1, "◆─╮    ", S("accent"))
+            cv.put(7, 1, "[◆ main] Merge branch 'feature'")
+            draw_bar_row(cv, cv.h - 1, " committed ✓ · merge finished · Backspace to try again")
+            return
+        rows = [("◌      ", "Uncommitted changes (1 staged)"), ("◆   ▏  ", "[◆ main] main's take"),
+                ("│ ●    ", "[feature] the feature's take")]
+        for i, (g, t) in enumerate(rows):
+            cv.put(0, 1 + i, g, S("accent"))
+            cv.put(7, 1 + i, t)
+        cv.put(0, 5, ("▸ " if self.where == "pane" else "  ") + "changes · staged", S("text", None, "b"))
+        cv.put(4, 6, "M notes.txt  (resolved)")
+        banner = " merge in progress · 0 files conflicted · c continue  a abort  ⇥ graph"
+        on = self.where == "banner"
+        if on:
+            cv.paint(0, cv.h - 2, W, "selection", "R")
+        cv.put(0, cv.h - 2, ("▸" if on else " ") + banner[1:W], S("text", None, "b"))
+        if self.where == "editor":
+            w = min(W - 4, 76)
+            x0, y0 = 2, 8
+            for y in range(y0, y0 + 8):
+                cv.put(x0, y, " " * w, S("text", "bg"))
+            cv.put(x0, y0, "╭ Subject " + "─" * (w - 11) + "╮", S("accent"))
+            cv.put(x0 + 2, y0 + 1, "▏", S("accent"))
+            cv.put(x0, y0 + 2, "├ Body " + "─" * (w - 8) + "┤", S("accent"))
+            # options row: crates/graft-ui/src/commit_editor.rs:309-316
+            cv.put(x0 + 2, y0 + 5, "  [ ] amend  [ ] sign-off  [ ] no-verify  [ ] allow empty  [ Commit ]")
+            # the refusal: crates/graft/src/update/commit_editor.rs:224-227 (a merge begun in Graft)
+            cv.put(x0 + 2, y0 + 6, "  merge in progress — esc, ⇥ banner, then c continue  a abort", S("removed"))
+            cv.put(x0, y0 + 7, "╰" + "─" * (w - 2) + "╯", S("accent"))
+            # crates/graft-ui/src/commit_editor.rs:171
+            draw_bar_row(cv, cv.h - 1, " ⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel")
+        elif self.where == "summary":
+            draw_box(cv, "What will land · merge feature into main",
+                     ["Subject: Merge branch 'feature'", "", "notes.txt   resolved by hand", ""],
+                     [], 0, "⏎ commit  esc back")
+        else:
+            draw_bar_row(cv, cv.h - 1, " c commit  ⇥ banner" if self.where == "pane" else " c continue  ⇥ changes")
+
+    def note(self):
+        return "changes pane has focus · notes.txt resolved outside the resolver · goal: the merge committed"
+
+
+class PushBox(Scene):
+    """The push box (docs/reviews/m6-usability.md M1)."""
+    question = "the push box: which keys push"
+    knobs = [("y", [("closes the box, nothing pushed", "as built"), ("pushes", "draft")]),
+             ("box", [("plain push", "as built"), ("force push", "as built")])]
+
+    def reset(self):
+        self.box = None
+        self.status = None
+        self.pushed = False
+
+    def force(self):
+        return self.kv[1] == 1
+
+    def y_acts(self):
+        return self.kv[0] == 1 and not self.force()  # the note recommends: never in the force box
+
+    def key(self, k):
+        self.status = None
+        if self.box is None:
+            if k == "P" and not self.pushed:
+                self.box = 0  # the cursor starts on Cancel (ADR-0038 §1)
+                return True
+            return False
+        done = "force-pushed main → origin/main ✓" if self.force() else "pushed main → origin/main ✓"
+        if k in ("\x1b[C", "\x1b[D"):
+            self.box = 1 if k == "\x1b[C" else 0
+        elif k == "\r":  # crates/graft/src/update/confirm.rs:103-111: only ⏎ acts, on the cursor's button
+            if self.box == 1:
+                self.pushed, self.status = True, done
+            self.box = None
+        elif k == "\x1b":
+            self.box = None
+        elif k == "y" and self.y_acts():
+            self.box, self.pushed, self.status = None, True, done
+        elif self.kv[0] == 0:
+            self.box = None  # crates/graft/src/update/confirm.rs:173 `_ => next.confirm = None`: no word said
+        # else: the fix's rule, an unbound key is swallowed and the box stays
+        return True
+
+    def draw(self, cv):
+        cv.put(0, 0, " graft /code/api")
+        cv.put(0, 1, "●      ", S("accent"))
+        cv.put(7, 1, "[◆ main" + ("" if self.pushed else "  ↑2") + "] fix the parser")
+        cv.put(0, 2, "●      ", S("accent"))
+        cv.put(7, 2, "add a test")
+        cv.put(0, 3, "●      ", S("accent"))
+        cv.put(7, 3, "[origin/main] the shared files")
+        draw_bar_row(cv, cv.h - 1, " " + (self.status or "P push  p pull  f fetch"))
+        if self.box is None:
+            return
+        foot = "y push  ←→ choose  ⏎ act  esc cancel" if self.y_acts() else None  # the note's footer
+        if self.force():  # crates/graft/src/update/remote/push_box.rs:157-184
+            draw_box(cv, "Force-push main → origin/main?",
+                     ["origin/main 3e1a9c0 → 7b2d4f1 · refused if origin moved since your fetch (lease)",
+                      "rewrites history for everyone who has 3e1a9c0", "",
+                      "git push --force-with-lease=main:3e1a9c0 origin main", ""],
+                     ["Cancel", "Force push"], self.box, foot)
+        else:  # push_box.rs:134-155
+            draw_box(cv, "Push main → origin/main",
+                     ["2 commits · can't be undone from here — origin keeps what you send", "",
+                      "git push origin main", ""],
+                     ["Cancel", "Push"], self.box, foot)
+
+    def note(self):
+        return "graph focus · main is 2 ahead · goal: pushed · force box: y never pushes (recommended)"
+
+
+class CommitSubject(Scene):
+    """The commit editor's subject (docs/reviews/m6-usability.md M2)."""
+    question = "⏎ in the commit editor's subject"
+    knobs = [("⏎ in the subject", [("moves to the body", "as built"), ("commits; ⇥ to the body", "draft")])]
+    FIELDS = 4  # subject → body → amend → [ Commit ] (crates/graft-ui/src/commit_editor.rs:90-99, options folded)
+
+    def reset(self):
+        self.focus = 0
+        self.subject = ""
+        self.body = [""]
+        self.landed = None
+        self.open = True
+
+    def text_mode(self):
+        return self.open and self.landed is None and self.focus in (0, 1)
+
+    def key(self, k):
+        if self.landed is not None:
+            return False
+        if not self.open:
+            if k == "c":
+                self.open = True
+                return True
+            return False
+        f = self.focus
+        if k == "\t":
+            self.focus = (f + 1) % self.FIELDS
+        elif k == "\x1b[Z":
+            self.focus = (f - 1) % self.FIELDS
+        elif k == "\x1b":
+            self.open = False  # the draft is kept, as esc keeps it in the app
+        elif k == "\r":
+            if f == 0:
+                if self.kv[0] == 1:
+                    self.commit()
+                else:  # crates/graft/src/update/commit_editor.rs:601 `Enter | Down => focus = Body`
+                    self.focus = 1
+            elif f == 1:
+                self.body.append("")
+            elif f == 3:
+                self.commit()
+        elif k == "\x1b[B" and f == 0:
+            self.focus = 1
+        elif k in ("\x7f", "\x08"):
+            if f == 0:
+                self.subject = self.subject[:-1]
+            elif f == 1:
+                self.body[-1] = self.body[-1][:-1]
+        elif len(k) == 1 and k.isprintable():
+            if f == 0:
+                self.subject += k
+            elif f == 1:
+                self.body[-1] += k
+        else:
+            return False
+        return True
+
+    def commit(self):
+        body = [b for b in self.body if b]
+        self.landed = self.subject or "(no subject)"
+        if body:
+            self.landed += f"  (+{len(body)} body line{'s' if len(body) > 1 else ''})"
+
+    def draw(self, cv):
+        W = cv.w
+        cv.put(0, 0, " graft /code/api")
+        if self.landed is not None:
+            cv.put(0, 1, "●      ", S("accent"))
+            cv.put(7, 1, "[◆ main] " + self.landed)
+            draw_bar_row(cv, cv.h - 1, " committed ✓ · Backspace to try again")
+            return
+        if not self.open:
+            draw_bar_row(cv, cv.h - 1, " c commit · the prototype's keys work here (1 knob, ] next, q quit)")
+            return
+        w = min(W - 4, 72)
+        x0, y0 = 2, 2
+        for y in range(y0, y0 + 9):
+            cv.put(x0, y, " " * w, S("text", "bg"))
+
+        def mk(i):
+            return "▸" if self.focus == i else " "
+        cv.put(x0, y0, "╭ " + mk(0) + "Subject " + "─" * (w - 12) + "╮", S("accent"))
+        cv.put(x0 + 2, y0 + 1, self.subject + ("▏" if self.focus == 0 else ""))
+        cv.put(x0, y0 + 2, "├ " + mk(1) + "Body " + "─" * (w - 9) + "┤", S("accent"))
+        shown = self.body[-4:]
+        for i, ln in enumerate(shown):
+            cv.put(x0 + 2, y0 + 3 + i, ln + ("▏" if self.focus == 1 and i == len(shown) - 1 else ""))
+        # crates/graft-ui/src/commit_editor.rs:309-316 (amend stands in for the four boxes)
+        cv.put(x0 + 2, y0 + 7, f"{mk(2)} [ ] amend    {mk(3)} [ Commit ]")
+        cv.put(x0, y0 + 8, "╰" + "─" * (w - 2) + "╯", S("accent"))
+        if self.kv[0] == 1:
+            foot = " ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel"  # the draft
+        else:
+            foot = " ⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel"  # commit_editor.rs:171
+        draw_bar_row(cv, cv.h - 1, foot)
+
+    def note(self):
+        return "in Zed ⌃⏎ never arrives · type a subject, commit it · esc closes the editor (then 1 flips, c reopens)"
+
+
 class Deciding(Scene):
     question = "what you're deciding"
 
@@ -1807,6 +2063,12 @@ class Deciding(Scene):
         ("11. Undo and abort on a merge you started in the shell: both, abort only, or keep doing it in",
          "   the shell.", "scene 9 · knob 1"),
         ("12. The mark on a file you haven't opened yet.", "", "scene 10 · knob 1"),
+        ("13. `c` on the main screen while a merge is stopped: open the commit editor (which then says",
+         "   no), or go straight to the screen showing what will land.", "scene 11 · knob 1"),
+        ("14. The push box: `y` pushes as well as ⏎, or only ⏎ (today `y` closes it and nothing is",
+         "   pushed). The force-push box keeps ⏎ only either way.", "scene 12 · knob 1 (2: force box)"),
+        ("15. The commit message's first line: ⏎ commits (Tab reaches the longer text), or ⏎ moves",
+         "   on to the longer text as now.", "scene 13 · knob 1"),
     ]
 
     def draw(self, cv):
@@ -1844,7 +2106,8 @@ class App:
         self.finishing = Finishing(self)
         self.scenes = [Deciding(self), self.colours, self.finishing, SummaryKeys(self), KeyRow120(self),
                        ShortWords(self), StopLine(self), AfterLastBlock(self), StartOver(self), ShellUndo(self),
-                       UnvisitedMark(self)]
+                       UnvisitedMark(self), CommitWhileMerging(self), PushBox(self),
+                       CommitSubject(self)]
         self.idx = 1
         self.task = not args.no_task
         self.splash = self.task
@@ -2004,7 +2267,7 @@ class App:
         top = 1
         if not self.task:
             n = self.idx
-            head = (f"scene {n}/10 · {sc.question} · keys {self.keys}" if n else
+            head = (f"scene {n}/{len(self.scenes) - 1} · {sc.question} · keys {self.keys}" if n else
                     "What you're deciding · ] first scene · q quit")
             out.append(f"\x1b[1;1H\x1b[0;1m{head[:tw]}\x1b[0m\x1b[K")
             out.append("\x1b[2;1H" + self.knob_row(sc, tw) + "\x1b[0m\x1b[K")
