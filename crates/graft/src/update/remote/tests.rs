@@ -278,7 +278,7 @@ fn push_box_text_table() {
         Some("refs/heads/main"),
         Some(upstream(Some(THEIRS))),
     );
-    state.remote.last_rejected_push = Some(push_params(&state).expect("an upstream"));
+    rejected_at_head(&mut state);
     let params = push_params(&state).expect("the lease variant");
     assert_eq!(
         params.lease,
@@ -340,7 +340,7 @@ fn push_refusals_are_words() {
         Some("refs/heads/main"),
         Some(upstream(None)),
     );
-    unfetched.remote.last_rejected_push = Some(push_params(&unfetched).expect("an upstream"));
+    rejected_at_head(&mut unfetched);
     assert_eq!(
         push_params(&unfetched),
         Err("f to fetch first — nothing to lease against".to_owned())
@@ -480,7 +480,10 @@ fn failures_are_worded_and_remembered() {
             keys: Some("p pull first · P force with lease".to_owned()),
         }
     );
-    assert_eq!(after.remote.last_rejected_push, Some(params));
+    assert_eq!(
+        after.remote.last_rejected_push,
+        Some(RejectedPush { params, sent: None })
+    );
     assert_eq!(
         remote_failed(
             &mut after,
@@ -636,6 +639,19 @@ fn diverged() -> AppState {
 
 /// Our own tip, for the rebase the diverged line offers.
 const OURS: &str = "1111111111111111111111111111111111111111";
+
+/// git refused the push `P` builds now, with `HEAD` at `OURS` on current
+/// refs, and nothing has moved since: the state the lease box is for
+/// (m6-conflicts/49).
+fn rejected_at_head(state: &mut AppState) {
+    let refs = diverged().refs;
+    state.refs = refs;
+    state.refs_read = crate::update::state::RefsRead::Current(JobId::new(1));
+    state.remote.last_rejected_push = Some(RejectedPush {
+        params: push_params(state).expect("an upstream"),
+        sent: Some(oid(OURS)),
+    });
+}
 
 #[test]
 fn diverged_pull_sets_m_r_source() {
@@ -1405,3 +1421,5 @@ fn undo_locally_still_runs_when_there_is_no_re_push() {
     };
     assert_eq!(commands, [Command::Undo(id, false)]);
 }
+
+mod lease;

@@ -3011,8 +3011,13 @@ fn capture_m4_remote_keys() {
             ),
         }),
     }));
-    state.remote.last_rejected_push =
-        Some(crate::update::remote::push_params(&state).expect("an upstream to push to"));
+    // Nothing moved since the rejection: the refs are current and `HEAD`
+    // is the tip git refused (m6-conflicts/49).
+    state.refs_read = crate::update::RefsRead::Current(graft_core::job::JobId::new(1));
+    state.remote.last_rejected_push = Some(crate::update::remote::RejectedPush {
+        params: crate::update::remote::push_params(&state).expect("an upstream to push to"),
+        sent: state.refs.as_deref().and_then(crate::refs::RefBadges::head),
+    });
     assert!(
         crate::update::remote::push_key(&mut state),
         "P opens the box"

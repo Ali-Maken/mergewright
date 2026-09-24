@@ -26,13 +26,27 @@ use crate::jobs::remote::RemoteFacts;
 /// Below this many columns the progress brief drops its counts.
 const NARROW_COLUMNS: u16 = 100;
 
+/// A push git refused as not a fast-forward, and the tip it tried to send.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RejectedPush {
+    /// The push that was refused: `P` offers the lease only for this same
+    /// branch, remote and remote branch.
+    pub params: PushParams,
+    /// `HEAD`'s tip when git refused the push, read from current refs.
+    /// `None` when the refs were not current then: with nothing to compare,
+    /// `P` offers the plain box and git decides.
+    pub sent: Option<Oid>,
+}
+
 /// The remote keys' own state.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RemoteState {
     /// The push git last rejected as not a fast-forward. While it names the
-    /// branch `P` would push, `P` offers the lease box instead of the plain
-    /// one. Cleared by a successful push and by a change of branch.
-    pub last_rejected_push: Option<PushParams>,
+    /// push `P` would build, the refs are current and `HEAD` is still the
+    /// tip that was refused ([`RejectedPush::sent`]), `P` offers the lease
+    /// box instead of the plain one (m6-conflicts/49). Cleared by a
+    /// successful push and by a change of branch.
+    pub last_rejected_push: Option<RejectedPush>,
     /// The remote facts read in flight. Held apart from
     /// [`AppState::remotes`] so a re-read does not blank the facts `p` and
     /// `P` decide from; an answer under any other id is stale and dropped.
@@ -261,7 +275,9 @@ pub(super) fn remotes_arrived(
                 .remote
                 .last_rejected_push
                 .as_ref()
-                .is_some_and(|rejected| facts.head_branch.as_deref() != Some(&rejected.branch))
+                .is_some_and(|rejected| {
+                    facts.head_branch.as_deref() != Some(&rejected.params.branch)
+                })
             {
                 state.remote.last_rejected_push = None;
             }
@@ -273,14 +289,16 @@ pub(super) fn remotes_arrived(
     }
 }
 
+/// `p`, `P` or `f` before the remote facts have landed; `P` also while a
+/// re-read is in flight and the answer would be the lease.
+const REMOTES_PENDING: &str = "still reading the remotes — try again in a moment";
+
 /// The facts, or the words for why `p`/`P` cannot act yet.
 fn facts(state: &AppState) -> Result<&Arc<RemoteFacts>, String> {
     match &state.remotes {
         Loading::Ready(facts) => Ok(facts),
         Loading::Failed(why) => Err(format!("remotes could not be read: {why}")),
-        Loading::Idle | Loading::Pending(_) => {
-            Err("still reading the remotes — try again in a moment".to_owned())
-        }
+        Loading::Idle | Loading::Pending(_) => Err(REMOTES_PENDING.to_owned()),
     }
 }
 

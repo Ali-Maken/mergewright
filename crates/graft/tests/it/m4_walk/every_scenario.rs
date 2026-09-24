@@ -42,6 +42,7 @@ walk! {
     push_detached_refused => "push-detached-refused",
     push_rejected_then_lease => "push-rejected-then-lease",
     push_lease_refused_stale => "push-lease-refused-stale",
+    push_rejected_rebased_then_plain => "push-rejected-rebased-then-plain",
     wrong_password_then_right => "wrong-password-then-right",
     password_prompt_esc_cancels => "password-prompt-esc-cancels",
     username_then_password => "username-then-password",

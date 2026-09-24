@@ -271,6 +271,11 @@ impl Walk<'_> {
                 })?;
                 Ok(state)
             }
+            Wait::PreviewPlanned => self.pump(state, "the preview's plan", |state| {
+                state.preview.as_ref().is_some_and(|preview| {
+                    !matches!(preview.plan, Loading::Pending(_) | Loading::Idle)
+                })
+            }),
             Wait::JournalHas(kind) => self.pump(state, "the journal re-read", move |state| {
                 matches!(&state.journal.entries, Loading::Ready(read)
                     if read.entries.iter().any(|entry| entry.kind == kind))

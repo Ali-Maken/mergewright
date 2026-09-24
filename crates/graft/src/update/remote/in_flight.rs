@@ -6,10 +6,12 @@ use graft_git::remote::RemoteFailure;
 use graft_ops::operation::Operation;
 
 use super::{
-    DIVERGED_KEYS, ESC_HINT, NARROW_COLUMNS, Stoppable, short_branch, short_ref, short_tracking,
+    DIVERGED_KEYS, ESC_HINT, NARROW_COLUMNS, RejectedPush, Stoppable, short_branch, short_ref,
+    short_tracking,
 };
+use crate::refs::RefBadges;
 use crate::update::events::Command;
-use crate::update::state::{AppState, Status};
+use crate::update::state::{AppState, RefsRead, Status};
 
 /// `Esc` while a write runs: ask it to stop. Not while a text field, the
 /// confirm box or the menu is open — their `Esc` is their own. A second
@@ -166,7 +168,16 @@ pub fn remote_failed(
         // wrong-worded failure line (m4-remotes/05 review, Minor 4).
         (RemoteFailure::Cancelled, _) => Status::done(format!("{} cancelled", op.describe())),
         (RemoteFailure::NonFastForward, Operation::Push(params)) => {
-            state.remote.last_rejected_push = Some(params.clone());
+            // The tip refused, only from refs that answer the last read: a
+            // tip read from refs before a write would make the next `P`
+            // compare with the wrong commit (m6-conflicts/49).
+            let sent = matches!(state.refs_read, RefsRead::Current(_))
+                .then(|| state.refs.as_deref().and_then(RefBadges::head))
+                .flatten();
+            state.remote.last_rejected_push = Some(RejectedPush {
+                params: params.clone(),
+                sent,
+            });
             sticky()
         }
         // The pull that cannot fast-forward. `graft_ops`' own line sends the

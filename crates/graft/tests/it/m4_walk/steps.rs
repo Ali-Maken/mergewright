@@ -31,6 +31,9 @@ pub enum Wait {
     /// The journal on screen has an entry of this kind and no re-read is in
     /// flight (`u`'s wording reads it).
     JournalHas(OperationKind),
+    /// The Ghost Preview a key opened has its plan (m6-conflicts/49's
+    /// `r r` after the diverged pull).
+    PreviewPlanned,
 }
 
 /// One thing the walk does to the running app, in order.
