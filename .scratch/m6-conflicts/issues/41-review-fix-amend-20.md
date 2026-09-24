@@ -187,3 +187,11 @@ Count: the line number of the first `#[cfg(test)]` minus 1, or `wc -l` when the 
   - [x] `MergeState` path unchanged: the workspace builds (`cargo clippy --all-targets -D warnings` clean) and no `use` outside graft-core changed.
   - [x] MAP entries: graft-core §journal and graft-ops §apply (the file list and `resume::shell::refuse_octopus`). (doc)
   - [ ] All three files ≤ 400: no, journal.rs is 409 (see above).
+
+### Part B follow-up: EntryId move (on the conductor's go-ahead)
+- `EntryId`, its impls and `CROCKFORD`/`ULID_LEN` moved to `journal/entry_id.rs`, with `pub use entry_id::EntryId;`. Pure move.
+- Moved tests, unedited: `ulid_encodes_time_then_random_in_26_crockford_characters`, `ulids_order_by_time_then_by_random`, `parse_round_trips_and_rejects_the_malformed`, `absurd_clocks_clamp_instead_of_wrapping`.
+- New non-test counts: journal.rs **319**, journal/entry_id.rs 97.
+- [x] All three files ≤ 400: journal.rs 319, apply.rs 377, resume.rs 378. Verified by the counting command above; gates re-run workspace-wide: nextest 3006/3006 (1 skipped), doctests, fmt and clippy all green.
+- [x] MAP: graft-core §journal `EntryId` home. (doc)
+Status: Part B done.
