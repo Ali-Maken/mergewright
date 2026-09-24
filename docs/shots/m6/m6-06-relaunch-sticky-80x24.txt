@@ -24,4 +24,4 @@ CONFLICTS (1)
 
 
 
- rebase still in progress from a previous run · ⏎ resolve  c continue  a abort
+ ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph

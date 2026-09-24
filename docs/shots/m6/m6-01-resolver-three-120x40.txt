@@ -1,37 +1,37 @@
 m6 walk capture: m6-01-resolver-three — scenario zdiff3-and-base-on-demand, keys k ⏎ j j j j j j j j j j j ⏎ n t B, unicode tier, 120x40
 
 MERGING
-three.txt · file 12 of 13 · 2 of 3 conflicts open
-ours = main · theirs = the branch being merged in
-      1 alpha
-   2 ── conflict 1 of 3 · open ── o ours  t theirs  b both ─────────────────────────────────────────────────────────────
-  OURS · HEAD                                               │THEIRS · feature
-      3 one-ours                                            │      one-theirs
+files · 13     nofinal.txt 1 of 1 open               ours-deleted.txt keep or delete
+               pic.bin binary                        theirs-deleted.txt keep or delete
+             ▸ three.txt 2 of 3 open               … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ three.txt · 3 conflicts · 2 open
+
+   1 alpha
+  ── conflict 1 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+  yours · main                                              │theirs · feature
+   2 one-ours                                               │ 2 one-theirs
   BASE · merged common ancestor
-        one
+     one
   ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-      7 b1
-      8 b2
-      9 b3
-     10 b4
-▏  11 ── conflict 2 of 3 · took theirs ── o ours  b both ───────────────────────────────────────────────────────────────
-▏    11 two-theirs
+   3 b1
+   4 b2
+   5 b3
+   6 b4
+  ── conflict 2 of 3 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
+   7 two-theirs
+  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
+   8 c1
+   9 c2
+  10 c3
+  11 c4
+▏ ── conflict 3 of 3 · open ── o yours  t theirs  b both ───────────────────────────────────────────────────────────────
+▏ yours · main                                              │theirs · feature
+▏ 12 three-ours                                             │12 three-theirs
+▏ BASE · merged common ancestor
+▏    three
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-     12 c1
-     13 c2
-     14 c3
-     15 c4
-   16 ── conflict 3 of 3 · open ── o ours  t theirs  b both ────────────────────────────────────────────────────────────
-  OURS · HEAD                                               │THEIRS · feature
-     17 three-ours                                          │      three-theirs
-  BASE · merged common ancestor
-        three
-  ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
-     21 delta
-
-
-
-
+  13 delta
 
 
 

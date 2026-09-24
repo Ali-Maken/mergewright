@@ -1,42 +1,42 @@
 m6 walk capture: m6-03-card-large-file — scenario whole-file-card-glimpses-a-large-file, keys k ⏎ j j j j j j j j j j ⏎ G, unicode tier, 120x40
 
 MERGING
-theirs-deleted.txt · file 11 of 13
-ours = main · theirs = the branch being merged in
-    466 kept line 466
-    467 kept line 467
-    468 kept line 468
-    469 kept line 469
-    470 kept line 470
-    471 kept line 471
-    472 kept line 472
-    473 kept line 473
-    474 kept line 474
-    475 kept line 475
-    476 kept line 476
-    477 kept line 477
-    478 kept line 478
-    479 kept line 479
-    480 kept line 480
-    481 kept line 481
-    482 kept line 482
-    483 kept line 483
-    484 kept line 484
-    485 kept line 485
-    486 kept line 486
-    487 kept line 487
-    488 kept line 488
-    489 kept line 489
-    490 kept line 490
-    491 kept line 491
-    492 kept line 492
-    493 kept line 493
-    494 kept line 494
-    495 kept line 495
-    496 kept line 496
-    497 kept line 497
-    498 kept line 498
-    499 kept line 499
-    500 kept line 500
-        … first 500 lines of 8.1 KB · e opens the whole file
- o ours  t theirs  e edit  n next  M mergetool  esc close
+files · 13     md.md 1 of 1 open                     nofinal.txt 1 of 1 open
+               ours-deleted.txt keep or delete       pic.bin binary
+             ▸ theirs-deleted.txt keep or delete   … 8 more
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature
+
+  470 kept line 470
+  471 kept line 471
+  472 kept line 472
+  473 kept line 473
+  474 kept line 474
+  475 kept line 475
+  476 kept line 476
+  477 kept line 477
+  478 kept line 478
+  479 kept line 479
+  480 kept line 480
+  481 kept line 481
+  482 kept line 482
+  483 kept line 483
+  484 kept line 484
+  485 kept line 485
+  486 kept line 486
+  487 kept line 487
+  488 kept line 488
+  489 kept line 489
+  490 kept line 490
+  491 kept line 491
+  492 kept line 492
+  493 kept line 493
+  494 kept line 494
+  495 kept line 495
+  496 kept line 496
+  497 kept line 497
+  498 kept line 498
+  499 kept line 499
+  500 kept line 500
+      … first 500 lines of 8.1 KB · e opens the whole file
+ o yours  t theirs  e edit  n next  M mergetool  esc close

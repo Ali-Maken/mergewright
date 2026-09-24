@@ -12,7 +12,7 @@ settle, and asserts the frame against docs/shots/m6/<stem>-<WxH>.txt through
 and a run that rewrites one is red anyway).
 
 One capture is different: **m6-06-relaunch-sticky** is what a relaunch after
-`kill -9` shows. The capture run's keys (`⏎` on the banner, `o` on the first
+`kill -9` shows. The capture run's keys (`⏎`, then `o` on the first
 block) leave a rebase stopped with a file half-taken on disk; this script
 then sends that process **SIGKILL**, checks it died on signal 9 (and says so
 in its output — the log the ticket asks for), opens the real `graft` binary
@@ -46,8 +46,12 @@ CAPTURES = [c for c in CAPTURES if c[0].startswith("m6-")]
 WANTED = set(sys.argv[2:])
 STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
 RELAUNCH = "m6-06-relaunch-sticky"
-# What the capture run shows once `o` has landed, before the kill.
-BEFORE_KILL = "took ours"
+# What the capture run shows once `o` has landed, before the kill. In a
+# rebase `o` takes the upstream side, and since m6-conflicts/10 the block
+# header names it by role (`took upstream · main`,
+# graft-ui/src/conflict_resolver/draw/block.rs:27); `took ours` was 07's word
+# and never appears now (m6-conflicts/45).
+BEFORE_KILL = "took upstream"
 SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024
 # A commit the captured run makes (m6-17's merge commit) is dated like the
 # fixture's own commits (`m5_walk/fixture.rs` EPOCH + 10 minutes, after its
@@ -230,6 +234,9 @@ def relaunch(stem, scenario, on_screen, keys):
     run = Run(scenario, [BIN, "--capture", scenario], {"GRAFT_CAPTURE_REPO_OUT": out})
     if not run.wait_for(BEFORE_KILL, APPEAR):
         print(f"{stem}-{SIZE}: `{BEFORE_KILL}` never appeared before the kill — not captured")
+        # The screen it did reach, so the reason is on file, not guessed.
+        with open(f"{TARGET}/pty-walk-m6/{stem}-{SIZE}-before-kill.txt", "w") as f:
+            f.write(run.text() + "\n")
         run.end()
         return False
     run.wait_quiet(STABLE, CAP)
