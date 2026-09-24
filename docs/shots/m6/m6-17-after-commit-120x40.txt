@@ -1,0 +1,42 @@
+m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T c ⏎, unicode tier, 120x40
+
+ graft <scratch____________________________________________________________>  12 commits
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                         GT 6y   9225152
+│ ●  ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+│ ●    feature's notes                                                                                   GF 6y   d69867a
+│ ●    feature drops gone                                                                                GF 6y   35c2d1e
+● │    main's notes                                                                                      GF 6y   a301516
+● │    main changes gone                                                                                 GF 6y   fa0b4d8
+●─╯    add the readme                                                                                    GF 6y   941a7d6
+●      add notes                                                                                         GF 6y   f7b6fca
+●      add gone                                                                                          GF 6y   30036f6
+●      Correct the note                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓

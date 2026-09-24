@@ -1,0 +1,50 @@
+m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T c, unicode tier, 160x48
+
+MERGING
+Finish · merging feature → main · nothing is written until ⏎
+RESOLVED BY YOU · 2                                                                               MESSAGE · ⇥ edit
+  gone.txt   kept · yours · main                                                                   Subject Merge branch 'feature' into main                32/50
+  notes.txt  theirs · feature in 2 of 2 conflicts                                                  Body
+COMBINED BY GIT ON ITS OWN · 1 · space shows the change
+▸ README.md  modified  +1 −0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ commit  space diff  j/k move  ⇥ message  esc back

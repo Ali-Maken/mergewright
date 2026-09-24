@@ -1,0 +1,26 @@
+m6 walk capture: m6-10-stop-lands-in-resolver — scenario a-stop-to-first-conflict, keys m m, unicode tier, 80x24
+
+MERGING
+files   ▸ gone.txt keep?   notes.txt …
+────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on yours · main, deleted on theirs · feature
+
+deleted by them · o keeps the file  t deletes it
+  1 gone, changed on main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o yours  t theirs  e edit  n next  M mergetool  esc close

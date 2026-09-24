@@ -1,6 +1,6 @@
 # fix-acceptance-conflict-journeys: the walk replays every journey in the note, counts its keys, fails over the note's count, and asserts where he lands after every event; both start paths, both arrangements, the finish summary
 
-Status: partial — part 1 (parser, counting, every journey walked) done 2026-09-24; captures, contact sheet, TESTING.md, perf remain (see NOTES). (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
+Status: partial — part 1 (parser, counting, every journey walked) done 2026-09-24; captures, contact sheet, TESTING.md done by ticket 43 (2026-09-24); perf remains (ticket 44). (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
 Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 11-preview-verb-confirms.md, 12-landing-after-a-stop.md, 13-resolver-file-list.md, 14-resolver-three-panes.md, 15-take-advances-to-next-block.md, 16-take-every-open-block.md, 17-resolver-file-keys.md, 18-stop-opens-the-resolver.md, 19-finish-summary-screen.md, 20-continue-a-merge-begun-in-the-shell.md
 Was: draft · **rewritten 2026-09-23 (Amendment 2)**. This replaces the Amendment 1 version: that version's count block (`journey-counts-superseded`) is not parsed.
 Build with: **Fable**. It is the acceptance ticket and does not count against the Fable build budget. It decides what each landing must prove, and writes the "what right looks like" lines the user judges by.
@@ -92,9 +92,9 @@ Out:
 - [x] `every_scenario::journey_counts_match_the_note`: the parse; the id sets equal both ways; whole rows equal the sum of their parts; the superseded fence is ignored. Lives at `m5_walk::conflict_journeys::tests::journey_counts_match_the_note` (ids both ways, whole = parts, every route within its row); the superseded fence and the parse errors by `m5_walk::journeys::tests::{the_block_is_read_and_the_superseded_one_is_not, a_stray_token_is_an_error_not_a_comment, no_block_or_two_blocks_is_an_error}`.
 - [x] One `every_scenario::journey_<id>` test per id (the block now has **19**), each green at the note's `keys`: 24 `every_scenario::journey_*` tests (+ `two_files_in_order_at_both_arrangements`) cover all 19 ids, 5 of them with `@variant`s. Scratch run: `j` added before `O` in `one-file-one-conflict`'s route; `journey_one_file_one_conflict` failed with `FAIL one-file-one-conflict: one-file-one-conflict: 2 inputs sent, the note's journey-counts allows 1: j O`; reverted, green again. Kept as a unit test: `conflict_journeys::tests::one_key_over_the_note_fails`.
 - [x] `every_scenario::two_files_in_order_at_both_arrangements` (200x50: `FILES · 2` column + `result` pane; clicks select `notes.txt` then `gone.txt`), with `journey_two_files_in_order` at 120x40 (no column, no `│ result`; same clicks).
-- [ ] `every_scenario::contact_sheet_captions_cover_every_m6_capture`, green with the new frames.
-- [ ] TESTING.md "Conflict journeys" written, every line concrete (no "looks right"), with the Zed `Ctrl+T` line marked **unverified**.
-- [ ] The captures are listed by path in the report. The user judges them by eye (rule 6).
+- [x] `every_scenario::contact_sheet_captions_cover_every_m6_capture`, green with the new frames — by ticket 43 (see its Acceptance).
+- [x] TESTING.md "Conflict journeys" written, every line concrete (no "looks right"), with the Zed `Ctrl+T` line marked **unverified** — by ticket 43; its captures table is checked by `every_scenario::captures_are_named_keyed_and_listed_in_the_matrix` (stems ↔ matrix ↔ files).
+- [x] The captures are listed by path in ticket 43's NOTES. The user judges them by eye (rule 6); nothing here says they look right.
 
 ## NOTES (builder, 2026-09-24) — **partial; this session compacted once**
 
