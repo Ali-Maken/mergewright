@@ -711,3 +711,65 @@ fn capture_fix_editor_names_the_banner() {
     app.close();
     captures.finish();
 }
+
+/// Regenerates `docs/shots/m6/fix-c-mid-merge-answers-in-words-{187x50,80x24}.txt`
+/// (m6-conflicts/48): J3, the changes pane focused, `c` pressed — no editor,
+/// the footer answers in words.
+#[test]
+fn capture_fix_c_mid_merge_answers_in_words() {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let pane = settled_frame(&app, super::editor_words::pane_focused(&app, state));
+    let refused = app.key(&pane, KeyCode::Char('c'));
+    assert!(refused.commit_editor.is_none(), "`c` opened the editor");
+    assert_eq!(refused.status, super::editor_words::shell_merge_refusal());
+    let mut captures = graft_fixtures::Captures::new();
+    for (columns, rows) in [(187_u16, 50_u16), (80, 24)] {
+        let sized = app.resize(&refused, columns, rows);
+        let frame = crate::captures::frame_at(
+            &sized,
+            columns,
+            rows,
+            Some(graft::session::Clock::Fixed(
+                crate::conflict_interim::CONFLICT_NOW,
+            )),
+        );
+        let body = frame.join("\n");
+        assert!(body.contains("MERGING"), "{body}");
+        assert!(
+            frame
+                .iter()
+                .any(|row| row.contains("merge begun in the shell")
+                    && row.contains("⇥ banner, then c finishes it")),
+            "no footer row holds the reason and the keys whole at {columns}x{rows}:\n{body}"
+        );
+        assert!(!body.contains("COMMIT ──"), "an editor is drawn:\n{body}");
+        let header = format!(
+            "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_mid_merge_answers_in_words in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the changes pane focused, `c` pressed
+# (m6-conflicts/48).
+#
+# Judge by eye:
+# - No commit editor is drawn.
+# - The header reads `MERGING`.
+# - The footer holds the reason `merge begun in the shell` and the keys
+#   `⇥ banner, then c finishes it`, the keys whole at {columns} columns.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== {columns}x{rows} ===
+"
+        );
+        captures.check(
+            format!(
+                "{}/../../docs/shots/m6/fix-c-mid-merge-answers-in-words-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            format!("{header}{}\n", frame.join("\n")),
+        );
+    }
+    app.close();
+    captures.finish();
+}

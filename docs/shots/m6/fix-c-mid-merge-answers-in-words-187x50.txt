@@ -1,0 +1,64 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_mid_merge_answers_in_words in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the changes pane focused, `c` pressed
+# (m6-conflicts/48).
+#
+# Judge by eye:
+# - No commit editor is drawn.
+# - The header reads `MERGING`.
+# - The footer holds the reason `merge begun in the shell` and the keys
+#   `⇥ banner, then c finishes it`, the keys whole at 187 columns.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 187x50 ===
+ graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
+◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
+◆      [◆ main] main's take                                                                  GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+●─╯    the shared files                                                                      GF 2h   b35b2f1
+●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
+●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
+◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
+                                                                                                             ▎
+                                                                                                               1     - our plan
+                                                                                                                   1 + the agreed plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ merge begun in the shell · ⇥ banner, then c finishes it

@@ -1,0 +1,38 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_mid_merge_answers_in_words in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the changes pane focused, `c` pressed
+# (m6-conflicts/48).
+#
+# Judge by eye:
+# - No commit editor is drawn.
+# - The header reads `MERGING`.
+# - The footer holds the reason `merge begun in the shell` and the keys
+#   `⇥ banner, then c finishes it`, the keys whole at 80 columns.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 80x24 ===
+MERGING
+Graph  [Detail]
+UNCOMMITTED · 2 staged
+diff vs HEAD ddeed32
+
+STAGED (2)
+  M notes.md                                                               +1 −1
+  M shared.rs                                                              +1 −1
+▎
+  1     - our plan
+      1 + the agreed plan
+
+
+
+
+
+
+
+
+
+
+
+
+ merge begun in the shell · ⇥ banner, then c finishes it

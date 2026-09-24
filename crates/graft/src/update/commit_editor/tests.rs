@@ -217,6 +217,21 @@ fn an_empty_subject_refuses() {
     );
 }
 
+/// The editor opened with `c` over `state`'s live operation. Since
+/// m6-conflicts/48 `c` refuses mid-operation, so the editor is opened with the
+/// operation hidden and the operation put back under it: an editor already
+/// open when an operation began, the case its refusal row is kept for.
+fn opened_under(state: &AppState) -> AppState {
+    let mut hidden = state.clone();
+    hidden.in_progress = None;
+    hidden.live_entries = Vec::new();
+    let (mut open, _) = update(&hidden, key(KeyCode::Char('c')));
+    assert!(open.commit_editor.is_some(), "`c` opens the editor");
+    open.in_progress.clone_from(&state.in_progress);
+    open.live_entries.clone_from(&state.live_entries);
+    open
+}
+
 /// A merge Graft began: its journal entry is live, so the banner's `c` and
 /// `a` end it.
 #[test]
@@ -230,7 +245,7 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
         theirs: Ok(None),
     });
     state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
-    let (open, _) = update(&state, key(KeyCode::Char('c')));
+    let open = opened_under(&state);
     let open = typed(&open, "subject");
     let view = crate::view::commit_editor_view(&open).expect("open");
     let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
@@ -259,7 +274,7 @@ fn shell_refusal(kind: graft_git::state::InProgress) -> String {
         theirs: Ok(None),
     });
     assert!(state.live_entries.is_empty(), "nothing of Graft's is live");
-    let (open, _) = update(&state, key(KeyCode::Char('c')));
+    let open = opened_under(&state);
     let open = typed(&open, "subject");
     let view = crate::view::commit_editor_view(&open).expect("open");
     let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
@@ -334,7 +349,7 @@ fn a_bisect_in_progress_still_names_the_shell_command() {
         onto: None,
         theirs: Ok(None),
     });
-    let (open, _) = update(&state, key(KeyCode::Char('c')));
+    let open = opened_under(&state);
     let open = typed(&open, "subject");
     let view = crate::view::commit_editor_view(&open).expect("open");
     let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
@@ -827,4 +842,113 @@ fn every_refusal_fits_80_columns() {
         ),
         "the widest arm"
     );
+}
+
+// ------------------------------------------ the operation refusal (m6-conflicts/48)
+
+/// The keys a Graft-begun operation's refusal names.
+const GRAFT_KEYS: Option<&str> = Some("⇥ banner, then c continue  a abort");
+
+/// Every `(InProgress, Begun)` pair: today's editor sentence, then the pane's
+/// reason and keys.
+type LiveRow = (
+    (InProgress, Begun),
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+);
+
+/// See [`LiveRow`].
+const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
+    (
+        (InProgress::Merge, Begun::InGraft),
+        "merge in progress — esc, ⇥ banner, then c continue  a abort",
+        "merge in progress",
+        GRAFT_KEYS,
+    ),
+    (
+        (InProgress::Merge, Begun::InShell),
+        "merge begun in the shell — esc, ⇥ banner, then c finishes it",
+        "merge begun in the shell",
+        Some("⇥ banner, then c finishes it"),
+    ),
+    (
+        (InProgress::Rebase, Begun::InGraft),
+        "rebase in progress — esc, ⇥ banner, then c continue  a abort",
+        "rebase in progress",
+        GRAFT_KEYS,
+    ),
+    (
+        (InProgress::Rebase, Begun::InShell),
+        "rebase begun in the shell — finish it there: git rebase --continue",
+        "rebase begun in the shell — finish it there: git rebase --continue",
+        None,
+    ),
+    (
+        (InProgress::CherryPick, Begun::InGraft),
+        "cherry-pick in progress — esc, ⇥ banner, then c continue  a abort",
+        "cherry-pick in progress",
+        GRAFT_KEYS,
+    ),
+    (
+        (InProgress::CherryPick, Begun::InShell),
+        "cherry-pick begun in the shell — finish it there: git cherry-pick --continue",
+        "cherry-pick begun in the shell — finish it there: git cherry-pick --continue",
+        None,
+    ),
+    (
+        (InProgress::Revert, Begun::InGraft),
+        "revert in progress — esc, ⇥ banner, then c continue  a abort",
+        "revert in progress",
+        GRAFT_KEYS,
+    ),
+    (
+        (InProgress::Revert, Begun::InShell),
+        "revert begun in the shell — finish it there: git revert --continue",
+        "revert begun in the shell — finish it there: git revert --continue",
+        None,
+    ),
+    (
+        (InProgress::Bisect, Begun::InGraft),
+        "bisect in progress — git bisect good/bad first",
+        "bisect in progress — git bisect good/bad first",
+        None,
+    ),
+    (
+        (InProgress::Bisect, Begun::InShell),
+        "bisect in progress — git bisect good/bad first",
+        "bisect in progress — git bisect good/bad first",
+        None,
+    ),
+];
+
+/// The editor's row, over every live operation, is today's sentence byte
+/// for byte (written before `OperationRefusal`, passing unchanged after).
+#[test]
+fn the_editor_words_are_unchanged() {
+    let editor = CommitEditor::new();
+    for (live, words, _, _) in EVERY_LIVE_OPERATION {
+        assert_eq!(
+            editor.refusal(None, Some(live)).as_deref(),
+            Some(words),
+            "{live:?}"
+        );
+        assert_eq!(operation_refusal(live).editor_words(), words, "{live:?}");
+    }
+}
+
+/// The pane's answer is the editor's sentence split at its em dash, as the
+/// `u` refusal's `Sticky { reason, keys }`.
+#[test]
+fn the_pane_status_is_the_editor_words_split() {
+    for (live, _, reason, keys) in EVERY_LIVE_OPERATION {
+        assert_eq!(
+            operation_refusal(live).status(),
+            Status::Sticky {
+                reason: reason.to_owned(),
+                keys: keys.map(str::to_owned)
+            },
+            "{live:?}"
+        );
+    }
 }

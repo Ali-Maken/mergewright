@@ -1,10 +1,11 @@
 //! The commit editor's in-progress words name keys that reach the banner
 //! (m6-conflicts/39): `esc, ⇥ banner, then c`.
 //!
-//! Two walks. The pin: after `Esc` from the editor, the panes' `c`/`a` stay
-//! commit/amend (`docs/design/02-keymap.md` §2.4, `:239`) — the route this
-//! ticket must not change. And the words: `Esc`, `⇥` to the banner, `c` opens
-//! the summary; `a` there is the banner's abort.
+//! Since m6-conflicts/48 the panes' `c`/`a` never open the editor while an
+//! operation is live: they answer in the same words, as the `u` refusal's
+//! `Sticky { reason, keys }`. The editor's own words stay for an editor that
+//! was already open when the operation began, which these tests build by
+//! construction ([`editor_open`]).
 
 use super::*;
 
@@ -54,9 +55,9 @@ fn resolved_shell() -> (Scratch, App, AppState) {
     (scratch, app, state)
 }
 
-/// The commit editor opened from the changes pane, as ticket 20's repro:
-/// `Tab` off the banner, the uncommitted-changes row, `c`.
-pub(super) fn editor_open(app: &App, state: AppState) -> AppState {
+/// The changes pane focused, as ticket 20's repro: `Tab` off the banner,
+/// the uncommitted-changes row.
+pub(super) fn pane_focused(app: &App, state: AppState) -> AppState {
     let mut state = state;
     let mut guard = 0;
     while state.banner_focus {
@@ -76,87 +77,225 @@ pub(super) fn editor_open(app: &App, state: AppState) -> AppState {
         state = app.key(&state, KeyCode::Char('k'));
         guard += 1;
     }
-    let state = changes_pane(app, state);
-    let state = app.key(&state, KeyCode::Char('c'));
-    assert!(state.commit_editor.is_some(), "`c` opens the editor");
+    changes_pane(app, state)
+}
+
+/// Runs `press` with the live operation hidden — `in_progress` and
+/// `live_entries` cleared — then puts both back: the operation is live under
+/// whatever `press` opened. Since m6-conflicts/48 the panes' `c`/`a` refuse
+/// mid-operation, so this is how an editor already open when an operation
+/// began (one begun in the shell, say) is reached: ticket 40's retained case.
+fn with_the_operation_hidden(
+    app: &App,
+    state: AppState,
+    press: impl FnOnce(&App, AppState) -> AppState,
+) -> AppState {
+    let mut state = state;
+    let in_progress = state.in_progress.take();
+    let live_entries = std::mem::take(&mut state.live_entries);
+    let mut state = press(app, state);
+    state.in_progress = in_progress;
+    state.live_entries = live_entries;
     state
 }
 
-/// What a key after `Esc` did: the editor (and whether it is an amend),
-/// the summary, and the banner's focus.
-#[derive(Debug, PartialEq, Eq)]
-struct Landing {
-    editor: Option<bool>,
-    finish: bool,
-    banner_focus: bool,
+/// The commit editor open from the changes pane over a live operation, by
+/// construction ([`with_the_operation_hidden`]); its template read answered.
+pub(super) fn editor_open(app: &App, state: AppState) -> AppState {
+    let state = pane_focused(app, state);
+    let state = with_the_operation_hidden(app, state, |app, state| {
+        let state = app.key(&state, KeyCode::Char('c'));
+        app.pump(state, "commit.template for the editor", |state| {
+            state.commit_template.is_none()
+        })
+    });
+    assert!(state.commit_editor.is_some(), "`c` opens the editor");
+    assert!(
+        live_operation(&state).is_some(),
+        "the operation is live again"
+    );
+    state
 }
 
-fn landing(state: &AppState) -> Landing {
-    Landing {
-        editor: state.commit_editor.as_ref().map(|editor| editor.amend),
-        finish: state.finish.is_some(),
-        banner_focus: state.banner_focus,
+/// The pane's answer to `c`/`a` on a merge Graft began.
+fn graft_merge_refusal() -> Status {
+    Status::Sticky {
+        reason: "merge in progress".to_owned(),
+        keys: Some("⇥ banner, then c continue  a abort".to_owned()),
     }
 }
 
-/// `Esc` from the open editor, then `key`.
-fn esc_then(app: &App, state: &AppState, key: char) -> Landing {
-    let closed = app.key(state, KeyCode::Escape);
+/// The pane's answer to `c`/`a` on a merge begun in the shell.
+pub(super) fn shell_merge_refusal() -> Status {
+    Status::Sticky {
+        reason: "merge begun in the shell".to_owned(),
+        keys: Some("⇥ banner, then c finishes it".to_owned()),
+    }
+}
+
+/// `key` in `state` answers in words: no editor, no read, no write, and
+/// `status` is `refusal`.
+fn answers_in_words(state: &AppState, key: char, refusal: &Status) {
+    let (after, commands) = press_for_commands(state, KeyPress::plain(KeyCode::Char(key)));
+    assert!(after.commit_editor.is_none(), "`{key}` opened the editor");
+    assert!(
+        after.head_message.is_none(),
+        "`{key}` asked for HEAD's message"
+    );
+    assert!(
+        !commands.iter().any(|command| matches!(
+            command,
+            Command::ReadCommitTemplate(_) | Command::ReadHeadMessage(_) | Command::Operate { .. }
+        )),
+        "`{key}` sent {commands:?}"
+    );
+    assert_eq!(&after.status, refusal, "`{key}`");
+}
+
+/// **The failing test first (m6-conflicts/48):** with a merge live — begun
+/// in Graft or in the shell — the changes pane's `c` and `a` open nothing
+/// and answer in the words the editor used to show.
+#[test]
+fn c_and_a_with_a_merge_live_answer_in_words() {
+    let (graft_begun, app, state) = resolved_graft_merge();
+    let pane = pane_focused(&app, state);
+    answers_in_words(&pane, 'c', &graft_merge_refusal());
+    answers_in_words(&pane, 'a', &graft_merge_refusal());
+    app.close();
+    drop(graft_begun);
+
+    let (shell_begun, app, state) = resolved_shell();
+    let pane = pane_focused(&app, state);
+    answers_in_words(&pane, 'c', &shell_merge_refusal());
+    answers_in_words(&pane, 'a', &shell_merge_refusal());
+    app.close();
+    drop(shell_begun);
+}
+
+/// **Every production way to open the editor** (`grep -rn
+/// "commit_editor::open" crates/graft/src`: `update/keys.rs:280` only, `c`
+/// and `a`, reached from the graph and from the changes pane) refuses while
+/// an operation is live.
+#[test]
+fn every_way_to_open_the_editor_refuses_mid_operation() {
+    let (scratch, app, state) = resolved_shell();
+    let mut graph = state;
+    let mut guard = 0;
+    while graph.banner_focus {
+        assert!(guard < 6, "Tab never let the banner go");
+        graph = app.key(&graph, KeyCode::Tab);
+        guard += 1;
+    }
+    let pane = pane_focused(&app, graph.clone());
+    for (where_, state) in [("graph", &graph), ("changes pane", &pane)] {
+        for key in ['c', 'a'] {
+            eprintln!("{where_}: {key}");
+            answers_in_words(state, key, &shell_merge_refusal());
+        }
+    }
+    app.close();
+    drop(scratch);
+}
+
+/// A refused `c` leaves the draft `Esc` kept where it was.
+#[test]
+fn a_refused_c_keeps_the_draft() {
+    let (scratch, app, state) = resolved_shell();
+    let open = editor_open(&app, state);
+    let typed = app.key(&open, KeyCode::Char('x'));
+    let closed = app.key(&typed, KeyCode::Escape);
+    let draft = closed.commit_draft.clone();
+    assert!(draft.is_some(), "`Esc` kept the draft");
+    let refused = app.key(&closed, KeyCode::Char('c'));
+    assert!(refused.commit_editor.is_none());
+    assert_eq!(refused.commit_draft, draft, "the draft is untouched");
+    app.close();
+    drop(scratch);
+}
+
+/// `a`'s read of `HEAD`'s message in flight, then the operation is live when
+/// it lands: the amend editor does not open; the pane answers in words.
+#[test]
+fn head_message_arriving_mid_operation_does_not_open() {
+    let (scratch, app, state) = resolved_shell();
+    let pane = pane_focused(&app, state);
+    let asked = with_the_operation_hidden(&app, pane, |app, state| {
+        let state = app.key(&state, KeyCode::Char('a'));
+        assert!(state.head_message.is_some(), "`a` asked for HEAD's message");
+        state
+    });
+    let landed = app.pump(asked, "HEAD's message", |state| {
+        state.head_message.is_none()
+    });
+    assert!(landed.commit_editor.is_none(), "the amend editor opened");
+    assert_eq!(landed.status, shell_merge_refusal());
+    app.close();
+    drop(scratch);
+}
+
+/// A cherry-pick Graft began, 80x24: the footer holds the keys whole and no
+/// row is cut with `…`. The state is the Graft-begun merge's with the kind
+/// swapped to a cherry-pick — the words depend only on `(kind, begun)`, and
+/// no fixture stops a Graft cherry-pick on a conflict.
+#[test]
+fn the_pane_words_fit_at_80() {
+    let (scratch, app, state) = resolved_graft_merge();
+    let mut pane = pane_focused(&app, state);
+    pane.in_progress.as_mut().expect("live").kind = InProgress::CherryPick;
+    let refused = app.key(&pane, KeyCode::Char('c'));
+    assert_eq!(
+        refused.status,
+        Status::Sticky {
+            reason: "cherry-pick in progress".to_owned(),
+            keys: Some("⇥ banner, then c continue  a abort".to_owned()),
+        }
+    );
+    let sized = app.resize(&refused, 80, 24);
+    let frame = crate::captures::frame(&sized, 80, 24);
+    let body = frame.join("\n");
+    assert!(
+        frame
+            .iter()
+            .any(|row| row.contains("⇥ banner, then c continue  a abort")),
+        "the keys are not whole:\n{body}"
+    );
+    assert!(
+        !frame
+            .iter()
+            .any(|row| row.contains("⇥ banner") && row.contains('…')),
+        "a row is cut inside the keys:\n{body}"
+    );
+    app.close();
+    drop(scratch);
+}
+
+/// After `Esc` from the editor over `state`, the pane's `c` and `a` answer
+/// in words (m6-conflicts/48); neither reopens the editor.
+fn pin_the_panes_keys(app: &App, state: AppState, refusal: &Status) {
+    let open = editor_open(app, state);
+    let closed = app.key(&open, KeyCode::Escape);
     assert!(closed.commit_editor.is_none(), "`Esc` closes the editor");
     assert!(
         !closed.banner_focus,
         "`Esc` lands in the pane, not the banner"
     );
-    let after = app.key(&closed, KeyCode::Char(key));
-    // The amend editor opens on `HEAD`'s message, read first
-    // (`commit_editor::open` → `Command::ReadHeadMessage`).
-    let after = if key == 'a' {
-        app.pump(after, "HEAD's message for the amend editor", |state| {
-            state.commit_editor.is_some()
-        })
-    } else {
-        after
-    };
-    landing(&after)
+    answers_in_words(&closed, 'c', refusal);
+    answers_in_words(&closed, 'a', refusal);
 }
 
-/// Both walks — `Esc c`, `Esc a` — from the editor over `state`.
-fn pin_the_panes_keys(app: &App, state: AppState) {
-    let open = editor_open(app, state);
-    assert_eq!(
-        esc_then(app, &open, 'c'),
-        Landing {
-            editor: Some(false),
-            finish: false,
-            banner_focus: false
-        },
-        "`c` in the pane is Commit (§2.4)"
-    );
-    assert_eq!(
-        esc_then(app, &open, 'a'),
-        Landing {
-            editor: Some(true),
-            finish: false,
-            banner_focus: false
-        },
-        "`a` in the pane is Amend (§2.4)"
-    );
-}
-
-/// **Step 0, kept as a pin of keymap §2.4 (`02-keymap.md:239`):** after
-/// `Esc` from the commit editor, the changes pane's `c` reopens the commit
-/// editor and `a` opens the amend editor — on a merge Graft began and on
-/// one begun in the shell. Neither reaches the banner; that is why the
-/// words name `⇥ banner`.
+/// **Ticket 39's Step 0 pin, rewritten to m6-conflicts/48:** after `Esc`
+/// from the commit editor, the changes pane's `c` and `a` answer in words —
+/// on a merge Graft began and on one begun in the shell. Neither reaches the
+/// banner; the words name `⇥ banner`.
 #[test]
-fn after_esc_the_panes_c_and_a_are_commit_and_amend() {
+fn after_esc_the_panes_c_and_a_answer_in_words() {
     let (graft_begun, app, state) = resolved_graft_merge();
-    pin_the_panes_keys(&app, state);
+    pin_the_panes_keys(&app, state, &graft_merge_refusal());
     app.close();
     drop(graft_begun);
 
     let (shell_begun, app, state) = resolved_shell();
-    pin_the_panes_keys(&app, state);
+    pin_the_panes_keys(&app, state, &shell_merge_refusal());
     app.close();
     drop(shell_begun);
 }

@@ -1,6 +1,6 @@
 # commit-key-never-opens-a-refusing-editor: `c`/`a` with an operation live answer in words and never open the editor to refuse
 
-Status: ready
+Status: done
 From: `docs/reviews/m6-usability.md` M3 (:88-97), the part that needs no answer.
 Blocked by: none. Keymap :309 already says "Commit and amend refuse … and name the same keys". This moves the refusal out
 of an editor that exists only to refuse. P14 (`c` → the banner's `c`) builds on it later
@@ -138,23 +138,23 @@ pub fn open(state: &mut AppState, amend: bool, next_id: &mut impl FnMut() -> Job
   route sentence.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `the_editor_words_are_unchanged`: green before the refactor and after.
-- [ ] `c_and_a_with_a_merge_live_answer_in_words`: red first (the editor opens), then green.
-- [ ] `the_pane_status_is_the_editor_words_split`
-- [ ] `every_way_to_open_the_editor_refuses_mid_operation`: the grep in NOTES.
-- [ ] `a_refused_c_keeps_the_draft`
-- [ ] `head_message_arriving_mid_operation_does_not_open`
-- [ ] `the_pane_words_fit_at_80`
-- [ ] The six editor tests rewritten and green; NOTES says how each changed.
-- [ ] `fix-editor-names-the-banner-{120x40,80x24}` byte-identical.
-- [ ] `journey_editor_to_finish` and `journey_counts_match_the_note` green; `editor-to-finish` walked as `c ⇥ ⇥ c ⏎` = 5.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-c-mid-merge-answers-in-words-187x50.txt` and
+- [ ] `the_editor_words_are_unchanged` (`src/update/commit_editor/tests.rs`): green **after** only. Not run before the refactor — the same edit added `operation_refusal`, so the file did not compile against the old code. The table's strings were copied from the base's literals (`commit_editor.rs:213`, `:225`, `continue_command`); the pre-existing `a_merge_in_progress_*`/`a_bisect_*`/shell tests on the editor row are green. Left unticked: the "before" half is unobserved.
+- [x] `c_and_a_with_a_merge_live_answer_in_words` (`tests/it/resolver/editor_words.rs`): red with the impl stashed (`` `c` opened the editor``), then green.
+- [x] `the_pane_status_is_the_editor_words_split` (`commit_editor/tests.rs`)
+- [x] `every_way_to_open_the_editor_refuses_mid_operation` (`editor_words.rs`): graph and changes pane × `c`, `a`; the grep in NOTES.
+- [x] `a_refused_c_keeps_the_draft` (`editor_words.rs`)
+- [x] `head_message_arriving_mid_operation_does_not_open` (`editor_words.rs`)
+- [x] `the_pane_words_fit_at_80` (`editor_words.rs`; state constructed, see NOTES)
+- [x] The six editor tests rewritten and green (`cargo nextest run --workspace`, 3062/3062); NOTES says how each changed.
+- [x] `fix-editor-names-the-banner-{120x40,80x24}` byte-identical: `capture_fix_editor_names_the_banner` green in compare mode; `git status docs/shots` shows no change to them.
+- [x] `journey_editor_to_finish` and `journey_counts_match_the_note` green; `editor-to-finish` walked as `c ⇥ ⇥ c ⏎` = 5 (note's 5 unchanged).
+- [x] Capture (`capture_fix_c_mid_merge_answers_in_words`, `tests/it/resolver/shell_begun.rs`; rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-c-mid-merge-answers-in-words-187x50.txt` and
   `-80x24`.
   - Scene: a shell-begun merge, resolved, the changes pane focused, `c` pressed.
   - **What right looks like:** no editor is drawn. The header reads `MERGING`. The footer holds the reason
     `merge begun in the shell` and the keys `⇥ banner, then c finishes it`, the keys whole at both sizes. The builder
     pastes the exact footer row of each size into NOTES.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): `OperationRefusal`, `operation_refusal`, `open`, `head_message_arrived`, the `Begun` route sentence.
 
 ## For the conductor (exact text)
 - `TESTING.md:2138`: replace `The commit editor never finishes an operation: \`c\`/\`a\` in the panes stay commit/amend
@@ -173,3 +173,60 @@ workspace-wide.
 Small to medium. One context.
 
 ## NOTES
+
+Built 2026-09-24 (builder, Opus). Scout used: `.scratch/m6-conflicts/scouts/48.md`. No compaction.
+
+**Cause, not symptom:** `open` never read `in_progress` (`commit_editor.rs`, base :289-318); it now checks
+`live_operation` first. Cost to the user: none; `c`/`a` mid-operation answer in the footer instead of an editor that
+could only refuse.
+
+**Grep** `grep -rn "commit_editor::open" crates/graft/src`:
+```
+crates/graft/src/update/keys.rs:280:        commands.extend(super::commit_editor::open(next, amend, &mut || {
+crates/graft/src/update/operate.rs:2278:        let _template_read = crate::update::commit_editor::open(&mut state, false, &mut editor_ids);
+crates/graft/src/update/keys/bound.rs:47:    ("c", "commit"),       // `is_commit_key` → `commit_editor::open`
+```
+`keys.rs:280` is the one production caller (rows: graph and changes pane × `c`, `a`); `operate.rs:2278` is a test with
+`in_progress: None`, green; `bound.rs:47` is a comment.
+
+**Footer rows** (exact):
+- 187x50: ` merge begun in the shell · ⇥ banner, then c finishes it`
+- 80x24: ` merge begun in the shell · ⇥ banner, then c finishes it`
+
+**The six editor tests.** `editor_open` now reaches the editor by construction (`with_the_operation_hidden`: clear
+`in_progress` + `live_entries`, `c`, pump the template read, put both back) — ticket 40's retained case; both fields
+are `pub`, no stop needed.
+- `after_esc_the_panes_c_and_a_are_commit_and_amend` → renamed `after_esc_the_panes_c_and_a_answer_in_words`: after
+  `Esc`, `c` and `a` answer in words (both legs). `Landing`/`esc_then` removed (no users left).
+- `the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge`, `the_graft_merge_words_fit_at_80_by_24`,
+  `the_keys_the_commit_editor_names_reach_the_summary`, `the_shell_merge_words_fit_at_80_by_24`,
+  `capture_fix_editor_names_the_banner`: body unchanged; they reach the editor through the new `editor_open`.
+- Also changed (not in the six): three unit tests in `src/update/commit_editor/tests.rs`
+  (`a_merge_in_progress_refuses_and_names_the_keys`, `a_bisect_in_progress_still_names_the_shell_command`, and
+  `shell_refusal` behind `a_merge_in_progress_points_at_c` etc.) opened the editor with `c` over a live operation; they
+  now open it through `opened_under` (same construction). Assertions unchanged. The ticket said these stay unchanged —
+  impossible once `c` refuses; flagged.
+
+**`the_pane_words_fit_at_80`:** no fixture stops a Graft cherry-pick on a conflict; the test takes the Graft-begun merge
+state and sets `in_progress.kind = CherryPick` (words depend only on `(kind, begun)`). Frame asserted to hold the keys
+whole and no `…` on a row with `⇥ banner`.
+
+**`head_message_arrived`:** when an operation is live on arrival it refuses whatever the read said, including an `Err` —
+the refusal replaces `amend: <why>` because the amend could not have opened either way.
+
+**Touches:**
+- Callers of `open`: grep above; `every_way_to_open_the_editor_refuses_mid_operation`.
+- Draft: `a_refused_c_keeps_the_draft`. Amend race: `head_message_arriving_mid_operation_does_not_open`.
+- Words both forms: `the_editor_words_are_unchanged`, `the_pane_status_is_the_editor_words_split`; editor row
+  literals in existing tests green.
+- Captures: `fix-editor-names-the-banner-*` byte-identical (compare mode green); two new captures; captions tsv +2 rows
+  after ticket 40's; contact sheet regenerated (part 1 198 194 B, part 2 105 976 B, both ≤200 000).
+- Walk: `conflict_journeys.rs` scenario changed; `journey_editor_to_finish`, `journey_counts_match_the_note` green.
+  `pty-walk-m6.py` left alone (no `editor-to-finish` literal, per scout).
+- Banner / `u` refusal: `git diff` over `update/undo.rs`, `update/banner.rs`, `view/` is empty.
+- Journal/undo: none; `answers_in_words` asserts no `Command::Operate`.
+- Keymap, TESTING.md, design note: not edited (conductor's).
+
+**Finding for the conductor (not changed):** the graph/pane hint bar still shows `c commit` / `a amend` during an
+operation (`keys/bound.rs:47-48`).
+

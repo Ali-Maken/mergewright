@@ -1006,21 +1006,27 @@ fn editor_to_finish() -> Scenario {
         two_files_resolved_in_the_shell,
         vec![
             vec![Step::WaitFor(Wait::OnTheBanner)],
-            // The start: the commit editor, opened from the changes pane.
+            // The start: the changes pane focused. Its `c` answers in words
+            // and opens no editor (m6-conflicts/48).
             vec![
                 key(KeyCode::Tab),
                 key(ch('g')),
                 key(ch('k')),
                 key(KeyCode::Enter),
                 Step::WaitFor(Wait::ChangesPane),
-                key(ch('c')),
-                Step::See("the commit editor is open", |state| {
-                    check(state.commit_editor.is_some(), || {
-                        "c in the changes pane did not open the editor".to_owned()
-                    })
-                }),
                 route(),
-                key(KeyCode::Escape),
+                key(ch('c')),
+                Step::See("c answered in words, no editor", |state| {
+                    check(
+                        state.commit_editor.is_none()
+                            && state.status
+                                == graft::update::Status::Sticky {
+                                    reason: "merge begun in the shell".to_owned(),
+                                    keys: Some("⇥ banner, then c finishes it".to_owned()),
+                                },
+                        || format!("c in the changes pane: {:?}", state.status),
+                    )
+                }),
                 key(KeyCode::Tab),
                 key(KeyCode::Tab),
                 Step::See("⇥ ⇥ reached the banner", |state| {
