@@ -25,9 +25,11 @@ use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 
 use crate::operation::Refusal;
 
+mod done;
 pub(crate) mod merge_msg;
 mod set;
 
+pub use done::{DoneFile, open_done};
 pub(crate) use set::conflicts_of;
 pub use set::{ConflictSet, ConflictSetError, operation_conflicts};
 

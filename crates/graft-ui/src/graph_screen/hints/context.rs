@@ -101,6 +101,10 @@ pub enum HintContext {
         /// conflicted file (m6-05 review, Major 1). `base`/`restart` are
         /// not read while this is set.
         whole_file: bool,
+        /// The open file is **done** and shown read-only (m6-conflicts/25):
+        /// the list is exactly `d start over  e edit  esc close`, whatever
+        /// the other flags say.
+        done: bool,
         /// The operation's role words: `o`/`t` read as the sides' roles
         /// (`o yours  t theirs`; rebase `o upstream  t yours`), never as a
         /// branch name or sha (ADR-0043 §4).

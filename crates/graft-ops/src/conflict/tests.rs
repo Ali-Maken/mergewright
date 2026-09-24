@@ -239,3 +239,86 @@ fn mark_resolved_refusal_counts_open() {
     let three = apply_take(&repo, path, &two, 2, Take::Both).expect("take 3");
     assert_eq!(mark_resolved_refusal(path, &three), None);
 }
+
+// ------------------------------------------------ a done file, read-only
+// (m6-conflicts/25)
+
+/// `git <args>` in the fixture's working tree, which must succeed.
+fn git(repo: &RepoHandle, args: &[&str]) {
+    let workdir = repo.workdir().expect("a working tree");
+    let out = std::process::Command::new("git")
+        .current_dir(workdir)
+        .args(args)
+        .output()
+        .expect("git runs");
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+fn status_of(repo: &RepoHandle) -> WorkingTreeStatus {
+    graft_git::status::read(repo, &()).expect("the status reads")
+}
+
+fn open_done(
+    repo: &RepoHandle,
+    status: &WorkingTreeStatus,
+    path: &str,
+) -> Result<super::DoneFile, OpenError> {
+    super::open_done(repo, status, Path::new(path))
+}
+
+#[test]
+fn open_done_reads_the_file_on_disk() {
+    let (_scratch, repo, _) = stopped();
+    let workdir = repo.workdir().expect("a working tree");
+    std::fs::write(workdir.join("both.txt"), b"settled\n").expect("the file is written");
+    git(&repo, &["add", "both.txt"]);
+    match open_done(&repo, &status_of(&repo), "both.txt").expect("it opens") {
+        super::DoneFile::Text { file, unstaged } => {
+            assert_eq!(file.open(), 0);
+            assert!(file.blocks().is_empty());
+            assert!(!unstaged, "what is on disk is what is staged");
+        }
+        other => panic!("expected Text, got {other:?}"),
+    }
+    std::fs::write(workdir.join("both.txt"), b"settled, then edited\n")
+        .expect("the file is written");
+    match open_done(&repo, &status_of(&repo), "both.txt").expect("it opens") {
+        super::DoneFile::Text { unstaged, .. } => assert!(unstaged, "edited since done"),
+        other => panic!("expected Text, got {other:?}"),
+    }
+}
+
+#[test]
+fn open_done_on_a_removed_path_is_removed() {
+    let (_scratch, repo, _) = stopped();
+    git(&repo, &["rm", "--quiet", "ours-deleted.txt"]);
+    assert_eq!(
+        open_done(&repo, &status_of(&repo), "ours-deleted.txt").expect("it opens"),
+        super::DoneFile::Removed
+    );
+}
+
+#[test]
+fn open_done_on_a_binary_is_binary() {
+    let (_scratch, repo, _) = stopped();
+    git(&repo, &["add", "pic.bin"]);
+    assert_eq!(
+        open_done(&repo, &status_of(&repo), "pic.bin").expect("it opens"),
+        super::DoneFile::Binary { unstaged: false }
+    );
+}
+
+#[test]
+fn open_done_refuses_an_unmerged_path() {
+    let (_scratch, repo, status) = stopped();
+    match open_done(&repo, &status, "three.txt") {
+        Err(OpenError::Refused(Refusal::Unmerged { paths })) => {
+            assert_eq!(paths, vec![PathBuf::from("three.txt")]);
+        }
+        other => panic!("expected Unmerged, got {other:?}"),
+    }
+}

@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use graft_core::event::{Event, Modifiers, MouseButton, MouseInput, MouseKind};
+use graft_core::event::{Event, KeyCode, Modifiers, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_git::state::InProgress;
 use graft_git::status::{StatusEntry, UnmergedHow, WorkingTreeStatus};
@@ -145,22 +145,23 @@ fn row_states_follow_the_document_and_the_status() {
     open.seen.insert("taken.rs".into(), RowState::AllTaken);
     assert_eq!(
         states(&state),
+        // In git's path order (m6-conflicts/25).
         vec![
-            ("done.txt".to_owned(), RowState::Done),
-            (
-                "conflicted.rs".to_owned(),
-                RowState::Open { open: 2, of: 2 }
-            ),
+            ("bin.png".to_owned(), RowState::Binary),
             (
                 "card.txt".to_owned(),
                 RowState::WholeFile {
                     how: UnmergedHow::DeletedByThem
                 }
             ),
-            ("bin.png".to_owned(), RowState::Binary),
+            (
+                "conflicted.rs".to_owned(),
+                RowState::Open { open: 2, of: 2 }
+            ),
+            ("done.txt".to_owned(), RowState::Done),
             ("half.rs".to_owned(), RowState::Open { open: 1, of: 2 }),
-            ("taken.rs".to_owned(), RowState::AllTaken),
             ("never.rs".to_owned(), RowState::Unread),
+            ("taken.rs".to_owned(), RowState::AllTaken),
         ]
     );
 }
@@ -209,7 +210,8 @@ fn before_the_status_only_the_open_file_is_known() {
     );
     state.working_tree = None;
     let unknown = states(&state);
-    assert_eq!(unknown[1].1, RowState::Open { open: 2, of: 2 });
+    // Sorted, `conflicted.rs` is first.
+    assert_eq!(unknown[0].1, RowState::Open { open: 2, of: 2 });
     for (path, row) in unknown.iter().filter(|(path, _)| path != "conflicted.rs") {
         assert_eq!(*row, RowState::Unread, "{path}");
     }
@@ -260,7 +262,8 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
         &["a.rs", "conflicted.rs", "b.rs"],
         &["a.rs", "conflicted.rs", "b.rs"],
     );
-    assert_eq!(file_cursor(&state), 1);
+    // Sorted: `a.rs`, `b.rs`, `conflicted.rs`.
+    assert_eq!(file_cursor(&state), 2);
     let reread = JobId::new(7_001);
     state.resolver.as_mut().expect("open").set_job = Some(reread);
     // The list stays while the re-read is out.
@@ -270,7 +273,7 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
         AppEvent::Produced(
             reread,
             Product::ConflictSet(Ok(Arc::new(ConflictSet {
-                paths: ["b.rs", "a.rs", "conflicted.rs"]
+                paths: ["b.rs", "a.rs", "conflicted.rs", "0.rs"]
                     .iter()
                     .map(PathBuf::from)
                     .collect(),
@@ -278,7 +281,8 @@ fn the_cursor_stays_on_its_path_across_a_reread() {
             }))),
         ),
     );
-    assert_eq!(file_cursor(&state), 2, "the cursor moved with its path");
+    // `0.rs` sorts in above it.
+    assert_eq!(file_cursor(&state), 3, "the cursor moved with its path");
     let view = crate::view::resolver::file_list_view(&state);
     assert_eq!(view.rows[view.cursor].name.as_str(), "conflicted.rs");
 
@@ -465,8 +469,8 @@ fn after_the_last_stash_file_the_status_says_every_file_done() {
 #[test]
 fn a_done_file_lands_on_the_next_one_not_done() {
     let mut state = listing(
-        &["a.txt", "conflicted.rs", "done.txt", "c.txt"],
-        &["a.txt", "conflicted.rs", "c.txt"],
+        &["a.txt", "conflicted.rs", "done.txt", "e.txt"],
+        &["a.txt", "conflicted.rs", "e.txt"],
     );
     let staged = JobId::new(4_600);
     state.resolver.as_mut().expect("open").staging = Some(staged);
@@ -478,13 +482,13 @@ fn a_done_file_lands_on_the_next_one_not_done() {
     });
     assert_eq!(
         super::open_path(&state),
-        Path::new("c.txt"),
+        Path::new("e.txt"),
         "done.txt skipped"
     );
     let open = state.resolver.as_ref().expect("open");
     assert_eq!(
         open.notice,
-        Some(("conflicted.rs done ✓ · ▸ c.txt".to_owned(), false))
+        Some(("conflicted.rs done ✓ · ▸ e.txt".to_owned(), false))
     );
     assert!(
         commands
@@ -559,4 +563,371 @@ fn a_list_click_under_the_box_leaves_both_as_they_were() {
     assert_eq!(switched.resolver, boxed.resolver, "still on conflicted.rs");
     assert_eq!(switched.confirm, boxed.confirm);
     assert_eq!(sticky(&switched).0, "finish the box first");
+}
+
+// ------------------------------------ m6-conflicts/25: stable order, done open
+
+#[test]
+fn the_list_is_in_gits_byte_order() {
+    let paths = ["a/b", "a.txt", "B.txt", "a.b"];
+    let state = listing(&paths, &paths);
+    let order: Vec<String> = states(&state).into_iter().map(|(path, _)| path).collect();
+    // Byte-wise: `B` (0x42) before `a`, `.` (0x2e) before `/` (0x2f) — so
+    // `a.b` and `a.txt` before `a/b`, which `Path`'s own order would not do.
+    assert_eq!(
+        order,
+        ["B.txt", "a.b", "a.txt", "a/b", "conflicted.rs"].map(str::to_owned)
+    );
+}
+
+#[test]
+fn a_file_keeps_its_row_when_it_is_done() {
+    let three = ["a.rs", "conflicted.rs", "z.rs"];
+    let mut state = listing(&three, &three);
+    let before: Vec<String> = states(&state).into_iter().map(|(path, _)| path).collect();
+    assert_eq!(file_cursor(&state), 1);
+    // The middle file is staged: the status stops calling it unmerged, and a
+    // set re-read lands in ops' order — unmerged first, so it comes last.
+    state.working_tree = Some(status(&[
+        ("a.rs", true),
+        ("conflicted.rs", false),
+        ("z.rs", true),
+    ]));
+    let reread = JobId::new(7_200);
+    state.resolver.as_mut().expect("open").set_job = Some(reread);
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            reread,
+            Product::ConflictSet(Ok(Arc::new(ConflictSet {
+                paths: ["a.rs", "z.rs", "conflicted.rs"]
+                    .iter()
+                    .map(PathBuf::from)
+                    .collect(),
+                recorded: true,
+            }))),
+        ),
+    );
+    let after: Vec<(String, RowState)> = states(&state);
+    assert_eq!(
+        after
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        before
+    );
+    assert_eq!(after[1].1, RowState::Done);
+    assert_eq!(file_cursor(&state), 1, "the cursor did not move");
+}
+
+#[test]
+fn extra_paths_sort_into_place() {
+    // A `Ready` set of `b.rs` and `d.rs`; `c.rs` unmerged but not in it; the
+    // open `conflicted.rs` in neither.
+    let mut state = listing(&["b.rs", "d.rs"], &["b.rs", "d.rs"]);
+    state.working_tree = Some(status(&[("b.rs", true), ("c.rs", true), ("d.rs", true)]));
+    let order: Vec<String> = states(&state).into_iter().map(|(path, _)| path).collect();
+    assert_eq!(
+        order,
+        ["b.rs", "c.rs", "conflicted.rs", "d.rs"].map(str::to_owned)
+    );
+}
+
+/// `conflicted.rs` open, `gone.txt` done at row 1: a click on it, and the
+/// read the click queued answered with `answer`.
+fn open_gone(
+    answer: Result<crate::jobs::conflict::Opening, crate::jobs::conflict::OpenFailure>,
+) -> AppState {
+    let state = listing(&["conflicted.rs", "gone.txt"], &["conflicted.rs"]);
+    assert_eq!(states(&state)[1].1, RowState::Done);
+    let (x, y) = cell_of(&state, 1);
+    let (state, commands) = click(&state, x, y);
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, path) if path == Path::new("gone.txt") => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("a done row opens: {commands:?}"));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(read, Product::ConflictOpened(answer)),
+    );
+    state
+}
+
+fn done_text(unstaged: bool, text: &str) -> crate::jobs::conflict::Opening {
+    let file = graft_git::conflict::parse(text.as_bytes()).expect("plain text parses");
+    crate::jobs::conflict::Opening::Done(Arc::new(graft_ops::conflict::DoneFile::Text {
+        file,
+        unstaged,
+    }))
+}
+
+/// The resolver's identity row, as drawn: the line starting `▸ gone.txt ·`.
+fn identity_row(state: &AppState) -> String {
+    let drawn = super::frame_text(state);
+    drawn
+        .lines()
+        .find(|line| line.trim_start().starts_with("▸ gone.txt ·"))
+        .map_or_else(
+            || panic!("no identity row:\n{drawn}"),
+            |line| line.trim().to_owned(),
+        )
+}
+
+#[test]
+fn a_click_on_a_done_file_opens_it_read_only() {
+    let state = open_gone(Ok(done_text(false, "settled\n")));
+    let open = state.resolver.as_ref().expect("the resolver stays open");
+    assert_eq!(open.path, Path::new("gone.txt"));
+    assert_eq!(
+        open.done,
+        Some(crate::update::resolver::DoneShape::Text { unstaged: false })
+    );
+    assert_eq!(
+        identity_row(&state),
+        "▸ gone.txt · done ✓ · d starts it over"
+    );
+    assert!(super::frame_text(&state).contains("settled"));
+
+    let edited = open_gone(Ok(done_text(true, "settled, then edited\n")));
+    assert!(
+        identity_row(&edited).ends_with("· edited since done"),
+        "{}",
+        identity_row(&edited)
+    );
+}
+
+#[test]
+fn a_done_card_for_removed_binary_and_unreadable() {
+    use graft_ops::conflict::DoneFile;
+    for (answer, words) in [
+        (
+            Ok(crate::jobs::conflict::Opening::Done(Arc::new(
+                DoneFile::Removed,
+            ))),
+            "done ✓ · removed",
+        ),
+        (
+            Ok(crate::jobs::conflict::Opening::Done(Arc::new(
+                DoneFile::Binary { unstaged: false },
+            ))),
+            "done ✓ · binary",
+        ),
+        (
+            Err(crate::jobs::conflict::OpenFailure {
+                words: "the file is 9 bytes, which is more than the resolver handles".to_owned(),
+                not_unmerged: false,
+                done: true,
+            }),
+            "done ✓ · could not read: the file is 9 bytes",
+        ),
+    ] {
+        let state = open_gone(answer);
+        let open = state.resolver.as_ref().expect("the resolver stays open");
+        assert_eq!(open.path, Path::new("gone.txt"));
+        assert!(open.done.is_some());
+        let drawn = super::frame_text(&state);
+        assert!(drawn.contains(words), "{words}:\n{drawn}");
+        assert!(drawn.contains("d starts it over"), "{drawn}");
+    }
+}
+
+#[test]
+fn an_unmerged_open_failure_still_closes() {
+    let state = listing(
+        &["conflicted.rs", "later.rs"],
+        &["conflicted.rs", "later.rs"],
+    );
+    let (x, y) = cell_of(&state, 1);
+    let (state, commands) = click(&state, x, y);
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, _) => Some(*id),
+            _ => None,
+        })
+        .expect("the read is queued");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            read,
+            Product::ConflictOpened(Err(crate::jobs::conflict::OpenFailure {
+                words: "could not read the file: denied".to_owned(),
+                not_unmerged: false,
+                done: false,
+            })),
+        ),
+    );
+    assert!(
+        state.resolver.is_none(),
+        "the unmerged route closes as ever"
+    );
+    assert_eq!(
+        sticky(&state),
+        (
+            "could not read the file: denied",
+            Some("e edit  M mergetool")
+        )
+    );
+}
+
+#[test]
+fn a_done_file_refuses_in_words() {
+    // Long enough that `j` has somewhere to scroll.
+    let long = (0..200).fold(String::new(), |mut text, n| {
+        text.push_str(&format!("line {n}\n"));
+        text
+    });
+    let state = open_gone(Ok(done_text(false, &long)));
+    for code in [
+        KeyCode::Char('o'),
+        KeyCode::Char('t'),
+        KeyCode::Char('b'),
+        KeyCode::Enter,
+        KeyCode::Char('B'),
+        KeyCode::Char('M'),
+        KeyCode::Char('n'),
+        KeyCode::Char('N'),
+    ] {
+        let (after, commands) = super::press(&state, code);
+        assert!(commands.is_empty(), "{code:?}: {commands:?}");
+        assert_eq!(
+            sticky(&after),
+            ("gone.txt is done · d starts it over", None),
+            "{code:?}"
+        );
+        assert_eq!(after.resolver, state.resolver, "{code:?}");
+    }
+    let (after, _) = super::press(&state, KeyCode::Char('j'));
+    assert_eq!(after.resolver.as_ref().expect("open").top, 1, "j scrolls");
+}
+
+#[test]
+fn d_on_a_done_file_starts_it_over() {
+    let state = open_gone(Ok(done_text(false, "settled\n")));
+    let (state, _) = super::press(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_some(), "today's box");
+    let (state, _) = super::press(&state, KeyCode::Right);
+    let (mut state, commands) = super::press(&state, KeyCode::Enter);
+    assert!(
+        commands.iter().any(|command| matches!(
+            command,
+            Command::Operate(_, op)
+                if matches!(**op, graft_ops::operation::Operation::RestartConflict(_))
+        )),
+        "{commands:?}"
+    );
+    let restart = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.restarting)
+        .expect("the restart is the resolver's");
+    // `operate::operated` clears the running write before the resolver
+    // hears of it; this calls the landing directly, so it clears it too.
+    state.operating = None;
+    let mut commands = Vec::new();
+    let mut ids = 7_300;
+    crate::update::resolver::restart_landed(&mut state, &mut commands, restart, &mut || {
+        ids += 1;
+        JobId::new(ids)
+    });
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, path) if path == Path::new("gone.txt") => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("the file is read again: {commands:?}"));
+    let file = graft_git::conflict::parse(b"<<<<<<< ours\na\n=======\nb\n>>>>>>> theirs\n")
+        .expect("markers parse");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            read,
+            Product::ConflictOpened(Ok(crate::jobs::conflict::Opening::Unmerged(Arc::new(
+                crate::jobs::conflict::OpenedFile {
+                    file: Some(file),
+                    how: UnmergedHow::BothModified,
+                    binary: false,
+                    on_disk: None,
+                },
+            )))),
+        ),
+    );
+    let open = state.resolver.as_ref().expect("open");
+    assert_eq!(open.done, None);
+    assert_eq!(open.file.as_ref().map(|file| file.open()), Some(1));
+    assert_eq!(open.cursor_block, Some(0), "its open block is shown");
+}
+
+#[test]
+fn an_unmerged_document_resolved_outside_still_closes() {
+    // The resolver on a conflicted document; `e`, and the editor (or a
+    // mergetool) resolves and stages it. The re-read now routes to the done
+    // side — and that is the old `not_unmerged` answer, words and all
+    // (TESTING.md's M5 mergetool check), not a done card.
+    let state = resolver_on_screen(WALK);
+    let path = state.resolver.as_ref().expect("open").path.clone();
+    let (state, _) = super::press(&state, KeyCode::Char('e'));
+    let (state, commands) = update(
+        &state,
+        AppEvent::Produced(JobId::new(7_400), Product::HandedOver(Ok(()))),
+    );
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, _) => Some(*id),
+            _ => None,
+        })
+        .expect("the hand-back re-reads");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            read,
+            Product::ConflictOpened(Ok(done_text(false, "settled\n"))),
+        ),
+    );
+    assert!(state.resolver.is_none(), "{:?}", state.resolver);
+    assert!(
+        matches!(&state.status, Status::Done(line) if *line == format!("{} resolved outside", path.display())),
+        "{:?}",
+        state.status
+    );
+}
+
+#[test]
+fn a_done_file_handed_back_stays_open() {
+    let state = open_gone(Ok(done_text(false, "settled\n")));
+    let (state, commands) = super::press(&state, KeyCode::Char('e'));
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenExternalEditor { .. })),
+        "{commands:?}"
+    );
+    let (state, commands) = update(
+        &state,
+        AppEvent::Produced(JobId::new(7_400), Product::HandedOver(Ok(()))),
+    );
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, _) => Some(*id),
+            _ => None,
+        })
+        .expect("the hand-back re-reads");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            read,
+            Product::ConflictOpened(Ok(done_text(true, "edited\n"))),
+        ),
+    );
+    let open = state.resolver.as_ref().expect("the resolver is open");
+    assert_eq!(
+        open.done,
+        Some(crate::update::resolver::DoneShape::Text { unstaged: true })
+    );
 }

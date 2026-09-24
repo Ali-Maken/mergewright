@@ -8,6 +8,7 @@ use std::sync::Arc;
 use graft_core::job::JobId;
 use graft_git::conflict::{BlockState, ConflictFile};
 
+use super::done::{done_arrived, done_unreadable};
 use super::files::{RowState, listed_files, remember, reread_set};
 use super::{WholeFileShape, next_open_block, reopen, scrolled_to, side_word};
 use crate::update::events::Command;
@@ -17,22 +18,40 @@ use crate::update::state::{AppState, Status};
 pub fn conflict_opened(
     state: &mut AppState,
     id: JobId,
-    result: Result<Arc<crate::jobs::conflict::OpenedFile>, crate::jobs::conflict::OpenFailure>,
+    result: Result<crate::jobs::conflict::Opening, crate::jobs::conflict::OpenFailure>,
 ) {
+    use crate::jobs::conflict::Opening;
     let Some(open) = state.resolver.as_ref() else {
         return;
     };
     if open.job != Some(id) {
         return;
     }
+    // A conflicted document on screen, and git no longer calls its path
+    // unmerged: `$EDITOR` or a mergetool resolved and staged it while the
+    // resolver waited. The route (m6-conflicts/25) answers that with the
+    // done side; it means what `not_unmerged` meant before the route
+    // existed, so it keeps its words and closes. A done file re-read, or a
+    // done row opened from the list, has no unmerged document here.
+    let resolved_outside = open.file.is_some() && open.done.is_none();
     match result {
-        Ok(opened) => conflict_arrived(state, &opened),
+        Ok(Opening::Unmerged(opened)) => conflict_arrived(state, &opened),
+        Ok(Opening::Done(_)) if resolved_outside => closed_resolved_outside(state),
+        Ok(Opening::Done(done)) => done_arrived(state, &done),
+        // The done route's own failure keeps the resolver open on the path
+        // (m6-conflicts/25): the list it was clicked in stays.
+        Err(failure) if failure.done => done_unreadable(state, &failure.words),
         Err(failure) => open_failed(state, &failure),
     }
 }
 
 /// The document arrived.
 pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::conflict::OpenedFile) {
+    // A conflicted path is not done, whatever this resolver showed of it
+    // before (a `d` on a done file brings its conflict back).
+    if let Some(open) = state.resolver.as_mut() {
+        open.done = None;
+    }
     let Some(file) = opened.file.clone() else {
         // A whole-file shape (`UD`, `DU`, `AU`, `UA`, `DD`) or a binary
         // `UU`/`AA`: there are no blocks to take sides, so the card offers
@@ -101,17 +120,25 @@ pub(super) fn open_failed(state: &mut AppState, failure: &crate::jobs::conflict:
     // Already had a document, and git no longer calls the path unmerged:
     // the user resolved it in `$EDITOR` or a mergetool while the resolver
     // was waiting for them. That is a finished job, not a failure.
-    let resolved_outside = open.file.is_some() && failure.not_unmerged;
-    let path = open.path.clone();
+    // (Since m6-conflicts/25 this is reached only in the race where the path
+    // is staged between the job's status read and its open.)
+    if open.file.is_some() && failure.not_unmerged {
+        closed_resolved_outside(state);
+        return;
+    }
     state.resolver = None;
-    state.status = if resolved_outside {
-        Status::Done(format!("{} resolved outside", path.display()))
-    } else {
-        Status::Sticky {
-            reason: failure.words.clone(),
-            keys: Some("e edit  M mergetool".to_owned()),
-        }
+    state.status = Status::Sticky {
+        reason: failure.words.clone(),
+        keys: Some("e edit  M mergetool".to_owned()),
     };
+}
+
+/// The open path was resolved outside the app: closed, and said so.
+fn closed_resolved_outside(state: &mut AppState) {
+    let Some(open) = state.resolver.take() else {
+        return;
+    };
+    state.status = Status::Done(format!("{} resolved outside", open.path.display()));
 }
 
 /// A take answered.
@@ -295,6 +322,24 @@ pub fn resolved_advance(
     } else {
         every_file_done(state)
     };
+}
+
+/// A write the resolver launched (`⏎`'s stage, a whole-file `o`/`t`, `d`'s
+/// restart) came back **without** running — refused or failed. Its id is
+/// released, and the resolver stays where it is: a held id would refuse
+/// every later file switch as "a write is already running" (m6-conflicts/25:
+/// `d` on a done file of a shape `checkout --merge` cannot restore is
+/// refused by `graft_ops`, not before the box).
+pub fn write_not_landed(state: &mut AppState, id: JobId) {
+    let Some(open) = state.resolver.as_mut() else {
+        return;
+    };
+    if open.staging == Some(id) {
+        open.staging = None;
+    }
+    if open.restarting == Some(id) {
+        open.restarting = None;
+    }
 }
 
 /// `every file done ✓`, and the key that carries the operation on when

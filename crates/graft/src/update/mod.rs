@@ -467,6 +467,8 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             if staged {
                 resolver::resolved_advance(next, commands, id, &mut || local_jobs.next_id());
                 resolver::restart_landed(next, commands, id, &mut || local_jobs.next_id());
+            } else {
+                resolver::write_not_landed(next, id);
             }
             next.local_jobs = local_jobs;
         }

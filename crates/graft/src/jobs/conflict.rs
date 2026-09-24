@@ -83,6 +83,20 @@ pub struct OpenFailure {
     /// user resolved it in `$EDITOR` or a mergetool; on a first open it
     /// means the row was never a conflict.
     pub not_unmerged: bool,
+    /// The read failed on the done route ([`Opening::Done`]'s): the path is
+    /// not unmerged, and the resolver keeps it open as a card saying why
+    /// rather than closing (m6-conflicts/25).
+    pub done: bool,
+}
+
+/// What [`open`] found, by the route git's status picked at open time
+/// (m6-conflicts/25).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Opening {
+    /// git calls the path unmerged: a document or a whole-file card.
+    Unmerged(Arc<OpenedFile>),
+    /// git no longer calls it unmerged: the file on disk, read-only.
+    Done(Arc<graft_ops::conflict::DoneFile>),
 }
 
 /// Why a take did not land, with the same distinction kept the same way.
@@ -106,10 +120,23 @@ pub struct TakeFailure {
 /// [`OpenFailure`], carrying `graft_ops::conflict::OpenError`'s own
 /// `Display` — which is `Refusal::explain()` for a path git does not call
 /// unmerged.
-pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<OpenedFile, OpenFailure> {
+pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, OpenFailure> {
     let repo = store.shared().map_err(|error| failed(&error))?;
     let handle = repo.handle();
     let status = graft_git::status::read(&handle, stop).map_err(|error| failed(&error))?;
+    // The route is git's state at open time, read just above — not a retry
+    // after a refusal. A path staged between this read and the open below
+    // still comes back `NotUnmerged` (m6-conflicts/25).
+    let unmerged = status.entry(path).is_some_and(|entry| entry.unmerged);
+    if !unmerged {
+        return graft_ops::conflict::open_done(&handle, &status, path)
+            .map(|done| Opening::Done(Arc::new(done)))
+            .map_err(|error| OpenFailure {
+                words: error.to_string(),
+                not_unmerged: false,
+                done: true,
+            });
+    }
     let opened = graft_ops::conflict::open_conflict(&handle, &status, path).map_err(|error| {
         OpenFailure {
             words: error.to_string(),
@@ -119,6 +146,7 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<OpenedFil
                     graft_ops::operation::Refusal::NotUnmerged { .. }
                 )
             ),
+            done: false,
         }
     })?;
     let on_disk = if opened.file.is_none() {
@@ -126,12 +154,12 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<OpenedFil
     } else {
         None
     };
-    Ok(OpenedFile {
+    Ok(Opening::Unmerged(Arc::new(OpenedFile {
         file: opened.file,
         how: opened.how,
         binary: opened.binary,
         on_disk,
-    })
+    })))
 }
 
 /// A whole-file shape's card shows the file as it stands on disk, when
@@ -194,6 +222,7 @@ fn failed(error: &impl std::fmt::Display) -> OpenFailure {
     OpenFailure {
         words: error.to_string(),
         not_unmerged: false,
+        done: false,
     }
 }
 
@@ -288,7 +317,41 @@ mod tests {
     use graft_git::conflict::{BaseMismatch, Diff3Error};
     use graft_ops::conflict::BaseError;
 
-    use super::{CARD_BYTES, CARD_LINES, base_refusal, glimpse};
+    use super::{CARD_BYTES, CARD_LINES, Opening, base_refusal, glimpse, open};
+
+    /// Ticket 25: the job picks the route from the status it reads itself.
+    /// The same path is an unmerged document before `git add` and a done
+    /// file after it.
+    #[test]
+    fn open_routes_on_the_status_it_reads() {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::StoppedMerge);
+        let store = crate::repos::RepoStore::new(scratch.path().to_path_buf(), None);
+        let path = std::path::Path::new("both.txt");
+        match open(&store, path, &()).expect("it opens") {
+            Opening::Unmerged(opened) => assert!(opened.file.is_some(), "a parsed document"),
+            Opening::Done(done) => panic!("still unmerged, got {done:?}"),
+        }
+        std::fs::write(scratch.path().join(path), b"settled\n").expect("the file is written");
+        let added = std::process::Command::new("git")
+            .current_dir(scratch.path())
+            .args(["add", "both.txt"])
+            .status()
+            .expect("git runs");
+        assert!(added.success());
+        match open(&store, path, &()).expect("it opens") {
+            Opening::Done(done) => assert!(
+                matches!(
+                    *done,
+                    graft_ops::conflict::DoneFile::Text {
+                        unstaged: false,
+                        ..
+                    }
+                ),
+                "{done:?}"
+            ),
+            Opening::Unmerged(opened) => panic!("git add made it done, got {opened:?}"),
+        }
+    }
 
     /// A file of `lines` numbered lines, and its size.
     fn numbered(lines: usize) -> (Vec<u8>, u64) {

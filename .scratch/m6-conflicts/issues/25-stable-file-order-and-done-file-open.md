@@ -1,6 +1,6 @@
 # fix-stable-file-order-and-done-file-open: a file keeps its row when it is done, and a done row opens read-only
 
-Status: draft (spec-only pass 2026-09-24 on ticket 13's NOTES D1 and D2; conductor's rulings: D1 stable order, D2 spec stands)
+Status: done (2026-09-24, built on Opus from `scout-25.md`; three deviations and one spec contradiction under NOTES, for a ruling). Was: draft (spec-only pass 2026-09-24 on ticket 13's NOTES D1 and D2; conductor's rulings: D1 stable order, D2 spec stands)
 **Revised 2026-09-24 in place, from `.scratch/m6-conflicts/scout-25.md` (main `c56b64e`), C1–C7:**
 - C1, C2: the route moves into graft's job, which already reads its own status. `open_listed` and ops' `Opening` are dropped; graft-ops gains `open_done` only.
 - C3: `n`/`N` do not cross from a done file here. They are refused in words. Crossing from a done file is ticket 17's (list order).
@@ -100,25 +100,25 @@ pub enum HintContext { /* … */ Resolver { base: bool, restart: bool, whole_fil
 ```
 
 ## Acceptance (name the verifying test when you tick)
-- [ ] graft-ops `conflict::tests::open_done_reads_the_file_on_disk`: throwaway merge, `notes.txt` resolved and `git add`ed → `Text`, `file.open() == 0`, `unstaged == false`. Edited after → `unstaged == true`.
-- [ ] graft-ops `conflict::tests::open_done_on_a_removed_path_is_removed` (`DU` resolved by `git rm`) and `…::open_done_on_a_binary_is_binary`.
-- [ ] graft-ops `conflict::tests::open_done_refuses_an_unmerged_path` → `Refused(Unmerged { paths: [p] })`.
-- [ ] graft `jobs::conflict::tests::open_routes_on_the_status_it_reads`, real git: the same path gives `Unmerged` before `git add` and `Done(Text)` after.
-- [ ] graft `update::resolver::tests::file_list::the_list_is_in_gits_byte_order`: `a/b`, `a.txt`, `B.txt`, `a.b` → `B.txt`, `a.b`, `a.txt`, `a/b`.
-- [ ] graft `…::file_list::a_file_keeps_its_row_when_it_is_done`: three files. The middle one becomes `Done`, and a set re-read in ops' order (unmerged first) lands. The row order and `file_cursor` are unchanged.
-- [ ] graft `…::file_list::extra_paths_sort_into_place`: a `Ready` set missing an unmerged path, and an open path missing from both. Each sits at its sorted index.
-- [ ] graft `…::file_list::a_click_on_a_done_file_opens_it_read_only`: pushes `OpenConflict`. The `Done(Text)` answer → resolver open, `done == Some(Text { .. })`, identity row `▸ gone.txt · done ✓ · d starts it over`. With `unstaged`, it ends `· edited since done`.
-- [ ] graft `…::file_list::a_done_card_for_removed_binary_and_unreadable`: `Removed` / `Binary` / `Err { done: true }` answers draw `done ✓ · removed` / `done ✓ · binary` / `done ✓ · could not read: …`, and the resolver stays open in each.
-- [ ] graft `…::file_list::an_unmerged_open_failure_still_closes`: `Err { done: false }` → resolver closed, today's words. This pins the unchanged path.
-- [ ] graft `…::file_list::a_done_file_refuses_in_words`: each of `o t b ⏎ B M n N` → status `gone.txt is done · d starts it over`, no command pushed. `j` still scrolls.
-- [ ] graft `…::file_list::d_on_a_done_file_starts_it_over`: `d` → today's restart box. Accepting it pushes `RestartConflict`. `restart_landed` → `OpenConflict`. An `Unmerged` answer → `done == None`, open blocks shown.
-- [ ] graft `…::file_list::a_done_file_handed_back_stays_open`: `e` → hand-back → a `Done` answer. The resolver is open, and `done` is `Some`.
-- [ ] graft-ui `graph_screen::hints::tests::a_done_file_offers_start_over_edit_and_close`: `Resolver { done: true, .. }` → exactly `d`, `e`, `esc`. `every_context_reaches_every_shape` passes.
-- [ ] graft `it::resolver::file_list::a_done_file_stays_listed`, **back to the spec's order**. Two-file merge, `o` on `gone.txt` → the list reads `gone.txt · done ✓    ▸ notes.txt …`, with `gone.txt` in the same cell as before the `o`.
-- [ ] graft `it::resolver::file_list::a_done_file_opens_read_only_and_d_starts_it_over`, real git:
+- [x] graft-ops `conflict::tests::open_done_reads_the_file_on_disk` — **on `both.txt`**, not `notes.txt`: the StoppedMerge fixture has no `notes.txt` (deviation 1). Throwaway merge, `notes.txt` resolved and `git add`ed → `Text`, `file.open() == 0`, `unstaged == false`. Edited after → `unstaged == true`.
+- [x] graft-ops `conflict::tests::open_done_on_a_removed_path_is_removed` (`ours-deleted.txt`, `git rm`) and `conflict::tests::open_done_on_a_binary_is_binary` (`pic.bin`). (`DU` resolved by `git rm`) and `…::open_done_on_a_binary_is_binary`.
+- [x] graft-ops `conflict::tests::open_done_refuses_an_unmerged_path` (`three.txt`) → `Refused(Unmerged { paths: [p] })`.
+- [x] graft `jobs::conflict::tests::open_routes_on_the_status_it_reads` (`both.txt`), real git: the same path gives `Unmerged` before `git add` and `Done(Text)` after.
+- [x] graft `update::resolver::tests::file_list::the_list_is_in_gits_byte_order`: `a/b`, `a.txt`, `B.txt`, `a.b` → `B.txt`, `a.b`, `a.txt`, `a/b`.
+- [x] graft `update::resolver::tests::file_list::a_file_keeps_its_row_when_it_is_done`: three files. The middle one becomes `Done`, and a set re-read in ops' order (unmerged first) lands. The row order and `file_cursor` are unchanged.
+- [x] graft `update::resolver::tests::file_list::extra_paths_sort_into_place`: a `Ready` set missing an unmerged path, and an open path missing from both. Each sits at its sorted index.
+- [x] graft `update::resolver::tests::file_list::a_click_on_a_done_file_opens_it_read_only`: pushes `OpenConflict`. The `Done(Text)` answer → resolver open, `done == Some(Text { .. })`, identity row `▸ gone.txt · done ✓ · d starts it over`. With `unstaged`, it ends `· edited since done`.
+- [x] graft `update::resolver::tests::file_list::a_done_card_for_removed_binary_and_unreadable`: `Removed` / `Binary` / `Err { done: true }` answers draw `done ✓ · removed` / `done ✓ · binary` / `done ✓ · could not read: …`, and the resolver stays open in each.
+- [x] graft `update::resolver::tests::file_list::an_unmerged_open_failure_still_closes`: `Err { done: false }` → resolver closed, today's words. This pins the unchanged path.
+- [x] graft `update::resolver::tests::file_list::a_done_file_refuses_in_words`: each of `o t b ⏎ B M n N` → status `gone.txt is done · d starts it over`, no command pushed. `j` still scrolls.
+- [x] graft `update::resolver::tests::file_list::d_on_a_done_file_starts_it_over`: `d` → today's restart box. Accepting it pushes `RestartConflict`. `restart_landed` → `OpenConflict`. An `Unmerged` answer → `done == None`, open blocks shown.
+- [x] graft `update::resolver::tests::file_list::a_done_file_handed_back_stays_open`: `e` → hand-back → a `Done` answer. The resolver is open, and `done` is `Some`.
+- [x] graft-ui `graph_screen::hints::tests::a_done_file_offers_start_over_edit_and_close` and `graph_screen::tests::every_context_reaches_every_shape`: `Resolver { done: true, .. }` → exactly `d`, `e`, `esc`. `every_context_reaches_every_shape` passes.
+- [x] graft `it::resolver::file_list::a_done_file_stays_listed`, **back to the spec's order**. Two-file merge, `o` on `gone.txt` → the list reads `gone.txt · done ✓    ▸ notes.txt …`, with `gone.txt` in the same cell as before the `o`.
+- [x] graft `it::resolver::file_list::a_done_file_opens_read_only_and_d_starts_it_over` (first bullet as written; second bullet **adapted**, see NOTES "spec contradiction") and `it::resolver::file_list::a_done_marker_file_starts_over_in_place` (the second bullet's journey on a marker file), real git:
   - After `o` on `gone.txt`, click its row. The resolver stays open, the identity row reads `▸ gone.txt · done ✓ · d starts it over`, and the row order is unchanged.
-  - `d`, then accept the box. `git status` calls `gone.txt` unmerged again. Once the status lands, its row reads `keep or delete`, in the same cell.
-- [ ] Captures, pinned by `it::resolver::file_list::file_list_capture` and a new `…::done_open_capture`: re-take `docs/shots/m6/fix-file-list-{120x40,160x48,80x24,200x50}.txt` and take new `fix-file-list-done-open-{120x40,200x50}.txt`. **The look is the user's call (rule 6); colour is unverified (rule 5).** What right looks like:
+  - `d`, then accept the box. `git status` calls `gone.txt` unmerged again. Once the status lands, its row reads `keep or delete`, in the same cell. **Not reachable:** ops refuses this restart. The test pins the refusal, and the journey is proven on `shared.rs` in an app-begun merge: `UU` again, `done == None`, same row order.
+- [x] Captures, pinned by `it::resolver::file_list::file_list_capture` and `it::resolver::file_list::done_open_capture` (both also take 187x50): re-take `docs/shots/m6/fix-file-list-{120x40,160x48,80x24,200x50}.txt` and take new `fix-file-list-done-open-{120x40,200x50}.txt`. **The look is the user's call (rule 6); colour is unverified (rule 5).** What right looks like:
   - 120x40: `files   gone.txt · done ✓    ▸ notes.txt · 2 of 2 open`.
   - 80x24: `files   ✓ gone.txt   ▸ notes.txt 2/2 open`.
   - 200x50: in the column, `gone.txt   done ✓` sits above `▸ notes.txt  2 of 2 open`.
@@ -129,6 +129,43 @@ pub enum HintContext { /* … */ Resolver { base: bool, restart: bool, whole_fil
 
 ## Size
 Medium: one graft-ops function, one job route and payload, one read-only resolver mode (keys, view, hints, failure), one sort, ~17 tests, 6 captures. One context. If it will not fit, split at the crate seam: graft-ops first (the first 3 boxes), then graft and graft-ui.
+
+## NOTES (builder, 2026-09-24)
+**Compacted once mid-ticket.** Nothing remains. All work after the compaction was gates, test fixes, the three deviations below, MAP.md and this note.
+Scout used: yes, `scout-25.md`.
+
+**Cause fixes** (each fixes the defect's cause, at no cost to the user):
+- D1: `listed_files` sorts its union byte-wise (`update/resolver/files.rs`, `git_order`). `ConflictSet.paths` is unchanged.
+- D2: the route is chosen in `jobs::conflict::open` from its own status read. `select_file`'s Done refusal is gone.
+- Found while building `d` on a done file: a refused or failed resolver write never released `staging`/`restarting`. `update/mod.rs` `operate_answer` handled only `staged`. After a refused restart, every file switch was then refused ("still writing"). New `update::resolver::write_not_landed` clears them when the id matches. This is pinned by `a_done_file_opens_read_only_and_d_starts_it_over` (`restarting == None` after the refusal).
+
+**Deviations (for a ruling):**
+1. Ops tests use `both.txt`, not `notes.txt`: the StoppedMerge fixture has no `notes.txt`.
+2. `ours_absent`/`theirs_absent` are `None`, not `false`: the fields are `Option<SanitizedText>` (`graft-ui` `RegionView::WholeFile`).
+3. **Resolved outside still closes.** Scope 6, taken literally, lands the re-read after `$EDITOR`/`M` resolves and stages a conflicted file on the done card. That breaks TESTING.md:2194 (M5 mergetool check, "resolved outside, the resolver closes") and three existing tests: `it::resolver::handover::resolved_outside_closes`, `it::m5_walk::every_scenario::mergetool_hand_over_and_back`, `it::resolver::last_file::open_refused_…`. Kept the old rule at the new seam: a `Done` answer while an **unmerged document** is on screen (`open.file.is_some() && open.done.is_none()`, the condition `open_failed` used) closes with `<path> resolved outside` (`update/resolver/answers.rs` `conflict_opened`). A done row opened from the list, or a done file re-read (`a_done_file_handed_back_stays_open`), still shows the card. New test: `update::resolver::tests::file_list::an_unmerged_document_resolved_outside_still_closes`. The two existing handover/mergetool tests pass unchanged.
+   - `it::resolver::last_file::open_refused_on_a_path_git_does_not_call_unmerged` is renamed `open_on_a_path_git_no_longer_calls_unmerged_shows_it_done`. A fresh open from a stale banner list is D2's route by design: it now opens the done card, where it used to close with `… is not conflicted`. `open_failed`'s `not_unmerged` branch now answers only the race between the job's status read and its open, and no test reaches it.
+4. **A done file draws as one card at every width.** Scope 7 is silent on a done Text at ≥180 columns. The three panes drew the file on disk under `yours · main`, `result` **and** `theirs · feature` alike. For `gone.txt`, theirs deleted the file, so that label was false. New `view::resolver::arrangement(state, placed)` returns `Card` for a done file and is used by both the draw (`view/frame/conflicts.rs`) and `resolver_layout` (the mouse). The list keeps its column. Pinned by `done_open_capture`: no `theirs · feature` at any width.
+
+**Spec contradiction (for a ruling):** the acceptance bullet "`d` on `gone.txt` → unmerged again, row reads `keep or delete`" is unreachable. `gone.txt` is a modify/delete in a shell-begun merge. `graft_ops` refuses its restart as `NoStagesKept` (`graft-ops/src/apply/restart.rs:178`, `:201`), and as `NotMarkerShape` for a whole-file shape (`:194`). A shell-begun merge has no backup chain holding stages, so no done file in it can start over, `notes.txt` included. The test pins the refusal (`gone.txt: the conflict's sides were not kept`) and that the write is released. `a_done_marker_file_starts_over_in_place` proves the journey on `shared.rs` in an app-begun merge. The user will meet this refusal on any shell-begun merge, which is worth a line in ticket 17's or the design note's journeys.
+
+**Gaps:**
+- Broken: none found.
+- Unverified:
+  - colour of the done row, card and identity row (rule 5);
+  - the look of every capture (rule 6, the user's call);
+  - a done file whose text still has markers, staged from the shell: shown parsed, read-only, no special words (Out, as specified; gap row for the conductor);
+  - a `Refused(Unmerged)` race on the done route (staged → unmerged between the status read and `open_done`): the card shows ops' shell-milestone words. Not reachable by test.
+- Contact sheet: `docs/shots/m6/m6-contact-sheet.txt` has never carried the `fix-file-list-*` captures (13's included), so I did not add them. The conductor decides whether the sheet should.
+
+**Captures** (`docs/shots/m6/`, each under 2 KB). What right looks like:
+- `fix-file-list-120x40.txt`: `files   gone.txt · done ✓    ▸ notes.txt · 2 of 2 open`.
+- `fix-file-list-80x24.txt`: `files   ✓ gone.txt   ▸ notes.txt 2/2 open`.
+- `fix-file-list-160x48.txt`: as 120x40, wider.
+- `fix-file-list-200x50.txt` and `fix-file-list-187x50.txt`: in the left column, `gone.txt   done ✓` above `▸ notes.txt  2 of 2 open`.
+- `fix-file-list-done-open-120x40.txt`: `files   ▸ gone.txt · done ✓    notes.txt · 2 of 2 open`, the rule, `▸ gone.txt · done ✓ · d starts it over`, `1 our plan`, bar `d start over  e edit  esc close`.
+- `fix-file-list-done-open-200x50.txt` and `fix-file-list-done-open-187x50.txt`: the column with `▸ gone.txt   done ✓` above `notes.txt  2 of 2 open`; beside it one card, never three panes: `▸ gone.txt · done ✓ · d starts it over`, then `1 our plan`; same bar.
+
+**Verified by:** unit and it tests named above, and by reading each capture file. Not verified: real-terminal use, colour.
 
 ## For the conductor (lines in other specs, not this ticket's to edit)
 - Ticket 16 (`Ctrl+O`/`Ctrl+T`) and P6's `O`/`T` ticket: "on a done file, refuse through `update::resolver::done_refusal` first".

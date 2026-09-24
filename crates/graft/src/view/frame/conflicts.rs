@@ -45,7 +45,11 @@ pub(super) fn draw_resolver(
     // it splits the same rows `draw_resolver_banner` and the footer leave.
     let (_, placed, split) = crate::view::resolver::resolver_split(state, banner_rows);
     let doc = crate::view::resolver::resolver_view(state, split.doc.width)?;
-    let laid_out = graft_ui::conflict_resolver::layout(&doc, placed.arrangement(), split.doc.width);
+    let laid_out = graft_ui::conflict_resolver::layout(
+        &doc,
+        crate::view::resolver::arrangement(state, placed),
+        split.doc.width,
+    );
     let tier = tier_in_force(session, state);
     frame.render_widget(
         graft_ui::conflict_resolver::ResolverScreen {

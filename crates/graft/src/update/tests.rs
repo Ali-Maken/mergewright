@@ -3089,6 +3089,7 @@ fn the_prelude_holds_a_key_while_the_resolver_is_reading() {
         files: crate::update::detail::Loading::Idle,
         set_job: None,
         seen: std::collections::BTreeMap::new(),
+        done: None,
     });
 
     let (state, _) = update(&state, working_tree_read(JobId::new(10)));
@@ -3712,11 +3713,13 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             base: true,
             restart: true,
             whole_file: false,
+            done: false,
             roles,
         } => Some(HintContext::Resolver {
             base: true,
             restart: true,
             whole_file: false,
+            done: false,
             roles: *roles,
         }),
         // A whole-file card (m6-05 review, Major 1): the one other form.
@@ -3724,11 +3727,24 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             base: false,
             restart: false,
             whole_file: true,
+            done: false,
             roles,
         } => Some(HintContext::Resolver {
             base: false,
             restart: false,
             whole_file: true,
+            done: false,
+            roles: *roles,
+        }),
+        // A done file (m6-conflicts/25): `resolver_context` answers the
+        // document's flags with `done` set.
+        HintContext::Resolver {
+            done: true, roles, ..
+        } => Some(HintContext::Resolver {
+            base: true,
+            restart: true,
+            whole_file: false,
+            done: true,
             roles: *roles,
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
@@ -3985,18 +4001,12 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         | HintContext::PlainRow
         | HintContext::Marked(_)
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
-        // The resolver open on a two-block conflict: every live key in
-        // `resolver_list` has something to do in it.
         HintContext::Resolver {
-            whole_file: false,
+            whole_file,
+            done,
             roles,
             ..
-        } => vec![in_roles(resolver_on_screen(walk), *roles)],
-        HintContext::Resolver {
-            whole_file: true,
-            roles,
-            ..
-        } => vec![in_roles(resolver_card_on_screen(walk), *roles)],
+        } => vec![resolver_screen_for(walk, *whole_file, *done, *roles)],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
@@ -4407,6 +4417,7 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         files: crate::update::detail::Loading::Idle,
         set_job: None,
         seen: std::collections::BTreeMap::new(),
+        done: None,
     });
     state
 }
@@ -4450,6 +4461,7 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         files: crate::update::detail::Loading::Idle,
         set_job: None,
         seen: std::collections::BTreeMap::new(),
+        done: None,
     });
     state
 }
@@ -4903,6 +4915,27 @@ fn the_geometry_mirror_matches_the_rects_the_frame_hands_out() {
 
 /// `state` in the operation whose sides go by `roles`: stash pop is the
 /// resolver open with no operation at all (`update::resolver::side_names`).
+/// [`screen_for`]'s resolver: open on a two-block conflict, where every live
+/// key in `resolver_list` has something to do; its whole-file card; or the
+/// same document now done, read-only (m6-conflicts/25).
+fn resolver_screen_for(
+    walk: JobId,
+    whole_file: bool,
+    done: bool,
+    roles: graft_ui::conflict_resolver::SideRoles,
+) -> AppState {
+    if whole_file {
+        return in_roles(resolver_card_on_screen(walk), roles);
+    }
+    let mut state = in_roles(resolver_on_screen(walk), roles);
+    if done {
+        let open = state.resolver.as_mut().expect("open");
+        open.done = Some(resolver::DoneShape::Text { unstaged: false });
+        open.cursor_block = None;
+    }
+    state
+}
+
 fn in_roles(mut state: AppState, roles: graft_ui::conflict_resolver::SideRoles) -> AppState {
     use graft_git::state::InProgress;
     use graft_ui::conflict_resolver::SideRoles;

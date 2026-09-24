@@ -13,15 +13,17 @@ use graft_git::conflict::{Block, ConflictFile, Projection, Region, Take};
 use graft_git::status::UnmergedHow;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::conflict_resolver::{
-    BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileState, Layout,
-    Placement, RegionView, ResolverAreas, SideNames, TakeView, layout, placement, resolver_areas,
+    Arrangement, BlockNumbers, BlockState, BlockView, DocView, FileListView, FileRow, FileState,
+    Layout, Placement, RegionView, ResolverAreas, SideNames, TakeView, layout, placement,
+    resolver_areas,
 };
 use ratatui::layout::Rect;
 
 use crate::update::AppState;
 use crate::update::detail::Loading;
 use crate::update::resolver::{
-    ResolverState, RowState, WholeFileShape, file_cursor, listed_files, side_names, whole_file_keys,
+    DoneShape, ResolverState, RowState, WholeFileShape, file_cursor, listed_files, side_names,
+    whole_file_keys,
 };
 
 /// Everything the resolver draws for the file it has open, laid out for a
@@ -33,16 +35,27 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
     if let Some(whole) = open.whole_file.as_ref() {
         return Some(whole_file_view(state, open, whole, columns));
     }
+    if let Some(done) = open.done.as_ref()
+        && open.file.is_none()
+    {
+        return Some(done_card(state, open, done));
+    }
     let file = open.file.as_ref()?;
     let blocks = file.blocks();
+    let identity = match open.done {
+        Some(DoneShape::Text { unstaged } | DoneShape::Binary { unstaged }) => {
+            Identity::Done { unstaged }
+        }
+        Some(DoneShape::Removed | DoneShape::Unreadable { .. }) => {
+            Identity::Done { unstaged: false }
+        }
+        None => Identity::Blocks {
+            open: file.open(),
+            of: blocks.len(),
+        },
+    };
     Some(DocView {
-        title: sanitize_line(&resolver_title(
-            &open.path,
-            Identity::Blocks {
-                open: file.open(),
-                of: blocks.len(),
-            },
-        )),
+        title: sanitize_line(&resolver_title(&open.path, identity)),
         files: file_list_view(state),
         names: side_names(state),
         regions: regions(file),
@@ -85,6 +98,38 @@ fn whole_file_view(
             note: whole_file_note(whole),
             ours_absent: absent_on(whole.how, Side::Ours, &names),
             theirs_absent: absent_on(whole.how, Side::Theirs, &names),
+        }],
+        cursor_block: None,
+        base_shown: false,
+        notice: open
+            .notice
+            .as_ref()
+            .map(|(text, error)| (sanitize_line(text), *error)),
+    }
+}
+
+/// A done file with no text to show — binary, removed, or not readable —
+/// as a card (m6-conflicts/25): what it is, and `d` to start it over.
+fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape) -> DocView {
+    let unstaged = matches!(done, DoneShape::Binary { unstaged: true });
+    let how = match done {
+        DoneShape::Binary { .. } => "done ✓ · binary".to_owned(),
+        DoneShape::Removed => "done ✓ · removed".to_owned(),
+        DoneShape::Unreadable { why } => format!("done ✓ · could not read: {why}"),
+        // Text is drawn as its document, never as a card.
+        DoneShape::Text { .. } => "done ✓".to_owned(),
+    };
+    DocView {
+        title: sanitize_line(&resolver_title(&open.path, Identity::Done { unstaged })),
+        files: file_list_view(state),
+        names: side_names(state),
+        regions: vec![RegionView::WholeFile {
+            how: sanitize_line(&how),
+            keys: sanitize_line("d starts it over"),
+            lines: vec![],
+            note: None,
+            ours_absent: None,
+            theirs_absent: None,
         }],
         cursor_block: None,
         base_shown: false,
@@ -188,7 +233,25 @@ pub fn size_words(bytes: u64) -> String {
 /// mouse's: the frame's width is measured once, there (m6-conflicts/14 S5).
 #[must_use]
 pub fn resolver_layout(state: &AppState, placed: Placement, columns: u16) -> Option<Layout> {
-    resolver_view(state, columns).map(|doc| layout(&doc, placed.arrangement(), columns))
+    resolver_view(state, columns).map(|doc| layout(&doc, arrangement(state, placed), columns))
+}
+
+/// The arrangement the open file is drawn in: `placed`'s, except that a
+/// done file is always one card (m6-conflicts/25). Its sides are gone — the
+/// three panes would draw the file on disk under `yours`, `result` and
+/// `theirs` alike, claiming it for a side that may have deleted it. The
+/// list keeps its column.
+#[must_use]
+pub fn arrangement(state: &AppState, placed: Placement) -> Arrangement {
+    if state
+        .resolver
+        .as_ref()
+        .is_some_and(|open| open.done.is_some())
+    {
+        Arrangement::Card
+    } else {
+        placed.arrangement()
+    }
 }
 
 /// What the file identity row says after the path.
@@ -203,6 +266,12 @@ pub enum Identity<'a> {
     },
     /// A whole-file card: what happened to the file on each side.
     Whole(&'a str),
+    /// A done file, read-only (m6-conflicts/25); `unstaged` when the file
+    /// on disk is not what was staged.
+    Done {
+        /// The status shows a working-tree change for it.
+        unstaged: bool,
+    },
 }
 
 /// The file identity row (m6-conflicts/13): `notes.txt · 2 conflicts · 1
@@ -218,6 +287,10 @@ pub fn resolver_title(path: &Path, identity: Identity<'_>) -> String {
             format!("{name} · {of} {noun} · {open} open")
         }
         Identity::Whole(how) => format!("{name} · {how}"),
+        Identity::Done { unstaged: false } => format!("{name} · done ✓ · d starts it over"),
+        Identity::Done { unstaged: true } => {
+            format!("{name} · done ✓ · d starts it over · edited since done")
+        }
     }
 }
 
@@ -498,6 +571,7 @@ mod tests {
                 files: crate::update::detail::Loading::Idle,
                 set_job: None,
                 seen: std::collections::BTreeMap::new(),
+                done: None,
             }),
             ..AppState::default()
         }

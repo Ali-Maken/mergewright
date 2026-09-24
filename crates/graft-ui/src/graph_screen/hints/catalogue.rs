@@ -110,8 +110,8 @@ fn operation_live_form(context: &HintContext) -> Option<HintContext> {
 }
 
 /// Every [`HintContext::Resolver`] form [`every_context`] names: the four
-/// `base`/`restart` combinations of a document, and a whole-file card
-/// (whose list reads neither flag, so one form covers it) — each under
+/// `base`/`restart` combinations of a document, a whole-file card and a done
+/// file (whose lists read neither flag, so one form covers each) — each under
 /// every [`SideRoles`].
 fn resolver_forms() -> Vec<HintContext> {
     ALL_ROLES
@@ -121,6 +121,7 @@ fn resolver_forms() -> Vec<HintContext> {
                 base,
                 restart,
                 whole_file: false,
+                done: false,
                 roles,
             };
             [
@@ -132,6 +133,16 @@ fn resolver_forms() -> Vec<HintContext> {
                     base: false,
                     restart: false,
                     whole_file: true,
+                    done: false,
+                    roles,
+                },
+                // A done file, read-only (m6-conflicts/25): its list reads
+                // no other flag, so one form covers it.
+                HintContext::Resolver {
+                    base: false,
+                    restart: false,
+                    whole_file: false,
+                    done: true,
                     roles,
                 },
             ]

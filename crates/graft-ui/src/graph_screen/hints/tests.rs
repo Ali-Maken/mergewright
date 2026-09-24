@@ -1033,6 +1033,7 @@ fn every_context_lists_resolver() {
                     base,
                     restart,
                     whole_file: false,
+                    done: false,
                     roles: SideRoles::Merge,
                 }),
                 "every_context() is missing Resolver {{ base: {base}, restart: {restart} }}"
@@ -1047,6 +1048,7 @@ fn document(base: bool, restart: bool) -> HintContext {
         base,
         restart,
         whole_file: false,
+        done: false,
         roles: SideRoles::Merge,
     }
 }
@@ -1140,6 +1142,7 @@ fn resolver_card_draws_only_what_a_card_answers() {
             base,
             restart,
             whole_file: true,
+            done: false,
             roles: SideRoles::Merge,
         };
         assert_eq!(
@@ -1151,8 +1154,37 @@ fn resolver_card_draws_only_what_a_card_answers() {
         base: false,
         restart: false,
         whole_file: true,
+        done: false,
         roles: SideRoles::Merge,
     }));
+}
+
+/// A done file, read-only (m6-conflicts/25): exactly `d`, `e`, `esc`,
+/// whatever the other flags say, and a form every sweep reads.
+#[test]
+fn a_done_file_offers_start_over_edit_and_close() {
+    for (base, restart, whole_file) in [
+        (false, false, false),
+        (true, true, false),
+        (false, false, true),
+    ] {
+        let done = HintContext::Resolver {
+            base,
+            restart,
+            whole_file,
+            done: true,
+            roles: SideRoles::Rebase,
+        };
+        assert_eq!(
+            hints_text(&hints_for(&done, Divider::Hidden, 160)),
+            " d start over  e edit  esc close"
+        );
+    }
+    assert!(
+        every_context()
+            .iter()
+            .any(|context| matches!(context, HintContext::Resolver { done: true, .. }))
+    );
 }
 
 /// `⏎ resolve` leads `ChangesPane { unmerged: true }` and `Banner {
@@ -1214,6 +1246,7 @@ fn resolver_verbs_are_role_words() {
             base: false,
             restart: false,
             whole_file: false,
+            done: false,
             roles,
         };
         hints_text(&hints_for(&context, Divider::Hidden, 200))

@@ -36,6 +36,7 @@
 
 mod answers;
 mod base;
+mod done;
 mod files;
 mod geometry;
 mod names;
@@ -60,8 +61,9 @@ use super::events::Command;
 use super::state::{AppState, Status};
 
 pub(crate) use answers::every_file_done;
-pub use answers::{conflict_opened, handed_back, resolved_advance, taken};
+pub use answers::{conflict_opened, handed_back, resolved_advance, taken, write_not_landed};
 pub use base::base_loaded;
+pub use done::{DoneShape, done_refusal};
 pub use files::{ListedFile, RowState, conflict_set_read, file_cursor, listed_files, select_file};
 pub use geometry::{banner_rows, fits, resized, scroll_block_into_view};
 #[cfg(test)]
@@ -163,6 +165,10 @@ pub struct ResolverState {
     /// Each file's state as it last stood while open in this resolver, so
     /// the list still says `1 of 2 open` for a file left half done.
     pub seen: BTreeMap<PathBuf, RowState>,
+    /// The open file is **done** — git no longer calls it unmerged — and
+    /// shown read-only (m6-conflicts/25): what the opening read found, or
+    /// why it could not be read. `None` for a file still conflicted.
+    pub done: Option<DoneShape>,
 }
 
 impl ResolverState {
@@ -186,6 +192,7 @@ impl ResolverState {
             files: Loading::Idle,
             set_job: None,
             seen: BTreeMap::new(),
+            done: None,
         }
     }
 
@@ -264,6 +271,20 @@ fn act(
     next_id: &mut impl FnMut() -> JobId,
 ) {
     let plain = !key.modifiers.control && !key.modifiers.alt;
+    // A done file is read-only (m6-conflicts/25): every key that would take,
+    // stage, load a base, hand to a mergetool or walk is refused in words,
+    // with nothing sent. `d`, `e`, `Esc` and the scroll keys act as ever.
+    let refused_when_done = matches!(
+        key.code,
+        KeyCode::Char('o' | 't' | 'b' | 'B' | 'M' | 'n' | 'N') | KeyCode::Enter
+    );
+    if plain
+        && refused_when_done
+        && let Some(words) = done_refusal(state)
+    {
+        state.status = Status::sticky(words);
+        return;
+    }
     match key.code {
         KeyCode::Escape => close(state),
         KeyCode::Char('o' | 't' | 'b') if plain => take_key(state, commands, key.code, next_id),
