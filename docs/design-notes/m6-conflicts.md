@@ -480,7 +480,7 @@ Counting as in UX 1.3. The multi-file fixture is the prototype's: `gone.txt` (ch
   - A hook refuses → the summary stays, the reason goes above its bar, and the draft is kept.
   - The summary could not be read → `summary unavailable: <why> · ⏎ commits with git's message`.
   - `⏎` on a merge begun in the shell → as J6; one `FinishMerge` entry. `u` after it → the merge is back in progress, resolved; header `MERGING`, banner focused, status `undo: finish merge of <from> ✓ · c finishes the merge`; `c ⏎` finishes it again, 2 (ticket 41).
-- `c`/`a` in the changes pane while an operation is live → the commit/amend editor, `[ Commit ]` dimmed, words `… esc, ⇥ banner, then c …`. `Esc` → the pane; `⇥` (×n, ticket 39 NOTES) → the banner; `c` → the summary (ticket 39).
+- `c`/`a` in the changes pane while an operation is live → the commit/amend editor, `[ Commit ]` dimmed, words `… esc, ⇥ banner, then c …`. `Esc` → the pane; `⇥` (×n, ticket 39 NOTES) → the banner; `c` → the summary (ticket 39). Superseded by usability fix M3a (m6-usability-fixes.md): the editor does not open; the pane answers in words, `merge in progress` · `⇥ banner, then c …`.
 - The commit editor's refusal has its own row above the options row, full width, budgeted always and drawn only when refused; at 80 columns every refusal fits whole (ticket 40).
 
 ```journey-counts
@@ -502,7 +502,7 @@ walk-back-a-done-file         4                     # Tower reset-to-unmerged (C
 a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`)
 a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`)
 b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`)
-editor-to-finish  5  # esc + 2×⇥ + c + ⏎ (ticket 39) · P12: `c y`, still 5
+editor-to-finish  5  # M3a (usability M3): the editor never opens to refuse, so the walk starts in the changes pane: c (refused in words) + 2×⇥ + c + ⏎, still 5 · P14 → 2 (c ⏎; c y with P12)
 b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2
 # last-block-to-finished      4                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Commented out until the walk has its scenario
 ```
@@ -1363,6 +1363,7 @@ Then two answers: does the conflict screen look right? Go on to the next milesto
   - Trade-off: six more values to keep in every theme. The high-contrast theme drops the tints.
 - **ADR-0041** puts "colour schemes" in M8. This is not that: whether a block is open or taken, and which side a line
   came from, is state, which falls under its carve-out. The M8 pass may retune these values, but the roles stay.
+- **P14–P17:** see `docs/design-notes/m6-usability-fixes.md` (usability walk M1–M4).
 
 ### Genuinely risky tickets (for the spec pass)
 - **No Fable build expected.** Every rule is fixed here, and the prototype picks the values.
