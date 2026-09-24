@@ -39,7 +39,11 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
 #[must_use]
 pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     match status {
-        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done { .. } => None,
+        Status::Ready
+        | Status::Copied { .. }
+        | Status::Busy(_)
+        | Status::Waiting(_)
+        | Status::Done { .. } => None,
         Status::Failed(message) => Some(sanitize_line(message)),
         Status::Sticky { reason, keys: None } => Some(sanitize_line(reason)),
         Status::Sticky {
@@ -77,7 +81,11 @@ const DISMISS: &str = "esc dismiss";
 #[must_use]
 pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
     match status {
-        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done { .. } => None,
+        Status::Ready
+        | Status::Copied { .. }
+        | Status::Busy(_)
+        | Status::Waiting(_)
+        | Status::Done { .. } => None,
         Status::Failed(message) => Some(ProblemLine {
             reason: sanitize_line(message),
             keys: Some(sanitize_line(DISMISS)),
@@ -159,5 +167,14 @@ mod tests {
             done_line("x", Some("c finishes the merge")),
             "x ✓ · c finishes the merge"
         );
+    }
+
+    /// A wait is not a problem: neither the status screen nor the graph
+    /// footer's problem line shows it (review 47-49, m1).
+    #[test]
+    fn a_wait_is_never_drawn_as_a_problem() {
+        let wait = super::Status::Waiting("still reading the refs — try again".to_owned());
+        assert_eq!(super::problem(&wait), None);
+        assert!(super::graph_problem(&wait).is_none());
     }
 }

@@ -190,7 +190,7 @@ pub(super) fn rejections() -> Vec<Scenario> {
     ]
 }
 
-/// TESTING.md scenario 13 (m6-conflicts/49): rejected, `p` names the
+/// TESTING.md scenario 11a (m6-conflicts/49): rejected, `p` names the
 /// divergence, `r r` rebases onto the teammate's work — now `P` is a plain
 /// push that fast-forwards, not a force-push.
 fn push_rejected_rebased_then_plain() -> Scenario {

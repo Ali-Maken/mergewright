@@ -291,7 +291,20 @@ pub(super) fn remotes_arrived(
 
 /// `p`, `P` or `f` before the remote facts have landed; `P` also while a
 /// re-read is in flight and the answer would be the lease.
-const REMOTES_PENDING: &str = "still reading the remotes — try again in a moment";
+const REMOTES_PENDING: &str = "still reading the remotes \u{2014} try again in a moment";
+
+/// The status for a remote key's refusal: a wait for a read in flight
+/// ([`REMOTES_PENDING`], [`push_box::REFS_PENDING`]) is a neutral notice,
+/// anything else a failure (review 47-49, m1). Keyed on the two constants
+/// this module owns, so a new wait word is added here or it reads as a
+/// failure.
+fn refusal(why: String) -> Status {
+    if why == REMOTES_PENDING || why == push_box::REFS_PENDING {
+        Status::Waiting(why)
+    } else {
+        Status::Failed(why)
+    }
+}
 
 /// The facts, or the words for why `p`/`P` cannot act yet.
 fn facts(state: &AppState) -> Result<&Arc<RemoteFacts>, String> {
@@ -345,7 +358,7 @@ pub fn pull_key(
     let params = match pull_params(state) {
         Ok(params) => params,
         Err(why) => {
-            state.status = Status::Failed(why);
+            state.status = refusal(why);
             return true;
         }
     };

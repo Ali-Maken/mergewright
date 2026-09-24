@@ -154,6 +154,32 @@ fn assert_plain(state: &AppState, why: &str) {
     assert!(commands.is_empty(), "{why}: P only opens the box");
 }
 
+/// The refs job a write asked for ends without an answer — it failed (a
+/// panic, a stopped runner) or was cancelled. The refs are then `Unknown`,
+/// not still being read: `P` gives the plain box, never the wait words
+/// for good (review 47-49, M2).
+#[test]
+fn a_refs_read_that_fails_or_is_cancelled_gives_the_plain_box() {
+    let ends: [fn(JobId) -> Event; 2] = [
+        |id| {
+            Event::JobFailed(
+                id,
+                graft_core::job::JobFailure::Failed("runner stopped".to_owned()),
+            )
+        },
+        Event::JobCancelled,
+    ];
+    for end in ends {
+        let mut state = on_sent();
+        reject(&mut state);
+        let refs = write_done(&mut state);
+        let (next, _) = update(&state, AppEvent::Core(end(refs)));
+        state = next;
+        assert_eq!(state.refs_read, RefsRead::Unknown, "{:?}", end(refs));
+        assert_plain(&state, "the refs read ended without an answer");
+    }
+}
+
 fn assert_lease(state: &AppState, why: &str) {
     let params = push_params(state).unwrap_or_else(|words| panic!("{why}: {words}"));
     assert_eq!(
@@ -247,7 +273,7 @@ fn p_between_a_writes_done_and_its_refs_read_says_so() {
     let refs = write_done(&mut state);
     let (next, commands) = press_p(&state);
     assert!(next.confirm.is_none(), "{:?}", next.confirm);
-    assert_eq!(next.status, Status::Failed(REFS_PENDING.to_owned()));
+    assert_eq!(next.status, Status::Waiting(REFS_PENDING.to_owned()));
     assert!(
         !commands
             .iter()
@@ -345,14 +371,14 @@ fn a_rejected_push_with_the_tip_unchanged_still_offers_the_lease() {
     state.refs_read.asked(JobId::new(4));
     assert_eq!(
         press_p(&state).0.status,
-        Status::Failed(REFS_PENDING.to_owned())
+        Status::Waiting(REFS_PENDING.to_owned())
     );
     answer_refs(&mut state, JobId::new(4), SENT);
     let (next, _) = press_p(&state);
     assert!(next.confirm.is_none(), "{:?}", next.confirm);
     assert_eq!(
         next.status,
-        Status::Failed("still reading the remotes — try again in a moment".to_owned())
+        Status::Waiting("still reading the remotes — try again in a moment".to_owned())
     );
     answer_remotes(&mut state);
     assert_lease(&state, "the tip git refused is still the tip");

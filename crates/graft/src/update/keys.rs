@@ -102,7 +102,10 @@ fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -
 /// whatever that key or click does (m6-conflicts/42) — one rule, called
 /// from [`key_event`] and from `mouse::mouse_event` on a button press.
 pub(super) fn acknowledge(next: &mut AppState) {
-    if matches!(next.status, Status::Copied { .. } | Status::Done { .. }) {
+    if matches!(
+        next.status,
+        Status::Copied { .. } | Status::Done { .. } | Status::Waiting(_)
+    ) {
         next.status = Status::Ready;
     }
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
