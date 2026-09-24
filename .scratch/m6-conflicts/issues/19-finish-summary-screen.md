@@ -1,14 +1,15 @@
 # fix-finish-summary-screen: `c` on a merge shows what will land — what you resolved, what git combined on its own, the message — and `⏎` commits it
 
 Status: ready (filed 2026-09-23; P1–P8 approved by the user, P9 by the conductor — see docs/field-notes.md)
-Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 22-ops-finish-message-and-step-bound.md
+Blocked by: 09-ops-conflict-set-and-summary.md, 10-resolver-line-numbers.md, 22-ops-finish-message-and-step-bound.md, 13-resolver-file-list.md (Part B)
 Was: draft · new 2026-09-23. **Part A is approved** (the user, field notes 2026-09-23: *"yes build it that way"*). §2.6b keymap rows (P9) are to be written before the binding lands. **Part B is gated on P8** (`c` inside the resolver; the resolver stays open after the last file). Do not build Part B until P8 is approved.
 **Revised 2026-09-23 (review `docs/reviews/m6-amend-09.md` Minor 1, the conductor's direction).** The message the user sees is the message that lands, character for character.
 - git's comment lines come out when `MERGE_MSG` is **read**: `finish_summary`, as today.
 - The commit keeps whatever the user typed: `ContinueWith` now sends `--cleanup=whitespace`. That change is in graft-ops, in `ops-finish-message-and-step-bound`. This ticket proves it end to end.
 - A `#123 fixes login` line the user types survives.
+**Revised 2026-09-24 (spec-only pass on `scout-13.md`, rulings R4/R5 in `13-resolver-file-list.md`).** Part B **owns** "the resolver stays open after the last file" (`02-keymap.md:269`). Until it lands, `fix-resolver-file-list` closes to the banner with the words on the status line. Part B replaces that close, moves the words into the resolver's notice row, and rewrites 13's two landing tests. Part B also needs 13 (`resolved_advance` in list order).
 Build with: blank — brownfield (ADR-0035): **scout first** (banner `c`, commit editor fields, overlay precedence). Expected **Opus**: a new modal overlay with a text field, a job and an expandable diff.
-Needs: `fix-ops-conflict-set-and-summary` (`finish_summary`, `FinishSummary`, `Resume::ContinueWith`); `ops-finish-message-and-step-bound` (`--cleanup=whitespace`); `fix-resolver-line-numbers` (`SideNames`, for the row wording).
+Needs: `fix-ops-conflict-set-and-summary` (`finish_summary`, `FinishSummary`, `Resume::ContinueWith`); `ops-finish-message-and-step-bound` (`--cleanup=whitespace`); `fix-resolver-line-numbers` (`SideNames`, for the row wording); Part B only: `fix-resolver-file-list` (`resolved_advance`'s none-left branch, its landing tests).
 Crates: graft-ui, graft.
 
 ## Read first
@@ -16,6 +17,7 @@ Crates: graft-ui, graft.
 - `docs/field-notes.md` 2026-09-23, last entry.
 - `docs/design/02-keymap.md` §2.2, §2.6a, §2.10 (the keys reused).
 - `crates/graft/MAP.md` §`update::banner` (`banner_key`, `resume`, `resumed`, `continue_refusal`), §`update::commit_editor` (`CommitEditor`, `editor_key`, `paste`, `EditCommitMessage`), §update (`AppState::text_field_open`, `modal_owns_keys`, `graph_overlay`, `GraphOverlay`, `Command::ReadFileDiff`), §`update::resolver` (`resolved_advance`); `crates/graft-ui/MAP.md` `commit_editor`, `text_input`, `detail_pane` (the diff body), `graph_screen::hints` (`HintContext`, `every_context`, `coverage_slot`).
+- Part B: `.scratch/m6-conflicts/issues/13-resolver-file-list.md` rulings R4, R5 and Scope 7.
 - **Scout questions:**
   1. What `c` on the focused banner calls today, and where its refusal words come from.
   2. How the commit editor's `Esc` keeps a draft.
@@ -79,7 +81,9 @@ Crates: graft-ui, graft.
 8. `c` in `resolver_key`:
    - Every file done → `open_finish(ReturnTo::Resolver)` for a merge, `resume(Continue)` otherwise.
    - Files still open → `<n> file(s) still conflicted · ⏎ marks done`.
-   - The resolver no longer closes after the last file. It stays, with the notice `every file done ✓ · c finishes the merge`, and `Esc` from the summary returns to it.
+   - The resolver no longer closes after the last file (this replaces `fix-resolver-file-list`'s none-left close in `resolved_advance`). It stays on the file just done, and `Esc` from the summary returns to it.
+   - The words move from the status line to the resolver's **notice row** (`ResolverState::notice`, drawn under the file identity row): `every file done ✓ · c finishes the merge` for a merge; `every file done ✓ · c continues the rebase` (or `the cherry-pick`, `the revert`) otherwise.
+   - A **stash pop** keeps 13's behaviour: it closes to the graph with `every file done ✓` on the status line. There is nothing for `c` to finish, so staying would cost him an `Esc` for nothing.
    - The Resolver hint table gains `c finish`.
 
 Out: rebase/cherry-pick/revert summaries; P4's `FinishMerge` (that ticket routes its `c` through `open_finish`); horizontal scroll in the diff; the cleanup mode itself (graft-ops, `ops-finish-message-and-step-bound`).
@@ -121,7 +125,7 @@ pub enum Product { /* existing */ FinishSummary(Result<Arc<FinishSummary>, Strin
 - [ ] `…::a_rebase_c_still_continues_directly`.
 - [ ] `…::the_summary_words_what_you_chose`: `Ctrl+T ⏎` on `notes.txt`, `o` on `gone.txt` → rows `theirs · feature in 2 of 2 conflicts`, `kept · yours · main`. After a relaunch (no `choices`), the rows read `ResultIs` wording.
 - [ ] graft-ui `finish_summary::tests::{one_column_below_160, two_columns_from_160, too_small_says_so}` and `hints::tests::every_context_reaches_every_shape` green.
-- [ ] Part B (only if P8): `update::resolver::tests::{c_in_the_resolver_opens_the_summary, the_resolver_stays_after_the_last_file, c_with_files_open_is_refused_in_words}`.
+- [ ] Part B (only if P8): `update::resolver::tests::{c_in_the_resolver_opens_the_summary, the_resolver_stays_after_the_last_file, c_with_files_open_is_refused_in_words}`. `the_resolver_stays_after_the_last_file` asserts the resolver is open and its notice row (not the status line) reads `every file done ✓ · c finishes the merge`. 13's `after_the_last_file_the_banner_says_c_finishes` and `…_a_rebase_says_c_continues` are rewritten to the stay-open landing (rebase: notice row `… · c continues the rebase`); `after_the_last_stash_file_the_status_says_every_file_done` stays green unchanged.
 - [ ] Captures `docs/shots/m6/fix-finish-summary-{120x40,160x48,200x50}.txt` and `…-expanded-120x40.txt`. The fixture is a two-file merge where `feature` also changes one line of `README.md` cleanly. **What right looks like:**
   - The title reads `Finish · merging feature → main · nothing is written until ⏎`.
   - `RESOLVED BY YOU · 2` lists `gone.txt` and `notes.txt` with the words above.
