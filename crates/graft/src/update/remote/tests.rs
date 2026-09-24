@@ -348,8 +348,9 @@ fn push_refusals_are_words() {
 }
 
 /// With the push box open, the global keys — undo, redo, `Ctrl+Z` and the
-/// remote keys themselves — only close the box: no write, no second box
-/// (M3 review 06 C1's shape: a modal answers first).
+/// remote keys themselves — are swallowed: no write, no second box, and the
+/// box stays open (M3 review 06 C1's shape: a modal answers first;
+/// m6-conflicts/47: an unbound key never cancels it in silence).
 #[test]
 fn box_is_modal() {
     let state = with_facts(
@@ -378,9 +379,7 @@ fn box_is_modal() {
         let (next, commands) = press(&open, key);
         assert!(commands.is_empty(), "{key:?}: {commands:?}");
         assert_eq!(next.operating, None, "{key:?}");
-        let mut expected = open.clone();
-        expected.confirm = None;
-        assert_eq!(next, expected, "{key:?} changed more than the box");
+        assert_eq!(next, open, "{key:?} changed the state");
     }
 }
 

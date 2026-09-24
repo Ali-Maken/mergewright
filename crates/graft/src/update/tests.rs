@@ -3724,8 +3724,8 @@ fn dead_keys_in(
         "{context:?} ({divider:?}) at {columns} columns: a key nothing binds reads as an \
          answer, so every key drawn on this bar would"
     );
-    // A live confirm box is blind the same way: every key it has no use
-    // for cancels it, the inert one included. Its three hints are pinned
+    // A live confirm box is exempt too: it swallows every key it has no
+    // use for, the inert one included, so no key here reaches the bar. Its three hints are pinned
     // one by one where the box is (`confirm::tests`: `←`/`→`
     // `left_on_cancel_stays_on_cancel`, `right_moves_onto_the_acting_choice_and_clamps`;
     // `⏎` `enter_on_confirm_dispatches_the_operation`; `esc`
@@ -3920,8 +3920,9 @@ const ALSO_INERT: KeyCode = KeyCode::Function(11);
 /// A drag is not settled — every key ends one (see the sweep's `blind`),
 /// so settling would put the badge down and throw the context away.
 fn settled(mut state: AppState) -> AppState {
-    // A confirm box is the same: every key it has no use for cancels it
-    // (`confirm::confirm_key`'s catch-all), so settling would shut it.
+    // A confirm box is left alone too: it swallows every key it has no
+    // use for (`confirm::confirm_key`'s fall-through), so there is
+    // nothing to settle.
     if state.drag.is_some() || state.confirm.is_some() {
         return state;
     }
