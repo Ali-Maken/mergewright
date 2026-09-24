@@ -75,7 +75,7 @@ I sampled 11 change sites. None was disabled or deleted. Ten were updated with t
 
 ### 1. A box opened while the operation runs turns the stop into a refusal nobody asked for, and the comment says this cannot happen
 - **Where:** `crates/graft/src/update/banner/stop.rs:37-46`. The comment reads: "Its refusals (`operating`, a box) cannot hold: … a box would have refused the launch."
-- **What:** a box can open **after** the launch. `c` on the graph opens the commit editor with no `operating` guard (`update/keys.rs:249-251` → `commit_editor::open`, `commit_editor.rs:279`). `operated` itself expects the editor to be open when the stop arrives ("The editor and its draft are left alone", `operate.rs:816-818`). `open_resolver` then refuses on `box_open` (`resolver/open.rs:61`, `:77-79`). `land_in_resolver` ignores the result.
+- **What:** a box can open **after** the launch. `c` on the graph opens the commit editor with no `operating` guard (`update/keys.rs:249-251` → `commit_editor::open`, `commit_editor.rs:279`). `operated` itself expects the editor to be open when the stop arrives ("The editor and its draft are left alone", `operate.rs:817-819`). `open_resolver` then refuses on `box_open` (`resolver/open.rs:61`, `:77-79`). `land_in_resolver` ignores the result.
 - **Verified by running:** a throwaway probe in my worktree, not committed:
   1. `operating = Some(7)`.
   2. Key `c` gives `editor_open_during_merge=true`.
