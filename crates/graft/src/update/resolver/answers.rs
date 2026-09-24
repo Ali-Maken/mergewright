@@ -11,6 +11,7 @@ use graft_git::conflict::{BlockState, ConflictFile};
 
 use super::done::{done_arrived, done_unreadable};
 use super::files::remember;
+use super::settle::settle_landed;
 use super::take::all_taken;
 use super::{WholeFileShape, next_block, scrolled_to, side_word};
 use crate::update::events::{Command, TakeAt, TakeRequest};
@@ -325,32 +326,6 @@ pub(super) fn take_landed(
         state.status = Status::Ready;
     }
     settle_landed(state, open_left, commands, next_id);
-}
-
-/// An `O`/`T` was waiting on the take that just landed: with nothing left
-/// in flight, send its `Stage` — the same one `⏎` sends, so the advance to
-/// the next file is `resolved_advance`'s (m6-conflicts/17 D2).
-fn settle_landed(
-    state: &mut AppState,
-    open_left: usize,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    let Some(open) = state.resolver.as_mut() else {
-        return;
-    };
-    if open.in_flight.is_some() {
-        return;
-    }
-    let Some(_) = open.settling.take() else {
-        return;
-    };
-    // `open_left > 0` cannot happen — every take ahead of the Stage was in
-    // `pending_file` when `O`/`T` saw nothing open past them. Should it,
-    // nothing is staged: the blocks still open are on screen.
-    if open_left == 0 {
-        super::resolved::mark_resolved(state, commands, next_id);
-    }
 }
 
 /// `$EDITOR` or a mergetool gave the terminal back: **re-read the open

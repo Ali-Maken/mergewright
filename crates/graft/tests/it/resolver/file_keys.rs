@@ -161,22 +161,41 @@ fn file_keys_capture() {
     // (b) After `T`: landed on the `gone.txt` card.
     let state = app.press(&state, shift('T'));
     let state = landed_on(&app, state, "gone.txt", true);
+    // `PgUp` changes nothing on a card but clears the Stage's status line,
+    // so the bottom row is the card's bar again (review m6-amend-17 C1).
+    let state = app.key(&state, KeyCode::PageUp);
 
-    let frame = crate::captures::frame(&state, 120, 40);
-    let body = frame.join("\n");
-    assert!(body.contains("notes.txt · done ✓"), "{body}");
-    assert!(body.contains("▸ gone.txt"), "{body}");
-    assert!(
-        frame
-            .iter()
-            .any(|line| line.trim_start().starts_with("▸ gone.txt")),
-        "identity row: {body}"
-    );
-    assert!(body.contains("notes.txt done ✓ · ▸ gone.txt"), "{body}");
-    crate::captures::check_shot("m6/fix-file-keys-120x40.txt", &format!("{body}\n"));
-
-    let wide = crate::captures::frame(&state, 200, 50).join("\n");
-    crate::captures::check_shot("m6/fix-file-keys-200x50.txt", &format!("{wide}\n"));
+    // At 120 the files are a strip; at 200 a side list, whose name column
+    // is cut to the widest state's room (`…tes.txt`).
+    for (columns, rows, shot, done_row) in [
+        (120, 40, "m6/fix-file-keys-120x40.txt", "notes.txt · done ✓"),
+        (200, 50, "m6/fix-file-keys-200x50.txt", "…tes.txt  done ✓"),
+    ] {
+        let frame = crate::captures::frame(&state, columns, rows);
+        let body = frame.join("\n");
+        assert!(body.contains(done_row), "strip: {body}");
+        assert!(
+            frame
+                .iter()
+                .flat_map(|line| line.split('│'))
+                .any(|cell| cell.trim_start().starts_with("▸ gone.txt · modified")),
+            "identity row: {body}"
+        );
+        assert!(
+            body.contains("notes.txt done ✓ · ▸ gone.txt"),
+            "notice: {body}"
+        );
+        let bar = frame.last().expect("a bar");
+        assert!(
+            !bar.contains("O/T") && !bar.contains("j/k"),
+            "{columns}: {bar}"
+        );
+        assert!(
+            bar.contains("o ") && bar.contains("esc"),
+            "{columns}: {bar}"
+        );
+        crate::captures::check_shot(shot, &format!("{body}\n"));
+    }
     drop(state);
     app.close();
     drop(scratch);

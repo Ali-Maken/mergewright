@@ -37,4 +37,4 @@ deleted by them · o keeps the file  t deletes it
 
 
 
- stage notes.txt ✓
+ o yours  t theirs  e edit  n next  M mergetool  esc close

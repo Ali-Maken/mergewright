@@ -1,6 +1,6 @@
 # review-fix-amend-17: a false tick on the after-`T` capture; resolver.rs and answers.rs over size
 
-Status: ready
+Status: done
 Blocked by: 32-review-fix-amend-16.md (building; same crates, ADR-0036). Runs before 19.
 Was: filed by the conductor 2026-09-24 from `docs/reviews/m6-amend-17.md` Critical 1, Major 1.
 Build with: **Opus** (low).
@@ -20,9 +20,13 @@ In:
 Out: review-17's Minors (→ KNOWN_GAPS).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] C1: after-`T` frames at 120 and 200 draw the card bar; the test asserts no `O/T`, no `j/k` on it, and the strip / identity / notice bullets at both widths — test:
-- [ ] C1: ticket 17 box (b) names the tests that check each of its claims — (textual; line)
-- [ ] M1: splits, line counts in NOTES, MAP.md — gates green
-- [ ] Gates workspace-wide: fmt, clippy `-D warnings`, nextest, doctests
+- [x] C1: after-`T` frames at 120 and 200 draw the card bar; the test asserts no `O/T`, no `j/k` on it, and the strip / identity / notice bullets at both widths — test: `it::resolver::file_keys::file_keys_capture` ((b) loop over 120x40 and 200x50; both shots regenerated, TSV captions fixed, contact sheet rebuilt)
+- [x] C1: ticket 17 box (b) names the tests that check each of its claims — (textual; `17-resolver-file-keys.md` Captures (b) bullet; the stale NOTES "Captures" bullet rewritten)
+- [x] M1: splits, line counts in NOTES, MAP.md — gates green (pure moves; nextest 2906 passed, same suite)
+- [x] Gates workspace-wide: fmt, clippy `-D warnings`, nextest (2906 passed, 1 skipped), doctests — all green
 
 ## NOTES
+- No scout: the review names every line.
+- Sizes after merging main (32 in): `update/resolver.rs` 428 → 406 (`take_keys` → `take.rs`); `resolver/answers.rs` 412 → 387 (`settle_landed` → new `resolver/settle.rs`, 93 lines, with `settle_key` from `take.rs`); `take.rs` 296 → 264; `walk_blocks` 70 → 62 (`cross_from_done`, `no_more_conflicts` pulled out). The remaining 62 lines are one flow (resolve document or card, then rules 1/2/3 in order); no further seam without splitting that sequence. `resolver.rs` stays 6 over ~400: the rest is `ResolverState` + `act`.
+- The after-`T` capture now presses `PgUp` (as `done_open_capture` does) so the card bar replaces the Stage's status line.
+- Question (no line, rule 7): at 200x50 the side list draws `notes.txt` as `…tes.txt  done ✓` in a 27-column list. Test asserts the drawn text as is.

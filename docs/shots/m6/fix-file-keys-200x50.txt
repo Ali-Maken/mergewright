@@ -47,4 +47,4 @@ FILES · 2 conflicted       │▸ gone.txt · modified on yours · main, delete
                            │
                            │
                            │
- stage notes.txt ✓
+ o yours  t theirs  e edit  n next  M mergetool  esc close
