@@ -1,0 +1,16 @@
+# M6 first-paint perf — 2026-09-24T12:08:15Z
+# HEAD b2a1dd9e
+# machine: Darwin arm64, 10 cpus
+
+## release heavy::budgets (budgets: first paint <= 150000 us, peak RSS < 300 MiB)
+  test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=93679 bottom_ms=99 top_ms=0 rows=100000 provisional=false rss_at_paint=97042432 rss_at_bottom=117587968 peak_rss=117604352 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=119445 bottom_ms=76 top_ms=0 rows=100000 provisional=false rss_at_paint=23035904 rss_at_bottom=31047680 peak_rss=31096832 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=120146 bottom_ms=671 top_ms=0 rows=100000 provisional=true rss_at_paint=25772032 rss_at_bottom=96387072 peak_rss=96387072 overflow_len=100000
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=99012 bottom_ms=67 top_ms=0 rows=100000 provisional=false rss_at_paint=23543808 rss_at_bottom=35487744 peak_rss=35504128 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=126075 bottom_ms=699 top_ms=0 rows=100000 provisional=true rss_at_paint=26918912 rss_at_bottom=103202816 peak_rss=103202816 overflow_len=100000
+
+## summary
+  test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 401 filtered out; finished in 3.38s
+  first_paint_us: 5 runs, max 126075 us, 0 over the 150000 us budget
+  peak_rss: max 112 MiB, 0 at/over the 300 MiB budget
+  exit 0, wall 45 s
