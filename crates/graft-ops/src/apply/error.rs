@@ -153,6 +153,10 @@ pub enum AfterState {
         /// The ref the entry named.
         name: String,
     },
+    /// git's merge state could not be read after the operation, so the entry
+    /// records none — which `u` reads as "not merging" (m6-conflicts/20).
+    #[error("the merge in progress after the operation: {0}")]
+    MergeState(crate::merge_state::MergeStateError),
 }
 
 /// The journal failing, with git's own failure when there was one.

@@ -33,6 +33,17 @@ pub(super) fn run_step(
         Step::RestoreWorktree { tree, paths } => restore_worktree(ctx, *tree, paths, commands),
         Step::StashStore { commit } => stash_store(ctx, *commit, commands),
         Step::StashDrop { commit } => stash_drop(ctx, *commit, commands),
+        Step::SetMergeState(state) => {
+            crate::merge_state::write_merge_state(ctx.repo, state.as_ref(), ctx.stop, commands)
+                .map_err(|why| match why {
+                    // A stop stays a stop: the cancel path is chosen on
+                    // `RestoreError::Stopped` alone.
+                    crate::merge_state::MergeStateError::Run(RunError::Stopped) => {
+                        RestoreError::Stopped
+                    }
+                    other => RestoreError::MergeState(other),
+                })
+        }
     }
 }
 

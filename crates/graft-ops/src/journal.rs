@@ -178,7 +178,10 @@ fn changed_anything(entry: &JournalEntry) -> bool {
     let head = entry.head_after.as_ref() != Some(&entry.head_before);
     let index = entry.touches.index && entry.index_after != entry.index_before;
     let worktree = entry.touches.worktree && entry.worktree_after != entry.worktree_before;
-    refs || head || index || worktree
+    // git's merge files are state like any other: an undo of a finished
+    // merge that failed after putting them back changed the repository.
+    let merge = entry.merge_after != entry.merge_before;
+    refs || head || index || worktree || merge
 }
 
 /// One flag per entry: it took effect and no later in-force entry reverses

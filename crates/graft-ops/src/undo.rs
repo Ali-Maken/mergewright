@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use graft_core::journal::{
-    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, Touches,
 };
 use graft_core::oid::Oid;
 
@@ -82,6 +82,15 @@ pub enum Step {
         /// The stash commit.
         commit: Oid,
     },
+    /// Make git's merge state this (m6-conflicts/20): `Some` writes
+    /// `MERGE_MSG`, `MERGE_MODE` and `MERGE_HEAD` back — `u` of a finished
+    /// merge, which is in progress again afterwards — and `None` removes
+    /// them, which is its redo. One step both ways, like [`Step::SetHead`]:
+    /// a roll-back of either direction is the same step aimed at the entry's
+    /// own `merge_before`. Always the plan's **last** step, after the
+    /// working tree, and checked afterwards with git's own `rev-parse -q
+    /// --verify MERGE_HEAD`.
+    SetMergeState(Option<MergeState>),
 }
 
 /// Which paths a restore touches.
@@ -136,7 +145,8 @@ pub struct InversePlan {
     pub description: String,
     /// The union of what the steps touch: the new entry's snapshot scope.
     pub touches: Touches,
-    /// In order: refs, `HEAD`, index, working tree, then the stash reflog.
+    /// In order: refs, `HEAD`, index, working tree, the stash reflog, then
+    /// git's merge state.
     pub steps: Vec<Step>,
     /// Commits the steps make unreachable — every [`Step::StashDrop`]'s —
     /// which the new entry's own inverse will need alive: its `pins`, so the
@@ -203,6 +213,13 @@ pub fn inverse(
     })?;
     let mut steps = generic_steps(entry)?;
     steps.extend(stash_step(entry, root, forward)?);
+    // Last, after the working tree: with the branch, the index and the files
+    // back, the merge files turn the resolved tree into a merge in progress
+    // again. Only where the entry changed git's merge state — an entry older
+    // than the two fields reads `None` on both sides and gets no step.
+    if entry.merge_before != entry.merge_after {
+        steps.push(Step::SetMergeState(entry.merge_before.clone()));
+    }
     let verb = if kind == OperationKind::Undo {
         "undo"
     } else {
@@ -388,7 +405,10 @@ fn touches_of(steps: &[Step]) -> Touches {
             // `HEAD` points at rather than `HEAD` itself. The move is
             // recorded by the entry's `head_before`/`head_after` and put
             // back by `SetHead`, which is symbolic-aware.
-            Step::SetHead(_) => {}
+            //
+            // git's merge files are no ref, index or tree either; every
+            // entry records them before and after, whatever it touches.
+            Step::SetHead(_) | Step::SetMergeState(_) => {}
             Step::RestoreIndex { .. } => touches.index = true,
             Step::RestoreWorktree { .. } => touches.worktree = true,
             Step::StashStore { .. } | Step::StashDrop { .. } => {
@@ -483,6 +503,34 @@ pub struct RepoStateNow {
     pub index: IndexState,
     /// The working-tree tree now (§6.3's hashing).
     pub worktree_tree: Oid,
+    /// The merge git has in progress now, `None` when there is none
+    /// (m6-conflicts/20).
+    pub merge: Option<MergeState>,
+}
+
+/// Which way git's merge state moved since an entry recorded it
+/// ([`Drift::merge`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MergeDrift {
+    /// No merge was recorded; one is in progress now.
+    Begun,
+    /// A merge was recorded; none is in progress now.
+    Ended,
+    /// A merge was recorded and one is in progress, but not that one: its
+    /// commit, message or mode differ.
+    Changed,
+}
+
+impl MergeDrift {
+    /// How `recorded` became `now`, or `None` when they are equal.
+    fn between(recorded: Option<&MergeState>, now: Option<&MergeState>) -> Option<Self> {
+        match (recorded, now) {
+            (None, None) => None,
+            (None, Some(_)) => Some(MergeDrift::Begun),
+            (Some(_), None) => Some(MergeDrift::Ended),
+            (Some(recorded), Some(now)) => (recorded != now).then_some(MergeDrift::Changed),
+        }
+    }
 }
 
 /// What changed since the entry's after-state was recorded: the three
@@ -500,6 +548,11 @@ pub struct Drift {
     pub index: Option<(IndexState, IndexState)>,
     /// The working-tree tree differs.
     pub worktree: bool,
+    /// git's merge state differs from the entry's `merge_after` — say a new
+    /// `git merge` was begun in the shell after `c` finished the last one
+    /// (m6-conflicts/20). Which way it went; the states themselves are the
+    /// entry's and the repository's.
+    pub merge: Option<MergeDrift>,
     /// What the inverse restores whole because its after-state was never
     /// recorded (`PathScope::Everything`): `"HEAD"`, `"the index"`, `"the
     /// working tree"`. Unknown is not clean: the user is told the whole
@@ -516,6 +569,7 @@ impl Drift {
             && !self.head
             && self.index.is_none()
             && !self.worktree
+            && self.merge.is_none()
             && self.unknown.is_empty()
     }
 
@@ -544,6 +598,16 @@ impl Drift {
         }
         if self.worktree {
             parts.push("the working tree changed".to_owned());
+        }
+        if let Some(merge) = self.merge {
+            parts.push(
+                match merge {
+                    MergeDrift::Begun => "a merge is in progress now",
+                    MergeDrift::Ended => "the merge is no longer in progress",
+                    MergeDrift::Changed => "the merge in progress changed",
+                }
+                .to_owned(),
+            );
         }
         for what in &self.unknown {
             parts.push(format!(
@@ -595,6 +659,7 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
         worktree: entry
             .worktree_after
             .is_some_and(|tree| tree != now.worktree_tree),
+        merge: MergeDrift::between(entry.merge_after.as_ref(), now.merge.as_ref()),
         unknown,
     }
 }

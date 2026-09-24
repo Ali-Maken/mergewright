@@ -5,11 +5,14 @@
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use graft_core::journal::{
+    EntryId, EntryStatus, HeadRef, JournalEntry, MergeState, OperationKind, Touches,
+};
 use graft_core::oid::Oid;
 
 use crate::facts::{self, FactsError};
 use crate::journal::JournalError;
+use crate::merge_state::read_merge_state;
 use crate::operation::Operation;
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
 
@@ -58,6 +61,10 @@ pub(crate) fn begin(
     }
     let head_before = facts::head_ref(ctx.repo).map_err(PrepareError::Facts)?;
     let refs_before = facts::read_refs(ctx.repo, &touches.refs).map_err(PrepareError::Facts)?;
+    // On every entry, whatever it touches: git's merge files are state the
+    // inverse puts back where they changed (m6-conflicts/20).
+    let merge_before = read_merge_state(ctx.repo)
+        .map_err(|why| PrepareError::Facts(FactsError::MergeState(why)))?;
 
     let wanted = snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty();
     // The snapshot's parents are the pins **and** every commit the entry's
@@ -67,12 +74,12 @@ pub(crate) fn begin(
     // undoing an amend would lose the commit outright (m3/03 review, C1).
     // Every name here is a branch or `refs/stash`, so every value is a commit
     // git will take as a parent.
-    let mut parents = pins.clone();
-    for anchor in anchors(Some(&head_before), &refs_before) {
-        if !parents.contains(&anchor) {
-            parents.push(anchor);
-        }
-    }
+    let parents = with_anchors(
+        pins.clone(),
+        Some(&head_before),
+        &refs_before,
+        merge_before.as_ref(),
+    );
     let (backup, backup_ref) = if wanted {
         let label = format!("{}: {description}", kind_name(kind));
         let taken = snapshot::take(
@@ -110,6 +117,8 @@ pub(crate) fn begin(
         pins,
         commands: Vec::new(),
         reverses,
+        merge_before,
+        merge_after: None,
     };
     ctx.journal
         .append_pending(&entry)
@@ -198,6 +207,10 @@ fn read_after(ctx: &Context<'_>, entry: &mut JournalEntry) -> Vec<AfterState> {
     } else {
         entry.worktree_after = entry.worktree_before;
     }
+    match read_merge_state(ctx.repo) {
+        Ok(merge) => entry.merge_after = merge,
+        Err(why) => unread.push(AfterState::MergeState(why)),
+    }
     unread
 }
 
@@ -221,12 +234,12 @@ fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Optio
         .ok()
         .and_then(|refs| refs.get(&name).copied().flatten())
         .unwrap_or(before);
-    let mut parents = vec![tip];
-    for anchor in anchors(entry.head_after.as_ref(), &entry.refs_after) {
-        if !parents.contains(&anchor) {
-            parents.push(anchor);
-        }
-    }
+    let parents = with_anchors(
+        vec![tip],
+        entry.head_after.as_ref(),
+        &entry.refs_after,
+        entry.merge_after.as_ref(),
+    );
     let label = format!("{} after: {}", kind_name(entry.kind), entry.description);
     let sealed = snapshot::commit_trees(
         ctx.repo,
@@ -250,6 +263,28 @@ fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Optio
             Some(AfterState::Unsealed(why))
         }
     }
+}
+
+/// A backup commit's parents: `first` (the pins, or the ref's current tip),
+/// then every [`anchors`] commit and `MERGE_HEAD`'s, each once.
+///
+/// `MERGE_HEAD`'s commit is anchored because a `git pull <url> <branch>`
+/// leaves one that only `FETCH_HEAD` reaches, and `u` of the finish has to
+/// write it back after `gc` (m6-conflicts/20).
+fn with_anchors(
+    first: Vec<Oid>,
+    head: Option<&HeadRef>,
+    refs: &BTreeMap<String, Option<Oid>>,
+    merge: Option<&MergeState>,
+) -> Vec<Oid> {
+    let mut parents = first;
+    let merging = merge.map(|merge| merge.merge_head);
+    for anchor in anchors(head, refs).into_iter().chain(merging) {
+        if !parents.contains(&anchor) {
+            parents.push(anchor);
+        }
+    }
+    parents
 }
 
 /// Every commit an entry's `HEAD`/refs fields name.
@@ -300,7 +335,10 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
         // Nothing becomes unreachable: the stages the resolution drops live
         // in the index, not in a commit anything could collect.
         | Operation::ResolveWholeFile(_)
-        | Operation::RestartConflict(_) => Vec::new(),
+        | Operation::RestartConflict(_)
+        // `MERGE_HEAD`'s commit is anchored by the backup from the entry's
+        // `merge_before` (`begin`), not pinned.
+        | Operation::FinishMerge(_) => Vec::new(),
     }
 }
 
@@ -332,6 +370,7 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::BranchFromStash => "branch from stash",
         OperationKind::ResolveConflict => "resolve conflict",
         OperationKind::RestartConflict => "restart conflict",
+        OperationKind::FinishMerge => "finish merge",
         OperationKind::RevertTo => "revert to",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",

@@ -1311,16 +1311,32 @@ fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
     // Leg 2: the same branch, but moved on since the entry was written.
     let repo = conflicting();
     let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
-    try_run(&repo, &op, NOW).expect_err("it conflicts");
+    let (moved_on, _, _) = conflict_of(try_run(&repo, &op, NOW).expect_err("it conflicts"));
     repo.git(&["merge", "--abort"]);
     repo.write("unrelated.txt", b"later work\n");
     repo.commit_all("main moved on");
     let _ = repo.try_git(&["merge", "--no-ff", "--no-edit", "-m", "theirs", "feature"]);
     assert!(repo.exists(".git/MERGE_HEAD"), "a merge is live again");
+    // Since m6-conflicts/20 `Continue` on a merge with no entry of Graft's
+    // finishes it as a shell-begun merge of its own, so the refusal here is
+    // the unmerged path — and Graft's stale entry is still not adopted.
     let refused = run_resume(&repo, Resume::Continue, NOW + 1).expect_err("not Graft's merge");
     assert!(
-        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+        matches!(refused, ApplyError::Refused(Refusal::Unmerged { .. })),
         "the branch moved since the entry was written: {refused:?}"
+    );
+    let handle = repo.open();
+    let status = journal_for(&handle)
+        .entries()
+        .iter()
+        .find(|held| held.id == moved_on.id)
+        .expect("Graft's entry is there")
+        .status
+        .clone();
+    assert_eq!(
+        status,
+        EntryStatus::Pending,
+        "and was not closed by the resume"
     );
 
     // And the entry is not "live" to recovery either: it closes like any

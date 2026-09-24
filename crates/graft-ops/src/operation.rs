@@ -14,6 +14,7 @@
 
 mod commit;
 mod conflict;
+mod finish_merge;
 mod history;
 mod remote;
 mod stage;
@@ -34,6 +35,7 @@ use graft_git::version::GitVersion;
 
 pub use conflict::{ResolveWholeParams, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
+pub use finish_merge::FinishMergeParams;
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
@@ -117,6 +119,12 @@ pub enum Operation {
     /// One conflicted path put back the way git left it: `git checkout
     /// --merge`, the resolver's "start this file over" (m6-conflicts/03).
     RestartConflict(RestartParams),
+    /// A merge begun in the shell, finished: `git merge --continue`, or
+    /// `git commit -F -` with an edited message. Its own entry, whose `u`
+    /// puts the merge back in progress (m6-conflicts/20). `apply::resume`
+    /// sends it when no entry of Graft's is live; a merge Graft began is
+    /// closed on its own entry instead.
+    FinishMerge(FinishMergeParams),
 }
 
 /// What [`crate::facts::read_facts`] must read for one operation, beyond
@@ -697,6 +705,7 @@ impl Operation {
             Self::BranchFromStash(_) => OperationKind::BranchFromStash,
             Self::ResolveWholeFile(_) => OperationKind::ResolveConflict,
             Self::RestartConflict(_) => OperationKind::RestartConflict,
+            Self::FinishMerge(_) => OperationKind::FinishMerge,
         }
     }
 
@@ -812,6 +821,7 @@ impl Operation {
             Self::BranchFromStash(params) => history::describe_branch_from_stash(params),
             Self::ResolveWholeFile(params) => conflict::describe_resolve(params),
             Self::RestartConflict(params) => conflict::describe_restart(params),
+            Self::FinishMerge(params) => finish_merge::describe(params),
         }
     }
 
@@ -846,12 +856,14 @@ impl Operation {
                 history::markers_in(paths, facts)?;
             }
         }
+        // Finishing the merge is what the in-progress state waits *for*.
         let waits = !matches!(
             self,
             Self::Stage(_)
                 | Self::Unstage(_)
                 | Self::ResolveWholeFile(_)
                 | Self::RestartConflict(_)
+                | Self::FinishMerge(_)
         );
         match facts.in_progress.filter(|_| waits) {
             Some(kind) => Err(Refusal::InProgress(kind)),
@@ -906,6 +918,7 @@ impl Operation {
             Self::BranchFromStash(params) => history::check_branch_from_stash(params, facts),
             Self::ResolveWholeFile(params) => conflict::check_resolve(params, facts),
             Self::RestartConflict(params) => conflict::check_restart(&params.path, facts),
+            Self::FinishMerge(_) => finish_merge::check(facts),
         }
     }
 
@@ -939,6 +952,7 @@ impl Operation {
             Self::BranchFromStash(params) => history::plan_branch_from_stash(params),
             Self::ResolveWholeFile(params) => conflict::plan_resolve(params),
             Self::RestartConflict(params) => conflict::plan_restart(params),
+            Self::FinishMerge(params) => finish_merge::plan(params),
         }
     }
 
@@ -1000,14 +1014,19 @@ impl Operation {
             Self::StashDrop { .. } => (vec![stash::STASH_REF.to_owned()], false, false),
             // Tracking refs are not recorded: a fetch can move thousands.
             Self::Fetch(_) => (vec![], false, false),
-            // The branch and the tree, never the tracking ref: undo must not
-            // move it back, since the remote still has those commits.
-            Self::Pull(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
             // For the browser's `origin/main a1b2c3d → 9f8e7d6`, not for undo.
             Self::Push(params) => (remote::push_tracking_ref(params, facts), false, false),
-            Self::Merge(_) | Self::Rebase(_) | Self::CherryPick(_) | Self::Revert(_) => {
-                (vec![commit::head_ref_name(&facts.head)], true, true)
-            }
+            // The branch (or a detached `HEAD`), the index and the tree.
+            // A pull never records the tracking ref: undo must not move it
+            // back, since the remote still has those commits. Finishing a
+            // shell-begun merge commits the resolved index, so `u` has the
+            // resolved tree to put back.
+            Self::Pull(_)
+            | Self::Merge(_)
+            | Self::Rebase(_)
+            | Self::CherryPick(_)
+            | Self::Revert(_)
+            | Self::FinishMerge(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
             Self::Reset(params) => return history::touches_reset(params),
             Self::Checkout(_) => return history::touches_checkout(),
             Self::BranchCreate(params) => return history::touches_branch_create(params),
