@@ -8,15 +8,18 @@
 
 use std::path::PathBuf;
 
-use graft_core::journal::{EntryStatus, HeadRef, JournalEntry, MergeState};
+use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
 use crate::facts::{self, FactsError};
-use crate::merge_state::read_merge_state;
-use crate::operation::{FinishMergeParams, Operation, Refusal, opens_in_progress};
+use crate::operation::{Operation, Refusal, opens_in_progress};
 use crate::snapshot;
+
+pub(super) mod shell;
+
+use shell::{Target, refuse_unmerged, shell_merge};
 
 use super::{
     AfterState, Applied, ApplyError, Context, Pending, Refresh, apply, as_apply_error, finish,
@@ -232,18 +235,6 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     close_resume(ctx, entry, aborting, commands, failure)
 }
 
-/// What a resume acts on.
-enum Target {
-    /// A stopped operation of Graft's: its entry is closed by the resume.
-    Live {
-        kind: InProgress,
-        entry: Box<JournalEntry>,
-    },
-    /// A merge begun in the shell, being continued: finished as an
-    /// operation of its own (m6-conflicts/20).
-    ShellMerge(FinishMergeParams),
-}
-
 /// Which entry a resume closes, and the checks that run before git does.
 ///
 /// git's own state names the kind; the journal's newest `Pending` entry of
@@ -282,54 +273,6 @@ fn resume_target(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> 
         kind,
         entry: Box::new(entry),
     })
-}
-
-/// Step 3 of [`resume_target`]: a merge begun in the shell, being continued.
-/// An octopus merge (several `MERGE_HEAD` lines) is refused by name,
-/// `OctopusMerge`, before anything is written (m6-conflicts/38).
-fn shell_merge(ctx: &Context<'_>, how: &Resume) -> Result<Target, ApplyError> {
-    let merge_head = match read_merge_state(ctx.repo) {
-        Ok(Some(merge)) => {
-            refuse_octopus(&merge)?;
-            merge.merge_head
-        }
-        // `in_progress` saw `MERGE_HEAD` a moment ago and it is gone now:
-        // not a merge this can finish.
-        Ok(None) => return Err(ApplyError::Refused(Refusal::NotInProgress)),
-        Err(other) => return Err(ApplyError::Facts(FactsError::MergeState(other))),
-    };
-    refuse_unmerged(ctx)?;
-    let message = match how {
-        Resume::ContinueWith { message } => Some(message.clone()),
-        Resume::Continue | Resume::Skip | Resume::Abort => None,
-    };
-    Ok(Target::ShellMerge(FinishMergeParams {
-        merge_head,
-        message,
-    }))
-}
-
-/// `c` on an octopus merge: refused `OctopusMerge`, whichever route asked
-/// (`resume`'s shell merge, or `apply(FinishMerge)` directly).
-pub(super) fn refuse_octopus(merge: &MergeState) -> Result<(), ApplyError> {
-    if merge.other_heads.is_empty() {
-        Ok(())
-    } else {
-        Err(ApplyError::Refused(Refusal::OctopusMerge {
-            heads: merge.heads().count(),
-        }))
-    }
-}
-
-/// `Continue` over unmerged paths: refused before git runs, the same words
-/// for a merge Graft began and one begun in the shell.
-fn refuse_unmerged(ctx: &Context<'_>) -> Result<(), ApplyError> {
-    let paths = unmerged_paths(ctx)?;
-    if paths.is_empty() {
-        Ok(())
-    } else {
-        Err(ApplyError::Refused(Refusal::Unmerged { paths }))
-    }
 }
 
 /// git would not finish and its state is still live: the entry stays

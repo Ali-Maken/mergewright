@@ -166,3 +166,24 @@ A: small–medium, one context. B: small, one context.
 - `docs/design/02-keymap.md:289`: after `A launch mid-operation keeps the banner.` add ` So does an undo that puts an operation back (ticket 41).`
 - `docs/design-notes/m6-conflicts.md:334`: `FinishMergeParams` gains `message: Option<Vec<u8>>` (review Minor 7).
 - Review Minors 1–6 and Q1–Q3: not in this ticket.
+
+## NOTES — Part B (partial: blocked on journal.rs)
+Scout: none. The ticket names every item and its target, and the three files are small enough to read directly.
+Count: the line number of the first `#[cfg(test)]` minus 1, or `wc -l` when the file has no test module.
+| file | before | after |
+|---|---|---|
+| graft-core/src/journal.rs | 544 | **409** (over the cap) |
+| graft-core/src/journal/merge_state.rs | — | 146 |
+| graft-ops/src/apply.rs | 424 | 377 |
+| graft-ops/src/apply/finish_merge.rs | — | 62 |
+| graft-ops/src/apply/resume.rs | 434 | 378 |
+| graft-ops/src/apply/resume/shell.rs | — | 73 |
+- **blocked: graft-core/src/journal.rs 409 lines after the MergeState move.** The next cohesive unit is `EntryId` with its impls and the `CROCKFORD`/`ULID_LEN` consts (:20-109, about 90 lines), which would go to `journal/entry_id.rs` with `pub use`. Not done: it is outside the ticket's named moves.
+- `text_bytes` is used only by `MergeState`, so it stays private inside `merge_state.rs`.
+- Moved tests (unedited): `merge_state_bytes_are_text_when_they_can_be_and_exact_always` and `an_octopus_merge_state_keeps_every_head_in_order`, from journal.rs tests to `journal/merge_state.rs` tests.
+- Visibility changes: `finishing_merge` is now `pub(super)`. In `resume/shell.rs`, `Target`, `shell_merge` and `refuse_unmerged` are `pub(super)` and `refuse_octopus` is `pub(in crate::apply)`. `resume::shell` is a `pub(super) mod`. No logic changed.
+- Ticks:
+  - [x] Every test green with none edited: `cargo nextest run` 3006/3006 (1 skipped) and `cargo test --doc` green, workspace-wide.
+  - [x] `MergeState` path unchanged: the workspace builds (`cargo clippy --all-targets -D warnings` clean) and no `use` outside graft-core changed.
+  - [x] MAP entries: graft-core §journal and graft-ops §apply (the file list and `resume::shell::refuse_octopus`). (doc)
+  - [ ] All three files ≤ 400: no, journal.rs is 409 (see above).
