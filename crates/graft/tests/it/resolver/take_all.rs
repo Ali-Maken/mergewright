@@ -52,7 +52,7 @@ fn take_all_capture() {
         body.contains("took theirs · feature in 3 blocks · ⏎ marks three.txt done"),
         "{body}"
     );
-    assert!(body.contains("^T all theirs"), "{body}");
+    assert!(body.contains("⌃O/⌃T all"), "{body}");
     crate::captures::check_shot("m6/fix-take-all-120x40.txt", &format!("{body}\n"));
     drop(state);
     app.close();

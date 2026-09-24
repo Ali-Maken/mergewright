@@ -37,4 +37,4 @@ files · 12   ▸ src/handlers/handler_01.rs 1 of 1 open     src/handlers/handle
 
 
 
- o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  B base  e edit  n next  N prev  ⏎  j/k  M  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc

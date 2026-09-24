@@ -462,13 +462,6 @@ fn every_short_rung_is_the_users_own_word() {
         ("status", "stat"),
         ("revert", "rev"),
         ("lanes", "lane"),
-        // m6-conflicts/16, P3 approved by the user 2026-09-23: `^O/^T all`.
-        ("all yours", "all"),
-        ("all upstream", "all"),
-        ("all theirs", "all"),
-        ("all picked", "all"),
-        ("all reverting", "all"),
-        ("all stashed", "all"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
@@ -1078,8 +1071,7 @@ fn resolver_hint_ladder() {
             ("o", "yours"),
             ("t", "theirs"),
             ("b", "both"),
-            ("^O", "all yours"),
-            ("^T", "all theirs"),
+            ("⌃O/⌃T", "all"),
             ("O/T", "file"),
             ("e", "edit"),
             ("n", "next"),
@@ -1100,9 +1092,9 @@ fn resolver_hint_ladder() {
         .iter()
         .position(|hint| (hint.key, hint.verb) == ("B", "base"))
         .expect("`B base` after `b both` while `base`");
-    // `^O`/`^T` sit between (m6-conflicts/16): `B base` follows the takes.
+    // `⌃O/⌃T` sits between (m6-conflicts/16): `B base` follows the takes
     // and `O/T file` (17).
-    assert_eq!(with_base[base_at - 4].key, "b", "`B base` follows `b both`");
+    assert_eq!(with_base[base_at - 3].key, "b", "`B base` follows `b both`");
     assert_eq!(with_base[base_at - 1].key, "O/T");
 
     let with_restart = context_list(&document(false, true));
@@ -1125,17 +1117,17 @@ fn resolver_hint_ladder() {
     let at_160 = fit_list(&whole, None, 160);
     assert_eq!(
         hints_text(&at_160),
-        " o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
     );
     // Since m6-conflicts/17 (`O/T file`, `j/k file`) the full line no
-    // longer fits 80: the ladder raises hints in relevance order, so `^T`
-    // drops to `all` and everything from `O/T` on is drawn bare (observed
-    // by this assertion, 2026-09-24).
+    // longer fits 80: the ladder raises hints in relevance order, so
+    // everything after `e edit` is drawn bare (observed by this assertion
+    // after review m6-amend-16 M2 made `⌃O/⌃T all` one hint, 2026-09-24).
     let at_80 = fit_list(&whole, None, 80);
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,
-        " o yours  t theirs  b both  ^O all yours  ^T all  O/T  e  n  N  ⏎  j/k  M  esc"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n  N  ⏎  j/k  M  esc"
     );
     assert!(text_80.width() <= 80, "{text_80:?}");
     // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
@@ -1144,7 +1136,7 @@ fn resolver_hint_ladder() {
 }
 
 /// `O/T file` and `j/k file` (m6-conflicts/17 D7): on the document's bar,
-/// right after `^T all …` and `⏎ done`; never on a card's or a done file's;
+/// right after `⌃O/⌃T all` and `⏎ done`; never on a card's or a done file's;
 /// and `resolved` is no verb anywhere in the resolver's tables. The bar
 /// string at 80, 120 and 200 columns is pinned (ticket 17 NOTES).
 #[test]
@@ -1157,7 +1149,11 @@ fn resolver_offers_file_keys() {
                 .unwrap_or_else(|| panic!("`{key}` in {list:?}"))
         };
         assert_eq!(list[at("O/T")].verb, "file");
-        assert_eq!(at("O/T"), at("^T") + 1, "`O/T file` right after `^T all …`");
+        assert_eq!(
+            at("O/T"),
+            at("⌃O/⌃T") + 1,
+            "`O/T file` right after `⌃O/⌃T all`"
+        );
         assert_eq!(list[at("j/k")].verb, "file");
         assert_eq!(list[at("⏎")].verb, "done");
         assert_eq!(at("j/k"), at("⏎") + 1, "`j/k file` right after `⏎ done`");
@@ -1188,16 +1184,16 @@ fn resolver_offers_file_keys() {
     };
     assert_eq!(
         bar(80),
-        " o yours  t theirs  b both  ^O all yours  ^T all  O/T  e  n  N  ⏎  j/k  M  esc"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n  N  ⏎  j/k  M  esc"
     );
     assert_eq!(
         bar(120),
-        " o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M  esc"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
     );
     let at_200 = bar(200);
     assert_eq!(
         at_200,
-        " o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  esc close"
     );
     assert!(at_200.contains("O/T file") && at_200.contains("j/k file"));
 }
@@ -1370,44 +1366,28 @@ fn resolver_verbs_are_role_words() {
     }
 }
 
-/// `^O`/`^T` (m6-conflicts/16): after `b both` on a document, in the same
-/// role words as `o`/`t`; the short rung keeps `all`; never on a card or a
-/// done file.
+/// `⌃O/⌃T all` (m6-conflicts/16, P3; review m6-amend-16 M2): one hint
+/// right after `b both` on a document — the same words in every operation,
+/// since `o`/`t` just before name the roles — and never on a card or a done
+/// file.
 #[test]
 fn resolver_offers_take_all() {
-    let list = context_list(&document(false, false));
-    let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
-    let both = keys
-        .iter()
-        .position(|pair| *pair == ("b", "both"))
-        .expect("b both");
-    assert_eq!(keys[both + 1], ("^O", "all yours"));
-    assert_eq!(keys[both + 2], ("^T", "all theirs"));
-    assert_eq!(
-        hints_text(&[
-            list[both + 1].at(Rung::Short),
-            list[both + 2].at(Rung::Short)
-        ]),
-        " ^O all  ^T all"
-    );
-
-    let rebase = context_list(&HintContext::Resolver {
-        base: false,
-        restart: false,
-        whole_file: false,
-        done: false,
-        roles: SideRoles::Rebase,
-    });
-    assert!(
-        rebase
+    for roles in [SideRoles::Merge, SideRoles::Rebase] {
+        let list = context_list(&HintContext::Resolver {
+            base: false,
+            restart: false,
+            whole_file: false,
+            done: false,
+            roles,
+        });
+        let keys: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
+        let both = keys
             .iter()
-            .any(|hint| (hint.key, hint.verb) == ("^O", "all upstream"))
-    );
-    assert!(
-        rebase
-            .iter()
-            .any(|hint| (hint.key, hint.verb) == ("^T", "all yours"))
-    );
+            .position(|pair| *pair == ("b", "both"))
+            .expect("b both");
+        assert_eq!(keys[both + 1], ("⌃O/⌃T", "all"), "{roles:?}");
+        assert_eq!(list[both + 1].text(), "⌃O/⌃T all");
+    }
 
     for (whole_file, done) in [(true, false), (false, true)] {
         let other = context_list(&HintContext::Resolver {
@@ -1417,12 +1397,7 @@ fn resolver_offers_take_all() {
             done,
             roles: SideRoles::Merge,
         });
-        assert!(
-            other
-                .iter()
-                .all(|hint| hint.key != "^O" && hint.key != "^T"),
-            "{other:?}"
-        );
+        assert!(other.iter().all(|hint| hint.key != "⌃O/⌃T"), "{other:?}");
     }
 }
 

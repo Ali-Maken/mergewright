@@ -145,14 +145,16 @@ fn enter_on_conflicts_row_opens_the_resolver() {
     // The bar under the document is the resolver's own, not the pane's.
     let drawn = crate::captures::frame(&state, 120, 40);
     let footer = drawn.last().expect("a footer row").to_owned();
-    // Since m6-conflicts/16 `^O`/`^T` take their room at 120 columns and
-    // `esc` is drawn bare.
+    // One `⌃O/⌃T all` hint (review m6-amend-16 M2) wins back `⏎ done`,
+    // `j/k file` and `M mergetool` at 120; with `B base` and `d start over`
+    // also drawn the full line is 135 cells, so `d` and `esc` stay bare.
     for key in [
         "o yours",
         "t theirs",
         "b both",
-        "^T all theirs",
+        "⌃O/⌃T all",
         "n next",
+        "M mergetool",
         " esc",
     ] {
         assert!(footer.contains(key), "{key} missing from {footer:?}");

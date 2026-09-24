@@ -90,6 +90,22 @@ fn ctrl_t_waits_behind_a_queued_take() {
     );
 }
 
+/// Review m6-amend-16 M1: after a queued `o` then `Ctrl+T`, the footer's
+/// count is the header's once the bulk take lands, with no key between.
+#[test]
+fn footer_count_follows_a_queued_bulk_take() {
+    let (state, first) = keys(&three_alone(), "o");
+    let (state, _) = ctrl(&state, 't');
+    let (state, commands) = landed(&state, &sent(&first)[0]);
+    let (state, _) = landed(&state, &sent(&commands)[0]);
+    assert_eq!(document(&state).open(), 0, "header: 0 open");
+    // The stale `2 of 3 open` from `o` is gone: the footer is back to the
+    // hints; the notice carries the bulk take's words.
+    assert_eq!(state.status, crate::update::Status::Ready);
+    let words = notice(&state).unwrap_or("");
+    assert!(words.contains("in 2 blocks"), "{words}");
+}
+
 #[test]
 fn a_bulk_take_is_one_queued_entry() {
     // One take in flight, 63 queued behind it.

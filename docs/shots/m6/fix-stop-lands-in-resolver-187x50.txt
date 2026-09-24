@@ -47,4 +47,4 @@ FILES · 2 conflicted    │▸ notes.md · 1 conflict · 1 open
                         │
                         │
                         │
- o yours  t theirs  b both  ^O all yours  ^T all theirs  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close

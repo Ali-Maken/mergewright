@@ -1,6 +1,6 @@
 # review-fix-amend-16: stale footer after a queued bulk take; the combined `⌃O/⌃T all` rung; bar words lost at 120; two over-long files
 
-Status: ready
+Status: done
 Blocked by: 17-resolver-file-keys.md (building; same crates, ADR-0036). Runs before 19.
 Was: filed by the conductor 2026-09-24 from `docs/reviews/m6-amend-16.md` Major 1, 2, 3 and the glyph Minor. The capture finding (bar words lost at 120) is folded in because the note's mockups draw them in full at 120 (`docs/design-notes/m6-conflicts.md:164`, `:692`).
 Build with: **Opus** (low).
@@ -23,11 +23,20 @@ In:
 Out: review-16's other Minors (→ KNOWN_GAPS).
 
 ## Acceptance (each tick names its test, at tick time)
-- [ ] M1: failing test first, red on unchanged code — test:
-- [ ] M1: footer, header and notice agree after a queued take then `Ctrl+T` — test:
-- [ ] M2 + glyph: combined `⌃O/⌃T all` rung; user table test holds only P3's rows; 16's box corrected — test:
-- [ ] Bar at 120: `d start over` and `esc close` in words on the merge and rebase resolver bars — test (capture pin):
-- [ ] M3: splits, line counts in NOTES, MAP.md — gates green
-- [ ] Gates workspace-wide: fmt, clippy `-D warnings`, nextest, doctests
+- [x] M1: failing test first, red on unchanged code — test: `update::resolver::tests::take_all::footer_count_follows_a_queued_bulk_take` (observed red before the fix: status stayed `Done("… 2 of 3 open")`)
+- [x] M1: footer, header and notice agree after a queued take then `Ctrl+T` — test: `…::footer_count_follows_a_queued_bulk_take` (header `open() == 0`, status `Ready`, notice `in 2 blocks`) and `…::ctrl_t_waits_behind_a_queued_take` (status `Ready` asserted)
+- [x] M2 + glyph: combined `⌃O/⌃T all` rung; user table test holds only P3's rows; 16's box corrected — test: `graft-ui graph_screen::hints::tests::resolver_offers_take_all`; six `all` rows removed from `every_short_rung_is_the_users_own_word`; bar key pressed by `update::tests::every_key_the_bar_draws_is_answered` (`⌃O/⌃T` → Ctrl+O, Ctrl+T)
+- [ ] Bar at 120: `d start over` and `esc close` in words on the merge and rebase resolver bars — **not met, stopped per scope 4** (column counts in NOTES). Partial: without `B`/`d`, all words fit at 120 — `hints::tests::resolver_offers_file_keys` (`bar(120)`)
+- [x] M3: splits, line counts in NOTES, MAP.md — gates green (pure moves; nextest 2906/2906)
+- [x] Gates workspace-wide: fmt, clippy `-D warnings`, nextest (2906 passed, 1 skipped), doctests — all green
 
 ## NOTES
+
+- No scout: the review names every line.
+- M1 fix (cause): an `Every` landing now resets a standing `Status::Done` to `Ready` (`update/resolver/answers.rs`, `take_landed`). Footer goes back to the hints; the notice carries `took <side> in n blocks`. Chose reset over a second `k of m open` line to avoid saying the same thing twice.
+- M2: one `hint("⌃O/⌃T", "all")` (`hints/lists.rs`); `all_of` and the six `all …` short-form rows gone; `BOUND_ACTIONS` has one row. Role words dropped from the bulk hint — `o`/`t` just before name them; matches mockups `01-view-mockups.md:173`, note `:661`. Note `:692` draws `^T all theirs` instead — the two mockups disagree; conductor may want to reconcile.
+- Glyph: design docs still spell `^O/^T` (`01-view-mockups.md:173`, note `:661`, `:692`); not edited (docs outside ticket scope).
+- Scope 4 column counts (full words): merge bar with `B base` + `d start over` = 135 cells; rebase = 137; without `B`/`d` = 113 (fits). At 120 with `B`+`d`, the ladder draws `… ⏎ done  j/k file  M mergetool  d  esc`. Cannot fit without reordering or cutting; stopped, ladder untouched.
+- At 80 the bar now reads `… ⌃O/⌃T all  O/T file  e edit  n  N  ⏎  j/k  M  esc` (gained `O/T file`, `e edit`).
+- Captures regenerated (look is the user's): `docs/shots/m6/` `fix-card-names-numbers-120x40`, `-80x24`, `fix-file-keys-before-120x40`, `-200x50`, `fix-file-list-many-120x40`, `fix-file-list-rebase-step2-120x40`, `fix-stop-lands-in-resolver-120x40`, `-187x50`, `-80x24`, `fix-take-all-120x40`.
+- M3 line counts: `update/keys.rs` 859 → 446 (+ `keys/bound.rs` 136, `keys/predicates.rs` 153, `keys/actions.rs` 79, `keys/view_change.rs` 76); `update/events.rs` 684 → 421 (+ `events/command.rs` 276). `Product` enum alone is ~180 lines, so events.rs stays just over 400 without splitting an enum.

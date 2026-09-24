@@ -177,9 +177,6 @@ fn short_form(verb: &str) -> Option<&'static str> {
         "status" => "stat",
         "revert" => "rev",
         "lanes" => "lane",
-        // `^O`/`^T` (m6-conflicts/16): the role word goes, `all` stays.
-        "all yours" | "all upstream" | "all theirs" | "all picked" | "all reverting"
-        | "all stashed" => "all",
         _ => return None,
     })
 }
