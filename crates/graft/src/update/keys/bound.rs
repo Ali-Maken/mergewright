@@ -129,7 +129,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("release", "drop on a row"),
     ("esc", "cancel"), // `drag_key`: `Esc` drops the badge, doing nothing
     // The three modal boxes (rulings 07b, Q1): `esc cancel` above is theirs
-    // too — `confirm_key`'s catch-all, `name_prompt_key` and
+    // too — `confirm_key`'s `Esc` arm, `name_prompt_key` and
     // `credential_key` each close on `Esc`.
     ("←/→", "move"), // `confirm::confirm_key`: the cursor between choices
     ("⏎", "choose"), // `confirm::confirm_key`: the choice under the cursor

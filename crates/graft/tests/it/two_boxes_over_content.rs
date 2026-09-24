@@ -228,6 +228,58 @@ fn capture_two_boxes_over_real_content_for_docs_shots() {
     }
 }
 
+/// Writes `docs/shots/m6/fix-box-keeps-on-y-120x40.txt`
+/// (m6-conflicts/47): the push box open, `y` pressed, and the frame after
+/// `y` is the frame before it, byte for byte. Regenerate with
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it box_keeps_on_y`.
+#[test]
+fn capture_box_keeps_on_y_for_docs_shots() {
+    let (columns, rows) = (120u16, 40u16);
+    let remote = one_commit_to_push();
+    let work = remote.work().to_owned();
+    let (app, state) = App::open(&work);
+    let state = app.resize(&state, columns, rows);
+    let state = ready(&app, state);
+    let asked = app.key(&state, KeyCode::Char('P'));
+    assert!(
+        asked.confirm.is_some(),
+        "P opened no box; status {:?}",
+        asked.status
+    );
+    let before = shot(&app, &asked, columns, rows, &work);
+
+    let after_y = app.key(&asked, KeyCode::Char('y'));
+    assert_eq!(after_y.confirm, asked.confirm, "`y` changed the box");
+    assert_eq!(after_y.status, asked.status, "`y` changed the status");
+    let after = shot(&app, &after_y, columns, rows, &work);
+    assert_eq!(
+        after, before,
+        "the frame after `y` is not the frame before it"
+    );
+    let drawn = after.join("\n");
+    for expected in [
+        "Push main",
+        "origin/main",
+        "[ Cancel ]",
+        "←/→ move",
+        "⏎ choose",
+        "esc cancel",
+    ] {
+        assert!(drawn.contains(expected), "the frame lacks {expected:?}");
+    }
+
+    let mut out = String::from(
+        "# m6-conflicts/47: the push box open, `y` pressed (120x40). Colour unverified.\n\
+         # What right looks like: the frame after `y` is the frame before it, byte for\n\
+         # byte (asserted): the box stays, `[ Cancel ]` under the cursor, status unchanged,\n\
+         # hint bar `←/→ move`, `⏎ choose`, `esc cancel`.\n\n",
+    );
+    section(&mut out, "after `y` (identical to before it)", &after);
+    crate::captures::check_shot("m6/fix-box-keeps-on-y-120x40.txt", &out);
+    drop(after_y);
+    app.close();
+}
+
 /// The two frames at one size, each checked against what the capture is for
 /// before it is written: real history behind the box, ADR-0040's outcome
 /// beside it, and no plaintext anywhere.

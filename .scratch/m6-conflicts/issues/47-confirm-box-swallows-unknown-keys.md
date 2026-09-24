@@ -1,6 +1,6 @@
 # confirm-box-swallows-unknown-keys: a key the confirm box does not bind leaves it open, never cancels it in silence
 
-Status: ready
+Status: done
 From: `docs/reviews/m6-usability.md` M1 (:65-75), the part that does not depend on P12; review m1 (:137-140) for the box.
 Blocked by: none. It holds whether P12 and P15 are approved or refused: whether or not `y` gets a meaning later, a key
 the box does not bind must never cancel it without a word.
@@ -117,20 +117,22 @@ pub fn confirm_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPre
   with the new rule, `Ctrl+C` included.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `a_key_the_box_does_not_bind_leaves_it_open`: red before the change (on which key), green after.
-- [ ] `a_key_the_box_does_not_bind_leaves_it_open_in_every_box`: one row per site the grep found. NOTES gives the row
+- [x] `a_key_the_box_does_not_bind_leaves_it_open` (confirm.rs tests; red on `y`, the first key: "closed the box";
+  green after): red before the change (on which key), green after.
+- [x] `a_key_the_box_does_not_bind_leaves_it_open_in_every_box` (confirm.rs tests, 11 rows; red before, green after): one row per site the grep found. NOTES gives the row
   count and the grep.
-- [ ] `esc_still_closes_every_box_without_acting`: no `Command` emitted, `confirm.is_none()`.
-- [ ] `enter_on_the_acting_choice_still_acts`: the existing test (`enter_on_confirm_dispatches_the_operation`, cited
+- [x] `esc_still_closes_every_box_without_acting` (confirm.rs tests, 11 rows, also asserts no write started): no `Command` emitted, `confirm.is_none()`.
+- [x] `enter_on_the_acting_choice_still_acts` → existing `confirm::tests::enter_on_confirm_dispatches_the_operation`, green: the existing test (`enter_on_confirm_dispatches_the_operation`, cited
   at `update/tests.rs:3731`; find it), or a new one; name it.
-- [ ] `ctrl_c_with_a_box_open_quits`: red on today's code (the box closes and nothing quits), green after.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-box-keeps-on-y-120x40.txt`.
+- [x] `ctrl_c_with_a_box_open_quits` (confirm.rs tests, through `update`, 11 rows; red before at the quit assert): red on today's code (the box closes and nothing quits), green after.
+- [x] Capture, test `two_boxes_over_content::capture_box_keeps_on_y_for_docs_shots` (asserts frame before == after,
+  box and status unchanged, and the six strings) (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-box-keeps-on-y-120x40.txt`.
   - Scene: the push box open, `y` pressed.
   - **What right looks like:** the frame after `y` is the frame before it, byte for byte (the capture test asserts
     it). The box is titled `Push main → origin/main`, with `[ Cancel ]` under the cursor. The status line reads what it
     read before `y`. The hint bar holds `←/→ move`, `⏎ choose` and `esc cancel`.
-- [ ] MAP.md updated (doc, no test).
-- [ ] NOTES: the site grep, the tests and walk steps moved to `Esc`, the `Ctrl+C` path's lines, any TESTING.md hits.
+- [x] MAP.md updated (doc, no test): graft §`update::confirm` `confirm_key`.
+- [x] NOTES (below): the site grep, the tests and walk steps moved to `Esc`, the `Ctrl+C` path's lines, any TESTING.md hits.
 
 ## For the conductor (exact text; not the builder's to edit)
 Add to `docs/design/02-keymap.md`, after §2.3b, as **§2.3c Confirm box**: `←`/`→` choose (clamped, Cancel first,
@@ -145,3 +147,31 @@ workspace-wide.
 Small. One context.
 
 ## NOTES
+
+Built 2026-09-24 (Opus builder). Scout used: `.scratch/m6-conflicts/scouts/47.md`. No compaction.
+
+- **Cause, not symptom:** `confirm_key`'s catch-all `_ => next.confirm = None` treated every unbound key as cancel.
+  Now `Ctrl+C` returns `false` before the match (same check as `preview.rs:388`), `Esc` has its own arm, `_ => {}`
+  swallows (commented). `Enter`'s dispatch moved verbatim into private `choose()` (clippy `too_many_lines`).
+- **Site grep** (`grep -rn "confirm = Some" crates/graft/src/update --include='*.rs' | grep -v tests`): 11 hits, 11 rows,
+  none unlisted: stash.rs:482, banner.rs:491, :507, undo.rs:39, :300, :392, operate.rs:515, :657,
+  resolver/restart.rs:58, remote/push_box.rs:24, remote/after_push.rs:247. Rows are built from the `ConfirmThen` each
+  site sets, not by driving each opener: `confirm_key` reads `then` only on `Enter`, so the rows prove the key rule per
+  variant, not each opener's box shape.
+- **Ctrl+C path:** `update` → `boxes_key` (`keys.rs:47`) → `confirm_key` returns `false` → `graph_key` → `is_quit`
+  (`keys.rs:258`). No handler between claimed it in any row (default state, no operation live; keymap :164's
+  "operation in progress" path not exercised).
+- **Test that pinned the old rule, changed:** `update/remote/tests.rs` `box_is_modal` asserted `u U Ctrl+Z f p P`
+  close the push box; now asserts the state is unchanged. No other test closed a box with a letter (full nextest green).
+- **Comments reworded:** `update/tests.rs` sweep and `settled()`; `keys/bound.rs` "catch-all" → "`Esc` arm".
+- **Walks:** m3_walk.rs, m4_walk/, m5_walk/ live under `tests/it` and ran in the gates, green. Their box answers read:
+  `confirm_discard` (d, Right, Enter), drift box (Enter; Right Enter), `Step::Confirm` (Right Enter), undo loop
+  (Right Enter), `cancel` (Esc on a running write). No letter closes a box; none moved.
+- **TESTING.md:** grep hit only :650 "Any other key while peeking" (peek, not the box). Nothing for the conductor.
+- **Captures:** new `docs/shots/m6/fix-box-keeps-on-y-120x40.txt` (5.4 KB) plus one row in
+  `m6-contact-sheet-captions.tsv` (required by `contact_sheet_captions_cover_every_m6_capture`). Assembled contact
+  sheet not regenerated. Colour unverified.
+- **Touches:** 11 boxes (rows above); only caller `boxes_key`; Ctrl+C through `update` (test); `box_is_modal`, sweep
+  comments (nextest); walks (read + ran); hint bar / graft-ui (no diff under `crates/graft-ui`, bound.rs comment only);
+  journal/undo (Enter logic moved verbatim, Enter tests and walks green); keymap doc untouched (conductor's); MAP.
+- **Gates:** fmt, clippy -D warnings, nextest 3054 passed / 1 skipped, doctests: all workspace-wide, green.
