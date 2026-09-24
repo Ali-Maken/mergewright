@@ -3,6 +3,8 @@
 //! staying on it with `every file done ✓ · c …` on the notice row (a stash
 //! pop, with no `c`, closes to the graph).
 
+use std::path::{Path, PathBuf};
+
 use graft_core::job::JobId;
 
 use super::files::{RowState, listed_files, reread_set};
@@ -83,58 +85,84 @@ pub fn resolved_advance(
     if let Some(side) = whole {
         crate::update::finish::record_whole(state, &done, side);
     }
-    // The working tree behind this has not been re-read yet — the refresh
-    // the write asked for is still in flight — so the file just staged is
-    // still unmerged in it and is skipped by name.
-    //
-    // **Stale by one stage at most**: a path staged by an *earlier* `⏎`
-    // whose refresh has not yet landed would still be offered. Its read
-    // then answers "not conflicted".
+    if let Some(next) = next_not_done(state, &done) {
+        to_next(state, commands, &done, next, from, next_id);
+    } else if crate::update::banner::banner_view(state).is_none() {
+        close_after_last(state);
+    } else {
+        stay_after_last(state, commands, done, from, next_id);
+    }
+}
+
+/// The next file not done after `done`, in the list's order, wrapping.
+///
+/// The working tree behind this has not been re-read yet — the refresh the
+/// write asked for is still in flight — so the file just staged is still
+/// unmerged in it and is skipped by name.
+///
+/// **Stale by one stage at most**: a path staged by an *earlier* `⏎` whose
+/// refresh has not yet landed would still be offered. Its read then answers
+/// "not conflicted".
+fn next_not_done(state: &AppState, done: &Path) -> Option<PathBuf> {
     let listed = listed_files(state);
     let at = listed
         .iter()
         .position(|file| file.path == done)
         .unwrap_or(0);
-    let next = listed
+    listed
         .iter()
         .cycle()
         .skip(at + 1)
         .take(listed.len())
         .find(|file| file.path != done && file.state != RowState::Done)
-        .map(|file| file.path.clone());
-    if let Some(next) = next {
-        reopen(state, commands, next.clone(), from, next_id);
-        if let Some(open) = state.resolver.as_mut() {
-            open.notice = Some((
-                format!("{} done ✓ · ▸ {}", done.display(), next.display()),
-                false,
-            ));
-        }
-        // The stage changed what git calls unmerged: the list is read again.
-        reread_set(state, commands, next_id);
-        return;
+        .map(|file| file.path.clone())
+}
+
+/// On to `next`, saying which file was just done.
+fn to_next(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    done: &Path,
+    next: PathBuf,
+    from: super::OpenedFrom,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let words = format!("{} done ✓ · ▸ {}", done.display(), next.display());
+    reopen(state, commands, next, from, next_id);
+    if let Some(open) = state.resolver.as_mut() {
+        open.notice = Some((words, false));
     }
-    if crate::update::banner::banner_view(state).is_none() {
-        // A conflicted `git stash pop` has no operation, so no banner and
-        // no `c`: nothing is left to do here, and the resolver closes to
-        // the graph with the words on the status line.
-        state.resolver = None;
-        state.banner_focus = false;
-        // The status the `Stage` asked for is still out and still calls
-        // this file unmerged; `status_read::settle` gives the verdict when
-        // it lands (review m6-amend-13, Minor 1).
-        state.status = if crate::update::status_read::owed(state) {
-            Status::Busy(crate::update::status_read::CHECKING.to_owned())
-        } else {
-            every_file_done(state)
-        };
-        return;
-    }
-    // Every file is done and an operation waits on `c`: the resolver
-    // **stays** (P8, m6-conflicts/31), on the file just staged, which its
-    // read now answers as done and shows read-only (m6-conflicts/25). `c`
-    // works from here, so the words go on its notice row, not the status
-    // line.
+    // The stage changed what git calls unmerged: the list is read again.
+    reread_set(state, commands, next_id);
+}
+
+/// A conflicted `git stash pop` has no operation, so no banner and no `c`:
+/// nothing is left to do here, and the resolver closes to the graph with
+/// the words on the status line.
+fn close_after_last(state: &mut AppState) {
+    state.resolver = None;
+    state.banner_focus = false;
+    // The status the `Stage` asked for is still out and still calls this
+    // file unmerged; `status_read::settle` gives the verdict when it lands
+    // (review m6-amend-13, Minor 1).
+    state.status = if crate::update::status_read::owed(state) {
+        Status::Busy(crate::update::status_read::CHECKING.to_owned())
+    } else {
+        every_file_done(state)
+    };
+}
+
+/// Every file is done and an operation waits on `c`: the resolver **stays**
+/// (P8, m6-conflicts/31), on the file just staged, which its read now
+/// answers as done and shows read-only (m6-conflicts/25). `c` works from
+/// here, so the words go on its notice row, not the status line.
+fn stay_after_last(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    done: PathBuf,
+    from: super::OpenedFrom,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     reopen(state, commands, done, from, next_id);
     // The stage changed what git calls unmerged: the list is read again.
     reread_set(state, commands, next_id);

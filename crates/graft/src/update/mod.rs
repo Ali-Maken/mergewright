@@ -666,9 +666,12 @@ fn took_fact(
             }
         }
         Product::WorkingTree(Err(failure)) => {
-            // The read the line waited on has no status to give; the
-            // failure below replaces the line either way.
-            let _owed: bool = status_read::answered(next, id);
+            // The read the line waited on has no status to give: the
+            // resolver's notice stops saying it is checking, and the
+            // failure below replaces the line.
+            if status_read::answered(next, id) {
+                status_read::abandon(next);
+            }
             // The graph still draws without the uncommitted row; the reason
             // goes on the status line rather than leaving it silently
             // missing.
@@ -935,9 +938,12 @@ fn job_failed(
     // panicking job says so in the same place — it is still a failure, and
     // the crash report's path rides along with it.
     //
-    // A status read the line waited on stops being waited on; the failure
-    // replaces the line, so whether it was that read changes nothing more.
-    let _owed: bool = status_read::answered(next, id);
+    // A status read the line or the resolver's notice waited on stops being
+    // waited on: the notice stops saying it is checking, and the failure
+    // below replaces the line.
+    if status_read::answered(next, id) {
+        status_read::abandon(next);
+    }
     finish::job_ended(next, id, failure);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;

@@ -233,6 +233,51 @@ fn a_merge_committed_from_the_resolver_lands_on_the_graph() {
     );
 }
 
+/// The commit ran but its record is short: the merge is over, so the
+/// resolver under the summary closes with it (review m6-amend-31, Minor 1).
+#[test]
+fn an_incomplete_commit_from_the_resolver_closes_it() {
+    let state = summary_open();
+    let (state, _) = press(&state, KeyCode::Enter);
+    let id = state.operating.expect("the commit runs");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Resumed(Box::new(crate::jobs::operate::Operated::Incomplete {
+                applied: applied("continue merge"),
+                error: "could not read HEAD".to_owned(),
+            })),
+        ),
+    );
+    assert!(state.finish.is_none(), "the summary closed");
+    assert!(state.resolver.is_none(), "and the resolver with it");
+}
+
+/// The `--continue` stopped on new conflicts: the stale resolver closes and
+/// the new stop opens a fresh one on its first path.
+#[test]
+fn a_new_stop_from_the_resolver_opens_its_own_resolver() {
+    let state = summary_open();
+    let (state, _) = press(&state, KeyCode::Enter);
+    let id = state.operating.expect("the commit runs");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::Resumed(Box::new(crate::jobs::operate::Operated::Conflicted {
+                description: "continue merge".to_owned(),
+                kind: InProgress::Merge,
+                paths: vec!["fresh.txt".into()],
+                stalled: None,
+                entry: graft_core::journal::EntryId::new(1, [0; 10]),
+            })),
+        ),
+    );
+    assert!(state.finish.is_none(), "the summary closed");
+    assert_eq!(open_path(&state), Path::new("fresh.txt"));
+}
+
 #[test]
 fn a_hook_refusal_keeps_the_summary_and_the_resolver_under_it() {
     let state = summary_open();

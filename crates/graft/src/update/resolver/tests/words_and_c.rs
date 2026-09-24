@@ -272,3 +272,40 @@ fn an_abandoned_read_clears_the_notice() {
     assert_eq!(ended.status_read, None);
     agree(&ended, false, "after the read was cancelled");
 }
+
+/// The read the notice waits on fails: the notice stops saying it is
+/// checking, and the failure is on the status line in its own words
+/// (review m6-amend-31, Major 1).
+#[test]
+fn a_failed_read_clears_the_notice() {
+    let (landed, commands) = last_stage_lands();
+    let owed = owed_read(&commands);
+    let landed = done_read_lands(&landed, &commands);
+    let (ended, _) = update(
+        &landed,
+        AppEvent::Produced(owed, Product::WorkingTree(Err("status broke".to_owned()))),
+    );
+    assert_eq!(notice(&ended), None);
+    assert_eq!(ended.status, Status::Failed("status broke".to_owned()));
+}
+
+/// The job running the read the notice waits on fails outright: the same.
+#[test]
+fn a_failed_read_job_clears_the_notice() {
+    let (landed, commands) = last_stage_lands();
+    let owed = owed_read(&commands);
+    let landed = done_read_lands(&landed, &commands);
+    let (ended, _) = update(
+        &landed,
+        AppEvent::Core(graft_core::event::Event::JobFailed(
+            owed,
+            graft_core::job::JobFailure::Failed("git died".to_owned()),
+        )),
+    );
+    assert_eq!(notice(&ended), None);
+    assert!(
+        matches!(&ended.status, Status::Failed(words) if words.contains("git died")),
+        "{:?}",
+        ended.status
+    );
+}

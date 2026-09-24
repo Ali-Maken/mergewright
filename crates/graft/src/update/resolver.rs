@@ -44,6 +44,7 @@ mod done;
 mod files;
 mod geometry;
 mod handover;
+mod leave;
 mod names;
 mod open;
 mod resolved;
@@ -90,7 +91,8 @@ pub use whole_file::{WholeFileShape, whole_file_keys};
 use base::toggle_base;
 use files::step_file;
 use geometry::scrolled_to;
-use handover::{edit_here, mergetool_here, takes_refusal};
+use handover::{edit_here, mergetool_here};
+use leave::{escape, finish_pressed};
 use open::reopen;
 use resolved::mark_resolved;
 use restart::restart_box;
@@ -366,55 +368,6 @@ fn act(
         // Swallowed on purpose and silently: §2.1's modal rule. The bar
         // under the document is what says which keys apply here.
         _ => {}
-    }
-}
-
-/// `c`: finish (a merge's summary) or continue, from here (§2.6, P8).
-/// Refused first while a take or write on this file is landing, in the
-/// resolver's own words and the hand-over's order — the summary reads what
-/// is staged, so a write still landing would not be in it. Then the
-/// banner's own `c`, with its words on the notice row.
-///
-/// Not gated on a done file ([`done::refuses`]): after the last file, a
-/// done file is exactly where the user is.
-fn finish_pressed(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    if let Some(words) = handover::handover_refusal(state) {
-        state.status = Status::sticky(words);
-        return;
-    }
-    super::banner::continue_pressed(state, commands, super::finish::ReturnTo::Resolver, next_id);
-}
-
-/// `Esc`: close — once the takes have landed. Closing drops the resolver
-/// that holds the queue, so a take still queued would never be sent (review
-/// m6-amend-15 M1).
-fn escape(state: &mut AppState) {
-    if let Some(words) = takes_refusal(state) {
-        state.status = Status::sticky(words);
-        return;
-    }
-    close(state);
-}
-
-/// Close the resolver and give the keyboard back to where `⏎` came from.
-/// **Never** aborts the operation underneath (§2.6).
-fn close(state: &mut AppState) {
-    let Some(open) = state.resolver.take() else {
-        return;
-    };
-    if open.opened_from == OpenedFrom::Banner {
-        // Only if there is still a banner to focus: `banner_focus` without
-        // one is the state `AppState::banner_focus` rules out.
-        state.banner_focus = super::banner::banner_view(state).is_some();
-    }
-    // The line the resolver put up was about the keys it has just taken
-    // away.
-    if matches!(state.status, Status::Sticky { .. }) {
-        state.status = Status::Ready;
     }
 }
 
