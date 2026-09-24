@@ -286,7 +286,7 @@ replaces it in M6, keeping the same letters for the same verbs.
 on the first conflicted file, and `Esc` there lands on the banner. A stop
 with nothing unmerged focuses the banner. Either way the first key after a
 stop goes to the thing that stopped, not to the graph underneath (P5,
-approved 2026-09-23). A launch mid-operation keeps the banner.
+approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo that puts an operation back (ticket 41).
 
 | Key | Action |
 |---|---|
