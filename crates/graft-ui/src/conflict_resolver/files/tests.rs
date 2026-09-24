@@ -319,3 +319,167 @@ fn the_column_sits_beside_the_card() {
     );
     assert!(line(&buf, 3).contains("▸ notes.txt"), "{:?}", line(&buf, 3));
 }
+
+// ------------------------------------------------ state colours (ADR-0044)
+
+/// Every state once, the cursor on the open file.
+fn six_states() -> FileListView {
+    FileListView {
+        rows: vec![
+            row("a.txt", FileState::Open { open: 1, of: 2 }),
+            row("b.txt", FileState::AllTaken),
+            row(
+                "c.txt",
+                FileState::WholeFile {
+                    how: sanitize_line("deleted by them"),
+                },
+            ),
+            row("d.txt", FileState::Done),
+            row("e.bin", FileState::Binary),
+            row("f.txt", FileState::Unread),
+        ],
+        cursor: 0,
+        unavailable: false,
+    }
+}
+
+fn draw_list_with(
+    view: &FileListView,
+    placement: Placement,
+    (width, height): (u16, u16),
+    ascii: bool,
+) -> Buffer {
+    let area = Rect::new(0, 0, width, height);
+    let mut buf = Buffer::empty(area);
+    let theme = theme();
+    FileList {
+        view,
+        placement,
+        theme: &theme,
+        ascii,
+    }
+    .render(area, &mut buf);
+    buf
+}
+
+/// `(x, y)` of the first cell of `word` anywhere in `buf`.
+fn find_cell(buf: &Buffer, word: &str) -> (u16, u16) {
+    let n = word.chars().count();
+    for y in 0..buf.area.height {
+        let cells: Vec<String> = (0..buf.area.width)
+            .map(|x| buf[(x, y)].symbol().to_owned())
+            .collect();
+        if let Some(x) =
+            (0..=cells.len().saturating_sub(n)).find(|&x| cells[x..x + n].concat() == word)
+        {
+            return (u16::try_from(x).expect("small"), y);
+        }
+    }
+    panic!("{word:?} not drawn")
+}
+
+#[test]
+fn file_list_state_colours() {
+    let theme = theme();
+    let fg = |t: Token| crate::paint::color(theme.token(t));
+    let bold = |c: &ratatui::buffer::Cell| c.modifier.contains(Modifier::BOLD);
+    let view = six_states();
+
+    // Full words, in the column at 180+.
+    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 10), false);
+    let at = |w: &str| &buf[find_cell(&buf, w)];
+    for (words, token) in [
+        ("1 of 2 open", Token::Open),
+        ("⏎ marks done", Token::Open),
+        ("keep or delete", Token::Open),
+        ("done ✓", Token::TextMuted),
+        ("binary", Token::Text),
+        ("•", Token::Text),
+    ] {
+        assert_eq!(at(words).fg, fg(token), "{words:?}");
+    }
+    // The name keeps today's style; the cursor's BOLD is on both parts.
+    assert_eq!(at("a.txt").fg, fg(Token::Text));
+    assert!(bold(at("a.txt")) && bold(at("1 of 2 open")), "cursor bold");
+    assert!(!bold(at("b.txt")) && !bold(at("⏎ marks done")));
+    assert_eq!(at("d.txt").fg, fg(Token::Text), "a done file's name");
+
+    // Compact forms, in the strip below 100 columns.
+    let buf = draw_list_with(&view, Placement::Strip { rows: 3 }, (90, 3), false);
+    let at = |w: &str| &buf[find_cell(&buf, w)];
+    for (words, token) in [
+        ("1/2 open", Token::Open),
+        ("keep?", Token::Open),
+        ("bin", Token::Text),
+    ] {
+        assert_eq!(at(words).fg, fg(token), "{words:?}");
+    }
+    // `⏎` and `✓` alone: find them after their file's name.
+    let (x, y) = find_cell(&buf, "b.txt ⏎");
+    assert_eq!(buf[(x + 6, y)].fg, fg(Token::Open), "compact ⏎");
+    let (x, y) = find_cell(&buf, "✓ d.txt");
+    assert_eq!(buf[(x, y)].fg, fg(Token::TextMuted), "compact ✓");
+    assert_eq!(buf[(x + 2, y)].fg, fg(Token::Text), "its name");
+}
+
+#[test]
+fn unread_file_is_marked_with_a_bullet() {
+    let view = six_states();
+    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 10), false);
+    assert!(line(&buf, 7).ends_with("f.txt  •"), "{:?}", line(&buf, 7));
+    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 10), true);
+    assert!(line(&buf, 7).ends_with("f.txt  ~"), "{:?}", line(&buf, 7));
+
+    // `…` keeps its other jobs: the overflow cell and a left-cut path.
+    for columns in [80, 120] {
+        let buf = draw_list(&twelve_files(3), Placement::Strip { rows: 3 }, columns, 3);
+        assert!(more_cell(&buf, 3), "{columns}: `… N more`");
+        let drawn = (0..3).map(|y| line(&buf, y)).collect::<Vec<_>>().join("\n");
+        assert!(drawn.contains('•'), "{columns}: unread marked\n{drawn}");
+    }
+    let buf = draw_list(&twelve_files(0), Placement::Column { width: 24 }, 24, 6);
+    let drawn = line(&buf, 2);
+    assert!(drawn.contains('…'), "a left-cut path: {drawn:?}");
+}
+
+/// The text a list draws is today's, byte for byte, except the unread
+/// mark: the colour split never moves a character.
+#[test]
+fn file_list_text_is_unchanged_but_the_mark() {
+    let view = six_states();
+    let buf = draw_list_with(&view, Placement::Column { width: 32 }, (32, 8), false);
+    let drawn: Vec<String> = (0..8).map(|y| line(&buf, y)).collect();
+    let wide = draw_list_with(&view, Placement::Strip { rows: 3 }, (170, 3), false);
+    let wide: Vec<String> = (0..3).map(|y| line(&wide, y)).collect();
+    assert_eq!(wide, GOLDEN_WIDE_STRIP, "{wide:#?}");
+    assert_eq!(drawn, GOLDEN_COLUMN, "{drawn:#?}");
+    let buf = draw_list_with(&view, Placement::Strip { rows: 3 }, (90, 3), false);
+    let drawn: Vec<String> = (0..3).map(|y| line(&buf, y)).collect();
+    assert_eq!(drawn, GOLDEN_STRIP, "{drawn:#?}");
+}
+
+/// Drawn before the colour split, with `…` where `•` now stands.
+const GOLDEN_COLUMN: [&str; 8] = [
+    "FILES · 6 conflicted",
+    "",
+    "▏▸ a.txt  1 of 2 open",
+    "   b.txt  ⏎ marks done",
+    "   c.txt  keep or delete",
+    "   d.txt  done ✓",
+    "   e.bin  binary",
+    "   f.txt  •",
+];
+
+/// Drawn before the colour split, with `…` where `•` now stands.
+const GOLDEN_WIDE_STRIP: [&str; 3] = [
+    "files   ▸ a.txt · 1 of 2 open    b.txt · ⏎ marks done    c.txt · keep or delete    d.txt · done ✓    e.bin · binary    f.txt · •",
+    "",
+    "",
+];
+
+/// Drawn before the colour split, with `…` where `•` now stands.
+const GOLDEN_STRIP: [&str; 3] = [
+    "files   ▸ a.txt 1/2 open   b.txt ⏎   c.txt keep?   ✓ d.txt   e.bin bin   f.txt •",
+    "",
+    "",
+];

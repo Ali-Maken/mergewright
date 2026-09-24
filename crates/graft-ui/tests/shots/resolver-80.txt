@@ -1,4 +1,4 @@
-files   ▸ src/auth/token.rs 2/3 open   src/api/routes.rs …
+files   ▸ src/auth/token.rs 2/3 open   src/api/routes.rs •
 ────────────────────────────────────────────────────────────────────────────────
 ▸ src/auth/token.rs · 3 conflicts · 2 open
 

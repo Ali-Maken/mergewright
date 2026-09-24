@@ -1,7 +1,7 @@
 MERGING
-files · 12   ▸ src/handlers/handler_01.rs 1 of 1 open     src/handlers/handler_02.rs …
-               src/handlers/handler_03.rs …               src/handlers/handler_04.rs …
-               src/handlers/handler_05.rs …             … 7 more
+files · 12   ▸ src/handlers/handler_01.rs 1 of 1 open     src/handlers/handler_02.rs •
+               src/handlers/handler_03.rs •               src/handlers/handler_04.rs •
+               src/handlers/handler_05.rs •             … 7 more
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ src/handlers/handler_01.rs · 1 conflict · 1 open
 

@@ -1,6 +1,6 @@
 # conflict-band-and-state-colours: the band between the panes, state colours on cards and the file list, `•` for an unread file
 
-Status: ready
+Status: done
 From: user picks 2026-09-24 items 1 (separator style A, 30 %, Okabe pair) and 11 (batch 10, `•`); field notes :61;
 ADR-0044 §1-§2; KNOWN_GAPS M6/21 :771 (the `…` question), M6/13 :656.
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/54-56.md`. The planner re-read
@@ -127,17 +127,17 @@ exists.
   "colour unverified" rows, are the conductor's.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `band_follows_the_block_state`: red first, then green.
-- [ ] `cursor_rule_row_keeps_its_reverse_over_a_tint`
-- [ ] `band_at_sixteen_colours_has_no_background`, `band_in_high_contrast_has_no_background`
-- [ ] `band_under_no_color_is_glyphs_and_modifiers`
-- [ ] `band_ascii_glyphs`
-- [ ] `card_tints_follow_the_block_state`
-- [ ] `file_list_state_colours`, `file_list_text_is_unchanged_but_the_mark`
-- [ ] `unread_file_is_marked_with_a_bullet`
-- [ ] `titles_and_rule_words_take_their_side_hue`
-- [ ] `graft`'s `three_panes.rs` and `view/resolver/tests.rs` green unedited.
-- [ ] Capture (rule 6; **colour unverified**, rule 5): `docs/shots/m6/fix-band-187x50.txt` and `fix-band-120x40.txt`.
+- [x] `band_follows_the_block_state` (`graft-ui/src/conflict_resolver/tests/three_panes/band.rs`): red first (4 of the band tests failed before `panes/band.rs` existed), then green.
+- [x] `cursor_rule_row_keeps_its_reverse_over_a_tint` (same file)
+- [x] `band_at_sixteen_colours_has_no_background`, `band_in_high_contrast_has_no_background` (same file)
+- [x] `band_under_no_color_is_glyphs_and_modifiers` (same file)
+- [x] `band_ascii_glyphs` (same file), plus the existing `resolver_ascii_tier_is_ascii` green
+- [x] `card_tints_follow_the_block_state` (`tests/card_colours.rs`; also `card_has_no_tint_at_sixteen_colours`)
+- [x] `file_list_state_colours`, `file_list_text_is_unchanged_but_the_mark` (`files/tests.rs`; goldens pinned from the pre-change draw, `…`→`•` the only edit; every existing file-list test green unedited)
+- [x] `unread_file_is_marked_with_a_bullet` (`files/tests.rs`)
+- [x] `titles_and_rule_words_take_their_side_hue` (`three_panes/band.rs`)
+- [x] `graft`'s `three_panes.rs` and `view/resolver/tests.rs` green unedited: workspace `cargo nextest run` green; `git diff --stat -- crates/graft` empty.
+- [x] Capture (rule 6; **colour unverified**, rule 5): `docs/shots/m6/fix-band-187x50.txt` and `fix-band-120x40.txt`.
   These come from the pty walk (`.scratch/m6-conflicts/pty-walk-m6.py`) against the built binary, with no `graft`
   source edit. If `graft-fixtures` (a graft-ui dev-dependency) can write them from a graft-ui test, that works too;
   NOTES says which was used.
@@ -147,7 +147,7 @@ exists.
     pane. Plain rows and the titles row show `│`. At 120 the card's text is unchanged. An unread file in the list reads
     `•`. The colours (sky blue left, purple right, amber open) are for the user to judge in Zed, dark theme, at 187
     columns.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -157,3 +157,39 @@ workspace-wide.
 Medium: one module, many small style assertions, and a capture sweep. One context.
 
 ## NOTES
+
+Built 2026-09-24 (builder-opus, lane U). Scout used: `.scratch/m6-conflicts/scouts/54-56.md`. No compaction.
+
+- **Band** in a new private `conflict_resolver/panes/band.rs` (`separator`, `row_tint`, `stand`, `side_hue`,
+  `not_taken`); `panes/draw.rs` fills each pane's tint first, then separators, then text with fg-only styles.
+- **Choices the spec left open** (say if wrong):
+  - A separator cell's bg: the kept side's tint (`▶`/`◀`/`┃` of a kept side); open and `┊` separators get no bg.
+  - Every row of a block is tinted, pads included, so each band is a full rectangle; the rule row too (the result's
+    rule row of a `both` take is `ours-tint`).
+  - Card labels row and pair halves both tinted; the header's coloured span is `open`, or the taken side's name
+    (`took ` stays in the header style); `took both` has no hue.
+  - DIM only under `NO_COLOR` (depth `None`), on the side not taken: its lines, its `not taken`, its `┊`.
+- **Signature deviation:** file-list `Cell` got `words: Option<(u16, u16)>` (column, width), not `words_at: Option<u16>`:
+  compact `✓ name` puts the words *before* the name, so a start column alone cannot describe it.
+- **Took(Both) after a hand edit** still draws split (no `Choices.edited` yet, `resolver-words-and-marks`).
+- **Captures:** fix-band-187x50 / 120x40 are copies of the pty walk's `m6-12-after-t` (the scene: block 1 took theirs,
+  block 2 open, cursor on it), run against the built binary with no `graft` edit. That scene has no unread file; `•`
+  shows in `fix-file-keys-before-120x40`, `fix-file-list-*`, `m6-10-*`. Captions added to
+  `m6-contact-sheet-captions.tsv` (the caption test requires one). **Colour unverified** (rule 5).
+- **Captures rewritten** (GRAFT_UPDATE_SHOTS=1 / the pty walk at 187x50 and 200x50):
+  - < 180 columns, only `…`→`•` on an unread row (checked line by line): `fix-advance-120x40`,
+    `fix-file-keys-before-120x40`, `fix-file-list-many-120x40`, `fix-stop-lands-in-resolver-120x40`, `-80x24`,
+    `fix-take-all-120x40`, graft-ui `tests/shots/resolver-120`, `resolver-80`. No finding.
+  - ≥ 180 columns, band glyphs on block rows (+ `•`): `fix-advance-187x50`, `fix-file-keys-before-200x50`,
+    `fix-file-list-187x50`, `-200x50`, `fix-stop-lands-in-resolver-187x50`, `fix-three-panes-180/187/200x50`,
+    `m6-10-stop-lands-in-resolver-187/200` (`•` only), `m6-11-card-on-notes-187/200`, `m6-12-after-t-187/200`,
+    `m6-13-after-ctrl-t-187/200`, graft-ui `tests/shots/resolver-three-200`.
+  - The walk also wrote m6-01…m6-09 at 187/200, sizes never on file: deleted, not committed.
+  - `m6-contact-sheet-*.txt` embed old frames: stale, the conductor reassembles.
+- **Touches:** three panes (`panes/draw.rs`) and the card (`draw/block.rs`) are the only drawers of the resolver's
+  separators/tints; the file list (`files.rs`, `files/strip.rs`, `files/column.rs`) the only user of `Glyphs`. The
+  list/doc split `│` (`conflict_resolver.rs:324`) unchanged. `graph_screen`/`detail_pane`/changes-pane `CONFLICTS`:
+  untouched (`git diff --stat` shows none). `Glyphs.more` still serves overflow and left-cut (asserted in
+  `unread_file_is_marked_with_a_bullet`). No keys, journal or undo. graft tests: all green unedited. Captures above.
+- Cause, not symptom: the state had no colour; now it does. Cost to the user: none known; legibility of tints is his
+  to judge.

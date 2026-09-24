@@ -17,6 +17,7 @@ use ratatui::layout::Rect;
 
 use super::{BlockState, BlockView, DocView, RegionView, ScreenRow, TakeView};
 
+mod band;
 mod draw;
 
 /// Which line a [`Cell::Line`] draws. Indices, not text: the drawer looks

@@ -1,5 +1,5 @@
 MERGING
-files   ▸ notes.md · 1 of 1 open    shared.rs · …
+files   ▸ notes.md · 1 of 1 open    shared.rs · •
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ notes.md · 1 conflict · 1 open
 

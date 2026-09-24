@@ -730,4 +730,5 @@ fn arrangement_turns_at_180() {
     assert_eq!(arrangement(THREE_PANE_MIN), Arrangement::ThreePane);
 }
 
+mod card_colours;
 mod three_panes;

@@ -4,20 +4,20 @@ MERGING
 FILES · 1 conflicted      │▸ three.txt · 3 conflicts · 0 open
                           │took theirs · feature in 3 blocks · ⏎ marks three.txt done
 ▏▸ three.txt  ⏎ marks done│ yours · main                                            │ result                                                  │ theirs · feature
-                          │▏── not taken                                            │ ── 1 of 3 · took theirs · feature                       │ ── taken ✓
-                          │▏ 1 one from main                                        │  1 ONE from feature                                     │  1 ONE from feature
+                          │▏── not taken                                            ┊ ── 1 of 3 · took theirs · feature                       ◀ ── taken ✓
+                          │▏ 1 one from main                                        ┊  1 ONE from feature                                     ┃  1 ONE from feature
                           │  2 a                                                    │  2 a                                                    │  2 a
                           │  3 b                                                    │  3 b                                                    │  3 b
                           │  4 c                                                    │  4 c                                                    │  4 c
                           │  5 d                                                    │  5 d                                                    │  5 d
-                          │ ── not taken                                            │ ── 2 of 3 · took theirs · feature                       │ ── taken ✓
-                          │  6 two from main                                        │  6 TWO from feature                                     │  6 TWO from feature
+                          │ ── not taken                                            ┊ ── 2 of 3 · took theirs · feature                       ◀ ── taken ✓
+                          │  6 two from main                                        ┊  6 TWO from feature                                     ┃  6 TWO from feature
                           │  7 e                                                    │  7 e                                                    │  7 e
                           │  8 f                                                    │  8 f                                                    │  8 f
                           │  9 g                                                    │  9 g                                                    │  9 g
                           │ 10 h                                                    │ 10 h                                                    │ 10 h
-                          │ ── not taken                                            │ ── 3 of 3 · took theirs · feature                       │ ── taken ✓
-                          │ 11 three from main                                      │ 11 THREE from feature                                   │ 11 THREE from feature
+                          │ ── not taken                                            ┊ ── 3 of 3 · took theirs · feature                       ◀ ── taken ✓
+                          │ 11 three from main                                      ┊ 11 THREE from feature                                   ┃ 11 THREE from feature
                           │
                           │
                           │
