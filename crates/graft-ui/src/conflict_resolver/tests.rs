@@ -63,6 +63,7 @@ fn three_block_doc(base_shown: bool) -> DocView {
 
     DocView {
         title: text("src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open"),
+        files: FileListView::default(),
         names: names(),
         regions: vec![
             RegionView::Plain {
@@ -285,6 +286,7 @@ fn draw(
                     doc: view,
                     layout: laid,
                     top,
+                    placement: Placement::Strip { rows: 0 },
                     theme: &theme,
                     ascii,
                 },
@@ -367,6 +369,7 @@ fn resolver_draws_only_the_window() {
     }];
     let doc = DocView {
         title: text("big.txt · file 1 of 1 · 0 of 0 conflicts open"),
+        files: FileListView::default(),
         names: names(),
         regions: std::mem::take(&mut regions),
         cursor_block: None,
@@ -388,6 +391,7 @@ fn resolver_draws_only_the_window() {
         doc: &doc,
         layout: &laid,
         top,
+        placement: Placement::Strip { rows: 0 },
         theme: &theme,
         ascii: false,
     }
@@ -461,6 +465,7 @@ fn content_text(buf: &ratatui::buffer::Buffer, y: u16, width: u16) -> String {
 fn whole_file_doc() -> DocView {
     DocView {
         title: text("big.bin"),
+        files: FileListView::default(),
         names: names(),
         regions: vec![RegionView::WholeFile {
             how: text("deleted by them"),
@@ -699,4 +704,12 @@ fn a_layout_naming_a_block_the_doc_no_longer_has_does_not_panic() {
 
     // Must not panic.
     let _buf = draw(&stale_doc, &laid, 0, 120, 24, false);
+}
+
+/// ADR-0043 §1: three panes from 180 columns, the card below.
+#[test]
+fn arrangement_turns_at_180() {
+    assert_eq!(arrangement(179), Arrangement::Card);
+    assert_eq!(arrangement(180), Arrangement::ThreePane);
+    assert_eq!(arrangement(THREE_PANE_MIN), Arrangement::ThreePane);
 }

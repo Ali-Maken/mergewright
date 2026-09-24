@@ -466,7 +466,7 @@ fn all_resolved_from_the_pane_offers_c_where_c_continues() {
     );
     assert_eq!(
         state.status,
-        Status::Done("all conflicts resolved · c continue".to_owned())
+        Status::Done("every file done ✓ · c finishes the merge".to_owned())
     );
     assert!(state.banner_focus, "the keyboard is on the banner");
     let (state, commands) = press(&state, KeyCode::Char('c'));
@@ -618,3 +618,29 @@ fn took_line_uses_the_side_name() {
         "{rebase}"
     );
 }
+
+// Kept here, not in `file_list.rs`: `update_cannot_reach_the_world` skips
+// only files named `tests.rs`, and this one draws through ratatui.
+/// Every row `state` draws at its own size, joined by newlines.
+fn frame_text(state: &AppState) -> String {
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+
+    let (columns, rows) = (state.size.columns, state.size.rows);
+    let mut terminal =
+        Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| crate::view::view(&crate::session::for_tests::session(), state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer();
+    (0..rows)
+        .map(|y| {
+            (0..columns)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+mod file_list;

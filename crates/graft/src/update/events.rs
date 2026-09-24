@@ -188,6 +188,9 @@ pub enum Task {
     /// Attach the merge base to every block of the open file (`B`,
     /// m6-conflicts/05).
     LoadBase,
+    /// Read the set of files the operation in progress conflicted on, for
+    /// the resolver's file list (m6-conflicts/13).
+    ReadConflictSet,
 }
 
 /// What a job brought back.
@@ -344,6 +347,10 @@ pub enum Product {
     /// git's own `diff3` failure), paired with whether they are a problem —
     /// only a failure is; no base and edited-past-git are facts.
     BaseLoaded(Result<(std::sync::Arc<graft_git::conflict::ConflictFile>, usize), (String, bool)>),
+    /// The files the operation in progress conflicted on
+    /// (`graft_ops::conflict::operation_conflicts`, m6-conflicts/13), or why
+    /// they could not be read, in `graft_ops`' own words.
+    ConflictSet(Result<std::sync::Arc<graft_ops::conflict::ConflictSet>, String>),
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.
@@ -608,6 +615,9 @@ pub enum Command {
         std::path::PathBuf,
         Box<graft_git::conflict::ConflictFile>,
     ),
+    /// Read the operation's conflict set for the resolver's file list
+    /// (m6-conflicts/13), under an id `update` chose.
+    ReadConflictSet(JobId),
 }
 
 /// One block's take, as the resolver asks for it.

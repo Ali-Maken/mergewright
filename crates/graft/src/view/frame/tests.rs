@@ -251,6 +251,9 @@ fn an_open_resolver() -> crate::update::resolver::ResolverState {
         staging: None,
         restarting: None,
         notice: None,
+        files: crate::update::detail::Loading::Idle,
+        set_job: None,
+        seen: std::collections::BTreeMap::new(),
     }
 }
 

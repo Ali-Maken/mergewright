@@ -26,7 +26,11 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     // of the graph behind them (`docs/reviews/m5-10-30-31.md:291-296`, open
     // since m5). Fixing those three is a separate change; what this does is
     // make sure the resolver is not a fourth.
-    if super::resolver::resolver_mouse(next, mouse) {
+    let mut local_jobs = next.local_jobs;
+    let resolver =
+        super::resolver::resolver_mouse(next, commands, mouse, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    if resolver {
         return;
     }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: any

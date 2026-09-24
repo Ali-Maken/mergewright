@@ -29,7 +29,7 @@ fn last_file_with_a_banner() {
         "the last file closes the resolver"
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "all conflicts resolved · c continue"),
+        matches!(&state.status, Status::Done(line) if line == "every file done ✓ · c finishes the merge"),
         "{:?}",
         state.status
     );
@@ -53,7 +53,7 @@ fn last_file_without_one() {
         "the only file closes the resolver"
     );
     assert!(
-        matches!(&state.status, Status::Done(line) if line == "all conflicts resolved"),
+        matches!(&state.status, Status::Done(line) if line == "every file done ✓"),
         "no banner, so no `c continue`: {:?}",
         state.status
     );
@@ -141,7 +141,7 @@ fn open_refused_on_a_path_git_does_not_call_unmerged() {
 
     let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Enter));
     assert!(
-        matches!(commands.as_slice(), [Command::OpenConflict(_, path)] if path == Path::new("added-by-them.txt")),
+        matches!(commands.as_slice(), [Command::OpenConflict(_, path), Command::ReadConflictSet(_)] if path == Path::new("added-by-them.txt")),
         "the stale list still names it: {commands:?}"
     );
     let state = app.key(&state, KeyCode::Enter);

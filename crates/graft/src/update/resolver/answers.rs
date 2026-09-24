@@ -8,7 +8,7 @@ use std::sync::Arc;
 use graft_core::job::JobId;
 use graft_git::conflict::{BlockState, ConflictFile};
 
-use super::walk::remaining_conflicted_file;
+use super::files::{RowState, listed_files, remember, reread_set};
 use super::{WholeFileShape, next_open_block, reopen, scrolled_to, side_word};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
@@ -52,7 +52,8 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
         open.cursor_block = None;
         open.top = 0;
         open.base_shown = false;
-        open.notice = None;
+        open.notice = landing_notice(open.notice.take());
+        remember(open);
         return;
     };
     let cursor_block = next_open_block(&file, None, true);
@@ -73,12 +74,23 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
     // leave a stale `true` claiming blocks it has not actually loaded one
     // into (scope 2, "a re-read clears them and `base_shown`").
     open.base_shown = false;
-    open.notice = empty.then(|| {
-        (
-            "no conflict markers · ⏎ marks it resolved".to_owned(),
-            false,
-        )
-    });
+    let landing = landing_notice(open.notice.take());
+    open.notice = empty
+        .then(|| {
+            (
+                "no conflict markers · ⏎ marks it resolved".to_owned(),
+                false,
+            )
+        })
+        .or(landing);
+    remember(open);
+}
+
+/// What of the notice set before a read survives its landing: the words a
+/// finished file left (`gone.txt done ✓ · ▸ notes.txt`), which are not a
+/// problem. A problem's words were about the document the read replaces.
+fn landing_notice(before: Option<(String, bool)>) -> Option<(String, bool)> {
+    before.filter(|(_, problem)| !problem)
 }
 
 /// The opening read failed, or refused.
@@ -160,6 +172,7 @@ pub(super) fn take_landed(state: &mut AppState, file: &Arc<ConflictFile>) {
     open.job = None;
     open.file = Some(Arc::clone(file));
     open.notice = None;
+    remember(open);
     // Only now, with the new document in place, so the layout the cursor
     // block is found in is the one the next frame draws.
     if let Some(block) = cursor {
@@ -211,8 +224,8 @@ pub fn handed_back(
     commands.push(Command::ReadWorkingTree);
 }
 
-/// The `Stage` that `⏎` launched landed: on to the next conflicted file, or
-/// out of the resolver altogether.
+/// The `Stage` that `⏎` launched landed: on to the next file not done, in
+/// the list's order, or out of the resolver altogether.
 pub fn resolved_advance(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -229,25 +242,59 @@ pub fn resolved_advance(
     let from = open.opened_from;
     // The working tree behind this has not been re-read yet — the refresh
     // the write asked for is still in flight — so the file just staged is
-    // still in the list and is skipped by name.
-    if let Some(next) = remaining_conflicted_file(state, &done) {
-        reopen(state, commands, next, from, next_id);
+    // still unmerged in it and is skipped by name.
+    //
+    // **Stale by one stage at most**: a path staged by an *earlier* `⏎`
+    // whose refresh has not yet landed would still be offered. Its read
+    // then answers "not conflicted".
+    let listed = listed_files(state);
+    let at = listed
+        .iter()
+        .position(|file| file.path == done)
+        .unwrap_or(0);
+    let next = listed
+        .iter()
+        .cycle()
+        .skip(at + 1)
+        .take(listed.len())
+        .find(|file| file.path != done && file.state != RowState::Done)
+        .map(|file| file.path.clone());
+    if let Some(next) = next {
+        reopen(state, commands, next.clone(), from, next_id);
+        if let Some(open) = state.resolver.as_mut() {
+            open.notice = Some((
+                format!("{} done ✓ · ▸ {}", done.display(), next.display()),
+                false,
+            ));
+        }
+        // The stage changed what git calls unmerged: the list is read again.
+        reread_set(state, commands, next_id);
         return;
     }
     state.resolver = None;
     // The last file closes **to the banner** whichever way the resolver
     // was opened (design note, m6-conflicts §resolver keys): the line below
-    // offers `c continue`, and `c` continues only with the banner focused —
-    // on the changes pane it opens the commit editor (m6-conflicts/07 F4).
-    // `Esc` still returns to where it was opened from; only the finished
-    // close differs.
+    // offers `c`, and `c` acts only with the banner focused — on the
+    // changes pane it opens the commit editor (m6-conflicts/07 F4). `Esc`
+    // still returns to where it was opened from; only the finished close
+    // differs. Ticket 19 Part B keeps the resolver open instead.
     state.banner_focus = crate::update::banner::banner_view(state).is_some();
-    state.status = if state.banner_focus {
-        Status::Done("all conflicts resolved · c continue".to_owned())
-    } else {
+    let what = state
+        .in_progress
+        .as_ref()
+        .filter(|_| state.banner_focus)
+        .and_then(|detail| match detail.kind {
+            graft_git::state::InProgress::Merge => Some("c finishes the merge"),
+            graft_git::state::InProgress::Rebase => Some("c continues the rebase"),
+            graft_git::state::InProgress::CherryPick => Some("c continues the cherry-pick"),
+            graft_git::state::InProgress::Revert => Some("c continues the revert"),
+            graft_git::state::InProgress::Bisect => None,
+        });
+    state.status = Status::Done(match what {
+        Some(keys) => format!("every file done ✓ · {keys}"),
         // A conflicted `git stash pop` has no operation and so no banner
         // (`KNOWN_GAPS.md` row 229): there is nothing to continue, and a
         // line offering `c` would name a key that does nothing.
-        Status::Done("all conflicts resolved".to_owned())
-    };
+        None => "every file done ✓".to_owned(),
+    });
 }

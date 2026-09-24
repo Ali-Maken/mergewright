@@ -39,10 +39,15 @@ use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
 mod draw;
+mod files;
 mod layout;
 mod names;
 
 use draw::set_text;
+pub use files::{
+    FileList, FileListView, FileRow, FileState, Placement, ResolverAreas, file_at, placement,
+    resolver_areas,
+};
 pub use layout::{Layout, ScreenRow, layout, row_at};
 pub use names::{BlockNumbers, SideNames, SideRoles, number_width};
 
@@ -52,6 +57,29 @@ pub use names::{BlockNumbers, SideNames, SideRoles, number_width};
 /// code is unreadable there, which is why the resolver has two shapes and
 /// not three.
 pub const SIDE_BY_SIDE_MIN: u16 = 100;
+
+/// Frame columns at or above which the resolver is three panes beside a
+/// file-list column (ADR-0043 §1); below it, a strip above the card.
+pub const THREE_PANE_MIN: u16 = 180;
+
+/// The resolver's two arrangements (ADR-0043 §1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Arrangement {
+    /// At [`THREE_PANE_MIN`] columns and up: a list column, then panes.
+    ThreePane,
+    /// Below it: a list strip, then the card document.
+    Card,
+}
+
+/// Which arrangement a frame this wide gets.
+#[must_use]
+pub fn arrangement(frame_columns: u16) -> Arrangement {
+    if frame_columns >= THREE_PANE_MIN {
+        Arrangement::ThreePane
+    } else {
+        Arrangement::Card
+    }
+}
 
 /// Screen rows the widget reserves above the document itself: the title row
 /// and one more for the notice (blank while none is set).
@@ -85,10 +113,12 @@ pub const MIN_ROWS: u16 = 10;
 /// Everything the resolver draws for one file.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DocView {
-    /// `{path} · file {i} of {n} · {open} of {total} conflicts open`
-    /// (≥100 columns) or the short form below it — the app builds the
-    /// wording, this widget only draws it.
+    /// The file identity row, `notes.txt · 2 conflicts · 1 open` — the app
+    /// builds the wording; the widget draws it after its own `▸`, which
+    /// repeats the list's.
     pub title: SanitizedText,
+    /// The file list drawn beside or above the document.
+    pub files: FileListView,
     /// Each side's one name (card labels, took words, header keys).
     pub names: SideNames,
     /// The document's regions, in file order.
@@ -212,6 +242,9 @@ pub struct ResolverScreen<'a> {
     pub layout: &'a Layout,
     /// The first row index on screen.
     pub top: usize,
+    /// Where the file list goes ([`placement`]); the document gets the
+    /// rest ([`resolver_areas`]).
+    pub placement: Placement,
     /// The theme to draw in.
     pub theme: &'a Theme,
     /// Draw box-drawing glyphs with their ASCII fallback.
@@ -239,6 +272,19 @@ impl Widget for ResolverScreen<'_> {
             );
             return;
         }
+        let areas = resolver_areas(area, self.placement);
+        FileList {
+            view: &self.doc.files,
+            placement: self.placement,
+            theme: self.theme,
+            ascii: self.ascii,
+        }
+        .render(areas.list, buf);
+        self.draw_separator(buf, area, areas);
+        let area = areas.doc;
+        if area.is_empty() {
+            return;
+        }
         self.draw_page_header(buf, area);
         if area.height <= HEADER_ROWS {
             return;
@@ -259,16 +305,47 @@ impl Widget for ResolverScreen<'_> {
 }
 
 impl ResolverScreen<'_> {
+    /// The rule row under a strip, or the `│` column beside a column.
+    fn draw_separator(&self, buf: &mut Buffer, area: Rect, areas: ResolverAreas) {
+        let style = foreground(self.theme, Token::Border);
+        match self.placement {
+            Placement::Strip { .. } => {
+                let y = areas.list.bottom();
+                if y < areas.doc.y {
+                    let rule = if self.ascii { "-" } else { "─" };
+                    set_text(
+                        buf,
+                        area.x,
+                        y,
+                        area,
+                        &rule.repeat(usize::from(area.width)),
+                        style,
+                    );
+                }
+            }
+            Placement::Column { .. } => {
+                let x = areas.list.right();
+                if x < areas.doc.x {
+                    let bar = if self.ascii { "|" } else { "│" };
+                    for y in area.y..area.bottom() {
+                        set_text(buf, x, y, area, bar, style);
+                    }
+                }
+            }
+        }
+    }
+
     /// The title row, then the notice (if any) on the row below it —
     /// the two `HEADER_ROWS` the body draws under. Not to be confused with
     /// [`Self::draw_header`], a block's own card header.
     fn draw_page_header(&self, buf: &mut Buffer, area: Rect) {
+        let mark = if self.ascii { ">" } else { "▸" };
         set_text(
             buf,
             area.x,
             area.y,
             area,
-            self.doc.title.as_str(),
+            &format!("{mark} {}", self.doc.title.as_str()),
             foreground(self.theme, Token::Text),
         );
         if area.height == 1 {

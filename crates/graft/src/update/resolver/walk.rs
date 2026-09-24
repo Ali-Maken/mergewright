@@ -93,22 +93,3 @@ pub(super) fn next_conflicted_file(state: &AppState, after: &Path) -> Option<Pat
         .skip_while(|path| path != after)
         .nth(1)
 }
-
-/// A conflicted path other than `done` that is still left: the next one
-/// after it, or — `done` being the last row — the first one before it.
-///
-/// Unlike `n`'s [`next_conflicted_file`], which stops at the end of the
-/// list, "none left" here must mean none: opened on the last `CONFLICTS`
-/// row, `⏎` closing with `all conflicts resolved · c continue` would send
-/// the user to a continue git refuses, with earlier rows still unmerged.
-///
-/// **Stale by one stage at most**: the list is the working tree as last
-/// read, and a path staged by an *earlier* `⏎` whose refresh has not yet
-/// landed would still be offered. Its read then answers "not conflicted".
-pub(super) fn remaining_conflicted_file(state: &AppState, done: &Path) -> Option<PathBuf> {
-    next_conflicted_file(state, done).or_else(|| {
-        crate::update::banner::unmerged_paths(state)
-            .into_iter()
-            .find(|path| path != done)
-    })
-}

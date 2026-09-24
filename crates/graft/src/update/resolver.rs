@@ -29,9 +29,12 @@
 //! - `answers` — the jobs' answers: the opening read, a take, a
 //!   hand-back, and the `⏎` stage landing.
 //! - `geometry` — how many rows the document gets, and whether it fits.
+//! - `files` — the file list: its order and states, a click on a file, and
+//!   the conflict set it is read from (m6-conflicts/13).
 
 mod answers;
 mod base;
+mod files;
 mod geometry;
 mod names;
 mod restart;
@@ -40,6 +43,7 @@ mod take;
 mod walk;
 mod whole_file;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -48,11 +52,13 @@ use graft_core::job::JobId;
 use graft_git::conflict::{ConflictFile, Take};
 use graft_git::status::UnmergedHow;
 
+use super::detail::Loading;
 use super::events::Command;
 use super::state::{AppState, Status};
 
 pub use answers::{conflict_opened, handed_back, resolved_advance, taken};
 pub use base::base_loaded;
+pub use files::{ListedFile, RowState, conflict_set_read, file_cursor, listed_files, select_file};
 pub use geometry::{banner_rows, fits, scroll_block_into_view};
 #[cfg(test)]
 pub(crate) use names::fixtures;
@@ -141,6 +147,16 @@ pub struct ResolverState {
     /// The line under the title: what just happened here, and whether it
     /// was a failure. Drawn on the row under the title while set.
     pub notice: Option<(String, bool)>,
+    /// The files the operation conflicted on, in order
+    /// (`graft_ops::conflict::operation_conflicts`). A re-read keeps the
+    /// last answer here until the next one lands; see [`Self::set_job`].
+    pub files: Loading<Arc<graft_ops::conflict::ConflictSet>>,
+    /// The conflict-set read whose answer is wanted. Any other id's answer
+    /// is dropped: a newer read is on its way.
+    pub set_job: Option<JobId>,
+    /// Each file's state as it last stood while open in this resolver, so
+    /// the list still says `1 of 2 open` for a file left half done.
+    pub seen: BTreeMap<PathBuf, RowState>,
 }
 
 impl ResolverState {
@@ -161,6 +177,9 @@ impl ResolverState {
             staging: None,
             restarting: None,
             notice: None,
+            files: Loading::Idle,
+            set_job: None,
+            seen: BTreeMap::new(),
         }
     }
 
@@ -217,26 +236,47 @@ pub fn open_resolver(
         };
         return true;
     }
+    if let Some(words) = open_refusal(state) {
+        state.status = words;
+        return true;
+    }
+    start(state, commands, path, from, next_id);
+    // A new resolver reads the set afresh: nothing carries over from a
+    // resolver opened on an earlier step.
+    files::reread_set(state, commands, next_id);
+    true
+}
+
+/// The resolver on `path`, its opening read queued.
+fn start(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    path: PathBuf,
+    from: OpenedFrom,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let id = next_id();
+    state.resolver = Some(ResolverState::opening(path.clone(), from, id));
+    commands.push(Command::OpenConflict(id, path));
+}
+
+/// Why no resolver may open right now, as the status line says it.
+fn open_refusal(state: &AppState) -> Option<Status> {
     // A box that is waiting for an answer keeps it. Opening a full-screen
     // overlay over a `d discard` confirmation would leave the user deciding
     // about a file with the question that started it off screen.
     if state.confirm.is_some() || state.commit_editor.is_some() {
-        state.status = Status::sticky("finish the box first");
-        return true;
+        return Some(Status::sticky("finish the box first"));
     }
     // A write in flight owns the working tree; a take landing in the middle
     // of one would be writing the very file git is staging.
     if state.operating.is_some() {
-        state.status = Status::Sticky {
+        return Some(Status::Sticky {
             reason: "a write is running".to_owned(),
             keys: Some("esc stops it".to_owned()),
-        };
-        return true;
+        });
     }
-    let id = next_id();
-    state.resolver = Some(ResolverState::opening(path.clone(), from, id));
-    commands.push(Command::OpenConflict(id, path));
-    true
+    None
 }
 
 /// The resolver's keys, while it is open.
@@ -392,7 +432,11 @@ fn close(state: &mut AppState) {
     }
 }
 
-/// Close this file and open the next one, keeping where the walk started.
+/// Close this file and open `path`, keeping where the walk started and the
+/// file list — its set, the read in flight for it, and what each file was.
+///
+/// Refused in `open_resolver`'s words (the resolver then stays closed) when
+/// a box or a write stands in the way, as it always was.
 fn reopen(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -400,8 +444,19 @@ fn reopen(
     from: OpenedFrom,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    state.resolver = None;
-    open_resolver(state, commands, path, from, next_id);
+    let Some(was) = state.resolver.take() else {
+        return;
+    };
+    if let Some(words) = open_refusal(state) {
+        state.status = words;
+        return;
+    }
+    start(state, commands, path, from, next_id);
+    if let Some(open) = state.resolver.as_mut() {
+        open.files = was.files;
+        open.set_job = was.set_job;
+        open.seen = was.seen;
+    }
 }
 
 // ----------------------------------------------------------------- helpers

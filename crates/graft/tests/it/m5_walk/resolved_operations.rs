@@ -71,14 +71,15 @@ fn take(side: char) -> Vec<Step> {
 }
 
 /// `⏎` on the last conflicted file: the stage, and the resolver closing to
-/// the banner with `c continue` offered.
+/// the banner with `c` offered (`c finishes the merge` / `c continues the
+/// rebase`, m6-conflicts/13 R5).
 fn last_file_resolved(path: &'static str) -> Vec<Step> {
     vec![
         key(KeyCode::Enter),
         Step::Settle("the stage behind ⏎"),
         Step::WaitFor(Wait::ResolvedPath(path)),
         Step::See("all resolved, back on the banner", |state| {
-            status_containing(state, "all conflicts resolved · c continue")?;
+            status_containing(state, "every file done ✓ · c ")?;
             check(state.resolver.is_none() && state.banner_focus, || {
                 "the resolver did not close to the banner".to_owned()
             })
@@ -205,14 +206,14 @@ fn rebase_stops_twice_resolved_twice() -> Scenario {
             stem: "m6-07-all-resolved",
             headless: rebase_that_stops(),
             keys: plain(&[KeyCode::Enter, ch('t'), KeyCode::Enter]),
-            on_screen: "all conflicts resolved",
+            on_screen: "every file done ✓",
             when: When::Settled,
         }),
     }
 }
 
 /// A conflicted `git stash pop` — no operation, no banner — resolved from
-/// the changes pane: `all conflicts resolved` with no `c continue`, and
+/// the changes pane: `every file done ✓` with nothing to continue, and
 /// `⏎` is one journaled `stage p`.
 fn stash_pop_conflict_resolves_without_a_banner() -> Scenario {
     Scenario {
@@ -238,7 +239,7 @@ fn stash_pop_conflict_resolves_without_a_banner() -> Scenario {
                 Step::WaitFor(Wait::ResolvedPath(POPPED)),
                 Step::See("resolved, with nothing to continue", |state| {
                     check(
-                        super::run::status_text(state) == "all conflicts resolved",
+                        super::run::status_text(state) == "every file done ✓",
                         || format!("the status is {:?}", state.status),
                     )?;
                     check(state.resolver.is_none() && !state.banner_focus, || {
@@ -320,8 +321,8 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
                 key(KeyCode::Enter),
                 Step::Settle("the stage behind ⏎"),
                 Step::WaitFor(Wait::ResolvedPath(POPPED)),
-                Step::See("all conflicts resolved", |state| {
-                    status_containing(state, "all conflicts resolved")
+                Step::See("every file done", |state| {
+                    status_containing(state, "every file done ✓")
                 }),
             ],
             undo(),
@@ -476,7 +477,7 @@ fn kill_9_mid_rebase_then_relaunch() -> Scenario {
                 })?;
                 let rows = crate::captures::frame(state, 120, 40);
                 check(
-                    rows.iter().any(|row| row.contains("1 of 1 conflicts open")),
+                    rows.iter().any(|row| row.contains("1 conflict · 1 open")),
                     || format!("the title:\n{}", rows.join("\n")),
                 )
             })],

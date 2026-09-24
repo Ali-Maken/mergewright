@@ -103,7 +103,10 @@ fn mouse_uses_the_key_functions() {
     let selected = state.history.as_ref().map(|walk| walk.cursor);
     let mut blocks = std::collections::BTreeSet::new();
     let mut state = state;
-    for row in 0..14 {
+    // From row 5: past the banner, a strip of at most three rows and its
+    // rule. A click on the list opens another file, which is
+    // `update::resolver::tests::a_click_on_a_file_opens_it`'s to check.
+    for row in 5..20 {
         state = app.mouse_down(&state, graft_core::event::MouseButton::Left, 20, row);
         blocks.insert(open(&state).cursor_block);
         assert_eq!(

@@ -3074,6 +3074,9 @@ fn the_prelude_holds_a_key_while_the_resolver_is_reading() {
         staging: None,
         restarting: None,
         notice: None,
+        files: crate::update::detail::Loading::Idle,
+        set_job: None,
+        seen: std::collections::BTreeMap::new(),
     });
 
     let (state, _) = update(&state, working_tree_read(JobId::new(10)));
@@ -4389,6 +4392,9 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         staging: None,
         restarting: None,
         notice: None,
+        files: crate::update::detail::Loading::Idle,
+        set_job: None,
+        seen: std::collections::BTreeMap::new(),
     });
     state
 }
@@ -4429,6 +4435,9 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         staging: None,
         restarting: None,
         notice: None,
+        files: crate::update::detail::Loading::Idle,
+        set_job: None,
+        seen: std::collections::BTreeMap::new(),
     });
     state
 }
