@@ -1087,7 +1087,9 @@ fn a_stop_keeps_the_banner_keys_on_the_bottom_row() {
 
 #[test]
 fn the_stop_line_outlives_a_dismissed_problem() {
-    let mut state = a_merge_stops();
+    // m6-conflicts/18: the stop lands in the resolver; `Esc` back to the
+    // banner this test is about.
+    let mut state = step(&a_merge_stops(), KeyCode::Escape);
     let id = JobId::new(8);
     state.operating = Some(id);
     let (state, _) = crate::update::update(

@@ -452,7 +452,13 @@ fn file_list_many_capture() {
 
 /// Stops at step 2 of `TwoStopRebase` with the resolver open on `b.txt`.
 fn at_step_two(app: &App, state: AppState) -> AppState {
-    let state = resolver_on(app, state, "a.txt");
+    // m6-conflicts/18: the stop landed in the resolver on step 1's file.
+    let state = app.pump(state, "the landed resolver on a.txt", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.path == Path::new("a.txt") && open.file.is_some())
+    });
     let state = take_all_and_mark(app, state);
     assert!(state.resolver.is_none(), "a.txt was step 1's only file");
     assert!(state.banner_focus, "the banner has the keyboard for `c`");
@@ -479,14 +485,8 @@ fn at_step_two(app: &App, state: AppState) -> AppState {
                     .any(|entry| entry.unmerged && entry.path == Path::new("b.txt"))
             })
     });
-    // The stop may or may not have opened the resolver itself; cope with
-    // either.
-    let state = if state.resolver.is_some() {
-        state
-    } else {
-        let state = on_the_banner(app, state);
-        app.key(&state, KeyCode::Enter)
-    };
+    // m6-conflicts/18: the second stop lands in the resolver too.
+    assert!(state.resolver.is_some(), "the stop opened the resolver");
     app.pump(state, "b.txt and its set", |state| {
         state.resolver.as_ref().is_some_and(|open| {
             open.path == Path::new("b.txt")

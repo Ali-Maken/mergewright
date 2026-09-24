@@ -34,6 +34,9 @@ pub enum Wait {
     /// Git stopped on a conflict, the working tree re-read names the
     /// unmerged paths, and the banner has the keyboard.
     BannerFocused,
+    /// Git stopped on a conflict and the resolver the stop lands in
+    /// (m6-conflicts/18) has read its first file.
+    ResolverLanded,
     /// The journal on screen has an entry of this kind and no re-read is in
     /// flight.
     JournalHas(OperationKind),

@@ -1,0 +1,50 @@
+MERGING
+FILES · 2 conflicted    │▸ notes.md · 1 conflict · 1 open
+                        │
+▏▸ notes.md  1 of 1 open│ yours · main                                        │ result                                               │ theirs · feature
+   …ared.rs  …          │▏── o take                                           │ ── 1 of 1 · open                                     │ ── t take
+                        │▏1 our plan                                          │   ? open · o t b                                     │ 1 their plan
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+ o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close

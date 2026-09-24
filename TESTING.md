@@ -2016,7 +2016,7 @@ What each capture shows; 120x40 is `not run` except for the banner.
 | Hard-reset preview (`m5-03-preview-reset-hard`) | the box after `.` → `Reset main to here, hard`: `working tree: LOSES base.txt (backup saved)` | not run | same |
 | Time machine (`m5-04-time-machine`) | `Preview: revert to before "stage one.txt" (3 steps)`, `index and working tree restored from backup`, no git line | not run | same |
 | Too small (`m5-05-preview-too-small`, 38x10 only) | `preview needs 40x12 · esc closes` on the last row, the ghost rows still drawn above | — | — |
-| Stopped merge (`m5-06-banner-conflicts`) | `MERGING` at the end of the header row, `Uncommitted changes (1 unmerged)`, the sticky `merge feature into main — shared.txt conflicts: resolve it and s…` on the footer (cut at 80 columns; the banner's own keys show after `Esc`) | the same, the sticky whole | the same |
+| Stopped merge (`m5-06-banner-conflicts`) | The stop lands in the resolver (m6-conflicts/18): `MERGING` on the header row, the file strip `▸ shared.txt`, the identity row `▸ shared.txt · 1 conflict · 1 open`, the bar starting `o yours` (`Esc` is the way to the banner) | the same | the same |
 | Branch-row hint bar (`m5-07-branch-row-hints`) | after `r` then `Esc` on `main` from `feature`: no box, `m merge  r rebase  ⏎ open  . more` then bare keys | not run | `m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q …` — **`q quit` is a bare `q` at 160 since `b` and `t` went live; the user decides whether the tail is too long** |
 | Diverged pull (`m5-11-diverged-pull-sticky`) | `main and origin/main have diverged · m merge it  r rebase onto it` on the footer, `[◆ main ↑1]` and `[origin/main]` one row apart | not run | same |
 

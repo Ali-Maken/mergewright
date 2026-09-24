@@ -440,6 +440,10 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             Step::WaitFor(Wait::PreviewReady),
             Step::Confirm,
             Step::Settle("the rebase"),
+            // m6-conflicts/18: the stop lands in the resolver; `Esc` is the
+            // way back to the banner.
+            Step::WaitFor(Wait::ResolverLanded),
+            key(KeyCode::Escape),
             Step::WaitFor(Wait::BannerFocused),
             // The stop is a state, not a sticky line (m6-conflicts/12), so
             // the banner's keys are on the row already. `Esc` hands the

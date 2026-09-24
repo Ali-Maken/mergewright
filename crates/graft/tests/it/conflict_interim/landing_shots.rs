@@ -11,7 +11,8 @@ use graft::update::{AppState, Status};
 use graft_core::event::KeyCode;
 
 use super::{
-    CONFLICT_NOW, about_to_conflict, git, killed_mid_rebase, landed, stopped_on_the_conflict,
+    CONFLICT_NOW, about_to_conflict, git, killed_mid_rebase, landed, landed_in_the_resolver,
+    stopped_on_the_conflict,
 };
 use crate::app_harness::App;
 use crate::captures::{check_shot, frame_at, without_invented_id};
@@ -43,32 +44,41 @@ fn footer<'a>(frame: &'a [String], marker: &str) -> &'a str {
         .unwrap_or_else(|| panic!("no row holds {marker:?}:\n{}", frame.join("\n")))
 }
 
+/// m6-conflicts/18: the stop lands in the resolver on the first
+/// conflicted path, the header still `MERGING`.
 #[test]
 fn capture_a_merge_that_stops() {
     let scratch = about_to_conflict();
     let (app, state) = App::open(scratch.path());
-    let state = stopped_on_the_conflict(&app, state);
-    assert!(state.banner_focus, "the stop takes the keyboard");
+    let state = settled(
+        &app,
+        landed_in_the_resolver(&app, state),
+        "the landed resolver",
+    );
+    let first = state
+        .resolver
+        .as_ref()
+        .expect("the stop opened the resolver")
+        .path
+        .display()
+        .to_string();
     assert_eq!(state.status, Status::Ready, "a stop is not a status");
 
     for (columns, rows) in [(80u16, 24u16), (120, 40), (187, 50)] {
         let frame = drawn(&app, &state, columns, rows);
-        let row = footer(&frame, "a abort");
+        let body = frame.join("\n");
+        assert!(frame[0].trim_end().ends_with("MERGING"), "{body}");
         assert!(
-            row.contains("\u{23ce} resolve  c continue  a abort"),
-            "{row}"
+            frame
+                .iter()
+                .any(|row| row.contains(&format!("\u{25b8} {first}"))),
+            "the first file is marked: {body}"
         );
-        assert!(!row.contains("esc dismiss"), "{row}");
-        if columns >= 120 {
-            assert!(
-                row.trim_start()
-                    .starts_with("merge stopped \u{b7} 2 files conflicted \u{b7}"),
-                "{row}"
-            );
-        }
+        let bar = frame.last().expect("a frame has rows");
+        assert!(bar.trim_start().starts_with("o yours"), "{bar}");
         check_shot(
-            &format!("m6/fix-landing-a-stop-{columns}x{rows}.txt"),
-            &format!("{}\n", frame.join("\n")),
+            &format!("m6/fix-stop-lands-in-resolver-{columns}x{rows}.txt"),
+            &format!("{body}\n"),
         );
     }
     drop(state);

@@ -1,13 +1,16 @@
 m5 walk capture: m5-06-banner-conflicts — scenario conflict-focuses-banner-and-lists-files, keys m → ⏎, unicode tier, 80x24
 
- graft <scratch______________________________________________________>…  MERGING
-◌      Uncommitted changes (1 unmerged)
-  ● ▏ⓘ [feature] feature rewrites it                                6y   41d4d46
-◆ │    [◆ main] main rewrites it                                    6y   3bb5569
-●─╯    add the shared file                                          6y   f435fe3
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
+MERGING
+files   ▸ shared.txt 1/1 open
+────────────────────────────────────────────────────────────────────────────────
+▸ shared.txt · 1 conflict · 1 open
+
+▏ ── conflict 1 of 1 · open ── o yours  t theirs  b both ───────────────────────
+▏ yours · main
+▏ 1 main's line
+▏ theirs · feature
+▏ 1 feature's line
+▏ ──────────────────────────────────────────────────────────────────────────────
 
 
 
@@ -20,7 +23,4 @@ m5 walk capture: m5-06-banner-conflicts — scenario conflict-focuses-banner-and
 
 
 
-
-
-
- merge feature into main — shared.txt conflicts: resolve it and s… · esc dismiss
+ o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎  M  d  esc
