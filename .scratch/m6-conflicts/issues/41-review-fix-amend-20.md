@@ -198,10 +198,10 @@ pub use merge_state::MergeState;                // graft-core/src/journal.rs
 - [ ] MAP entries per Step 3. (doc)
 
 **B**
-- [ ] NOTES: before and after non-test line counts for all three files, each ≤ 400 after. (doc; the counting command is in NOTES)
-- [ ] Every existing test green, **none edited** except for moves; list the moved tests in NOTES.
-- [ ] `graft_core::journal::MergeState` still resolves from graft-ops and graft: the workspace builds with no `use` path changed outside graft-core.
-- [ ] MAP entries per Part B. (doc)
+- [x] NOTES: before and after non-test line counts for all three files, each ≤ 400 after: journal.rs 319, apply.rs 377, resume.rs 378. Verified with the counting command in NOTES Part B. (doc)
+- [x] Every existing test green, **none edited** except for moves; list the moved tests in NOTES. Gates: `cargo nextest run` 3006/3006 (1 skipped) and `cargo test --doc` green, workspace-wide. The 6 moved tests are listed in NOTES Part B.
+- [x] `graft_core::journal::MergeState` still resolves from graft-ops and graft: the workspace builds with no `use` path changed outside graft-core. Gate: `cargo clippy --all-targets -- -D warnings`, workspace-wide, clean. graft-ops's only `use` edits are inside the moved `apply` files.
+- [x] MAP entries per Part B: graft-core §journal (`EntryId` and `MergeState` homes); graft-ops §apply (the file list and `resume::shell::refuse_octopus`). (doc)
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`. Run all four workspace-wide, in each part's own worktree.
@@ -236,3 +236,26 @@ Step 0, observed on unchanged code (temporary `eprintln!` in `u_after_a_shell_be
 - (c) Renderer rule: `Done` text already containing ` ✓ · ` is drawn as-is. Rejected by me as a special case (rule 2).
 
 **Planner, 2026-09-24:** (b) taken. See "Decision (Part A, re-spec)". Step 1 now opens with the double-tick test, which must be red first.
+
+## NOTES — Part B (builder, 2026-09-24)
+No scout: the ticket names every item and its target, and the files were small enough to read directly. Not compacted.
+Count: the line number of the first `#[cfg(test)]` minus 1, or `wc -l` when the file has no test module.
+| file | before | after |
+|---|---|---|
+| graft-core/src/journal.rs | 544 | 319 |
+| graft-core/src/journal/merge_state.rs | new | 146 |
+| graft-core/src/journal/entry_id.rs | new | 97 |
+| graft-ops/src/apply.rs | 424 | 377 |
+| graft-ops/src/apply/finish_merge.rs | new | 62 |
+| graft-ops/src/apply/resume.rs | 434 | 378 |
+| graft-ops/src/apply/resume/shell.rs | new | 73 |
+- After the `MergeState` move, journal.rs was still 409 lines. On the conductor's go-ahead, `EntryId`, its impls and `CROCKFORD`/`ULID_LEN` also went to `journal/entry_id.rs`, re-exported with `pub use`.
+- `text_bytes` is used only by `MergeState`, so it stays private inside `merge_state.rs`.
+- Moved tests, unedited:
+  - to `journal/merge_state.rs`: `merge_state_bytes_are_text_when_they_can_be_and_exact_always`, `an_octopus_merge_state_keeps_every_head_in_order`;
+  - to `journal/entry_id.rs`: `ulid_encodes_time_then_random_in_26_crockford_characters`, `ulids_order_by_time_then_by_random`, `parse_round_trips_and_rejects_the_malformed`, `absurd_clocks_clamp_instead_of_wrapping`.
+- Visibility changes:
+  - `finishing_merge` is `pub(super)`.
+  - In `resume/shell.rs`: `Target`, `shell_merge` and `refuse_unmerged` are `pub(super)`, and `refuse_octopus` is `pub(in crate::apply)`.
+  - `resume::shell` is a `pub(super) mod`.
+- No logic changed.

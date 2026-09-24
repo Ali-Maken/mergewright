@@ -17,6 +17,7 @@
 //! [`Journal::unresolved`]: crate::journal::Journal::unresolved
 
 mod error;
+mod finish_merge;
 mod fold;
 mod record;
 mod recover;
@@ -36,7 +37,6 @@ use graft_git::version::GitVersion;
 
 use crate::facts::{self, FactsError};
 use crate::journal::{Journal, JournalError};
-use crate::merge_state::{MergeStateError, autostash_waits, read_merge_state};
 use crate::operation::{Invocation, Operation, Refusal, RepoFacts};
 
 pub use error::{AfterState, ApplyError};
@@ -50,6 +50,7 @@ pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Pending, PrepareError, begin, finish, kind_name};
 pub(crate) use restart::{RestartPrep, prepare_restart, run_restart_prep};
 
+use finish_merge::finishing_merge;
 use record::pins_for;
 use restart::abandon_pending;
 use run::{PlanRun, run_plan, with_cleanup};
@@ -313,54 +314,6 @@ fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<
         commit: source,
         branch: crate::operation::short_ref(&params.branch).to_owned(),
     }))
-}
-
-/// The half of a [`Operation::FinishMerge`]'s check that needs reads, and
-/// the entry's description, which needs them too (m6-conflicts/20). `None`
-/// for every other operation.
-///
-/// `check` saw that git is merging; this makes sure it is **the** merge the
-/// user was shown — `MERGE_HEAD` still names `params.merge_head`, and no
-/// entry of Graft's owns it (that one is closed on its own entry by
-/// `resume`, and finishing it here would leave it `Pending` for ever).
-/// Before the `Pending` line, so a refusal leaves nothing behind.
-///
-/// The description is `finish merge of <from>`, `<from>` by the summary's
-/// own rule ([`crate::finish::merged_from`]): `finish merge of feature`.
-fn finishing_merge(ctx: &Context<'_>, op: &Operation) -> Result<Option<String>, ApplyError> {
-    let Operation::FinishMerge(params) = op else {
-        return Ok(None);
-    };
-    if live_entry(ctx.repo, ctx.journal.entries(), InProgress::Merge, ctx.stop)?.is_some() {
-        return Err(ApplyError::Refused(Refusal::InProgress(InProgress::Merge)));
-    }
-    let merge = match read_merge_state(ctx.repo) {
-        Ok(Some(merge)) => merge,
-        // None at all: not the merge the user saw.
-        Ok(None) => return Err(ApplyError::Refused(Refusal::NotInProgress)),
-        Err(other) => return Err(ApplyError::Facts(FactsError::MergeState(other))),
-    };
-    resume::refuse_octopus(&merge)?;
-    if merge.merge_head != params.merge_head {
-        // Another merge than the one asked about.
-        return Err(ApplyError::Refused(Refusal::NotInProgress));
-    }
-    // git applies a `--autostash` stash when the merge is finished, which a
-    // `u` of this entry could not give back: finished in the shell.
-    if autostash_waits(ctx.repo).map_err(|why| ApplyError::Facts(FactsError::MergeState(why)))? {
-        return Err(ApplyError::Refused(Refusal::NotInProgress));
-    }
-    let from =
-        crate::finish::merged_from(ctx.repo, Some(&merge.merge_msg)).map_err(
-            |error| match error {
-                RunError::Stopped => ApplyError::Stopped,
-                other => ApplyError::Facts(FactsError::MergeState(MergeStateError::Run(other))),
-            },
-        )?;
-    Ok(Some(format!(
-        "finish merge of {}",
-        String::from_utf8_lossy(&from)
-    )))
 }
 
 /// The plan ran through: what the caller re-reads, and what the record of it
