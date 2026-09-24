@@ -248,18 +248,11 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
     assert!(operate(&commands).is_none(), "{commands:?}");
 }
 
-/// **A merge begun in the shell names no key that refuses it** (m6-07
-/// F12). No journal entry of Graft's is live, so the banner's `c` and `a`
-/// both refuse it (`graft-ops/src/apply/resume.rs`, `resume_target`:
-/// `Refusal::NotInProgress`, "an operation begun in the shell is finished
-/// there"). The editor said `esc, then c continue  a abort` — two keys that
-/// do nothing, the thing `resolver/answers.rs`'s last line refuses to do.
-/// It names git's own command instead, as the bisect arm does.
-#[test]
-fn a_merge_begun_in_the_shell_names_no_key_that_refuses_it() {
+/// The editor's refusal for an operation begun in the shell, `kind` given.
+fn shell_refusal(kind: graft_git::state::InProgress) -> String {
     let mut state = ready(&["a.rs"]);
     state.in_progress = Some(graft_git::state::InProgressDetail {
-        kind: graft_git::state::InProgress::Merge,
+        kind,
         step: None,
         head_name: None,
         onto: None,
@@ -270,14 +263,38 @@ fn a_merge_begun_in_the_shell_names_no_key_that_refuses_it() {
     let open = typed(&open, "subject");
     let view = crate::view::commit_editor_view(&open).expect("open");
     let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
-    assert!(refusal.contains("merge"), "{refusal}");
-    assert!(refusal.contains("shell"), "{refusal}");
-    assert!(refusal.contains("git commit"), "{refusal}");
+    let (_, commands) = update(&open, control(KeyCode::Enter));
+    assert!(operate(&commands).is_none(), "{commands:?}");
+    refusal
+}
+
+/// **A merge begun in the shell names no key that does not reach its
+/// finish** (m6-07 F12; m6-conflicts/20 B2 blocked). The banner's `c`
+/// finishes it since ticket 20, but `esc, then c` from this editor reopens
+/// the editor (`update::keys::graph_key` → `is_commit_key`), so naming
+/// those keys would offer ones that do nothing. It names git's own command,
+/// which is still true, as the bisect arm does.
+#[test]
+fn a_merge_begun_in_the_shell_names_no_key_that_refuses_it() {
+    let refusal = shell_refusal(graft_git::state::InProgress::Merge);
+    assert_eq!(
+        refusal,
+        "merge begun in the shell — finish it there: git commit"
+    );
     for dead in ["c continue", "a abort", "esc, then"] {
         assert!(!refusal.contains(dead), "offers {dead:?}: {refusal}");
     }
-    let (_, commands) = update(&open, control(KeyCode::Enter));
-    assert!(operate(&commands).is_none(), "{commands:?}");
+}
+
+/// A rebase begun in the shell keeps git's own command: the banner's `c`
+/// still refuses it (M7), so naming a key would offer one that does nothing.
+#[test]
+fn a_rebase_begun_in_the_shell_still_names_gits_command() {
+    let refusal = shell_refusal(graft_git::state::InProgress::Rebase);
+    assert_eq!(
+        refusal,
+        "rebase begun in the shell — finish it there: git rebase --continue"
+    );
 }
 
 /// A bisect draws no banner (M7's), so there are no keys to name and the
