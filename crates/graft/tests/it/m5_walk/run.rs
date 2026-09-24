@@ -38,6 +38,7 @@ pub fn run_scenario(scenario: &Scenario) -> Result<(), String> {
         Ok(result) => result?,
         Err(payload) => return Err(format!("panicked: {}", panic_text(payload.as_ref()))),
     };
+    super::journeys::within_the_note(scenario, seen.inputs.as_ref())?;
     (scenario.expect)(&fixture, &marks)?;
     fsck_clean(fixture.repo())?;
     // A scenario that types a secret must have left prompt dumps and
@@ -71,6 +72,11 @@ pub struct Seen {
     /// `Debug`, the field's and anything else that carries the typed bytes
     /// are all in it.
     pub prompts: Vec<String>,
+    /// A journey's counted inputs, one label each (m6-conflicts/21): `None`
+    /// when no [`Step::Route`] ever started one.
+    pub inputs: Option<Vec<String>>,
+    /// Between `Route(true)` and `Route(false)`.
+    pub counting: bool,
 }
 
 /// Where the askpass wrapper writes each invocation's arguments and
@@ -341,6 +347,7 @@ impl Walk<'_> {
         marks: &mut Marks,
     ) -> Result<AppState, String> {
         for step in steps {
+            self.count(step)?;
             state = match step {
                 Step::Key(key) => self.app.press(&state, *key),
                 Step::Type(text) | Step::TypeSecret(text) => {
@@ -387,6 +394,9 @@ impl Walk<'_> {
                 }
                 Step::Resolve(path) => self.resolve(state, path)?,
                 Step::HandOver(what, key) => self.hand_over(&state, what, *key)?,
+                Step::Route(_) | Step::Click(_) | Step::Frame(..) => {
+                    super::journeys::step(self.app, state, step)?
+                }
                 Step::Relaunch | Step::Kill => {
                     unreachable!("drive_app splits the steps at a relaunch or a kill")
                 }
@@ -404,6 +414,26 @@ impl Walk<'_> {
         })?;
         let state = (0..index).fold(state, |state, _| self.app.key(&state, KeyCode::Right));
         Ok(self.app.key(&state, KeyCode::Enter))
+    }
+
+    /// A journey's count (m6-conflicts/21, UX 1.3): [`Step::Route`] opens
+    /// and closes it; while it is open every input step adds its label.
+    fn count(&mut self, step: &Step) -> Result<(), String> {
+        if let Step::Route(on) = step {
+            self.seen.counting = *on;
+            if *on {
+                self.seen.inputs.get_or_insert_with(Vec::new);
+            }
+            return Ok(());
+        }
+        if !self.seen.counting {
+            return Ok(());
+        }
+        let labels = super::journeys::inputs_of(step)?;
+        if let Some(inputs) = &mut self.seen.inputs {
+            inputs.extend(labels);
+        }
+        Ok(())
     }
 
     fn note(&mut self, state: &AppState) {
@@ -515,13 +545,6 @@ impl Walk<'_> {
             Wait::ResolverLanded => {
                 self.pump(state, "the stop's landing in the resolver", resolver_landed)
             }
-            Wait::BannerFocused => self.pump(state, "the stop on the conflict", |state| {
-                state.operating.is_none()
-                    && state.in_progress.is_some()
-                    && !graft::update::banner::unmerged_paths(state).is_empty()
-                    && state.banner_focus
-                    && state.journal.reading.is_none()
-            }),
             Wait::JournalHas(kind) => self.pump(state, "the journal re-read", move |state| {
                 matches!(&state.journal.entries, Loading::Ready(read)
                     if read.entries.iter().any(|entry| entry.kind == kind))
@@ -554,12 +577,56 @@ impl Walk<'_> {
             Wait::ChangesPane => self.pump(state, "the changes pane's file list", |state| {
                 matches!(state.detail.files, Loading::Ready(_)) && state.on_changes_pane()
             }),
+            Wait::BannerFocused
+            | Wait::LandedOnHead
+            | Wait::OnTheBanner
+            | Wait::BackInProgress
+            | Wait::FrameSettled => self.wait_for_landing(state, wait),
             Wait::ConflictOpened
             | Wait::ResolvedPath(_)
             | Wait::ResolverClosed
             | Wait::ConflictedPath(_)
             | Wait::Resolved
             | Wait::FinishReady => self.wait_for_resolver(state, wait),
+        }
+    }
+
+    /// The landings: on a stop's conflict, and (m6-conflicts/21) after a
+    /// finish, after a launch, after `u`, and a frame with nothing left
+    /// loading.
+    fn wait_for_landing(&mut self, state: AppState, wait: Wait) -> Result<AppState, String> {
+        match wait {
+            Wait::BannerFocused => self.pump(state, "the stop on the conflict", |state| {
+                state.operating.is_none()
+                    && state.in_progress.is_some()
+                    && !graft::update::banner::unmerged_paths(state).is_empty()
+                    && state.banner_focus
+                    && state.journal.reading.is_none()
+            }),
+            Wait::LandedOnHead => self.pump(state, "the landing a finish owes", |state| {
+                state.in_progress.is_none() && state.operating.is_none() && !state.land_on_head
+            }),
+            Wait::OnTheBanner => self.pump(state, "the launch landing on the banner", |state| {
+                state.operating.is_none()
+                    && state.in_progress.is_some()
+                    && state.banner_focus
+                    && state.journal.reading.is_none()
+            }),
+            Wait::BackInProgress => self.pump(state, "the undo and its refresh", |state| {
+                state.operating.is_none()
+                    && state.in_progress.is_some()
+                    && state.status_read.is_none()
+            }),
+            Wait::FrameSettled => self.pump(state, "a frame with nothing loading", |state| {
+                crate::captures::frame(state, state.size.columns, state.size.rows)
+                    .iter()
+                    .all(|row| {
+                        !row.contains("reading…")
+                            && !row.contains("sorting…")
+                            && !row.contains("reading the diff…")
+                    })
+            }),
+            other => unreachable!("wait_for_state answers {other:?}"),
         }
     }
 

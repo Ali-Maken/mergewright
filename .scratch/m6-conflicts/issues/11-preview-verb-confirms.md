@@ -94,7 +94,7 @@ fn confirm_key(key: KeyPress, opened_by: &str) -> bool;
   - `…::the_footer_label_shrinks_by_its_ladder` (rungs 2, 3 and 4, each at the width where it first applies);
   - `…::a_dot_opened_footer_names_only_y` (`y confirm  ←→ choose  ⏎ act  esc cancel`);
   - `…::a_revert_preview_draws_the_old_footer`.
-- [ ] Journey `a-merge-to-stop` at 2 keys (acceptance ticket).
+- [x] Journey `a-merge-to-stop` at 2 keys (acceptance ticket). `every_scenario::journey_a_merge_to_stop` and `journey_a_merge_to_stop_two_files`: route `m m`, 2 inputs (ticket 21).
 - [x] Captures under `docs/shots/m6/`: `fix-preview-verb-120x40.txt` (`m`-opened) and `fix-preview-verb-name-prompt-120x40.txt` (`b`-opened). Golden, asserted by `preview::capture_fix_preview_verb_for_docs_shots` and `name_and_drag::capture_fix_preview_verb_name_prompt_for_docs_shots`. Colour unverified; the user judges by eye. **What right looks like:**
   - `m`-opened: the box's bottom border reads `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`.
   - `b`-opened: it reads `y confirm  ←→ choose  ⏎ act  esc cancel`.

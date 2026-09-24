@@ -35,7 +35,7 @@ Out: any new key.
 - [x] `update::banner::tests::a_rebase_stopping_again_lands_in_the_resolver`.
 - [x] `update::resolver::tests::esc_from_a_landed_resolver_shows_the_banner_keys` — lives at `update::banner::tests::esc_from_a_landed_resolver_shows_the_banner_keys` (needs `a_merge_stops`).
 - [x] `…::an_edit_stop_with_nothing_unmerged_keeps_the_banner` — `update::operate::tests::an_edit_stop_with_nothing_unmerged_keeps_the_banner`.
-- [ ] Journey `a-stop-to-first-conflict` at 0 keys (acceptance ticket).
+- [x] Journey `a-stop-to-first-conflict` at 0 keys (acceptance ticket). `every_scenario::journey_a_stop_to_first_conflict`: empty route, the frame after the stop is the resolver on `gone.txt` (ticket 21).
 - [x] Capture `docs/shots/m6/fix-stop-lands-in-resolver-120x40.txt` (+80x24, 187x50; `conflict_interim::landing_shots::capture_a_merge_that_stops` asserts header `MERGING`, `▸ <first>`, bar starts `o yours`; by-eye judgement is the user's), the two-file fixture. **What right looks like:**
   - The frame right after the stop is the resolver, with the header still `MERGING`.
   - The strip lists both files, with `▸` on the first.

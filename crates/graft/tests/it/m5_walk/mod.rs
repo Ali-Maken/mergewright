@@ -20,11 +20,13 @@
 )]
 
 mod claim;
+mod conflict_journeys;
 mod conflicts;
 #[cfg(test)]
 mod every_scenario;
 mod fixture;
 mod gestures;
+mod journeys;
 mod merge_rebase;
 mod pick_revert_reset;
 mod preview;
@@ -63,6 +65,7 @@ pub fn scenarios() -> Vec<Scenario> {
     all.extend(regressions::regressions());
     all.extend(resolving::resolving());
     all.extend(resolved_operations::resolved_operations());
+    all.extend(conflict_journeys::journeys());
     all
 }
 

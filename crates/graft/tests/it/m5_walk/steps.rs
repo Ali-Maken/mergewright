@@ -115,6 +115,23 @@ pub enum Wait {
     /// The resolver has closed by itself — a re-read found the file no
     /// longer conflicted — and nothing is running (m6-conflicts/07).
     ResolverClosed,
+    /// A finished operation's landing has happened: nothing in progress,
+    /// nothing running, and the graph cursor moved to `HEAD`
+    /// (`land_on_head` cleared; m6-conflicts/21, as
+    /// `it::finish::done_lands_on_the_merge_commit` waits).
+    LandedOnHead,
+    /// The launch landed on an operation git is part-way through, whether or
+    /// not any path is still unmerged: the banner has the keyboard
+    /// (m6-conflicts/21; [`Wait::BannerFocused`] needs a conflict left).
+    OnTheBanner,
+    /// `u` put a finished operation back: nothing running, git in progress
+    /// again, and the status re-read landed (m6-conflicts/21, as ticket
+    /// 41's `u_landing` waits).
+    BackInProgress,
+    /// The frame drawn at the app's size has nothing still loading on it —
+    /// no `reading…`, `sorting…` or `reading the diff…` (m6-conflicts/21):
+    /// the frame a landing is judged on.
+    FrameSettled,
 }
 
 /// One thing the walk does to the running app, in order.
@@ -203,6 +220,40 @@ pub enum Step {
     /// re-enter a terminal, so the exit-status words are this step's, copied
     /// from `Handover::{open, mergetool}` (`event_loop/outside.rs`).
     HandOver(&'static str, KeyPress),
+    /// A journey's counted route starts (`true`) or ends (`false`) here
+    /// (m6-conflicts/21). Between the two, every step that sends input
+    /// counts as UX 1.3 counts it — a key, a chord, a click, a `Type` is one
+    /// each — and `run_scenario` fails the journey when the count is over
+    /// the note's `journey-counts` row. Outside them nothing is counted: a
+    /// journey's start and its truth checks after the landing are not steps
+    /// the user takes.
+    Route(bool),
+    /// A left click on the resolver's file list, on the row naming this
+    /// path, found in the **drawn** frame: the strip at under 180 columns,
+    /// the list column at 180 and over (m6-conflicts/21).
+    Click(&'static str),
+    /// Facts read from the frame as the view draws it now, at the app's own
+    /// size — what the user sees, not what `AppState` holds
+    /// (m6-conflicts/21: a landing is read from the drawn frame).
+    Frame(&'static str, &'static [Sees]),
+}
+
+/// One fact about a drawn frame ([`Step::Frame`]). Rows are the frame's
+/// rows with trailing blanks trimmed.
+#[derive(Clone, Copy, Debug)]
+pub enum Sees {
+    /// Some row contains this text.
+    Has(&'static str),
+    /// No row contains this text.
+    Lacks(&'static str),
+    /// The bottom row (the last one with anything on it), leading blanks
+    /// trimmed, starts with this text.
+    BottomStarts(&'static str),
+    /// Some row contains both texts, the first before the second.
+    Row(&'static str, &'static str),
+    /// The first row containing the first text is above the first row
+    /// containing the second, and both exist.
+    Above(&'static str, &'static str),
 }
 
 /// When the pty script writes the frame.
