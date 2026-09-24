@@ -1929,7 +1929,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 36;
+const COVERAGE_SLOTS: usize = 43;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1965,23 +1965,7 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,
-        HintContext::Resolver {
-            done: true,
-            restart,
-            ..
-        } => 30 + usize::from(!*restart),
-        HintContext::Resolver {
-            base,
-            restart,
-            whole_file: false,
-            done: false,
-            ..
-        } => 20 + usize::from(*base) + 2 * usize::from(*restart),
-        HintContext::Resolver {
-            whole_file: true,
-            done: false,
-            ..
-        } => 24,
+        HintContext::Resolver { .. } => resolver_slot(context),
         HintContext::ConfirmBox => 25,
         HintContext::NamePrompt { toggle: false } => 26,
         HintContext::NamePrompt { toggle: true } => 27,
@@ -2000,6 +1984,31 @@ fn coverage_slot(context: &HintContext) -> usize {
             focus: crate::finish_summary::SummaryFocus::Body,
             ..
         } => 35,
+    }
+}
+
+/// [`coverage_slot`] for the resolver: done (30–31), document (20–23) or
+/// card (24), and the same three shapes with `c` offered
+/// (m6-conflicts/31): 36–37, 38–41, 42.
+fn resolver_slot(context: &HintContext) -> usize {
+    let HintContext::Resolver {
+        base,
+        restart,
+        whole_file,
+        done,
+        finishable,
+        ..
+    } = *context
+    else {
+        panic!("not a resolver context: {context:?}");
+    };
+    match (done, whole_file, finishable) {
+        (true, _, false) => 30 + usize::from(!restart),
+        (true, _, true) => 36 + usize::from(!restart),
+        (false, false, false) => 20 + usize::from(base) + 2 * usize::from(restart),
+        (false, false, true) => 38 + usize::from(base) + 2 * usize::from(restart),
+        (false, true, false) => 24,
+        (false, true, true) => 42,
     }
 }
 

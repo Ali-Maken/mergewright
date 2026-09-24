@@ -19,18 +19,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             conflicted,
         } => banner_list(*skippable, *conflicted),
         HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
-        HintContext::Resolver {
-            done: true,
-            restart,
-            ..
-        } => resolver_done_list(*restart),
-        HintContext::Resolver {
-            base,
-            restart,
-            whole_file,
-            roles,
-            done: false,
-        } => resolver_bar(*base, *restart, *whole_file, *roles),
+        HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
@@ -87,6 +76,47 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         | HintContext::OperationLive(_)
         | HintContext::Preview => Vec::new(),
     }
+}
+
+/// The resolver's table for `context`: the done file's, or the bar over a
+/// file still unmerged, each offering `c` while it would act.
+fn resolver_context_list(context: &HintContext) -> Vec<Hint> {
+    let HintContext::Resolver {
+        base,
+        restart,
+        whole_file,
+        roles,
+        done,
+        finishable,
+    } = *context
+    else {
+        // Only `context_list`'s `Resolver` arm calls this; no other
+        // context has a resolver table to draw.
+        return Vec::new();
+    };
+    let list = if done {
+        resolver_done_list(restart)
+    } else {
+        resolver_bar(base, restart, whole_file, roles)
+    };
+    offering_c(list, roles, finishable)
+}
+
+/// A resolver table with `c` added just before `esc close` while `c` would
+/// act (m6-conflicts/31, P8): `c finish` in a merge, which opens the
+/// summary, else `c continue`. Unchanged while it would refuse.
+fn offering_c(mut list: Vec<Hint>, roles: SideRoles, finishable: bool) -> Vec<Hint> {
+    if finishable {
+        let verb = if roles == SideRoles::Merge {
+            "finish"
+        } else {
+            "continue"
+        };
+        // Every resolver table ends with `esc close`.
+        let at = list.len().saturating_sub(1);
+        list.insert(at, hint("c", verb));
+    }
+    list
 }
 
 /// The resolver's bar over a file still unmerged: a whole-file card or a

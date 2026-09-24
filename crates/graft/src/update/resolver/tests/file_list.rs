@@ -430,19 +430,22 @@ fn last_file_lands(kind: Option<InProgress>) -> AppState {
     state
 }
 
+/// The resolver stays on the last file (m6-conflicts/31, P8), `c` offered
+/// on its notice row; the status line is not written.
 #[test]
-fn after_the_last_file_the_banner_says_c_finishes() {
+fn after_the_last_file_the_notice_says_c_finishes() {
     let state = last_file_lands(Some(InProgress::Merge));
-    assert!(state.resolver.is_none());
-    assert!(state.banner_focus);
+    assert_eq!(super::open_path(&state), Path::new("conflicted.rs"));
+    assert!(!state.banner_focus);
     assert_eq!(
-        state.status,
-        Status::Done("every file done ✓ · c finishes the merge".to_owned())
+        state.resolver.as_ref().expect("open").notice,
+        Some(("every file done ✓ · c finishes the merge".to_owned(), false))
     );
+    assert_eq!(state.status, Status::Ready, "the status line not written");
 }
 
 #[test]
-fn after_the_last_file_a_rebase_says_c_continues() {
+fn after_the_last_file_of_a_rebase_the_notice_says_c_continues() {
     for (kind, words) in [
         (
             InProgress::Rebase,
@@ -458,9 +461,13 @@ fn after_the_last_file_a_rebase_says_c_continues() {
         ),
     ] {
         let state = last_file_lands(Some(kind));
-        assert!(state.resolver.is_none(), "{kind:?}");
-        assert!(state.banner_focus, "{kind:?}");
-        assert_eq!(state.status, Status::Done(words.to_owned()));
+        assert_eq!(super::open_path(&state), Path::new("conflicted.rs"));
+        assert!(!state.banner_focus, "{kind:?}");
+        assert_eq!(
+            state.resolver.as_ref().expect("open").notice,
+            Some((words.to_owned(), false))
+        );
+        assert_eq!(state.status, Status::Ready, "{kind:?}");
     }
 }
 

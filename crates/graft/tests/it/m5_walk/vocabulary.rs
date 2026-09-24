@@ -145,6 +145,18 @@ pub(super) fn status_containing(state: &AppState, text: &str) -> Result<(), Stri
     })
 }
 
+/// The open resolver's notice row contains `text`.
+pub(super) fn notice_containing(state: &AppState, text: &str) -> Result<(), String> {
+    let notice = state
+        .resolver
+        .as_ref()
+        .and_then(|open| open.notice.as_ref())
+        .map(|(words, _)| words.as_str());
+    check(notice.is_some_and(|words| words.contains(text)), || {
+        format!("the resolver's notice is {notice:?}, not about {text:?}")
+    })
+}
+
 // ───────────────────────────── facts on a truth ──────────────────────────────
 
 /// `refs/heads/<name>`'s object in a truth.

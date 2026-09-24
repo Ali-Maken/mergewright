@@ -1,6 +1,7 @@
 //! `⏎`: marking the open file resolved (`git add`), and what happens when
-//! that stage lands — on to the next file not done, or out to the banner
-//! with `every file done ✓`.
+//! that stage lands — on to the next file not done, or, after the last,
+//! staying on it with `every file done ✓ · c …` on the notice row (a stash
+//! pop, with no `c`, closes to the graph).
 
 use graft_core::job::JobId;
 
@@ -55,7 +56,8 @@ pub(super) fn mark_resolved(
 }
 
 /// The `Stage` that `⏎` launched landed: on to the next file not done, in
-/// the list's order, or out of the resolver altogether.
+/// the list's order, or — none left — stay on this one (a stash pop
+/// closes).
 pub fn resolved_advance(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -112,32 +114,52 @@ pub fn resolved_advance(
         reread_set(state, commands, next_id);
         return;
     }
-    state.resolver = None;
-    // The last file closes **to the banner** whichever way the resolver
-    // was opened (design note, m6-conflicts §resolver keys): the line below
-    // offers `c`, and `c` acts only with the banner focused — on the
-    // changes pane it opens the commit editor (m6-conflicts/07 F4). `Esc`
-    // still returns to where it was opened from; only the finished close
-    // differs. Ticket 19 Part B keeps the resolver open instead.
-    state.banner_focus = crate::update::banner::banner_view(state).is_some();
+    if crate::update::banner::banner_view(state).is_none() {
+        // A conflicted `git stash pop` has no operation, so no banner and
+        // no `c`: nothing is left to do here, and the resolver closes to
+        // the graph with the words on the status line.
+        state.resolver = None;
+        state.banner_focus = false;
+        // The status the `Stage` asked for is still out and still calls
+        // this file unmerged; `status_read::settle` gives the verdict when
+        // it lands (review m6-amend-13, Minor 1).
+        state.status = if crate::update::status_read::owed(state) {
+            Status::Busy(crate::update::status_read::CHECKING.to_owned())
+        } else {
+            every_file_done(state)
+        };
+        return;
+    }
+    // Every file is done and an operation waits on `c`: the resolver
+    // **stays** (P8, m6-conflicts/31), on the file just staged, which its
+    // read now answers as done and shows read-only (m6-conflicts/25). `c`
+    // works from here, so the words go on its notice row, not the status
+    // line.
+    reopen(state, commands, done, from, next_id);
+    // The stage changed what git calls unmerged: the list is read again.
+    reread_set(state, commands, next_id);
     // The status the `Stage` asked for is still out and still calls this
-    // file unmerged, so `c` would count it. The line says what `c` says
+    // file unmerged, so `c` would count it. The notice says what `c` says
     // meanwhile, and `status_read::settle` says the rest when it lands
     // (review m6-amend-13, Minor 1).
-    state.status = if crate::update::status_read::owed(state) {
-        Status::Busy(crate::update::status_read::CHECKING.to_owned())
+    let words = if crate::update::status_read::owed(state) {
+        crate::update::status_read::CHECKING.to_owned()
     } else {
-        every_file_done(state)
+        every_file_done_words(state)
     };
+    set_notice(state, (words, false));
 }
 
 /// `every file done ✓`, and the key that carries the operation on when
-/// there is one to carry on and the banner has the keyboard.
-pub(crate) fn every_file_done(state: &AppState) -> Status {
+/// there is one to carry on and `c` is live where the user is: the banner
+/// has the keyboard, or the resolver does (m6-conflicts/31).
+pub(crate) fn every_file_done_words(state: &AppState) -> String {
+    let c_live = crate::update::banner::banner_view(state).is_some()
+        && (state.banner_focus || state.resolver.is_some());
     let what = state
         .in_progress
         .as_ref()
-        .filter(|_| state.banner_focus)
+        .filter(|_| c_live)
         .and_then(|detail| match detail.kind {
             graft_git::state::InProgress::Merge => Some("c finishes the merge"),
             graft_git::state::InProgress::Rebase => Some("c continues the rebase"),
@@ -145,11 +167,31 @@ pub(crate) fn every_file_done(state: &AppState) -> Status {
             graft_git::state::InProgress::Revert => Some("c continues the revert"),
             graft_git::state::InProgress::Bisect => None,
         });
-    Status::Done(match what {
+    match what {
         Some(keys) => format!("every file done ✓ · {keys}"),
         // A conflicted `git stash pop` has no operation and so no banner
         // (`KNOWN_GAPS.md` row 229): there is nothing to continue, and a
         // line offering `c` would name a key that does nothing.
         None => "every file done ✓".to_owned(),
-    })
+    }
+}
+
+/// [`every_file_done_words`] as the status line says it.
+pub(crate) fn every_file_done(state: &AppState) -> Status {
+    Status::Done(every_file_done_words(state))
+}
+
+/// `c`'s refusal as the resolver's notice row says it: the reason, and the
+/// key that marks a file done **here** — `⏎` (§2.6), where the banner's
+/// line names `space`, the key outside (§2.6a).
+pub(crate) fn finish_refused_notice(reason: &str) -> (String, bool) {
+    (format!("{reason} · ⏎ marks done"), false)
+}
+
+/// Put `notice` on the open resolver's notice row; nothing when it is
+/// closed.
+pub(crate) fn set_notice(state: &mut AppState, notice: (String, bool)) {
+    if let Some(open) = state.resolver.as_mut() {
+        open.notice = Some(notice);
+    }
 }

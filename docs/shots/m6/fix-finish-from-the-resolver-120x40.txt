@@ -1,0 +1,81 @@
+MERGING
+files   a.txt · done ✓    ▸ b.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ b.txt · done ✓
+every file done ✓ · c finishes the merge
+  1 main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ stage b.txt ✓
+--- after the next key ---
+MERGING
+files   a.txt · done ✓    ▸ b.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ b.txt · done ✓
+every file done ✓ · c finishes the merge
+  1 main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ e edit  c finish  esc close

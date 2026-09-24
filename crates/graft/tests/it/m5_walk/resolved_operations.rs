@@ -18,7 +18,8 @@ use super::remotes::merged_and_pushed;
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{
-    branch, ch, chain, entries_of, key, plain, redo, same_files, status_containing, undo,
+    branch, ch, chain, entries_of, key, notice_containing, plain, redo, same_files,
+    status_containing, undo,
 };
 use crate::repo_truth::{check, run_git};
 
@@ -70,19 +71,25 @@ fn take(side: char) -> Vec<Step> {
     vec![key(ch(side)), Step::WaitFor(Wait::ConflictOpened)]
 }
 
-/// `⏎` on the last conflicted file: the stage, and the resolver closing to
-/// the banner with `c` offered (`c finishes the merge` / `c continues the
-/// rebase`, m6-conflicts/13 R5).
+/// `⏎` on the last conflicted file: the stage, and the resolver staying on
+/// it, read-only, with `c` offered on its notice row (`c finishes the
+/// merge` / `c continues the rebase`, m6-conflicts/31 P8). `c` then works
+/// from the resolver itself.
 fn last_file_resolved(path: &'static str) -> Vec<Step> {
     vec![
         key(KeyCode::Enter),
         Step::Settle("the stage behind ⏎"),
         Step::WaitFor(Wait::ResolvedPath(path)),
-        Step::See("all resolved, back on the banner", |state| {
-            status_containing(state, "every file done ✓ · c ")?;
-            check(state.resolver.is_none() && state.banner_focus, || {
-                "the resolver did not close to the banner".to_owned()
-            })
+        Step::WaitFor(Wait::ConflictOpened),
+        Step::See("all resolved, the resolver stays and offers c", |state| {
+            notice_containing(state, "every file done ✓ · c ")?;
+            check(
+                state
+                    .resolver
+                    .as_ref()
+                    .is_some_and(|open| open.done.is_some()),
+                || "the resolver is not on the done file".to_owned(),
+            )
         }),
     ]
 }

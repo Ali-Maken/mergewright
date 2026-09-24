@@ -38,6 +38,7 @@ use graft_ui::graph_screen::BannerView;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
+use super::finish::ReturnTo;
 use super::state::{AppState, Status};
 
 mod stop;
@@ -316,7 +317,7 @@ pub fn banner_key(
     match key.code {
         KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => hand_the_keyboard_back(state, key),
         KeyCode::Char('c') if plain => {
-            continue_pressed(state, commands, next_id);
+            continue_pressed(state, commands, ReturnTo::Banner, next_id);
         }
         KeyCode::Char('s') if plain => skip_pressed(state),
         KeyCode::Char('a') if plain => abort_pressed(state),
@@ -391,30 +392,54 @@ fn nothing_conflicted(state: &mut AppState) {
     };
 }
 
-/// `c`: refuse in words while anything is unmerged, else run `--continue`.
-fn continue_pressed(
+/// `c`: refuse in words while anything is unmerged, else run `--continue`
+/// — or, for a merge, open the finish summary.
+///
+/// One `c` for the two places it works (m6-conflicts/31): the banner and
+/// the resolver. `from` says which, and so where the words go — the status
+/// line under the banner, the notice row under the resolver's title — and
+/// where the summary's `Esc` returns to. The checks and their order are
+/// the same for both.
+pub(crate) fn continue_pressed(
     state: &mut AppState,
     commands: &mut Vec<Command>,
+    from: ReturnTo,
     next_id: &mut impl FnMut() -> JobId,
 ) {
     // The status may not have caught up with the last write: counting it
     // now would refuse on a file just staged. The line says the same words
     // until the read lands (`status_read`, review m6-amend-13 Minor 1).
     if super::status_read::owed(state) {
-        state.status = Status::Busy(super::status_read::CHECKING.to_owned());
+        let checking = super::status_read::CHECKING.to_owned();
+        match from {
+            ReturnTo::Banner => state.status = Status::Busy(checking),
+            ReturnTo::Resolver => super::resolver::set_notice(state, (checking, false)),
+        }
         return;
     }
     if let Some(reason) = continue_refusal(state) {
-        state.status = continue_refused(reason);
+        match from {
+            ReturnTo::Banner => state.status = continue_refused(reason),
+            ReturnTo::Resolver => {
+                super::resolver::set_notice(state, super::resolver::finish_refused_notice(&reason));
+            }
+        }
         return;
     }
     // A merge shows what will land before anything is written, and only
     // the summary's `⏎` commits (m6-conflicts/19). Rebase, cherry-pick and
     // revert continue straight away until M7 gives them a summary.
     if live(state).is_some_and(|detail| detail.kind == InProgress::Merge) {
-        let _opened: bool =
-            super::finish::open_finish(state, commands, super::finish::ReturnTo::Banner, next_id);
+        let _opened: bool = super::finish::open_finish(state, commands, from, next_id);
         return;
+    }
+    if from == ReturnTo::Resolver {
+        // The resolver closes to the banner **before** the resume is sent,
+        // so from here on this is exactly the banner's `c`: a next stop
+        // opens the resolver fresh (P5), which `open_resolver` refuses to
+        // do while one is still open.
+        state.resolver = None;
+        state.banner_focus = true;
     }
     resume(state, commands, Resume::Continue, next_id);
 }

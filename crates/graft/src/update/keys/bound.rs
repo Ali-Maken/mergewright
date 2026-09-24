@@ -105,8 +105,11 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("N", "prev"), // the same, backward
     ("⏎", "done"), // `mark_resolved`: `git add` on the open file
     // `O`/`T`: settle the whole file, then the next (m6-conflicts/17).
-    ("O/T", "file"),   // `take::settle_key`
-    ("j/k", "file"),   // `files::step_file`, `↓`/`↑` too
+    ("O/T", "file"), // `take::settle_key`
+    ("j/k", "file"), // `files::step_file`, `↓`/`↑` too
+    // `c` once every file is done (m6-conflicts/31, P8): a merge's summary.
+    // Elsewhere it is `c continue`, the banner's row above.
+    ("c", "finish"),   // `finish_pressed` → `banner::continue_pressed`
     ("S", "stash"),    // `stash::stash_key`: opens the overlay
     ("J", "journal"),  // `journal::journal_key`: opens the browser
     ("M", "map"),      // `map::map_key`

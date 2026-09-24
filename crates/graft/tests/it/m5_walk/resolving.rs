@@ -18,8 +18,8 @@ use super::fixture::{
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::{Side, resolved_bytes, side_bytes, unmerged};
 use super::vocabulary::{
-    branch, ch, chain, entries_of, key, last_entry_committed, plain, same_files, status_containing,
-    undo,
+    branch, ch, chain, entries_of, key, last_entry_committed, notice_containing, plain, same_files,
+    status_containing, undo,
 };
 use crate::repo_truth::{check, run_git};
 
@@ -249,20 +249,20 @@ fn merge_resolved_with_the_keys() -> Scenario {
             mark_resolved("three.txt"),
             resolve_the_rest(&["both.txt", "three.txt"]),
             vec![
+                // The last file's done read (m6-conflicts/31): the resolver
+                // stays on it, read-only.
+                Step::WaitFor(Wait::ConflictOpened),
                 Step::See(
-                    "the last file closes to the banner, which offers c",
+                    "the resolver stays after the last file and offers c",
                     |state| {
-                        status_containing(state, "every file done ✓ · c finishes the merge")?;
-                        check(state.resolver.is_none(), || {
-                            format!(
-                                "resolver still open on {:?}",
-                                state.resolver.as_ref().map(|open| open.path.clone())
-                            )
-                        })?;
-                        check(state.banner_focus, || {
-                            "the line offers c, but the banner does not have the keyboard"
-                                .to_owned()
-                        })
+                        notice_containing(state, "every file done ✓ · c finishes the merge")?;
+                        check(
+                            state
+                                .resolver
+                                .as_ref()
+                                .is_some_and(|open| open.done.is_some()),
+                            || "the resolver is not on the done file".to_owned(),
+                        )
                     },
                 ),
                 Step::Mark("resolved"),
@@ -271,7 +271,7 @@ fn merge_resolved_with_the_keys() -> Scenario {
                 // (m6-conflicts/19).
                 Step::WaitFor(Wait::FinishReady),
                 key(KeyCode::Enter),
-                Step::Write("c from the banner"),
+                Step::Write("c from the resolver"),
                 Step::WaitFor(Wait::Ready),
                 Step::WaitFor(Wait::NotInProgress),
                 Step::Mark("merged"),

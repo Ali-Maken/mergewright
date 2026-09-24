@@ -440,25 +440,24 @@ fn last_file_staged_from_the_pane() -> AppState {
     state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
         entries: Vec::new(),
     }));
-    state
+    // And the file's own read: done, read-only (m6-conflicts/31).
+    words_and_c::done_read_lands(&state, &commands)
 }
 
-/// The line offers `c continue`, so the key under it must be the banner's:
-/// the design note closes the last file "to the banner". Before, a resolver
-/// opened from the pane closed to the pane, and `c` there opened the commit
-/// editor (acceptance finding F4, `resolver/answers.rs:235-240`).
+/// The notice offers `c`, so the key under it must be one where `c`
+/// continues (acceptance finding F4: from the pane, `c` once opened the
+/// commit editor). Since m6-conflicts/31 that is the resolver itself: it
+/// stays open after the last file, whichever way it was opened, and the
+/// keyboard stays where it was.
 #[test]
 fn all_resolved_from_the_pane_offers_c_where_c_continues() {
     let state = last_file_staged_from_the_pane();
-    assert!(
-        state.resolver.is_none(),
-        "the last file closed the resolver"
-    );
+    assert_eq!(open_path(&state), Path::new("conflicted.rs"), "it stays");
     assert_eq!(
-        state.status,
-        Status::Done("every file done ✓ · c finishes the merge".to_owned())
+        state.resolver.as_ref().expect("open").notice,
+        Some(("every file done ✓ · c finishes the merge".to_owned(), false))
     );
-    assert!(state.banner_focus, "the keyboard is on the banner");
+    assert!(!state.banner_focus, "banner_focus unchanged");
     let (state, commands) = press(&state, KeyCode::Char('c'));
     assert!(
         state.commit_editor.is_none(),
@@ -659,6 +658,7 @@ mod advance;
 mod cross;
 mod file_keys;
 mod file_list;
+mod finish_here;
 mod take_all;
 mod three_panes;
 mod words_and_c;

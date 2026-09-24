@@ -8,36 +8,140 @@ fn last_file_closes_to_where_it_opened() {
     last_file_without_one();
 }
 
-/// Opened from the banner, walked through both files, closed back onto it.
+/// Opened from the banner, walked through both files: the resolver **stays**
+/// on the last one, read-only, with `c` offered on its notice row
+/// (m6-conflicts/31, P8).
+///
+/// Also the ticket's observation of its three premises against real git
+/// (Scope 3): what shows between the stage landing and the done read
+/// landing, whether that read answers "done" or "resolved outside", and
+/// whether the notice survives it.
 fn last_file_with_a_banner() {
     let scratch = two_file_merge();
     let (app, state) = opened_on(&scratch);
-    let state = app.pump(state, "the merge banner", |state| {
-        state.in_progress.is_some()
-    });
-    let state = on_the_banner(&app, state);
-    let state = app.key(&state, KeyCode::Enter);
-    let state = settled(&app, state);
-    assert_eq!(open(&state).path, Path::new("a.txt"));
-
-    let state = take_all_and_mark(&app, state);
-    assert_eq!(open(&state).path, Path::new("b.txt"), "on to the second");
-    let state = take_all_and_mark(&app, state);
-
-    assert!(
-        state.resolver.is_none(),
-        "the last file closes the resolver"
-    );
-    assert!(
-        matches!(&state.status, Status::Done(line) if line == "every file done ✓ · c finishes the merge"),
-        "{:?}",
-        state.status
-    );
-    assert!(state.banner_focus, "back on the banner it opened from");
+    let state = last_file_marked(&app, state);
+    let between = stage_landed(&app, state);
+    let state = done_read_landed(&app, between);
     assert_eq!(still_unmerged(scratch.path()), "", "and git agrees");
+    let state = captured_both_moments(&app, &state);
+
+    // `c` from here opens the summary, with the resolver under it.
+    let state = app.key(&state, KeyCode::Char('c'));
+    assert!(state.finish.is_some(), "c opened the summary");
+    assert!(state.resolver.is_some(), "the resolver stays under it");
     drop(state);
     app.close();
     drop(scratch);
+}
+
+/// From launch: the resolver opened from the banner, `a.txt` done, every
+/// block of `b.txt` taken, and `⏎` pressed on it — its `Stage` launched.
+fn last_file_marked(app: &App, state: AppState) -> AppState {
+    let state = app.pump(state, "the merge banner", |state| {
+        state.in_progress.is_some()
+    });
+    let state = on_the_banner(app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = settled(app, state);
+    assert_eq!(open(&state).path, Path::new("a.txt"));
+
+    let state = take_all_and_mark(app, state);
+    assert_eq!(open(&state).path, Path::new("b.txt"), "on to the second");
+    let mut state = state;
+    while open(&state).file.as_ref().expect("a document").open() > 0 {
+        state = app.key(&state, KeyCode::Char('o'));
+        state = settled(app, state);
+    }
+    app.key(&state, KeyCode::Enter)
+}
+
+/// Premise 1: the stage has landed, the done read has not.
+fn stage_landed(app: &App, state: AppState) -> AppState {
+    let between = app.pump(state, "the last stage", |state| state.operating.is_none());
+    let open_now = open(&between);
+    assert_eq!(open_now.path, Path::new("b.txt"), "the same file, reopened");
+    assert!(open_now.job.is_some(), "its read is out");
+    assert!(open_now.file.is_none() && open_now.done.is_none());
+    assert_eq!(
+        open_now.notice,
+        Some(("checking the files".to_owned(), false)),
+        "the status the stage asked for is still out"
+    );
+    // Observed (2026-09-24): nothing under the header while the read is out
+    // — `view::resolver::resolver_view` answers `None` for any resolver
+    // waiting on its opening read, the next-file reopen's included. The
+    // notice is held, not drawn, until the read lands.
+    let frame = crate::captures::frame(&between, 120, 40);
+    assert!(
+        frame[1..].iter().all(|row| row.trim().is_empty()),
+        "what shows while the read is out:\n{}",
+        frame.join("\n")
+    );
+    between
+}
+
+/// Premises 2 and 3: the read answers done (not "resolved outside"), and
+/// the notice survives its landing, settled to the verdict.
+fn done_read_landed(app: &App, between: AppState) -> AppState {
+    let state = app.pump(between, "the done read and the status", |state| {
+        state.status_read.is_none()
+            && state
+                .resolver
+                .as_ref()
+                .is_none_or(|open| open.job.is_none())
+    });
+    let open_now = state
+        .resolver
+        .as_ref()
+        .unwrap_or_else(|| panic!("the done read closed the resolver: {:?}", state.status));
+    assert_eq!(open_now.path, Path::new("b.txt"));
+    assert!(open_now.done.is_some(), "read as done, read-only");
+    assert_eq!(
+        open_now.notice,
+        Some(("every file done ✓ · c finishes the merge".to_owned(), false))
+    );
+    assert_eq!(
+        state.graph_overlay(),
+        Some(GraphOverlay::Resolver),
+        "the resolver keeps the keyboard"
+    );
+    state
+}
+
+/// Two moments, captured: the read landing, where the bottom row still
+/// holds the stage's `stage b.txt ✓` (a finished write's line lasts until
+/// the next key, `update::keys::key_event`), and after one key the resolver
+/// swallows, where the bar is drawn and the notice is kept.
+fn captured_both_moments(app: &App, state: &AppState) -> AppState {
+    let landed = crate::captures::frame(state, 120, 40);
+    let alt_x = KeyPress {
+        code: KeyCode::Char('x'),
+        modifiers: graft_core::event::Modifiers {
+            alt: true,
+            ..graft_core::event::Modifiers::NONE
+        },
+    };
+    let state = app.press(state, alt_x);
+    assert_eq!(
+        open(&state).notice,
+        Some(("every file done ✓ · c finishes the merge".to_owned(), false)),
+        "a swallowed key keeps the notice"
+    );
+    let next_key = crate::captures::frame(&state, 120, 40);
+    assert!(
+        next_key
+            .last()
+            .is_some_and(|row| row.trim_end().ends_with("e edit  c finish  esc close")),
+        "{}",
+        next_key.join("\n")
+    );
+    let shot = format!(
+        "{}\n--- after the next key ---\n{}",
+        landed.join("\n"),
+        next_key.join("\n")
+    );
+    crate::captures::check_shot("m6/fix-finish-from-the-resolver-120x40.txt", &shot);
+    state
 }
 
 /// A conflicted stash pop, opened from the pane: no banner, so no `c`.
