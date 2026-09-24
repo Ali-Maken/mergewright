@@ -10,17 +10,17 @@ use ratatui::style::Style;
 
 use super::super::draw::set_text;
 use super::super::{BlockState, BlockView, RegionView, ResolverScreen, ScreenRow, TakeView};
-use super::{Cell, LineRef, pane_number_widths, three_panes};
+use super::{Cell, LineRef, Pane, pane_number_widths, three_panes};
 use crate::fit::fit;
 use crate::paint::foreground;
 use crate::theme::Token;
 
-/// Which of the three panes a cell is in.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Pane {
-    Yours,
-    Result,
-    Theirs,
+/// Where a cell sits: its block (if any), its pane, and the digits that
+/// pane's number column takes.
+struct CellAt {
+    block: Option<usize>,
+    pane: Pane,
+    number_width: usize,
 }
 
 impl ResolverScreen<'_> {
@@ -63,8 +63,13 @@ impl ResolverScreen<'_> {
                     (Pane::Result, result),
                     (Pane::Theirs, theirs),
                 ];
-                for (k, (pane, cell)) in cells.into_iter().enumerate() {
-                    self.draw_cell(buf, panes[k], y, (*block, pane, widths[k]), cell);
+                for (area, (pane, cell)) in panes.into_iter().zip(cells) {
+                    let at = CellAt {
+                        block: *block,
+                        pane,
+                        number_width: widths.of(pane),
+                    };
+                    self.draw_cell(buf, area, y, &at, cell);
                 }
             }
             _ => {}
@@ -80,14 +85,12 @@ impl ResolverScreen<'_> {
         }
     }
 
-    fn draw_cell(
-        &self,
-        buf: &mut Buffer,
-        area: Rect,
-        y: u16,
-        (block, pane, width): (Option<usize>, Pane, usize),
-        cell: &Cell,
-    ) {
+    fn draw_cell(&self, buf: &mut Buffer, area: Rect, y: u16, at: &CellAt, cell: &Cell) {
+        let CellAt {
+            block,
+            pane,
+            number_width: width,
+        } = *at;
         let blank = || format!("{:width$} ", "");
         match cell {
             Cell::Pad => {}

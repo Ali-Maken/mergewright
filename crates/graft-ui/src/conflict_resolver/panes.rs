@@ -12,6 +12,7 @@
 //! projection, theirs by the theirs projection, the result by the result
 //! projection (ADR-0043 §5).
 
+use graft_term::SanitizedText;
 use ratatui::layout::Rect;
 
 use super::{BlockState, BlockView, DocView, RegionView, ScreenRow, TakeView};
@@ -129,7 +130,24 @@ pub(super) fn pane_rows(doc: &DocView) -> (Vec<ScreenRow>, Vec<usize>) {
                     ));
                 }
             }
-            RegionView::WholeFile { .. } => whole_file_rows(view, region, &mut rows),
+            RegionView::WholeFile {
+                how,
+                keys,
+                lines,
+                note,
+                ours_absent,
+                theirs_absent,
+            } => {
+                let file = WholeFileRows {
+                    how,
+                    keys,
+                    lines: lines.len(),
+                    note: note.as_ref(),
+                    ours_absent: ours_absent.is_some(),
+                    theirs_absent: theirs_absent.is_some(),
+                };
+                whole_file_rows(&file, region, &mut rows);
+            }
             RegionView::Block(block) => {
                 block_row.push(rows.len());
                 rows.push(aligned(Some(block.index), [Cell::Rule; 3]));
@@ -219,21 +237,31 @@ pub(super) fn taken_len(block: &BlockView, take: TakeView) -> usize {
     }
 }
 
+/// What [`whole_file_rows`] needs of a [`RegionView::WholeFile`], taken
+/// apart at the call site so no other variant can reach it.
+struct WholeFileRows<'a> {
+    how: &'a SanitizedText,
+    keys: &'a SanitizedText,
+    /// How many lines of the file the app read.
+    lines: usize,
+    note: Option<&'a SanitizedText>,
+    /// The file is not on yours / theirs.
+    ours_absent: bool,
+    theirs_absent: bool,
+}
+
 /// A whole-file shape: its card row, then the file in each side it is on
 /// (`(deleted on …)` in one it is not), `? keep or delete` in the result,
 /// then the card's note.
-fn whole_file_rows(view: &RegionView, region: usize, rows: &mut Vec<ScreenRow>) {
-    let RegionView::WholeFile {
+fn whole_file_rows(file: &WholeFileRows, region: usize, rows: &mut Vec<ScreenRow>) {
+    let WholeFileRows {
         how,
         keys,
         lines,
         note,
         ours_absent,
         theirs_absent,
-    } = view
-    else {
-        return;
-    };
+    } = *file;
     rows.push(ScreenRow::WholeFile {
         how: how.clone(),
         keys: keys.clone(),
@@ -241,17 +269,13 @@ fn whole_file_rows(view: &RegionView, region: usize, rows: &mut Vec<ScreenRow>) 
     let side = |absent: bool, k: usize| match (absent, k) {
         (true, 0) => Cell::Placeholder,
         (true, _) => Cell::Pad,
-        (false, k) => side_cell(k, lines.len(), 1, LineRef::Plain { region, i: k }),
+        (false, k) => side_cell(k, lines, 1, LineRef::Plain { region, i: k }),
     };
-    for k in 0..lines.len().max(1) {
+    for k in 0..lines.max(1) {
         let result = if k == 0 { Cell::Placeholder } else { Cell::Pad };
         rows.push(aligned(
             None,
-            [
-                side(ours_absent.is_some(), k),
-                result,
-                side(theirs_absent.is_some(), k),
-            ],
+            [side(ours_absent, k), result, side(theirs_absent, k)],
         ));
     }
     if let Some(text) = note {
@@ -259,31 +283,74 @@ fn whole_file_rows(view: &RegionView, region: usize, rows: &mut Vec<ScreenRow>) 
     }
 }
 
-/// Digits of the widest number each pane draws, `[yours, result, theirs]`
-/// — each pane's number column is as wide as its own widest number.
-pub(super) fn pane_number_widths(doc: &DocView) -> [usize; 3] {
+/// Which of the three panes a cell is in.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Pane {
+    Yours,
+    Result,
+    Theirs,
+}
+
+/// Digits of each pane's widest number.
+#[derive(Clone, Copy, Default)]
+pub(super) struct PaneWidths {
+    pub(super) yours: usize,
+    pub(super) result: usize,
+    pub(super) theirs: usize,
+}
+
+impl PaneWidths {
+    /// `pane`'s width.
+    pub(super) fn of(self, pane: Pane) -> usize {
+        match pane {
+            Pane::Yours => self.yours,
+            Pane::Result => self.result,
+            Pane::Theirs => self.theirs,
+        }
+    }
+
+    fn see(&mut self, pane: Pane, n: usize) {
+        let slot = match pane {
+            Pane::Yours => &mut self.yours,
+            Pane::Result => &mut self.result,
+            Pane::Theirs => &mut self.theirs,
+        };
+        *slot = (*slot).max(n);
+    }
+}
+
+/// Digits of the widest number each pane draws — each pane's number column
+/// is as wide as its own widest number.
+pub(super) fn pane_number_widths(doc: &DocView) -> PaneWidths {
     let last = |first: usize, len: usize| (first + len).saturating_sub(1);
-    let mut widest = [0usize; 3];
-    let mut see = |pane: usize, n: usize| widest[pane] = widest[pane].max(n);
+    let mut widest = PaneWidths::default();
     for region in &doc.regions {
         match region {
             RegionView::Plain { numbers, lines } => {
-                see(0, last(numbers.ours, lines.len()));
-                see(1, last(numbers.result, lines.len()));
-                see(2, last(numbers.theirs, lines.len()));
+                widest.see(Pane::Yours, last(numbers.ours, lines.len()));
+                widest.see(Pane::Result, last(numbers.result, lines.len()));
+                widest.see(Pane::Theirs, last(numbers.theirs, lines.len()));
             }
             RegionView::WholeFile { lines, .. } => {
-                see(0, lines.len());
-                see(2, lines.len());
+                widest.see(Pane::Yours, lines.len());
+                widest.see(Pane::Theirs, lines.len());
             }
             RegionView::Block(block) => {
-                see(0, last(block.numbers.ours, block.ours.len()));
-                see(2, last(block.numbers.theirs, block.theirs.len()));
+                widest.see(Pane::Yours, last(block.numbers.ours, block.ours.len()));
+                widest.see(Pane::Theirs, last(block.numbers.theirs, block.theirs.len()));
                 if let BlockState::Took(take) = block.state {
-                    see(1, last(block.numbers.result, taken_len(block, take)));
+                    widest.see(
+                        Pane::Result,
+                        last(block.numbers.result, taken_len(block, take)),
+                    );
                 }
             }
         }
     }
-    widest.map(|n| n.max(1).to_string().len())
+    let digits = |n: usize| n.max(1).to_string().len();
+    PaneWidths {
+        yours: digits(widest.yours),
+        result: digits(widest.result),
+        theirs: digits(widest.theirs),
+    }
 }
