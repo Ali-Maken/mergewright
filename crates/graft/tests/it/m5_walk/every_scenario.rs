@@ -54,7 +54,7 @@ walk! {
     fix_revert_the_merge => "fix-revert-the-merge",
     fix_reset_to_before_the_merge => "fix-reset-to-before-the-merge",
     fix_rebase_instead => "fix-rebase-instead",
-    conflict_focuses_banner_and_lists_files => "conflict-focuses-banner-and-lists-files",
+    stop_then_esc_lists_files => "stop-then-esc-lists-files",
     banner_a_aborts_and_restores => "banner-a-aborts-and-restores",
     conflict_survives_relaunch => "conflict-survives-relaunch",
     continue_refuses_until_resolved_then_one_entry_undoes => "continue-refuses-until-resolved-then-one-entry-undoes",

@@ -2254,6 +2254,26 @@ mod tests {
         assert_eq!(crate::update::resolver::file_cursor(&state), 0);
     }
 
+    /// m6-conflicts/29 (review-18 Major 1): `c` opens the commit editor
+    /// while the merge runs; the stop then lands where it lands without a
+    /// resolver — no refusal words, the box untouched.
+    #[test]
+    fn a_box_opened_mid_merge_keeps_the_stop_on_the_banner_without_words() {
+        let mut state = AppState::default();
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        let mut editor_ids = ids();
+        // The editor's template read is not under test here.
+        let _template_read = crate::update::commit_editor::open(&mut state, false, &mut editor_ids);
+        assert!(state.commit_editor.is_some(), "c opens the box mid-merge");
+        let before = state.commit_editor.clone();
+        operated(&mut state, id, conflicted(&["src/a.rs"], None), &mut ids());
+        assert!(state.resolver.is_none(), "no resolver over the box");
+        assert_eq!(state.status, Status::Ready, "no refusal was worded");
+        assert!(state.stopped.is_some());
+        assert_eq!(state.commit_editor, before, "the box is untouched");
+    }
+
     #[test]
     fn an_edit_stop_with_nothing_unmerged_keeps_the_banner() {
         let mut state = AppState::default();

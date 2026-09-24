@@ -19,7 +19,7 @@ use crate::repo_truth::check;
 
 pub(super) fn conflicting_merges() -> Vec<Scenario> {
     vec![
-        conflict_focuses_banner_and_lists_files(),
+        stop_then_esc_lists_files(),
         banner_a_aborts_and_restores(),
         conflict_survives_relaunch(),
         continue_refuses_until_resolved_then_one_entry_undoes(),
@@ -61,9 +61,9 @@ fn stopped(marks: &Marks, mark: &str) -> Result<(), String> {
     )
 }
 
-fn conflict_focuses_banner_and_lists_files() -> Scenario {
+fn stop_then_esc_lists_files() -> Scenario {
     Scenario {
-        name: "conflict-focuses-banner-and-lists-files",
+        name: "stop-then-esc-lists-files",
         shape: Shape::Trivial,
         remote: Remote::None,
         size: (80, 24),
@@ -71,23 +71,26 @@ fn conflict_focuses_banner_and_lists_files() -> Scenario {
         steps: chain(vec![
             merge_that_stops(),
             vec![
-                Step::See("the banner has the keyboard and names the file", |state| {
-                    check(
-                        state
-                            .in_progress
-                            .as_ref()
-                            .is_some_and(|detail| detail.kind == InProgress::Merge),
-                        || "the app does not know it is merging".to_owned(),
-                    )?;
-                    let paths = graft::update::banner::unmerged_paths(state);
-                    check(
-                        paths.len() == 1 && paths[0].as_os_str() == "shared.txt",
-                        || format!("unmerged: {paths:?}"),
-                    )?;
-                    check(state.banner_focus, || {
-                        "the banner is not focused".to_owned()
-                    })
-                }),
+                Step::See(
+                    "Esc from the landing: the banner has the keyboard and names the file",
+                    |state| {
+                        check(
+                            state
+                                .in_progress
+                                .as_ref()
+                                .is_some_and(|detail| detail.kind == InProgress::Merge),
+                            || "the app does not know it is merging".to_owned(),
+                        )?;
+                        let paths = graft::update::banner::unmerged_paths(state);
+                        check(
+                            paths.len() == 1 && paths[0].as_os_str() == "shared.txt",
+                            || format!("unmerged: {paths:?}"),
+                        )?;
+                        check(state.banner_focus, || {
+                            "the banner is not focused".to_owned()
+                        })
+                    },
+                ),
                 Step::Mark("stopped"),
             ],
         ]),
@@ -99,7 +102,7 @@ fn conflict_focuses_banner_and_lists_files() -> Scenario {
             })
         },
         capture: Some(Capture {
-            stem: "m5-06-banner-conflicts",
+            stem: "m5-06-stop-lands-in-resolver",
             headless: vec![],
             keys: plain(&[
                 ch('m'),

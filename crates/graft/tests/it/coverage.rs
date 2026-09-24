@@ -60,7 +60,7 @@ pub const M5_STEMS: [&str; 8] = [
     "m5-03-preview-reset-hard",
     "m5-04-time-machine",
     "m5-05-preview-too-small",
-    "m5-06-banner-conflicts",
+    "m5-06-stop-lands-in-resolver",
     "m5-07-branch-row-hints",
     "m5-11-diverged-pull-sticky",
 ];

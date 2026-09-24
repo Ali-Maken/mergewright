@@ -170,6 +170,70 @@ pub(crate) fn landed_in_the_resolver(app: &App, state: AppState) -> AppState {
     })
 }
 
+/// `about_to_conflict` plus `alpha.md`, which conflicts too but that
+/// `rerere` resolves and stages on the merge: git's `Conflicts:` list names
+/// it, so it heads the resolver's list as done, and `notes.md` — git's first
+/// unmerged path — sits on row 1, not 0.
+fn about_to_conflict_behind_a_done_file() -> graft_fixtures::Scratch {
+    let scratch = about_to_conflict();
+    let path = scratch.path();
+    git(path, &["config", "rerere.enabled", "true"]);
+    git(path, &["config", "rerere.autoUpdate", "true"]);
+    git(path, &["switch", "--quiet", "feature"]);
+    write(path, "alpha.md", "their alpha\n");
+    commit(path, "the feature's alpha", 10);
+    git(path, &["switch", "--quiet", "main"]);
+    write(path, "alpha.md", "our alpha\n");
+    commit(path, "main's alpha", 11);
+    // Teach rerere `alpha.md`'s resolution: the merge stops (its failure is
+    // the point, so its status is not checked), `rerere` records the
+    // resolved file, and the merge is abandoned.
+    let merge = std::process::Command::new("git")
+        .args(["merge", "--quiet", "feature"])
+        .current_dir(path)
+        .output()
+        .expect("git runs");
+    assert!(!merge.status.success(), "the teaching merge conflicts");
+    write(path, "alpha.md", "the agreed alpha\n");
+    git(path, &["rerere"]);
+    git(path, &["merge", "--abort"]);
+    scratch
+}
+
+/// m6-conflicts/29 (review-18 Critical 1): after the stop, once the file's
+/// read and the conflict set are in, the landed resolver's cursor is on
+/// block 0 and the file list's cursor on the first conflicted file's row —
+/// row 1 here, behind a done file, so a cursor left at 0 fails.
+#[test]
+fn the_landing_puts_both_cursors_on_the_first_conflicted_file() {
+    let scratch = about_to_conflict_behind_a_done_file();
+    let (app, state) = App::open(scratch.path());
+    let state = landed_in_the_resolver(&app, state);
+    let state = app.pump(state, "the conflict set", |state| {
+        graft::update::resolver::listed_files(state).len() == 3
+    });
+    let first = graft::update::banner::first_conflicted(&state).expect("something is unmerged");
+    let open = state.resolver.as_ref().expect("the stop landed");
+    assert_eq!(open.path, first);
+    assert_eq!(open.cursor_block, Some(0), "the cursor is on block 0");
+    let listed: Vec<_> = graft::update::resolver::listed_files(&state)
+        .into_iter()
+        .map(|file| file.path)
+        .collect();
+    let at = listed
+        .iter()
+        .position(|path| path == &first)
+        .expect("the first conflicted file is listed");
+    assert_ne!(at, 0, "the fixture puts it off row 0: {listed:?}");
+    assert_eq!(
+        graft::update::resolver::file_cursor(&state),
+        at,
+        "{listed:?}"
+    );
+    drop(state);
+    app.close();
+}
+
 /// Cursor onto `feature`, `m`, through the preview and the confirm box, and
 /// wait for the merge to stop and the working tree to come back.
 fn merge_stopped(app: &App, state: AppState) -> AppState {
@@ -285,7 +349,7 @@ fn mark_resolved(app: &App, state: AppState, name: &str) -> AppState {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn conflict_focuses_the_banner_and_lists_the_files() {
+fn esc_from_the_landing_shows_the_banner_and_lists_the_files() {
     let scratch = about_to_conflict();
     let repo = scratch.path();
     let (app, state) = App::open(repo);
@@ -297,7 +361,7 @@ fn conflict_focuses_the_banner_and_lists_the_files() {
     );
     assert!(
         state.banner_focus,
-        "the thing that stopped takes the keyboard: {:?}",
+        "Esc from the landed resolver hands the banner the keyboard: {:?}",
         state.status
     );
     let banner = graft::update::banner::banner_view(&state).expect("a banner is drawn");

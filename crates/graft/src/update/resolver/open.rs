@@ -74,7 +74,7 @@ fn open_refusal(state: &AppState) -> Option<Status> {
 
 /// A box waiting for an answer — a confirm or the commit editor — is up,
 /// and so owns the input.
-pub(super) fn box_open(state: &AppState) -> bool {
+pub(in crate::update) fn box_open(state: &AppState) -> bool {
     state.confirm.is_some() || state.commit_editor.is_some()
 }
 
