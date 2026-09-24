@@ -1,4 +1,4 @@
-m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
+m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j d, unicode tier, 120x40
 
 MERGING
 files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or delete
@@ -39,4 +39,4 @@ files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or del
 
 
 
- 1 conflicts still open in both.txt · n next
+ ←/→ move  ⏎ choose  esc cancel

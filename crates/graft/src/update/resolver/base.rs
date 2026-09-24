@@ -63,6 +63,16 @@ pub(super) fn toggle_base(
     commands.push(Command::LoadBase(id, path, Box::new((*file).clone())));
 }
 
+/// `base shown for 1 conflict` / `… for 3 conflicts`.
+pub(super) fn base_shown_words(attached: usize) -> String {
+    let noun = if attached == 1 {
+        "conflict"
+    } else {
+        "conflicts"
+    };
+    format!("base shown for {attached} {noun}")
+}
+
 /// `B`'s `LoadBase` answered.
 pub fn base_loaded(
     state: &mut AppState,
@@ -83,7 +93,7 @@ pub fn base_loaded(
             open.base_job = None;
             open.file = Some(file);
             open.base_shown = true;
-            state.status = Status::done(format!("base shown for {attached} conflicts"));
+            state.status = Status::done(base_shown_words(attached));
         }
         Err((words, problem)) => {
             let Some(open) = state.resolver.as_mut() else {

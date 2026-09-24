@@ -2102,11 +2102,13 @@ line's shorter wordings, 12 and 24), and on 2026-09-24 **all eighteen were
 re-taken** (m6-conflicts/45): each diff read and named to those tickets,
 then a second run without `GRAFT_UPDATE_SHOTS` green on all 18.
 `m6-06`'s kill point had moved because `o` in a rebase now reads `took
-upstream`, not `took ours` (the script waits for the new word). Two
-frames no longer show all their ticket-07 words, and their captions say
-so: `m6-06` at 80x24 draws no words saying the rebase is from a previous
-run, and `m6-09`'s bottom row is the capture's stray `⏎` refusal, not the
-box's keys (m6-conflicts/45 NOTES). The contact sheet is
+upstream`, not `took ours` (the script waits for the new word). One
+frame no longer shows all its ticket-07 words, and its caption says so:
+`m6-06` at 80x24 draws no words saying the rebase is from a previous run
+(m6-conflicts/45 NOTES). `m6-09`'s keys became `k ⏎ j j j j d` on
+2026-09-24 (m6-conflicts/46): the old second `⏎` was refused on the open
+file and its refusal took the bottom row; now the row is the box's keys.
+The contact sheet is
 `docs/shots/m6/m6-contact-sheet-<n>.txt`, in parts of at most 200 KB
 (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): every M6
 capture in ticket order — these nine, every fix ticket's `fix-*`, the

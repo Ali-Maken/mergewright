@@ -659,10 +659,10 @@ all blocks taken · ⏎ marks zdiff3.txt done
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-120x40.txt
-what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected. **The bottom row is not the box's keys**: it reads `1 conflicts still open in both.txt · n next`, the refusal of the capture's second `⏎` — since ticket 17 `j` moves between files inside the resolver, so that `⏎` lands on an open file and is refused, and a problem takes the bar before a box's keys (rulings 07b Q1). See ticket 45 NOTES (keys to re-cut; `1 conflicts`).
+what right looks like: Re-taken 2026-09-24 (ticket 46, keys `k ⏎ j j j j d`): TESTING.md "Conflicts walk", start-over-brings-the-markers-back — `d` on `both.txt` opens a box over the resolver titled `Start both.txt over?` with `the conflict comes back with all its markers`, `takes and edits in this file are lost · not undoable while the merge is open`, `git checkout --merge -- both.txt`, and `▸[ Cancel ]   [ Start over ]`, Cancel selected. The bottom row is the box's keys, `←/→ move  ⏎ choose  esc cancel`.
 ================================================================================
 
-m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 120x40
+m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j d, unicode tier, 120x40
 
 MERGING
 files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or delete
@@ -703,14 +703,14 @@ files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or del
 
 
 
- 1 conflicts still open in both.txt · n next
+ ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-80x24.txt
-what right looks like: Re-taken 2026-09-24 (ticket 45): The same box at 80 columns, the rows it stands on blank edge to edge (rulings 07b Q2); the bottom row is the same `1 conflicts still open in both.txt · n next`, not `←/→ move  ⏎ choose  esc cancel`.
+what right looks like: Re-taken 2026-09-24 (ticket 46): The same box at 80 columns, the rows it stands on blank edge to edge (rulings 07b Q2); the bottom row is the box's keys, `←/→ move  ⏎ choose  esc cancel`.
 ================================================================================
 
-m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j ⏎ d, unicode tier, 80x24
+m6 walk capture: m6-09-start-over-box — scenario start-over-brings-the-markers-back, keys k ⏎ j j j j d, unicode tier, 80x24
 
 MERGING
 files · 13     added-by-them.txt keep?     added-by-us.txt keep?
@@ -735,7 +735,7 @@ files · 13     added-by-them.txt keep?     added-by-us.txt keep?
 
 
 
- 1 conflicts still open in both.txt · n next
+ ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m6/fix-card-names-numbers-120x40.txt
