@@ -142,6 +142,7 @@ impl<'a> Context<'a> {
                     "the journal has no directory to keep scratch in",
                 )),
                 after: None,
+                kept: None,
             })?
             .to_path_buf();
         let worktree = repo.worktree_name();
@@ -331,6 +332,7 @@ fn closed(
             return Err(ApplyError::Journal {
                 error,
                 after: failure.map(|failed| failed.error),
+                kept: None,
             });
         }
     };
@@ -481,6 +483,7 @@ fn close_unreadable_put_back(
         return ApplyError::Journal {
             error,
             after: Some(failure.error),
+            kept: None,
         };
     }
     failure.into_error(pending.entry.clone())

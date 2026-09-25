@@ -141,8 +141,13 @@ pub fn apply_commit(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<R
       compile failure (no `SetAside`/`sets_aside`), not a behavioural one. Behavioural red was shown afterwards by
       mutation (NOTES).
 - [x] NOTES: the order as built, file:line per step (NOTES, "Order as built").
-- [x] NOTES: `--index`-free put-back verified by `set_aside_round_trips` (staged/unstaged split, staged new file,
-      deletion, rename, all back byte for byte and in the index); A1.5's `(?)` not relied on.
+- [x] NOTES: `--index`-free put-back verified — **corrected by 83 (C1: the original tick was false; the test then
+      only compared state after undo, which comes from the backup).** What is proven now, by the eight
+      `{rebase,checkout}_round_trips_*` tests in `tests/it/set_aside.rs` (they replace `set_aside_round_trips`),
+      after the put-back and before any undo: every edited file's bytes are back, and `git status --porcelain` is
+      exactly what git gives without `--index` — `MM base.txt` → ` M`, staged deletion → ` D`, staged rename →
+      `A  b.txt` + ` D a.txt`, staged new file stays `A `. So the edits come back and exactly that much staging is
+      lost (ADR-0045 Consequences). A1.5's `(?)` not relied on.
 - [x] MAP.md updated (doc, no test).
 
 ## Gates
@@ -222,10 +227,13 @@ Check: `grep -rn "fix-rebase-refused-before-preview" docs TESTING.md crates` →
   - 1–2: `Stopped`, nothing journaled.
   - 3: S not stored.
   - 4: S listed, no reset.
-  - 5: reset done, op killed, S listed.
+  - 5: **corrected by 83 (M2):** the operation never ran — the stop is reported by `reset --hard`, the entry closes
+    `Aborted` with its commands ending at `git reset --hard`, the tree is clean and the edits are only in S.
   - 6: the full sequence.
-- **Round trip:** `--index`-free put-back restores the staged/unstaged split, a staged new file, a deletion and a
-  rename (`set_aside_round_trips`, index read back).
+  - Since 83 the test itself asserts what each step leaves (`Left::expected`), so the probe is no longer needed.
+- **Round trip:** **corrected by 83 (C1).** The put-back does *not* restore the staged/unstaged split: the edits come
+  back byte for byte, and a staged modification, deletion or rename's old path comes back unstaged; a staged new
+  file stays staged. Asserted by the `*_round_trips_*` tests after the put-back.
 - **Not verified:** the app-side words and landing of a `Clashed { SetAside }` (74).
 
 ### Remaining `DirtyTree` sites

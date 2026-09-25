@@ -151,6 +151,7 @@ pub(super) fn abandon(
         return Err(ApplyError::Journal {
             error: journal,
             after: Some(error),
+            kept: None,
         });
     }
     let recoverable = pending.entry.worktree_before.is_some();
@@ -186,8 +187,12 @@ pub(super) struct Ended {
 ///   `Aborted` with git's reason, so that failure is not lost behind the
 ///   clash. Either way it is in force: its index changed.
 /// - Anything else (git refused the put-back, the status could not be read,
-///   the drop failed): `S` kept, the entry `Aborted` with words naming
-///   `stash@{n}`, and [`ApplyError::Git`] saying the same.
+///   the drop failed or could not find `S`): `S` kept, the entry `Aborted`
+///   with words naming where the edits are, and [`ApplyError::Git`] saying
+///   the same — or, when a read failed with no git failure to carry them,
+///   [`ApplyError::AfterState`] with [`AfterState::SetAsideKept`].
+/// - The outcome line cannot be written: [`ApplyError::Journal`], whose
+///   `kept` carries those words for a kept or clashed `S`.
 ///
 /// The put-back never stops: it is the second half of a write that has
 /// already happened, and a stop that cut it short would leave the edits in
@@ -211,9 +216,20 @@ pub(super) fn close(
     let mut unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
         Err(error) => {
+            // The outcome line would have said where the edits are; the
+            // error has to say it instead (73 review, m1).
+            let kept = match &outcome {
+                Outcome::Back => None,
+                Outcome::Clashed(_) => Some(format!(
+                    "your edits clashed when put back · {}",
+                    where_kept(ctx, stash)
+                )),
+                Outcome::Kept { words, .. } => Some(words.clone()),
+            };
             return Err(ApplyError::Journal {
                 error,
                 after: ended.failure,
+                kept,
             });
         }
     };
@@ -274,8 +290,18 @@ fn answer(
                 error: naming(failed, &words),
                 recoverable,
             },
-            // No git error to carry the words: the entry's reason has them.
-            (None, Err(why)) => ApplyError::Facts(why),
+            // No git error to carry the words: a read failed after the
+            // operation went through. The entry is journaled, so it is an
+            // after-state failure carrying the words (73 review, m2), which
+            // the caller refreshes after.
+            (None, Err(error)) => {
+                let mut unread = unread;
+                unread.insert(0, AfterState::SetAsideKept { error, words });
+                ApplyError::AfterState {
+                    applied: Box::new(applied(entry)),
+                    unread,
+                }
+            }
         }),
         Outcome::Back => match failure {
             Some(error) => Err(ApplyError::Git {
@@ -333,36 +359,55 @@ enum Kept {
     /// The status could not be read after the apply, so whether it clashed
     /// is unknown; `S` is not dropped on a guess.
     Unread(FactsError),
+    /// The apply was clean, but the stash list could not be read to find
+    /// `S`'s position to drop it: the edits are back **and** `S` is still
+    /// listed (73 review, m3).
+    Unlisted(FactsError),
 }
 
 impl Kept {
     fn into_error(self) -> Result<RunError, FactsError> {
         match self {
             Kept::Git { error, .. } => Ok(error),
-            Kept::Unread(why) => Err(why),
+            Kept::Unread(why) | Kept::Unlisted(why) => Err(why),
         }
     }
 
     /// The entry's reason: what went wrong, then where the edits are.
     fn words(&self, ctx: &Context<'_>, stash: Oid) -> String {
-        let at = match listed_at(ctx, stash) {
-            Ok(Some(at)) => in_stash(at),
-            Ok(None) => format!("your edits are in stash commit {}", short(stash)),
-            Err(why) => format!(
-                "your edits are in stash commit {} (the stash list could not be read: {why})",
+        match self {
+            Kept::Git { error, back: false } => {
+                format!("{} · {}", reason_for(error), where_kept(ctx, stash))
+            }
+            Kept::Git { error, back: true } => format!(
+                "your edits are back, and the set-aside copy could not be dropped: {} · {}",
+                reason_for(error),
+                where_kept(ctx, stash)
+            ),
+            Kept::Unread(why) => format!(
+                "the status after putting your edits back could not be read: {why} · {}",
+                where_kept(ctx, stash)
+            ),
+            // The list is what could not be read, so the copy is named by
+            // its commit rather than by a second read of the same list.
+            Kept::Unlisted(why) => format!(
+                "your edits are back; the set-aside copy could not be found to drop ({why}) · \
+                 it is stash commit {}",
                 short(stash)
             ),
-        };
-        match self {
-            Kept::Git { error, back: false } => format!("{} · {at}", reason_for(error)),
-            Kept::Git { error, back: true } => format!(
-                "your edits are back, and the set-aside copy could not be dropped: {} · {at}",
-                reason_for(error)
-            ),
-            Kept::Unread(why) => {
-                format!("the status after putting your edits back could not be read: {why} · {at}")
-            }
         }
+    }
+}
+
+/// Where `S` is, for words: `stash@{n}` when listed, else its commit.
+fn where_kept(ctx: &Context<'_>, stash: Oid) -> String {
+    match listed_at(ctx, stash) {
+        Ok(Some(at)) => in_stash(at),
+        Ok(None) => format!("your edits are in stash commit {}", short(stash)),
+        Err(why) => format!(
+            "your edits are in stash commit {} (the stash list could not be read: {why})",
+            short(stash)
+        ),
     }
 }
 
@@ -397,7 +442,7 @@ fn put_back(ctx: &Context<'_>, stash: Oid, commands: &mut Vec<String>) -> Return
     match drop_by_id(ctx, stash, commands) {
         Ok(()) => Returned::Back,
         Err(Dropped::Git(error)) => Returned::Kept(Kept::Git { error, back: true }),
-        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unread(why)),
+        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted(why)),
     }
 }
 

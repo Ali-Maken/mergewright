@@ -609,8 +609,12 @@ fn facts_over(entries: Vec<StatusEntry>) -> RepoFacts {
 }
 
 /// ADR-0045 §4: `sets_aside` is `Some` for a rebase or checkout exactly when
-/// tracked files are changed, counting them and the staged ones among them.
-/// Untracked files never count; every other kind is `None`, dirty or not.
+/// tracked files are changed, counting them and the staged entries whose
+/// staging the put-back loses (m6-conflicts/83, M1): a staged modification,
+/// deletion or type change comes back unstaged, a rename comes back as a
+/// staged new file plus an unstaged deletion (one lost), and a staged new
+/// file stays staged. Untracked files never count; every other kind is
+/// `None`, dirty or not.
 #[test]
 fn sets_aside_table() {
     let clean = facts_over(vec![]);
@@ -618,25 +622,7 @@ fn sets_aside_table() {
         unstaged: Some(Change::Modified),
         ..entry("a.rs")
     }]);
-    let staged_and_unstaged = facts_over(vec![
-        StatusEntry {
-            unstaged: Some(Change::Modified),
-            ..entry("a.rs")
-        },
-        StatusEntry {
-            staged: Some(Change::Added),
-            ..entry("b.rs")
-        },
-        StatusEntry {
-            staged: Some(Change::Modified),
-            unstaged: Some(Change::Modified),
-            ..entry("c.rs")
-        },
-        StatusEntry {
-            untracked: true,
-            ..entry("junk")
-        },
-    ]);
+    let staged_and_unstaged = staged_and_unstaged();
     let untracked_only = facts_over(vec![StatusEntry {
         untracked: true,
         ..entry("junk")
@@ -655,9 +641,11 @@ fn sets_aside_table() {
         );
         assert_eq!(
             op.sets_aside(&staged_and_unstaged),
+            // b.rs (staged new file) stays staged; c.rs, d.rs and e.rs's
+            // old path come back unstaged.
             Some(SetAside {
-                files: 3,
-                staged: 2
+                files: 5,
+                staged: 3
             }),
             "{what}: staged and unstaged"
         );
@@ -672,6 +660,39 @@ fn sets_aside_table() {
             assert_eq!(op.sets_aside(f), None, "{}", op.describe());
         }
     }
+}
+
+/// Every staged shape `sets_aside_table` counts, beside an unstaged edit and
+/// an untracked file.
+fn staged_and_unstaged() -> RepoFacts {
+    facts_over(vec![
+        StatusEntry {
+            unstaged: Some(Change::Modified),
+            ..entry("a.rs")
+        },
+        StatusEntry {
+            staged: Some(Change::Added),
+            ..entry("b.rs")
+        },
+        StatusEntry {
+            staged: Some(Change::Modified),
+            unstaged: Some(Change::Modified),
+            ..entry("c.rs")
+        },
+        StatusEntry {
+            staged: Some(Change::Deleted),
+            ..entry("d.rs")
+        },
+        StatusEntry {
+            original_path: Some(PathBuf::from("old.rs")),
+            staged: Some(Change::Renamed),
+            ..entry("e.rs")
+        },
+        StatusEntry {
+            untracked: true,
+            ..entry("junk")
+        },
+    ])
 }
 
 /// A set-aside rebase or checkout records `refs/stash` in `touches`, so the

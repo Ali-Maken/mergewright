@@ -387,6 +387,7 @@ fn close_resume(
             return Err(ApplyError::Journal {
                 error,
                 after: failure,
+                kept: None,
             });
         }
     };
