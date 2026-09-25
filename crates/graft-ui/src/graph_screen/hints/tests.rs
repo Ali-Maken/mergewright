@@ -1126,11 +1126,13 @@ fn resolver_hint_ladder() {
     // longer fits 80: the ladder raises hints in relevance order, so
     // everything after `e edit` is drawn bare (observed by this assertion
     // after review m6-amend-16 M2 made `⌃O/⌃T all` one hint, 2026-09-24).
+    // Since m6-conflicts/56 `esc close` keeps its words ahead of the bare
+    // keys (ADR-0044 §4), so at 80 `e` goes bare instead.
     let at_80 = fit_list(&whole, None, 80);
     let text_80 = hints_text(&at_80);
     assert_eq!(
         text_80,
-        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n  N  ⏎  j/k  M  esc"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e  n  N  ⏎  j/k  M  esc close"
     );
     assert!(text_80.width() <= 80, "{text_80:?}");
     // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
@@ -1188,7 +1190,7 @@ fn resolver_offers_file_keys() {
     };
     assert_eq!(
         bar(80),
-        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e edit  n  N  ⏎  j/k  M  esc"
+        " o yours  t theirs  b both  ⌃O/⌃T all  O/T file  e  n  N  ⏎  j/k  M  esc close"
     );
     assert_eq!(
         bar(120),
@@ -1633,4 +1635,55 @@ fn stopped_row_cuts_only_the_last_wording() {
     assert!(row.starts_with(" rebase still"), "{row}");
     assert!(row.contains('…'), "{row}");
     assert!(!row.contains("conflicted"), "{row}");
+}
+
+/// The merge resolver with `B base` and `d start over` offered, drawn
+/// into `columns` (ADR-0044 §4).
+fn resolver_bar(roles: SideRoles, columns: u16) -> String {
+    hints_text(&hints_for(
+        &HintContext::Resolver {
+            base: true,
+            restart: true,
+            whole_file: false,
+            done: false,
+            roles,
+            finishable: false,
+        },
+        Divider::Hidden,
+        columns,
+    ))
+}
+
+fn assert_keeps_the_way_out(text: &str) {
+    assert!(text.contains("d start over"), "{text}");
+    assert!(text.ends_with("esc close"), "{text}");
+    assert!(text.contains("j/k  M  d"), "`j/k` and `M` bare: {text}");
+}
+
+#[test]
+fn resolver_bar_keeps_the_way_out_at_120() {
+    assert_keeps_the_way_out(&resolver_bar(SideRoles::Merge, 120));
+}
+
+#[test]
+fn resolver_bar_keeps_the_way_out_at_120_in_a_rebase() {
+    assert_keeps_the_way_out(&resolver_bar(SideRoles::Rebase, 120));
+}
+
+#[test]
+fn done_bar_keeps_the_way_out_at_100() {
+    let text = hints_text(&hints_for(
+        &HintContext::Resolver {
+            base: false,
+            restart: true,
+            whole_file: false,
+            done: true,
+            roles: SideRoles::Merge,
+            finishable: false,
+        },
+        Divider::Hidden,
+        100,
+    ));
+    assert!(text.contains("d start over"), "{text}");
+    assert!(text.ends_with("esc close"), "{text}");
 }

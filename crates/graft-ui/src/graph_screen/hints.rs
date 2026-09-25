@@ -84,9 +84,23 @@ pub struct Hint {
     /// `update::tests::every_key_the_bar_draws_is_answered` compares against the
     /// keymap).
     pub rung: Rung,
+    /// Keeps its words ahead of the bare keys (ADR-0044 §4): the ladder
+    /// draws it at [`Rung::Full`] right after the three most relevant, so a
+    /// narrow bar keeps the way out (`d start over`, `esc close`) in words.
+    /// Only the resolver's lists mark one.
+    pub keeps_words: bool,
 }
 
 impl Hint {
+    /// The same hint, marked to keep its words ([`Hint::keeps_words`]).
+    #[must_use]
+    pub const fn keeps_words(self) -> Self {
+        Self {
+            keeps_words: true,
+            ..self
+        }
+    }
+
     /// The same hint, drawn at `rung`.
     const fn at(mut self, rung: Rung) -> Self {
         self.rung = rung;
@@ -188,6 +202,7 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
         verb,
         state: HintState::Live,
         rung: Rung::Full,
+        keeps_words: false,
     }
 }
 
@@ -208,6 +223,7 @@ const fn planned(key: &'static str, verb: &'static str) -> Hint {
         verb,
         state: HintState::Planned,
         rung: Rung::Full,
+        keeps_words: false,
     }
 }
 
