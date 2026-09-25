@@ -1,6 +1,6 @@
 # 85 — usability walk 2 fixes: Esc and the history walk (A), stale diff after a take (B), pull words (D)
 
-Status: partial (builder compacted; see NOTES — remainder to split)
+Status: done (run 1 compacted at 13/18; continuation 1 finished the rest, see NOTES)
 Blocked by: none (84 merged). **86 runs after 85**: both edit the `graft` crate (`update/stash.rs` among them).
 Crates: graft-ops (`apply/remote.rs` words only), graft-ui (graph header words), graft (and `docs/shots/m6`, the
 `TESTING.md` rows named below, the m6 captions TSV)
@@ -108,14 +108,19 @@ impl DetailState {
 - [x] **B** `update::resolver::tests::a_landed_take_drops_the_panes_cached_diff` (red first: pane cursor on the
       file, diff cached with markers; the take lands → no cached entry for the path, and a `ReadFileDiff` for it).
       Plus one test per other write site the scout found (named in NOTES), or the line showing it already refreshes.
-- [ ] **B walk** `m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` (`S p o esc`: the pane's
-      body has no `<<<<<<<`, `=======`, `>>>>>>>` line; the file on disk has none).
-- [ ] **B capture:** `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt`, from that walk. **What right looks like:**
+- [x] **B walk** `m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` — walked as
+      `S p esc ⏎ o esc`, not `S p o esc` (see NOTES, continuation 1): the pane's served diff has no marker line; the
+      file on disk is `committed\n`. Red observed (take_landed's `file_written` call removed → the pane serves the
+      three marker lines).
+- [x] **B capture:** `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt`, from that walk (`check_shot` in
+      `a_take_then_esc_shows_the_file_without_markers`; colour unverified). Body empty: yours is HEAD's content. **What right looks like:**
       the changes pane on `notes.md` under `CONFLICTS`; the body shows the taken line and no marker line; the header
       reads `diff vs HEAD <main's sha7>` (m-b), not the stash's.
-- [x] **m-b** `view::detail::tests::the_uncommitted_header_names_head_not_the_top_row` (red first: row 0 is `fix`'s
+- [x] **m-b** `view::detail::tests::the_uncommitted_header_names_head_not_the_top_row` (red observed by mutation,
+      continuation 1: the graph's top row passed back in → `HEAD 0303030`; red first: row 0 is `fix`'s
       tip, HEAD is `main`; and a stash commit on top). Replaces the test at `:284`.
-- [x] **m-i** `update::resolver::tests::u_in_the_resolver_says_where_undo_is` (the three arms, `u` and `U`; notice
+- [x] **m-i** `update::resolver::tests::u_in_the_resolver_says_where_undo_is` (red observed by mutation,
+      continuation 1: the `u`/`U` arm disabled → notice `None`; the three arms, `u` and `U`; notice
       set, no command, `state.status` untouched). `every_key_the_bar_draws_is_answered` and
       `every_bound_action_is_hinted_live_or_is_named_here` green **without** a new `NEVER_HINTED` row — if one is
       needed, stop: that is a spec change.
@@ -125,17 +130,20 @@ impl DetailState {
 - [x] **D, app** `update::remote::tests::a_pull_that_would_overwrite_names_s_s` (reason + keys `S s stashes them
       first`; keys whole at 80).
 - [x] **m2** `update::keys::tests::s_opens_the_stash_list_from_the_changes_pane`,
-      `update::keys::tests::j_opens_the_journal_from_the_changes_pane` (moved from stash/journal tests: they go
+      `update::keys::tests::j_opens_the_journal_from_the_changes_pane` (red observed by mutation, continuation 1:
+      the `graph_has_focus()` guard put back on `S`/`J` → both red, and the D walk red at `S`; moved from stash/journal tests: they go
       through the full dispatcher; see NOTES).
-- [ ] **D walk** (real repo, builder names the file): `a_ff_pull_over_overlapping_edits_names_keys_that_work` —
+- [x] **D walk** `pull_over_edits::a_ff_pull_over_overlapping_edits_names_keys_that_work`
+      (`crates/graft/tests/it/pull_over_edits.rs`; 7 keys, NOTES) —
       origin ahead, an unsaved edit to the same file: `p` → the status above, tree and HEAD unchanged; then the keys it
       names from the changes pane (`S s ⏎`, then `esc p`) → HEAD at origin's tip, one stash listed. NOTES: the keys
       pressed and the count (no note count; D stays a gap).
-- [ ] Contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`), captions rows for the two
-      new captures; each part ≤ 200 000 B; no machine paths.
-- [ ] MAP.md: graft (`walk_is_reading`, `escape_key`'s rule, `file_written`, the header's HEAD, resolver `u`, `S`/`J`
+- [x] Contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`), captions rows for the two
+      new captures; each part ≤ 200 000 B; no machine paths. Doc, no test: verified by the script's output (178
+      captures, 0 without a caption, 4 parts, 176 526–179 772 B) and a grep of the parts for home/temp paths → none.
+- [x] MAP.md: graft (`walk_is_reading`, `escape_key`'s rule, `file_written`, the header's HEAD, resolver `u`, `S`/`J`
       from the pane); graft-ui (the stopped header ladder); graft-ops (the two lines' words). Doc, no test.
-- [ ] TESTING.md: rows for the two new captures and the D walk; any row quoting `stopped at`, `commit or stash first`
+- [x] TESTING.md (doc, no test; rows listed in NOTES, continuation 1): rows for the two new captures and the D walk; any row quoting `stopped at`, `commit or stash first`
       or `(M5)` reworded. NOTES list each row.
 
 ## Touches (check each, report how)
@@ -232,3 +240,36 @@ Large (~75k). If it compacts, the split is: **85a** A + D + m2 (keys, header, pu
 3. `.scratch/m6-conflicts/pty-walk-m6.py` m6-20…25 at three sizes, update pass then check pass — **not run**.
 4. Contact sheet rebuild + captions TSV rows for the two new captures.
 5. TESTING.md rows for the two new captures and the D walk; remaining MAP.md lines (above).
+
+## NOTES (continuation 1, 2026-09-26)
+
+Did not compact. Scout: not re-read — the remaining items were walks and docs; the ticket and run 1's NOTES named the
+code. Branch continues from `dc7da822` by a merge commit (`reset --hard` was refused by the permission system).
+
+- **B walk deviates from the tick's keys** (cause, not a workaround): on `S p o esc` the pane never read the file
+  before the take (`state.detail.diff` is `Idle` under the resolver), so nothing stale is cached and the walk was
+  **green with the fix removed** (observed). The review's walk had looked at the file first. `S p esc ⏎ o esc` is that
+  look: `esc` serves the diff with the three marker lines (asserted), `⏎` reopens the resolver; with the
+  `file_written` call removed the walk goes red (observed). After the take the pane body is empty at 120x40 and
+  187x50, rightly: yours (`committed`) is HEAD's content. So the capture cannot show "the taken line"; its header
+  says so, and the test reads the served diff.
+- **m-b in the walk is not red-capable:** in this fixture main's tip is the graph's top row (the stash sorts below),
+  so the top-row mutation leaves the walk green. The unit test carries m-b's red.
+- **Red by mutation, each restored** (`git status crates/*/src` clean after): B walk (above); m-b (top row passed in →
+  `HEAD 0303030`); m-i (arm disabled → notice `None`); m2 (`graph_has_focus()` guard put back → both unit tests and
+  the D walk red).
+- **D walk** keys: `p` (sticky `pull refused: your edits to shared.txt would be overwritten`, keys
+  `S s stashes them first`, HEAD and tree unchanged), `⏎` into the changes pane (focus `Files` asserted), `S s ⏎`,
+  `esc p` → HEAD at origin's tip, one stash listed. **7 keys**; no note row (D stays a gap, M7).
+- **pty re-run:** `pty-walk-m6.py` for m6-20…25 at 80x24, 120x40, 187x50: a `GRAFT_UPDATE_SHOTS=1` pass, then a check
+  pass. Every capture settled (m6-22 and m6-24 at 187x50 also print `over 8 KB`, 9 771 and 9 237 B — the script's soft
+  cap, as before). `git status docs/shots`: **no pty capture changed**.
+- **TESTING.md rows:** three paragraphs after "Preview warns a put-back clash" (85 A `Esc` on a history nothing is
+  loading; 85 B a take, then back to the pane; 85 D a pull over his edits), and both captures added to "The Rust
+  captures of the same pass". `grep "stopped at\|commit or stash first\|(M5)" TESTING.md` → empty.
+- **MAP.md:** graft — `walk_is_reading` (with `escape_key`'s rule), `detail_view` (the header's HEAD from the refs),
+  resolver `u`/`U`, `journal_key`/`stash_key` (from the pane); graft-ops — `ApplyError::Remote`'s two lines' words.
+  graft-ui's stopped ladder was already in `WalkView` (run 1).
+- **Captions TSV:** rows for `esc-then-g-120x40.txt` and `stash-clash-take-esc-pane-120x40.txt`, appended (ticket
+  order, after 84).
+- Gates after the last edit, workspace-wide: fmt ok, clippy ok, nextest 3504/3504 (1 skipped), doctests ok.

@@ -2456,6 +2456,29 @@ faults are graft-ops' (`tests/it/set_aside.rs`, hooks and permissions).
 `your edits may clash when put back: base.txt`, never `no conflicts
 expected`. Capture `set-aside-clash-preview-120x40`.
 
+**`Esc` on a history nothing is loading** (m6-conflicts/85 A):
+`esc_and_the_walk::esc_then_g_on_a_long_history_draws_its_last_rows` — a
+200-commit history, first screen settled, `esc G`: the header still reads
+`200 commits` (no `stopped`), the graph's last rows are commits, not blank.
+Capture `esc-then-g-120x40`.
+
+**A take, then back to the pane** (m6-conflicts/85 B):
+`m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` —
+`S p esc ⏎ o esc` (a look at the clashed file in the pane first, which is
+what caches its diff with the markers): back on the pane, `notes.md` under
+`CONFLICTS`, no `<<<<<<<`, `=======` or `>>>>>>>` line in the diff the pane
+serves nor on disk; header `diff vs HEAD <main's sha7>`. Capture
+`stash-clash-take-esc-pane-120x40`.
+
+**A pull over his edits names keys that work** (m6-conflicts/85 D):
+`pull_over_edits::a_ff_pull_over_overlapping_edits_names_keys_that_work` —
+origin one ahead on `shared.txt`, an unsaved edit to it: `p` → sticky
+`pull refused: your edits to shared.txt would be overwritten`, keys
+`S s stashes them first`, HEAD and the tree unchanged; `⏎` into the changes
+pane, then `S s ⏎` from there and `esc p` → HEAD at origin's tip, one stash
+listed. 7 keys (`p`, `⏎`, `S s ⏎`, `esc p`); no note row (the pull still
+does not set edits aside, M7). No capture.
+
 ### Captures
 
 `docs/shots/m6/m6-10-…` to `m6-25-…`, one frame per landing, from
@@ -2519,7 +2542,10 @@ The Rust captures of the same pass (`check_shot`, drawn by `view::view`):
 `set-aside-clash-landing-120x40`, `set-aside-done-120x40` (74),
 `set-aside-clash-preview-120x40` (84: the checkout box, `your edits: 1 file
 set aside, put back after`, then `your edits may clash when put back:
-base.txt`, no `no conflicts expected`), and
+base.txt`, no `no conflicts expected`), `esc-then-g-120x40` (85 A: header
+`200 commits`, not `stopped`; the last rows are commits),
+`stash-clash-take-esc-pane-120x40` (85 B: the pane on `notes.md` under
+`CONFLICTS`, no marker line, `diff vs HEAD` naming main's tip), and
 `stash-clash-stop-line-80x24` (82): `S p` clashed in `notes.md`, `esc` shut
 the resolver, the graph focused, at 80x24 — no banner, no resolver; the
 bottom row begins ` stash@{0} clashed · 1 file conflicted · ` then the keys

@@ -38,6 +38,7 @@ mod not_a_repo;
 mod piped_stdout;
 mod preview;
 mod published_repo;
+mod pull_over_edits;
 mod radar_bookkeeping;
 mod refresh_race;
 mod remote_by_key;
