@@ -1,6 +1,6 @@
 # confirm-box-takes-y: `y` confirms a confirm box, as in every preview
 
-Status: ready (unblocked 2026-09-24: P12 and P15 approved, P15 **option (b)** — never in the force-push box; picks
+Status: blocked 2026-09-25 at find-and-pin 1 (operate.rs:657 label not a function of `then`; see NOTES). Was: ready (unblocked 2026-09-24: P12 and P15 approved, P15 **option (b)** — never in the force-push box; picks
 items 3 and 13; ADR-0044 §3; keymap §2.3b and §2.3c edited in the spec pass. Reconciled with scout 50 on 2026-09-25)
 From: `docs/reviews/m6-usability.md` M1 (:65-75), the part that depended on P12.
 Build with: builder-opus. Why: brownfield across two crates, a public graft-ui type change every hint test enumerates,
@@ -182,3 +182,46 @@ Medium: one graft-ui enum change on 52's base, one match, many capture regenerat
 off at the seam: graft-ui committed first.
 
 ## NOTES
+
+**2026-09-25, builder (opus), on main @ 6f8c033a (52 merged). BLOCKED at find-and-pin 1. No code changed.**
+Used scout 50 (its site table matched the code at every row).
+
+`blocked: box operate.rs:657 has 1 acting choice / label not a function of then`
+
+Find 1: sites (`then` / index 1 / index 0):
+| Site | `then` | [1] | [0] |
+|---|---|---|---|
+| `update/stash.rs:482` | `Operate(StashDrop)` | Drop | **Keep** (not `Cancel`; still the safe choice) |
+| `update/banner.rs:495` | `Resume(Skip)` | Skip | Cancel |
+| `update/banner.rs:528` | `Resume(Abort)` | Abort | Cancel |
+| `update/undo.rs:483` | `RevertTo` (excluded) | Revert | Stop |
+| `update/undo.rs:509` | `Undo { redo }` | `Undo` (redo false) / `Redo` (true) | Stop |
+| `update/operate.rs:515` | `Operate(Discard(Patch))` | Discard | Cancel |
+| `update/operate.rs:657` | `Operate(Discard(Paths([path])))` | **`Discard` or `Delete`** | Cancel |
+| `update/resolver/restart.rs:74` | `RestartConflict` | Start over | Cancel |
+| `update/remote/push_box.rs:30` | `Operate(Push)`: plain / lease | Push (:191) / lease `act` (:221, excluded) | Cancel |
+| `update/remote/after_push.rs:221` | `UndoAfterPush` (excluded) | Undo locally (+ [2] Re-push old tip) | Cancel |
+| `update/remote/after_push.rs:247` | `Operate(Push)` lease (excluded) | as push_box :221 | Cancel |
+
+The problem: at `operate.rs:643-647`, `Delete` is chosen for an untracked entry, `Discard` otherwise. The flag
+comes from `status_entry(next, &path).untracked`, and it is **not** in `then`: `Target::Paths` holds only the
+path (`graft-ops/src/operation.rs:151`). So `ConfirmThen::yes()` cannot return `Delete` for that box, and
+`the_y_word_is_the_acting_label` cannot pass for an untracked file. The m3/04 review closed exactly this
+mismatch (the comment at :639-642): `y discard` above a `[ Delete ]` button.
+
+Options for the spec (pick one):
+- (a) `yes()` decides only whether `y` is live. The bar's word is the view's own label at index 1, lowercased,
+  read at `view/rows.rs` `box_context`. The type would be `ConfirmBox { yes: Option<ConfirmYes> }` with a
+  `Delete` variant, mapped from that label, or a word carried as text. One decision still holds for the key;
+  the word cannot drift from the button because it *is* the button. Cheapest option, graft-only apart from the enum.
+- (b) Put the verb in `then`: a `ConfirmThen::Operate` sibling or a field (e.g. `Discard { untracked: bool }`).
+  It edits a construction site, which the spec says not to do, or `graft-ops`, which is outside my crates.
+- (c) Accept `y discard` over `[ Delete ]`. Not recommended: it brings back the m3/04 defect.
+
+Find 2 (read, no test yet): the box's bar is **not** wrapped. `box_context` (`view/rows.rs:324-340`) returns a
+bare `HintContext::ConfirmBox`. It is asked first in `footer_context` (:367) and `hint_context` (:561), before
+`live_wrapped`. `live_wrapped`'s own list (:399-405) doesn't name `ConfirmBox` either. So 52 doesn't block.
+The pinning test is still to write.
+
+Next step once the spec answers: start from the failing test `y_confirms_the_push_box_from_cancel` as written.
+Everything else in the spec stands.
