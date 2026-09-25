@@ -47,4 +47,4 @@ m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, uni
 
 
 
- undo · esc cancels
+ y undo  ←/→ move  ⏎ choose  esc cancel

@@ -345,6 +345,10 @@ pub fn undone(
             drift,
             redo,
         } => {
+            // The answer ends its own `Busy`: the box is what the screen
+            // waits on now, and `undo · esc cancels` under it would name a
+            // job that is over (m6-conflicts/69, Decided 4).
+            state.status = Status::Ready;
             state.confirm = Some(drift_box(&description, &drift, redo));
             Vec::new()
         }
@@ -437,6 +441,8 @@ pub(super) fn reverted_to(
             drift,
             target,
         } => {
+            // As for `undone`'s drift box: the answer ends its own `Busy`.
+            state.status = Status::Ready;
             state.confirm = Some(revert_drift_box(&description, &drift, target));
             Vec::new()
         }
@@ -1494,3 +1500,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod box_answers;

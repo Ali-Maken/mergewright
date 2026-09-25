@@ -1,6 +1,6 @@
 # a-box-owns-the-bottom-row: while a box is open, the bottom row shows its keys, never a status from before it
 
-Status: draft (reconciled with the scout, 2026-09-25)
+Status: partial, stopped on Decided 3's own rule (2026-09-25; see HANDOFF at the end)
 From: `docs/reviews/m6-usability-final.md` N5 (:162-176). Folds in KNOWN_GAPS **M6/50** (the lease box's keys covered by
 the rejection's sticky line; same cause), the stale-status part of **n3** (:229-235), and **Q4** (:269-270) as a pinning
 test only.
@@ -120,28 +120,33 @@ in `a_box_opened_by_an_answer_ends_its_own_busy`.
   blanking; `Status::Sticky`'s list of uses loses the empty-name refusal.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `the_lease_box_owns_the_bottom_row_over_a_rejection`, red then green.
-- [ ] `the_drift_box_ends_the_undo_busy_line`, red then green.
-- [ ] `an_empty_name_is_refused_inside_the_prompt`, red then green.
+- [ ] `the_lease_box_owns_the_bottom_row_over_a_rejection`, red then green. **Not built** (Decided 1; see HANDOFF).
+- [x] `the_drift_box_ends_the_undo_busy_line` (`update::undo::box_answers`), red then green — red observed
+      (`left: Busy("undo · esc cancels")`), green after `undone`'s `Drift` arm sets `Ready`.
+- [ ] `an_empty_name_is_refused_inside_the_prompt`, red then green. **Not built** (Decided 3; see HANDOFF).
 - [ ] `a_modal_owns_the_bottom_row` (every modal × sticky/`Done`/`Busy` × 80×24, 120×40; stash drop box, credential,
-      80-column tab banner rows included).
-- [ ] `a_key_that_keeps_a_modal_open_leaves_the_status_alone`.
-- [ ] `esc_from_the_box_brings_the_rejection_back`.
-- [ ] `a_box_opened_by_an_answer_ends_its_own_busy`; `a_busy_of_another_job_survives_a_box`;
-      `a_credential_prompt_keeps_its_jobs_busy`.
-- [ ] **Q4 pin** (a question, not a fix; the scout did not read it): `undo_over_drift_then_undo_again`: real repo, edit
-      a file after a checkout, `u y` over the drift box, then `u`. Assert what happens; record in NOTES whether the edit
-      comes back and what the line says. If it does **not** come back, report it as a finding with its line; do not fix.
-- [ ] Captures (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-box-owns-the-bar-120x40.txt` and `-80x24`.
-  - Frame 1: after a rejected push, `P`: the lease box; the bottom row reads `←/→ move  ⏎ choose  esc cancel` (no `y`:
-    ADR-0044 §3's lease exception). No `push rejected` text anywhere on that row.
-  - Frame 2: `esc`: the rejection line is back on the bottom row, `p pull first · P force with lease`.
-  - Frame 3: the drift box after `u`: the bottom row reads `y undo  ←/→ move  ⏎ choose  esc cancel`; no
-    `undo · esc cancels` anywhere.
-  - Frame 4: the name prompt, `⏎` on an empty name: the bottom row reads `a branch needs a name`; the prompt still open.
-- [ ] `fix-box-takes-y-*` regenerated; frame 2 matches frame 1 above. `m3-09-undo-drift-box-*` regenerated; no
-      `undo · esc cancels` under the box.
-- [ ] MAP.md updated (doc, no test).
+      80-column tab banner rows included). **Not built.**
+- [ ] `a_key_that_keeps_a_modal_open_leaves_the_status_alone`. **Not built** — it is the guard that would fail on the
+      site in HANDOFF.
+- [ ] `esc_from_the_box_brings_the_rejection_back`. **Not built.**
+- [x] `a_box_opened_by_an_answer_ends_its_own_busy` (`update::undo::box_answers`: `u`, `U` over `undone`, the time
+      machine over `reverted_to`); `a_credential_prompt_keeps_its_jobs_busy` (same file: `Busy` unchanged when the
+      prompt opens and after a key typed into it).
+- [ ] `a_busy_of_another_job_survives_a_box`: **not built, premise false (rule 7).** "A fetch running, `P` opens the
+      push box" cannot happen: `push_key` returns early while any write runs
+      (`crates/graft/src/update/remote/push_box.rs:22-24`, `operation_in_flight`). Every box key checked refuses while
+      `operating` is `Some`; the spec needs another pair (a `Busy` not owned by `operating`, e.g. `open_mergetool`'s,
+      `banner.rs` `open_mergetool`) or to drop the row.
+- [ ] **Q4 pin** `undo_over_drift_then_undo_again`. **Not built.**
+- [ ] Captures `docs/shots/m6/fix-box-owns-the-bar-{120x40,80x24}.txt`. **Not built.** Frame 3's bottom row already
+      holds on `m3-09-undo-drift-box-*` (below).
+- [ ] `fix-box-takes-y-*` regenerated. **Not done** (needs Decided 1). `m3-09-undo-drift-box-*`: **regenerated**
+      (`GRAFT_UPDATE_SHOTS=1`, `.scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py {80x24,160x48}
+      undo-drift-guard`, then re-run green without the flag): the bottom row went from `undo · esc cancels` to
+      `y undo  ←/→ move  ⏎ choose  esc cancel`, one line each, nothing else moved. m3 contact sheet rebuilt; its
+      caption and TESTING.md:1336 reworded to the new row.
+- [x] MAP.md updated for what landed (`undone`, `reverted_to`: `Drift` sets `Ready`; doc, no test). The Decided 1/3
+      entries are not written: nothing they describe exists yet.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -150,3 +155,45 @@ workspace-wide.
 ## Size
 Medium: two predicates read at two or three places, one refusal field, ~11 sites classified, three tables, four
 capture frames. One context with 68. If the context runs short, 68 is the half to hand off.
+
+## HANDOFF (builder, 2026-09-25) — partial: stopped on the spec's own "stop and report"
+- Scout used: `.scratch/m6-conflicts/scouts/a-box-owns-the-bottom-row.md`, with the amended spec, on a base with 67
+  and 71 merged.
+- **Why stopped (Decided 3, rule 7).** A second site writes a status under an open modal, which Decided 3 says to stop
+  on rather than add a refusal on the spot. `⏎` in the name prompt for **branch from stash** (`S`, `b`, a name, `⏎`):
+  `name_prompt.rs` `create` closes the prompt and calls `branch_from_stash`; that calls `preview::open_preview`, which
+  refuses by **writing `state.status`** (`crates/graft/src/update/preview.rs:303`, `wait for <write> to finish`, while a
+  write runs; `:314`, `live_refusal`, while git has an operation in progress), and then
+  `crates/graft/src/update/name_prompt.rs:321-322` **reopens the prompt** (`state.stash.shown = true;
+  state.name_prompt = Some(reopen);`). Reachable: `open_name_prompt` does not refuse while a write runs, so a fetch in
+  flight is enough. Under Decided 1 that refusal would be hidden while the reopened prompt stands, and drawn only after
+  `esc` — a regression the ticket's guard test exists to catch.
+- **Options for the conductor (one decision):**
+  1. Route it into the name prompt's own `refusal` (the field Decided 3 already creates): it is the prompt's own `⏎`,
+     and the prompt stays open, so it is Decided 3's principle — but the spec forbade deciding that here.
+  2. Leave the prompt closed on that refusal (drop the reopen at `name_prompt.rs:321-322`), making it an ordinary
+     status as 67 did for previews — at the cost of the typed name (review m5-10-30-31 m6 kept it on purpose).
+  3. Another shape.
+- **What landed (Decided 4, independent of the stop):** `undo::undone`'s and `undo::reverted_to`'s `Drift` arms set
+  `Status::Ready` as they open the box. Answer sites classified (lines at this branch's base, `6e1d42bc`):
+  - job answers, own `Busy` ended here: `undo.rs:348` (`undone` Drift; `Busy("undo · esc cancels")` from `launch`,
+    `undo.rs:257`), `undo.rs:440` (`reverted_to` Drift; `Busy(description)` from `revert_to_forced`, `undo.rs:390`,
+    or the preview's `PreviewSubject::RevertTo`, `preview.rs:710`).
+  - key presses, no own `Busy`: `undo.rs:39` (`u` after a push), `undo.rs:68` → `remote/after_push.rs:247`
+    (`repush_chosen`, a choice in the undo-after-push box), `stash.rs:482` (`d` on a stash), `operate.rs:529`
+    (`request_discard_at_diff_cursor`), `operate.rs:671` (`request_discard`), `banner.rs:506,539` (`a`/`s` boxes),
+    `resolver/restart.rs:74` (`d` in the resolver), `remote/push_box.rs:30` (`P`).
+  - the credential prompt (`credential.rs:291`) is a job's question, not an answer: its `Busy` stays (pinned).
+- **Exact next step:** the conductor decides the option above; then build Decided 1 (`view::status::
+  modal_owns_bottom_row`/`modal_problem`, read in `view::rows::graph_view` and `opening_view`, `view::frame` where
+  `screen.notice` is set, and `view::frame::bars::draw_status_or_hints` — `draw_box_bars` already routes every
+  `box_context` modal's bar through that function, so the confirm/name/credential boxes need only it; the preview is
+  not in `box_context` and needs `graph_view`'s blanking) and Decided 3's `NamePrompt::refusal`.
+- **Gotchas found:** the graft-ui footer rung `search` (`graft-ui/src/graph_screen/footer.rs`, before `notice`) is not
+  in Decided 1's list; blank it too, or say why not. `reveal` also drives the hovered row's ref reveal, not only the
+  footer subject.
+- **Touches (what landed):** `undo.rs` two arms; `m3-09-undo-drift-box-{80x24,160x48}` and the m3 contact sheet
+  (rebuilt, 129 620 B); m3 captions rows 17-18; TESTING.md:1336; MAP.md `undone`/`reverted_to`. Every other capture:
+  `git status docs/shots` after the full `GRAFT_UPDATE_SHOTS`-free run lists only those. Journal/undo entries, keymap,
+  graft-ui: none.
+- No compaction.

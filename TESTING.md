@@ -1333,7 +1333,7 @@ Every capture exists at 80x24 and 160x48; 120x40 was not captured.
 | Commit editor (`m3-04-commit-editor`, `m3-05-commit-refused`) | replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`; refused: `nothing staged` on the title and on its own row directly above the options row (ticket 40) | not run | same, wider; the pane stays |
 | Stash (`m3-06-stash-list`, `m3-07-stash-prompt`) | `STASHES (2)` and rows `stash@{0} …`; prompt: `▸message wip`, `(•) all incl. untracked ( ) staged only` | not run | same |
 | Journal (`m3-08-journal-after-unstage`) | the unstage entry with `← u` | not run | same |
-| Drift box (`m3-09-undo-drift-box`) | a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `undo · esc cancels` | not run | same |
+| Drift box (`m3-09-undo-drift-box`) | a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (the undo's own `Busy` ended when its answer opened the box, m6-conflicts/69) | not run | same |
 
 ### Per terminal: walk the working tree group
 
