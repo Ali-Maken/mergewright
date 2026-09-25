@@ -802,3 +802,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M6/63 | **Pty captures are compared only when someone runs the walks** (m3–m6 `pty-walk-*.py`, not in nextest). 63 re-ran all; the next drift is caught only at the next acceptance. | broken (process: no gate) | M7 |
 | M6/63 | **`m4-03-160x48` sometimes catches the pulse glyph `◦`** in compare mode (ticket 63 NOTES). | unverified (flake) | M7 |
 | M6/63 | **Question: `m6-07` shows `c continue the rebase`; is `c continues the rebase` meant** (the banner's form)? Wording, his call. Source: ticket 63 NOTES | question | M7 |
+| M6/66 | **Question: the duplicate probe is not re-run after a write** — only `Ctrl+R` re-reads it (`crates/graft/src/update/keys.rs:428`, per the 66 builder; unconfirmed by the conductor). A cherry-pick made in the app may not show its duplicate until a reload. Source: ticket 66 NOTES | question | M7 |
