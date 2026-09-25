@@ -4,7 +4,7 @@ Status: ready
 Blocked by: 73 (merged), 82 (shares files; see 82 Touches). 67 capture delete (Touches :99-100) done by 73.
 From: pick 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :25): "the preview says so; a clash putting them back
 lands on the conflict screen".
-Build with: (conductor, after the scout; planner suggests Opus — words and routing over 73's and 72b's answers)
+Build with: **Opus** (conductor, 2026-09-25, after the scout) → `builder-opus`: words and routing over 73's and 72b's answers.
 Scout: `.scratch/m6-conflicts/scouts/set-aside-shows-in-the-preview-and-lands.md` — brief below.
 Needs: 73 (`SetAside`, `PreviewPlan::set_aside`, `Clashed { why: SetAside }`, `put_back` on interrupted entries);
 72b (`ClashState`, `AppState::clash`, `refresh_clash`, `land_on_clash`, the `close_after_last` clash branch, `side_names`
