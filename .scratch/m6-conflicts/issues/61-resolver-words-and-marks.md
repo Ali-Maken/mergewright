@@ -1,6 +1,6 @@
 # resolver-words-and-marks: `no more conflicts this way`; a stop line that keeps a short origin; no tint on a hand-edited both-take
 
-Status: ready (reconciled with scout 61 on 2026-09-25)
+Status: blocked (find-and-pin 1 differs from the spec, 2026-09-25; see NOTES)
 From: user picks 2026-09-24 items 7 (batch 6, "shorten both") and 8 (batch 2, `no more conflicts this way`); ADR-0044
 §2 row "took both, then a hand edit"; KNOWN_GAPS M6/15 :693, M6/21 :769-770; `docs/log/m6.md:78`.
 Build with: builder-opus. Why: brownfield in two crates; three independent word/flag changes, one moving a status to a
@@ -161,3 +161,41 @@ Medium: three independent changes sharing the resolver's view files, three find-
 hand off at the seam: the stop ladder (graft `stop.rs` only) is separable.
 
 ## NOTES
+
+**2026-09-25, builder (opus). Blocked at find-and-pin 1, as the ticket and the conductor say. No product code changed.**
+Scout 61 used; its lines re-checked against this tree (after 60, 52, 50, 51, 64).
+
+- **Find-and-pin 1 — differs from the spec.** `blocked: after a hand edit the block reads gone`.
+  - Test (pinned as observed, green): `a_hand_edited_both_take_reads_as_no_block_after_the_reread`,
+    `crates/graft/tests/it/resolver/handover.rs`. Renamed from the spec's `…_still_reads_as_took_both`: that name would
+    assert what is not true. Real repo (`Shape::StoppedMerge`, `both.txt`, one block), `b` landed, the file edited on
+    disk, `e`'s `HandedOver(Ok)` fed back, the queued `OpenConflict` run for real to landing.
+  - Observed: before the edit the block is `Took(Both)`. After the re-read the document has **no blocks**; the notice
+    is `no conflict markers · ⏎ marks it resolved`; the frame at 120x40 shows the edited text and that notice.
+    `state.choices["both.txt"]` = `takes: [Some(Both)], edited: true`.
+  - Why (code, not inference): a take is written to disk with its markers removed (`o_takes_ours_on_disk`,
+    `t_and_b_take`), and the re-read parses markers only; `Region::Resolved` exists only for an in-memory take
+    (`graft-git/src/conflict/document.rs:112`), and `update/resolver.rs:11-15` says "re-reading collapses every block
+    already taken". `conflict_arrived` (`update/resolver/answers.rs:92-94`) says the same.
+  - So ADR-0044 §2's row "took both, then a hand edit" has no `Took(Both)` block to draw after `e`/`M`: the tint rule
+    as specced never fires in that order. It could fire only for `edited` set by an earlier hand-over and a `b` taken
+    after it (edit, re-read, then `b` on another block): then `edited` is true while that block is an in-memory
+    `Took(Both)` the user took on purpose. Not tested. **Spec decision needed** (planner/conductor): drop the tint
+    rule, or re-word it for that order.
+- **Find-and-pin 2 — the notice's lifetime (read only, not tested; stopped before the change).** `open.notice` set:
+  `walk.rs:59, :133, :161`; `take.rs:80, :122, :130, :212`; `answers/taken.rs:44, :148`; `answers.rs:87, :115, :204`;
+  `settle.rs:50`; `resolved.rs:134, :195, :300`; `base.rs:53, :107`; `status_read.rs:69`. Cleared: a take landing that
+  advances `take.rs:210`; a click on a block `scroll.rs:110`; `restart.rs:53`; `status_read.rs:96`; a read landing
+  keeps only a non-problem notice (`answers.rs:132 landing_notice`). `j`/`k` and `⏎` clearing: **not confirmed**
+  (`walk.rs:133` overwrites it on a walk; `⏎` not traced).
+- **Find-and-pin 3 — who reads the stop ladder** (`grep -rn "stop_wordings\|stop_reason\|stop_line_wordings" crates`):
+  - `view/rows.rs:349` `stopped_line` via `stop_line_wordings` (the only draw reading rungs ≥ 1).
+  - `banner/stop.rs:284` `stop_line` (rung 0 only).
+  - Tests: `banner/tests.rs:1362, :1467-1507`; `operate.rs:2166, :2202, :2216` (rung 0);
+    `tests/it/m5_walk/conflict_journeys.rs:233, :391` (rung 0; its comment `:378-383` describes the 120-col rung and
+    will need re-wording with the new rung 1); `tests/it/m5_walk/resolved_operations.rs:586` (comment).
+- Remaining (all of Scope, untouched): batch 2 (rule 3 as a notice), batch 6 (the stop ladder, separable: graft
+  `stop.rs` only), the hand-edit tint (blocked above), captures, sheet, MAP.md. No journey rows lowered. No KNOWN_GAPS
+  row closed.
+- Did not compact.
+
