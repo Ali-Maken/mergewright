@@ -281,13 +281,8 @@ fn nothing_to_do(plan: &PreviewPlan) -> bool {
 /// it: branch-from-stash's name prompt (m6-conflicts/69, conductor
 /// 2026-09-25).
 pub(crate) fn preview_refusal(state: &AppState) -> Option<String> {
-    if state.operating.is_some() {
-        let running = state
-            .remote
-            .running
-            .as_ref()
-            .map_or_else(|| "the write".to_owned(), |it| it.description.clone());
-        return Some(format!("wait for {running} to finish"));
+    if let Some(busy) = super::operate::in_flight(state) {
+        return Some(busy.words());
     }
     // Every live operation refuses, a merge begun in the shell included:
     // keymap §2.6a's exception covers `u`/`U` only, and this opens a Ghost
@@ -703,7 +698,11 @@ pub fn confirm_preview(
             // a tip has shifted since the picture was drawn, which is the
             // whole of hard choice 3. `opened_by` rides along so that
             // refusal can name the key to press again.
-            super::operate::launch_unstoppable(
+            //
+            // The preview has closed on this key, so a refusal (a write
+            // began while it was up; `preview_refusal` only runs at open)
+            // is said on the row it gave back (m6-conflicts/78).
+            let launched = super::operate::launch_unstoppable(
                 state,
                 commands,
                 *op,
@@ -711,10 +710,15 @@ pub fn confirm_preview(
                 Some(opened_by),
                 next_id,
             );
+            super::operate::say_if_refused(state, launched);
         }
         PreviewSubject::RevertTo(entry) => {
             let id = next_id();
-            state.operating = Some(id);
+            let claimed = super::operate::claim_write(state, id);
+            if claimed.is_err() {
+                super::operate::say_if_refused(state, claimed);
+                return;
+            }
             state.status = Status::Busy(description.clone());
             super::remote::launched(
                 state,

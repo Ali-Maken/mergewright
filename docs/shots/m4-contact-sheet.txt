@@ -195,7 +195,7 @@ docs/shots/m4-03-credential-masked-160x48.txt
 what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: same. (A run can catch the field's pulse, one `◦` among the `•` — ADR-0038; the settled frame has none.) (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
-m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 160x48
+m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 160x48 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
 
  graft <scratch________________________________________________________________>  184 rows so far
 ◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
@@ -248,10 +248,10 @@ m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right,
 
 ================================================================================
 docs/shots/m4-03-credential-masked-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only, `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel the push`. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
+what right looks like: TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only, `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel the push`. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.) PREDATES m6-conflicts/69 and 78, with rows 6–8: the app now draws the prompt's keys, `⏎ send  esc cancel`, on the bottom row, and the border names the push, `esc cancel push main → origin/main` (see m4-credential-prompt-in-app.txt). A pty retake is pending.
 ================================================================================
 
-m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 80x24
+m4 walk capture: m4-03-credential-masked — scenario wrong-password-then-right, keys P → ⏎, unicode tier, 80x24 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
 
  graft <scratch_______________________________________________________________>…
 ◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
@@ -283,7 +283,7 @@ docs/shots/m4-04-credential-username-160x48.txt
 what right looks like: TESTING.md § Per breakpoint, Credential prompt (username) row: same. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
-m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 160x48
+m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 160x48 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
 
  graft <scratch________________________________________________________________>  184 rows so far
 ◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                            GF 6y   271d772
@@ -339,7 +339,7 @@ docs/shots/m4-04-credential-username-80x24.txt
 what right looks like: TESTING.md § Per breakpoint, Credential prompt (username) row: `Username for 'http://127.0.0.1:<port>':`, `▏tester` in clear. (Re-taken 2026-09-25, m6-conflicts/63: the graph's cursor-row gutter `▏`.)
 ================================================================================
 
-m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 80x24
+m4 walk capture: m4-04-credential-username — scenario username-then-password, keys P → ⏎ t e s t e r, unicode tier, 80x24 · PREDATES m6-conflicts/69 and 78 (pty walk not re-run): the app now draws `⏎ send  esc cancel` on the bottom row and `esc cancel push main → origin/main` in the border (m4-credential-prompt-in-app.txt)
 
  graft <scratch_______________________________________________________________>…
 ◆ ▏ⓘ [◆ main ↑1] ours                                               6y   271d772
@@ -840,7 +840,7 @@ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-
 
 ================================================================================
 docs/shots/m4-credential-prompt-in-app.txt
-what right looks like: Capture header "Judge by eye": the box is centred over the screen, the title names the host (not the user), git's own question is on the first line, the field shows the masked count and no plaintext, the note says the answer is never stored, the footer says what ⏎, ⌃U and Esc do — Esc naming the push it cancels.
+what right looks like: Capture header "Judge by eye": the box is centred over the screen, the title names the host (not the user), git's own question is on the first line, the field shows the masked count and no plaintext, the note says the answer is never stored, the footer says what ⏎, ⌃U and Esc do — Esc naming the push it cancels. (Re-taken by m6-conflicts/78, after 69: the border ends `esc cancel push main → origin/main`, the push by name; the bottom row is the prompt's keys, `⏎ send  esc cancel`, in every frame.)
 ================================================================================
 
 # m4-credential-prompt-in-app.txt: TestBackend captures (not a pty), no
@@ -854,10 +854,11 @@ what right looks like: Capture header "Judge by eye": the box is centred over th
 #    screen, the title names the host (not the user), git's own question is
 #    on the first line, the field shows a fixed 8 mask glyphs (never the
 #    typed length, ADR-0038 §2) and no plaintext, the note says the answer
-#    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
-#    naming the push it cancels. The bottom row is the prompt's own keys:
-#    the push's running line waits under it and comes back once the
-#    prompt is answered (m6-conflicts/69).
+#    is never stored, and the box's bottom border says what ⏎, ⌃U and Esc
+#    do, ending `esc cancel push main → origin/main`: the push it cancels,
+#    by name (m6-conflicts/78). The bottom row is the prompt's own keys,
+#    `⏎ send  esc cancel`, in every frame: the push's running line waits
+#    under it and comes back once the prompt is answered (m6-conflicts/69).
 # 2. The same 7-character password again, with the prompt's pulse seed the
 #    other way up. The first mask glyph differs between 1 and 2 and nothing
 #    else does. That is the whole of ADR-0038 §2: the glyph flips on every
@@ -892,7 +893,7 @@ what right looks like: Capture header "Judge by eye": the box is centred over th
 "                        │ Password for 'http://user@127.0.0.1:8443':                           │                        "
 "                        │ ▏◦•••••••                                                            │                        "
 "                        │ typed here only · never stored by Graft                              │                        "
-"                        ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯                        "
+"                        ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯                        "
 "                                                                                                                        "
 " ⏎ send  esc cancel                                                                                                     "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
@@ -934,7 +935,7 @@ what right looks like: Capture header "Judge by eye": the box is centred over th
 "                        │ Password for 'http://user@127.0.0.1:8443':                           │                        "
 "                        │ ▏••••••••                                                            │                        "
 "                        │ typed here only · never stored by Graft                              │                        "
-"                        ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯                        "
+"                        ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯                        "
 "                                                                                                                        "
 " ⏎ send  esc cancel                                                                                                     "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
@@ -968,7 +969,7 @@ what right looks like: Capture header "Judge by eye": the box is centred over th
 "    │ Username for 'http://127.0.0.1:8443':                                │    "
 "    │ ▏alice                                                               │    "
 "    │ typed here only · never stored by Graft                              │    "
-"    ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯    "
+"    ╰ ⏎ send  ⌃U clear  esc cancel push main → origin/main ────────────────╯    "
 "     19▎+     app.get("/health", health);                                       "
 "     20 +     app.get("/ready", ready);                                         "
 " 20  21       app                                                               "

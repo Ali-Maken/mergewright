@@ -582,7 +582,8 @@ fn history_ops_launch_unstoppable() {
         crate::update::preview::HISTORY_CANNOT_STOP,
         Some("m"),
         &mut || JobId::new(7),
-    );
+    )
+    .expect("no write is running");
     assert_eq!(state.operating, Some(JobId::new(7)));
 
     let (pressed, commands) = press(&state, KeyPress::plain(KeyCode::Escape));

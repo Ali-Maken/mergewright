@@ -3,8 +3,9 @@
 //! path, `d` opens the discard confirm box
 //! (m3-working-tree-undo-and-stash/04, design note "Changes pane").
 //!
-//! One write in flight at a time (`AppState::operating`); every other write
-//! key is a no-op while it is `Some`.
+//! One write in flight at a time (`AppState::operating`), enforced where it
+//! is set: [`claim_write`] is its only setter and refuses while a write runs
+//! (m6-conflicts/78, Major 3).
 //!
 //! Seam rule (ARCHITECTURE.md, `crates/graft/tests/it/seam_rule.rs`): this
 //! module only builds an [`Operation`] and a [`Command::Operate`] from it —
@@ -64,12 +65,17 @@ pub(super) fn write_job_ended(
 /// whenever the job thread gets going. Without it `Space` gives no
 /// acknowledgement at all and a second `Space` looks like a dead key rather
 /// than a write already running (m3/04 review M3).
+///
+/// `Err` while another write runs: nothing is written, nothing queued. Every
+/// caller words it (`#[must_use]` lists them), so a second write can never
+/// start beside the first and take `operating` from it (m6-conflicts/78).
+#[must_use = "a refused launch is worded: `Status::Failed(busy.words())` or the modal's own refusal"]
 pub(super) fn launch(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     op: Operation,
     next_id: &mut impl FnMut() -> JobId,
-) {
+) -> Result<(), InFlight> {
     launch_with(
         next,
         commands,
@@ -77,7 +83,7 @@ pub(super) fn launch(
         super::remote::Stoppable::Yes,
         None,
         next_id,
-    );
+    )
 }
 
 /// Queue one write `Esc` must not stop, saying why in `why`.
@@ -88,6 +94,9 @@ pub(super) fn launch(
 /// does not model ([`crate::update::preview::HISTORY_CANNOT_STOP`], which
 /// is the line `Esc` then shows). The refusal is words, never a key that
 /// looks ignored.
+///
+/// `Err` while another write runs, as [`launch`].
+#[must_use = "a refused launch is worded: `Status::Failed(busy.words())`"]
 pub(super) fn launch_unstoppable(
     next: &mut AppState,
     commands: &mut Vec<Command>,
@@ -95,7 +104,7 @@ pub(super) fn launch_unstoppable(
     why: &'static str,
     opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
-) {
+) -> Result<(), InFlight> {
     launch_with(
         next,
         commands,
@@ -103,7 +112,7 @@ pub(super) fn launch_unstoppable(
         super::remote::Stoppable::No(why),
         opened_by,
         next_id,
-    );
+    )
 }
 
 /// Both launches: one job id, one `Busy` line from the keystroke onwards,
@@ -115,7 +124,7 @@ fn launch_with(
     stoppable: super::remote::Stoppable,
     opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
-) {
+) -> Result<(), InFlight> {
     // No branch check here (gap row 550, m6-06 review Major 1): the journal
     // names a push's branch by `head_before`, so a push must send `HEAD`'s
     // branch — and `graft_ops::apply` holds exactly that, against a fresh
@@ -124,7 +133,7 @@ fn launch_with(
     // in-memory remote facts, which a re-read can replace under an open push
     // box (`update::remote::tests::a_push_boxed_before_a_reread_launches_and_ops_decides`).
     let id = next_id();
-    next.operating = Some(id);
+    claim_write(next, id)?;
     next.status = Status::Busy(super::remote::busy_text(&op));
     super::remote::launched(
         next,
@@ -135,12 +144,66 @@ fn launch_with(
         opened_by,
     );
     commands.push(Command::Operate(id, Box::new(op)));
+    Ok(())
 }
 
-/// A write is already running: every other write key is a no-op.
+/// A write is already running: every other write key is refused
+/// ([`claim_write`]).
 #[must_use]
 pub fn operation_in_flight(state: &AppState) -> bool {
     state.operating.is_some()
+}
+
+/// Why a write cannot start now: another one is running (m6-conflicts/78).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct InFlight {
+    /// The running write's own description, the words its `Busy` line draws
+    /// (`fetch all remotes`), or `the write` when none is on record.
+    pub(crate) running: String,
+}
+
+impl InFlight {
+    /// `wait for <running> to finish`: the one wording of "a write is
+    /// already running". `f`, the Ghost Preview's refusal, the name prompt
+    /// and every refused launch say this, so none can drift.
+    #[must_use]
+    pub(crate) fn words(&self) -> String {
+        format!("wait for {} to finish", self.running)
+    }
+}
+
+/// The write running now, or `None` when one may start.
+#[must_use]
+pub(crate) fn in_flight(state: &AppState) -> Option<InFlight> {
+    state.operating?;
+    let running = state
+        .remote
+        .running
+        .as_ref()
+        .map_or_else(|| "the write".to_owned(), |it| it.description.clone());
+    Some(InFlight { running })
+}
+
+/// **The only setter of `AppState::operating`** (m6-conflicts/78, Decided
+/// 3): one write at a time is enforced where the slot is taken, not at each
+/// key. Refuses, writing nothing, while a write runs.
+pub(super) fn claim_write(state: &mut AppState, id: JobId) -> Result<(), InFlight> {
+    if let Some(busy) = in_flight(state) {
+        return Err(busy);
+    }
+    state.operating = Some(id);
+    Ok(())
+}
+
+/// A refused launch, said on the status line as `f` says it
+/// (`Status::Failed(InFlight::words())`), for a caller whose modal — if it
+/// had one — has closed on the key. Most callers check
+/// [`operation_in_flight`] first and so never see `Err`; this keeps the
+/// refusal worded if that guard is ever lost, rather than silent.
+pub(super) fn say_if_refused(state: &mut AppState, launched: Result<(), InFlight>) {
+    if let Err(busy) = launched {
+        state.status = Status::Failed(busy.words());
+    }
 }
 
 /// The path under the changes-pane cursor, read from the file list the pane
@@ -236,7 +299,9 @@ pub fn stage_selected(
         | WorkingTreeSection::Untracked
         | WorkingTreeSection::Unmerged => Operation::Stage(target),
     };
-    launch(next, commands, op, next_id);
+    // Unreachable `Err`: `operation_in_flight` returned above.
+    let launched = launch(next, commands, op, next_id);
+    say_if_refused(next, launched);
     true
 }
 
@@ -469,7 +534,8 @@ pub fn stage_at_diff_cursor(
     } else {
         Operation::Stage(target)
     };
-    launch(next, commands, op, next_id);
+    let launched = launch(next, commands, op, next_id);
+    say_if_refused(next, launched);
     true
 }
 
@@ -614,12 +680,14 @@ pub fn stage_all(
     if paths.is_empty() {
         return false;
     }
-    launch(
+    // Unreachable `Err`: `operation_in_flight` returned above.
+    let launched = launch(
         next,
         commands,
         Operation::Stage(Target::Paths(paths)),
         next_id,
     );
+    say_if_refused(next, launched);
     true
 }
 
@@ -2031,7 +2099,8 @@ mod tests {
                 crate::update::preview::HISTORY_CANNOT_STOP,
                 Some("r"),
                 &mut || JobId::new(9),
-            );
+            )
+            .expect("no write is running");
             let commands = operated(
                 &mut state,
                 JobId::new(9),
@@ -2499,4 +2568,6 @@ mod tests {
         assert_eq!(untracked_size(1), " \u{2014} 1 line");
         assert_eq!(untracked_size(7), " \u{2014} 7 lines");
     }
+
+    mod one_write;
 }

@@ -583,7 +583,7 @@ pub(super) fn at_step_two(app: &App, state: AppState) -> AppState {
 }
 
 /// The selected graph row carries the branch badge `name`.
-fn on_branch(state: &AppState, name: &str) -> bool {
+pub(super) fn on_branch(state: &AppState, name: &str) -> bool {
     let (Some(refs), Some(row)) = (
         state.refs.as_deref(),
         state

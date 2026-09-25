@@ -55,11 +55,37 @@ pub fn credential_view(state: &AppState) -> Option<CredentialView<'static>> {
         prompt: prompt.prompt.clone(),
         field,
         note: sanitize_line(NOTE),
-        footer: sanitize_line(&format!(
-            "⏎ send  ⌃U clear  esc cancel the {}",
-            what_it_stops(state)
-        )),
+        footer: sanitize_line(&footer(state)),
     })
+}
+
+/// The box's bottom border: its keys, and what `Esc` cancels — named as the
+/// running write's own description, the words its `Busy` line draws
+/// (`esc cancel push main → origin/main`), so the question says which push
+/// it belongs to (m6-conflicts/78, Decided 2; F9's information, moved here
+/// when 69 gave the row under the box to the box's keys). When that does not
+/// fit the box whole, the verb alone (`esc cancel the push`): the border is
+/// cut from the right, and a cut description names no push at all.
+fn footer(state: &AppState) -> String {
+    const KEYS: &str = "⏎ send  ⌃U clear  esc cancel";
+    let named = state
+        .remote
+        .running
+        .as_ref()
+        .map(|running| format!("{KEYS} {}", running.description));
+    // `border_row` keeps a label whole while it and its two gutters fit
+    // between the corners: the box's width less four.
+    let frame = ratatui::layout::Rect::new(0, 0, state.size.columns, state.size.rows);
+    let room = usize::from(
+        graft_ui::credential_prompt::credential_area(frame)
+            .width
+            .saturating_sub(4),
+    );
+    match named {
+        // Display width, as the border measures it (ratatui's own count).
+        Some(named) if ratatui::text::Line::raw(named.as_str()).width() <= room => named,
+        _ => format!("{KEYS} the {}", what_it_stops(state)),
+    }
 }
 
 /// What `Esc` cancels, in the user's word for it: the write that asked.

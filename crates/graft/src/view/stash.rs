@@ -100,9 +100,10 @@ fn prompt(state: &AppState) -> Option<StashPromptView<'_>> {
 
 /// What the overlay says about the last write: the graph screen's footer is
 /// covered while this is up, so the acknowledgement has to be drawn here or
-/// nowhere (m3-working-tree-undo-and-stash/06).
+/// nowhere (m3-working-tree-undo-and-stash/06). Reads
+/// `AppState::shown_status`, as the graph footer does (m6-conflicts/78).
 fn notice(state: &AppState) -> (Option<graft_term::sanitize::SanitizedText>, bool) {
-    match &state.status {
+    match state.shown_status() {
         Status::Busy(description) => (Some(sanitize_line(&format!("{description}…"))), false),
         Status::Done { what, keys } => (
             Some(sanitize_line(&crate::view::status::done_line(
