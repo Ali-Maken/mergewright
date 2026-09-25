@@ -1,6 +1,6 @@
 # hint-words-keep-the-way-out: at 120 columns the resolver's bar keeps `d start over` and `esc close` whole
 
-Status: partial (capture open, see NOTES)
+Status: done
 From: user picks 2026-09-24 item 5 (batch 9, option A); `.scratch/m6-conflicts/user-facts-m632.md`; ADR-0044 §4
 (amends ADR-0039's third amendment).
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/54-56.md`. The planner re-read
@@ -89,12 +89,12 @@ impl Hint { #[must_use] pub fn keeps_words(self) -> Self; }   // the builder lis
 - **Docs:** `crates/graft-ui/MAP.md` line 22: the step sequence, the flag, and which lists mark it.
 
 ## Acceptance (name the verifying test at tick time)
-- [x] `resolver_bar_keeps_the_way_out_at_120`: red then green, observed 2026-09-25: with `fitting.rs` reverted to a2ac1ac6^ it failed at hints/tests.rs:1658 (and so did the rebase test); restored, green. `done_bar_keeps_the_way_out_at_100` passes on the old ladder too (not a red test).
+- [x] `resolver_bar_keeps_the_way_out_at_120`: red then green, observed 2026-09-25: with `fitting.rs` reverted to a2ac1ac6^ it failed at hints/tests.rs:1658 (and so did the rebase test); restored, green.
 - [x] `resolver_bar_keeps_the_way_out_at_120_in_a_rebase` (rebase roles, 120 columns).
-- [x] `done_bar_keeps_the_way_out_at_100` (`resolver_done_list(true)`: `d start over`, `esc close` whole).
+- [x] `done_bar_keeps_the_way_out_at_100` (`resolver_done_list(true)`: `d start over`, `esc close` whole). It passes on the old ladder too, so it guards against regressions but does not prove the change.
 - [x] `only_the_resolver_marks_words` (graph_screen/tests.rs)
 - [x] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` (existing, green, unedited)
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-bar-keeps-the-way-out-120x40.txt`, from the
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/m6-13-after-ctrl-t-120x40.txt` and `m6-13-after-ctrl-t-80x24.txt`, checked by the pty walk's capture check (`pty-walk-m6.py 120x40|80x24 three-conflicts-all-theirs`, `graft-fixtures capture`: `settled`, not drifted, 2026-09-25). They replace `fix-bar-keeps-the-way-out-120x40.txt`: same scene, bottom row; a new stem would need a walk scenario and a note row (conductor 2026-09-25). Scene is `three.txt`, not `notes.txt`. Was: `fix-bar-keeps-the-way-out-120x40.txt`, from the
       pty walk (`.scratch/m6-conflicts/pty-walk-m6.py`) against the built binary. No new `graft` capture test is
       added: that would be a `graft` edit.
   - Scene: the merge resolver on `notes.txt`, with `B base` and `d start over` offered, at 120 columns.
@@ -112,7 +112,7 @@ Small. One context.
 ## NOTES
 - Scout: .scratch/m6-conflicts/scouts/54-56.md.
 - **Unblocked 2026-09-25 (graft in set), fixed:** `graft/tests/it/resolver.rs:153-163` `enter_on_conflicts_row_opens_the_resolver` asserts `M mergetool` at 120 (its comment: `d` and `esc` stay bare), the opposite of this ticket. Edit for lane O: drop `"M mergetool"`, assert `"d start over"` and `"esc close"`, fix the comment. The only red test (3102/3103).
-- Capture box **not ticked**. Tried an m5_walk stem `fix-bar-keeps-the-way-out` (a copy of `two-files-out-of-order`, keys `m m n t N`): the pty capture came out right (bottom row `... ⏎ done  j/k  M  d start over  esc close`), but a new scenario turns 3 graft tests red: `every_scenario_has_a_test` (every_scenario.rs:33 wants a test per scenario), `captures_are_named_keyed_and_listed_in_the_matrix` (wants the stem in coverage.rs `M6_STEMS`), `journey_counts_match_the_note` (conflict_journeys.rs:1192: every journey needs a step-count row in the design note, which is outside the crates). Reverted; conductor to decide: a proper scenario + design-note row, or a graft `check_shot` capture test on a two-block fixture. The same bar is in `fix-stop-lands-in-resolver-120x40.txt` and `m6-13-after-ctrl-t-120x40.txt`. Colour unverified.
+- Capture: resolved by the conductor (see the tick). Tried an m5_walk stem `fix-bar-keeps-the-way-out` (a copy of `two-files-out-of-order`, keys `m m n t N`): the pty capture came out right (bottom row `... ⏎ done  j/k  M  d start over  esc close`), but a new scenario turns 3 graft tests red: `every_scenario_has_a_test` (every_scenario.rs:33 wants a test per scenario), `captures_are_named_keyed_and_listed_in_the_matrix` (wants the stem in coverage.rs `M6_STEMS`), `journey_counts_match_the_note` (conflict_journeys.rs:1192: every journey needs a step-count row in the design note, which is outside the crates). Reverted; conductor to decide: a proper scenario + design-note row, or a graft `check_shot` capture test on a two-block fixture. The same bar is in `fix-stop-lands-in-resolver-120x40.txt` and `m6-13-after-ctrl-t-120x40.txt`. Colour unverified.
 - pty walk re-run (GRAFT_UPDATE_SHOTS=1, then plain run `settled`) for `m6-13-after-ctrl-t` at 120x40 and 80x24 (bottom row only changed); 160/187/200 fit whole, unchanged.
 - **Finding for the user:** at 80x24 the resolver now draws `... ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close`: `j/k` and `M` drop off entirely, `⌃O/⌃T all` and `O/T file` go bare. The ticket judged only 120.
 - Pinned 80-column bars in `resolver_hint_ladder` and `resolver_offers_file_keys` updated: `e edit` -> `e`, `esc` -> `esc close`.

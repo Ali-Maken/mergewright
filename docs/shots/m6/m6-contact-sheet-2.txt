@@ -75,7 +75,7 @@ FILES · 1 conflicted      │▸ three.txt · 3 conflicts · 0 open
 
 ================================================================================
 docs/shots/m6/m6-13-after-ctrl-t-80x24.txt
-what right looks like: The same at 80x24: compact strip `files   ▸ three.txt ⏎`, identity row `▸ three.txt · 3 conflicts · 0 open`, the same notice.
+what right looks like: The same at 80x24: compact strip `files   ▸ three.txt ⏎`, identity row `▸ three.txt · 3 conflicts · 0 open`, the same notice; bar `… ⏎  d start over  esc close` (`j/k` and `M` dropped, ticket 56).
 ================================================================================
 
 m6 walk capture: m6-13-after-ctrl-t — scenario three-conflicts-all-theirs, keys m m ⌃t, unicode tier, 80x24

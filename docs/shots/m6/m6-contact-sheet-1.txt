@@ -3968,7 +3968,7 @@ files   gone.txt keep?   ▸ notes.txt 1/2 open
 
 ================================================================================
 docs/shots/m6/m6-13-after-ctrl-t-120x40.txt
-what right looks like: After Ctrl+T on `three.txt` (three-blocks, keys `m m ⌃t`): every block `took theirs · feature`; strip `files   ▸ three.txt · ⏎ marks done`; identity row `▸ three.txt · 3 conflicts · 0 open`; notice `took theirs · feature in 3 blocks · ⏎ marks three.txt done`; the bar offers `⌃O/⌃T all`. Ctrl+T in Zed's terminal is unverified (TESTING.md). Unicode tier; colour, the focus reverse video and the cursor block unverified.
+what right looks like: After Ctrl+T on `three.txt` (three-blocks, keys `m m ⌃t`): every block `took theirs · feature`; strip `files   ▸ three.txt · ⏎ marks done`; identity row `▸ three.txt · 3 conflicts · 0 open`; notice `took theirs · feature in 3 blocks · ⏎ marks three.txt done`; the bar offers `⌃O/⌃T all` and keeps the way out whole: `… ⏎ done  j/k  M  d start over  esc close` (ticket 56). Ctrl+T in Zed's terminal is unverified (TESTING.md). Unicode tier; colour, the focus reverse video and the cursor block unverified.
 ================================================================================
 
 m6 walk capture: m6-13-after-ctrl-t — scenario three-conflicts-all-theirs, keys m m ⌃t, unicode tier, 120x40
