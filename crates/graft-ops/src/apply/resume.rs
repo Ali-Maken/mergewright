@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
+use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
@@ -23,7 +24,7 @@ use shell::{Target, refuse_unmerged, shell_merge};
 
 use super::{
     AfterState, Applied, ApplyError, Context, Pending, Refresh, apply, as_apply_error, finish,
-    reason_for,
+    reason_for, set_aside,
 };
 
 /// How [`resume`] takes a stopped history operation on (m5/07).
@@ -312,18 +313,25 @@ fn still_pending(
     })
 }
 
-/// git is done with the operation, one way or the other: write the outcome
-/// line the stop deferred. `aborting` is `Resume::Abort`; every other way
-/// on commits.
-fn close_resume(
-    ctx: &mut Context<'_>,
-    entry: JournalEntry,
-    aborting: bool,
-    commands: Vec<String>,
-    failure: Option<RunError>,
-) -> Result<Applied, ApplyError> {
-    // The backup ref still points at the before-commit: `seal_after` moves
-    // it only when the outcome is written, which is now.
+/// The entry's status when git went through with the resume: `--abort`
+/// closes it `Aborted("aborted")`; `Continue`, `ContinueWith` and `Skip` commit.
+fn went_through(aborting: bool) -> EntryStatus {
+    if aborting {
+        EntryStatus::Aborted {
+            reason: "aborted".to_owned(),
+        }
+    } else {
+        EntryStatus::Committed
+    }
+}
+
+/// The entry's before-commit, read from its backup ref — which still points
+/// there: `seal_after` moves it only when the outcome is written, which is
+/// now. A backup ref that is gone comes back as `BackupGone`.
+fn before_commit_of(
+    ctx: &Context<'_>,
+    entry: &JournalEntry,
+) -> Result<(Option<Oid>, Option<AfterState>), ApplyError> {
     let before_commit = match &entry.backup_ref {
         Some(name) => facts::read_refs(ctx.repo, std::slice::from_ref(name))
             .map_err(ApplyError::Facts)?
@@ -337,19 +345,41 @@ fn close_resume(
         .clone()
         .filter(|_| before_commit.is_none())
         .map(|name| AfterState::BackupGone { name });
+    Ok((before_commit, backup_gone))
+}
+
+/// git is done with the operation, one way or the other: write the outcome
+/// line the stop deferred. `aborting` is `Resume::Abort`; every other way
+/// on commits.
+fn close_resume(
+    ctx: &mut Context<'_>,
+    entry: JournalEntry,
+    aborting: bool,
+    commands: Vec<String>,
+    failure: Option<RunError>,
+) -> Result<Applied, ApplyError> {
+    let (before_commit, backup_gone) = before_commit_of(ctx, &entry)?;
     let mut pending = Pending {
         entry,
         before_commit,
     };
-    let status = match (aborting, &failure) {
-        (_, Some(error)) => EntryStatus::Aborted {
+    // A rebase that set edits aside and stopped: git is done with it now,
+    // whichever way, so step 6 runs — onto the rebased tip, or onto the
+    // original one after `--abort` (ADR-0045 §4). `put_back` comes from the
+    // Pending line, so this holds across a relaunch.
+    if let Some(stash) = set_aside::stash_of(&pending.entry) {
+        let ended = set_aside::Ended {
+            failure,
+            done: went_through(aborting),
+            unread: backup_gone.into_iter().collect(),
+        };
+        return set_aside::close(ctx, pending, commands, stash, ended);
+    }
+    let status = match &failure {
+        Some(error) => EntryStatus::Aborted {
             reason: reason_for(error),
         },
-        (true, None) => EntryStatus::Aborted {
-            reason: "aborted".to_owned(),
-        },
-        // Continue, ContinueWith or Skip, and git finished.
-        (false, None) => EntryStatus::Committed,
+        None => went_through(aborting),
     };
     let mut unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,

@@ -25,10 +25,11 @@ mod remote;
 mod restart;
 mod resume;
 mod run;
+mod set_aside;
 
 use std::path::{Path, PathBuf};
 
-use graft_core::journal::{EntryId, EntryStatus, JournalEntry};
+use graft_core::journal::{EntryId, EntryStatus, JournalEntry, PutBack, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
@@ -214,23 +215,41 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
 
+    // ADR-0045 §4, step 1: a rebase or checkout over changed tracked files
+    // makes `S` before the entry opens, so the Pending line can name it.
+    let mut commands = Vec::new();
+    let aside_words = set_aside::words(&description);
+    let aside = set_aside::create(ctx, op, &facts, &aside_words, &mut commands)?;
+    let mut pins = pins_for(op);
+    pins.extend(aside);
     let opening = Opening {
         kind: op.kind(),
         description,
         touches,
-        pins: pins_for(op),
+        pins,
         reverses: None,
-        put_back: put_back_for(op),
+        put_back: put_back_for(op).or(aside.map(|stash| PutBack {
+            stash,
+            why: PutBackWhy::SetAside,
+        })),
     };
+    // Step 2.
     let mut pending = begin(ctx, ctx.next_id(), opening)?;
+    // Steps 3 and 4.
+    if let Some(stash) = aside
+        && let Err(error) = set_aside::put_aside(ctx, stash, &aside_words, &mut commands)
+    {
+        return set_aside::abandon(ctx, pending, commands, stash, error);
+    }
 
     // After the before-snapshot, never before it: the state `u` puts back is
     // the resolution the user is starting over from, not the stages this is
     // about to restore over it.
-    let mut commands = match run_restart_prep(ctx, &prep) {
-        Ok(commands) => commands,
+    match run_restart_prep(ctx, &prep) {
+        Ok(prepared) => commands.extend(prepared),
         Err(error) => return abandon_pending(ctx, &mut pending, error),
-    };
+    }
+    // Step 5 for a set-aside; `closed` runs step 6.
     commands.extend(plan.iter().map(Invocation::command_line));
 
     let run = run_plan(ctx, &plan, op.remote_names().as_ref());
@@ -265,6 +284,16 @@ fn closed(
             kind,
             paths,
         });
+    }
+    // A rebase or checkout that set edits aside: step 6, whether the
+    // operation went through or git refused it (ADR-0045 §4).
+    if let Some(stash) = set_aside::stash_of(&pending.entry) {
+        let ended = set_aside::Ended {
+            failure: failure.map(|failed| failed.error),
+            done: EntryStatus::Committed,
+            unread: cleanup,
+        };
+        return set_aside::close(ctx, pending, commands, stash, ended);
     }
     // A put-back that failed: the index says whether it clashed, never the
     // exit code (ADR-0045 §7). Read before the outcome, which it decides.

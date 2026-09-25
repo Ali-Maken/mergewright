@@ -42,7 +42,7 @@ walk! {
     merge_forecast_names_the_conflicting_path => "merge-forecast-names-the-conflicting-path",
     merge_already_up_to_date_offers_close => "merge-already-up-to-date-offers-close",
     rebase_two_commits_ghost_equals_git => "rebase-two-commits-ghost-equals-git",
-    rebase_dirty_tree_refused_offers_stash => "rebase-dirty-tree-refused-offers-stash",
+    rebase_dirty_tree_opens_the_preview => "rebase-dirty-tree-opens-the-preview",
     rebase_via_drop_menu => "rebase-via-drop-menu",
     cherry_pick_via_menu_ghost_equals_git => "cherry-pick-via-menu-ghost-equals-git",
     revert_via_menu_ghost_equals_git => "revert-via-menu-ghost-equals-git",

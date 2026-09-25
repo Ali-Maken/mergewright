@@ -1814,9 +1814,9 @@ and the exact git command are from the captures only.
     ref move — so the refs are asserted directly.
 11. **rebase-two-commits-ghost-equals-git** — `r` on `main` from `feature`:
     `ghost_equals_git`, the two new commits' patch-ids equal the old tips'.
-12. **rebase-dirty-tree-refused-offers-stash** — a dirty `base.txt`;
-    confirm: `rebase needs a clean tree`, `S stash 1 changed file`; nothing
-    moved.
+12. **rebase-dirty-tree-opens-the-preview** — a dirty `base.txt`; `r`
+    opens the rebase preview with `Confirm`, no clean-tree refusal (the
+    edits are set aside, m6-conflicts/73); `Esc`: nothing moved.
 13. **rebase-via-drop-menu** — drag `feature`'s badge onto `main`'s row,
     pick `Rebase`: same holds as 11.
 14. **cherry-pick-via-menu-ghost-equals-git** — `.` on `finish the

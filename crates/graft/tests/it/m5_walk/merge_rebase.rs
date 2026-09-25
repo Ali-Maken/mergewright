@@ -1,7 +1,7 @@
 //! Merge and rebase: the ghost equals what git did, for a fast-forward, a
 //! merge commit and two replayed commits; a forecast names the file that
-//! would conflict; a dirty tree is refused with the stash key named; the
-//! drop menu ends in the same preview.
+//! would conflict; a dirty tree opens the preview (its edits are set aside,
+//! m6-conflicts/73); the drop menu ends in the same preview.
 
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
@@ -13,7 +13,7 @@ use super::fixture::{
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::vocabulary::{
     box_choices, box_says, branch, ch, chain, claim_and_confirm, key, last_entry_committed,
-    nothing_open, plain, redo, same_files, same_refs, status_containing, undo,
+    nothing_open, plain, redo, same_files, same_refs, status_containing, title_names, undo,
 };
 use crate::repo_truth::check;
 
@@ -29,7 +29,7 @@ pub(super) fn merging() -> Vec<Scenario> {
 pub(super) fn rebasing() -> Vec<Scenario> {
     vec![
         rebase_two_commits_ghost_equals_git(),
-        rebase_dirty_tree_refused_offers_stash(),
+        rebase_dirty_tree_opens_the_preview(),
         rebase_via_drop_menu(),
     ]
 }
@@ -298,9 +298,14 @@ fn rebase_holds(fixture: &Fixture, marks: &super::truth::Marks) -> Result<(), St
     same_files("u", &marks.before, undone)
 }
 
-fn rebase_dirty_tree_refused_offers_stash() -> Scenario {
+/// `r` over a changed tracked file opens the preview: since
+/// m6-conflicts/73 a rebase sets the edits aside and puts them back, so
+/// there is no clean-tree refusal (ADR-0045). What the box says about the
+/// set-aside is 74's; this only asserts the box opens, and `Esc` leaves
+/// everything as it was.
+fn rebase_dirty_tree_opens_the_preview() -> Scenario {
     Scenario {
-        name: "rebase-dirty-tree-refused-offers-stash",
+        name: "rebase-dirty-tree-opens-the-preview",
         shape: Shape::Trivial,
         remote: Remote::None,
         size: (80, 24),
@@ -312,32 +317,36 @@ fn rebase_dirty_tree_refused_offers_stash() -> Scenario {
             Step::WaitFor(Wait::Ready),
             Step::CursorTo("main"),
             key(ch('r')),
-            // Refused before any box opens (m6-conflicts/67): the preview
-            // runs the write's own `check`, so there is nothing to confirm.
+            // Answered either way, so a refusal fails on the box below with
+            // the status in the message, not on a pump timeout.
             Step::WaitFor(Wait::PreviewAnswered),
-            Step::See("no preview box is open", |state| {
-                check(state.preview.is_none(), || {
-                    "the refused rebase drew a preview".to_owned()
+            Step::See("the rebase preview is open, with Confirm", |state| {
+                title_names(state, "rebase")?;
+                let choices = box_choices(state)?;
+                check(choices.iter().any(|choice| choice == "Confirm"), || {
+                    format!("the box offers {choices:?}")
                 })
             }),
-            Step::See("the status names the clean-tree rule and S", |state| {
-                status_containing(state, "rebase needs a clean tree")?;
-                status_containing(state, "S stash 1 changed file")
+            Step::See("no clean-tree refusal", |state| {
+                check(status_containing(state, "clean tree").is_err(), || {
+                    format!("the status still refuses: {:?}", state.status)
+                })
             }),
-            Step::Mark("refused"),
+            key(graft_core::event::KeyCode::Escape),
+            Step::Mark("closed"),
         ],
         expect: |fixture, marks| {
-            let refused = marks.get("refused")?;
-            check(refused.repo.refs == marks.before.repo.refs, || {
-                "the refusal moved a ref".to_owned()
+            let closed = marks.get("closed")?;
+            check(closed.repo.refs == marks.before.repo.refs, || {
+                "the preview moved a ref".to_owned()
             })?;
-            same_files("the refusal", &marks.before, refused)?;
+            same_files("the preview", &marks.before, closed)?;
             check(
                 fixture.bytes("base.txt")? == b"edited, not committed\n",
                 || "the dirty edit is gone".to_owned(),
             )?;
-            check(refused.in_progress.is_none(), || {
-                "git is mid-rebase after a refusal".to_owned()
+            check(closed.in_progress.is_none(), || {
+                "git is mid-rebase after a preview".to_owned()
             })
         },
         capture: None,

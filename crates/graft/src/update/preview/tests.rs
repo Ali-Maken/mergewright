@@ -119,6 +119,7 @@ pub(in crate::update) fn a_plan() -> PreviewPlan {
             name: "refs/heads/feature".to_owned(),
             oid: oid(3),
         }],
+        set_aside: None,
     }
 }
 
@@ -134,6 +135,7 @@ fn an_empty_plan() -> PreviewPlan {
         conflicts: ConflictForecast::Clean,
         undo: UndoNote::Undoable,
         against: Vec::new(),
+        set_aside: None,
     }
 }
 
@@ -1069,30 +1071,26 @@ fn answered_with(subject: PreviewSubject, failure: PreviewFailure) -> (AppState,
     (before, state)
 }
 
-/// `r` on a dirty tree: the job's `Refused` answer closes the waiting box,
-/// and the status line says why in the write's own words, naming `S`.
-/// Group F (ADR-0045) flips this: the edits are set aside instead.
+/// `r` on a dirty tree: the job answers with a plan that sets the edits
+/// aside (`graft_ops::preview::plan` no longer refuses a dirty rebase,
+/// ADR-0045 §4), and the box opens with no refusal on the status line.
+/// Flipped by m6-conflicts/73 from 67's refusal; 74 asserts the row's words.
 #[test]
-fn r_on_a_dirty_tree_opens_no_preview_and_says_why() {
-    let (before, state) = answered_with(
-        opened_by("r"),
-        PreviewFailure::Refused(graft_ops::operation::Refusal::DirtyTree { count: 1 }),
-    );
-    assert!(state.preview.is_none(), "a box is open");
-    assert!(preview_box(&state).is_none(), "a box is drawn");
-    assert_eq!(
-        state.status,
-        Status::Sticky {
-            reason: "rebase needs a clean tree".to_owned(),
-            keys: Some("S stash 1 changed file".to_owned()),
-        }
-    );
-    // Focus is the graph's again: nothing overlays it, and the cursor is
-    // where `r` was pressed.
-    assert!(!state.journal.shown && !state.banner_focus);
-    assert_eq!(
-        state.history.as_ref().map(|it| (it.top, it.cursor)),
-        before.history.as_ref().map(|it| (it.top, it.cursor))
+fn r_on_a_dirty_tree_opens_the_preview() {
+    let plan = PreviewPlan {
+        set_aside: Some(graft_ops::operation::SetAside {
+            files: 1,
+            staged: 0,
+        }),
+        ..a_plan()
+    };
+    let (state, _) = opened_over(opened_by("r"), plan);
+    assert!(state.preview.is_some(), "the box is open");
+    assert!(preview_box(&state).is_some(), "the box is drawn");
+    assert!(
+        !matches!(state.status, Status::Sticky { .. }),
+        "no refusal: {:?}",
+        state.status
     );
 }
 

@@ -15,7 +15,7 @@ use graft_git::state::InProgress;
 use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-use super::super::{FactsScope, Operation, Refusal, RepoFacts, Target};
+use super::super::{FactsScope, Operation, Refusal, RepoFacts, SetAside, Target};
 use super::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
@@ -564,8 +564,11 @@ fn head_on_another_branch_refuses_branch_changed() {
     );
 }
 
+/// Flipped by m6-conflicts/73 (ADR-0045 §4): a rebase or checkout over
+/// changed tracked files sets them aside instead of refusing. A switch to a
+/// new branch and a branch from a stash still refuse.
 #[test]
-fn a_dirty_tracked_tree_refuses_rebase_and_switch_but_not_merge() {
+fn a_dirty_tracked_tree_refuses_a_new_branch_switch_but_not_rebase_or_checkout() {
     let mut f = facts();
     f.status.entries.push(StatusEntry {
         unstaged: Some(Change::Modified),
@@ -580,11 +583,11 @@ fn a_dirty_tracked_tree_refuses_rebase_and_switch_but_not_merge() {
         ..entry("junk")
     });
     let dirty = Err(Refusal::DirtyTree { count: 2 });
-    assert_eq!(rebase().check(&f), dirty);
-    assert_eq!(checkout().check(&f), dirty);
     assert_eq!(branch_create(true).check(&f), dirty);
     assert_eq!(branch_from_stash().check(&f), dirty);
     for op in [
+        rebase(),
+        checkout(),
         merge(),
         pick(),
         revert(),
@@ -595,6 +598,103 @@ fn a_dirty_tracked_tree_refuses_rebase_and_switch_but_not_merge() {
         tag_create(None),
     ] {
         assert_eq!(op.check(&f), Ok(()), "{}", op.describe());
+    }
+}
+
+/// `facts()` with the working tree's status set to `entries`.
+fn facts_over(entries: Vec<StatusEntry>) -> RepoFacts {
+    let mut f = facts();
+    f.status.entries = entries;
+    f
+}
+
+/// ADR-0045 §4: `sets_aside` is `Some` for a rebase or checkout exactly when
+/// tracked files are changed, counting them and the staged ones among them.
+/// Untracked files never count; every other kind is `None`, dirty or not.
+#[test]
+fn sets_aside_table() {
+    let clean = facts_over(vec![]);
+    let tracked_only = facts_over(vec![StatusEntry {
+        unstaged: Some(Change::Modified),
+        ..entry("a.rs")
+    }]);
+    let staged_and_unstaged = facts_over(vec![
+        StatusEntry {
+            unstaged: Some(Change::Modified),
+            ..entry("a.rs")
+        },
+        StatusEntry {
+            staged: Some(Change::Added),
+            ..entry("b.rs")
+        },
+        StatusEntry {
+            staged: Some(Change::Modified),
+            unstaged: Some(Change::Modified),
+            ..entry("c.rs")
+        },
+        StatusEntry {
+            untracked: true,
+            ..entry("junk")
+        },
+    ]);
+    let untracked_only = facts_over(vec![StatusEntry {
+        untracked: true,
+        ..entry("junk")
+    }]);
+
+    for op in [rebase(), checkout()] {
+        let what = op.describe();
+        assert_eq!(op.sets_aside(&clean), None, "{what}: clean");
+        assert_eq!(
+            op.sets_aside(&tracked_only),
+            Some(SetAside {
+                files: 1,
+                staged: 0
+            }),
+            "{what}: tracked only"
+        );
+        assert_eq!(
+            op.sets_aside(&staged_and_unstaged),
+            Some(SetAside {
+                files: 3,
+                staged: 2
+            }),
+            "{what}: staged and unstaged"
+        );
+        assert_eq!(
+            op.sets_aside(&untracked_only),
+            None,
+            "{what}: untracked only"
+        );
+    }
+    for op in [merge(), pick(), revert(), reset(ResetMode::Hard)] {
+        for f in [&clean, &tracked_only, &staged_and_unstaged, &untracked_only] {
+            assert_eq!(op.sets_aside(f), None, "{}", op.describe());
+        }
+    }
+}
+
+/// A set-aside rebase or checkout records `refs/stash` in `touches`, so the
+/// entry's before and after say whether the stash list moved (ADR-0045 §4
+/// step 2, §6). A clean one does not.
+#[test]
+fn a_set_aside_touches_the_stash_ref() {
+    let mut dirty = facts();
+    dirty.status.entries.push(StatusEntry {
+        unstaged: Some(Change::Modified),
+        ..entry("a.rs")
+    });
+    for op in [rebase(), checkout()] {
+        assert!(
+            op.touches(&dirty).refs.contains(&"refs/stash".to_owned()),
+            "{}",
+            op.describe()
+        );
+        assert!(
+            !op.touches(&facts()).refs.contains(&"refs/stash".to_owned()),
+            "{}",
+            op.describe()
+        );
     }
 }
 

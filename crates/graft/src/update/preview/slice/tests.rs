@@ -54,6 +54,7 @@ fn plan() -> PreviewPlan {
         conflicts: ConflictForecast::Clean,
         undo: UndoNote::Undoable,
         against: Vec::new(),
+        set_aside: None,
     }
 }
 

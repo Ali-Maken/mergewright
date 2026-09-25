@@ -270,6 +270,18 @@ impl Invocation {
     }
 }
 
+/// What a rebase or checkout sets aside around itself
+/// ([`Operation::sets_aside`], ADR-0045 §4): the tracked files changed, and
+/// how many of those are staged — they come back unstaged, since the
+/// put-back runs without `--index`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SetAside {
+    /// Tracked files with staged or unstaged changes.
+    pub files: usize,
+    /// Of those, the ones with staged changes.
+    pub staged: usize,
+}
+
 /// Everything `check`, `plan` and `touches` may look at, read once by the
 /// executor before the operation and never re-read half way.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -387,8 +399,10 @@ pub enum Refusal {
         /// The ref, full name or `HEAD`.
         name: String,
     },
-    /// A rebase or a switch over changed tracked files; `S` stashes them
-    /// first (m5/07, hard choice 4). Untracked files never count.
+    /// A switch to a new branch, or a branch from a stash, over changed
+    /// tracked files; `S` stashes them first (m5/07, hard choice 4).
+    /// Untracked files never count. A rebase or checkout sets them aside
+    /// instead (ADR-0045 §4, m6-conflicts/73).
     DirtyTree {
         /// How many tracked files have staged or unstaged changes.
         count: usize,
@@ -805,6 +819,37 @@ impl Operation {
         )
     }
 
+    /// What a rebase or checkout would set aside before it runs and put
+    /// back after (ADR-0045 §4): `Some` when tracked files are changed,
+    /// staged or not; `None` on a clean tree, over untracked files only
+    /// (they stay where they are), and for every other kind. Pure over the
+    /// facts — the preview and `apply` ask the same question.
+    #[must_use]
+    pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
+        if !matches!(self, Self::Rebase(_) | Self::Checkout(_)) {
+            return None;
+        }
+        let changed = || {
+            facts
+                .status
+                .entries
+                .iter()
+                .filter(|entry| entry.is_staged() || entry.is_unstaged())
+        };
+        match changed().count() {
+            0 => None,
+            files => Some(SetAside {
+                files,
+                staged: changed().filter(|entry| entry.is_staged()).count(),
+            }),
+        }
+    }
+
+    /// `refs/stash`, when this operation sets edits aside.
+    fn stash_ref_if_set_aside(&self, facts: &RepoFacts) -> Option<String> {
+        self.sets_aside(facts).map(|_| stash::STASH_REF.to_owned())
+    }
+
     /// Every [`Tip`] this operation is pinned to: what the Ghost Preview was
     /// drawn against, and what `check` refuses [`Refusal::Moved`] over
     /// (hard choice 3). Empty for an operation with nothing pinned.
@@ -1105,13 +1150,24 @@ impl Operation {
             // be a merge nobody began.
             Self::Pull(_)
             | Self::Merge(_)
-            | Self::Rebase(_)
             | Self::CherryPick(_)
             | Self::Revert(_)
             | Self::FinishMerge(_)
             | Self::AbortMerge(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
+            // A set-aside records `refs/stash` too: its before and after
+            // say whether `S` was left in the list, which is what the
+            // inverse's stash step reads (ADR-0045 §4 step 2, §6).
+            Self::Rebase(_) => {
+                let mut refs = vec![commit::head_ref_name(&facts.head)];
+                refs.extend(self.stash_ref_if_set_aside(facts));
+                (refs, true, true)
+            }
             Self::Reset(params) => return history::touches_reset(params),
-            Self::Checkout(_) => return history::touches_checkout(),
+            Self::Checkout(_) => {
+                let mut touches = history::touches_checkout();
+                touches.refs.extend(self.stash_ref_if_set_aside(facts));
+                return touches;
+            }
             Self::BranchCreate(params) => return history::touches_branch_create(params),
             Self::BranchDelete(params) | Self::TagDelete(params) => {
                 (vec![params.name.clone()], false, false)

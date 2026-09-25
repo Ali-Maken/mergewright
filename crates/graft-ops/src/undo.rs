@@ -19,7 +19,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use graft_core::journal::{
-    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, Touches,
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, PutBack,
+    PutBackWhy, Touches,
 };
 use graft_core::oid::Oid;
 use graft_git::state::InProgress;
@@ -350,6 +351,25 @@ fn stash_step(
             .copied()
             .ok_or(NotInvertible::Incomplete { field: "pins" })
     };
+    // A rebase or checkout that set edits aside (ADR-0045 §6). A clean
+    // put-back dropped `S`, so the root's `refs/stash` did not move and
+    // there is nothing to do either way. A clash kept `S` in the list: the
+    // undo drops it, since the backup puts the very same edits back, and a
+    // redo stores it again only if that undo's own `refs/stash` moved (the
+    // pop rule, m6-conflicts/07 F2).
+    if let Some(PutBack {
+        stash,
+        why: PutBackWhy::SetAside,
+    }) = root.put_back
+    {
+        return Ok(if forward {
+            stash_ref_moved(entry).then_some(Step::StashStore { commit: stash })
+        } else {
+            stash_moved_to(root)?
+                .filter(|kept| *kept == stash)
+                .map(|commit| Step::StashDrop { commit })
+        });
+    }
     Ok(match (root.kind, forward) {
         (OperationKind::StashPush, false) => {
             stash_moved_to(root)?.map(|commit| Step::StashDrop { commit })
@@ -411,6 +431,20 @@ fn stash_moved_to(entry: &JournalEntry) -> Result<Option<Oid>, NotInvertible> {
             field: "refs_after[refs/stash]",
         })?;
     Ok(after.filter(|_| after != before))
+}
+
+/// Whether `entry` recorded `refs/stash` on both sides and it moved. An
+/// entry whose plan had no stash step never recorded it, and moved nothing.
+/// Unlike [`stash_moved_to`], a move to no stash at all counts: an undo that
+/// dropped the only stash leaves `refs/stash` gone.
+fn stash_ref_moved(entry: &JournalEntry) -> bool {
+    match (
+        entry.refs_before.get(STASH_REF),
+        entry.refs_after.get(STASH_REF),
+    ) {
+        (Some(before), Some(after)) => before != after,
+        _ => false,
+    }
 }
 
 fn touches_of(steps: &[Step]) -> Touches {
