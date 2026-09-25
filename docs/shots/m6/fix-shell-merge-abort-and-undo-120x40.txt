@@ -1,0 +1,140 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# a_on_the_banner_aborts_a_shell_merge in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). `git merge
+# feature` run in the shell on `main`, stopped on two files; Graft launched
+# on it, the banner focused (m6-conflicts/57).
+#
+# Judge by eye:
+# - Frame 1 (`a`): the abort box over the banner reads
+#   `main goes back to before the merge` and `u puts the merge back`, the
+#   cursor on `[ Cancel ]`.
+# - Frame 2 (`→ ⏎`): no `MERGING` in the header; the footer row reads
+#   `abort merge of feature ✓`.
+# - Frame 3 (`u`): `MERGING` again, the graph's top row
+#   `Uncommitted changes (2 unmerged)`; the footer row reads
+#   `undo: abort merge of feature ✓ · c finishes the merge`.
+# - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
+#
+=== 1. a: the abort box ===
+ graft /code/api    MERGING
+◌   ▏  Uncommitted changes (2 unmerged)
+◆      [◆ main] main's take                                                                              GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+●─╯    the shared files                                                                                  GF 2h   b35b2f1
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+       ╭ Abort the merge? ────────────────────────────────────────────────────────────────────────────╮
+       │ main goes back to before the merge                                                           │
+       │ u puts the merge back                                                                        │
+       │                                                                                              │
+       │ git merge --abort                                                                            │
+       │                                                                                              │
+       │ ▸[ Cancel ]   [ Abort ]                                                                      │
+ no com╰──────────────────────────────────────────────────────────────────────────────────────────────╯ X never here
+ ←/→ move  ⏎ choose  esc cancel
+UNCOMMITTED
+diff vs HEAD ddeed32
+CONFLICTS (2)                 ▎
+  notes.md      both modified       1 + <<<<<<< HEAD
+  shared.rs     both modified   1   2   our plan
+                                    3 + =======
+                                    4 + their plan
+                                    5 + >>>>>>> feature
+
+
+
+
+
+
+
+
+=== 2. → ⏎: aborted ===
+ graft /code/api  6 commits
+◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+●─╯    the shared files                                                                                  GF 2h   b35b2f1
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ abort merge of feature ✓
+COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+main's take
+M notes.md              +1 −1
+M shared.rs             +1 −1   1     - the plan
+                                    1 + our plan
+
+
+
+
+
+
+
+
+
+
+
+=== 3. u: the merge back ===
+ graft /code/api    MERGING
+◌      Uncommitted changes (2 unmerged)
+◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+●─╯    the shared files                                                                                  GF 2h   b35b2f1
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ undo: abort merge of feature ✓ · c finishes the merge
+COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+main's take
+M notes.md              +1 −1
+M shared.rs             +1 −1   1     - the plan
+                                    1 + our plan
+
+
+
+
+
+
+
+
+
+
+

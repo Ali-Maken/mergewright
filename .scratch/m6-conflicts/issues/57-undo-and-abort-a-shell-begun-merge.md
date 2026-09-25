@@ -1,6 +1,7 @@
 # undo-and-abort-a-shell-begun-merge: `a` aborts, and `u`/`U` undo Graft's own steps, in a merge begun in the shell
 
-Status: partial — ops half done (m6-conflicts-57a); app half open (see NOTES, "What remains")
+Status: done — ops half (m6-conflicts-57a) and app half (m6-conflicts-57b); the capture tick is held on one question
+(NOTES, "App half", question 1)
 From: user picks 2026-09-24 item 10 (batch 3, "both"); KNOWN_GAPS M6/08 :611 (the question), :612; TESTING.md
 "Times I left" row :113.
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/57-58.md`; the planner re-read the lines
@@ -232,22 +233,41 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status>;          
       Verified by `octopus_merge.rs::abort_of_an_octopus_shell_merge_is_refused` (exact words).
 - [x] `redo_refuses_while_a_rebase_is_live`, `revert_to_refuses_past_a_live_merge`,
       `redo_of_an_undone_abort_is_allowed_while_the_merge_is_back`
-      Verified by `undo_gate.rs::redo_refuses_while_a_rebase_is_live`, `undo_gate.rs::revert_to_refuses_past_a_live_merge`, `abort_merge.rs::redo_of_an_undone_abort_is_allowed_while_the_merge_is_back` (the first two written after the gate, **not seen red**: see NOTES).
+      Verified by `undo_gate.rs::redo_refuses_while_a_rebase_is_live`, `undo_gate.rs::revert_to_refuses_past_a_live_merge`, `abort_merge.rs::redo_of_an_undone_abort_is_allowed_while_the_merge_is_back` (the first two written after the gate; **seen red in the app half**, 2026-09-25: with the `refuse_while_live` call in `run_plan` commented out, `redo_refuses_while_a_rebase_is_live` failed at `undo_gate.rs:134` — the redo reached the drift box `HEAD moved — u again to go ahead` — and `revert_to_refuses_past_a_live_merge` failed at `undo_gate.rs:169` — the revert applied both steps; call restored, `git diff` on `execute.rs` empty, both green again).
 - [x] `journal_round_trips_an_abort_merge_entry`
       Verified by `abort_merge.rs::journal_round_trips_an_abort_merge_entry` (`"kind":"abort_merge"`, parsed equal, rendered byte-equal).
-- [ ] `a_on_the_banner_aborts_a_shell_merge`, `u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`,
+- [x] `a_on_the_banner_aborts_a_shell_merge`, `u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`,
       `u_in_the_graph_undoes_a_step_of_a_shell_merge`
-- [ ] `u_still_refuses_in_a_merge_begun_in_graft`, `u_still_refuses_after_relaunch_into_a_merge_begun_in_graft`,
+      Verified by `graft tests/it/resolver/shell_begun.rs::a_on_the_banner_aborts_a_shell_merge` (git, journal, `J` row,
+      status, `u` restores `MERGE_HEAD`/`MERGE_MSG` byte-exact, stages, HEAD), `::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`,
+      `::u_in_the_graph_undoes_a_step_of_a_shell_merge`. Red first at unit level: `update::undo::tests::u_in_a_merge_begun_in_the_shell_is_sent`,
+      `update::banner::tests::u_on_the_banner_of_a_shell_merge_is_sent`, `::a_on_a_shell_merge_says_u_puts_it_back`.
+- [x] `u_still_refuses_in_a_merge_begun_in_graft`, `u_still_refuses_after_relaunch_into_a_merge_begun_in_graft`,
       `u_refuses_while_the_launch_journal_read_is_out`
-- [ ] `operation_live_words_match_ops`
-- [ ] `journey_counts_match_the_note` with `b-abort-shell-merge` = 3 and `b-undo-a-take-in-the-shell` = 1.
+      Verified by `update::undo::tests::u_still_refuses_in_a_merge_begun_in_graft`, `::u_refuses_while_the_launch_journal_read_is_out`,
+      `graft tests/it/conflict_interim.rs::u_still_refuses_after_relaunch_into_a_merge_begun_in_graft` (banner and panes, `u` and `U`).
+      Guards of the old refusal: green on first run, not seen red.
+- [x] `operation_live_words_match_ops`
+      Verified by `update::undo::tests::operation_live_words_match_ops` (all five kinds equal ops' `explain()`), plus
+      `::an_operation_live_answer_is_a_refusal` (red first: it was a `Done`) and `jobs::undo::tests::operation_live_is_its_own_answer`.
+- [x] `journey_counts_match_the_note` with `b-abort-shell-merge` = 3 and `b-undo-a-take-in-the-shell` = 1.
+      Verified by `m5_walk::conflict_journeys::tests::journey_counts_match_the_note` (routes printed: `3 [a → ⏎]`, `1 [u]`),
+      `m5_walk::every_scenario::journey_b_abort_shell_merge`, `::journey_b_undo_a_take_in_the_shell`. Seen red: with
+      `shell_merge_known` forced `false`, the first failed on `no row reads "u puts the merge back"`, the second on
+      `no write was queued; status Sticky "finish or abort the merge first"`; restored, green.
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt`,
       three frames: the abort box over the banner; the graph after `→ ⏎`; after `u`, the banner back.
   - **What right looks like:** frame 1 has the lines `main goes back to before the merge` and
     `u puts the merge back`, with the cursor on `[ Cancel ]`. Frame 2 has no `MERGING`, and its status line contains
     `abort merge of feature`. Frame 3 shows `MERGING` and `CONFLICTS (2)` again, and its status line starts
     `undo: abort merge of feature ✓`.
-- [ ] MAP.md updated (doc, no test).
+  - **Held, not ticked:** written by `shell_begun.rs::a_on_the_banner_aborts_a_shell_merge` (5854 B, three frames,
+    stable on rerun), and every line above holds **except** frame 3's `CONFLICTS (2)`: frame 3 draws
+    `Uncommitted changes (2 unmerged)` as the graph's top row, and the detail pane stays on `COMMIT ddeed32`. See NOTES,
+    "App half", question 1.
+- [x] MAP.md updated (doc, no test). `crates/graft/MAP.md` §update::undo (`in_progress_refusal`, `shell_merge_known`,
+      `live_refusal`, `undone`'s `OperationLive`), §update::banner (`banner_key` `u`/`U`, `abort_pressed`),
+      §update::preview (`open_preview`'s refusal source), §jobs (`Undone::OperationLive`).
 
 ## For the conductor (exact text, in this spec's merge commit)
 Add to the `journey-counts` fence of `docs/design-notes/m6-conflicts.md`, after `b-finish-again-after-undo`:
@@ -404,3 +424,91 @@ one KNOWN_GAPS row per file, marked as a known limit, not broken:
 - Capture `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt`, three frames. Re-check
   `every_key_the_bar_draws_is_answered` and the `m6-18-launch-shell-begun-*` captures.
 - `crates/graft/MAP.md`: §update::undo, §update::banner, §update::preview.
+
+### App half (m6-conflicts-57b, 2026-09-25)
+
+**Compacted mid-ticket again.** This builder's context compacted once during the app half (continuation 1), and the
+user paused the session overnight in between. Nothing is left over: everything in "What remains" above is built. Scout:
+the existing `.scratch/m6-conflicts/scouts/57-58.md`; no new scout was sent. The ops half was merged in first
+(`git merge --no-ff ece3e334`, clean).
+
+**What was built:**
+- `update::undo::live_refusal(kind, keys)` is the one wording, `finish or abort the <kind> first`.
+  `in_progress_refusal`, `undone`'s `OperationLive` arm and `preview::open_preview` all build through it, and
+  `preview::kind_word` is deleted. `grep -rn "finish or abort the" crates/graft/src` outside test modules: one hit,
+  `update/undo.rs:145` (`live_refusal`); the other hits are a doc comment (:155) and tests (:746, :916, in `mod tests`
+  from :627).
+- `in_progress_refusal` → `None` when `shell_merge_known`: a merge `live_operation` calls `InShell` **and**
+  `state.journal.entries` is `Loading::Ready`. Launch first fills `live_entries` at
+  `crates/graft/src/update/journal.rs:112` (`state.live_entries.clone_from(&read.live)`); before that read, every
+  merge looks shell-begun. **Decision:** the "no read yet" rule is **not** put into `live_operation`. Its doc says the
+  commit editor treats "not read yet" as `InShell` on purpose (the editor's words), so changing it there would change
+  the editor. The rule sits in `update::undo::shell_merge_known`, read by `in_progress_refusal` and `abort_pressed`.
+- `jobs::undo::Undone::OperationLive { kind }`, mapped from `UndoError::Nothing(NotInvertible::OperationLive)` before
+  the catch-all `Nothing(_)` arm. `undone` words it `Sticky` with `⇥ banner`, and with **no keys for a bisect**
+  (`banner_focusable` is false: there is no banner to reach). That is a small refinement over the spec's fixed
+  `Some("⇥ banner")`; say if it should go.
+- `banner_key` `u`/`U`: `in_progress_refusal` first; `None` → `undo::undo_key`. The banner keeps the keyboard.
+- `abort_pressed` on a shell merge (`shell_merge_known`): `<head> goes back to before the merge` / `u puts the merge
+  back`, cursor on `[ Cancel ]`. `<head>` is HEAD's branch short name, else a 7-character sha when detached, else
+  `HEAD` (`head_word`). Any other operation, or a merge begun in Graft, keeps the old lines
+  (`a_on_a_merge_begun_in_graft_keeps_its_lines`).
+- The abort's status: `banner.rs:753` `state.status = Status::done(applied.entry.description.clone());` — the entry's
+  description, `abort merge of feature`, so the line names the abort. Asserted in `a_on_the_banner_aborts_a_shell_merge`.
+- Walk: `b-abort-shell-merge` and `b-undo-a-take-in-the-shell` in `m5_walk/conflict_journeys.rs` and
+  `every_scenario.rs`.
+- **The fence rows were added by this builder**, verbatim from "For the conductor" above, to
+  `docs/design-notes/m6-conflicts.md` after `b-finish-again-after-undo`. Without them `journey_counts_match_the_note`
+  fails (the walked set must equal the rows). The ticket reserved that edit for the conductor; revert it if the
+  conductor lands it separately.
+
+**The ops half's first "Not verified" is closed:** both gate tests were seen red with the gate call disabled; the runs
+are recorded in their Acceptance tick. Its third ("no app-level test covers `a` then `u`") is closed by
+`a_on_the_banner_aborts_a_shell_merge`.
+
+**Intended test changes (app half, each named):**
+8. `resolver/shell_begun.rs::a_hand_edit_taken_by_t_comes_back_after_the_merge_ends`: the helper
+   `unreachable_while_the_merge_is_open` (asserted `u` refused inside the shell merge) is replaced by
+   `out_of_the_resolver_onto_the_banner`, because `u` there is now an undo. Doc comment rewritten.
+9. `resolver/shell_begun.rs::u_on_the_banner_after_the_landing_refuses_in_words` (ticket 41) is now
+   `capital_u_on_the_banner_at_the_landing_redoes_the_finish`: at ticket 41's landing (finish undone, merge back),
+   `U` is now sent and re-commits the merge (HEAD = the merge commit, no `MERGE_HEAD`, status names
+   `finish merge of feature`). It used to assert a refusal.
+
+**Questions for the conductor:**
+1. **Capture frame 3 vs the spec.** "What right looks like" says frame 3 shows `CONFLICTS (2)`. Scope :112 says the
+   landing after `u` is ticket 41's `land_after_undo`, **unchanged**; that landing focuses the banner and leaves the
+   detail pane where it was (on the commit), so the two conflicts show as the graph's top row
+   `Uncommitted changes (2 unmerged)`, not as the changes pane's `CONFLICTS (2)` header. The test pins what is drawn,
+   with a comment. Options: (a) change the caption line (no code); (b) make `land_after_undo` open the changes pane as
+   a launch does — a spec change to ticket 41's landing, touching `b-finish-again-after-undo` and
+   `fix-undo-shell-merge-*` too. The capture tick is held until you choose.
+2. **Global `u` and the push box, pre-existing, not changed.** `update/undo.rs:38` — `undo_key` shows the
+   undo-after-push box **before** `launch` (:245) checks `in_progress_refusal`. So global `u` during a Graft-begun merge
+   whose next undo is a pushed commit shows the push box first, not the refusal. The banner path now asks the refusal
+   first (`banner.rs:378`). Not fixed here (out of scope); a KNOWN_GAPS row if you agree.
+
+**Touches:**
+- **callers of `in_progress_refusal`:** `banner.rs:378` and `undo::launch` (:245). Checked by the unit tests above and
+  the whole workspace run.
+- **keymap §2.6a:** `u`/`U` inside a shell merge now go to ops; a Graft-begun merge still refuses
+  (`u_still_refuses_*`). `a`'s words changed only for a shell merge. No key added or moved.
+- **hint bar:** no hint table touched; `every_key_the_bar_draws_is_answered` green.
+- **captures:** new `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt`. `m6-18-launch-shell-begun-*` and every
+  other checked capture unchanged: `git status` shows no other file under `docs/shots/` changed except the contact
+  sheet, and the capture tests are green in the workspace run. Contact sheet rebuilt
+  (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): 125 captures, parts 198 194 B and 123 811 B
+  (≤ 200 000). Caption row added to `m6-contact-sheet-captions.tsv`.
+- **journal/undo:** `J` lists `abort merge of feature` (row asserted in `a_on_the_banner_aborts_a_shell_merge`).
+  `interrupted_notice` not re-checked against an `AbortMerge` entry (it is `Committed`, so not interrupted).
+- **other screens drawing the same state:** the preview refusal (`open_preview`) now uses the shared words, still with
+  no keys; the walk's `preview-refused-during-an-operation` is green, unedited.
+- **crates:** graft only in this half (plus docs). `git diff --stat` names `crates/graft/**`, `crates/graft/MAP.md`,
+  `docs/design-notes/m6-conflicts.md`, `docs/shots/m6/*`, and this ticket. graft-ui not touched.
+
+**Not verified:**
+- Colour and focus highlight in the capture (rule 5).
+- The integration tests (`a_on_the_banner_aborts_a_shell_merge`, `u_on_the_banner_restores_…`,
+  `u_in_the_graph_undoes_…`) were written after the unit changes, so were not seen red themselves; the walk scenarios
+  over the same path were seen red by mutation (above).
+- Real-terminal use (pty) of `a → ⏎ → u` on a shell merge: only TestBackend frames.

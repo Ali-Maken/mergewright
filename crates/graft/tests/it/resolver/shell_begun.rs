@@ -15,19 +15,19 @@ const EDIT: &str = "my hand edit, not in any commit\n";
 
 /// The user hand-edits `theirs-deleted.txt` (`UD`), then `t` takes theirs:
 /// `git rm`, the file is gone. The take is its own journal entry with a
-/// backup, so the edit is kept — but the app cannot reach it while the
-/// merge is open: `u` is refused until the merge ends. This walk ends the
-/// merge in the shell: `git merge --abort`, back in the app (`Ctrl+R`),
-/// `u`, answer the drift box with `Undo`. The edit's bytes are back on
-/// disk. (Since m6-conflicts/57 `a` on the banner is the in-app end; its
-/// app half makes `u` on the banner reach the take directly.)
+/// backup, so the edit is kept. This walk ends the merge in the shell
+/// first: `git merge --abort`, back in the app (`Ctrl+R`), `u`, answer the
+/// drift box with `Undo`. The edit's bytes are back on disk. (Since
+/// m6-conflicts/57 `u` reaches the take while the merge is still open —
+/// `u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge` — and this
+/// route, the one a user who left for the shell takes, still holds.)
 #[test]
 fn a_hand_edit_taken_by_t_comes_back_after_the_merge_ends() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let repo = scratch.path().to_owned();
 
     let state = hand_edit_then_t(&app, state, &repo);
-    let state = unreachable_while_the_merge_is_open(&app, &state, &repo);
+    let state = out_of_the_resolver_onto_the_banner(&app, &state, &repo);
 
     // The user ends it in the shell and comes back. The banner is modal
     // while focused, so `Esc` gives the panes the keyboard for `Ctrl+R`.
@@ -87,34 +87,418 @@ fn hand_edit_then_t(app: &App, state: AppState, repo: &Path) -> AppState {
     state
 }
 
-/// Out of the resolver, `u` is refused while the merge is open. Leaves the
-/// banner focused.
+/// `Esc` out of the resolver, then the banner. Leaves the banner focused
+/// and the merge open.
 ///
-/// Until m6-conflicts/57 the banner's `a` refused here too ("begun in the
-/// shell is finished there"). Since 57's ops half `a` aborts the merge as an
-/// `AbortMerge` entry of its own, so this walk no longer presses it: the
-/// abort's own walk is `a_on_the_banner_aborts_a_shell_merge` (57's app
-/// half).
-fn unreachable_while_the_merge_is_open(app: &App, state: &AppState, repo: &Path) -> AppState {
+/// Until m6-conflicts/57 this walk also pressed `u` here and saw it refused
+/// (`finish or abort the merge first`). In a merge begun in the shell `u`
+/// now reaches the take (keymap §2.6a's one exception), so the refusal is
+/// gone; `u_still_refuses_in_a_merge_begun_in_graft` holds it for a merge
+/// Graft began.
+fn out_of_the_resolver_onto_the_banner(app: &App, state: &AppState, repo: &Path) -> AppState {
     let state = app.key(state, KeyCode::Escape);
     assert!(state.resolver.is_none(), "back to the pane");
-    let state = app.key(&state, KeyCode::Char('u'));
-    assert!(state.operating.is_none(), "`u` launched nothing");
-    assert!(
-        matches!(
-            &state.status,
-            Status::Sticky { reason, .. } if reason == "finish or abort the merge first"
-        ),
-        "{:?}",
-        state.status
-    );
-
     let state = on_the_banner(app, state);
     assert!(
         repo.join(".git/MERGE_HEAD").exists(),
         "the merge is still open"
     );
     state
+}
+
+// ------------------- `u` inside a merge begun in the shell (m6-conflicts/57)
+
+/// The undo row's words after `u` on the take: the take's own description,
+/// as its entry reads, under `undo:`.
+const TAKE_UNDONE: &str = "undo: resolved theirs-deleted.txt (theirs)";
+
+/// `u`, pressed wherever `state` has the keyboard, run to its refresh.
+fn u_to_its_refresh(app: &App, state: &AppState) -> AppState {
+    let state = app.key(state, KeyCode::Char('u'));
+    assert!(
+        state.operating.is_some(),
+        "`u` was sent: {:?}",
+        state.status
+    );
+    app.pump(state, "the undo and its refresh", |state| {
+        state.operating.is_none() && state.status_read.is_none()
+    })
+}
+
+/// The take is undone and the merge still stands: the hand edit back byte
+/// for byte, the file unmerged again, `MERGE_HEAD` still there, one `Undo`
+/// entry reversing the take.
+fn the_take_is_back_inside_the_merge(repo: &Path, before: usize) {
+    assert_eq!(
+        on_disk(repo, "theirs-deleted.txt"),
+        EDIT,
+        "the hand edit is back, byte for byte"
+    );
+    assert!(
+        still_unmerged(repo)
+            .lines()
+            .any(|line| line == "theirs-deleted.txt"),
+        "the file is conflicted again: {:?}",
+        still_unmerged(repo)
+    );
+    assert!(
+        repo.join(".git/MERGE_HEAD").exists(),
+        "the merge is still open"
+    );
+    let entries = journal_entries(repo);
+    assert_eq!(entries.len(), before + 2, "the take, then its undo");
+    assert_eq!(
+        entries[before + 1].kind,
+        graft_core::journal::OperationKind::Undo
+    );
+    assert_eq!(
+        entries[before + 1].reverses.as_ref(),
+        Some(&entries[before].id)
+    );
+}
+
+/// **`u` on the banner restores a whole-file take in a merge begun in the
+/// shell** (keymap §2.6a's one exception; `b-undo-a-take-in-the-shell`, 1
+/// key). The take is an entry of its own there, and ops' gate lets its undo
+/// through because its after-state is this same merge. The banner keeps the
+/// keyboard, and the status reads `undo: <the take> ✓`.
+#[test]
+fn u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = crate::conflict_interim::launched(&app, state);
+    assert!(state.live_entries.is_empty(), "begun in the shell");
+    let before = journal_entries(&repo).len();
+
+    let state = hand_edit_then_t(&app, state, &repo);
+    let state = out_of_the_resolver_onto_the_banner(&app, &state, &repo);
+    let state = u_to_its_refresh(&app, &state);
+
+    the_take_is_back_inside_the_merge(&repo, before);
+    assert!(state.banner_focus, "the banner keeps the keyboard");
+    assert_eq!(state.status, Status::done(TAKE_UNDONE));
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// **`u` in the graph undoes a step of a shell merge**, as on the banner:
+/// the global key is the same undo, and the graph keeps the keyboard.
+#[test]
+fn u_in_the_graph_undoes_a_step_of_a_shell_merge() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = crate::conflict_interim::launched(&app, state);
+    let before = journal_entries(&repo).len();
+
+    let state = hand_edit_then_t(&app, state, &repo);
+    let state = out_of_the_resolver_onto_the_banner(&app, &state, &repo);
+    // `Tab` from the banner is the next step of the cycle: the graph.
+    let state = app.key(&state, KeyCode::Tab);
+    assert!(state.graph_has_focus(), "the graph has the keyboard");
+    let state = u_to_its_refresh(&app, &state);
+
+    the_take_is_back_inside_the_merge(&repo, before);
+    assert!(state.graph_has_focus(), "the graph keeps the keyboard");
+    assert!(!state.banner_focus);
+    assert_eq!(state.status, Status::done(TAKE_UNDONE));
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+// ------------------------- aborting it in the app, and `u` (m6-conflicts/57)
+
+/// `git merge feature` run **in the shell** on `main` and left stopped on
+/// `shared.rs` and `notes.md`: a merge Graft did not start, two files
+/// conflicted. `about_to_conflict`'s commits, stamped at fixed instants, so
+/// the graph draws the same every run.
+fn stopped_shell_merge() -> graft_fixtures::Scratch {
+    let scratch = crate::conflict_interim::about_to_conflict();
+    git_stops(scratch.path(), &["merge", "feature"]);
+    scratch
+}
+
+/// The frame at 120x40 against the fixture's fixed clock.
+fn frame_120(app: &App, state: &AppState) -> Vec<String> {
+    let sized = app.resize(state, 120, 40);
+    crate::captures::frame_at(
+        &sized,
+        120,
+        40,
+        Some(graft::session::Clock::Fixed(
+            crate::conflict_interim::CONFLICT_NOW,
+        )),
+    )
+}
+
+/// The one row holding `words`, trimmed; panics with the frame if none does.
+fn row_with<'a>(frame: &'a [String], words: &str) -> &'a str {
+    frame.iter().find(|row| row.contains(words)).map_or_else(
+        || panic!("no row holds {words:?}:\n{}", frame.join("\n")),
+        |row| row.trim(),
+    )
+}
+
+/// What the undo of the abort must put back, read before the abort.
+struct MergeFiles {
+    head: String,
+    merge_head: String,
+    merge_msg: Vec<u8>,
+    unmerged: String,
+}
+
+fn merge_files(repo: &Path) -> MergeFiles {
+    MergeFiles {
+        head: crate::app_harness::git(repo, &["rev-parse", "HEAD"]),
+        merge_head: std::fs::read_to_string(repo.join(".git/MERGE_HEAD")).expect("MERGE_HEAD"),
+        merge_msg: std::fs::read(repo.join(".git/MERGE_MSG")).expect("MERGE_MSG"),
+        unmerged: still_unmerged(repo),
+    }
+}
+
+/// The words the abort box says on a merge begun in the shell.
+const ABORT_LINES: [&str; 2] = [
+    "main goes back to before the merge",
+    "u puts the merge back",
+];
+
+/// The `u` landing's row after the abort is taken back (ticket 41's landing).
+const ABORT_UNDONE_WORDS: &str = "undo: abort merge of feature ✓ · c finishes the merge";
+
+/// **`a` on the banner aborts a merge begun in the shell** (keymap §2.6a,
+/// `b-abort-shell-merge`: `a → ⏎`, 3 keys), and `u` puts it back.
+///
+/// git: no `MERGE_HEAD` after the abort, `HEAD` unchanged, one
+/// `AbortMerge` entry `abort merge of feature`; after `u`, `MERGE_HEAD`,
+/// `MERGE_MSG` byte for byte and both files' stages are back. App: the box
+/// says `main goes back to before the merge` / `u puts the merge back` with
+/// the cursor on `[ Cancel ]`; the abort lands on the graph with
+/// `abort merge of feature ✓`; `J` lists the entry; `u` lands on the banner
+/// with `undo: abort merge of feature ✓ · c finishes the merge`. The three
+/// frames are the capture the user judges.
+#[test]
+fn a_on_the_banner_aborts_a_shell_merge() {
+    let scratch = stopped_shell_merge();
+    let repo = scratch.path().to_owned();
+    let before = journal_entries(&repo).len();
+    let merge = merge_files(&repo);
+    let (app, state) = launched_into(&repo);
+    assert!(state.banner_focus, "the launch landed on the banner");
+    let state = settled_frame(&app, state);
+
+    let (state, boxed) = a_shows_the_abort_box(&app, &state);
+    let (state, aborted) = right_enter_aborts(&app, &state, &repo, before, &merge.head);
+    let state = j_lists_the_abort(&app, &state);
+    let (state, undone) = u_puts_the_merge_back(&app, &state, &repo, &merge);
+
+    let body = format!(
+        "{ABORT_CAPTION}=== 1. a: the abort box ===\n{}\n=== 2. → ⏎: aborted ===\n{}\n=== 3. u: the merge back ===\n{}\n",
+        boxed.join("\n"),
+        aborted.join("\n"),
+        undone.join("\n")
+    );
+    crate::captures::check_shot("m6/fix-shell-merge-abort-and-undo-120x40.txt", &body);
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// Frame 1, `a` (one key): the box, its two lines, the cursor on
+/// `[ Cancel ]`.
+fn a_shows_the_abort_box(app: &App, state: &AppState) -> (AppState, Vec<String>) {
+    let state = app.key(state, KeyCode::Char('a'));
+    let confirm = state.confirm.as_ref().expect("the abort box");
+    assert_eq!(confirm.view.selected(), 0, "the cursor starts on Cancel");
+    let lines: Vec<&str> = confirm
+        .view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(lines, ABORT_LINES);
+    let boxed = frame_120(app, &state);
+    for line in ABORT_LINES {
+        row_with(&boxed, line);
+    }
+    row_with(&boxed, "[ Cancel ]");
+    (state, boxed)
+}
+
+/// Frame 2, `→ ⏎` (two keys, three with `a`: the note's
+/// `b-abort-shell-merge`, walked by `m5_walk`): git aborted, `HEAD` unmoved, one `AbortMerge`
+/// entry, the graph focused with `abort merge of feature ✓`.
+fn right_enter_aborts(
+    app: &App,
+    state: &AppState,
+    repo: &Path,
+    before: usize,
+    head: &str,
+) -> (AppState, Vec<String>) {
+    let state = app.key(state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    assert!(state.operating.is_some(), "`⏎` aborts: {:?}", state.status);
+    let state = app.pump(state, "the abort and its landing", |state| {
+        state.operating.is_none()
+            && state.in_progress.is_none()
+            && state.status_read.is_none()
+            && !state.land_on_head
+    });
+    let state = settled_frame(app, state);
+    assert!(!repo.join(".git/MERGE_HEAD").exists(), "git aborted it");
+    assert_eq!(
+        crate::app_harness::git(repo, &["rev-parse", "HEAD"]),
+        head,
+        "HEAD is where it was"
+    );
+    let entries = journal_entries(repo);
+    assert_eq!(entries.len(), before + 1, "one new entry");
+    assert_eq!(
+        entries[before].kind,
+        graft_core::journal::OperationKind::AbortMerge
+    );
+    assert_eq!(entries[before].description, "abort merge of feature");
+    assert!(state.graph_has_focus(), "the graph has the keyboard");
+    assert_eq!(state.status, Status::done("abort merge of feature"));
+    let aborted = frame_120(app, &state);
+    assert!(!aborted[0].contains("MERGING"), "{}", aborted.join("\n"));
+    assert_eq!(
+        row_with(&aborted, "abort merge of feature"),
+        "abort merge of feature ✓"
+    );
+    (state, aborted)
+}
+
+/// `J` lists the abort, a row of its own in the journal's words; `Esc`
+/// closes the browser.
+fn j_lists_the_abort(app: &App, state: &AppState) -> AppState {
+    let journal = app.key(state, KeyCode::Char('J'));
+    let journal = app.pump(journal, "the journal browser's read", |state| {
+        state.journal.shown && state.journal.reading.is_none()
+    });
+    row_with(&frame_120(app, &journal), "abort merge of feature");
+    let state = app.key(&journal, KeyCode::Escape);
+    assert!(!state.journal.shown, "Esc closes the browser");
+    state
+}
+
+/// Frame 3, `u`: `MERGE_HEAD`, `MERGE_MSG` byte for byte, both files' stages and
+/// `HEAD` as before the abort; the banner has the keyboard, with ticket
+/// 41's landing words.
+fn u_puts_the_merge_back(
+    app: &App,
+    state: &AppState,
+    repo: &Path,
+    merge: &MergeFiles,
+) -> (AppState, Vec<String>) {
+    let state = app.key(state, KeyCode::Char('u'));
+    assert!(state.operating.is_some(), "`u` ran: {:?}", state.status);
+    let state = app.pump(state, "the undo and its landing", |state| {
+        state.operating.is_none() && state.in_progress.is_some() && state.status_read.is_none()
+    });
+    let state = settled_frame(app, state);
+    assert_eq!(
+        std::fs::read_to_string(repo.join(".git/MERGE_HEAD")).expect("MERGE_HEAD is back"),
+        merge.merge_head
+    );
+    assert_eq!(
+        std::fs::read(repo.join(".git/MERGE_MSG")).expect("MERGE_MSG is back"),
+        merge.merge_msg,
+        "MERGE_MSG byte for byte"
+    );
+    assert_eq!(
+        still_unmerged(repo),
+        merge.unmerged,
+        "both files conflicted"
+    );
+    assert_eq!(
+        crate::app_harness::git(repo, &["rev-parse", "HEAD"]),
+        merge.head
+    );
+    assert!(state.banner_focus, "the banner has the keyboard");
+    assert_eq!(
+        state.status,
+        Status::done_with_keys("undo: abort merge of feature", "c finishes the merge")
+    );
+    let undone = frame_120(app, &state);
+    let body = undone.join("\n");
+    assert!(undone[0].trim_end().ends_with("MERGING"), "{body}");
+    // The ticket's capture line asked for `CONFLICTS (2)`. Ticket 41's landing
+    // (kept unchanged, as the ticket says) focuses the banner and leaves the
+    // detail pane on the commit, so the two conflicts show as the graph's
+    // working-tree row. Pinned as drawn; the question is in the ticket's NOTES.
+    assert!(body.contains("Uncommitted changes (2 unmerged)"), "{body}");
+    assert_eq!(row_with(&undone, "undo: abort merge"), ABORT_UNDONE_WORDS);
+    (state, undone)
+}
+
+/// The capture's header: what the user judges in each frame.
+const ABORT_CAPTION: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# a_on_the_banner_aborts_a_shell_merge in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). `git merge
+# feature` run in the shell on `main`, stopped on two files; Graft launched
+# on it, the banner focused (m6-conflicts/57).
+#
+# Judge by eye:
+# - Frame 1 (`a`): the abort box over the banner reads
+#   `main goes back to before the merge` and `u puts the merge back`, the
+#   cursor on `[ Cancel ]`.
+# - Frame 2 (`→ ⏎`): no `MERGING` in the header; the footer row reads
+#   `abort merge of feature ✓`.
+# - Frame 3 (`u`): `MERGING` again, the graph's top row
+#   `Uncommitted changes (2 unmerged)`; the footer row reads
+#   `undo: abort merge of feature ✓ · c finishes the merge`.
+# - Colour and the focus highlight are unverified (CLAUDE.md rule 5).
+#
+";
+
+/// **An entry from before the merge still refuses, in words** — ops' gate
+/// answering through the app. The abort above, then `git merge feature`
+/// again in the shell: `u` would take back the abort, which is older than
+/// the merge now standing. Ops refuses (`NotInvertible::OperationLive`),
+/// nothing is written, and the line is `u`'s own refusal.
+#[test]
+fn u_on_an_entry_from_before_a_shell_merge_refuses_in_words() {
+    let scratch = stopped_shell_merge();
+    let repo = scratch.path().to_owned();
+    let (app, state) = launched_into(&repo);
+    let state = on_the_banner(&app, state);
+    let state = app.key(&state, KeyCode::Char('a'));
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the abort", |state| {
+        state.operating.is_none() && state.in_progress.is_none() && state.status_read.is_none()
+    });
+    assert!(!repo.join(".git/MERGE_HEAD").exists(), "aborted");
+
+    git_stops(&repo, &["merge", "feature"]);
+    let state = app.press(&state, KeyPress::control(KeyCode::Char('r')));
+    let state = app.pump(state, "the re-read of the new merge", |state| {
+        state.in_progress.is_some()
+            && state.status_read.is_none()
+            && state.journal.reading.is_none()
+    });
+    let before = journal_entries(&repo);
+
+    let state = app.key(&state, KeyCode::Char('u'));
+    assert!(state.operating.is_some(), "`u` is sent: {:?}", state.status);
+    let state = app.pump(state, "ops' answer", |state| state.operating.is_none());
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "finish or abort the merge first".to_owned(),
+            keys: Some("⇥ banner".to_owned()),
+        }
+    );
+    assert_eq!(journal_entries(&repo), before, "nothing written");
+    assert!(
+        repo.join(".git/MERGE_HEAD").exists(),
+        "the new merge stands"
+    );
+    drop(state);
+    app.close();
+    drop(scratch);
 }
 
 // ------------------------------- finishing it in the app (m6-conflicts/20 B)
@@ -473,31 +857,41 @@ fn c_enter_after_u_finishes_the_merge_again() {
     app.close();
 }
 
-/// **`U` on the banner at the `u` landing refuses in words** (ticket 41):
-/// the focused banner claims `u`/`U`, and neither an undo nor a redo is
-/// sent while the merge is open.
+/// **`U` on the banner at the `u` landing redoes the finish.** Ticket 41
+/// pinned a refusal here. Since m6-conflicts/57 the merge standing after
+/// that `u` counts as begun in the shell (no entry of Graft's is live), so
+/// keymap §2.6a's exception applies: the focused banner sends `U`, and ops'
+/// gate lets the redo through because the `Undo` entry it reverses left
+/// this very merge. The merge commit is back, `MERGE_HEAD` gone.
 #[test]
-fn u_on_the_banner_after_the_landing_refuses_in_words() {
+fn capital_u_on_the_banner_at_the_landing_redoes_the_finish() {
     let UndoLanding {
         scratch,
         app,
         state,
+        merge,
         ..
     } = u_landing();
+    let repo = scratch.path();
     assert!(state.banner_focus);
-    let (after, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('U')));
-    assert_eq!(
-        after.status,
-        Status::Sticky {
-            reason: "finish or abort the merge first".to_owned(),
-            keys: Some("⇥ banner".to_owned()),
-        }
-    );
+    let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('U')));
     assert!(
-        !commands
-            .iter()
-            .any(|command| matches!(command, Command::Undo(..) | Command::Redo(..))),
+        matches!(commands.as_slice(), [Command::Redo(_, false)]),
         "{commands:?}"
+    );
+    let state = app.key(&state, KeyCode::Char('U'));
+    let state = app.pump(state, "the redo and its refresh", |state| {
+        state.operating.is_none() && state.in_progress.is_none() && state.status_read.is_none()
+    });
+    assert!(
+        !repo.join(".git/MERGE_HEAD").exists(),
+        "the merge is finished"
+    );
+    assert_eq!(crate::app_harness::git(repo, &["rev-parse", "HEAD"]), merge);
+    assert!(
+        matches!(&state.status, Status::Done { what, .. } if what.contains("finish merge of feature")),
+        "{:?}",
+        state.status
     );
     drop(state);
     app.close();

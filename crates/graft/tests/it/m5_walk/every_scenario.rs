@@ -117,6 +117,8 @@ walk! {
     journey_a_finish => "a-finish",
     journey_b_finish => "b-finish",
     journey_b_finish_again_after_undo => "b-finish-again-after-undo",
+    journey_b_abort_shell_merge => "b-abort-shell-merge",
+    journey_b_undo_a_take_in_the_shell => "b-undo-a-take-in-the-shell",
     journey_summary_open_git_combined => "summary-open-git-combined",
     journey_back_after_esc => "back-after-esc",
     journey_open_a_done_file => "open-a-done-file",
