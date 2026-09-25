@@ -34,4 +34,4 @@ pub use state::{
 };
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

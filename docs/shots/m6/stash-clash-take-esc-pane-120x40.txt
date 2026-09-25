@@ -1,0 +1,56 @@
+# m6/stash-clash-take-esc-pane-120x40.txt: 120x40, drawn by `view::view`
+# from a real AppState (crates/graft/tests/it/m6_stash_put_back/pop.rs,
+# a_take_then_esc_shows_the_file_without_markers, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `S p esc ⏎ o esc` — a stash pop that clashes in
+# notes.md, a look at the file in the changes pane (markers shown then),
+# back into the resolver, `o` takes yours, `esc` back to the changes pane.
+#  - The changes pane on notes.md under `CONFLICTS`.
+#  - No `<<<<<<<`, `=======` or `>>>>>>>` line anywhere. Yours is what
+#    HEAD holds, so the file's diff against HEAD is empty: no body lines is
+#    right here (the test reads the pane's served diff to prove it).
+#  - The header reads `diff vs HEAD <main's sha7>` (main's tip,
+#    `commit over the notes`), not the stash's id.
+
+ graft /code/api  7 commits
+◌     ▏  Uncommitted changes (1 unmerged)
+◆        [◆ main] commit over the notes                                                                  GF 3m   f3742ab
+│ ■─╮    [stash@{0}] WIP on main: cfa370c add the notes                                                  GF 4m   fa9e094
+│ │ ●    index on main: cfa370c add the notes                                                            GF 4m   6938905
+●─┴─╯    add the notes                                                                                   GF 5m   cfa370c
+●        Correct the note                                                                                GF 1y   a82960b
+●        Add the first note                                                                              GF 1y   fadcfb3
+◇        Add a readme                                                                                    GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ stash@{0} clashed · 1 file conflicted · ⏎ resolve  M mergetool  e edit  <> resize  space resolved  c commit  . more  ⇥
+UNCOMMITTED
+diff vs HEAD f3742ab
+CONFLICTS (1)
+  notes.md      both modified
+
+
+
+
+
+
+
+
+
+
+
+

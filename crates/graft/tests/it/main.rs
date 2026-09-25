@@ -18,6 +18,7 @@ mod context_menu;
 mod coverage;
 mod credential_by_key;
 mod dependency_edges;
+mod esc_and_the_walk;
 mod finish;
 #[cfg(feature = "heavy-tests")]
 mod frames;
@@ -37,6 +38,7 @@ mod not_a_repo;
 mod piped_stdout;
 mod preview;
 mod published_repo;
+mod pull_over_edits;
 mod radar_bookkeeping;
 mod refresh_race;
 mod remote_by_key;

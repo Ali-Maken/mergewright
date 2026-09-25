@@ -704,3 +704,205 @@ fn base_shown_words_are_singular_at_one() {
 mod abort_words;
 mod three_panes;
 mod words_and_c;
+
+// ----------------------------------- m6-conflicts/85 B: the pane after a take
+
+/// A cached raw diff for `path`: what the pane read before a take.
+fn raw_diff(path: &str) -> Arc<graft_git::diff::FileDiff> {
+    use graft_git::diff::{FileDiff, FileEntry, FileStatus};
+    Arc::new(FileDiff {
+        entry: FileEntry {
+            path: path.as_bytes().to_vec(),
+            old_path: None,
+            status: FileStatus::Modified,
+            added: Some(1),
+            removed: Some(0),
+        },
+        hunks: Vec::new(),
+        binary: None,
+        truncated: None,
+        old_mode: None,
+        new_mode: None,
+    })
+}
+
+/// A take of block 0 as theirs, landed on `state`'s open resolver.
+fn land_a_take(state: &mut AppState) -> Vec<Command> {
+    let open = state.resolver.as_mut().expect("the resolver is open");
+    open.in_flight = Some((
+        crate::update::TakeAt::Block(0),
+        graft_git::conflict::Take::Theirs,
+    ));
+    let mut file = (**open.file.as_ref().expect("a document")).clone();
+    file.take(0, graft_git::conflict::Take::Theirs)
+        .expect("block 0 exists");
+    let mut commands = Vec::new();
+    super::answers::taken::take_landed(state, &Arc::new(file), &mut commands, &mut || {
+        JobId::new(4_700)
+    });
+    commands
+}
+
+/// A take writes the file outside any operation, so no refresh runs. The
+/// changes pane under the resolver kept serving its cached pre-take diff —
+/// conflict markers and all — until `⌃R` (review m6-usability-2 B). The
+/// landing drops the path's cached diffs and, with the pane's cursor on it,
+/// asks for the file's diff again; the other file's cached diff stays.
+#[test]
+fn a_landed_take_drops_the_panes_cached_diff() {
+    use graft_git::diff::DiffOptions;
+    use graft_ui::detail::WorkingTreeSection;
+
+    use crate::update::detail::tests::{empty_diff_view, pane_on};
+    use crate::update::detail::{DetailSpec, DiffKey, Loading};
+
+    let mut state = resolver_on_screen(WALK);
+    // The changes pane: `conflicted.rs` (entry 0, cursor on it) and
+    // `later.rs` (entry 1), both diffs cached as read before the take.
+    state.detail = pane_on(
+        &[(
+            WorkingTreeSection::Unmerged,
+            &["conflicted.rs", "later.rs"][..],
+        )],
+        1,
+        0,
+    );
+    let max_lines = state.detail.max_lines;
+    let key = |entry: u32| DiffKey {
+        spec: DetailSpec::WorkingTree,
+        entry,
+        section: Some(WorkingTreeSection::Unmerged),
+        options: DiffOptions::default(),
+        max_lines,
+    };
+    let (conflicted, later) = (key(0), key(1));
+    let markers = Arc::new(empty_diff_view());
+    state.detail.diff_cache.insert(
+        conflicted,
+        (Arc::clone(&markers), raw_diff("conflicted.rs")),
+    );
+    state
+        .detail
+        .diff_cache
+        .insert(later, (Arc::clone(&markers), raw_diff("later.rs")));
+    state.detail.diff = Loading::Ready(markers);
+
+    let commands = land_a_take(&mut state);
+
+    assert!(
+        state.detail.diff_cache.get(&conflicted).is_none(),
+        "the pre-take diff is gone"
+    );
+    assert!(
+        state.detail.diff_cache.get(&later).is_some(),
+        "another file's diff is not touched"
+    );
+    let asked: Vec<_> = commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::ReadFileDiff(_, key, file) => Some((*key, file.path.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(asked, vec![(conflicted, b"conflicted.rs".to_vec())]);
+    let Loading::Ready(files) = &state.detail.files else {
+        panic!("the list stays");
+    };
+    assert_eq!(files.cursor, 1, "the cursor stays");
+}
+
+// ------------------------------ m6-conflicts/85 m-i: `u` says where undo is
+
+/// `plain` with a stash clash of `why` live, its journal entry a `kind`.
+fn clash_over(
+    plain: &AppState,
+    why: graft_core::journal::PutBackWhy,
+    kind: graft_core::journal::OperationKind,
+) -> AppState {
+    use graft_ops::clash::StashClash;
+
+    use crate::jobs::undo::JournalRead;
+    use crate::update::detail::Loading;
+    use crate::update::{ClashState, LiveOrigin};
+
+    let mut entry = crate::update::clash::tests::pop_entry();
+    entry.kind = kind;
+    AppState {
+        clash: Some(ClashState {
+            clash: StashClash {
+                entry: entry.id.clone(),
+                stash: entry.pins[0],
+                index: Some(0),
+                why,
+            },
+            origin: LiveOrigin::ThisRun,
+        }),
+        journal: crate::update::journal::JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![entry],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+            })),
+            ..plain.journal.clone()
+        },
+        ..plain.clone()
+    }
+}
+
+/// `u`/`U` inside the resolver are not undo (the resolver is modal, §2.1),
+/// and they were swallowed in silence (review m6-usability-2 m-i). They
+/// answer on the notice row, as information: an operation live → §2.6a's
+/// words; a stash or set-aside clash → the clause its landing used; else
+/// that `u` works from the graph. No command, and the status line is
+/// untouched.
+#[test]
+fn u_in_the_resolver_says_where_undo_is() {
+    use graft_core::journal::{OperationKind, PutBackWhy};
+
+    let plain = AppState {
+        in_progress: None,
+        ..resolver_on_screen(WALK)
+    };
+    let merge = AppState {
+        in_progress: Some(crate::update::resolver::fixtures::operation(
+            graft_git::state::InProgress::Merge,
+            None,
+        )),
+        ..plain.clone()
+    };
+    let clash = |why, kind| clash_over(&plain, why, kind);
+    let cases = vec![
+        (merge.clone(), "finish or abort the merge first"),
+        (
+            clash(PutBackWhy::Pop, OperationKind::StashPop),
+            "esc, u puts it all back",
+        ),
+        (
+            clash(PutBackWhy::SetAside, OperationKind::Checkout),
+            "esc, u undoes the switch too",
+        ),
+        (
+            clash(PutBackWhy::SetAside, OperationKind::Rebase),
+            "esc, u undoes the rebase too",
+        ),
+        (plain.clone(), "esc first \u{b7} u undoes from the graph"),
+    ];
+    for (state, words) in cases {
+        for code in [KeyCode::Char('u'), KeyCode::Char('U')] {
+            let (next, commands) = press(&state, code);
+            // The fixture's selected row is a merge, and every `update` ends
+            // by probing it (`selection::follow_selection`) — not the key's.
+            let from_key: Vec<_> = commands
+                .iter()
+                .filter(|command| !matches!(command, Command::EvilProbe(..)))
+                .collect();
+            assert!(from_key.is_empty(), "{code:?}: {from_key:?}");
+            assert_eq!(
+                next.status, state.status,
+                "{code:?}: the status line is left alone"
+            );
+            let notice = next.resolver.as_ref().and_then(|open| open.notice.clone());
+            assert_eq!(notice, Some((words.to_owned(), false)), "{code:?}");
+        }
+    }
+}

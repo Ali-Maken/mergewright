@@ -376,10 +376,30 @@ fn act(
         KeyCode::Char('d') if plain => restart_box(state),
         KeyCode::Char('M') if plain => mergetool_here(state, commands),
         KeyCode::Char('c') if plain => finish_pressed(state, commands, next_id),
+        KeyCode::Char('u' | 'U') if plain => undo_answered(state),
         _ if plain => scroll_key(state, key.code),
         // Swallowed on purpose and silently: §2.1's modal rule. The bar
         // under the document is what says which keys apply here.
         _ => {}
+    }
+}
+
+/// `u`/`U` inside the resolver: not undo — the resolver is modal (§2.1) —
+/// but never silence either (review m6-usability-2 m-i). The notice row
+/// says where undo is, as information: with an operation live, what `u`
+/// would say anywhere (§2.6a); on a stash or set-aside clash, the clause its
+/// landing notice used; else that `u` works from the graph. No command, and
+/// the status line is left alone.
+fn undo_answered(state: &mut AppState) {
+    let words = if let Some(live) = super::banner::live(state) {
+        super::undo::live_refusal_words(live.kind)
+    } else if let Some(clause) = super::clash::undo_clause(state) {
+        clause
+    } else {
+        "esc first \u{b7} u undoes from the graph".to_owned()
+    };
+    if let Some(open) = state.resolver.as_mut() {
+        open.notice = Some((words, false));
     }
 }
 

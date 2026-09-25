@@ -33,7 +33,7 @@ fn identity() -> Identity {
     }
 }
 
-fn key(code: KeyCode) -> AppEvent {
+pub(super) fn key(code: KeyCode) -> AppEvent {
     AppEvent::Core(Event::Key(KeyPress::plain(code)))
 }
 
@@ -738,7 +738,7 @@ fn a_selection_change_inside_the_window_asks_for_no_rows() {
     assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(1));
 }
 
-fn core(event: Event) -> AppEvent {
+pub(super) fn core(event: Event) -> AppEvent {
     AppEvent::Core(event)
 }
 
@@ -1396,7 +1396,7 @@ fn from(id: JobId, event: AppEvent) -> AppEvent {
 /// Job `id`'s answer to the first request, with `n` rows laid out. The
 /// rows themselves do not matter here, only whether they land, so they are
 /// copies of one row.
-fn rows(id: JobId, n: usize) -> AppEvent {
+pub(super) fn rows(id: JobId, n: usize) -> AppEvent {
     let row = Row {
         commit: Commit {
             id: Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
@@ -1425,7 +1425,7 @@ fn rows(id: JobId, n: usize) -> AppEvent {
 }
 
 /// The state of an application with a walk in flight.
-fn awaiting(id: JobId) -> AppState {
+pub(super) fn awaiting(id: JobId) -> AppState {
     let (next, commands) = walk_started(&AppState::default(), id);
 
     // A default state is zero rows tall, which shows one row: the first
@@ -1441,7 +1441,7 @@ fn awaiting(id: JobId) -> AppState {
 }
 
 /// Where the walk on screen is, and how many rows it has.
-fn progress(state: &AppState) -> (Phase, usize) {
+pub(super) fn progress(state: &AppState) -> (Phase, usize) {
     let history = state.history.as_ref().expect("a walk was asked for");
     (history.phase.clone(), history.rows)
 }
@@ -1462,7 +1462,7 @@ fn rows_land_as_they_arrive_and_the_walk_completes() {
     assert!(commands.is_empty());
 }
 
-fn request(id: u64, wanted: Wanted) -> RowRequest {
+pub(super) fn request(id: u64, wanted: Wanted) -> RowRequest {
     RowRequest {
         id,
         wanted,
@@ -1471,7 +1471,7 @@ fn request(id: u64, wanted: Wanted) -> RowRequest {
     }
 }
 
-fn sized(columns: u16, rows: u16) -> AppEvent {
+pub(super) fn sized(columns: u16, rows: u16) -> AppEvent {
     core(Event::Resize { columns, rows })
 }
 
@@ -1526,8 +1526,20 @@ fn esc_withdraws_a_jump_before_it_cancels_the_walk() {
     assert_eq!(after, withdrawn, "the jump's answer does not land");
 }
 
+/// Job `id` reporting `laid_out` rows laid out for the first request,
+/// before its window: the walk is still reading.
+fn laid_out_so_far(id: JobId, laid_out: usize) -> AppEvent {
+    AppEvent::Progress(
+        id,
+        Progress::History(HistoryUpdate::Progress {
+            request: 1,
+            laid_out,
+        }),
+    )
+}
+
 /// Job `id`'s answer to request `request`: `span` rows, `laid_out` so far.
-fn rows_for(id: JobId, request: u64, span: Range<usize>, laid_out: usize) -> AppEvent {
+pub(super) fn rows_for(id: JobId, request: u64, span: Range<usize>, laid_out: usize) -> AppEvent {
     let AppEvent::Progress(_, Progress::History(HistoryUpdate::Window(window))) =
         rows(id, span.len())
     else {
@@ -1547,10 +1559,13 @@ fn rows_for(id: JobId, request: u64, span: Range<usize>, laid_out: usize) -> App
     )
 }
 
+/// Still reading: the first screen asked for and not yet sent, 500 rows
+/// laid out so far. A walk resting between asks is not cancelled
+/// (m6-conflicts/85, `keys::tests::esc_on_a_paused_walk_does_nothing`).
 #[test]
 fn esc_cancels_the_walk_the_screen_is_waiting_for() {
     let id = JobId::new(4);
-    let (state, _) = update(&awaiting(id), rows(id, 500));
+    let (state, _) = update(&awaiting(id), laid_out_so_far(id, 500));
 
     let (next, commands) = update(&state, key(KeyCode::Escape));
 
@@ -1578,7 +1593,7 @@ fn esc_with_no_walk_running_does_nothing() {
 #[test]
 fn no_chunk_lands_after_esc() {
     let id = JobId::new(4);
-    let (state, _) = update(&awaiting(id), rows(id, 500));
+    let (state, _) = update(&awaiting(id), laid_out_so_far(id, 500));
     let (cancelled, _) = update(&state, key(KeyCode::Escape));
 
     let (next, commands) = update(&cancelled, rows(id, 500));

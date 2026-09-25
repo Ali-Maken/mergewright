@@ -81,6 +81,51 @@ impl DetailState {
         }
     }
 
+    /// A file changed on disk without an operation — a take in the
+    /// resolver (m6-conflicts/85 B). Drops every cached working-tree diff of
+    /// `path`, whatever its section, options or line cap; when the changes
+    /// pane's cursor is on `path`, asks for its diff again. The cursor, the
+    /// list and every other cached diff stay as they are.
+    ///
+    /// Without this the pane served the diff from before the write: the
+    /// cache is keyed by spec and list entry, and nothing about either
+    /// changes when the file does.
+    pub fn file_written(
+        &mut self,
+        path: &std::path::Path,
+        next_id: &mut impl FnMut() -> JobId,
+    ) -> Vec<Command> {
+        let written = path_bytes(path);
+        // Cached entries index the list they were read against. With the
+        // working tree's list on hand, only `path`'s go; without it (the pane
+        // is on a commit) nothing can say which index was `path`, so every
+        // working-tree diff goes — each is one read away.
+        let list = (self.spec == Some(DetailSpec::WorkingTree))
+            .then_some(self.list.as_ref())
+            .flatten();
+        let is_written = |entry: u32| {
+            list.is_none_or(|list| {
+                usize::try_from(entry)
+                    .ok()
+                    .and_then(|index| list.files.get(index))
+                    .is_some_and(|file| file.path == written)
+            })
+        };
+        self.diff_cache
+            .forget(|key| key.spec == DetailSpec::WorkingTree && is_written(key.entry));
+        let on_it = self.shown && list.is_some() && self.selected_entry().is_some_and(is_written);
+        if !on_it {
+            return Vec::new();
+        }
+        // The same place in the new diff: `body_cursor` is clamped to the
+        // diff on show wherever it is read.
+        let (top, cursor) = (self.body_top, self.body_cursor);
+        let commands = self.show_cursor(next_id);
+        self.body_top = top;
+        self.body_cursor = cursor;
+        commands
+    }
+
     /// The changes-pane cursor as [`KeptCursor`] records it, or `None` off
     /// the changes pane or before its list has arrived.
     fn cursor_to_keep(&self) -> Option<KeptCursor> {
@@ -556,4 +601,17 @@ fn put_cursor_back(
     let mut owned = Arc::unwrap_or_clone(files);
     owned.cursor = row;
     (Arc::new(owned), same_file)
+}
+
+/// `path` as git spells it in a file list.
+#[cfg(unix)]
+fn path_bytes(path: &std::path::Path) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt;
+    path.as_os_str().as_bytes().to_vec()
+}
+
+/// `path` as git spells it in a file list.
+#[cfg(not(unix))]
+fn path_bytes(path: &std::path::Path) -> Vec<u8> {
+    path.to_string_lossy().replace('\\', "/").into_bytes()
 }

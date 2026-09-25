@@ -37,7 +37,9 @@ pub fn detail_view(state: &AppState) -> DetailView {
     // frame. Nothing is open yet (`spec: None`) only before the pane's first
     // load, when `selected_spec` is exactly what will be asked for.
     let header = match state.detail.spec.or_else(|| state.selected_spec()) {
-        Some(DetailSpec::WorkingTree) => working_tree_header(state),
+        Some(DetailSpec::WorkingTree) => {
+            working_tree_header(state, state.refs.as_ref().and_then(|refs| refs.head()))
+        }
         Some(DetailSpec::Commit(oid)) => commit_header(state, oid),
         Some(DetailSpec::Compare { base, head }) => compare_header(base, head),
         None => empty_header(),
@@ -165,20 +167,22 @@ fn compare_header(base: Oid, head: Oid) -> DetailHeader {
 
 /// The header for the working tree against `HEAD`: counts from
 /// [`AppState::working_tree`], no author or parents — there is no commit yet.
-fn working_tree_header(state: &AppState) -> DetailHeader {
+///
+/// `head` is HEAD's own commit, read from the refs by the caller — never the
+/// graph's top row, which is whatever sorts first: another branch's tip, or
+/// a stash commit (review m6-usability-2 m-b). `None` (refs unread, or an
+/// unborn branch) says `diff vs HEAD` with no id.
+fn working_tree_header(state: &AppState, head: Option<Oid>) -> DetailHeader {
     let counts = state.working_tree.as_ref();
-    let head = state
-        .history
-        .as_ref()
-        .and_then(|history| history.window.as_ref())
-        .filter(|window| window.first == 0)
-        .and_then(|window| window.rows.first())
-        .map(|row| {
+    let head = head.map_or_else(
+        || "HEAD".to_owned(),
+        |head| {
             format!(
                 "HEAD {}",
-                short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH))
+                short_sha(&head.to_string(), usize::from(SHA_WIDTH))
             )
-        });
+        },
+    );
     DetailHeader {
         subject: Subject::WorkingTree {
             staged: counts.map_or(0, |c| u32::try_from(c.staged().count()).unwrap_or(u32::MAX)),
@@ -196,7 +200,7 @@ fn working_tree_header(state: &AppState) -> DetailHeader {
         committer: None,
         co_authors: Vec::new(),
         parents: Vec::new(),
-        against: head.map(|head| sanitize_line(&head)),
+        against: Some(sanitize_line(&head)),
         contained: ContainedIn::NotAsked,
         radar: Vec::new(),
     }
@@ -265,8 +269,28 @@ mod tests {
         }
     }
 
+    /// HEAD's id comes from the refs, not from the row order: row 0 here is
+    /// `oid(3)` — another branch's tip, or a stash commit sorted on top —
+    /// while HEAD is elsewhere. Unread refs name no id at all
+    /// (review m6-usability-2 m-b).
     #[test]
-    fn working_tree_header_reads_counts_and_head() {
+    fn the_uncommitted_header_names_head_not_the_top_row() {
+        for head in [oid(1), oid(2)] {
+            let mut state = state_on_working_tree(counts(0, 1, 0));
+            state.refs = Some(std::sync::Arc::new(crate::view::tests::refs_with_head(
+                Some(head),
+            )));
+            let against = detail_view(&state).header.against.expect("a HEAD line");
+            let sha = short_sha(&head.to_string(), usize::from(SHA_WIDTH));
+            assert_eq!(against.as_str(), format!("HEAD {sha}"));
+        }
+        let unread = state_on_working_tree(counts(0, 1, 0));
+        let against = detail_view(&unread).header.against.expect("a HEAD line");
+        assert_eq!(against.as_str(), "HEAD", "refs unread: no id");
+    }
+
+    #[test]
+    fn working_tree_header_reads_counts() {
         let state = state_on_working_tree(counts(2, 1, 3));
         let view = detail_view(&state);
         assert_eq!(
@@ -281,8 +305,6 @@ mod tests {
         assert!(view.header.author.as_str().is_empty());
         assert!(view.header.parents.is_empty());
         assert_eq!(view.header.contained, ContainedIn::NotAsked);
-        let against = view.header.against.expect("HEAD is the topmost row");
-        assert!(against.as_str().starts_with("HEAD "), "{against:?}");
     }
 
     #[test]

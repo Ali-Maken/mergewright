@@ -6,8 +6,8 @@ use graft_git::remote::RemoteFailure;
 use graft_ops::operation::Operation;
 
 use super::{
-    DIVERGED_KEYS, ESC_HINT, NARROW_COLUMNS, RejectedPush, Stoppable, short_branch, short_ref,
-    short_tracking,
+    DIVERGED_KEYS, ESC_HINT, NARROW_COLUMNS, OVERWRITE_KEYS, RejectedPush, Stoppable, short_branch,
+    short_ref, short_tracking,
 };
 use crate::refs::RefBadges;
 use crate::update::events::Command;
@@ -180,14 +180,14 @@ pub fn remote_failed(
             });
             sticky()
         }
-        // The pull that cannot fast-forward. `graft_ops`' own line sends the
-        // user to the shell (`git pull --rebase`); M5 gave them both verbs
-        // inside Graft, so the line names the two keys instead and the
-        // upstream is remembered for them to aim at.
+        // The pull that cannot fast-forward. `graft_ops`' own line says
+        // "merge or rebase" with no keys; Graft has both verbs, so the line
+        // names the two keys and the upstream is remembered for them to aim
+        // at.
         (RemoteFailure::NotFastForward, Operation::Pull(params)) => {
             let Some(tip) = params.upstream.tracking_tip else {
                 // Nothing to pin `m` or `r` to. `ops`' own sentence is the
-                // honest answer, including its shell fallback.
+                // honest answer: diverged, merge or rebase.
                 return sticky();
             };
             state.remote.diverged_upstream = Some((params.upstream.tracking_ref.clone(), tip));
@@ -200,6 +200,12 @@ pub fn remote_failed(
                 keys: Some(DIVERGED_KEYS.to_owned()),
             }
         }
+        // `ops` names his edits and no keys; the keys that get him through
+        // are the app's (m6-conflicts/85 D).
+        (RemoteFailure::WouldOverwrite { .. }, Operation::Pull(_)) => Status::Sticky {
+            reason: explained.to_owned(),
+            keys: Some(OVERWRITE_KEYS.to_owned()),
+        },
         _ => sticky(),
     }
 }

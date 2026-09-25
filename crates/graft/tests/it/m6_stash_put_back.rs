@@ -81,6 +81,9 @@ mod set_aside;
 /// m6-conflicts/75: that checkout, killed before each step and relaunched.
 mod kill;
 
+/// m6-conflicts/85 B: a take, then `esc`, shows the file without markers.
+mod pop;
+
 /// m6-conflicts/75: the menu and the set-aside preview inside the frame
 /// budget. Heavy tier.
 #[cfg(feature = "heavy-tests")]

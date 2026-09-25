@@ -348,7 +348,7 @@ fn escape_clears_a_pinned_base_while_the_pane_is_hidden() {
 }
 
 /// An empty, valid diff — enough for the option/scroll keys to act on.
-fn empty_diff_view() -> DiffView {
+pub(crate) fn empty_diff_view() -> DiffView {
     DiffView {
         path: sanitize_line("f"),
         old_path: None,
@@ -804,7 +804,11 @@ fn changes_pane(sections: &[(WorkingTreeSection, &[&str])]) -> (FileListView, Fi
 
 /// A changes pane showing `sections`, cursor on row `cursor`, line cursor at
 /// `body`.
-fn pane_on(sections: &[(WorkingTreeSection, &[&str])], cursor: usize, body: usize) -> DetailState {
+pub(crate) fn pane_on(
+    sections: &[(WorkingTreeSection, &[&str])],
+    cursor: usize,
+    body: usize,
+) -> DetailState {
     let (mut view, list) = changes_pane(sections);
     view.cursor = cursor;
     DetailState {
