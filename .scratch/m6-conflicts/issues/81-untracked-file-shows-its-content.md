@@ -39,4 +39,11 @@ the last edit. No machine paths.
   returns whenever `DiffView::untracked` is set (`crates/graft/src/jobs/detail.rs:455`), before hunks. Next step: drop
   that early return (the flag is still needed by `update/operate.rs` for stage/discard), then tick 4's capture and
   TESTING.md:1136 (`untracked · no diff yet (M3)` wording) and the sheet. Tick 4 not done.
+- Round 2 (graft-ui freed): `body.rs` draws the hunks; `empty file` only when untracked with no hunks and no binary
+  note. Tests `detail_pane::tests::an_untracked_file_with_lines_draws_its_lines`,
+  `an_empty_untracked_file_says_empty_file` (both red first). TESTING.md:1136 updated. The existing capture
+  `docs/shots/m6/fix-tab-words-{80x24,120x40}.txt` (frame 6, untracked `new.txt`) failed against the change and was
+  regenerated: body now `1 + hello from new`. Caption row 149 updated, sheet rebuilt (4 parts, max 179 698 B). No graft
+  src or test file edited. Tick 4 left for the conductor to judge (a capture of the untracked row now exists and shows
+  the body; the brief reserved tick 4 until 80 merges).
 - Scout: none (brief said 70's builder named the line; re-checked by reading it).

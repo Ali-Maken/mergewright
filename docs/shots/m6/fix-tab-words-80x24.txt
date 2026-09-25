@@ -130,8 +130,8 @@ diff vs HEAD a82960b
 
 UNTRACKED (1)
   ? new.txt                                                                  new
-untracked · no diff yet (M3)
-
+▎
+      1 + hello from new
 
 
 

@@ -230,8 +230,8 @@ CONFLICTS (13)                ▎
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
 UNCOMMITTED · 1 untracked
 diff vs HEAD a82960b
-UNTRACKED (1)                 untracked · no diff yet (M3)
-  ? new.txt               new
+UNTRACKED (1)                 ▎
+  ? new.txt               new       1 + hello from new
 
 
 
