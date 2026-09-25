@@ -92,6 +92,11 @@ pub struct Applied {
     /// either — the entry's backup ref points at it, and `d` reads the
     /// conflict's stages back out of it.
     pub step_backup: Option<Oid>,
+    /// What an undo or redo forced past drift replaced: the user's own edits
+    /// since the operation, which its backup keeps and the next `U` (or `u`
+    /// after a redo) puts back (m6-conflicts/77). Empty for every operation
+    /// and for a clean undo.
+    pub replaced: crate::undo::Replaced,
 }
 
 /// Everything one operation needs to run and be recorded.
@@ -338,6 +343,7 @@ fn succeeded(
         entry,
         refresh,
         step_backup: None,
+        replaced: crate::undo::Replaced::default(),
     };
     if unread.is_empty() {
         Ok(applied)

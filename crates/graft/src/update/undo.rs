@@ -276,6 +276,33 @@ fn launch(
     }]
 }
 
+/// An undo or redo ran to the end: the status names it, and the reads it
+/// asks for are started.
+fn undid(
+    state: &mut AppState,
+    applied: &graft_ops::apply::Applied,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    // The entry's own description already reads `undo: stage src/a.rs`
+    // (`InversePlan::description`), so it is shown as it stands rather than
+    // prefixed into `undid: undo: …`. `u` passes over a push (design note,
+    // choice 1), so a commit taken back here may still be on the remote:
+    // say so, or the graph's `origin/main` badge reads as a bug.
+    let still_there = super::remote::pushed_since(state, &applied.entry);
+    let what = format!("{}{still_there}", applied.entry.description);
+    // A forced run over drift names what it replaced and the key that
+    // brings it back (m6-conflicts/77); a clean one adds nothing.
+    let keys = replaced_keys(&applied.replaced, applied_is_redo(applied), 1);
+    state.status = done_with(what, keys);
+    // Taking back a finish or an abort leaves git mid-operation again, and
+    // only the read this asks for can say so: it pays the landing
+    // (`land_after_undo`, ticket 41). With a merge begun in the shell
+    // already live (a whole-file step undone inside it, m6-conflicts/57)
+    // there is no landing to owe: the banner keeps whatever focus it had.
+    state.undo_landing_owed = state.in_progress.is_none();
+    refresh(state, applied.refresh, next_id)
+}
+
 /// An undo or redo job answered. Stale answers — a job that is not the one
 /// `AppState::operating` waits for — are dropped, exactly as
 /// `update::operate::operated` drops them.
@@ -290,24 +317,7 @@ pub fn undone(
     }
     state.operating = None;
     match outcome {
-        Undone::Done(applied) => {
-            // The entry's own description already reads `undo: stage
-            // src/a.rs` (`InversePlan::description`), so it is shown as it
-            // stands rather than prefixed into `undid: undo: …`.
-            // `u` passes over a push (design note, choice 1), so a commit
-            // taken back here may still be on the remote: say so, or the
-            // graph's `origin/main` badge reads as a bug.
-            let still_there = super::remote::pushed_since(state, &applied.entry);
-            state.status = Status::done(format!("{}{still_there}", applied.entry.description));
-            // Taking back a finish or an abort leaves git mid-operation
-            // again, and only the read this asks for can say so: it pays the
-            // landing (`land_after_undo`, ticket 41). With a merge begun in
-            // the shell already live (a whole-file step undone inside it,
-            // m6-conflicts/57) there is no landing to owe: the banner keeps
-            // whatever focus it had.
-            state.undo_landing_owed = state.in_progress.is_none();
-            refresh(state, applied.refresh, next_id)
-        }
+        Undone::Done(applied) => undid(state, &applied, next_id),
         Undone::Incomplete { applied, error } => {
             state.status = Status::sticky(format!(
                 "{} \u{2014} could not confirm it fully: {error}",
@@ -317,8 +327,11 @@ pub fn undone(
         }
         // Not a failure: the journal simply has nothing in force to take
         // back. Cleared by the next key, like any other acknowledgement.
-        Undone::Nothing(why) => {
-            state.status = Status::done(why);
+        // With a redo waiting, the line names it: after `u y` over drift
+        // the edit is one `U` away, and a bare "nothing to undo" read as a
+        // dead end (m6-conflicts/77, usability review Q4).
+        Undone::Nothing { reason, redo } => {
+            state.status = done_with(reason, redo.map(|waiting| format!("U redoes {waiting}")));
             Vec::new()
         }
         // Ops' gate: the entry is older than the merge git is standing in
@@ -432,11 +445,14 @@ pub(super) fn reverted_to(
             description,
             total,
             steps,
+            replaced,
+            presses,
         } => {
-            state.status = Status::done(format!(
+            let what = format!(
                 "reverted to before \u{201c}{description}\u{201d} ({total} {})",
                 if total == 1 { "step" } else { "steps" }
-            ));
+            );
+            state.status = done_with(what, replaced_keys(&replaced, false, presses));
             // `steps` is what ran, kept for the record rather than for the
             // refresh: `Everything` is wider than any of their own scopes.
             debug_assert_eq!(steps.len(), total, "every planned step journaled");
@@ -444,12 +460,13 @@ pub(super) fn reverted_to(
         }
         RevertedTo::Drift {
             description,
+            total,
             drift,
             target,
         } => {
             // As for `undone`'s drift box: the answer ends its own `Busy`.
             state.status = Status::Ready;
-            state.confirm = Some(revert_drift_box(&description, &drift, target));
+            state.confirm = Some(revert_drift_box(&description, &drift, total, target));
             Vec::new()
         }
         RevertedTo::Refused { description, error } => {
@@ -487,19 +504,26 @@ pub(super) fn reverted_to(
 
 /// The time machine's own drift box. Same rail, same words, but `[ Revert ]`
 /// re-runs the jump rather than one `u`.
+///
+/// `total` is the jump's step count. The box only ever comes from the
+/// jump's first step (a later step's drift stops it part-way), and `U`
+/// walks the jump back from its last step, so bringing back what step 0
+/// replaces takes all `total` presses.
 fn revert_drift_box(
     description: &str,
     drift: &graft_ops::undo::Drift,
+    total: usize,
     target: graft_core::journal::EntryId,
 ) -> PendingConfirm {
     PendingConfirm {
         view: graft_ui::confirm::ConfirmView::new(
             sanitize_line(&format!("Revert to before \u{201c}{description}\u{201d}?")),
-            {
-                let mut message = wrapped(&format!("Since then, {}.", drift.explain()));
-                message.push("A backup is taken first, so this is itself undoable.".to_owned());
-                message.iter().map(|line| sanitize_line(line)).collect()
-            },
+            with_consequence(
+                wrapped(&format!("Since then, {}.", drift.explain())),
+                drift,
+                false,
+                total,
+            ),
             sanitize_line("revert restores the recorded state, step by step"),
         )
         .with_labels("Stop", "Revert"),
@@ -521,12 +545,12 @@ fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> P
     PendingConfirm {
         view: graft_ui::confirm::ConfirmView::new(
             sanitize_line(&format!("{verb} \u{201c}{description}\u{201d}?")),
-            {
-                let mut message =
-                    wrapped(&format!("Since this {description}, {}.", drift.explain()));
-                message.push("A backup is taken first, so this is itself undoable.".to_owned());
-                message.iter().map(|line| sanitize_line(line)).collect()
-            },
+            with_consequence(
+                wrapped(&format!("Since this {description}, {}.", drift.explain())),
+                drift,
+                redo,
+                1,
+            ),
             // No single git command to show: a restore is a plan of several,
             // and the journal browser's `Space` is where they are listed.
             sanitize_line(&format!(
@@ -539,19 +563,201 @@ fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> P
     }
 }
 
-/// The widest line the confirm box draws without clipping: it is 64
-/// columns at most (`graft_ui::confirm::confirm_area`), and a `…` where the
-/// drift's own words should be is the one thing this box must not do.
-const CONFIRM_COLUMNS: usize = 62;
+/// The drift line's wrapped lines with the consequence line under them,
+/// fitted into what graft-ui has left, each line sanitized for the box.
+fn with_consequence(
+    mut message: Vec<String>,
+    drift: &graft_ops::undo::Drift,
+    redo: bool,
+    presses: usize,
+) -> Vec<graft_term::SanitizedText> {
+    let room = CONFIRM_LINES.saturating_sub(message.len());
+    message.extend(wrapped(&drift_consequence(
+        drift,
+        redo,
+        presses,
+        CONFIRM_COLUMNS,
+        room,
+    )));
+    message.iter().map(|line| sanitize_line(line)).collect()
+}
+
+/// The widest line the confirm box draws without re-wrapping it: the box
+/// is 64 columns at its narrowest (`graft_ui::confirm::confirm_area`) and
+/// wraps its message 4 columns inside that. A `…` where the drift's own
+/// words should be is the one thing this box must not do.
+const CONFIRM_COLUMNS: u16 = 60;
+
+/// The most message lines graft-ui draws before it cuts the rest with a
+/// `…` (`graft-ui/src/confirm.rs`, `MAX_MESSAGE_LINES`).
+const CONFIRM_LINES: usize = 4;
+
+/// The drift box's consequence line (m6-conflicts/77, Decided 6): what the
+/// run replaces, that a backup keeps it, and the key that brings it back —
+/// fitted to `width` in at most `lines` wrapped lines, so graft-ui's cap
+/// never cuts it.
+///
+/// `presses` is how many `U`s the way back takes: 1 for `u`, the jump's
+/// step count for the time machine. A redo names **no** key: `u` after a
+/// redo takes back the operation at the root (`graft_ops::journal::
+/// next_undo` steps over `Undo` and `Redo` entries), which writes that
+/// operation's before-state, not the edit the redo replaced. The backup
+/// keeps it, and the line says only that.
+///
+/// To fit, the one path is cut from the left (`…/fix.txt`) until the
+/// sentence fits; if the drift line above left a single line, the sentence
+/// also drops `a backup keeps it, and ` and keeps the key. When even that
+/// cannot fit the short form is returned whole and graft-ui cuts it.
+pub(crate) fn drift_consequence(
+    drift: &graft_ops::undo::Drift,
+    redo: bool,
+    presses: usize,
+    width: u16,
+    lines: usize,
+) -> String {
+    let verb = if redo { "Redo" } else { "Undo" };
+    let key = (!redo).then(|| way_back_key(presses));
+    let replaced = &drift.replaced;
+    if replaced.is_empty() {
+        // Nothing the run writes differs from what the entry left: the
+        // user's edits (if any) are on other paths and stay put.
+        return if drift.worktree || drift.index.is_some() {
+            format!("{verb} leaves your edits since as they are.")
+        } else {
+            match key {
+                Some(key) => format!("A backup is taken first, and {key} brings this state back."),
+                None => "A backup is taken first.".to_owned(),
+            }
+        };
+    }
+    let (named, it) = named_replaced(replaced);
+    let sentence = |what: &str, long: bool| match (&key, long) {
+        (Some(key), true) => {
+            format!("{verb} replaces {what}; a backup keeps {it}, and {key} brings {it} back.")
+        }
+        (Some(key), false) => format!("{verb} replaces {what}; {key} brings {it} back."),
+        (None, _) => format!("{verb} replaces {what}; a backup keeps {it}."),
+    };
+    let width = usize::from(width);
+    let fits = |text: &str| {
+        let wrapped = wrapped_at(text, width);
+        wrapped.len() <= lines && wrapped.iter().all(|line| line.chars().count() <= width)
+    };
+    let shown = match &named {
+        Named::Path(path) => left_cuts(path),
+        Named::Whole(what) => vec![what.clone()],
+    };
+    let described = |shown: &str| match &named {
+        Named::Path(_) => format!("your edit to {shown}"),
+        Named::Whole(_) => shown.to_owned(),
+    };
+    for long in [true, false] {
+        if let Some(found) = shown
+            .iter()
+            .map(|shown| sentence(&described(shown), long))
+            .find(|text| fits(text))
+        {
+            return found;
+        }
+    }
+    sentence(&described(shown.last().map_or("", String::as_str)), false)
+}
+
+/// The status line's way back after a forced run (m6-conflicts/77):
+/// `U brings back your edit to fix.txt`, or `None` when nothing was
+/// replaced. A redo names the backup and no key (see [`drift_consequence`]).
+pub(crate) fn replaced_keys(
+    replaced: &graft_ops::undo::Replaced,
+    redo: bool,
+    presses: usize,
+) -> Option<String> {
+    if replaced.is_empty() {
+        return None;
+    }
+    let what = match named_replaced(replaced).0 {
+        Named::Path(path) => format!("your edit to {path}"),
+        Named::Whole(what) => what,
+    };
+    Some(if redo {
+        format!("a backup keeps {what}")
+    } else {
+        format!("{} brings back {what}", way_back_key(presses))
+    })
+}
+
+/// What a [`graft_ops::undo::Replaced`] is called: one path by name,
+/// anything wider by what it is. With the pronoun that goes with it.
+enum Named {
+    /// The one path, as text.
+    Path(String),
+    /// `the whole working tree` or `your edits to 3 files`.
+    Whole(String),
+}
+
+fn named_replaced(replaced: &graft_ops::undo::Replaced) -> (Named, &'static str) {
+    match replaced.paths.as_slice() {
+        _ if replaced.whole_tree => (Named::Whole("the whole working tree".to_owned()), "it"),
+        [one] => (Named::Path(one.to_string_lossy().into_owned()), "it"),
+        many => (
+            Named::Whole(format!("your edits to {} files", many.len())),
+            "them",
+        ),
+    }
+}
+
+/// `Done`, naming `keys` when there are any.
+fn done_with(what: String, keys: Option<String>) -> Status {
+    match keys {
+        Some(keys) => Status::done_with_keys(what, keys),
+        None => Status::done(what),
+    }
+}
+
+/// Whether a finished `Undone::Done` was `U`'s: its entry is a `Redo`.
+fn applied_is_redo(applied: &graft_ops::apply::Applied) -> bool {
+    applied.entry.kind == graft_core::journal::OperationKind::Redo
+}
+
+/// `U`, or `U (3 times)` when the way back is several redos.
+fn way_back_key(presses: usize) -> String {
+    if presses > 1 {
+        format!("U ({presses} times)")
+    } else {
+        "U".to_owned()
+    }
+}
+
+/// `path` whole, then cut from the left at each `/` (`…/src/fix.txt`,
+/// `…/fix.txt`), then the file name itself cut a character at a time —
+/// longest first, so the first that fits keeps the most.
+fn left_cuts(path: &str) -> Vec<String> {
+    let mut cuts = vec![path.to_owned()];
+    cuts.extend(
+        path.match_indices('/')
+            .map(|(at, _)| format!("\u{2026}{}", &path[at..])),
+    );
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let chars: Vec<char> = name.chars().collect();
+    cuts.extend((1..chars.len()).map(|from| {
+        let kept: String = chars[from..].iter().collect();
+        format!("\u{2026}{kept}")
+    }));
+    cuts
+}
 
 /// `text` broken at spaces into lines of at most [`CONFIRM_COLUMNS`]. A
 /// single word longer than that is left whole — the box clips it, and
 /// cutting a path in half would be worse than a clipped one.
 fn wrapped(text: &str) -> Vec<String> {
+    wrapped_at(text, usize::from(CONFIRM_COLUMNS))
+}
+
+/// [`wrapped`] at any width.
+fn wrapped_at(text: &str, width: usize) -> Vec<String> {
     let mut lines: Vec<String> = Vec::new();
     for word in text.split_whitespace() {
         match lines.last_mut() {
-            Some(line) if line.chars().count() + 1 + word.chars().count() <= CONFIRM_COLUMNS => {
+            Some(line) if line.chars().count() + 1 + word.chars().count() <= width => {
                 line.push(' ');
                 line.push_str(word);
             }
@@ -687,6 +893,7 @@ mod tests {
             },
             refresh,
             step_backup: None,
+            replaced: graft_ops::undo::Replaced::default(),
         }
     }
 
@@ -1017,11 +1224,37 @@ mod tests {
         let commands = undone(
             &mut state,
             JobId::new(2),
-            Undone::Nothing("nothing to undo".to_owned()),
+            Undone::Nothing {
+                reason: "nothing to undo".to_owned(),
+                redo: None,
+            },
             &mut ids(),
         );
         assert_eq!(state.status, Status::done("nothing to undo"));
         assert!(commands.is_empty());
+    }
+
+    /// m6-conflicts/77: with a redo waiting, "nothing to undo" names the
+    /// key that goes the other way instead of ending on a dead end.
+    #[test]
+    fn nothing_to_undo_names_the_redo_waiting() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..AppState::default()
+        };
+        undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Nothing {
+                reason: "nothing to undo".to_owned(),
+                redo: Some("checkout fix".to_owned()),
+            },
+            &mut ids(),
+        );
+        assert_eq!(
+            state.status,
+            Status::done_with_keys("nothing to undo", "U redoes checkout fix")
+        );
     }
 
     #[test]
@@ -1318,6 +1551,7 @@ mod tests {
             running,
             crate::jobs::undo::RevertedTo::Drift {
                 description: "commit one".to_owned(),
+                total: 1,
                 drift: drift(),
                 target,
             },

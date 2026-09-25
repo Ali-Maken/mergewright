@@ -2995,6 +2995,10 @@ const DRIFT_HEADER: &str = "\
 # - The question names the entry, not the word \"operation\".
 # - The consequence is `graft_ops`' own drift.explain() text, verbatim —
 #   which fields moved, and that an unrecorded after-state is restored whole.
+# - Under it, what the undo replaces and the key that brings it back
+#   (m6-conflicts/77): `Undo replaces the whole working tree; U brings it
+#   back.` The drift line takes three lines here, so `a backup keeps it, and`
+#   is dropped to fit the box's four.
 # - The buttons read [ Stop ] and Undo, with Stop under the cursor: the safe
 #   choice is the one already selected, and neither says \"Discard\", which
 #   would name the opposite of what the button does.
@@ -3014,6 +3018,12 @@ fn capture_m3_undo_drift() {
             graft_core::journal::IndexState::Merged(oid(2)),
         )),
         unknown: vec!["the working tree"],
+        // What the executor reads for an unknown working tree: all of it
+        // is restored, so all of it counts as replaced (m6-conflicts/77).
+        replaced: graft_ops::undo::Replaced {
+            paths: Vec::new(),
+            whole_tree: true,
+        },
         ..graft_ops::undo::Drift::default()
     };
     let mut next = 100;
@@ -3039,6 +3049,95 @@ fn capture_m3_undo_drift() {
         ),
         format!("{DRIFT_HEADER}=== 120x32 ===\n{screen}"),
     );
+}
+
+/// The undo drift box over `description`, with one uncommitted edit to
+/// `path` in the way: the lines graft built for its message, and the screen
+/// drawn at `columns`×`rows`.
+fn drift_box_drawn(
+    columns: u16,
+    rows: u16,
+    description: &str,
+    path: &str,
+) -> (Vec<String>, String) {
+    let mut state = changes_pane_state(columns, rows);
+    let id = graft_core::job::JobId::new(7);
+    state.operating = Some(id);
+    let drift = graft_ops::undo::Drift {
+        refs: vec![("refs/heads/main".to_owned(), Some(oid(1)), Some(oid(2)))],
+        head: true,
+        worktree: true,
+        replaced: graft_ops::undo::Replaced {
+            paths: vec![std::path::PathBuf::from(path)],
+            whole_tree: false,
+        },
+        ..graft_ops::undo::Drift::default()
+    };
+    let mut next = 100;
+    let _commands = crate::update::undo::undone(
+        &mut state,
+        id,
+        crate::jobs::undo::Undone::Drift {
+            description: description.to_owned(),
+            drift,
+            redo: false,
+        },
+        &mut || {
+            next += 1;
+            graft_core::job::JobId::new(next)
+        },
+    );
+    let message = state
+        .confirm
+        .as_ref()
+        .expect("the drift box is open")
+        .view
+        .message
+        .iter()
+        .map(|line| line.as_str().to_owned())
+        .collect();
+    (message, draw(&state, columns, rows))
+}
+
+/// m6-conflicts/77, the fit rule: a 60-character path under a long title.
+/// graft cuts the path from the left (`…/fix.txt`), and drops `a backup
+/// keeps it, and ` when the drift line above takes three lines, so the key
+/// sentence reaches `brings it back.` whole and graft-ui's four-line cap
+/// never cuts it. At 80×24 and 160×48.
+#[test]
+fn the_drift_box_line_is_never_cut() {
+    let path = "services/billing/src/handlers/invoices/overdue/fix.txt";
+    let path = format!("{}{path}", "a/".repeat((60 - path.len()) / 2));
+    assert_eq!(path.len(), 60, "{path}");
+    let titles = [
+        // The drift line wraps to two lines: the long form fits.
+        ("commit \"Add OAuth provider\"", true),
+        // Three lines: the short form, key kept.
+        (
+            "commit \"Handle the overdue invoice reminder when the customer changed plans mid-cycle\"",
+            false,
+        ),
+    ];
+    for (columns, rows) in [(80, 24), (160, 48)] {
+        for (description, long) in titles {
+            let (message, screen) = drift_box_drawn(columns, rows, description, &path);
+            let words = message.join(" ");
+            let at = format!("{columns}x{rows}, {description}");
+            assert!(message.len() <= 4, "{at}: over graft-ui's cap: {message:?}");
+            assert!(words.ends_with("U brings it back."), "{at}: {words}");
+            assert!(
+                words.contains("your edit to \u{2026}/") && words.contains("/fix.txt;"),
+                "{at}: the path is cut from the left: {words}"
+            );
+            assert!(!words.contains(&path), "{at}: the path is cut by graft");
+            assert_eq!(words.contains("a backup keeps it"), long, "{at}: {words}");
+            // Drawn, not only built: every line graft made is on screen as
+            // it was made — graft-ui neither re-wrapped nor cut one.
+            for line in &message {
+                assert!(screen.contains(line.as_str()), "{at}: {line:?}\n{screen}");
+            }
+        }
+    }
 }
 
 /// Regenerates `docs/shots/m4-remote-keys.txt` (m4-remotes/05): the lease

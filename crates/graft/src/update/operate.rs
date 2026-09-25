@@ -1072,6 +1072,7 @@ mod tests {
             },
             refresh,
             step_backup: None,
+            replaced: graft_ops::undo::Replaced::default(),
         }
     }
 

@@ -12,7 +12,7 @@ use graft_git::version::system_git;
 use graft_ops::apply::{Applied, Context, Refresh};
 use graft_ops::journal::{Journal, journal_path};
 use graft_ops::restore::RestoreError;
-use graft_ops::undo::{self, Drift, NotInvertible, UndoError};
+use graft_ops::undo::{self, Drift, NotInvertible, Replaced, UndoError};
 
 use super::Cancel;
 use crate::repos::RepoStore;
@@ -40,7 +40,15 @@ pub enum Undone {
     },
     /// There was nothing to undo or redo, or the entry cannot be inverted.
     /// An ordinary answer; the reason is already a sentence.
-    Nothing(String),
+    Nothing {
+        /// Why, as a sentence (`nothing to undo`).
+        reason: String,
+        /// `u` found nothing to undo while a redo waits: the root
+        /// operation's description, so the line can name the key that
+        /// goes the other way (`U redoes checkout fix`, m6-conflicts/77).
+        /// `None` for `U`, and for any other reason.
+        redo: Option<String>,
+    },
     /// Ops' gate refused: git is part-way through an operation and the
     /// entry is not a step inside that same merge
     /// (`NotInvertible::OperationLive`, m6-conflicts/57). Nothing was
@@ -109,12 +117,25 @@ pub enum RevertedTo {
         total: usize,
         /// What ran, oldest step first.
         steps: Vec<Applied>,
+        /// What the steps replaced between them (m6-conflicts/77): the
+        /// union of each step's `Applied::replaced`.
+        replaced: Replaced,
+        /// How many `U`s bring it back: the steps from the first one that
+        /// replaced anything to the last, since `U` walks the jump back one
+        /// step at a time, newest first. Meaningless when `replaced` is
+        /// empty.
+        presses: usize,
     },
     /// The repository moved since one of those entries, so nothing ran.
     /// §6.7's rail: the user decides whether to go ahead.
+    ///
+    /// Only ever the **first** step's drift: a later step's is met part-way
+    /// (`RevertedTo::Failed`), so the box names what step 0 replaces.
     Drift {
         /// The entry the jump was aimed at.
         description: String,
+        /// How many steps the plan has: the `U`s the box names.
+        total: usize,
         /// What differs from what the entry recorded.
         drift: Drift,
         /// That entry's id, carried so the confirm box's `[ Revert ]` can
@@ -214,13 +235,28 @@ fn refresh_after_failure(error: &UndoError) -> Option<Refresh> {
 /// `run_undo`'s answer for one `Err` from `ops`, with the `AfterState` case
 /// lifted back out into [`Undone::Incomplete`] rather than collapsed into a
 /// string that drops the [`Applied`] the caller refreshes from.
-fn undone_from(error: UndoError, redo: bool, description: impl FnOnce() -> String) -> Undone {
+///
+/// `redo_waiting` is asked only when `u` found nothing to undo: what `U`
+/// would redo, so the answer can name it rather than end on a dead end.
+fn undone_from(
+    error: UndoError,
+    redo: bool,
+    description: impl FnOnce() -> String,
+    redo_waiting: impl FnOnce() -> Option<String>,
+) -> Undone {
     match error {
         UndoError::Nothing(NotInvertible::OperationLive { kind }) => Undone::OperationLive { kind },
-        UndoError::Nothing(_) => Undone::Nothing(error_line(&error)),
+        UndoError::Nothing(NotInvertible::NothingToUndo) if !redo => Undone::Nothing {
+            reason: error_line(&error),
+            redo: redo_waiting(),
+        },
+        UndoError::Nothing(_) => Undone::Nothing {
+            reason: error_line(&error),
+            redo: None,
+        },
         UndoError::Drift(drift) => Undone::Drift {
             description: description(),
-            drift,
+            drift: *drift,
             redo,
         },
         // `Esc`. `restore::execute` rolled back what it had applied (clean)
@@ -348,7 +384,7 @@ pub(super) fn run_undo(
             };
             match ran {
                 Ok(applied) => Undone::Done(applied),
-                Err(error) => undone_from(error, redo, || aimed_at),
+                Err(error) => undone_from(error, redo, || aimed_at, || redo_waiting(ctx)),
             }
         },
         nothing_ran,
@@ -394,21 +430,41 @@ pub(super) fn run_revert_to(
             let total =
                 undo::plan_revert_to(ctx.journal.entries(), target).map_or(0, |plans| plans.len());
             match undo::revert_to(ctx, target, force) {
-                Ok(steps) => RevertedTo::Done {
-                    description: aimed_at,
-                    total,
-                    steps,
+                Ok(steps) => {
+                    let (replaced, presses) = replaced_by_jump(&steps);
+                    RevertedTo::Done {
+                        description: aimed_at,
+                        total,
+                        steps,
+                        replaced,
+                        presses,
+                    }
+                }
+                // `revert_to` wraps every step's error in `PartWay`, the
+                // first step's too — so drift before anything ran arrives
+                // as `PartWay { done: [], Drift }`, and matching the bare
+                // `Drift` alone left this box unreachable: the jump ended
+                // "stopped after 0 of 2 steps … u again to go ahead", naming
+                // a key that does not re-run it (m6-conflicts/77).
+                Err(UndoError::PartWay { done, error }) => match (done.len(), *error) {
+                    (0, UndoError::Drift(drift)) => RevertedTo::Drift {
+                        description: aimed_at,
+                        total,
+                        drift: *drift,
+                        target: target.clone(),
+                    },
+                    (done, error) => RevertedTo::Failed {
+                        description: aimed_at,
+                        done,
+                        total,
+                        error: error_line(&error),
+                    },
                 },
                 Err(UndoError::Drift(drift)) => RevertedTo::Drift {
                     description: aimed_at,
-                    drift,
-                    target: target.clone(),
-                },
-                Err(UndoError::PartWay { done, error }) => RevertedTo::Failed {
-                    description: aimed_at,
-                    done: done.len(),
                     total,
-                    error: error_line(&error),
+                    drift: *drift,
+                    target: target.clone(),
                 },
                 Err(other) => RevertedTo::Refused {
                     description: aimed_at,
@@ -420,6 +476,41 @@ pub(super) fn run_revert_to(
             description: "that point".to_owned(),
             error: error.to_string(),
         },
+    )
+}
+
+/// What a finished jump replaced, and how many `U`s bring it back.
+///
+/// `revert_to` journals one `Undo` entry per step, newest operation first,
+/// and `U` redoes the newest `Undo` entry — the jump's **last** step — so it
+/// walks back from the end. The edit step `k` replaced comes back with the
+/// `U` that redoes step `k`: `steps.len() - k` presses. The earliest step
+/// that replaced anything sets the count, since reaching it brings every
+/// later one back on the way.
+fn replaced_by_jump(steps: &[Applied]) -> (Replaced, usize) {
+    let mut replaced = Replaced::default();
+    for step in steps {
+        replaced.extend(step.replaced.clone());
+    }
+    let presses = steps
+        .iter()
+        .position(|step| !step.replaced.is_empty())
+        .map_or(0, |first| steps.len() - first);
+    (replaced, presses)
+}
+
+/// What `U` would redo now, named by its root operation (`checkout fix`,
+/// not the `Undo` entry's own `undo: checkout fix`), or `None` when
+/// nothing waits. Read from the journal `u` just consulted: a `Nothing`
+/// answer wrote nothing, so it is still the journal as it stands.
+fn redo_waiting(ctx: &Context<'_>) -> Option<String> {
+    let entries = ctx.journal.entries();
+    let waiting = graft_ops::journal::next_redo(entries)?;
+    Some(
+        graft_ops::journal::root_operation(entries, waiting).map_or_else(
+            || waiting.description.clone(),
+            |root| root.description.clone(),
+        ),
     )
 }
 
@@ -528,7 +619,7 @@ mod tests {
         let kind = graft_git::state::InProgress::Merge;
         let refused = UndoError::Nothing(NotInvertible::OperationLive { kind });
         assert_eq!(
-            undone_from(refused, false, String::new),
+            undone_from(refused, false, String::new, || None),
             Undone::OperationLive { kind }
         );
     }
@@ -555,6 +646,7 @@ mod tests {
             entry: entry_for("undo: commit \"fix\""),
             refresh: Refresh::WorkingTree,
             step_backup: None,
+            replaced: graft_ops::undo::Replaced::default(),
         };
         let stopped = UndoError::PartWay {
             done: vec![applied],
@@ -595,12 +687,14 @@ mod tests {
                 entry: entry_for("undo: commit \"fix\""),
                 refresh: Refresh::WorkingTree,
                 step_backup: None,
+                replaced: graft_ops::undo::Replaced::default(),
             }],
             error: Box::new(UndoError::Nothing(
                 graft_ops::undo::NotInvertible::NothingToUndo,
             )),
         };
-        let Undone::Failed { error, refresh } = undone_from(stopped, false, String::new) else {
+        let Undone::Failed { error, refresh } = undone_from(stopped, false, String::new, || None)
+        else {
             panic!("a part-way revert is not a drift and not a clean run")
         };
         assert!(error.contains("1 of 2 steps done"), "{error}");

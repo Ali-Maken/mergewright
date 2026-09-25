@@ -20,4 +20,5 @@ mod stash_pop_redo;
 mod support;
 mod undo_cancel;
 mod undo_gate;
+mod undo_replaced;
 mod unmerged_index;

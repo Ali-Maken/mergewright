@@ -43,6 +43,7 @@ pub(super) fn applied(description: &str) -> graft_ops::apply::Applied {
         },
         refresh: graft_ops::apply::Refresh::WorkingTree,
         step_backup: None,
+        replaced: graft_ops::undo::Replaced::default(),
     }
 }
 

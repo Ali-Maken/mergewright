@@ -374,6 +374,7 @@ fn close_resume(
         entry,
         refresh: Refresh::Everything,
         step_backup: None,
+        replaced: crate::undo::Replaced::default(),
     };
     if unread.is_empty() {
         Ok(applied)

@@ -33,7 +33,7 @@ use crate::apply::{AfterState, Applied, Context, Refresh, begin, finish, reason_
 use crate::facts::FactsError;
 use crate::journal::JournalError;
 use crate::snapshot::SnapshotError;
-use crate::undo::{InversePlan, Step};
+use crate::undo::{InversePlan, Replaced, Step};
 
 use rollback::{Before, Cancelled, roll_back_after_stop};
 use steps::run_step;
@@ -216,6 +216,22 @@ pub fn restore_stages(
 
 /// Run a plan, journaled as its own entry.
 pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, RestoreError> {
+    execute_over_drift(ctx, plan, Vec::new(), Replaced::default())
+}
+
+/// [`execute`], for an undo the user forced past drift (m6-conflicts/77).
+///
+/// `reads` are the command lines of the read that named what the run
+/// replaces (`undo::replaced`); they head the entry's Command Log, because
+/// they ran for this undo and the log is every command it ran. `replaced`
+/// rides on the [`Applied`] — the `AfterState` one too — so the landing can
+/// name the key that brings it back.
+pub(crate) fn execute_over_drift(
+    ctx: &mut Context<'_>,
+    plan: &InversePlan,
+    reads: Vec<String>,
+    replaced: Replaced,
+) -> Result<Applied, RestoreError> {
     if ctx.stop.should_stop() {
         return Err(RestoreError::Stopped);
     }
@@ -242,7 +258,7 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
         merge: pending.entry.merge_before.clone(),
     };
 
-    let mut commands = Vec::new();
+    let mut commands = reads;
     let (status, outcome) = outcome_of(run_plan(ctx, plan, &before, &mut commands));
     let unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
@@ -265,6 +281,7 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
                 entry: pending.entry,
                 refresh,
                 step_backup: None,
+                replaced,
             };
             if unread.is_empty() {
                 Ok(applied)

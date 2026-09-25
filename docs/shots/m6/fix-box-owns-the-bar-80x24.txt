@@ -78,13 +78,13 @@
 ●      Add the first note                                           1y   fadcfb3
 ◇      ╭ Undo “checkout fix”? ─────────────────────────────────────────╮ 64ded19
        │ Since this checkout fix, the working tree changed.            │
-       │ A backup is taken first, so this is itself undoable.          │
+       │ Undo replaces your edit to fix.txt; a backup keeps it, and U  │
+       │ brings it back.                                               │
        │                                                               │
        │ undo restores the recorded state                              │
        │                                                               │
        │ ▸[ Stop ]   [ Undo ]                                          │
        ╰───────────────────────────────────────────────────────────────╯
-
 
 
 

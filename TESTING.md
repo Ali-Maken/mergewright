@@ -1293,7 +1293,10 @@ included) and every `stash list` line.
     (unborn again), the branch ref is gone, `ls-files -s` holds `first.txt`.
 13. **undo-drift-guard** — commit through the editor, then `sample.txt`
     gains a line `DRIFT` out of band; `u`: a box `Undo "commit …"?` with
-    `Stop` under the cursor; `Enter`: nothing at all changed. `u` `→`
+    `Stop` under the cursor, and under what drifted `Undo leaves your edits
+    since as they are.` — the commit's undo writes no file, so it names none
+    (m6-conflicts/77, the walk's `the commit drift is not named` step);
+    `Enter`: nothing at all changed. `u` `→`
     `Enter`: HEAD and the index back as after a plain undo, `sample.txt`
     still holds `DRIFT` (a commit touches refs and index, not the file),
     and `rev-list --objects <undo entry's backup ref>` lists the `DRIFT`
@@ -1337,7 +1340,8 @@ Every capture exists at 80x24 and 160x48; 120x40 was not captured.
 | Commit editor (`m3-04-commit-editor`, `m3-05-commit-refused`) | replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`; refused: `nothing staged` on the title and on its own row directly above the options row (ticket 40) | not run | same, wider; the pane stays |
 | Stash (`m3-06-stash-list`, `m3-07-stash-prompt`) | `STASHES (2)` and rows `stash@{0} …`; prompt: `▸message wip`, `(•) all incl. untracked ( ) staged only` | not run | same |
 | Journal (`m3-08-journal-after-unstage`) | the unstage entry with `← u` | not run | same |
-| Drift box (`m3-09-undo-drift-box`) | a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (the undo's own `Busy` ended when its answer opened the box, m6-conflicts/69) | not run | same |
+| Drift box (`m3-09-undo-drift-box`) | a framed box `╭ Undo “commit "before the drift"”?`, what drifted, then `Undo leaves your edits since as they are.` (m6-conflicts/77), `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `y undo  ←/→ move  ⏎ choose  esc cancel` (the undo's own `Busy` ended when its answer opened the box, m6-conflicts/69) | not run | same |
+| Undo over drift, the way back (`m6/fix-undo-drift-way-back`, m6-conflicts/77) | a menu checkout, an edit, `u`: the box reads `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.`, whole; `y`: `undo: checkout fix ✓ · U brings back your edit to fix.txt`; `U`: `redo: checkout fix ✓` and the changes row back. Known wrong in frame 2, pre-existing: the graph keeps `[◆ fix]` after the undo (only the working tree is re-read) | not run | same, 120x40 |
 
 ### Per terminal: walk the working tree group
 

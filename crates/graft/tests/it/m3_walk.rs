@@ -1126,6 +1126,25 @@ fn commit_on_unborn_head() -> Scenario {
     }
 }
 
+/// The drift box says the undo leaves the user's edits as they are, and
+/// names none it replaces.
+fn drift_names_no_edit(state: &AppState) -> Result<(), String> {
+    let Some(pending) = state.confirm.as_ref() else {
+        return Err("the drift box is not open".to_owned());
+    };
+    let words: Vec<&str> = pending
+        .view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    let words = words.join(" ");
+    check(
+        words.contains("Undo leaves your edits since as they are.") && !words.contains("replaces"),
+        || format!("the box should leave the edit unnamed: {words}"),
+    )
+}
+
 fn undo_drift_guard() -> Scenario {
     let commit_then_edit = || {
         chain(vec![
@@ -1153,6 +1172,10 @@ fn undo_drift_guard() -> Scenario {
                 Step::Mark("edited"),
                 key(ch('u')),
                 Step::Await("the drift box", confirm_open),
+                // m6-conflicts/77: a commit's undo writes refs and `HEAD`,
+                // never `sample.txt`, so the box names no edit it replaces
+                // (`drift_expect` checks the edit is still on disk after).
+                Step::See("the commit drift is not named", drift_names_no_edit),
                 // `Stop` is under the cursor: Enter keeps everything.
                 key(KeyCode::Enter),
                 Step::See("Stop closes the box", |state| {
