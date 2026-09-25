@@ -49,5 +49,12 @@ Worktree only. No machine paths. Gates workspace-wide after the last edit. Don't
   fixed; frame 3 (`U`) keeps `[◆ fix]`. Both frames also gain `date order, sorting…` in the header and lose the Radar's
   `ⓘ` on `fix` — the graph reload is still in flight when the frame is taken. Whether the capture should wait for the
   reload to settle is a graft question for 70, not judged here.
-- Gates: fmt, clippy `-D warnings`, doc tests pass workspace-wide; nextest 3302/3303, the one fail being that capture.
+- Gates (first commit): nextest 3302/3303, the one fail being that capture — fixed below.
 - No scout: 77's builder named the line; re-checked above.
+- Follow-up (conductor, after 78 merged; graft opened for this one fix): `capture_fix_undo_drift_way_back` now waits
+  for the reload with `settled_frame` + `radar_answered` (moved from `resolver/shell_begun.rs` into `captures.rs`, shared;
+  not `app_harness.rs`, which the m3/m4 walk examples include without `captures`). It asserts `[◆ main]` after `y` and
+  `[◆ fix]` after `U`. Retaken at 120x40 and 80x24: frame 2 `[◆ main]`, `fix` plain, `ⓘ` on `fix`, no `sorting…`;
+  frame 3 unchanged. KNOWN WRONG dropped from the header, the captions row and the TESTING.md row. m6 sheet rebuilt,
+  4 parts, largest 179 678 B.
+- Gates after the last edit: fmt, clippy `-D warnings`, nextest 3317/3317 (1 skipped), doc tests, workspace-wide.
