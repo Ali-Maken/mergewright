@@ -716,16 +716,8 @@ pub fn resumed(
         crate::jobs::operate::Operated::Done(applied) => {
             resumed_done(state, &how, &applied, finish, next_id)
         }
-        // It ran; only its record is short. The re-read confirms the end
-        // the same way it does for `Done`.
         crate::jobs::operate::Operated::Incomplete { applied, error } => {
-            super::undo::operation_ended(state);
-            let (Closing::Finished(what) | Closing::Unfinished(what)) =
-                closing(&how, &applied.entry);
-            state.status = Status::sticky(format!(
-                "{what} \u{2014} could not confirm it fully: {error}"
-            ));
-            super::operate::refresh_scope(state, applied.refresh, next_id)
+            resumed_incomplete(state, &how, &applied, &error, next_id)
         }
         // A rebase stopping on the *next* commit is the same entry and the
         // same banner: it stays focused, and the line says this is a second
@@ -746,6 +738,13 @@ pub fn resumed(
             );
             land_in_resolver(state, &mut commands, &paths, next_id);
             commands
+        }
+        // The operation finished and a stash put back after it clashed
+        // (ADR-0045 §4's set-aside, m6-conflicts/74): the operation is over,
+        // the clash is the stash landing's (m6-conflicts/72b).
+        crate::jobs::operate::Operated::Clashed { entry, clash } => {
+            super::undo::operation_ended(state);
+            super::clash::clashed(state, None, entry, &clash, next_id)
         }
         crate::jobs::operate::Operated::Failed {
             error,
@@ -828,6 +827,23 @@ pub(crate) fn resumed_words(how: &Resume, entry: &graft_core::journal::JournalEn
 /// The operation finished: the entry ends, the scope re-reads and the
 /// cursor lands on HEAD. A merge committed from the finish summary says so
 /// in its own words (`merged feature into main`).
+/// `resumed`'s `Incomplete`: it ran; only its record is short. The re-read
+/// confirms the end the same way it does for `Done`.
+fn resumed_incomplete(
+    state: &mut AppState,
+    how: &Resume,
+    applied: &graft_ops::apply::Applied,
+    error: &str,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    super::undo::operation_ended(state);
+    let (Closing::Finished(what) | Closing::Unfinished(what)) = closing(how, &applied.entry);
+    state.status = Status::sticky(format!(
+        "{what} \u{2014} could not confirm it fully: {error}"
+    ));
+    super::operate::refresh_scope(state, applied.refresh, next_id)
+}
+
 fn resumed_done(
     state: &mut AppState,
     how: &Resume,
@@ -864,6 +880,10 @@ fn kept_open(
             refresh: Some(what),
             ..
         } => super::operate::refresh_scope(state, what, next_id),
+        // Wrote refs and files before it stopped: everything is stale.
+        crate::jobs::operate::Operated::Clashed { .. } => {
+            super::operate::refresh_scope(state, graft_ops::apply::Refresh::Everything, next_id)
+        }
         crate::jobs::operate::Operated::Failed { refresh: None, .. }
         | crate::jobs::operate::Operated::Done(_)
         | crate::jobs::operate::Operated::Incomplete { .. } => Vec::new(),

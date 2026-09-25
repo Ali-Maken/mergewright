@@ -326,6 +326,49 @@ mod tests {
         );
     }
 
+    /// `J` after a stash clash (m6-conflicts/72, 72b): the pop that clashed
+    /// is `Committed` — git kept the stash and the tree is unmerged, which
+    /// is the pop's own result, not a failure — so its row reads as any
+    /// other, never `failed:`. The drop the last file done launched is a
+    /// `StashDrop` row named by the stash's commit, and it is what `u`
+    /// reaches next.
+    #[test]
+    fn a_clashed_pop_reads_as_a_normal_row_and_its_drop_as_a_stash_drop() {
+        let mut pop = entry(1, OperationKind::StashPop, "pop stash@{0}");
+        pop.touches.worktree = true;
+        pop.put_back = Some(graft_core::journal::PutBack {
+            stash: oid(7),
+            why: graft_core::journal::PutBackWhy::Pop,
+        });
+        let stage = entry(2, OperationKind::Stage, "stage notes.md");
+        let mut drop = entry(3, OperationKind::StashDrop, "drop stash 0707070");
+        drop.touches = Touches {
+            refs: vec!["refs/stash".to_owned()],
+            index: false,
+            worktree: false,
+        };
+        let app = state_with(vec![pop, stage, drop]);
+        let view = journal_view(&app, 10);
+
+        let drop_row = &view.rows[0];
+        assert_eq!(drop_row.description.as_str(), "drop stash 0707070");
+        assert_eq!(
+            drop_row.mark,
+            RowMark::NextUndo,
+            "`u` brings the stash back"
+        );
+        assert!(drop_row.failure.is_none());
+
+        let pop_row = &view.rows[2];
+        assert_eq!(pop_row.description.as_str(), "pop stash@{0}");
+        assert_eq!(pop_row.mark, RowMark::None);
+        assert_eq!(
+            pop_row.summary.as_str(),
+            "the index · the working tree · backup saved"
+        );
+        assert!(pop_row.failure.is_none(), "a clash is not a failure");
+    }
+
     /// A remote entry: `refs` touched, no index, no tree, no backup.
     fn remote_entry(
         n: i64,

@@ -982,15 +982,15 @@ fn y_confirm_is_drawn_only_where_y_acts() {
     };
     let (cannot_act, _) = opened_over(opened_by("m"), an_empty_plan());
     for (what, state) in [
-        ("failed", failed),
-        ("undrawable", undrawable),
-        ("cannot act", cannot_act),
+        ("failed", &failed),
+        ("undrawable", &undrawable),
+        ("cannot act", &cannot_act),
     ] {
-        let view = preview_box(&state).expect("a box");
+        let view = preview_box(state).expect("a box");
         assert!(!view.confirm_key, "{what}: `y confirm` drawn");
         assert!(view.again.is_none(), "{what}: `m merge` drawn");
         // And `y` really does nothing there: no drawn key is dead.
-        let mut state = state;
+        let mut state = state.clone();
         let mut commands = Vec::new();
         preview_key(&mut state, &mut commands, char_key('y'), &mut ids());
         assert!(operated(&commands).is_empty(), "{what}: {commands:?}");

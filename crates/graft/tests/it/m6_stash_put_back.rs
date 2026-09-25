@@ -2,6 +2,9 @@
 //! Cherry-pick, always — walked against a real repository, keys counted
 //! against the design note's journeys (`menu-checkout` 3, `menu-cherry-pick`
 //! 4; `docs/design-notes/m6-stash-put-back.md` "Journeys").
+//!
+//! m6-conflicts/72b: a stash pop or apply from `S` that clashes — `S p o ⏎`
+//! and `S ⏎ o ⏎` at 4 keys, and `esc u` putting a clashed pop back.
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"
@@ -267,6 +270,221 @@ fn capture_menu_fixed_slots() {
     drop(on_main);
     app.close();
 }
+
+/// Pumps until the undo the walk pressed has run and been read back — or
+/// the drift box it may raise first is up.
+fn undone(app: &App, state: AppState) -> AppState {
+    let state = app.pump(state, "the undo, or its box", |state| {
+        state.confirm.is_some() || state.operating.is_none()
+    });
+    if state.confirm.is_some() {
+        return state;
+    }
+    crate::stash_clash::quiet(app, state)
+}
+
+/// The landing, at 120x40 and 80x24, against its captures.
+fn landing_shots(state: &AppState) {
+    for (columns, rows, name) in [
+        (120, 40, "m6/stash-clash-landing-120x40.txt"),
+        (80, 24, "m6/stash-clash-landing-80x24.txt"),
+    ] {
+        let drawn = frame_at(state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n");
+        check_shot(name, &format!("{LANDING_HEADER}\n{drawn}\n"));
+    }
+}
+
+/// The frame after the last file done: its words asserted, then the capture.
+fn done_shot(state: &AppState) {
+    let done = frame_at(state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
+    // The status row sits under the graph, above the pane (the stacked
+    // layout at 120x40), not on the frame's last row.
+    assert!(
+        done.iter().any(|row| row.trim()
+            == "every file done \u{b7} stash@{0} dropped \u{2713} \u{b7} u brings it back"),
+        "{}",
+        done.join("\n")
+    );
+    assert!(
+        done.iter().all(|row| !row.contains("CONFLICTS")),
+        "{}",
+        done.join("\n")
+    );
+    check_shot(
+        "m6/stash-clash-done-120x40.txt",
+        &format!("{DONE_HEADER}\n{}\n", done.join("\n")),
+    );
+}
+
+/// `stash-pop-clash`: `S p` lands in the resolver on the clashed file; `o ⏎`
+/// takes yours and finishes, and the stash is dropped. ≤ 4 keys. Then `u`
+/// brings the stash back. Writes the landing and done captures.
+#[test]
+fn a_stash_pop_that_clashes_is_four_keys() {
+    use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, quiet, stash_list, unmerged};
+    let scratch = a_stash_that_clashes();
+    let path = scratch.path();
+    let (app, state) = App::open(path);
+    let state = app.pump(state, "the working tree and the refs", |state| {
+        state.working_tree.is_some() && state.refs.is_some()
+    });
+
+    let mut keys = Keys {
+        app: &app,
+        count: 0,
+    };
+    let state = keys.press(&state, KeyCode::Char('S'));
+    let state = app.pump(state, "the stash list", |state| {
+        !matches!(state.stash.entries, Loading::Idle | Loading::Pending(_))
+    });
+    let state = keys.press(&state, KeyCode::Char('p'));
+    let state = crate::captures::settled_frame(&app, landed(&app, state));
+    assert_eq!(
+        state.resolver.as_ref().map(|open| open.path.as_path()),
+        Some(Path::new(NOTES)),
+        "`S p` lands in the resolver on the clashed file"
+    );
+    landing_shots(&state);
+
+    let state = keys.press(&state, KeyCode::Char('o'));
+    let state = crate::resolver::settled(&app, state);
+    let state = keys.press(&state, KeyCode::Enter);
+    let state = app.pump(state, "the stage, the drop and their reads", |state| {
+        state.resolver.is_none()
+            && state.operating.is_none()
+            && matches!(&state.status, graft::update::Status::Done { what, .. } if what.contains("dropped"))
+    });
+    let state = crate::captures::settled_frame(&app, quiet(&app, state));
+
+    assert!(keys.count <= 4, "{} keys", keys.count);
+    assert_eq!(
+        std::fs::read_to_string(path.join(NOTES)).expect("the file"),
+        "committed\n",
+        "the file holds yours"
+    );
+    assert!(stash_list(path).is_empty(), "the stash is dropped");
+    assert_eq!(unmerged(path), "");
+    done_shot(&state);
+
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = undone(&app, state);
+    assert!(state.confirm.is_none(), "undoing the drop asks nothing");
+    assert_eq!(stash_list(path).len(), 1, "`u` brought the stash back");
+    drop(state);
+    app.close();
+}
+
+/// `stash-apply-clash`: `S ⏎ o ⏎` — the apply clashes, yours taken, every
+/// file done, and the stash is kept. ≤ 4 keys.
+#[test]
+fn a_stash_apply_that_clashes_is_four_keys() {
+    use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, quiet, stash_list, unmerged};
+    let scratch = a_stash_that_clashes();
+    let path = scratch.path();
+    let (app, state) = App::open(path);
+    let state = app.pump(state, "the working tree and the refs", |state| {
+        state.working_tree.is_some() && state.refs.is_some()
+    });
+
+    let mut keys = Keys {
+        app: &app,
+        count: 0,
+    };
+    let state = keys.press(&state, KeyCode::Char('S'));
+    let state = app.pump(state, "the stash list", |state| {
+        !matches!(state.stash.entries, Loading::Idle | Loading::Pending(_))
+    });
+    let state = keys.press(&state, KeyCode::Enter);
+    let state = landed(&app, state);
+    let state = keys.press(&state, KeyCode::Char('o'));
+    let state = crate::resolver::settled(&app, state);
+    let state = keys.press(&state, KeyCode::Enter);
+    let state = app.pump(state, "the stage", |state| state.resolver.is_none());
+    let state = quiet(&app, state);
+
+    assert!(keys.count <= 4, "{} keys", keys.count);
+    assert_eq!(
+        std::fs::read_to_string(path.join(NOTES)).expect("the file"),
+        "committed\n"
+    );
+    assert_eq!(unmerged(path), "");
+    assert_eq!(stash_list(path).len(), 1, "an apply keeps the stash");
+    assert!(
+        matches!(&state.status, graft::update::Status::Done { what, .. } if what == "every file done \u{b7} stash@{0} kept"),
+        "{:?}",
+        state.status
+    );
+    drop(state);
+    app.close();
+}
+
+/// `stash-pop-clash-back`: `S p`, then `esc u` (+ `y` if the drift box
+/// asks) — the tree as it was before the pop, nothing unmerged, the stash
+/// listed. ≤ 2 keys after the clash (+1 for the box).
+#[test]
+fn esc_u_puts_a_clashed_pop_back() {
+    use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, stash_list, unmerged};
+    let scratch = a_stash_that_clashes();
+    let path = scratch.path();
+    let stash_before = stash_list(path);
+    let (app, state) = App::open(path);
+    let state = crate::stash_clash::overlay_open(&app, state);
+    let state = app.key(&state, KeyCode::Char('p'));
+    let state = landed(&app, state);
+
+    let mut keys = Keys {
+        app: &app,
+        count: 0,
+    };
+    let state = keys.press(&state, KeyCode::Escape);
+    let state = keys.press(&state, KeyCode::Char('u'));
+    let mut state = undone(&app, state);
+    let mut allowed = 2;
+    if state.confirm.is_some() {
+        allowed += 1;
+        state = keys.press(&state, KeyCode::Char('y'));
+        state = undone(&app, state);
+    }
+
+    assert!(keys.count <= allowed, "{} keys", keys.count);
+    assert_eq!(
+        std::fs::read_to_string(path.join(NOTES)).expect("the file"),
+        "committed\n",
+        "the tree is as it was before the pop"
+    );
+    assert_eq!(git(path, &["status", "--porcelain"]).trim(), "");
+    assert_eq!(unmerged(path), "");
+    assert_eq!(stash_list(path), stash_before, "the stash is listed again");
+    assert!(state.clash.is_none(), "no clash left");
+    drop(state);
+    app.close();
+}
+
+const LANDING_HEADER: &str = "\
+# m6/stash-clash-landing-<size>.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back.rs,
+# a_stash_pop_that_clashes_is_four_keys, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S p` on a stash that clashes in notes.md.
+#  - No `S` overlay; the resolver open on notes.md.
+#  - Panes named `yours · main` and `stashed · stash@{0}`.
+#  - The notice `stash@{0} clashed in 1 file · esc, u puts it all back`.
+#  - The bar offers `o yours` and `t stashed`; no git error text anywhere.
+";
+
+const DONE_HEADER: &str = "\
+# m6/stash-clash-done-120x40.txt: 120x40, drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back.rs,
+# a_stash_pop_that_clashes_is_four_keys, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: after `o ⏎` on the last clashed file.
+#  - No `CONFLICTS` section anywhere: the tree is clean again (yours was
+#    taken, which is what is committed), so the pane shows HEAD's commit.
+#  - The status row, under the graph, reads
+#    `every file done · stash@{0} dropped ✓ · u brings it back`.
+";
 
 const HEADER: &str = "\
 # m6/menu-fixed-slots-120x40.txt: 120x40, drawn by `view::view` from a real

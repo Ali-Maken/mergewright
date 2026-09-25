@@ -823,6 +823,24 @@ fn discard_command(path: &Path, entry: &StatusEntry) -> String {
     }
 }
 
+/// `operated`'s `Incomplete`: the write ran, only part of its after-state
+/// could not be read back.
+fn incomplete(
+    state: &mut AppState,
+    applied: &graft_ops::apply::Applied,
+    error: &str,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    state.status = Status::sticky(format!(
+        "{} \u{2014} could not confirm it fully: {error}",
+        applied.entry.description
+    ));
+    // It ran: the same reasoning as `Done`, and leaving the editor open would
+    // invite a second commit of a message already committed.
+    super::commit_editor::committed(state);
+    refresh_scope(state, applied.refresh, next_id)
+}
+
 /// An operate job answered. Stale answers (a job that is not the one
 /// `AppState::operating` is waiting for) are dropped. `Operated::Incomplete`
 /// still refreshes — the write happened even though part of its after-state
@@ -846,14 +864,24 @@ pub fn operated(
         .running
         .as_ref()
         .filter(|running| running.id == id)
-        .and_then(|running| running.op.clone())
-        .filter(Operation::is_remote);
+        .and_then(|running| running.op.clone());
+    let launched_op = remote_op.clone();
+    let remote_op = remote_op.filter(Operation::is_remote);
+    // The drop a stash clash's close launched (m6-conflicts/72b): its `Done`
+    // is worded as the end of the clash.
+    let clash_drop = state
+        .clash_drop
+        .take_if(|(drop, _)| *drop == id)
+        .map(|(_, index)| index);
     match outcome {
         Operated::Done(applied) => {
             let done = remote_op
                 .as_ref()
                 .and_then(|op| super::remote::remote_done(state, op));
-            state.status = Status::done(done.unwrap_or_else(|| applied.entry.description.clone()));
+            state.status = match clash_drop {
+                Some(index) => super::clash::dropped_status(index),
+                None => Status::done(done.unwrap_or_else(|| applied.entry.description.clone())),
+            };
             // The write the editor was open for landed, so the editor and
             // the draft behind it are about a commit that now exists
             // (m3-working-tree-undo-and-stash/05). A failure leaves both
@@ -861,17 +889,7 @@ pub fn operated(
             super::commit_editor::committed(state);
             refresh_scope(state, applied.refresh, next_id)
         }
-        Operated::Incomplete { applied, error } => {
-            state.status = Status::sticky(format!(
-                "{} \u{2014} could not confirm it fully: {error}",
-                applied.entry.description
-            ));
-            // It ran: the same reasoning as `Done`, and leaving the editor
-            // open would invite a second commit of a message already
-            // committed.
-            super::commit_editor::committed(state);
-            refresh_scope(state, applied.refresh, next_id)
-        }
+        Operated::Incomplete { applied, error } => incomplete(state, &applied, &error, next_id),
         Operated::Conflicted {
             description,
             kind,
@@ -917,6 +935,11 @@ pub fn operated(
             // first conflicted file (m6-conflicts/18).
             super::banner::land_in_resolver(state, &mut commands, &paths, next_id);
             commands
+        }
+        // A stash put back clashed: the resolver on the first clashed file,
+        // no banner (m6-conflicts/72b).
+        Operated::Clashed { entry, clash } => {
+            super::clash::clashed(state, launched_op.as_ref(), entry, &clash, next_id)
         }
         failed @ Operated::Failed { .. } => {
             operation_failed(state, remote_op.as_ref(), failed, next_id)

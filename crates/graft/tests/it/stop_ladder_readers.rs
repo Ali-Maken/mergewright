@@ -50,6 +50,9 @@ fn only_the_graph_footer_reads_the_short_stop_rungs() {
         [
             // The definitions: `stop_line_wordings` calls `stop_wordings`.
             "graft/src/update/banner/stop.rs",
+            // A stash clash's ladder (m6-conflicts/72b), which `stop.rs`
+            // hands on when nothing is stopped: a definition, not a reader.
+            "graft/src/update/clash.rs",
             // `stopped_line`, which the graph footer draws.
             "graft/src/view/rows.rs",
         ]

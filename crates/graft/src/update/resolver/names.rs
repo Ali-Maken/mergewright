@@ -26,13 +26,14 @@ const SHORT_OID: usize = 7;
 /// | rebase | `upstream · <onto>` | `yours · <sha7> <subject>` |
 /// | cherry-pick | `yours · <HEAD>` | `picked · <sha7> <subject>` |
 /// | revert | `yours · <HEAD>` | `reverting · <sha7> <subject>` |
-/// | stash pop | `yours · <HEAD>` | `stashed` |
+/// | stash pop | `yours · <HEAD>` | `stashed · stash@{n}`, or `stashed` (shell pop) |
 /// | none | `yours · <HEAD>` | `theirs` |
 ///
 /// Stash pop is the resolver open with no operation in progress — the same
 /// test the old explainer used: a conflicted `git stash pop` leaves no
-/// marker git writes for it. Nothing on disk says which entry was popped,
-/// so theirs is the role alone. A name that cannot be found (refs not read
+/// marker git writes for it. Nothing git keeps says which entry was popped;
+/// Graft's own journal does for a put-back it ran (`AppState::clash`), and
+/// a shell pop's theirs is the role alone. A name that cannot be found (refs not read
 /// yet, a head file git has not written) leaves the role word alone too; a
 /// head file naming a commit git cannot read shows that failure instead.
 #[must_use]
@@ -69,10 +70,13 @@ pub fn side_names(state: &AppState) -> SideNames {
             head().map(|id| branch_like(state, id)),
             incoming(&commit_like),
         ),
+        // Theirs is the stash Graft recorded putting back (`stash@{0}`,
+        // m6-conflicts/72b); a pop made in the shell has no record, and
+        // keeps the role alone.
         None if state.resolver.is_some() => (
             SideRoles::StashPop,
             head().map(|id| branch_like(state, id)),
-            None,
+            crate::update::clash::stash_name(state),
         ),
         Some(InProgress::Bisect) | None => (
             SideRoles::Merge,

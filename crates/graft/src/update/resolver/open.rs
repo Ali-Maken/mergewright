@@ -40,6 +40,35 @@ pub fn open_resolver(
     true
 }
 
+/// **Land on a stash clash** (m6-conflicts/72b): the `S` overlay closes,
+/// the changes pane opens with its cursor on `first` under `CONFLICTS`, and
+/// the resolver opens on `first` from the pane (`OpenedFrom::Pane`), so
+/// `Esc` gives the keyboard to that row. There is no banner to land from.
+///
+/// `false` when the resolver could not open: one is already open, or a box
+/// owns the input (its refusal is on the status line, as for `⏎`).
+pub(crate) fn land_on_clash(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    first: PathBuf,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    if state.resolver.is_some() || box_open(state) {
+        return false;
+    }
+    if state.stash.shown {
+        crate::update::stash::close(state, commands);
+    }
+    crate::update::relaunch::land_on_the_work(state, commands, Some(first.clone()), next_id);
+    state.detail.focus = graft_ui::detail::DetailFocus::Files;
+    // The status held may be from before the put-back: clean, so the pane
+    // cannot stay on the working tree yet. The read the answer asked for
+    // lands it again.
+    state.clash_pane_owed = !state.uncommitted_row_shown();
+    open_resolver(state, commands, first, OpenedFrom::Pane, next_id);
+    state.resolver.is_some()
+}
+
 /// The resolver on `path`, its opening read queued.
 fn start(
     state: &mut AppState,

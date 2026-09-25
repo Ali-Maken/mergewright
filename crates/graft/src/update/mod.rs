@@ -19,6 +19,7 @@
 //! dispatcher: `update`, `answer` and `core_event`.
 
 pub mod banner;
+pub(crate) mod clash;
 pub mod commit_editor;
 mod commit_graph;
 pub mod confirm;
@@ -56,8 +57,8 @@ pub use events::{
 pub(crate) use geometry::context_menu_area;
 pub use relaunch::LiveOrigin;
 pub use state::{
-    AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, HeadLanding, Quit, RefsRead, Screen,
-    Size, Status, Stop,
+    AppState, Banner, CHROME_ROWS, ClashState, GraphOverlay, Harness, HeadLanding, Quit, RefsRead,
+    Screen, Size, Status, Stop,
 };
 
 use graft_core::event::{Event, KeyPress};
@@ -655,6 +656,11 @@ fn working_tree_read(
         });
         next.local_jobs = local_jobs;
     }
+    // A stash clash lives while anything is unmerged with no operation
+    // (m6-conflicts/72b): this read is one of its facts.
+    let mut local_jobs = next.local_jobs;
+    clash::refresh_and_land(next, commands, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
 }
 
 /// Working-tree read `id` answered, with a status or a failure. Only the
@@ -712,6 +718,10 @@ fn took_fact(
             // A finished `--continue` waits on this read for the new
             // `HEAD` (m6-conflicts/12); any other read passes it by.
             banner::refs_answered(next, commands, id);
+            // The stash list is one of a clash's facts (m6-conflicts/72b).
+            let mut local_jobs = next.local_jobs;
+            clash::refresh_and_land(next, commands, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
         }
         Product::Refs(Err(failure)) => {
             // The graph still draws without badges; the reason goes on the

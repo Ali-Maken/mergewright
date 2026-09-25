@@ -1,0 +1,51 @@
+# m6/stash-clash-done-120x40.txt: 120x40, drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back.rs,
+# a_stash_pop_that_clashes_is_four_keys, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: after `o ⏎` on the last clashed file.
+#  - No `CONFLICTS` section anywhere: the tree is clean again (yours was
+#    taken, which is what is committed), so the pane shows HEAD's commit.
+#  - The status row, under the graph, reads
+#    `every file done · stash@{0} dropped ✓ · u brings it back`.
+
+ graft /code/api  5 commits
+◆ ▏  [◆ main] commit over the notes                                                                      GF 3m   f3742ab
+●    add the notes                                                                                       GF 5m   cfa370c
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ every file done · stash@{0} dropped ✓ · u brings it back
+COMMIT f3742ab · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 3m · parents cfa370c · diff vs firs…
+commit over the notes
+M notes.md              +1 −1
+                                1     - base
+                                    1 + committed
+
+
+
+
+
+
+
+
+
+
+
