@@ -61,4 +61,4 @@
 ●    Commit 157                                                                                                                                                             GF 7y   b57586d
 ●    Commit 156                                                                                                                                                             GF 7y   edc7cba
 ●    Commit 155                                                                                                                                                             GF 7y   4c8c724
- ←/→ move  ⏎ choose  esc cancel
+ y push  ←/→ move  ⏎ choose  esc cancel

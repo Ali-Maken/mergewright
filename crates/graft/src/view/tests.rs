@@ -2240,6 +2240,8 @@ fn capture_m3_confirm_discard() {
 #   brackets; `Discard` beside it is not.
 # - The pane behind it is still readable; the box does not cover the file it
 #   is asking about.
+# - The hint bar leads with `y discard` (m6-conflicts/50): `y` takes
+#   `[ Discard ]` from wherever the cursor is.
 #
 ";
     graft_fixtures::capture(
@@ -2248,6 +2250,54 @@ fn capture_m3_confirm_discard() {
             "/../../docs/shots/m3-confirm-discard.txt"
         ),
         format!("{header}{screen}"),
+    );
+}
+
+/// The confirm box's hint bar at `columns` × `rows`: the row that draws
+/// `⏎ choose`, trimmed of `TestBackend`'s quotes and the bar's margin.
+fn box_bar(state: &AppState, columns: u16, rows: u16) -> String {
+    let screen = draw(state, columns, rows);
+    let line = screen
+        .lines()
+        .find(|line| line.contains("⏎ choose"))
+        .unwrap_or_else(|| panic!("no box bar drawn:\n{screen}"));
+    line.trim_matches('"').trim().to_owned()
+}
+
+/// m6-conflicts/50: at 80×24 the bar under the push box and the discard
+/// box still leads with the whole `y <button>` hint (ADR-0044 §3.1) — the
+/// narrowest screen the user works at keeps the key that confirms.
+#[test]
+fn a_narrow_bar_keeps_the_y_hint() {
+    use crate::update::confirm::{ConfirmThen, PendingConfirm};
+    use graft_ops::operation::{Operation, PushParams};
+
+    let mut discard = changes_pane_state(80, 24);
+    assert!(
+        crate::update::operate::request_discard_at_diff_cursor(&mut discard),
+        "the discard box opens"
+    );
+    assert_eq!(
+        box_bar(&discard, 80, 24),
+        "y discard  ←/→ move  ⏎ choose  esc cancel"
+    );
+
+    let params = PushParams {
+        branch: "refs/heads/main".into(),
+        remote: "origin".into(),
+        remote_branch: "refs/heads/main".into(),
+        set_upstream: false,
+        lease: None,
+        source_commit: None,
+    };
+    let mut push = changes_pane_state(80, 24);
+    push.confirm = Some(PendingConfirm {
+        view: crate::update::remote::push_box(&params, Some(1), None),
+        then: ConfirmThen::Operate(Operation::Push(params)),
+    });
+    assert_eq!(
+        box_bar(&push, 80, 24),
+        "y push  ←/→ move  ⏎ choose  esc cancel"
     );
 }
 
@@ -2288,9 +2338,12 @@ fn capture_m3_confirm_delete_untracked() {
 # - It says a backup is kept and that `u` undoes it.
 # - It shows the exact git command it will run.
 # - `[ Cancel ]` — the safe choice — is the one under the cursor, in
-#   brackets; `Discard` beside it is not.
+#   brackets; `Delete` beside it is not.
+# - The hint bar leads with `y delete`, the button's own word
+#   (m6-conflicts/50).
 #
 ";
+    assert!(screen.contains("y delete  ←/→ move"), "{screen}");
     graft_fixtures::capture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),

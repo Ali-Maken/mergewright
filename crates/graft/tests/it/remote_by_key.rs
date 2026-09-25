@@ -991,6 +991,178 @@ const PLAIN_BOX_AFTER_REBASE_HEADER: &str = "\
 #
 ";
 
+/// The caption of `fix-box-takes-y-<size>.txt` (m6-conflicts/50).
+fn box_takes_y_header(size: &str) -> String {
+    format!(
+        "\
+# TestBackend capture (not a pty), {size}, no colour recorded. Fixture:
+# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
+# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
+# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
+# box, then `y` pressed: it is the frame before `y`, byte for byte.
+#
+# What right looks like:
+# - Frame 1's bottom row (the hint bar) reads
+#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
+#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
+# - Frame 2: the box is titled `Force-push …` and is still up after `y`
+#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
+#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
+#   row is the rejection's sticky line, `push rejected: … · P force with
+#   lease`, not the bar: the status line draws a sticky ahead of the keys,
+#   as it did before this ticket.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+"
+    )
+}
+
+/// The caption of `fix-box-keeps-on-y-120x40.txt`, retaken by m6-conflicts/50:
+/// ticket 47's claim now stands on the box `y` never takes.
+const BOX_KEEPS_ON_Y_HEADER: &str = "\
+# m6-conflicts/47, retaken by m6-conflicts/50: the force (lease) push box open,
+# `y` pressed (120x40). TestBackend capture (not a pty); colour unverified.
+# Fixture: capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs.
+# The plain push box takes `y` since ticket 50, so the box that keeps on `y`
+# is the lease box: a force push is never one habitual key away.
+# What right looks like: the frame after `y` is the frame before it, byte for
+# byte (asserted): the box titled `Force-push main → origin/main` stays,
+# `[ Cancel ]` under the cursor, nothing sent, no `y push` anywhere. The
+# bottom row is the rejection's sticky line, which the status line draws
+# ahead of the keys.
+
+";
+
+/// Regenerates `docs/shots/m6/fix-box-takes-y-120x40.txt`, `-80x24.txt` and
+/// `fix-box-keeps-on-y-120x40.txt` (m6-conflicts/50): `y` takes the plain
+/// push box from `Cancel` against a real remote, and never the lease box.
+///
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it remote_by_key::capture_fix_box_takes_y`.
+#[test]
+fn capture_fix_box_takes_y() {
+    let remote = local();
+    let work = remote.work();
+    remote
+        .commit_on_remote("theirs")
+        .expect("a teammate's push");
+    remote.commit_locally("ours").expect("a local commit");
+    let branch = remote.default_branch();
+    let main = main_ref(&remote);
+    let theirs = rev(remote.bare(), &main);
+
+    let (app, state) = App::open(work);
+    let (plain_box, plain_frames) = plain_box_takes_y(&app, state, branch);
+
+    // `y` from `Cancel` pushes: the write starts, and origin refuses it.
+    let pushing = app.press(&plain_box, plain('y'));
+    assert!(pushing.confirm.is_none(), "`y` left the plain box open");
+    let state = finish(&app, pushing, "the push `y` sent");
+    assert_eq!(state.status, rejected_status(branch));
+
+    let lease_frames = lease_box_keeps_on_y(&app, state);
+    assert_eq!(rev(remote.bare(), &main), theirs, "origin moved");
+
+    for ((size, plain_drawn), lease_drawn) in plain_frames.iter().zip(&lease_frames) {
+        check_shot(
+            &format!("m6/fix-box-takes-y-{size}.txt"),
+            &format!(
+                "{}=== frame 1: `P`, the plain push box ===\n{}\n\n\
+                 === frame 2: `y` (rejected), `P`, the lease box, then `y` ===\n{}\n",
+                box_takes_y_header(size),
+                plain_drawn.join("\n"),
+                lease_drawn.join("\n"),
+            ),
+        );
+    }
+    check_shot(
+        "m6/fix-box-keeps-on-y-120x40.txt",
+        &format!(
+            "{BOX_KEEPS_ON_Y_HEADER}=== after `y` (identical to before it) ===\n{}\n",
+            lease_frames[0].join("\n")
+        ),
+    );
+    app.close();
+}
+
+/// The two sizes [`capture_fix_box_takes_y`] draws at.
+const BOX_SIZES: [(&str, u16, u16); 2] = [("120x40", 120, 40), ("80x24", 80, 24)];
+
+/// `P` on a ready app: the plain push box, cursor on `Cancel`, and its
+/// frames at [`BOX_SIZES`], each bar leading with `y push`.
+fn plain_box_takes_y(
+    app: &App,
+    state: AppState,
+    branch: &str,
+) -> (AppState, Vec<(&'static str, Vec<String>)>) {
+    let state = ready(app, state);
+    let plain_box = app.press(&state, plain('P'));
+    let pending = plain_box.confirm.as_ref().expect("P opened a box");
+    assert_eq!(pending.view.selected(), 0, "the box opens on Cancel");
+    assert_eq!(
+        pending.view.title.as_str(),
+        format!("Push {branch} → origin/{branch}")
+    );
+    let frames: Vec<(&str, Vec<String>)> = BOX_SIZES
+        .into_iter()
+        .map(|(size, columns, rows)| (size, frame(&plain_box, columns, rows)))
+        .collect();
+    for (size, drawn) in &frames {
+        assert_eq!(
+            drawn.last().map(|row| row.trim()),
+            Some("y push  ←/→ move  ⏎ choose  esc cancel"),
+            "{size}"
+        );
+    }
+    (plain_box, frames)
+}
+
+/// After a rejection, `P` opens the lease box; `y` on it changes nothing
+/// and sends nothing. Its frames at [`BOX_SIZES`], before `y` (asserted
+/// equal to after).
+fn lease_box_keeps_on_y(app: &App, state: AppState) -> Vec<Vec<String>> {
+    let state = ready(app, state);
+    let lease_box = app.press(&state, plain('P'));
+    let pending = lease_box.confirm.as_ref().expect("P opened the lease box");
+    assert!(
+        pending.view.title.as_str().starts_with("Force-push "),
+        "{}",
+        pending.view.title.as_str()
+    );
+    let after_y = app.press(&lease_box, plain('y'));
+    assert_eq!(
+        after_y.confirm, lease_box.confirm,
+        "`y` changed the lease box"
+    );
+    assert_eq!(after_y.status, lease_box.status, "`y` changed the status");
+    assert!(after_y.operating.is_none(), "`y` started a write");
+    BOX_SIZES
+        .into_iter()
+        .map(|(size, columns, rows)| {
+            let before = frame(&lease_box, columns, rows);
+            let after = frame(&after_y, columns, rows);
+            assert_eq!(
+                after, before,
+                "{size}: the frame after `y` is not the one before"
+            );
+            // The rejection's sticky line still holds the bottom row, as it
+            // did before this ticket: the status line draws a sticky ahead
+            // of the bar. No `y` hint anywhere on screen either way.
+            let bottom = after.last().map(|row| row.trim().to_owned());
+            assert!(
+                bottom.as_deref().is_some_and(|row| {
+                    row.starts_with("push rejected") || row.starts_with("←/→ move")
+                }),
+                "{size}: {bottom:?}"
+            );
+            assert!(
+                !after.iter().any(|row| row.contains("y push")),
+                "{size}: the lease box offers `y`"
+            );
+            before
+        })
+        .collect()
+}
+
 /// `P` `→` `⏎` rejected, then `p` refused as diverged: the state `r` answers.
 fn rejected_then_diverged(app: &App, state: AppState, branch: &str) -> AppState {
     let state = ready(app, state);

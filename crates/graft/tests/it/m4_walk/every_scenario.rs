@@ -38,6 +38,7 @@ walk! {
     pull_dirty_file_refused => "pull-dirty-file-refused",
     pull_no_upstream_refused => "pull-no-upstream-refused",
     push_plain => "push-plain",
+    push_plain_by_y => "push-plain-by-y",
     push_sets_upstream => "push-sets-upstream",
     push_detached_refused => "push-detached-refused",
     push_rejected_then_lease => "push-rejected-then-lease",

@@ -23,4 +23,4 @@ files · 13     added-by-them.txt keep?     added-by-us.txt keep?
 
 
 
- ←/→ move  ⏎ choose  esc cancel
+ y start over  ←/→ move  ⏎ choose  esc cancel

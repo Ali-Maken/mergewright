@@ -1,0 +1,69 @@
+# TestBackend capture (not a pty), 80x24, no colour recorded. Fixture:
+# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
+# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
+# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
+# box, then `y` pressed: it is the frame before `y`, byte for byte.
+#
+# What right looks like:
+# - Frame 1's bottom row (the hint bar) reads
+#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
+#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
+# - Frame 2: the box is titled `Force-push …` and is still up after `y`
+#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
+#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
+#   row is the rejection's sticky line, `push rejected: … · P force with
+#   lease`, not the bar: the status line draws a sticky ahead of the keys,
+#   as it did before this ticket.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== frame 1: `P`, the plain push box ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+●    [origin/main] Commit 200                                       7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    Commit 196                                                     7y   325da3f
+●    ╭ Push main → origin/main ────────────────────────────────────────╮ 0722297
+●    │ 1 commit · can't be undone from here — origin keeps what you    │ b6a4a47
+●    │ send                                                            │ 60af0eb
+●    │                                                                 │ aceb8c5
+●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 11d68ff
+●    │                                                                 │ 91900bd
+●    │ ▸[ Cancel ]   [ Push ]                                          │ cec3e93
+●    ╰─────────────────────────────────────────────────────────────────╯ 0a91ece
+●    Commit 187                                                     7y   3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+●    Commit 181                                                     7y   c8254c5
+●    Commit 180                                                     7y   e95ccd4
+ y push  ←/→ move  ⏎ choose  esc cancel
+
+=== frame 2: `y` (rejected), `P`, the lease box, then `y` ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+●    [origin/main] Commit 200                                       7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    Commit 196                                                     7y   325da3f
+●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 0722297
+●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ b6a4a47
+●    │ your fetch (lease)                                              │ 60af0eb
+●    │ rewrites history for everyone who has d5ae5fd                   │ aceb8c5
+●    │                                                                 │ 11d68ff
+●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │ 91900bd
+●    │                                                                 │ cec3e93
+●    │ ▸[ Cancel ]   [ Force push ]                                    │ 0a91ece
+●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+●    Commit 181                                                     7y   c8254c5
+●    Commit 180                                                     7y   e95ccd4
+ push rejected: origin/main has moved · p pull first · P force with lease

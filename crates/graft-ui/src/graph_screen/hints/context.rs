@@ -139,8 +139,16 @@ pub enum HintContext {
     /// before any screen does (`graft::update::confirm::confirm_key`), so
     /// the bar under it offers its keys and no other. `←`/`→` (and `⇥`)
     /// move between the choices, `⏎` takes the one under the cursor, and
-    /// every other key cancels — `esc` is the one the bar names.
-    ConfirmBox,
+    /// every other key is swallowed — `esc` is the one the bar names.
+    ///
+    /// `yes` is the box's acting button when `y` takes it (ADR-0044 §3,
+    /// m6-conflicts/50): the bar then leads with `y <that button>`. `None`
+    /// for a box `y` never confirms (the lease push, undo-after-push and the
+    /// revert drift guard), whose bar is the three keys alone.
+    ConfirmBox {
+        /// What `y` confirms, or `None` where it is swallowed.
+        yes: Option<ConfirmYes>,
+    },
     /// **The name prompt is live** (same ruling): `⏎` creates, `esc`
     /// cancels, and `⇥` flips "check out after" for a branch only — for a
     /// tag or a stash branch the key is swallowed, so `toggle` is `false`
@@ -220,4 +228,88 @@ pub enum LiveC {
     /// A bisect, or a rebase, cherry-pick or revert the shell began: `c`
     /// only refuses in words, so no `c` hint.
     Refuses,
+}
+
+/// The acting button `y` confirms in a confirm box (ADR-0044 §3.1,
+/// m6-conflicts/50): one per label a `y`-live box draws at index 1.
+///
+/// Built from the button's own label ([`ConfirmYes::from_label`]), never
+/// chosen beside it, so the bar's `y <word>` and the button cannot name two
+/// different acts: an untracked file's box reads `[ Delete ]`, its bar
+/// `y delete` (conductor's decision (a), 2026-09-25).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConfirmYes {
+    /// `[ Push ]`, the plain push box.
+    Push,
+    /// `[ Drop ]`, the stash-drop box.
+    Drop,
+    /// `[ Discard ]`, a tracked file's or a hunk's discard box.
+    Discard,
+    /// `[ Delete ]`, an untracked file's discard box.
+    Delete,
+    /// `[ Skip ]`, the banner's skip box.
+    Skip,
+    /// `[ Abort ]`, the banner's abort box.
+    Abort,
+    /// `[ Start over ]`, the resolver's restart box.
+    StartOver,
+    /// `[ Undo ]`, the undo drift guard.
+    Undo,
+    /// `[ Redo ]`, the redo drift guard.
+    Redo,
+}
+
+impl ConfirmYes {
+    /// Every value, in declaration order: what the sweeps iterate.
+    pub const ALL: [Self; 9] = [
+        Self::Push,
+        Self::Drop,
+        Self::Discard,
+        Self::Delete,
+        Self::Skip,
+        Self::Abort,
+        Self::StartOver,
+        Self::Undo,
+        Self::Redo,
+    ];
+
+    /// The button's label exactly as the box draws it.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Push => "Push",
+            Self::Drop => "Drop",
+            Self::Discard => "Discard",
+            Self::Delete => "Delete",
+            Self::Skip => "Skip",
+            Self::Abort => "Abort",
+            Self::StartOver => "Start over",
+            Self::Undo => "Undo",
+            Self::Redo => "Redo",
+        }
+    }
+
+    /// The word after `y` on the bar: the button's label, lowercased.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Push => "push",
+            Self::Drop => "drop",
+            Self::Discard => "discard",
+            Self::Delete => "delete",
+            Self::Skip => "skip",
+            Self::Abort => "abort",
+            Self::StartOver => "start over",
+            Self::Undo => "undo",
+            Self::Redo => "redo",
+        }
+    }
+
+    /// The value whose [`label`](Self::label) is `label`, or `None` for a
+    /// label no `y`-live box draws — and then `y` does not act either, so
+    /// the bar never names a key that would not.
+    #[must_use]
+    pub fn from_label(label: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|yes| yes.label() == label)
+    }
 }

@@ -54,11 +54,21 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // Nothing else is offered because nothing else acts — every other
         // key cancels the drag and then means what it always means.
         HintContext::Dragging => vec![hint("release", "drop on a row"), hint("esc", "cancel")],
-        HintContext::ConfirmBox => vec![
-            hint("←/→", "move"),
-            hint("⏎", "choose"),
-            hint("esc", "cancel"),
-        ],
+        // `y` leads, as it leads the preview's keys (ADR-0044 §3.1), and
+        // names the acting button's own label: it takes that button from
+        // wherever the cursor is. A box `y` does not take draws no `y`.
+        HintContext::ConfirmBox { yes } => {
+            let mut list = Vec::new();
+            if let Some(yes) = yes {
+                list.push(hint("y", yes.word()));
+            }
+            list.extend([
+                hint("←/→", "move"),
+                hint("⏎", "choose"),
+                hint("esc", "cancel"),
+            ]);
+            list
+        }
         HintContext::NamePrompt { toggle } => {
             let mut list = vec![hint("⏎", "create")];
             if *toggle {

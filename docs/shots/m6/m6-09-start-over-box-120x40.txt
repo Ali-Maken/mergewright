@@ -39,4 +39,4 @@ files · 13     added-by-them.txt keep or delete     added-by-us.txt keep or del
 
 
 
- ←/→ move  ⏎ choose  esc cancel
+ y start over  ←/→ move  ⏎ choose  esc cancel

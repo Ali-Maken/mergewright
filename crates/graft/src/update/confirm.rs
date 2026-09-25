@@ -24,6 +24,49 @@ pub struct PendingConfirm {
     pub then: ConfirmThen,
 }
 
+impl PendingConfirm {
+    /// **The one place `y` is decided** (ADR-0044 §3, m6-conflicts/50):
+    /// the acting button `y` takes, or `None` where the box swallows it.
+    /// `confirm_key` acts on it and `view::rows::box_context` draws it, so
+    /// the bar offers `y` exactly where `y` acts.
+    ///
+    /// The word is read from the button's own label (conductor's decision
+    /// (a), 2026-09-25): the discard box says `Delete` for an untracked file
+    /// and `Discard` otherwise, and nothing in `then` says which.
+    #[must_use]
+    pub(crate) fn yes(&self) -> Option<graft_ui::graph_screen::ConfirmYes> {
+        if !self.then.takes_y() {
+            return None;
+        }
+        let acting = self.view.choices.get(1)?;
+        graft_ui::graph_screen::ConfirmYes::from_label(acting.as_str())
+    }
+}
+
+impl ConfirmThen {
+    /// Whether `y` may confirm this box: ADR-0044 §3's rule and its three
+    /// exceptions. The exceptions are the boxes whose acting choice writes
+    /// to the remote or rewinds past a recorded state — the lease push (`P`
+    /// after a rejection, and `[ Re-push old tip ]`), the undo-after-push
+    /// box (three answers, none of them "yes"), and the revert drift guard —
+    /// where a `y` typed from habit must never be the answer.
+    #[must_use]
+    pub(crate) fn takes_y(&self) -> bool {
+        match self {
+            // The force (lease) push is never `y` (P15 option (b)).
+            Self::Operate(Operation::Push(params)) => params.lease.is_none(),
+            Self::Operate(Operation::StashDrop { .. } | Operation::Discard(_))
+            | Self::Undo { .. }
+            | Self::Resume(_)
+            | Self::RestartConflict { .. } => true,
+            // `Operate(_)`: no box opens over any other operation today, so
+            // `y` stays swallowed until one does and is added above on
+            // purpose.
+            Self::Operate(_) | Self::UndoAfterPush { .. } | Self::RevertTo { .. } => false,
+        }
+    }
+}
+
 /// What a confirmed box goes on to do.
 ///
 /// Two kinds, because the undo drift guard is not an [`Operation`]: `ops`
@@ -117,19 +160,35 @@ pub fn confirm_key(
         KeyCode::Left => pending.view.left(),
         KeyCode::Right => pending.view.right(),
         KeyCode::Tab | KeyCode::BackTab => pending.view.toggle(),
-        KeyCode::Enter => choose(next, commands, next_id),
+        KeyCode::Enter => {
+            let chosen = pending.view.selected();
+            act(next, commands, chosen, next_id);
+        }
+        // `y` takes the acting button from wherever the cursor is, as `y`
+        // confirms every preview (ADR-0044 §3) — only where
+        // `PendingConfirm::yes` says so, which is also what the bar reads.
+        KeyCode::Char('y') if key.modifiers == Modifiers::NONE && pending.yes().is_some() => {
+            act(next, commands, 1, next_id);
+        }
         KeyCode::Escape => next.confirm = None,
         // Swallowed: the box stays open, cursor and status untouched
-        // (usability walk M1). A stray key — `y` from habit, a `j` meant for
-        // the graph — must never cancel the box without a word, nor reach
-        // what is behind it.
+        // (usability walk M1). A stray key — `y` in a box it never
+        // confirms, a `j` meant for the graph — must never cancel the box
+        // without a word, nor reach what is behind it.
         _ => {}
     }
     true
 }
 
-/// `Enter`: close the box, and act if the cursor is off `Cancel`.
-fn choose(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnMut() -> JobId) {
+/// Close the box and answer it with choice `chosen`: acts unless `chosen`
+/// is `Cancel` (index 0). `Enter` passes the cursor's choice, `y` passes 1,
+/// so the two cannot answer the same choice differently.
+fn act(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    chosen: usize,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     // `confirm_key` calls this only with a box open; nothing to answer
     // otherwise.
     let Some(pending) = next.confirm.take() else {
@@ -140,7 +199,6 @@ fn choose(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl F
     // acting answer. Most boxes have exactly two choices; the
     // undo-after-push box has three, and is handed the index so it
     // can tell `[ Undo locally ]` from `[ Re-push old tip ]`.
-    let chosen = pending.view.selected();
     let then = pending.then;
     if chosen != 0 {
         match then {
@@ -390,85 +448,287 @@ mod tests {
         PendingConfirm { then, ..pending() }
     }
 
-    /// One row per `confirm = Some` site outside tests (ticket
-    /// m6-conflicts/47's grep). The box's keys read only `then`, and only on
-    /// `Enter`, so each row carries the `then` its site builds.
-    fn every_box() -> Vec<(&'static str, PendingConfirm)> {
-        let repush = graft_ops::operation::PushParams {
+    /// A box whose buttons read `labels`, left to right, as its site draws
+    /// them.
+    fn labelled(then: ConfirmThen, labels: &[&str]) -> PendingConfirm {
+        let mut open = with_then(then);
+        open.view = open
+            .view
+            .clone()
+            .with_choices(labels.iter().map(|label| sanitize_line(label)).collect());
+        open
+    }
+
+    fn lease_params() -> graft_ops::operation::PushParams {
+        graft_ops::operation::PushParams {
             lease: Some(graft_ops::operation::Lease { expected: oid() }),
             source_commit: Some(oid()),
             ..push_params()
-        };
+        }
+    }
+
+    /// The lease box exactly as `P` after a rejection and `[ Re-push old
+    /// tip ]` both build it: `push_box`'s own view over the lease `then`.
+    fn lease_box() -> PendingConfirm {
+        PendingConfirm {
+            view: crate::update::remote::push_box(&lease_params(), Some(1), Some(oid())),
+            then: ConfirmThen::Operate(Operation::Push(lease_params())),
+        }
+    }
+
+    /// One row per `PendingConfirm {` site outside tests (scout 50's
+    /// table, re-read 2026-09-25), with the labels each site draws — the
+    /// discard-paths site twice, once per label it can draw. The push boxes
+    /// use `push_box`'s own view; the rest copy their site's
+    /// `with_labels` (the site line is named so a drift is one grep away).
+    fn every_box() -> Vec<(&'static str, PendingConfirm)> {
         vec![
             (
-                "operate.rs:515 discard a patch",
-                with_then(ConfirmThen::Operate(Operation::Discard(Target::Patch {
-                    path: "a.rs".into(),
-                    patch: b"@@".to_vec(),
-                    side: graft_ops::operation::PatchSide::Worktree,
-                }))),
+                "operate.rs:514 discard a patch",
+                labelled(
+                    ConfirmThen::Operate(Operation::Discard(Target::Patch {
+                        path: "a.rs".into(),
+                        patch: b"@@".to_vec(),
+                        side: graft_ops::operation::PatchSide::Worktree,
+                    })),
+                    &["Cancel", "Discard"],
+                ),
             ),
-            ("operate.rs:657 discard paths", pending()),
             (
-                "stash.rs:482 stash drop",
-                with_then(ConfirmThen::Operate(Operation::StashDrop {
-                    index: 0,
-                    commit: oid(),
-                })),
+                "operate.rs:656 discard a tracked file",
+                labelled(pending().then, &["Cancel", "Discard"]),
+            ),
+            (
+                "operate.rs:656 delete an untracked file",
+                labelled(pending().then, &["Cancel", "Delete"]),
+            ),
+            (
+                "stash.rs:481 stash drop",
+                labelled(
+                    ConfirmThen::Operate(Operation::StashDrop {
+                        index: 0,
+                        commit: oid(),
+                    }),
+                    &["Keep", "Drop"],
+                ),
             ),
         ]
         .into_iter()
-        .chain(later_boxes(repush))
+        .chain(later_boxes())
         .collect()
     }
 
-    /// The undo, resume, restart and push rows of [`every_box`].
-    fn later_boxes(
-        repush: graft_ops::operation::PushParams,
-    ) -> Vec<(&'static str, PendingConfirm)> {
+    /// The undo, resume and restart rows of [`every_box`], then the push
+    /// rows.
+    fn later_boxes() -> Vec<(&'static str, PendingConfirm)> {
         vec![
             (
-                "banner.rs:491 resume skip",
-                with_then(ConfirmThen::Resume(graft_ops::apply::Resume::Skip)),
+                "banner.rs:501 resume skip",
+                labelled(
+                    ConfirmThen::Resume(graft_ops::apply::Resume::Skip),
+                    &["Cancel", "Skip"],
+                ),
             ),
             (
-                "banner.rs:507 resume abort",
-                with_then(ConfirmThen::Resume(graft_ops::apply::Resume::Abort)),
+                "banner.rs:534 resume abort",
+                labelled(
+                    ConfirmThen::Resume(graft_ops::apply::Resume::Abort),
+                    &["Cancel", "Abort"],
+                ),
             ),
             (
-                "undo.rs:39 undo after push",
-                with_then(ConfirmThen::UndoAfterPush {
-                    push: entry(),
-                    repush: Some(Box::new(repush.clone())),
-                }),
+                "after_push.rs:217 undo after push",
+                labelled(
+                    ConfirmThen::UndoAfterPush {
+                        push: entry(),
+                        repush: Some(Box::new(lease_params())),
+                    },
+                    &["Cancel", "Undo locally", "Re-push old tip"],
+                ),
             ),
             (
-                "undo.rs:300 undo drift guard",
-                with_then(ConfirmThen::Undo { redo: false }),
+                "undo.rs:525 undo drift guard",
+                labelled(ConfirmThen::Undo { redo: false }, &["Stop", "Undo"]),
             ),
             (
-                "undo.rs:392 revert-to drift guard",
-                with_then(ConfirmThen::RevertTo {
-                    entry: entry(),
-                    description: "commit x".into(),
-                }),
+                "undo.rs:525 redo drift guard",
+                labelled(ConfirmThen::Undo { redo: true }, &["Stop", "Redo"]),
             ),
             (
-                "resolver/restart.rs:58 restart conflict",
-                with_then(ConfirmThen::RestartConflict {
-                    path: "a.rs".into(),
-                    kind: graft_ops::operation::RestartKind::Markers,
-                }),
+                "undo.rs:493 revert-to drift guard",
+                labelled(
+                    ConfirmThen::RevertTo {
+                        entry: entry(),
+                        description: "commit x".into(),
+                    },
+                    &["Stop", "Revert"],
+                ),
             ),
             (
-                "remote/push_box.rs:24 push",
-                with_then(ConfirmThen::Operate(Operation::Push(push_params()))),
-            ),
-            (
-                "remote/after_push.rs:247 re-push lease",
-                with_then(ConfirmThen::Operate(Operation::Push(repush))),
+                "resolver/restart.rs:85 restart conflict",
+                labelled(
+                    ConfirmThen::RestartConflict {
+                        path: "a.rs".into(),
+                        kind: graft_ops::operation::RestartKind::Markers,
+                    },
+                    &["Cancel", "Start over"],
+                ),
             ),
         ]
+        .into_iter()
+        .chain(push_boxes())
+        .collect()
+    }
+
+    /// The push rows of [`every_box`]: `push_box`'s own views.
+    fn push_boxes() -> Vec<(&'static str, PendingConfirm)> {
+        vec![
+            (
+                "remote/push_box.rs:30 plain push",
+                PendingConfirm {
+                    view: crate::update::remote::push_box(&push_params(), Some(1), Some(oid())),
+                    then: ConfirmThen::Operate(Operation::Push(push_params())),
+                },
+            ),
+            ("remote/push_box.rs:30 lease push", lease_box()),
+            ("remote/after_push.rs:247 re-push lease", lease_box()),
+        ]
+    }
+
+    /// ADR-0044 §3's three exceptions: `y` never takes these.
+    fn never_y(site: &str) -> bool {
+        site.contains("lease") || site.contains("undo after push") || site.contains("revert-to")
+    }
+
+    fn press(state: &mut AppState, code: KeyCode, id: u64) -> Vec<Command> {
+        let mut commands = Vec::new();
+        assert!(confirm_key(state, &mut commands, key(code), &mut || {
+            graft_core::job::JobId::new(id)
+        }));
+        commands
+    }
+
+    /// Find-and-pin 1: the word after `y` is the acting button's own label,
+    /// lowercased, for every box `y` takes; `None` for the three it never
+    /// takes.
+    #[test]
+    fn the_y_word_is_the_acting_label() {
+        for (site, open) in every_box() {
+            let expected = (!never_y(site)).then(|| open.view.choices[1].as_str().to_lowercase());
+            assert_eq!(
+                open.yes().map(|yes| yes.word().to_owned()),
+                expected,
+                "{site}"
+            );
+        }
+    }
+
+    /// The force (lease) push box, from both sites that open it, and the
+    /// other two exceptions: `y` leaves the box up, cursor on `Cancel`,
+    /// nothing sent. Ticket 49's box writes to the user's remote.
+    #[test]
+    fn y_is_swallowed_where_the_box_does_not_take_it() {
+        let mut state = AppState::default();
+        crate::update::remote::repush_chosen(&mut state, lease_params());
+        let rows: Vec<(&str, PendingConfirm)> = every_box()
+            .into_iter()
+            .filter(|(site, _)| never_y(site))
+            .chain([(
+                "repush_chosen itself",
+                state.confirm.clone().expect("repush_chosen opens a box"),
+            )])
+            .collect();
+        assert_eq!(
+            rows.len(),
+            5,
+            "lease ×2, undo-after-push, revert, repush_chosen"
+        );
+        for (site, open) in rows {
+            assert_eq!(open.yes(), None, "{site}");
+            let mut state = AppState {
+                confirm: Some(open.clone()),
+                status: Status::sticky("before"),
+                ..AppState::default()
+            };
+            let commands = press(&mut state, KeyCode::Char('y'), 1);
+            assert_eq!(state.confirm, Some(open), "{site}: `y` changed the box");
+            assert!(commands.is_empty(), "{site}: `y` ran {commands:?}");
+            assert!(state.operating.is_none(), "{site}: `y` started a write");
+            assert_eq!(state.status, Status::sticky("before"), "{site}");
+        }
+    }
+
+    /// `y` from `Cancel` and `⏎` with the cursor on the acting button are
+    /// one answer: same commands, same state after, for every box `y`
+    /// takes.
+    #[test]
+    fn y_and_enter_emit_the_same_commands() {
+        let mut checked = 0;
+        for (site, open) in every_box().into_iter().filter(|(site, _)| !never_y(site)) {
+            let mut by_y = AppState {
+                confirm: Some(open.clone()),
+                ..AppState::default()
+            };
+            let mut by_enter = by_y.clone();
+            by_enter.confirm.as_mut().expect("open").view.right();
+            let y_commands = press(&mut by_y, KeyCode::Char('y'), 9);
+            let enter_commands = press(&mut by_enter, KeyCode::Enter, 9);
+            assert!(by_y.confirm.is_none(), "{site}: `y` left the box open");
+            assert_eq!(y_commands, enter_commands, "{site}");
+            assert_eq!(by_y, by_enter, "{site}");
+            checked += 1;
+        }
+        assert_eq!(checked, 10, "every `y`-live row");
+    }
+
+    /// The bar and the key agree box by box: the bar draws `y` exactly
+    /// where pressing `y` closes the box.
+    #[test]
+    fn the_bar_offers_y_exactly_where_y_acts() {
+        use graft_ui::graph_screen::{Divider, HintContext, hints_for};
+        for (site, open) in every_box() {
+            let mut state = AppState {
+                confirm: Some(open),
+                ..AppState::default()
+            };
+            let context = crate::view::rows::box_context(&state).expect("a box is up");
+            assert!(matches!(context, HintContext::ConfirmBox { .. }), "{site}");
+            let drawn = hints_for(&context, Divider::Hidden, 187);
+            let offers_y = drawn.iter().any(|hint| hint.key == "y");
+            press(&mut state, KeyCode::Char('y'), 1);
+            let acted = state.confirm.is_none();
+            assert_eq!(
+                offers_y, acted,
+                "{site}: bar offers `y` {offers_y}, `y` acted {acted}"
+            );
+            assert_eq!(offers_y, !never_y(site), "{site}");
+        }
+    }
+
+    /// ADR-0044 §3: `y` confirms a plain push box from wherever the cursor
+    /// is, as `y` confirms in every preview.
+    #[test]
+    fn y_confirms_the_push_box_from_cancel() {
+        let mut open = with_then(ConfirmThen::Operate(Operation::Push(push_params())));
+        open.view = open.view.clone().with_labels("Cancel", "Push");
+        assert_eq!(open.view.selected(), 0, "the box opens on Cancel");
+        let mut state = AppState {
+            confirm: Some(open),
+            ..AppState::default()
+        };
+        let mut commands = Vec::new();
+        assert!(confirm_key(
+            &mut state,
+            &mut commands,
+            key(KeyCode::Char('y')),
+            &mut || graft_core::job::JobId::new(3)
+        ));
+        assert!(state.confirm.is_none(), "`y` left the box open");
+        let pushes: Vec<_> = commands
+            .iter()
+            .filter(|c| matches!(c, Command::Operate(_, op) if matches!(**op, Operation::Push(_))))
+            .collect();
+        assert_eq!(pushes.len(), 1, "one push, got {commands:?}");
     }
 
     /// Usability walk M1: a key the box does not bind is swallowed. The box
@@ -482,8 +742,10 @@ mod tests {
             status: Status::sticky("before"),
             ..AppState::default()
         };
+        // Not `y`: the push box takes it now (m6-conflicts/50); where a box
+        // does not, `y_is_swallowed_where_the_box_does_not_take_it` holds it.
         for code in [
-            KeyCode::Char('y'),
+            KeyCode::Char('Y'),
             KeyCode::Char('q'),
             KeyCode::Char('j'),
             KeyCode::Char('P'),
@@ -518,11 +780,11 @@ mod tests {
             assert!(confirm_key(
                 &mut state,
                 &mut commands,
-                key(KeyCode::Char('y')),
+                key(KeyCode::Char('q')),
                 &mut || graft_core::job::JobId::new(1)
             ));
-            assert_eq!(state.confirm, Some(open), "{site}: `y` changed the box");
-            assert!(commands.is_empty(), "{site}: `y` ran something");
+            assert_eq!(state.confirm, Some(open), "{site}: `q` changed the box");
+            assert!(commands.is_empty(), "{site}: `q` ran something");
         }
     }
 

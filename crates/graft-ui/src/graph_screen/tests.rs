@@ -1968,8 +1968,9 @@ fn row_at_is_none_off_the_body() {
 // ---------------------------------------------------------------------------
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
-/// boolean field combination.
-const COVERAGE_SLOTS: usize = 54;
+/// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
+/// once per `ConfirmYes`).
+const COVERAGE_SLOTS: usize = 63;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2018,7 +2019,7 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,
         HintContext::Resolver { .. } => resolver_slot(context),
-        HintContext::ConfirmBox => 25,
+        HintContext::ConfirmBox { yes } => confirm_slot(*yes),
         HintContext::NamePrompt { toggle: false } => 26,
         HintContext::NamePrompt { toggle: true } => 27,
         HintContext::Credential => 28,
@@ -2045,6 +2046,17 @@ fn coverage_slot(context: &HintContext) -> usize {
             ..
         } => 35,
     }
+}
+
+/// [`coverage_slot`] for the confirm box: 25 with no `y`, then one per
+/// acting button `y` takes, 54–62 (m6-conflicts/50).
+fn confirm_slot(yes: Option<super::ConfirmYes>) -> usize {
+    yes.map_or(25, |yes| {
+        54 + super::ConfirmYes::ALL
+            .iter()
+            .position(|each| *each == yes)
+            .expect("ALL names every ConfirmYes")
+    })
 }
 
 /// A [`LiveC`](super::LiveC)'s place in [`coverage_slot`]'s live ranges.
