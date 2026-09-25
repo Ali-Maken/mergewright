@@ -248,6 +248,7 @@ fn applied(description: &str) -> graft_ops::apply::Applied {
         },
         refresh: Refresh::Everything,
         step_backup: None,
+        replaced: graft_ops::undo::Replaced::default(),
     }
 }
 

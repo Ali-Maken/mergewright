@@ -25,7 +25,8 @@ pub use merge_state::MergeState;
 /// What kind of operation an entry records.
 ///
 /// `Undo` and `Redo` are ordinary entries with `reverses` set (DESIGN.md
-/// §6.5): undo is itself undoable, and redo is not a second data structure.
+/// §6.5): `U` takes an `Undo` back by journaling a `Redo` against it, so
+/// redo is not a second data structure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OperationKind {

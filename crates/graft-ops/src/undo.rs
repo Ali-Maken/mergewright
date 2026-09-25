@@ -9,9 +9,11 @@
 //! moving the ref. Redo is the inverse of an `Undo` entry, from that entry's
 //! own before/after (§6.5): one path serves both directions.
 //!
-//! A plan is data; `ops-execution` runs the steps. Nothing here spawns `git`.
+//! A plan is data; `ops-execution` runs the steps. Nothing in this file
+//! spawns `git`: `execute` and `replaced` are the halves that read.
 
 mod execute;
+mod replaced;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -577,6 +579,47 @@ pub struct Drift {
     /// working tree"`. Unknown is not clean: the user is told the whole
     /// thing is about to be overwritten, and asked (§6.7).
     pub unknown: Vec<&'static str>,
+    /// What running the inverse anyway would replace (m6-conflicts/77).
+    /// [`drift`] leaves it empty — it compares tree ids and names no path —
+    /// and the executor fills it, with a read of its own, only when the
+    /// drift is not clean. Not part of [`Drift::is_clean`]: it says what the
+    /// drift costs, not whether there is any.
+    pub replaced: Replaced,
+}
+
+/// What running an inverse anyway replaces that the journal never recorded
+/// (m6-conflicts/77): the user's own edits since the operation, on paths the
+/// inverse writes. The undo's own backup (ADR-0009) keeps every one of them,
+/// and its redo puts them back.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Replaced {
+    /// Paths the inverse writes whose content now differs both from the
+    /// entry's recorded after-state (the user changed them since) and from
+    /// the before-state the inverse writes (so the write loses something);
+    /// in the working tree or the index. Sorted, unique.
+    pub paths: Vec<PathBuf>,
+    /// No after-state was recorded for the working tree or the index
+    /// ([`PathScope::Everything`], [`IndexPaths::Everything`]; `Drift::
+    /// unknown` names it): the inverse restores the whole of it, so no
+    /// narrower list is known.
+    pub whole_tree: bool,
+}
+
+impl Replaced {
+    /// Nothing the user made is replaced.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.paths.is_empty() && !self.whole_tree
+    }
+
+    /// The union with `other`: what the time machine's steps replace
+    /// between them.
+    pub fn extend(&mut self, other: Replaced) {
+        self.whole_tree |= other.whole_tree;
+        self.paths.extend(other.paths);
+        self.paths.sort();
+        self.paths.dedup();
+    }
 }
 
 impl Drift {
@@ -680,6 +723,7 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
             .is_some_and(|tree| tree != now.worktree_tree),
         merge: MergeDrift::between(entry.merge_after.as_ref(), now.merge.as_ref()),
         unknown,
+        replaced: Replaced::default(),
     }
 }
 

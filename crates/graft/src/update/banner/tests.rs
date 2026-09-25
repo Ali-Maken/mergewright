@@ -78,6 +78,7 @@ fn done_applied() -> graft_ops::apply::Applied {
         },
         refresh: graft_ops::apply::Refresh::Everything,
         step_backup: None,
+        replaced: graft_ops::undo::Replaced::default(),
     }
 }
 

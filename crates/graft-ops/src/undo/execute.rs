@@ -16,6 +16,7 @@ use crate::facts::{self, FactsError};
 use crate::restore::{self, RestoreError};
 use crate::undo::{
     Drift, InversePlan, NotInvertible, RepoStateNow, drift, plan_redo, plan_revert_to, plan_undo,
+    replaced,
 };
 
 /// Why an undo or redo did not happen.
@@ -25,8 +26,12 @@ pub enum UndoError {
     #[error("{}", nothing_to_say(.0))]
     Nothing(NotInvertible),
     /// The repository moved since the operation. The user decides.
+    ///
+    /// Boxed: with `Drift::replaced` (m6-conflicts/77) the drift is the
+    /// largest thing any undo answer carries, and every `Result` in this
+    /// module would pay its size on the happy path (`result_large_err`).
     #[error("{}", .0.explain())]
-    Drift(Drift),
+    Drift(Box<Drift>),
     /// The restore itself failed.
     #[error("{0}")]
     Restore(RestoreError),
@@ -159,11 +164,19 @@ fn run_plan(ctx: &mut Context<'_>, plan: &InversePlan, force: bool) -> Result<Ap
     // is never reached from this path (m6-conflicts/57).
     refuse_while_live(ctx, &target, &now)?;
 
-    let moved = drift(&target, &now);
-    if !moved.is_clean() && !force {
-        return Err(UndoError::Drift(moved));
+    let mut moved = drift(&target, &now);
+    if moved.is_clean() {
+        return restore::execute(ctx, plan).map_err(UndoError::Restore);
     }
-    restore::execute(ctx, plan).map_err(UndoError::Restore)
+    // Drift: name what the inverse would replace (m6-conflicts/77). Read
+    // here and only here, so a clean undo pays nothing for it; asked again
+    // on the forced run, because the tree may have moved since the box.
+    let mut reads = Vec::new();
+    moved.replaced = replaced::replaced(ctx, plan, &now, &mut reads).map_err(UndoError::Facts)?;
+    if !force {
+        return Err(UndoError::Drift(Box::new(moved)));
+    }
+    restore::execute_over_drift(ctx, plan, reads, moved.replaced).map_err(UndoError::Restore)
 }
 
 /// The undo gate (m6-conflicts/57, decision 3): while git has an operation

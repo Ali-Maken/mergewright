@@ -102,6 +102,7 @@ fn a_box_opened_by_an_answer_ends_its_own_busy() {
         *id,
         RevertedTo::Drift {
             description: "commit one".to_owned(),
+            total: 1,
             drift: drift(),
             target: EntryId::new(1, [0; 10]),
         },

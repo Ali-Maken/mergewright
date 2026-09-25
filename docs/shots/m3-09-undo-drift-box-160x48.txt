@@ -22,7 +22,7 @@ m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, uni
      ╭ Undo “commit "before the drift"”? ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
      │ Since this commit "before the drift", the working tree                                                                                 │
      │ changed.                                                                                                                               │
-     │ A backup is taken first, so this is itself undoable.                                                                                   │
+     │ Undo leaves your edits since as they are.                                                                                              │
      │                                                                                                                                        │
      │ undo restores the recorded state                                                                                                       │
      │                                                                                                                                        │

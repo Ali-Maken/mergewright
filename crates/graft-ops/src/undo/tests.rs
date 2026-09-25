@@ -624,3 +624,32 @@ fn remote_entries_are_not_invertible() {
     let pull = committed(10, OperationKind::Pull, 1, 2);
     assert!(inverse(&pull, None).is_ok());
 }
+
+/// The time machine names the union of what its steps replaced
+/// (m6-conflicts/77): sorted, each path once, and "the whole tree" wins.
+#[test]
+fn replaced_unions_sorted_and_unique() {
+    use std::path::PathBuf;
+
+    use super::Replaced;
+
+    let mut union = Replaced {
+        paths: vec![PathBuf::from("b.txt"), PathBuf::from("d.txt")],
+        whole_tree: false,
+    };
+    assert!(!union.is_empty());
+    union.extend(Replaced {
+        paths: vec![PathBuf::from("a.txt"), PathBuf::from("b.txt")],
+        whole_tree: false,
+    });
+    assert_eq!(
+        union.paths,
+        ["a.txt", "b.txt", "d.txt"].map(PathBuf::from).to_vec()
+    );
+    assert!(Replaced::default().is_empty());
+    union.extend(Replaced {
+        paths: Vec::new(),
+        whole_tree: true,
+    });
+    assert!(union.whole_tree);
+}

@@ -160,6 +160,7 @@ fn inside_live_operation(
             entry: record,
             refresh: Refresh::WorkingTree,
             step_backup,
+            replaced: crate::undo::Replaced::default(),
         }),
         Some(failed) => {
             record.status = EntryStatus::Aborted {

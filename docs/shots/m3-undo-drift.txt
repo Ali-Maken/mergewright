@@ -7,6 +7,10 @@
 # - The question names the entry, not the word "operation".
 # - The consequence is `graft_ops`' own drift.explain() text, verbatim —
 #   which fields moved, and that an unrecorded after-state is restored whole.
+# - Under it, what the undo replaces and the key that brings it back
+#   (m6-conflicts/77): `Undo replaces the whole working tree; U brings it
+#   back.` The drift line takes three lines here, so `a backup keeps it, and`
+#   is dropped to fit the box's four.
 # - The buttons read [ Stop ] and Undo, with Stop under the cursor: the safe
 #   choice is the one already selected, and neither says "Discard", which
 #   would name the opposite of what the button does.
@@ -23,10 +27,10 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "     ╭ Undo “commit "Add OAuth provider"”? ───────────────────────────────────────────────────────────╮                 "
-"     │ Since this commit "Add OAuth provider", the index changed; the                                 │                 "
-"     │ working tree's state after the operation was never recorded;                                   │                 "
-"     │ undo restores all of it.                                                                       │                 "
-"     │ A backup is taken first, so this is itself undoable.                                           │                 "
+"     │ Since this commit "Add OAuth provider", the index changed;                                     │                 "
+"     │ the working tree's state after the operation was never                                         │                 "
+"     │ recorded; undo restores all of it.                                                             │                 "
+"     │ Undo replaces the whole working tree; U brings it back.                                        │                 "
 "     │                                                                                                │                 "
 "     │ undo restores the recorded state                                                               │                 "
 "     │                                                                                                │                 "

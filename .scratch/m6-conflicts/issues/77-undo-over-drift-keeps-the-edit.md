@@ -1,6 +1,6 @@
 # undo-over-drift-keeps-the-edit: the drift box names the edit it replaces, and one key brings it back
 
-Status: ready
+Status: done
 From: KNOWN_GAPS **M6/q4** (:812, broken, Major against M3 "you cannot lose work"); `docs/reviews/m6-usability-final.md`
 Q4 (:269-270); ticket 69 NOTES (:233-238) and its pin `crates/graft/tests/it/undo_over_drift.rs`
 `undo_over_drift_then_undo_again`.
@@ -203,15 +203,32 @@ pub(crate) fn replaced_keys(replaced: &Replaced, redo: bool, presses: usize) -> 
   - graft: `Undone`, `RevertedTo`, `drift_consequence`, `replaced_keys`, `undone`'s `Nothing` arm.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Every test in "Failing tests first", red observed, then green, with each red line quoted in NOTES. This includes
-      **`a_staged_edit_comes_back_staged`** and `a_staged_and_unstaged_edit_both_come_back`.
-- [ ] Step counts asserted in the tests: from the landing to the edit back, **1** key (`U`); through a second `u`,
-      **2**; `u` → `y` stays **2**.
-- [ ] `the_drift_box_line_is_never_cut` green at 80×24 and 160×48.
-- [ ] `replaced_names_exactly_what_the_run_took` green on ≥ 7 scenarios; `a_clean_undo_spawns_no_diff_tree` green.
-- [ ] Captures regenerated and the new one added. The user judges them by eye; the builder does not (rule 6). Colour
-      is unverified (rule 5).
-- [ ] 69's pin no longer asserts a dead end. NOTES cites KNOWN_GAPS M6/q4 as closed, with its tests.
+- [x] Every test in "Failing tests first", red observed, then green, with each red line quoted in NOTES. This includes
+      **`a_staged_edit_comes_back_staged`** and `a_staged_and_unstaged_edit_both_come_back`. Tests:
+      `undo_over_drift::{undo_over_drift_then_redo_brings_the_edit_back, undo_over_drift_then_undo_again,
+      a_staged_edit_comes_back_staged, a_staged_and_unstaged_edit_both_come_back,
+      an_edit_outside_the_undos_paths_stays_and_is_not_named, redo_over_drift_names_the_backup_and_no_key (renamed,
+      NOTES D1), the_time_machine_names_the_presses, capture_fix_undo_drift_way_back}`,
+      `m3_walk::every_scenario::undo_drift_guard` (See `the commit drift is not named`),
+      `view::tests::the_drift_box_line_is_never_cut`, graft-ops `undo_replaced::{replaced_names_exactly_what_the_run_took,
+      a_clean_undo_spawns_no_diff_tree}`. Reds quoted in NOTES R1–R12.
+- [x] Step counts asserted in the tests: from the landing to the edit back, **1** key (`U`); through a second `u`,
+      **2**; `u` → `y` stays **2**. Tests: `undo_over_drift_then_redo_brings_the_edit_back` (`u → y stays two keys`,
+      `one key from the landing to the edit`), `undo_over_drift_then_undo_again` (`u, then U` = 2),
+      `the_time_machine_names_the_presses` (`U U` = the 2 presses the line named).
+- [x] `the_drift_box_line_is_never_cut` green at 80×24 and 160×48. Test: `view::tests::the_drift_box_line_is_never_cut`
+      (both sizes, long and short form, every built line found on the drawn screen).
+- [x] `replaced_names_exactly_what_the_run_took` green on ≥ 7 scenarios; `a_clean_undo_spawns_no_diff_tree` green.
+      Tests: `undo_replaced::replaced_names_exactly_what_the_run_took` (11 scenarios in `scenarios()`),
+      `undo_replaced::a_clean_undo_spawns_no_diff_tree`.
+- [x] Captures regenerated and the new one added. The user judges them by eye; the builder does not (rule 6). Colour
+      is unverified (rule 5). Tests: `m3-09-undo-drift-box-{80x24,160x48}` by the pty walk
+      (`.scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py`), `view::tests::capture_m3_undo_drift`,
+      `box_owns_the_bar::capture_fix_box_owns_the_bar` (`m6/fix-box-owns-the-bar-*`, frame 3),
+      `undo_over_drift::capture_fix_undo_drift_way_back` (new, `m6/fix-undo-drift-way-back-{120x40,80x24}`).
+- [x] 69's pin no longer asserts a dead end. NOTES cites KNOWN_GAPS M6/q4 as closed, with its tests. Test:
+      `undo_over_drift::undo_over_drift_then_undo_again` asserts `Done { what: "nothing to undo", keys:
+      Some("U redoes checkout fix") }`, then `U` restores the edit byte-exact.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -225,3 +242,146 @@ real repos, and four captures. One context. If it runs short, hand off the time 
 ## Optional question for him (non-blocking)
 "When you undo a branch switch after editing a file, should the edit come with you to the old branch? Today it waits
 in a backup, and `U` takes you back to where you were with it."
+
+## NOTES (builder, 2026-09-25)
+
+**Context compacted mid-ticket, twice.** Nothing remains: every behaviour, test, capture, sheet and doc row below was
+finished before handback, and the gates were run after the last edit.
+
+**Scout used:** `.scratch/m6-conflicts/scouts/undo-over-drift-keeps-the-edit.md`. Its byte-exact `U` after `u y` held.
+The staged case it did not run is now `a_staged_edit_comes_back_staged` and `a_staged_and_unstaged_edit_both_come_back`,
+both byte-exact through `U`: `symbolic-ref HEAD`, `ls-files -s` and porcelain v2 with untracked files, all equal to
+before `u`.
+
+**Cause, not symptom.**
+- The box and status could not name the edit: `Drift` compared tree ids only. Added a path read, `undo/replaced.rs`,
+  run only when the drift is not clean.
+- The time machine's drift box was unreachable. `revert_to` wraps every step's error in `PartWay`, including step 0's
+  drift (`graft-ops/src/undo/execute.rs`), while `jobs/undo.rs` matched a bare `Drift`. So every revert over an edit
+  ended "revert stopped after 0 of N steps". `run_revert_to` now opens the box for `PartWay { done: 0, Drift }`.
+
+### Reds observed (file:line as at red time; all green now)
+- R1 `undo_over_drift_then_redo_brings_the_edit_back`, `undo_over_drift.rs:166`: "assertion `left == right` failed:
+  Since this checkout fix, the working tree changed. A backup is taken first, so this is itself undoable. left: 0
+  right: 1".
+- R2 `undo_over_drift_then_undo_again`, `:232`: "the second `u` names the way back, not a dead end. left: Done { what:
+  "nothing to undo", keys: None } right: Done { what: "nothing to undo", keys: Some("U redoes checkout fix") }".
+- R3 `a_staged_edit_comes_back_staged`, `:264`: "Since this checkout fix, the index changed; the working tree changed.
+  A backup is taken first, so this is itself undoable. left: 0 right: 1".
+- R4 `a_staged_and_unstaged_edit_both_come_back`, `:293`: the same words as R3.
+- R5 `an_edit_outside_the_undos_paths_stays_and_is_not_named`, `:317`: the same words as R1.
+- R6 `redo_over_drift_names_the_backup_and_no_key`, `:348`: "Since this undo: checkout fix, the working tree changed. A
+  backup is taken first, so this is itself undoable."
+- R7 `the_time_machine_names_the_presses`, `:98`: "no box is open; status Sticky { reason: "revert stopped after 0 of 2
+  steps: the working tree changed — u again to go ahead", keys: Some("J journal") }". This is the unreachable box above.
+- R8 `m3_walk::every_scenario::undo_drift_guard`, `m3_walk.rs:1679`: "FAIL undo-drift-guard: the commit drift is not
+  named: the box should leave the edit unnamed: Since this commit "before the drift", the working tree changed. A
+  backup is taken first, so this is itself undoable."
+- R9 `the_drift_box_line_is_never_cut`, `view/tests.rs:3110`: "80x24, commit "Add OAuth provider": over graft-ui's cap:
+  ["Since this commit \"Add OAuth provider\", refs/heads/main", "moved; HEAD moved; the working tree changed.", "Undo
+  replaces your edit to", "a/a/a/services/billing/src/handlers/invoice…". That was before the fit rule.
+- R10 `replaced_names_exactly_what_the_run_took`, `undo_replaced.rs:273`: "an unstaged edit inside the checkout's paths:
+  the box names what the run takes. left: Replaced { paths: [], whole_tree: false } right: Replaced { paths:
+  ["a.txt"], whole_tree: false }".
+- R11 `a_clean_undo_spawns_no_diff_tree`:
+  - First red at `undo_replaced.rs:335`. The run's filter dropped its message line.
+  - Re-observed on 2026-09-25 under a mutation: the forced run's reads were not passed into its log. Red at `:400`:
+    "the forced run's read is in its log: [... "git diff-tree -r --name-only -z <after> <before>" ...]" (abridged,
+    oids elided), with no `diff-tree -r -z --no-renames` among them. Mutation reverted, green again.
+  - Also mutated: the read was run on the clean path too. The test stayed **green**, because `in_worktree` and
+    `in_index` return early when now == after (`undo/replaced.rs:104`, `:129`), and a clean drift means exactly that.
+    So the "no cost on a clean undo" promise holds by two guards, and the test cannot tell the rail's gate from the
+    read's own early return.
+- R12 `capture_fix_undo_drift_way_back`: "capture docs/shots/m6/fix-undo-drift-way-back-120x40.txt does not match what
+  the code draws" (`graft-fixtures/src/capture.rs:147`), before the file existed.
+- Not separately recorded: the red of the unit test `update::undo::tests::nothing_to_undo_names_the_redo_waiting`. The
+  same behaviour's red is R2.
+
+### Decisions and deviations from the spec
+- **D1. A redo names no key back.** The spec's `redo_over_drift_names_u` expected `u brings it back`, with `u` restoring
+  the edit. The code does not do that:
+  - `next_undo` passes over `Redo` entries (`graft-ops/src/journal.rs:264`).
+  - So `u` after a redo inverts the **operation**, whose backup never held the edit. The edit is in the redo's backup
+    only.
+  - Renamed to `redo_over_drift_names_the_backup_and_no_key`. The box reads "Redo replaces your edit to main-one.txt; a
+    backup keeps it." The status after `y` names the backup, not a key.
+  - The test pins that `u` then puts back the operation's `one\n`, not the edit.
+- **D2.** `Undone::Done(Applied)` stays a tuple. `replaced` rides on `Applied` (`graft-ops/src/apply.rs`), so every
+  forced run carries it: undo, redo and each time-machine step.
+- **D3.** `CONFIRM_COLUMNS` went from 62 to 60. The box is capped at 64 cells (`graft-ui/src/confirm.rs:156`), and
+  graft-ui wraps at 60 inside it (`:435-436`). Pre-wrapping at 62 let graft-ui re-wrap, so the line count graft
+  planned was wrong.
+- **D4.** `UndoError::Drift` is now `Drift(Box<Drift>)`. With `replaced` added, clippy `result_large_err` (152 > 128 B)
+  fired on every `Result` in `undo/execute.rs`.
+- **D5.** Worst case is **5** spawns, against the spec's ≤ 4: two `diff-tree` plus three index comparisons, when the
+  index drifted and the user's staged change is inside the undo's paths (`undo/replaced.rs` module doc). A clean undo
+  spawns 0.
+- **D6.** The nothing-to-undo status renders `nothing to undo ✓ · U redoes checkout fix`. The `✓` is `Status::Done`'s
+  own mark. The spec wrote it without one.
+- **D7.** The time-machine box's verb is "Undo", like `u`'s. Its key is `U (N times)`, where N = `steps.len() − k`
+  and k is the earliest step that replaced anything. `U` redoes the jump's last step first, so reaching step k
+  brings back every later step on the way (`jobs/undo.rs:482-500`, `replaced_by_jump`).
+- **D8. Fit limit.** When the drift line alone takes all four lines (graft-ui `MAX_MESSAGE_LINES`, `confirm.rs:32`),
+  the consequence line has no room and graft-ui's cap cuts it. Only extreme titles hit this: a 3-line drift line
+  already falls back to the short form, which keeps the key sentence (R9's second title).
+- **D9.** `m3-undo-drift.txt` shows the short form: its drift line takes three lines.
+
+### Pre-existing bug found (not fixed; out of scope)
+- **Broken.** After an undo that moves HEAD but touches no ref, the graph keeps the old HEAD badge:
+  `graft-ops/src/restore.rs:275-276` picks `Refresh::WorkingTree` when `pending.entry.touches.refs.is_empty()`, and a
+  checkout's undo moves only HEAD.
+- Visible in `docs/shots/m6/fix-undo-drift-way-back-*.txt` frame 2: the graph still shows `[◆ fix]` after landing on
+  `main`. The capture header marks that frame KNOWN WRONG.
+- The status and the working tree are right, checked by git in the test.
+
+### Proposed KNOWN_GAPS rows (for the conductor)
+- **Broken:** the graph keeps the old HEAD after undoing a checkout. The pre-existing bug above,
+  `restore.rs:275-276`.
+- **Unverified / design:** a redo over drift has no key back (D1). The edit is kept only in the redo's backup ref.
+- **Design:** the time-machine box names step 0's replaced paths only, because drift is read at the first step. The
+  landing names the union of every step's.
+- **Design:** `J` cannot restore files from an entry's backup. It is the only way to reach D1's edit without git.
+- **Limit:** D8, where the consequence line is cut when the drift line takes four lines.
+
+### KNOWN_GAPS M6/q4: closed
+Closed by `undo_over_drift_then_undo_again` (the second `u` names `U redoes checkout fix`; `U` restores byte-exact) and
+`undo_over_drift_then_redo_brings_the_edit_back` (the box and landing name `U`; one key from the landing).
+
+### Touches, and how each was checked
+- **`Drift` gained `replaced`, and `Applied` gained `replaced`.** Every construction site was found by grep
+  (`replaced:`) and compiled under clippy:
+  - graft-ops: `apply.rs`, `apply/fold.rs`, `apply/resume.rs`, `restore.rs`, `undo.rs`, `undo/execute.rs`. Also
+    changed, but not construction sites: `undo/tests.rs` (new `replaced_unions_sorted_and_unique`) and
+    `tests/it/main.rs` (`mod undo_replaced;`);
+  - graft: `jobs/undo.rs`, `update/operate.rs`, `update/banner/tests.rs`, `update/remote/tests/lease.rs`,
+    `update/resolver/tests/words_and_c.rs`, `update/undo.rs`, `update/undo/box_answers.rs`, `view/tests.rs`.
+- **`Undone::Nothing` and `RevertedTo` shape changes.** Every match was found by grep: `jobs/undo.rs:249-253`,
+  `update/undo.rs:333`, its tests, and `box_answers.rs:103`.
+- **Journal/undo.** No new entry kind or journal field. The backup refs, `next_undo`, `next_redo`, `inverse` and
+  `generic_steps` are unchanged. The workspace nextest run is green (3300 passed), including every undo, redo and
+  revert_to test.
+- **Keymap.** No binding changed. The code only names `U` and `u`.
+- **Captures.** Every one was regenerated through its own test (see the ticks):
+  - `docs/shots/m3-09-undo-drift-box-{80x24,160x48}.txt`
+  - `m3-undo-drift.txt`
+  - `m6/fix-box-owns-the-bar-{120x40,80x24}.txt`
+  - new: `m6/fix-undo-drift-way-back-{120x40,80x24}.txt`
+- **Contact sheets.**
+  - Captions were updated in `m3-contact-sheet-captions.tsv` and `m6/m6-contact-sheet-captions.tsv` (a frame-3 note on
+    the 69 row, plus two rows for this ticket).
+  - Both sheets were rebuilt with `scripts/contact-sheet.sh`. A second rebuild gave the same bytes.
+  - Sizes: m3 130 209 B; m6 parts 179 678 / 177 038 / 163 295 / 42 937 B, all ≤ 200 000.
+- **TESTING.md.** Walk 13 now has the box's line, the Drift box row has the new words, and there is a new row
+  "Undo over drift, the way back".
+- **Docs.** `graft-core/src/journal.rs:27-29` was reworded: `U` takes an `Undo` back by journaling a `Redo`.
+- **MAP.md.**
+  - graft-ops: `Replaced`, `Drift::replaced`, `Applied::replaced`, `execute_over_drift`, `run_plan`'s read, and
+    `UndoError::Drift(Box<Drift>)`.
+  - graft: `undone`, `reverted_to`, `drift_consequence`, `replaced_keys`, `RevertedTo`, `Undone::Nothing`.
+- **Not touched.** graft-ui and `docs/design/`, checked with `git status`. KNOWN_GAPS was not read.
+
+### Verified, and not verified
+- **Verified on real repos, byte-exact through `U`:** the unstaged edit, the staged edit, both together, the edit
+  outside the undo's paths (left on disk), and the time machine's two presses.
+- **Verified by drawing at 80×24 and 160×48:** the box's words. Every line graft built was found on the drawn screen.
+- **Not verified:** colour (rule 5). How the captures look is the user's call (rule 6).
