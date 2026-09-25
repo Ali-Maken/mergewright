@@ -8,10 +8,17 @@ config forcing the Unicode tier. The example scripts the scenario's dirty
 state, then opens the real interactive loop with the capture's keys as the
 harness prelude (fed one key per settled state — a write in flight holds the
 next key). This script waits for the text the capture says must be on
-screen, then for the screen to stop changing, writes the frame to
-docs/shots/<stem>-<WxH>.txt and ends the run with SIGTERM (a `q` would be
-typed into an open text field). Stems, scenario names, the expected text and
-the key label come from `m3_walk --stems`.
+screen, then for the screen to stop changing, asserts the frame against
+docs/shots/<stem>-<WxH>.txt through `graft-fixtures capture` (redacted;
+rewritten only under GRAFT_UPDATE_SHOTS=1, and a run that rewrites one is
+red anyway) and ends the run with SIGTERM (a `q` would be typed into an open
+text field). Stems, scenario names, the expected text and the key label come
+from `m3_walk --stems`.
+
+Redaction (m6-conflicts/63): this script used to write the frame itself, so
+the scratch repository's temp path reached the file unredacted and was
+cleaned by hand. It now goes through the same writer as the m4, m5 and m6
+walks, which redacts machine paths and ports before comparing or writing.
 
 Captures go straight to files; this script prints only byte counts and
 whether the expected string was seen. The raw stream stays under
@@ -22,6 +29,8 @@ these by eye.
 Usage: python3 pty-walk-m3.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build first:
     cargo build -q -p graft --example m3_walk
+    cargo build -q -p graft-fixtures --bin graft-fixtures
+    GRAFT_TARGET=target python3 .scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py 80x24
 """
 import fcntl, os, pty, select, signal, struct, subprocess, sys, tempfile, termios, time
 
@@ -29,7 +38,13 @@ import pyte
 
 SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
-BIN = "target/debug/examples/m3_walk"
+TARGET = os.environ.get("GRAFT_TARGET", "target")
+BIN = f"{TARGET}/debug/examples/m3_walk"
+FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
+# A commit the capture run makes is dated at a fixed instant, as
+# pty-walk-m6.py does (m6-conflicts/43), so its id is the same every run and
+# the capture can be asserted, not just rewritten (m6-conflicts/63).
+COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,
                            check=True).stdout.splitlines()]
@@ -86,7 +101,8 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color")
+            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color",
+                       GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             os.execve(BIN, [BIN, "--capture", scenario], env)
         os.close(slave)
@@ -153,15 +169,24 @@ class Run:
 
 def write_capture(stem, scenario, keys, frame, note):
     path = f"docs/shots/{stem}-{SIZE}.txt"
-    with open(path, "w") as f:
-        f.write(f"m3 walk capture: {stem} — scenario {scenario}, keys {keys}, "
-                f"unicode tier, {SIZE}\n")
-        if note:
-            f.write(f"({note})\n")
-        f.write("\n" + frame + "\n")
+    body = (f"m3 walk capture: {stem} — scenario {scenario}, keys {keys}, "
+            f"unicode tier, {SIZE}\n")
+    if note:
+        body += f"({note})\n"
+    body += "\n" + frame + "\n"
+    # The same writer as pty-walk-m4/-m5/-m6.py: redacts, compares, and
+    # rewrites the file only under GRAFT_UPDATE_SHOTS=1.
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),
+                             capture_output=True)
+    if checked.returncode != 0:
+        print(f"{path}: {len(frame.encode())} bytes, DRIFTED")
+        print(checked.stderr.decode().rstrip())
+        return False
     print(f"{path}: {len(frame.encode())} bytes" + (f", {note}" if note else ", settled"))
+    return True
 
 
+failed = False
 for stem, scenario, on_screen, keys in CAPTURES:
     if WANTED and scenario not in WANTED:
         continue
@@ -172,5 +197,8 @@ for stem, scenario, on_screen, keys in CAPTURES:
         f"expected `{on_screen}` is not on screen after the frame settled")
     if not seen and not note:
         note = f"`{on_screen}` appeared only after {APPEAR:.0f} s"
-    write_capture(stem, scenario, keys, run.text(), note)
+    if not write_capture(stem, scenario, keys, run.text(), note):
+        failed = True
     run.end()
+
+sys.exit(1 if failed else 0)

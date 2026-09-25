@@ -16,714 +16,6 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
-docs/shots/m6/m6-17-after-commit-160x48.txt
-what right looks like: The same at 160x48: bottom row `merged feature into main ✓`.
-================================================================================
-
-m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 160x48
-
- graft <scratch____________________________________________________________>  12 commits
-◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                 GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                                                                GF 6y   1e78110
-│ ●    feature's notes                                                                                                                           GF 6y   d69867a
-│ ●    feature drops gone                                                                                                                        GF 6y   35c2d1e
-● │    main's notes                                                                                                                              GF 6y   a301516
-● │    main changes gone                                                                                                                         GF 6y   fa0b4d8
-●─╯    add the readme                                                                                                                            GF 6y   941a7d6
-●      add notes                                                                                                                                 GF 6y   f7b6fca
-●      add gone                                                                                                                                  GF 6y   30036f6
-●      Correct the note                                                                                                                          GF 7y   a82960b
-●      Add the first note                                                                                                                        GF 7y   fadcfb3
-◇      Add a readme                                                                                                                              GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merged feature into main ✓
-
-================================================================================
-docs/shots/m6/m6-17-after-commit-187x50.txt
-what right looks like: The same at 187x50: bottom row `merged feature into main ✓`.
-================================================================================
-
-m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 187x50
-
- graft <scratch____________________________________________________________>  12 commits
-◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                                            GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                                                                                           GF 6y   1e78110
-│ ●    feature's notes                                                                                                                                                      GF 6y   d69867a
-│ ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
-● │    main's notes                                                                                                                                                         GF 6y   a301516
-● │    main changes gone                                                                                                                                                    GF 6y   fa0b4d8
-●─╯    add the readme                                                                                                                                                       GF 6y   941a7d6
-●      add notes                                                                                                                                                            GF 6y   f7b6fca
-●      add gone                                                                                                                                                             GF 6y   30036f6
-●      Correct the note                                                                                                                                                     GF 7y   a82960b
-●      Add the first note                                                                                                                                                   GF 7y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merged feature into main ✓
-
-================================================================================
-docs/shots/m6/m6-17-after-commit-200x50.txt
-what right looks like: The same at 200x50: bottom row `merged feature into main ✓`.
-================================================================================
-
-m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 200x50
-
- graft <scratch____________________________________________________________>  12 commits
-◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                                                         GT 6y   9225152
-│ ●  ⓘ [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
-│ ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
-│ ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
-● │    main's notes                                                                                                                                                                      GF 6y   a301516
-● │    main changes gone                                                                                                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                                                                                                    GF 6y   941a7d6
-●      add notes                                                                                                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                                                                                                      GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merged feature into main ✓
-
-================================================================================
-docs/shots/m6/m6-17-after-commit-80x24.txt
-what right looks like: The same at 80x24: bottom row `merged feature into main ✓`.
-================================================================================
-
-m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 80x24
-
- graft <scratch____________________________________________________________>  1…
-◆─╮ ▏  [◆ main] Merge branch 'feature' into main                    6y   9225152
-│ ●  ⓘ [feature] feature's readme                                   6y   1e78110
-│ ●    feature's notes                                              6y   d69867a
-│ ●    feature drops gone                                           6y   35c2d1e
-● │    main's notes                                                 6y   a301516
-● │    main changes gone                                            6y   fa0b4d8
-●─╯    add the readme                                               6y   941a7d6
-●      add notes                                                    6y   f7b6fca
-●      add gone                                                     6y   30036f6
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
-
-
-
-
-
-
-
-
-
-
- merged feature into main ✓
-
-================================================================================
-docs/shots/m6/m6-18-launch-shell-begun-120x40.txt
-what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflict journeys", b-launch-to-first-conflict: the app launched on a two-files merge begun in the shell, no key: header `MERGING`; the footer `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph` (the short origin, ticket 61); the changes pane `CONFLICTS (2)`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
-================================================================================
-
-m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 120x40
-
- graft <scratch____________________________________________________________>    MERGING
-◌   ▏  Uncommitted changes (2 unmerged, 1 staged)
-  ●  ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
-  ●    feature's notes                                                                                   GF 6y   d69867a
-  ●    feature drops gone                                                                                GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
-● │    main changes gone                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                    GF 6y   941a7d6
-●      add notes                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
- merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-UNCOMMITTED · 1 staged
-diff vs HEAD 1e78110
-CONFLICTS (2)
-  gone.txt    deleted by them
-  notes.txt     both modified
-STAGED (1)
-  M README.md           +1 −0
-
-
-
-
-
-
-
-
-
-
-================================================================================
-docs/shots/m6/m6-18-launch-shell-begun-160x48.txt
-what right looks like: The same launch at 160x48: the last row `merge in progress · ⏎ resolve  c continue` — at this width the file count is dropped (it is drawn at 120, 187 and 200) — and `CONFLICTS (2)`.
-================================================================================
-
-m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 160x48
-
- graft <scratch____________________________________________________________>    MERGING      UNCOMMITTED · 1 staged
-◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                            diff vs HEAD 1e78110
-  ●  ⓘ [feature] feature's readme                                               6y   1e78110
-  ●    feature's notes                                                          6y   d69867a
-  ●    feature drops gone                                                       6y   35c2d1e
-◆ │    [◆ main] main's notes                                                    6y   a301516 CONFLICTS (2)
-● │    main changes gone                                                        6y   fa0b4d8   gone.txt                                          deleted by them
-●─╯    add the readme                                                           6y   941a7d6   notes.txt                                           both modified
-●      add notes                                                                6y   f7b6fca STAGED (1)
-●      add gone                                                                 6y   30036f6   M README.md                                                 +1 −0
-●      Correct the note                                                         7y   a82960b
-●      Add the first note                                                       7y   fadcfb3
-◇      Add a readme                                                             7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merge in progress · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-
-================================================================================
-docs/shots/m6/m6-18-launch-shell-begun-187x50.txt
-what right looks like: Re-taken 2026-09-25 (ticket 61): the same launch at 187x50: `merge in progress · 2 conflicted · ⏎ resolve` — no room beside the bar for `from the shell` with the pane open — and `CONFLICTS (2)`.
-================================================================================
-
-m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 187x50
-
- graft <scratch____________________________________________________________>    MERGING                      UNCOMMITTED · 1 staged
-◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                                            diff vs HEAD 1e78110
-  ●  ⓘ [feature] feature's readme                                                            GF 6y   1e78110
-  ●    feature's notes                                                                       GF 6y   d69867a
-  ●    feature drops gone                                                                    GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                 GF 6y   a301516 CONFLICTS (2)
-● │    main changes gone                                                                     GF 6y   fa0b4d8   gone.txt                                                     deleted by them
-●─╯    add the readme                                                                        GF 6y   941a7d6   notes.txt                                                      both modified
-●      add notes                                                                             GF 6y   f7b6fca STAGED (1)
-●      add gone                                                                              GF 6y   30036f6   M README.md                                                            +1 −0
-●      Correct the note                                                                      GF 7y   a82960b
-●      Add the first note                                                                    GF 7y   fadcfb3
-◇      Add a readme                                                                          GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merge in progress · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-
-================================================================================
-docs/shots/m6/m6-18-launch-shell-begun-200x50.txt
-what right looks like: Re-taken 2026-09-25 (ticket 61): the same launch at 200x50: the last row `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`; `CONFLICTS (2)`.
-================================================================================
-
-m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 200x50
-
- graft <scratch____________________________________________________________>    MERGING                             UNCOMMITTED · 1 staged
-◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                                                   diff vs HEAD 1e78110
-  ●  ⓘ [feature] feature's readme                                                                   GF 6y   1e78110
-  ●    feature's notes                                                                              GF 6y   d69867a
-  ●    feature drops gone                                                                           GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                        GF 6y   a301516 CONFLICTS (2)
-● │    main changes gone                                                                            GF 6y   fa0b4d8   gone.txt                                                           deleted by them
-●─╯    add the readme                                                                               GF 6y   941a7d6   notes.txt                                                            both modified
-●      add notes                                                                                    GF 6y   f7b6fca STAGED (1)
-●      add gone                                                                                     GF 6y   30036f6   M README.md                                                                  +1 −0
-●      Correct the note                                                                             GF 7y   a82960b
-●      Add the first note                                                                           GF 7y   fadcfb3
-◇      Add a readme                                                                                 GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-
-================================================================================
-docs/shots/m6/m6-18-launch-shell-begun-80x24.txt
-what right looks like: The same launch at 80x24: the Detail tab with `CONFLICTS (2)`; the last row keeps the banner's keys `⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph` and drops the reason words.
-================================================================================
-
-m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 80x24
-
-MERGING
-Graph  [Detail]
-UNCOMMITTED · 1 staged
-diff vs HEAD 1e78110
-
-CONFLICTS (2)
-  gone.txt                                                       deleted by them
-  notes.txt                                                        both modified
-STAGED (1)
-  M README.md                                                              +1 −0
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
-
-================================================================================
-docs/shots/m6/m6-19-after-esc-esc-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the stop, `Esc Esc` — the graph has the keyboard and the bottom row **starts** `⇥ banner  . explain  m merge  r rebase`: the way back to the banner leads the bar. Unicode tier; colour, the focus reverse video and the cursor block unverified.
-================================================================================
-
-m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 120x40
-
- graft <scratch____________________________________________________________>    MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
-  ●    feature's notes                                                                                   GF 6y   d69867a
-  ●    feature drops gone                                                                                GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
-● │    main changes gone                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                    GF 6y   941a7d6
-●      add notes                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                      GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  . explain  m merge  r rebase  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
-
-================================================================================
-docs/shots/m6/m6-19-after-esc-esc-160x48.txt
-what right looks like: The same at 160x48: the bottom row starts `⇥ banner`.
-================================================================================
-
-m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 160x48
-
- graft <scratch____________________________________________________________>    MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                                                                GF 6y   1e78110
-  ●    feature's notes                                                                                                                           GF 6y   d69867a
-  ●    feature drops gone                                                                                                                        GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                                                                     GF 6y   a301516
-● │    main changes gone                                                                                                                         GF 6y   fa0b4d8
-●─╯    add the readme                                                                                                                            GF 6y   941a7d6
-●      add notes                                                                                                                                 GF 6y   f7b6fca
-●      add gone                                                                                                                                  GF 6y   30036f6
-●      Correct the note                                                                                                                          GF 7y   a82960b
-●      Add the first note                                                                                                                        GF 7y   fadcfb3
-◇      Add a readme                                                                                                                              GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
-
-================================================================================
-docs/shots/m6/m6-19-after-esc-esc-187x50.txt
-what right looks like: The same at 187x50: the bottom row starts `⇥ banner`.
-================================================================================
-
-m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 187x50
-
- graft <scratch____________________________________________________________>    MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                                                                                           GF 6y   1e78110
-  ●    feature's notes                                                                                                                                                      GF 6y   d69867a
-  ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                                                                                                GF 6y   a301516
-● │    main changes gone                                                                                                                                                    GF 6y   fa0b4d8
-●─╯    add the readme                                                                                                                                                       GF 6y   941a7d6
-●      add notes                                                                                                                                                            GF 6y   f7b6fca
-●      add gone                                                                                                                                                             GF 6y   30036f6
-●      Correct the note                                                                                                                                                     GF 7y   a82960b
-●      Add the first note                                                                                                                                                   GF 7y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  F3  x  +  j/k  space  1  F  H  J  y  M  O
-
-================================================================================
-docs/shots/m6/m6-19-after-esc-esc-200x50.txt
-what right looks like: The same at 200x50: the bottom row starts `⇥ banner  . explain  m merge  r rebase  ⏎ open`.
-================================================================================
-
-m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 200x50
-
- graft <scratch____________________________________________________________>    MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
-  ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
-  ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
-◆ │    [◆ main] main's notes                                                                                                                                                             GF 6y   a301516
-● │    main changes gone                                                                                                                                                                 GF 6y   fa0b4d8
-●─╯    add the readme                                                                                                                                                                    GF 6y   941a7d6
-●      add notes                                                                                                                                                                         GF 6y   f7b6fca
-●      add gone                                                                                                                                                                          GF 6y   30036f6
-●      Correct the note                                                                                                                                                                  GF 7y   a82960b
-●      Add the first note                                                                                                                                                                GF 7y   fadcfb3
-◇      Add a readme                                                                                                                                                                      GF 7y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  J  y  M  O
-
-================================================================================
-docs/shots/m6/m6-19-after-esc-esc-80x24.txt
-what right looks like: The same at 80x24: the bottom row starts `⇥ banner  . explain  m merge`.
-================================================================================
-
-m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24
-
- graft <scratch______________________________________________________>…  MERGING
-◌      Uncommitted changes (2 unmerged, 1 staged)
-  ● ▏ⓘ [feature] feature's readme                                   6y   1e78110
-  ●    feature's notes                                              6y   d69867a
-  ●    feature drops gone                                           6y   35c2d1e
-◆ │    [◆ main] main's notes                                        6y   a301516
-● │    main changes gone                                            6y   fa0b4d8
-●─╯    add the readme                                               6y   941a7d6
-●      add notes                                                    6y   f7b6fca
-●      add gone                                                     6y   30036f6
-●      Correct the note                                             7y   a82960b
-●      Add the first note                                           7y   fadcfb3
-◇      Add a readme                                                 7y   64ded19
-
-
-
-
-
-
-
-
-
-
- ⇥ banner  . explain  m merge  r  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
-
-================================================================================
 docs/shots/m6/../m5-hints-ladder.txt   (an earlier milestone's capture, changed by m6)
 what right looks like: the uncommitted row has no `space fold` — changed by M6 (a6a47ee): on the uncommitted-changes row the hint ladder no longer offers `space fold` (`space` now needs a commit row, `NEEDS_A_COMMIT` in graft-ui hints.rs); every other rung as the M5 sheet showed it.
 ================================================================================
@@ -1436,366 +728,6 @@ what right looks like: (ticket 49) A teammate pushed; `P` was rejected; `p` name
  y push  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
-docs/shots/m6/fix-box-takes-y-120x40.txt
-what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 (`P`): the plain push box, `[ Cancel ]` under the cursor, a plain `╰…╯` bottom border, and the bottom row (the hint bar) `y push  ←/→ move  ⏎ choose  esc cancel`. `y` then pushes (rejected). Frame 2 (`P`, then `y`): the box titled `Force-push main → origin/main?` is still up after `y`; no `y push` anywhere; the bottom row is the rejection's sticky line. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
-# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
-# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
-# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
-# box, then `y` pressed: it is the frame before `y`, byte for byte.
-#
-# What right looks like:
-# - Frame 1's bottom row (the hint bar) reads
-#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
-#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
-# - Frame 2: the box is titled `Force-push …` and is still up after `y`
-#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
-#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
-#   row is the rejection's sticky line, `push rejected: … · P force with
-#   lease`, not the bar: the status line draws a sticky ahead of the keys,
-#   as it did before this ticket.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== frame 1: `P`, the plain push box ===
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    Commit 187                                                                                          GF 7y   3121935
-●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────╮  GF 7y   fab25df
-●    │ 1 commit · can't be undone from here — origin keeps what you send                              │  GF 7y   09ae97c
-●    │                                                                                                │  GF 7y   49d7783
-●    │ git push --progress origin refs/heads/main:refs/heads/main                                     │  GF 7y   22d55c9
-●    │                                                                                                │  GF 7y   d212b3e
-●    │ ▸[ Cancel ]   [ Push ]                                                                         │  GF 7y   c8254c5
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
-●    Commit 179                                                                                          GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
- y push  ←/→ move  ⏎ choose  esc cancel
-
-=== frame 2: `y` (rejected), `P`, the lease box, then `y` ===
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
-●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
-●    Commit 199                                                                                          GF 7y   13e6ab1
-●    Commit 198                                                                                          GF 7y   f5055d9
-●    Commit 197                                                                                          GF 7y   2cce853
-●    Commit 196                                                                                          GF 7y   325da3f
-●    Commit 195                                                                                          GF 7y   0722297
-●    Commit 194                                                                                          GF 7y   b6a4a47
-●    Commit 193                                                                                          GF 7y   60af0eb
-●    Commit 192                                                                                          GF 7y   aceb8c5
-●    Commit 191                                                                                          GF 7y   11d68ff
-●    Commit 190                                                                                          GF 7y   91900bd
-●    Commit 189                                                                                          GF 7y   cec3e93
-●    Commit 188                                                                                          GF 7y   0a91ece
-●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
-●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
-●    │                                                                                                │  GF 7y   49d7783
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   22d55c9
-●    │                                                                                                │  GF 7y   d212b3e
-●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   c8254c5
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
-●    Commit 179                                                                                          GF 7y   97b58e5
-●    Commit 178                                                                                          GF 7y   1c9b7ed
-●    Commit 177                                                                                          GF 7y   f93340a
-●    Commit 176                                                                                          GF 7y   5aaeeba
-●    Commit 175                                                                                          GF 7y   6be5928
-●    Commit 174                                                                                          GF 7y   9b67be4
-●    Commit 173                                                                                          GF 7y   937d32b
-●    Commit 172                                                                                          GF 7y   81be718
-●    Commit 171                                                                                          GF 7y   57b8196
-●    Commit 170                                                                                          GF 7y   8ea98be
-●    Commit 169                                                                                          GF 7y   4926766
-●    Commit 168                                                                                          GF 7y   0d60d60
-●    Commit 167                                                                                          GF 7y   fa5ef1d
-●    Commit 166                                                                                          GF 7y   953abf3
-●    Commit 165                                                                                          GF 7y   49912f3
-●    Commit 164                                                                                          GF 7y   1143b38
- push rejected: origin/main has moved · p pull first · P force with lease
-
-================================================================================
-docs/shots/m6/fix-box-takes-y-80x24.txt
-what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads `y push  ←/→ move  ⏎ choose  esc cancel`, whole; frame 2, the lease box, draws no `y`.
-================================================================================
-
-# TestBackend capture (not a pty), 80x24, no colour recorded. Fixture:
-# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
-# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
-# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
-# box, then `y` pressed: it is the frame before `y`, byte for byte.
-#
-# What right looks like:
-# - Frame 1's bottom row (the hint bar) reads
-#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
-#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
-# - Frame 2: the box is titled `Force-push …` and is still up after `y`
-#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
-#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
-#   row is the rejection's sticky line, `push rejected: … · P force with
-#   lease`, not the bar: the status line draws a sticky ahead of the keys,
-#   as it did before this ticket.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== frame 1: `P`, the plain push box ===
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    ╭ Push main → origin/main ────────────────────────────────────────╮ 0722297
-●    │ 1 commit · can't be undone from here — origin keeps what you    │ b6a4a47
-●    │ send                                                            │ 60af0eb
-●    │                                                                 │ aceb8c5
-●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 11d68ff
-●    │                                                                 │ 91900bd
-●    │ ▸[ Cancel ]   [ Push ]                                          │ cec3e93
-●    ╰─────────────────────────────────────────────────────────────────╯ 0a91ece
-●    Commit 187                                                     7y   3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
- y push  ←/→ move  ⏎ choose  esc cancel
-
-=== frame 2: `y` (rejected), `P`, the lease box, then `y` ===
- graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                               6y   739071c
-●    [origin/main] Commit 200                                       7y   d5ae5fd
-●    Commit 199                                                     7y   13e6ab1
-●    Commit 198                                                     7y   f5055d9
-●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 0722297
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ b6a4a47
-●    │ your fetch (lease)                                              │ 60af0eb
-●    │ rewrites history for everyone who has d5ae5fd                   │ aceb8c5
-●    │                                                                 │ 11d68ff
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │ 91900bd
-●    │                                                                 │ cec3e93
-●    │ ▸[ Cancel ]   [ Force push ]                                    │ 0a91ece
-●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
-●    Commit 186                                                     7y   fab25df
-●    Commit 185                                                     7y   09ae97c
-●    Commit 184                                                     7y   49d7783
-●    Commit 183                                                     7y   22d55c9
-●    Commit 182                                                     7y   d212b3e
-●    Commit 181                                                     7y   c8254c5
-●    Commit 180                                                     7y   e95ccd4
- push rejected: origin/main has moved · p pull first · P force with lease
-
-================================================================================
-docs/shots/m6/fix-subject-enter-commits-120x40.txt
-what right looks like: (ticket 51) One file staged, `c`, `fix: x` typed, the subject focused. Frame 1: the bottom row reads `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole; the body is empty; the options row ends `[ Commit ]`. Frame 2 (`⏎`): the editor is gone, the status line reads `commit "fix: x" ✓` and the graph's top row is `[◆ main] fix: x`. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_subject_enter_commits in
-# crates/graft/tests/it/commit_editor_writes.rs (asserted; the commit is
-# made by real git; its id and its parent's, both made by the run and new
-# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
-# with the subject focused (m6-conflicts/51).
-#
-# Judge by eye:
-# - Frame 1: the footer reads exactly
-#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
-#   120 columns. The body is empty. The options row ends `[ Commit ]`.
-# - Frame 2: the editor is gone; the status line reads `commit "fix: x" ✓`
-#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== 120x40 ===
-== frame 1: `fix: x` typed, subject focused ==
-COMMIT ── ⎇ main ── 1 file staged
-
-▸Subject fix: x                                            ┊                                                        6/50
-
- Body
-                                                                                 ┊
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
-
-== frame 2: after `⏎` ==
- graft /code/api  2 commits
-◆    [◆ main] fix: x                                                                                     GT now  0000000
-◇ ▏  add sample                                                                                          GT now  0000000
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- commit "fix: x" ✓
-
-================================================================================
-docs/shots/m6/fix-subject-enter-commits-80x24.txt
-what right looks like: (ticket 51) The same at 80x24: frame 1's footer whole at 80 columns; frame 2 the same status line and top row.
-================================================================================
-
-# TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_subject_enter_commits in
-# crates/graft/tests/it/commit_editor_writes.rs (asserted; the commit is
-# made by real git; its id and its parent's, both made by the run and new
-# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
-# with the subject focused (m6-conflicts/51).
-#
-# Judge by eye:
-# - Frame 1: the footer reads exactly
-#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
-#   80 columns. The body is empty. The options row ends `[ Commit ]`.
-# - Frame 2: the editor is gone; the status line reads `commit "fix: x" ✓`
-#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== 80x24 ===
-== frame 1: `fix: x` typed, subject focused ==
-COMMIT ── ⎇ main ── 1 file staged
-
-▸Subject fix: x                                            ┊                6/50
-
- Body
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
-
-== frame 2: after `⏎` ==
- graft /code/api  2 commits
-◆    [◆ main] fix: x                                                now  0000000
-◇ ▏  add sample                                                     now  0000000
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file · B build one · X never here
- commit "fix: x" ✓
-
-================================================================================
 docs/shots/m6/fix-band-187x50.txt
 what right looks like: (ticket 55) notes.txt, block 1 took theirs, block 2 open with the cursor: block 1's rows show `┊` at the left separator and `◀` then `┃` at the right; block 2's rule row shows `?` at both separators with `┃` below, and `? open · o t b` in the result; plain rows and the titles row show `│`. Colour unverified: sky blue left, purple right, amber open are the user's to judge in Zed, dark, 187 columns.
 ================================================================================
@@ -2260,4 +1192,756 @@ MERGING
 │                                                                              │
 ╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ───────────────────────╯
 
+
+================================================================================
+docs/shots/m6/fix-last-file-opens-summary-187x50.txt
+what right looks like: (ticket 60) Shell-begun two-file merge, `gone.txt` kept: frame 1 `notes.txt` with every block taken, `⏎ marks done`; after `--- after ⏎ ---` the summary, opened by itself: top border `╭ Preview: finish merging feature into main`, cursor `▸ README.md` under `COMBINED BY GIT ON ITS OWN · 1`. The status `notes.txt done ✓ · every file done` is set but not drawn: the summary covers the bottom row. Colour and the focus reverse video unverified.
+================================================================================
+
+MERGING
+FILES · 2 conflicted      │▸ notes.txt · 2 conflicts · 0 open
+                          │all blocks taken · ⏎ marks notes.txt done
+   gone.txt   done ✓      │ yours · main                                       │ result                                               │ theirs · feature
+▏▸ notes.txt  ⏎ marks done│ 1 one                                              │ 1 one                                                │ 1 one
+                          │ ── taken ✓                                         ▶ ── 1 of 2 · took yours · main                        ┊ ── not taken
+                          │ 2 two from main                                    ┃ 2 two from main                                      ┊ 2 TWO from feature
+                          │ 3 three                                            │ 3 three                                              │ 3 three
+                          │ 4 four                                             │ 4 four                                               │ 4 four
+                          │ 5 five                                             │ 5 five                                               │ 5 five
+                          │ 6 six                                              │ 6 six                                                │ 6 six
+                          │▏── taken ✓                                         ▶ ── 2 of 2 · took yours · main                        ┊ ── not taken
+                          │▏7 seven from main                                  ┃ 7 seven from main                                    ┊ 7 SEVEN from feature
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+                          │
+ took yours · main in notes.txt · 0 of 2 open ✓
+--- after ⏎ ---
+MERGING
+╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
+│ undo: u takes this back                                                                                                                                                                 │
+│ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
+│   gone.txt   kept · yours · main                                                                                Subject Merge branch 'feature'                            ┊       22/50 │
+│   notes.txt  yours · main in 2 of 2 conflicts                                                                   Body                                                                    │
+│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                                                                                                     │
+│ ▸ README.md  modified  +1 −1                                                                                                                                                            │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+================================================================================
+docs/shots/m6/fix-finish-row-120x40.txt
+what right looks like: (ticket 60) `Esc` from that summary: under the identity row `▸ notes.txt · done ✓`, the finish row `✓ every file done — c review and finish the merge`; strip head `files · all done ✓`; bottom row starting `c finish`. Colour, the finish row's accent-on-selection fill and the focus reverse video unverified.
+================================================================================
+
+MERGING
+files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ notes.txt · done ✓
+✓ every file done — c review and finish the merge
+  1 one
+  2 two from main
+  3 three
+  4 four
+  5 five
+  6 six
+  7 seven from main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ c finish  e edit  esc close
+================================================================================
+docs/shots/m6/fix-c-in-pane-finishes-187x50.txt
+what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1: the changes pane focused, its bar offers `c finish` and no `c commit`. After `--- after c ---` the summary: top border `╭ Preview: finish merging feature into main`, bottom border starting `╰ y commit`. Colour unverified.
+================================================================================
+
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_in_pane_finishes in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the changes pane focused (m6-conflicts/52).
+#
+# Judge by eye:
+# - Frame 1: the pane's bar offers `c finish` and no `c commit`.
+# - Frame 2 (after `c`): the summary's top border reads
+#   `╭ Preview: finish merging feature into main`, its bottom border starts
+#   `╰ y commit`.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 187x50 ===
+ graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
+◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
+◆      [◆ main] main's take                                                                  GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+●─╯    the shared files                                                                      GF 2h   b35b2f1
+●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
+●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
+◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
+                                                                                                             ▎
+                                                                                                               1     - our plan
+                                                                                                                   1 + the agreed plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ merge in progress · space stage  d discard  c finish  <> resize  ⌃A all  e edit  ⇥ graph  . more
+--- after c ---
+MERGING
+╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
+│ undo: u takes this back                                                                                                                                                                 │
+│ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
+│ ▸ notes.md   combined                                                                                           Subject Merge branch 'feature'                            ┊       22/50 │
+│   shared.rs  combined                                                                                           Body                                                                    │
+│ COMBINED BY GIT ON ITS OWN · none                                                                                                                                                       │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+│                                                                                                                                                                                         │
+╰ y commit  j/k move  ⇥ message  esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+================================================================================
+docs/shots/m6/fix-c-live-frames-187x50.txt
+what right looks like: (ticket 52) The two frames that drew `c commit` mid-operation. Frame 1, `bisect start` in the shell, a graph row focused: the bar has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`. After `--- frame 2 ---`, a resolved shell merge with the detail pane open and the graph focused: the bar offers `c finish`, not `c commit`, and no `⇥ banner`. Colour unverified.
+================================================================================
+
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_live_frames in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). The two frames
+# that drew `c commit` while an operation was live (m6-conflicts/52).
+#
+# Judge by eye:
+# - Frame 1 (`bisect start` in the shell, a graph row focused): the bar
+#   has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`.
+# - Frame 2 (a merge begun in the shell, resolved; the detail pane open,
+#   the graph focused): the bar offers `c finish`, not `c commit`, and no
+#   `⇥ banner`.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 187x50 ===
+ graft /code/api  6 commits
+◆   ▏  [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                                                                                         GF 2h   f43f326
+●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
+●      Correct the note                                                                                                                                                     GF 1y   a82960b
+●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
+◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  . more  1  F  H  y  M  O
+--- frame 2 ---
+ graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
+◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
+◆      [◆ main] main's take                                                                  GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+●─╯    the shared files                                                                      GF 2h   b35b2f1
+●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
+●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
+◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
+                                                                                                             ▎
+                                                                                                               1     - our plan
+                                                                                                                   1 + the agreed plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ ⏎ changes  c finish  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O
+
+================================================================================
+docs/shots/m6/fix-box-takes-y-120x40.txt
+what right looks like: (ticket 50) A teammate pushed, one local commit. Frame 1 (`P`): the plain push box, `[ Cancel ]` under the cursor, a plain `╰…╯` bottom border, and the bottom row (the hint bar) `y push  ←/→ move  ⏎ choose  esc cancel`. `y` then pushes (rejected). Frame 2 (`P`, then `y`): the box titled `Force-push main → origin/main?` is still up after `y`; no `y push` anywhere; the bottom row is the rejection's sticky line. Colour unverified.
+================================================================================
+
+# TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
+# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
+# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
+# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
+# box, then `y` pressed: it is the frame before `y`, byte for byte.
+#
+# What right looks like:
+# - Frame 1's bottom row (the hint bar) reads
+#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
+#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
+# - Frame 2: the box is titled `Force-push …` and is still up after `y`
+#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
+#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
+#   row is the rejection's sticky line, `push rejected: … · P force with
+#   lease`, not the bar: the status line draws a sticky ahead of the keys,
+#   as it did before this ticket.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== frame 1: `P`, the plain push box ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
+●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
+●    Commit 199                                                                                          GF 7y   13e6ab1
+●    Commit 198                                                                                          GF 7y   f5055d9
+●    Commit 197                                                                                          GF 7y   2cce853
+●    Commit 196                                                                                          GF 7y   325da3f
+●    Commit 195                                                                                          GF 7y   0722297
+●    Commit 194                                                                                          GF 7y   b6a4a47
+●    Commit 193                                                                                          GF 7y   60af0eb
+●    Commit 192                                                                                          GF 7y   aceb8c5
+●    Commit 191                                                                                          GF 7y   11d68ff
+●    Commit 190                                                                                          GF 7y   91900bd
+●    Commit 189                                                                                          GF 7y   cec3e93
+●    Commit 188                                                                                          GF 7y   0a91ece
+●    Commit 187                                                                                          GF 7y   3121935
+●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────╮  GF 7y   fab25df
+●    │ 1 commit · can't be undone from here — origin keeps what you send                              │  GF 7y   09ae97c
+●    │                                                                                                │  GF 7y   49d7783
+●    │ git push --progress origin refs/heads/main:refs/heads/main                                     │  GF 7y   22d55c9
+●    │                                                                                                │  GF 7y   d212b3e
+●    │ ▸[ Cancel ]   [ Push ]                                                                         │  GF 7y   c8254c5
+●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
+●    Commit 179                                                                                          GF 7y   97b58e5
+●    Commit 178                                                                                          GF 7y   1c9b7ed
+●    Commit 177                                                                                          GF 7y   f93340a
+●    Commit 176                                                                                          GF 7y   5aaeeba
+●    Commit 175                                                                                          GF 7y   6be5928
+●    Commit 174                                                                                          GF 7y   9b67be4
+●    Commit 173                                                                                          GF 7y   937d32b
+●    Commit 172                                                                                          GF 7y   81be718
+●    Commit 171                                                                                          GF 7y   57b8196
+●    Commit 170                                                                                          GF 7y   8ea98be
+●    Commit 169                                                                                          GF 7y   4926766
+●    Commit 168                                                                                          GF 7y   0d60d60
+●    Commit 167                                                                                          GF 7y   fa5ef1d
+●    Commit 166                                                                                          GF 7y   953abf3
+●    Commit 165                                                                                          GF 7y   49912f3
+●    Commit 164                                                                                          GF 7y   1143b38
+ y push  ←/→ move  ⏎ choose  esc cancel
+
+=== frame 2: `y` (rejected), `P`, the lease box, then `y` ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
+●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
+●    Commit 199                                                                                          GF 7y   13e6ab1
+●    Commit 198                                                                                          GF 7y   f5055d9
+●    Commit 197                                                                                          GF 7y   2cce853
+●    Commit 196                                                                                          GF 7y   325da3f
+●    Commit 195                                                                                          GF 7y   0722297
+●    Commit 194                                                                                          GF 7y   b6a4a47
+●    Commit 193                                                                                          GF 7y   60af0eb
+●    Commit 192                                                                                          GF 7y   aceb8c5
+●    Commit 191                                                                                          GF 7y   11d68ff
+●    Commit 190                                                                                          GF 7y   91900bd
+●    Commit 189                                                                                          GF 7y   cec3e93
+●    Commit 188                                                                                          GF 7y   0a91ece
+●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
+●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
+●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
+●    │                                                                                                │  GF 7y   49d7783
+●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   22d55c9
+●    │                                                                                                │  GF 7y   d212b3e
+●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   c8254c5
+●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
+●    Commit 179                                                                                          GF 7y   97b58e5
+●    Commit 178                                                                                          GF 7y   1c9b7ed
+●    Commit 177                                                                                          GF 7y   f93340a
+●    Commit 176                                                                                          GF 7y   5aaeeba
+●    Commit 175                                                                                          GF 7y   6be5928
+●    Commit 174                                                                                          GF 7y   9b67be4
+●    Commit 173                                                                                          GF 7y   937d32b
+●    Commit 172                                                                                          GF 7y   81be718
+●    Commit 171                                                                                          GF 7y   57b8196
+●    Commit 170                                                                                          GF 7y   8ea98be
+●    Commit 169                                                                                          GF 7y   4926766
+●    Commit 168                                                                                          GF 7y   0d60d60
+●    Commit 167                                                                                          GF 7y   fa5ef1d
+●    Commit 166                                                                                          GF 7y   953abf3
+●    Commit 165                                                                                          GF 7y   49912f3
+●    Commit 164                                                                                          GF 7y   1143b38
+ push rejected: origin/main has moved · p pull first · P force with lease
+
+================================================================================
+docs/shots/m6/fix-box-takes-y-80x24.txt
+what right looks like: (ticket 50) The same at 80x24: frame 1's bottom row reads `y push  ←/→ move  ⏎ choose  esc cancel`, whole; frame 2, the lease box, draws no `y`.
+================================================================================
+
+# TestBackend capture (not a pty), 80x24, no colour recorded. Fixture:
+# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
+# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
+# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
+# box, then `y` pressed: it is the frame before `y`, byte for byte.
+#
+# What right looks like:
+# - Frame 1's bottom row (the hint bar) reads
+#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
+#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
+# - Frame 2: the box is titled `Force-push …` and is still up after `y`
+#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
+#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
+#   row is the rejection's sticky line, `push rejected: … · P force with
+#   lease`, not the bar: the status line draws a sticky ahead of the keys,
+#   as it did before this ticket.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== frame 1: `P`, the plain push box ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+●    [origin/main] Commit 200                                       7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    Commit 196                                                     7y   325da3f
+●    ╭ Push main → origin/main ────────────────────────────────────────╮ 0722297
+●    │ 1 commit · can't be undone from here — origin keeps what you    │ b6a4a47
+●    │ send                                                            │ 60af0eb
+●    │                                                                 │ aceb8c5
+●    │ git push --progress origin refs/heads/main:refs/heads/main      │ 11d68ff
+●    │                                                                 │ 91900bd
+●    │ ▸[ Cancel ]   [ Push ]                                          │ cec3e93
+●    ╰─────────────────────────────────────────────────────────────────╯ 0a91ece
+●    Commit 187                                                     7y   3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+●    Commit 181                                                     7y   c8254c5
+●    Commit 180                                                     7y   e95ccd4
+ y push  ←/→ move  ⏎ choose  esc cancel
+
+=== frame 2: `y` (rejected), `P`, the lease box, then `y` ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+●    [origin/main] Commit 200                                       7y   d5ae5fd
+●    Commit 199                                                     7y   13e6ab1
+●    Commit 198                                                     7y   f5055d9
+●    Commit 197                                                     7y   2cce853
+●    Commit 196                                                     7y   325da3f
+●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 0722297
+●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ b6a4a47
+●    │ your fetch (lease)                                              │ 60af0eb
+●    │ rewrites history for everyone who has d5ae5fd                   │ aceb8c5
+●    │                                                                 │ 11d68ff
+●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │ 91900bd
+●    │                                                                 │ cec3e93
+●    │ ▸[ Cancel ]   [ Force push ]                                    │ 0a91ece
+●    ╰─────────────────────────────────────────────────────────────────╯ 3121935
+●    Commit 186                                                     7y   fab25df
+●    Commit 185                                                     7y   09ae97c
+●    Commit 184                                                     7y   49d7783
+●    Commit 183                                                     7y   22d55c9
+●    Commit 182                                                     7y   d212b3e
+●    Commit 181                                                     7y   c8254c5
+●    Commit 180                                                     7y   e95ccd4
+ push rejected: origin/main has moved · p pull first · P force with lease
+
+================================================================================
+docs/shots/m6/fix-subject-enter-commits-120x40.txt
+what right looks like: (ticket 51) One file staged, `c`, `fix: x` typed, the subject focused. Frame 1: the bottom row reads `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole; the body is empty; the options row ends `[ Commit ]`. Frame 2 (`⏎`): the editor is gone, the status line reads `commit "fix: x" ✓` and the graph's top row is `[◆ main] fix: x`. Colour unverified.
+================================================================================
+
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_subject_enter_commits in
+# crates/graft/tests/it/commit_editor_writes.rs (asserted; the commit is
+# made by real git; its id and its parent's, both made by the run and new
+# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
+# with the subject focused (m6-conflicts/51).
+#
+# Judge by eye:
+# - Frame 1: the footer reads exactly
+#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
+#   120 columns. The body is empty. The options row ends `[ Commit ]`.
+# - Frame 2: the editor is gone; the status line reads `commit "fix: x" ✓`
+#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 120x40 ===
+== frame 1: `fix: x` typed, subject focused ==
+COMMIT ── ⎇ main ── 1 file staged
+
+▸Subject fix: x                                            ┊                                                        6/50
+
+ Body
+                                                                                 ┊
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+
+== frame 2: after `⏎` ==
+ graft /code/api  2 commits
+◆    [◆ main] fix: x                                                                                     GT now  0000000
+◇ ▏  add sample                                                                                          GT now  0000000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ commit "fix: x" ✓
+
+================================================================================
+docs/shots/m6/fix-subject-enter-commits-80x24.txt
+what right looks like: (ticket 51) The same at 80x24: frame 1's footer whole at 80 columns; frame 2 the same status line and top row.
+================================================================================
+
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_subject_enter_commits in
+# crates/graft/tests/it/commit_editor_writes.rs (asserted; the commit is
+# made by real git; its id and its parent's, both made by the run and new
+# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
+# with the subject focused (m6-conflicts/51).
+#
+# Judge by eye:
+# - Frame 1: the footer reads exactly
+#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
+#   80 columns. The body is empty. The options row ends `[ Commit ]`.
+# - Frame 2: the editor is gone; the status line reads `commit "fix: x" ✓`
+#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 80x24 ===
+== frame 1: `fix: x` typed, subject focused ==
+COMMIT ── ⎇ main ── 1 file staged
+
+▸Subject fix: x                                            ┊                6/50
+
+ Body
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+
+== frame 2: after `⏎` ==
+ graft /code/api  2 commits
+◆    [◆ main] fix: x                                                now  0000000
+◇ ▏  add sample                                                     now  0000000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ commit "fix: x" ✓
 

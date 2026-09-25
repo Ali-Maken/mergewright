@@ -117,7 +117,7 @@ m6-11-card-on-notes           C         C         C         C         C
 m6-12-after-t                 C         C         C         C         C       
 m6-13-after-ctrl-t            C         C         C         C         C       
 m6-14-last-file-done          C         C         C         C         C       
-m6-15-finish-summary          C         C         C         C         C       
+m6-15-finish-row-after-esc    C         C         C         C         C       
 m6-16-summary-expanded        C         C         C         C         C       
 m6-17-after-commit            C         C         C         C         C       
 m6-18-launch-shell-begun      C         C         C         C         C       

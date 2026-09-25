@@ -57,6 +57,11 @@ FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures"
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,
                            check=True).stdout.splitlines()]
+# `m5_walk --stems` also lists the M6 captures; those live under
+# docs/shots/m6/ and are walked by .scratch/m6-conflicts/pty-walk-m6.py.
+# Walked here they were checked against docs/shots/<stem> (no such file) and
+# reported as drift (m6-conflicts/63).
+CAPTURES = [c for c in CAPTURES if not c[0].startswith("m6-")]
 WANTED = set(sys.argv[2:])
 STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
 # The walk's passwords. Kept here rather than printed by `--stems`, which

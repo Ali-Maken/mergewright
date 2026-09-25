@@ -16,17 +16,17 @@
 
 ================================================================================
 docs/shots/m3-01-stage-file-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below.
+what right looks like: TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, unicode tier, 160x48
 
  graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 staged
-◌   Uncommitted changes (1 staged)                                                           diff vs HEAD 38f8f03
-◆   [◆ main] add sample.txt                                                      now  38f8f03
-●   Correct the note                                                             7y   a82960b
-●   Add the first note                                                           7y   fadcfb3
-◇   Add a readme                                                                 7y   64ded19STAGED (1)
+◌ ▏  Uncommitted changes (1 staged)                                                          diff vs HEAD 4fcf9e9
+◆    [◆ main] add sample.txt                                                    6y   4fcf9e9
+●    Correct the note                                                           7y   a82960b
+●    Add the first note                                                         7y   fadcfb3
+◇    Add a readme                                                               7y   64ded19 STAGED (1)
                                                                                                M sample.txt                                                +2 −2
                                                                                              ▎
                                                                                                1     - one
@@ -72,14 +72,14 @@ m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, uni
 
 ================================================================================
 docs/shots/m3-01-stage-file-80x24.txt
-what right looks like: TESTING.md "Working tree, undo and stash" § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff.
+what right looks like: TESTING.md "Working tree, undo and stash" § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, unicode tier, 80x24
 
 Graph  [Detail]
 UNCOMMITTED · 1 staged
-diff vs HEAD e1bcb55
+diff vs HEAD 4fcf9e9
 
 STAGED (1)
   M sample.txt                                                             +2 −2
@@ -100,21 +100,21 @@ twelve
 
 
 
-
+ stage sample.txt ✓
 
 ================================================================================
 docs/shots/m3-02-stage-hunk-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below.
+what right looks like: TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-02-stage-hunk — scenario stage-hunk, keys k ⏎ ⏎ Space, unicode tier, 160x48
 
  graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 staged 1 unstaged
-◌   Uncommitted changes (1 staged, 1 unstaged)                                               diff vs HEAD 3c63c73
-◆   [◆ main] add sample.txt                                                      now  3c63c73
-●   Correct the note                                                             7y   a82960b
-●   Add the first note                                                           7y   fadcfb3
-◇   Add a readme                                                                 7y   64ded19STAGED (1)
+◌ ▏  Uncommitted changes (1 staged, 1 unstaged)                                              diff vs HEAD 4fcf9e9
+◆    [◆ main] add sample.txt                                                    6y   4fcf9e9
+●    Correct the note                                                           7y   a82960b
+●    Add the first note                                                         7y   fadcfb3
+◇    Add a readme                                                               7y   64ded19 STAGED (1)
                                                                                                M sample.txt                                                +1 −1
                                                                                              UNSTAGED (1)
                                                                                                M sample.txt                                                +1 −1
@@ -160,14 +160,14 @@ m3 walk capture: m3-02-stage-hunk — scenario stage-hunk, keys k ⏎ ⏎ Space,
 
 ================================================================================
 docs/shots/m3-02-stage-hunk-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff.
+what right looks like: TESTING.md § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-02-stage-hunk — scenario stage-hunk, keys k ⏎ ⏎ Space, unicode tier, 80x24
 
 Graph  [Detail]
 UNCOMMITTED · 1 staged 1 unstaged
-diff vs HEAD 69b33a1
+diff vs HEAD 4fcf9e9
 
 STAGED (1)
   M sample.txt                                                             +1 −1
@@ -188,21 +188,21 @@ UNSTAGED (1)
 
 
 
-
+ stage a hunk of sample.txt ✓
 
 ================================================================================
 docs/shots/m3-03-discard-confirm-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Confirm box row: same box, graph and pane around it.
+what right looks like: TESTING.md § Per breakpoint, Confirm box row: same box, graph and pane around it. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, keys k ⏎ d, unicode tier, 160x48
 
  graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 unstaged
-◌   Uncommitted changes (1 unstaged)                                                         diff vs HEAD 1cb6de4
-◆   [◆ main] add sample.txt                                                      now  1cb6de4
-●   Correct the note                                                             7y   a82960b
-●   Add the first note                                                           7y   fadcfb3
-◇   Add a readme                                                                 7y   64ded19UNSTAGED (1)
+◌ ▏  Uncommitted changes (1 unstaged)                                                        diff vs HEAD 4fcf9e9
+◆    [◆ main] add sample.txt                                                    6y   4fcf9e9
+●    Correct the note                                                           7y   a82960b
+●    Add the first note                                                         7y   fadcfb3
+◇    Add a readme                                                               7y   64ded19 UNSTAGED (1)
                                                                                                M sample.txt                                                +2 −2
                                                                                              ▎
                                                                                                1     - one
@@ -216,16 +216,14 @@ m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, ke
                                                                                               15  15   fifteen
                                                                                               16     - sixteen
                                                                                                   16 + SIXTEEN
-
-                                                Discard changes to sample.txt?
-                                                The change in the working tree goes back to how the index has i…
-                                                Graft keeps a backup first, so `u` can undo it afterwards.
-
-                                                git restore --worktree -- sample.txt
-
-                                                [ Cancel ]     Discard
-
-
+     ╭ Discard changes to sample.txt? ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+     │ The change in the working tree goes back to how the index has it (+2 −2).                                                                               │
+     │ Graft keeps a backup first, so `u` can undo it afterwards.                                                                                              │
+     │                                                                                                                                                         │
+     │ git restore --worktree -- sample.txt                                                                                                                    │
+     │                                                                                                                                                         │
+     │ ▸[ Cancel ]   [ Discard ]                                                                                                                               │
+     ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 
@@ -244,31 +242,33 @@ m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, ke
 
 
 
- q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search
+
+
+ y discard  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m3-03-discard-confirm-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Confirm box row: centred over the pane, `[ Cancel ]   Discard`.
+what right looks like: TESTING.md § Per breakpoint, Confirm box row: a framed box `╭ Discard changes to sample.txt?`, the `git restore --worktree -- sample.txt` command, `▸[ Cancel ]   [ Discard ]`; the bottom row is the box's own keys, `y discard  ←/→ move  ⏎ choose  esc cancel`. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, keys k ⏎ d, unicode tier, 80x24
 
 Graph  [Detail]
 UNCOMMITTED · 1 unstaged
-diff vs HEAD 0538289
+diff vs HEAD 4fcf9e9
 
 UNSTAGED (1)
   M sample.txt                                                             +2 −2
 ▎
-  1     - one
-      1 Discard changes to sample.txt?
-  2   2 The change in the working tree goes back to how the index has i…
-  3   3 Graft keeps a backup first, so `u` can undo it afterwards.
-  4   4   four
-twelve  git restore --worktree -- sample.txt
- 13  13   thirteen
- 14  14 [ Cancel ]     Discard
- 15  15   fifteen
+  1     ╭ Discard changes to sample.txt? ──────────────────────────────╮
+      1 │ The change in the working tree goes back to how the index    │
+  2   2 │ has it (+2 −2).                                              │
+  3   3 │ Graft keeps a backup first, so `u` can undo it afterwards.   │
+  4   4 │                                                              │
+twelve  │ git restore --worktree -- sample.txt                         │
+ 13  13 │                                                              │
+ 14  14 │ ▸[ Cancel ]   [ Discard ]                                    │
+ 15  15 ╰──────────────────────────────────────────────────────────────╯
  16     - sixteen
      16 + SIXTEEN
 
@@ -276,17 +276,17 @@ twelve  git restore --worktree -- sample.txt
 
 
 
-
+ y discard  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m3-04-commit-editor-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays.
+what right looks like: TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-04-commit-editor — scenario commit, keys k ⏎ c s h o u t Space t h r e e, unicode tier, 160x48
 
 COMMIT ── ⎇ main ── 1 file staged                                                            UNCOMMITTED · 1 staged
-                                                                                             diff vs HEAD 97d4201
+                                                                                             diff vs HEAD 4fcf9e9
 ▸Subject shout three                                       ┊                           11/50
 
  Body
@@ -720,18 +720,39 @@ UNDO JOURNAL · <scratch_______________________________________________________>
 
 ================================================================================
 docs/shots/m3-09-undo-drift-box-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Drift box row: same.
+what right looks like: TESTING.md § Per breakpoint, Drift box row: same. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 160x48
 
  graft <scratch____________________________________________________________>  5 commits
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] before the drift                                                                                                                    GT now  5a9dc77
-●   add sample.txt                                                                                                                               GT now  e9dad5a
-●   Correct the note                                                                                                                             GF 7y   a82960b
-●   Add the first note                                                                                                                           GF 7y   fadcfb3
-◇   Add a readme                                                                                                                                 GF 7y   64ded19
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] before the drift                                                                                                                   GT 6y   0dd52b5
+●    add sample.txt                                                                                                                              GT 6y   4fcf9e9
+●    Correct the note                                                                                                                            GF 7y   a82960b
+●    Add the first note                                                                                                                          GF 7y   fadcfb3
+◇    Add a readme                                                                                                                                GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+     ╭ Undo “commit "before the drift"”? ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
+     │ Since this commit "before the drift", the working tree                                                                                 │
+     │ changed.                                                                                                                               │
+     │ A backup is taken first, so this is itself undoable.                                                                                   │
+     │                                                                                                                                        │
+     │ undo restores the recorded state                                                                                                       │
+     │                                                                                                                                        │
+     │ ▸[ Stop ]   [ Undo ]                                                                                                                   │
+     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 
@@ -745,66 +766,45 @@ m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, uni
 
 
 
-                                                Undo “commit "before the drift"”?
-                                                Since this commit "before the drift", the working tree
-                                                changed.
-                                                A backup is taken first, so this is itself undoable.
-
-                                                undo restores the recorded state
-
-                                                [ Stop ]     Undo
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
- undo…
+ undo · esc cancels
 
 ================================================================================
 docs/shots/m3-09-undo-drift-box-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Drift box row: `Undo "commit …"?`, what drifted, `[ Stop ]   Undo`.
+what right looks like: TESTING.md § Per breakpoint, Drift box row: a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `undo · esc cancels`. (Re-taken 2026-09-25, m6-conflicts/63.)
 ================================================================================
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  5…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] before the drift                                       now  1cb4243
-●   add sample.txt                                                  now  95720b7
-●   Correct the note                                                7y   a82960b
-●   Add the first note                                              7y   fadcfb3
-◇   Add a readme                                                    7y   64ded19
-
-        Undo “commit "before the drift"”?
-        Since this commit "before the drift", the working tree
-        changed.
-        A backup is taken first, so this is itself undoable.
-
-        undo restores the recorded state
-
-        [ Stop ]     Undo
-
-
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] before the drift                                      6y   0dd52b5
+●    add sample.txt                                                 6y   4fcf9e9
+●    Correct the note                                               7y   a82960b
+●    Add the first note                                             7y   fadcfb3
+◇    Add a readme                                                   7y   64ded19
+     ╭ Undo “commit "before the drift"”? ──────────────────────────────╮
+     │ Since this commit "before the drift", the working tree          │
+     │ changed.                                                        │
+     │ A backup is taken first, so this is itself undoable.            │
+     │                                                                 │
+     │ undo restores the recorded state                                │
+     │                                                                 │
+     │ ▸[ Stop ]   [ Undo ]                                            │
+     ╰─────────────────────────────────────────────────────────────────╯
 
 
 
 
 
- undo…
+
+
+ undo · esc cancels
 
 ================================================================================
 docs/shots/m3-amend.txt

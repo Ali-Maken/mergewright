@@ -46,5 +46,5 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase --no-update-refs --no-autostash main                                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 

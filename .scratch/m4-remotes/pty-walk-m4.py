@@ -11,8 +11,15 @@ open credential prompt counts as settled, so a typed password lands in the
 masked field). This script waits for the text the capture says must be on
 screen, then — depending on the capture's `when` — for the screen to stop
 changing (`settled`) or not at all (`appears`, for a progress footer that
-is gone a second later), writes the frame to docs/shots/<stem>-<WxH>.txt
-and ends the run with SIGTERM.
+is gone a second later), asserts the frame against docs/shots/<stem>-<WxH>.txt
+through `graft-fixtures capture` (redacted; rewritten only under
+GRAFT_UPDATE_SHOTS=1, and a run that rewrites one is red anyway), and ends
+the run with SIGTERM.
+
+Redaction (m6-conflicts/63): this script used to write the frame itself, so
+the machine's temp path in a remote's URL reached the file unredacted
+(m6-conflicts/50 NOTES). It now goes through the same writer as the m5 and
+m6 walks, which redacts machine paths and ports before comparing or writing.
 
 Three checks, per capture:
   * the expected text is on screen (a note in the file otherwise);
@@ -29,6 +36,7 @@ Usage: python3 pty-walk-m4.py <COLSxROWS> [<scenario> ...]
 (none = every scenario with a capture). Build first, and point BIN at the
 target directory that holds it:
     cargo build -q -p graft --example m4_walk
+    cargo build -q -p graft-fixtures --bin graft-fixtures
     GRAFT_TARGET=target python3 .scratch/m4-remotes/pty-walk-m4.py 80x24
 """
 import fcntl, os, pty, select, signal, struct, subprocess, sys, tempfile, termios, time
@@ -39,6 +47,7 @@ SIZE = sys.argv[1]
 COLS, ROWS = (int(n) for n in SIZE.split("x"))
 TARGET = os.environ.get("GRAFT_TARGET", "target")
 BIN = f"{TARGET}/debug/examples/m4_walk"
+FIXTURES = os.environ.get("GRAFT_FIXTURES_BIN", f"{TARGET}/debug/graft-fixtures")
 CAPTURES = [line.split("\t") for line in
             subprocess.run([BIN, "--stems"], capture_output=True, text=True,
                            check=True).stdout.splitlines()]
@@ -48,6 +57,11 @@ STABLE, CAP, APPEAR = 1.5, 40.0, 90.0
 # rather than printed by `--stems`, which must never print a secret.
 SECRETS = ["correct-horse-battery-staple", "not-the-password"]
 SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024
+# A commit the capture run makes (the "to push"/"ours" commits) is dated at a
+# fixed instant, as pty-walk-m6.py does (m6-conflicts/43), so its id is the
+# same every run and the capture can be asserted, not just rewritten
+# (m6-conflicts/63). The wall clock made a new id each run.
+COMMIT_DATE = f"@{1_609_459_200 + 10 * 60} +0000"
 
 config_home = tempfile.mkdtemp(prefix="graft-walk-m4-")
 os.makedirs(os.path.join(config_home, "graft"))
@@ -99,7 +113,8 @@ class Run:
                 os.dup2(slave, fd)
             os.close(self.master)
             os.close(slave)
-            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color")
+            env = dict(os.environ, XDG_CONFIG_HOME=config_home, TERM="xterm-256color",
+                       GIT_AUTHOR_DATE=COMMIT_DATE, GIT_COMMITTER_DATE=COMMIT_DATE)
             env.pop("TERM_PROGRAM", None)
             os.execve(BIN, [BIN, "--capture", scenario], env)
         os.close(slave)
@@ -177,8 +192,14 @@ def write_capture(stem, scenario, keys, frame, notes):
         return False
     if size > SOFT_CAP:
         notes.append(f"{size} bytes, over the 8 KB the ticket wants")
-    with open(path, "w") as f:
-        f.write(body)
+    # The same writer as pty-walk-m5.py/-m6.py: redacts, compares, and
+    # rewrites the file only under GRAFT_UPDATE_SHOTS=1.
+    checked = subprocess.run([FIXTURES, "capture", path], input=body.encode(),
+                             capture_output=True)
+    if checked.returncode != 0:
+        print(f"{path}: {size} bytes, DRIFTED")
+        print(checked.stderr.decode().rstrip())
+        return False
     print(f"{path}: {size} bytes" + (", " + "; ".join(notes) if notes else ", settled"))
     return True
 

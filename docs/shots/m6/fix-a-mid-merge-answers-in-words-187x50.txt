@@ -1,5 +1,5 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_c_mid_merge_answers_in_words in
+# capture_fix_a_mid_merge_answers_in_words in
 # crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
 # begun in the shell, resolved; the changes pane focused, `a` pressed
 # (m6-conflicts/48; `c` there opens the finish summary since 52).
