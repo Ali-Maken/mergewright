@@ -5137,7 +5137,9 @@ fn resolver_screen_for(
         let open = state.resolver.as_mut().expect("open");
         open.done = Some(resolver::DoneOpen {
             shape: resolver::DoneShape::Text { unstaged: false },
-            start_over: crate::jobs::conflict::StartOver::Can,
+            start_over: crate::jobs::conflict::StartOver::Can {
+                kind: graft_ops::operation::RestartKind::Markers,
+            },
         });
         open.cursor_block = None;
     }

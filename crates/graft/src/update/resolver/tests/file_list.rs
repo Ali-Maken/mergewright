@@ -675,7 +675,9 @@ fn done_text(unstaged: bool, text: &str) -> crate::jobs::conflict::Opening {
     let file = graft_git::conflict::parse(text.as_bytes()).expect("plain text parses");
     crate::jobs::conflict::Opening::Done(
         Arc::new(graft_ops::conflict::DoneFile::Text { file, unstaged }),
-        StartOver::Can,
+        StartOver::Can {
+            kind: graft_ops::operation::RestartKind::Markers,
+        },
     )
 }
 
@@ -721,14 +723,18 @@ fn a_done_card_for_removed_binary_and_unreadable() {
         (
             Ok(crate::jobs::conflict::Opening::Done(
                 Arc::new(DoneFile::Removed),
-                StartOver::Can,
+                StartOver::Can {
+                    kind: graft_ops::operation::RestartKind::Markers,
+                },
             )),
             "done ✓ · removed",
         ),
         (
             Ok(crate::jobs::conflict::Opening::Done(
                 Arc::new(DoneFile::Binary { unstaged: false }),
-                StartOver::Can,
+                StartOver::Can {
+                    kind: graft_ops::operation::RestartKind::Markers,
+                },
             )),
             "done ✓ · binary",
         ),
@@ -736,7 +742,9 @@ fn a_done_card_for_removed_binary_and_unreadable() {
             Err(crate::jobs::conflict::OpenFailure {
                 words: "the file is 9 bytes, which is more than the resolver handles".to_owned(),
                 not_unmerged: false,
-                done: Some(StartOver::Can),
+                done: Some(StartOver::Can {
+                    kind: graft_ops::operation::RestartKind::Markers,
+                }),
             }),
             "done ✓ · could not read: the file is 9 bytes",
         ),

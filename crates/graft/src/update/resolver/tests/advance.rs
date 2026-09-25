@@ -262,7 +262,9 @@ fn a_take_on_a_done_file_is_refused_by_done_refusal() {
     let mut state = three_alone();
     state.resolver.as_mut().expect("open").done = Some(DoneOpen {
         shape: DoneShape::Removed,
-        start_over: crate::jobs::conflict::StartOver::Can,
+        start_over: crate::jobs::conflict::StartOver::Can {
+            kind: graft_ops::operation::RestartKind::Markers,
+        },
     });
     let before = state.resolver.clone();
     let (state, commands) = press(&state, KeyCode::Char('t'));

@@ -14,6 +14,7 @@ mod ops_execution;
 mod ops_execution_hard;
 mod remote_ops;
 mod restart_gate;
+mod restart_whole_file;
 mod shell_begun_merge;
 mod stash_pop_redo;
 mod support;

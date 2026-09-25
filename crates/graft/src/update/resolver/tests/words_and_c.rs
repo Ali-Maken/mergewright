@@ -83,7 +83,9 @@ pub(super) fn done_read_lands(state: &AppState, commands: &[Command]) -> AppStat
             file,
             unstaged: false,
         }),
-        crate::jobs::conflict::StartOver::Can,
+        crate::jobs::conflict::StartOver::Can {
+            kind: graft_ops::operation::RestartKind::Markers,
+        },
     );
     update(
         state,

@@ -33,7 +33,7 @@ use graft_git::state::InProgress;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-pub use conflict::{ResolveWholeParams, RestartParams, Side};
+pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
 pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};
 pub use history::{
@@ -517,6 +517,13 @@ pub enum Refusal {
         /// The path.
         path: PathBuf,
     },
+    /// `d` sent a [`RestartKind`] the stages recovered now no longer spell:
+    /// the gate's answer went stale between the offer and the act. Nothing
+    /// was written (m6-conflicts/58).
+    RestartChanged {
+        /// The path.
+        path: PathBuf,
+    },
 }
 
 impl Refusal {
@@ -678,6 +685,12 @@ impl Refusal {
             ),
             Self::NoStagesKept { path } => {
                 format!("{}: the conflict's sides were not kept", path.display())
+            }
+            Self::RestartChanged { path } => {
+                format!(
+                    "{} changed since it was opened · open it again",
+                    path.display()
+                )
             }
         }
     }

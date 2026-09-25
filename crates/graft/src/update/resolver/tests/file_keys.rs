@@ -151,7 +151,12 @@ fn a_failed_take_stages_nothing() {
 #[test]
 fn shift_t_on_a_done_file_is_refused() {
     for (start_over, words) in [
-        (StartOver::Can, "three.txt is done · d starts it over"),
+        (
+            StartOver::Can {
+                kind: graft_ops::operation::RestartKind::Markers,
+            },
+            "three.txt is done · d starts it over",
+        ),
         (
             StartOver::Cannot {
                 why: "no".to_owned(),
@@ -228,7 +233,9 @@ fn j_from_a_done_file_moves() {
     let mut state = on("a.rs", three(), &["a.rs", "b.rs"], &["b.rs"]);
     state.resolver.as_mut().expect("open").done = Some(DoneOpen {
         shape: DoneShape::Removed,
-        start_over: StartOver::Can,
+        start_over: StartOver::Can {
+            kind: graft_ops::operation::RestartKind::Markers,
+        },
     });
     let (_, commands) = press(&state, KeyCode::Char('j'));
     assert_eq!(opened(&commands), ["b.rs"]);
@@ -290,7 +297,9 @@ fn done_on(path: &str, paths: &[&str], unmerged: &[&str]) -> AppState {
     open.cursor_block = None;
     open.done = Some(DoneOpen {
         shape: DoneShape::Text { unstaged: false },
-        start_over: StartOver::Can,
+        start_over: StartOver::Can {
+            kind: graft_ops::operation::RestartKind::Markers,
+        },
     });
     state
 }

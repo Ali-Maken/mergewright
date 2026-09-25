@@ -90,6 +90,83 @@ pub struct ResolveWholeParams {
 pub struct RestartParams {
     /// The path, as the status lists it.
     pub path: PathBuf,
+    /// What the gate answered this path is (`apply::restart_gate`). The plan
+    /// is built from it, and the act refuses [`Refusal::RestartChanged`] when
+    /// the stages it recovers say otherwise.
+    pub kind: RestartKind,
+}
+
+/// What starting a path over puts back, read from the stages that were kept.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RestartKind {
+    /// Both sides have a version: `checkout --merge` re-runs git's merge and
+    /// the markers come back.
+    Markers,
+    /// One side has the file and the other has not: the keep-or-delete
+    /// choice comes back, with the surviving side's bytes on disk.
+    WholeFile {
+        /// Which of the four one-sided shapes.
+        shape: OneSided,
+    },
+}
+
+impl RestartKind {
+    /// `--merge`, `--ours` (stage 2 survives: `UD`, `AU`) or `--theirs`
+    /// (stage 3 survives: `DU`, `UA`). The plan and the app's box both read
+    /// it, so the command the box names is the command that runs.
+    #[must_use]
+    pub fn checkout_flag(&self) -> &'static str {
+        match self {
+            Self::Markers => "--merge",
+            Self::WholeFile {
+                shape: OneSided::DeletedByThem | OneSided::AddedByUs,
+            } => "--ours",
+            Self::WholeFile {
+                shape: OneSided::DeletedByUs | OneSided::AddedByThem,
+            } => "--theirs",
+        }
+    }
+}
+
+/// The four shapes where exactly one side has the file. `DD` is not one:
+/// neither side has it, so there is nothing to write back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OneSided {
+    /// `UD`: they deleted what we changed. Stages 1 and 2.
+    DeletedByThem,
+    /// `DU`: we deleted what they changed. Stages 1 and 3.
+    DeletedByUs,
+    /// `AU`: only our side has it. Stage 2.
+    AddedByUs,
+    /// `UA`: only their side has it. Stage 3.
+    AddedByThem,
+}
+
+impl OneSided {
+    /// The one-sided shape `how` is, or `None` for `UU`, `AA` and `DD`.
+    #[must_use]
+    pub fn from_how(how: UnmergedHow) -> Option<Self> {
+        Some(match how {
+            UnmergedHow::DeletedByThem => Self::DeletedByThem,
+            UnmergedHow::DeletedByUs => Self::DeletedByUs,
+            UnmergedHow::AddedByUs => Self::AddedByUs,
+            UnmergedHow::AddedByThem => Self::AddedByThem,
+            UnmergedHow::BothModified | UnmergedHow::BothAdded | UnmergedHow::BothDeleted => {
+                return None;
+            }
+        })
+    }
+
+    /// The status shape this is.
+    #[must_use]
+    pub fn how(self) -> UnmergedHow {
+        match self {
+            Self::DeletedByThem => UnmergedHow::DeletedByThem,
+            Self::DeletedByUs => UnmergedHow::DeletedByUs,
+            Self::AddedByUs => UnmergedHow::AddedByUs,
+            Self::AddedByThem => UnmergedHow::AddedByThem,
+        }
+    }
 }
 
 /// What a whole-file resolution does to the path.
@@ -278,13 +355,23 @@ pub(crate) fn shape_of_stages(stages: &[StageEntry]) -> Option<UnmergedHow> {
     })
 }
 
-/// `git checkout --merge -- <path>`: git re-runs its own merge of stages 1,
-/// 2 and 3 into the working tree and puts the path back in the index as
-/// unmerged. Verified, git 2.54: on a `UU` path with takes already written
-/// to disk the markers come back and `ls-files -u` lists three stages again.
+/// `git checkout <flag> -- <path>`, the flag from [`RestartKind::checkout_flag`].
+///
+/// - `Markers`, `--merge`: git re-runs its own merge of stages 1, 2 and 3
+///   into the working tree and puts the path back in the index as unmerged.
+///   Verified, git 2.54: on a `UU` path with takes already written to disk
+///   the markers come back and `ls-files -u` lists three stages again.
+/// - `WholeFile`, `--ours`/`--theirs`: the stages are already back in the
+///   index (`apply::run_restart_prep` puts them there first), and this
+///   writes the side that has the file into the working tree, leaving the
+///   index unmerged — so a file a delete choice took off disk comes back
+///   (graft-ops `restart_whole_file` tests).
 pub(super) fn plan_restart(params: &RestartParams) -> Vec<Invocation> {
     vec![Invocation::new(with_paths(
-        vec![GitArg::Flag("checkout"), GitArg::Flag("--merge")],
+        vec![
+            GitArg::Flag("checkout"),
+            GitArg::Flag(params.kind.checkout_flag()),
+        ],
         std::slice::from_ref(&params.path),
     ))]
 }

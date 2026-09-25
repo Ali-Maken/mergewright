@@ -4,8 +4,8 @@
 
 use super::*;
 
-/// `gone.txt`'s refusal, in ops' own words.
-const CANNOT: &str = "can't start over · gone.txt: deleted by them — no markers to take from";
+/// `gone.txt`'s refusal in a merge begun in the shell, in ops' own words.
+const CANNOT: &str = "can't start over · gone.txt: the conflict's sides were not kept";
 
 /// `gone.txt` kept with `o`, the resolver on to `shared.rs`, then
 /// `gone.txt` clicked open read-only.
@@ -35,53 +35,104 @@ fn shared_done_and_opened(app: &App, state: &AppState) -> AppState {
     app.key(&state, KeyCode::PageUp)
 }
 
-/// The journal file's bytes, read without opening it (opening cuts a torn
-/// tail, which is a write).
-fn journal_bytes(repo: &Path) -> Option<Vec<u8>> {
-    let path = crate::app_harness::git(
-        repo,
-        &["rev-parse", "--git-path", "graft/undo-journal.jsonl"],
-    );
-    std::fs::read(repo.join(path.trim())).ok()
-}
-
-/// The status line's reason, or a panic naming what it was.
-fn reason(state: &AppState) -> &str {
-    match &state.status {
-        Status::Sticky { reason, .. } => reason,
-        other => panic!("expected a sticky line, got {other:?}"),
-    }
-}
-
+/// `d` on `gone.txt` done (kept with `o`) in Graft's own merge: the box
+/// names the side that survives, and `→ ⏎` puts the keep-or-delete choice
+/// back — the card, the list row, stages 1 and 2, our bytes on disk — with
+/// no journal line of its own (m6-conflicts/58).
+///
+/// What right looks like (`fix-start-over-whole-file-120x40.txt`): frame 1's
+/// bottom row has `d start over`; frame 2 has `the choice comes back: keep
+/// or delete` and `git checkout --ours -- gone.txt`, no `--merge`, cursor on
+/// `[ Cancel ]`; frame 3's card reads `deleted by them · o keeps the file  t
+/// deletes it` and the list row `keep or delete`.
 #[test]
-fn a_whole_file_done_file_offers_no_start_over() {
+#[allow(
+    clippy::too_many_lines,
+    reason = "one walk, three frames, each checked where it is drawn"
+)]
+fn d_on_a_done_modify_delete_file_reopens_its_card() {
     let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
     let repo = scratch.path().to_owned();
     let (app, state) = on_gone_card(&scratch);
     let state = gone_kept_and_opened(&app, &state);
 
-    let frame = crate::captures::frame(&state, 120, 40);
-    let body = frame.join("\n");
-    assert_eq!(frame[3].trim_end(), "▸ gone.txt · done ✓", "{body}");
+    let done = crate::captures::frame(&state, 120, 40);
+    let body = done.join("\n");
+    assert_eq!(
+        done[3].trim_end(),
+        "▸ gone.txt · done ✓ · d starts it over",
+        "{body}"
+    );
     assert!(
-        frame
-            .last()
-            .is_some_and(|bar| bar.trim() == "e edit  esc close"),
+        done.last()
+            .is_some_and(|bar| bar.trim() == "d start over  e edit  esc close"),
         "{body}"
     );
 
-    let status = crate::app_harness::git(&repo, &["status", "--porcelain"]);
-    let journal = journal_bytes(&repo);
+    let entries = journal_entries(&repo).len();
     let state = app.key(&state, KeyCode::Char('d'));
-    assert_eq!(reason(&state), CANNOT);
-    assert!(state.confirm.is_none(), "no box");
-    assert!(state.operating.is_none(), "no write");
-    assert_eq!(
-        crate::app_harness::git(&repo, &["status", "--porcelain"]),
-        status,
-        "git status unchanged"
+    let boxed = crate::captures::frame(&state, 120, 40);
+    let body = boxed.join("\n");
+    let confirm = state.confirm.as_ref().expect("`d` opened the box");
+    assert_eq!(confirm.view.cursor, 0, "on Cancel");
+    assert!(
+        body.contains("the choice comes back: keep or delete"),
+        "{body}"
     );
-    assert_eq!(journal_bytes(&repo), journal, "the journal unchanged");
+    assert!(body.contains("git checkout --ours -- gone.txt"), "{body}");
+    assert!(!body.contains("--merge"), "{body}");
+    assert!(body.contains("[ Cancel ]"), "{body}");
+
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    assert!(state.operating.is_some(), "launched: {:?}", state.status);
+    let state = app.pump(state, "the start over, and the card", |state| {
+        state.operating.is_none()
+            && state.status_read.is_none()
+            && state.resolver.as_ref().is_some_and(|open| {
+                open.path == Path::new("gone.txt")
+                    && open.job.is_none()
+                    && open.set_job.is_none()
+                    && open.whole_file.is_some()
+            })
+            && rows(state)
+                .iter()
+                .any(|(path, row)| path == "gone.txt" && *row != RowState::Done)
+    });
+    let card = crate::captures::frame(&state, 120, 40);
+    let body = card.join("\n");
+    assert!(
+        body.contains("deleted by them · o keeps the file  t deletes it"),
+        "{body}"
+    );
+    assert!(
+        card.iter()
+            .any(|row| row.contains("gone.txt") && row.contains("keep or delete")),
+        "{body}"
+    );
+    assert_eq!(
+        crate::app_harness::git(&repo, &["ls-files", "-u", "--", "gone.txt"])
+            .lines()
+            .filter_map(|line| line.split_whitespace().nth(2))
+            .collect::<Vec<_>>(),
+        ["1", "2"],
+        "stages 1 and 2 are back"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.join("gone.txt")).expect("gone.txt is on disk"),
+        "our plan\n"
+    );
+    assert_eq!(journal_entries(&repo).len(), entries, "folded: no entry");
+
+    crate::captures::check_shot(
+        "m6/fix-start-over-whole-file-120x40.txt",
+        &format!(
+            "{}\n── d ──\n{}\n── → ⏎ ──\n{}\n",
+            done.join("\n"),
+            boxed.join("\n"),
+            card.join("\n")
+        ),
+    );
     drop(state);
     app.close();
     drop(scratch);
@@ -124,11 +175,16 @@ fn capture_can() {
     drop(scratch);
 }
 
-/// `gone.txt` kept in Graft's own merge: no `d`, and `d` pressed says why.
+/// `gone.txt` kept in a merge **begun in the shell**: nothing kept its
+/// stages, so no `d`, and `d` pressed says why. (Until m6-conflicts/58 this
+/// was Graft's own merge, whose done whole-file file can now start over.)
 fn capture_cannot() {
-    let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
-    let (app, state) = on_gone_card(&scratch);
-    let state = gone_kept_and_opened(&app, &state);
+    let scratch = gone_and_notes_merge();
+    let (app, state) = opened_on(&scratch);
+    let state = gone_kept(&app, state);
+    let state = done_open(&app, &state, "gone.txt");
+    // As `gone_kept_and_opened`: `PgUp` gives the bar its row back.
+    let state = app.key(&state, KeyCode::PageUp);
     let before = crate::captures::frame(&state, 120, 40);
     let after = crate::captures::frame(&app.key(&state, KeyCode::Char('d')), 120, 40);
     assert_eq!(before[3].trim_end(), "▸ gone.txt · done ✓");

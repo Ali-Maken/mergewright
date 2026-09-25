@@ -7,22 +7,22 @@
 use std::path::{Path, PathBuf};
 
 use graft_git::status::UnmergedHow;
-use graft_ops::apply::{ApplyError, RestartReadError, StageSource, restart_gate};
+use graft_ops::apply::{ApplyError, RestartPlan, RestartReadError, StageSource, restart_gate};
 use graft_ops::facts::read_facts;
 use graft_ops::journal::journal_path;
 use graft_ops::operation::{
-    FactsScope, Operation, Refusal, ResolveWholeParams, RestartParams, Side,
+    FactsScope, OneSided, Operation, Refusal, ResolveWholeParams, RestartKind, RestartParams, Side,
 };
 
 use crate::conflict_fixtures::{graft_merge_stops, graft_stage};
 use crate::conflict_ops::{stopped_merge, unmerged_lines};
 use crate::support::{NOW, Never, TempRepo, git_version, try_run};
 
-type Gate = Result<Result<StageSource, Refusal>, RestartReadError>;
+pub(crate) type Gate = Result<Result<RestartPlan, Refusal>, RestartReadError>;
 
 /// Graft's own merge of `feature` into `main`, stopped on `both.txt`
 /// (`UU`, markers) and `gone.txt` (`UD`: main edited it, feature deleted it).
-fn app_merge_with_a_whole_file_conflict() -> TempRepo {
+pub(crate) fn app_merge_with_a_whole_file_conflict() -> TempRepo {
     let repo = TempRepo::init();
     repo.write("both.txt", b"base one\nbase two\n");
     repo.write("gone.txt", b"gone base alpha\ngone base beta\n");
@@ -41,13 +41,13 @@ fn app_merge_with_a_whole_file_conflict() -> TempRepo {
 }
 
 /// `both.txt` resolved by hand and marked done the resolver's way.
-fn mark_both_done(repo: &TempRepo) {
+pub(crate) fn mark_both_done(repo: &TempRepo) {
     repo.write("both.txt", b"ours one\nbase two\n");
     graft_stage(repo, "both.txt", NOW + 1);
 }
 
 /// `gone.txt` kept with `o`: the resolver's whole-file take.
-fn keep_gone(repo: &TempRepo) {
+pub(crate) fn keep_gone(repo: &TempRepo) {
     try_run(
         repo,
         &Operation::ResolveWholeFile(ResolveWholeParams {
@@ -79,7 +79,7 @@ fn untouched(repo: &TempRepo) -> Untouched {
 }
 
 /// Ask the gate with fresh facts, and prove it wrote nothing.
-fn gate(repo: &TempRepo, path: &str) -> Gate {
+pub(crate) fn gate(repo: &TempRepo, path: &str) -> Gate {
     let before = untouched(repo);
     let handle = repo.open();
     let facts =
@@ -94,7 +94,10 @@ fn an_unmerged_marker_file_is_index() {
     let repo = app_merge_with_a_whole_file_conflict();
     assert!(matches!(
         gate(&repo, "both.txt"),
-        Ok(Ok(StageSource::Index))
+        Ok(Ok(RestartPlan {
+            source: StageSource::Index,
+            ..
+        }))
     ));
 }
 
@@ -116,20 +119,30 @@ fn a_marker_file_done_in_an_app_merge_is_backup() {
     mark_both_done(&repo);
     assert!(matches!(
         gate(&repo, "both.txt"),
-        Ok(Ok(StageSource::Backup { .. }))
+        Ok(Ok(RestartPlan {
+            source: StageSource::Backup { .. },
+            ..
+        }))
     ));
 }
 
+/// Since m6-conflicts/58 a done whole-file file can be started over: the
+/// keep-or-delete choice comes back.
 #[test]
-fn a_whole_file_done_in_an_app_merge_is_not_marker_shape() {
+fn a_whole_file_done_in_an_app_merge_is_whole_file() {
     let repo = app_merge_with_a_whole_file_conflict();
     keep_gone(&repo);
     match gate(&repo, "gone.txt") {
-        Ok(Err(Refusal::NotMarkerShape { path, how })) => {
-            assert_eq!(path, PathBuf::from("gone.txt"));
-            assert_eq!(how, UnmergedHow::DeletedByThem);
-        }
-        other => panic!("expected NotMarkerShape, got {other:?}"),
+        Ok(Ok(RestartPlan {
+            source: StageSource::Backup { .. },
+            kind,
+        })) => assert_eq!(
+            kind,
+            RestartKind::WholeFile {
+                shape: OneSided::DeletedByThem
+            }
+        ),
+        other => panic!("expected a whole-file plan, got {other:?}"),
     }
 }
 
@@ -158,7 +171,10 @@ fn a_torn_journal_tail_is_read_not_cut() {
 
     assert!(matches!(
         gate(&repo, "both.txt"),
-        Ok(Ok(StageSource::Backup { .. }))
+        Ok(Ok(RestartPlan {
+            source: StageSource::Backup { .. },
+            ..
+        }))
     ));
     assert_eq!(
         std::fs::read(&path).expect("still there"),
@@ -190,8 +206,9 @@ fn done_shell() -> TempRepo {
 }
 
 /// The offer and the act answer alike: `Ok(Err(r))` from the gate ⇔ the
-/// restart refuses with `r`; `Ok(Ok(_))` ⇔ the restart runs and the path is
-/// unmerged again with markers.
+/// restart refuses with `r`; `Ok(Ok(plan))` ⇔ the restart, sent the plan's
+/// kind as the app sends it, runs and the path is unmerged again — with
+/// markers for `Markers`. Every shape: `restart_whole_file`.
 #[test]
 fn the_gate_and_the_restart_agree() {
     type Setup = fn() -> TempRepo;
@@ -213,10 +230,14 @@ fn the_gate_and_the_restart_agree() {
     for (name, setup, path) in cases {
         let repo = setup();
         let offered = gate(&repo, path).unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
+        let kind = offered
+            .as_ref()
+            .map_or(RestartKind::Markers, |plan| plan.kind);
         let acted = try_run(
             &repo,
             &Operation::RestartConflict(RestartParams {
                 path: PathBuf::from(path),
+                kind,
             }),
             NOW + 10,
         );
@@ -224,14 +245,16 @@ fn the_gate_and_the_restart_agree() {
             (Err(gated), Err(ApplyError::Refused(refused))) => {
                 assert_eq!(gated, refused, "{name}: the same refusal");
             }
-            (Ok(_), Ok(_)) => {
+            (Ok(plan), Ok(_)) => {
                 let stages = unmerged_lines(&repo, path);
                 assert!(
-                    stages.lines().count() >= 2,
+                    !stages.is_empty(),
                     "{name}: {path} is unmerged again: {stages:?}"
                 );
-                let back = String::from_utf8_lossy(&repo.read(path)).into_owned();
-                assert!(back.contains("<<<<<<<"), "{name}: markers are back: {back}");
+                if plan.kind == RestartKind::Markers {
+                    let back = String::from_utf8_lossy(&repo.read(path)).into_owned();
+                    assert!(back.contains("<<<<<<<"), "{name}: markers are back: {back}");
+                }
             }
             (offered, acted) => panic!("{name}: the gate said {offered:?}, the act {acted:?}"),
         }

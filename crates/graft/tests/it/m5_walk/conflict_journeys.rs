@@ -56,6 +56,7 @@ pub(super) fn journeys() -> Vec<Scenario> {
         captured(back_after_esc(), "m6-19-after-esc-esc"),
         open_a_done_file(),
         walk_back_a_done_file(),
+        walk_back_a_whole_file_choice(),
         a_whole_one_file(),
         captured(a_whole_two_files(), "m6-17-after-commit"),
         b_whole_two_files(),
@@ -1022,6 +1023,67 @@ fn walk_back_a_done_file() -> Scenario {
                     let stages = fixture.git(&["ls-files", "-u", "--", "notes.txt"])?;
                     check(stages.lines().count() == 3, || {
                         format!("notes.txt has stages {stages:?}, not three")
+                    })
+                }),
+            ],
+        ],
+    )
+}
+
+/// Batch 7 (m6-conflicts/58): `gone.txt` kept with `o`, the resolver on
+/// `notes.txt`; `k` opens `gone.txt` done, `d → ⏎` puts the keep-or-delete
+/// choice back — the card, not markers.
+fn walk_back_a_whole_file_choice() -> Scenario {
+    journey(
+        "walk-back-a-whole-file-choice",
+        two_files,
+        vec![
+            on_feature(),
+            m_m(),
+            done_by('o', "gone.txt"),
+            vec![
+                Step::See("the landing after o: notes.txt open", |state| {
+                    resolver_on(state, "notes.txt")
+                }),
+                route(),
+                key(ch('k')),
+                Step::WaitFor(Wait::ConflictOpened),
+                key(ch('d')),
+                Step::Frame(
+                    "the box names the side that survives",
+                    &[
+                        Sees::Has("the choice comes back: keep or delete"),
+                        Sees::Has("git checkout --ours -- gone.txt"),
+                    ],
+                ),
+                key(KeyCode::Right),
+                key(KeyCode::Enter),
+                Step::Settle("the start over"),
+                Step::WaitFor(Wait::ConflictedPath("gone.txt")),
+                Step::WaitFor(Wait::ConflictOpened),
+                end(),
+                Step::See("gone.txt open again as its card", |state| {
+                    resolver_on(state, "gone.txt")?;
+                    let open = state.resolver.as_ref().ok_or("no resolver")?;
+                    check(open.done.is_none() && open.whole_file.is_some(), || {
+                        format!(
+                            "done {:?}, card {:?}",
+                            open.done.is_some(),
+                            open.whole_file.is_some()
+                        )
+                    })
+                }),
+                Step::Frame(
+                    "the card, and the list row",
+                    &[
+                        Sees::Has("deleted by them · o keeps the file  t deletes it"),
+                        Sees::Row("gone.txt", "keep or delete"),
+                    ],
+                ),
+                Step::Shell(|fixture| {
+                    let stages = fixture.git(&["ls-files", "-u", "--", "gone.txt"])?;
+                    check(stages.lines().count() == 2, || {
+                        format!("gone.txt has stages {stages:?}, not two")
                     })
                 }),
             ],
