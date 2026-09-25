@@ -81,12 +81,17 @@ pub(super) fn whole_file_take(
         state.status = Status::sticky(words);
         return true;
     }
-    crate::update::operate::launch(
+    if let Err(busy) = crate::update::operate::launch(
         state,
         commands,
         Operation::ResolveWholeFile(ResolveWholeParams { path, side, how }),
         next_id,
-    );
+    ) {
+        // Unreachable: `write_refusal` returned above. Worded as it is, and
+        // `staging` left alone — the id in `operating` is the other write's.
+        state.status = Status::sticky(busy.words());
+        return true;
+    }
     let operating = state.operating;
     if let Some(open) = state.resolver.as_mut() {
         open.staging = operating;

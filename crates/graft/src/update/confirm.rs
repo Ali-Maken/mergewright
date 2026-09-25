@@ -202,8 +202,12 @@ fn act(
     let then = pending.then;
     if chosen != 0 {
         match then {
+            // The box has closed on this key, so a refusal (a write began
+            // while it was up) is said on the row it gave back, as `f`
+            // says it (m6-conflicts/78, Decided 3).
             ConfirmThen::Operate(op) => {
-                super::operate::launch(next, commands, op, next_id);
+                let launched = super::operate::launch(next, commands, op, next_id);
+                super::operate::say_if_refused(next, launched);
             }
             ConfirmThen::Undo { redo } => {
                 commands.extend(super::undo::forced(next, redo, next_id));
@@ -233,12 +237,18 @@ fn act(
                 next.status = Status::sticky("a write is already running");
             }
             ConfirmThen::RestartConflict { path, kind } => {
-                super::operate::launch(
+                if let Err(busy) = super::operate::launch(
                     next,
                     commands,
                     Operation::RestartConflict(graft_ops::operation::RestartParams { path, kind }),
                     next_id,
-                );
+                ) {
+                    // Unreachable: the arm above takes a running write.
+                    // Worded, and `restarting` left alone — the id in
+                    // `operating` is the other write's.
+                    next.status = Status::sticky(busy.words());
+                    return;
+                }
                 // The same "which write is this?" tag `⏎`'s `Stage`
                 // carries as `staging`, but on its own field: a
                 // restart reopens the file fresh rather than

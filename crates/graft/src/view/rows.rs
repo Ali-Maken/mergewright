@@ -92,7 +92,9 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         search: modal_blanked(state, search_line),
         compare_footer: modal_blanked(state, compare_footer_line),
         stopped: modal_blanked(state, stopped_line),
-        commit_graph: state.commit_graph_line(),
+        // Its `B`/`X` are swallowed by every modal, or typed into a
+        // password (m6-conflicts/78, Minor 3).
+        commit_graph: modal_blanked(state, AppState::commit_graph_line),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
         hint_context,
@@ -108,13 +110,13 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 }
 
 /// A footer rung, or `None` while a modal owns the bottom row
-/// (`status::modal_owns_bottom_row`): the modal's keys stand there, not
+/// (`AppState::modal_owns_bottom_row`): the modal's keys stand there, not
 /// the graph's search, compare or stop line.
 fn modal_blanked<'a, T>(
     state: &'a AppState,
     rung: impl FnOnce(&'a AppState) -> Option<T>,
 ) -> Option<T> {
-    if super::status::modal_owns_bottom_row(state) {
+    if state.modal_owns_bottom_row() {
         None
     } else {
         rung(state)
@@ -174,7 +176,7 @@ fn opening_view(
         search: modal_blanked(state, search_line),
         compare_footer: modal_blanked(state, compare_footer_line),
         stopped: modal_blanked(state, stopped_line),
-        commit_graph: state.commit_graph_line(),
+        commit_graph: modal_blanked(state, AppState::commit_graph_line),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
         // Wrapped like every graph-row bar: an operation can be live

@@ -1185,7 +1185,8 @@ fn the_preview_refusal_and_the_write_refusal_read_the_same() {
         HISTORY_CANNOT_STOP,
         Some("r"),
         &mut || JobId::new(9),
-    );
+    )
+    .expect("no write is running");
     let _refresh: Vec<Command> = crate::update::operate::operated(
         &mut written,
         JobId::new(9),

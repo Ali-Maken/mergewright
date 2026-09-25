@@ -253,7 +253,12 @@ fn launch(
         return Vec::new();
     }
     let id = next_id();
-    state.operating = Some(id);
+    let claimed = super::operate::claim_write(state, id);
+    if claimed.is_err() {
+        // Unreachable: `operation_in_flight` returned above.
+        super::operate::say_if_refused(state, claimed);
+        return Vec::new();
+    }
     let words = if redo { "redo" } else { "undo" };
     // `Esc` stops it. `graft_ops::restore::execute` now checks its stop
     // token between steps and rolls back the ones that already ran
@@ -405,7 +410,12 @@ pub(super) fn revert_to_forced(
         return;
     }
     let id = next_id();
-    state.operating = Some(id);
+    let claimed = super::operate::claim_write(state, id);
+    if claimed.is_err() {
+        // Unreachable: `operation_in_flight` returned above.
+        super::operate::say_if_refused(state, claimed);
+        return;
+    }
     // The entry's own description, not its id: `01J…` on the busy line is
     // a fact about the journal file, not about what the user asked for
     // (review 08 Minor 2).

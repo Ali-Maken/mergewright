@@ -781,7 +781,10 @@ fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Comm
     }
     let operation = editor.operation();
     let mut commands = Vec::new();
-    super::operate::launch(state, &mut commands, operation, next_id);
+    // Unreachable `Err`: `editor_key` answers no key but `Esc` while a
+    // write runs, so `commit` is never reached then.
+    let launched = super::operate::launch(state, &mut commands, operation, next_id);
+    super::operate::say_if_refused(state, launched);
     commands
 }
 

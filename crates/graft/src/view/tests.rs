@@ -3298,8 +3298,8 @@ fn the_credential_prompt_draws_over_everything_and_masks_what_is_typed() {
         "{screen}"
     );
     assert!(
-        screen.contains("esc cancel the push"),
-        "the footer names what Esc stops: {screen}"
+        screen.contains("esc cancel push main → origin/main"),
+        "the footer names the push Esc stops (m6-conflicts/78): {screen}"
     );
 }
 
@@ -3368,10 +3368,11 @@ fn capture_m4_credential_prompt_in_app() {
 #    screen, the title names the host (not the user), git's own question is
 #    on the first line, the field shows a fixed 8 mask glyphs (never the
 #    typed length, ADR-0038 §2) and no plaintext, the note says the answer
-#    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
-#    naming the push it cancels. The bottom row is the prompt's own keys:
-#    the push's running line waits under it and comes back once the
-#    prompt is answered (m6-conflicts/69).
+#    is never stored, and the box's bottom border says what ⏎, ⌃U and Esc
+#    do, ending `esc cancel push main → origin/main`: the push it cancels,
+#    by name (m6-conflicts/78). The bottom row is the prompt's own keys,
+#    `⏎ send  esc cancel`, in every frame: the push's running line waits
+#    under it and comes back once the prompt is answered (m6-conflicts/69).
 # 2. The same 7-character password again, with the prompt's pulse seed the
 #    other way up. The first mask glyph differs between 1 and 2 and nothing
 #    else does. That is the whole of ADR-0038 §2: the glyph flips on every
@@ -4720,3 +4721,4 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
 }
 
 mod bottom_row;
+mod credential_footer;

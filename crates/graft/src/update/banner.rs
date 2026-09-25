@@ -592,7 +592,12 @@ pub fn resume(
     };
     let description = format!("{verb} {}", kind.name());
     let id = next_id();
-    state.operating = Some(id);
+    let claimed = super::operate::claim_write(state, id);
+    if claimed.is_err() {
+        // Unreachable: `operation_in_flight` returned above.
+        super::operate::say_if_refused(state, claimed);
+        return true;
+    }
     state.resuming = Some((id, what.clone()));
     state.status = Status::Busy(description.clone());
     super::remote::launched(
@@ -785,8 +790,11 @@ fn closing(how: &Resume, entry: &graft_core::journal::JournalEntry) -> Closing {
             EntryStatus::Committed,
             Resume::Continue | Resume::ContinueWith { .. } | Resume::Abort,
         ) => Closing::Finished(what.clone()),
+        // The skip finished the rebase, but which commit it left out is not
+        // known here: a stop on the first of three skips the first, and the
+        // two after apply cleanly (m6-conflicts/78, review Minor 1).
         (EntryStatus::Committed, Resume::Skip) => {
-            Closing::Finished(format!("{what}, last commit skipped"))
+            Closing::Finished(format!("{what}, skipped a commit"))
         }
         // The abort the user asked for worked: it keeps its tick, and the
         // prefix makes the line true.

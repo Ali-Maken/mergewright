@@ -72,12 +72,57 @@ pub struct NamePrompt {
     /// The name as typed so far.
     pub field: TextField,
     /// Why the last `⏎` did not create anything, while the prompt stays
-    /// open: an empty name, or the branch-from-stash preview refusing (a
-    /// write running, git mid-operation). The prompt's own, not
-    /// `AppState::status`: an open modal owns the bottom row, which draws
-    /// this as its problem line (`view::status::modal_problem`). Cleared by
-    /// the next key; gone with the prompt (m6-conflicts/69, Decided 3).
-    pub refusal: Option<String>,
+    /// open. The prompt's own, not `AppState::status`: an open modal owns
+    /// the bottom row, which draws it as its problem line
+    /// (`view::status::modal_problem`). Cleared by the next key; gone with
+    /// the prompt (m6-conflicts/69, Decided 3). Which refusal, not its
+    /// words: [`PromptRefusal::NotNow`] is worded afresh each frame, so it
+    /// goes when its cause does (m6-conflicts/78, Minor 2).
+    pub refusal: Option<PromptRefusal>,
+}
+
+/// Why `⏎` created nothing (m6-conflicts/78).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PromptRefusal {
+    /// The field was empty: `a branch needs a name` / `a tag needs a name`.
+    EmptyName,
+    /// Not now: [`not_now`] refused. Drawn only while [`not_now`] still
+    /// does — once the write ends the row is the prompt's keys again, and
+    /// `⏎` creates with nothing retyped.
+    NotNow,
+}
+
+/// Why `⏎` would be refused now, whatever the name: a write running (every
+/// kind — one write at a time, m6-conflicts/78), or, for the stash branch,
+/// git mid-operation (the Ghost Preview's own refusal,
+/// [`super::preview::preview_refusal`]). `None` when it may create.
+#[must_use]
+pub(crate) fn not_now(state: &AppState, kind: &NameKind) -> Option<String> {
+    match kind {
+        NameKind::BranchFromStash { .. } => super::preview::preview_refusal(state),
+        NameKind::Branch { .. } | NameKind::Tag { .. } => {
+            super::operate::in_flight(state).map(|busy| busy.words())
+        }
+    }
+}
+
+/// The open prompt's refusal, worded for its problem line — `None` when
+/// there is none, or when a [`PromptRefusal::NotNow`] has lost its cause.
+#[must_use]
+pub(crate) fn refusal_words(state: &AppState) -> Option<String> {
+    let prompt = state.name_prompt.as_ref()?;
+    match prompt.refusal? {
+        PromptRefusal::EmptyName => Some(
+            match prompt.kind {
+                NameKind::Tag { .. } => "a tag needs a name",
+                NameKind::Branch { .. } | NameKind::BranchFromStash { .. } => {
+                    "a branch needs a name"
+                }
+            }
+            .to_owned(),
+        ),
+        PromptRefusal::NotNow => not_now(state, &prompt.kind),
+    }
 }
 
 /// Open the prompt for `kind`, replacing whatever was open. `false` when
@@ -243,71 +288,72 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
     };
     let name = prompt.field.text().to_owned();
     if name.is_empty() {
-        let words = match prompt.kind {
-            NameKind::Tag { .. } => "a tag needs a name",
-            NameKind::Branch { .. } | NameKind::BranchFromStash { .. } => "a branch needs a name",
-        };
-        refuse(state, words.to_owned());
+        refuse(state, PromptRefusal::EmptyName);
         return;
     }
     if name_refusal(state).is_some() {
         return;
     }
-    // The stash branch's preview would refuse (a write running, git
-    // mid-operation). Said here, inside the prompt that stays open, rather
-    // than by `open_preview` on the status line under it (m6-conflicts/69,
-    // conductor 2026-09-25).
-    if matches!(prompt.kind, NameKind::BranchFromStash { .. })
-        && let Some(reason) = super::preview::preview_refusal(state)
-    {
-        refuse(state, reason);
+    // Not now — a write running (every kind: one write at a time), or git
+    // mid-operation (the stash branch's preview). Said here, inside the
+    // prompt that stays open, rather than on the status line under it
+    // (m6-conflicts/69, conductor 2026-09-25; m6-conflicts/78, Major 3).
+    if not_now(state, &prompt.kind).is_some() {
+        refuse(state, PromptRefusal::NotNow);
         return;
     }
     let kind = prompt.kind.clone();
-    // Kept, not dropped: a refused preview restores this below. The name
-    // the user typed is their work; losing it to a transient refusal (a
-    // write already running, git mid-operation) is the smallest version of
-    // the thing this project exists to prevent (review m5-10-30-31 m6).
+    // Kept, not dropped: a refused launch or preview restores this below.
+    // The name the user typed is their work; losing it to a transient
+    // refusal (a write already running, git mid-operation) is the smallest
+    // version of the thing this project exists to prevent (review
+    // m5-10-30-31 m6).
     let reopen = prompt.clone();
     state.name_prompt = None;
-    match kind {
+    let launched = match kind {
         // A create moves no history: no ref moves, nothing is replayed and
         // the working tree is untouched, so there is no result to preview.
         // It is journaled like every other write, and `u` deletes it.
-        NameKind::Branch { at, checkout } => {
-            super::operate::launch(
-                state,
-                commands,
-                Operation::BranchCreate(BranchCreateParams { name, at, checkout }),
-                next_id,
-            );
-        }
-        NameKind::Tag { at } => {
-            super::operate::launch(
-                state,
-                commands,
-                Operation::TagCreate(TagCreateParams {
-                    name,
-                    at,
-                    message: None,
-                }),
-                next_id,
-            );
-        }
+        NameKind::Branch { at, checkout } => super::operate::launch(
+            state,
+            commands,
+            Operation::BranchCreate(BranchCreateParams { name, at, checkout }),
+            next_id,
+        ),
+        NameKind::Tag { at } => super::operate::launch(
+            state,
+            commands,
+            Operation::TagCreate(TagCreateParams {
+                name,
+                at,
+                message: None,
+            }),
+            next_id,
+        ),
         // `git stash branch` moves `HEAD`, the index and the working tree,
         // and drops the entry — so it gets the box, like every other write
         // that changes where you are standing.
         NameKind::BranchFromStash { index, commit } => {
             branch_from_stash(state, commands, name, index, commit, reopen, next_id);
+            return;
         }
+    };
+    // Unreachable `Err`: `not_now` refused above. The prompt comes back,
+    // name and all, with the same refusal — `status` and `operating` are
+    // the running write's, not this one's.
+    if launched.is_err() {
+        state.name_prompt = Some(NamePrompt {
+            refusal: Some(PromptRefusal::NotNow),
+            ..reopen
+        });
     }
 }
 
-/// Keep the prompt open with `words` as its answer to `⏎`. The status line
-/// is not written: the open prompt owns the bottom row (m6-conflicts/69).
-fn refuse(state: &mut AppState, words: String) {
+/// Keep the prompt open with `why` as its answer to `⏎`. The status line is
+/// not written: the open prompt owns the bottom row (m6-conflicts/69).
+fn refuse(state: &mut AppState, why: PromptRefusal) {
     if let Some(prompt) = state.name_prompt.as_mut() {
-        prompt.refusal = Some(words);
+        prompt.refusal = Some(why);
     }
 }
 

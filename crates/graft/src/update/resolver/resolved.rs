@@ -46,12 +46,18 @@ pub(super) fn mark_resolved(
         state.status = Status::sticky(words);
         return;
     }
-    crate::update::operate::launch(
+    if let Err(busy) = crate::update::operate::launch(
         state,
         commands,
         graft_ops::operation::Operation::Stage(graft_ops::operation::Target::Paths(vec![path])),
         next_id,
-    );
+    ) {
+        // Unreachable: `write_refusal` returned above. Worded as it is, on
+        // the resolver's notice row, and `staging` left alone — the id in
+        // `operating` is the other write's, not this one's.
+        state.status = Status::sticky(busy.words());
+        return;
+    }
     let operating = state.operating;
     if let Some(open) = state.resolver.as_mut() {
         open.staging = operating;

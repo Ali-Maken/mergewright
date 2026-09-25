@@ -26,7 +26,7 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
         repository: state.repository.as_ref().map(repository_view),
         rendering: session.rendering,
         notes: notes(session, state),
-        problem: problem(&state.status),
+        problem: problem(state.shown_status()),
         history: state.history.as_ref().map(history_view),
     }
 }
@@ -97,44 +97,32 @@ pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
     }
 }
 
-/// True while a modal stands over the screen: the credential prompt, the
-/// name prompt, a confirm box (the stash drop box and the banner's abort box
-/// among them), or the Ghost Preview. Every rung of the bottom row asks it
-/// before drawing a status: the modal owns the row, so a status from before
-/// it — a push rejection, a stale `Busy`, a `Done` — never sits under keys
-/// it does not belong to (m6-conflicts/69, Decided 1). It **hides**; it
-/// never clears: `esc` on the modal draws the status again (Decided 2).
-#[must_use]
-pub(crate) fn modal_owns_bottom_row(state: &AppState) -> bool {
-    state.credential.is_some()
-        || state.name_prompt.is_some()
-        || state.confirm.is_some()
-        || state.preview.is_some()
-}
-
 /// The bottom row's problem line while a modal is open: only the modal's
 /// own refusal — today the name prompt's (`NamePrompt::refusal`: an empty
-/// name, or the stash branch's preview refused). No keys: the modal's own
-/// keys are in its box, and `esc` there cancels the modal rather than
-/// dismissing a line.
+/// name, or `⏎` refused while a write runs or git is mid-operation, worded
+/// afresh each frame so it goes with its cause — m6-conflicts/78). No keys:
+/// the modal's own keys are in its box, and `esc` there cancels the modal
+/// rather than dismissing a line.
 #[must_use]
 pub(crate) fn modal_problem(state: &AppState) -> Option<ProblemLine> {
-    let refusal = state.name_prompt.as_ref()?.refusal.as_deref()?;
+    let refusal = crate::update::name_prompt::refusal_words(state)?;
     Some(ProblemLine {
-        reason: sanitize_line(refusal),
+        reason: sanitize_line(&refusal),
         keys: None,
     })
 }
 
 /// The bottom row's problem line, whoever owns the row: the open modal's
 /// own refusal while one stands ([`modal_problem`]), else the status's
-/// ([`graph_problem`]).
+/// ([`graph_problem`] of [`AppState::shown_status`]: a failure that arrived
+/// under a box and was replaced before the row drew it, else the status —
+/// m6-conflicts/78).
 #[must_use]
 pub(crate) fn bottom_row_problem(state: &AppState) -> Option<ProblemLine> {
-    if modal_owns_bottom_row(state) {
+    if state.modal_owns_bottom_row() {
         modal_problem(state)
     } else {
-        graph_problem(&state.status)
+        graph_problem(state.shown_status())
     }
 }
 

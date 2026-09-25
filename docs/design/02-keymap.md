@@ -162,7 +162,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Ctrl+P`, `:` | Command palette |
 | `?` | Context help for the focused pane |
 | `Tab` / `Shift+Tab` | Next / previous pane |
-| `Esc` | Back out / close overlay / cancel |
+| `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1) |
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |
 | `Ctrl+R` | Manual refresh |

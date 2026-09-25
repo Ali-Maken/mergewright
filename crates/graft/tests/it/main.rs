@@ -44,6 +44,7 @@ mod repo_truth;
 mod resolver;
 mod seam_rule;
 mod stash_by_key;
+mod status_under_a_box;
 mod stop_ladder_readers;
 mod two_boxes_over_content;
 mod undo_by_key;

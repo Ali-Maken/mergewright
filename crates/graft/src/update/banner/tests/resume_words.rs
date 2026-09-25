@@ -125,7 +125,7 @@ fn the_resume_words_say_what_happened() {
                 "rebase main onto fix",
                 EntryStatus::Committed,
             ),
-            Status::done("rebase main onto fix, last commit skipped"),
+            Status::done("rebase main onto fix, skipped a commit"),
         ),
         // Shell-begun merge: its own `AbortMerge` entry already says so.
         (

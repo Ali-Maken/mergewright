@@ -325,27 +325,18 @@ pub fn fetch_key(
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
-    if super::operate::operation_in_flight(state) {
-        state.status = Status::Failed(wait_for_running(state));
+    if let Some(busy) = super::operate::in_flight(state) {
+        state.status = Status::Failed(busy.words());
         return true;
     }
     let op = Operation::Fetch(FetchParams {
         remote: None,
         prune: true,
     });
-    super::operate::launch(state, commands, op, next_id);
+    // Unreachable `Err`: refused in the same words just above.
+    let launched = super::operate::launch(state, commands, op, next_id);
+    super::operate::say_if_refused(state, launched);
     true
-}
-
-/// The refusal for a write key pressed while another write runs: `wait for
-/// <what is running> to finish`, the Ghost Preview's own words for it.
-fn wait_for_running(state: &AppState) -> String {
-    let running = state
-        .remote
-        .running
-        .as_ref()
-        .map_or("the write", |it| it.description.as_str());
-    format!("wait for {running} to finish")
 }
 
 /// `p`: fast-forward `HEAD`'s branch from its upstream. Refused in words,
@@ -365,7 +356,9 @@ pub fn pull_key(
             return true;
         }
     };
-    super::operate::launch(state, commands, Operation::Pull(params), next_id);
+    // Unreachable `Err`: `operation_in_flight` returned above.
+    let launched = super::operate::launch(state, commands, Operation::Pull(params), next_id);
+    super::operate::say_if_refused(state, launched);
     true
 }
 

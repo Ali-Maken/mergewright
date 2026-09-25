@@ -37,6 +37,14 @@ pub struct AppState {
     pub harness: Harness,
     /// What the status line has to say.
     pub status: Status,
+    /// A failure that arrived while a modal owned the bottom row and was
+    /// replaced before the row drew it — the review's `f`, `b`, fetch
+    /// fails, `topic ⏎` (m6-conflicts/78, Decided 1). Drawn in place of
+    /// `status` once the modal closes (`shown_status`), dismissed by the
+    /// next key (`Esc` only dismisses). `None` whenever `status` itself
+    /// still holds it once the row is the status's again. One slot: two
+    /// failures under one box keep the later.
+    pub(crate) unseen: Option<Status>,
     /// The terminal's last reported size, in character cells.
     pub size: Size,
     /// The repository Graft was pointed at. Empty in a default state, which is
@@ -79,10 +87,10 @@ pub struct AppState {
     /// pane's file list is built from the same `Arc` rather than a copy
     /// (m3-working-tree-undo-and-stash/04, mirroring `AppState::refs`).
     pub working_tree: Option<Arc<graft_git::status::WorkingTreeStatus>>,
-    /// The working-tree write whose answer the screen is waiting for
-    /// (`Space`/`s`/`Ctrl+A`/`d` on the changes pane). One at a time: every
-    /// other write key is a no-op while this is `Some`
-    /// (m3-working-tree-undo-and-stash/04).
+    /// The write whose answer the screen is waiting for. One at a time:
+    /// set only by `update::operate::claim_write`, which refuses in words
+    /// while this is `Some` (m3-working-tree-undo-and-stash/04;
+    /// m6-conflicts/78).
     pub operating: Option<JobId>,
     /// The `--continue`/`--skip`/`--abort` that `operating` is waiting for,
     /// kept until its answer: the answer's entry alone cannot say what was
@@ -719,6 +727,32 @@ impl AppState {
             || self.finish.is_some()
             || (self.banner_focus && super::banner::banner_view(self).is_some())
     }
+
+    /// True while a modal stands over the bottom row: the credential
+    /// prompt, the name prompt, a confirm box (the stash drop box and the
+    /// banner's abort box among them), or the Ghost Preview. Every rung of
+    /// the bottom row asks it before drawing a status: the modal owns the
+    /// row, so a status from before it — a push rejection, a stale `Busy`, a
+    /// `Done` — never sits under keys it does not belong to (m6-conflicts/69,
+    /// Decided 1). It **hides**; it never clears: `esc` on the modal draws
+    /// the status again (Decided 2). On the state, not in `view`, because
+    /// `update` asks it too: nothing is acknowledged, and no failure let go,
+    /// while the row cannot show it (m6-conflicts/78).
+    #[must_use]
+    pub(crate) fn modal_owns_bottom_row(&self) -> bool {
+        self.credential.is_some()
+            || self.name_prompt.is_some()
+            || self.confirm.is_some()
+            || self.preview.is_some()
+    }
+
+    /// What the status rungs draw once no modal owns the row: a failure
+    /// that arrived under a box and was replaced before the row drew it
+    /// (`unseen`), while it stands; else `status` (m6-conflicts/78).
+    #[must_use]
+    pub(crate) fn shown_status(&self) -> &Status {
+        self.unseen.as_ref().unwrap_or(&self.status)
+    }
 }
 
 /// A live operation stopped: what the footer's reason is worded from
@@ -894,6 +928,14 @@ impl Status {
             what: what.into(),
             keys: Some(keys.into()),
         }
+    }
+
+    /// A failure — `Failed` or `Sticky` — the kind that stays until `Esc`
+    /// dismisses it, and so the kind a box must not let go unseen
+    /// (m6-conflicts/78).
+    #[must_use]
+    pub(crate) fn is_failure(&self) -> bool {
+        matches!(self, Status::Failed(_) | Status::Sticky { .. })
     }
 }
 
