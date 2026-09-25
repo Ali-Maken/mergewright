@@ -12,7 +12,9 @@ use std::path::{Path, PathBuf};
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_git::status::UnmergedHow;
 use graft_ops::apply::ApplyError;
-use graft_ops::operation::{Operation, Refusal, ResolveWholeParams, RestartParams, Side};
+use graft_ops::operation::{
+    Operation, Refusal, ResolveWholeParams, RestartKind, RestartParams, Side,
+};
 
 use crate::support::{NOW, TempRepo, run, try_run};
 
@@ -390,6 +392,7 @@ fn restart_brings_the_conflict_back() {
         &repo,
         &Operation::RestartConflict(RestartParams {
             path: PathBuf::from("both.txt"),
+            kind: RestartKind::Markers,
         }),
         NOW,
     );
@@ -437,6 +440,7 @@ fn restart_refuses_the_shapes_checkout_merge_cannot_merge() {
             &repo,
             &Operation::RestartConflict(RestartParams {
                 path: PathBuf::from(path),
+                kind: RestartKind::Markers,
             }),
             NOW,
         );
@@ -460,6 +464,7 @@ fn restart_refuses_the_shapes_checkout_merge_cannot_merge() {
             &repo,
             &Operation::RestartConflict(RestartParams {
                 path: PathBuf::from(path),
+                kind: RestartKind::Markers,
             }),
             at,
         );
@@ -510,6 +515,7 @@ fn conflict_operations_refuse_a_path_that_is_not_conflicted() {
         &repo,
         &Operation::RestartConflict(RestartParams {
             path: clean.clone(),
+            kind: RestartKind::Markers,
         }),
         NOW + 1,
     ) {

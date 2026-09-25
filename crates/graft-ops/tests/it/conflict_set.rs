@@ -11,7 +11,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use graft_ops::apply::{ApplyError, Resume};
-use graft_ops::operation::{Operation, Refusal, RestartParams};
+use graft_ops::operation::{Operation, Refusal, RestartKind, RestartParams};
 use graft_ops::snapshot::{LinkKind, backup_chain};
 
 use crate::conflict_fixtures::{
@@ -245,7 +245,10 @@ fn a_restart_never_reaches_a_finished_step() {
     let path = std::path::PathBuf::from("a.txt");
     match try_run(
         &repo,
-        &Operation::RestartConflict(RestartParams { path: path.clone() }),
+        &Operation::RestartConflict(RestartParams {
+            path: path.clone(),
+            kind: RestartKind::Markers,
+        }),
         NOW + 3,
     ) {
         Err(ApplyError::Refused(Refusal::NoStagesKept { path: refused })) => {
@@ -271,6 +274,7 @@ fn a_restart_reaches_the_current_steps_file() {
         &repo,
         &Operation::RestartConflict(RestartParams {
             path: std::path::PathBuf::from("b.txt"),
+            kind: RestartKind::Markers,
         }),
         NOW + 4,
     )

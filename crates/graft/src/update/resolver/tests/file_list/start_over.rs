@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use graft_core::event::KeyCode;
 use graft_ops::conflict::DoneFile;
+use graft_ops::operation::{OneSided, RestartKind};
 
 use super::super::{bar, frame_text, press, resolver_card_on_screen, resolver_on_screen, sticky};
 use super::{identity_row, open_gone};
@@ -83,7 +84,9 @@ fn a_done_file_that_cannot_start_over_hides_d() {
 
 #[test]
 fn a_done_file_that_can_start_over_offers_d() {
-    let state = open_gone(Ok(text(StartOver::Can)));
+    let state = open_gone(Ok(text(StartOver::Can {
+        kind: graft_ops::operation::RestartKind::Markers,
+    })));
     assert_eq!(
         identity_row(&state),
         "▸ gone.txt · done ✓ · d starts it over"
@@ -94,10 +97,143 @@ fn a_done_file_that_can_start_over_offers_d() {
     assert!(d_opens_the_box(&state));
 }
 
+// ── the box's words by kind (m6-conflicts/58) ──────────────────────────────
+
+const MARKERS: RestartKind = RestartKind::Markers;
+
+fn whole(shape: OneSided) -> RestartKind {
+    RestartKind::WholeFile { shape }
+}
+
+/// `d` pressed on `gone.txt` done with this gate: the box's title, lines,
+/// command, cursor, and what confirming it sends.
+fn the_box(opening: Answer) -> (String, Vec<String>, String, usize, ConfirmThen) {
+    let state = open_gone(opening);
+    let (after, _) = press(&state, KeyCode::Char('d'));
+    let confirm = after.confirm.expect("`d` opened the box");
+    (
+        confirm.view.title.as_str().to_owned(),
+        confirm
+            .view
+            .message
+            .iter()
+            .map(|line| line.as_str().to_owned())
+            .collect(),
+        confirm.view.command.as_str().to_owned(),
+        confirm.view.cursor,
+        confirm.then,
+    )
+}
+
+/// The marker box, byte for byte as it read before whole files could start
+/// over (`d_starts_over_behind_a_box` holds the same words in a live merge).
+#[test]
+fn restart_box_words_for_markers_unchanged() {
+    let (title, message, command, cursor, then) =
+        the_box(Ok(text(StartOver::Can { kind: MARKERS })));
+    assert_eq!(title, "Start gone.txt over?");
+    assert_eq!(
+        message,
+        [
+            "the conflict comes back with all its markers",
+            "takes and edits in this file are lost · not undoable while the merge is open",
+        ]
+    );
+    assert_eq!(command, "git checkout --merge -- gone.txt");
+    assert_eq!(cursor, 0, "on Cancel");
+    assert_eq!(
+        then,
+        ConfirmThen::RestartConflict {
+            path: "gone.txt".into(),
+            kind: MARKERS,
+        }
+    );
+}
+
+/// A whole-file choice: the box says the choice comes back, and names the
+/// `checkout` of the side that has the file — never `--merge`.
+#[test]
+fn whole_file_box_names_the_surviving_side() {
+    for (shape, flag) in [
+        (OneSided::DeletedByThem, "--ours"),
+        (OneSided::AddedByUs, "--ours"),
+        (OneSided::DeletedByUs, "--theirs"),
+        (OneSided::AddedByThem, "--theirs"),
+    ] {
+        for opening in [text, removed] {
+            let (title, message, command, cursor, then) =
+                the_box(Ok(opening(StartOver::Can { kind: whole(shape) })));
+            assert_eq!(title, "Start gone.txt over?");
+            assert_eq!(
+                message,
+                [
+                    "the choice comes back: keep or delete",
+                    "edits since the choice are lost · not undoable while the merge is open",
+                ],
+                "{shape:?}"
+            );
+            assert_eq!(command, format!("git checkout {flag} -- gone.txt"));
+            assert!(!command.contains("--merge"));
+            assert_eq!(cursor, 0, "on Cancel");
+            assert_eq!(
+                then,
+                ConfirmThen::RestartConflict {
+                    path: "gone.txt".into(),
+                    kind: whole(shape),
+                }
+            );
+        }
+    }
+}
+
+/// No operation open (a conflicted stash pop): the box claims none.
+#[test]
+fn whole_file_box_with_no_operation_open() {
+    let mut state = open_gone(Ok(text(StartOver::Can {
+        kind: whole(OneSided::DeletedByThem),
+    })));
+    state.in_progress = None;
+    let (after, _) = press(&state, KeyCode::Char('d'));
+    let confirm = after.confirm.expect("`d` opened the box");
+    let message: Vec<&str> = confirm
+        .view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(
+        message,
+        [
+            "the choice comes back: keep or delete",
+            "edits since the choice are lost"
+        ]
+    );
+}
+
+/// A done whole-file file ops can start over — kept (on disk) or deleted
+/// (removed) — offers `d` on the bar and the identity row.
+#[test]
+fn done_whole_file_offers_start_over() {
+    let can = || StartOver::Can {
+        kind: whole(OneSided::DeletedByThem),
+    };
+    for state in [open_gone(Ok(text(can()))), open_gone(Ok(removed(can())))] {
+        assert!(offers_d(&state), "{:?}", bar(&state));
+        assert_eq!(bar(&state)[0], "d start over");
+        assert_eq!(
+            identity_row(&state),
+            "▸ gone.txt · done ✓ · d starts it over"
+        );
+        assert!(d_opens_the_box(&state));
+    }
+}
+
 /// The gate is asked before the read, so a failed read still carries it.
 #[test]
 fn an_unreadable_done_file_keeps_its_gate() {
-    let state = open_gone(unreadable(StartOver::Can));
+    let state = open_gone(unreadable(StartOver::Can {
+        kind: graft_ops::operation::RestartKind::Markers,
+    }));
     assert!(frame_text(&state).contains("d starts it over"));
     assert!(offers_d(&state));
 
@@ -132,7 +268,15 @@ fn d_is_in_the_bar_exactly_when_the_box_opens() {
             resolver_card_on_screen(walk),
         ),
     ];
-    for (name, start_over) in [("can", StartOver::Can), ("cannot", cannot(GONE))] {
+    for (name, start_over) in [
+        (
+            "can",
+            StartOver::Can {
+                kind: graft_ops::operation::RestartKind::Markers,
+            },
+        ),
+        ("cannot", cannot(GONE)),
+    ] {
         let shapes: [(&str, Shape); 4] = [
             ("done text", |to| Ok(text(to))),
             ("removed", |to| Ok(removed(to))),

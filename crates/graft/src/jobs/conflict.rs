@@ -14,6 +14,7 @@ use graft_git::conflict::{ConflictFile, Take};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::status::UnmergedHow;
+use graft_ops::operation::RestartKind;
 
 use crate::repos::RepoStore;
 
@@ -102,7 +103,12 @@ pub struct OpenFailure {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StartOver {
     /// `d` opens the box, and ops would restart it.
-    Can,
+    Can {
+        /// What the restart puts back — markers, or a keep-or-delete
+        /// choice. Sent back to ops in `RestartParams::kind`, and the box's
+        /// words and command line come from it (m6-conflicts/58).
+        kind: RestartKind,
+    },
     /// `d` answers in words: ops' refusal, or `could not check: …` when the
     /// question could not be asked. Raw; sanitised where drawn.
     Cannot {
@@ -275,7 +281,7 @@ fn start_over(handle: &RepoHandle, path: &Path, stop: &dyn Stop) -> StartOver {
         Err(error) => return could_not(error.explain()),
     };
     match graft_ops::apply::restart_gate(handle, &facts, path) {
-        Ok(Ok(_)) => StartOver::Can,
+        Ok(Ok(plan)) => StartOver::Can { kind: plan.kind },
         Ok(Err(refusal)) => StartOver::Cannot {
             why: refusal.explain(),
         },

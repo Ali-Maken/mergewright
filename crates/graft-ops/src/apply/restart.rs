@@ -14,7 +14,7 @@ use graft_git::state::InProgress;
 
 use crate::facts::FactsError;
 use crate::journal::{JournalError, journal_path, parse};
-use crate::operation::{Operation, Refusal, RepoFacts};
+use crate::operation::{OneSided, Operation, Refusal, RepoFacts, RestartKind};
 use crate::snapshot::{self, SnapshotError};
 
 use super::{Applied, ApplyError, Context, Pending, as_apply_error, finish, resume};
@@ -109,27 +109,51 @@ fn find_source(
     Ok(None)
 }
 
+/// What `d` would do to a path: where its stages come from, and what they
+/// put back — markers, or a keep-or-delete choice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RestartPlan {
+    /// Where the stages are.
+    pub source: StageSource,
+    /// What they spell. The app sends it back in
+    /// [`crate::operation::RestartParams::kind`].
+    pub kind: RestartKind,
+}
+
 /// The not-unmerged half of "can `d` start this path over": where the
-/// stages are ([`stage_source`]'s lookup), then the marker gate asked of a
-/// recovered stage set. Shared by [`prepare_restart`] (the act) and
-/// [`restart_gate`] (the offer), so the rule is written once.
+/// stages are ([`stage_source`]'s lookup), then what a recovered stage set
+/// spells. Shared by [`prepare_restart`] (the act) and [`restart_gate`] (the
+/// offer), so the rule is written once.
+///
+/// A recovered set with both sides is [`RestartKind::Markers`]; one with a
+/// single side (`UD`, `DU`, `AU`, `UA`) is [`RestartKind::WholeFile`] — the
+/// keep-or-delete choice comes back (m6-conflicts/58). `DD` has no side to
+/// write back and stays [`Refusal::NotMarkerShape`]. No binary check is made
+/// here: a binary `UU` recovered from a backup answers `Markers`, as it did
+/// before whole files were admitted.
 ///
 /// Outer `Err`: a read failed or the caller stopped. Inner `Err`: the
 /// refusal the act returns. `Index` is not shape-checked here — an unmerged
-/// path is [`crate::operation::Operation::check`]'s (`check_restart`).
+/// path is [`crate::operation::Operation::check`]'s (`check_restart`), which
+/// has already refused a one-sided one, so it answers `Markers`.
 pub(crate) fn restart_source(
     repo: &RepoHandle,
     entries: &[JournalEntry],
     facts: &RepoFacts,
     path: &Path,
     stop: &dyn Stop,
-) -> Result<Result<StageSource, Refusal>, FactsError> {
+) -> Result<Result<RestartPlan, Refusal>, FactsError> {
     let no_stages = || Refusal::NoStagesKept {
         path: path.to_path_buf(),
     };
     let tree = match find_source(repo, entries, facts, path, stop)? {
         None => return Ok(Err(no_stages())),
-        Some(StageSource::Index) => return Ok(Ok(StageSource::Index)),
+        Some(StageSource::Index) => {
+            return Ok(Ok(RestartPlan {
+                source: StageSource::Index,
+                kind: RestartKind::Markers,
+            }));
+        }
         Some(StageSource::Backup { tree }) => tree,
     };
     // Read again rather than have the lookup hand the entries back: one
@@ -137,12 +161,24 @@ pub(crate) fn restart_source(
     // "where from".
     let index = IndexState::Unmerged { unmerged: tree };
     let held = snapshot::stage_entries(repo, index, path, stop).map_err(as_facts)?;
+    let source = StageSource::Backup { tree };
     Ok(match crate::operation::shape_of_stages(&held) {
-        Some(how) if how.has_markers() => Ok(StageSource::Backup { tree }),
-        Some(how) => Err(Refusal::NotMarkerShape {
-            path: path.to_path_buf(),
-            how,
+        Some(how) if how.has_markers() => Ok(RestartPlan {
+            source,
+            kind: RestartKind::Markers,
         }),
+        Some(how) => match OneSided::from_how(how) {
+            Some(shape) => Ok(RestartPlan {
+                source,
+                kind: RestartKind::WholeFile { shape },
+            }),
+            // `DD`: neither side has the file, so there is nothing to write
+            // back and no choice to bring back.
+            None => Err(Refusal::NotMarkerShape {
+                path: path.to_path_buf(),
+                how,
+            }),
+        },
         // The lookup only returns `Backup` for a state holding a stage above
         // 0, so an empty set cannot arise — and saying "the sides were not
         // kept" is the truth if it ever does.
@@ -182,7 +218,8 @@ impl RestartReadError {
 /// [`Operation::check`] asks of an unmerged path), then [`restart_source`]
 /// (what [`prepare_restart`] asks of the rest). The answer can go stale if
 /// the repository changes behind the caller; the act's own refusal is the
-/// backstop.
+/// backstop — [`Refusal::RestartChanged`] when the kind the caller sends
+/// back is no longer what the stages spell.
 ///
 /// # Errors
 /// Outer `Err`: could not tell. Inner `Err`: the refusal the act would
@@ -191,7 +228,7 @@ pub fn restart_gate(
     repo: &RepoHandle,
     facts: &RepoFacts,
     path: &Path,
-) -> Result<Result<StageSource, Refusal>, RestartReadError> {
+) -> Result<Result<RestartPlan, Refusal>, RestartReadError> {
     if let Err(refusal) = crate::operation::check_restart(path, facts) {
         return Ok(Err(refusal));
     }
@@ -281,9 +318,13 @@ pub(crate) enum RestartPrep {
 /// This is where [`crate::operation::Operation::check`]'s half of the gate
 /// lands: `check` is pure over [`RepoFacts`] and cannot spawn, so a path the
 /// status no longer calls unmerged is admitted there and answered here,
-/// against the stages that were actually kept. The test is the same one —
-/// `checkout --merge` needs both sides — asked of whichever index holds the
-/// path.
+/// against the stages that were actually kept. The rule is the same one
+/// ([`restart_source`]), asked of whichever index holds the path.
+///
+/// The plan was built from `params.kind` (the gate's answer when the box
+/// opened). If the stages recovered now spell a different kind, that plan
+/// would run the wrong `checkout` — so it is refused
+/// [`Refusal::RestartChanged`] here, before anything is written.
 pub(crate) fn prepare_restart(
     ctx: &Context<'_>,
     op: &Operation,
@@ -293,16 +334,24 @@ pub(crate) fn prepare_restart(
         return Ok(RestartPrep::Nothing);
     };
     let path = params.path.as_path();
-    match restart_source(ctx.repo, ctx.journal.entries(), facts, path, ctx.stop)
+    let plan = match restart_source(ctx.repo, ctx.journal.entries(), facts, path, ctx.stop)
         .map_err(as_apply_facts)?
     {
-        Err(refusal) => Err(ApplyError::Refused(refusal)),
-        Ok(StageSource::Index) => Ok(RestartPrep::Nothing),
-        Ok(StageSource::Backup { tree }) => Ok(RestartPrep::Restore {
+        Err(refusal) => return Err(ApplyError::Refused(refusal)),
+        Ok(plan) => plan,
+    };
+    if plan.kind != params.kind {
+        return Err(ApplyError::Refused(Refusal::RestartChanged {
+            path: path.to_path_buf(),
+        }));
+    }
+    Ok(match plan.source {
+        StageSource::Index => RestartPrep::Nothing,
+        StageSource::Backup { tree } => RestartPrep::Restore {
             index: IndexState::Unmerged { unmerged: tree },
             path: path.to_path_buf(),
-        }),
-    }
+        },
+    })
 }
 
 /// Put the stages back, once the caller's own backup is on disk.

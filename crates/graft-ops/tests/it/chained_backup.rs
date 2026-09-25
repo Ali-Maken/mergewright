@@ -19,8 +19,8 @@ use graft_git::run::Stop;
 use graft_git::status::UnmergedHow;
 use graft_ops::apply::{Applied, ApplyError, Resume, apply, resume};
 use graft_ops::operation::{
-    FastForward, MergeParams, Operation, Refusal, ResolveWholeParams, RestartParams, Side, Source,
-    Target, Tip,
+    FastForward, MergeParams, Operation, Refusal, ResolveWholeParams, RestartKind, RestartParams,
+    Side, Source, Target, Tip,
 };
 
 use crate::support::{NOW, Never, TempRepo, context, journal_for};
@@ -356,6 +356,7 @@ fn mark_resolved(repo: &TempRepo, path: &str, bytes: &[u8], at: i64) {
 fn restart(path: &str) -> Operation {
     Operation::RestartConflict(RestartParams {
         path: PathBuf::from(path),
+        kind: RestartKind::Markers,
     })
 }
 

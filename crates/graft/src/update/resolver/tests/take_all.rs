@@ -279,7 +279,9 @@ fn ctrl_t_on_a_card_is_one_choice() {
 fn ctrl_t_on_a_done_file_is_refused() {
     for (start_over, words) in [
         (
-            crate::jobs::conflict::StartOver::Can,
+            crate::jobs::conflict::StartOver::Can {
+                kind: graft_ops::operation::RestartKind::Markers,
+            },
             "three.txt is done · d starts it over",
         ),
         (

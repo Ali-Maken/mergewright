@@ -82,6 +82,9 @@ pub enum ConfirmThen {
     RestartConflict {
         /// The file to put back the way git left it.
         path: PathBuf,
+        /// What ops' gate said the restart puts back when the box opened;
+        /// ops refuses `RestartChanged` if the stages say otherwise now.
+        kind: graft_ops::operation::RestartKind,
     },
 }
 
@@ -171,11 +174,11 @@ fn choose(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl F
             ConfirmThen::RestartConflict { .. } if next.operating.is_some() => {
                 next.status = Status::sticky("a write is already running");
             }
-            ConfirmThen::RestartConflict { path } => {
+            ConfirmThen::RestartConflict { path, kind } => {
                 super::operate::launch(
                     next,
                     commands,
-                    Operation::RestartConflict(graft_ops::operation::RestartParams { path }),
+                    Operation::RestartConflict(graft_ops::operation::RestartParams { path, kind }),
                     next_id,
                 );
                 // The same "which write is this?" tag `⏎`'s `Stage`
@@ -454,6 +457,7 @@ mod tests {
                 "resolver/restart.rs:58 restart conflict",
                 with_then(ConfirmThen::RestartConflict {
                     path: "a.rs".into(),
+                    kind: graft_ops::operation::RestartKind::Markers,
                 }),
             ),
             (

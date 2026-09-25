@@ -502,6 +502,7 @@ summary-open-git-combined     1
 back-after-esc                2
 open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
 walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?) · P15 approved → 3 (`j d y`) · lowered by ticket 50
+walk-back-a-whole-file-choice 4                     # batch 7 (approved 2026-09-24): k d → ⏎ · ticket 50 → 3 (k d y) · Tower (?)
 a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`) · approved; lowered by last-file-opens-the-summary
 a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`) · approved; lowered by last-file-opens-the-summary
 b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`) · approved; lowered by last-file-opens-the-summary

@@ -42,7 +42,7 @@ use crate::operation::{Invocation, Operation, Refusal, RepoFacts};
 pub use error::{AfterState, ApplyError};
 pub use recover::{Recovered, recover_interrupted};
 pub use remote::RemoteHooks;
-pub use restart::{RestartReadError, StageSource, restart_gate, stage_source};
+pub use restart::{RestartPlan, RestartReadError, StageSource, restart_gate, stage_source};
 pub(crate) use resume::live_entry;
 pub use resume::{Resume, resume};
 

@@ -1,6 +1,6 @@
 # start-over-a-whole-file-choice: `d` walks back a keep-or-delete choice
 
-Status: ready
+Status: done
 From: user picks 2026-09-24 item 9 (batch 7, "yes"); `docs/design-notes/m6-conflicts.md` :830 (the proposal);
 prototype scene 8 (:1290-1300).
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/57-58.md`; the planner re-read
@@ -163,28 +163,39 @@ pub enum ConfirmThen { /* … */ RestartConflict { path: PathBuf, kind: RestartK
   §update::confirm (`RestartConflict { path, kind }`).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `start_over_brings_back_a_modify_delete_choice`: red first, then green.
-- [ ] `start_over_restores_the_surviving_side`
-- [ ] `gate_and_apply_agree_on_every_shape` (NOTES: today's binary answer)
-- [ ] `start_over_refuses_when_the_shape_changed_since_the_gate`
-- [ ] `undo_after_a_whole_file_start_over_matches_markers`
-- [ ] `restart_box_words_for_markers_unchanged`, `whole_file_box_names_the_surviving_side`
-- [ ] `d_on_a_done_modify_delete_file_reopens_its_card`, `done_whole_file_offers_start_over`
-- [ ] `start_over_of_a_whole_file_is_still_refused_in_a_shell_merge`
-- [ ] `journey_counts_match_the_note` with `walk-back-a-whole-file-choice` = 4.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-start-over-whole-file-120x40.txt`, three
-      frames: `gone.txt` done (bar with `d start over`); the box; the card after `→ ⏎`.
+- [x] `start_over_brings_back_a_modify_delete_choice` (graft-ops `tests/it/restart_whole_file.rs`): red first
+      (`the gate refused: gone.txt: deleted by them — no markers to take from`, i.e. `NotMarkerShape`), then green.
+- [x] `start_over_restores_the_surviving_side` (graft-ops `restart_whole_file.rs`): UD keep, DU delete, AU delete, UA
+      keep — stages byte-identical to the merge's, the surviving stage's blob on disk (the delete rows write the file back).
+- [x] `gate_and_apply_agree_on_every_shape` (graft-ops `restart_whole_file.rs`; binary answer in NOTES)
+- [x] `start_over_refuses_when_the_shape_changed_since_the_gate` (graft-ops `restart_whole_file.rs`; both ways round,
+      journal bytes / refs / index / status / file bytes unchanged)
+- [x] `undo_after_a_whole_file_start_over_matches_markers` (graft-ops `restart_whole_file.rs`)
+- [x] `restart_box_words_for_markers_unchanged`, `whole_file_box_names_the_surviving_side` (graft
+      `update::resolver::tests::file_list::start_over`; plus `whole_file_box_with_no_operation_open`)
+- [x] `d_on_a_done_modify_delete_file_reopens_its_card` (graft `it resolver::file_list::start_over`),
+      `done_whole_file_offers_start_over` (graft `update::resolver::tests::file_list::start_over`)
+- [x] `start_over_of_a_whole_file_is_still_refused_in_a_shell_merge` (graft-ops `restart_whole_file.rs`)
+- [x] `journey_counts_match_the_note` with `walk-back-a-whole-file-choice` = 4 (scenario in
+      `m5_walk/conflict_journeys.rs`, run by `m5_walk::every_scenario::journey_walk_back_a_whole_file_choice`).
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-start-over-whole-file-120x40.txt`, three
+      frames: `gone.txt` done (bar with `d start over`); the box; the card after `→ ⏎`. Asserted by
+      `d_on_a_done_modify_delete_file_reopens_its_card`; judged by eye: the user's.
   - **What right looks like:** frame 1's bottom row contains `d start over`. Frame 2 contains
     `the choice comes back: keep or delete` and `git checkout --ours -- gone.txt`, and does **not** contain `--merge`,
     with `[ Cancel ]` under the cursor. Frame 3's card reads `deleted by them · o keeps the file  t deletes it`, and the
     list row reads `keep or delete`.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): graft-ops `RestartParams`, `RestartKind`/`OneSided`, `Refusal::RestartChanged`,
+      `prepare_restart`, `restart_gate`/`RestartPlan`; graft `ConfirmThen::RestartConflict`, `start_over_refusal`/box
+      words, `jobs::conflict` `StartOver::Can { kind }`.
 
 ## For the conductor (exact text, in this spec's merge commit)
 Add to the `journey-counts` fence, after `walk-back-a-done-file`:
 ```
 walk-back-a-whole-file-choice 4                     # batch 7 (approved 2026-09-24): k d → ⏎ · ticket 50 → 3 (k d y) · Tower (?)
 ```
+**Done by the builder** in this branch (`docs/design-notes/m6-conflicts.md`, the line above verbatim):
+`journey_counts_match_the_note` asserts walked == noted, so the scenario could not land green without it.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -194,3 +205,53 @@ workspace-wide.
 Medium. One context.
 
 ## NOTES
+Status: done. No compaction. Scout: `.scratch/m6-conflicts/scouts/57-58.md` §58 (used; its contradictions 5 and 6
+are what decisions 1 and 4 answer).
+
+- **Where the plan is built.** `folded_step` takes the one plan at `crates/graft-ops/src/apply/fold.rs:129`
+  (`let plan = op.plan(facts);` in `inside_live_operation`); the entry-of-its-own path at `apply.rs:209`. Both read
+  `plan_restart`, whose flag is `params.kind.checkout_flag()`.
+- **Binary (decision 3), today's answer:** a binary `UU` (`pic.bin`, NULs on every side) chosen whole
+  (`ResolveWholeFile` ours) in a Graft-begun merge: the gate answers `Ok(RestartPlan { source: Backup, kind: Markers })`
+  and the act runs `checkout --merge`, which puts all three stages back (`ls-files -u` lists 1, 2, 3). What git leaves
+  on disk for the binary file is not asserted.
+- **What changed in existing tests, and why** (the ticket said "unedited apart from `kind: Markers`"; these asserted
+  the refusal this ticket lifts):
+  - graft-ops `restart_gate::a_whole_file_done_in_an_app_merge_is_not_marker_shape` → renamed
+    `…_is_whole_file`, asserts `WholeFile { DeletedByThem }`.
+  - graft-ops `restart_gate::the_gate_and_the_restart_agree` sends the gate's kind (as the app does) and checks
+    markers only for `Markers`.
+  - graft `it resolver::file_list::start_over::a_whole_file_done_file_offers_no_start_over` → replaced by
+    `d_on_a_done_modify_delete_file_reopens_its_card`.
+  - graft `capture_cannot` (`fix-done-start-over-cannot-120x40/200x50`): Graft's own merge no longer has a "cannot"
+    whole-file done file, so the capture was retaken on the shell-begun `gone_and_notes_merge` (`NoStagesKept`,
+    `can't start over · gone.txt: the conflict's sides were not kept`). Its two captions updated to match.
+- **Undo, precisely:** after the merge is finished, `u` takes the whole merge back — to `main`'s tip and bytes — for a
+  whole-file start-over exactly as for a marker one (same entry count at the finish, same status and bytes after `u`).
+  "Restores the state from before the restart" in the spec is that: the restart folds, so it has no `u` of its own.
+- **Default `Markers` in the app, with a reason:** `start_over_kind` (`update/resolver/restart.rs`) answers `Markers`
+  for a file open with its blocks (no gate answer carried): ops' `Index` arm is always `Markers` there, and a stale
+  answer is ops' `RestartChanged` to refuse.
+- **Verified by test, not by eye:** the box, card and list words (frames asserted). Colour **unverified**.
+- **Not verified:** `every_key_the_bar_draws_is_answered` passes but its fixtures do not include a done whole-file
+  file; the bar ⇔ box agreement for one is covered by `done_whole_file_offers_start_over` instead.
+
+**Touches:**
+- Box text: marker box byte-identical (`restart_box_words_for_markers_unchanged`, `d_starts_over_behind_a_box` unedited
+  and green); whole-file box new (`whole_file_box_names_the_surviving_side`, `…_with_no_operation_open`).
+- Journal/undo: folded into the live entry, no line of its own (`undo_after_a_whole_file_start_over_matches_markers`,
+  `d_on_a_done_modify_delete_file_reopens_its_card` entry count); refusal writes nothing
+  (`start_over_refuses_when_the_shape_changed_since_the_gate`); ticket 57's undo gate not met (the `u` runs after the
+  finish).
+- Every `d` path: `grep -rn "restart_gate\|restart_source\|RestartParams\|StartOver::Can" crates` — every
+  `RestartParams` builder sends `Markers` (existing marker tests) or the gate's kind; the app's done file and whole-file
+  card read `StartOver::Can { kind }`; `ConfirmThen::RestartConflict { path, kind }` → `RestartParams { path, kind }`;
+  shell-begun merge unchanged (`start_over_of_a_whole_file_is_still_refused_in_a_shell_merge`,
+  `a_shell_merge_done_file_answers_d_in_words` green). `graft-ui`: no file changed (decision 5).
+- Captures: new `fix-start-over-whole-file-120x40.txt`; retaken `fix-done-start-over-cannot-120x40.txt`,
+  `fix-done-start-over-cannot-200x50.txt`; `fix-done-start-over-can-120x40.txt` unchanged (a marker file). No other
+  capture drifted (full `nextest` green, `check_shot` fails on drift). Contact sheet rerun
+  (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): part 1 198 421 B, part 2 133 662 B; the split point
+  unchanged. Captions tsv: two rows reworded, one row added.
+- Docs: `crates/graft-ops/MAP.md`, `crates/graft/MAP.md`, `TESTING.md` (journey row), the design note's
+  `journey-counts` fence.

@@ -826,7 +826,7 @@ fn kind_matches_the_variant() {
 
 use graft_git::status::UnmergedHow;
 
-use super::{ResolveWholeParams, RestartParams, Side};
+use super::{ResolveWholeParams, RestartKind, RestartParams, Side};
 
 /// Facts with one unmerged path of the given shape, stopped on a merge.
 fn conflicted(path: &str, how: UnmergedHow) -> RepoFacts {
@@ -854,6 +854,7 @@ fn resolve(path: &str, side: Side, how: UnmergedHow) -> Operation {
 fn restart(path: &str) -> Operation {
     Operation::RestartConflict(RestartParams {
         path: PathBuf::from(path),
+        kind: RestartKind::Markers,
     })
 }
 

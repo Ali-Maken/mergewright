@@ -18,7 +18,9 @@ use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_git::status::UnmergedHow;
-use graft_ops::operation::{Operation, ResolveWholeParams, RestartParams, Side, Target};
+use graft_ops::operation::{
+    Operation, ResolveWholeParams, RestartKind, RestartParams, Side, Target,
+};
 
 use crate::conflict_ops::{journal_ids, stopped_merge, unmerged_lines};
 use crate::support::{NOW, TempRepo, run, run_undo};
@@ -104,6 +106,7 @@ fn a_hand_edit_survives_starting_the_file_over() {
         &repo,
         &Operation::RestartConflict(RestartParams {
             path: PathBuf::from("both.txt"),
+            kind: RestartKind::Markers,
         }),
         NOW,
     );

@@ -1,0 +1,122 @@
+MERGING
+files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · done ✓ · d starts it over
+
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ d start over  e edit  esc close
+── d ──
+MERGING
+files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · done ✓ · d starts it over
+
+  1 our plan
+
+
+
+
+
+
+
+
+
+                            ╭ Start gone.txt over? ────────────────────────────────────────╮
+                            │ the choice comes back: keep or delete                        │
+                            │ edits since the choice are lost · not undoable while the     │
+                            │ merge is open                                                │
+                            │                                                              │
+                            │ git checkout --ours -- gone.txt                              │
+                            │                                                              │
+                            │ ▸[ Cancel ]   [ Start over ]                                 │
+                            ╰──────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ←/→ move  ⏎ choose  esc cancel
+── → ⏎ ──
+MERGING
+files   ▸ gone.txt · keep or delete    shared.rs · 1 of 1 open
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▸ gone.txt · modified on yours · main, deleted on theirs · feature
+
+deleted by them · o keeps the file  t deletes it
+  1 our plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ restarted gone.txt ✓

@@ -1,7 +1,10 @@
 //! `d`: start this file over — `checkout --merge -- <path>` behind a
-//! confirm box (m6-conflicts/05, design note Proposed change 2c).
+//! confirm box (m6-conflicts/05, design note Proposed change 2c); for a
+//! done whole-file choice, `checkout --ours|--theirs -- <path>` and the
+//! keep-or-delete choice comes back (m6-conflicts/58).
 
 use graft_core::job::JobId;
+use graft_ops::operation::RestartKind;
 use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
 
@@ -41,32 +44,67 @@ pub(super) fn restart_box(state: &mut AppState) {
         return;
     }
     let path = open.path.clone();
+    let kind = start_over_kind(state);
     let Some(open) = state.resolver.as_mut() else {
         return;
     };
     open.notice = None;
+    let (comes_back, lost) = match kind {
+        RestartKind::Markers => (
+            "the conflict comes back with all its markers",
+            "takes and edits in this file are lost",
+        ),
+        RestartKind::WholeFile { .. } => (
+            "the choice comes back: keep or delete",
+            "edits since the choice are lost",
+        ),
+    };
     // The box names the operation the restart folds into (a merge, a
     // rebase …). A stash-pop conflict has none open, so it makes no claim
     // about one.
     let lost = match state.in_progress.as_ref() {
         Some(detail) => format!(
-            "takes and edits in this file are lost · not undoable while the {} is open",
+            "{lost} · not undoable while the {} is open",
             detail.kind.name()
         ),
-        None => "takes and edits in this file are lost".to_owned(),
+        None => lost.to_owned(),
     };
     state.confirm = Some(PendingConfirm {
         view: ConfirmView::new(
             sanitize_line(&format!("Start {} over?", path.display())),
-            vec![
-                sanitize_line("the conflict comes back with all its markers"),
-                sanitize_line(&lost),
-            ],
-            sanitize_line(&format!("git checkout --merge -- {}", path.display())),
+            vec![sanitize_line(comes_back), sanitize_line(&lost)],
+            // The flag the plan runs: one source (`RestartKind::checkout_flag`).
+            sanitize_line(&format!(
+                "git checkout {} -- {}",
+                kind.checkout_flag(),
+                path.display()
+            )),
         )
         .with_labels("Cancel", "Start over"),
-        then: ConfirmThen::RestartConflict { path },
+        then: ConfirmThen::RestartConflict { path, kind },
     });
+}
+
+/// What ops said `d` puts back, where `d` opens the box.
+///
+/// A whole-file card or a done file carries ops' answer from when it opened.
+/// A file open with its blocks (unmerged, markers) carries none: ops asks
+/// its stages straight from the index there, which is always `Markers`
+/// (`restart_source`'s `Index` arm) — and a stale answer is ops'
+/// `RestartChanged` to refuse, not the app's to guess.
+fn start_over_kind(state: &AppState) -> RestartKind {
+    let Some(open) = state.resolver.as_ref() else {
+        return RestartKind::Markers;
+    };
+    let answer = match (open.whole_file.as_ref(), open.done.as_ref()) {
+        (Some(whole), _) => Some(&whole.start_over),
+        (None, Some(done)) => Some(&done.start_over),
+        (None, None) => None,
+    };
+    match answer {
+        Some(StartOver::Can { kind }) => *kind,
+        Some(StartOver::Cannot { .. }) | None => RestartKind::Markers,
+    }
 }
 
 /// **The one predicate for "does `d` open the box"**: `None` exactly when it
@@ -89,12 +127,12 @@ pub(crate) fn start_over_refusal(state: &AppState) -> Option<String> {
         // Ops' answer, raw: its refusal already names the file and shape.
         return match &whole.start_over {
             StartOver::Cannot { why } => Some(why.clone()),
-            StartOver::Can => None,
+            StartOver::Can { .. } => None,
         };
     }
     match open.done.as_ref().map(|done| &done.start_over) {
         Some(StartOver::Cannot { why }) => Some(format!("can't start over · {why}")),
-        Some(StartOver::Can) | None => None,
+        Some(StartOver::Can { .. }) | None => None,
     }
 }
 
