@@ -791,7 +791,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M6/r47-49 | **`every_way_to_open_the_editor_refuses_mid_operation`'s "graph" row never asserts graph focus** (`tests/it/resolver/editor_words.rs:180-200`). Review 47–49 m4. | unverified | M7 |
 | M6/r47-49 | **Two lease tests are the same test** (`lease.rs:232-238`, `:395-401`); the commit test's name promises a descendant the fixture can't express. Review 47–49 m5. | broken | M7 |
 | M6/r47-49 | **49's "captures byte-identical" tick title overstates**: pty m4 captures were compared normalised only (body says so). Review 47–49 m7. | unverified | M7 |
-| M6/r47-49 | **Contact sheet part 1 is 198 194 B, 1.8 KB under the 200 KB cap**; the next capture in part 1 breaks it (`scripts/contact-sheet.sh`). Review 47–49 m8. | broken | M7 |
 | M6/57 | **Question: `u` of an abort of a shell-begun merge will not restore rerere's `MERGE_RR` or `AUTO_MERGE`** (ticket 57 spec; confirmed by the ops half, ece3e334). Recorded resolutions stay; the pending-resolution list does not come back. Is that acceptable? | question | M7 |
 | M6/57 | **Question: `u` opens the push box before the refusal** (`crates/graft/src/update/undo.rs:38`; pre-existing, found by ticket 57). Should the refusal come first? | question | M7 |
 | M6/57 | **Bisect's live-operation refusal names no keys** (ticket 57 NOTES): `OperationLive` for a bisect has nothing to offer. | unverified | M7 |

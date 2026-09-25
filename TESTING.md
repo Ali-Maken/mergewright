@@ -1705,7 +1705,7 @@ prelude — fed one key per settled state, and since this ticket a pending
 preview plan counts as unsettled, so `→ ⏎` land on a drawn box. A preview
 capture whose box is not on screen is **not written**. **A capture is what
 pyte saw, not what a person saw, and it carries no colour** — the user
-judges by eye. The contact sheet is `docs/shots/m5-contact-sheet.txt`
+judges by eye. The contact sheet is `docs/shots/m5-contact-sheet-1.txt` and `-2.txt`
 (`scripts/contact-sheet.sh m5`; `contact_sheet_captions_cover_every_m5_capture`
 keeps every `m5-*.txt` captioned).
 
