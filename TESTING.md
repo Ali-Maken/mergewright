@@ -2113,7 +2113,7 @@ frame no longer shows all its ticket-07 words, and its caption says so:
 2026-09-24 (m6-conflicts/46): the old second `⏎` was refused on the open
 file and its refusal took the bottom row; now the row is the box's keys.
 The contact sheet is
-`docs/shots/m6/m6-contact-sheet-<n>.txt`, in parts of at most 200 KB
+`docs/shots/m6/m6-contact-sheet-<n>.txt`, in parts of at most 180 000 B (headroom under the 200 KB cap)
 (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): every M6
 capture in ticket order — these nine, every fix ticket's `fix-*`, the
 journeys' `m6-10` to `m6-19` — then the four M5 hint captures and the M4

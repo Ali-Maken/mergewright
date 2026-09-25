@@ -26,10 +26,11 @@
 #   capture this one changed, and its heading says so.
 #
 # Writes:
-#   <shots-dir>/<milestone>-contact-sheet.txt when the sheet fits in 200 KB
+#   <shots-dir>/<milestone>-contact-sheet.txt when the sheet fits in 180 000 B
 #   (CLAUDE.md "Captures stay small"); otherwise parts
-#   <shots-dir>/<milestone>-contact-sheet-<n>.txt, each at most 200 KB,
-#   split between captures, never inside one. A run removes the sheet files
+#   <shots-dir>/<milestone>-contact-sheet-<n>.txt, each at most 180 000 B
+#   (headroom under the 200 KB cap), split between captures, never inside
+#   one. A run removes the sheet files
 #   an earlier run wrote (whole or in parts) first, so none goes stale.
 #
 # The captions file is hand-authored per milestone (by that milestone's
@@ -39,9 +40,10 @@
 # invent captions.
 set -euo pipefail
 
-# 200 KB read the strict way (1000, not 1024): a part under this is under
-# the cap whichever way a reader counts (CLAUDE.md, "Captures stay small").
-max_bytes=$((200 * 1000))
+# The hard cap is 200 KB read the strict way (1000, not 1024; CLAUDE.md,
+# "Captures stay small"). Parts split at 180 000 B so each keeps 20 KB of
+# headroom: a retaken capture that grows a little must not push a part over.
+max_bytes=$((180 * 1000))
 
 captions_order=false
 if [ "${1:-}" = "--captions-order" ]; then
@@ -176,7 +178,7 @@ header() {
   local part="$1" parts="$2"
   echo "# ${milestone} contact sheet"
   if [ "$parts" -gt 1 ]; then
-    echo "# Part $part of $parts (${sheet_stem}-1.txt … ${sheet_stem}-$parts.txt), each at most 200 KB."
+    echo "# Part $part of $parts (${sheet_stem}-1.txt … ${sheet_stem}-$parts.txt), each at most 180 000 B."
   fi
   echo "#"
   echo "# Promise: $promise"
