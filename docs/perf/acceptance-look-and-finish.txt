@@ -1,0 +1,23 @@
+# M6 look-and-finish perf — 2026-09-25T07:19:38Z
+# HEAD 368afe3a
+# machine: Darwin arm64, 10 cpus
+
+## release resolver::frame_budget + heavy::budgets
+
+## three-pane resolver frame (budget: every key < 16000 us, app.key + terminal.draw)
+  test resolver::frame_budget::three_panes_at_187_and_200_columns_keep_input_to_frame_under_16_ms ... resolver_frames: size=187x50 keys=80 p50_us=370 p99_us=465 max_us=494 budget_us=16000
+  resolver_frames: size=200x50 keys=80 p50_us=373 p99_us=410 max_us=410 budget_us=16000
+
+## first paint (budget: <= 150000 us)
+  test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=62365 bottom_ms=59 top_ms=9 rows=100000 provisional=false rss_at_paint=90341376 rss_at_bottom=111706112 peak_rss=112148480 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=77484 bottom_ms=53 top_ms=0 rows=100000 provisional=false rss_at_paint=23707648 rss_at_bottom=31326208 peak_rss=31326208 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=102257 bottom_ms=485 top_ms=0 rows=100000 provisional=true rss_at_paint=25870336 rss_at_bottom=95551488 peak_rss=95551488 overflow_len=100000
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=84519 bottom_ms=55 top_ms=0 rows=100000 provisional=false rss_at_paint=23822336 rss_at_bottom=35160064 peak_rss=35160064 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=110935 bottom_ms=537 top_ms=0 rows=100000 provisional=true rss_at_paint=27049984 rss_at_bottom=102645760 peak_rss=102645760 overflow_len=100000
+
+## summary
+  test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 433 filtered out; finished in 2.27s
+  resolver_frames: 2 sizes, max 494 us, 0 at/over the 16000 us budget
+  first_paint_us: 5 runs, max 110935 us, 0 over the 150000 us budget
+  peak_rss: max 106 MiB, 0 at/over the 300 MiB budget
+  exit 0, wall 13 s

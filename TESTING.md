@@ -105,12 +105,12 @@ stays visible.
 | 2026-09-23 · walk | Fix a block by hand | Until M6: `$EDITOR` from a shell. M6: **0** — `e` in the resolver, re-read on return (`editor-edits-are-never-clobbered`) | m6-conflicts |
 | 2026-09-23 · walk | Keep one side of a whole file | Until M6: `git checkout --ours`/`--theirs` + `git add`. M6: **0** — `o`/`t` in the resolver (`every-whole-file-shape`, `crlf-and-no-final-newline-survive`) | m6-conflicts |
 | 2026-09-23 · walk | Accept a delete | Until M6: `git rm`. M6: **0** — `t` on the card (`every-whole-file-shape`) | m6-conflicts |
-| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **0** — `c ⏎` on the banner (P4; `crates/graft/tests/it/resolver/shell_begun.rs::c_enter_finishes_a_shell_begun_merge`). Was: the shell, ruling F5 (`graft-ops/src/operation.rs:581-585`). | closed (m6-conflicts, shell_begun::c_enter_finishes_a_shell_begun_merge) |
+| 2026-09-23 · walk | Finish a merge **begun in the shell** (a `git pull` that conflicted, resolved in Graft) | M6: **0** — `c y` on the banner (P4, P12; `crates/graft/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`), or `y` in the summary the last file opened (`m5_walk::every_scenario::journey_b_whole_two_files`). Was: the shell, ruling F5 (`graft-ops/src/operation.rs:581-585`). | closed (m6-conflicts, shell_begun::c_y_finishes_a_shell_begun_merge) |
 | 2026-09-23 · walk | Start a file over **after `⏎`**, inside an operation | M6: **still the shell** — `git checkout -m -- <path>`. A staged path has no `CONFLICTS` row, and `u` is refused while the operation is live (`graft/src/update/undo.rs:102-108`); the ops half is built (ruling F3). Expires M7 | open (M7) |
 | 2026-09-23 · walk | A submodule conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
-| 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **still the shell** — `git merge --abort`, then `Ctrl+R`, `u` in the app. `u` and the banner's `a` both refuse while the merge is open (`crates/graft/tests/it/resolver/shell_begun.rs::a_hand_edit_taken_by_t_comes_back_after_the_merge_ends`). Source: ticket 08 `## Review fixes, part 2`. Expires M7 | open (M7) |
+| 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **0** — `u` on the banner undoes the whole-file take (`crates/graft/tests/it/resolver/shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`), and `a y` aborts the merge with `u` to put it back (`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`). Was: `git merge --abort`, then `Ctrl+R`, `u` — both keys refused while the merge was open. Source: ticket 08 `## Review fixes, part 2`. | closed (m6-conflicts/57, shell_begun::a_on_the_banner_aborts_a_shell_merge, shell_begun::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge) |
 
 _Rows marked `walk` are what the M6 acceptance walk says a reach used to be
 and is now; they are not daily use. Daily-use rows are dated plainly._
@@ -1256,10 +1256,11 @@ included) and every `stash list` line.
 5. **stage-all** — `a.txt`, `b.txt` modified, `c.txt` untracked, `Ctrl+A`:
    `diff --cached --name-only` is `a.txt b.txt c.txt`, `diff --name-only`
    empty, no untracked files left.
-6. **discard-tracked-unstaged** — `d`, `→`, `Enter` (the box opens on the
-   safe answer): the file reads as HEAD's 16 lines. `u`: back.
+6. **discard-tracked-unstaged** — `d`, `→`, `Enter`, or `d` `y` (the box
+   opens on the safe answer; `y` confirms it, m6-conflicts/50): the file reads as HEAD's 16 lines. `u`: back.
 7. **discard-untracked-binary** — `bin.dat` = `00 ff 0a 0d fe`; `d` `→`
-   `Enter`: the file is gone. `u`: the five bytes are back and
+   `Enter`, or `d` `y` (the bar reads `y delete`, the button's word): the
+   file is gone. `u`: the five bytes are back and
    `status --porcelain` shows `?? bin.dat`.
 8. **discard-staged-and-unstaged** — first hunk staged, second unstaged, the
    file listed under both sections; `d` on the `UNSTAGED` row: **both** the
@@ -1271,7 +1272,8 @@ included) and every `stash list` line.
    working tree" while the index is reset too. Nothing is lost (`u` puts it
    all back, and this scenario proves it), but which of the two is right is
    the user's call (m3-07 review, Major 2).
-9. **commit** — `c`, subject `shout three`, `Tab` to `[ Commit ]`, `Enter`:
+9. **commit** — `c`, subject `shout three`, `Tab` to `[ Commit ]`, `Enter`,
+   or `⏎` in the subject (m6-conflicts/51, the same as `Ctrl+Enter`):
    HEAD moved and `log -1 --format=%s` is `shout three`. `u`: HEAD is the
    old commit and `ls-files -s` holds the edited blob again (re-staged).
    `U`: HEAD is the **same** sha the commit made, not a new one.
@@ -1299,7 +1301,7 @@ included) and every `stash list` line.
     tree dirty. `u`: back — both entries, in order, the tree clean.
 16. **stash-apply** — `Enter`: both entries still listed, the tree dirty.
     `u`: back.
-17. **stash-drop** — `d` `→` `Enter`: one entry fewer. Then
+17. **stash-drop** — `d` `→` `Enter`, or `d` `y`: one entry fewer. Then
     `git gc --prune=now`. `u`: `stash list` is byte for byte what it was —
     the pin in the drop's journal entry kept the commit alive through gc.
 18. **stash-apply-refused-dirty-touched-file** — a file the stash changes
@@ -1327,11 +1329,11 @@ Every capture exists at 80x24 and 160x48; 120x40 was not captured.
 | View | 80x24 | 120x40 | 160x48 |
 |---|---|---|---|
 | Changes pane (`m3-01-stage-file`, `m3-02-stage-hunk`) | tab strip, `Detail` tab is the whole screen: sections, files, diff | not run | pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below |
-| Confirm box (`m3-03-discard-confirm`) | centred over the pane, `[ Cancel ]   Discard` | not run | same box, graph and pane around it |
+| Confirm box (`m3-03-discard-confirm`) | a framed box `╭ Discard changes to sample.txt?`, the `git restore --worktree -- sample.txt` command, `▸[ Cancel ]   [ Discard ]`; the bottom row is the box's own keys, `y discard  ←/→ move  ⏎ choose  esc cancel` | not run | same box, graph and pane around it |
 | Commit editor (`m3-04-commit-editor`, `m3-05-commit-refused`) | replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`; refused: `nothing staged` on the title and on its own row directly above the options row (ticket 40) | not run | same, wider; the pane stays |
 | Stash (`m3-06-stash-list`, `m3-07-stash-prompt`) | `STASHES (2)` and rows `stash@{0} …`; prompt: `▸message wip`, `(•) all incl. untracked ( ) staged only` | not run | same |
 | Journal (`m3-08-journal-after-unstage`) | the unstage entry with `← u` | not run | same |
-| Drift box (`m3-09-undo-drift-box`) | `Undo "commit …"?`, what drifted, `[ Stop ]   Undo` | not run | same |
+| Drift box (`m3-09-undo-drift-box`) | a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `undo · esc cancels` | not run | same |
 
 ### Per terminal: walk the working tree group
 
@@ -1487,7 +1489,7 @@ at the next refresh.
 7. **push-plain** — ours locally; `P`: a box titled `Push main →
    origin/main`, message `1 commit · can't be undone from here — origin
    keeps what you…`, command `git push --progress origin
-   refs/heads/main:refs/heads/main`, `[ Cancel ]     Push`. `→` `⏎`: status
+   refs/heads/main:refs/heads/main`, `[ Cancel ]     Push`. `→` `⏎`, or `y` (the bar reads `y push`): status
    `pushed …`; `git -C remote.git rev-parse main` equals `git -C work
    rev-parse HEAD`; the journal's `Push` entry has `refs_before
    {refs/remotes/origin/main: <old tip>}` and `refs_after {…: <new tip>}`.
@@ -1501,7 +1503,7 @@ at the next refresh.
    contains `detached`, the bare unchanged.
 10. **push-rejected-then-lease** — the tip is amended locally (a commit
     origin already has, rewritten; the bare has not moved, so `origin/main`
-    is current); `P` `→` `⏎`: sticky `push rejected: origin/main has moved
+    is current); `P` `→` `⏎` (or `P` `y`): sticky `push rejected: origin/main has moved
     · p pull first · P force with lease`, the bare unchanged. `P` again: a box titled `Force-push main →
     origin/main?`, `origin/main <old> → <amended> · refused if origin moved
     since…`, `rewrites history for everyone who has <old>`, command `git
@@ -2266,14 +2268,14 @@ credential capture M6 changed.
 
 | Capture | 120x40 | 80x24 | What right looks like |
 |---|---|---|---|
-| `m6-01-resolver-three` | yes | yes | title `2 of 3 conflicts open` (`2/3 open` at 80); block 2 `took theirs`, one line; blocks 1 and 3 open with their BASE; side by side at 120, stacked at 80 |
-| `m6-02-whole-file-card` | yes | yes | `deleted by them · o keeps the file  t deletes it`, the file's one line numbered under it, no halves; title with **no** count (`file 11 of 13` at 120, the path alone at 80) |
+| `m6-01-resolver-three` | yes | yes | identity row `▸ three.txt · 3 conflicts · 2 open` (the list `three.txt 2 of 3 open`, `2/3 open` at 80); block 2's header `conflict 2 of 3 · took theirs · feature`; blocks 1 and 3 `open`; the bottom row `base shown for 3 conflicts ✓` |
+| `m6-02-whole-file-card` | yes | yes | identity row `▸ theirs-deleted.txt · modified on yours · main, deleted on theirs · feature`, then `deleted by them · o keeps the file  t deletes it`, no halves; the list row `theirs-deleted.txt keep or delete` (`keep?` at 80) |
 | `m6-03-card-large-file` | yes | yes | after `G`: line 500 last, then the unnumbered `… first 500 lines of 8.1 KB · e opens the whole file` |
-| `m6-04-card-binary` | yes | yes | `both modified · o keeps ours  t keeps theirs`, then `binary · 22 B` unnumbered, no bytes; title with no count |
-| `m6-05-still-open-refusal` | yes | yes | `2 conflicts still open in three.txt · n next`; block 1 `took ours` |
-| `m6-06-relaunch-sticky` | yes | yes | after a real `SIGKILL`: `rebase still in progress from a previous run · ⏎ resolve  c continue  a abort`, the pane on `CONFLICTS (1)`, one marker block left. At 80x24 the line is the Detail tab's bottom row (fix F9) |
-| `m6-07-all-resolved` | yes | yes | `all conflicts resolved · c continue ✓`, `STAGED (1)` `shared.txt`. At 80x24 the line is the Detail tab's bottom row (fix F9) |
-| `m6-08-no-more-conflicts` | yes | yes | `no more conflicts · ⏎ marks zdiff3.txt done`, cursor unmoved |
+| `m6-04-card-binary` | yes | yes | identity row `▸ pic.bin · binary · modified on yours · main, modified on theirs · feature`, then `both modified · o keeps yours · main  t keeps theirs · feature`, then `binary · 22 B` unnumbered, no bytes |
+| `m6-05-still-open-refusal` | yes | yes | `2 conflicts still open in three.txt · n next`; block 1 `took yours · main` |
+| `m6-06-relaunch-sticky` | yes | yes | after a real `SIGKILL`: `rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort`, the pane on `CONFLICTS (1)`, one marker block left. At 80x24 the Detail tab, the bottom row the keys alone (`⏎ resolve  c continue  s skip  a abort`) |
+| `m6-07-all-resolved` | yes | yes | the list `files · all done ✓`, identity row `▸ shared.txt · done ✓ · d starts it over`, the finish row `✓ every file done — c continue the rebase` (ticket 60); the bottom row `shared.txt done ✓ · every file done · c continues the rebase` |
+| `m6-08-no-more-conflicts` | yes | yes | `no more conflicts this way` under the identity row (a notice, ticket 61); the cursor unmoved on `conflict 1 of 1 · took theirs · feature` |
 | `m6-09-start-over-box` | yes | yes | a box over the resolver, `Start both.txt over?`, `git checkout --merge -- both.txt`, `▸[ Cancel ]   [ Start over ]` (fix F10) |
 
 **Times I left:** every reach for the shell during a conflict in daily use
@@ -2317,31 +2319,34 @@ count from the note's `journey-counts` block, where it records one.
 |---|---|---|---|---|---|
 | `a-merge-to-stop` (one-file, two-files) | the graph, cursor on `feature` | `m m` | 2 | — | the merge stops and lands **in the resolver** on the list's first file (`shared.txt`; `gone.txt` for two-files), cursor on block 0; header `MERGING`; the list's `▸` on that file; the bottom row starts `o yours`; the stop reads `merge stopped · …` |
 | `a-stop-to-first-conflict` | the stop | none | 0 | JetBrains 0 | the frame right after the stop is the one above: no key between the stop and the first conflict |
-| `b-launch-to-first-conflict` (+ one-file, three-blocks, after a `git pull`) | the app launched on a merge begun in the shell | `⏎` | 1 | — | the launch lands on the **banner**, which has the keyboard; the pane shows `CONFLICTS`; the bottom row starts `merge in progress · 2 files conflicted · ⏎ resolve` (at 120 columns the origin words `begun outside Graft` are in the stop's reason but not drawn — ticket 21's open question 3). `⏎` → the resolver on the list's first file, as in `a-merge-to-stop` |
-| `one-file-one-conflict` | the resolver on `shared.txt` | `O` | 1 | JetBrains 2 | the resolver **stays**, its notice `every file done ✓ · c finishes the merge`; `shared.txt` on disk equals `HEAD:shared.txt` and is staged; `git ls-files -u` is empty |
-| `three-conflicts-all-theirs` | the resolver on `three.txt`, three blocks open | `T` | 1 | JetBrains Accept Theirs 1 | as above, `every file done ✓ · c finishes the merge`; `three.txt` equals git's **per-block** theirs (`git merge-file -p --theirs` over the merge's base, ours and theirs — not `checkout --theirs`) |
+| `b-launch-to-first-conflict` (+ one-file, three-blocks, after a `git pull`) | the app launched on a merge begun in the shell | `⏎` | 1 | — | the launch lands on the **banner**, which has the keyboard; the pane shows `CONFLICTS`; the stop's reason starts `merge in progress · begun outside Graft · `; the bottom row draws the fullest rung that fits (m6-conflicts/61) — at 120 columns `merge in progress · from the shell · 2 conflicted · ⏎ resolve` (the capture `m6-18` shows each size). `⏎` → the resolver on the list's first file, as in `a-merge-to-stop` |
+| `one-file-one-conflict` | the resolver on `shared.txt` | `O` | 1 | JetBrains 2 | lands on the **summary** the last file opened (m6-conflicts/60): top border `╭ Preview: finish merging feature into main`, the frame has `RESOLVED BY YOU`, status `shared.txt done ✓ · every file done`; `shared.txt` on disk equals `HEAD:shared.txt` and is staged; `git ls-files -u` is empty |
+| `three-conflicts-all-theirs` | the resolver on `three.txt`, three blocks open | `T` | 1 | JetBrains Accept Theirs 1 | lands on the **summary** the last file opened (m6-conflicts/60): top border `╭ Preview: finish merging feature into main`, the frame has `RESOLVED BY YOU`, status `three.txt done ✓ · every file done`; `three.txt` equals git's **per-block** theirs (`git merge-file -p --theirs` over the merge's base, ours and theirs — not `checkout --theirs`) |
 | `modify-delete-keep-yours` | the resolver on `gone.txt` (two-files) | `o` | 1 | JetBrains 1 | lands on `notes.txt`: the notice `gone.txt done ✓ · ▸ notes.txt`, the list's `▸` on `notes.txt`; `gone.txt` equals `HEAD:gone.txt` and is staged |
-| `two-files-in-order` | the resolver on `gone.txt` | `o T` | 2 | JetBrains 2 | the list shows `gone.txt` and `notes.txt` both `done ✓`; the notice `every file done ✓ · c finishes the merge`; `git ls-files -u` empty. At **120x40** the strip and the card (no `FILES ·` column, no `│ result`); at **200x50** the column `FILES · 2` and the `result` pane — same count. A click on each list row selects that file at both widths (not counted) |
-| `two-files-out-of-order` | the resolver on `gone.txt` | `n T o` | 3 | — | `n` → `notes.txt`; `T` → back on `gone.txt`, the file not done; `o` → every file done, as above |
-| `a-finish` | every file done (two-files), the resolver still open | `c ⏎` | 2 | lazygit 1 (bare confirm, rejected) | `c` → the summary: `RESOLVED BY YOU · 2` lists `gone.txt` `kept · yours · main` and `notes.txt` `theirs · feature in 2 of 2 conflicts`; `COMBINED BY GIT ON ITS OWN · 1` with the cursor `▸` on `README.md`. `⏎` → the graph has the keyboard, the cursor on the merge commit (`main`'s tip), the bottom row `merged feature into main ✓`; `HEAD^2` is `feature`. `u` (a truth check, not counted) puts `main` back on its pre-merge tip |
-| `b-finish` | a shell-begun merge, both files done in the app | `c ⏎` | 2 | — | the same landing; `HEAD^2` is `feature`; exactly **one** `FinishMerge` journal entry. `u` → `MERGE_HEAD` is back and equals `feature` (git) |
-| `b-finish-again-after-undo` | after that `u`: the banner has the keyboard | `c ⏎` | 2 | — | the same landing again, `HEAD^2` = `feature` |
-| `summary-open-git-combined` | the summary, `README.md` not shown | `Space` | 1 | — | `README.md`'s diff rows (`feature's line`) appear under its row, and `MESSAGE` moves down below them |
+| `two-files-in-order` | the resolver on `gone.txt` | `o T` | 2 | JetBrains 2 | lands on the **summary** the last file opened (m6-conflicts/60): top border `╭ Preview: finish merging feature into main`, the frame has `RESOLVED BY YOU`, status `notes.txt done ✓ · every file done`; both files `Done` in the list's state; `git ls-files -u` empty. Before the route, at **120x40** the strip and the card (no `FILES ·` column, no `│ result`); at **200x50** the column `FILES · 2` and the `result` pane — same count. A click on each list row selects that file at both widths (not counted) |
+| `two-files-out-of-order` | the resolver on `gone.txt` | `n T o` | 3 | — | `n` → `notes.txt`; `T` → back on `gone.txt`, the file not done; `o` → lands on the **summary** the last file opened (m6-conflicts/60): top border `╭ Preview: finish merging feature into main`, the frame has `RESOLVED BY YOU`, status `gone.txt done ✓ · every file done` |
+| `a-finish` | the summary the last file opened (two-files, `m m o T`) | `y` | 1 | lazygit 1 (bare confirm, rejected) | before `y`: `RESOLVED BY YOU · 2` lists `gone.txt` `kept · yours · main` and `notes.txt` `theirs · feature in 2 of 2 conflicts`; `COMBINED BY GIT ON ITS OWN · 1` with the cursor `▸` on `README.md`. `y` → the graph has the keyboard, the cursor on `main`'s badge (the merge commit), the bottom row `merged feature into main ✓`; `HEAD^2` is `feature`. `u` (a truth check, not counted) puts `main` back on its pre-merge tip |
+| `b-finish` | a shell-begun merge, both files done in the app: the summary the last file opened | `y` | 1 | — | the same landing; `HEAD^2` is `feature`; exactly **one** `FinishMerge` journal entry. `u` → `MERGE_HEAD` is back and equals `feature` (git) |
+| `b-finish-again-after-undo` | after that `u`: the banner has the keyboard | `c y` | 2 | — | `c` opens the summary; `y` → the same landing again, `HEAD^2` = `feature` |
+| `summary-open-git-combined` | the summary, `README.md` not shown | `Space` | 1 | — | `README.md`'s diff rows (`feature's line`) appear under its row, and `MESSAGE` moves down below them. `⏎` does the same (the frame's `⏎/space diff`; the capture `m6-16` uses it) |
 | `back-after-esc` | after the stop, `Esc Esc` (not counted: the start) — the graph has the keyboard | `⇥ ⏎` | 2 | — | before: the bottom row **starts** `⇥ banner`. `⇥` gives the banner the keyboard; `⏎` → the resolver on the first file not done (`gone.txt`) |
 | `open-a-done-file` | the resolver on `notes.txt` after `gone.txt` was kept | `k` | 1 | Fork #1304 (no count) | `gone.txt` opens read-only: the row `▸ gone.txt` with `done ✓`, the bar offers `e edit` and `esc close` |
-| `walk-back-a-done-file` | on `gone.txt` after `notes.txt` was taken theirs | `j d → ⏎` | 4 | Tower (count ?) | `notes.txt` is open again, **not** done, cursor on block 0, the list's `▸` on it; `git ls-files -u -- notes.txt` lists its three stages again |
-| `walk-back-a-whole-file-choice` | the resolver on `notes.txt` after `gone.txt` was kept | `k d → ⏎` | 4 | Tower (count ?) | the box reads `the choice comes back: keep or delete` and `git checkout --ours -- gone.txt`; after `→ ⏎` `gone.txt` is its card again (`deleted by them · o keeps the file  t deletes it`), the list row `keep or delete`; `git ls-files -u -- gone.txt` lists stages 1 and 2 |
-| `b-abort-shell-merge` | the app launched on a two-files merge begun in the shell, the banner has the keyboard | `a → ⏎` | 3 | lazygit 3 (?) | `a` → the box `Abort the merge?` reads `main goes back to before the merge`, `u puts the merge back` and `git merge --abort`, cursor on `[ Cancel ]`; after `→ ⏎` no `MERGING` in the header, the bottom row `abort merge of feature ✓`; `git rev-parse -q --verify MERGE_HEAD` fails; the journal holds exactly one `AbortMerge` entry |
+| `walk-back-a-done-file` | on `gone.txt` after `notes.txt` was taken theirs | `j d y` | 3 | Tower (count ?) | `notes.txt` is open again, **not** done, cursor on block 0, the list's `▸` on it; `git ls-files -u -- notes.txt` lists its three stages again |
+| `walk-back-a-whole-file-choice` | the resolver on `notes.txt` after `gone.txt` was kept | `k d y` | 3 | Tower (count ?) | the box reads `the choice comes back: keep or delete` and `git checkout --ours -- gone.txt`; after `y` `gone.txt` is its card again (`deleted by them · o keeps the file  t deletes it`), the list row `keep or delete`; `git ls-files -u -- gone.txt` lists stages 1 and 2 |
+| `b-abort-shell-merge` | the app launched on a two-files merge begun in the shell, the banner has the keyboard | `a y` | 2 | lazygit 3 (?) | `a` → the box `Abort the merge?` reads `main goes back to before the merge`, `u puts the merge back` and `git merge --abort`, cursor on `[ Cancel ]`; after `y` the status `abort merge of feature ✓`; `git rev-parse -q --verify MERGE_HEAD` fails; the journal holds exactly one `AbortMerge` entry |
 | `b-undo-a-take-in-the-shell` | the same shell-begun merge, `gone.txt` taken whole with `t` in the resolver, then `Esc`: the banner has the keyboard | `u` | 1 | JetBrains ⌃Z 1 | `gone.txt` is conflicted again (`git ls-files -u -- gone.txt` lists its stages), the merge still open (`MERGE_HEAD` equals `feature`), and the banner **keeps** the keyboard |
-| `a-whole-one-file` | the graph, cursor on `feature` (one-file) | `m m O c ⏎` | 5 | — | the merge commit landing, as in `a-finish`; the row equals the sum of its parts |
-| `a-whole-two-files` | the graph, cursor on `feature` (two-files) | `m m o T c ⏎` | 6 | — | the same; equals the sum of its parts |
-| `b-whole-two-files` | the app launched on a shell-begun two-files merge | `⏎ o T c ⏎` | 5 | — | the same; equals the sum of its parts |
-| `editor-to-finish` | a shell-begun merge resolved in the shell, the changes pane focused | `c ⇥ ⇥ c ⏎` | 5 | — | the first `c` answers in words, no editor; `⇥ ⇥` reaches the banner; `c ⏎` → the merge commit landing, as in `a-finish` |
+| `a-whole-one-file` | the graph, cursor on `feature` (one-file) | `m m O y` | 4 | — | the merge commit landing, as in `a-finish`; the row equals the sum of its parts |
+| `a-whole-two-files` | the graph, cursor on `feature` (two-files) | `m m o T y` | 5 | — | the same; equals the sum of its parts |
+| `b-whole-two-files` | the app launched on a shell-begun two-files merge | `⏎ o T y` | 4 | — | the same; equals the sum of its parts |
+| `editor-to-finish` | a shell-begun merge resolved in the shell, the changes pane focused | `c y` | 2 | — | `c` in the pane opens the summary (m6-conflicts/52; it used to answer in words); `y` → the merge commit landing, as in `a-finish` |
+| `last-block-to-finished` | the resolver on `notes.txt` after `gone.txt` was kept and block 1 taken `o`; the cursor on block 2 | `o ⏎ y` | 3 | JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected) | `o` takes the last block; `⏎` marks `notes.txt` done and the summary opens by itself; `y` → the merge commit landing, as in `a-finish` |
 
 The note's own journeys moved on from the ticket's first text, and the walk
 follows the note: `O`/`T` settle a whole file (P6, ticket 17 — no `⏎`
-after them); the resolver stays open on every file done (P8, ticket 31);
-`k`/`j` step between files (P7). `Ctrl+T` still takes theirs in every open
+after them); the last file done opens the finish summary by itself, a
+preview that `y` confirms (P11, P12; tickets 59, 60 — the resolver stayed
+open before them, P8); `k`/`j` step between files (P7). Every box `y`
+confirms is also confirmed by `→ ⏎` (ticket 50). `Ctrl+T` still takes theirs in every open
 block of one file without marking it done (keymap §2.6, P3); the journeys
 route by `T`, and the capture `m6-13-after-ctrl-t` shows `Ctrl+T`.
 
@@ -2354,9 +2359,15 @@ feature in 3 blocks · ⏎ marks three.txt done` on `three.txt`), P3's key is
 day.
 
 **Times I left, row "Finish a merge begun in the shell":** closed —
-`c ⏎` on the banner (P4), proven by
-`crates/graft/tests/it/resolver/shell_begun.rs::c_enter_finishes_a_shell_begun_merge`
-and walked here by `b-finish` and `b-whole-two-files`.
+`c y` on the banner (P4, P12), proven by
+`crates/graft/tests/it/resolver/shell_begun.rs::c_y_finishes_a_shell_begun_merge`,
+or `y` in the summary the last file opened, walked here by `b-finish` and
+`b-whole-two-files`. **Row "Get back a hand edit … begun in the shell":**
+closed — `a y` aborts from the banner and `u` puts the merge back
+(`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`), and `u` on the
+banner undoes a whole-file take
+(`shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`);
+walked by `b-abort-shell-merge` and `b-undo-a-take-in-the-shell`.
 
 ### Captures
 
@@ -2368,9 +2379,17 @@ in each file's first line. A commit the run makes is dated like the
 fixture's (`GIT_COMMITTER_DATE`, set by the script), so its id does not
 change between runs. Sizes: **120x40** and **160x48** (strip and card),
 **187x50** (the user's own width, field notes) and **200x50** (list column
-and three panes), **80x24** (the floor). **A capture carries no colour**:
-the focus reverse video and the cursor block are **unverified**; the text
-tells are `▸`, `▏` and the bottom row. The user judges them by eye.
+and three panes), **80x24** (the floor). **Colour:** the band, the tints
+and the state colours are proven by buffer tests (cell fg, bg and modifier
+per block state, ADR-0041/0044):
+`graft-ui conflict_resolver::tests::three_panes::band::band_follows_the_block_state`
+(and its 16-colour, high-contrast, `NO_COLOR` and ASCII siblings in the
+same file), `conflict_resolver::tests::card_colours::card_tints_follow_the_block_state`,
+`conflict_resolver::files::tests::file_list_state_colours`,
+`theme::tests::dark_tints_equal_the_mix_rule` and `light_tints_equal_the_mix_rule`.
+**A capture carries no colour**; the focus reverse video and the cursor
+block are colour too. The text tells are `▸`, `▏`, `?`, `◀┃` and the bottom
+row. **Legibility in Zed, dark, 187 columns is unverified** until he looks.
 
 Every stem exists at all five sizes (`.scratch/m6-conflicts/matrix.txt`).
 
@@ -2380,11 +2399,11 @@ Every stem exists at all five sizes (`.scratch/m6-conflicts/matrix.txt`).
 | `m6-11-card-on-notes` | `m m o` | on `notes.txt`: the notice `gone.txt done ✓ · ▸ notes.txt`; the list `gone.txt · done ✓` then `▸ notes.txt · 2 of 2 open` (`✓ gone.txt   ▸ notes.txt 2/2 open` at 80) |
 | `m6-12-after-t` | `m m n t` | block 1's header `conflict 1 of 2 · took theirs · feature`; identity row `▸ notes.txt · 2 conflicts · 1 open`; bottom row `took theirs · feature in notes.txt · 1 of 2 open ✓` |
 | `m6-13-after-ctrl-t` | `m m ⌃t` | every block `took theirs · feature`; identity row `▸ three.txt · 3 conflicts · 0 open`; notice `took theirs · feature in 3 blocks · ⏎ marks three.txt done`; the bar offers `⌃O/⌃T all` |
-| `m6-14-last-file-done` | `m m o T` | the resolver stays: both files `done ✓` in the list; identity row `▸ notes.txt · done ✓ · d starts it over`; notice `every file done ✓ · c finishes the merge` |
-| `m6-15-finish-summary` | `m m o T c` | `RESOLVED BY YOU · 2` (`kept · yours · main`, `theirs · feature in 2 of 2 conflicts`); `COMBINED BY GIT ON ITS OWN · 1` with `▸ README.md  modified  +1 −0`; bottom row `⏎ commit  space diff  j/k move  ⇥ message  esc back` |
-| `m6-16-summary-expanded` | `… c space` | `feature's line` under `README.md`'s row, the message below it |
-| `m6-17-after-commit` | `m m o T c ⏎` | the graph, cursor on `Merge branch 'feature' into main`; no `MERGING`; bottom row `merged feature into main ✓` |
-| `m6-18-launch-shell-begun` | none | the banner: `merge in progress · 2 files conflicted · ⏎ resolve  c continue  a abort …`, the pane `CONFLICTS (2)`. At 160 the count is dropped (`merge in progress · ⏎ resolve`); at 80 only the keys are drawn. `begun outside Graft` is drawn at no size captured (ticket 21, question 3) |
+| `m6-14-last-file-done` | `m m o T` | the summary, **opened by itself** by the last file done (ticket 60): top border `╭ Preview: finish merging feature into main`; the first two lines inside `1 merge commit on main · nothing is committed until y` and `undo: u takes this back`; `RESOLVED BY YOU · 2` (`gone.txt   kept · yours · main`, `notes.txt  theirs · feature in 2 of 2 conflicts`); `COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change` with `▸ README.md  modified  +1 −0`; `MESSAGE · ⇥ edit`; bottom border `╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back` |
+| `m6-15-finish-row-after-esc` | `m m o T Esc` | `Esc` from that summary: the resolver on `notes.txt`, identity row `▸ notes.txt · done ✓ · d starts it over`, under it the finish row `✓ every file done — c review and finish the merge`; the list headed `files · all done ✓` (`FILES · all 2 done ✓` at 187 and 200); the bar starts `c finish` |
+| `m6-16-summary-expanded` | `m m o T ⏎` | `⏎` on `README.md` (the cursor is on it): `2 + feature's line` under its row, inside the frame, and `MESSAGE · ⇥ edit` moved down below it |
+| `m6-17-after-commit` | `m m o T y` | the graph, cursor on `[◆ main] Merge branch 'feature' into main`; no `MERGING`; bottom row `merged feature into main ✓` |
+| `m6-18-launch-shell-begun` | none | the banner, the pane `CONFLICTS (2)`. The stop line is the fullest rung that fits (ticket 61): at 120 and 200 `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort …`; at 187 the origin dropped (`merge in progress · 2 conflicted · ⏎ resolve`); at 160 the count dropped too (`merge in progress · ⏎ resolve`); at 80 only the keys (`⏎ resolve  c continue  a abort …`) |
 | `m6-19-after-esc-esc` | `m m Esc Esc` | the graph; the bottom row **starts** `⇥ banner` |
 
 ## Hint bar

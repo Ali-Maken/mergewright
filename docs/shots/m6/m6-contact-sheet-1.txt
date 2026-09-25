@@ -499,16 +499,16 @@ CONFLICTS (1)
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-120x40.txt
-what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", rebase-stops-twice-resolved-twice, keys `⏎ t ⏎`: the stop lands in the resolver (ticket 18), `t` takes yours — in a rebase `t` is the replayed commit (ticket 10) — `⏎` marks the file done, and the resolver **stays open** with the words on its notice row (ticket 31): the list `▸ shared.txt · done ✓`, the identity row `▸ shared.txt · done ✓ · d starts it over`, then `every file done ✓ · c continues the rebase`, the file's one line `1 feature's first line`; the footer `stage shared.txt ✓`.
+what right looks like: Re-taken 2026-09-25 (ticket 63; the finish row since ticket 60): TESTING.md "Conflicts walk", rebase-stops-twice-resolved-twice, keys `⏎ t ⏎`: the stop lands in the resolver (ticket 18), `t` takes yours — in a rebase `t` is the replayed commit (ticket 10) — `⏎` marks the file done, and the resolver stays open: the list `files · all done ✓   ▸ shared.txt · done ✓`, the identity row `▸ shared.txt · done ✓ · d starts it over`, then the finish row `✓ every file done — c continue the rebase`, the file's one line `1 feature's first line`; the footer `shared.txt done ✓ · every file done · c continues the rebase`.
 ================================================================================
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 120x40
 
 REBASING step 1 of 2
-files   ▸ shared.txt · done ✓
+files · all done ✓   ▸ shared.txt · done ✓
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ shared.txt · done ✓ · d starts it over
-every file done ✓ · c continues the rebase
+✓ every file done — c continue the rebase
   1 feature's first line
 
 
@@ -543,20 +543,20 @@ every file done ✓ · c continues the rebase
 
 
 
- stage shared.txt ✓
+ shared.txt done ✓ · every file done · c continues the rebase
 
 ================================================================================
 docs/shots/m6/m6-07-all-resolved-80x24.txt
-what right looks like: Re-taken 2026-09-24 (ticket 45): The same end state at 80 columns: the list `▸ ✓ shared.txt`, `▸ shared.txt · done ✓ · d starts it over`, `every file done ✓ · c continues the rebase`, the footer `stage shared.txt ✓`.
+what right looks like: Re-taken 2026-09-25 (ticket 63): the same end state at 80 columns: the list `files · all done ✓   ▸ ✓ shared.txt`, `▸ shared.txt · done ✓ · d starts it over`, the finish row `✓ every file done — c continue the rebase`, the footer `shared.txt done ✓ · every file done · c continues the rebase`.
 ================================================================================
 
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
 
 REBASING step 1 of 2
-files   ▸ ✓ shared.txt
+files · all done ✓   ▸ ✓ shared.txt
 ────────────────────────────────────────────────────────────────────────────────
 ▸ shared.txt · done ✓ · d starts it over
-every file done ✓ · c continues the rebase
+✓ every file done — c continue the rebase
   1 feature's first line
 
 
@@ -575,7 +575,7 @@ every file done ✓ · c continues the rebase
 
 
 
- stage shared.txt ✓
+ shared.txt done ✓ · every file done · c continues the rebase
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-120x40.txt
@@ -3012,12 +3012,12 @@ COMMIT ── ⎇ main ── 2 files staged
 ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 ================================================================================
-docs/shots/m6/fix-c-mid-merge-answers-in-words-187x50.txt
-what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summary) A merge begun in the shell, resolved; the changes pane focused, `a` pressed: no commit editor is drawn; the header reads `MERGING`; the footer holds the reason `merge begun in the shell` and the keys `⇥ banner, then c finishes it`, whole. Colour unverified.
+docs/shots/m6/fix-a-mid-merge-answers-in-words-187x50.txt
+what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summary; renamed from `fix-c-…` by 63) A merge begun in the shell, resolved; the changes pane focused, `a` pressed: no commit editor is drawn; the header reads `MERGING`; the footer holds the reason `merge begun in the shell` and the keys `⇥ banner, then c finishes it`, whole. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_c_mid_merge_answers_in_words in
+# capture_fix_a_mid_merge_answers_in_words in
 # crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
 # begun in the shell, resolved; the changes pane focused, `a` pressed
 # (m6-conflicts/48; `c` there opens the finish summary since 52).
@@ -3082,12 +3082,12 @@ what right looks like: (ticket 48; `a` since ticket 52, whose `c` opens the summ
  merge begun in the shell · ⇥ banner, then c finishes it
 
 ================================================================================
-docs/shots/m6/fix-c-mid-merge-answers-in-words-80x24.txt
+docs/shots/m6/fix-a-mid-merge-answers-in-words-80x24.txt
 what right looks like: (ticket 48) The same state at 80x24: the bottom row reads `merge begun in the shell · ⇥ banner, then c finishes it`, the keys whole. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_c_mid_merge_answers_in_words in
+# capture_fix_a_mid_merge_answers_in_words in
 # crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
 # begun in the shell, resolved; the changes pane focused, `a` pressed
 # (m6-conflicts/48; `c` there opens the finish summary since 52).
@@ -3124,4 +3124,80 @@ STAGED (2)
 
 
  merge begun in the shell · ⇥ banner, then c finishes it
+
+================================================================================
+docs/shots/m6/fix-undo-shell-merge-120x40.txt
+what right looks like: (ticket 41) After `u` on a shell-begun finish: the header reads `MERGING`; the footer row reads exactly `undo: finish merge of feature ✓ · c finishes the merge`, with one `✓`; no commit editor is drawn. Colour and focus highlight unverified.
+================================================================================
+
+ graft /code/api    MERGING
+◌      Uncommitted changes (2 staged)
+◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
+●─╯    the shared files                                                                                  GF 2h   b35b2f1
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ undo: finish merge of feature ✓ · c finishes the merge
+COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
+main's take
+M notes.md              +1 −1
+M shared.rs             +1 −1   1     - the plan
+                                    1 + our plan
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+docs/shots/m6/fix-undo-shell-merge-80x24.txt
+what right looks like: (ticket 41) The same state at 80x24: the same footer words, whole (55 columns), with no `…`. Colour unverified.
+================================================================================
+
+[Graph]  Detail
+ graft /code/api    MERGING
+◌      Uncommitted changes (2 staged)
+◆   ▏  [◆ main] main's take                                         2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                 2h   f43f326
+●─╯    the shared files                                             2h   b35b2f1
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ undo: finish merge of feature ✓ · c finishes the merge
 

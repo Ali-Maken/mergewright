@@ -1,11 +1,11 @@
 m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, unicode tier, 160x48
 
  graft <scratch____________________________________________________________>  4 commits      UNCOMMITTED · 1 staged
-◌   Uncommitted changes (1 staged)                                                           diff vs HEAD 38f8f03
-◆   [◆ main] add sample.txt                                                      now  38f8f03
-●   Correct the note                                                             7y   a82960b
-●   Add the first note                                                           7y   fadcfb3
-◇   Add a readme                                                                 7y   64ded19STAGED (1)
+◌ ▏  Uncommitted changes (1 staged)                                                          diff vs HEAD 4fcf9e9
+◆    [◆ main] add sample.txt                                                    6y   4fcf9e9
+●    Correct the note                                                           7y   a82960b
+●    Add the first note                                                         7y   fadcfb3
+◇    Add a readme                                                               7y   64ded19 STAGED (1)
                                                                                                M sample.txt                                                +2 −2
                                                                                              ▎
                                                                                                1     - one

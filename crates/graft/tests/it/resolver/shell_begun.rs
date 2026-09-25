@@ -1097,13 +1097,14 @@ fn capture_fix_editor_names_the_banner() {
     captures.finish();
 }
 
-/// Regenerates `docs/shots/m6/fix-c-mid-merge-answers-in-words-{187x50,80x24}.txt`
+/// Regenerates `docs/shots/m6/fix-a-mid-merge-answers-in-words-{187x50,80x24}.txt`
 /// (m6-conflicts/48): J3, the changes pane focused, `a` pressed — no editor,
 /// the footer answers in words. Since m6-conflicts/52 the pane's `c` on a
 /// merge opens the finish summary (`capture_fix_c_in_pane_finishes`), so
-/// `a` is the key left answering in these words; the file keeps its name.
+/// `a` is the key left answering in these words (the file was renamed from
+/// `fix-c-…` for it, m6-conflicts/63).
 #[test]
-fn capture_fix_c_mid_merge_answers_in_words() {
+fn capture_fix_a_mid_merge_answers_in_words() {
     let scratch = resolved_shell_merge();
     let (app, state) = launched_into(scratch.path());
     let pane = settled_frame(&app, super::editor_words::pane_focused(&app, state));
@@ -1134,7 +1135,7 @@ fn capture_fix_c_mid_merge_answers_in_words() {
         let header = format!(
             "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_c_mid_merge_answers_in_words in
+# capture_fix_a_mid_merge_answers_in_words in
 # crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
 # begun in the shell, resolved; the changes pane focused, `a` pressed
 # (m6-conflicts/48; `c` there opens the finish summary since 52).
@@ -1151,7 +1152,7 @@ fn capture_fix_c_mid_merge_answers_in_words() {
         );
         captures.check(
             format!(
-                "{}/../../docs/shots/m6/fix-c-mid-merge-answers-in-words-{columns}x{rows}.txt",
+                "{}/../../docs/shots/m6/fix-a-mid-merge-answers-in-words-{columns}x{rows}.txt",
                 env!("CARGO_MANIFEST_DIR")
             ),
             format!("{header}{}\n", frame.join("\n")),

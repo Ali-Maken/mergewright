@@ -1,4 +1,4 @@
-m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T Esc, unicode tier, 187x50
+m6 walk capture: m6-15-finish-row-after-esc — scenario a-finish, keys m m o T Esc, unicode tier, 200x50
 
 MERGING
 FILES · all 2 done ✓  │▸ notes.txt · done ✓ · d starts it over

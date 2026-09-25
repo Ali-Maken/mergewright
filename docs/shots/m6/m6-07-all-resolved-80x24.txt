@@ -1,10 +1,10 @@
 m6 walk capture: m6-07-all-resolved — scenario rebase-stops-twice-resolved-twice, keys ⏎ t ⏎, unicode tier, 80x24
 
 REBASING step 1 of 2
-files   ▸ ✓ shared.txt
+files · all done ✓   ▸ ✓ shared.txt
 ────────────────────────────────────────────────────────────────────────────────
 ▸ shared.txt · done ✓ · d starts it over
-every file done ✓ · c continues the rebase
+✓ every file done — c continue the rebase
   1 feature's first line
 
 
@@ -23,4 +23,4 @@ every file done ✓ · c continues the rebase
 
 
 
- stage shared.txt ✓
+ shared.txt done ✓ · every file done · c continues the rebase

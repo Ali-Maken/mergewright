@@ -16,323 +16,6 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
-docs/shots/m6/fix-c-in-pane-finishes-187x50.txt
-what right looks like: (ticket 52) A merge begun in the shell, resolved. Frame 1: the changes pane focused, its bar offers `c finish` and no `c commit`. After `--- after c ---` the summary: top border `╭ Preview: finish merging feature into main`, bottom border starting `╰ y commit`. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_c_in_pane_finishes in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
-# begun in the shell, resolved; the changes pane focused (m6-conflicts/52).
-#
-# Judge by eye:
-# - Frame 1: the pane's bar offers `c finish` and no `c commit`.
-# - Frame 2 (after `c`): the summary's top border reads
-#   `╭ Preview: finish merging feature into main`, its bottom border starts
-#   `╰ y commit`.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== 187x50 ===
- graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
-◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
-◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
-●─╯    the shared files                                                                      GF 2h   b35b2f1
-●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
-●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
-◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
-                                                                                                             ▎
-                                                                                                               1     - our plan
-                                                                                                                   1 + the agreed plan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- merge in progress · space stage  d discard  c finish  <> resize  ⌃A all  e edit  ⇥ graph  . more
---- after c ---
-MERGING
-╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
-│ undo: u takes this back                                                                                                                                                                 │
-│ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
-│ ▸ notes.md   combined                                                                                           Subject Merge branch 'feature'                            ┊       22/50 │
-│   shared.rs  combined                                                                                           Body                                                                    │
-│ COMBINED BY GIT ON ITS OWN · none                                                                                                                                                       │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-╰ y commit  j/k move  ⇥ message  esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
-
-================================================================================
-docs/shots/m6/fix-c-live-frames-187x50.txt
-what right looks like: (ticket 52) The two frames that drew `c commit` mid-operation. Frame 1, `bisect start` in the shell, a graph row focused: the bar has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`. After `--- frame 2 ---`, a resolved shell merge with the detail pane open and the graph focused: the bar offers `c finish`, not `c commit`, and no `⇥ banner`. Colour unverified.
-================================================================================
-
-# TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_fix_c_live_frames in
-# crates/graft/tests/it/resolver/shell_begun.rs (asserted). The two frames
-# that drew `c commit` while an operation was live (m6-conflicts/52).
-#
-# Judge by eye:
-# - Frame 1 (`bisect start` in the shell, a graph row focused): the bar
-#   has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`.
-# - Frame 2 (a merge begun in the shell, resolved; the detail pane open,
-#   the graph focused): the bar offers `c finish`, not `c commit`, and no
-#   `⇥ banner`.
-# - Colour is unverified (CLAUDE.md rule 5).
-#
-=== 187x50 ===
- graft /code/api  6 commits
-◆   ▏  [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                                                                                         GF 2h   f43f326
-●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
-●      Correct the note                                                                                                                                                     GF 1y   a82960b
-●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
-◇      Add a readme                                                                                                                                                         GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  . more  1  F  H  y  M  O
---- frame 2 ---
- graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
-◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
-◆      [◆ main] main's take                                                                  GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
-●─╯    the shared files                                                                      GF 2h   b35b2f1
-●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
-●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
-◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
-                                                                                                             ▎
-                                                                                                               1     - our plan
-                                                                                                                   1 + the agreed plan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- ⏎ changes  c finish  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O
-
-================================================================================
-docs/shots/m6/fix-undo-shell-merge-120x40.txt
-what right looks like: (ticket 41) After `u` on a shell-begun finish: the header reads `MERGING`; the footer row reads exactly `undo: finish merge of feature ✓ · c finishes the merge`, with one `✓`; no commit editor is drawn. Colour and focus highlight unverified.
-================================================================================
-
- graft /code/api    MERGING
-◌      Uncommitted changes (2 staged)
-◆   ▏  [◆ main] main's take                                                                              GF 2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                                                      GF 2h   f43f326
-●─╯    the shared files                                                                                  GF 2h   b35b2f1
-●      Correct the note                                                                                  GF 1y   a82960b
-●      Add the first note                                                                                GF 1y   fadcfb3
-◇      Add a readme                                                                                      GF 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- undo: finish merge of feature ✓ · c finishes the merge
-COMMIT ddeed32 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:03 +0000 · 2h · parents b35b2f1 · diff vs firs…
-main's take
-M notes.md              +1 −1
-M shared.rs             +1 −1   1     - the plan
-                                    1 + our plan
-
-
-
-
-
-
-
-
-
-
-
-
-================================================================================
-docs/shots/m6/fix-undo-shell-merge-80x24.txt
-what right looks like: (ticket 41) The same state at 80x24: the same footer words, whole (55 columns), with no `…`. Colour unverified.
-================================================================================
-
-[Graph]  Detail
- graft /code/api    MERGING
-◌      Uncommitted changes (2 staged)
-◆   ▏  [◆ main] main's take                                         2h   ddeed32
-│ ●  ⓘ [feature] the feature's take                                 2h   f43f326
-●─╯    the shared files                                             2h   b35b2f1
-●      Correct the note                                             1y   a82960b
-●      Add the first note                                           1y   fadcfb3
-◇      Add a readme                                                 1y   64ded19
-
-
-
-
-
-
-
-
-
-
-
-
-
- no commit-graph file · B build one · X never here
- undo: finish merge of feature ✓ · c finishes the merge
-
-================================================================================
 docs/shots/m6/fix-every-file-done-footer-120x40.txt
 what right looks like: (ticket 41; unchanged by 60) `Esc` before the last read landed, then `c` on the banner: header `MERGING`, footer exactly `every file done ✓ · c finishes the merge`, one `✓`, nothing after `merge`. No summary opens by itself here: `Esc` cancelled it. Colour unverified.
 ================================================================================
@@ -341,157 +24,6 @@ what right looks like: (ticket 41; unchanged by 60) `Esc` before the last read l
 ⋮
  every file done ✓ · c finishes the merge
 
-================================================================================
-docs/shots/m6/fix-last-file-opens-summary-187x50.txt
-what right looks like: (ticket 60) Shell-begun two-file merge, `gone.txt` kept: frame 1 `notes.txt` with every block taken, `⏎ marks done`; after `--- after ⏎ ---` the summary, opened by itself: top border `╭ Preview: finish merging feature into main`, cursor `▸ README.md` under `COMBINED BY GIT ON ITS OWN · 1`. The status `notes.txt done ✓ · every file done` is set but not drawn: the summary covers the bottom row. Colour and the focus reverse video unverified.
-================================================================================
-
-MERGING
-FILES · 2 conflicted      │▸ notes.txt · 2 conflicts · 0 open
-                          │all blocks taken · ⏎ marks notes.txt done
-   gone.txt   done ✓      │ yours · main                                       │ result                                               │ theirs · feature
-▏▸ notes.txt  ⏎ marks done│ 1 one                                              │ 1 one                                                │ 1 one
-                          │ ── taken ✓                                         ▶ ── 1 of 2 · took yours · main                        ┊ ── not taken
-                          │ 2 two from main                                    ┃ 2 two from main                                      ┊ 2 TWO from feature
-                          │ 3 three                                            │ 3 three                                              │ 3 three
-                          │ 4 four                                             │ 4 four                                               │ 4 four
-                          │ 5 five                                             │ 5 five                                               │ 5 five
-                          │ 6 six                                              │ 6 six                                                │ 6 six
-                          │▏── taken ✓                                         ▶ ── 2 of 2 · took yours · main                        ┊ ── not taken
-                          │▏7 seven from main                                  ┃ 7 seven from main                                    ┊ 7 SEVEN from feature
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
-                          │
- took yours · main in notes.txt · 0 of 2 open ✓
---- after ⏎ ---
-MERGING
-╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ 1 merge commit on main · nothing is committed until y                                                                                                                                   │
-│ undo: u takes this back                                                                                                                                                                 │
-│ RESOLVED BY YOU · 2                                                                                            MESSAGE · ⇥ edit                                                         │
-│   gone.txt   kept · yours · main                                                                                Subject Merge branch 'feature'                            ┊       22/50 │
-│   notes.txt  yours · main in 2 of 2 conflicts                                                                   Body                                                                    │
-│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                                                                                                     │
-│ ▸ README.md  modified  +1 −1                                                                                                                                                            │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-│                                                                                                                                                                                         │
-╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
-================================================================================
-docs/shots/m6/fix-finish-row-120x40.txt
-what right looks like: (ticket 60) `Esc` from that summary: under the identity row `▸ notes.txt · done ✓`, the finish row `✓ every file done — c review and finish the merge`; strip head `files · all done ✓`; bottom row starting `c finish`. Colour, the finish row's accent-on-selection fill and the focus reverse video unverified.
-================================================================================
-
-MERGING
-files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ notes.txt · done ✓
-✓ every file done — c review and finish the merge
-  1 one
-  2 two from main
-  3 three
-  4 four
-  5 five
-  6 six
-  7 seven from main
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- c finish  e edit  esc close
 ================================================================================
 docs/shots/m6/m6-10-stop-lands-in-resolver-120x40.txt
 what right looks like: TESTING.md "Conflict journeys", a-stop-to-first-conflict: two-files, keys `m m` from the graph — the merge stops and the frame right after is the resolver, no key between: header `MERGING`; strip `files   ▸ gone.txt · keep or delete    notes.txt · •` (`•`: not read yet); identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`; the card `deleted by them · o keeps the file  t deletes it`; the bottom row `o yours  t theirs  e edit  n next  M mergetool  esc close`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
@@ -1753,11 +1285,11 @@ MERGING
 
 
 ================================================================================
-docs/shots/m6/m6-15-finish-summary-120x40.txt
+docs/shots/m6/m6-15-finish-row-after-esc-120x40.txt
 what right looks like: TESTING.md "Conflict journeys", a-finish: `Esc` from the summary the last file opened (ticket 60) — the resolver on `notes.txt`: strip headed `files · all done ✓`, `▸ notes.txt · done ✓`, the finish row `✓ every file done — c review and finish the merge` under it, the bar `c finish  d start over  e edit  esc close`. Colour, the finish row's accent-on-selection fill and the focus reverse video unverified.
 ================================================================================
 
-m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T Esc, unicode tier, 120x40
+m6 walk capture: m6-15-finish-row-after-esc — scenario a-finish, keys m m o T Esc, unicode tier, 120x40
 
 MERGING
 files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
@@ -1801,11 +1333,11 @@ files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
  c finish  d start over  e edit  esc close
 
 ================================================================================
-docs/shots/m6/m6-15-finish-summary-160x48.txt
+docs/shots/m6/m6-15-finish-row-after-esc-160x48.txt
 what right looks like: The same at 160x48: the finish row `✓ every file done — c review and finish the merge`, bar starting `c finish`.
 ================================================================================
 
-m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T Esc, unicode tier, 160x48
+m6 walk capture: m6-15-finish-row-after-esc — scenario a-finish, keys m m o T Esc, unicode tier, 160x48
 
 MERGING
 files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
@@ -1857,11 +1389,11 @@ files · all done ✓   gone.txt · done ✓    ▸ notes.txt · done ✓
  c finish  d start over  e edit  esc close
 
 ================================================================================
-docs/shots/m6/m6-15-finish-summary-187x50.txt
+docs/shots/m6/m6-15-finish-row-after-esc-187x50.txt
 what right looks like: The same at 187x50: the column headed `FILES · all 2 done ✓`, the finish row beside it, bar starting `c finish`.
 ================================================================================
 
-m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T Esc, unicode tier, 187x50
+m6 walk capture: m6-15-finish-row-after-esc — scenario a-finish, keys m m o T Esc, unicode tier, 187x50
 
 MERGING
 FILES · all 2 done ✓  │▸ notes.txt · done ✓ · d starts it over
@@ -1915,11 +1447,11 @@ FILES · all 2 done ✓  │▸ notes.txt · done ✓ · d starts it over
  c finish  d start over  e edit  esc close
 
 ================================================================================
-docs/shots/m6/m6-15-finish-summary-200x50.txt
+docs/shots/m6/m6-15-finish-row-after-esc-200x50.txt
 what right looks like: The same at 200x50: the column headed `FILES · all 2 done ✓`, the finish row beside it, bar starting `c finish`.
 ================================================================================
 
-m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T Esc, unicode tier, 200x50
+m6 walk capture: m6-15-finish-row-after-esc — scenario a-finish, keys m m o T Esc, unicode tier, 200x50
 
 MERGING
 FILES · all 2 done ✓  │▸ notes.txt · done ✓ · d starts it over
@@ -1973,11 +1505,11 @@ FILES · all 2 done ✓  │▸ notes.txt · done ✓ · d starts it over
  c finish  d start over  e edit  esc close
 
 ================================================================================
-docs/shots/m6/m6-15-finish-summary-80x24.txt
+docs/shots/m6/m6-15-finish-row-after-esc-80x24.txt
 what right looks like: The same at 80x24: strip headed `files · all done ✓`, the finish row `✓ every file done — c review and finish the merge` in full (the strip leaves the row the whole width), bar starting `c finish`.
 ================================================================================
 
-m6 walk capture: m6-15-finish-summary — scenario a-finish, keys m m o T Esc, unicode tier, 80x24
+m6 walk capture: m6-15-finish-row-after-esc — scenario a-finish, keys m m o T Esc, unicode tier, 80x24
 
 MERGING
 files · all done ✓   ✓ gone.txt   ▸ ✓ notes.txt
@@ -2006,10 +1538,10 @@ files · all done ✓   ✓ gone.txt   ▸ ✓ notes.txt
 
 ================================================================================
 docs/shots/m6/m6-16-summary-expanded-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", summary-open-git-combined: `space` on `README.md` in the summary the last file opened — its diff rows (`feature's line`) under its row, and the message moved down below them. Unicode tier; colour, the focus reverse video and the cursor block unverified.
+what right looks like: TESTING.md "Conflict journeys", summary-open-git-combined: `⏎` on `README.md` in the summary the last file opened (keys `m m o T ⏎`, ticket 63; `space` does the same, the frame's `⏎/space diff`) — its diff rows (`2 + feature's line`) under its row, inside the frame, and `MESSAGE · ⇥ edit` moved down below them. Unicode tier; colour, the focus reverse video and the cursor block unverified.
 ================================================================================
 
-m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T Space, unicode tier, 120x40
+m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T ⏎, unicode tier, 120x40
 
 MERGING
 ╭ Preview: finish merging feature into main ───────────────────────────────────────────────────────────────────────────╮
@@ -2057,7 +1589,7 @@ docs/shots/m6/m6-16-summary-expanded-160x48.txt
 what right looks like: The same at 160x48: `feature's line` under `▸ README.md  modified  +1 −0`.
 ================================================================================
 
-m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T Space, unicode tier, 160x48
+m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T ⏎, unicode tier, 160x48
 
 MERGING
 ╭ Preview: finish merging feature into main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -2113,7 +1645,7 @@ docs/shots/m6/m6-16-summary-expanded-187x50.txt
 what right looks like: The same at 187x50: `feature's line` under `▸ README.md  modified  +1 −0`.
 ================================================================================
 
-m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T Space, unicode tier, 187x50
+m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T ⏎, unicode tier, 187x50
 
 MERGING
 ╭ Preview: finish merging feature into main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -2171,7 +1703,7 @@ docs/shots/m6/m6-16-summary-expanded-200x50.txt
 what right looks like: The same at 200x50: `feature's line` under `▸ README.md  modified  +1 −0`.
 ================================================================================
 
-m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T Space, unicode tier, 200x50
+m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T ⏎, unicode tier, 200x50
 
 MERGING
 ╭ Preview: finish merging feature into main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -2229,7 +1761,7 @@ docs/shots/m6/m6-16-summary-expanded-80x24.txt
 what right looks like: The same at 80x24: `feature's line` under `▸ README.md  modified  +1 −0`.
 ================================================================================
 
-m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T Space, unicode tier, 80x24
+m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T ⏎, unicode tier, 80x24
 
 MERGING
 ╭ Preview: finish merging feature into main ───────────────────────────────────╮
@@ -2303,4 +1835,712 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
 
  merged feature into main ✓
+
+================================================================================
+docs/shots/m6/m6-17-after-commit-160x48.txt
+what right looks like: The same at 160x48: bottom row `merged feature into main ✓`.
+================================================================================
+
+m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 160x48
+
+ graft <scratch____________________________________________________________>  12 commits
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                 GT 6y   9225152
+│ ●  ⓘ [feature] feature's readme                                                                                                                GF 6y   1e78110
+│ ●    feature's notes                                                                                                                           GF 6y   d69867a
+│ ●    feature drops gone                                                                                                                        GF 6y   35c2d1e
+● │    main's notes                                                                                                                              GF 6y   a301516
+● │    main changes gone                                                                                                                         GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                            GF 6y   941a7d6
+●      add notes                                                                                                                                 GF 6y   f7b6fca
+●      add gone                                                                                                                                  GF 6y   30036f6
+●      Correct the note                                                                                                                          GF 7y   a82960b
+●      Add the first note                                                                                                                        GF 7y   fadcfb3
+◇      Add a readme                                                                                                                              GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓
+
+================================================================================
+docs/shots/m6/m6-17-after-commit-187x50.txt
+what right looks like: The same at 187x50: bottom row `merged feature into main ✓`.
+================================================================================
+
+m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 187x50
+
+ graft <scratch____________________________________________________________>  12 commits
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                                            GT 6y   9225152
+│ ●  ⓘ [feature] feature's readme                                                                                                                                           GF 6y   1e78110
+│ ●    feature's notes                                                                                                                                                      GF 6y   d69867a
+│ ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
+● │    main's notes                                                                                                                                                         GF 6y   a301516
+● │    main changes gone                                                                                                                                                    GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                                                       GF 6y   941a7d6
+●      add notes                                                                                                                                                            GF 6y   f7b6fca
+●      add gone                                                                                                                                                             GF 6y   30036f6
+●      Correct the note                                                                                                                                                     GF 7y   a82960b
+●      Add the first note                                                                                                                                                   GF 7y   fadcfb3
+◇      Add a readme                                                                                                                                                         GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓
+
+================================================================================
+docs/shots/m6/m6-17-after-commit-200x50.txt
+what right looks like: The same at 200x50: bottom row `merged feature into main ✓`.
+================================================================================
+
+m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 200x50
+
+ graft <scratch____________________________________________________________>  12 commits
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                                                                                                                                         GT 6y   9225152
+│ ●  ⓘ [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
+│ ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
+│ ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
+● │    main's notes                                                                                                                                                                      GF 6y   a301516
+● │    main changes gone                                                                                                                                                                 GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                                                                    GF 6y   941a7d6
+●      add notes                                                                                                                                                                         GF 6y   f7b6fca
+●      add gone                                                                                                                                                                          GF 6y   30036f6
+●      Correct the note                                                                                                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓
+
+================================================================================
+docs/shots/m6/m6-17-after-commit-80x24.txt
+what right looks like: The same at 80x24: bottom row `merged feature into main ✓`.
+================================================================================
+
+m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T y, unicode tier, 80x24
+
+ graft <scratch____________________________________________________________>  1…
+◆─╮ ▏  [◆ main] Merge branch 'feature' into main                    6y   9225152
+│ ●  ⓘ [feature] feature's readme                                   6y   1e78110
+│ ●    feature's notes                                              6y   d69867a
+│ ●    feature drops gone                                           6y   35c2d1e
+● │    main's notes                                                 6y   a301516
+● │    main changes gone                                            6y   fa0b4d8
+●─╯    add the readme                                               6y   941a7d6
+●      add notes                                                    6y   f7b6fca
+●      add gone                                                     6y   30036f6
+●      Correct the note                                             7y   a82960b
+●      Add the first note                                           7y   fadcfb3
+◇      Add a readme                                                 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+ merged feature into main ✓
+
+================================================================================
+docs/shots/m6/m6-18-launch-shell-begun-120x40.txt
+what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflict journeys", b-launch-to-first-conflict: the app launched on a two-files merge begun in the shell, no key: header `MERGING`; the footer `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph` (the short origin, ticket 61); the changes pane `CONFLICTS (2)`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
+================================================================================
+
+m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 120x40
+
+ graft <scratch____________________________________________________________>    MERGING
+◌   ▏  Uncommitted changes (2 unmerged, 1 staged)
+  ●  ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+  ●    feature's notes                                                                                   GF 6y   d69867a
+  ●    feature drops gone                                                                                GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
+● │    main changes gone                                                                                 GF 6y   fa0b4d8
+●─╯    add the readme                                                                                    GF 6y   941a7d6
+●      add notes                                                                                         GF 6y   f7b6fca
+●      add gone                                                                                          GF 6y   30036f6
+●      Correct the note                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+ merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+UNCOMMITTED · 1 staged
+diff vs HEAD 1e78110
+CONFLICTS (2)
+  gone.txt    deleted by them
+  notes.txt     both modified
+STAGED (1)
+  M README.md           +1 −0
+
+
+
+
+
+
+
+
+
+
+================================================================================
+docs/shots/m6/m6-18-launch-shell-begun-160x48.txt
+what right looks like: The same launch at 160x48: the last row `merge in progress · ⏎ resolve  c continue` — at this width the file count is dropped (it is drawn at 120, 187 and 200) — and `CONFLICTS (2)`.
+================================================================================
+
+m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 160x48
+
+ graft <scratch____________________________________________________________>    MERGING      UNCOMMITTED · 1 staged
+◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                            diff vs HEAD 1e78110
+  ●  ⓘ [feature] feature's readme                                               6y   1e78110
+  ●    feature's notes                                                          6y   d69867a
+  ●    feature drops gone                                                       6y   35c2d1e
+◆ │    [◆ main] main's notes                                                    6y   a301516 CONFLICTS (2)
+● │    main changes gone                                                        6y   fa0b4d8   gone.txt                                          deleted by them
+●─╯    add the readme                                                           6y   941a7d6   notes.txt                                           both modified
+●      add notes                                                                6y   f7b6fca STAGED (1)
+●      add gone                                                                 6y   30036f6   M README.md                                                 +1 −0
+●      Correct the note                                                         7y   a82960b
+●      Add the first note                                                       7y   fadcfb3
+◇      Add a readme                                                             7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+
+================================================================================
+docs/shots/m6/m6-18-launch-shell-begun-187x50.txt
+what right looks like: Re-taken 2026-09-25 (ticket 61): the same launch at 187x50: `merge in progress · 2 conflicted · ⏎ resolve` — no room beside the bar for `from the shell` with the pane open — and `CONFLICTS (2)`.
+================================================================================
+
+m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 187x50
+
+ graft <scratch____________________________________________________________>    MERGING                      UNCOMMITTED · 1 staged
+◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                                            diff vs HEAD 1e78110
+  ●  ⓘ [feature] feature's readme                                                            GF 6y   1e78110
+  ●    feature's notes                                                                       GF 6y   d69867a
+  ●    feature drops gone                                                                    GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                 GF 6y   a301516 CONFLICTS (2)
+● │    main changes gone                                                                     GF 6y   fa0b4d8   gone.txt                                                     deleted by them
+●─╯    add the readme                                                                        GF 6y   941a7d6   notes.txt                                                      both modified
+●      add notes                                                                             GF 6y   f7b6fca STAGED (1)
+●      add gone                                                                              GF 6y   30036f6   M README.md                                                            +1 −0
+●      Correct the note                                                                      GF 7y   a82960b
+●      Add the first note                                                                    GF 7y   fadcfb3
+◇      Add a readme                                                                          GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+
+================================================================================
+docs/shots/m6/m6-18-launch-shell-begun-200x50.txt
+what right looks like: Re-taken 2026-09-25 (ticket 61): the same launch at 200x50: the last row `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`; `CONFLICTS (2)`.
+================================================================================
+
+m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 200x50
+
+ graft <scratch____________________________________________________________>    MERGING                             UNCOMMITTED · 1 staged
+◌   ▏  Uncommitted changes (2 unmerged, 1 staged)                                                                   diff vs HEAD 1e78110
+  ●  ⓘ [feature] feature's readme                                                                   GF 6y   1e78110
+  ●    feature's notes                                                                              GF 6y   d69867a
+  ●    feature drops gone                                                                           GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                        GF 6y   a301516 CONFLICTS (2)
+● │    main changes gone                                                                            GF 6y   fa0b4d8   gone.txt                                                           deleted by them
+●─╯    add the readme                                                                               GF 6y   941a7d6   notes.txt                                                            both modified
+●      add notes                                                                                    GF 6y   f7b6fca STAGED (1)
+●      add gone                                                                                     GF 6y   30036f6   M README.md                                                                  +1 −0
+●      Correct the note                                                                             GF 7y   a82960b
+●      Add the first note                                                                           GF 7y   fadcfb3
+◇      Add a readme                                                                                 GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+
+================================================================================
+docs/shots/m6/m6-18-launch-shell-begun-80x24.txt
+what right looks like: The same launch at 80x24: the Detail tab with `CONFLICTS (2)`; the last row keeps the banner's keys `⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph` and drops the reason words.
+================================================================================
+
+m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 80x24
+
+MERGING
+Graph  [Detail]
+UNCOMMITTED · 1 staged
+diff vs HEAD 1e78110
+
+CONFLICTS (2)
+  gone.txt                                                       deleted by them
+  notes.txt                                                        both modified
+STAGED (1)
+  M README.md                                                              +1 −0
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-120x40.txt
+what right looks like: TESTING.md "Conflict journeys", back-after-esc: after the stop, `Esc Esc` — the graph has the keyboard and the bottom row **starts** `⇥ banner  . explain  m merge  r rebase`: the way back to the banner leads the bar. Unicode tier; colour, the focus reverse video and the cursor block unverified.
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 120x40
+
+ graft <scratch____________________________________________________________>    MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏ⓘ [feature] feature's readme                                                                        GF 6y   1e78110
+  ●    feature's notes                                                                                   GF 6y   d69867a
+  ●    feature drops gone                                                                                GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                             GF 6y   a301516
+● │    main changes gone                                                                                 GF 6y   fa0b4d8
+●─╯    add the readme                                                                                    GF 6y   941a7d6
+●      add notes                                                                                         GF 6y   f7b6fca
+●      add gone                                                                                          GF 6y   30036f6
+●      Correct the note                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  . explain  m merge  r rebase  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-160x48.txt
+what right looks like: The same at 160x48: the bottom row starts `⇥ banner`; its merge key reads `c finish`, not `c commit` (ticket 52; re-taken by 63).
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 160x48
+
+ graft <scratch____________________________________________________________>    MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏ⓘ [feature] feature's readme                                                                                                                GF 6y   1e78110
+  ●    feature's notes                                                                                                                           GF 6y   d69867a
+  ●    feature drops gone                                                                                                                        GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                                                                     GF 6y   a301516
+● │    main changes gone                                                                                                                         GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                            GF 6y   941a7d6
+●      add notes                                                                                                                                 GF 6y   f7b6fca
+●      add gone                                                                                                                                  GF 6y   30036f6
+●      Correct the note                                                                                                                          GF 7y   a82960b
+●      Add the first note                                                                                                                        GF 7y   fadcfb3
+◇      Add a readme                                                                                                                              GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c finish  p pull  f fetch  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-187x50.txt
+what right looks like: The same at 187x50: the bottom row starts `⇥ banner`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 187x50
+
+ graft <scratch____________________________________________________________>    MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏ⓘ [feature] feature's readme                                                                                                                                           GF 6y   1e78110
+  ●    feature's notes                                                                                                                                                      GF 6y   d69867a
+  ●    feature drops gone                                                                                                                                                   GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                                                                                                GF 6y   a301516
+● │    main changes gone                                                                                                                                                    GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                                                       GF 6y   941a7d6
+●      add notes                                                                                                                                                            GF 6y   f7b6fca
+●      add gone                                                                                                                                                             GF 6y   30036f6
+●      Correct the note                                                                                                                                                     GF 7y   a82960b
+●      Add the first note                                                                                                                                                   GF 7y   fadcfb3
+◇      Add a readme                                                                                                                                                         GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c finish  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  F3  x  +  j/k  space  1  F  H  J  y  M  O
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-200x50.txt
+what right looks like: The same at 200x50: the bottom row starts `⇥ banner  . explain  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 200x50
+
+ graft <scratch____________________________________________________________>    MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏ⓘ [feature] feature's readme                                                                                                                                                        GF 6y   1e78110
+  ●    feature's notes                                                                                                                                                                   GF 6y   d69867a
+  ●    feature drops gone                                                                                                                                                                GF 6y   35c2d1e
+◆ │    [◆ main] main's notes                                                                                                                                                             GF 6y   a301516
+● │    main changes gone                                                                                                                                                                 GF 6y   fa0b4d8
+●─╯    add the readme                                                                                                                                                                    GF 6y   941a7d6
+●      add notes                                                                                                                                                                         GF 6y   f7b6fca
+●      add gone                                                                                                                                                                          GF 6y   30036f6
+●      Correct the note                                                                                                                                                                  GF 7y   a82960b
+●      Add the first note                                                                                                                                                                GF 7y   fadcfb3
+◇      Add a readme                                                                                                                                                                      GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  . explain  m merge  r rebase  ⏎ open  b branch  t tag  P push  c finish  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  J  y  M  O
+
+================================================================================
+docs/shots/m6/m6-19-after-esc-esc-80x24.txt
+what right looks like: The same at 80x24: the bottom row starts `⇥ banner  . explain  m merge`.
+================================================================================
+
+m6 walk capture: m6-19-after-esc-esc — scenario back-after-esc, keys m m Esc Esc, unicode tier, 80x24
+
+ graft <scratch______________________________________________________>…  MERGING
+◌      Uncommitted changes (2 unmerged, 1 staged)
+  ● ▏ⓘ [feature] feature's readme                                   6y   1e78110
+  ●    feature's notes                                              6y   d69867a
+  ●    feature drops gone                                           6y   35c2d1e
+◆ │    [◆ main] main's notes                                        6y   a301516
+● │    main changes gone                                            6y   fa0b4d8
+●─╯    add the readme                                               6y   941a7d6
+●      add notes                                                    6y   f7b6fca
+●      add gone                                                     6y   30036f6
+●      Correct the note                                             7y   a82960b
+●      Add the first note                                           7y   fadcfb3
+◇      Add a readme                                                 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  . explain  m merge  r  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +
 

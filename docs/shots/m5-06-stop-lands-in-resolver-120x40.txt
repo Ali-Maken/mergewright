@@ -39,4 +39,4 @@ files   ▸ shared.txt · 1 of 1 open
 
 
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close

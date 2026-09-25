@@ -17,7 +17,7 @@
 
 ================================================================================
 docs/shots/m5-01-preview-rebase-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Rebase preview row: the same box and ghost rows, the graph wider; the box spans the width and sits above the footer.
+what right looks like: TESTING.md § Per breakpoint, Rebase preview row: the same box and ghost rows, the graph wider; the box spans the width and sits above the footer. (Re-taken 2026-09-25, m6-conflicts/63: the box's footer names its acting key, `y confirm` first — m6-conflicts/50.)
 ================================================================================
 
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 160x48
@@ -68,12 +68,12 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase --no-update-refs --no-autostash main                                                                                                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 ================================================================================
 docs/shots/m5-01-preview-rebase-80x24.txt
-what right looks like: TESTING.md "History" § Per breakpoint, Rebase preview row: `r` on `main` from `feature` — two ghost rows under `after rebase` with `—` for SHA and age, the box `Preview: rebase feature onto main`, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 2 files updated` (the two files `feature` brings — the walk proves it against git), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]`, the box's own footer `←→ choose  ⏎ act  esc cancel`.
+what right looks like: TESTING.md "History" § Per breakpoint, Rebase preview row: `r` on `main` from `feature` — two ghost rows under `after rebase` with `—` for SHA and age, the box `Preview: rebase feature onto main`, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 2 files updated` (the two files `feature` brings — the walk proves it against git), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]`, the box's own footer `y confirm  r rebase  ←→ choose  ⏎ act  esc cancel`. (Re-taken 2026-09-25, m6-conflicts/63: the box's footer names its acting key, `y confirm` first — m6-conflicts/50.)
 ================================================================================
 
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 80x24
@@ -100,12 +100,12 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash main                              │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
 
 
 ================================================================================
 docs/shots/m5-02-preview-merge-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Merge preview row: same.
+what right looks like: TESTING.md § Per breakpoint, Merge preview row: same. (Re-taken 2026-09-25, m6-conflicts/63: the box's footer names its acting key, `y confirm` first — m6-conflicts/50.)
 ================================================================================
 
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 160x48
@@ -156,12 +156,12 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 │ undo: u takes this back                                                                                                                                      │
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                                                                 │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 ================================================================================
 docs/shots/m5-02-preview-merge-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Merge preview row: `m` on `feature` from `main` — `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, `working tree: 2 files updated` (the two files `feature` brings — the walk proves it against git), `no conflicts expected`, `undo: u takes this back`, the `git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature` command, cursor on `[ Cancel ]`.
+what right looks like: TESTING.md § Per breakpoint, Merge preview row: `m` on `feature` from `main` — `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, `working tree: 2 files updated` (the two files `feature` brings — the walk proves it against git), `no conflicts expected`, `undo: u takes this back`, the `git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature` command, cursor on `[ Cancel ]`. (Re-taken 2026-09-25, m6-conflicts/63: the box's footer names its acting key, `y confirm` first — m6-conflicts/50.)
 ================================================================================
 
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 80x24
@@ -188,12 +188,12 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 │ undo: u takes this back                                                      │
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────╯
 
 
 ================================================================================
 docs/shots/m5-03-preview-reset-hard-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Hard-reset preview row: same.
+what right looks like: TESTING.md § Per breakpoint, Hard-reset preview row: same. (Re-taken 2026-09-25, m6-conflicts/63: the box's footer names its acting key, `y confirm` first — m6-conflicts/50.)
 ================================================================================
 
 m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and-u-brings-it-back, keys j j j . j j j j j j j j j ⏎, unicode tier, 160x48
@@ -244,12 +244,12 @@ m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and
 │ undo: u takes this back                                                                                                                                      │
 │ git reset --hard 37926a7c0b3c7e1cfbcb23494d10a90449c88b64                                                                                                    │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 ================================================================================
 docs/shots/m5-03-preview-reset-hard-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Hard-reset preview row: `.` on `main moves on` with `base.txt` edited, `Reset main to here, hard` picked — the box says `working tree: LOSES base.txt (backup saved)`, `undo: u takes this back`, the `git reset --hard …` command, cursor on `[ Cancel ]`.
+what right looks like: TESTING.md § Per breakpoint, Hard-reset preview row: `.` on `main moves on` with `base.txt` edited, `Reset main to here, hard` picked — the box says `working tree: LOSES base.txt (backup saved)`, `undo: u takes this back`, the `git reset --hard …` command, cursor on `[ Cancel ]`. (Re-taken 2026-09-25, m6-conflicts/63: the box's footer names its acting key, `y confirm` first — m6-conflicts/50.)
 ================================================================================
 
 m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and-u-brings-it-back, keys j j j . j j j j j j j j j ⏎, unicode tier, 80x24
@@ -276,7 +276,7 @@ m5 walk capture: m5-03-preview-reset-hard — scenario reset-hard-says-loses-and
 │ undo: u takes this back                                                      │
 │ git reset --hard 37926a7c0b3c7e1cfbcb23494d10a90449c88b64                    │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────╯
 
 
 ================================================================================
@@ -387,7 +387,7 @@ preview needs 40x12 · esc closes
 
 ================================================================================
 docs/shots/m5-06-stop-lands-in-resolver-120x40.txt
-what right looks like: TESTING.md § Per breakpoint, Stopped merge row: the same frame at 120 — `MERGING` in the header, the sticky whole: `… resolve it and stage it; the merge stays in progress until you do · esc dismiss`.
+what right looks like: TESTING.md § Per breakpoint, Stopped merge row: the same frame at 120 — `MERGING` in the header, the sticky whole: `… resolve it and stage it; the merge stays in progress until you do · esc dismiss`. (Re-taken 2026-09-25, m6-conflicts/63: the resolver's key bar, bottom right, carries this pass's keys — `⌃O/⌃T`, `O/T`, `j/k`, `d start over`.)
 ================================================================================
 
 m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 120x40
@@ -431,11 +431,11 @@ files   ▸ shared.txt · 1 of 1 open
 
 
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m5-06-stop-lands-in-resolver-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Stopped merge row: the same at 160, the sticky whole.
+what right looks like: TESTING.md § Per breakpoint, Stopped merge row: the same at 160, the sticky whole. (Re-taken 2026-09-25, m6-conflicts/63: the resolver's key bar, bottom right, carries this pass's keys — `⌃O/⌃T`, `O/T`, `j/k`, `d start over`.)
 ================================================================================
 
 m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 160x48
@@ -487,11 +487,11 @@ files   ▸ shared.txt · 1 of 1 open
 
 
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎ resolved  M mergetool  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close
 
 ================================================================================
 docs/shots/m5-06-stop-lands-in-resolver-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Stopped merge row: `m` on `feature`, confirmed, git stopped on `shared.txt` — `MERGING` at the end of the header row, `Uncommitted changes (1 unmerged)` as the first row, and on the footer the sticky `merge feature into main — shared.txt conflicts: resolve it and s…` cut at 80 columns with `· esc dismiss` — the banner's own keys (`c continue  a abort …`) are under it until `Esc`. Judge whether the cut sticky reads well enough at this width.
+what right looks like: TESTING.md § Per breakpoint, Stopped merge row: `m` on `feature`, confirmed, git stopped on `shared.txt` — `MERGING` at the end of the header row, `Uncommitted changes (1 unmerged)` as the first row, and on the footer the sticky `merge feature into main — shared.txt conflicts: resolve it and s…` cut at 80 columns with `· esc dismiss` — the banner's own keys (`c continue  a abort …`) are under it until `Esc`. Judge whether the cut sticky reads well enough at this width. (Re-taken 2026-09-25, m6-conflicts/63: the resolver's key bar, bottom right, carries this pass's keys — `⌃O/⌃T`, `O/T`, `j/k`, `d start over`.)
 ================================================================================
 
 m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 80x24
@@ -519,7 +519,7 @@ files   ▸ shared.txt 1/1 open
 
 
 
- o yours  t theirs  b both  B base  e edit  n next  N prev  ⏎  M  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc
 
 ================================================================================
 docs/shots/m5-07-branch-row-hints-160x48.txt

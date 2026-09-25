@@ -1,11 +1,11 @@
-m3-01-stage-file-80x24.txt	TESTING.md "Working tree, undo and stash" § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff.
-m3-01-stage-file-160x48.txt	TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below.
-m3-02-stage-hunk-80x24.txt	TESTING.md § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff.
-m3-02-stage-hunk-160x48.txt	TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below.
-m3-03-discard-confirm-80x24.txt	TESTING.md § Per breakpoint, Confirm box row: centred over the pane, `[ Cancel ]   Discard`.
-m3-03-discard-confirm-160x48.txt	TESTING.md § Per breakpoint, Confirm box row: same box, graph and pane around it.
+m3-01-stage-file-80x24.txt	TESTING.md "Working tree, undo and stash" § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff. (Re-taken 2026-09-25, m6-conflicts/63.)
+m3-01-stage-file-160x48.txt	TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below. (Re-taken 2026-09-25, m6-conflicts/63.)
+m3-02-stage-hunk-80x24.txt	TESTING.md § Per breakpoint, Changes pane row: tab strip, `Detail` tab is the whole screen: sections, files, diff. (Re-taken 2026-09-25, m6-conflicts/63.)
+m3-02-stage-hunk-160x48.txt	TESTING.md § Per breakpoint, Changes pane row: pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below. (Re-taken 2026-09-25, m6-conflicts/63.)
+m3-03-discard-confirm-80x24.txt	TESTING.md § Per breakpoint, Confirm box row: a framed box `╭ Discard changes to sample.txt?`, the `git restore --worktree -- sample.txt` command, `▸[ Cancel ]   [ Discard ]`; the bottom row is the box's own keys, `y discard  ←/→ move  ⏎ choose  esc cancel`. (Re-taken 2026-09-25, m6-conflicts/63.)
+m3-03-discard-confirm-160x48.txt	TESTING.md § Per breakpoint, Confirm box row: same box, graph and pane around it. (Re-taken 2026-09-25, m6-conflicts/63.)
 m3-04-commit-editor-80x24.txt	TESTING.md § Per breakpoint, Commit editor row: replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`.
-m3-04-commit-editor-160x48.txt	TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays.
+m3-04-commit-editor-160x48.txt	TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays. (Re-taken 2026-09-25, m6-conflicts/63.)
 m3-05-commit-refused-80x24.txt	TESTING.md § Per breakpoint, Commit editor row: refused shows `nothing staged` on the title and on its own row above the button (since M6 ticket 40).
 m3-05-commit-refused-160x48.txt	TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays.
 m3-06-stash-list-80x24.txt	TESTING.md § Per breakpoint, Stash row: `STASHES (2)` and rows `stash@{0} …`.
@@ -14,8 +14,8 @@ m3-07-stash-prompt-80x24.txt	TESTING.md § Per breakpoint, Stash row: prompt sho
 m3-07-stash-prompt-160x48.txt	TESTING.md § Per breakpoint, Stash row: same.
 m3-08-journal-after-unstage-80x24.txt	TESTING.md § Per breakpoint, Journal row: the unstage entry with `← u`.
 m3-08-journal-after-unstage-160x48.txt	TESTING.md § Per breakpoint, Journal row: same.
-m3-09-undo-drift-box-80x24.txt	TESTING.md § Per breakpoint, Drift box row: `Undo "commit …"?`, what drifted, `[ Stop ]   Undo`.
-m3-09-undo-drift-box-160x48.txt	TESTING.md § Per breakpoint, Drift box row: same.
+m3-09-undo-drift-box-80x24.txt	TESTING.md § Per breakpoint, Drift box row: a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `undo · esc cancels`. (Re-taken 2026-09-25, m6-conflicts/63.)
+m3-09-undo-drift-box-160x48.txt	TESTING.md § Per breakpoint, Drift box row: same. (Re-taken 2026-09-25, m6-conflicts/63.)
 m3-amend.txt	Capture header "Judge by eye": the title row reads AMEND a1b2c3d, not COMMIT — which commit is being rewritten is named, because an amend of the wrong one is the mistake.
 m3-changes-pane-80x24.txt	Capture header: scripted dirty tree (staged+edited file, edited file, untracked file); diff region focused, line cursor on the second added line of hunk 1. At 80x24 the file list is six rows: `STAGED (1)` with `M token.rs`, then `UNSTAGED (2)` with only `▾ src/` / `▾ api/` — `routes.rs` and the whole `UNTRACKED` section are below the fold, not missing (the sections are all on screen at 120x40 and 160x48). Judge the rest by the file's own bullets.
 m3-changes-pane-120x40.txt	Capture header: same scripted dirty tree as the 80x24/160x48 captures — judge by eye per the file's own bullets.

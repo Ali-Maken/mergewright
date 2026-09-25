@@ -86,7 +86,7 @@ pub const M6_STEMS: [&str; 19] = [
     "m6-12-after-t",
     "m6-13-after-ctrl-t",
     "m6-14-last-file-done",
-    "m6-15-finish-summary",
+    "m6-15-finish-row-after-esc",
     "m6-16-summary-expanded",
     "m6-17-after-commit",
     "m6-18-launch-shell-begun",

@@ -47,7 +47,7 @@ pub(super) fn journeys() -> Vec<Scenario> {
         captured(two_files_in_order(CARD), "m6-14-last-file-done"),
         two_files_in_order(WIDE),
         captured(two_files_out_of_order(), "m6-12-after-t"),
-        captured(a_finish(), "m6-15-finish-summary"),
+        captured(a_finish(), "m6-15-finish-row-after-esc"),
         b_finish(),
         b_finish_again_after_undo(),
         b_abort_shell_merge(),
@@ -89,8 +89,11 @@ fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
         // The last file done opens the summary on its own (m6-conflicts/60).
         "m6-14-last-file-done" => (both_done(), "RESOLVED BY YOU"),
         // `Esc` from it: the resolver, the finish row on its notice row.
-        "m6-15-finish-summary" => (then(both_done(), &[KeyCode::Escape]), "✓ every file done"),
-        "m6-16-summary-expanded" => (then(both_done(), &[ch(' ')]), "feature's line"),
+        "m6-15-finish-row-after-esc" => {
+            (then(both_done(), &[KeyCode::Escape]), "✓ every file done")
+        }
+        // `⏎` on `README.md` opens its diff (the footer's `⏎/space diff`, 59).
+        "m6-16-summary-expanded" => (then(both_done(), &[KeyCode::Enter]), "feature's line"),
         "m6-17-after-commit" => (then(both_done(), &[ch('y')]), "merged feature into main"),
         // The launch's first frame: the app opens on the shell-begun merge.
         "m6-18-launch-shell-begun" => (vec![], "CONFLICTS"),

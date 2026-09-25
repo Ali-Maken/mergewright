@@ -16,6 +16,8 @@ mod file_keys;
 mod file_list;
 pub(crate) use file_list::gone_notes_and_readme_merge;
 mod editor_words;
+#[cfg(feature = "heavy-tests")]
+mod frame_budget;
 mod handover;
 mod last_file;
 mod modal;

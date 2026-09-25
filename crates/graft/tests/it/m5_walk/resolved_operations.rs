@@ -251,7 +251,7 @@ fn rebase_stops_twice_resolved_twice() -> Scenario {
             stem: "m6-07-all-resolved",
             headless: rebase_that_stops(),
             keys: plain(&[KeyCode::Enter, ch('t'), KeyCode::Enter]),
-            on_screen: "every file done ✓",
+            on_screen: "✓ every file done",
             when: When::Settled,
         }),
     }

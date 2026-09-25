@@ -1,26 +1,26 @@
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  5…
-◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] before the drift                                       now  1cb4243
-●   add sample.txt                                                  now  95720b7
-●   Correct the note                                                7y   a82960b
-●   Add the first note                                              7y   fadcfb3
-◇   Add a readme                                                    7y   64ded19
-
-        Undo “commit "before the drift"”?
-        Since this commit "before the drift", the working tree
-        changed.
-        A backup is taken first, so this is itself undoable.
-
-        undo restores the recorded state
-
-        [ Stop ]     Undo
-
-
+◌    Uncommitted changes (1 unstaged)
+◆ ▏  [◆ main] before the drift                                      6y   0dd52b5
+●    add sample.txt                                                 6y   4fcf9e9
+●    Correct the note                                               7y   a82960b
+●    Add the first note                                             7y   fadcfb3
+◇    Add a readme                                                   7y   64ded19
+     ╭ Undo “commit "before the drift"”? ──────────────────────────────╮
+     │ Since this commit "before the drift", the working tree          │
+     │ changed.                                                        │
+     │ A backup is taken first, so this is itself undoable.            │
+     │                                                                 │
+     │ undo restores the recorded state                                │
+     │                                                                 │
+     │ ▸[ Stop ]   [ Undo ]                                            │
+     ╰─────────────────────────────────────────────────────────────────╯
 
 
 
 
 
- undo…
+
+
+ undo · esc cancels

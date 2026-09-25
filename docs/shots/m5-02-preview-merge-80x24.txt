@@ -22,5 +22,5 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 │ undo: u takes this back                                                      │
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+╰ y confirm  m merge  ←→ choose  ⏎ act  esc cancel ────────────────────────────╯
 
