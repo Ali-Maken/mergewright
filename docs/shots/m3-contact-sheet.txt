@@ -286,8 +286,8 @@ what right looks like: TESTING.md § Per breakpoint, Commit editor row: same, wi
 m3 walk capture: m3-04-commit-editor — scenario commit, keys k ⏎ c s h o u t Space t h r e e, unicode tier, 160x48
 
 COMMIT ── ⎇ main ── 1 file staged                                                            UNCOMMITTED · 1 staged
-                                                                                             diff vs HEAD ad2e242
-▸Subject shout three                                       ┊                            11/50
+                                                                                             diff vs HEAD 97d4201
+▸Subject shout three                                       ┊                           11/50
 
  Body
                                                                                  ┊           STAGED (1)
@@ -332,7 +332,7 @@ COMMIT ── ⎇ main ── 1 file staged                                     
 
 
   [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 ================================================================================
 docs/shots/m3-04-commit-editor-80x24.txt
@@ -364,7 +364,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
   [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 ================================================================================
 docs/shots/m3-05-commit-refused-160x48.txt
@@ -418,13 +418,13 @@ COMMIT ── ⎇ main ── nothing staged
 
 
 
-
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]  nothing staged
-⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+  nothing staged
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 ================================================================================
 docs/shots/m3-05-commit-refused-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Commit editor row: refused shows `nothing staged` on the title and beside the button.
+what right looks like: TESTING.md § Per breakpoint, Commit editor row: refused shows `nothing staged` on the title and on its own row above the button (since M6 ticket 40).
 ================================================================================
 
 m3 walk capture: m3-05-commit-refused — scenario commit-refused-nothing-staged, keys c, unicode tier, 80x24
@@ -450,9 +450,9 @@ COMMIT ── ⎇ main ── nothing staged
 
 
 
-
-  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]  …
-⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+  nothing staged
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 
 ================================================================================
 docs/shots/m3-06-stash-list-160x48.txt
@@ -846,7 +846,7 @@ what right looks like: Capture header "Judge by eye": the title row reads AMEND 
 "                                                                                                                        "
 "                                                                                                                        "
 "  [x] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]                                           "
-"⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel                                                           "
+"⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel                                                                   "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "

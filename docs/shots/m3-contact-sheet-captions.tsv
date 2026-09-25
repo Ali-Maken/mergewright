@@ -6,7 +6,7 @@ m3-03-discard-confirm-80x24.txt	TESTING.md § Per breakpoint, Confirm box row: c
 m3-03-discard-confirm-160x48.txt	TESTING.md § Per breakpoint, Confirm box row: same box, graph and pane around it.
 m3-04-commit-editor-80x24.txt	TESTING.md § Per breakpoint, Commit editor row: replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`.
 m3-04-commit-editor-160x48.txt	TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays.
-m3-05-commit-refused-80x24.txt	TESTING.md § Per breakpoint, Commit editor row: refused shows `nothing staged` on the title and beside the button.
+m3-05-commit-refused-80x24.txt	TESTING.md § Per breakpoint, Commit editor row: refused shows `nothing staged` on the title and on its own row above the button (since M6 ticket 40).
 m3-05-commit-refused-160x48.txt	TESTING.md § Per breakpoint, Commit editor row: same, wider; the pane stays.
 m3-06-stash-list-80x24.txt	TESTING.md § Per breakpoint, Stash row: `STASHES (2)` and rows `stash@{0} …`.
 m3-06-stash-list-160x48.txt	TESTING.md § Per breakpoint, Stash row: same.
