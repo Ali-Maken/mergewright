@@ -363,7 +363,11 @@ fn a_clashing_put_back_is_clashed_and_keeps_the_stash() {
     assert_eq!(stash_commits(&repo), vec![stash], "S kept");
 
     let entries = journal_entries(&repo);
-    let found = live_clash(&entries, None, true, &[(stash, 0)]).expect("the clash is live");
+    let handle = repo.open();
+    let scratch = repo.path().join(".git/graft");
+    let index_now =
+        graft_ops::snapshot::index_state(&handle, &scratch, &Never).expect("the index reads");
+    let found = live_clash(&entries, None, &index_now, &[(stash, 0)]).expect("the clash is live");
     assert_eq!(found.entry, entry.id);
     assert_eq!(found.why, PutBackWhy::SetAside);
     assert_eq!(found.index, Some(0));

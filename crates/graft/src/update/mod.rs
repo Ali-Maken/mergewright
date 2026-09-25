@@ -231,6 +231,11 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             history::sorted(next, commands, id, order);
         }
         AppEvent::Produced(_, Product::Repository(result)) => repository_answer(next, result),
+        AppEvent::Produced(id, Product::IndexState(read)) => {
+            let mut local_jobs = next.local_jobs;
+            clash::index_answered(next, commands, id, read, &mut || local_jobs.next_id());
+            next.local_jobs = local_jobs;
+        }
         AppEvent::Produced(
             id,
             product @ (Product::SystemGit(_) | Product::Refs(_) | Product::WorkingTree(_)),
@@ -466,6 +471,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::PlanPreview
         | Task::RevertTo
         | Task::ReadStashes
+        | Task::ReadIndexState
         | Task::ReadRemotes
         | Task::OpenConflict
         | Task::TakeSide
@@ -758,6 +764,7 @@ fn took_fact(
         | Product::Preview(_)
         | Product::RevertedTo(_)
         | Product::Stashes(_)
+        | Product::IndexState(_)
         | Product::Remotes(_)
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)

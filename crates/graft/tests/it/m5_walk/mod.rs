@@ -44,6 +44,11 @@ mod vocabulary;
 
 use graft_core::event::KeyPress;
 
+#[allow(
+    unused_imports,
+    reason = "used by the stash walks in tests/it; the m5_walk example does not include them"
+)]
+pub use journeys::noted_keys;
 pub use run::{prepare_capture, run_scenario};
 pub use steps::Scenario;
 use steps::{Capture, When};

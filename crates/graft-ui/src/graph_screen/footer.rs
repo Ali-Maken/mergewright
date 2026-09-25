@@ -8,7 +8,9 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
-use super::hints::{Divider, fit_status_line, hints_for, hints_text, stopped_row};
+use super::hints::{
+    Divider, fit_status_line, hints_for, hints_text, stopped_row, stopped_row_before_keys,
+};
 use super::layout::{Columns, graph_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
@@ -101,6 +103,17 @@ impl GraphScreen<'_> {
                         // A stop is a state, not a problem: it leads the
                         // bar rather than replacing it, and never names
                         // `esc dismiss` (m6-conflicts/12).
+                        // A stash clash has no banner: its reason outranks
+                        // the bar's tail keys (review 72+72b M1).
+                        Some(reason) if reason.is_before_keys() => (
+                            stopped_row_before_keys(
+                                reason,
+                                &self.view.hint_context,
+                                divider,
+                                width16,
+                            ),
+                            Token::Text,
+                        ),
                         Some(reason) => (stopped_row(reason, &hints, width16), Token::Text),
                         None => (hints_text(&hints), Token::TextMuted),
                     }

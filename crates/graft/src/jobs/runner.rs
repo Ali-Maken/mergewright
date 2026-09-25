@@ -926,6 +926,22 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads the index now for a stash clash's tie, under an id `update`
+    /// already chose (ADR-0045 §2, amended 2026-09-25).
+    fn read_index_state(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadIndexState), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::IndexState(super::stash::read_index_state(
+                    &repos, cancel,
+                )))
+            })
+        });
+    }
+
     /// Starts a search. The id names the search on screen; `update` tells a
     /// superseded one apart by the order searches start in.
     fn start_search(&self, query: crate::search::Query) {
@@ -1017,6 +1033,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::PlanPreview(id, request) => self.plan_preview(id, request),
             Command::RevertTo(id, target, force) => self.run_revert_to(id, target, force),
             Command::ReadStashes(id) => self.read_stashes(id),
+            Command::ReadIndexState { id } => self.read_index_state(id),
             Command::OpenConflict(id, path) => self.open_conflict(id, path),
             Command::TakeSide(id, request) => self.take_side(id, request),
             Command::LoadBase(id, path, file) => self.load_base(id, path, *file),

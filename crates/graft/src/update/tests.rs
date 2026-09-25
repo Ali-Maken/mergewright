@@ -1195,6 +1195,7 @@ fn every_field_spelled_out() -> AppState {
         clash_facts_seen: false,
         clash_drop: None,
         clash_pane_owed: false,
+        clash_index: crate::update::state::IndexRead::Unknown,
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
         live_landing_owed: false,
@@ -2065,7 +2066,9 @@ fn no_matches_cancelled_and_failed_are_distinct() {
     let failure = JobFailure::Failed("walk broke".to_owned());
     let (failed, _) = update(&state, core(Event::JobFailed(job, failure)));
 
-    let lines = [none, cancelled, failed].map(|state| search_of(&state).state.describe());
+    // References, not the states: three `AppState`s outgrow clippy's
+    // stack-array limit (m6-conflicts/82 added `clash_index`).
+    let lines = [&none, &cancelled, &failed].map(|state| search_of(state).state.describe());
     assert_eq!(lines[0], "no matches");
     assert_eq!(lines[1], "search cancelled, 0 matches found");
     assert_eq!(lines[2], "search failed: walk broke");

@@ -28,3 +28,24 @@ pub(super) fn read_stashes(
         .map(Arc::new)
         .map_err(|error| error.to_string())
 }
+
+/// The index now, for a stash clash's tie (ADR-0045 §2, amended
+/// 2026-09-25): `graft_ops::snapshot::index_state`, the recorder's own read,
+/// in the journal's directory as `apply` uses it, so an unchanged index is
+/// the same id the journal holds.
+///
+/// # Errors
+/// The failure text, ready to show: the repository or the journal's
+/// directory could not be found, or the index copy or `write-tree` failed.
+pub(super) fn read_index_state(
+    repos: &RepoStore,
+    cancel: &Cancel,
+) -> Result<graft_core::journal::IndexState, String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    let journal = graft_ops::journal::journal_path(&handle).map_err(|error| error.to_string())?;
+    let scratch = journal
+        .parent()
+        .ok_or_else(|| "the journal has no directory to read the index in".to_owned())?;
+    graft_ops::snapshot::index_state(&handle, scratch, cancel).map_err(|error| error.to_string())
+}

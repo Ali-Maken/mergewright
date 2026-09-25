@@ -157,6 +157,14 @@ pub enum Command {
     /// `S` overlay opens and again after every write, because any of them
     /// may have moved `refs/stash` (m3-working-tree-undo-and-stash/06).
     ReadStashes(JobId),
+    /// Read the index now as the journal's recorder does
+    /// (`graft_ops::snapshot::index_state`), under an id `update` chose:
+    /// a stash clash's tie (ADR-0045 §2, amended 2026-09-25). Asked only
+    /// while a clash candidate exists.
+    ReadIndexState {
+        /// The id the answer comes back under.
+        id: JobId,
+    },
     /// Read the remote facts `f`/`p`/`P` decide from, under an id `update`
     /// chose. Asked for wherever the refs are (m4-remotes/05).
     ReadRemotes(JobId),

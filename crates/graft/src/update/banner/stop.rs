@@ -314,12 +314,24 @@ impl Wording {
     }
 }
 
+/// The stop line's wordings, fullest first, and whether the reason
+/// outranks the bar's tail keys (`graft_ui::graph_screen::StopWording::before_keys`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StopLadder {
+    /// Fullest first; each shorter one drops whole parts.
+    pub wordings: Vec<String>,
+    /// Set only by a stash clash's ladder (`update::clash::stop_wordings`),
+    /// which has no banner to name it (review 72+72b M1). Every stop git
+    /// has part-way keeps its bar whole: its banner says it.
+    pub before_keys: bool,
+}
+
 /// [`stop_reason`] for the stop standing in `state`, worded from its last
 /// working-tree read. `None` while nothing is stopped.
 #[must_use]
 pub fn stop_line(state: &AppState) -> Option<String> {
     let Some(stop) = state.stopped.as_ref() else {
-        return clash_wordings(state)?.into_iter().next();
+        return clash_wordings(state)?.wordings.into_iter().next();
     };
     let count = unmerged_paths(state).len();
     let live = state.in_progress.as_ref().map(|detail| (detail, count));
@@ -331,18 +343,21 @@ pub fn stop_line(state: &AppState) -> Option<String> {
 /// clash's (m6-conflicts/72b: `stash@{0} clashed · 1 file conflicted`).
 /// `None` while neither stands.
 #[must_use]
-pub fn stop_line_wordings(state: &AppState) -> Option<Vec<String>> {
+pub fn stop_line_wordings(state: &AppState) -> Option<StopLadder> {
     let Some(stop) = state.stopped.as_ref() else {
         return clash_wordings(state);
     };
     let count = unmerged_paths(state).len();
     let live = state.in_progress.as_ref().map(|detail| (detail, count));
-    Some(stop_wordings(stop, live))
+    Some(StopLadder {
+        wordings: stop_wordings(stop, live),
+        before_keys: false,
+    })
 }
 
 /// The open stash clash's wordings, counted from the last working-tree
 /// read; `None` without one.
-fn clash_wordings(state: &AppState) -> Option<Vec<String>> {
+fn clash_wordings(state: &AppState) -> Option<StopLadder> {
     let clash = state.clash.as_ref()?;
     Some(crate::update::clash::stop_wordings(
         clash,

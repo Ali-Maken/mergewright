@@ -307,6 +307,12 @@ pub struct AppState {
     /// next working-tree read that shows the tree dirty lands the pane on
     /// `CONFLICTS` ([`crate::update::clash::refresh_and_land`]).
     pub(crate) clash_pane_owed: bool,
+    /// The index now, as the clash's tie reads it (ADR-0045 §2, amended
+    /// 2026-09-25; review 72+72b M2). Asked only while
+    /// `graft_ops::clash::clash_candidate` finds one, one read out at a time;
+    /// every journal, working-tree or refs read that lands makes the held
+    /// answer stale ([`crate::update::clash::refresh_and_land`]).
+    pub(crate) clash_index: IndexRead,
     /// A `--continue` finished (`resumed` → `Done`): the graph cursor goes
     /// to the new `HEAD` once the refresh that answer issued has both the
     /// fresh refs and the fresh walk ([`AppState::head_landing`]). Spent by
@@ -486,6 +492,14 @@ impl AppState {
             return false;
         };
         !status.is_clean()
+    }
+
+    /// An index read for a stash clash's tie is out
+    /// ([`AppState::clash_index`]); the harness waits read it, as they read
+    /// [`AppState::refs_read`].
+    #[must_use]
+    pub fn clash_index_out(&self) -> bool {
+        matches!(self.clash_index, IndexRead::Pending { .. })
     }
 
     /// Does the row sit on top of `HEAD`'s own lane this frame (the
@@ -846,6 +860,25 @@ impl RefsRead {
             (other, _) => other,
         };
     }
+}
+
+/// The index read behind a stash clash's tie ([`AppState::clash_index`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) enum IndexRead {
+    /// Nothing held that is current: no read asked, or a read of the
+    /// journal, working tree or refs landed since the last answer.
+    #[default]
+    Unknown,
+    /// This read is out. `stale`: another read landed while it was out, so
+    /// its answer is not judged — one more is asked in its place.
+    Pending {
+        /// The read's job id; any other answer is dropped.
+        id: JobId,
+        /// A journal, working-tree or refs read landed after it was asked.
+        stale: bool,
+    },
+    /// The answer, current with the other reads held.
+    Read(Result<graft_core::journal::IndexState, String>),
 }
 
 /// The reads a pending [`AppState::land_on_head`] still waits on.

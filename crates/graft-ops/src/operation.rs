@@ -903,8 +903,27 @@ impl Operation {
         }
     }
 
+    /// [`Operation::describe`], with what only the facts know: a
+    /// `DropPutBack` is `drop stash@{n}`, `n` the position `check` found by
+    /// commit — as a `StashDrop` reads (review 72+72b m6). `apply` writes
+    /// this on the journal line.
+    #[must_use]
+    pub fn describe_in(&self, facts: &RepoFacts) -> String {
+        match self {
+            Self::DropPutBack { stash } => match stash::position_of(*stash, facts) {
+                Ok(index) => format!("drop stash@{{{index}}}"),
+                // Not listed: `check` refuses before anything is written,
+                // so this line is never journaled.
+                Err(_) => self.describe(),
+            },
+            _ => self.describe(),
+        }
+    }
+
     /// The journal's and the browser's one-line text: `stage src/a.rs`,
-    /// `commit "fix the thing"`, `pop stash@{0}`.
+    /// `commit "fix the thing"`, `pop stash@{0}`. A `DropPutBack` has no
+    /// position without the facts, so it is named by its commit here; the
+    /// journal line uses [`Operation::describe_in`].
     #[must_use]
     pub fn describe(&self) -> String {
         match self {

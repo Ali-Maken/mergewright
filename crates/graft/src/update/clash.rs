@@ -8,41 +8,81 @@
 
 use graft_core::job::JobId;
 use graft_core::journal::{EntryId, PutBackWhy};
-use graft_ops::clash::{Clash, StashClash, live_clash};
+use graft_ops::clash::{Clash, StashClash, clash_candidate, live_clash};
 use graft_ops::operation::Operation;
+use graft_term::sanitize_line;
 
+use super::banner::StopLadder;
 use super::detail::Loading;
 use super::events::Command;
 use super::relaunch::LiveOrigin;
-use super::state::{AppState, ClashState, RefsRead, Status};
+use super::state::{AppState, ClashState, IndexRead, RefsRead, Status};
+
+/// What [`refresh_clash`] needs before it can judge.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Judged {
+    /// It judged, or is waiting on a read already out: nothing to ask.
+    Done,
+    /// A clash candidate exists and no current index is held: ask for one.
+    NeedsIndex,
+}
 
 /// **Recompute [`AppState::clash`] from what the app holds.** Pure over
-/// state: `graft_ops::clash::live_clash` over the journal as last read,
+/// state: `graft_ops::clash::clash_candidate` over the journal as last read,
 /// git's in-progress state, whether anything is unmerged and the stash list
-/// from the refs.
+/// from the refs; then, while a candidate exists, the tie to the index now
+/// ([`AppState::clash_index`]; ADR-0045 §2, amended 2026-09-25).
 ///
-/// Waits while any of the three reads is out, so it never judges a fresh
-/// status against a journal from before the write (a pop clash would read
-/// as none, and back). A clash already held for the same entry keeps its
-/// origin; a new one is `PreviousRun` when the launch's reads find it and
-/// `ThisRun` after (an undo or redo back into a clash).
-pub(crate) fn refresh_clash(state: &mut AppState) {
+/// Waits while any of the reads is out — the journal, status, refs, or the
+/// index — so it never judges a fresh status against a journal from before
+/// the write (a pop clash would read as none, and back). With a candidate
+/// and no current index it keeps the value held and answers
+/// [`Judged::NeedsIndex`]. An index read that failed is no clash, and the
+/// status says so (rule 3: worded, never a silent "no").
+///
+/// A clash already held for the same entry keeps its origin; a new one is
+/// `PreviousRun` when the launch's reads find it and `ThisRun` after (an
+/// undo or redo back into a clash). With no clash left, the landing's
+/// pane owed goes too (review 72+72b m1).
+pub(crate) fn refresh_clash(state: &mut AppState) -> Judged {
     if state.journal.reading.is_some()
         || super::status_read::owed(state)
         || matches!(state.refs_read, RefsRead::Pending(_))
+        || matches!(state.clash_index, IndexRead::Pending { .. })
     {
-        return;
+        return Judged::Done;
     }
     let (Loading::Ready(read), Some(status), Some(refs)) = (
         &state.journal.entries,
         state.working_tree.as_deref(),
         state.refs.as_deref(),
     ) else {
-        return;
+        return Judged::Done;
     };
     let any_unmerged = status.entries.iter().any(|entry| entry.unmerged);
     let in_progress = state.in_progress.as_ref().map(|detail| detail.kind);
-    let found = live_clash(&read.entries, in_progress, any_unmerged, refs.stashes());
+    let candidate = clash_candidate(&read.entries, in_progress, any_unmerged, refs.stashes());
+    let found = match (candidate, &state.clash_index) {
+        (None, _) => {
+            // Nothing Graft put back is in question: no read, no cost.
+            state.clash_index = IndexRead::Unknown;
+            None
+        }
+        (Some(_), IndexRead::Unknown | IndexRead::Pending { .. }) => {
+            return Judged::NeedsIndex;
+        }
+        (Some(_), IndexRead::Read(Err(why))) => {
+            state.status = Status::Failed(
+                sanitize_line(&format!("can't tell which stash clashed \u{b7} {why}")).to_string(),
+            );
+            None
+        }
+        // The walk again over the same facts, whole: `live_clash` is the one
+        // rule, and the tie is part of it.
+        (Some(_), IndexRead::Read(Ok(index_now))) => {
+            live_clash(&read.entries, in_progress, index_now, refs.stashes())
+        }
+    };
     let launch = !state.clash_facts_seen;
     state.clash_facts_seen = true;
     state.clash = found.map(|clash| {
@@ -53,25 +93,80 @@ pub(crate) fn refresh_clash(state: &mut AppState) {
         };
         ClashState { clash, origin }
     });
+    if state.clash.is_none() {
+        state.clash_pane_owed = false;
+    }
+    Judged::Done
 }
 
-/// [`refresh_clash`], and — when it has just found a clash the last run
-/// left — the launch's landing: the changes pane open, its cursor on the
-/// first `CONFLICTS` row, so one `⏎` opens the resolver (design note,
-/// "Relaunch with a clash open"). Under a modal the landing is skipped; the
-/// stop line still says it.
+/// A journal, working-tree or refs read landed: any index held is stale,
+/// then [`refresh_clash`] and the landings ([`judge_and_land`]).
 pub(super) fn refresh_and_land(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    if state.clash_pane_owed && state.uncommitted_row_shown() {
+    state.clash_index = match std::mem::take(&mut state.clash_index) {
+        IndexRead::Pending { id, .. } => IndexRead::Pending { id, stale: true },
+        IndexRead::Unknown | IndexRead::Read(_) => IndexRead::Unknown,
+    };
+    judge_and_land(state, commands, next_id);
+}
+
+/// The index read `id` answered. Any other id is an older read's, dropped.
+/// A read that went stale while it was out is not judged: one more is
+/// asked in its place, so one read is out at a time.
+pub(super) fn index_answered(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    read: Result<graft_core::journal::IndexState, String>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let IndexRead::Pending { id: asked, stale } = state.clash_index else {
+        return;
+    };
+    if asked != id {
+        return;
+    }
+    state.clash_index = if stale {
+        IndexRead::Unknown
+    } else {
+        IndexRead::Read(read)
+    };
+    judge_and_land(state, commands, next_id);
+}
+
+/// [`refresh_clash`], asking for the index when it needs one, and the two
+/// landings:
+/// - the pane the clash landing owes (`clash_pane_owed`), once the
+///   uncommitted row shows, while the clash stands and no box is over the
+///   resolver (it waits under one; review 72+72b m1);
+/// - when it has just found a clash the last run left, the launch's
+///   landing: the changes pane open, its cursor on the first `CONFLICTS`
+///   row, so one `⏎` opens the resolver (design note, "Relaunch with a clash
+///   open"). Under a modal the landing is skipped; the stop line still says
+///   it.
+fn judge_and_land(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let had = state.clash.is_some();
+    if refresh_clash(state) == Judged::NeedsIndex {
+        let id = next_id();
+        state.clash_index = IndexRead::Pending { id, stale: false };
+        commands.push(Command::ReadIndexState { id });
+    }
+    if state.clash_pane_owed
+        && state.clash.is_some()
+        && state.uncommitted_row_shown()
+        && !box_over_the_landing(state)
+    {
         state.clash_pane_owed = false;
         let first = super::banner::unmerged_paths(state).into_iter().next();
         super::relaunch::land_on_the_work(state, commands, first, next_id);
     }
-    let had = state.clash.is_some();
-    refresh_clash(state);
     let from_last_run = state
         .clash
         .as_ref()
@@ -81,6 +176,17 @@ pub(super) fn refresh_and_land(
     }
     let first = super::banner::unmerged_paths(state).into_iter().next();
     super::relaunch::land_on_the_work(state, commands, first, next_id);
+}
+
+/// A modal other than the resolver the clash landing opened owns the keys:
+/// a text field, a confirm, a preview, the finish summary or the commit
+/// editor. The pane owed waits under it.
+fn box_over_the_landing(state: &AppState) -> bool {
+    state.text_field_open()
+        || state.confirm.is_some()
+        || state.preview.is_some()
+        || state.finish.is_some()
+        || state.commit_editor.is_some()
 }
 
 /// `operate::operated`'s `Clashed` arm: the put-back clashed. Records the
@@ -130,6 +236,13 @@ pub(super) fn clashed(
     let notice = notice_words(index, clash.paths.len());
     if super::resolver::land_on_clash(state, &mut commands, first, next_id) {
         super::resolver::set_notice(state, (notice, false));
+    } else {
+        // Refused — a resolver or a box already owns the keys. The words
+        // still reach him, on the status line (review 72+72b m2): drawn as
+        // a notice (`Waiting` is the one status drawn neither as a failure
+        // nor with a tick), and the stop line keeps saying it after the next
+        // key clears it.
+        state.status = Status::Waiting(notice);
     }
     commands
 }
@@ -167,7 +280,7 @@ fn notice_words(index: Option<usize>, files: usize) -> String {
 /// `stash@{0} clashed · 1 file conflicted`; from the launch
 /// `stash@{0} clash from last run · 1 file conflicted`.
 #[must_use]
-pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> Vec<String> {
+pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> StopLadder {
     let name = stash_words(clash.clash.index);
     let full_head = match clash.origin {
         LiveOrigin::PreviousRun => format!("{name} clash from last run"),
@@ -191,7 +304,12 @@ pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> Vec<String
             rungs.push(words);
         }
     }
-    rungs
+    // A clash has no banner: nothing else on screen names the stash, so
+    // its reason outranks the bar's tail keys (review 72+72b M1).
+    StopLadder {
+        wordings: rungs,
+        before_keys: true,
+    }
 }
 
 /// The close after the last file of an **apply** clash: nothing runs, the
