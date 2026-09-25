@@ -116,7 +116,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 ●    Commit 157                                                                                                                                  GF 2d   b57586d
 ●    Commit 156                                                                                                                                  GF 2d   edc7cba
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ←/→ move  ⏎ choose  esc cancel
+ y push  ←/→ move  ⏎ choose  esc cancel
 
 
 ================================================================================
@@ -196,7 +196,7 @@ what right looks like: Capture header "What right looks like here" (ADR-0040): t
 ●    Commit 181                                                     2d   c8254c5
 ●    Commit 180                                                     2d   e95ccd4
  no commit-graph file · B build one · X never here
- ←/→ move  ⏎ choose  esc cancel
+ y push  ←/→ move  ⏎ choose  esc cancel
 
 
 ================================================================================
