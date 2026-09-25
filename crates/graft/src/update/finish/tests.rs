@@ -373,11 +373,50 @@ fn esc_goes_back_and_keeps_the_draft() {
 #[test]
 fn esc_from_a_summary_opened_in_the_pane_lands_on_the_banner() {
     use graft_ui::detail::DetailFocus;
+    let state = esc_from_the_summary_over(DetailFocus::Files);
+    // (e) the pane's own focus is left where it was.
+    assert_eq!(state.detail.focus, DetailFocus::Files);
+    // (d) the next key is the banner's: its `⇥` hands the keyboard to the
+    // graph. The pane's `⇥` would have moved Files → Diff.
+    let state = key(&state, KeyCode::Tab);
+    assert!(!state.banner_focus);
+    assert_eq!(state.detail.focus, DetailFocus::Graph);
+}
+
+/// Frame 2 of m6-conflicts/52: the detail pane open, the graph focused.
+#[test]
+fn esc_from_a_summary_opened_in_the_graph_with_details_open_lands_on_the_banner() {
+    use graft_ui::detail::DetailFocus;
+    let state = esc_from_the_summary_over(DetailFocus::Graph);
+    // (e) the graph keeps the focus it had.
+    assert_eq!(state.detail.focus, DetailFocus::Graph);
+    // (d) the next `⇥` is the banner's (back to the graph, banner let go).
+    // The graph's own `⇥` from here lands somewhere else, checked below so
+    // the two cannot be mistaken for each other.
+    let mut unfocused = state.clone();
+    unfocused.banner_focus = false;
+    let by_the_graph = key(&unfocused, KeyCode::Tab);
+    let state = key(&state, KeyCode::Tab);
+    assert!(!state.banner_focus);
+    assert_eq!(state.detail.focus, DetailFocus::Graph);
+    assert!(
+        by_the_graph.banner_focus || by_the_graph.detail.focus != DetailFocus::Graph,
+        "the graph's `⇥` would not look like the banner's"
+    );
+}
+
+/// A resolved merge with the working-tree detail pane open and `focus`
+/// under the banner; the banner's `c` opens the summary, a few words go
+/// into the subject, and `Esc` closes it. Asserts (a)–(c) of find-and-pin 1.
+fn esc_from_the_summary_over(focus: graft_ui::detail::DetailFocus) -> AppState {
     let mut state = stopped(InProgress::Merge, &[]);
     state.detail.shown = true;
     state.detail.spec = Some(crate::update::detail::DetailSpec::WorkingTree);
-    state.detail.focus = DetailFocus::Files;
-    assert!(state.on_changes_pane(), "the changes pane is underneath");
+    state.detail.focus = focus;
+    assert!(
+        state.on_changes_pane(),
+        "the changes pane is open underneath"
+    );
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
     let id = commands
         .iter()
@@ -409,13 +448,7 @@ fn esc_from_a_summary_opened_in_the_pane_lands_on_the_banner() {
         crate::view::rows::footer_context(&state, &[], Some(&banner)),
         crate::view::rows::banner_context(&banner)
     );
-    // (e) the pane's own focus is left where it was.
-    assert_eq!(state.detail.focus, DetailFocus::Files);
-    // (d) the next key is the banner's: its `⇥` hands the keyboard to the
-    // graph. The pane's `⇥` would have moved Files → Diff.
-    let state = key(&state, KeyCode::Tab);
-    assert!(!state.banner_focus);
-    assert_eq!(state.detail.focus, DetailFocus::Graph);
+    state
 }
 
 #[test]

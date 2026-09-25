@@ -3,7 +3,7 @@
 //! [`every_hint`]).
 
 use super::lists::{TAIL, context_list};
-use super::{EXPLAIN, Hint, HintContext, MORE, RESIZE, WAY_BACK};
+use super::{EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, WAY_BACK};
 use crate::conflict_resolver::SideRoles;
 
 /// **Every context the footer can be put in**, every field combination, each
@@ -54,8 +54,14 @@ pub fn every_context() -> Vec<HintContext> {
             conflicted: false,
         },
         HintContext::Preview,
-        HintContext::ChangesPane { unmerged: false },
-        HintContext::ChangesPane { unmerged: true },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        },
+        HintContext::ChangesPane {
+            unmerged: true,
+            live: None,
+        },
         HintContext::Journal,
         HintContext::Stash,
         HintContext::Map,
@@ -68,15 +74,33 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::Credential,
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
+    all.extend(changes_pane_live_forms());
     all.extend(resolver_forms());
     all.extend(finish_forms());
     all.extend(plain.iter().filter_map(marked_form));
     let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
     all.extend(rows);
-    let live: Vec<HintContext> = all.iter().filter_map(operation_live_form).collect();
+    let live: Vec<HintContext> = all.iter().flat_map(operation_live_form).collect();
     all.extend(live);
     all
 }
+
+/// Every live-operation form of [`HintContext::ChangesPane`]: each
+/// [`LiveC`] over each `unmerged`.
+fn changes_pane_live_forms() -> Vec<HintContext> {
+    [false, true]
+        .into_iter()
+        .flat_map(|unmerged| {
+            LIVE_C.into_iter().map(move |c| HintContext::ChangesPane {
+                unmerged,
+                live: Some(c),
+            })
+        })
+        .collect()
+}
+
+/// Every [`LiveC`], for the forms that carry one.
+const LIVE_C: [LiveC; 3] = [LiveC::Finish, LiveC::Continue, LiveC::Refuses];
 
 /// Every [`HintContext::Finish`] form: each focus, a git-combined row under
 /// the cursor or not. Only the files focus reads `expandable`, so the other
@@ -103,21 +127,32 @@ fn finish_forms() -> Vec<HintContext> {
     ]
 }
 
-/// `context` wrapped in [`HintContext::OperationLive`], for the contexts
-/// `graft::view::rows::footer_context` can wrap: an unmodal graph-screen
-/// bar — a cursor row, marked or not, or the changes pane. Not a pane
-/// focused on a commit's diff: `⇥` from there lands on the banner too, but
-/// `graft` does not wrap it (the pane's own list has no `⇥` to replace).
+/// `context` wrapped in [`HintContext::OperationLive`] every way `graft`
+/// can wrap it — each [`LiveC`], one `⇥` from the banner or not — for the
+/// contexts `graft::view::rows::footer_context` wraps: a graph row, marked
+/// or not, and a pane focused on a commit (its `c` passes through to the
+/// graph's). Not the changes pane: it carries its own `live`
+/// ([`changes_pane_live_forms`]).
 ///
 /// Exhaustive on purpose: see [`every_context`].
-fn operation_live_form(context: &HintContext) -> Option<HintContext> {
+fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
-        | HintContext::Marked(_) => Some(HintContext::OperationLive(Box::new(context.clone()))),
-        // Not the changes pane: it is one `Tab` from the banner only from
-        // its diff, where its own bar's `space`/`d` are not answered.
+        | HintContext::Marked(_)
+        | HintContext::PaneFocused { .. } => LIVE_C
+            .into_iter()
+            .flat_map(|c| {
+                [true, false]
+                    .into_iter()
+                    .map(move |tab_to_banner| HintContext::OperationLive {
+                        row: Box::new(context.clone()),
+                        c,
+                        tab_to_banner,
+                    })
+            })
+            .collect(),
         HintContext::ChangesPane { .. }
         | HintContext::Banner { .. }
         | HintContext::Preview
@@ -131,8 +166,7 @@ fn operation_live_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Credential
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
-        | HintContext::PaneFocused { .. }
-        | HintContext::OperationLive(_) => None,
+        | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
 
@@ -216,7 +250,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Finish { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
-        | HintContext::OperationLive(_) => None,
+        | HintContext::OperationLive { .. } => None,
     }
 }
 
@@ -262,7 +296,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         | HintContext::PaneFocused { .. }
-        | HintContext::OperationLive(_) => Vec::new(),
+        | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
 

@@ -133,6 +133,19 @@ pub(super) fn shell_merge_refusal() -> Status {
     }
 }
 
+/// `c` in `state` opens the finish summary, as the banner's `c` does
+/// (m6-conflicts/52): no editor, and `Esc` from it goes to the banner.
+fn c_opens_the_summary(state: &AppState) {
+    let after = press_for_commands(state, KeyPress::plain(KeyCode::Char('c'))).0;
+    assert!(after.commit_editor.is_none(), "`c` opened the editor");
+    assert_eq!(
+        after.finish.as_ref().map(|finish| finish.return_to),
+        Some(ReturnTo::Banner),
+        "`c` opens the summary: {:?}",
+        after.status
+    );
+}
+
 /// `key` in `state` answers in words: no editor, no read, no write, and
 /// `status` is `refusal`.
 fn answers_in_words(state: &AppState, key: char, refusal: &Status) {
@@ -152,30 +165,33 @@ fn answers_in_words(state: &AppState, key: char, refusal: &Status) {
     assert_eq!(&after.status, refusal, "`{key}`");
 }
 
-/// **The failing test first (m6-conflicts/48):** with a merge live — begun
-/// in Graft or in the shell — the changes pane's `c` and `a` open nothing
-/// and answer in the words the editor used to show.
+/// With a merge live — begun in Graft or in the shell — the changes pane's
+/// `a` opens nothing and answers in the words the editor used to show
+/// (m6-conflicts/48). Its `c` opened nothing either until m6-conflicts/52;
+/// now it opens the finish summary, as the banner's `c` does. `a` is
+/// unchanged: it never aborts.
 #[test]
-fn c_and_a_with_a_merge_live_answer_in_words() {
+fn a_mid_operation_still_refuses_in_words() {
     let (graft_begun, app, state) = resolved_graft_merge();
     let pane = pane_focused(&app, state);
-    answers_in_words(&pane, 'c', &graft_merge_refusal());
     answers_in_words(&pane, 'a', &graft_merge_refusal());
+    c_opens_the_summary(&pane);
     app.close();
     drop(graft_begun);
 
     let (shell_begun, app, state) = resolved_shell();
     let pane = pane_focused(&app, state);
-    answers_in_words(&pane, 'c', &shell_merge_refusal());
     answers_in_words(&pane, 'a', &shell_merge_refusal());
+    c_opens_the_summary(&pane);
     app.close();
     drop(shell_begun);
 }
 
 /// **Every production way to open the editor** (`grep -rn
-/// "commit_editor::open" crates/graft/src`: `update/keys.rs:280` only, `c`
-/// and `a`, reached from the graph and from the changes pane) refuses while
-/// an operation is live.
+/// "commit_editor::open" crates/graft/src`: `update/keys.rs` `commit_key`
+/// only, `c` and `a`, reached from the graph and from the changes pane)
+/// opens no editor while an operation is live: `a` answers in words, and
+/// on a merge `c` opens the finish summary instead (m6-conflicts/52).
 #[test]
 fn every_way_to_open_the_editor_refuses_mid_operation() {
     let (scratch, app, state) = resolved_shell();
@@ -188,10 +204,9 @@ fn every_way_to_open_the_editor_refuses_mid_operation() {
     }
     let pane = pane_focused(&app, graph.clone());
     for (where_, state) in [("graph", &graph), ("changes pane", &pane)] {
-        for key in ['c', 'a'] {
-            eprintln!("{where_}: {key}");
-            answers_in_words(state, key, &shell_merge_refusal());
-        }
+        eprintln!("{where_}");
+        answers_in_words(state, 'a', &shell_merge_refusal());
+        c_opens_the_summary(state);
     }
     app.close();
     drop(scratch);
@@ -233,8 +248,9 @@ fn head_message_arriving_mid_operation_does_not_open() {
     drop(scratch);
 }
 
-/// A cherry-pick Graft began, 80x24: the footer holds the keys whole and no
-/// row is cut with `…`. The state is the Graft-begun merge's with the kind
+/// A cherry-pick Graft began, 80x24, `a` pressed (its `c` continues since
+/// m6-conflicts/52): the footer holds the keys whole and no row is cut
+/// with `…`. The state is the Graft-begun merge's with the kind
 /// swapped to a cherry-pick — the words depend only on `(kind, begun)`, and
 /// no fixture stops a Graft cherry-pick on a conflict.
 #[test]
@@ -242,7 +258,7 @@ fn the_pane_words_fit_at_80() {
     let (scratch, app, state) = resolved_graft_merge();
     let mut pane = pane_focused(&app, state);
     pane.in_progress.as_mut().expect("live").kind = InProgress::CherryPick;
-    let refused = app.key(&pane, KeyCode::Char('c'));
+    let refused = app.key(&pane, KeyCode::Char('a'));
     assert_eq!(
         refused.status,
         Status::Sticky {
@@ -269,8 +285,9 @@ fn the_pane_words_fit_at_80() {
     drop(scratch);
 }
 
-/// After `Esc` from the editor over `state`, the pane's `c` and `a` answer
-/// in words (m6-conflicts/48); neither reopens the editor.
+/// After `Esc` from the editor over `state`, the pane's `a` answers in
+/// words (m6-conflicts/48) and its `c` opens the finish summary
+/// (m6-conflicts/52); neither reopens the editor.
 fn pin_the_panes_keys(app: &App, state: AppState, refusal: &Status) {
     let open = editor_open(app, state);
     let closed = app.key(&open, KeyCode::Escape);
@@ -279,16 +296,16 @@ fn pin_the_panes_keys(app: &App, state: AppState, refusal: &Status) {
         !closed.banner_focus,
         "`Esc` lands in the pane, not the banner"
     );
-    answers_in_words(&closed, 'c', refusal);
     answers_in_words(&closed, 'a', refusal);
+    c_opens_the_summary(&closed);
 }
 
-/// **Ticket 39's Step 0 pin, rewritten to m6-conflicts/48:** after `Esc`
-/// from the commit editor, the changes pane's `c` and `a` answer in words —
-/// on a merge Graft began and on one begun in the shell. Neither reaches the
-/// banner; the words name `⇥ banner`.
+/// **Ticket 39's Step 0 pin, rewritten to m6-conflicts/48 and 52:** after
+/// `Esc` from the commit editor, the changes pane's `a` answers in words and
+/// its `c` opens the finish summary — on a merge Graft began and on one
+/// begun in the shell. The words name `⇥ banner`.
 #[test]
-fn after_esc_the_panes_c_and_a_answer_in_words() {
+fn after_esc_the_panes_a_answers_in_words_and_c_opens_the_summary() {
     let (graft_begun, app, state) = resolved_graft_merge();
     pin_the_panes_keys(&app, state, &graft_merge_refusal());
     app.close();

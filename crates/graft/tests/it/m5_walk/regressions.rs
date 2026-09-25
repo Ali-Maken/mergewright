@@ -461,8 +461,9 @@ fn hints_at_80_show_three_and_more() -> Scenario {
                 })?;
                 // With the rebase live and the banner one `Tab` away, the
                 // way back leads (m6-conflicts/12) and the row's own three
-                // become two.
-                bar_is(state, "⇥ banner  ⏎ changes  c commit")
+                // become two. Graft began the rebase, so `c` continues it
+                // (m6-conflicts/52).
+                bar_is(state, "⇥ banner  ⏎ changes  c continue")
             }),
             key(KeyCode::Enter),
             Step::WaitFor(Wait::ChangesPane),
@@ -472,14 +473,15 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             // `⏎ resolve`, `M mergetool` and `space resolved` were
             // `planned()` here until m6-conflicts/04 bound all three; the
             // design note's parenthesis is today's bar now.
-            // Six hints and the doorway measure 74 of the 80 columns, so
+            // Six hints and the doorway measure 76 of the 80 columns (74
+            // before m6-conflicts/52 said `c continue` for `c commit`), so
             // this is the *whole* list, not a three-and-`. more` prefix:
             // before m6-conflicts/04 three of the six were `planned()` and
             // the bar was short enough to be the other kind.
             Step::See("the changes pane, on an unmerged file", |state| {
                 let drawn = bar(state)?;
                 let wanted =
-                    " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph  . more";
+                    " ⏎ resolve  M mergetool  e edit  space resolved  c continue  ⇥ graph  . more";
                 check(drawn.trim_end() == wanted, || {
                     format!("the bar is {drawn:?}, not {wanted:?}")
                 })

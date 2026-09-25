@@ -3874,9 +3874,15 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         // never reach the app.
         HintContext::Preview | HintContext::Resolver { .. } => None,
         // The wrapper classifies as its row does.
-        HintContext::OperationLive(row) => {
-            classified_form(row).map(|row| HintContext::OperationLive(Box::new(row)))
-        }
+        HintContext::OperationLive {
+            row,
+            c,
+            tab_to_banner,
+        } => classified_form(row).map(|row| HintContext::OperationLive {
+            row: Box::new(row),
+            c: *c,
+            tab_to_banner: *tab_to_banner,
+        }),
         // The three overlays and the pane with one behind it **are**
         // classified, since m5/42: `view::rows` reads
         // `AppState::graph_overlay` and answers the overlay's own list with
@@ -4092,15 +4098,56 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
             }
             state
         })
-        // With the pane open and the graph focused, `Tab` goes to the pane,
-        // not the banner, so the bar never leads with `⇥ banner` there
-        // (`banner::one_tab_to_banner`): that screen is not this context.
-        .filter(|state| {
-            !matches!(context, HintContext::OperationLive(_))
-                || !state.detail.shown
-                || state.detail.focus == DetailFocus::Diff
+        // With the pane open and the graph (or its file list) focused,
+        // `Tab` goes to the pane, not the banner, so the bar leads with
+        // `⇥ banner` only where one `Tab` lands there
+        // (`banner::one_tab_to_banner`): each state is the form it claims.
+        .filter(|state| match context {
+            HintContext::OperationLive { tab_to_banner, .. } => {
+                crate::update::banner::one_tab_to_banner(state) == *tab_to_banner
+            }
+            _ => true,
         })
         .collect()
+}
+
+/// An operation live over `state` whose `c` in the graph or the changes
+/// pane is `c` (m6-conflicts/52), the banner unfocused: a merge for
+/// `Finish`, a rebase Graft began for `Continue`. For `Refuses`, a rebase
+/// the shell began where the banner is to be one `⇥` away, else a bisect —
+/// which has no banner at all.
+fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, banner: bool) {
+    use graft_git::state::InProgress;
+    use graft_ui::graph_screen::LiveC;
+    let kind = match c {
+        LiveC::Finish => InProgress::Merge,
+        LiveC::Continue => InProgress::Rebase,
+        LiveC::Refuses if banner => InProgress::Rebase,
+        LiveC::Refuses => InProgress::Bisect,
+    };
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind,
+        step: None,
+        head_name: None,
+        onto: None,
+        theirs: Ok(None),
+    });
+    if c == LiveC::Continue {
+        state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
+    }
+    state.banner_focus = false;
+    // Checked, not trusted: `live_operation` reads "Graft began it" off
+    // `live_entries`, and a bisect has no banner.
+    let live = crate::update::commit_editor::live_operation(state).expect("an operation is live");
+    assert_eq!(
+        crate::update::commit_editor::pane_c_acts(live),
+        c != LiveC::Refuses,
+        "{live:?} is not a `{c:?}` state"
+    );
+    assert_eq!(
+        crate::update::banner::banner_view(state).is_some(),
+        kind != InProgress::Bisect
+    );
 }
 
 /// The half of [`states_for`] that is one arm per context — kept apart from
@@ -4140,21 +4187,28 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
             skippable,
             conflicted,
         } => vec![stopped_operation(walk, *skippable, *conflicted)],
-        HintContext::ChangesPane { unmerged } => vec![changes_pane_open(walk, *unmerged)],
+        HintContext::ChangesPane { unmerged, live } => {
+            let mut state = changes_pane_open(walk, *unmerged);
+            if let Some(c) = live {
+                operation_live_as(&mut state, *c, false);
+            }
+            vec![state]
+        }
         // The row's own screen with a merge standing and the banner handed
         // back (m6-conflicts/12): `⇥` leads, and every other key on the
         // row's bar must still answer with an operation live.
-        HintContext::OperationLive(row) => screen_for(row)
+        // The row's own screen with an operation standing and the banner
+        // handed back (m6-conflicts/12): every key on the row's bar must
+        // still answer with it live, and `c` does what the bar says
+        // (m6-conflicts/52).
+        HintContext::OperationLive {
+            row,
+            c,
+            tab_to_banner,
+        } => screen_for(row)
             .into_iter()
             .map(|mut state| {
-                state.in_progress = Some(graft_git::state::InProgressDetail {
-                    kind: graft_git::state::InProgress::Merge,
-                    step: None,
-                    head_name: None,
-                    onto: None,
-                    theirs: Ok(None),
-                });
-                state.banner_focus = false;
+                operation_live_as(&mut state, *c, *tab_to_banner);
                 state
             })
             .collect(),

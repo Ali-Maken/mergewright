@@ -1098,15 +1098,17 @@ fn capture_fix_editor_names_the_banner() {
 }
 
 /// Regenerates `docs/shots/m6/fix-c-mid-merge-answers-in-words-{187x50,80x24}.txt`
-/// (m6-conflicts/48): J3, the changes pane focused, `c` pressed — no editor,
-/// the footer answers in words.
+/// (m6-conflicts/48): J3, the changes pane focused, `a` pressed — no editor,
+/// the footer answers in words. Since m6-conflicts/52 the pane's `c` on a
+/// merge opens the finish summary (`capture_fix_c_in_pane_finishes`), so
+/// `a` is the key left answering in these words; the file keeps its name.
 #[test]
 fn capture_fix_c_mid_merge_answers_in_words() {
     let scratch = resolved_shell_merge();
     let (app, state) = launched_into(scratch.path());
     let pane = settled_frame(&app, super::editor_words::pane_focused(&app, state));
-    let refused = app.key(&pane, KeyCode::Char('c'));
-    assert!(refused.commit_editor.is_none(), "`c` opened the editor");
+    let refused = app.key(&pane, KeyCode::Char('a'));
+    assert!(refused.commit_editor.is_none(), "`a` opened the editor");
     assert_eq!(refused.status, super::editor_words::shell_merge_refusal());
     let mut captures = graft_fixtures::Captures::new();
     for (columns, rows) in [(187_u16, 50_u16), (80, 24)] {
@@ -1134,8 +1136,8 @@ fn capture_fix_c_mid_merge_answers_in_words() {
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_fix_c_mid_merge_answers_in_words in
 # crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
-# begun in the shell, resolved; the changes pane focused, `c` pressed
-# (m6-conflicts/48).
+# begun in the shell, resolved; the changes pane focused, `a` pressed
+# (m6-conflicts/48; `c` there opens the finish summary since 52).
 #
 # Judge by eye:
 # - No commit editor is drawn.
@@ -1157,4 +1159,234 @@ fn capture_fix_c_mid_merge_answers_in_words() {
     }
     app.close();
     captures.finish();
+}
+
+// ---------------------- `c` in the pane finishes it (m6-conflicts/52)
+
+/// **The failing test first (m6-conflicts/52):** J3 — a merge begun in the
+/// shell, resolved — with the changes pane focused, `c` opens the finish
+/// summary, as the banner's `c` does; `Esc` from it goes to the banner.
+/// Red after M3a: `c` there refused in words.
+#[test]
+fn c_in_the_changes_pane_opens_the_summary() {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let pane = super::editor_words::pane_focused(&app, state);
+    assert!(
+        pane.on_changes_pane() && !pane.graph_has_focus(),
+        "the pane"
+    );
+    let state = app.key(&pane, KeyCode::Char('c'));
+    let finish = state.finish.as_ref().expect("`c` opens the summary");
+    assert_eq!(finish.return_to, graft::update::finish::ReturnTo::Banner);
+    assert!(state.commit_editor.is_none(), "no commit editor");
+    app.close();
+    drop(scratch);
+}
+
+/// A merge finished from the pane is one `FinishMerge` entry, and `u` puts
+/// it back and lands on the banner, as ticket 41 says for the banner's own
+/// `c y`.
+#[test]
+fn finishing_from_the_pane_journals_once_and_u_lands_on_the_banner() {
+    let scratch = resolved_shell_merge();
+    let repo = scratch.path().to_owned();
+    let before = journal_entries(&repo).len();
+    let (app, state) = launched_into(&repo);
+    let pane = super::editor_words::pane_focused(&app, state);
+    let state = app.key(&pane, KeyCode::Char('c'));
+    let state = app.pump(state, "the finish summary", |state| {
+        state.finish.as_ref().is_some_and(|open| open.job.is_none())
+    });
+    let state = y_to_the_landing(&app, &state);
+    let entries = journal_entries(&repo);
+    assert_eq!(entries.len(), before + 1, "one new entry");
+    assert_eq!(
+        entries[before].kind,
+        graft_core::journal::OperationKind::FinishMerge
+    );
+
+    let state = app.key(&state, KeyCode::Char('u'));
+    assert!(state.operating.is_some(), "`u` ran: {:?}", state.status);
+    let state = app.pump(state, "the undo and its refresh", |state| {
+        state.operating.is_none() && state.in_progress.is_some() && state.status_read.is_none()
+    });
+    assert!(repo.join(".git/MERGE_HEAD").exists(), "the merge is back");
+    assert!(state.banner_focus, "the banner has the keyboard");
+    assert_eq!(
+        state.status,
+        Status::done_with_keys("undo: finish merge of feature", "c finishes the merge")
+    );
+    app.close();
+    drop(scratch);
+}
+
+/// A frame at 187x50 against the fixture's fixed clock.
+fn frame_187(state: &AppState) -> Vec<String> {
+    crate::captures::frame_at(
+        state,
+        187,
+        50,
+        Some(graft::session::Clock::Fixed(
+            crate::conflict_interim::CONFLICT_NOW,
+        )),
+    )
+}
+
+/// Regenerates `docs/shots/m6/fix-c-in-pane-finishes-187x50.txt`
+/// (m6-conflicts/52): J3, the changes pane focused, its bar offering
+/// `c finish`; then `c`, and the summary.
+#[test]
+fn capture_fix_c_in_pane_finishes() {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let pane = settled_frame(&app, super::editor_words::pane_focused(&app, state));
+    let before = frame_187(&pane);
+    let body = before.join("\n");
+    let bar = before
+        .iter()
+        .find(|row| row.contains("c finish"))
+        .unwrap_or_else(|| panic!("no row offers `c finish`:\n{body}"));
+    assert!(!body.contains("c commit"), "{body}");
+    assert!(bar.contains("space"), "the pane's own bar: {bar}");
+
+    let state = app.key(&pane, KeyCode::Char('c'));
+    let state = app.pump(state, "the finish summary", |state| {
+        state.finish.as_ref().is_some_and(|open| open.job.is_none())
+    });
+    let after = frame_187(&state);
+    let summary = after.join("\n");
+    assert!(
+        after.iter().any(|row| row
+            .trim_start()
+            .starts_with("╭ Preview: finish merging feature into main")),
+        "{summary}"
+    );
+    assert!(
+        after
+            .iter()
+            .any(|row| row.trim_start().starts_with("╰ y commit")),
+        "{summary}"
+    );
+    let header = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_in_pane_finishes in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). J3: a merge
+# begun in the shell, resolved; the changes pane focused (m6-conflicts/52).
+#
+# Judge by eye:
+# - Frame 1: the pane's bar offers `c finish` and no `c commit`.
+# - Frame 2 (after `c`): the summary's top border reads
+#   `╭ Preview: finish merging feature into main`, its bottom border starts
+#   `╰ y commit`.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 187x50 ===
+";
+    crate::captures::check_shot(
+        "m6/fix-c-in-pane-finishes-187x50.txt",
+        &format!("{header}{body}\n--- after c ---\n{summary}\n"),
+    );
+    app.close();
+    drop(scratch);
+}
+
+/// Regenerates `docs/shots/m6/fix-c-live-frames-187x50.txt`
+/// (m6-conflicts/52, decision B): the two frames that used to draw
+/// `c commit` while an operation was live. Frame 1: mid-bisect, a graph row
+/// focused. Frame 2: J3 with the detail pane open and the graph focused.
+#[test]
+fn capture_fix_c_live_frames() {
+    let first = bisect_frame();
+    let second = details_open_frame();
+    let header = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_live_frames in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). The two frames
+# that drew `c commit` while an operation was live (m6-conflicts/52).
+#
+# Judge by eye:
+# - Frame 1 (`bisect start` in the shell, a graph row focused): the bar
+#   has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`.
+# - Frame 2 (a merge begun in the shell, resolved; the detail pane open,
+#   the graph focused): the bar offers `c finish`, not `c commit`, and no
+#   `⇥ banner`.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 187x50 ===
+";
+    crate::captures::check_shot(
+        "m6/fix-c-live-frames-187x50.txt",
+        &format!("{header}{first}\n--- frame 2 ---\n{second}\n"),
+    );
+}
+
+/// Frame 1 of [`capture_fix_c_live_frames`]: `bisect start` in the shell —
+/// `BISECT_LOG`, no banner — a graph row focused. Asserted, then returned
+/// drawn at 187x50.
+fn bisect_frame() -> String {
+    let bisect = crate::conflict_interim::about_to_conflict();
+    crate::app_harness::git(bisect.path(), &["bisect", "start"]);
+    let (app, state) = App::open(bisect.path());
+    let state = crate::conflict_interim::launched(&app, state);
+    let state = app.pump(state, "the bisect and the first rows", |state| {
+        state.in_progress.is_some()
+            && state
+                .history
+                .as_ref()
+                .and_then(|history| history.window.as_ref())
+                .is_some_and(|window| !window.rows.is_empty())
+    });
+    assert_eq!(
+        state.in_progress.as_ref().map(|detail| detail.kind),
+        Some(graft_git::state::InProgress::Bisect)
+    );
+    let state = settled_frame(&app, state);
+    assert!(state.graph_has_focus() && !state.detail.shown && !state.banner_focus);
+    let one = frame_187(&state);
+    let first = one.join("\n");
+    let bar = one
+        .iter()
+        .rev()
+        .find(|row| row.contains("⏎ "))
+        .unwrap_or_else(|| panic!("no hint bar:\n{first}"));
+    for gone in ["c commit", "c finish", "c continue", "⇥ banner"] {
+        assert!(!first.contains(gone), "`{gone}` in frame 1: {bar}");
+    }
+    app.close();
+    drop(bisect);
+    first
+}
+
+/// Frame 2 of [`capture_fix_c_live_frames`]: J3, the pane open on the
+/// working tree, the graph focused — `⇥` off the pane to the banner, then
+/// the banner's `⇥` back to the graph. Asserted, then returned drawn at
+/// 187x50.
+fn details_open_frame() -> String {
+    let scratch = resolved_shell_merge();
+    let (app, state) = launched_into(scratch.path());
+    let mut state = super::editor_words::pane_focused(&app, state);
+    let mut guard = 0;
+    while !state.banner_focus {
+        assert!(guard < 3, "`⇥` never reached the banner");
+        state = app.key(&state, KeyCode::Tab);
+        guard += 1;
+    }
+    let state = app.key(&state, KeyCode::Tab);
+    assert!(
+        state.detail.shown && state.graph_has_focus() && !state.banner_focus,
+        "the detail pane open, the graph focused"
+    );
+    let state = settled_frame(&app, state);
+    let two = frame_187(&state);
+    let second = two.join("\n");
+    let bar = two
+        .iter()
+        .find(|row| row.contains("c finish"))
+        .unwrap_or_else(|| panic!("no row offers `c finish`:\n{second}"));
+    assert!(!bar.contains("⇥ banner"), "{bar}");
+    assert!(!second.contains("c commit"), "{second}");
+    app.close();
+    drop(scratch);
+    second
 }

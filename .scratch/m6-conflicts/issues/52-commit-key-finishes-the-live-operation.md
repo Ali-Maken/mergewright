@@ -1,6 +1,6 @@
 # commit-key-finishes-the-live-operation: `c` in the graph or the changes pane, mid-operation, does what the banner's `c` does, where the banner's `c` acts
 
-Status: ready (unblocked 2026-09-24: P14 approved, picks item 12; the keymap is edited, §2.4 and §2.6a. Reconciled
+Status: done (2026-09-25, builder-opus). Was: ready (unblocked 2026-09-24: P14 approved, picks item 12; the keymap is edited, §2.4 and §2.6a. Reconciled
 with scout 52 on 2026-09-25. **Respecified 2026-09-25 after find-and-pin 2 stopped the first build: decision B,
 below.**)
 From: `docs/reviews/m6-usability.md` M3 (:96-97), the rest of the direction.
@@ -260,39 +260,39 @@ pub enum LiveC {
     `LiveC`, `every_context`.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Find-and-pin 1a: `esc_from_a_summary_opened_in_the_pane_lands_on_the_banner`, with (a)–(d) holding and (e)
+- [x] Find-and-pin 1a: `esc_from_a_summary_opened_in_the_pane_lands_on_the_banner` (`update/finish/tests.rs`), with (a)–(d) holding and (e)
       recorded in NOTES.
-- [ ] Find-and-pin 1b: `esc_from_a_summary_opened_in_the_graph_with_details_open_lands_on_the_banner`, the same.
-- [ ] Find-and-pin 2: `no_graph_row_context_is_unwrapped_while_live`, over its four frames.
-- [ ] `c_in_the_changes_pane_opens_the_summary`: red first, then green.
-- [ ] `c_in_the_graph_opens_the_summary_on_a_graft_begun_merge`
-- [ ] `c_in_the_graph_with_details_open_opens_the_summary`
-- [ ] `c_in_the_graph_continues_a_graft_begun_rebase`
-- [ ] `c_in_the_pane_on_a_shell_begun_rebase_refuses_in_words_and_sends_nothing`
-- [ ] `c_in_the_pane_mid_bisect_refuses_in_words_and_sends_nothing`
-- [ ] `c_in_the_graph_mid_bisect_refuses_in_words_and_sends_nothing`
-- [ ] `c_from_the_pane_and_from_the_banner_emit_the_same`
-- [ ] `the_bar_offers_c_exactly_where_c_acts`
-- [ ] `tab_banner_is_hinted_only_where_one_tab_reaches_it`
-- [ ] `finishing_from_the_pane_journals_once_and_u_lands_on_the_banner`
-- [ ] `a_mid_operation_still_refuses_in_words`
-- [ ] `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here`, `every_context`
-      coverage: all green over the new forms.
-- [ ] `journey_counts_match_the_note`, with `editor-to-finish` = 2.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-c-in-pane-finishes-187x50.txt`.
+- [x] Find-and-pin 1b: `esc_from_a_summary_opened_in_the_graph_with_details_open_lands_on_the_banner` (`update/finish/tests.rs`), the same.
+- [x] Find-and-pin 2: `no_graph_row_context_is_unwrapped_while_live` (`crates/graft/src/update/keys/live_c_tests.rs`), over its four frames, plus the opening view.
+- [x] `c_in_the_changes_pane_opens_the_summary` (`tests/it/resolver/shell_begun.rs`): red with the route disabled, then green.
+- [x] `c_in_the_graph_opens_the_summary_on_a_graft_begun_merge` (`crates/graft/src/update/keys/live_c_tests.rs`)
+- [x] `c_in_the_graph_with_details_open_opens_the_summary` (`crates/graft/src/update/keys/live_c_tests.rs`)
+- [x] `c_in_the_graph_continues_a_graft_begun_rebase` (`crates/graft/src/update/keys/live_c_tests.rs`)
+- [x] `c_in_the_pane_on_a_shell_begun_rebase_refuses_in_words_and_sends_nothing` (`crates/graft/src/update/keys/live_c_tests.rs`)
+- [x] `c_in_the_pane_mid_bisect_refuses_in_words_and_sends_nothing` (`crates/graft/src/update/keys/live_c_tests.rs`)
+- [x] `c_in_the_graph_mid_bisect_refuses_in_words_and_sends_nothing` (`crates/graft/src/update/keys/live_c_tests.rs`; frame 1 and frame 2)
+- [x] `c_from_the_pane_and_from_the_banner_emit_the_same` (`crates/graft/src/update/keys/live_c_tests.rs`; the four rows plus a status read still out)
+- [x] `the_bar_offers_c_exactly_where_c_acts` (`crates/graft/src/update/keys/live_c_tests.rs`; 5 rows × pane, graph, graph with details — bisect has no banner in all three)
+- [x] `tab_banner_is_hinted_only_where_one_tab_reaches_it` (`crates/graft/src/update/keys/live_c_tests.rs`)
+- [x] `finishing_from_the_pane_journals_once_and_u_lands_on_the_banner` (`tests/it/resolver/shell_begun.rs`)
+- [x] `a_mid_operation_still_refuses_in_words` (`tests/it/resolver/editor_words.rs`, real git, both merges) and `a_mid_operation_still_refuses_in_words_on_plain_data` (`crates/graft/src/update/keys/live_c_tests.rs`, all 5 rows × 3 frames)
+- [x] `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here` (`update/tests.rs`), `every_context_reaches_every_shape`
+      (graft-ui `graph_screen/tests.rs`) and `every_swept_state_is_the_context_it_claims`: all green over the new forms.
+- [x] `journey_counts_match_the_note` (`tests/it/m5_walk/conflict_journeys.rs`) and `journey_editor_to_finish` (`every_scenario.rs`), with `editor-to-finish` = 2.
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-c-in-pane-finishes-187x50.txt` — `capture_fix_c_in_pane_finishes` (`shell_begun.rs`) asserts the three lines. Look is the user's.
   - Scene: two frames. Frame 1: the changes pane over a resolved shell merge, its bar showing `c finish`. Frame 2:
     after `c`, the summary.
   - **What right looks like:**
     - frame 1's bar contains `c finish` and not `c commit`;
     - frame 2's top border is `╭ Preview: finish merging feature into main`;
     - frame 2's bottom border starts `╰ y commit`.
-- [ ] Capture (rule 6; colour **unverified**): `docs/shots/m6/fix-c-live-frames-187x50.txt`.
+- [x] Capture (rule 6; colour **unverified**): `docs/shots/m6/fix-c-live-frames-187x50.txt` — `capture_fix_c_live_frames` (`shell_begun.rs`) asserts both frames. Look is the user's.
   - Scene: two frames. Frame 1: mid-bisect, a graph row focused. Frame 2: a resolved merge, detail pane open, graph
     focused.
   - **What right looks like:**
     - frame 1's bar contains neither `c commit` nor `c finish` nor `c continue`, and no `⇥ banner`;
     - frame 2's bar contains `c finish`, not `c commit`, and no `⇥ banner`.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): graft `commit_editor::pane_c_acts`, `open`, `one_tab_to_banner`, `footer_context`, `update::keys` files; graft-ui `OperationLive`, `LiveC`, `ChangesPane { live }`.
 
 ## For the conductor (exact text, in this spec's merge commit)
 In the `journey-counts` fence, replace the `editor-to-finish` row with:
@@ -331,4 +331,50 @@ One context. If capture regeneration grows it past one context, hand off at the 
   Option B: wrap in `OperationLive` whenever `live_operation` is Some and let the `⇥ banner` hint be conditional —
   changes what `OperationLive` means (`hints.rs:370-375`, every `operation_live_form` test).
 - Remaining: everything after find 2 (all other ticks).
+
+**Builder, 2026-09-25, second session (decision B built; scout 52 used, and the first session's NOTES). **Compacted once**, after
+the build and the gates. What remained then: ticks, NOTES, commit. All three are done here, so nothing is left to split.**
+- Find 1b holds: (a)–(d) as 1a; **(e) `detail.focus` stays `Graph`**. The test also checks the graph's own `⇥` from
+  there would look different (so (d) can't pass by accident).
+- **Third path found and wrapped** (spec: no stop): `PaneFocused` — a commit's detail pane focused, files or diff. `c`
+  there passes through to `graph_key` (`detail_key` claims no plain `c`), so its bar said `c commit`. Now wrapped;
+  with the diff focused `tab_to_banner` is true (`one_tab_to_banner`), so **`⇥ banner` now leads there**, new. The
+  sweep covers `OperationLive { PaneFocused }` forms (catalogue `operation_live_form`). Also the opening view
+  (`view/rows.rs` `opening_view`, before history lands): was a bare `PlainRow`, now `live_wrapped`.
+- **What `OperationLive` changes besides `c` and `⇥ banner`:** nothing. It relabels `c` in place (`said_live`), and
+  with `tab_to_banner` drops the row's own `⇥` hint — no row list and no `PaneFocused` list has one. Width only: `c
+  continue` is 2 cells longer than `c commit`, `Refuses` frees 10. No key hidden → no stop.
+- **Tests changed, none deleted:**
+  - graft-ui `hints/tests.rs` `operation_live_leads_with_the_way_back`: builds `OperationLive { row, c: Finish,
+    tab_to_banner: true }`; assertions unchanged. `doorway_of` reads the struct variant. `ChangesPane` literals gain
+    `live: None`.
+  - graft-ui `graph_screen/tests.rs`: `COVERAGE_SLOTS` 43 → 54. `ChangesPane { live: Some(_) }` 6 new slots (43–48:
+    3 `LiveC` × `unmerged`); `OperationLive` keeps 29 for `(Finish, tab)` and gains 49–53 for the other 5 of 3 `LiveC`
+    × `tab_to_banner`.
+  - graft `update/tests.rs`: `classified_form` and `screen_for` read the struct; `screen_for` builds each `LiveC` via
+    `operation_live_as` (asserts `pane_c_acts` and banner presence, not trusted); `states_for` keeps a state only
+    where `one_tab_to_banner == tab_to_banner` (was: pane hidden or diff focused).
+  - `tests/it/resolver/editor_words.rs` (M3a pins; `c` on a merge now opens the summary): `c_and_a_with_a_merge_live
+    _answer_in_words` → `a_mid_operation_still_refuses_in_words` (`a` words, `c` summary); `after_esc_the_panes_c_and
+    _a_answer_in_words` → `after_esc_the_panes_a_answers_in_words_and_c_opens_the_summary`; `every_way_to_open_the
+    _editor_refuses_mid_operation` and `the_pane_words_fit_at_80` press `a` for the words. Old names still appear in
+    `docs/reviews/m6-usability-fixes-47-49.md` and ticket 48 (history, not edited).
+  - `m5_walk/regressions.rs` `hints_at_80_show_three_and_more`: `c continue` for `c commit` (Graft's rebase), 76 of 80.
+  - `m5_walk/conflict_journeys.rs` `editor_to_finish`: route is `c y` (2).
+- **Journey count:** `docs/design-notes/m6-conflicts.md` fence `editor-to-finish` 5 → **2**, lowered here (row text as
+  the spec's "For the conductor"). `pty-walk-m6.py` not edited: it walks `m5_walk --stems` captures only, and journeys
+  have `capture: None` (`conflict_journeys.rs` `journey()`).
+- **Captures** (`GRAFT_UPDATE_SHOTS=1`, capture tests; every other capture test green without it):
+  - `fix-landing-after-esc-187x50.txt` — bar `c commit` → `c finish`; `capture_after_esc_on_the_banner`.
+  - `fix-c-mid-merge-answers-in-words-{187x50,80x24}.txt` — header only: `a` pressed, not `c`;
+    `capture_fix_c_mid_merge_answers_in_words`, which now presses `a`. **File name says `c`; its scene is `a`.**
+    Conductor: rename, or keep.
+  - New: `fix-c-in-pane-finishes-187x50.txt` (`capture_fix_c_in_pane_finishes`), `fix-c-live-frames-187x50.txt`
+    (`capture_fix_c_live_frames`).
+  - Captions tsv: the 48 row reworded, two rows added after it. Sheet rebuilt: 3 parts, 176 068 / 178 148 / 118 836 B.
+- **Seen in captures, not this ticket's:** frame 1 (bisect) header shows no bisect word at all (no banner); the pane
+  bar mid-merge offers `space stage`/`d discard`. The pane's `a` words still read `⇥ banner, then c continue  a
+  abort` — true from the banner.
+- **Not verified:** colour; the look (user's). `c` from a commit's focused diff pane was swept (`every_key_the_bar_
+  draws_is_answered`) but not walked with real git.
 

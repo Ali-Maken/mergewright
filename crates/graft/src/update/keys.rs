@@ -15,6 +15,8 @@ use super::state::{AppState, Quit, Status};
 
 mod actions;
 mod bound;
+#[cfg(test)]
+mod live_c_tests;
 mod predicates;
 mod view_change;
 
@@ -256,6 +258,32 @@ fn stash_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     claimed
 }
 
+/// `c` or `a` in the graph or the changes pane.
+///
+/// While an operation is live, `c` is the banner's `c` wherever that acts
+/// (`commit_editor::pane_c_acts`, m6-conflicts/52): the finish summary for
+/// a merge, `--continue` for a rebase, cherry-pick or revert Graft began —
+/// with the banner's own refusals, and `Esc` from the summary back on the
+/// banner, the operation's home. Everywhere else, and for `a` always,
+/// `commit_editor::open` answers: the editor, or the words refusing it
+/// while an operation is live (m6-conflicts/48).
+fn commit_key(next: &mut AppState, commands: &mut Vec<Command>, amend: bool) {
+    use super::commit_editor::{live_operation, pane_c_acts};
+    let mut local_jobs = next.local_jobs;
+    let mut next_id = || local_jobs.next_id();
+    if !amend && live_operation(next).is_some_and(pane_c_acts) {
+        super::banner::continue_pressed(
+            next,
+            commands,
+            super::finish::ReturnTo::Banner,
+            &mut next_id,
+        );
+    } else {
+        commands.extend(super::commit_editor::open(next, amend, &mut next_id));
+    }
+    next.local_jobs = local_jobs;
+}
+
 /// The graph's own keys, once the detail pane has passed on the key.
 fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
@@ -279,11 +307,7 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if is_context_menu_key(key) {
         super::context_menu::open_selected(next);
     } else if let Some(amend) = is_commit_key(key) {
-        let mut local_jobs = next.local_jobs;
-        commands.extend(super::commit_editor::open(next, amend, &mut || {
-            local_jobs.next_id()
-        }));
-        next.local_jobs = local_jobs;
+        commit_key(next, commands, amend);
     } else if write_key(next, commands, key) {
     } else if let Some(change) = view_change(key) {
         apply_view_change(next, commands, change);
