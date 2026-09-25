@@ -255,18 +255,26 @@ pub fn stage_entries(
     path: &Path,
     stop: &dyn Stop,
 ) -> Result<Vec<StageEntry>, SnapshotError> {
-    let held = stage_entries_for(repo, index, std::slice::from_ref(&path.to_path_buf()), stop)?;
+    let held = stage_entries_for(
+        repo,
+        index,
+        std::slice::from_ref(&path.to_path_buf()),
+        stop,
+        None,
+    )?;
     Ok(held.into_values().next().unwrap_or_default())
 }
 
-/// The same for several paths at once: one `ls-tree`, not one per path.
+/// The same for several paths at once: one `ls-tree`, not one per path,
+/// its command line pushed to `log` when there is one.
 pub(crate) fn stage_entries_for(
     repo: &RepoHandle,
     index: IndexState,
     paths: &[PathBuf],
     stop: &dyn Stop,
+    log: Option<&mut Vec<String>>,
 ) -> Result<BTreeMap<PathBuf, Vec<StageEntry>>, SnapshotError> {
-    tree_stage_entries(repo, index, Some(paths), stop)
+    tree_stage_entries(repo, index, Some(paths), stop, log)
 }
 
 /// Every path a recorded index state holds at a stage above 0 — the paths
@@ -280,7 +288,7 @@ pub(crate) fn conflicted_paths(
     if !index.is_unmerged() {
         return Ok(Vec::new());
     }
-    Ok(tree_stage_entries(repo, index, None, stop)?
+    Ok(tree_stage_entries(repo, index, None, stop, None)?
         .into_iter()
         .filter(|(_, entries)| entries.iter().any(|entry| entry.stage >= 1))
         .map(|(path, _)| path)

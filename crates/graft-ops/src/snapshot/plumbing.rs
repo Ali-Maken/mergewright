@@ -151,6 +151,22 @@ pub(super) fn run_git(
     invocation.run(stop).map_err(stopped)
 }
 
+/// [`run_git`], with its command line pushed to `log` first when there is
+/// one: the reads a restore makes belong in its entry's Command Log
+/// (m6-conflicts/80), and a read made for no entry passes `None`.
+pub(super) fn run_git_logged(
+    repo: &RepoHandle,
+    args: Vec<GitArg>,
+    stop: &dyn Stop,
+    log: Option<&mut Vec<String>>,
+) -> Result<graft_git::run::GitOutput, SnapshotError> {
+    let invocation = GitInvocation::new(repo).args(args);
+    if let Some(commands) = log {
+        commands.push(invocation.command_line());
+    }
+    invocation.run(stop).map_err(stopped)
+}
+
 /// A ref's commit, or `None` when it is not there. `for-each-ref` exits 0
 /// either way, so an absent ref is an empty answer rather than a failure to
 /// tell apart from a broken one.

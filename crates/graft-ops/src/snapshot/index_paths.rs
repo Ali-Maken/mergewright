@@ -9,16 +9,19 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, Stop};
 
 use super::SnapshotError;
-use super::plumbing::{path_of, run_git, split_nul};
+use super::plumbing::{path_of, run_git_logged, split_nul};
 use super::stage_tree::{strip_stage, tree_stage_entries};
 
-/// Every path a recorded index state holds.
+/// Every path a recorded index state holds. The read's command line goes to
+/// `commands`, as every read below does: a restore's reads are part of its
+/// Command Log (m6-conflicts/80).
 pub(crate) fn index_paths(
     repo: &RepoHandle,
     index: IndexState,
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<BTreeSet<PathBuf>, SnapshotError> {
-    Ok(tree_stage_entries(repo, index, None, stop)?
+    Ok(tree_stage_entries(repo, index, None, stop, Some(commands))?
         .into_keys()
         .collect())
 }
@@ -27,12 +30,13 @@ pub(crate) fn index_paths(
 pub(crate) fn tracked_paths_now(
     repo: &RepoHandle,
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<BTreeSet<PathBuf>, SnapshotError> {
-    let output = run_git(
+    let output = run_git_logged(
         repo,
         vec![GitArg::Flag("ls-files"), GitArg::Flag("-z")],
-        None,
         stop,
+        Some(commands),
     )?;
     Ok(split_nul(&output.stdout).into_iter().map(path_of).collect())
 }
@@ -44,6 +48,9 @@ pub(crate) fn tracked_paths_now(
 /// **different** shapes cannot be diffed at all — one holds `2/a.rs` where the
 /// other holds `a.rs` — so each is listed and the entry sets compared.
 ///
+/// Each `git` it runs is pushed to `commands`: one `diff-tree` for two of a
+/// shape, two `ls-tree -r` for two of different shapes (m6-conflicts/80).
+///
 /// # Errors
 /// [`SnapshotError`] when `git` will not run or prints an unreadable record.
 pub fn index_paths_changed(
@@ -51,12 +58,13 @@ pub fn index_paths_changed(
     from: IndexState,
     to: IndexState,
     stop: &dyn Stop,
+    commands: &mut Vec<String>,
 ) -> Result<BTreeSet<PathBuf>, SnapshotError> {
     if from == to {
         return Ok(BTreeSet::new());
     }
     if from.is_unmerged() == to.is_unmerged() {
-        let output = run_git(
+        let output = run_git_logged(
             repo,
             vec![
                 GitArg::Flag("diff-tree"),
@@ -66,8 +74,8 @@ pub fn index_paths_changed(
                 GitArg::Oid(from.tree()),
                 GitArg::Oid(to.tree()),
             ],
-            None,
             stop,
+            Some(commands),
         )?;
         let strip = from.is_unmerged();
         return Ok(split_nul(&output.stdout)
@@ -76,8 +84,8 @@ pub fn index_paths_changed(
             .map(path_of)
             .collect());
     }
-    let before = tree_stage_entries(repo, from, None, stop)?;
-    let after = tree_stage_entries(repo, to, None, stop)?;
+    let before = tree_stage_entries(repo, from, None, stop, Some(commands))?;
+    let after = tree_stage_entries(repo, to, None, stop, Some(commands))?;
     let mut changed = BTreeSet::new();
     for (path, entries) in &before {
         if after.get(path) != Some(entries) {

@@ -127,7 +127,9 @@ fn taken(pre: &Holds, post: &Holds, recorded: &Holds) -> Vec<PathBuf> {
 }
 
 /// One scenario: what the user does between the operation and `u`, and the
-/// paths the box must name.
+/// paths the box must name. Each is its own `#[test]` over [`check`], so the
+/// runner spreads them over its workers (m6-conflicts/80, review M1: the
+/// eleven in one loop took 12.5 s alone).
 struct Scenario {
     name: &'static str,
     /// Run after the checkout (and, for a redo, after the clean undo).
@@ -137,97 +139,132 @@ struct Scenario {
     names: &'static [&'static str],
 }
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "one table of scenarios, one row each: data, not logic"
-)]
-fn scenarios() -> Vec<Scenario> {
-    vec![
-        Scenario {
-            name: "an unstaged edit inside the checkout's paths",
-            edit: |repo| repo.write("a.txt", b"mine\n"),
-            redo: false,
-            names: &["a.txt"],
+#[test]
+fn an_unstaged_edit_inside_the_checkouts_paths() {
+    check(&Scenario {
+        name: "an unstaged edit inside the checkout's paths",
+        edit: |repo| repo.write("a.txt", b"mine\n"),
+        redo: false,
+        names: &["a.txt"],
+    });
+}
+
+#[test]
+fn a_staged_edit() {
+    check(&Scenario {
+        name: "a staged edit",
+        edit: |repo| {
+            repo.write("a.txt", b"staged\n");
+            repo.git(&["add", "a.txt"]);
         },
-        Scenario {
-            name: "a staged edit",
-            edit: |repo| {
-                repo.write("a.txt", b"staged\n");
-                repo.git(&["add", "a.txt"]);
-            },
-            redo: false,
-            names: &["a.txt"],
+        redo: false,
+        names: &["a.txt"],
+    });
+}
+
+#[test]
+fn a_staged_edit_and_a_different_one_on_disk() {
+    check(&Scenario {
+        name: "a staged edit and a different one on disk",
+        edit: |repo| {
+            repo.write("a.txt", b"staged\n");
+            repo.git(&["add", "a.txt"]);
+            repo.write("a.txt", b"on disk\n");
         },
-        Scenario {
-            name: "a staged edit and a different one on disk",
-            edit: |repo| {
-                repo.write("a.txt", b"staged\n");
-                repo.git(&["add", "a.txt"]);
-                repo.write("a.txt", b"on disk\n");
-            },
-            redo: false,
-            names: &["a.txt"],
+        redo: false,
+        names: &["a.txt"],
+    });
+}
+
+#[test]
+fn an_edit_inside_and_one_outside() {
+    check(&Scenario {
+        name: "an edit inside and one outside (base.txt)",
+        edit: |repo| {
+            repo.write("a.txt", b"mine\n");
+            repo.write("base.txt", b"base, edited\n");
         },
-        Scenario {
-            name: "an edit inside and one outside (base.txt)",
-            edit: |repo| {
-                repo.write("a.txt", b"mine\n");
-                repo.write("base.txt", b"base, edited\n");
-            },
-            redo: false,
-            names: &["a.txt"],
+        redo: false,
+        names: &["a.txt"],
+    });
+}
+
+#[test]
+fn three_files() {
+    check(&Scenario {
+        name: "three files",
+        edit: |repo| {
+            repo.write("a.txt", b"a, mine\n");
+            repo.write("b.txt", b"b, mine\n");
+            repo.write("c.txt", b"c, mine\n");
         },
-        Scenario {
-            name: "three files",
-            edit: |repo| {
-                repo.write("a.txt", b"a, mine\n");
-                repo.write("b.txt", b"b, mine\n");
-                repo.write("c.txt", b"c, mine\n");
-            },
-            redo: false,
-            names: &["a.txt", "b.txt", "c.txt"],
+        redo: false,
+        names: &["a.txt", "b.txt", "c.txt"],
+    });
+}
+
+#[test]
+fn an_untracked_file_where_a_tracked_one_goes_back() {
+    check(&Scenario {
+        name: "an untracked file where main.txt goes back",
+        edit: |repo| repo.write("main.txt", b"not main's\n"),
+        redo: false,
+        names: &["main.txt"],
+    });
+}
+
+#[test]
+fn an_untracked_file_holding_exactly_what_goes_back() {
+    check(&Scenario {
+        name: "an untracked file holding exactly what goes back",
+        edit: |repo| repo.write("main.txt", b"main\n"),
+        redo: false,
+        names: &[],
+    });
+}
+
+#[test]
+fn a_tracked_file_deleted_by_hand() {
+    check(&Scenario {
+        name: "a tracked file deleted by hand, which the undo deletes too",
+        edit: |repo| std::fs::remove_file(repo.path().join("a.txt")).expect("a.txt is there"),
+        redo: false,
+        names: &[],
+    });
+}
+
+#[test]
+fn an_untracked_file_outside_the_checkouts_paths() {
+    check(&Scenario {
+        name: "an untracked file outside the checkout's paths",
+        edit: |repo| repo.write("new.txt", b"new\n"),
+        redo: false,
+        names: &[],
+    });
+}
+
+#[test]
+fn a_staged_edit_whose_disk_copy_went_back() {
+    check(&Scenario {
+        name: "a staged edit whose disk copy went back to the checkout's",
+        edit: |repo| {
+            repo.write("a.txt", b"staged\n");
+            repo.git(&["add", "a.txt"]);
+            repo.write("a.txt", b"a\n");
         },
-        Scenario {
-            name: "an untracked file where main.txt goes back",
-            edit: |repo| repo.write("main.txt", b"not main's\n"),
-            redo: false,
-            names: &["main.txt"],
-        },
-        Scenario {
-            name: "an untracked file holding exactly what goes back",
-            edit: |repo| repo.write("main.txt", b"main\n"),
-            redo: false,
-            names: &[],
-        },
-        Scenario {
-            name: "a tracked file deleted by hand, which the undo deletes too",
-            edit: |repo| std::fs::remove_file(repo.path().join("a.txt")).expect("a.txt is there"),
-            redo: false,
-            names: &[],
-        },
-        Scenario {
-            name: "an untracked file outside the checkout's paths",
-            edit: |repo| repo.write("new.txt", b"new\n"),
-            redo: false,
-            names: &[],
-        },
-        Scenario {
-            name: "a staged edit whose disk copy went back to the checkout's",
-            edit: |repo| {
-                repo.write("a.txt", b"staged\n");
-                repo.git(&["add", "a.txt"]);
-                repo.write("a.txt", b"a\n");
-            },
-            redo: false,
-            names: &["a.txt"],
-        },
-        Scenario {
-            name: "a redo over an edit to main.txt",
-            edit: |repo| repo.write("main.txt", b"main, edited\n"),
-            redo: true,
-            names: &["main.txt"],
-        },
-    ]
+        redo: false,
+        names: &["a.txt"],
+    });
+}
+
+#[test]
+fn a_redo_over_an_edit() {
+    check(&Scenario {
+        name: "a redo over an edit to main.txt",
+        edit: |repo| repo.write("main.txt", b"main, edited\n"),
+        redo: true,
+        names: &["main.txt"],
+    });
 }
 
 /// Each replaced path is in the forced run's own backup, as it stood before
@@ -283,123 +320,160 @@ fn reverse(
     }
 }
 
-#[test]
-fn replaced_names_exactly_what_the_run_took() {
-    for scenario in scenarios() {
-        let name = scenario.name;
-        let repo = main_and_feature();
-        run(&repo, &checkout_feature(), NOW);
-        if scenario.redo {
-            run_undo(&repo, NOW + 1, false)
-                .unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
-        }
-        (scenario.edit)(&repo);
-        let reversed = entries(&repo)
-            .last()
-            .cloned()
-            .expect("the entry to reverse");
-        let pre = holds_now(&repo);
-        let pre_state: RepoState = state_of(&repo);
+/// The invariant, for one scenario: the box names exactly what the forced
+/// run takes, the landing names the same, the backup keeps each, and after
+/// an undo one `U` puts it all back byte-exact.
+fn check(scenario: &Scenario) {
+    let name = scenario.name;
+    let repo = main_and_feature();
+    run(&repo, &checkout_feature(), NOW);
+    if scenario.redo {
+        run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
+    }
+    (scenario.edit)(&repo);
+    let reversed = entries(&repo)
+        .last()
+        .cloned()
+        .expect("the entry to reverse");
+    let pre = holds_now(&repo);
+    let pre_state: RepoState = state_of(&repo);
 
-        // The box: the unforced run stops at the rail and names them.
-        let boxed = match reverse(&repo, scenario.redo, NOW + 2, false) {
-            Err(UndoError::Drift(drift)) => drift.replaced,
-            Err(other) => panic!("{name}: the rail answered {}", other.explain()),
-            Ok(_) => panic!("{name}: no drift box over an edit"),
-        };
-        assert_eq!(state_of(&repo), pre_state, "{name}: the box wrote nothing");
+    // The box: the unforced run stops at the rail and names them.
+    let boxed = match reverse(&repo, scenario.redo, NOW + 2, false) {
+        Err(UndoError::Drift(drift)) => drift.replaced,
+        Err(other) => panic!("{name}: the rail answered {}", other.explain()),
+        Ok(_) => panic!("{name}: no drift box over an edit"),
+    };
+    assert_eq!(state_of(&repo), pre_state, "{name}: the box wrote nothing");
 
-        // `y`: the forced run.
-        let forced = reverse(&repo, scenario.redo, NOW + 3, true)
-            .unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
-        let post = holds_now(&repo);
-        let recorded = holds_in(
-            &repo,
-            &reversed.worktree_after.expect("recorded").to_string(),
-            &reversed.index_after.expect("recorded").tree().to_string(),
-        );
-        let truth = taken(&pre, &post, &recorded);
-        let named: Vec<PathBuf> = scenario.names.iter().map(PathBuf::from).collect();
-        assert_eq!(truth, named, "{name}: git says these were taken");
-        let expected = Replaced {
-            paths: named,
-            whole_tree: false,
-        };
-        assert_eq!(boxed, expected, "{name}: the box names what the run takes");
-        assert_eq!(
-            forced.replaced, expected,
-            "{name}: the landing names what it took"
-        );
+    // `y`: the forced run.
+    let forced = reverse(&repo, scenario.redo, NOW + 3, true)
+        .unwrap_or_else(|why| panic!("{name}: {}", why.explain()));
+    let post = holds_now(&repo);
+    let recorded = holds_in(
+        &repo,
+        &reversed.worktree_after.expect("recorded").to_string(),
+        &reversed.index_after.expect("recorded").tree().to_string(),
+    );
+    let truth = taken(&pre, &post, &recorded);
+    let named: Vec<PathBuf> = scenario.names.iter().map(PathBuf::from).collect();
+    assert_eq!(truth, named, "{name}: git says these were taken");
+    let expected = Replaced {
+        paths: named,
+        whole_tree: false,
+        whole_index: false,
+    };
+    assert_eq!(boxed, expected, "{name}: the box names what the run takes");
+    assert_eq!(
+        forced.replaced, expected,
+        "{name}: the landing names what it took"
+    );
 
-        backup_keeps(&repo, name, &forced, &expected.paths, &pre, &recorded);
+    backup_keeps(&repo, name, &forced, &expected.paths, &pre, &recorded);
 
-        // And after an undo, the way back is one `U`, byte-exact: the redo
-        // reverses this very `Undo` entry, from its own before-state.
-        //
-        // Not after a redo. `u` then reverses the root operation from *its*
-        // record (`journal::next_undo` passes over `Redo` entries, and
-        // `plan_undo` inverts the operation), which never held the edit — it
-        // is in the redo's backup only. `crates/graft/tests/it/
-        // undo_over_drift.rs` pins that, and the box does not promise `u`.
-        if !scenario.redo {
-            run_redo(&repo, NOW + 4, false)
-                .unwrap_or_else(|why| panic!("{name}, the way back: {}", why.explain()));
-            assert_eq!(state_of(&repo), pre_state, "{name}: U put it back");
-        }
+    // And after an undo, the way back is one `U`, byte-exact: the redo
+    // reverses this very `Undo` entry, from its own before-state.
+    //
+    // Not after a redo. `u` then reverses the root operation from *its*
+    // record (`journal::next_undo` passes over `Redo` entries, and
+    // `plan_undo` inverts the operation), which never held the edit — it
+    // is in the redo's backup only. `crates/graft/tests/it/
+    // undo_over_drift.rs` pins that, and the box does not promise `u`.
+    if !scenario.redo {
+        run_redo(&repo, NOW + 4, false)
+            .unwrap_or_else(|why| panic!("{name}, the way back: {}", why.explain()));
+        assert_eq!(state_of(&repo), pre_state, "{name}: U put it back");
     }
 }
 
+/// The `diff-tree` lines of an entry's Command Log.
+fn diff_trees(entry: &JournalEntry) -> Vec<String> {
+    entry
+        .commands
+        .iter()
+        .filter(|line| line.contains("diff-tree"))
+        .cloned()
+        .collect()
+}
+
 /// Decided 4: the read runs only on drift. A clean undo's Command Log holds
-/// no `diff-tree` but the restore's own scope read (`<after> <before>`); the
-/// same undo forced over an edit holds the read against the tree as it is
-/// now as well — the control that the log would show it.
+/// no `diff-tree` but the restore's own two scope reads (`<after> <before>`,
+/// the working tree's and the index's).
 #[test]
 fn a_clean_undo_spawns_no_diff_tree() {
-    let diff_trees = |entry: &JournalEntry| -> Vec<String> {
-        entry
-            .commands
-            .iter()
-            .filter(|line| line.contains("diff-tree"))
-            .cloned()
-            .collect()
-    };
-
+    // An untracked file in both, so the working tree's snapshot is never
+    // the index's tree and the two scope reads cannot be told apart by
+    // accident.
     let clean = main_and_feature();
+    clean.write("notes.txt", b"mine, untracked\n");
     let checkout = run(&clean, &checkout_feature(), NOW);
     let undone = run_undo(&clean, NOW + 1, false)
         .expect("a clean undo")
         .entry;
-    let scope = format!(
+    let worktree_scope = format!(
         "{} {}",
         checkout.worktree_after.expect("recorded"),
         checkout.worktree_before.expect("recorded")
     );
-    let lines = diff_trees(&undone);
-    assert!(
-        !lines.is_empty(),
-        "the restore's scope read is logged: {:?}",
-        undone.commands
+    let index_scope = format!(
+        "{} {}",
+        checkout.index_after.expect("recorded").tree(),
+        checkout.index_before.expect("recorded").tree()
     );
+    let lines = diff_trees(&undone);
+    for scope in [&worktree_scope, &index_scope] {
+        assert!(
+            lines.iter().any(|line| line.ends_with(scope.as_str())),
+            "the restore's scope read {scope} is logged: {:?}",
+            undone.commands
+        );
+    }
     for line in &lines {
         assert!(
-            line.ends_with(&scope),
+            line.ends_with(&worktree_scope) || line.ends_with(&index_scope),
             "a clean undo ran a diff-tree of its own: {line}"
         );
     }
+}
 
+/// The same undo forced over a staged edit holds the reads against the trees
+/// as they are now — both halves, the working tree's and the index's
+/// (m6-conflicts/80, review m2: the index comparisons logged nothing, so a
+/// cost test could not see them).
+#[test]
+fn a_forced_undo_logs_both_halves_of_its_read() {
     let drifted = main_and_feature();
     let checkout = run(&drifted, &checkout_feature(), NOW);
-    drifted.write("a.txt", b"mine\n");
+    drifted.write("a.txt", b"staged\n");
+    drifted.git(&["add", "a.txt"]);
+    drifted.write("a.txt", b"on disk\n");
     let forced = run_undo(&drifted, NOW + 1, true)
         .expect("a forced undo")
         .entry;
-    let now = forced
+    let worktree_now = forced
         .worktree_before
         .expect("the forced undo's own snapshot");
-    let read = format!("{} {now}", checkout.worktree_after.expect("recorded"));
-    assert!(
-        diff_trees(&forced).iter().any(|line| line.ends_with(&read)),
-        "the forced run's read is in its log: {:?}",
-        forced.commands
-    );
+    let index_now = forced
+        .index_before
+        .expect("the forced undo's own snapshot")
+        .tree();
+    let reads = [
+        format!(
+            "{} {worktree_now}",
+            checkout.worktree_after.expect("recorded")
+        ),
+        format!(
+            "{} {index_now}",
+            checkout.index_after.expect("recorded").tree()
+        ),
+    ];
+    for read in &reads {
+        assert!(
+            diff_trees(&forced)
+                .iter()
+                .any(|line| line.ends_with(read.as_str())),
+            "the forced run's read {read} is in its log: {:?}",
+            forced.commands
+        );
+    }
 }

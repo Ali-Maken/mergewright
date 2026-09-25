@@ -598,24 +598,29 @@ pub struct Replaced {
     /// the before-state the inverse writes (so the write loses something);
     /// in the working tree or the index. Sorted, unique.
     pub paths: Vec<PathBuf>,
-    /// No after-state was recorded for the working tree or the index
-    /// ([`PathScope::Everything`], [`IndexPaths::Everything`]; `Drift::
-    /// unknown` names it): the inverse restores the whole of it, so no
-    /// narrower list is known.
+    /// No after-state was recorded for the working tree
+    /// ([`PathScope::Everything`]; `Drift::unknown` names it): the inverse
+    /// restores every file, so no narrower list is known.
     pub whole_tree: bool,
+    /// The same for the index ([`IndexPaths::Everything`]): every index
+    /// entry is restored. Apart from `whole_tree` because an index-only
+    /// restore writes no file, and must not be worded as if it did
+    /// (m6-conflicts/80, review m8).
+    pub whole_index: bool,
 }
 
 impl Replaced {
     /// Nothing the user made is replaced.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.paths.is_empty() && !self.whole_tree
+        self.paths.is_empty() && !self.whole_tree && !self.whole_index
     }
 
     /// The union with `other`: what the time machine's steps replace
     /// between them.
     pub fn extend(&mut self, other: Replaced) {
         self.whole_tree |= other.whole_tree;
+        self.whole_index |= other.whole_index;
         self.paths.extend(other.paths);
         self.paths.sort();
         self.paths.dedup();

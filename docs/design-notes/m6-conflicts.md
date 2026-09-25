@@ -255,7 +255,8 @@ UX 1.3: key = one chord (`⇥` = Tab); `[M]` = a decision. CR counts are read fr
 
 - **J1 merge in the app until it stops.** Start: graph, cursor on `feature` (under the cursor, as the scout found).
   1 `m` → preview, cursor on Cancel [M: read the picture] · 2 `→` · 3 `⏎` → merge runs and stops. **3** (P1: `m m`, 2).
-  Lands: banner focused; bottom row `merge stopped · 1 file conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`.
+  Lands: banner focused; bottom row `merge stopped · 1 file conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph`
+  (`c finish` on a merge since m6-conflicts/70; drawn so in `docs/shots/m5-ui-banner-conflict-120x40.txt`).
   CR: no start counts.
 - **J2 stop → first conflict.** 1 `⏎` → resolver on the first conflicted file, cursor on block 1. **1** (P5: **0**).
   As built: 1 but unhinted; he took ~5. CR: JetBrains 0 + 1; lazygit 2.
@@ -370,9 +371,9 @@ Keymap rows are still to be written into `docs/design/02-keymap.md` (the conduct
 ### New UI (amendment)
 Resolver per §New UI above; bottom rows and numbering change:
 ```
-stop, 120 cols      │ merge stopped · 1 file conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph │
+stop, 120 cols      │ merge stopped · 1 file conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph   │
 after Esc           │ merge stopped · 1 file conflicted · ⇥ banner  ⏎ open  c commit  . more  …                        │
-launch, begun in shell  merge in progress · begun outside Graft · 1 file conflicted · ⏎ resolve  c continue  a abort …
+launch, begun in shell  merge in progress · from the shell · 2 conflicted · ⏎ resolve  c finish  a abort …
 card, ≥100:         │   1 line-one                                                                                  │
                     │▏    ── conflict 1 of 3 · open ── o ours  t theirs  b both ───────────────────                 │
                     │▏    OURS · HEAD                             │ THEIRS · feature                                 │

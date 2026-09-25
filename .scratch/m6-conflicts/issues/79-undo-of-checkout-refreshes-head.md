@@ -19,8 +19,10 @@ Scout: none. 77's builder named the line; re-check it on main.
       `history_ops::an_undo_that_leaves_head_alone_rereads_the_working_tree_only`.
 - [x] Every other `Refresh` choice in `restore.rs` checked for the same hole (list each and the verdict in NOTES). **Verified by** `grep -rn Refresh:: crates/graft-ops/src`; verdicts in NOTES.
 - [x] Graft-side capture: do not retake here (graft is 78's). Say in NOTES which capture frame should change, so the
-      next graft builder (70) retakes it. **Verified by** `graft::it undo_over_drift::capture_fix_undo_drift_way_back`,
-      which now fails; frames in NOTES.
+      next graft builder (70) retakes it. **Verified by** `graft::it undo_over_drift::capture_fix_undo_drift_way_back`:
+      it failed on 79's change until the conductor's follow-up (NOTES) retook frames 2 and 3 at 120x40 and 80x24 with
+      the settle-wait; it passes now, asserting `[◆ main]` after `y` and `[◆ fix]` after `U`. (Reworded by
+      m6-conflicts/80, review m11: it read "which now fails".)
 
 ## Touches
 - Callers of the scope (`graft` `refresh_scope`): read, not edited.

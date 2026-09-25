@@ -10,7 +10,7 @@ use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, Stop};
 
-use super::plumbing::{TempIndex, path_of, run_git, split_nul, stopped, write_tree};
+use super::plumbing::{TempIndex, path_of, run_git_logged, split_nul, stopped, write_tree};
 use super::{SnapshotError, StageEntry};
 
 /// The stage tree of an unmerged index copy (decision 1).
@@ -104,12 +104,14 @@ fn split_stage_record<'a>(
 }
 
 /// Every path a recorded index state holds, with its entries, newest read
-/// straight out of the tree. `only` narrows it to one path.
+/// straight out of the tree. `only` narrows it to one path. The `ls-tree`'s
+/// command line goes to `log` when there is one.
 pub(super) fn tree_stage_entries(
     repo: &RepoHandle,
     index: IndexState,
     only: Option<&[PathBuf]>,
     stop: &dyn Stop,
+    log: Option<&mut Vec<String>>,
 ) -> Result<BTreeMap<PathBuf, Vec<StageEntry>>, SnapshotError> {
     if only.is_some_and(<[PathBuf]>::is_empty) {
         return Ok(BTreeMap::new());
@@ -133,7 +135,7 @@ pub(super) fn tree_stage_entries(
             }
         }
     }
-    let output = run_git(repo, args, None, stop)?;
+    let output = run_git_logged(repo, args, stop, log)?;
     let mut held: BTreeMap<PathBuf, Vec<StageEntry>> = BTreeMap::new();
     for record in split_nul(&output.stdout) {
         let entry = ls_tree_entry(&record, index.is_unmerged())?;

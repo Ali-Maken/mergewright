@@ -168,13 +168,20 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         // repository read and the backup all happen before the first write.
         ApplyError::Refused(_) | ApplyError::Facts(_) | ApplyError::Snapshot(_) => None,
         // git failed part-way. Whatever it managed is on disk; the refs it
-        // moved (if any) decide how wide the re-read has to be, the same way
-        // a successful `Applied` decides it.
-        ApplyError::Git { entry, .. } => Some(if entry.touches.refs.is_empty() {
-            Refresh::WorkingTree
-        } else {
-            Refresh::Everything
-        }),
+        // moved (if any) and `HEAD` decide how wide the re-read has to be,
+        // as `graft_ops::restore::refresh_after` decides it. Refs are not
+        // `HEAD`: a checkout names none, and `git switch` moves `HEAD` before
+        // a failing `post-checkout` hook fails it (m6-conflicts/80, review
+        // m10). `HEAD` unread counts as moved.
+        ApplyError::Git { entry, .. } => Some(
+            if entry.touches.refs.is_empty()
+                && entry.head_after.as_ref() == Some(&entry.head_before)
+            {
+                Refresh::WorkingTree
+            } else {
+                Refresh::Everything
+            },
+        ),
         // The journal failed, or the after-state could not be read
         // (`AfterState` reaches `Incomplete` first, but is named rather than
         // left to a wildcard so a new variant has to be thought about here).

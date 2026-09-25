@@ -440,7 +440,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-120x40.txt
-what right looks like: (ticket 77) The edit an undo replaces, and the way back. Frame 1: a menu checkout of `fix`, `fix.txt` edited, `u`: under what moved, the box reads `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.`, whole. Frame 2: `y`: no changes row, and the bottom row `undo: checkout fix ✓ · U brings back your edit to fix.txt`; the graph marks `[◆ main]` and `fix` plain, as git's HEAD is `main`, with the Radar's `ⓘ` on `fix` (ticket 79: an undo that moves HEAD re-reads the graph). Frame 3: `U`: the changes row is back, `(1 unstaged)`, and `redo: checkout fix ✓`; the edit's bytes are asserted from the file. Colour unverified.
+what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The edit an undo replaces, and the way back. Frame 1: a menu checkout of `fix`, `fix.txt` edited, the graph settled (no `sorting…`), `u`: under what moved, the box reads `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.`, whole. Frame 2: `y`: no changes row, and the bottom row `undo: checkout fix ✓ · U brings back your edit to fix.txt`; the graph marks `[◆ main]` and `fix` plain, as git's HEAD is `main`, with the Radar's `ⓘ` on `fix` (ticket 79: an undo that moves HEAD re-reads the graph). Frame 3: `U`: the changes row is back, `(1 unstaged)`, and `redo: checkout fix ✓`; the edit's bytes are asserted from the file. Frame 4: a second repository, the journal's time machine run back to before `checkout fix` past its drift box: the bottom row `reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back` — the path dropped so the key fits 80 columns. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
@@ -450,7 +450,8 @@ what right looks like: (ticket 77) The edit an undo replaces, and the way back. 
 #
 # What right looks like:
 # 1. The drift box: under what moved, `Undo replaces your edit to fix.txt;
-#    a backup keeps it, and U brings it back.` — whole, not cut.
+#    a backup keeps it, and U brings it back.` — whole, not cut. The graph
+#    under it has settled: no `sorting…` (asserted; m6-conflicts/80).
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
@@ -458,10 +459,15 @@ what right looks like: (ticket 77) The edit an undo replaces, and the way back. 
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
+# 4. A second repository: `fix`, then `fix2`, checked out, `fix.txt`
+#    edited, and the journal's time machine run back to before `checkout
+#    fix` past its drift box. The bottom row reads `reverted to before
+#    “checkout fix” (2 steps) ✓ · U (2 times) brings it back`, whole at 80
+#    columns: the path is dropped before the key (asserted; m6-conflicts/80).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `u` over the edit, the drift box ===
- graft /code/api  6 commits  date order, sorting…
+ graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
   ◆ ▏ⓘ [◆ fix] fix the bug                                                                               GF 3m   fbb2394
 ● │    [main] main moves on                                                                              GF 4m   37926a7
@@ -586,9 +592,51 @@ what right looks like: (ticket 77) The edit an undo replaces, and the way back. 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  redo: checkout fix ✓
 
+=== frame 4: the time machine over an edit, `→ ⏎`, the landing ===
+ graft /code/api  7 commits
+  ● ▏ⓘ [fix2] fix it again                                                                               GF 2m   84d95f8
+  ●  ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+◆ │    [◆ main] main moves on                                                                            GF 4m   37926a7
+●─╯    add the base                                                                                      GF 5m   ed332bc
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back
+
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-80x24.txt
-what right looks like: (ticket 77) The same three frames at 80x24: the box's line wraps to two lines and is not cut; the same two bottom rows, whole.
+what right looks like: (ticket 77; frames 1 and 4 by ticket 80) The same four frames at 80x24: the box's line wraps to two lines and is not cut; the same three bottom rows, whole — frame 4's `… (2 steps) ✓ · U (2 times) brings it back` to its last word.
 ================================================================================
 
 # TestBackend capture (not a pty), 80x24, no colour recorded. Fixture:
@@ -598,7 +646,8 @@ what right looks like: (ticket 77) The same three frames at 80x24: the box's lin
 #
 # What right looks like:
 # 1. The drift box: under what moved, `Undo replaces your edit to fix.txt;
-#    a backup keeps it, and U brings it back.` — whole, not cut.
+#    a backup keeps it, and U brings it back.` — whole, not cut. The graph
+#    under it has settled: no `sorting…` (asserted; m6-conflicts/80).
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
@@ -606,10 +655,15 @@ what right looks like: (ticket 77) The same three frames at 80x24: the box's lin
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
+# 4. A second repository: `fix`, then `fix2`, checked out, `fix.txt`
+#    edited, and the journal's time machine run back to before `checkout
+#    fix` past its drift box. The bottom row reads `reverted to before
+#    “checkout fix” (2 steps) ✓ · U (2 times) brings it back`, whole at 80
+#    columns: the path is dropped before the key (asserted; m6-conflicts/80).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `u` over the edit, the drift box ===
- graft /code/api  6 commits  date order, sorting…
+ graft /code/api  6 commits
   ◌    Uncommitted changes (1 unstaged)
   ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
 ● │    [main] main moves on                                         4m   37926a7
@@ -685,6 +739,32 @@ what right looks like: (ticket 77) The same three frames at 80x24: the box's lin
 
  no commit-graph file · B build one · X never here
  redo: checkout fix ✓
+
+=== frame 4: the time machine over an edit, `→ ⏎`, the landing ===
+ graft /code/api  7 commits
+  ● ▏ⓘ [fix2] fix it again                                          2m   84d95f8
+  ●  ⓘ [fix] fix the bug                                            3m   fbb2394
+◆ │    [◆ main] main moves on                                       4m   37926a7
+●─╯    add the base                                                 5m   ed332bc
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ reverted to before “checkout fix” (2 steps) ✓ · U (2 times) brings it back
 
 ================================================================================
 docs/shots/m6/fix-status-under-a-box-120x40.txt

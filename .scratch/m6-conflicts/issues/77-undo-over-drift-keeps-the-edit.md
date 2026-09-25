@@ -313,9 +313,10 @@ before `u`.
   planned was wrong.
 - **D4.** `UndoError::Drift` is now `Drift(Box<Drift>)`. With `replaced` added, clippy `result_large_err` (152 > 128 B)
   fired on every `Result` in `undo/execute.rs`.
-- **D5.** Worst case is **5** spawns, against the spec's ≤ 4: two `diff-tree` plus three index comparisons, when the
-  index drifted and the user's staged change is inside the undo's paths (`undo/replaced.rs` module doc). A clean undo
-  spawns 0.
+- **D5.** Worst case is **8** spawns, against the spec's ≤ 4: two `diff-tree` plus three index comparisons, each one
+  `diff-tree` for two index states of a shape but two `ls-tree -r` for a merged state against an unmerged one (an undo
+  inside a live merge) — 2 + 3 × 2 (`undo/replaced.rs` module doc). A clean undo spawns 0. (Corrected by
+  m6-conflicts/80, review m1: this said 5, counting each index comparison as one spawn.)
 - **D6.** The nothing-to-undo status renders `nothing to undo ✓ · U redoes checkout fix`. The `✓` is `Status::Done`'s
   own mark. The spec wrote it without one.
 - **D7.** The time-machine box's verb is "Undo", like `u`'s. Its key is `U (N times)`, where N = `steps.len() − k`
