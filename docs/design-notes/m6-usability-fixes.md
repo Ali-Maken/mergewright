@@ -69,6 +69,8 @@ Every one holds as the review and scouts state it.
   - a merge → the finish summary, and `Esc` returns to the banner;
   - a rebase, cherry-pick or revert begun in Graft → `continuing…`;
   - anything else → the banner's refusal, in words.
+  - a bisect, or a rebase, cherry-pick or revert begun in the shell → M3a's words; nothing is sent (spec pass 52,
+    2026-09-25).
 - **A key a confirm box does not bind:** the box stays open, and the status line is unchanged. `Ctrl+C` quits, as over
   every modal (keymap §2.1 :59).
 - **`P` after the rebase:** the plain push box; `y` pushes.
@@ -88,7 +90,7 @@ Every one holds as the review and scouts state it.
    - `merge begun in the shell` · `⇥ banner, then c finishes it`
    - The shell-begun rebase, cherry-pick and revert arms, and the bisect arm: the whole sentence as the reason, no keys.
    - One value (`OperationRefusal`) makes both forms, so they cannot drift apart.
-   - Under P14 only `a` (and a `c` the banner itself refuses) still reaches these words.
+   - Under P14 only `a`, and `c` on a bisect or a shell-begun non-merge, still reach these words.
 3. **The lease rule** (M4, a git-write safety path). `P` offers the lease variant only when **all** of these hold:
    - **(a)** The last non-fast-forward rejection was of this same push: the same branch, remote and remote branch
      (`push_box.rs:88-96`, unchanged).
