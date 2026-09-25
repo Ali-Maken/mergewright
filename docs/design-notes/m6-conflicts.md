@@ -944,8 +944,10 @@ the picks (:65, `.scratch/m6-conflicts/user-picks-2026-09-24.md`). Specs: "Specs
 - **A rebase, cherry-pick or revert:** the resolver stays, with the finish row `✓ every file done — c continue the
   rebase`. The bar starts `c continue`. There is no auto-open, because `c` writes.
 - **The last `Stage` fails:** → the resolver, with its own words, unchanged. No summary.
-- **The status read after the last `Stage` fails:** → the resolver, with the read's failure words on the notice row. No
-  summary and no finish row while they stand; the bar still starts `c finish` (spec pass 60, 2026-09-25).
+- **The status read after the last `Stage` fails:** → the resolver, with the read's failure words on the status line. No
+  summary and no finish row while they stand. The bar does not offer `c finish`: the last read still calls the file
+  unmerged, so `c` would refuse (`view/rows.rs:509`, `banner.rs:202`). Built by 60, 2026-09-25
+  (`a_failed_status_read_cancels_the_open_and_says_so`); the spec pass had said the bar keeps `c finish`.
 - **The last file done outside the resolver** (`space` on a `CONFLICTS` row): → the banner, `every file done ✓ · c
   finishes the merge`, unchanged.
   - **The trigger is the event, never the state.** A relaunch, a `u` or an `Esc` does not reopen the summary.
