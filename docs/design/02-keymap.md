@@ -148,8 +148,9 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   explain/fix a Mistake Radar marker, create branch/tag from an arbitrary
   commit, copy SHA and open-in-browser are all reachable in at most two
   steps without owning a letter. On a commit row, Checkout holds the `.`
-  menu's first place and Cherry-pick its second, fixed; when either cannot
-  act it stays in place, dim, with its reason (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
+  menu's first place and Cherry-pick its second, fixed; Checkout dims in place
+  on the branch you are on (`Checkout — already on <b>`); Cherry-pick is always enabled (dimming it is M7's question,
+  KNOWN_GAPS M6/71). Rows carrying a stash badge keep the older order (conductor, 2026-09-25) (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
   Own keys and a picker: M7.
 - **Every binding is remappable** in `[keys]` in `config.toml`; Graft detects
   and warns about remap collisions at startup rather than picking silently.

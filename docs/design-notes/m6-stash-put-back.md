@@ -29,7 +29,7 @@ Graft; and *you cannot lose work* (M3): edits set aside are in the tree or in th
 | Set aside around rebase/switch | lazygit: stash, switch, pop behind one prompt (+1); JetBrains Smart Checkout (A3; CC §1) | always, no prompt; the preview says so (the preview *is* the prompt) | **T** lazygit/JetBrains, **R** their extra prompt: `y` in the preview already confirms |
 | Mechanism | `git rebase --autostash` (A1.5) | Graft's own `stash create` → store → op → `stash apply <id>` | **R** `--autostash`: hidden `autostash` entry, no switch equivalent (A1.6, A4) |
 | Staged split on put-back | git's autostash applies without `--index` (sequencer; `(?)`, the builder verifies) | without `--index`; preview says `N staged come back unstaged` | **T** git. **R** `--index`: refuses on a clash (A1.2, Magit #4993) |
-| Menu order | JetBrains, Sublime Merge: cherry-pick a top-level item, 2 (CC §2) | Checkout 1st, Cherry-pick 2nd, fixed, disabled with a reason when they cannot act | **T** (interim). Own keys + picker: M7, prototyped |
+| Menu order | JetBrains, Sublime Merge: cherry-pick a top-level item, 2 (CC §2) | Checkout 1st, Cherry-pick 2nd, fixed; Checkout dims on the current branch, Cherry-pick never dims (71's amendment) | **T** (interim). Own keys + picker: M7, prototyped |
 
 ## Journeys (keys; UX 1.3; start: graph, cursor on the named row)
 | id | Task | Keys | Count | Today | Best tool |
@@ -113,8 +113,8 @@ and Cherry-pick hold the first two places); `Refusal::DirtyTree` doc; KNOWN_GAPS
   `your edits: 3 files set aside, put back after` + ` · 1 staged comes back unstaged` when any. Cut from the right.
 - **Stop line** while a clash is open and the resolver is shut: `stash@{0} clashed · 1 file conflicted`; shorter
   wordings drop the count, then the name (ladder as `stop_wordings`).
-- **`.` menu on a commit row:** 1 `Checkout <b>` (or `Checkout — already on main`, dim), 2 `Cherry-pick <sha7>` (or
-  `Cherry-pick — <why>`, dim), then `Explain` if marked, then today's order; further `Checkout <b2>` after slot 2.
+- **`.` menu on a commit row:** 1 `Checkout <b>` (or `Checkout — already on main`, dim), 2 `Cherry-pick <sha7>` (always
+  enabled, per 71's amendment), then `Explain` if marked, then today's order; further `Checkout <b2>` after slot 2.
   80 and 120 columns alike (ADR-0039: contents never depend on width).
 
 ## Genuinely risky tickets
