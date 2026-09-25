@@ -13,6 +13,7 @@ use super::events::Command;
 use super::preview::PreviewSubject;
 use super::state::{AppState, Status};
 
+mod slots;
 pub mod verbs;
 
 pub use verbs::HistoryVerb;
@@ -48,11 +49,7 @@ pub(super) const WORKING_TREE_ROW: usize = usize::MAX;
 /// with at least one finding lists `Explain`.
 pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
     let mut marked = false;
-    let mut slots = verbs::Slots {
-        verbs: Vec::new(),
-        leading: 0,
-        dim_first: None,
-    };
+    let mut slots = slots::Slots::empty();
     if let Some(entry) = next
         .history
         .as_ref()
@@ -67,7 +64,7 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
         // dropped keys still work, and a verb that cannot say which branch it
         // moves is one this menu is better off not offering.
         if let Some(refs) = next.refs.as_deref() {
-            slots = verbs::history_slots(id, &parents, &subject, refs, &findings);
+            slots = slots::history_slots(id, &parents, &subject, refs, &findings);
         }
     }
     let labels = slots.verbs.iter().map(|verb| verb.label.clone()).collect();

@@ -845,9 +845,14 @@ fn enter_on_each_enabled_slot_runs_its_own_verb() {
         for (at, index) in enabled {
             let mut state = on_the_feature_row();
             open_for_history_row(&mut state, row);
-            let expected = state.context_menu.as_ref().expect("menu").verbs[index]
-                .op
-                .clone();
+            let open = state.context_menu.as_ref().expect("menu");
+            // The label drawn at slot `n` is the verb that runs, not only
+            // the index it carries.
+            assert_eq!(
+                open.menu.items[at].label, open.verbs[index].label,
+                "row {row}, item {at}"
+            );
+            let expected = open.verbs[index].op.clone();
             state.context_menu.as_mut().expect("menu").menu.cursor = at;
             let mut commands = Vec::new();
             assert!(context_menu_key(

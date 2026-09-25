@@ -5,7 +5,7 @@
 #
 # The scene: a teammate pushed, you had a local commit and a stash made on
 # it; `p` named the divergence, `r r` rebased onto their work, `P` pushed
-# it (so the true "unpushed on main" ⓘ is not in the picture), `Ctrl+R`.
+# it (so the true "unpushed on main" ⓘ is not in the picture).
 # Your old commit still lives in Graft's undo backup and under the stash.
 #
 # What right looks like:
@@ -17,7 +17,7 @@
 #  - Every branch here has an upstream, so no "no upstream" ⓘ either.
 #  - The rebased tip's id is zeroed: it is new every run.
 
-== 1. After `p r r`, `P` and `Ctrl+R`: no ⓘ on any row ==
+== 1. After `p r r` and `P`: no ⓘ on any row ==
 
  graft /code/api  152 rows so far
 ◆        [◆ main ⇄ origin] ours                                                                          GF now  0000000
@@ -58,7 +58,7 @@
 ●        Commit 170                                                                                      GF 7y   8ea98be
 ●        Commit 169                                                                                      GF 7y   4926766
 ●        Commit 168                                                                                      GF 7y   0d60d60
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ pushed main → origin/main ✓
 
 == 2. Cursor on stash@{0}: no ⚠ ==
 
@@ -101,7 +101,7 @@
 ●        Commit 170                                                                                      GF 7y   8ea98be
 ●        Commit 169                                                                                      GF 7y   4926766
 ●        Commit 168                                                                                      GF 7y   0d60d60
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ pushed main → origin/main ✓
 
 == 3. `.` on main's tip: the menu does not lead with Explain ==
 

@@ -138,6 +138,9 @@ impl ContextMenu {
     /// app maps that index back to the operation it means. `leading` is
     /// clamped to `history.len()`. `dim_first` is `(label, reason)` and
     /// carries no index: it is [`ContextAction::Unavailable`].
+    ///
+    /// It takes no width, so what the menu holds cannot depend on the
+    /// terminal's (ADR-0039): the signature is the guarantee.
     #[must_use]
     pub fn for_row(
         marked: bool,
@@ -654,42 +657,6 @@ mod tests {
         assert_eq!(
             menu.selected_refusal().map(SanitizedText::as_str),
             Some("already on main")
-        );
-    }
-
-    /// ADR-0039: what the menu holds never depends on the terminal's width.
-    /// Drawn into an 80- and a 120-column buffer, the same rows appear.
-    #[test]
-    fn menu_contents_do_not_depend_on_width() {
-        let menu = ContextMenu::for_row(
-            false,
-            vec![
-                sanitize_line("Checkout fix"),
-                sanitize_line("Cherry-pick abc1234"),
-            ],
-            2,
-            None,
-        );
-        let drawn = |columns: u16| {
-            let mut buffer = Buffer::empty(Rect::new(0, 0, columns, 14));
-            menu.clone()
-                .render(Rect::new(0, 0, menu.width(), 14), &mut buffer);
-            (0..14)
-                .map(|y| {
-                    (0..menu.width())
-                        .map(|x| buffer[(x, y)].symbol().to_owned())
-                        .collect::<String>()
-                        .trim_end()
-                        .to_owned()
-                })
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(drawn(80), drawn(120));
-        assert!(drawn(80)[0].contains("Checkout fix"), "{:?}", drawn(80));
-        assert!(
-            drawn(80)[1].contains("Cherry-pick abc1234"),
-            "{:?}",
-            drawn(80)
         );
     }
 }

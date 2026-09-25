@@ -6,7 +6,8 @@
 # What right looks like:
 #  - Frame 1, `.` on fix's row: item 1 `Checkout fix`, item 2
 #    `Cherry-pick <sha7>`, item 3 `Explain` (the row carries the radar's
-#    ⓘ, so it is marked), then the row's own actions.
+#    "no upstream" ⓘ, a known false mark in a repository with no remote,
+#    so it is marked), then the row's own actions.
 #  - Frame 2, `.` on main's tip (checked out, no other branch): item 1
 #    `Checkout — already on main` (drawn dim: not provable here), item 2
 #    `Cherry-pick <sha7>`.

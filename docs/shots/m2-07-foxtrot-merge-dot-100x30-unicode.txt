@@ -1,4 +1,7 @@
 details gallery stop 7/19: m2-07-foxtrot-merge-dot, unicode tier, 100x30
+# HISTORICAL (m6-conflicts/76): taken before m5's history verbs and m6's
+# fixed slots. Today this menu opens `Checkout — already on main` (dim),
+# `Cherry-pick 84cc93e`, then `Explain`; see TESTING.md M2 gallery stop 7.
 
  graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/foxtrot-merge  4 comm…
  gallery 7/19 foxtrot-merge · . · ] next [ back q quit · unicode

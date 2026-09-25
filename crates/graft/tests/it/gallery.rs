@@ -434,8 +434,8 @@ fn details() -> Vec<Entry> {
             RADAR,
             vec![ch('.')],
             shape("foxtrot-merge"),
-            "the . menu on the ⚠ merge: Explain, Copy SHA, Compare, Open details",
-            "Explain leads: this row has a finding (stop 6's own ⚠), so it lists",
+            "the . menu on the ⚠ merge: dim Checkout, Cherry-pick, then Explain",
+            "Explain third: slots 1-2 are fixed (m6/71); stop 6's ⚠ adds Explain",
         ),
         stop(
             "backward-merge",

@@ -1065,11 +1065,15 @@ ASCII: `! i + * o # :`.
    into feature` (row 0, `[◆ main]`) and `ⓘ` on `feature: work` (`[feature]`,
    no upstream); `Advance main` and `Add the base` unmarked. No pane. Footer
    has `. explain`.
-7. **foxtrot-merge · .** — a four-item menu over the graph, `Explain`
-   leading: `Explain`, `Copy SHA`, `Compare with this`, `Open details`.
-   The cursor row has a finding (stop 6's `⚠`), so `open_for_history_row`
-   asks `view::radar::findings_for` and lists `Explain` first
-   (m2-details-and-diffs/24). `Esc` closes the menu.
+7. **foxtrot-merge · .** — the menu over the graph opens with the fixed
+   slots (m6-conflicts/71): `Checkout — already on main` (dim: `main` is
+   checked out and is the row's only branch), `Cherry-pick 84cc93e`, then
+   `Explain`, `Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`,
+   then the row's other history verbs and the dropped keys. The cursor row
+   has a finding (stop 6's `⚠`), so `open_for_history_row` asks
+   `view::radar::findings_for` and lists `Explain` right after the slots
+   (m2-details-and-diffs/24). `Esc` closes the menu. The m2-07 stills
+   predate the slots (their header says so).
 8. **backward-merge** — `ⓘ` on `Merge branch 'main' into feature` (`◉`,
    `[feature]`); `Advance main` (`[◆ main]`) and `Add the base` unmarked.
    The severity is info, not warning: the marker is `ⓘ`, not `⚠`.
