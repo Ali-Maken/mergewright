@@ -1,6 +1,6 @@
 # last-file-opens-the-summary: finishing a merge's last file opens the summary; otherwise a finish row says `c`
 
-Status: ready
+Status: done
 From: P11 (approved 2026-09-24, picks item 2; supersedes batch 11); field notes :60, :63 (in the demo the summary
 opened by itself and he went on to `y`); KNOWN_GAPS M6/31 :755 (`c finish` shown only after the next key).
 Build with: builder-opus (the conductor's call after scout 60, `.scratch/m6-conflicts/scouts/60.md`).
@@ -157,16 +157,16 @@ pub struct DocView { /* existing …, */ pub finish: Option<FinishRow> }   // So
   the head).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `the_read_after_the_last_stage_is_owed_when_it_lands`: green, or the ticket stopped per the rule above.
-- [ ] `the_last_file_of_a_merge_opens_the_summary`: red first, then green.
-- [ ] every test named under Touches.
-- [ ] `journey_counts_match_the_note` with the rows below.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-last-file-opens-summary-187x50.txt` (two
+- [x] `the_read_after_the_last_stage_is_owed_when_it_lands` (`src/update/resolver/tests/finish_here.rs`): green — the read is asked in `operate::operated` → `refresh_scope` (`Refresh::WorkingTree`, operate.rs ~988), before `resolved_advance` runs.
+- [x] `the_last_file_of_a_merge_opens_the_summary_once_the_reads_land` (unit, `finish_here.rs`, the old `the_resolver_stays_after_the_last_file` rewritten) and `tests/it/resolver/opens_summary.rs::the_last_file_of_a_shell_merge_opens_the_summary` (real git; the fixture is shell-begun) — green. **Red-first not re-verifiable:** the session compacted and the red run is not in what survived. The app-begun merge against real git: walk `last-block-to-finished`, `one-file-one-conflict` (state: `finish.is_some()` over the resolver).
+- [x] every test named under Touches — all green in `cargo nextest run` (3184/3184): `finish_row_on_a_whole_file_card`, `the_owed_open_survives_the_reopen`, `a_refused_reopen_opens_nothing`, `a_take_still_landing_holds_the_summary`, `a_failed_last_stage_opens_nothing`, `esc_before_the_read_lands_cancels_the_open`, `switching_file_cancels_the_open`, `a_failed_status_read_cancels_the_open_and_says_so` (see NOTES Q1), `the_last_file_of_a_rebase_shows_the_finish_row` (`opens_itself.rs`); `undo_after_finish_opens_no_summary`, `relaunch_on_a_resolved_merge_opens_no_summary`, `space_on_the_last_conflicts_row_lands_on_the_banner` (see NOTES Q3), `the_last_file_of_a_shell_merge_opens_the_summary` (`tests/it/resolver/opens_summary.rs`); `a_stash_pop_still_closes_to_the_graph` is `last_file_without_one` inside `tests/it/resolver/last_file.rs::last_file_closes_to_where_it_opened` (not a new name); `finish_row_words_by_width` (see NOTES Q2), `finish_row_style`, `finish_row_at_hits_only_the_row` (graft-ui `conflict_resolver/tests/finish_row.rs`), `click_on_the_finish_row_is_c`, `a_warning_notice_outranks_the_finish_row` (`opens_itself.rs`); `list_head_when_every_file_is_done` (graft-ui `files/tests.rs`); hints `a_finishable_done_file_offers_c` (c first), `every_key_the_bar_draws_is_answered`, 64's ladder test green.
+- [x] `journey_counts_match_the_note` with the rows below — green; rows lowered by this builder in `docs/design-notes/m6-conflicts.md` (a-finish 1, b-finish 1, a-whole-one-file 4, a-whole-two-files 5, b-whole-two-files 4, `last-block-to-finished` un-commented at 3); `every_scenario::journey_last_block_to_finished` green.
+- [x] Capture (rule 6; colour **unverified**, rule 5) — asserted by `the_last_file_of_a_shell_merge_opens_the_summary` (top border, `▸ README.md`, finish row, `files · all done ✓`, bottom row `c finish`); **the status row is not in frame 2** (NOTES Q4); judged by eye by the user, not by me: `docs/shots/m6/fix-last-file-opens-summary-187x50.txt` (two
       frames: before the last `⏎`; after it, the summary) and `fix-finish-row-120x40.txt` (after `Esc` from it).
   - **What right looks like:** frame 2's top border is `╭ Preview: finish merging feature into main`, the status row
     `notes.txt done ✓ · every file done`. The finish row capture: under the identity row
     `✓ every file done — c review and finish the merge`, list head `files · all done ✓`, bottom row starting `c finish`.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): `crates/graft/MAP.md`, `crates/graft-ui/MAP.md`.
 
 ## For the conductor (exact text, in this spec's merge commit)
 In the `journey-counts` fence, set these `keys` (comments unchanged) and un-comment the last row:
@@ -187,3 +187,27 @@ workspace-wide.
 Medium-large. One context. The trigger is the one decision point; the rest is words and a row.
 
 ## NOTES
+
+**Compacted once mid-ticket** (context). What remained at the compaction — the integration and walk rewrites, the
+new integration tests, the captures, the sheet, the counts, MAP.md, the gates — was done after it; nothing is left.
+Scout 60 used; its `impl FnMut` (not `dyn`) point was right.
+
+Rewritten tests and what they now assert:
+- `finish_here.rs` `the_resolver_stays_after_the_last_file` → `the_last_file_of_a_merge_opens_the_summary_once_the_reads_land`: summary opens once the stage, done read and status read land, `return_to == Resolver`, status `<file> done ✓ · every file done`.
+- `tests.rs` `all_resolved_from_the_pane_offers_c_where_c_continues`: summary opens on its own; `Esc` → finish row; `c` → the summary again, never the commit editor.
+- `file_list.rs` :436/:448 → `after_the_last_file_of_a_merge_the_status_says_every_file_done`, `after_the_last_file_of_a_rebase_the_status_says_c_continues`.
+- `words_and_c.rs` :207/:219: the finish row, not the notice, offers `c` (notice `None` once the read lands).
+- `tests/it/resolver/last_file.rs` `last_file_with_a_banner`: `done_read_landed` asserts the summary open over the done file, notice `None`, status `b.txt done ✓ · every file done`; `captured_both_moments` captures the summary and, after `Esc`, the finish row with the bar starting `c finish` (`fix-finish-from-the-resolver-120x40.txt`). `the_last_file_done_draws_one_tick_on_the_footer` unchanged and green: `Esc` before the read lands cancels the open.
+- `tests/it/resolver/file_list.rs::a_rebase_lists_only_this_steps_files`: notice `None`, no summary, the finish row `✓ every file done — c continue the rebase` drawn.
+- walk `every_file_done()`: waits `FinishReady`, asserts the summary over the resolver and status `… every file done`, frame `RESOLVED BY YOU`. `a_finish` / `b_finish` / whole rows send `y` only (`y_commit`); `resolving.rs:258` and `u-right-after-continue-is-accepted` (new `last_merge_file_resolved`) the same; rebase `last_file_resolved` asserts the finish row and `c continues the` status. `two-files-in-order`: the list's done states read from `listed_files` (the summary covers the list).
+- walk captures: m6-14 keys `m m o T` (the summary), m6-15 `m m o T Esc` (the finish row), m6-16 `m m o T space`, m6-17 `m m o T y`. Retaken by `pty-walk-m6.py` at 5 sizes; the script itself needed no change (keys come from `--stems`). Contact sheet rebuilt: 3 parts, 179 356 / 178 213 / 98 219 B.
+
+Where `finish_owed` clears: `status_read::abandon` (the `Err` path mod.rs ~658, `JobCancelled` ~929, `JobFailed` ~970), `write_not_landed`, `done_unreadable`, keys `Esc j k ↓ ↑ n N d e M` (`resolver::cancel_owed_finish`), `reopen`, the resolver closing.
+
+KNOWN_GAPS M6/31 :755 closed by `after_esc_from_the_summary_the_finish_row_and_c_first` (the finish row is drawn when the read lands, not after the next key).
+
+Questions for the conductor (rule 7: each with its line):
+- **Q1** `a_failed_status_read_cancels_the_open_and_says_so`: the spec expects the bar to start `c finish`. It does not: the stale pre-Stage status still calls the file unmerged, so `finishable` is false (`view/rows.rs:509`) and `c` would refuse (`banner.rs:202` `continue_refusal`). The failure words go on the status line (`Status::Failed`), not the notice row; the notice is cleared. Pinned as built.
+- **Q2** `finish_row_words_by_width`: the spec says short words at 80. The rule is width-driven, and at 80 and 120 the list is a strip, so the notice row is the frame's full width and the full 49 cells fit: full at 187/120/80; short only on a narrower document (asserted at a 46-wide doc).
+- **Q3** `space_on_the_last_conflicts_row_lands_on_the_banner`: observed, `Space` on the last `CONFLICTS` row leaves the keyboard in the changes pane, not the banner (`!banner_focus`; the existing `conflict_interim.rs:535` flow needs `tab_back_to_the_banner` too). The test asserts no summary and no resolver, and pins focus as observed; the name is the ticket's.
+- **Q4** Capture frame 2's "status row `notes.txt done ✓ · every file done`": the summary takes the whole frame including the bottom row, so the status is set (asserted on `state.status`) but not drawn while the summary is open. Showing it would be a change to the summary's layout (tickets 19/35/59), not made here.

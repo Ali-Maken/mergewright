@@ -30,6 +30,11 @@ fn strip_label(view: &FileListView, grid: bool, g: Glyphs) -> String {
             g.dot
         );
     }
+    // Every file done: the list says so in one phrase, one row or a grid
+    // alike (m6-conflicts/60).
+    if super::all_done(view) {
+        return format!("files {} all done {}", g.dot, g.check);
+    }
     if !grid {
         return "files".to_owned();
     }

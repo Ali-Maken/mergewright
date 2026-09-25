@@ -1,49 +1,49 @@
 MERGING
-files   a.txt · done ✓    ▸ b.txt · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ b.txt · done ✓
-every file done ✓ · c finishes the merge
-  1 main
+╭ Preview: finish merging side into main ──────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                                                                │
+│ undo: u takes this back                                                                                              │
+│ RESOLVED BY YOU · 2                                                                                                  │
+│ ▸ a.txt  yours · main in 1 of 1 conflicts                                                                            │
+│   b.txt  yours · main in 1 of 1 conflicts                                                                            │
+│ COMBINED BY GIT ON ITS OWN · none                                                                                    │
+│ MESSAGE · ⇥ edit                                                                                                     │
+│  Subject Merge branch 'side'                               ┊                                                   19/50 │
+│  Body                                                                                                                │
+│                                                                                  ┊                                   │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰ y commit  j/k move  ⇥ message  esc back ─────────────────────────────────────────────────────────────────────────────╯
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- stage b.txt ✓
---- after the next key ---
+--- after Esc ---
 MERGING
-files   a.txt · done ✓    ▸ b.txt · done ✓
+files · all done ✓   a.txt · done ✓    ▸ b.txt · done ✓
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ b.txt · done ✓
-every file done ✓ · c finishes the merge
+✓ every file done — c review and finish the merge
   1 main
 
 
@@ -78,4 +78,4 @@ every file done ✓ · c finishes the merge
 
 
 
- e edit  c finish  esc close
+ c finish  e edit  esc close

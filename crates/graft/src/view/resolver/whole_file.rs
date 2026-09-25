@@ -1,6 +1,7 @@
 //! The resolver's whole-file and done-file cards, and the words they
 //! use (m6-conflicts/05, /25).
 
+use super::finish_row;
 use graft_git::status::UnmergedHow;
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::conflict_resolver::{DocView, RegionView, SideNames};
@@ -48,6 +49,7 @@ pub(super) fn whole_file_view(
             .notice
             .as_ref()
             .map(|(text, error)| (sanitize_line(text), *error)),
+        finish: finish_row(state),
     }
 }
 
@@ -88,6 +90,7 @@ pub(super) fn done_card(state: &AppState, open: &ResolverState, done: &DoneShape
             .notice
             .as_ref()
             .map(|(text, error)| (sanitize_line(text), *error)),
+        finish: finish_row(state),
     }
 }
 

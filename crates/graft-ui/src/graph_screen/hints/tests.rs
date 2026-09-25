@@ -1293,8 +1293,9 @@ fn a_done_file_that_cannot_start_over_offers_edit_and_close() {
 }
 
 /// Every file done, an operation waiting (m6-conflicts/31, P8): the done
-/// file's bar offers `c` just before `esc close` — `c finish` in a merge,
-/// `c continue` otherwise — and only while `finishable`.
+/// file's bar offers `c` — `c finish` in a merge, `c continue` otherwise —
+/// and only while `finishable`. **First** since m6-conflicts/60: it is the
+/// next action (UX 1.4), so at the floor the bar keeps `c, d, e`.
 #[test]
 fn a_finishable_done_file_offers_c() {
     let done = |roles, finishable| HintContext::Resolver {
@@ -1308,17 +1309,17 @@ fn a_finishable_done_file_offers_c() {
     let bar = |context: &HintContext| hints_text(&hints_for(context, Divider::Hidden, 160));
     assert_eq!(
         bar(&done(SideRoles::Merge, true)),
-        " d start over  e edit  c finish  esc close"
+        " c finish  d start over  e edit  esc close"
     );
     assert_eq!(
         bar(&done(SideRoles::Rebase, true)),
-        " d start over  e edit  c continue  esc close"
+        " c continue  d start over  e edit  esc close"
     );
     assert_eq!(
         bar(&done(SideRoles::Merge, false)),
         " d start over  e edit  esc close"
     );
-    // Every table, not the done one only: `c` sits just before `esc close`.
+    // Every table, not the done one only: `c` leads.
     for whole_file in [false, true] {
         let list = context_list(&HintContext::Resolver {
             base: true,
@@ -1329,7 +1330,8 @@ fn a_finishable_done_file_offers_c() {
             finishable: true,
         });
         let keys: Vec<&str> = list.iter().map(|hint| hint.key).collect();
-        assert_eq!(keys[keys.len() - 2..], ["c", "esc"], "{keys:?}");
+        assert_eq!(keys.first(), Some(&"c"), "{keys:?}");
+        assert_eq!(keys.last(), Some(&"esc"), "{keys:?}");
     }
     assert!(every_context().iter().any(|context| matches!(
         context,

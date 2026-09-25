@@ -15,11 +15,10 @@ use super::fixture::{
     stash_to_pop_over_a_conflict, twice_conflicting, twice_conflicting_in_two_places,
 };
 use super::remotes::merged_and_pushed;
-use super::steps::{Capture, Scenario, Step, Wait, When};
+use super::steps::{Capture, Scenario, Sees, Step, Wait, When};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{
-    branch, ch, chain, entries_of, key, notice_containing, plain, redo, same_files,
-    status_containing, undo,
+    branch, ch, chain, entries_of, key, plain, redo, same_files, status_containing, undo,
 };
 use crate::repo_truth::{check, run_git};
 
@@ -71,18 +70,28 @@ fn take(side: char) -> Vec<Step> {
     vec![key(ch(side)), Step::WaitFor(Wait::ConflictOpened)]
 }
 
-/// `⏎` on the last conflicted file: the stage, and the resolver staying on
-/// it, read-only, with `c` offered on its notice row (`c finishes the
-/// merge` / `c continues the rebase`, m6-conflicts/31 P8). `c` then works
-/// from the resolver itself.
+/// `⏎` on a rebase's last conflicted file: the stage, and the resolver
+/// staying on it, read-only, with `c` offered on its finish row (`c
+/// continue the rebase`, m6-conflicts/31 P8, 60). `c` then works from the
+/// resolver itself.
 fn last_file_resolved(path: &'static str) -> Vec<Step> {
     vec![
         key(KeyCode::Enter),
         Step::Settle("the stage behind ⏎"),
         Step::WaitFor(Wait::ResolvedPath(path)),
         Step::WaitFor(Wait::ConflictOpened),
+        // Not a merge, so no summary opens: the finish row offers `c` on
+        // the notice row, and the status says so too (m6-conflicts/60).
         Step::See("all resolved, the resolver stays and offers c", |state| {
-            notice_containing(state, "every file done ✓ · c ")?;
+            check(state.finish.is_none(), || "a summary opened".to_owned())?;
+            check(
+                state
+                    .resolver
+                    .as_ref()
+                    .is_some_and(|open| open.notice.is_none()),
+                || "the notice outranks the finish row".to_owned(),
+            )?;
+            status_containing(state, "every file done · c continues the ")?;
             check(
                 state
                     .resolver
@@ -91,6 +100,35 @@ fn last_file_resolved(path: &'static str) -> Vec<Step> {
                 || "the resolver is not on the done file".to_owned(),
             )
         }),
+        Step::Frame(
+            "the finish row, drawn",
+            &[Sees::Has("✓ every file done — c continue")],
+        ),
+    ]
+}
+
+/// `⏎` on a merge's last conflicted file: the stage, the resolver staying
+/// on it read-only, and the summary opening over it on its own
+/// (m6-conflicts/60) — `y` commits from there.
+fn last_merge_file_resolved(path: &'static str) -> Vec<Step> {
+    vec![
+        key(KeyCode::Enter),
+        Step::Settle("the stage behind ⏎"),
+        Step::WaitFor(Wait::ResolvedPath(path)),
+        Step::WaitFor(Wait::FinishReady),
+        Step::See(
+            "all resolved, the summary open over the resolver",
+            |state| {
+                check(
+                    state
+                        .resolver
+                        .as_ref()
+                        .is_some_and(|open| open.done.is_some())
+                        && state.finish.is_some(),
+                    || "not the summary over the done file".to_owned(),
+                )
+            },
+        ),
     ]
 }
 
@@ -603,12 +641,10 @@ fn u_right_after_continue_is_accepted() -> Scenario {
             merge_that_stops(),
             resolve_from_the_banner(),
             take('t'),
-            last_file_resolved("shared.txt"),
+            last_merge_file_resolved("shared.txt"),
             vec![
-                key(ch('c')),
-                // A merge's `c` shows the finish summary; its `y` commits
-                // (m6-conflicts/19, 59).
-                Step::WaitFor(Wait::FinishReady),
+                // The summary opened on its own; its `y` commits
+                // (m6-conflicts/19, 59, 60).
                 key(ch('y')),
                 Step::Write("the merge commit"),
                 key(ch('u')),

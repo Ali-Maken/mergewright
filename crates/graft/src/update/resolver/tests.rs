@@ -448,22 +448,34 @@ fn last_file_staged_from_the_pane() -> AppState {
 /// continues (acceptance finding F4: from the pane, `c` once opened the
 /// commit editor). Since m6-conflicts/31 that is the resolver itself: it
 /// stays open after the last file, whichever way it was opened, and the
-/// keyboard stays where it was.
+/// keyboard stays where it was. Rewritten for m6-conflicts/60: opened from
+/// the pane, the merge's summary opens on its own too; `Esc` from it leaves
+/// the finish row, and `c` there opens it again — never the commit editor.
 #[test]
 fn all_resolved_from_the_pane_offers_c_where_c_continues() {
     let state = last_file_staged_from_the_pane();
     assert_eq!(open_path(&state), Path::new("conflicted.rs"), "it stays");
-    assert_eq!(
-        state.resolver.as_ref().expect("open").notice,
-        Some(("every file done ✓ · c finishes the merge".to_owned(), false))
-    );
+    let finish = state
+        .finish
+        .as_ref()
+        .expect("the summary opened on its own");
+    assert_eq!(finish.return_to, crate::update::finish::ReturnTo::Resolver);
+    assert!(state.commit_editor.is_none());
     assert!(!state.banner_focus, "banner_focus unchanged");
+    let (state, _) = press(&state, KeyCode::Escape);
+    assert!(state.finish.is_none(), "Esc closed the summary");
+    assert_eq!(state.resolver.as_ref().expect("open").notice, None);
+    assert_eq!(
+        crate::view::resolver::finish_row(&state).map(|row| row.full.as_str().to_owned()),
+        Some("✓ every file done — c review and finish the merge".to_owned()),
+        "the finish row offers c"
+    );
     let (state, commands) = press(&state, KeyCode::Char('c'));
     assert!(
         state.commit_editor.is_none(),
         "c did not open the commit editor"
     );
-    // A merge's `c` shows the finish summary, whose `⏎` commits
+    // A merge's `c` shows the finish summary, whose `y` commits
     // (m6-conflicts/19): nothing is written by `c` itself.
     assert!(state.finish.is_some(), "c opened the finish summary");
     assert!(
@@ -659,6 +671,7 @@ mod cross;
 mod file_keys;
 mod file_list;
 mod finish_here;
+mod opens_itself;
 mod take_all;
 
 /// m6-conflicts/46: `B` on a file of one block says `1 conflict`.

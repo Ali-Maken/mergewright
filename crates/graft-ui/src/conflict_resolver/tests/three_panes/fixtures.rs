@@ -80,6 +80,7 @@ pub(super) fn doc_of(file: &ConflictFile, base_shown: bool) -> DocView {
         cursor_block: Some(0),
         base_shown,
         notice: None,
+        finish: None,
     }
 }
 

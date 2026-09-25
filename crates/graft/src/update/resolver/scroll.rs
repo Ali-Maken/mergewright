@@ -3,7 +3,7 @@
 
 use graft_core::event::{KeyCode, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
-use graft_ui::conflict_resolver::{HEADER_ROWS, ScreenRow, file_at, row_at};
+use graft_ui::conflict_resolver::{HEADER_ROWS, ScreenRow, file_at, finish_row_at, row_at};
 
 use super::files::select_file;
 use super::fits;
@@ -83,6 +83,14 @@ pub(super) fn click(
         return;
     }
     if !inside(&split, false) {
+        return;
+    }
+    // The finish row does what `c` does (m6-conflicts/60).
+    let area = crate::view::resolver::resolver_area(state, super::banner_rows(state));
+    if crate::view::resolver::resolver_view(state, split.doc.width)
+        .is_some_and(|doc| finish_row_at(&doc, placed, area, column, row))
+    {
+        super::leave::finish_pressed(state, commands, next_id);
         return;
     }
     let Some((layout, _)) = body(state) else {

@@ -108,6 +108,7 @@ fn three_block_doc(base_shown: bool) -> DocView {
         cursor_block: Some(0),
         base_shown,
         notice: None,
+        finish: None,
     }
 }
 
@@ -389,6 +390,7 @@ fn resolver_draws_only_the_window() {
         cursor_block: None,
         base_shown: false,
         notice: None,
+        finish: None,
     };
     let laid = layout(&doc, Arrangement::Card, 120);
     assert_eq!(laid.rows.len(), 4000);
@@ -492,6 +494,7 @@ fn whole_file_doc() -> DocView {
         cursor_block: None,
         base_shown: false,
         notice: None,
+        finish: None,
     }
 }
 
@@ -731,4 +734,5 @@ fn arrangement_turns_at_180() {
 }
 
 mod card_colours;
+mod finish_row;
 mod three_panes;

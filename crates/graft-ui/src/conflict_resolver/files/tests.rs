@@ -295,6 +295,7 @@ fn the_column_sits_beside_the_card() {
         cursor_block: None,
         base_shown: false,
         notice: None,
+        finish: None,
     };
     let placed = placement(&doc.files, 200);
     let area = Rect::new(0, 0, 200, 20);
@@ -483,3 +484,56 @@ const GOLDEN_STRIP: [&str; 3] = [
     "",
     "",
 ];
+
+// ------------------------------------ every file done (m6-conflicts/60)
+
+/// `files` with every row done, the cursor on the last.
+fn all_done(files: FileListView) -> FileListView {
+    FileListView {
+        rows: files
+            .rows
+            .into_iter()
+            .map(|row| FileRow {
+                state: FileState::Done,
+                ..row
+            })
+            .collect(),
+        ..files
+    }
+}
+
+/// Once every file is done the list's head says so: the column
+/// `FILES · all <n> done ✓`, the strip `files · all done ✓`, one row or a
+/// grid alike.
+#[test]
+fn list_head_when_every_file_is_done() {
+    let two = all_done(two_files());
+    let buf = draw_list(&two, Placement::Column { width: 28 }, 28, 6);
+    assert_eq!(line(&buf, 0), "FILES · all 2 done ✓");
+
+    let strip = placement(&two, 120);
+    assert!(matches!(strip, Placement::Strip { rows: 1 }), "{strip:?}");
+    let buf = draw_list(&two, strip, 120, 1);
+    assert!(
+        line(&buf, 0).starts_with("files · all done ✓"),
+        "{:?}",
+        line(&buf, 0)
+    );
+
+    let twelve = all_done(twelve_files(11));
+    let grid = placement(&twelve, 80);
+    let Placement::Strip { rows } = grid else {
+        panic!("80 columns is a strip: {grid:?}")
+    };
+    assert!(rows > 1, "twelve long names make a grid: {rows}");
+    let buf = draw_list(&twelve, grid, 80, rows);
+    let drawn: Vec<String> = (0..rows).map(|y| line(&buf, y)).collect();
+    assert!(
+        drawn.iter().any(|row| row.contains("files · all done ✓")),
+        "{drawn:#?}"
+    );
+
+    // One file still open: the heads as before.
+    let buf = draw_list(&two_files(), Placement::Column { width: 28 }, 28, 6);
+    assert_eq!(line(&buf, 0), "FILES · 2 conflicted");
+}

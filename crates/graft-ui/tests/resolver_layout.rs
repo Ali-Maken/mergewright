@@ -67,6 +67,15 @@ fn mockup_files() -> FileListView {
 
 /// The §1.5 token.rs scenario: two blocks visible, one open with its OURS
 /// and THEIRS sides given, one already `Took(Theirs)`.
+/// The same line number on every side.
+fn at(line: usize) -> BlockNumbers {
+    BlockNumbers {
+        ours: line,
+        theirs: line,
+        result: line,
+    }
+}
+
 fn mockup_doc() -> DocView {
     let block0 = BlockView {
         index: 0,
@@ -76,11 +85,7 @@ fn mockup_doc() -> DocView {
         base: None,
         theirs: lines(&["if is_expired() {", "self.do_refresh();"]),
         first_line: 39,
-        numbers: BlockNumbers {
-            ours: 39,
-            theirs: 39,
-            result: 39,
-        },
+        numbers: at(39),
     };
     let block1 = BlockView {
         index: 1,
@@ -90,11 +95,7 @@ fn mockup_doc() -> DocView {
         base: None,
         theirs: lines(&["let tok = self.store.get();"]),
         first_line: 42,
-        numbers: BlockNumbers {
-            ours: 42,
-            theirs: 42,
-            result: 42,
-        },
+        numbers: at(42),
     };
     DocView {
         title: text("src/auth/token.rs · 3 conflicts · 2 open"),
@@ -106,20 +107,12 @@ fn mockup_doc() -> DocView {
         },
         regions: vec![
             RegionView::Plain {
-                numbers: BlockNumbers {
-                    ours: 38,
-                    theirs: 38,
-                    result: 38,
-                },
+                numbers: at(38),
                 lines: lines(&["fn refresh(&mut self) {"]),
             },
             RegionView::Block(block0),
             RegionView::Plain {
-                numbers: BlockNumbers {
-                    ours: 41,
-                    theirs: 41,
-                    result: 41,
-                },
+                numbers: at(41),
                 lines: lines(&["}"]),
             },
             RegionView::Block(block1),
@@ -127,6 +120,7 @@ fn mockup_doc() -> DocView {
         cursor_block: Some(0),
         base_shown: false,
         notice: None,
+        finish: None,
     }
 }
 

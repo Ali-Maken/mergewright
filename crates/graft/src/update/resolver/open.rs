@@ -86,24 +86,30 @@ pub(in crate::update) fn box_open(state: &AppState) -> bool {
 /// open. The refusal is decided before anything is taken: taking first
 /// closed the resolver on a refusal and left the box that caused it
 /// standing over the graph (review m6-amend-13, Major 1).
+///
+/// `true` when `path` was opened afresh; `false` when refused (or there was
+/// no resolver to reopen). Only the file list carries over: anything else
+/// the old state held — `finish_owed` included — is the old file's.
 pub(super) fn reopen(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     path: PathBuf,
     from: OpenedFrom,
     next_id: &mut impl FnMut() -> JobId,
-) {
+) -> bool {
     if let Some(words) = open_refusal(state) {
         state.status = words;
-        return;
+        return false;
     }
     let Some(was) = state.resolver.take() else {
-        return;
+        return false;
     };
     start(state, commands, path, from, next_id);
-    if let Some(open) = state.resolver.as_mut() {
-        open.files = was.files;
-        open.set_job = was.set_job;
-        open.seen = was.seen;
-    }
+    let Some(open) = state.resolver.as_mut() else {
+        return false;
+    };
+    open.files = was.files;
+    open.set_job = was.set_job;
+    open.seen = was.seen;
+    true
 }

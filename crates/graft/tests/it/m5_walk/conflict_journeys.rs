@@ -58,6 +58,7 @@ pub(super) fn journeys() -> Vec<Scenario> {
         walk_back_a_done_file(),
         walk_back_a_whole_file_choice(),
         a_whole_one_file(),
+        last_block_to_finished(),
         captured(a_whole_two_files(), "m6-17-after-commit"),
         b_whole_two_files(),
         editor_to_finish(),
@@ -85,13 +86,12 @@ fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
             [mm(), vec![KeyPress::control(ch('t'))]].concat(),
             "took theirs",
         ),
-        "m6-14-last-file-done" => (both_done(), "every file done"),
-        "m6-15-finish-summary" => (then(both_done(), &[ch('c')]), "RESOLVED BY YOU"),
-        "m6-16-summary-expanded" => (then(both_done(), &[ch('c'), ch(' ')]), "feature's line"),
-        "m6-17-after-commit" => (
-            then(both_done(), &[ch('c'), ch('y')]),
-            "merged feature into main",
-        ),
+        // The last file done opens the summary on its own (m6-conflicts/60).
+        "m6-14-last-file-done" => (both_done(), "RESOLVED BY YOU"),
+        // `Esc` from it: the resolver, the finish row on its notice row.
+        "m6-15-finish-summary" => (then(both_done(), &[KeyCode::Escape]), "✓ every file done"),
+        "m6-16-summary-expanded" => (then(both_done(), &[ch(' ')]), "feature's line"),
+        "m6-17-after-commit" => (then(both_done(), &[ch('y')]), "merged feature into main"),
         // The launch's first frame: the app opens on the shell-begun merge.
         "m6-18-launch-shell-begun" => (vec![], "CONFLICTS"),
         "m6-19-after-esc-esc" => (then(mm(), &[KeyCode::Escape, KeyCode::Escape]), "⇥ banner"),
@@ -174,8 +174,15 @@ fn both_files_done() -> Vec<Step> {
 
 /// `c` → the summary, `y` → the commit, everything re-read.
 fn c_y() -> Vec<Step> {
+    let mut steps = vec![key(ch('c'))];
+    steps.extend(y_commit());
+    steps
+}
+
+/// The summary open (the last file of a merge opens it on its own,
+/// m6-conflicts/60): `y` → the commit, everything re-read.
+fn y_commit() -> Vec<Step> {
     vec![
-        key(ch('c')),
         Step::WaitFor(Wait::FinishReady),
         key(ch('y')),
         Step::Settle("the merge commit"),
@@ -261,16 +268,23 @@ fn resolver_on(state: &AppState, path: &str) -> Result<(), String> {
     })
 }
 
-/// The last file done: the resolver stays, its notice offering `c` (P8,
-/// ticket 31).
+/// The last file done: the merge's summary opens on its own over the
+/// resolver, the status saying every file is done (m6-conflicts/60; P8,
+/// ticket 31, before it).
 fn every_file_done() -> Vec<Step> {
     vec![
-        Step::See("every file done, and c offered", |state| {
-            notice_containing(state, "every file done ✓ · c finishes the merge")
+        Step::WaitFor(Wait::FinishReady),
+        Step::See("every file done, the summary open on its own", |state| {
+            check(state.resolver.is_some() && state.finish.is_some(), || {
+                "the summary did not open over the resolver".to_owned()
+            })?;
+            status_containing(state, "every file done")
         }),
         Step::Frame(
-            "every file done, drawn",
-            &[Sees::Has("every file done ✓ · c finishes the merge")],
+            "the summary, drawn",
+            // The summary takes the whole frame: the status is set (above),
+            // not drawn while it is open.
+            &[Sees::Has("RESOLVED BY YOU")],
         ),
         Step::Shell(|fixture| {
             let unmerged = fixture.git(&["ls-files", "-u"])?;
@@ -618,10 +632,18 @@ fn two_files_in_order(size: (u16, u16)) -> Scenario {
                 both_files_done(),
                 vec![end()],
                 every_file_done(),
-                vec![Step::Frame(
-                    "both files done in the list",
-                    &[Sees::Row("gone.txt", "✓"), Sees::Row("notes.txt", "✓")],
-                )],
+                // The summary covers the list (m6-conflicts/60): read the
+                // list's states rather than its drawing.
+                vec![Step::See("both files done in the list", |state| {
+                    let listed = graft::update::resolver::listed_files(state);
+                    check(
+                        listed.len() == 2
+                            && listed
+                                .iter()
+                                .all(|file| file.state == graft::update::resolver::RowState::Done),
+                        || format!("the list: {listed:?}"),
+                    )
+                })],
             ],
         )
     }
@@ -686,15 +708,11 @@ fn a_finish() -> Scenario {
                 on_feature(),
                 m_m(),
                 both_files_done(),
-                // The start: every file done, the resolver still open (P8).
+                // The start: every file done, the summary open on its own
+                // over the resolver (m6-conflicts/60).
                 every_file_done(),
                 vec![
-                    Step::See("c is pressed in the resolver", |state| {
-                        check(state.resolver.is_some(), || "no resolver open".to_owned())
-                    }),
                     route(),
-                    key(ch('c')),
-                    Step::WaitFor(Wait::FinishReady),
                     the_summary(),
                     key(ch('y')),
                     Step::Settle("the merge commit"),
@@ -718,6 +736,7 @@ fn shell_merge_resolved_in_the_app() -> Vec<Vec<Step>> {
         launched(),
         vec![key(KeyCode::Enter), Step::WaitFor(Wait::ConflictOpened)],
         both_files_done(),
+        vec![Step::WaitFor(Wait::FinishReady)],
     ]
 }
 
@@ -743,7 +762,7 @@ fn b_finish() -> Scenario {
             two_files_in_the_shell,
             chain_all(vec![
                 shell_merge_resolved_in_the_app(),
-                vec![vec![route()], c_y(), vec![end()]],
+                vec![vec![route()], y_commit(), vec![end()]],
                 vec![
                     merged_landing(),
                     vec![Step::Mark("finished")],
@@ -762,7 +781,7 @@ fn b_finish_again_after_undo() -> Scenario {
         chain_all(vec![
             shell_merge_resolved_in_the_app(),
             vec![
-                c_y(),
+                y_commit(),
                 undo(),
                 vec![
                     Step::WaitFor(Wait::BackInProgress),
@@ -1102,7 +1121,36 @@ fn a_whole_one_file() -> Scenario {
             vec![route()],
             m_m(),
             done_by('O', "shared.txt"),
-            c_y(),
+            y_commit(),
+            vec![end()],
+            merged_landing(),
+        ],
+    )
+}
+
+/// J13 (amendment 2026-09-24): `gone.txt` done, the cursor on `notes.txt`'s
+/// last open block — `o ⏎` stages the last file and the summary opens on
+/// its own (m6-conflicts/60), `y` commits.
+fn last_block_to_finished() -> Scenario {
+    journey(
+        "last-block-to-finished",
+        two_files,
+        vec![
+            on_feature(),
+            m_m(),
+            done_by('o', "gone.txt"),
+            // `notes.txt`'s first block taken: the cursor moves on to the
+            // last one (m6-conflicts/15).
+            vec![key(ch('o')), Step::WaitFor(Wait::ConflictOpened)],
+            vec![
+                route(),
+                key(ch('o')),
+                Step::WaitFor(Wait::ConflictOpened),
+                key(KeyCode::Enter),
+                Step::Settle("the last stage"),
+                Step::WaitFor(Wait::ResolvedPath("notes.txt")),
+            ],
+            y_commit(),
             vec![end()],
             merged_landing(),
         ],
@@ -1118,7 +1166,7 @@ fn a_whole_two_files() -> Scenario {
             vec![route()],
             m_m(),
             both_files_done(),
-            c_y(),
+            y_commit(),
             vec![end()],
             merged_landing(),
         ],
@@ -1137,7 +1185,7 @@ fn b_whole_two_files() -> Scenario {
                 Step::WaitFor(Wait::ConflictOpened),
             ],
             both_files_done(),
-            c_y(),
+            y_commit(),
             vec![end()],
             merged_landing(),
         ],

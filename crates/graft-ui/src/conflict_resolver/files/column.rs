@@ -43,6 +43,8 @@ fn name_and_state_widths(view: &FileListView, g: Glyphs) -> (usize, usize) {
 fn column_header(view: &FileListView, g: Glyphs) -> String {
     if view.unavailable {
         format!("FILES {} git's list unavailable", g.dot)
+    } else if super::all_done(view) {
+        format!("FILES {} all {} done {}", g.dot, view.rows.len(), g.check)
     } else {
         format!("FILES {} {} conflicted", g.dot, view.rows.len())
     }

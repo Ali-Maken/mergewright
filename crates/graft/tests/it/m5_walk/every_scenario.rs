@@ -125,6 +125,7 @@ walk! {
     journey_walk_back_a_done_file => "walk-back-a-done-file",
     journey_walk_back_a_whole_file_choice => "walk-back-a-whole-file-choice",
     journey_a_whole_one_file => "a-whole-one-file",
+    journey_last_block_to_finished => "last-block-to-finished",
     journey_a_whole_two_files => "a-whole-two-files",
     journey_b_whole_two_files => "b-whole-two-files",
     journey_editor_to_finish => "editor-to-finish",

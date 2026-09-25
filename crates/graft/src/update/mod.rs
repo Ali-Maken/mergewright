@@ -318,6 +318,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::HandedOver(_),
         ) => commit_editor_answer(next, event),
     }
+    // The summary the last file of a merge owes opens once everything that
+    // stage started has landed — whichever answer lands last
+    // (m6-conflicts/60).
+    let mut local_jobs = next.local_jobs;
+    resolver::finish_if_owed(next, commands, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
 }
 
 /// `git mergetool` came back.

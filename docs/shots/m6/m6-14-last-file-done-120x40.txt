@@ -1,42 +1,42 @@
 m6 walk capture: m6-14-last-file-done — scenario two-files-in-order, keys m m o T, unicode tier, 120x40
 
 MERGING
-files   gone.txt · done ✓    ▸ notes.txt · done ✓
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-▸ notes.txt · done ✓ · d starts it over
-every file done ✓ · c finishes the merge
-  1 one
-  2 TWO from feature
-  3 three
-  4 four
-  5 five
-  6 six
-  7 SEVEN from feature
-  8 eight
+╭ Preview: finish merging feature into main ───────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                                                                │
+│ undo: u takes this back                                                                                              │
+│ RESOLVED BY YOU · 2                                                                                                  │
+│   gone.txt   kept · yours · main                                                                                     │
+│   notes.txt  theirs · feature in 2 of 2 conflicts                                                                    │
+│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                                  │
+│ ▸ README.md  modified  +1 −0                                                                                         │
+│ MESSAGE · ⇥ edit                                                                                                     │
+│  Subject Merge branch 'feature' into main                  ┊                                                   32/50 │
+│  Body                                                                                                                │
+│                                                                                  ┊                                   │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ───────────────────────────────────────────────────────────────╯
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- stage notes.txt ✓

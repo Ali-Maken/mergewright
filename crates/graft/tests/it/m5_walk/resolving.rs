@@ -18,8 +18,8 @@ use super::fixture::{
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::{Side, resolved_bytes, side_bytes, unmerged};
 use super::vocabulary::{
-    branch, ch, chain, entries_of, key, last_entry_committed, notice_containing, plain, same_files,
-    status_containing, undo,
+    branch, ch, chain, entries_of, key, last_entry_committed, plain, same_files, status_containing,
+    undo,
 };
 use crate::repo_truth::{check, run_git};
 
@@ -250,26 +250,25 @@ fn merge_resolved_with_the_keys() -> Scenario {
             resolve_the_rest(&["both.txt", "three.txt"]),
             vec![
                 // The last file's done read (m6-conflicts/31): the resolver
-                // stays on it, read-only.
-                Step::WaitFor(Wait::ConflictOpened),
+                // stays on it, read-only, and the merge's summary opens on
+                // its own over it once the reads land (m6-conflicts/60).
+                Step::WaitFor(Wait::FinishReady),
                 Step::See(
-                    "the resolver stays after the last file and offers c",
+                    "the resolver stays after the last file, the summary over it",
                     |state| {
-                        notice_containing(state, "every file done ✓ · c finishes the merge")?;
+                        status_containing(state, "every file done")?;
                         check(
                             state
                                 .resolver
                                 .as_ref()
-                                .is_some_and(|open| open.done.is_some()),
-                            || "the resolver is not on the done file".to_owned(),
+                                .is_some_and(|open| open.done.is_some())
+                                && state.finish.is_some(),
+                            || "not the summary over the done file".to_owned(),
                         )
                     },
                 ),
                 Step::Mark("resolved"),
-                key(ch('c')),
-                // A merge's `c` shows the finish summary; its `y` commits
-                // (m6-conflicts/19, 59).
-                Step::WaitFor(Wait::FinishReady),
+                // The summary's `y` commits (m6-conflicts/19, 59).
                 key(ch('y')),
                 Step::Write("c from the resolver"),
                 Step::WaitFor(Wait::Ready),

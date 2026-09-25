@@ -496,21 +496,21 @@ three-conflicts-all-theirs    1                    # JetBrains Accept Theirs 1 �
 modify-delete-keep-yours      1                     # JetBrains 1
 two-files-in-order            2                    # JetBrains 2 · P11 (approved): lands on the summary, count unchanged
 two-files-out-of-order        3                    # P11 (approved): lands on the summary, count unchanged
-a-finish                      2                     # lazygit 1 (bare confirm, rejected) · P11+P12 approved 2026-09-24 → 1: `y` in the summary the last file opened · lowered by last-file-opens-the-summary
-b-finish                      2                     # P11+P12 approved → 1 (`y`) · lowered by last-file-opens-the-summary
+a-finish                      1                     # lazygit 1 (bare confirm, rejected) · P11+P12 approved 2026-09-24 → 1: `y` in the summary the last file opened · lowered by last-file-opens-the-summary
+b-finish                      1                     # P11+P12 approved → 1 (`y`) · lowered by last-file-opens-the-summary
 summary-open-git-combined     1
 back-after-esc                2
 open-a-done-file              1                     # Fork #1304 asks for it (CR 1.10); no count in CR
 walk-back-a-done-file         4                     # Tower reset-to-unmerged (CR 1.11): count (?) · P15 approved → 3 (`j d y`) · lowered by ticket 50
 walk-back-a-whole-file-choice 4                     # batch 7 (approved 2026-09-24): k d → ⏎ · ticket 50 → 3 (k d y) · Tower (?)
-a-whole-one-file              5                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`) · approved; lowered by last-file-opens-the-summary
-a-whole-two-files             6                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`) · approved; lowered by last-file-opens-the-summary
-b-whole-two-files             5                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`) · approved; lowered by last-file-opens-the-summary
+a-whole-one-file              4                    # a-merge-to-stop + a-stop-to-first-conflict + one-file-one-conflict + a-finish · P11+P12 → 4 (`m m O y`) · approved; lowered by last-file-opens-the-summary
+a-whole-two-files             5                    # a-merge-to-stop + a-stop-to-first-conflict + two-files-in-order + a-finish · P11+P12 → 5 (`m m o T y`) · approved; lowered by last-file-opens-the-summary
+b-whole-two-files             4                    # b-launch-to-first-conflict + two-files-in-order + b-finish · P11+P12 → 4 (`⏎ o T y`) · approved; lowered by last-file-opens-the-summary
 editor-to-finish  5  # M3a (usability M3): the editor never opens to refuse, so the walk starts in the changes pane: c (refused in words) + 2×⇥ + c + ⏎, still 5 · P14 → 2 (c ⏎; c y with P12) · P14 approved 2026-09-24 → 2 (`c y`); lowered by ticket 52
 b-finish-again-after-undo    2                     # from the u landing: c ⏎ (ticket 41) · P12: `c y`, still 2 · approved; keys re-sent by finish-summary-is-a-preview
 b-abort-shell-merge           3                     # batch 3 (approved 2026-09-24): a → ⏎ from the banner · ticket 50 → 2 (a y) · lazygit 3 (?)
 b-undo-a-take-in-the-shell    1                     # batch 3: u from the banner after a whole-file t · JetBrains ⌃Z 1
-# last-block-to-finished      4                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Approved 2026-09-24; un-commented at 3 by last-file-opens-the-summary, which adds its scenario
+last-block-to-finished        3                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Approved 2026-09-24; un-commented at 3 by last-file-opens-the-summary, which adds its scenario
 ```
 The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
 moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.

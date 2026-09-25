@@ -267,6 +267,12 @@ impl Widget for FileList<'_> {
 
 // ------------------------------------------------------------------ plan
 
+/// Every listed file is done (and there is at least one): the list's head
+/// says `all … done ✓` (m6-conflicts/60).
+fn all_done(view: &FileListView) -> bool {
+    !view.rows.is_empty() && view.rows.iter().all(|row| row.state == FileState::Done)
+}
+
 /// The widget's own glyphs, one cell each in both tiers.
 #[derive(Clone, Copy)]
 struct Glyphs {
