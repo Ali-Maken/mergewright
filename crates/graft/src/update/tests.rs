@@ -1153,6 +1153,7 @@ fn every_field_spelled_out() -> AppState {
         refs_read: RefsRead::Pending(JobId::new(3)),
         working_tree: None,
         operating: None,
+        resuming: None,
         screen: Screen::Graph,
         lanes_expanded: false,
         focus: false,
@@ -4420,6 +4421,7 @@ fn box_over_the_graph(walk: JobId, context: &HintContext) -> AppState {
             state.name_prompt = Some(super::name_prompt::NamePrompt {
                 kind,
                 field: graft_ui::text_input::TextField::new("feature"),
+                refusal: None,
             });
             state
         }

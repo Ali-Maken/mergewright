@@ -411,7 +411,8 @@ fn credential_header(label: &str, columns: u16, rows: u16) -> String {
          # its right border landed inside the short-SHA column and left four-\n\
          # character tails standing against it, reading as identifiers that\n\
          # are not; and nothing behind a modal password question serves the\n\
-         # task \u{2014} the footer already says which push is waiting.\n\
+         # task \u{2014} the prompt's own border says which push is waiting\n\
+         # (`esc cancel the push`); the bottom row is its keys (m6-conflicts/69).\n\
          #\n\
          # It clears **the band**, not the screen: the graph above it and the\n\
          # footer below it stay. So there is nothing beside the prompt in the\n\

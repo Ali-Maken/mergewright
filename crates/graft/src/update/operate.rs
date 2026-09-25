@@ -43,6 +43,14 @@ pub(super) fn write_job_ended(
         return Vec::new();
     }
     state.operating = None;
+    // A resume that died without answering: nothing will ever take it.
+    if state
+        .resuming
+        .as_ref()
+        .is_some_and(|(resume, _)| *resume == id)
+    {
+        state.resuming = None;
+    }
     let tree = next_id();
     let mut commands = vec![super::status_read::ask(state, tree)];
     commands.extend(state.detail.refresh(next_id));

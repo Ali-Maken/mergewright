@@ -84,6 +84,13 @@ pub struct AppState {
     /// other write key is a no-op while this is `Some`
     /// (m3-working-tree-undo-and-stash/04).
     pub operating: Option<JobId>,
+    /// The `--continue`/`--skip`/`--abort` that `operating` is waiting for,
+    /// kept until its answer: the answer's entry alone cannot say what was
+    /// asked — a failed continue closes `Aborted` too — so the closing words
+    /// key on both (m6-conflicts/68). Set only by `banner::resume`; taken by
+    /// `banner::resumed`, or by `operate::write_job_ended` when the job dies
+    /// without answering.
+    pub(crate) resuming: Option<(JobId, graft_ops::apply::Resume)>,
     /// Which screen is on show. The graph, unless the user asked for the
     /// status screen — the only place tier and cell size are shown.
     pub screen: Screen,

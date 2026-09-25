@@ -7,6 +7,7 @@
 
 mod app_harness;
 mod askpass_mode;
+mod box_owns_the_bar;
 #[cfg(feature = "heavy-tests")]
 mod budget_run;
 mod captures;
@@ -46,3 +47,4 @@ mod stash_by_key;
 mod stop_ladder_readers;
 mod two_boxes_over_content;
 mod undo_by_key;
+mod undo_over_drift;

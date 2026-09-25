@@ -22,7 +22,7 @@ use crate::preview::{FORK_NOW, dated_commit, opened};
 /// `main` with one commit past the fork; `fix` with one commit of its own,
 /// `fix the bug`, adding `fix.txt`. `main` is checked out. Dated commits, so
 /// every id is the same on every run.
-fn main_and_fix() -> graft_fixtures::Scratch {
+pub(crate) fn main_and_fix() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
     dated_commit(path, "base.txt", "base\n", "add the base", 1);
@@ -34,13 +34,13 @@ fn main_and_fix() -> graft_fixtures::Scratch {
     scratch
 }
 
-fn rev(repo: &Path, name: &str) -> String {
+pub(crate) fn rev(repo: &Path, name: &str) -> String {
     git(repo, &["rev-parse", name]).trim().to_owned()
 }
 
 /// Presses `j` (not counted: getting to the row is not the journey) until
 /// the cursor rests on `target`.
-fn cursor_to(app: &App, mut state: AppState, target: &str) -> AppState {
+pub(crate) fn cursor_to(app: &App, mut state: AppState, target: &str) -> AppState {
     for _ in 0..20 {
         let on = state
             .history
@@ -69,7 +69,7 @@ impl Keys<'_> {
 }
 
 /// The preview's plan has come back, so `y` has something to confirm.
-fn planned(app: &App, state: AppState) -> AppState {
+pub(crate) fn planned(app: &App, state: AppState) -> AppState {
     app.pump(state, "the preview's plan", |state| {
         state
             .preview

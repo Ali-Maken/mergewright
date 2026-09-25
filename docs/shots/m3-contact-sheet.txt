@@ -720,7 +720,7 @@ UNDO JOURNAL · <scratch_______________________________________________________>
 
 ================================================================================
 docs/shots/m3-09-undo-drift-box-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Drift box row: same. (Re-taken 2026-09-25, m6-conflicts/63.)
+what right looks like: TESTING.md § Per breakpoint, Drift box row: same. (Re-taken 2026-09-25, m6-conflicts/69.)
 ================================================================================
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 160x48
@@ -772,11 +772,11 @@ m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, uni
 
 
 
- undo · esc cancels
+ y undo  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m3-09-undo-drift-box-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Drift box row: a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `undo · esc cancels`. (Re-taken 2026-09-25, m6-conflicts/63.)
+what right looks like: TESTING.md § Per breakpoint, Drift box row: a framed box `╭ Undo “commit "before the drift"”?`, what drifted, `undo restores the recorded state`, `▸[ Stop ]   [ Undo ]`; the bottom row `y undo  ←/→ move  ⏎ choose  esc cancel`, the box's keys: the drift answer ended the undo's `Busy`. (Re-taken 2026-09-25, m6-conflicts/69.)
 ================================================================================
 
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 80x24
@@ -804,7 +804,7 @@ m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, uni
 
 
 
- undo · esc cancels
+ y undo  ←/→ move  ⏎ choose  esc cancel
 
 ================================================================================
 docs/shots/m3-amend.txt

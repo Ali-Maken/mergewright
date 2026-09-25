@@ -3270,8 +3270,9 @@ fn capture_m4_credential_prompt_in_app() {
 #    on the first line, the field shows a fixed 8 mask glyphs (never the
 #    typed length, ADR-0038 §2) and no plaintext, the note says the answer
 #    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
-#    naming the push it cancels. The line behind it still says the push is
-#    running.
+#    naming the push it cancels. The bottom row is the prompt's own keys:
+#    the push's running line waits under it and comes back once the
+#    prompt is answered (m6-conflicts/69).
 # 2. The same 7-character password again, with the prompt's pulse seed the
 #    other way up. The first mask glyph differs between 1 and 2 and nothing
 #    else does. That is the whole of ADR-0038 §2: the glyph flips on every
@@ -3853,8 +3854,8 @@ fn draw_cells(state: &AppState, columns: u16, rows: u16) -> Vec<Vec<String>> {
 /// It fragments the short-SHA column when it does not — at 80 the four-hex
 /// tails ` b8c5`, `68ff`, `00bd` sat against its right border, reading as
 /// short identifiers that are not — and nothing behind it serves the task:
-/// the prompt is modal (`docs/design/02-keymap.md` §2.14) and the footer
-/// already carries `push main → origin/main · esc cancels`.
+/// the prompt is modal (`docs/design/02-keymap.md` §2.14) and its own
+/// border names the push it cancels (`esc cancel the push`).
 ///
 /// **Fails before the change:** `draw_credential` cleared `rect` alone, so
 /// the graph kept drawing its own columns on the box's own rows either side
@@ -4618,3 +4619,5 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
         "160 columns is a real split, and its divider is draggable:\n{split}"
     );
 }
+
+mod bottom_row;

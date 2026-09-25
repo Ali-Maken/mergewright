@@ -168,24 +168,32 @@ fn enter_on_a_refused_name_does_nothing() {
 }
 
 /// An empty name is not a refusal to draw — it is one to say out loud, once
-/// the user asks for it.
+/// the user asks for it. Said **inside the prompt**: the prompt stays open
+/// and owns the bottom row, so a line written to `AppState::status` would
+/// never be seen while it is up, and would surface stale once it closed
+/// (m6-conflicts/69, Decided 3). The next key takes the words away.
 #[test]
-fn enter_on_an_empty_name_says_so() {
-    let state = prompt_open(false);
-    let (after, commands) = press(&state, key(KeyCode::Enter));
-    assert!(commands.is_empty(), "nothing ran");
-    assert!(
-        matches!(&after.status, Status::Sticky { reason, .. } if reason == "a branch needs a name"),
-        "{:?}",
-        after.status
-    );
-    let state = prompt_open(true);
-    let (after, _) = press(&state, key(KeyCode::Enter));
-    assert!(
-        matches!(&after.status, Status::Sticky { reason, .. } if reason == "a tag needs a name"),
-        "{:?}",
-        after.status
-    );
+fn an_empty_name_is_refused_inside_the_prompt() {
+    for (tag, words) in [
+        (false, "a branch needs a name"),
+        (true, "a tag needs a name"),
+    ] {
+        let state = prompt_open(tag);
+        let before = state.status.clone();
+        let (after, commands) = press(&state, key(KeyCode::Enter));
+        assert!(commands.is_empty(), "nothing ran");
+        let prompt = after.name_prompt.as_ref().expect("the prompt stayed open");
+        assert_eq!(prompt.refusal.as_deref(), Some(words));
+        assert_eq!(
+            after.status, before,
+            "the status line under the box is untouched"
+        );
+
+        let (typing, _) = press(&after, key(KeyCode::Char('x')));
+        let prompt = typing.name_prompt.as_ref().expect("still open");
+        assert_eq!(prompt.refusal, None, "the next key is a new try");
+        assert_eq!(typed(&typing), "x");
+    }
 }
 
 /// `⇥` flips the branch's checkout toggle, and is swallowed by the two
@@ -376,4 +384,57 @@ fn a_refused_preview_keeps_the_typed_name() {
         commands.is_empty(),
         "nothing was planned or run: {commands:?}"
     );
+}
+
+/// A fetch in flight refuses the stash-branch preview. The refusal is the
+/// prompt's own `⏎` answer and the prompt stays open, so it lands in the
+/// prompt's `refusal` — the name kept, the status line under the box not
+/// written (m6-conflicts/69, conductor 2026-09-25: option 1). A real fetch,
+/// launched by `f`, is what refuses: nothing is stubbed into `operating`.
+#[test]
+fn a_fetch_in_flight_refuses_inside_the_stash_branch_prompt() {
+    let state = fixture();
+    let (mut state, commands) = press(&state, key(KeyCode::Char('f')));
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::Operate(..))),
+        "the fetch launched: {commands:?}"
+    );
+    state.stash.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(vec![
+        graft_git::stash::StashEntry {
+            index: 0,
+            commit: oid(7),
+            message: "WIP on main: 0202020 Commit 2".to_owned(),
+            at: graft_core::commit::Timestamp {
+                seconds: 1,
+                offset_seconds: 0,
+            },
+            paths: vec![std::path::PathBuf::from("src/main.rs")],
+        },
+    ]));
+    state.stash.shown = true;
+    let (mut state, _) = press(&state, key(KeyCode::Char('b')));
+    type_in(&mut state, "rescued");
+    let before = state.status.clone();
+
+    let (after, commands) = press(&state, key(KeyCode::Enter));
+    let prompt = after.name_prompt.as_ref().expect("the prompt stayed open");
+    assert_eq!(typed(&after), "rescued", "the name is kept");
+    let refusal = prompt
+        .refusal
+        .as_deref()
+        .expect("refused inside the prompt");
+    assert!(
+        refusal.starts_with("wait for ") && refusal.ends_with(" to finish"),
+        "{refusal}"
+    );
+    assert!(refusal.contains("fetch"), "{refusal}");
+    assert_eq!(
+        after.status, before,
+        "the status line under the box is untouched"
+    );
+    assert!(after.stash.shown, "the overlay is still behind the box");
+    assert!(after.preview.is_none());
+    assert!(commands.is_empty(), "nothing planned or run: {commands:?}");
 }

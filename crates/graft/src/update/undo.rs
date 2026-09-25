@@ -142,9 +142,15 @@ pub(super) fn shell_merge_known(state: &AppState) -> bool {
 /// text). `keys` is `None` where the banner is hidden or absent.
 pub(super) fn live_refusal(kind: graft_git::state::InProgress, keys: Option<String>) -> Status {
     Status::Sticky {
-        reason: format!("finish or abort the {} first", kind.name()),
+        reason: live_refusal_words(kind),
         keys,
     }
+}
+
+/// [`live_refusal`]'s words alone, for a refusal said inside a modal
+/// rather than on the status line (the stash-branch name prompt).
+pub(super) fn live_refusal_words(kind: graft_git::state::InProgress) -> String {
+    format!("finish or abort the {} first", kind.name())
 }
 
 /// A `--continue`/`--skip`/`--abort` answered `Done`: the operation is
@@ -345,6 +351,10 @@ pub fn undone(
             drift,
             redo,
         } => {
+            // The answer ends its own `Busy`: the box is what the screen
+            // waits on now, and `undo · esc cancels` under it would name a
+            // job that is over (m6-conflicts/69, Decided 4).
+            state.status = Status::Ready;
             state.confirm = Some(drift_box(&description, &drift, redo));
             Vec::new()
         }
@@ -437,6 +447,8 @@ pub(super) fn reverted_to(
             drift,
             target,
         } => {
+            // As for `undone`'s drift box: the answer ends its own `Busy`.
+            state.status = Status::Ready;
             state.confirm = Some(revert_drift_box(&description, &drift, target));
             Vec::new()
         }
@@ -1494,3 +1506,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod box_answers;

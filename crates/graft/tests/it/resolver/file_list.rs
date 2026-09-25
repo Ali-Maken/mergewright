@@ -532,7 +532,7 @@ fn file_list_many_capture() {
 }
 
 /// Stops at step 2 of `TwoStopRebase` with the resolver open on `b.txt`.
-fn at_step_two(app: &App, state: AppState) -> AppState {
+pub(super) fn at_step_two(app: &App, state: AppState) -> AppState {
     // m6-conflicts/18: the stop landed in the resolver on step 1's file.
     let state = app.pump(state, "the landed resolver on a.txt", |state| {
         state
@@ -602,7 +602,7 @@ fn on_branch(state: &AppState, name: &str) -> bool {
 /// rebased again **by Graft** (`r` on `main`, confirmed), so `c` is
 /// Graft's to run and the set has Graft's backup chain behind it — the
 /// chain is where step 1's `a.txt` could leak into step 2.
-fn graft_rebase_at_step_one() -> (Scratch, App, AppState) {
+pub(super) fn graft_rebase_at_step_one() -> (Scratch, App, AppState) {
     use crate::app_harness::git;
     let scratch = graft_fixtures::copy_into_temp(Shape::TwoStopRebase);
     git(scratch.path(), &["rebase", "--abort"]);

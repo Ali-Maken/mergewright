@@ -30,7 +30,10 @@ pub(super) fn draw_status_or_hints(
     // A status is indented one space, as the graph footer indents it, so
     // it starts in the column the hints do (`hints_text` leads with the
     // space itself) — rulings 07b, Q3.
-    let (text, token) = match crate::view::status::graph_problem(&state.status) {
+    // While a modal is open the only problem is its own refusal, and the
+    // notice is `None` (`footer_notice`): the modal owns the row
+    // (m6-conflicts/69, Decided 1).
+    let (text, token) = match crate::view::status::bottom_row_problem(state) {
         Some(problem) => (
             format!(
                 " {}",
@@ -260,7 +263,14 @@ pub(super) fn draw_tab_strip(
 ///
 /// `Status::Failed` is not here: a failure is the graph screen's `problem`
 /// line, which is louder and does not vanish on the next key.
+///
+/// `None` while a modal is open: the modal owns the bottom row, and a
+/// notice from before it (a `Busy`, a `Done`) is hidden, not cleared
+/// (`view::status::modal_owns_bottom_row`, m6-conflicts/69).
 pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
+    if crate::view::status::modal_owns_bottom_row(state) {
+        return None;
+    }
     match &state.status {
         // A write is running. The only acknowledgement `Space` gives, and the
         // only thing that says why the other write keys do nothing meanwhile

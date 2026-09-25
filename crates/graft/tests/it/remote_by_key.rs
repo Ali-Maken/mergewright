@@ -1008,9 +1008,9 @@ fn box_takes_y_header(size: &str) -> String {
 # - Frame 2: the box is titled `Force-push …` and is still up after `y`
 #   (asserted: same frame, nothing sent, origin unmoved). No `y push`
 #   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
-#   row is the rejection's sticky line, `push rejected: … · P force with
-#   lease`, not the bar: the status line draws a sticky ahead of the keys,
-#   as it did before this ticket.
+#   row is the box's own bar, `←/→ move  ⏎ choose  esc cancel`: an open
+#   box owns the row, and the rejection's sticky line waits under it until
+#   `esc` (m6-conflicts/69).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 "
@@ -1028,8 +1028,8 @@ const BOX_KEEPS_ON_Y_HEADER: &str = "\
 # What right looks like: the frame after `y` is the frame before it, byte for
 # byte (asserted): the box titled `Force-push main → origin/main` stays,
 # `[ Cancel ]` under the cursor, nothing sent, no `y push` anywhere. The
-# bottom row is the rejection's sticky line, which the status line draws
-# ahead of the keys.
+# bottom row is the box's own bar, `←/→ move  ⏎ choose  esc cancel`: the
+# rejection's sticky line waits under the box (m6-conflicts/69).
 
 ";
 
@@ -1144,15 +1144,14 @@ fn lease_box_keeps_on_y(app: &App, state: AppState) -> Vec<Vec<String>> {
                 after, before,
                 "{size}: the frame after `y` is not the one before"
             );
-            // The rejection's sticky line still holds the bottom row, as it
-            // did before this ticket: the status line draws a sticky ahead
-            // of the bar. No `y` hint anywhere on screen either way.
+            // The box owns the bottom row: its own keys, not the
+            // rejection's sticky line waiting under it (m6-conflicts/69).
+            // No `y` hint anywhere on screen.
             let bottom = after.last().map(|row| row.trim().to_owned());
-            assert!(
-                bottom.as_deref().is_some_and(|row| {
-                    row.starts_with("push rejected") || row.starts_with("←/→ move")
-                }),
-                "{size}: {bottom:?}"
+            assert_eq!(
+                bottom.as_deref(),
+                Some("←/→ move  ⏎ choose  esc cancel"),
+                "{size}"
             );
             assert!(
                 !after.iter().any(|row| row.contains("y push")),

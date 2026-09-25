@@ -515,6 +515,7 @@ fn stopping_again_keeps_the_banner_focused() {
     let mut state = stopped(InProgress::Rebase, &["a.rs"]);
     let id = JobId::new(7);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     let commands = resumed(
         &mut state,
         id,
@@ -562,6 +563,7 @@ fn a_failed_resume_keeps_a_abort() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     resumed(
         &mut state,
         id,
@@ -600,6 +602,7 @@ fn finishing_clears_the_focus() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     resumed(
         &mut state,
         id,
@@ -625,6 +628,7 @@ fn u_right_after_continue_is_accepted() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     let (answered, _) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -658,6 +662,7 @@ fn answer_and_read_disagree_says_so() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     let (answered, _) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -1188,6 +1193,7 @@ fn a_rebase_stopping_again_lands_in_the_resolver() {
     let mut state = stopped(InProgress::Rebase, &["a.rs"]);
     let id = JobId::new(7);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     let commands = resumed(
         &mut state,
         id,
@@ -1267,6 +1273,7 @@ fn the_stop_line_outlives_a_dismissed_problem() {
     let mut state = step(&a_merge_stops(), KeyCode::Escape);
     let id = JobId::new(8);
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     let (state, _) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -1640,6 +1647,7 @@ fn continued_rebase() -> (AppState, JobId, JobId) {
     state.detail.focus = graft_ui::detail::DetailFocus::Files;
     state.on_working_tree = true;
     state.operating = Some(id);
+    state.resuming = Some((id, Resume::Continue));
     let (state, commands) = crate::update::update(
         &state,
         AppEvent::Produced(
@@ -1781,3 +1789,5 @@ fn a_refresh_before_the_walk_starts_still_lands_on_head() {
         "the cursor row is the new HEAD"
     );
 }
+
+mod resume_words;

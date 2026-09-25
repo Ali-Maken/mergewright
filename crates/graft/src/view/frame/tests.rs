@@ -564,6 +564,7 @@ fn a_name_prompt() -> crate::update::name_prompt::NamePrompt {
             checkout: true,
         },
         field: TextField::new(""),
+        refusal: None,
     }
 }
 
