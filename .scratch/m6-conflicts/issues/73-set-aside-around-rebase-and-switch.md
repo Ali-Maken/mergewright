@@ -4,8 +4,8 @@ Status: ready
 Blocked by: 72, 72b
 From: pick 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :25); review N4, second half (`docs/reviews/m6-usability-final.md`
 :158-160).
-Build with: (conductor, after the scout; planner: the Fable candidate — a git write whose inverse must be proven, a wrong
-step order loses edits and no diff shows it; design note "Genuinely risky")
+Build with: **Fable** (conductor, 2026-09-25, after the scout) → `builder-fable`: a git write whose inverse must be
+proven; a wrong step order loses edits and no diff shows it (design note "Genuinely risky")
 Scout: `.scratch/m6-conflicts/scouts/set-aside-around-rebase-and-switch.md` — brief below.
 Needs: 72 (`PutBack`, `PutBackWhy::SetAside`, `PendingLine::put_back`, `ApplyError::Clashed`, `Clash`, `live_clash`,
 `DropPutBack`); 72b merged (its `Clashed` arm and `refresh_clash` receive a set-aside clash with no change here);
