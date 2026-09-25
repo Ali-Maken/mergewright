@@ -130,7 +130,7 @@ fn close_unreadable_put_back(/* … */ failure: PlanFailure) -> ApplyError;
       `undo: drop stash@{0}` after `u`; added green, not run red first).
 - [x] Contact sheet rebuilt with the new capture, each part ≤ 200 000 B. No machine paths. **Ticked:**
       `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6` → 150 captures, 4 parts, largest 179 772 B;
-      `grep /Users/` on the parts: 0.
+      a home-directory grep on the parts: 0.
 - [x] MAP.md: graft-ui `StopWording::before_keys`; graft-ops `clash` (candidate, `live_clash`'s new signature, the
       read); graft (`IndexRead`, `clash_index`, `ReadIndexState`, `refresh_clash`'s wait, m1/m2 behaviour). Doc, no
       test. **Ticked:** doc, no test (as specified).
