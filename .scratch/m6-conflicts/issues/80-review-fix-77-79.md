@@ -31,6 +31,9 @@ Scout: none. The review names every line.
 - [ ] **m9:** the unreachable arm in `run_revert_to` removed (or commented why it stays).
 - [ ] **m10:** `jobs/operate.rs:174-178`'s refs-for-HEAD test: same hole 79 fixed? Answer with a test, fix it if so.
 - [ ] **m11:** 79's tick 3 reworded to name the passing test and the retake.
+- [ ] **From 70 (conductor):** retake `docs/shots/m6/m6-18-launch-shell-begun-*` (stale: shows `c continue` on a merge
+      since 70's `Banner { merge }`). Then make the design text match what is drawn now, reading the capture, not
+      guessing: `docs/design-notes/m6-conflicts.md:258,373,375` and `TESTING.md:2415`. Name the test that writes it.
 - [ ] Contact sheets rebuilt for changed captures, each part ≤ 200 000 B. No machine paths.
 
 ## Touches (check each, report how)

@@ -1,6 +1,6 @@
 # tab-words-name-where-tab-goes: every `⇥` hint and refusal names where `⇥` really lands
 
-Status: done except the n1 body pin (stopped by its rule; see NOTES)
+Status: done except the n1 body pin, moved to ticket 81 (graft-git; conductor, 2026-09-25)
 From: `docs/reviews/m6-usability-final.md` N6 (:178-191). Folds in **n2** (:223-227: `c continue` vs `c finish` on a
 merge; same hint file) and **n1** (:212-221: an untracked file reads `bin` and its body `select a file`; both halves in
 scope, because the scout found the read exists).
@@ -146,7 +146,7 @@ pub enum TabWord { Graph, Diff, Banner }            // `word(self) -> &'static s
 - [x] A rebase banner still says `c continue` (a row in `a_merge_banner_says_c_finish`).
 - [x] `a_shell_merge_refusal_counts_its_tabs`; `a_graft_merge_refusal_says_c_finish`.
 - [x] `a_binary_file_still_reads_bin`.
-- [ ] **NOT TICKED (stop rule).** **Pin (the scout could not confirm):** NOTES names the line where `show_cursor` loses the untracked row's entry,
+- [-] **Moved to ticket 81 (conductor, 2026-09-25): the cause is in graft-git, outside 70's crates.** **NOT TICKED (stop rule).** **Pin (the scout could not confirm):** NOTES names the line where `show_cursor` loses the untracked row's entry,
       and `an_untracked_file_shows_its_lines` proves the fix. If the cause is outside graft or needs a new read, **not**
       ticked: stop and report with the line.
 - [x] Walk, real repo (`tests/it`): `abort_a_rebase_from_the_changes_pane_is_four_keys`: `⇥ ⇥ a y` from Files. The
