@@ -77,9 +77,9 @@ fn menu_verbs_build_expected_operations() {
         labels(&verbs),
         vec![
             "Checkout feature",
+            "Cherry-pick 0300000",
             "Merge feature into main (m)",
             "Rebase main onto feature (r)",
-            "Cherry-pick 0300000",
             "Revert 0300000",
             "Reset main to here, mixed",
             "Reset main to here, hard",
@@ -588,4 +588,148 @@ fn a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key() {
             verb.op
         );
     }
+}
+
+/// m6-conflicts/71: on every commit row the menu leads with Checkout, then
+/// Cherry-pick — the `HEAD` row whose only local branch is the current one
+/// leads with a dim `Checkout — already on <b>` instead. One row per shape.
+#[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "the ticket's table of commit rows: one case per row, not logic"
+)]
+fn checkout_and_cherry_pick_hold_the_first_two_slots() {
+    struct Case<'a> {
+        name: &'a str,
+        row: Oid,
+        parents: Vec<Oid>,
+        refs: &'a RefBadges,
+        findings: &'a [Finding],
+        first: &'a str,
+        second: &'a str,
+        dim: Option<&'a str>,
+    }
+    let head_main = HeadState::Branch(name("refs/heads/main"));
+    let plain = main_and_feature();
+    let two_on_three = built(
+        &[
+            (name("refs/heads/main"), oid(2)),
+            (name("refs/heads/feature"), oid(3)),
+            (name("refs/heads/topic"), oid(3)),
+        ],
+        &head_main,
+    );
+    let n7 = built(
+        &[
+            (name("refs/heads/main"), oid(2)),
+            (name("refs/heads/topic"), oid(2)),
+        ],
+        &head_main,
+    );
+    let marked = [foxtrot(oid(3), oid(7), oid(5))];
+    let case = |name, row, parents, refs, findings, first, second, dim| Case {
+        name,
+        row,
+        parents,
+        refs,
+        findings,
+        first,
+        second,
+        dim,
+    };
+    let table = [
+        case(
+            "branch tip",
+            oid(3),
+            vec![oid(2)],
+            &plain,
+            &[][..],
+            "Checkout feature",
+            "Cherry-pick 0300000",
+            None,
+        ),
+        case(
+            "HEAD, current only",
+            oid(2),
+            vec![oid(1)],
+            &plain,
+            &[][..],
+            "Cherry-pick 0200000",
+            "",
+            Some("already on main"),
+        ),
+        case(
+            "radar-marked",
+            oid(3),
+            vec![oid(7), oid(5)],
+            &plain,
+            &marked[..],
+            "Checkout feature",
+            "Cherry-pick 0300000",
+            None,
+        ),
+        case(
+            "two local branches",
+            oid(3),
+            vec![oid(2)],
+            &two_on_three,
+            &[][..],
+            "Checkout feature",
+            "Cherry-pick 0300000",
+            None,
+        ),
+        case(
+            "N7: topic moved onto HEAD",
+            oid(2),
+            vec![oid(1)],
+            &n7,
+            &[][..],
+            "Checkout topic",
+            "Cherry-pick 0200000",
+            None,
+        ),
+        case(
+            "merge commit",
+            oid(3),
+            vec![oid(2), oid(4)],
+            &plain,
+            &[][..],
+            "Checkout feature",
+            "Cherry-pick 0300000",
+            None,
+        ),
+        case(
+            "no local branch",
+            oid(9),
+            vec![oid(2)],
+            &plain,
+            &[][..],
+            "Checkout 0900000, detached",
+            "Cherry-pick 0900000",
+            None,
+        ),
+    ];
+    for c in table {
+        let slots = history_slots(c.row, &c.parents, "subject", c.refs, c.findings);
+        let got = labels(&slots.verbs);
+        assert_eq!(
+            slots
+                .dim_first
+                .as_ref()
+                .map(|(label, reason)| (label.as_str(), reason.as_str())),
+            c.dim.map(|reason| ("Checkout", reason)),
+            "{}: {got:?}",
+            c.name
+        );
+        if c.dim.is_some() {
+            assert_eq!(slots.leading, 1, "{}", c.name);
+            assert_eq!(got[0], c.first, "{}: {got:?}", c.name);
+        } else {
+            assert_eq!(slots.leading, 2, "{}", c.name);
+            assert_eq!(&got[..2], &[c.first, c.second], "{}: {got:?}", c.name);
+        }
+    }
+    // Two local branches: the second `Checkout` leads the rest.
+    let slots = history_slots(oid(3), &[oid(2)], "subject", &two_on_three, &[]);
+    assert_eq!(labels(&slots.verbs)[2], "Checkout topic");
 }

@@ -1,0 +1,98 @@
+# m6/menu-fixed-slots-120x40.txt: 120x40, drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back.rs,
+# capture_menu_fixed_slots, asserted). Not a pty capture: a character grid
+# with no colour (CLAUDE.md rule 5, colour and dim unverified).
+#
+# What right looks like:
+#  - Frame 1, `.` on fix's row: item 1 `Checkout fix`, item 2
+#    `Cherry-pick <sha7>`, item 3 `Explain` (the row carries the radar's
+#    ⓘ, so it is marked), then the row's own actions.
+#  - Frame 2, `.` on main's tip (checked out, no other branch): item 1
+#    `Checkout — already on main` (drawn dim: not provable here), item 2
+#    `Cherry-pick <sha7>`.
+
+== 1. `.` on fix's row ==
+
+ graft /code/api  6 commits
+  ● ▏ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+ Checkout fix
+ Cherry-pick fbb2394
+ Explain
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Merge fix into main (m)
+ Rebase main onto fix (r)
+ Revert fbb2394
+ Reset main to here, mixed
+ Reset main to here, hard
+ Delete branch fix
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+
+== 2. `.` on main's tip (checked out, no other branch) ==
+
+ graft /code/api  6 commits
+  ●  ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+◆ │ ▏  [◆ main] main moves on                                                                            GF 4m   37926a7
+ Checkout — already on main
+ Cherry-pick 37926a7
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Revert 37926a7
+ Reset main to here, mixed
+ Reset main to here, hard
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O

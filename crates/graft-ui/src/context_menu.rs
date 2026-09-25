@@ -47,6 +47,11 @@ pub enum ContextAction {
     /// reaches a widget only as [`SanitizedText`] (`DESIGN.md` §8.2), which
     /// is what the label beside this index is.
     History(usize),
+    /// A slot shown only to say why it is empty — the `HEAD` row's dim
+    /// `Checkout — already on main` (m6-conflicts/71). Always drawn
+    /// disabled, so `Enter` and a click answer with its reason and never
+    /// dispatch it; the app maps it to no command.
+    Unavailable,
 }
 
 /// One row of the menu.
@@ -115,26 +120,49 @@ fn item(action: ContextAction, label: &str) -> MenuItem {
 const REASON_SEPARATOR: &str = " — ";
 
 impl ContextMenu {
-    /// A commit row's menu: `Explain` first when the row is marked (design
-    /// note, "Context actions"), then the row's own actions, then the keys
-    /// the hint bar drops at 80 and 120 columns.
+    /// A commit row's menu. Order (m6-conflicts/71, fixed so the first two
+    /// items never move): `dim_first` when given, drawn disabled with its
+    /// reason; then `history[..leading]` — Checkout, then Cherry-pick —
+    /// then `Explain` when the row is marked; then the row's own actions;
+    /// then the rest of `history`; then the keys the hint bar drops at 80
+    /// and 120 columns.
     ///
     /// `. more` is a promise: at 80 columns the bar shows three keys and
     /// says the rest are behind `.`, so the rest have to *be* behind `.`
     /// (ADR-0037 §4; m5-03 review, Major 1). Each label carries its key, so
-    /// choosing an item once teaches the key for next time. `S stash`,
-    /// `J journal` and `/ search` open places of their own and are not here
-    /// — the footer shows them from 160 columns, and `?` help (M8) is where
-    /// the whole keymap finally lands.
+    /// choosing an item once teaches the key for next time.
     ///
     /// `history` is the labels of the history verbs the app offers on this
     /// row, in the order it wants them listed; each becomes a
-    /// [`ContextAction::History`] carrying its index, and the app maps that
-    /// index back to the operation it means. They sit between the row's own
-    /// actions and the dropped keys.
+    /// [`ContextAction::History`] carrying its index in `history`, and the
+    /// app maps that index back to the operation it means. `leading` is
+    /// clamped to `history.len()`. `dim_first` is `(label, reason)` and
+    /// carries no index: it is [`ContextAction::Unavailable`].
     #[must_use]
-    pub fn for_row(marked: bool, history: Vec<SanitizedText>) -> ContextMenu {
-        let mut items = Vec::with_capacity(8 + history.len());
+    pub fn for_row(
+        marked: bool,
+        history: Vec<SanitizedText>,
+        leading: usize,
+        dim_first: Option<(SanitizedText, SanitizedText)>,
+    ) -> ContextMenu {
+        let leading = leading.min(history.len());
+        let mut items = Vec::with_capacity(9 + history.len());
+        if let Some((label, reason)) = dim_first {
+            items.push(MenuItem {
+                action: ContextAction::Unavailable,
+                label,
+                disabled: Some(reason),
+            });
+        }
+        let mut history = history
+            .into_iter()
+            .enumerate()
+            .map(|(index, label)| MenuItem {
+                action: ContextAction::History(index),
+                label,
+                disabled: None,
+            });
+        items.extend(history.by_ref().take(leading));
         if marked {
             items.push(item(ContextAction::Explain, "Explain"));
         }
@@ -144,13 +172,7 @@ impl ContextMenu {
             "Compare with this (x)",
         ));
         items.push(item(ContextAction::OpenDetails, "Open details (⏎)"));
-        for (index, label) in history.into_iter().enumerate() {
-            items.push(MenuItem {
-                action: ContextAction::History(index),
-                label,
-                disabled: None,
-            });
-        }
+        items.extend(history);
         items.extend(always_items());
         ContextMenu {
             title: None,
@@ -353,7 +375,7 @@ mod tests {
     /// Major 1).
     #[test]
     fn for_row_omits_explain_when_not_marked() {
-        let menu = ContextMenu::for_row(false, Vec::new());
+        let menu = ContextMenu::for_row(false, Vec::new(), 0, None);
         assert!(
             !menu
                 .items
@@ -379,7 +401,7 @@ mod tests {
 
     #[test]
     fn for_row_lists_explain_first_when_marked() {
-        let menu = ContextMenu::for_row(true, Vec::new());
+        let menu = ContextMenu::for_row(true, Vec::new(), 0, None);
         assert_eq!(menu.items[0].action, ContextAction::Explain);
         assert_eq!(menu.items.len(), 8);
     }
@@ -394,7 +416,7 @@ mod tests {
     /// next time, you can skip the menu.
     #[test]
     fn every_label_names_its_key() {
-        let menu = ContextMenu::for_row(true, Vec::new());
+        let menu = ContextMenu::for_row(true, Vec::new(), 0, None);
         assert_eq!(
             labels(&menu),
             vec![
@@ -421,6 +443,8 @@ mod tests {
                 sanitize_line("Checkout feature"),
                 sanitize_line("Merge feature into main (m)"),
             ],
+            0,
+            None,
         );
         assert_eq!(
             menu.items
@@ -449,8 +473,8 @@ mod tests {
     #[test]
     fn a_history_index_names_the_apps_own_list_not_the_menu_row() {
         let history = vec![sanitize_line("Merge feature into main (m)")];
-        let plain = ContextMenu::for_row(false, history.clone());
-        let marked = ContextMenu::for_row(true, history);
+        let plain = ContextMenu::for_row(false, history.clone(), 0, None);
+        let marked = ContextMenu::for_row(true, history, 0, None);
         let of = |menu: &ContextMenu| {
             menu.items
                 .iter()
@@ -488,14 +512,14 @@ mod tests {
     /// reads as "no refusal", same as a real item with nothing disabled.
     #[test]
     fn selected_refusal_on_an_out_of_range_cursor_is_none_not_a_panic() {
-        let mut menu = ContextMenu::for_row(true, Vec::new());
+        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None);
         menu.cursor = menu.items.len() + 5;
         assert_eq!(menu.selected_refusal(), None);
     }
 
     #[test]
     fn move_cursor_clamps_at_both_ends() {
-        let mut menu = ContextMenu::for_row(true, Vec::new());
+        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None);
         menu.move_cursor(-5);
         assert_eq!(menu.cursor, 0);
         menu.move_cursor(100);
@@ -504,14 +528,14 @@ mod tests {
 
     #[test]
     fn selected_follows_cursor() {
-        let mut menu = ContextMenu::for_row(true, Vec::new());
+        let mut menu = ContextMenu::for_row(true, Vec::new(), 0, None);
         menu.move_cursor(1);
         assert_eq!(menu.selected(), ContextAction::CopySha);
     }
 
     #[test]
     fn width_is_longest_label_plus_four() {
-        let menu = ContextMenu::for_row(true, Vec::new());
+        let menu = ContextMenu::for_row(true, Vec::new(), 0, None);
         // "Compare with this (x)" is 21 cells, the longest label.
         assert_eq!(menu.width(), 21 + 4);
     }
@@ -523,6 +547,8 @@ mod tests {
         let menu = ContextMenu::for_row(
             false,
             vec![sanitize_line("Fix: reset main to before the merge")],
+            0,
+            None,
         );
         assert_eq!(menu.width(), 35 + 4);
     }
@@ -532,7 +558,12 @@ mod tests {
     /// escape sequence cannot reach the terminal (`DESIGN.md` §8.2).
     #[test]
     fn a_ref_name_carrying_an_escape_cannot_reach_the_buffer() {
-        let menu = ContextMenu::for_row(false, vec![sanitize_line("Checkout \u{1b}[31mevil")]);
+        let menu = ContextMenu::for_row(
+            false,
+            vec![sanitize_line("Checkout \u{1b}[31mevil")],
+            0,
+            None,
+        );
         let label = menu.items[3].label.as_str();
         assert!(!label.contains('\u{1b}'), "{label:?}");
     }
@@ -552,6 +583,8 @@ mod tests {
         let menu = ContextMenu::for_row(
             false,
             vec![sanitize_line("Merge release/2026-q1-hotfix into main (m)")],
+            0,
+            None,
         );
         assert_eq!(menu.width(), 42 + 4, "it asks for the whole label");
 
@@ -578,5 +611,85 @@ mod tests {
         let menu = ContextMenu::for_working_tree();
         // "Open details (⏎)" is 16 characters.
         assert_eq!(menu.width(), 16 + 4);
+    }
+
+    /// m6-conflicts/71: the dim slot, then the leading verbs, then
+    /// `Explain`, then the row's actions, then the rest of the verbs.
+    #[test]
+    fn for_row_places_dim_first_and_leading_before_explain() {
+        let history = vec![
+            sanitize_line("Cherry-pick abc1234"),
+            sanitize_line("Revert abc1234"),
+        ];
+        let menu = ContextMenu::for_row(
+            true,
+            history,
+            1,
+            Some((sanitize_line("Checkout"), sanitize_line("already on main"))),
+        );
+        assert_eq!(
+            menu.items
+                .iter()
+                .map(|item| item.action)
+                .collect::<Vec<_>>(),
+            vec![
+                ContextAction::Unavailable,
+                ContextAction::History(0),
+                ContextAction::Explain,
+                ContextAction::CopySha,
+                ContextAction::CompareWithThis,
+                ContextAction::OpenDetails,
+                ContextAction::History(1),
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
+            ]
+        );
+        assert_eq!(
+            menu.items[0].disabled.as_ref().map(SanitizedText::as_str),
+            Some("already on main")
+        );
+        assert!(menu.items[1..].iter().all(|item| item.disabled.is_none()));
+        assert_eq!(
+            menu.selected_refusal().map(SanitizedText::as_str),
+            Some("already on main")
+        );
+    }
+
+    /// ADR-0039: what the menu holds never depends on the terminal's width.
+    /// Drawn into an 80- and a 120-column buffer, the same rows appear.
+    #[test]
+    fn menu_contents_do_not_depend_on_width() {
+        let menu = ContextMenu::for_row(
+            false,
+            vec![
+                sanitize_line("Checkout fix"),
+                sanitize_line("Cherry-pick abc1234"),
+            ],
+            2,
+            None,
+        );
+        let drawn = |columns: u16| {
+            let mut buffer = Buffer::empty(Rect::new(0, 0, columns, 14));
+            menu.clone()
+                .render(Rect::new(0, 0, menu.width(), 14), &mut buffer);
+            (0..14)
+                .map(|y| {
+                    (0..menu.width())
+                        .map(|x| buffer[(x, y)].symbol().to_owned())
+                        .collect::<String>()
+                        .trim_end()
+                        .to_owned()
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(drawn(80), drawn(120));
+        assert!(drawn(80)[0].contains("Checkout fix"), "{:?}", drawn(80));
+        assert!(
+            drawn(80)[1].contains("Cherry-pick abc1234"),
+            "{:?}",
+            drawn(80)
+        );
     }
 }

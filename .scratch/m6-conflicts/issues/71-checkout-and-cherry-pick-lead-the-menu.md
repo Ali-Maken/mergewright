@@ -1,6 +1,6 @@
 # checkout-and-cherry-pick-lead-the-menu: the `.` menu on a commit row opens with Checkout, then Cherry-pick, always
 
-Status: ready
+Status: done
 Blocked by: 66 (merged), 67 (runs after it; no shared file, see Crates)
 From: pick 17 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :26); review N7 (`docs/reviews/m6-usability-final.md`
 :193-208). Interim: their own keys and a branch picker are M7, prototyped first (not here).
@@ -92,21 +92,43 @@ pub(crate) fn history_slots(/* history_verbs' arguments, unchanged */) -> Slots;
 - **Journal/undo:** none. **MAP.md:** graft `history_slots`, order; graft-ui `for_row`.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Every test above, red then green (width test may be green-first; say so).
-- [ ] Pin (built, not new): `enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why` and the same by mouse click —
-      green-first expected; the tick says so.
-- [ ] Pin (scout could not confirm): no walk or test selects a `.` item by `j` count. The builder greps `tests/it` and
-      `crates/graft/src` for `.` followed by `j` presses and for `History(` index literals; NOTES lists every hit with
-      old → new, or "none" with the grep commands run.
-- [ ] Walk, real repo (`tests/it/m6_stash_put_back.rs`): `menu_checkout_is_three_keys` — cursor on `fix`'s row, `. ⏎ y`:
-      on `fix`; keys ≤ **3**.
-- [ ] Walk: `menu_cherry_pick_is_four_keys` — cursor on a commit of `fix`, `main` checked out, `. j ⏎ y`: the commit's
-      patch on `main`; keys ≤ **4**. Repeat with `topic` also on that commit (N7's case): the same 4 keys.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/menu-fixed-slots-120x40.txt`, written by the walk.
-  - **What right looks like:** frame 1, `.` on `fix`'s row: item 1 `Checkout fix`, item 2 `Cherry-pick <sha7>`, then
-    `Explain` only if the row is marked. Frame 2, `.` on `main`'s tip (checked out, no other branch): item 1
-    `Checkout — already on main` (dim: not provable in a capture, rule 5), item 2 `Cherry-pick <sha7>`.
-- [ ] MAP.md updated (doc, no test).
+- [x] Every test above, red then green. Red = did not compile (new `for_row` arity, no `history_slots`) or failed on
+      order: `verbs::tests::checkout_and_cherry_pick_hold_the_first_two_slots`,
+      `update::context_menu::tests::explain_comes_after_the_slots_on_a_marked_row`,
+      `…::the_uncommitted_row_menu_is_unchanged`, `…::a_stash_row_menu_is_unchanged`,
+      graft-ui `context_menu::tests::for_row_places_dim_first_and_leading_before_explain`,
+      `…::menu_contents_do_not_depend_on_width` (green-first in substance: red only by arity).
+- [x] Pin, green-first as expected: `update::context_menu::tests::enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why`;
+      by click `it::m6_stash_put_back::a_click_on_the_dim_checkout_slot_keeps_the_menu_and_says_why`. Plus
+      `…::enter_on_each_enabled_slot_runs_its_own_verb` (History indices).
+- [x] Pin: no `.`-then-`j`-count selection exists. Greps: `grep -rnE -A4 "Char\('\.'\)" crates/graft/tests/it crates/graft/src
+      | grep -E "Char\('j'\)|Down|move_cursor"` → only this ticket's own walk; `grep -rnE "History\([0-9]+\)"
+      crates/graft/tests/it crates/graft/src` outside `context_menu/tests.rs` → none. `tests/it/context_menu.rs:443-452`
+      computes the index from the label, so no old → new map needed. `TESTING.md` `grep -n "item [0-9]\|j×"` → no menu
+      rows (one unrelated hit, :432).
+- [x] Walk `it::m6_stash_put_back::menu_checkout_is_three_keys` (3 keys, HEAD on `fix`).
+- [x] Walk `it::m6_stash_put_back::menu_cherry_pick_is_four_keys` (4 keys, both without and with `topic` on the commit;
+      `fix.txt` on `main`, `main~1` = old main).
+- [x] Capture `docs/shots/m6/menu-fixed-slots-120x40.txt` by `it::m6_stash_put_back::capture_menu_fixed_slots`. Colour
+      and dim **unverified** (rule 5). Frame 1 also lists `Explain` third: fix's row carries the radar's ⓘ.
+- [x] MAP.md: graft (`history_slots`, `Slots`, order), graft-ui (`for_row`, `Unavailable`). Doc, no test.
+
+## NOTES (builder)
+- Scout used: `.scratch/m6-conflicts/scouts/checkout-and-cherry-pick-lead-the-menu.md`.
+- **New public item:** `graft_ui::context_menu::ContextAction::Unavailable` — the dim slot's action. The spec said the
+  dim item "dispatches nothing" but a `MenuItem` needs an action; a variant is honest where a fake `History` index is
+  not. Dispatch never reaches it (disabled); `apply_context_action` maps it to no command + `debug_assert`.
+- **Stash rows (question for conductor):** a stash row goes through `open_for_history_row` too and gets history verbs.
+  To keep "stash rows: unchanged" literally, `history_verbs` keeps the pre-71 order on a row carrying a stash badge
+  (`verbs.rs` `is_stash_row`), `leading` 0. If stash rows should get the slots too, delete that branch.
+- Captures regenerated: `m5-ui-context-menu-verbs-{80x24,160x48}.txt` (order + header claim), `m6/fix-radar-bookkeeping-120x40.txt`
+  (frame 3 now leads with dim Checkout), new `m6/menu-fixed-slots-120x40.txt`. m2 captures unchanged (`git diff`).
+  Captions updated: m5 rows 44-45, m6 ticket-66 row (its "first item is `Copy SHA`" became false) + new ticket-71 row.
+  Contact sheets rebuilt: m5 (2 parts), m6 (3 parts), all ≤ 180 000 B.
+- Existing tests re-ordered: `verbs::tests::menu_verbs_build_expected_operations`,
+  `update::context_menu::tests::a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys`.
+- Keymap §2.1 rare-verbs line: owed by the conductor. KNOWN_GAPS row (cherry-pick on a commit already on HEAD) owed by
+  the conductor.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all

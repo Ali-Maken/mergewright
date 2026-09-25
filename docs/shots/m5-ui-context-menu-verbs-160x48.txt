@@ -18,8 +18,10 @@
 # What right looks like:
 #  - The menu is anchored under `main`'s row and is wide enough for its
 #    longest label, with the cursor on the first item.
-#  - The row's own actions come first (`Copy SHA (y)`, `Compare with this
-#    (x)`, `Open details (⏎)`), then the history verbs, then the ambient
+#  - `Checkout main` then `Cherry-pick <sha7>` come first (m6-conflicts/71),
+#    then `Explain` if the row is marked, then the row's own actions
+#    (`Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`),
+#    then the rest of the history verbs, then the ambient
 #    ones (`Fetch (f)` … `Undo (u)`). The menu lists every verb valid for
 #    this row at every width — it does not filter against the hint bar,
 #    because a verb you can only discover at 160 columns is the failure
@@ -55,13 +57,13 @@
   ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
   ●    start the feature                                                                                                                         GF 2m   52f3b96
 ● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
+ Checkout main
+ Cherry-pick 45fa51d
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
- Checkout main
  Merge main into feature (m)
  Rebase feature onto main (r)
- Cherry-pick 45fa51d
  Revert 45fa51d
  Reset feature to here, mixed
  Reset feature to here, hard

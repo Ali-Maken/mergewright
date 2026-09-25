@@ -71,27 +71,108 @@ pub fn history_verbs(
     let here = short(id);
     let on = refs.on(id);
 
-    checkout_verbs(&mut verbs, id, refs, on, &here);
-
-    // `m` and `r`'s own operations, from the row the cursor is on, built by
-    // the very functions those keys use — the menu teaches the keyboard, so
-    // it must not mean something else.
-    merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
-
-    verbs.push(verb(
+    // Slot 1 and slot 2 (m6-conflicts/71): the first Checkout, then
+    // Cherry-pick, so `. ⏎` and `. j ⏎` mean the same thing on every row.
+    // Any further Checkout items lead the rest.
+    // A stash row keeps the order it had before the slots (the ticket's
+    // "stash rows: unchanged").
+    let mut checkouts = Vec::new();
+    checkout_verbs(&mut checkouts, id, refs, on, &here);
+    let pick = verb(
         &format!("Cherry-pick {here}"),
         Operation::CherryPick(PickParams {
             commits: vec![id],
             subject: subject.to_owned(),
             head: head.clone(),
         }),
-    ));
+    );
+    let mut checkouts = checkouts.into_iter();
+    if is_stash_row(on) {
+        verbs.extend(checkouts);
+        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
+        verbs.push(pick);
+    } else {
+        verbs.extend(checkouts.next());
+        verbs.push(pick);
+        verbs.extend(checkouts);
+        // `m` and `r`'s own operations, from the row the cursor is on, built
+        // by the very functions those keys use — the menu teaches the
+        // keyboard, so it must not mean something else.
+        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
+    }
+
     verbs.push(revert_verb(id, parents, subject, &head, &here));
     reset_verbs(&mut verbs, id, &head);
     delete_verbs(&mut verbs, id, on);
     fix_verbs(&mut verbs, id, parents, subject, refs, findings, &head);
 
     verbs
+}
+
+/// The `.` menu's history items and where they sit (m6-conflicts/71):
+/// `verbs[..leading]` go above `Explain` and the row's own actions, the rest
+/// below them. `dim_first` is `(label, reason)` for a slot 1 that cannot
+/// act — the `HEAD` row whose only local branch is the current one — and
+/// carries no verb, so it dispatches nothing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Slots {
+    pub verbs: Vec<HistoryVerb>,
+    pub leading: usize,
+    pub dim_first: Option<(SanitizedText, SanitizedText)>,
+}
+
+/// [`history_verbs`], split into the menu's slots: Checkout then
+/// Cherry-pick lead (`leading` 2), or a dim `Checkout — already on <b>`
+/// then Cherry-pick (`leading` 1). Empty `verbs` and no dim slot where
+/// `history_verbs` is empty.
+pub(crate) fn history_slots(
+    id: Oid,
+    parents: &[Oid],
+    subject: &str,
+    refs: &RefBadges,
+    findings: &[Finding],
+) -> Slots {
+    let verbs = history_verbs(id, parents, subject, refs, findings);
+    if verbs.is_empty() || is_stash_row(refs.on(id)) {
+        return Slots {
+            verbs,
+            leading: 0,
+            dim_first: None,
+        };
+    }
+    let checkout_first = matches!(verbs[0].op, Operation::Checkout(_));
+    if checkout_first {
+        return Slots {
+            verbs,
+            leading: 2,
+            dim_first: None,
+        };
+    }
+    // No Checkout at all: every local branch here is the current one.
+    let current = refs.on(id).iter().find_map(|label| match label {
+        RefLabel::Branch {
+            name,
+            current: true,
+            ..
+        } => Some(String::from_utf8_lossy(name).into_owned()),
+        _ => None,
+    });
+    let dim_first = current.map(|branch| {
+        (
+            sanitize_line("Checkout"),
+            sanitize_line(&format!("already on {branch}")),
+        )
+    });
+    Slots {
+        verbs,
+        leading: 1,
+        dim_first,
+    }
+}
+
+/// A row carrying a stash badge.
+fn is_stash_row(on: &[RefLabel]) -> bool {
+    on.iter().any(|label| matches!(label, RefLabel::Stash(_)))
 }
 
 /// `Checkout <b>` for each local branch on the row that `HEAD` is not

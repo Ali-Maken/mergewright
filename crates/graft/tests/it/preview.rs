@@ -30,7 +30,7 @@ use crate::app_harness::{App, git, git_as_graft};
 /// order each time (m5-history-and-ghost-preview/13). The instant is after
 /// `graft_fixtures::git::FIXED_DATE`, so these commits never appear to
 /// predate the corpus history they are added to.
-const FORK_EPOCH: i64 = 1_609_459_200;
+pub(crate) const FORK_EPOCH: i64 = 1_609_459_200;
 
 /// The instant the fixture's relative dates are drawn against: a minute
 /// after its newest commit, so a capture of it reads the same age forever
@@ -66,7 +66,7 @@ pub fn forked() -> graft_fixtures::Scratch {
 
 /// One commit of [`forked`], stamped `minute` minutes after [`FORK_EPOCH`]
 /// so both its id and its place in date order are the same on every run.
-fn dated_commit(repo: &Path, name: &str, body: &str, subject: &str, minute: i64) {
+pub(crate) fn dated_commit(repo: &Path, name: &str, body: &str, subject: &str, minute: i64) {
     std::fs::write(repo.join(name), body).expect("the scratch repo is writable");
     git(repo, &["add", name]);
     let when = format!("@{} +0000", FORK_EPOCH + minute * 60);

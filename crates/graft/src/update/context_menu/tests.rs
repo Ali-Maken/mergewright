@@ -89,8 +89,8 @@ fn the_menu_runs_what_the_dropped_keys_run() {
 #[test]
 fn every_menu_lists_the_dropped_keys() {
     for menu in [
-        ContextMenu::for_row(false, Vec::new()),
-        ContextMenu::for_row(true, Vec::new()),
+        ContextMenu::for_row(false, Vec::new(), 0, None),
+        ContextMenu::for_row(true, Vec::new(), 0, None),
         ContextMenu::for_working_tree(),
     ] {
         for action in [
@@ -468,9 +468,9 @@ fn a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys
         listed,
         vec![
             "Checkout feature",
+            "Cherry-pick 0303030",
             "Merge feature into main (m)",
             "Rebase main onto feature (r)",
-            "Cherry-pick 0303030",
             "Revert 0303030",
             "Reset main to here, mixed",
             "Reset main to here, hard",
@@ -492,7 +492,14 @@ fn a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys
         .filter(|(_, item)| matches!(item.action, ContextAction::History(_)))
         .map(|(at, _)| at)
         .collect();
-    assert_eq!(positions.first(), Some(&3), "after the row's own actions");
+    // m6-conflicts/71: Checkout and Cherry-pick lead; the rest follow the
+    // row's own actions.
+    assert_eq!(
+        &positions[..3],
+        &[0, 1, 5],
+        "two slots, then after the row's own actions"
+    );
+    assert_eq!(open.menu.items[4].action, ContextAction::OpenDetails);
     assert_eq!(
         open.menu.items[positions.last().copied().expect("some verbs") + 1].action,
         ContextAction::Fetch,
@@ -671,4 +678,192 @@ fn dot_closes_the_menu_it_opened() {
         commands.is_empty(),
         "closing the menu ran something: {commands:?}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// m6-conflicts/71: Checkout and Cherry-pick lead the menu.
+// ---------------------------------------------------------------------------
+
+fn actions(state: &AppState) -> Vec<ContextAction> {
+    state
+        .context_menu
+        .as_ref()
+        .expect("a menu is open")
+        .menu
+        .items
+        .iter()
+        .map(|item| item.action)
+        .collect()
+}
+
+/// A marked row: the two slots first, `Explain` right after them.
+#[test]
+fn explain_comes_after_the_slots_on_a_marked_row() {
+    let mut state = state_with_finding_at(oid(3)); // `history_of(3, 0)`'s row 0.
+    state.refs = Some(refs_over_the_fixture());
+    open_for_history_row(&mut state, 0);
+    let got = actions(&state);
+    assert_eq!(
+        &got[..6],
+        &[
+            ContextAction::History(0),
+            ContextAction::History(1),
+            ContextAction::Explain,
+            ContextAction::CopySha,
+            ContextAction::CompareWithThis,
+            ContextAction::OpenDetails,
+        ]
+    );
+}
+
+/// The uncommitted-changes row: `Open details`, then the dropped keys —
+/// no slots, no dim item.
+#[test]
+fn the_uncommitted_row_menu_is_unchanged() {
+    let mut state = on_the_feature_row();
+    open_for_working_tree(&mut state);
+    assert_eq!(
+        actions(&state),
+        vec![
+            ContextAction::OpenDetails,
+            ContextAction::Fetch,
+            ContextAction::Pull,
+            ContextAction::Push,
+            ContextAction::Undo,
+        ]
+    );
+}
+
+/// A stash row keeps the order it had: the row's own actions first, then
+/// Checkout, then Cherry-pick after the merge/rebase items (none here).
+#[test]
+fn a_stash_row_menu_is_unchanged() {
+    let name = |full: &str| {
+        graft_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+    };
+    let refs = crate::refs::badges(
+        &[(name("refs/heads/main"), oid(2))],
+        &graft_git::repo::HeadState::Branch(name("refs/heads/main")),
+        &std::collections::HashMap::new(),
+        &[(oid(3), 0)],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
+    .expect("no ahead/behind walk can fail here");
+    let mut state = AppState {
+        history: Some(crate::view::tests::history_of(3, 0)),
+        refs: Some(std::sync::Arc::new(refs)),
+        ..AppState::default()
+    };
+    open_for_history_row(&mut state, 0);
+    let got = actions(&state);
+    assert_eq!(
+        &got[..4],
+        &[
+            ContextAction::CopySha,
+            ContextAction::CompareWithThis,
+            ContextAction::OpenDetails,
+            ContextAction::History(0),
+        ]
+    );
+    let open = state.context_menu.as_ref().expect("menu opened");
+    let labels: Vec<&str> = open.verbs.iter().map(|verb| verb.label.as_str()).collect();
+    // Today's order: Checkout, then `m`/`r`'s items, then Cherry-pick.
+    let at = |wanted: &str| {
+        labels
+            .iter()
+            .position(|label| *label == wanted)
+            .unwrap_or_else(|| panic!("{wanted:?} missing from {labels:?}"))
+    };
+    assert_eq!(at("Checkout 0303030, detached"), 0, "{labels:?}");
+    assert!(
+        at("Merge 0303030 into main (m)") < at("Cherry-pick 0303030"),
+        "{labels:?}"
+    );
+    assert!(open.menu.items.iter().all(|item| item.disabled.is_none()));
+}
+
+/// `HEAD`'s row, `main` only: slot 1 is the dim `Checkout — already on
+/// main`; `Enter` there keeps the menu open and puts the reason on the
+/// status line. Built in m5/10; this pins that the dim slot reaches it.
+#[test]
+fn enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why() {
+    let mut state = on_the_feature_row();
+    open_for_history_row(&mut state, 1); // `oid(2)`, main's tip.
+    {
+        let open = state.context_menu.as_ref().expect("menu opened");
+        assert_eq!(open.menu.items[0].action, ContextAction::Unavailable);
+        assert_eq!(open.menu.items[0].label.as_str(), "Checkout");
+        assert_eq!(
+            open.menu.items[0]
+                .disabled
+                .as_ref()
+                .map(graft_term::SanitizedText::as_str),
+            Some("already on main")
+        );
+        assert_eq!(open.menu.items[1].label.as_str(), "Cherry-pick 0202020");
+        assert_eq!(open.menu.cursor, 0);
+    }
+    let mut commands = Vec::new();
+    assert!(context_menu_key(
+        &mut state,
+        &mut commands,
+        key(KeyCode::Enter)
+    ));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.context_menu.is_some(), "the menu stays open");
+    assert!(state.preview.is_none());
+    assert!(
+        format!("{:?}", state.status).contains("already on main"),
+        "{:?}",
+        state.status
+    );
+}
+
+/// Every enabled slot runs its own verb: `Enter` on the item at slot `n`
+/// previews the operation of the verb that item names.
+#[test]
+fn enter_on_each_enabled_slot_runs_its_own_verb() {
+    for row in [0, 1] {
+        let mut probe = on_the_feature_row();
+        open_for_history_row(&mut probe, row);
+        let open = probe.context_menu.as_ref().expect("menu opened");
+        let enabled: Vec<(usize, usize)> = open
+            .menu
+            .items
+            .iter()
+            .enumerate()
+            .filter_map(|(at, item)| match item.action {
+                ContextAction::History(index) => Some((at, index)),
+                _ => None,
+            })
+            .collect();
+        for (at, index) in enabled {
+            let mut state = on_the_feature_row();
+            open_for_history_row(&mut state, row);
+            let expected = state.context_menu.as_ref().expect("menu").verbs[index]
+                .op
+                .clone();
+            state.context_menu.as_mut().expect("menu").menu.cursor = at;
+            let mut commands = Vec::new();
+            assert!(context_menu_key(
+                &mut state,
+                &mut commands,
+                key(KeyCode::Enter)
+            ));
+            let preview = state.preview.as_ref().expect("a preview opened");
+            assert_eq!(
+                preview.subject,
+                crate::update::preview::PreviewSubject::Operation {
+                    op: Box::new(expected),
+                    opened_by: ".",
+                },
+                "row {row}, item {at}"
+            );
+        }
+    }
 }
