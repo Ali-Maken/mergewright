@@ -1034,7 +1034,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt
-what right looks like: (ticket 12; recaptured by 24 and 61) Launch into a merge begun in the shell, 13 files, the pane below: the footer reads `merge in progress · from the shell · 13 conflicted · ⏎ resolve  c continue  a abort` — the origin short before it goes, the count short (ticket 61) — and the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
+what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merge since ticket 70) Launch into a merge begun in the shell, 13 files, the pane below: the footer reads `merge in progress · from the shell · 13 conflicted · ⏎ resolve  c finish  a abort` — the origin short before it goes, the count short (ticket 61) — and the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
  graft /code/api    MERGING
@@ -1080,7 +1080,7 @@ CONFLICTS (13)                ▎
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-187x50.txt
-what right looks like: (ticket 12; recaptured by 24 and 61) The same launch at 187x50, the pane beside the graph: the last row reads `merge in progress · 13 conflicted · ⏎ resolve  c continue` — `from the shell` needs 50 cells and the footer leaves 44 beside the bar, so the origin is dropped (accepted, ticket 61 Decisions); the count whole, never cut mid-number. The pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
+what right looks like: (ticket 12; recaptured by 24 and 61; `c finish` on a merge since ticket 70) The same launch at 187x50, the pane beside the graph: the last row reads `merge in progress · 13 conflicted · ⏎ resolve  c finish` — `from the shell` needs 50 cells and the footer leaves 44 beside the bar, so the origin is dropped (accepted, ticket 61 Decisions); the count whole, never cut mid-number. The pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
  graft /code/api    MERGING                                                                                  UNCOMMITTED

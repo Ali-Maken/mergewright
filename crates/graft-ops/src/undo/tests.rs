@@ -635,12 +635,12 @@ fn replaced_unions_sorted_and_unique() {
 
     let mut union = Replaced {
         paths: vec![PathBuf::from("b.txt"), PathBuf::from("d.txt")],
-        whole_tree: false,
+        ..Replaced::default()
     };
     assert!(!union.is_empty());
     union.extend(Replaced {
         paths: vec![PathBuf::from("a.txt"), PathBuf::from("b.txt")],
-        whole_tree: false,
+        ..Replaced::default()
     });
     assert_eq!(
         union.paths,
@@ -648,8 +648,18 @@ fn replaced_unions_sorted_and_unique() {
     );
     assert!(Replaced::default().is_empty());
     union.extend(Replaced {
-        paths: Vec::new(),
         whole_tree: true,
+        ..Replaced::default()
     });
-    assert!(union.whole_tree);
+    assert!(union.whole_tree && !union.whole_index);
+    union.extend(Replaced {
+        whole_index: true,
+        ..Replaced::default()
+    });
+    assert!(union.whole_index, "the index's flag unions on its own");
+    let index_only = Replaced {
+        whole_index: true,
+        ..Replaced::default()
+    };
+    assert!(!index_only.is_empty(), "a whole index is not nothing");
 }

@@ -139,7 +139,7 @@ fn restore_index(
     scope: &IndexPaths,
     commands: &mut Vec<String>,
 ) -> Result<(), RestoreError> {
-    let paths = index_scoped_paths(ctx, index, scope)?;
+    let paths = index_scoped_paths(ctx, index, scope, commands)?;
     put_stages_back(ctx, index, &paths, commands).map_err(as_snapshot_error)
 }
 
@@ -160,7 +160,7 @@ pub(crate) fn put_stages_back(
     if paths.is_empty() {
         return Ok(());
     }
-    let held = snapshot::stage_entries_for(ctx.repo, index, paths, ctx.stop)?;
+    let held = snapshot::stage_entries_for(ctx.repo, index, paths, ctx.stop, Some(commands))?;
     let stdin = index_info_records(paths, &held, index.tree().as_bytes().len() * 2);
     let args = vec![
         GitArg::Flag("update-index"),
@@ -221,18 +221,18 @@ fn index_scoped_paths(
     ctx: &mut Context<'_>,
     index: IndexState,
     scope: &IndexPaths,
+    commands: &mut Vec<String>,
 ) -> Result<Vec<PathBuf>, RestoreError> {
     let found = match scope {
         IndexPaths::Exactly(paths) => return Ok(paths.clone()),
         IndexPaths::ChangedBetween { from, to } => {
-            snapshot::index_paths_changed(ctx.repo, *from, *to, ctx.stop)
+            snapshot::index_paths_changed(ctx.repo, *from, *to, ctx.stop, commands)
         }
-        IndexPaths::Everything => {
-            snapshot::index_paths(ctx.repo, index, ctx.stop).and_then(|mut union| {
-                union.extend(snapshot::tracked_paths_now(ctx.repo, ctx.stop)?);
+        IndexPaths::Everything => snapshot::index_paths(ctx.repo, index, ctx.stop, commands)
+            .and_then(|mut union| {
+                union.extend(snapshot::tracked_paths_now(ctx.repo, ctx.stop, commands)?);
                 Ok(union)
-            })
-        }
+            }),
     };
     Ok(found.map_err(as_snapshot_error)?.into_iter().collect())
 }

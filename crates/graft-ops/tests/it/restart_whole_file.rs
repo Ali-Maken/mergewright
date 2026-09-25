@@ -143,9 +143,12 @@ fn start_over_brings_back_a_modify_delete_choice() {
     );
     assert!(merging(&repo), "the merge is still live");
     let commands = &applied.entry.commands;
+    // The first *write*: the `ls-tree` that reads the recorded stages is
+    // logged ahead of it (m6-conflicts/80: a restore's reads are in its log).
     assert!(
         commands
-            .first()
+            .iter()
+            .find(|line| !line.contains(" ls-tree "))
             .is_some_and(|line| line.contains("update-index")),
         "the stages went back first: {commands:?}"
     );

@@ -13,8 +13,15 @@
 //! stay in the tree and are not named.
 //!
 //! Run by `execute::run_plan` only when the drift is not clean, so a clean
-//! undo pays nothing: at most two `diff-tree`s for the working tree and three
-//! index comparisons, each against trees the rail has already read.
+//! undo pays nothing — that rests on the gate there and on the early returns
+//! in `in_worktree` and `in_index` (`after == now || after == before`).
+//! A forced run pays at most **8** spawns (m6-conflicts/80, review m1): two
+//! `diff-tree`s for the working tree, and three index comparisons of which
+//! each is one `diff-tree` for two states of a shape but **two** `ls-tree -r`
+//! for a merged state against an unmerged one (an undo inside a live merge,
+//! m6-conflicts/57) — 2 + 3 × 2. Each `ls-tree -r` lists the whole index
+//! tree; on a very large repository that cost is not measured. Every spawn
+//! is in the entry's Command Log.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -29,10 +36,10 @@ use crate::snapshot::{self, SnapshotError};
 use crate::undo::{IndexPaths, InversePlan, PathScope, Replaced, RepoStateNow, Step};
 
 /// What running `plan` now would replace, against the repository as the rail
-/// read it (`now`). The working-tree reads' command lines go to `commands`,
-/// for the forced run's Command Log; the index's comparisons go through
-/// [`snapshot::index_paths_changed`], which logs nothing — as the restore's
-/// own index scope read does not.
+/// read it (`now`). Every read's command line goes to `commands`, for the
+/// forced run's Command Log: the working tree's `diff-tree`s and the index's
+/// comparisons through [`snapshot::index_paths_changed`] alike
+/// (m6-conflicts/80).
 pub(super) fn replaced(
     ctx: &Context<'_>,
     plan: &InversePlan,
@@ -41,6 +48,7 @@ pub(super) fn replaced(
 ) -> Result<Replaced, FactsError> {
     let mut paths = BTreeSet::new();
     let mut whole_tree = false;
+    let mut whole_index = false;
     for step in &plan.steps {
         match step {
             Step::RestoreWorktree {
@@ -50,7 +58,7 @@ pub(super) fn replaced(
             Step::RestoreIndex {
                 paths: IndexPaths::ChangedBetween { from, to },
                 ..
-            } => paths.extend(in_index(ctx, *from, *to, now.index)?),
+            } => paths.extend(in_index(ctx, *from, *to, now.index, commands)?),
             Step::RestoreIndex {
                 index,
                 paths: IndexPaths::Exactly(only),
@@ -60,19 +68,20 @@ pub(super) fn replaced(
                 // "changed since" half cannot be asked: what the write would
                 // change is the most that can be said, and it is named.
                 if !only.is_empty() {
-                    let lost =
-                        snapshot::index_paths_changed(ctx.repo, now.index, *index, ctx.stop)?;
+                    let lost = snapshot::index_paths_changed(
+                        ctx.repo, now.index, *index, ctx.stop, commands,
+                    )?;
                     paths.extend(only.iter().filter(|path| lost.contains(*path)).cloned());
                 }
             }
             Step::RestoreWorktree {
                 paths: PathScope::Everything,
                 ..
-            }
-            | Step::RestoreIndex {
+            } => whole_tree = true,
+            Step::RestoreIndex {
                 paths: IndexPaths::Everything,
                 ..
-            } => whole_tree = true,
+            } => whole_index = true,
             Step::UpdateRef { .. }
             | Step::SetHead(_)
             | Step::StashStore { .. }
@@ -83,6 +92,7 @@ pub(super) fn replaced(
     Ok(Replaced {
         paths: paths.into_iter().collect(),
         whole_tree,
+        whole_index,
     })
 }
 
@@ -125,20 +135,21 @@ fn in_index(
     after: IndexState,
     before: IndexState,
     now: IndexState,
+    commands: &mut Vec<String>,
 ) -> Result<BTreeSet<PathBuf>, FactsError> {
     if after == now || after == before {
         return Ok(BTreeSet::new());
     }
-    let since = snapshot::index_paths_changed(ctx.repo, after, now, ctx.stop)?;
+    let since = snapshot::index_paths_changed(ctx.repo, after, now, ctx.stop, commands)?;
     if since.is_empty() {
         return Ok(BTreeSet::new());
     }
-    let writes = snapshot::index_paths_changed(ctx.repo, after, before, ctx.stop)?;
+    let writes = snapshot::index_paths_changed(ctx.repo, after, before, ctx.stop, commands)?;
     let written_since: BTreeSet<PathBuf> = since.intersection(&writes).cloned().collect();
     if written_since.is_empty() {
         return Ok(written_since);
     }
-    let lost = snapshot::index_paths_changed(ctx.repo, now, before, ctx.stop)?;
+    let lost = snapshot::index_paths_changed(ctx.repo, now, before, ctx.stop, commands)?;
     Ok(written_since.intersection(&lost).cloned().collect())
 }
 

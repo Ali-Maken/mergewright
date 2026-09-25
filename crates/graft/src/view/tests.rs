@@ -3023,6 +3023,7 @@ fn capture_m3_undo_drift() {
         replaced: graft_ops::undo::Replaced {
             paths: Vec::new(),
             whole_tree: true,
+            whole_index: false,
         },
         ..graft_ops::undo::Drift::default()
     };
@@ -3070,6 +3071,7 @@ fn drift_box_drawn(
         replaced: graft_ops::undo::Replaced {
             paths: vec![std::path::PathBuf::from(path)],
             whole_tree: false,
+            whole_index: false,
         },
         ..graft_ops::undo::Drift::default()
     };

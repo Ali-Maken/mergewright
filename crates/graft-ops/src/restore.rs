@@ -223,7 +223,8 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
 ///
 /// `reads` are the command lines of the read that named what the run
 /// replaces (`undo::replaced`); they head the entry's Command Log, because
-/// they ran for this undo and the log is every command it ran. `replaced`
+/// they ran for this undo, as the restore's own scope reads after them do
+/// (the index's too since m6-conflicts/80). `replaced`
 /// rides on the [`Applied`] — the `AfterState` one too — so the landing can
 /// name the key that brings it back.
 pub(crate) fn execute_over_drift(

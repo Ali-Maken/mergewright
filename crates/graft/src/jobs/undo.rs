@@ -460,12 +460,10 @@ pub(super) fn run_revert_to(
                         error: error_line(&error),
                     },
                 },
-                Err(UndoError::Drift(drift)) => RevertedTo::Drift {
-                    description: aimed_at,
-                    total,
-                    drift: *drift,
-                    target: target.clone(),
-                },
+                // No bare `Drift` arm: `revert_to` answers only `Nothing`
+                // before its loop and wraps every step's error in `PartWay`
+                // (`graft_ops::undo::execute::revert_to`), so one would never
+                // run (m6-conflicts/80, review m9).
                 Err(other) => RevertedTo::Refused {
                     description: aimed_at,
                     error: error_line(&other),

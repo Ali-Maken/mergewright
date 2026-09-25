@@ -2,6 +2,7 @@
 
 mod abort_merge;
 mod chained_backup;
+mod checkout_hook_fails;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;
@@ -21,4 +22,5 @@ mod support;
 mod undo_cancel;
 mod undo_gate;
 mod undo_replaced;
+mod undo_replaced_whole;
 mod unmerged_index;

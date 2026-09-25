@@ -390,12 +390,11 @@ fn redo_over_drift_names_the_backup_and_no_key() {
         "no key is promised: {words}"
     );
     let state = yes(&app, &state, "the redo over drift");
+    // m6-conflicts/80 (review m7): no key, so the backup's words are part
+    // of what happened (`what`), not a key in the `keys` slot.
     assert_eq!(
         state.status,
-        Status::done_with_keys(
-            "redo: checkout fix",
-            "a backup keeps your edit to main-one.txt"
-        )
+        Status::done("redo: checkout fix; a backup keeps your edit to main-one.txt")
     );
     assert_eq!(read(path, "main-one.txt"), None, "fix has no main-one.txt");
 
@@ -471,11 +470,14 @@ fn the_time_machine_names_the_presses() {
     // exceptions (`ConfirmThen::takes_y`).
     let state = app.key(&state, KeyCode::Right);
     let state = app.settle_write(app.key(&state, KeyCode::Enter), "the forced revert");
+    // Fitted to the 80-column footer (m6-conflicts/80, review m5): with the
+    // path, `… ✓ · U (2 times) brings back your edit to fix.txt` is 93
+    // cells; the path goes first and the key stays.
     assert_eq!(
         state.status,
         Status::done_with_keys(
             "reverted to before \u{201c}checkout fix\u{201d} (2 steps)",
-            "U (2 times) brings back your edit to fix.txt"
+            "U (2 times) brings it back"
         )
     );
     assert_eq!(
@@ -511,7 +513,8 @@ fn header(size: &str) -> String {
 #
 # What right looks like:
 # 1. The drift box: under what moved, `Undo replaces your edit to fix.txt;
-#    a backup keeps it, and U brings it back.` — whole, not cut.
+#    a backup keeps it, and U brings it back.` — whole, not cut. The graph
+#    under it has settled: no `sorting…` (asserted; m6-conflicts/80).
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
 #    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
@@ -519,10 +522,37 @@ fn header(size: &str) -> String {
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
+# 4. A second repository: `fix`, then `fix2`, checked out, `fix.txt`
+#    edited, and the journal's time machine run back to before `checkout
+#    fix` past its drift box. The bottom row reads `reverted to before
+#    “checkout fix” (2 steps) ✓ · U (2 times) brings it back`, whole at 80
+#    columns: the path is dropped before the key (asserted; m6-conflicts/80).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 "
     )
+}
+
+/// What each frame of `capture_fix_undo_drift_way_back` must hold, at one size.
+fn assert_way_back_frames(size: &str, [asked, landed, back, jumped]: [&str; 4]) {
+    assert!(!asked.contains("sorting"), "{size}: settled\n{asked}");
+    assert!(
+        asked.contains("Undo replaces your edit to fix.txt; a backup keeps it, and U"),
+        "{size}\n{asked}"
+    );
+    assert!(
+        landed.contains("U brings back your edit to fix.txt"),
+        "{size}\n{landed}"
+    );
+    assert!(back.contains("redo: checkout fix"), "{size}\n{back}");
+    // The time machine's landing, whole to its last word at 80 columns
+    // (m6-conflicts/80, review m5).
+    assert!(
+        jumped.contains(
+            "reverted to before \u{201c}checkout fix\u{201d} (2 steps) \u{2713} \u{b7} U (2 times) brings it back"
+        ),
+        "{size}\n{jumped}"
+    );
 }
 
 #[test]
@@ -530,7 +560,12 @@ fn capture_fix_undo_drift_way_back() {
     let scratch = main_and_fix();
     let path = scratch.path();
     let (app, state) = App::open_with_clock(path, Clock::Fixed(FORK_NOW));
-    let asked = drift_box_after_a_checkout(&app, path, state);
+    // Frame 1 waits for the checkout's graph reload and the Radar before
+    // `u` (m6-conflicts/80, review m6): the box used to open while the
+    // reload still ran, and the frame caught `sorting…`.
+    let edited = checked_out_and_edited(&app, path, state);
+    let edited = radar_answered(&app, settled_frame(&app, edited));
+    let asked = drift_box(&app, app.key(&edited, KeyCode::Char('u')));
     // Each landing is drawn once the write's re-read is on screen: the
     // answer ends the job first, and a frame taken between the two shows the
     // changes row as it was. An undo or redo that moves `HEAD` re-reads the
@@ -561,29 +596,41 @@ fn capture_fix_undo_drift_way_back() {
     );
     assert_eq!(read(path, "fix.txt"), Some(EDIT.as_bytes().to_vec()));
     app.close();
+    let jumped = time_machine_landing();
 
     for (size, columns, rows) in SIZES {
         let at = |state: &AppState| {
             frame_at(state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n")
         };
-        let (asked, landed, back) = (at(&asked), at(&landed), at(&back));
-        assert!(
-            asked.contains("Undo replaces your edit to fix.txt; a backup keeps it, and U"),
-            "{size}\n{asked}"
-        );
-        assert!(
-            landed.contains("U brings back your edit to fix.txt"),
-            "{size}\n{landed}"
-        );
-        assert!(back.contains("redo: checkout fix"), "{size}\n{back}");
+        let (asked, landed, back, jumped) = (at(&asked), at(&landed), at(&back), at(&jumped));
+        assert_way_back_frames(size, [&asked, &landed, &back, &jumped]);
         check_shot(
             &format!("m6/fix-undo-drift-way-back-{size}.txt"),
             &format!(
                 "{}=== frame 1: `u` over the edit, the drift box ===\n{asked}\n\n\
                  === frame 2: `y`, the landing ===\n{landed}\n\n\
-                 === frame 3: `U`, the edit back ===\n{back}\n",
+                 === frame 3: `U`, the edit back ===\n{back}\n\n\
+                 === frame 4: the time machine over an edit, `→ ⏎`, the landing ===\n{jumped}\n",
                 header(size),
             ),
         );
     }
+}
+
+/// Frame 4's state: [`time_machine_over_an_edit`], `→ ⏎`, and the jump's
+/// re-read and Radar settled.
+fn time_machine_landing() -> AppState {
+    let scratch = main_fix_and_fix2();
+    let path = scratch.path();
+    let (app, state) = App::open_with_clock(path, Clock::Fixed(FORK_NOW));
+    let state = time_machine_over_an_edit(&app, path, state);
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.settle_write(app.key(&state, KeyCode::Enter), "the forced revert");
+    let state = radar_answered(&app, settled_frame(&app, state));
+    assert_eq!(
+        git(path, &["symbolic-ref", "HEAD"]).trim(),
+        "refs/heads/main"
+    );
+    app.close();
+    state
 }
