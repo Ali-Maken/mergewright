@@ -948,8 +948,10 @@ the picks (:65, `.scratch/m6-conflicts/user-picks-2026-09-24.md`). Specs: "Specs
   summary and no finish row while they stand. The bar does not offer `c finish`: the last read still calls the file
   unmerged, so `c` would refuse (`view/rows.rs:509`, `banner.rs:202`). Built by 60, 2026-09-25
   (`a_failed_status_read_cancels_the_open_and_says_so`); the spec pass had said the bar keeps `c finish`.
-- **The last file done outside the resolver** (`space` on a `CONFLICTS` row): → the banner, `every file done ✓ · c
-  finishes the merge`, unchanged.
+- **The last file done outside the resolver** (`space` on a `CONFLICTS` row): the pane keeps the keyboard, and the
+  banner reads `every file done ✓ · c finishes the merge`. No summary opens. Since 52 the pane's bar draws `c finish`
+  and `c y` finishes from there, so he needs no `⇥` (conductor, 2026-09-25, review wave 2 M2; test
+  `opens_summary.rs:142`, renamed by 65).
   - **The trigger is the event, never the state.** A relaunch, a `u` or an `Esc` does not reopen the summary.
 - **In the summary:**
   - `y` → as `⏎` did before: `committing…`, then the graph, cursor on the merge commit, `merged feature into main ✓`.
