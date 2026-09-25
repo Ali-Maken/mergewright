@@ -936,7 +936,10 @@ fn footer_eighty_branch_row() {
 fn the_changes_pane_hints_replace_the_row_context() {
     let rows = linear(3);
     let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
-    view.hint_context = HintContext::ChangesPane { unmerged: false };
+    view.hint_context = HintContext::ChangesPane {
+        unmerged: false,
+        live: None,
+    };
     view.divider_shown = true;
     let footer = text(&draw(&view, 200, 8))
         .last()
@@ -947,7 +950,10 @@ fn the_changes_pane_hints_replace_the_row_context() {
     assert!(footer.contains("<> resize"), "{footer}");
     assert!(!footer.contains("m merge"), "{footer}");
 
-    view.hint_context = HintContext::ChangesPane { unmerged: true };
+    view.hint_context = HintContext::ChangesPane {
+        unmerged: true,
+        live: None,
+    };
     view.divider_shown = false;
     let unmerged_footer = text(&draw(&view, 200, 8))
         .last()
@@ -1200,8 +1206,14 @@ fn every_hint_context() -> Vec<HintContext> {
             conflicted: false,
         },
         HintContext::Preview,
-        HintContext::ChangesPane { unmerged: false },
-        HintContext::ChangesPane { unmerged: true },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        },
+        HintContext::ChangesPane {
+            unmerged: true,
+            live: None,
+        },
         HintContext::Journal,
         HintContext::Stash,
     ];
@@ -1691,7 +1703,10 @@ fn capture_the_ladder_for_docs_shots() {
         ),
         (
             "the changes pane has focus, the divider draggable",
-            HintContext::ChangesPane { unmerged: false },
+            HintContext::ChangesPane {
+                unmerged: false,
+                live: None,
+            },
             Divider::Shown,
         ),
         (
@@ -1954,7 +1969,7 @@ fn row_at_is_none_off_the_body() {
 
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination.
-const COVERAGE_SLOTS: usize = 43;
+const COVERAGE_SLOTS: usize = 54;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1979,8 +1994,20 @@ fn coverage_slot(context: &HintContext) -> usize {
             conflicted,
         } => 4 + 2 * usize::from(*skippable) + usize::from(*conflicted),
         HintContext::Preview => 8,
-        HintContext::ChangesPane { unmerged: false } => 9,
-        HintContext::ChangesPane { unmerged: true } => 10,
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        } => 9,
+        HintContext::ChangesPane {
+            unmerged: true,
+            live: None,
+        } => 10,
+        // m6-conflicts/52: each `c` an operation can make, over each
+        // `unmerged` (43–48).
+        HintContext::ChangesPane {
+            unmerged,
+            live: Some(c),
+        } => 43 + 2 * live_c_slot(*c) + usize::from(*unmerged),
         HintContext::Journal => 11,
         HintContext::Stash => 12,
         HintContext::Dragging => 13,
@@ -1995,7 +2022,15 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::NamePrompt { toggle: false } => 26,
         HintContext::NamePrompt { toggle: true } => 27,
         HintContext::Credential => 28,
-        HintContext::OperationLive(_) => 29,
+        // m6-conflicts/52: each `c` × one `⇥` from the banner or not. The
+        // form every live bar had before 52 keeps its slot, 29; the other
+        // five are 49–53.
+        HintContext::OperationLive {
+            c, tab_to_banner, ..
+        } => match 2 * live_c_slot(*c) + usize::from(!*tab_to_banner) {
+            0 => 29,
+            other => 48 + other,
+        },
         // Only the files focus reads `expandable`.
         HintContext::Finish {
             focus: crate::finish_summary::SummaryFocus::Files,
@@ -2009,6 +2044,15 @@ fn coverage_slot(context: &HintContext) -> usize {
             focus: crate::finish_summary::SummaryFocus::Body,
             ..
         } => 35,
+    }
+}
+
+/// A [`LiveC`](super::LiveC)'s place in [`coverage_slot`]'s live ranges.
+fn live_c_slot(c: super::LiveC) -> usize {
+    match c {
+        super::LiveC::Finish => 0,
+        super::LiveC::Continue => 1,
+        super::LiveC::Refuses => 2,
     }
 }
 

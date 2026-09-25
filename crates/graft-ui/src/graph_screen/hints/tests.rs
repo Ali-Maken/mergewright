@@ -293,7 +293,10 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
         HintContext::PlainRow,
         HintContext::BranchRow { current: true },
         HintContext::WorkingTreeRow,
-        HintContext::ChangesPane { unmerged: false },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        },
     ] {
         let with = hints_text(&hints_for(&context, Divider::Shown, 200));
         let without = hints_text(&hints_for(&context, Divider::Hidden, 200));
@@ -313,7 +316,10 @@ fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
         HintContext::PlainRow,
         HintContext::BranchRow { current: true },
         HintContext::WorkingTreeRow,
-        HintContext::ChangesPane { unmerged: false },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        },
     ] {
         let hints = hints_for(&context, Divider::Shown, 120);
         // Fifth, not fourth, on a graph row since `b branch` and `t tag`
@@ -340,7 +346,10 @@ fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
 #[test]
 fn a_pane_hints_only_its_own_keys() {
     let pane = hints_text(&hints_for(
-        &HintContext::ChangesPane { unmerged: false },
+        &HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        },
         Divider::Hidden,
         200,
     ));
@@ -349,7 +358,10 @@ fn a_pane_hints_only_its_own_keys() {
         " space stage  d discard  c commit  ⌃A all  e edit  ⇥ graph  . more"
     );
     let unmerged = hints_text(&hints_for(
-        &HintContext::ChangesPane { unmerged: true },
+        &HintContext::ChangesPane {
+            unmerged: true,
+            live: None,
+        },
         Divider::Hidden,
         200,
     ));
@@ -870,7 +882,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         // A filter keeps the doorway of the context it filters: `. more`
         // still leads to everything, the dropped `⏎` included. So does the
         // way back: it leads the row's list, and changes nothing else.
-        HintContext::PaneFocused { row, .. } | HintContext::OperationLive(row) => doorway_of(row),
+        HintContext::PaneFocused { row, .. } | HintContext::OperationLive { row, .. } => {
+            doorway_of(row)
+        }
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
@@ -904,7 +918,10 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     );
 
     for context in [
-        HintContext::ChangesPane { unmerged: false },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+        },
         HintContext::Journal,
     ] {
         let hints = hints_for(&context, Divider::Hidden, 80);
@@ -1357,7 +1374,10 @@ fn a_finishable_done_file_offers_c() {
 /// group), not the note's own paraphrase.
 #[test]
 fn unmerged_rows_lead_with_resolve() {
-    let unmerged = context_list(&HintContext::ChangesPane { unmerged: true });
+    let unmerged = context_list(&HintContext::ChangesPane {
+        unmerged: true,
+        live: None,
+    });
     assert_eq!(
         hints_text(&unmerged),
         " ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph"
@@ -1478,9 +1498,16 @@ fn operation_live_leads_with_the_way_back() {
         HintContext::PlainRow,
         HintContext::WorkingTreeRow,
         HintContext::BranchRow { current: true },
-        HintContext::ChangesPane { unmerged: true },
+        HintContext::ChangesPane {
+            unmerged: true,
+            live: None,
+        },
     ] {
-        let context = HintContext::OperationLive(Box::new(row.clone()));
+        let context = HintContext::OperationLive {
+            row: Box::new(row.clone()),
+            c: LiveC::Finish,
+            tab_to_banner: true,
+        };
         // 80 is the narrowest the app lays out for; 187 is the user's.
         for columns in [80, 120, 187, 200] {
             let drawn = hints_for(&context, Divider::Hidden, columns);

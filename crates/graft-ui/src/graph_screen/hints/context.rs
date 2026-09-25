@@ -44,6 +44,9 @@ pub enum HintContext {
         /// The file under the cursor is unmerged (conflicted): the keys
         /// that write swap for the conflict-resolution keys.
         unmerged: bool,
+        /// What `c` does while an operation is live; `None` when nothing
+        /// is, and `c` commits (m6-conflicts/52).
+        live: Option<LiveC>,
     },
     /// The undo journal browser has focus (overlay; draws its own footer
     /// today — reserved for the `?` help overlay, M8).
@@ -179,16 +182,42 @@ pub enum HintContext {
         /// the diff. `false` with the diff already focused.
         opens: bool,
     },
-    /// **An operation is live and the banner is one `⇥` away, unfocused**
-    /// (m6-conflicts/12, P9): the row's own list with `⇥ banner` leading.
+    /// **An operation is live** over a graph row: the row's own list with
+    /// its `c` said the way it acts now ([`LiveC`], m6-conflicts/52), and
+    /// `⇥ banner` leading while the banner is one `⇥` away (m6-conflicts/12,
+    /// P9).
     ///
-    /// `Esc` on a focused banner hands the keyboard back, and before this
-    /// the only way back in was a `Tab` nothing on screen named — the user
-    /// pressed `Esc` on the one hint shown and was stranded
-    /// (`.scratch/m6-conflicts/scout-stuck-after-merge.md`). No key is
-    /// bound here: `⇥` already cycles into the banner
-    /// (`graft::update::banner::take_focus`); this only says so. `graft`
-    /// draws it only while one `Tab` really lands on the banner
+    /// `graft` wraps every graph-row context in this while an operation is
+    /// live — a bisect, and the detail pane open over a focused graph,
+    /// included — so no row bar says `c commit` while `c` does otherwise.
+    ///
+    /// `⇥ banner`: `Esc` on a focused banner hands the keyboard back, and
+    /// before m6-conflicts/12 the only way back in was a `Tab` nothing on
+    /// screen named (`.scratch/m6-conflicts/scout-stuck-after-merge.md`).
+    /// No key is bound for it: `⇥` already cycles into the banner
+    /// (`graft::update::banner::take_focus`); the hint only says so, and
+    /// only while one `Tab` really lands there
     /// (`graft::update::banner::one_tab_to_banner`).
-    OperationLive(Box<HintContext>),
+    OperationLive {
+        /// The cursor row's own context.
+        row: Box<HintContext>,
+        /// What `c` does here.
+        c: LiveC,
+        /// One `⇥` lands on the banner, so `⇥ banner` leads.
+        tab_to_banner: bool,
+    },
+}
+
+/// What `c` does in the graph or the changes pane while an operation is
+/// live (m6-conflicts/52): the banner's `c` where that acts, else words
+/// that refuse — so its hint says `finish`, `continue`, or nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LiveC {
+    /// A merge: `c finish` opens the finish summary.
+    Finish,
+    /// A rebase, cherry-pick or revert Graft began: `c continue`.
+    Continue,
+    /// A bisect, or a rebase, cherry-pick or revert the shell began: `c`
+    /// only refuses in words, so no `c` hint.
+    Refuses,
 }

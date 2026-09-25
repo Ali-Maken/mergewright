@@ -1,0 +1,115 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_c_live_frames in
+# crates/graft/tests/it/resolver/shell_begun.rs (asserted). The two frames
+# that drew `c commit` while an operation was live (m6-conflicts/52).
+#
+# Judge by eye:
+# - Frame 1 (`bisect start` in the shell, a graph row focused): the bar
+#   has no `c commit`, `c finish` or `c continue`, and no `⇥ banner`.
+# - Frame 2 (a merge begun in the shell, resolved; the detail pane open,
+#   the graph focused): the bar offers `c finish`, not `c commit`, and no
+#   `⇥ banner`.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== 187x50 ===
+ graft /code/api  6 commits
+◆   ▏  [◆ main] main's take                                                                                                                                                 GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                                                                                                         GF 2h   f43f326
+●─╯    the shared files                                                                                                                                                     GF 2h   b35b2f1
+●      Correct the note                                                                                                                                                     GF 1y   a82960b
+●      Add the first note                                                                                                                                                   GF 1y   fadcfb3
+◇      Add a readme                                                                                                                                                         GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  . more  1  F  H  y  M  O
+--- frame 2 ---
+ graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
+◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
+◆      [◆ main] main's take                                                                  GF 2h   ddeed32
+│ ●  ⓘ [feature] the feature's take                                                          GF 2h   f43f326
+●─╯    the shared files                                                                      GF 2h   b35b2f1
+●      Correct the note                                                                      GF 1y   a82960b STAGED (2)
+●      Add the first note                                                                    GF 1y   fadcfb3   M notes.md                                                             +1 −1
+◇      Add a readme                                                                          GF 1y   64ded19   M shared.rs                                                            +1 −1
+                                                                                                             ▎
+                                                                                                               1     - our plan
+                                                                                                                   1 + the agreed plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ ⏎ changes  c finish  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O

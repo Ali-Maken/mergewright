@@ -7,8 +7,8 @@ use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path};
 use graft_ui::graph_column::RowPaint;
 use graft_ui::graph_screen::{
-    BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, OrderNotice, ProblemLine,
-    SHA_WIDTH, SearchLine, WalkView, short_sha,
+    BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, OrderNotice,
+    ProblemLine, SHA_WIDTH, SearchLine, WalkView, short_sha,
 };
 use std::collections::BTreeSet;
 
@@ -157,7 +157,9 @@ fn opening_view(
         commit_graph: state.commit_graph_line(),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
-        hint_context: HintContext::PlainRow,
+        // Wrapped like every graph-row bar: an operation can be live
+        // before the first rows land (m6-conflicts/52).
+        hint_context: live_wrapped(state, HintContext::PlainRow),
         // No history has arrived yet, so the radar context is never `Ready`
         // here — `state.history` is `None`, which `radar::request_context`
         // requires before it asks for one. Sticky findings from an earlier
@@ -372,27 +374,54 @@ pub(crate) fn footer_context(
         // The finish summary likewise, over the resolver too (m6-conflicts/19).
         _ if state.resolver.is_some() || state.finish.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(banner),
-        // After `Esc` the banner is one `Tab` away and the bar says so
-        // first (m6-conflicts/12 scope item 5). Only over the bars a graph
-        // row draws: those are what `Tab` leaves. Not the changes pane's:
-        // it is one `Tab` from the banner only from its diff, where that
-        // bar's `space`/`d` are not answered (the sweep in `update::tests`).
-        Some(_) if crate::update::banner::one_tab_to_banner(state) => {
-            let row = hint_context(state, rows);
-            if matches!(
-                row,
-                HintContext::WorkingTreeRow
-                    | HintContext::BranchRow { .. }
-                    | HintContext::PlainRow
-                    | HintContext::Marked(_)
-            ) {
-                HintContext::OperationLive(Box::new(row))
-            } else {
-                row
-            }
-        }
-        _ => hint_context(state, rows),
+        _ => live_wrapped(state, hint_context(state, rows)),
     }
+}
+
+/// `row` wrapped in [`HintContext::OperationLive`] whenever an operation is
+/// live and `row` is a graph row's bar (m6-conflicts/52, decision B) — with
+/// or without a banner (a bisect has none), one `⇥` from it or not — so no
+/// graph-row bar says `c commit` while `c` does otherwise.
+///
+/// `⇥ banner` leads only while one `Tab` lands on the banner
+/// (m6-conflicts/12 scope item 5). A pane focused on a commit's files or
+/// diff is wrapped too: `c` there passes through to the graph's keys
+/// (`update::detail::keys` claims no plain `c`). Not the changes pane's
+/// bar: it carries its own `live` ([`hint_context`]), and from its diff its
+/// own `space`/`d` are not answered (the sweep in `update::tests`).
+fn live_wrapped(state: &AppState, row: HintContext) -> HintContext {
+    let Some(c) = live_c(state) else {
+        return row;
+    };
+    if !matches!(
+        row,
+        HintContext::WorkingTreeRow
+            | HintContext::BranchRow { .. }
+            | HintContext::PlainRow
+            | HintContext::Marked(_)
+            | HintContext::PaneFocused { .. }
+    ) {
+        return row;
+    }
+    HintContext::OperationLive {
+        row: Box::new(row),
+        c,
+        tab_to_banner: crate::update::banner::one_tab_to_banner(state),
+    }
+}
+
+/// What `c` does in the graph or the changes pane right now, or `None`
+/// while nothing is live and `c` commits. The one mapping from
+/// [`pane_c_acts`](crate::update::commit_editor::pane_c_acts) to the bar's
+/// words, so the label and the key cannot come apart.
+fn live_c(state: &AppState) -> Option<LiveC> {
+    use crate::update::commit_editor::{live_operation, pane_c_acts};
+    use graft_git::state::InProgress;
+    live_operation(state).map(|live| match (live.0, pane_c_acts(live)) {
+        (_, false) => LiveC::Refuses,
+        (InProgress::Merge, true) => LiveC::Finish,
+        (_, true) => LiveC::Continue,
+    })
 }
 
 /// The hint context a focused banner puts the footer in. One function
@@ -553,6 +582,7 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     if state.on_changes_pane() && !state.graph_has_focus() {
         return HintContext::ChangesPane {
             unmerged: cursor_file_unmerged(state),
+            live: live_c(state),
         };
     }
     if state.on_working_tree {

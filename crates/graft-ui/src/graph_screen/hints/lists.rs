@@ -1,7 +1,7 @@
 //! The design note's priority table: one list of hints per context, and
 //! [`TAIL`], what the whole screen answers after them.
 
-use super::{Hint, HintContext, hint};
+use super::{Hint, HintContext, LiveC, hint};
 use crate::conflict_resolver::SideRoles;
 use crate::finish_summary::SummaryFocus;
 
@@ -18,7 +18,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             skippable,
             conflicted,
         } => banner_list(*skippable, *conflicted),
-        HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
+        HintContext::ChangesPane { unmerged, live } => changes_pane_list(*unmerged, *live),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
@@ -73,7 +73,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // wrapping every row context at every call site.
         HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
-        | HintContext::OperationLive(_)
+        | HintContext::OperationLive { .. }
         | HintContext::Preview => Vec::new(),
     }
 }
@@ -253,7 +253,41 @@ fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
 /// (`update::detail::keys`), `M` launches the mergetool and `space` marks
 /// the file resolved — which is what staging an unmerged path *is*
 /// (`update::operate::stage_selected`). All three bound by m6-conflicts/04.
-fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
+///
+/// While an operation is live, `c` is said the way it acts ([`said_live`]).
+fn changes_pane_list(unmerged: bool, live: Option<LiveC>) -> Vec<Hint> {
+    let list = changes_pane_table(unmerged);
+    match live {
+        Some(c) => said_live(list, c),
+        None => list,
+    }
+}
+
+/// `list` with its `c commit` said the way `c` acts while an operation is
+/// live (m6-conflicts/52), in the same place: `c finish`, `c continue`, or
+/// gone where `c` only refuses in words. Every other hint is untouched.
+pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
+    list.into_iter()
+        .filter_map(|hint| {
+            if hint.key != "c" {
+                return Some(hint);
+            }
+            match c {
+                LiveC::Finish => Some(Hint {
+                    verb: "finish",
+                    ..hint
+                }),
+                LiveC::Continue => Some(Hint {
+                    verb: "continue",
+                    ..hint
+                }),
+                LiveC::Refuses => None,
+            }
+        })
+        .collect()
+}
+
+fn changes_pane_table(unmerged: bool) -> Vec<Hint> {
     if unmerged {
         vec![
             // `⏎ resolve` leads (Proposed change 2a).

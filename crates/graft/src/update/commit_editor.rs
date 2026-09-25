@@ -65,6 +65,29 @@ pub fn live_operation(state: &AppState) -> Option<(InProgress, Begun)> {
     Some((kind, begun))
 }
 
+/// Whether `c` in the graph or the changes pane is the banner's `c` while
+/// `live` is (m6-conflicts/52): true where the banner's `c` acts — any
+/// merge, and a rebase, cherry-pick or revert Graft began.
+///
+/// False for a bisect (the banner's `c` does nothing there, silently) and
+/// for a rebase, cherry-pick or revert the shell began (ops refuses it
+/// only after the command is sent): there `c` keeps
+/// [`operation_refusal`]'s words, which say what to do instead.
+///
+/// The one place this is decided: the key route (`update::keys`) and the
+/// hint bar (`view::rows`) both read it, so the bar offers `c` exactly
+/// where `c` acts.
+#[must_use]
+pub(crate) fn pane_c_acts(live: (InProgress, Begun)) -> bool {
+    match live {
+        (InProgress::Merge, _) => true,
+        (InProgress::Rebase | InProgress::CherryPick | InProgress::Revert, begun) => {
+            begun == Begun::InGraft
+        }
+        (InProgress::Bisect, _) => false,
+    }
+}
+
 /// Why a commit cannot start while an operation is live: a reason, and the
 /// keys that lead on from it (m6-conflicts/48).
 ///

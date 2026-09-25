@@ -36,7 +36,7 @@ mod fitting;
 mod lists;
 
 pub use catalogue::{every_context, every_hint};
-pub use context::HintContext;
+pub use context::{HintContext, LiveC};
 use fitting::fit_list;
 pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row};
 use lists::{TAIL, context_list};
@@ -364,11 +364,21 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
-        // The row's own bar with the way back leading, so the ladder's floor
-        // always holds it. The row's own `⇥` (the changes pane's `⇥ graph`)
-        // goes: one key, one meaning, and here `Tab` lands on the banner.
-        HintContext::OperationLive(row) => {
+        // The row's own bar with its `c` said the way it acts now, and —
+        // while one `⇥` reaches the banner — the way back leading, so the
+        // ladder's floor always holds it. Then the row's own `⇥` goes: one
+        // key, one meaning, and there `Tab` lands on the banner. Without
+        // `tab_to_banner` the row's `⇥` (if any) stays as the row says it.
+        HintContext::OperationLive {
+            row,
+            c,
+            tab_to_banner,
+        } => {
             let (list, trailer) = whole_bar(row, divider);
+            let list = lists::said_live(list, *c);
+            if !*tab_to_banner {
+                return (list, trailer);
+            }
             let mut led = vec![WAY_BACK];
             led.extend(list.into_iter().filter(|hint| hint.key != WAY_BACK.key));
             (led, trailer)
