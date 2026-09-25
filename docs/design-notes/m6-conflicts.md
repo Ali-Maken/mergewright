@@ -1099,7 +1099,8 @@ MERGING
 ╰ y commit  ⏎ diff  j/k move  ⇥ message  esc back ─────────────────────────────╯
 ```
 - **Title:** `Preview: finish merging <from> into <into>`. Where the frame is narrower than the title, it becomes
-  `Preview: merge <from> → <into>` and is then cut with `…`.
+  `Preview: merge <from> → <into>` and is then cut with `…`. While the summary is still loading, or the names are
+  unknown, it reads `Preview: finish the merge` and line 1 drops `on <into>` (spec pass 59, 2026-09-25).
 - **Where the eye goes:** first to the title (`accent` BOLD), then to the cursor row, then to `y commit`, which leads
   the footer border with its key in `accent` BOLD.
 - **Colour:**
