@@ -20,8 +20,10 @@ Scout: none; 70's builder named the line. Re-check it on main first.
 - [x] No git call on the UI thread; the read stays in the detail job. Checked by grep: `file_diff(` callers in graft are
       `jobs/detail.rs:126` (run from `jobs/runner.rs:279`, the job thread) and `jobs/finish.rs:47` (`Staged`, no untracked).
       No new caller.
-- [ ] The capture that shows an untracked row selected (grep `docs/shots` for one; if none, add one at 120×40 through an
+- [x] The capture that shows an untracked row selected (grep `docs/shots` for one; if none, add one at 120×40 through an
       existing capture test) shows the body. Rebuild that milestone's sheet, each part ≤ 200 000 B.
+      — `crates/graft/tests/it/conflict_interim/tab_walk.rs::capture_fix_tab_words_120x40` (and `_80x24`), frame 6 of
+      `docs/shots/m6/fix-tab-words-120x40.txt`: `1 + hello from new`. Sheet parts max 179 698 B.
 
 ## Touches
 - Every caller of the untracked read (grep). MAP.md graft-git. TESTING.md row for the changes pane if one names it.
