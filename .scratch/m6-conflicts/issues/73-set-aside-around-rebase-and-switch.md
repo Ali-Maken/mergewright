@@ -1,6 +1,6 @@
 # set-aside-around-rebase-and-switch: a rebase or checkout on a dirty tree sets the edits aside and puts them back, one entry
 
-Status: partial — built, one graft test red pending a decision (see NOTES, "Blocked")
+Status: done
 Blocked by: 72, 72b
 From: pick 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :25); review N4, second half (`docs/reviews/m6-usability-final.md`
 :158-160).
@@ -154,23 +154,23 @@ Large (~75k): one sequence, its three exits, resume/recover/inverse, a test matr
 
 ## NOTES (builder, 2026-09-25)
 
-**Compacted once, mid-ticket** (after the tests were green, before the gates). Nothing is left of the build. What
-remains is the blocked decision below.
+**Compacted once, mid-ticket** (after the tests were green, before the gates). Nothing remains.
 
 **Scout used:** `.scratch/m6-conflicts/scouts/set-aside-around-rebase-and-switch.md`. There are no stash wrappers in
 graft-git, so git args are built in graft-ops (`apply/set_aside.rs`). graft-git is untouched.
 
-### Blocked: needs decision
-`graft::it remote_by_key::capture_fix_rebase_refused_before_preview` (`crates/graft/tests/it/remote_by_key.rs:1270`)
-is **red** at this hash. It asserts 67's refusal (`:1294` no preview box; `:1295` the `Sticky` clean-tree status) and
-checks the capture `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt`. This ticket's `check` change makes
-both untrue. It can't be flipped without writing a capture (not allowed here). Deleting it touches the captions tsv,
-the contact sheet and TESTING.md, which is 74's job (74 :99-100). Pick one:
-(a) pull 74's deletion of the test and capture into 73;
-(b) merge 73 red and let 74 land it;
-(c) regenerate the capture here.
-The ticket's scope line doesn't cover it: its Touches (:128) assumed the capture only goes stale, and didn't see the
-test asserting the refusal.
+### 74's Touches row "67's capture … deleted" (74 :99-100) is done by 73 (conductor's decision, 2026-09-25)
+`remote_by_key::capture_fix_rebase_refused_before_preview` asserted 67's refusal, which this ticket's `check` makes
+untrue, so it was red. Done here:
+- The test and its header const are deleted from `crates/graft/tests/it/remote_by_key.rs`.
+- `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt` is deleted.
+- Its caption row is deleted from `docs/shots/m6/m6-contact-sheet-captions.tsv`.
+- The sheet was re-run with `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`: 149 captures, 0 without a
+  caption. Parts 1–2 changed only the count line; parts 3–4 were rebalanced by the split.
+- TESTING.md had no row for this capture, so nothing was deleted there.
+
+Check: `grep -rn "fix-rebase-refused-before-preview" docs TESTING.md crates` → only
+`docs/reviews/m6-final-fixes-66-67-71.md:216`, a history file (a review), left as written.
 
 ### Flipped outside the ticket's one named graft test (deviation, reversible)
 - m5 walk `rebase-dirty-tree-refused-offers-stash` → `rebase-dirty-tree-opens-the-preview`
@@ -243,7 +243,8 @@ test asserting the refusal.
   lost), and the answer is `Clashed`.
 - A put-back that is kept after a stop (not an `Exited` error): the stash words are in the entry's reason only, not
   in `explain()`.
-- 67's capture `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt` is now untrue (see Blocked).
+- 67's capture `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt` and its test are deleted here (74's
+  Touches row, above).
 
 **Touches:**
 - `check`: grep above.
@@ -255,10 +256,10 @@ test asserting the refusal.
 - Radar: `duplicates_skip_the_stash` green.
 - MAP.md: updated.
 - m5 walk + TESTING.md row 12: flipped.
-- Capture test: blocked.
+- 67's capture, its test, caption row and the contact sheet: deleted and re-run (grep above).
 
 **Gates** (workspace-wide, this hash):
 - fmt ok.
 - clippy ok.
 - `cargo test --doc` ok.
-- nextest 3398/3399: the one failure is the blocked capture test.
+- nextest 3398/3398 passed (1 skipped), after the deletion.
