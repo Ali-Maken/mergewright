@@ -673,7 +673,8 @@ fn a_rebase_lists_only_this_steps_files() {
     assert!(!body.contains("a.txt"), "{body}");
 
     // `⏎` stages the step's last file: the resolver stays on it, read back
-    // as done, and its notice says `c` goes on (m6-conflicts/31).
+    // as done (m6-conflicts/31); no summary for a rebase, the finish row
+    // says `c` goes on instead of the notice (m6-conflicts/60).
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the stage", |state| {
         state.operating.is_none()
@@ -683,12 +684,12 @@ fn a_rebase_lists_only_this_steps_files() {
                 .as_ref()
                 .is_none_or(|open| open.done.is_some() && open.job.is_none())
     });
-    assert_eq!(
-        open(&state).notice,
-        Some((
-            "every file done ✓ · c continues the rebase".to_owned(),
-            false
-        ))
+    assert_eq!(open(&state).notice, None);
+    assert!(state.finish.is_none(), "no summary for a rebase");
+    let body = crate::captures::frame(&state, 120, 40).join("\n");
+    assert!(
+        body.contains("✓ every file done — c continue the rebase"),
+        "{body}"
     );
     drop(state);
     app.close();

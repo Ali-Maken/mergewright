@@ -79,9 +79,7 @@ pub use names::side_names;
 pub(in crate::update) use open::box_open;
 pub use open::open_resolver;
 pub use resolved::resolved_advance;
-pub(crate) use resolved::{
-    every_file_done, every_file_done_words, finish_refused_notice, set_notice,
-};
+pub(crate) use resolved::{every_file_done, finish_if_owed, finish_refused_notice, set_notice};
 pub use restart::restart_landed;
 pub(crate) use restart::start_over_refusal;
 pub use scroll::resolver_mouse;
@@ -212,6 +210,15 @@ pub struct ResolverState {
     /// lands (`resolved::resolved_advance`), never on the key. `None` for
     /// `⏎`'s plain stage (m6-conflicts/19 scope 3).
     pub whole_side: Option<graft_ops::operation::Side>,
+    /// The last file of a merge was just done here, so the finish summary
+    /// opens on its own once everything that event started has landed
+    /// (m6-conflicts/60, P11). **Set by the event, never derived from the
+    /// state:** only `resolved::stay_after_last` sets it, on the state
+    /// `reopen` rebuilt; `resolved::finish_if_owed` spends it. A key that
+    /// moves him on (`Esc`, `j`/`k`, `n`/`N`, `d`, `e`, `M`), a file switch
+    /// (`reopen` builds a fresh state), a write that did not land, a failed
+    /// read, or a status still showing a conflict clears it unspent.
+    pub finish_owed: bool,
 }
 
 /// The most takes held behind the one in flight; the next is refused
@@ -246,6 +253,7 @@ impl ResolverState {
             dropped: 0,
             settling: None,
             whole_side: None,
+            finish_owed: false,
         }
     }
 
@@ -336,6 +344,7 @@ fn act(
     next_id: &mut impl FnMut() -> JobId,
 ) {
     let plain = !key.modifiers.control && !key.modifiers.alt;
+    cancel_owed_finish(state, key.code, plain);
     // A done file is read-only (m6-conflicts/25): refused in words, with
     // nothing sent.
     if done::refuses(&key)
@@ -372,6 +381,24 @@ fn act(
 }
 
 // ----------------------------------------------------------------- helpers
+
+/// A key that takes him somewhere else cancels the summary the last file
+/// owes (m6-conflicts/60): it opens on the event, never later over what he
+/// moved on to. A file switch also rebuilds the state, which drops it.
+fn cancel_owed_finish(state: &mut AppState, code: KeyCode, plain: bool) {
+    if plain
+        && matches!(
+            code,
+            KeyCode::Escape
+                | KeyCode::Char('j' | 'k' | 'n' | 'N' | 'd' | 'e' | 'M')
+                | KeyCode::Down
+                | KeyCode::Up
+        )
+        && let Some(open) = state.resolver.as_mut()
+    {
+        open.finish_owed = false;
+    }
+}
 
 /// A side, as the status line says it: the side's one name
 /// ([`side_names`]), or `both`.

@@ -80,7 +80,7 @@ pub(super) fn listing(paths: &[&str], unmerged: &[&str]) -> AppState {
 /// A left click at `column`, `row`, and the commands it sent — less the
 /// graph's merge probe, which the fixture's selected merge asks for on any
 /// first event and which is nothing to do with the resolver.
-fn click(state: &AppState, column: u16, row: u16) -> (AppState, Vec<Command>) {
+pub(super) fn click(state: &AppState, column: u16, row: u16) -> (AppState, Vec<Command>) {
     let (state, commands) = update(
         state,
         AppEvent::Core(Event::Mouse(MouseInput {
@@ -430,44 +430,60 @@ fn last_file_lands(kind: Option<InProgress>) -> AppState {
     state
 }
 
-/// The resolver stays on the last file (m6-conflicts/31, P8), `c` offered
-/// on its notice row; the status line is not written.
+/// The resolver stays on the last file (m6-conflicts/31, P8). Rewritten for
+/// m6-conflicts/60 (was `after_the_last_file_the_notice_says_c_finishes`):
+/// the words moved to the status line, `<file> done ✓ · every file done`
+/// with no key, because the summary it now owes opens on its own.
 #[test]
-fn after_the_last_file_the_notice_says_c_finishes() {
+fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {
     let state = last_file_lands(Some(InProgress::Merge));
     assert_eq!(super::open_path(&state), Path::new("conflicted.rs"));
     assert!(!state.banner_focus);
+    let open = state.resolver.as_ref().expect("open");
+    assert_eq!(open.notice, None, "no status read out: nothing to check");
+    assert!(open.finish_owed, "the summary is owed");
     assert_eq!(
-        state.resolver.as_ref().expect("open").notice,
-        Some(("every file done ✓ · c finishes the merge".to_owned(), false))
+        state.status,
+        Status::Done {
+            what: "conflicted.rs done".to_owned(),
+            keys: Some("every file done".to_owned()),
+        }
     );
-    assert_eq!(state.status, Status::Ready, "the status line not written");
 }
 
+/// Rewritten for m6-conflicts/60 (was
+/// `after_the_last_file_of_a_rebase_the_notice_says_c_continues`): no
+/// summary is owed — `c` writes — so the status line names the key.
 #[test]
-fn after_the_last_file_of_a_rebase_the_notice_says_c_continues() {
-    for (kind, words) in [
+fn after_the_last_file_of_a_rebase_the_status_says_c_continues() {
+    for (kind, keys) in [
         (
             InProgress::Rebase,
-            "every file done ✓ · c continues the rebase",
+            "every file done · c continues the rebase",
         ),
         (
             InProgress::CherryPick,
-            "every file done ✓ · c continues the cherry-pick",
+            "every file done · c continues the cherry-pick",
         ),
         (
             InProgress::Revert,
-            "every file done ✓ · c continues the revert",
+            "every file done · c continues the revert",
         ),
     ] {
         let state = last_file_lands(Some(kind));
         assert_eq!(super::open_path(&state), Path::new("conflicted.rs"));
         assert!(!state.banner_focus, "{kind:?}");
+        let open = state.resolver.as_ref().expect("open");
+        assert_eq!(open.notice, None, "{kind:?}");
+        assert!(!open.finish_owed, "{kind:?}: nothing opens on its own");
         assert_eq!(
-            state.resolver.as_ref().expect("open").notice,
-            Some((words.to_owned(), false))
+            state.status,
+            Status::Done {
+                what: "conflicted.rs done".to_owned(),
+                keys: Some(keys.to_owned()),
+            },
+            "{kind:?}"
         );
-        assert_eq!(state.status, Status::Ready, "{kind:?}");
     }
 }
 

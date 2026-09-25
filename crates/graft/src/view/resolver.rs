@@ -75,6 +75,46 @@ pub fn resolver_view(state: &AppState, columns: u16) -> Option<DocView> {
             .notice
             .as_ref()
             .map(|(text, error)| (sanitize_line(text), *error)),
+        finish: finish_row(state),
+    })
+}
+
+/// The finish row (m6-conflicts/60): every file done, the summary not open,
+/// and `c` would act — so the row names `c` as the next action, in the
+/// operation's words. `None` while the status read is out (the notice says
+/// it is checking), while a problem notice stands (it outranks the row),
+/// and wherever `c` would refuse or has nothing to carry on (a stash pop, a
+/// bisect).
+#[must_use]
+pub(crate) fn finish_row(state: &AppState) -> Option<graft_ui::conflict_resolver::FinishRow> {
+    use graft_git::state::InProgress;
+    let open = state.resolver.as_ref()?;
+    if state.finish.is_some()
+        || open.notice.as_ref().is_some_and(|(_, problem)| *problem)
+        // The status read is out (`status_read::owed`): the notice says
+        // it is checking until it lands.
+        || state.status_read.is_some()
+        || crate::update::banner::banner_view(state).is_none()
+        || crate::update::banner::continue_refusal(state).is_some()
+    {
+        return None;
+    }
+    let kind = state.in_progress.as_ref()?.kind;
+    let (full, short) = match kind {
+        InProgress::Merge => (
+            "c review and finish the merge".to_owned(),
+            "c review & finish".to_owned(),
+        ),
+        InProgress::Rebase | InProgress::CherryPick | InProgress::Revert => (
+            format!("c continue the {}", kind.name()),
+            "c continue".to_owned(),
+        ),
+        InProgress::Bisect => return None,
+    };
+    let row = |keys: &str| sanitize_line(&format!("✓ every file done — {keys}"));
+    Some(graft_ui::conflict_resolver::FinishRow {
+        full: row(&full),
+        short: row(&short),
     })
 }
 
@@ -187,7 +227,15 @@ pub fn resolver_split(
 ) -> (FileListView, Placement, ResolverAreas) {
     let files = file_list_view(state);
     let placed = placement(&files, state.size.columns);
-    let area = Rect {
+    let split = resolver_areas(resolver_area(state, banner_rows), placed);
+    (files, placed, split)
+}
+
+/// The whole resolver's rectangle, list and document together: the frame
+/// under the banner, over the resolver's own bar.
+#[must_use]
+pub fn resolver_area(state: &AppState, banner_rows: u16) -> Rect {
+    Rect {
         x: 0,
         y: banner_rows,
         width: state.size.columns,
@@ -197,9 +245,7 @@ pub fn resolver_split(
             .saturating_sub(banner_rows)
             // The hint bar / status line the resolver draws under itself.
             .saturating_sub(1),
-    };
-    let split = resolver_areas(area, placed);
-    (files, placed, split)
+    }
 }
 
 /// The resolver's file list, sanitised: [`listed_files`] in the widget's

@@ -4609,6 +4609,7 @@ pub(super) fn resolver_on_screen(walk: JobId) -> AppState {
         dropped: 0,
         settling: None,
         whole_side: None,
+        finish_owed: false,
     });
     state
 }
@@ -4666,6 +4667,7 @@ pub(super) fn resolver_card_on_screen(walk: JobId) -> AppState {
         dropped: 0,
         settling: None,
         whole_side: None,
+        finish_owed: false,
     });
     state
 }

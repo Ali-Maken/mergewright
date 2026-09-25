@@ -1,11 +1,12 @@
 //! `⏎`: marking the open file resolved (`git add`), and what happens when
 //! that stage lands — on to the next file not done, or, after the last,
-//! staying on it with `every file done ✓ · c …` on the notice row (a stash
-//! pop, with no `c`, closes to the graph).
+//! staying on it: a merge then opens its finish summary on its own, anything
+//! else shows the finish row (a stash pop, with no `c`, closes to the graph).
 
 use std::path::{Path, PathBuf};
 
 use graft_core::job::JobId;
+use graft_git::state::InProgress;
 
 use super::files::{RowState, listed_files, reread_set};
 use super::{reopen, write_refusal};
@@ -90,7 +91,7 @@ pub fn resolved_advance(
     } else if crate::update::banner::banner_view(state).is_none() {
         close_after_last(state);
     } else {
-        stay_after_last(state, commands, done, from, next_id);
+        stay_after_last(state, commands, &done, from, next_id);
     }
 }
 
@@ -152,43 +153,115 @@ fn close_after_last(state: &mut AppState) {
     };
 }
 
-/// Every file is done and an operation waits on `c`: the resolver **stays**
-/// (P8, m6-conflicts/31), on the file just staged, which its read now
-/// answers as done and shows read-only (m6-conflicts/25). `c` works from
-/// here, so the words go on its notice row, not the status line.
+/// Every file is done and an operation waits on `c`. The resolver stays,
+/// reopened on the file just staged, which its read now answers as done
+/// and shows read-only (m6-conflicts/25).
+///
+/// A **merge** then owes its finish summary (m6-conflicts/60, P11): the
+/// flag goes on the state `reopen` just built — set before it, it would be
+/// lost with the old one — and [`finish_if_owed`] opens the summary once
+/// everything this stage started has landed. A refused `reopen` owes
+/// nothing: its words are on the line, and `c` is the way on. A rebase,
+/// cherry-pick or revert owes nothing either, since its `c` writes: the
+/// finish row offers it instead.
+///
+/// The status line names the file and that every file is done, plus the
+/// key to press wherever no summary is coming (`… · c continues the
+/// rebase`).
 fn stay_after_last(
     state: &mut AppState,
     commands: &mut Vec<Command>,
-    done: PathBuf,
+    done: &Path,
     from: super::OpenedFrom,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    reopen(state, commands, done, from, next_id);
+    let opened = reopen(state, commands, done.to_path_buf(), from, next_id);
+    let merge =
+        crate::update::banner::live(state).is_some_and(|detail| detail.kind == InProgress::Merge);
+    let owes = opened && merge;
+    if let Some(open) = state.resolver.as_mut() {
+        open.finish_owed = owes;
+    }
     // The stage changed what git calls unmerged: the list is read again.
     reread_set(state, commands, next_id);
     // The status the `Stage` asked for is still out and still calls this
     // file unmerged, so `c` would count it. The notice says what `c` says
-    // meanwhile, and `status_read::settle` says the rest when it lands
-    // (review m6-amend-13, Minor 1).
-    let words = if crate::update::status_read::owed(state) {
-        crate::update::status_read::CHECKING.to_owned()
-    } else {
-        every_file_done_words(state)
+    // meanwhile; `status_read::settle` clears it when the read lands, and
+    // the finish row (or the summary) takes the row (review m6-amend-13,
+    // Minor 1).
+    let checking = crate::update::status_read::owed(state)
+        .then(|| (crate::update::status_read::CHECKING.to_owned(), false));
+    if opened && let Some(open) = state.resolver.as_mut() {
+        open.notice = checking;
+    }
+    if opened {
+        state.status = last_done(state, done, owes);
+    }
+}
+
+/// `<file> done ✓ · every file done`, and — where no summary is coming —
+/// the key that carries the operation on (m6-conflicts/60).
+fn last_done(state: &AppState, done: &Path, summary_coming: bool) -> Status {
+    let (every, keys) = every_file_done_parts(state);
+    let keys = match keys.filter(|_| !summary_coming) {
+        Some(keys) => format!("{every} · {keys}"),
+        None => every.to_owned(),
     };
-    set_notice(state, (words, false));
+    Status::Done {
+        what: format!("{} done", done.display()),
+        keys: Some(keys),
+    }
 }
 
-/// `every file done ✓`, and the key that carries the operation on when
-/// there is one to carry on and `c` is live where the user is: the banner
-/// has the keyboard, or the resolver does (m6-conflicts/31). The resolver's
-/// notice row says it in these words; the status line is [`every_file_done`].
-pub(crate) fn every_file_done_words(state: &AppState) -> String {
-    let (what, keys) = every_file_done_parts(state);
-    crate::view::status::done_line(what, keys.as_deref())
+/// Spend the owed open (m6-conflicts/60) at the first moment everything the
+/// last stage started has landed: no take settling, in flight or queued, no
+/// write out, the resolver's own read in, and the status read the stage
+/// asked for answered. Then `c`'s one path opens the summary, with the same
+/// refusals. A status that still shows a file conflicted drops the owed
+/// open instead: `status_read::settle` has already put `c`'s refusal on the
+/// notice row.
+///
+/// State-only, and called once at the tail of every answer
+/// (`update::answer`), so it does not matter which of the stage, a take or
+/// a read lands last.
+pub(crate) fn finish_if_owed(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some(open) = state.resolver.as_ref() else {
+        return;
+    };
+    if !open.finish_owed
+        || open.settling.is_some()
+        || open.in_flight.is_some()
+        || !open.queued.is_empty()
+        || open.staging.is_some()
+        || open.restarting.is_some()
+        || open.job.is_some()
+        || crate::update::status_read::owed(state)
+    {
+        return;
+    }
+    if let Some(open) = state.resolver.as_mut() {
+        open.finish_owed = false;
+    }
+    if crate::update::banner::continue_refusal(state).is_some() {
+        return;
+    }
+    crate::update::banner::continue_pressed(
+        state,
+        commands,
+        crate::update::finish::ReturnTo::Resolver,
+        next_id,
+    );
 }
 
-/// [`every_file_done_words`] as the status line holds it: the tick is the
-/// renderer's, so the keys stay apart (ticket 41).
+/// `every file done`, and the key that carries the operation on when there
+/// is one to carry on and `c` is live where the user is: the banner has the
+/// keyboard, or the resolver does (m6-conflicts/31). The tick is the
+/// renderer's, so the keys stay apart (ticket 41). In the resolver the
+/// finish row says it instead (m6-conflicts/60).
 pub(crate) fn every_file_done(state: &AppState) -> Status {
     let (what, keys) = every_file_done_parts(state);
     Status::Done {

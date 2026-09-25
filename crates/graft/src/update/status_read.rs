@@ -58,14 +58,16 @@ pub(super) fn answered(state: &mut AppState, id: JobId) -> bool {
 ///
 /// The same for the resolver's notice row, where the words go while the
 /// resolver is open after the last file (m6-conflicts/31): a notice still
-/// saying [`CHECKING`] becomes the verdict in the notice's own words.
+/// saying [`CHECKING`] gives way — to the finish row when every file is
+/// done (m6-conflicts/60: the row says `c` in its own words), or to `c`'s
+/// refusal in the notice's words.
 pub(super) fn settle(state: &mut AppState) {
     if notice_checking(state) {
-        let verdict = match super::banner::continue_refusal(state) {
-            None => (super::resolver::every_file_done_words(state), false),
-            Some(reason) => super::resolver::finish_refused_notice(&reason),
-        };
-        super::resolver::set_notice(state, verdict);
+        let verdict = super::banner::continue_refusal(state)
+            .map(|reason| super::resolver::finish_refused_notice(&reason));
+        if let Some(open) = state.resolver.as_mut() {
+            open.notice = verdict;
+        }
     }
     if !checking(state) {
         return;
@@ -79,7 +81,15 @@ pub(super) fn settle(state: &mut AppState) {
 /// The owed read ended with no status to give: the line — or the
 /// resolver's notice — stops saying it is checking. Nothing is claimed
 /// either way — the next read decides.
+///
+/// A finish summary owed by the last file (m6-conflicts/60) is cancelled,
+/// never spent: with no status to judge by, opening it could stand on a
+/// stale conflict or a stale "all done" (rule 3). The caller puts the
+/// failure's own words on the status line.
 pub(super) fn abandon(state: &mut AppState) {
+    if let Some(open) = state.resolver.as_mut() {
+        open.finish_owed = false;
+    }
     if notice_checking(state)
         && let Some(open) = state.resolver.as_mut()
     {

@@ -1,52 +1,52 @@
 m6 walk capture: m6-14-last-file-done — scenario two-files-in-order, keys m m o T, unicode tier, 200x50
 
 MERGING
-FILES · 2 conflicted  │▸ notes.txt · done ✓ · d starts it over
-                      │every file done ✓ · c finishes the merge
-   gone.txt   done ✓  │  1 one
-▏▸ notes.txt  done ✓  │  2 TWO from feature
-                      │  3 three
-                      │  4 four
-                      │  5 five
-                      │  6 six
-                      │  7 SEVEN from feature
-                      │  8 eight
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
-                      │
- stage notes.txt ✓
+╭ Preview: finish merging feature into main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                                                                                                                                                │
+│ undo: u takes this back                                                                                                                                                                              │
+│ RESOLVED BY YOU · 2                                                                                                    MESSAGE · ⇥ edit                                                              │
+│   gone.txt   kept · yours · main                                                                                        Subject Merge branch 'feature' into main                  ┊            32/50 │
+│   notes.txt  theirs · feature in 2 of 2 conflicts                                                                       Body                                                                         │
+│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                                                                                                                                                  │
+│ ▸ README.md  modified  +1 −0                                                                                                                                                                         │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+│                                                                                                                                                                                                      │
+╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

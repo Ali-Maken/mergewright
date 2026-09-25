@@ -19,6 +19,7 @@ mod editor_words;
 mod handover;
 mod last_file;
 mod modal;
+mod opens_summary;
 mod restart;
 mod shell_begun;
 mod stash_pop;

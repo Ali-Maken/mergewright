@@ -696,10 +696,10 @@ const UNDO_LANDING_WORDS: &str = "undo: finish merge of feature ✓ · c finishe
 
 /// Where `u` on a shell-begun finish lands, with what the tests below need
 /// to check it against.
-struct UndoLanding {
-    scratch: graft_fixtures::Scratch,
-    app: App,
-    state: AppState,
+pub(super) struct UndoLanding {
+    pub(super) scratch: graft_fixtures::Scratch,
+    pub(super) app: App,
+    pub(super) state: AppState,
     /// `main` before the merge was finished.
     pre_merge: String,
     /// The merge commit `u` took back.
@@ -707,7 +707,7 @@ struct UndoLanding {
 }
 
 /// Launch into J3, `c y` to finish, then `u`, run to its refresh.
-fn u_landing() -> UndoLanding {
+pub(super) fn u_landing() -> UndoLanding {
     let scratch = resolved_shell_merge();
     let repo = scratch.path().to_owned();
     let pre_merge = crate::app_harness::git(&repo, &["rev-parse", "main"]);

@@ -1,4 +1,4 @@
-m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T c Space, unicode tier, 200x50
+m6 walk capture: m6-16-summary-expanded — scenario summary-open-git-combined, keys m m o T Space, unicode tier, 200x50
 
 MERGING
 ╭ Preview: finish merging feature into main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮

@@ -9,8 +9,9 @@ fn last_file_closes_to_where_it_opened() {
 }
 
 /// Opened from the banner, walked through both files: the resolver **stays**
-/// on the last one, read-only, with `c` offered on its notice row
-/// (m6-conflicts/31, P8).
+/// on the last one, read-only (m6-conflicts/31, P8), and the merge's
+/// summary opens over it on its own once the reads land (m6-conflicts/60).
+/// `Esc` from the summary leaves the finish row, whose `c` opens it again.
 ///
 /// Also the ticket's observation of its three premises against real git
 /// (Scope 3): what shows between the stage landing and the done read
@@ -25,7 +26,7 @@ fn last_file_with_a_banner() {
     assert_eq!(still_unmerged(scratch.path()), "", "and git agrees");
     let state = captured_both_moments(&app, &state);
 
-    // `c` from here opens the summary, with the resolver under it.
+    // `c` on the finish row opens the summary again, the resolver under it.
     let state = app.key(&state, KeyCode::Char('c'));
     assert!(state.finish.is_some(), "c opened the summary");
     assert!(state.resolver.is_some(), "the resolver stays under it");
@@ -80,65 +81,83 @@ fn stage_landed(app: &App, state: AppState) -> AppState {
     between
 }
 
-/// Premises 2 and 3: the read answers done (not "resolved outside"), and
-/// the notice survives its landing, settled to the verdict.
+/// Premises 2 and 3: the read answers done (not "resolved outside"); once
+/// the status the stage asked for lands too, the summary opens on its own
+/// over the done file (m6-conflicts/60).
 fn done_read_landed(app: &App, between: AppState) -> AppState {
-    let state = app.pump(between, "the done read and the status", |state| {
-        state.status_read.is_none()
-            && state
-                .resolver
-                .as_ref()
-                .is_none_or(|open| open.job.is_none())
-    });
+    let state = app.pump(
+        between,
+        "the done read, the status and the summary",
+        |state| {
+            state.status_read.is_none()
+                && state
+                    .resolver
+                    .as_ref()
+                    .is_none_or(|open| open.job.is_none())
+                && state
+                    .finish
+                    .as_ref()
+                    .is_none_or(|finish| finish.job.is_none())
+        },
+    );
     let open_now = state
         .resolver
         .as_ref()
         .unwrap_or_else(|| panic!("the done read closed the resolver: {:?}", state.status));
     assert_eq!(open_now.path, Path::new("b.txt"));
     assert!(open_now.done.is_some(), "read as done, read-only");
-    assert_eq!(
-        open_now.notice,
-        Some(("every file done ✓ · c finishes the merge".to_owned(), false))
-    );
-    assert_eq!(
-        state.graph_overlay(),
-        Some(GraphOverlay::Resolver),
-        "the resolver keeps the keyboard"
+    assert_eq!(open_now.notice, None, "the summary speaks, not the notice");
+    let finish = state
+        .finish
+        .as_ref()
+        .unwrap_or_else(|| panic!("no summary opened: {:?}", state.status));
+    assert_eq!(finish.return_to, graft::update::finish::ReturnTo::Resolver);
+    assert!(
+        matches!(&state.status, Status::Done { what, keys: Some(keys) }
+            if what == "b.txt done" && keys == "every file done"),
+        "{:?}",
+        state.status
     );
     state
 }
 
-/// Two moments, captured: the read landing, where the bottom row still
-/// holds the stage's `stage b.txt ✓` (a finished write's line lasts until
-/// the next key, `update::keys::key_event`), and after one key the resolver
-/// swallows, where the bar is drawn and the notice is kept.
+/// Two moments, captured: the summary as it opened on its own, and after
+/// `Esc` from it — the resolver on the done file, the finish row on its
+/// notice row and `c finish` leading the bar.
 fn captured_both_moments(app: &App, state: &AppState) -> AppState {
     let landed = crate::captures::frame(state, 120, 40);
-    let alt_x = KeyPress {
-        code: KeyCode::Char('x'),
-        modifiers: graft_core::event::Modifiers {
-            alt: true,
-            ..graft_core::event::Modifiers::NONE
-        },
-    };
-    let state = app.press(state, alt_x);
-    assert_eq!(
-        open(&state).notice,
-        Some(("every file done ✓ · c finishes the merge".to_owned(), false)),
-        "a swallowed key keeps the notice"
-    );
-    let next_key = crate::captures::frame(&state, 120, 40);
     assert!(
-        next_key
-            .last()
-            .is_some_and(|row| row.trim_end().ends_with("e edit  c finish  esc close")),
+        landed
+            .iter()
+            .any(|row| row.contains("Preview: finish merging")),
         "{}",
-        next_key.join("\n")
+        landed.join("\n")
+    );
+    let state = app.key(state, KeyCode::Escape);
+    assert!(state.finish.is_none(), "Esc closed the summary");
+    assert_eq!(
+        state.graph_overlay(),
+        Some(GraphOverlay::Resolver),
+        "the resolver has the keyboard again"
+    );
+    let after_esc = crate::captures::frame(&state, 120, 40);
+    let body = after_esc.join("\n");
+    assert!(
+        after_esc
+            .iter()
+            .any(|line| line.contains("✓ every file done — c review and finish the merge")),
+        "{body}"
+    );
+    assert!(
+        after_esc
+            .last()
+            .is_some_and(|line| line.starts_with(" c finish")),
+        "{body}"
     );
     let shot = format!(
-        "{}\n--- after the next key ---\n{}",
+        "{}\n--- after Esc ---\n{}",
         landed.join("\n"),
-        next_key.join("\n")
+        after_esc.join("\n")
     );
     crate::captures::check_shot("m6/fix-finish-from-the-resolver-120x40.txt", &shot);
     state

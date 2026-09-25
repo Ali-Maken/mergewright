@@ -102,9 +102,10 @@ fn resolver_context_list(context: &HintContext) -> Vec<Hint> {
     offering_c(list, roles, finishable)
 }
 
-/// A resolver table with `c` added just before `esc close` while `c` would
-/// act (m6-conflicts/31, P8): `c finish` in a merge, which opens the
-/// summary, else `c continue`. Unchanged while it would refuse.
+/// A resolver table with `c` added **first** while `c` would act
+/// (m6-conflicts/31, P8; first since m6-conflicts/60: it is the next action,
+/// UX 1.4): `c finish` in a merge, which opens the summary, else
+/// `c continue`. Unchanged while it would refuse.
 fn offering_c(mut list: Vec<Hint>, roles: SideRoles, finishable: bool) -> Vec<Hint> {
     if finishable {
         let verb = if roles == SideRoles::Merge {
@@ -112,9 +113,7 @@ fn offering_c(mut list: Vec<Hint>, roles: SideRoles, finishable: bool) -> Vec<Hi
         } else {
             "continue"
         };
-        // Every resolver table ends with `esc close`.
-        let at = list.len().saturating_sub(1);
-        list.insert(at, hint("c", verb));
+        list.insert(0, hint("c", verb));
     }
     list
 }
