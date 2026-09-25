@@ -1,6 +1,6 @@
 # commit-key-finishes-the-live-operation: `c` in the graph or the changes pane, mid-operation, does what the banner's `c` does, where the banner's `c` acts
 
-Status: ready (unblocked 2026-09-24: P14 approved, picks item 12; the keymap is edited, §2.4 and §2.6a. Reconciled
+Status: blocked (2026-09-25: find-and-pin 2 found unwrapped live frames; see NOTES). Was: ready (unblocked 2026-09-24: P14 approved, picks item 12; the keymap is edited, §2.4 and §2.6a. Reconciled
 with scout 52 on 2026-09-25)
 From: `docs/reviews/m6-usability.md` M3 (:96-97), the rest of the direction.
 Build with: builder-opus. Why: brownfield work across two crates, plus a public graft-ui type change that every hint
@@ -189,7 +189,7 @@ pub enum LiveC {
   - graft-ui: `HintContext::ChangesPane`, `OperationLive`, `LiveC`, `every_context`.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Find-and-pin 1: `esc_from_a_summary_opened_in_the_pane_lands_on_the_banner`, with (a)–(d) holding and (e)
+- [x] Find-and-pin 1: `esc_from_a_summary_opened_in_the_pane_lands_on_the_banner` (`crates/graft/src/update/finish/tests.rs`), with (a)–(d) holding and (e)
       recorded in NOTES.
 - [ ] Find-and-pin 2: the test that pins "no unwrapped graph-row context while live" (name it at tick time).
 - [ ] `c_in_the_changes_pane_opens_the_summary`: red first, then green.
@@ -228,3 +228,26 @@ Medium: a public graft-ui type change and its catalogue and counts, plus about 1
 capture regeneration or find-and-pin 2 grows it past one context, hand off at the seam: graft-ui committed first.
 
 ## NOTES
+
+**Builder, 2026-09-25 (blocked at find-and-pin 2; scout 52 used). No compaction.**
+- Find 1 holds. `esc_from_a_summary_opened_in_the_pane_lands_on_the_banner` (update/finish/tests.rs): (a) summary
+  closed, `finish_draft` kept; (b) `banner_view().focused`; (c) `footer_context` == `banner_context`; (d) next `⇥` is
+  `banner_key`'s (`banner_focus` false, `detail.focus` → `Graph`, which the pane's `⇥` from Files would not give);
+  **(e) `detail.focus` stays `Files`** (`finish/keys.rs:289-298` never touches it).
+- **Find 2: two live paths build unwrapped row contexts.** Observed with a throwaway probe calling `footer_context`
+  (not committed); lines:
+  1. **Bisect.** `live_operation` = `Some((Bisect, InShell))` but `banner_view` is `None` (`banner.rs:180` `live()?`;
+     `kind_word(Bisect)` = None, `banner.rs:63`), so `footer_context` falls to `_ => hint_context` (`view/rows.rs:394`)
+     → `PlainRow` (probe output). Row bar keeps `c commit` for a key that refuses. Table row "Bisect: no `c`" can't
+     reach this frame.
+  2. **Detail pane open, graph focused** (`DetailFocus::Graph`, merge live, banner unfocused). `one_tab_to_banner`
+     is false (`banner/stop.rs:311`: needs pane closed or focus Diff) → `view/rows.rs:394` → `PlainRow` (probe
+     output). Pressing `c` here reaches `graph_key` (`keys.rs:281`), so after the build `c` would finish while the bar
+     says `c commit`.
+  - Pane closed, merge live: `OperationLive(PlainRow)` as expected.
+- Spec decision needed: where `LiveC` lives so it reaches these frames. Option A: carry it on the row contexts
+  themselves (or a wrapper independent of `⇥ banner`), so `OperationLive` keeps meaning "one `⇥` to the banner".
+  Option B: wrap in `OperationLive` whenever `live_operation` is Some and let the `⇥ banner` hint be conditional —
+  changes what `OperationLive` means (`hints.rs:370-375`, every `operation_live_form` test).
+- Remaining: everything after find 2 (all other ticks).
+

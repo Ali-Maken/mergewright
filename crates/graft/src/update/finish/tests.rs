@@ -367,6 +367,57 @@ fn esc_goes_back_and_keeps_the_draft() {
     );
 }
 
+/// Where `Esc` from the summary lands when the changes pane had focus
+/// underneath (m6-conflicts/52, find-and-pin 1). Opened from the banner's
+/// `c` — today's `ReturnTo::Banner` path, the one the pane's `c` will take.
+#[test]
+fn esc_from_a_summary_opened_in_the_pane_lands_on_the_banner() {
+    use graft_ui::detail::DetailFocus;
+    let mut state = stopped(InProgress::Merge, &[]);
+    state.detail.shown = true;
+    state.detail.spec = Some(crate::update::detail::DetailSpec::WorkingTree);
+    state.detail.focus = DetailFocus::Files;
+    assert!(state.on_changes_pane(), "the changes pane is underneath");
+    let (state, commands) = press(&state, plain(KeyCode::Char('c')));
+    let id = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadFinishSummary(id) => Some(*id),
+            _ => None,
+        })
+        .expect("`c` asks for the summary");
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(id, Product::FinishSummary(Ok(summary()))),
+    );
+    assert_eq!(finish(&state).return_to, ReturnTo::Banner);
+    let state = key(&state, KeyCode::Tab);
+    let state = typed(&state, " for 2.4");
+    let state = key(&state, KeyCode::Escape);
+
+    // (a) closed, the draft kept.
+    assert!(state.finish.is_none());
+    assert_eq!(
+        state.finish_draft,
+        Some(("Merge branch 'feature' for 2.4".to_owned(), String::new()))
+    );
+    // (b) the header draws the banner focused.
+    let banner = crate::update::banner::banner_view(&state).expect("the banner is drawn");
+    assert!(banner.focused);
+    // (c) the footer is the banner's.
+    assert_eq!(
+        crate::view::rows::footer_context(&state, &[], Some(&banner)),
+        crate::view::rows::banner_context(&banner)
+    );
+    // (e) the pane's own focus is left where it was.
+    assert_eq!(state.detail.focus, DetailFocus::Files);
+    // (d) the next key is the banner's: its `⇥` hands the keyboard to the
+    // graph. The pane's `⇥` would have moved Files → Diff.
+    let state = key(&state, KeyCode::Tab);
+    assert!(!state.banner_focus);
+    assert_eq!(state.detail.focus, DetailFocus::Graph);
+}
+
 #[test]
 fn esc_with_nothing_typed_keeps_no_draft() {
     let state = opened();
