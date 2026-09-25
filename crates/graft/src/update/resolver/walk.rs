@@ -5,7 +5,8 @@
 //! position only (keymap §2.6, the user's call of 2026-09-24):
 //! 1. another file in the list not done → cross to it;
 //! 2. else this file has an open block → wrap to it;
-//! 3. else `no more conflicts · ⏎ marks <file> done`.
+//! 3. else `no more conflicts this way`, a notice ([`NO_MORE_THIS_WAY`]);
+//!    the bar keeps offering `⏎ done`.
 //!
 //! Crossing first is what keeps `n` from circling a file that still has an
 //! open block and never leaving it.
@@ -17,7 +18,12 @@ use super::files::{RowState, listed_files, select_file};
 use super::scrolled_to;
 use super::take::pending_file;
 use crate::update::events::Command;
-use crate::update::state::{AppState, Status};
+use crate::update::state::AppState;
+
+/// Rule 3's words: nothing open anywhere this way (m6-conflicts/61). An info
+/// notice on the notice row, never the status line, so the bar keeps its
+/// own hints — `⏎ done` among them.
+pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
 
 /// `n`/`N`: the next or previous block, then the three rules above.
 pub(super) fn walk_blocks(
@@ -36,7 +42,7 @@ pub(super) fn walk_blocks(
         cross_from_done(state, commands, forward, next_id);
         return;
     }
-    let (pending, card, cursor, path) = {
+    let (pending, card, cursor) = {
         let Some(open) = state.resolver.as_ref() else {
             return;
         };
@@ -44,7 +50,6 @@ pub(super) fn walk_blocks(
             pending_file(open),
             open.whole_file.is_some(),
             open.cursor_block,
-            open.path.clone(),
         )
     };
     // With neither a document nor a card the opening read is still in
@@ -80,21 +85,18 @@ pub(super) fn walk_blocks(
         move_cursor(state, block, Some(format!("wrapped · {left} still open")));
         return;
     }
-    no_more_conflicts(state, card, &path);
+    no_more_conflicts(state);
 }
 
-/// Rule 3: nothing open anywhere — say so, with the key that finishes
-/// this file.
-fn no_more_conflicts(state: &mut AppState, card: bool, path: &std::path::Path) {
-    state.status = Status::Sticky {
-        reason: "no more conflicts".to_owned(),
-        // A card is resolved by its own `o`/`t`; it has no `⏎` to offer.
-        keys: Some(if card {
-            super::names::side_keys(state)
-        } else {
-            format!("⏎ marks {} done", path.display())
-        }),
-    };
+/// Rule 3: nothing open anywhere — say so on the notice row. The status
+/// line is not touched, so the bar under the document keeps its own hints:
+/// `⏎ done` on a document, the side keys on a card (m6-conflicts/61). Once
+/// every file is done the finish row takes the notice row instead
+/// (`view::resolver::finish_row`), and it already names the next key.
+fn no_more_conflicts(state: &mut AppState) {
+    if let Some(open) = state.resolver.as_mut() {
+        open.notice = Some((NO_MORE_THIS_WAY.to_owned(), false));
+    }
 }
 
 /// `n`/`N` on a done file: cross to the next (previous) file not done, or
@@ -107,7 +109,7 @@ fn cross_from_done(
 ) {
     match cross_target(state, forward) {
         Some(index) => cross(state, commands, index, forward, next_id),
-        None => state.status = Status::sticky("no more conflicts"),
+        None => no_more_conflicts(state),
     }
 }
 

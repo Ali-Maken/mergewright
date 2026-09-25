@@ -66,10 +66,14 @@ fn n_on_a_card_crosses_to_the_next_file() {
     );
 }
 
-/// On the last conflicted file there is nowhere to cross to, and the line
-/// says so with the keys a card does answer — not `⏎`, which it does not.
+/// On the last conflicted file there is nowhere to cross to: the card's
+/// notice row says so (m6-conflicts/61), in the words a document uses and
+/// with no keys in them. The side keys a card answers — not `⏎`, which it
+/// does not — stay in the bar under it.
 #[test]
-fn n_on_the_last_card_says_no_more() {
+fn a_card_says_no_more_this_way_and_its_bar_keeps_the_side_keys() {
+    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
+
     let mut state = resolver_card_on_screen(WALK);
     state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
         entries: vec![graft_git::status::StatusEntry {
@@ -83,13 +87,20 @@ fn n_on_the_last_card_says_no_more() {
             submodule: false,
         }],
     }));
+    let before = state.status.clone();
     let (state, _) = press(&state, KeyCode::Char('n'));
     assert_eq!(open_path(&state), Path::new("gone.txt"));
-    // No operation in progress with the resolver open: a stash pop's roles.
     assert_eq!(
-        sticky(&state),
-        ("no more conflicts", Some("o yours  t stashed"))
+        state.resolver.as_ref().expect("open").notice,
+        Some((NO_MORE_THIS_WAY.to_owned(), false))
     );
+    assert_eq!(state.status, before, "the status line is not touched");
+    let frame = frame_text(&state);
+    let bar = frame.lines().last().expect("a bottom row");
+    assert!(!bar.contains("no more conflicts"), "{bar}");
+    // No operation in progress with the resolver open: a stash pop's roles.
+    assert!(bar.contains("o yours"), "{bar}");
+    assert!(bar.contains("t stashed"), "{bar}");
 }
 
 /// `resolver_card_on_screen` as the only conflicted file, mid-rebase.
@@ -117,14 +128,23 @@ fn last_card_in_a_rebase() -> AppState {
 }
 
 /// Review m6-amend-10-22 M2 (`walk.rs`): in a rebase git's `ours` is
-/// upstream, so `n` past the last card offers the rebase's own role words.
+/// upstream, so the card's bar under `n`'s notice offers the rebase's own
+/// role words.
 #[test]
 fn n_on_the_last_card_in_a_rebase_uses_the_side_names() {
     let (state, _) = press(&last_card_in_a_rebase(), KeyCode::Char('n'));
     assert_eq!(
-        sticky(&state),
-        ("no more conflicts", Some("o upstream  t yours"))
+        state
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.as_str()),
+        Some(crate::update::resolver::walk::NO_MORE_THIS_WAY)
     );
+    let frame = frame_text(&state);
+    let bar = frame.lines().last().expect("a bottom row");
+    assert!(bar.contains("o upstream"), "{bar}");
+    assert!(bar.contains("t yours"), "{bar}");
 }
 
 /// Review m6-amend-10-22 M2 (`restart.rs`): `d` on a card in a rebase is

@@ -375,9 +375,10 @@ fn a_stop_to_first_conflict() -> Scenario {
 
 /// J3's launch landing: the banner, the pane on `CONFLICTS`, the stop
 /// recorded as begun outside Graft. The footer draws the fullest rung of
-/// `stop_wordings` that fits beside the bar (`update/banner/stop.rs:197`),
-/// so at 120 columns it reads `merge in progress · …` without the origin;
-/// the origin is asserted on the stop's full reason, the frame on the
+/// `stop_wordings` that fits beside the bar (`update/banner/stop.rs`), so
+/// at 120 columns it reads the short origin, `merge in progress · from the
+/// shell · 2 conflicted` (m6-conflicts/61), and drops it where the room is
+/// less; the origin is asserted on the stop's full reason, the frame on the
 /// words every rung keeps.
 fn on_the_banner_begun_outside() -> Vec<Step> {
     vec![

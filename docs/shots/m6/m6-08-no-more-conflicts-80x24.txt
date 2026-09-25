@@ -6,7 +6,7 @@ files · 13 · 12 done     ours-deleted.txt ✓       pic.bin ✓
                        ▸ zdiff3.txt ⏎           … 8 more
 ────────────────────────────────────────────────────────────────────────────────
 ▸ zdiff3.txt · 1 conflict · 0 open
-all blocks taken · ⏎ marks zdiff3.txt done
+no more conflicts this way
   1 start
 ▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────
 ▏ 2 middle theirs
@@ -23,4 +23,4 @@ all blocks taken · ⏎ marks zdiff3.txt done
 
 
 
- no more conflicts · ⏎ marks zdiff3.txt done
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc

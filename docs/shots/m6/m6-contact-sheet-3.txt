@@ -221,7 +221,7 @@ m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T
 
 ================================================================================
 docs/shots/m6/m6-18-launch-shell-begun-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", b-launch-to-first-conflict: the app launched on a two-files merge begun in the shell, no key: header `MERGING`; the footer `merge in progress · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`; the changes pane `CONFLICTS (2)`. The origin words `begun outside Graft` are in the stop's reason but not drawn (ticket 21, question 3). Unicode tier; colour, the focus reverse video and the cursor block unverified.
+what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflict journeys", b-launch-to-first-conflict: the app launched on a two-files merge begun in the shell, no key: header `MERGING`; the footer `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph` (the short origin, ticket 61); the changes pane `CONFLICTS (2)`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
 ================================================================================
 
 m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 120x40
@@ -249,7 +249,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
 
 
- merge in progress · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED · 1 staged
 diff vs HEAD 1e78110
 CONFLICTS (2)
@@ -325,7 +325,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
 ================================================================================
 docs/shots/m6/m6-18-launch-shell-begun-187x50.txt
-what right looks like: The same launch at 187x50: `merge in progress · 2 files conflicted · ⏎ resolve` and `CONFLICTS (2)`.
+what right looks like: Re-taken 2026-09-25 (ticket 61): the same launch at 187x50: `merge in progress · 2 conflicted · ⏎ resolve` — no room beside the bar for `from the shell` with the pane open — and `CONFLICTS (2)`.
 ================================================================================
 
 m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 187x50
@@ -379,11 +379,11 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
 
 
- merge in progress · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
 
 ================================================================================
 docs/shots/m6/m6-18-launch-shell-begun-200x50.txt
-what right looks like: The same launch at 200x50: the last row `merge in progress · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`; `CONFLICTS (2)`.
+what right looks like: Re-taken 2026-09-25 (ticket 61): the same launch at 200x50: the last row `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph`; `CONFLICTS (2)`.
 ================================================================================
 
 m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflict, keys , unicode tier, 200x50
@@ -437,7 +437,7 @@ m6 walk capture: m6-18-launch-shell-begun — scenario b-launch-to-first-conflic
 
 
 
- merge in progress · 2 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge in progress · from the shell · 2 conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
 
 ================================================================================
 docs/shots/m6/m6-18-launch-shell-begun-80x24.txt

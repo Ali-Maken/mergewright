@@ -417,7 +417,7 @@ files · 13     nofinal.txt 1/1 open         ours-deleted.txt keep?
 
 ================================================================================
 docs/shots/m6/m6-06-relaunch-sticky-120x40.txt
-what right looks like: Re-taken 2026-09-24 (ticket 45): TESTING.md "Conflicts walk", kill-9-mid-rebase-then-relaunch: the capture run took `o` on the first block of `shared.txt` (`took upstream · main` on its screen), was sent **SIGKILL** (the script's log: `died on signal 9`, `.git/rebase-merge present: True`), and this is the real `graft` binary relaunched on what it left: `REBASING step 1 of 2` in the header; the footer `rebase still in progress · 1 file conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph` — the stop line's `from a previous run` is dropped first when the keys need the room (ticket 24; the full wording is asserted from state by the walk); the changes pane on `CONFLICTS (1)` `shared.txt`, whose diff shows **one** marker block left (the other was taken before the kill).
+what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflicts walk", kill-9-mid-rebase-then-relaunch: the capture run took `o` on the first block of `shared.txt` (`took upstream · main` on its screen), was sent **SIGKILL** (the script's log: `died on signal 9`), and this is the real `graft` binary relaunched on what it left: `REBASING step 1 of 2` in the header; the footer `rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph` — a rung that had to shorten says the count short (ticket 61), and `from a previous run` is dropped when the keys need the room (ticket 24; the full wording is asserted from state by the walk); the changes pane on `CONFLICTS (1)` `shared.txt`, whose diff shows **one** marker block left (the other was taken before the kill).
 ================================================================================
 
 m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relaunch, keys ⏎ o, unicode tier, 120x40
@@ -446,7 +446,7 @@ m6 walk capture: m6-06-relaunch-sticky — scenario kill-9-mid-rebase-then-relau
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- rebase still in progress · 1 file conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
+ rebase still in progress · 1 conflicted · ⏎ resolve  c continue  s skip  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 2e2d51c
 CONFLICTS (1)                 ▎keep 1
@@ -579,7 +579,7 @@ every file done ✓ · c continues the rebase
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-120x40.txt
-what right looks like: TESTING.md "Conflicts walk", n-past-the-last-block-says-no-more (m6-conflicts/15): every other file done, `zdiff3.txt` the only one open; `t` then `n`: the notice under the title says `all blocks taken · ⏎ marks zdiff3.txt done`, the footer `no more conflicts · ⏎ marks zdiff3.txt done`; the cursor stays on the one block, which reads `took theirs · feature`. The user decides that wording.
+what right looks like: Re-taken 2026-09-25 (ticket 61): TESTING.md "Conflicts walk", n-past-the-last-block-says-no-more: every other file done, `zdiff3.txt` the only one open; `t` then `n`: the notice row under the title says `no more conflicts this way` (a notice, not the status line), and the bottom row is the resolver's own bar, `⏎ done` in it — the words are said once. The cursor stays on the one block, which reads `took theirs · feature`. Colour unverified.
 ================================================================================
 
 m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ ⏎ t n, unicode tier, 120x40
@@ -590,7 +590,7 @@ files · 13 · 12 done     crlf.txt done ✓               md.md done ✓       
                          three.txt done ✓            ▸ zdiff3.txt ⏎ marks done     … 5 more
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ zdiff3.txt · 1 conflict · 0 open
-all blocks taken · ⏎ marks zdiff3.txt done
+no more conflicts this way
   1 start
 ▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
 ▏ 2 middle theirs
@@ -623,11 +623,11 @@ all blocks taken · ⏎ marks zdiff3.txt done
 
 
 
- no more conflicts · ⏎ marks zdiff3.txt done
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/m6-08-no-more-conflicts-80x24.txt
-what right looks like: The same at 80 columns: `no more conflicts · ⏎ marks zdiff3.txt done` on the last row, `all blocks taken · ⏎ marks zdiff3.txt done` under the title.
+what right looks like: Re-taken 2026-09-25 (ticket 61): the same at 80 columns: `no more conflicts this way` under the title; the last row the resolver's bar, keys bare at this width (`⏎` without `done`), no `no more conflicts` in it.
 ================================================================================
 
 m6 walk capture: m6-08-no-more-conflicts — scenario n-past-the-last-block-says-no-more, keys k ⏎ ⏎ t n, unicode tier, 80x24
@@ -638,7 +638,7 @@ files · 13 · 12 done     ours-deleted.txt ✓       pic.bin ✓
                        ▸ zdiff3.txt ⏎           … 8 more
 ────────────────────────────────────────────────────────────────────────────────
 ▸ zdiff3.txt · 1 conflict · 0 open
-all blocks taken · ⏎ marks zdiff3.txt done
+no more conflicts this way
   1 start
 ▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────
 ▏ 2 middle theirs
@@ -655,7 +655,7 @@ all blocks taken · ⏎ marks zdiff3.txt done
 
 
 
- no more conflicts · ⏎ marks zdiff3.txt done
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc
 
 ================================================================================
 docs/shots/m6/m6-09-start-over-box-120x40.txt
@@ -1034,7 +1034,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt
-what right looks like: (ticket 12; recaptured by 24) Launch into a merge begun in the shell, 13 files: the footer reads `merge in progress · 13 files conflicted · ⏎ resolve  c continue  a abort`, and the pane shows `CONFLICTS` with the cursor on its first file. The origin words `begun outside Graft` are not drawn at this width (ticket 21, question 3). Colour unverified.
+what right looks like: (ticket 12; recaptured by 24 and 61) Launch into a merge begun in the shell, 13 files, the pane below: the footer reads `merge in progress · from the shell · 13 conflicted · ⏎ resolve  c continue  a abort` — the origin short before it goes, the count short (ticket 61) — and the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
  graft /code/api    MERGING
@@ -1080,7 +1080,7 @@ CONFLICTS (13)                ▎
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-187x50.txt
-what right looks like: (ticket 12; recaptured by 24) The same launch at 187x50: the last row reads `merge in progress · 13 files conflicted · ⏎ resolve  c continue` — the count whole, never cut mid-number; the pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
+what right looks like: (ticket 12; recaptured by 24 and 61) The same launch at 187x50, the pane beside the graph: the last row reads `merge in progress · 13 conflicted · ⏎ resolve  c continue` — `from the shell` needs 50 cells and the footer leaves 44 beside the bar, so the origin is dropped (accepted, ticket 61 Decisions); the count whole, never cut mid-number. The pane shows `CONFLICTS` with the cursor on its first file. Colour unverified.
 ================================================================================
 
  graft /code/api    MERGING                                                                                  UNCOMMITTED

@@ -1,6 +1,6 @@
 # resolver-words-and-marks: `no more conflicts this way`; a stop line that keeps a short origin; no tint on a hand-edited both-take
 
-Status: blocked (rung 1 does not fit whole at 187 with the pane open, 2026-09-25; see NOTES, third pass)
+Status: done (2026-09-25; see NOTES, fourth pass)
 From: user picks 2026-09-24 items 7 (batch 6, "shorten both") and 8 (batch 2, `no more conflicts this way`); ADR-0044
 §2 row "took both, then a hand edit"; KNOWN_GAPS M6/15 :693, M6/21 :769-770; `docs/log/m6.md:78`.
 Build with: builder-opus. Why: brownfield in two crates; three independent word/flag changes, one moving a status to a
@@ -44,6 +44,12 @@ Lane: wave 2, sixth (last build before acceptance).
   go nowhere: it stays true, the Out list forbids a new clearing rule, and (b) would change every notice. `⏎`
   unchanged: the notice stands while the stage is in flight and is replaced when it lands; that landing is the visible
   answer. Pin: `the_notice_lifetime_today` (`update/resolver/tests/cross.rs`).
+- **Rung 1 at 187 with the pane open (conductor, 2026-09-25): (a), accept the fall-through.** Measured (a temporary
+  print in `stopped_row`, reverted; shell merge, 13 conflicted, pane open): 187x50 → footer 108 columns, bar 61,
+  **room 44**; the new rung is **50** cells, so the footer draws `merge in progress · 13 conflicted`, the next whole
+  rung, as the ladder's rule gives. 120x40 (pane below) → 120 columns, room 56: rung 1 shows whole. 160x48 (pane
+  beside) → 92 columns, bar 61, **room 28**: the footer draws `merge in progress` (the old `… · 13 files conflicted`,
+  39 cells, did not fit there either). The fitting is not changed (Out); the banner's full rung is unchanged.
 - **Hand-edit tint dropped (conductor, 2026-09-25):** ADR-0044 amended at 6bad98dc; pin
   `a_hand_edited_both_take_reads_as_no_block_after_the_reread`.
 
@@ -146,16 +152,29 @@ pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
       (`tests/it/resolver/handover.rs`); the tint part dropped (ADR-0044 @ 6bad98dc).
 - [x] Find-and-pin 2 and 3: the lines in NOTES, and (conductor, 2026-09-25) as tests: `the_notice_lifetime_today`
       (`update/resolver/tests/cross.rs`), `only_the_graph_footer_reads_the_short_stop_rungs` (`tests/it/stop_ladder_readers.rs`).
-- [ ] `n_past_the_last_block_says_no_more_conflicts_this_way`: red first, then green.
+- [x] `n_past_the_last_block_says_no_more_conflicts_this_way`: red first, then green (`update/resolver/tests/cross.rs`).
 - [x] `a_shell_stop_keeps_a_short_origin_before_dropping_it`: red first, then green (`update/banner/tests.rs`).
-- [ ] every test named under Touches.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-stop-line-short-origin-187x50.txt` (a shell
+- [x] every test named under Touches — `no_more_conflicts_is_not_repeated_in_the_bar`,
+      `the_no_more_notice_is_gone_after_the_next_move`, `no_more_this_way_shows_before_the_file_is_done` (cross.rs);
+      `a_card_says_no_more_this_way_and_its_bar_keeps_the_side_keys` (`update/resolver/tests.rs`);
+      `the_finish_row_outranks_no_more_this_way` (file_keys.rs); `a_previous_run_stop_keeps_a_short_origin`,
+      `a_this_run_stop_has_no_duplicate_rung`, `every_stop_ladder_narrows_and_keeps_its_count_whole` (banner tests);
+      walk `m5_walk::every_scenario::n_past_the_last_block_says_no_more`. **Substituted:**
+      `stop_line_keeps_the_short_origin_at_187_with_the_pane_open` was not written — the 187 Decision makes rung 2 the
+      right draw there; `capture_a_launch_into_a_shell_merge` (`tests/it/conflict_interim/landing_shots.rs`) asserts it
+      at 187 and rung 1 at 120. Tint tests dropped with the tint.
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-stop-line-short-origin-187x50.txt` (a shell
       merge, 13 files conflicted, the changes pane open) and `fix-no-more-this-way-120x40.txt`.
   - **What right looks like:** the graph footer's stop part reads `merge in progress · from the shell · 13 conflicted`,
     whole, before the bar. The resolver's notice row (under the identity row) reads `no more conflicts this way`; the
     bottom row has no `no more conflicts` and contains `⏎ done`.
 ~~  - Tint (hand edit): colour, so **unverified** by capture; the buffer tests are the evidence.~~
-- [ ] MAP.md updated (doc, no test).
+  - **Substituted (builder):** no new files under those two names; the existing captures of the same frames were
+    retaken instead. Shell merge, 13 conflicted, pane open: `fix-landing-b-launch-187x50.txt` (rung 2, per the 187
+    Decision) and `…-120x40.txt` (rung 1), by `capture_a_launch_into_a_shell_merge`. The notice:
+    `m6-08-no-more-conflicts-120x40.txt` / `-80x24.txt`, pty walk `n-past-the-last-block-says-no-more`. At 80x24 the
+    bar says `⏎` bare, not `⏎ done` (the 80-column bar is keys only).
+- [x] MAP.md updated (doc, no test): `crates/graft/MAP.md` `stop_wordings`, the cross rule (rule 3), `side_keys`, done-file `n`/`N`.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -268,3 +287,25 @@ Decision above written in; pin 3 made a test; batch 6 built; stopped at Scope's 
   187 capture `fix-stop-line-short-origin-187x50`. No journey rows lowered (none of this pass changes a step count).
   No KNOWN_GAPS row closed. Did not compact.
 
+**2026-09-25, builder (opus), fourth pass. Done.** Scout 61 used throughout.
+- Decisions: the 187 fall-through and the 160 measurement written in (160x48, pane beside: 92 columns, bar 61, room 28
+  → `merge in progress`; the old `… · 13 files conflicted` did not fit there either).
+- **Batch 2 built** (`update/resolver/walk.rs`): `NO_MORE_THIS_WAY` (`pub(crate) const`); rule 3 and the done-file
+  `n`/`N` with nothing to cross set it as an info notice and leave `state.status` alone; the card's side keys stay in
+  the bar (`names::side_keys` still has three other callers, so kept). Walk doc comment rewritten. Red first:
+  `n_past_the_last_block_says_no_more_conflicts_this_way` and three siblings failed before the change, green after.
+- **Pty captures retaken** (`.scratch/m6-conflicts/pty-walk-m6.py` with `GRAFT_UPDATE_SHOTS=1`, then a plain run each,
+  all `settled`; m6-06 is the SIGKILL relaunch, `died on signal 9`):
+  - `m6-08-no-more-conflicts-120x40`, `-80x24` ← `n-past-the-last-block-says-no-more`;
+  - `m6-18-launch-shell-begun-120x40`, `-187x50`, `-200x50` ← `b-launch-to-first-conflict`;
+  - `m6-06-relaunch-sticky-120x40` ← `kill-9-mid-rebase-then-relaunch`.
+  - Plain-run unchanged: `m6-18-…-160x48`, `m6-18-…-80x24`, `m6-06-…-80x24`.
+- Captions updated (`m6-contact-sheet-captions.tsv`): m6-06 120x40, m6-08 both, fix-landing-b-launch both, m6-18
+  120/187/200. Sheet rebuilt: 176 539 / 178 148 / 141 905 B. No earlier milestone's captures retaken.
+- Comment `m5_walk/conflict_journeys.rs:378-383` re-worded to the new 120 rung.
+- Journey rows: none lowered — no step count changes (rule 3 adds no key; the ladder is words).
+- KNOWN_GAPS rows (the conductor's to close or re-word): M6/21 `:769-770` (the stop line's origin) — the origin now
+  shows short at 120 and 200, not at 160 or 187 with the pane open; M6/15 `:693` (the double wording) — words said once.
+- Colour unverified: nothing in this ticket changes colour.
+- **Compacted once in this pass**, after batch 2, the captures, captions, sheet and MAP.md, before these ticks and
+  NOTES. What remained then was only these ticks, the NOTES, gates and commit, and all of it is done here.

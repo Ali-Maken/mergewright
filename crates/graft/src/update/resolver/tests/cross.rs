@@ -119,28 +119,123 @@ fn n_wraps_when_no_other_file_is_open() {
     assert_eq!(notice(&state), Some("wrapped · 1 still open"));
 }
 
-#[test]
-fn n_past_the_end_with_nothing_open_says_no_more() {
+/// Every block of `three.txt` taken, the cursor on the last, in a list of
+/// `paths` where only `three.txt` is unmerged: rule 3's ground.
+fn nothing_open_on_three(paths: &[&str]) -> AppState {
     let mut file = three();
     for block in 0..3 {
         file.take(block, Take::Ours).expect("the block");
     }
-    let mut state = on("three.txt", file, &["three.txt"], &["three.txt"]);
+    let mut state = on("three.txt", file, paths, &["three.txt"]);
     state.resolver.as_mut().expect("open").cursor_block = Some(2);
-    let (state, _) = press(&state, KeyCode::Char('n'));
-    assert_eq!(cursor(&state), Some(2), "unmoved");
+    state
+}
+
+/// The frame's bottom row: the resolver's bar.
+fn bottom_row(state: &AppState) -> String {
+    let frame = super::frame_text(state);
+    frame
+        .lines()
+        .last()
+        .expect("a frame has rows")
+        .trim_end()
+        .to_owned()
+}
+
+/// Rule 3 (m6-conflicts/61): past the last block with nothing open anywhere,
+/// `n` (and `N` before the first) says so on the notice row — an info
+/// notice, not a warning — and leaves the status line alone, so the bar
+/// keeps its own hints.
+#[test]
+fn n_past_the_last_block_says_no_more_conflicts_this_way() {
+    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
+
+    let state = nothing_open_on_three(&["three.txt"]);
+    let status_before = state.status.clone();
+    let (after, _) = press(&state, KeyCode::Char('n'));
+    assert_eq!(cursor(&after), Some(2), "unmoved");
     assert_eq!(
-        sticky(&state),
-        ("no more conflicts", Some("⏎ marks three.txt done"))
+        after.resolver.as_ref().expect("open").notice,
+        Some((NO_MORE_THIS_WAY.to_owned(), false)),
+        "an info notice"
     );
-    let mut back = state.clone();
+    assert_eq!(
+        after.status, status_before,
+        "the status line is not touched"
+    );
+    assert!(
+        bottom_row(&after).contains("\u{23ce} done"),
+        "{}",
+        bottom_row(&after)
+    );
+
+    let mut back = state;
     back.resolver.as_mut().expect("open").cursor_block = Some(0);
     let (back, _) = press(&back, KeyCode::Char('N'));
     assert_eq!(cursor(&back), Some(0), "unmoved");
+    assert_eq!(notice(&back), Some(NO_MORE_THIS_WAY));
+    assert_eq!(back.status, status_before);
+}
+
+/// The words are said once, on the notice row: the bar under the document
+/// does not repeat them, and it still offers `⏎ done`.
+#[test]
+fn no_more_conflicts_is_not_repeated_in_the_bar() {
+    let (after, _) = press(&nothing_open_on_three(&["three.txt"]), KeyCode::Char('n'));
+    let frame = super::frame_text(&after);
     assert_eq!(
-        sticky(&back),
-        ("no more conflicts", Some("⏎ marks three.txt done"))
+        frame.matches("no more conflicts").count(),
+        1,
+        "once, on the notice row:\n{frame}"
     );
+    let bar = bottom_row(&after);
+    assert!(!bar.contains("no more conflicts"), "{bar}");
+    assert!(bar.contains("\u{23ce} done"), "{bar}");
+}
+
+/// The rule-3 notice keeps today's lifetime (Decisions, conductor
+/// 2026-09-25): gone after `j` onto another row, replaced by a take landing,
+/// replaced once `⏎`'s stage lands. `j`/`k` that go nowhere leave it up
+/// (`the_notice_lifetime_today`).
+#[test]
+fn the_no_more_notice_is_gone_after_the_next_move() {
+    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
+
+    let (said, _) = press(
+        &nothing_open_on_three(&["a.txt", "three.txt"]),
+        KeyCode::Char('n'),
+    );
+    assert_eq!(notice(&said), Some(NO_MORE_THIS_WAY));
+
+    let (moved, _) = press(&said, KeyCode::Char('k'));
+    assert_eq!(open_path(&moved), Path::new("a.txt"));
+    assert_eq!(notice(&moved), None, "`k` onto another row");
+
+    let (taking, commands) = press(&said, KeyCode::Char('o'));
+    let (took, _) = landed(&taking, &sent(&commands)[0]);
+    assert_ne!(notice(&took), Some(NO_MORE_THIS_WAY), "a take landed");
+
+    let (pressed, _) = press(&said, KeyCode::Enter);
+    let id = pressed
+        .resolver
+        .as_ref()
+        .and_then(|open| open.staging)
+        .expect("`⏎` launched a stage");
+    let (staged, _) = update(
+        &pressed,
+        AppEvent::Produced(id, super::words_and_c::staged("three.txt")),
+    );
+    assert_ne!(notice(&staged), Some(NO_MORE_THIS_WAY), "the stage landed");
+}
+
+/// Rule 3 on a file not yet done: not every file is done, so there is no
+/// finish row, and the notice is what the row draws.
+#[test]
+fn no_more_this_way_shows_before_the_file_is_done() {
+    let (after, _) = press(&nothing_open_on_three(&["three.txt"]), KeyCode::Char('n'));
+    assert!(crate::view::resolver::finish_row(&after).is_none());
+    let frame = super::frame_text(&after);
+    assert!(frame.contains("no more conflicts this way"), "{frame}");
 }
 
 #[test]
