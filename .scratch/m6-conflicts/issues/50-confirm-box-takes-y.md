@@ -278,7 +278,7 @@ Byte-identical (diff exit code 0): `m4-02-push-box-lease-*`, `m5-ui-undo-after-p
 
 **Stale, not retaken:** `m4-01-push-box-plain-80x24` and `-160x48` (pty, `pty-walk-m4.py`). They already showed the
 graph's bar under the box, which predates rulings 07b. A retake wrote an unredacted
-`/var/folders/.../graft-remote-…` path, so I reverted it. The m4 script needs its path redaction back before a retake.
+`<os-tmp>/graft-remote-…` path, so I reverted it. The m4 script needs its path redaction back before a retake.
 
 Contact sheets: I rebuilt m6 (3 parts: 176 195 / 178 148 / 137 605 B). The m5 sheet (`m5-contact-sheet-2`) and the m3
 sheet include retaken captures; the conductor rebuilds those.
