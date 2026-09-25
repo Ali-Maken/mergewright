@@ -1,7 +1,8 @@
 //! The finish summary (m6-conflicts/19): `c` on a merge whose conflicts are
 //! all resolved shows what will land — the files the user resolved and what
 //! each came out as, the files git combined on its own, and the message —
-//! and only `⏎` commits it (keymap §2.6b).
+//! and only `y` (from the file list) or `⏎` (from the subject) commits it
+//! (keymap §2.6b).
 //!
 //! Modal while open: [`finish_key`] runs before the resolver and the banner
 //! and claims every key but `Ctrl+C`. The summary is read off the loop's
@@ -68,6 +69,16 @@ impl FinishFocus {
             Self::Files => Self::Subject,
             Self::Subject => Self::Body,
             Self::Body => Self::Files,
+        }
+    }
+
+    /// `⇧⇥`: the way back — files → body → subject → files.
+    #[must_use]
+    pub fn prev(self) -> Self {
+        match self {
+            Self::Files => Self::Body,
+            Self::Subject => Self::Files,
+            Self::Body => Self::Subject,
         }
     }
 }

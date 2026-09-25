@@ -350,24 +350,27 @@ fn resolver_done_list(restart: bool) -> Vec<Hint> {
     list
 }
 
-/// The finish summary's bar (keymap §2.6b), by focus (m6-conflicts/19).
-/// `⏎` commits from the files and the subject; in the body it is a newline,
-/// so `⌃⏎` commits there. `⇥` names where focus goes next. `space diff` is
-/// drawn only on a row git combined, the only rows with a diff to show.
+/// The finish summary's keys (keymap §2.6b), by focus (m6-conflicts/19),
+/// drawn in the summary's own bottom border (m6-conflicts/59). `y` commits
+/// from the files, the one confirm key of every preview (P12); `⏎` commits
+/// from the subject; in the body it is a newline, so `⌃⏎` commits there.
+/// `⇥` names where focus goes next. `⏎/space diff` (both the same toggle,
+/// named like `^O/^T all`) is drawn only on a row git combined, the only rows whose
+/// change he has not seen.
 ///
 /// Bound by `graft`'s `update::finish::finish_key` (m6-conflicts/34, the
 /// app half of ticket 19).
 fn finish_list(focus: SummaryFocus, expandable: bool) -> Vec<Hint> {
     match focus {
         SummaryFocus::Files if expandable => vec![
-            hint("⏎", "commit"),
-            hint("space", "diff"),
+            hint("y", "commit"),
+            hint("⏎/space", "diff"),
             hint("j/k", "move"),
             hint("⇥", "message"),
             hint("esc", "back"),
         ],
         SummaryFocus::Files => vec![
-            hint("⏎", "commit"),
+            hint("y", "commit"),
             hint("j/k", "move"),
             hint("⇥", "message"),
             hint("esc", "back"),

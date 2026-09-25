@@ -191,17 +191,31 @@ fn the_summary_lands_with_gits_message_and_the_cursor_on_what_git_combined() {
     assert!(open.body.is_empty());
     assert_eq!(open.cursor, 1, "the first `by_git` row");
     let view = crate::view::finish::finish_view(&state).expect("drawn");
-    assert_eq!(
-        view.title.as_str(),
-        "Finish · merging feature → main · nothing is written until ⏎"
-    );
+    let (from, into) = view.names.as_ref().expect("the read names the sides");
+    assert_eq!((from.as_str(), into.as_str()), ("feature", "main"));
+    assert!(view.expandable, "the cursor is on a row git combined");
     assert_eq!(view.by_git[0].what.as_str(), "modified  +1 −1");
 }
 
 #[test]
-fn enter_commits_with_gits_message_when_unedited() {
+fn unread_summary_has_no_names() {
+    let state = key(&stopped(InProgress::Merge, &[]), KeyCode::Char('c'));
+    let view = crate::view::finish::finish_view(&state).expect("drawn");
+    assert_eq!(view.names, None, "no invented names while reading");
+    assert_eq!(
+        graft_ui::finish_summary::preview_title(None, 120),
+        "Preview: finish the merge"
+    );
+    assert_eq!(
+        graft_ui::finish_summary::preview_line(None),
+        "1 merge commit · nothing is committed until y"
+    );
+}
+
+#[test]
+fn y_commits_with_gits_message_when_unedited() {
     let state = opened();
-    let (state, commands) = press(&state, plain(KeyCode::Enter));
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
     assert_eq!(resumes(&commands), vec![&Resume::Continue]);
     assert_eq!(finish(&state).committing, state.operating);
     assert!(state.operating.is_some());
@@ -227,7 +241,7 @@ fn an_empty_subject_is_refused_in_words() {
     if let Some(open) = state.finish.as_mut() {
         open.subject = TextField::new("");
     }
-    let (state, commands) = press(&state, plain(KeyCode::Enter));
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
     assert!(resumes(&commands).is_empty());
     assert_eq!(
         finish(&state).notice,
@@ -236,10 +250,10 @@ fn an_empty_subject_is_refused_in_words() {
 }
 
 #[test]
-fn enter_while_reading_says_wait() {
+fn y_while_reading_says_wait() {
     let state = stopped(InProgress::Merge, &[]);
     let state = key(&state, KeyCode::Char('c'));
-    let (state, commands) = press(&state, plain(KeyCode::Enter));
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
     assert!(resumes(&commands).is_empty());
     assert_eq!(
         finish(&state).notice,
@@ -264,7 +278,7 @@ fn an_unreadable_summary_commits_with_gits_message() {
             Product::FinishSummary(Err("1 still conflicted".to_owned())),
         ),
     );
-    let (_, commands) = press(&state, plain(KeyCode::Enter));
+    let (_, commands) = press(&state, plain(KeyCode::Char('y')));
     assert_eq!(resumes(&commands), vec![&Resume::Continue]);
 }
 
@@ -416,19 +430,11 @@ fn space_expands_a_git_combined_file() {
 #[test]
 fn keys_outside_2_6b_do_nothing() {
     let state = opened();
+    // Arrows, pages and `⇧⇥` are bound since ticket 59
+    // (`arrows_and_pages_move_the_file_cursor`, `backtab_steps_focus_back`).
     for key in [
-        plain(KeyCode::Up),
-        plain(KeyCode::Down),
-        plain(KeyCode::PageDown),
-        plain(KeyCode::PageUp),
-        plain(KeyCode::BackTab),
-        KeyPress {
-            code: KeyCode::Tab,
-            modifiers: Modifiers {
-                shift: true,
-                ..Modifiers::NONE
-            },
-        },
+        plain(KeyCode::Home),
+        plain(KeyCode::End),
         plain(KeyCode::Char('u')),
         plain(KeyCode::Char('q')),
     ] {
@@ -454,7 +460,7 @@ fn ctrl_c_passes_through() {
 #[test]
 fn committing_swallows_every_key() {
     let state = opened();
-    let state = key(&state, KeyCode::Enter);
+    let state = key(&state, KeyCode::Char('y'));
     for code in [
         KeyCode::Escape,
         KeyCode::Char('j'),
@@ -470,7 +476,7 @@ fn committing_swallows_every_key() {
 /// The answer routes (scope 7), over plain data: the real-git ones are in
 /// `tests/it/finish.rs`.
 fn committing() -> (AppState, JobId) {
-    let state = key(&opened(), KeyCode::Enter);
+    let state = key(&opened(), KeyCode::Char('y'));
     let id = state.operating.expect("the commit runs");
     (state, id)
 }
@@ -600,4 +606,102 @@ fn split_and_compose_round_trip() {
     );
     assert_eq!(compose("Subject", "  \n"), "Subject");
     assert_eq!(compose("Subject", "Body"), "Subject\n\nBody");
+}
+
+/// P12 (keymap §2.6b): in the file list `y` commits and `⏎` shows the
+/// cursor file's change, as `space` does.
+#[test]
+fn y_in_the_file_list_commits_and_enter_toggles_the_diff() {
+    let state = opened();
+    assert_eq!(finish(&state).cursor, 1, "on README.md");
+    let (shown, commands) = press(&state, plain(KeyCode::Enter));
+    assert!(resumes(&commands).is_empty(), "⏎ does not commit");
+    let read = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadFinishDiff(id, path) => Some((*id, path.clone())),
+            _ => None,
+        })
+        .expect("⏎ reads the diff");
+    assert_eq!(read.1, PathBuf::from("README.md"));
+    assert_eq!(finish(&shown).expanded, Some((1, Loading::Pending(read.0))));
+    let hidden = key(&shown, KeyCode::Enter);
+    assert_eq!(finish(&hidden).expanded, None, "⏎ again hides it");
+
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
+    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+    assert_eq!(finish(&state).committing, state.operating);
+    assert!(state.operating.is_some());
+}
+
+#[test]
+fn y_in_the_subject_is_typed_text() {
+    let state = key(&opened(), KeyCode::Tab);
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
+    assert!(resumes(&commands).is_empty());
+    assert_eq!(finish(&state).subject.text(), "Merge branch 'feature'y");
+    let state = key(&state, KeyCode::Tab);
+    let (state, commands) = press(&state, plain(KeyCode::Char('y')));
+    assert!(resumes(&commands).is_empty());
+    assert_eq!(finish(&state).body.text(), "y");
+}
+
+#[test]
+fn enter_in_the_subject_still_commits() {
+    let state = key(&opened(), KeyCode::Tab);
+    let (_, commands) = press(&state, plain(KeyCode::Enter));
+    assert_eq!(resumes(&commands), vec![&Resume::Continue]);
+}
+
+#[test]
+fn arrows_and_pages_move_the_file_cursor() {
+    let state = opened();
+    let up = key(&state, KeyCode::Up);
+    assert_eq!(finish(&up).cursor, 0);
+    assert_eq!(finish(&key(&up, KeyCode::Down)).cursor, 1);
+    assert_eq!(finish(&key(&state, KeyCode::PageUp)).cursor, 0);
+    assert_eq!(finish(&key(&up, KeyCode::PageDown)).cursor, 1);
+
+    // A page is the list's visible height.
+    let mut long = opened();
+    let mut many = (*summary()).clone();
+    many.by_git = (0..80)
+        .map(|n| ByGit {
+            path: PathBuf::from(format!("file{n}.txt")),
+            change: Change::Modified,
+            added: 1,
+            removed: 0,
+        })
+        .collect();
+    if let Some(open) = long.finish.as_mut() {
+        open.summary = Loading::Ready(Arc::new(many));
+        open.cursor = 0;
+    }
+    let view = crate::view::finish::finish_view(&long).expect("drawn");
+    let height =
+        graft_ui::finish_summary::list_height(&view, crate::view::finish::summary_area(&long));
+    assert!(height > 2, "{height}");
+    let paged = key(&long, KeyCode::PageDown);
+    assert_eq!(finish(&paged).cursor, height);
+    let back = key(&paged, KeyCode::PageUp);
+    assert_eq!(finish(&back).cursor, 0);
+    assert_eq!(finish(&back).top, 0, "the heading comes back with it");
+}
+
+#[test]
+fn backtab_steps_focus_back() {
+    let state = opened();
+    let shift_tab = KeyPress {
+        code: KeyCode::Tab,
+        modifiers: Modifiers {
+            shift: true,
+            ..Modifiers::NONE
+        },
+    };
+    let body = press(&state, plain(KeyCode::BackTab)).0;
+    assert_eq!(finish(&body).focus, FinishFocus::Body);
+    let subject = press(&body, shift_tab).0;
+    assert_eq!(finish(&subject).focus, FinishFocus::Subject);
+    let files = press(&subject, plain(KeyCode::BackTab)).0;
+    assert_eq!(finish(&files).focus, FinishFocus::Files);
 }

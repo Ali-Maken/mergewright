@@ -1,7 +1,9 @@
 //! The finish summary (`c` on a merge, m6-conflicts/19): what will land —
 //! the files the user resolved, the files git combined on its own, and the
-//! message — before `⏎` commits it
-//! (`docs/design-notes/m6-conflicts.md` Amendment 2, "Finish summary").
+//! message — before `y` commits it. It is drawn as a preview, inside the
+//! same rounded frame as the merge preview: title in the top border, keys in
+//! the bottom one (`docs/design-notes/m6-conflicts.md` Amendment 2, "Finish
+//! summary", and Amendment 2026-09-24, "The finish summary is a preview").
 //!
 //! Owns no state and reads no repository. `graft::update::finish` holds the
 //! state and `graft::view::finish` turns it into the [`FinishView`] this
@@ -25,21 +27,24 @@ use ratatui::widgets::Widget;
 use crate::detail::{DiffView, LineKindView};
 use crate::detail_pane::{DiffFocus, diff_body};
 use crate::fit::fit;
+use crate::frame_box::border_row_spans;
+use crate::graph_screen::{Divider, Hint, HintContext, hints_for, hints_text};
 use crate::paint::foreground;
 use crate::text_input::{AreaView, AreaWidget, FOCUS, FieldView, FieldWidget};
 use crate::theme::{Theme, Token};
 
 /// The smallest area the summary draws in, `(columns, rows)`. Below it the
-/// widget draws one line, `finish needs 60x14 · esc back`, and the app
-/// answers only `Esc` (and `Ctrl+C`).
-pub const FINISH_MIN: (u16, u16) = (60, 14);
+/// widget draws one line, `finish needs 62x18 · esc back`, and the app
+/// answers only `Esc` (and `Ctrl+C`). (60, 14) grown by the frame: its two
+/// side columns, its two border rows and the two preview lines.
+pub const FINISH_MIN: (u16, u16) = (62, 18);
 
 /// From this width the file lists take the left 60 % and the message the
 /// right; below it, one column.
 pub const TWO_COLUMN_MIN: u16 = 160;
 
 /// The most rows an expanded diff draws under its row. More than that adds
-/// one row, `… N more lines · space hides`.
+/// one row, `… N more lines · ⏎ hides`.
 pub const DIFF_ROWS_MAX: usize = 12;
 
 /// Cells an expanded diff is indented by, under its row.
@@ -87,7 +92,7 @@ pub enum SummaryState {
     Loading,
     /// The lists are the summary's.
     Ready,
-    /// The read failed: `summary unavailable: <why> · ⏎ commits with git's
+    /// The read failed: `summary unavailable: <why> · y commits with git's
     /// message`.
     Unavailable(SanitizedText),
 }
@@ -95,8 +100,10 @@ pub enum SummaryState {
 /// Everything the summary draws.
 #[derive(Clone, Debug)]
 pub struct FinishView<'a> {
-    /// `Finish · merging feature → main · nothing is written until ⏎`.
-    pub title: SanitizedText,
+    /// `(from, into)`: the branch merged in and the one it lands on. `None`
+    /// while the read has not landed, or when the names are not known: the
+    /// title then reads `Preview: finish the merge`, never an invented name.
+    pub names: Option<(SanitizedText, SanitizedText)>,
     /// The files the merge conflicted on, worded by what the user chose.
     pub by_you: Vec<SummaryRow>,
     /// Every other staged change: the files git combined on its own.
@@ -114,7 +121,15 @@ pub struct FinishView<'a> {
     pub body: AreaView<'a>,
     /// What has the keyboard.
     pub focus: SummaryFocus,
-    /// A line above the bar, and whether it is a problem.
+    /// The cursor stands on a row git combined: the footer offers `⏎ diff`
+    /// (`HintContext::Finish`'s own meaning).
+    pub expandable: bool,
+    /// The frame has the keyboard: its border is `accent` and its keys are
+    /// drawn. `false` under a live box (a confirm, a prompt), which claims
+    /// the next key, so the summary's keys would do nothing (rulings 07b,
+    /// Q1).
+    pub focused: bool,
+    /// A line above the bottom border, and whether it is a problem.
     pub notice: Option<(SanitizedText, bool)>,
     /// The commit is running.
     pub busy: bool,
@@ -138,6 +153,57 @@ impl FinishView<'_> {
             .or_else(|| self.by_git.get(index.checked_sub(self.by_you.len())?))
     }
 }
+
+/// The top border's words for a frame `width` cells wide. With names: the
+/// full title, else the short one, else the short one cut with `…`.
+/// Without: `Preview: finish the merge`, cut with `…` if it must be. What
+/// comes back always fits the border whole (`width` less the corners and
+/// the gutter either side).
+#[must_use]
+pub fn preview_title(names: Option<(&str, &str)>, width: u16) -> String {
+    let room = usize::from(width).saturating_sub(4);
+    let ladder = match names {
+        Some((from, into)) => vec![
+            format!("Preview: finish merging {from} into {into}"),
+            format!("Preview: merge {from} → {into}"),
+        ],
+        None => vec!["Preview: finish the merge".to_owned()],
+    };
+    for title in &ladder {
+        if crate::frame_box::cells(title) <= room {
+            return title.clone();
+        }
+    }
+    fit(ladder.last().map_or("", String::as_str), room)
+}
+
+/// The first line inside the frame: what lands, and that nothing does
+/// until `y`. `on <into>` only when the branch is known.
+#[must_use]
+pub fn preview_line(into: Option<&str>) -> String {
+    match into {
+        Some(into) => format!("1 merge commit on {into} · nothing is committed until y"),
+        None => "1 merge commit · nothing is committed until y".to_owned(),
+    }
+}
+
+/// The keys the bottom border draws in a frame `width` cells wide: the
+/// `HintContext::Finish` list for the focus, fitted to the border. None
+/// while the commit runs or a box has the keyboard, when none of them acts.
+#[must_use]
+pub fn footer_hints(view: &FinishView<'_>, width: u16) -> Vec<Hint> {
+    if view.busy || !view.focused {
+        return Vec::new();
+    }
+    let context = HintContext::Finish {
+        focus: view.focus,
+        expandable: view.expandable,
+    };
+    hints_for(&context, Divider::Hidden, width.saturating_sub(4))
+}
+
+/// The second line inside the frame.
+pub const UNDO_LINE: &str = "undo: u takes this back";
 
 /// [`FinishView`] drawn into the area under the header and above the bar.
 #[derive(Debug)]
@@ -174,8 +240,8 @@ impl Widget for &FinishScreen<'_> {
             );
             return;
         };
-        let title = self.ascii_safe(self.view.title.as_str());
-        self.text(buf, placed.title, &title, Token::Accent, true);
+        self.draw_frame(buf, placed.frame);
+        self.draw_preview(buf, placed.preview);
         self.draw_list(buf, placed.list);
         self.draw_message(buf, &placed);
         if let (Some(rect), Some((words, problem))) = (placed.notice, &self.view.notice) {
@@ -197,6 +263,69 @@ impl FinishScreen<'_> {
             style = style.add_modifier(Modifier::BOLD);
         }
         buf.set_string(rect.x, rect.y, fit(text, usize::from(rect.width)), style);
+    }
+
+    /// The rounded frame: `accent` while it has focus (`border` under a
+    /// live box), the title in the
+    /// top border in `accent` BOLD, the keys in the bottom border with the
+    /// first key `accent` BOLD and the rest muted, as the merge preview's
+    /// footer is. While the commit runs no key acts, so none is drawn.
+    /// Under `NO_COLOR` every token paints nothing: plain glyphs, and the
+    /// title and first key still BOLD.
+    fn draw_frame(&self, buf: &mut Buffer, frame: Rect) {
+        if frame.width < 2 || frame.height < 2 {
+            return;
+        }
+        let line = if self.view.focused {
+            foreground(self.theme, Token::Accent)
+        } else {
+            foreground(self.theme, Token::Border)
+        };
+        let strong = line.add_modifier(Modifier::BOLD);
+        let muted = foreground(self.theme, Token::TextMuted);
+        let names = self
+            .view
+            .names
+            .as_ref()
+            .map(|(from, into)| (from.as_str(), into.as_str()));
+        // `→` is two cells at the ASCII tier (`->`): measure for it.
+        let room = frame.width.saturating_sub(u16::from(self.ascii));
+        let title = self.ascii_safe(&preview_title(names, room));
+        let top = border_row_spans('╭', '╮', &[(&title, strong)], line, frame.width);
+        buf.set_line(frame.x, frame.y, &top, frame.width);
+        for y in frame.y + 1..frame.bottom() - 1 {
+            buf.set_string(frame.x, y, "│", line);
+            buf.set_string(frame.right() - 1, y, "│", line);
+        }
+        let keys = hints_text(&footer_hints(self.view, frame.width))
+            .trim_start()
+            .to_owned();
+        let first = keys.split(' ').next().unwrap_or_default();
+        let rest = &keys[first.len()..];
+        let bottom = border_row_spans(
+            '╰',
+            '╯',
+            &[(first, strong), (rest, muted)],
+            line,
+            frame.width,
+        );
+        buf.set_line(frame.x, frame.bottom() - 1, &bottom, frame.width);
+    }
+
+    /// The two lines the merge preview opens with: what lands, and how to
+    /// take it back.
+    fn draw_preview(&self, buf: &mut Buffer, rect: Rect) {
+        if rect.height < 2 {
+            return;
+        }
+        let into = self.view.names.as_ref().map(|(_, into)| into.as_str());
+        self.text(buf, rect, &preview_line(into), Token::Text, false);
+        let second = Rect {
+            y: rect.y + 1,
+            height: 1,
+            ..rect
+        };
+        self.text(buf, second, UNDO_LINE, Token::TextMuted, false);
     }
 
     /// The title's arrow at the ASCII tier.
@@ -244,7 +373,7 @@ impl FinishScreen<'_> {
                 ListLine::Row(index) => self.draw_row(buf, one, index, path_width),
                 ListLine::More { hidden, .. } => {
                     let indented = indent(one);
-                    let words = format!("… {hidden} more lines · space hides");
+                    let words = format!("… {hidden} more lines · ⏎ hides");
                     self.text(buf, indented, &words, Token::TextMuted, false);
                 }
                 ListLine::Diff { nth, .. } => {
@@ -288,7 +417,7 @@ impl FinishScreen<'_> {
             }
             SummaryState::Unavailable(why) => {
                 let words = format!(
-                    "summary unavailable: {} · ⏎ commits with git's message",
+                    "summary unavailable: {} · y commits with git's message",
                     why.as_str()
                 );
                 self.text(buf, rect, &words, Token::Warning, false);
@@ -304,7 +433,7 @@ impl FinishScreen<'_> {
                 "COMBINED BY GIT ON ITS OWN · none".to_owned()
             }
             Section::ByGit => format!(
-                "COMBINED BY GIT ON ITS OWN · {} · space shows the change",
+                "COMBINED BY GIT ON ITS OWN · {} · ⏎ shows the change",
                 self.view.by_git.len()
             ),
             Section::Unrecorded => format!(
@@ -334,6 +463,30 @@ impl FinishScreen<'_> {
             style = style.bg(crate::paint::color(self.theme.token(Token::Selection)));
         }
         buf.set_string(rect.x, rect.y, fit(&line, usize::from(rect.width)), style);
+        // The words take the colours that tie them back to the panes and to
+        // diffs; the characters already say it all (rule 5).
+        let before = crate::frame_box::cells(&format!("{marker} {path}{}  ", " ".repeat(pad)));
+        let what = row.what.as_str();
+        for (start, end, token) in tints(what) {
+            let x = before + crate::frame_box::cells(&what[..start]);
+            let width = crate::frame_box::cells(&what[start..end]);
+            let x = rect.x.saturating_add(u16::try_from(x).unwrap_or(u16::MAX));
+            if x >= rect.right() {
+                continue;
+            }
+            let width = u16::try_from(width)
+                .unwrap_or(u16::MAX)
+                .min(rect.right() - x);
+            buf.set_style(
+                Rect {
+                    x,
+                    y: rect.y,
+                    width,
+                    height: 1,
+                },
+                Style::new().fg(crate::paint::color(self.theme.token(token))),
+            );
+        }
     }
 
     /// The expanded diff's lines from `nth`, into `rect`.
@@ -405,6 +558,35 @@ impl FinishScreen<'_> {
                 .render(placed.body, buf);
         }
     }
+}
+
+/// Byte ranges of a row's words that take a colour: `yours · <branch>` in
+/// `ours`, `theirs · <branch>` in `theirs`, `+n` in `added`, `−n` in
+/// `removed`.
+fn tints(what: &str) -> Vec<(usize, usize, Token)> {
+    let mut found = Vec::new();
+    for (lead, token) in [("yours · ", Token::Ours), ("theirs · ", Token::Theirs)] {
+        let mut from = 0;
+        while let Some(at) = what[from..].find(lead).map(|at| at + from) {
+            let name = at + lead.len();
+            let end = what[name..]
+                .find([' ', ','])
+                .map_or(what.len(), |stop| name + stop);
+            found.push((at, end, token));
+            from = end;
+        }
+    }
+    for (sign, token) in [('+', Token::Added), ('\u{2212}', Token::Removed)] {
+        for (at, _) in what.match_indices(sign) {
+            let digits = what[at + sign.len_utf8()..]
+                .find(|c: char| !c.is_ascii_digit())
+                .unwrap_or(what.len() - at - sign.len_utf8());
+            if digits > 0 {
+                found.push((at, at + sign.len_utf8() + digits, token));
+            }
+        }
+    }
+    found
 }
 
 /// `rect` moved right by [`DIFF_INDENT`].

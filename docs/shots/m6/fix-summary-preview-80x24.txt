@@ -1,0 +1,24 @@
+MERGING
+╭ Preview: finish merging feature into main ───────────────────────────────────╮
+│ 1 merge commit on main · nothing is committed until y                        │
+│ undo: u takes this back                                                      │
+│ RESOLVED BY YOU · 2                                                          │
+│   gone.txt   kept · yours · main                                             │
+│   notes.txt  theirs · feature in 2 of 2 conflicts                            │
+│ COMBINED BY GIT ON ITS OWN · 1 · ⏎ shows the change                          │
+│ ▸ README.md  modified  +1 −1                                                 │
+│ MESSAGE · ⇥ edit                                                             │
+│  Subject Merge branch 'feature'                            ┊           22/50 │
+│  Body                                                                        │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+╰ y commit  ⏎/space diff  j/k move  ⇥ message  esc back ───────────────────────╯
+

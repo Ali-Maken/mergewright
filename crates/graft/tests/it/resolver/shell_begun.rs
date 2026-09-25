@@ -2,10 +2,10 @@
 //!
 //! - a hand edit lost to a whole-file take, and the way the user gets it
 //!   back (m6 g04/g08 review, M1);
-//! - finishing it from Graft: `c ⏎` from J3's banner landing, a hook's
+//! - finishing it from Graft: `c y` from J3's banner landing, a hook's
 //!   refusal keeping the summary (ticket 20);
 //! - `u` on that finish: the merge put back, the landing on the banner, and
-//!   `c ⏎` finishing it again (tickets 20, 41);
+//!   `c y` finishing it again (tickets 20, 41, 59);
 //! - the commit editor's words naming the banner, and their fit at 80x24
 //!   (tickets 39, 40).
 
@@ -558,12 +558,12 @@ fn c_on_the_banner(app: &App, state: AppState) -> AppState {
     })
 }
 
-/// `⏎` in the summary, the finish it sends, and the landing it owes.
-fn enter_to_the_landing(app: &App, state: &AppState) -> AppState {
-    let state = app.key(state, KeyCode::Enter);
+/// `y` in the summary, the finish it sends, and the landing it owes.
+fn y_to_the_landing(app: &App, state: &AppState) -> AppState {
+    let state = app.key(state, KeyCode::Char('y'));
     assert!(
         state.operating.is_some(),
-        "`⏎` commits: {:?}",
+        "`y` commits: {:?}",
         state.finish.as_ref().map(|open| &open.notice)
     );
     let state = app.pump(state, "the finish and its landing", |state| {
@@ -636,13 +636,13 @@ fn shot_at(
     (frame, body)
 }
 
-/// **J6b: `c ⏎`, two keys from the resolved banner** (the `b-finish` count
+/// **J6b: `c y`, two keys from the resolved banner** (the `b-finish` count
 /// of 2). git: a merge commit whose second parent is `feature`, no
 /// `MERGE_HEAD`, one `FinishMerge` entry. App: B3's first landing — the
 /// graph focused, the cursor on the merge commit, `merged feature into
 /// main ✓`, the summary closed.
 #[test]
-fn c_enter_finishes_a_shell_begun_merge() {
+fn c_y_finishes_a_shell_begun_merge() {
     let scratch = resolved_shell_merge();
     let repo = scratch.path().to_owned();
     let before = journal_entries(&repo).len();
@@ -657,7 +657,7 @@ fn c_enter_finishes_a_shell_begun_merge() {
     let state = app.pump(state, "the finish summary", |state| {
         state.finish.as_ref().is_some_and(|open| open.job.is_none())
     });
-    let state = enter_to_the_landing(&app, &state);
+    let state = y_to_the_landing(&app, &state);
 
     let feature = crate::app_harness::git(&repo, &["rev-parse", "feature"]);
     let second = crate::app_harness::git(&repo, &["rev-parse", "HEAD^2"]);
@@ -706,14 +706,14 @@ struct UndoLanding {
     merge: String,
 }
 
-/// Launch into J3, `c ⏎` to finish, then `u`, run to its refresh.
+/// Launch into J3, `c y` to finish, then `u`, run to its refresh.
 fn u_landing() -> UndoLanding {
     let scratch = resolved_shell_merge();
     let repo = scratch.path().to_owned();
     let pre_merge = crate::app_harness::git(&repo, &["rev-parse", "main"]);
     let (app, state) = launched_into(&repo);
     let state = c_on_the_banner(&app, state);
-    let state = enter_to_the_landing(&app, &state);
+    let state = y_to_the_landing(&app, &state);
     assert!(state.graph_has_focus(), "the finish landed on the graph");
     let merge = crate::app_harness::git(&repo, &["rev-parse", "HEAD"]);
 
@@ -801,12 +801,12 @@ fn u_after_a_shell_begun_finish_puts_the_merge_back() {
     app.close();
 }
 
-/// **`c ⏎` from the `u` landing finishes the merge again: 2 keys**
+/// **`c y` from the `u` landing finishes the merge again: 2 keys**
 /// (`b-finish-again-after-undo`, ticket 41). `c` opens the finish summary,
-/// not the commit editor; `⏎` commits a merge whose parents are the
+/// not the commit editor; `y` commits a merge whose parents are the
 /// pre-merge tip and `feature`, journaled as a `FinishMerge`.
 #[test]
-fn c_enter_after_u_finishes_the_merge_again() {
+fn c_y_after_u_finishes_the_merge_again() {
     let UndoLanding {
         scratch,
         app,
@@ -825,9 +825,9 @@ fn c_enter_after_u_finishes_the_merge_again() {
     let state = app.pump(state, "the finish summary", |state| {
         state.finish.as_ref().is_some_and(|open| open.job.is_none())
     });
-    let state = app.key(&state, KeyCode::Enter);
+    let state = app.key(&state, KeyCode::Char('y'));
     keys += 1;
-    assert!(state.operating.is_some(), "`⏎` commits");
+    assert!(state.operating.is_some(), "`y` commits");
     let state = app.pump(state, "the finish and its landing", |state| {
         state.operating.is_none() && state.in_progress.is_none() && !state.land_on_head
     });

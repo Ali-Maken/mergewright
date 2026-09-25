@@ -85,9 +85,9 @@ fn settled(state: &AppState) -> bool {
         state.resolver.as_ref().is_none_or(|open| {
             open.job.is_none() && open.base_job.is_none() && open.set_job.is_none()
         }) && (state.resolver.is_none() || state.status_read.is_none());
-    // M6's finish summary: `c` starts its read, `Space` a row's diff. `⏎`
-    // fed before the read lands is refused ("wait") — a capture would show
-    // the summary still loading, not the commit (m6-conflicts/43).
+    // M6's finish summary: `c` starts its read, `⏎`/`Space` a row's diff.
+    // `y` fed before the read lands is refused ("wait") — a capture would
+    // show the summary still loading, not the commit (m6-conflicts/43, 59).
     let finish_read = state
         .finish
         .as_ref()

@@ -214,7 +214,7 @@ fn esc_from_the_summary_returns_to_the_resolver() {
 #[test]
 fn a_merge_committed_from_the_resolver_lands_on_the_graph() {
     let state = summary_open();
-    let (state, _) = press(&state, KeyCode::Enter);
+    let (state, _) = press(&state, KeyCode::Char('y'));
     let id = state.operating.expect("the commit runs");
     let (state, _) = update(
         &state,
@@ -235,7 +235,7 @@ fn a_merge_committed_from_the_resolver_lands_on_the_graph() {
 #[test]
 fn an_incomplete_commit_from_the_resolver_closes_it() {
     let state = summary_open();
-    let (state, _) = press(&state, KeyCode::Enter);
+    let (state, _) = press(&state, KeyCode::Char('y'));
     let id = state.operating.expect("the commit runs");
     let (state, _) = update(
         &state,
@@ -256,7 +256,7 @@ fn an_incomplete_commit_from_the_resolver_closes_it() {
 #[test]
 fn a_new_stop_from_the_resolver_opens_its_own_resolver() {
     let state = summary_open();
-    let (state, _) = press(&state, KeyCode::Enter);
+    let (state, _) = press(&state, KeyCode::Char('y'));
     let id = state.operating.expect("the commit runs");
     let (state, _) = update(
         &state,
@@ -278,7 +278,7 @@ fn a_new_stop_from_the_resolver_opens_its_own_resolver() {
 #[test]
 fn a_hook_refusal_keeps_the_summary_and_the_resolver_under_it() {
     let state = summary_open();
-    let (state, _) = press(&state, KeyCode::Enter);
+    let (state, _) = press(&state, KeyCode::Char('y'));
     let id = state.operating.expect("the commit runs");
     let (state, _) = update(
         &state,

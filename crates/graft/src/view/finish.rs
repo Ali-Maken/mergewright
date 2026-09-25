@@ -7,7 +7,7 @@
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::commit_editor::{BODY_LIMIT, Field, SUBJECT_LIMIT};
 use graft_ui::finish_summary::{ExpandedDiff, FinishView, SummaryFocus, SummaryRow, SummaryState};
-use graft_ui::graph_screen::{Hint, HintContext};
+use graft_ui::graph_screen::HintContext;
 use graft_ui::text_input::{AreaView, FieldView};
 use ratatui::layout::Rect;
 
@@ -21,7 +21,7 @@ pub fn finish_view(state: &AppState) -> Option<FinishView<'static>> {
     let finish = state.finish.as_ref()?;
     let parts = summary_parts(state, finish);
     Some(FinishView {
-        title: sanitize_line(&parts.title),
+        names: parts.names,
         by_you: parts.by_you,
         by_git: parts.by_git,
         recorded: parts.recorded,
@@ -37,6 +37,9 @@ pub fn finish_view(state: &AppState) -> Option<FinishView<'static>> {
         subject: subject_view(finish),
         body: body_view(finish),
         focus: summary_focus(finish.focus),
+        expandable: on_a_git_row(finish),
+        // A live box claims the next key before the summary does.
+        focused: crate::view::rows::box_context(state).is_none(),
         notice: finish
             .notice
             .as_ref()
@@ -47,10 +50,10 @@ pub fn finish_view(state: &AppState) -> Option<FinishView<'static>> {
     })
 }
 
-/// What the summary's read decides: the title, the two file lists, whether
-/// git recorded the resolutions, and the read's own state.
+/// What the summary's read decides: the branch names, the two file lists,
+/// whether git recorded the resolutions, and the read's own state.
 struct SummaryParts {
-    title: String,
+    names: Option<(graft_term::SanitizedText, graft_term::SanitizedText)>,
     by_you: Vec<SummaryRow>,
     by_git: Vec<SummaryRow>,
     recorded: bool,
@@ -59,7 +62,8 @@ struct SummaryParts {
 
 fn summary_parts(state: &AppState, finish: &FinishState) -> SummaryParts {
     let unread = |shown: SummaryState| SummaryParts {
-        title: TITLE_UNREAD.to_owned(),
+        // Nothing names the sides before the read lands: no invented names.
+        names: None,
         by_you: Vec::new(),
         by_git: Vec::new(),
         recorded: true,
@@ -74,7 +78,7 @@ fn summary_parts(state: &AppState, finish: &FinishState) -> SummaryParts {
     let from = String::from_utf8_lossy(&summary.from);
     let into = String::from_utf8_lossy(&summary.into);
     SummaryParts {
-        title: format!("Finish · merging {from} → {into} · nothing is written until ⏎"),
+        names: Some((sanitize_line(&from), sanitize_line(&into))),
         by_you: summary
             .by_you
             .iter()
@@ -134,9 +138,6 @@ fn body_view(finish: &FinishState) -> AreaView<'static> {
     }
 }
 
-/// The title before the summary is read: nothing names the sides yet.
-const TITLE_UNREAD: &str = "Finish · merge · nothing is written until ⏎";
-
 /// A git-combined file's change, in words.
 fn change_words(change: &graft_ops::finish::Change) -> String {
     use graft_ops::finish::Change;
@@ -171,10 +172,10 @@ pub fn summary_area(state: &AppState) -> Rect {
     }
 }
 
-/// The summary's bar context: what `⏎` and `⇥` do from the focused part.
-/// `space diff` is offered on a row git combined on its own, the rows the
+/// The summary's key context: what `y`, `⏎` and `⇥` do from the focused
+/// part. `⏎ diff` is offered on a row git combined on its own, the rows the
 /// user has never seen the change of (`HintContext::Finish`'s own meaning);
-/// on a row they resolved `space` works too, unadvertised.
+/// on a row they resolved `⏎`/`space` works too, unadvertised.
 #[must_use]
 pub fn finish_context(state: &AppState) -> HintContext {
     let finish = state.finish.as_ref();
@@ -195,34 +196,42 @@ fn on_a_git_row(finish: &FinishState) -> bool {
     }
 }
 
-/// The keys the summary's bar offers at `width`: its whole list, or only
-/// `esc back` below the widget's floor, where `Esc` is the only key that
-/// acts (`finish::finish_key`). The one list the bar draws and the key
+/// The keys the summary offers in an area `width` wide: the list its
+/// bottom border draws (`finish_summary::footer_hints`), or only `esc back`
+/// below the widget's floor, where `Esc` is the only key that acts
+/// (`finish::finish_key`) and the widget's own line says so. What the key
 /// sweep presses.
+#[cfg(test)]
 #[must_use]
-pub fn finish_hints(state: &AppState, width: u16) -> Vec<Hint> {
-    let hints = graft_ui::graph_screen::hints_for(
-        &finish_context(state),
-        graft_ui::graph_screen::Divider::Hidden,
-        width,
-    );
+pub fn finish_hints(state: &AppState, width: u16) -> Vec<graft_ui::graph_screen::Hint> {
     if crate::update::finish::fits(state) {
-        hints
+        finish_view(state).map_or_else(Vec::new, |view| {
+            graft_ui::finish_summary::footer_hints(&view, width)
+        })
     } else {
-        hints.into_iter().filter(|hint| hint.key == "esc").collect()
+        graft_ui::graph_screen::hints_for(
+            &finish_context(state),
+            graft_ui::graph_screen::Divider::Hidden,
+            width,
+        )
+        .into_iter()
+        .filter(|hint| hint.key == "esc")
+        .collect()
     }
 }
 
-/// The bar's text: `committing…` while the commit runs, else
-/// [`finish_hints`].
+/// The app's bottom row under the summary: `committing…` while the commit
+/// runs, else nothing. The keys live in the summary's own frame
+/// (m6-conflicts/59).
 #[must_use]
-pub fn finish_bar(state: &AppState, width: u16) -> String {
+pub fn finish_bar(state: &AppState) -> String {
     let busy = state
         .finish
         .as_ref()
         .is_some_and(|open| open.committing.is_some());
     if busy {
-        return " committing…".to_owned();
+        " committing…".to_owned()
+    } else {
+        String::new()
     }
-    graft_ui::graph_screen::hints_text(&finish_hints(state, width))
 }

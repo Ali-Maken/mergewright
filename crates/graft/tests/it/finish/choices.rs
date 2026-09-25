@@ -279,7 +279,7 @@ fn choices_and_draft_clear_when_the_merge_ends() {
     let (app, state) = App::open(scratch.path());
     let state = choices_and_a_draft(&app, state);
     let state = c_for_the_summary(&app, state);
-    let state = committed(&app, &state, KeyPress::plain(KeyCode::Enter));
+    let state = committed(&app, &state, KeyPress::plain(KeyCode::Char('y')));
     assert!(
         !scratch.path().join(".git/MERGE_HEAD").exists(),
         "the merge committed: {:?}",
