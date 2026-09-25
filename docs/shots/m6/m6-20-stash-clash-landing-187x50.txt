@@ -1,0 +1,52 @@
+m6 walk capture: m6-20-stash-clash-landing — scenario stash-pop-clash-to-done@landing, keys S p, unicode tier, 187x50
+
+FILES · 1 conflicted    │▸ notes.md · 1 conflict · 1 open
+                        │stash@{0} clashed in 1 file · esc, u puts it all back
+▏▸ notes.md  1 of 1 open│ yours · main                                        │ result                                               │ stashed · stash@{0}
+                        │▏── o take                                           ? ── 1 of 1 · open                                     ? ── t take
+                        │▏1 committed                                         ┃   ? open · o t b                                     ┃ 1 stashed
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+                        │
+ o yours  t stashed  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d start over  esc close

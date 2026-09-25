@@ -1266,20 +1266,29 @@ mod tests {
         Ok(inputs)
     }
 
+    /// The conflict journeys and the stash put-back pass's (m6-conflicts/75).
+    fn every_counted_journey() -> Vec<Scenario> {
+        let mut all = journeys();
+        all.extend(super::super::stash_journeys::journeys());
+        all
+    }
+
     /// Every row of the block is walked, and every journey walks a row
     /// (both ways); a whole row is the sum of its parts; each route's
     /// count is within its row.
     #[test]
     fn journey_counts_match_the_note() {
         let rows = parse_counts(&note_text().unwrap()).unwrap();
-        let walked: BTreeSet<&str> = journeys()
+        let counted = every_counted_journey();
+        let walked: BTreeSet<&str> = counted
             .iter()
             .map(|scenario| {
                 journey_id(scenario.name, &rows)
                     .unwrap_or_else(|| panic!("{} walks no row of the block", scenario.name))
             })
-            // The stash walks count their own keys against these rows
-            // (`noted_keys`); they are not scenarios of this runner.
+            // The stash group walks count their own keys against these rows
+            // too (`noted_keys`); since m6-conflicts/75 every one of them is
+            // also a scenario here (`stash_journeys`).
             .chain(crate::m6_stash_put_back::JOURNEYS)
             .collect();
         let noted: BTreeSet<&str> = rows.iter().map(|row| row.id.as_str()).collect();
@@ -1304,7 +1313,7 @@ mod tests {
             );
         }
 
-        for scenario in journeys() {
+        for scenario in every_counted_journey() {
             let route = route_of(&scenario).unwrap();
             within_the_note(&scenario, route.as_ref()).unwrap();
             // The count table TESTING.md quotes (`--nocapture`).

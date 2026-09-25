@@ -37,6 +37,7 @@ mod remotes;
 mod resolved_operations;
 mod resolving;
 mod run;
+mod stash_journeys;
 mod steps;
 mod time_machine;
 mod truth;
@@ -71,6 +72,7 @@ pub fn scenarios() -> Vec<Scenario> {
     all.extend(resolving::resolving());
     all.extend(resolved_operations::resolved_operations());
     all.extend(conflict_journeys::journeys());
+    all.extend(stash_journeys::journeys());
     all
 }
 

@@ -129,6 +129,19 @@ walk! {
     journey_a_whole_two_files => "a-whole-two-files",
     journey_b_whole_two_files => "b-whole-two-files",
     journey_editor_to_finish => "editor-to-finish",
+    // The stash put-back pass's journeys, counted (m6-conflicts/75).
+    journey_stash_pop_clash_landing => "stash-pop-clash-to-done@landing",
+    journey_stash_pop_clash_to_done => "stash-pop-clash-to-done",
+    journey_stash_apply_clash_to_done => "stash-apply-clash-to-done",
+    journey_stash_clash_put_back => "stash-clash-put-back",
+    journey_pull_rebase_dirty_preview => "pull-rebase-dirty@preview",
+    journey_pull_rebase_dirty => "pull-rebase-dirty",
+    journey_rejected_push_dirty_to_pushed => "rejected-push-dirty-to-pushed",
+    journey_switch_dirty => "switch-dirty",
+    journey_switch_dirty_clash => "switch-dirty-clash",
+    journey_pull_rebase_stop_then_clash => "pull-rebase-stop-then-clash",
+    journey_menu_checkout => "menu-checkout",
+    journey_menu_cherry_pick => "menu-cherry-pick",
 }
 
 /// Every capture names a distinct `m5-<nn>-…` or `m6-<nn>-…` stem, presses

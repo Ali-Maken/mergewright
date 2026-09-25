@@ -1,0 +1,26 @@
+m6 walk capture: m6-23-set-aside-clash-landing — scenario switch-dirty-clash, keys j k . ⏎ y, unicode tier, 80x24
+
+files   ▸ base.txt 1/1 open
+────────────────────────────────────────────────────────────────────────────────
+▸ base.txt · 1 conflict · 1 open
+your edits clashed in 1 file · esc, u undoes the switch too
+▏ ── conflict 1 of 1 · open ── o yours  t set aside  b both ────────────────────
+▏ yours · main
+▏ 1 main's base
+▏ set aside · your edits
+▏ 1 my edit
+▏ ──────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o yours  t set aside  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d  esc

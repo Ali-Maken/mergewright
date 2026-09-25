@@ -70,8 +70,9 @@ pub const M5_STEMS: [&str; 8] = [
 
 /// The M6 walk's capture stems, sorted (`tests/it/m5_walk/resolving.rs`,
 /// `resolved_operations.rs`, and the journeys' landings in
-/// `conflict_journeys.rs`); their files live under `docs/shots/m6/`.
-pub const M6_STEMS: [&str; 19] = [
+/// `conflict_journeys.rs` and `stash_journeys.rs`); their files live under
+/// `docs/shots/m6/`.
+pub const M6_STEMS: [&str; 25] = [
     "m6-01-resolver-three",
     "m6-02-whole-file-card",
     "m6-03-card-large-file",
@@ -91,6 +92,12 @@ pub const M6_STEMS: [&str; 19] = [
     "m6-17-after-commit",
     "m6-18-launch-shell-begun",
     "m6-19-after-esc-esc",
+    "m6-20-stash-clash-landing",
+    "m6-21-stash-clash-done",
+    "m6-22-set-aside-preview",
+    "m6-23-set-aside-clash-landing",
+    "m6-24-set-aside-done",
+    "m6-25-menu-fixed-slots",
 ];
 
 /// Every table, in the order the file has them.

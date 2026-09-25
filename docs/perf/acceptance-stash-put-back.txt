@@ -1,0 +1,25 @@
+# M6 stash put-back perf — 2026-09-25T20:30:30Z
+# HEAD 537a00df
+# machine: Darwin arm64, 10 cpus
+
+## release m6_stash_put_back::frame_budget + heavy::budgets
+
+## menu open and set-aside preview frame (budget: every frame < 16000 us)
+  test m6_stash_put_back::frame_budget::the_menu_and_the_set_aside_preview_keep_input_to_frame_under_16_ms ... stash_frames: what=menu-open size=120x40 frames=40 p50_us=100 p99_us=118 max_us=130 budget_us=16000
+  stash_frames: what=preview-frame size=120x40 frames=40 p50_us=113 p99_us=123 max_us=125 budget_us=16000
+  stash_frames: what=menu-open size=187x50 frames=40 p50_us=146 p99_us=156 max_us=180 budget_us=16000
+  stash_frames: what=preview-frame size=187x50 frames=40 p50_us=174 p99_us=186 max_us=195 budget_us=16000
+
+## first paint (budget: <= 150000 us)
+  test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=40816 bottom_ms=58 top_ms=0 rows=100000 provisional=false rss_at_paint=90767360 rss_at_bottom=100941824 peak_rss=100990976 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=19783 bottom_ms=50 top_ms=0 rows=100000 provisional=false rss_at_paint=23281664 rss_at_bottom=31145984 peak_rss=31162368 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=25069 bottom_ms=535 top_ms=0 rows=100000 provisional=true rss_at_paint=25673728 rss_at_bottom=96436224 peak_rss=96452608 overflow_len=100000
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=17138 bottom_ms=51 top_ms=0 rows=100000 provisional=false rss_at_paint=23216128 rss_at_bottom=35684352 peak_rss=35717120 overflow_len=0
+  test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=19353 bottom_ms=582 top_ms=0 rows=100000 provisional=true rss_at_paint=27279360 rss_at_bottom=102694912 peak_rss=102694912 overflow_len=100000
+
+## summary
+  test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 491 filtered out; finished in 41.52s
+  stash_frames: 4 frame sets, max 195 us, 0 at/over the 16000 us budget
+  first_paint_us: 5 runs, max 40816 us, 0 over the 150000 us budget
+  peak_rss: max 97 MiB, 0 at/over the 300 MiB budget
+  exit 0, wall 104 s
