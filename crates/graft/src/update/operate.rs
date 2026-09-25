@@ -857,7 +857,8 @@ fn done_status(
     let done = remote_op.and_then(|op| super::remote::remote_done(state, op));
     Status::Done {
         what: done.unwrap_or_else(|| applied.entry.description.clone()),
-        keys: super::clash::edits_back(&applied.entry).map(str::to_owned),
+        also: super::clash::edits_back(&applied.entry).map(str::to_owned),
+        keys: None,
     }
 }
 
@@ -977,15 +978,15 @@ fn operation_failed(
         refresh: what,
         remote,
         refused,
-        edits_in,
+        edits,
     } = failed
     else {
         // `operated` only ever hands this arm an `Operated::Failed`; the
         // match above is what guarantees it.
         return Vec::new();
     };
-    state.status = match edits_in {
-        Some(at) => edits_in_status(at),
+    state.status = match edits {
+        Some(at) => edits_status(&error, at),
         None => failure_line(state, remote_op, remote.as_ref(), refused.as_ref(), error),
     };
     match what {
@@ -994,15 +995,28 @@ fn operation_failed(
     }
 }
 
-/// The line for edits set aside that could not be put back, their copy
-/// still listed at `stash@{at}` (ADR-0045 §5, m6-conflicts/74): sticky,
-/// `your edits are in stash@{0} · S p puts them back`. Why the put-back
-/// failed is the entry's `Aborted` reason, which `J` shows; the line keeps
-/// to where the edits are and the key that brings them back.
-pub(crate) fn edits_in_status(at: usize) -> Status {
+/// The line for a set-aside that did not end in a clean put-back or a clash
+/// (ADR-0045 §5 amended, m6-conflicts/84): sticky, the operation's own
+/// failure first, then where `graft_ops` says the edits are. The clause is
+/// the `keys` half, so at narrow widths the failure is cut and the clause
+/// kept whole (`fit_status_line`). `S p` is named only when the edits are
+/// not in the tree.
+pub(crate) fn edits_status(failure: &str, at: graft_ops::EditsAt) -> Status {
+    use graft_ops::EditsAt;
+    let clause = match at {
+        EditsAt::Stash { n } => format!("your edits are in stash@{{{n}}} · S p puts them back"),
+        EditsAt::Back { copy: Some(n) } => {
+            format!("your edits are back · a copy stays in stash@{{{n}}}")
+        }
+        EditsAt::Back { copy: None } => "your edits are back · a copy may still be in S".to_owned(),
+        EditsAt::Backup { copy: Some(n) } => {
+            format!("u restores the backup · a copy is in stash@{{{n}}}")
+        }
+        EditsAt::Backup { copy: None } => "u restores the backup".to_owned(),
+    };
     Status::Sticky {
-        reason: format!("your edits are in stash@{{{at}}}"),
-        keys: Some("S p puts them back".to_owned()),
+        reason: failure.to_owned(),
+        keys: Some(clause),
     }
 }
 
@@ -2099,7 +2113,7 @@ mod tests {
                 refresh: Some(Refresh::WorkingTree),
                 remote: None,
                 refused: None,
-                edits_in: None,
+                edits: None,
             },
             &mut ids(),
         );
@@ -2163,7 +2177,7 @@ mod tests {
                     refresh: None,
                     remote: None,
                     refused: Some(refusal.clone()),
-                    edits_in: None,
+                    edits: None,
                 },
                 &mut ids(),
             );
@@ -2187,7 +2201,7 @@ mod tests {
                 refresh: None,
                 remote: None,
                 refused: Some(Refusal::NothingStaged),
-                edits_in: None,
+                edits: None,
             },
             &mut ids(),
         );
@@ -2216,7 +2230,7 @@ mod tests {
                 refresh: Some(Refresh::WorkingTree),
                 remote: None,
                 refused: None,
-                edits_in: None,
+                edits: None,
             },
             &mut ids(),
         );
@@ -2255,7 +2269,7 @@ mod tests {
                 refresh: None,
                 remote: None,
                 refused: None,
-                edits_in: None,
+                edits: None,
             },
             &mut ids(),
         );
@@ -2627,88 +2641,6 @@ mod tests {
         assert_eq!(untracked_size(7), " \u{2014} 7 lines");
     }
 
-    /// m6-conflicts/74: a rebase that set edits aside answered `Done` — the
-    /// put-back ran clean. Its own line, the tick, then `your edits are
-    /// back`. The same rebase on a clean tree words exactly as before.
-    #[test]
-    fn a_clean_put_back_says_your_edits_are_back() {
-        let launched = |state: &mut AppState| {
-            let mut commands = Vec::new();
-            launch(
-                state,
-                &mut commands,
-                Operation::DropPutBack {
-                    stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
-                },
-                &mut ids(),
-            )
-            .expect("nothing else is running");
-            state.operating.expect("launched")
-        };
-        let mut done = applied("rebase main onto origin/main", Refresh::Everything);
-        done.entry.put_back = Some(graft_core::journal::PutBack {
-            stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
-            why: graft_core::journal::PutBackWhy::SetAside,
-        });
-        let mut state = AppState::default();
-        let id = launched(&mut state);
-        operated(&mut state, id, Operated::Done(done), &mut ids());
-        assert_eq!(
-            state.status,
-            Status::done_with_keys("rebase main onto origin/main", "your edits are back")
-        );
-        assert_eq!(
-            crate::view::status::done_line(
-                "rebase main onto origin/main",
-                Some("your edits are back")
-            ),
-            "rebase main onto origin/main \u{2713} \u{b7} your edits are back"
-        );
-
-        let mut clean = AppState::default();
-        let id = launched(&mut clean);
-        let plain = applied("rebase main onto origin/main", Refresh::Everything);
-        operated(&mut clean, id, Operated::Done(plain), &mut ids());
-        assert_eq!(clean.status, Status::done("rebase main onto origin/main"));
-    }
-
-    /// m6-conflicts/74: the put-back failed for a reason other than a clash
-    /// and the set-aside copy is still listed: sticky, naming where the
-    /// edits are and the key that brings them back.
-    #[test]
-    fn a_put_back_failure_names_the_stash_and_s_p() {
-        let mut state = AppState::default();
-        let mut commands = Vec::new();
-        launch(
-            &mut state,
-            &mut commands,
-            Operation::DropPutBack {
-                stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
-            },
-            &mut ids(),
-        )
-        .expect("nothing else is running");
-        let id = state.operating.expect("launched");
-        operated(
-            &mut state,
-            id,
-            Operated::Failed {
-                error: "checkout fix: error: … · your edits are in stash@{0}".to_owned(),
-                refresh: Some(Refresh::Everything),
-                remote: None,
-                refused: None,
-                edits_in: Some(0),
-            },
-            &mut ids(),
-        );
-        assert_eq!(
-            state.status,
-            Status::Sticky {
-                reason: "your edits are in stash@{0}".to_owned(),
-                keys: Some("S p puts them back".to_owned()),
-            }
-        );
-    }
-
+    mod edits_words;
     mod one_write;
 }

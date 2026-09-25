@@ -961,9 +961,10 @@ pub enum Status {
     Busy(String),
     /// It finished: a working-tree write in the journal's own words (`stage
     /// src/a.rs`), or a verdict (`every file done`). Drawn `<what> ✓`, then
-    /// ` · <keys>` when there is a next key to name (`c finishes the merge`),
-    /// by `view::status::done_line` — the one place that draws a `Done`.
-    /// Cleared by the next key, like `Copied`.
+    /// ` · <also>` when something else is true after it (`your edits are
+    /// back`), then ` · <keys>` when there is a next key to name (`c
+    /// finishes the merge`), by `view::status::done_line` — the one place
+    /// that draws a `Done`. Cleared by the next key, like `Copied`.
     ///
     /// The keys are kept apart, as `Sticky`'s are, because the tick is the
     /// renderer's: glued into `what`, it landed after the key words
@@ -971,9 +972,12 @@ pub enum Status {
     Done {
         /// What finished, without the tick.
         what: String,
-        /// The next key, worded as it reads in the hint bar, if any — or
-        /// what else is true after the tick (`your edits are back`,
-        /// m6-conflicts/74).
+        /// What else is true once it finished, drawn after the tick and
+        /// before the keys (`your edits are back`, m6-conflicts/84). Never
+        /// a key: a caller that re-words the keys (`undo::land_after_undo`)
+        /// leaves it alone.
+        also: Option<String>,
+        /// The next key, worded as it reads in the hint bar, if any.
         keys: Option<String>,
     },
 }
@@ -992,6 +996,7 @@ impl Status {
     pub fn done(what: impl Into<String>) -> Status {
         Status::Done {
             what: what.into(),
+            also: None,
             keys: None,
         }
     }
@@ -1000,6 +1005,7 @@ impl Status {
     pub fn done_with_keys(what: impl Into<String>, keys: impl Into<String>) -> Status {
         Status::Done {
             what: what.into(),
+            also: None,
             keys: Some(keys.into()),
         }
     }

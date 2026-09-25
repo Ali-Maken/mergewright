@@ -62,6 +62,8 @@ impl PlanFailure {
             entry: Box::new(entry),
             error: self.error,
             recoverable,
+            // A set-aside's failure closes through `set_aside::close`.
+            edits: None,
         }
     }
 }

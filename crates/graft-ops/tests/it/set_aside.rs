@@ -610,6 +610,116 @@ fn an_unlisted_set_aside_after_a_clean_put_back_says_the_edits_are_back() {
     assert_eq!(repo.read("base.txt"), b"edited\n", "the edit is back");
 }
 
+// ── where the edits are, when it did not go cleanly (ADR-0045 §5 amended) ─
+
+/// The drop after a clean put-back fails (the stash reflog's directory made
+/// read-only while the checkout runs, so `stash drop` cannot lock it): the
+/// edits are back in the tree **and** the copy is still listed — `Back`, not
+/// `Stash` (review m6-final-fixes-74 M1, path 1).
+#[test]
+fn a_drop_that_fails_after_a_clean_put_back_is_edits_back() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited\n");
+    post_checkout(&repo, "chmod 555 \"$(git rev-parse --git-path logs/refs)\"");
+    let op = checkout_to(&repo, "refs/heads/feature");
+    let answer = try_run(&repo, &op, NOW);
+    let logs = repo.path().join(".git/logs/refs");
+    std::fs::set_permissions(&logs, std::fs::Permissions::from_mode(0o755))
+        .expect("the reflog dir is writable again");
+    let error = answer.expect_err("the drop should fail");
+    assert_eq!(
+        error.edits_at(),
+        Some(graft_ops::EditsAt::Back { copy: Some(0) }),
+        "{error:?}"
+    );
+    assert_eq!(
+        repo.read("base.txt"),
+        b"edited\n",
+        "the edit is in the tree"
+    );
+    assert_eq!(stash_commits(&repo).len(), 1, "the copy is still listed");
+    assert!(
+        !error.to_string().contains("S p"),
+        "no key in graft-ops' words: {error}"
+    );
+}
+
+/// A stop after `stash store` and before `reset --hard` (step 4): the entry
+/// closes, `S` is listed, and the backup has the tree — `Backup`, whatever
+/// the list says (review M1, path 2).
+#[test]
+fn a_stop_after_the_store_is_edits_in_the_backup() {
+    for kind in Kind::BOTH {
+        let (repo, op) = dirty_for(kind);
+        let stop = stop_before(&repo, 4);
+        let error = run_with_stop(&repo, &op, NOW, &stop).expect_err("stopped at step 4");
+        assert_eq!(
+            error.edits_at(),
+            Some(graft_ops::EditsAt::Backup { copy: Some(0) }),
+            "{kind:?}: {error:?}"
+        );
+        assert_eq!(stash_commits(&repo).len(), 1, "{kind:?}: S listed");
+        assert_eq!(
+            repo.read("base.txt"),
+            b"edited\n",
+            "{kind:?}: tree untouched"
+        );
+    }
+}
+
+/// The operation itself fails (a `post-checkout` hook exits 1) **and** the
+/// stash list cannot be read to drop the copy (the same hook makes the stash
+/// reflog unreadable): the put-back ran clean, so the edits are back and the
+/// copy was not found to drop — `Back { copy: None }` (`Kept::Unlisted`,
+/// review M1, path 3). The injected fault: that hook.
+#[test]
+fn an_unfound_copy_after_a_failed_operation_is_edits_back() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited\n");
+    post_checkout(
+        &repo,
+        "chmod 000 \"$(git rev-parse --git-path logs/refs/stash)\"; exit 1",
+    );
+    let op = checkout_to(&repo, "refs/heads/feature");
+    let answer = try_run(&repo, &op, NOW);
+    let reflog = repo.path().join(".git/logs/refs/stash");
+    std::fs::set_permissions(&reflog, std::fs::Permissions::from_mode(0o644))
+        .expect("the reflog reads again");
+    let error = answer.expect_err("the checkout's hook failed");
+    assert!(matches!(error, ApplyError::Git { .. }), "{error:?}");
+    assert_eq!(
+        error.edits_at(),
+        Some(graft_ops::EditsAt::Back { copy: None }),
+        "{error:?}"
+    );
+    assert_eq!(repo.read("base.txt"), b"edited\n", "the edit is back");
+    assert_eq!(stash_commits(&repo).len(), 1, "the copy was never dropped");
+}
+
+/// git refuses the put-back with nothing unmerged (an untracked file in the
+/// way of a staged new one): the edits are **not** in the tree, only in the
+/// listed copy — `Stash { n: 0 }`.
+#[test]
+fn a_put_back_that_fails_without_a_clash_is_edits_in_stash() {
+    let (repo, op) = put_back_refused();
+    let error = try_run(&repo, &op, NOW).expect_err("the put-back should fail");
+    assert_eq!(
+        error.edits_at(),
+        Some(graft_ops::EditsAt::Stash { n: 0 }),
+        "{error:?}"
+    );
+    assert_eq!(
+        repo.read("n.txt"),
+        b"in the way\n",
+        "the tree lacks the edit"
+    );
+    assert_eq!(stash_commits(&repo).len(), 1, "S listed");
+    // The error's own line is git's; where the edits are is `edits_at`, and
+    // `explain` adds it in graft-ops' words.
+    assert!(!error.to_string().contains("stash@{0}"), "{error}");
+    assert!(error.explain().contains("stash@{0}"), "{}", error.explain());
+}
+
 /// `feature` and `main` rewrite the same line of `shared.txt`, so a rebase
 /// of `feature` onto `main` stops on it; the user's own edit is to
 /// `other.txt`, which neither side touches.

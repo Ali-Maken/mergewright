@@ -23,6 +23,7 @@
 //!   wording is `Likely`, not `Certain`.
 
 mod kinds;
+mod put_back;
 
 use std::path::PathBuf;
 
@@ -190,6 +191,12 @@ pub struct PreviewPlan {
     /// What a rebase or checkout would set aside first and put back after
     /// (ADR-0045 §4): `op.sets_aside(facts)`, never a second count.
     pub set_aside: Option<SetAside>,
+    /// Whether putting those edits back is likely to clash (ADR-0045 §8):
+    /// `Some` exactly when [`PreviewPlan::set_aside`] is. A forecast, like
+    /// [`PreviewPlan::conflicts`]: a rebase's is made against one merge
+    /// standing for the replayed branch, and a rebase that may stop first
+    /// is `NotChecked`.
+    pub put_back: Option<ConflictForecast>,
 }
 
 /// Why a preview could not be drawn.
@@ -361,6 +368,18 @@ pub fn plan(
         .collect();
     drawn.against = op.tips();
     drawn.set_aside = op.sets_aside(facts);
+    // Only with edits aside: a clean tree spawns nothing more.
+    drawn.put_back = match drawn.set_aside {
+        Some(_) => Some(put_back::forecast(
+            repo,
+            git,
+            op,
+            facts,
+            &drawn.conflicts,
+            stop,
+        )?),
+        None => None,
+    };
     Ok(drawn)
 }
 
@@ -380,6 +399,7 @@ fn blank() -> PreviewPlan {
         undo: UndoNote::Undoable,
         against: Vec::new(),
         set_aside: None,
+        put_back: None,
     }
 }
 

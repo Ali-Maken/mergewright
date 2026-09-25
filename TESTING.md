@@ -2422,8 +2422,8 @@ putting `g.txt` back clashes once it continues.
 | `pull-rebase-dirty` | the graph, diverged, three edits | `p r r` | 3 | JetBrains 3–4 | `p` refused `… have diverged …`; `r` → the rebase preview, under `working tree:` the row `your edits: 3 files set aside, put back after · 1 staged comes back unstaged`; `r` confirms → status `rebase main onto origin/main ✓ · your edits are back`. Git: `main` is `origin/main` plus one; the three files edited, `git status` ` M one.txt`, ` M three.txt`, ` M two.txt` — `one.txt`'s staging lost, as the row said; stash list empty |
 | `rejected-push-dirty-to-pushed` | the same | `p r r P y` | 5 | JetBrains 3–4 | as above, then `P` → the push box, `y` → pushed. Git: the bare's `main` = `HEAD`; its last two subjects `ours`, `the teammate's commit`; the edits still in the tree |
 | `switch-dirty` | the graph on `main`, dirty; cursor on `fix` (not counted) | `. ⏎ y` | 3 | lazygit 2, JetBrains 3 | on `fix`; status `… · your edits are back`. Git: `HEAD` → `fix`; `base.txt` and `notes.txt` hold the edit; `git status` ` M base.txt`, ` M notes.txt` (the staging lost); stash list empty |
-| `switch-dirty-clash` | the graph on `fix`, fix over main's base; cursor on `main` (not counted) | `. ⏎ y o ⏎` | 5 | JetBrains ~5 (?) | `y` → the resolver on `base.txt`, notice `your edits clashed in 1 file · esc, u undoes the switch too`, panes `yours · main` and `set aside · your edits`, bottom row `o yours  t set aside …`; `o ⏎` → `every file done · your edits are back ✓`. Git: on `main`, `base.txt` = `main's base`, stash list empty |
-| `pull-rebase-stop-then-clash` | the graph, f and g | `p r r o ⏎ c o ⏎` | 8 | none counted | the rebase stops on `f.txt`; `o ⏎` resolves it, `c` continues; putting `g.txt` back clashes: notice `… esc, u undoes the rebase too`; `o ⏎` → done. Git: `g.txt` = `theirs`, no `rebase-merge`, nothing unmerged, stash list empty |
+| `switch-dirty-clash` | the graph on `fix`, fix over main's base; cursor on `main` (not counted) | `. ⏎ y o ⏎` | 5 | JetBrains ~5 (?) | `y` → the resolver on `base.txt`, notice `your edits clashed in 1 file · esc, u undoes the switch too`, panes `branch · main` and `yours · edits set aside`, bottom row `o branch  t yours …`; `o ⏎` → `every file done · set-aside copy dropped ✓ · u brings it back` (`t ⏎` instead keeps his edit, same count). Git: on `main`, `base.txt` = `main's base`, stash list empty; a `u` after lists the copy again |
+| `pull-rebase-stop-then-clash` | the graph, f and g | `p r r o ⏎ c o ⏎` | 8 | none counted | the rebase stops on `f.txt`; `o ⏎` resolves it, `c` continues; putting `g.txt` back clashes: notice `… esc, u undoes the rebase too`; `o ⏎` → `every file done · set-aside copy dropped ✓ · u brings it back`. Git: `g.txt` = `theirs`, no `rebase-merge`, nothing unmerged, stash list empty |
 | `menu-checkout` | the graph on `main`, clean; cursor on `fix` (not counted) | `. ⏎ y` | 3 | JetBrains 3 | `.` → the menu's first slot `Checkout fix`, the second `Cherry-pick <id>`, cursor on the first; `⏎` → the checkout preview; `y` → on `fix`. Git: `HEAD` → `fix` |
 | `menu-cherry-pick` | the same | `. j ⏎ y` | 4 | JetBrains/SM 2 | `j` → the cursor on `Cherry-pick <id>`; `⏎ y` → picked. Git: `main`'s tip subject `fix the bug`, its parent `main moves on` |
 
@@ -2438,6 +2438,22 @@ relaunch line reads `an operation was interrupted: checkout fix · edits in
 stash@{0} · J to inspect`. The kill lands at the first poll after the step
 before's mark, so "before step 3" came with `stash store` done; the
 not-yet-listed case is graft-ops' `a_stop_before_each_step_loses_nothing`.
+
+**Put-back failure line** (m6-conflicts/84, ADR-0045 §5 amended): a
+set-aside that ends neither clean nor in a clash is sticky, the
+operation's own failure first, then where `graft_ops` says the edits are
+(`EditsAt`), the clause kept whole at 80 with the failure cut first:
+`your edits are in stash@{n} · S p puts them back` (not in the tree);
+`your edits are back · a copy stays in stash@{n}` (drop failed; no `S p`);
+`u restores the backup · a copy is in stash@{n}` (stopped after the
+store). Unit-proven (`operate::tests::edits_words`), not walked: the
+faults are graft-ops' (`tests/it/set_aside.rs`, hooks and permissions).
+
+**Preview warns a put-back clash** (m6-conflicts/84):
+`set_aside::the_preview_warns_before_a_switch_that_clashes` — `. ⏎` on
+`main`'s row over fix over main's base: the box's conflict line reads
+`your edits may clash when put back: base.txt`, never `no conflicts
+expected`. Capture `set-aside-clash-preview-120x40`.
 
 ### Captures
 
@@ -2492,14 +2508,17 @@ shows `—` for the other two).
 | `m6-20-stash-clash-landing` | `S p` | no `S` overlay; the resolver on `notes.md`; notice `stash@{0} clashed in 1 file · esc, u puts it all back`; panes `yours · main` and `stashed · stash@{0}`; the bottom row starts `o yours  t stashed` |
 | `m6-21-stash-clash-done` | `S p o ⏎` | the graph on `main` with its detail, no `CONFLICTS` anywhere; the status `every file done · stash@{0} dropped ✓ · u brings it back` (the last row at 80) |
 | `m6-22-set-aside-preview` | `p r` | the rebase preview box; under `working tree:` the row `your edits: 3 files set aside, put back after · 1 staged comes back unstaged`, whole at every size; `[ Confirm ]`, `y confirm` |
-| `m6-23-set-aside-clash-landing` | `j k . ⏎ y` | (`j k` only reach `main`'s row: the cursor opens on the uncommitted row) the resolver on `base.txt`; notice `your edits clashed in 1 file · esc, u undoes the switch too`; panes `yours · main` and `set aside · your edits`; the bottom row starts `o yours  t set aside` |
+| `m6-23-set-aside-clash-landing` | `j k . ⏎ y` | (`j k` only reach `main`'s row: the cursor opens on the uncommitted row) the resolver on `base.txt`; notice `your edits clashed in 1 file · esc, u undoes the switch too`; panes `branch · main` and `yours · edits set aside`; the bottom row starts `o branch  t yours`; `set aside ·` is no pane's name |
 | `m6-24-set-aside-done` | `p r r` | the graph on the rebased `ours` over `origin/main`, `Uncommitted changes (3 unstaged)` on top; status `rebase main onto origin/main ✓ · your edits are back` |
 | `m6-25-menu-fixed-slots` | `k .` | (`k` reaches `fix`'s row) the menu leads `Checkout fix`, `Cherry-pick 401cfbe`, `Explain`; the slot is not dim here — it dims only on `HEAD`'s own row (`menu-fixed-slots-120x40`, frame 2) |
 
 The Rust captures of the same pass (`check_shot`, drawn by `view::view`):
 `menu-fixed-slots-120x40` (71), `stash-clash-landing-{120x40,80x24}` and
 `stash-clash-done-120x40` (72b), `set-aside-preview-{120x40,80x24}`,
-`set-aside-clash-landing-120x40`, `set-aside-done-120x40` (74), and
+`set-aside-clash-landing-120x40`, `set-aside-done-120x40` (74),
+`set-aside-clash-preview-120x40` (84: the checkout box, `your edits: 1 file
+set aside, put back after`, then `your edits may clash when put back:
+base.txt`, no `no conflicts expected`), and
 `stash-clash-stop-line-80x24` (82): `S p` clashed in `notes.md`, `esc` shut
 the resolver, the graph focused, at 80x24 — no banner, no resolver; the
 bottom row begins ` stash@{0} clashed · 1 file conflicted · ` then the keys

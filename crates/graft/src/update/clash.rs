@@ -345,53 +345,56 @@ pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> StopLadder
 pub(crate) fn kept_status(index: Option<usize>) -> Status {
     Status::Done {
         what: format!("every file done \u{b7} {} kept", stash_words(index)),
+        also: None,
         keys: None,
     }
 }
 
 /// The `DropPutBack` the close launched answered `Done`:
 /// `every file done · stash@{0} dropped ✓ · u brings it back`. A
-/// set-aside's: `every file done · your edits are back ✓` — the stash is
-/// not named, he never named it (m6-conflicts/74).
+/// set-aside's names what it dropped the same way, never the stash's
+/// position — he never named it: `every file done · set-aside copy dropped
+/// ✓ · u brings it back` (ADR-0045 §3 amended, m6-conflicts/84). Not `your
+/// edits are back`: after `o branch` in every block they are not, and `u`
+/// brings the copy back.
 #[must_use]
 pub(crate) fn dropped_status(index: Option<usize>, why: PutBackWhy) -> Status {
-    match why {
-        PutBackWhy::SetAside => Status::Done {
-            what: "every file done \u{b7} your edits are back".to_owned(),
-            keys: None,
-        },
-        PutBackWhy::Pop | PutBackWhy::Apply => Status::Done {
-            what: format!("every file done \u{b7} {} dropped", stash_words(index)),
-            keys: Some("u brings it back".to_owned()),
-        },
+    let dropped = match why {
+        PutBackWhy::SetAside => "set-aside copy".to_owned(),
+        PutBackWhy::Pop | PutBackWhy::Apply => stash_words(index),
+    };
+    Status::Done {
+        what: format!("every file done \u{b7} {dropped} dropped"),
+        also: None,
+        keys: Some("u brings it back".to_owned()),
     }
 }
 
 /// `your edits are back` for an entry that set edits aside, answered
 /// `Done`: the put-back ran clean and the set-aside copy is dropped
 /// (ADR-0045 §4). `None` for every other entry, so a clean-tree rebase's
-/// line is unchanged (m6-conflicts/74). Drawn after the tick
-/// (`Status::Done::keys`): `rebase main onto origin/main ✓ · your edits
-/// are back`. The one place the clause is worded: the op's own done line
-/// and a stopped rebase's close both take it from here.
+/// line is unchanged (m6-conflicts/74). Drawn after the tick, as
+/// `Status::Done::also`: `rebase main onto origin/main ✓ · your edits are
+/// back`. The one place the clause is worded: the op's own done line and a
+/// stopped rebase's close both take it from here.
 #[must_use]
 pub(crate) fn edits_back(entry: &JournalEntry) -> Option<&'static str> {
-    set_aside_entry(entry).then_some("your edits are back")
+    is_set_aside_entry(entry).then_some("your edits are back")
 }
 
-/// `entry` set edits aside around its operation (ADR-0045 §4).
+/// Did `entry` set edits aside around its operation (ADR-0045 §4)?
 #[must_use]
-pub(crate) fn set_aside_entry(entry: &JournalEntry) -> bool {
+pub(crate) fn is_set_aside_entry(entry: &JournalEntry) -> bool {
     entry
         .put_back
         .as_ref()
         .is_some_and(|put_back| put_back.why == PutBackWhy::SetAside)
 }
 
-/// The clash standing is a set-aside's (m6-conflicts/74): its names and
+/// Is the clash standing a set-aside's (m6-conflicts/74)? Its names and
 /// words are `your edits`, never the stash.
 #[must_use]
-pub(crate) fn set_aside(state: &AppState) -> bool {
+pub(crate) fn is_set_aside_clash(state: &AppState) -> bool {
     state
         .clash
         .as_ref()

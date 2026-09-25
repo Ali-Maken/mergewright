@@ -284,9 +284,10 @@ pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<San
             return Some(sanitize_line(&format!("{description}…")));
         }
         // It finished. Lasts until the next key, like the copy line.
-        Status::Done { what, keys } => {
+        Status::Done { what, also, keys } => {
             return Some(sanitize_line(&crate::view::status::done_line(
                 what,
+                also.as_deref(),
                 keys.as_deref(),
             )));
         }

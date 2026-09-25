@@ -55,6 +55,7 @@ fn plan() -> PreviewPlan {
         undo: UndoNote::Undoable,
         against: Vec::new(),
         set_aside: None,
+        put_back: None,
     }
 }
 

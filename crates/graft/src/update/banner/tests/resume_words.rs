@@ -91,12 +91,57 @@ fn aborting_a_rebase_does_not_read_as_done() {
 }
 
 /// The rebase's entry, set aside around (m6-conflicts/74).
-fn set_aside(mut entry: JournalEntry) -> JournalEntry {
+fn set_aside_around(mut entry: JournalEntry) -> JournalEntry {
     entry.put_back = Some(graft_core::journal::PutBack {
         stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
         why: graft_core::journal::PutBackWhy::SetAside,
     });
     entry
+}
+
+/// `<what> ✓ · your edits are back`: the fact rides `also`, never `keys`
+/// (review m6-final-fixes-74 M4).
+fn edits_back(what: &str) -> Status {
+    Status::Done {
+        what: what.to_owned(),
+        also: Some("your edits are back".to_owned()),
+        keys: None,
+    }
+}
+
+/// Review m6-final-fixes-74 M1: `c` finishes a stopped rebase, the
+/// put-back ran clean but the drop failed. `graft_ops` says the edits are
+/// back (`EditsAt::Back`); the line says so and offers no `S p`.
+#[test]
+fn a_continue_whose_drop_fails_says_the_edits_are_back() {
+    let (state, commands) = keys(stopped(InProgress::Rebase, &[]), &[KeyCode::Char('c')]);
+    let (id, how) = sent_resume(&commands);
+    assert_eq!(how, Resume::Continue);
+    let failure = "rebase main onto origin/main: error: cannot lock ref";
+    let state = answer(
+        &state,
+        id,
+        Operated::Failed {
+            error: failure.to_owned(),
+            refresh: Some(graft_ops::apply::Refresh::Everything),
+            remote: None,
+            refused: None,
+            edits: Some(graft_ops::EditsAt::Back { copy: Some(0) }),
+        },
+    );
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: failure.to_owned(),
+            keys: Some("your edits are back \u{b7} a copy stays in stash@{0}".to_owned()),
+        }
+    );
+    let row = bottom_row(&state, 120, 40);
+    assert!(row.contains("your edits are back"), "{row:?}");
+    assert!(
+        !row.contains("S p"),
+        "edits in the tree offer no S p: {row:?}"
+    );
 }
 
 /// m6-conflicts/74: `a y` on a rebase that stopped with edits set aside;
@@ -115,14 +160,11 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
         "rebase main onto origin/main",
         aborted("aborted"),
     );
-    done.entry = set_aside(done.entry);
+    done.entry = set_aside_around(done.entry);
     let state = answer(&state, id, Operated::Done(done));
     assert_eq!(
         state.status,
-        Status::done_with_keys(
-            "aborted: rebase main onto origin/main",
-            "your edits are back"
-        )
+        edits_back("aborted: rebase main onto origin/main")
     );
     let row = bottom_row(&state, 120, 40);
     assert!(
@@ -133,13 +175,13 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
     assert_eq!(
         resumed_words(
             &Resume::Continue,
-            &set_aside(entry(
+            &set_aside_around(entry(
                 OperationKind::Rebase,
                 "rebase main onto origin/main",
                 EntryStatus::Committed,
             )),
         ),
-        Status::done_with_keys("rebase main onto origin/main", "your edits are back")
+        edits_back("rebase main onto origin/main")
     );
 }
 

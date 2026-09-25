@@ -59,7 +59,7 @@ fn the_last_file_of_a_shell_merge_opens_the_summary() {
     assert_eq!(finish.focus, FinishFocus::Files);
     assert!(state.resolver.is_some(), "the resolver stays under it");
     assert!(
-        matches!(&state.status, Status::Done { what, keys: Some(keys) }
+        matches!(&state.status, Status::Done { what, also: None, keys: Some(keys) }
             if what == "notes.txt done" && keys == "every file done"),
         "{:?}",
         state.status

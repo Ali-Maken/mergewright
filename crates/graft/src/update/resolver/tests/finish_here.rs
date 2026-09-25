@@ -131,6 +131,7 @@ fn the_last_file_of_a_merge_opens_the_summary_once_the_reads_land() {
         landed.status,
         Status::Done {
             what: "conflicted.rs done".to_owned(),
+            also: None,
             keys: Some("every file done".to_owned()),
         },
         "the summary is coming, so no key is named"
@@ -353,7 +354,7 @@ fn a_hook_refusal_keeps_the_summary_and_the_resolver_under_it() {
                 refresh: None,
                 remote: None,
                 refused: None,
-                edits_in: None,
+                edits: None,
             })),
         ),
     );

@@ -302,7 +302,9 @@ mod tests {
 
     fn drawn(status: &Status) -> String {
         match status {
-            Status::Done { what, keys } => crate::view::status::done_line(what, keys.as_deref()),
+            Status::Done { what, also, keys } => {
+                crate::view::status::done_line(what, also.as_deref(), keys.as_deref())
+            }
             other => panic!("a landing is Done: {other:?}"),
         }
     }
@@ -359,7 +361,12 @@ mod tests {
         );
         let long = format!("redo: commit \"{}\"", "y".repeat(90));
         let status = landing(long, &one("fix.txt"), true, 1);
-        let Status::Done { what, keys: None } = &status else {
+        let Status::Done {
+            what,
+            also: None,
+            keys: None,
+        } = &status
+        else {
             panic!("no keys on a redo: {status:?}");
         };
         assert!(what.ends_with("\u{2026}; a backup keeps it"), "{what}");

@@ -125,13 +125,12 @@ pub enum Operated {
         /// over a dirty tree — and a hint cannot be recovered from a string
         /// (m5-history-and-ghost-preview/08, piece 8).
         refused: Option<graft_ops::operation::Refusal>,
-        /// Where the edits the operation set aside wait, `stash@{n}`, when
-        /// they could not be put back and the set-aside copy is still
-        /// listed (ADR-0045 §5, m6-conflicts/74): what the status line
-        /// names, with `S p` to put them back. Read by position from the
-        /// stash list after the failure ([`edits_kept_in`]); `None` for every
-        /// other failure, and for one whose edits did come back.
-        edits_in: Option<usize>,
+        /// Where the edits the operation set aside are, when it did not end
+        /// in a clean put-back or a clash (ADR-0045 §5 amended,
+        /// m6-conflicts/84): `graft_ops` decides it
+        /// ([`ApplyError::edits_at`]) and the status line words it. `None`
+        /// for every other failure.
+        edits: Option<graft_ops::EditsAt>,
     },
 }
 
@@ -239,7 +238,7 @@ fn nothing_ran(error: &impl std::fmt::Display) -> Operated {
         // `nothing_ran` is the pool's own failure to even open the
         // repository, never a precondition `graft_ops` weighed.
         refused: None,
-        edits_in: None,
+        edits: None,
     }
 }
 
@@ -321,42 +320,7 @@ fn in_context(
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
-    let result = run(&mut ctx);
-    let kept = edits_kept_in(&result, || graft_git::stash::commits(&handle, &()));
-    let mut answered = answer(result);
-    if let Operated::Failed { edits_in, .. } = &mut answered {
-        *edits_in = kept;
-    }
-    answered
-}
-
-/// Where the edits a failed operation set aside wait, when the set-aside
-/// copy is still in the stash list (ADR-0045 §5, m6-conflicts/74): its
-/// position, looked up by commit id in `listed` — never assumed from when
-/// it was stored.
-///
-/// `None` for every other outcome: not a failure, a failure that set
-/// nothing aside, one whose edits came back (the copy is gone), or a stash
-/// list that could not be read. That last is safe to leave unworded here:
-/// the failure's own words already name the stash
-/// (`graft_ops::apply::set_aside`'s `Kept::words`), so nothing is lost —
-/// only the `S p` hint is.
-fn edits_kept_in<E>(
-    result: &Result<Applied, ApplyError>,
-    listed: impl FnOnce() -> Result<Vec<(graft_core::oid::Oid, usize)>, E>,
-) -> Option<usize> {
-    let Err(ApplyError::Git { entry, .. }) = result else {
-        return None;
-    };
-    let put_back = entry
-        .put_back
-        .as_ref()
-        .filter(|put_back| put_back.why == graft_core::journal::PutBackWhy::SetAside)?;
-    listed()
-        .ok()?
-        .into_iter()
-        .find(|(commit, _)| *commit == put_back.stash)
-        .map(|(_, at)| at)
+    answer(run(&mut ctx))
 }
 
 /// One [`apply::apply`] result, as the caller reads it.
@@ -414,7 +378,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
                 refresh,
                 remote,
                 refused,
-                edits_in: None,
+                edits: error.edits_at(),
             }
         }
     }

@@ -20,3 +20,5 @@ pub mod preview;
 pub mod restore;
 pub mod snapshot;
 pub mod undo;
+
+pub use apply::EditsAt;

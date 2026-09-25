@@ -349,7 +349,7 @@ pub fn stop_line_wordings(state: &AppState) -> Option<StopLadder> {
     // m6-conflicts/74): the fullest wording says where they are, and it is
     // the first part to go. Added here, not on `Stop`: every other reader
     // of the stop is unchanged.
-    if edits_aside(state)
+    if has_edits_aside(state)
         && let Some(full) = wordings.first()
     {
         let aside = format!("{full} \u{b7} edits aside");
@@ -363,14 +363,14 @@ pub fn stop_line_wordings(state: &AppState) -> Option<StopLadder> {
 
 /// A live entry — the stop's, `Pending` — set edits aside and waits to put
 /// them back (`JournalEntry::put_back`, read off the journal as last read).
-fn edits_aside(state: &AppState) -> bool {
+fn has_edits_aside(state: &AppState) -> bool {
     let crate::update::detail::Loading::Ready(read) = &state.journal.entries else {
         return false;
     };
     read.entries.iter().any(|entry| {
         state.live_entries.contains(&entry.id)
             && entry.status == graft_core::journal::EntryStatus::Pending
-            && crate::update::clash::set_aside_entry(entry)
+            && crate::update::clash::is_set_aside_entry(entry)
     })
 }
 

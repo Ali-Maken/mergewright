@@ -120,6 +120,7 @@ pub(in crate::update) fn a_plan() -> PreviewPlan {
             oid: oid(3),
         }],
         set_aside: None,
+        put_back: None,
     }
 }
 
@@ -136,6 +137,7 @@ fn an_empty_plan() -> PreviewPlan {
         undo: UndoNote::Undoable,
         against: Vec::new(),
         set_aside: None,
+        put_back: None,
     }
 }
 
@@ -1235,7 +1237,7 @@ fn the_preview_refusal_and_the_write_refusal_read_the_same() {
             refresh: None,
             remote: None,
             refused: Some(refusal),
-            edits_in: None,
+            edits: None,
         },
         &mut || JobId::new(10),
     );
@@ -1245,4 +1247,46 @@ fn the_preview_refusal_and_the_write_refusal_read_the_same() {
         "{:?}",
         previewed.status
     );
+}
+
+/// Review m6-final-fixes-74 M2: the conflict line folds the put-back's own
+/// forecast, one row per line of the note's table ("Preview: the conflict
+/// line folds the put-back").
+#[test]
+fn the_conflict_line_folds_the_put_back() {
+    let clash = || ConflictForecast::Likely {
+        paths: vec![std::path::PathBuf::from("base.txt")],
+    };
+    let unchecked = || ConflictForecast::NotChecked("the rebase may stop first".to_owned());
+    let clean = ConflictForecast::Clean;
+    // Clean, and nothing set aside or the put-back clean too.
+    assert_eq!(conflict_line(&clean, None), "no conflicts expected");
+    assert_eq!(
+        conflict_line(&clean, Some(&ConflictForecast::Clean)),
+        "no conflicts expected"
+    );
+    // Clean, the put-back may clash.
+    assert_eq!(
+        conflict_line(&clean, Some(&clash())),
+        "your edits may clash when put back: base.txt"
+    );
+    // Clean, the put-back not checked.
+    assert_eq!(
+        conflict_line(&clean, Some(&unchecked())),
+        "your edits' put-back: not checked (the rebase may stop first)"
+    );
+    // The operation may stop: its own line, then the put-back not checked.
+    assert_eq!(
+        conflict_line(&clash(), Some(&unchecked())),
+        "may conflict: base.txt \u{b7} put-back not checked"
+    );
+    assert_eq!(
+        conflict_line(
+            &ConflictForecast::NotChecked("x".to_owned()),
+            Some(&unchecked())
+        ),
+        "conflicts: not checked (x) \u{b7} put-back not checked"
+    );
+    // Nothing set aside: the operation's line as before.
+    assert_eq!(conflict_line(&clash(), None), "may conflict: base.txt");
 }

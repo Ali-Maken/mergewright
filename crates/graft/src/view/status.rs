@@ -53,17 +53,20 @@ pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     }
 }
 
-/// The one rendering of a [`Status::Done`]: `<what> ✓`, or
-/// `<what> ✓ · <keys>`. The tick says `what` finished, so it goes after
-/// `what` and never after the key still to press (ticket 41). Every draw
-/// site calls this, and so does the resolver's notice row, so none can
+/// The one rendering of a [`Status::Done`]: `<what> ✓`, then ` · <also>`,
+/// then ` · <keys>`, each part only when present. The tick says `what`
+/// finished, so it goes after `what` and never after what else is true or
+/// the key still to press (ticket 41; review m6-final-fixes-74 m3). Every
+/// draw site calls this, and so does the resolver's notice row, so none can
 /// place the tick apart.
 #[must_use]
-pub(crate) fn done_line(what: &str, keys: Option<&str>) -> String {
-    match keys {
-        Some(keys) => format!("{what} ✓ · {keys}"),
-        None => format!("{what} ✓"),
+pub(crate) fn done_line(what: &str, also: Option<&str>, keys: Option<&str>) -> String {
+    let mut line = format!("{what} ✓");
+    for part in [also, keys].into_iter().flatten() {
+        line.push_str(" · ");
+        line.push_str(part);
     }
+    line
 }
 
 /// What a failure line says when it carries no keys of its own. `Esc`
@@ -191,10 +194,25 @@ mod tests {
 
     #[test]
     fn done_line_puts_the_tick_after_what_and_before_keys() {
-        assert_eq!(done_line("x", None), "x ✓");
+        assert_eq!(done_line("x", None, None), "x ✓");
         assert_eq!(
-            done_line("x", Some("c finishes the merge")),
+            done_line("x", None, Some("c finishes the merge")),
             "x ✓ · c finishes the merge"
+        );
+    }
+
+    /// Review m6-final-fixes-74 M4: a fact that is not a key (`your edits
+    /// are back`) rides in `also`, drawn after the tick and before any key —
+    /// never in `keys`, where the key-driven paths replace it.
+    #[test]
+    fn done_line_places_also_before_keys() {
+        assert_eq!(
+            done_line("rebase", Some("your edits are back"), None),
+            "rebase ✓ · your edits are back"
+        );
+        assert_eq!(
+            done_line("rebase", Some("your edits are back"), Some("u undoes")),
+            "rebase ✓ · your edits are back · u undoes"
         );
     }
 

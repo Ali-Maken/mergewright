@@ -71,12 +71,13 @@ pub fn side_names(state: &AppState) -> SideNames {
             incoming(&commit_like),
         ),
         // Edits Graft set aside around a rebase or switch, clashing as they
-        // came back (m6-conflicts/74): theirs is `your edits`, never the
-        // stash — he never named one.
-        None if state.resolver.is_some() && crate::update::clash::set_aside(state) => (
+        // came back (m6-conflicts/74): ours is the branch as it now stands,
+        // `branch · main`; theirs is `yours · edits set aside`, never the
+        // stash — he never named one (ADR-0043 §4 amended, m6-conflicts/84).
+        None if state.resolver.is_some() && crate::update::clash::is_set_aside_clash(state) => (
             SideRoles::SetAside,
             head().map(|id| branch_like(state, id)),
-            Some("your edits".to_owned()),
+            Some("edits set aside".to_owned()),
         ),
         // Theirs is the stash Graft recorded putting back (`stash@{0}`,
         // m6-conflicts/72b); a pop made in the shell has no record, and

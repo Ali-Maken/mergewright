@@ -446,6 +446,7 @@ fn after_the_last_file_of_a_merge_the_status_says_every_file_done() {
         state.status,
         Status::Done {
             what: "conflicted.rs done".to_owned(),
+            also: None,
             keys: Some("every file done".to_owned()),
         }
     );
@@ -480,6 +481,7 @@ fn after_the_last_file_of_a_rebase_the_status_says_c_continues() {
             state.status,
             Status::Done {
                 what: "conflicted.rs done".to_owned(),
+                also: None,
                 keys: Some(keys.to_owned()),
             },
             "{kind:?}"

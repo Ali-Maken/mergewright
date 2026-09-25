@@ -1,6 +1,6 @@
 # 84 — review fix for 74 (Major M1, M2, M3, M4; Minor m1, m2, m3, m5, m6, m7, m8)
 
-Status: draft
+Status: done
 Blocked by: 75 (graft tests, scripts, docs). 84 runs after 75 lands: it rewords surfaces 75 walks and captures
 (Touches, last rows), so 75's command is re-walked after 84.
 Crates: graft-ops, graft-ui, graft (and `docs/shots/m6`, `TESTING.md` rows 75 wrote, the m6 captions TSV)
@@ -99,67 +99,67 @@ pub(crate) fn has_edits_aside(state: &AppState) -> bool;          // was edits_a
 ```
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **M1, graft-ops** (`tests/it/set_aside.rs`), each asserting `edits_at()` **and** reading the tree and
+- [x] **M1, graft-ops** (`tests/it/set_aside.rs`), each asserting `edits_at()` **and** reading the tree and
       `git stash list`: `a_drop_that_fails_after_a_clean_put_back_is_edits_back` (`Back { copy: Some(0) }`; edits in
       the tree; S listed; red first), `a_stop_after_the_store_is_edits_in_the_backup` (`Backup { copy: Some(0) }`),
       `an_unfound_copy_after_a_failed_operation_is_edits_back` (the `Kept::Unlisted` arm; builder names the fault it
       injects), `a_put_back_that_fails_without_a_clash_is_edits_in_stash` (`Stash { n: 0 }`; tree lacks the edits).
-- [ ] **M1, app:** `operate::tests::edits_words::each_place_the_edits_can_be_is_worded` (the ADR's four rows, each
+- [x] **M1, app:** `operate::tests::edits_words::each_place_the_edits_can_be_is_worded` (the ADR's four rows, each
       `<failure> · <clause>`; `S p` only in `Stash`; red first on `Back`),
       `operate::tests::edits_words::the_clause_is_kept_whole_at_80` (failure cut with `…`, clause whole),
       `banner::tests::resume_words::a_continue_whose_drop_fails_says_the_edits_are_back` (the `resume` path). NOTES:
       `grep -n "edits_kept_in\|stash list\|list_stashes" crates/graft/src/jobs/operate.rs` → empty.
-- [ ] **M2, graft-ops** (real repos, builder names the file): `a_switch_whose_put_back_clashes_forecasts_the_clash`
+- [x] **M2, graft-ops** (real repos, builder names the file): `a_switch_whose_put_back_clashes_forecasts_the_clash`
       (the fixture `set_aside.rs` :288-301 uses → `Likely { paths: [base.txt] }`; red first),
       `a_switch_whose_put_back_is_clean_forecasts_clean`, `a_rebase_whose_put_back_clashes_forecasts_the_clash`,
       `a_rebase_that_may_stop_leaves_the_put_back_not_checked`, `a_clean_tree_has_no_put_back_forecast` (`None`),
       `the_put_back_forecast_writes_no_ref_index_or_file` (`.git/index` bytes, `for-each-ref`, `git stash list`,
       `git status --porcelain=v2` equal before and after `plan`), `the_put_back_forecast_honours_stop`.
-- [ ] **M2, app:** `update::preview::tests::the_conflict_line_folds_the_put_back` (the note's four rows, red first on
+- [x] **M2, app:** `update::preview::tests::the_conflict_line_folds_the_put_back` (the note's four rows, red first on
       `Likely`); walk `set_aside::the_preview_warns_before_a_switch_that_clashes` (`. ⏎` on the clash fixture: the box
       shows `your edits may clash when put back: base.txt` and not `no conflicts expected`).
-- [ ] **M2 capture** (rule 6; colour **unverified**, rule 5): `docs/shots/m6/set-aside-clash-preview-120x40.txt`,
+- [x] **M2 capture** (rule 6; colour **unverified**, rule 5): `docs/shots/m6/set-aside-clash-preview-120x40.txt`,
       written by that walk through `check_shot`. **What right looks like:** the checkout preview box with
       `[ Confirm ]`; under `working tree:` the row `your edits: 1 file set aside, put back after`; the conflict line
       `your edits may clash when put back: base.txt`; no `no conflicts expected` anywhere in the box.
-- [ ] **M3:** graft-ui `conflict_resolver::names::tests::set_aside_roles_name_the_panes_branch_and_yours` (replaces
+- [x] **M3:** graft-ui `conflict_resolver::names::tests::set_aside_roles_name_the_panes_branch_and_yours` (replaces
       `…_yours_and_set_aside`; red first); graft `update::clash::tests::a_put_back_clash_lands_on_the_resolver_with_set_aside_names`
       (`branch · main` | `yours · edits set aside`), `update::clash::tests::a_put_back_clash_done_names_the_dropped_copy`
       (renamed from `…_says_your_edits_are_back`; `every file done · set-aside copy dropped ✓ · u brings it back`);
       `every_key_the_bar_draws_is_answered` and `every_planned_hint_is_still_unbound` green with `o branch`,
       `t yours`; NOTES say which rung `short_form` gives `branch` at 80 (ADR-0043 §4 amended: no new row).
-- [ ] **M3 walks** (`tests/it/m6_stash_put_back/set_aside.rs`): new `t_in_a_set_aside_clash_keeps_your_edits`
+- [x] **M3 walks** (`tests/it/m6_stash_put_back/set_aside.rs`): new `t_in_a_set_aside_clash_keeps_your_edits`
       (`. ⏎ y t ⏎`, ≤ `noted_keys("switch-dirty-clash")`: on the branch; file holds his edit; stash list empty;
       status as above); `a_dirty_switch_that_clashes_is_five_keys` keeps `o` and gains: after `⏎`, `u` → `git stash
       list` shows the copy again (what `u brings it back` promises); its assertion messages say `branch`. Pop walks
       and `stash-clash-landing-*`, `stash-clash-done-120x40` unchanged (`check_shot`).
-- [ ] **M3 capture:** `docs/shots/m6/set-aside-clash-landing-120x40.txt` regenerated. **What right looks like:**
+- [x] **M3 capture:** `docs/shots/m6/set-aside-clash-landing-120x40.txt` regenerated. **What right looks like:**
       pane or card names `branch · main` and `yours · edits set aside`; notice `your edits clashed in 1 file · esc, u
       undoes the switch too`; bar `o branch` `t yours`; the word `set aside ·` nowhere as a pane name.
-- [ ] **M4:** the three renames (`grep -rn "fn set_aside_entry\|fn set_aside(\|fn edits_aside" crates/graft/src` →
+- [x] **M4:** the three renames (`grep -rn "fn set_aside_entry\|fn set_aside(\|fn edits_aside" crates/graft/src` →
       empty, in NOTES); `view::status::tests::done_line_places_also_before_keys` (four shapes: what; what+also;
       what+keys; all three); `update::clash::tests::a_clean_put_back_says_your_edits_are_back` unchanged in words
       (the clause now in `also`); `set-aside-done-120x40.txt` byte-identical (`check_shot`). NOTES: what
       `update/undo.rs:229` does with `also`, and the test that pins it.
-- [ ] **m1:** `set_aside::esc_u_undoes_a_clashed_switch` — `. ⏎ y` into the clash, then `esc u` (2 keys, no take so no
+- [x] **m1:** `set_aside::esc_u_undoes_a_clashed_switch` — `. ⏎ y` into the clash, then `esc u` (2 keys, no take so no
       drift box): old branch, index and tree as before (staged split included), stash list as before.
-- [ ] **m2:** `set_aside::aborting_a_stopped_rebase_puts_the_edits_back` — `p r r` to the stop, then abort (keys as
+- [x] **m2:** `set_aside::aborting_a_stopped_rebase_puts_the_edits_back` — `p r r` to the stop, then abort (keys as
       the banner takes them; NOTES say which): original tip; edits in the tree; stash list empty; status
       `aborted: rebase … ✓ · your edits are back`.
-- [ ] **m5:** the 80×24 preview test (`set_aside.rs` :544) asserts the exact wording `fitting_line` picks at 80, not
+- [x] **m5:** the 80×24 preview test (`set_aside.rs` :544) asserts the exact wording `fitting_line` picks at 80, not
       `contains`. Builder names the test and the rung.
-- [ ] **m7:** tests 74 added inline to `update/operate.rs` and `update/undo.rs`, and every test this ticket adds
+- [x] **m7:** tests 74 added inline to `update/operate.rs` and `update/undo.rs`, and every test this ticket adds
       there, live in `update/operate/tests/` and `update/undo/tests/`. NOTES: `wc -l` of both files before and after;
       the nextest count unchanged by the move alone.
-- [ ] **m8:** `kept_open`'s `Clashed` arm (`update/banner.rs` ~:910) keeps its code; its comment says why it is
+- [x] **m8:** `kept_open`'s `Clashed` arm (`update/banner.rs` ~:910) keeps its code; its comment says why it is
       unreachable (`finish::refusal` → `None` for `Clashed`, `update/finish/answers.rs:175`; a set-aside never wraps
       a merge). Doc, no test.
-- [ ] Contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`), captions TSV row for the
+- [x] Contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`), captions TSV row for the
       new capture; each part ≤ 200 000 B; no machine paths.
-- [ ] MAP.md: graft-ops (`EditsAt`, `edits_at`, `PreviewPlan::put_back`, the forecast); graft-ui (`SideRoles::SetAside`
+- [x] MAP.md: graft-ops (`EditsAt`, `edits_at`, `PreviewPlan::put_back`, the forecast); graft-ui (`SideRoles::SetAside`
       words); graft (`edits_status`, `conflict_line`, `Done::also`, `done_line`, renames, `dropped_status`'s set-aside
       words). Doc, no test.
-- [ ] TESTING.md: the rows 75 wrote for `switch-dirty-clash`, `pull-rebase-stop-then-clash`, the set-aside clash
+- [x] TESTING.md: the rows 75 wrote for `switch-dirty-clash`, `pull-rebase-stop-then-clash`, the set-aside clash
       landing capture and the put-back failure line, reworded to the words above; a row for the new capture. NOTES
       list each row changed.
 
@@ -210,3 +210,74 @@ Large (~80k). If it compacts, the split is: **84a** M1 + M2 (graft-ops and their
 **84b** M3, M4, m1, m2, m3, m5, m7, m8 (names, `Done`, walks, the landing capture).
 
 ## NOTES (builder)
+**Compacted once, mid-ticket** (after graft-ops M1/M2, graft-ui M3 and the app's `Done{also}` reshape were written,
+before the app compiled). Everything was then finished in the same session; nothing remains of 84a or 84b. Scout: the
+conductor's scout (corrections in the brief) was used; no second one.
+
+Tick → verifying test (all green in the final workspace nextest, 3486 passed, 1 skipped):
+- **M1 graft-ops**, `crates/graft-ops/tests/it/set_aside.rs`: `a_drop_that_fails_after_a_clean_put_back_is_edits_back`
+  (fault: a hook `chmod 555 .git/logs/refs` so the drop's reflog write fails; red shown by mutating `Back` → `Stash`),
+  `a_stop_after_the_store_is_edits_in_the_backup` (`stop_before(4)`, both kinds),
+  `an_unfound_copy_after_a_failed_operation_is_edits_back` (fault: a `post-checkout` hook that runs
+  `chmod 000 .git/logs/refs/stash; exit 1` — the checkout fails and the list is unreadable-as-unlisted, `Kept::Unlisted`),
+  `a_put_back_that_fails_without_a_clash_is_edits_in_stash`. Each asserts `edits_at()`, the tree and `git stash list`.
+- **M1 app**: `update::operate::tests::edits_words::{each_place_the_edits_can_be_is_worded,the_clause_is_kept_whole_at_80}`,
+  `update::banner::tests::resume_words::a_continue_whose_drop_fails_says_the_edits_are_back`. Written after the code
+  (compaction); red shown instead by mutating the `Back{Some}` clause to the `Stash` words: both tests failed, restored.
+  `grep -n "edits_kept_in\|stash list\|list_stashes" crates/graft/src/jobs/operate.rs` → empty.
+- **M2 graft-ops**, `crates/graft-ops/tests/it/put_back_forecast.rs` (9): the six named + `a_rebase_whose_put_back_is_clean_forecasts_clean`,
+  `an_old_git_leaves_the_put_back_not_checked` (git 2.39 → `NotChecked("git 2.40+ needed to forecast the put-back")`, the
+  degrade path the conductor asked for). The writes test compares index bytes, `for-each-ref`, `git stash list`,
+  `status --porcelain=v2` (run `--no-optional-locks`: a plain `status` refreshes the index itself) and `.git`'s names;
+  dropping `GIT_INDEX_FILE` made it fail. **Spawns: a checkout 2 (`stash create`, `merge-tree`); a rebase 4**
+  (`stash create`, `merge-tree` replay, `commit-tree`, `merge-tree`) — the note says 2–3. `commit-tree` avoids relying on
+  `merge-tree` accepting a tree on git 2.40–2.44, which I could not confirm; cost one spawn on a dirty rebase's preview.
+- **M2 app**: `update::preview::tests::the_conflict_line_folds_the_put_back` (red shown by mutating the `Likely` row);
+  walk `m6_stash_put_back::set_aside::the_preview_warns_before_a_switch_that_clashes`. ` · put-back not checked` is
+  appended; a tail cut takes it first, no separate ladder.
+- **M2 capture**: `docs/shots/m6/set-aside-clash-preview-120x40.txt`, written by that walk via `check_shot`.
+- **M3**: graft-ui `conflict_resolver::names::tests::set_aside_roles_name_the_panes_branch_and_yours` (red first) +
+  `stash_pop_roles_are_unchanged`; graft `update::clash::tests::{a_put_back_clash_lands_on_the_resolver_with_set_aside_names,
+  a_put_back_clash_done_names_the_dropped_copy}`; `every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`
+  green with `("o","branch")` in `keys/bound.rs` (`t set aside` row removed; `t yours` existed). Rung at 80:
+  `short_form("branch")` is `None`, so the Short rung draws `o branch` whole (80x24 capture, bottom row).
+- **M3 walks**: `set_aside::t_in_a_set_aside_clash_keeps_your_edits`; `set_aside::a_dirty_switch_that_clashes_is_five_keys`
+  now asserts the status and, after `⏎`, an uncounted `u` → one stash listed again. Pop walks and `stash-clash-*` shots
+  unchanged (`check_shot` green).
+- **M3 capture**: `set-aside-clash-landing-120x40.txt` regenerated (`landing_shot` asserts `branch · main`,
+  `yours · edits set aside`, `o branch`, `t yours`, no `set aside ·`).
+- **M4**: `grep -rn "fn set_aside_entry\|fn set_aside(\|fn edits_aside" crates/graft/src` → empty (a test fixture
+  `set_aside` in `banner/tests/resume_words.rs` was renamed `set_aside_around` for it). `view::status::tests::{done_line_puts_the_tick_after_what_and_before_keys,done_line_places_also_before_keys}`
+  (the four shapes between them). `update::operate::tests::edits_words::a_clean_put_back_says_your_edits_are_back`
+  same words, clause in `also`. `set-aside-done-120x40.txt` byte-identical (`check_shot`, no diff). `undo.rs:229`
+  (`land_after_undo`) replaces `keys` only, keeping `also`: pinned by
+  `update::undo::tests::set_aside::the_landing_keeps_also_when_the_banner_takes_the_keys`.
+- **m1**: `set_aside::esc_u_undoes_a_clashed_switch` (a staged second file added to the fixture for the split).
+- **m2**: `set_aside::aborting_a_stopped_rebase_puts_the_edits_back`, keys `esc a y` (esc leaves the resolver for the banner).
+- **m5**: `set_aside::a_dirty_pull_rebase_is_three_keys` (`preview_shots`): exact row match at 80 and 120; at 80 the
+  rung is `set_aside_row`'s longest (76 cells fill the 76 inner columns), so the whole row.
+- **m7**: moved to `update/operate/tests/edits_words.rs` and `update/undo/tests/set_aside.rs`. `wc -l`: operate.rs
+  2714 → 2646, undo.rs 1634 → 1584. Count: baseline 3462 → 3486 = +24, all new tests (graft-ops 13, graft-ui 1,
+  graft 10 net); the moves added and removed none.
+- **m8**: comment on `kept_open`'s `Clashed` arm (`update/banner.rs`). Doc.
+- **Contact sheet**: `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6` → 176 captures, 0 uncaptioned;
+  parts 179 772 / 177 281 / 176 526 / 168 218 B. Captions rows reworded: `set-aside-preview-80x24`,
+  `set-aside-clash-landing-120x40`, `m6-23-…-120x40`, `m6-23-…-80x24`; new row `set-aside-clash-preview-120x40`.
+- **MAP.md**: graft-ops (`ApplyError::Git.edits`, `EditsAt`, `PreviewPlan::put_back`), graft-ui (`SideRoles` words),
+  graft (`Status::Done.also`, `done_line`, `edits_status`, `conflict_line`, `dropped_status`, `edits_back`, renames,
+  `Operated::Failed.edits`).
+- **TESTING.md** rows changed: "The stash put-back journeys" `switch-dirty-clash` and `pull-rebase-stop-then-clash`;
+  new paragraphs "Put-back failure line" and "Preview warns a put-back clash"; "Captures" row `m6-23`; the Rust-captures
+  paragraph (new capture).
+
+Touches, checked: every `ApplyError::Git {` site (grep: graft-ops src/tests, `jobs/operate.rs` — the build);
+83's paths green (`set_aside.rs` 83 tests in the run); preview captures `set-aside-preview-*` and `m6-22-*` unchanged
+(`check_shot`; pty pass without rewrite: `settled`); m6-23 at 120x40/187x50/80x24 re-taken by
+`.scratch/m6-conflicts/pty-walk-m6.py` under `GRAFT_UPDATE_SHOTS=1`, then a second pass without it: all m6-20…25
+`settled` at three sizes (m6-22/24 at 187x50 only warn over the 8 KB soft cap, as in 75). `git status docs/shots`: the
+two Rust captures named, m6-23 ×3, sheet parts, captions. Journeys: `journey_counts_match_the_note` and the m5_walk
+stash journeys green, counts unchanged. README.md: no `set aside ·` / `your edits are back ✓`. `docs/design`:
+only keymap §2.6 `Enter` ("drops the stash … `u` brings it back"), still true; no edit.
+
+Not verified: colour (rule 5); how the forecast behaves on a real git 2.40–2.44 (only 2.39-by-version and this
+machine's git were run); release perf of the extra spawns (review's, ADR-0021).

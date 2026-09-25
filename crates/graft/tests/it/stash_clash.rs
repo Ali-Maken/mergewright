@@ -195,6 +195,7 @@ fn the_last_file_done_after_a_pop_clash_drops_the_stash() {
         state.status,
         Status::Done {
             what: "every file done \u{b7} stash@{0} dropped".to_owned(),
+            also: None,
             keys: Some("u brings it back".to_owned()),
         }
     );
@@ -232,6 +233,7 @@ fn after_an_apply_clash_the_stash_is_kept() {
         state.status,
         Status::Done {
             what: "every file done \u{b7} stash@{0} kept".to_owned(),
+            also: None,
             keys: None,
         }
     );
@@ -268,7 +270,7 @@ fn a_shell_pop_clash_names_no_stash_and_drops_nothing() {
         state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
     });
     assert!(
-        matches!(&state.status, Status::Done { what, keys: None } if what == "every file done"),
+        matches!(&state.status, Status::Done { what, also: None, keys: None } if what == "every file done"),
         "{:?}",
         state.status
     );

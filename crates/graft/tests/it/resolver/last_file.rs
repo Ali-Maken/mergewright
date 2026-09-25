@@ -113,7 +113,7 @@ fn done_read_landed(app: &App, between: AppState) -> AppState {
         .unwrap_or_else(|| panic!("no summary opened: {:?}", state.status));
     assert_eq!(finish.return_to, graft::update::finish::ReturnTo::Resolver);
     assert!(
-        matches!(&state.status, Status::Done { what, keys: Some(keys) }
+        matches!(&state.status, Status::Done { what, also: None, keys: Some(keys) }
             if what == "b.txt done" && keys == "every file done"),
         "{:?}",
         state.status
@@ -176,7 +176,7 @@ fn last_file_without_one() {
         "the only file closes the resolver"
     );
     assert!(
-        matches!(&state.status, Status::Done { what: line, keys: None } if line == "every file done"),
+        matches!(&state.status, Status::Done { what: line, also: None, keys: None } if line == "every file done"),
         "no banner, so no `c continue`: {:?}",
         state.status
     );

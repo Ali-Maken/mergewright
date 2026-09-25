@@ -13,6 +13,7 @@ mod mistake_radar;
 mod octopus_merge;
 mod ops_execution;
 mod ops_execution_hard;
+mod put_back_forecast;
 mod remote_ops;
 mod restart_gate;
 mod restart_whole_file;

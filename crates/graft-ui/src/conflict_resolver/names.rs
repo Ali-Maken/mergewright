@@ -21,7 +21,8 @@ pub enum SideRoles {
     /// A stash pop: `yours` / `stashed`.
     StashPop,
     /// Edits set aside around a rebase or switch, clashing as they come
-    /// back (ADR-0045 §4): `yours` / `set aside` (m6-conflicts/74).
+    /// back (ADR-0045 §4): `branch` / `yours` — the branch as it now stands,
+    /// and his uncommitted edits (ADR-0043 §4 amended, m6-conflicts/84).
     SetAside,
 }
 
@@ -31,11 +32,10 @@ impl SideRoles {
     pub const fn ours(self) -> &'static str {
         match self {
             SideRoles::Rebase => "upstream",
-            SideRoles::Merge
-            | SideRoles::CherryPick
-            | SideRoles::Revert
-            | SideRoles::StashPop
-            | SideRoles::SetAside => "yours",
+            SideRoles::SetAside => "branch",
+            SideRoles::Merge | SideRoles::CherryPick | SideRoles::Revert | SideRoles::StashPop => {
+                "yours"
+            }
         }
     }
 
@@ -44,11 +44,10 @@ impl SideRoles {
     pub const fn theirs(self) -> &'static str {
         match self {
             SideRoles::Merge => "theirs",
-            SideRoles::Rebase => "yours",
+            SideRoles::Rebase | SideRoles::SetAside => "yours",
             SideRoles::CherryPick => "picked",
             SideRoles::Revert => "reverting",
             SideRoles::StashPop => "stashed",
-            SideRoles::SetAside => "set aside",
         }
     }
 }
@@ -111,9 +110,20 @@ pub fn number_width(doc: &DocView) -> usize {
 mod tests {
     use super::SideRoles;
 
+    /// ADR-0043 §4 amended (review m6-final-fixes-74 M3): `yours` is the side
+    /// that is his work — the edits set aside — and the committed side is
+    /// named by what it is, the branch.
     #[test]
-    fn set_aside_roles_name_the_panes_yours_and_set_aside() {
-        assert_eq!(SideRoles::SetAside.ours(), "yours");
-        assert_eq!(SideRoles::SetAside.theirs(), "set aside");
+    fn set_aside_roles_name_the_panes_branch_and_yours() {
+        assert_eq!(SideRoles::SetAside.ours(), "branch");
+        assert_eq!(SideRoles::SetAside.theirs(), "yours");
+    }
+
+    /// The pop keeps its words: it does not move `HEAD`, so only one side
+    /// says "your".
+    #[test]
+    fn stash_pop_roles_are_unchanged() {
+        assert_eq!(SideRoles::StashPop.ours(), "yours");
+        assert_eq!(SideRoles::StashPop.theirs(), "stashed");
     }
 }

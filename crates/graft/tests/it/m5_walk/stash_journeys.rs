@@ -62,7 +62,7 @@ fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
         "m6-22-set-aside-preview" => (plain(&[ch('p'), ch('r')]), "your edits: 3 files"),
         "m6-23-set-aside-clash-landing" => (
             plain(&[ch('j'), ch('k'), ch('.'), KeyCode::Enter, ch('y')]),
-            "set aside · your edits",
+            "yours · edits set aside",
         ),
         "m6-24-set-aside-done" => (plain(&[ch('p'), ch('r'), ch('r')]), "your edits are back"),
         "m6-25-menu-fixed-slots" => (plain(&[ch('k'), ch('.')]), "Checkout fix"),
@@ -661,7 +661,7 @@ fn bare_main(fixture: &Fixture) -> Result<String, String> {
 
 /// `pull-rebase-stop-then-clash`: `p r r o ⏎ c o ⏎` — the rebase stops on
 /// `f.txt`, `o ⏎` settles it, `c` continues, putting `g.txt` back clashes,
-/// `o ⏎` keeps yours (the rebased `theirs`): rebased, no stash left.
+/// `o ⏎` takes the branch (the rebased `theirs`): rebased, no stash left.
 fn pull_rebase_stop_then_clash() -> Scenario {
     journey(
         "pull-rebase-stop-then-clash",
@@ -702,12 +702,7 @@ fn pull_rebase_stop_then_clash() -> Scenario {
                 Step::Settle("the drop after the last file"),
                 Step::WaitFor(Wait::Ready),
                 end(),
-                Step::See("every file done, the edits back", |state| {
-                    check(state.resolver.is_none(), || {
-                        "the resolver is still open".to_owned()
-                    })?;
-                    status_containing(state, "your edits are back")
-                }),
+                copy_dropped(),
                 Step::Shell(|fixture| {
                     rebased_onto_origin(fixture)?;
                     let merge = fixture.git(&["rev-parse", "--git-path", "rebase-merge"])?;
@@ -782,8 +777,23 @@ fn switch_dirty() -> Scenario {
     )
 }
 
+/// The end of a set-aside clash taken to done (ADR-0045 §3 amended): the
+/// resolver shut, the line naming the dropped copy and the key that brings
+/// it back.
+fn copy_dropped() -> Step {
+    Step::See("every file done, the copy dropped", |state| {
+        check(state.resolver.is_none(), || {
+            "the resolver is still open".to_owned()
+        })?;
+        status_containing(
+            state,
+            "every file done · set-aside copy dropped · u brings it back",
+        )
+    })
+}
+
 /// `switch-dirty-clash`: `. ⏎ y o ⏎` on `main`'s row from a dirty `fix` —
-/// the put-back clashes in `base.txt`; yours (main's) kept; on `main`, the
+/// the put-back clashes in `base.txt`; `o branch` takes main's; on `main`, the
 /// set-aside dropped. The capture m6-23 is the landing.
 fn switch_dirty_clash() -> Scenario {
     journey(
@@ -807,10 +817,10 @@ fn switch_dirty_clash() -> Scenario {
                 Step::Frame(
                     "the clash landing, drawn",
                     &[
-                        Sees::Has("yours · main"),
-                        Sees::Has("set aside · your edits"),
-                        Sees::Has("t set aside"),
-                        Sees::BottomStarts("o yours"),
+                        Sees::Has("branch · main"),
+                        Sees::Has("yours · edits set aside"),
+                        Sees::Has("t yours"),
+                        Sees::BottomStarts("o branch"),
                     ],
                 ),
                 key(ch('o')),
@@ -822,15 +832,12 @@ fn switch_dirty_clash() -> Scenario {
                 Step::WaitFor(Wait::Ready),
                 Step::WaitFor(Wait::FrameSettled),
                 end(),
-                Step::See("every file done, the edits back", |state| {
-                    check(state.resolver.is_none(), || {
-                        "the resolver is still open".to_owned()
-                    })?;
-                    status_containing(state, "every file done · your edits are back")
-                }),
+                copy_dropped(),
                 Step::Frame(
                     "the done line, drawn",
-                    &[Sees::Has("every file done · your edits are back ✓")],
+                    &[Sees::Has(
+                        "every file done · set-aside copy dropped ✓ · u brings it back",
+                    )],
                 ),
                 Step::Shell(|fixture| {
                     on_branch(fixture, "main")?;
