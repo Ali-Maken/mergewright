@@ -139,7 +139,7 @@
 
 
 
- no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+
  y undo  ←/→ move  ⏎ choose  esc cancel
 
 === frame 4: `b`, `⏎` on an empty name ===

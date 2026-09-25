@@ -266,12 +266,14 @@ pub(super) fn draw_tab_strip(
 ///
 /// `None` while a modal is open: the modal owns the bottom row, and a
 /// notice from before it (a `Busy`, a `Done`) is hidden, not cleared
-/// (`view::status::modal_owns_bottom_row`, m6-conflicts/69).
+/// (`AppState::modal_owns_bottom_row`, m6-conflicts/69). Reads
+/// `AppState::shown_status`: an unseen failure stands in for the status
+/// under it, and is the `problem` line, so no notice (m6-conflicts/78).
 pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
-    if crate::view::status::modal_owns_bottom_row(state) {
+    if state.modal_owns_bottom_row() {
         return None;
     }
-    match &state.status {
+    match state.shown_status() {
         // A write is running. The only acknowledgement `Space` gives, and the
         // only thing that says why the other write keys do nothing meanwhile
         // (m3/04 review M3).

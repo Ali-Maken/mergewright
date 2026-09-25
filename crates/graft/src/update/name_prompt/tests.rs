@@ -183,7 +183,8 @@ fn an_empty_name_is_refused_inside_the_prompt() {
         let (after, commands) = press(&state, key(KeyCode::Enter));
         assert!(commands.is_empty(), "nothing ran");
         let prompt = after.name_prompt.as_ref().expect("the prompt stayed open");
-        assert_eq!(prompt.refusal.as_deref(), Some(words));
+        assert_eq!(prompt.refusal, Some(PromptRefusal::EmptyName));
+        assert_eq!(refusal_words(&after).as_deref(), Some(words));
         assert_eq!(
             after.status, before,
             "the status line under the box is untouched"
@@ -421,10 +422,8 @@ fn a_fetch_in_flight_refuses_inside_the_stash_branch_prompt() {
     let (after, commands) = press(&state, key(KeyCode::Enter));
     let prompt = after.name_prompt.as_ref().expect("the prompt stayed open");
     assert_eq!(typed(&after), "rescued", "the name is kept");
-    let refusal = prompt
-        .refusal
-        .as_deref()
-        .expect("refused inside the prompt");
+    assert_eq!(prompt.refusal, Some(PromptRefusal::NotNow));
+    let refusal = refusal_words(&after).expect("refused inside the prompt");
     assert!(
         refusal.starts_with("wait for ") && refusal.ends_with(" to finish"),
         "{refusal}"
@@ -438,3 +437,5 @@ fn a_fetch_in_flight_refuses_inside_the_stash_branch_prompt() {
     assert!(after.preview.is_none());
     assert!(commands.is_empty(), "nothing planned or run: {commands:?}");
 }
+
+mod in_flight;

@@ -133,7 +133,29 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     if next.commit_graph_line().is_some() != state.commit_graph_line().is_some() {
         show_rows(&mut next, &mut commands);
     }
+    keep_unseen_failure(state, &mut next);
     (next, commands)
+}
+
+/// The one seam that keeps a failure from going unseen under a box
+/// (m6-conflicts/78, Decided 1). Last thing [`update`] does, every event.
+///
+/// - A failure that **arrives** while a modal owns the bottom row — the
+///   modal stands both before and after the event, and the status became a
+///   failure it was not — is copied to `unseen`. A failure that stood before
+///   the modal opened is not: the modal's act replacing it is 69's rule.
+/// - When the modal closes, `unseen` goes if `status` still holds that very
+///   failure (the status draws itself); otherwise it stays, and the row
+///   draws it in place of whatever replaced it (`shown_status`).
+fn keep_unseen_failure(before: &AppState, next: &mut AppState) {
+    let boxed_before = before.modal_owns_bottom_row();
+    let boxed_after = next.modal_owns_bottom_row();
+    if boxed_before && boxed_after && next.status.is_failure() && next.status != before.status {
+        next.unseen = Some(next.status.clone());
+    }
+    if boxed_before && !boxed_after && next.unseen.as_ref() == Some(&next.status) {
+        next.unseen = None;
+    }
 }
 
 /// What follows every answered event: the selection reconciled with the

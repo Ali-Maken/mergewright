@@ -364,7 +364,12 @@ fn modal_kind(state: &AppState) -> Option<&'static str> {
 /// writes `AppState::status` — the modal owns the row, so a status written
 /// under it would be unseen until the modal closed, then stale. Per modal,
 /// every key its bar names, `⏎`/`y` on empty or unconfirmable input, and a
-/// letter; covers the preview after 67 (its refusals close it first).
+/// letter. Both sizes; the preview twice — planning, and 67's failed box
+/// (a refusal closes it first, so the box a plan can still leave open is
+/// the failed one, whose `⏎`/`y` confirm nothing). No `Done`→`Ready`
+/// allowance any more: nothing is acknowledged under a modal
+/// (m6-conflicts/78, Decided 1). The count is exact, so a modal or key that
+/// stops being checked fails here rather than passing on fewer.
 #[test]
 fn a_key_that_keeps_a_modal_open_leaves_the_status_alone() {
     let keys = [
@@ -382,32 +387,58 @@ fn a_key_that_keeps_a_modal_open_leaves_the_status_alone() {
         KeyCode::Char('n'),
         KeyCode::Char('x'),
     ];
-    let (columns, rows) = SIZES[0];
     let mut checked = 0;
-    for (status, _) in statuses() {
-        for (modal, mut state) in modals(columns, rows) {
-            state.status = status.clone();
-            let kind = modal_kind(&state);
-            // A key through `update::keys::key_event` ends an
-            // acknowledgement (`Done`) whatever the key does — one standing
-            // rule (`keys::acknowledge`, m6-conflicts/42), not a refusal
-            // written under the modal; the credential prompt takes its keys
-            // before that and leaves it. Either is allowed; anything else
-            // is a status written under an open modal.
-            let acknowledged = matches!(status, Status::Done { .. }).then_some(Status::Ready);
-            for code in keys {
-                let after = press(&state, code);
-                if modal_kind(&after) != kind {
-                    continue;
+    for (columns, rows) in SIZES {
+        for (status, _) in statuses() {
+            let mut all = modals(columns, rows);
+            all.push(("failed preview", failed_preview(columns, rows)));
+            for (modal, mut state) in all {
+                state.status = status.clone();
+                let kind = modal_kind(&state);
+                for code in keys {
+                    let after = press(&state, code);
+                    if modal_kind(&after) != kind {
+                        continue;
+                    }
+                    checked += 1;
+                    assert_eq!(
+                        after.status, status,
+                        "{modal} at {columns}x{rows}, {code:?} left it open and wrote the status"
+                    );
                 }
-                checked += 1;
-                assert!(
-                    after.status == status || Some(&after.status) == acknowledged.as_ref(),
-                    "{modal}, {code:?} left it open and wrote the status: {:?}",
-                    after.status
-                );
             }
         }
     }
-    assert!(checked > 0, "some key kept a modal open");
+    assert_eq!(checked, KEPT_OPEN, "keys that kept a modal open");
 }
+
+/// How many (size, status, modal, key) presses keep their modal open in
+/// [`a_key_that_keeps_a_modal_open_leaves_the_status_alone`]: of 663
+/// (2 sizes × 3 statuses × 13 keys × 8 modals at 120x40, 9 at 80x24), the
+/// rest close their modal (`⏎` acting, `y` confirming) and are skipped.
+const KEPT_OPEN: usize = 531;
+
+/// 67's failed preview: the plan's read failed, and the box that says so
+/// stays open with nothing to confirm.
+fn failed_preview(columns: u16, rows: u16) -> AppState {
+    let (_, preview) = modals(columns, rows)
+        .into_iter()
+        .find(|(modal, _)| *modal == "preview")
+        .expect("the preview is one of the modals");
+    let job = preview.preview.as_ref().expect("open").job;
+    let state = crate::update::update(
+        &preview,
+        AppEvent::Produced(
+            job,
+            crate::update::Product::Preview(Err(crate::update::preview::PreviewFailure::Failed(
+                "git exited 128".to_owned(),
+            ))),
+        ),
+    )
+    .0;
+    assert!(state.preview.is_some(), "the failed box stays open");
+    state
+}
+
+mod rungs;
+mod unseen;

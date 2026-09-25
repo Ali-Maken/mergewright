@@ -425,7 +425,9 @@ fn save(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnM
         },
     };
     next.stash.prompt = None;
-    super::operate::launch(next, commands, Operation::StashPush(params), next_id);
+    // Unreachable `Err`: `operation_in_flight` returned above.
+    let launched = super::operate::launch(next, commands, Operation::StashPush(params), next_id);
+    super::operate::say_if_refused(next, launched);
 }
 
 /// `Enter`/`p` on a row: apply or pop it. The commit travels with the
@@ -448,7 +450,9 @@ fn operate_on_selected(
         Apply::Keep => Operation::StashApply { index, commit },
         Apply::Pop => Operation::StashPop { index, commit },
     };
-    super::operate::launch(next, commands, operation, next_id);
+    // Unreachable `Err`: `operation_in_flight` returned above.
+    let launched = super::operate::launch(next, commands, operation, next_id);
+    super::operate::say_if_refused(next, launched);
 }
 
 /// `d`: the confirm box for dropping the selected stash. Destructive, so

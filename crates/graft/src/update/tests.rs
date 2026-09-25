@@ -1138,6 +1138,7 @@ fn every_field_spelled_out() -> AppState {
         quit: None,
         harness: Harness::default(),
         status: Status::Failed("earlier".to_owned()),
+        unseen: Some(Status::sticky("arrived under a box")),
         size: Size {
             columns: 80,
             rows: 24,

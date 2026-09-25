@@ -1,6 +1,6 @@
 # 78 — review fix for 68, 69: no failure goes unseen under a box; one write at a time; the prompt names its push
 
-Status: draft
+Status: done
 From: `docs/reviews/m6-final-fixes-68-69.md` Major 1, 2, 3; Minor 1, 2, 3, 5, 6, 7 (Minor 4 and parts of 5, 7 go to
 KNOWN_GAPS, below). Each names its lines.
 Blocked by: **77 merged** (it builds in graft-ops + graft now; both touch `update/undo.rs` launch sites and
@@ -125,36 +125,56 @@ pub(crate) enum PromptRefusal { EmptyName, NotNow }
 ```
 
 ## Acceptance (name the verifying test at tick time; red observed first where marked)
-- [ ] **M1** `a_failure_under_a_box_is_shown_when_it_closes` (`view::tests::bottom_row`, 120x40 and 80x24, red):
+- [x] **M1** `a_failure_under_a_box_is_shown_when_it_closes` (`view::tests::bottom_row`, 120x40 and 80x24, red):
       `f` running, `b`, the fetch answers `Failed`, then another job answers `Done`, `esc`: the row reads the fetch
-      failure; `esc` again: the `Done` line.
-- [ ] **M1** `a_boxs_act_does_not_hide_a_failure` (red; the review's steps): `f`, `b`, fetch `Failed`, `topic ⏎`: prompt
+      failure; `esc` again: the `Done` line. — `view::tests::bottom_row::unseen::a_failure_under_a_box_is_shown_when_it_closes`,
+      red observed (seam off), green. The other job's `Done` is written directly, commented: no second job answers
+      under the prompt in a unit fixture.
+- [x] **M1** `a_boxs_act_does_not_hide_a_failure` (red; the review's steps): `f`, `b`, fetch `Failed`, `topic ⏎`: prompt
       closed, row = the fetch failure with `esc dismiss`, `status` = the create's `Busy`. `Esc`: the row is the create's
-      line and the create is **not** cancelled (`operating` unchanged, no `CancelJob`).
-- [ ] **M1** `a_done_under_a_box_is_not_acknowledged_unseen` (red): `fetched` arrives under the prompt, three keys
-      typed: still `Done`. After `esc`: drawn. The next key: `Ready`.
-- [ ] **M1** `a_failure_that_stood_before_the_box_is_not_held`: the rejection sticky, `P`, lease `y`: `unseen` is `None`
-      (69 Decided 2 unchanged).
-- [ ] **M2** `the_credential_prompt_names_its_push` (both sizes): border ends `esc cancel push main → origin/main`. With a
-      60-char branch: `esc cancel the push`, and nothing is cut.
-- [ ] **M3** `a_write_in_flight_refuses_inside_the_prompt`, one row per kind (branch, branch + checkout, tag, stash
+      line and the create is **not** cancelled (`operating` unchanged, no `CancelJob`). —
+      `view::tests::bottom_row::unseen::a_boxs_act_does_not_hide_a_failure`, red observed, green.
+- [x] **M1** `a_done_under_a_box_is_not_acknowledged_unseen` (red): `fetched` arrives under the prompt, three keys
+      typed: still `Done`. After `esc`: drawn. The next key: `Ready`. —
+      `view::tests::bottom_row::unseen::a_done_under_a_box_is_not_acknowledged_unseen` (name prompt and lease box), red
+      observed, green.
+- [x] **M1** `a_failure_that_stood_before_the_box_is_not_held`: the rejection sticky, `P`, lease `y`: `unseen` is `None`
+      (69 Decided 2 unchanged). — `view::tests::bottom_row::unseen::a_failure_that_stood_before_the_box_is_not_held`
+      (green from the start: it pins what must not change).
+- [x] **M2** `the_credential_prompt_names_its_push` (both sizes): border ends `esc cancel push main → origin/main`. With a
+      60-char branch: `esc cancel the push`, and nothing is cut. — `view::tests::credential_footer::the_credential_prompt_names_its_push`,
+      red observed, green.
+- [x] **M3** `a_write_in_flight_refuses_inside_the_prompt`, one row per kind (branch, branch + checkout, tag, stash
       branch), each with a real `f` launch (red for the first three): prompt open, name kept, row
-      `wait for fetch … to finish`, `status` and `operating` unchanged, no `Operate` command.
-- [ ] **M3** `one_write_at_a_time`: `claim_write` with `operating` set is `Err` and leaves the state `==` before. One row
-      per scout-listed caller reachable with a write running: refused in words, nothing launched.
-- [ ] **M3** `in_flight_words_are_one_wording`: `fetch_key`, `preview_refusal` and `InFlight::words` give one string.
-- [ ] **Minor 2** `the_prompts_refusal_goes_with_its_cause` (red): the above, then the fetch answers: the row is the
-      prompt's keys. `⏎`: creates. **Keys from the fetch's end to created: 1.**
-- [ ] **Minor 6c** `git_mid_operation_refuses_inside_the_stash_prompt` (the `live_refusal_words` arm).
-- [ ] **Minor 1** `a_first_stop_skip_that_finishes_says_skipped` (real repo: three commits, stop on the first, `s y`):
-      `<d>, skipped a commit ✓`. `a_final_skip_says_it_skipped` reworded.
-- [ ] **Minor 3** `the_commit_graph_offer_hides_under_a_box` (both sizes, lease box and credential prompt).
-- [ ] **Minor 6a** `a_key_that_keeps_a_modal_open_leaves_the_status_alone`:
+      `wait for fetch … to finish`, `status` and `operating` unchanged, no `Operate` command. —
+      `update::name_prompt::tests::in_flight::a_write_in_flight_refuses_inside_the_prompt`, red observed, green.
+- [x] **M3** `one_write_at_a_time`: `claim_write` with `operating` set is `Err` and leaves the state `==` before. One row
+      per scout-listed caller reachable with a write running: refused in words, nothing launched. —
+      `update::operate::tests::one_write::one_write_at_a_time`: `claim_write`; the confirm box's `Operate`; the
+      preview's `Operation` and `RevertTo` confirms (set up with the write already running). The name prompt's row is
+      `a_write_in_flight_refuses_inside_the_prompt`. **Not observed red** (written after the fix).
+- [x] **M3** `in_flight_words_are_one_wording`: `fetch_key`, `preview_refusal` and `InFlight::words` give one string. —
+      `update::operate::tests::one_write::in_flight_words_are_one_wording`. Not observed red.
+- [x] **Minor 2** `the_prompts_refusal_goes_with_its_cause` (red): the above, then the fetch answers: the row is the
+      prompt's keys. `⏎`: creates. **Keys from the fetch's end to created: 1.** —
+      `update::name_prompt::tests::in_flight::the_prompts_refusal_goes_with_its_cause`, red observed, green; counts 1.
+- [x] **Minor 6c** `git_mid_operation_refuses_inside_the_stash_prompt` (the `live_refusal_words` arm). —
+      `update::name_prompt::tests::in_flight::git_mid_operation_refuses_inside_the_stash_prompt` (green from the start).
+- [x] **Minor 1** `a_first_stop_skip_that_finishes_says_skipped` (real repo: three commits, stop on the first, `s y`):
+      `<d>, skipped a commit ✓`. `a_final_skip_says_it_skipped` reworded. — `it::resolver::resume_words::a_first_stop_skip_that_finishes_says_skipped`
+      (red observed: `rebase topic onto main, last commit skipped`; green; git's log shows the first commit gone, the
+      other two applied), `a_final_skip_says_it_skipped` and `update::banner::tests::resume_words` reworded.
+- [x] **Minor 3** `the_commit_graph_offer_hides_under_a_box` (both sizes, lease box and credential prompt). —
+      `view::tests::bottom_row::rungs::the_commit_graph_offer_hides_under_a_box`, red observed, green.
+- [x] **Minor 6a** `a_key_that_keeps_a_modal_open_leaves_the_status_alone`:
       - drops its `Done`→`Ready` allowance (Decided 1);
       - adds 67's refused preview and 80x24;
-      - the bound becomes `checked == <the exact count>`.
-- [ ] **Minor 6b** `the_search_rung_is_blank_under_the_preview` (search active, preview open).
-- [ ] Capture `docs/shots/m6/fix-status-under-a-box-{120x40,80x24}.txt`, bottom rows asserted:
+      - the bound becomes `checked == <the exact count>`. — `view::tests::bottom_row::a_key_that_keeps_a_modal_open_leaves_the_status_alone`,
+      strict `assert_eq!(after.status, status)`, `KEPT_OPEN = 531`.
+- [x] **Minor 6b** `the_search_rung_is_blank_under_the_preview` (search active, preview open). —
+      `view::tests::bottom_row::rungs::the_search_rung_is_blank_under_the_preview` (green from the start).
+- [x] Capture `docs/shots/m6/fix-status-under-a-box-{120x40,80x24}.txt`, bottom rows asserted
+      (`it::status_under_a_box::capture_fix_status_under_a_box`; judged by the user, rule 6):
       1. the prompt over a failed fetch: prompt keys;
       2. after `topic ⏎`: the failure;
       3. after `esc`: the create's line;
@@ -162,14 +182,21 @@ pub(crate) enum PromptRefusal { EmptyName, NotNow }
       5. the fetch done: the prompt's keys;
       6. `esc`: `fetched ✓`.
       Colour unverified. Judged by the user (rule 6).
-- [ ] Captures regenerated through their tests: `m4-credential-prompt-in-app` (the header reworded),
+- [x] Captures regenerated through their tests: `m4-credential-prompt-in-app` (the header reworded),
       `m5-ui-credential-over-graph-{80x24,160x48}`, `m6/fix-box-owns-the-bar-80x24` (frame 3, the offer row).
-      Then `git status docs/shots`; list every moved file.
-- [ ] m6 caption row 122 reworded (Decided 2) and a row added for the new capture
+      Then `git status docs/shots`; list every moved file. — `GRAFT_UPDATE_SHOTS=1` workspace nextest, then green
+      without it. Moved (more than predicted; every extra is Minor 3's blank offer row under a box, diff checked):
+      `m4-credential-prompt-in-app` (border + header), `m5-ui-credential-over-graph-{80x24,160x48}` (border + offer
+      row), `m5-ui-confirm-over-graph-{80x24,160x48}`, `m5-ui-name-prompt-80x24`, `m6/fix-box-owns-the-bar-{120x40,80x24}`,
+      `m6/fix-undo-drift-way-back-{120x40,80x24}`, `m6/fix-shell-merge-abort-and-undo-120x40` (offer row under the box);
+      new `m6/fix-status-under-a-box-{120x40,80x24}`.
+- [x] m6 caption row 122 reworded (Decided 2) and a row added for the new capture
       (`contact_sheet_captions_cover_every_m6_capture`). The m4 captions rows 5 and 18 and the four M4 pty headers are
-      marked (Decided 7). Sheets rebuilt (`scripts/contact-sheet.sh`), each part ≤ 200 000 B.
-- [ ] TESTING.md: a row for the new capture, saying what each frame's bottom row reads. Row 1587 says the border now
-      names the push (pty capture predates it).
+      marked (Decided 7). Sheets rebuilt (`scripts/contact-sheet.sh`), each part ≤ 200 000 B. — test green; m4 sheet
+      116 116 B; m5 parts 172 347 / 111 581 B; m6 parts 179 678 / 177 038 / 163 450 / 86 535 B. Row 5 marks rows 6–8 too.
+- [x] TESTING.md: a row for the new capture, saying what each frame's bottom row reads. Row 1587 says the border now
+      names the push (pty capture predates it). — TESTING.md "Per breakpoint" (m3 table) new row; the m4 masked row
+      (now :1592) amended. Docs, no test.
 
 ## Touches (check each; the report's **Touches:** line says how)
 - **Every launch caller** (scout Q1): the compiler (`#[must_use]`), and a row in `one_write_at_a_time`.
@@ -203,3 +230,43 @@ workspace-wide.
 ## Size
 Medium-large, one context. If short, hand off Decided 3's caller sweep (`claim_write` + `one_write_at_a_time`) as the
 second half; the name-prompt refusal stays with the first.
+
+## NOTES (builder, 2026-09-25)
+- **Compacted once, mid-ticket** (after M1, M2, M3's prompt half, Minor 3, 6a/6b/6c and `claim_write` in every
+  caller). Nothing remains: Minor 1, `one_write_at_a_time`, `in_flight_words_are_one_wording`, Minor 7, the capture,
+  captions, sheets, TESTING.md, MAP and gates were all done after it, in this session.
+- Scout report `.scratch/m6-conflicts/scouts/78.md` used (Q1 caller table, Q2 status readers, Q3 the two copies, Q5).
+- **Fix: cause.** One write at a time is now enforced where `operating` is set (`claim_write`); a failure replaced
+  under a modal is held (`unseen`) rather than lost; the prompt's refusal holds its cause, not words. Cost to the
+  user: none seen; `esc` with a held failure drawn dismisses it first and cancels nothing (the next `esc` cancels).
+- **Confirm/preview reachability with a write running (scout "could not confirm"):** every confirm box that
+  launches `Operate` opens behind an `operation_in_flight` guard — stash drop `stash.rs:463` → box `:486`, discard
+  `operate.rs:546` → `:595` and `:699` → `:739`, push `remote/push_box.rs:22` → `:30`. The preview opens only past
+  `preview_refusal` (`preview.rs:283`, called from `open_preview`). So no key reaches either launch with a write
+  running today; both now refuse in words anyway (`one_write_at_a_time`).
+- **Silent early guards, pre-existing, left per Decided 3:** `pull_key` (`remote.rs:349`), stash `save`
+  (`stash.rs:410`) and `operate_on_selected` (`stash.rs:442`), `undo::launch`, `undo::revert_to_forced`,
+  `banner::resume` return without words while a write runs. Question (no line proves it either way): whether the
+  stash save prompt's `⏎` can be reached with a write running — if it can, it is a silent no-op.
+- **A second wording survives:** `a write is already running` (`confirm.rs:237` RestartConflict, `banner.rs:460`,
+  `resolver.rs:303`, `resolver/files.rs:234`, `finish/keys.rs:252`). Out of this ticket's three (`fetch_key`,
+  `preview_refusal`, `InFlight::words`); left for the conductor.
+- **Keymap** (`docs/design/02-keymap.md:165`, §2.2 `Esc` = "Back out / close overlay / cancel"; §2.1 :45 lists `Esc`
+  dismiss): neither says that a **held** failure (`unseen`) is dismissed before a running write is cancelled. Only
+  the held case: a failure standing in `status` with a write running still goes to `cancel_operating` first
+  (`keys.rs`, unchanged). The conductor adds the sentence.
+- `a_failure_under_a_box_is_shown_when_it_closes` writes the second job's `Done` directly (commented): a unit fixture
+  has no second job to answer under the prompt. The real-repo capture test covers the sequence end to end.
+- 69's `a_modal_owns_the_bottom_row`, `a_busy_of_another_job_survives_a_box`, `esc_from_the_box_brings_the_rejection_back`,
+  67's refused-preview tests, `every_key_the_bar_draws_is_answered` and 77's tests: green in the full run, unedited.
+  `view/tests.rs` changed only for M2: the credential border assertion (~:3300) and the in-app capture's header.
+- `jobs/operate.rs` inline tests moved to `jobs/operate/tests.rs` (Minor 7).
+- Line counts of files this grew: `update/operate.rs` 2573 (+71, of which the tests stay inline; new tests went to
+  `update/operate/tests/one_write.rs` 157), `update/undo.rs` 1755, `update/preview.rs` 1296, `update/mod.rs` 1038,
+  `update/state.rs` 953, `update/banner.rs` 873, `update/confirm.rs` 846, `view/rows.rs` 761, `update/keys.rs` 522,
+  `view/tests/bottom_row.rs` 444, `update/name_prompt.rs` 401, `view/credential.rs` 107,
+  `tests/it/resolver/resume_words.rs` 201. New: `view/tests/bottom_row/unseen.rs` 182, `…/rungs.rs` 94,
+  `view/tests/credential_footer.rs` 57, `update/name_prompt/tests/in_flight.rs` 158, `tests/it/status_under_a_box.rs` 246.
+- Verified: full workspace nextest 3314/3314, doc tests, fmt, clippy `-D warnings`; captures read by me for bottom
+  rows only. Not verified: colour (rule 5); how the capture looks (the user's, rule 6); the M4 pty captures (not
+  re-run, marked).

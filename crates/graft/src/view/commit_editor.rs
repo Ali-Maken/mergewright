@@ -50,8 +50,9 @@ pub fn commit_editor_view(state: &AppState) -> Option<CommitEditorView<'static>>
         refusal: refusal.as_deref().map(sanitize_line),
         // A hook's refusal is the commonest failure here and the editor is
         // what is on screen when it lands, so the editor draws it. It stays
-        // until `Esc` dismisses it (m3/05 review, Major 1).
-        status: super::status::problem(&state.status),
+        // until `Esc` dismisses it (m3/05 review, Major 1). `shown_status`
+        // like every status reader (m6-conflicts/78).
+        status: super::status::problem(state.shown_status()),
         busy,
     })
 }
