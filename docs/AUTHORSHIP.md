@@ -352,7 +352,9 @@ Groups model (ADR-0029): 8 groups (01–08; 08 added mid-milestone), fix rounds,
 `planner-fable` rulings. Start `47b55c2`; final fixes merged `902a742` at 2674
 passed, 1 skipped (conductor's own gate run). The M6 stop came at m6:152, followed by an
 **amendment stretch** (tickets 09–46, start `2184642`, m6:165), covered below. Its last gate line is
-3047 passed, 1 skipped (m6:318), and 46 merged at `981fc58e` (m6:320). Tool-use counts are the harness's,
+3047 passed, 1 skipped (m6:318), and 46 merged at `981fc58e` (m6:320). A second stretch
+(look-and-finish, usability fixes, stash put-back; tickets 47–86, m6:321–487) follows it, below; its last
+gate line is 3486 passed, 1 skipped (m6:480, m6:482), and 85 merged at `513adf7c` (m6:487). Tool-use counts are the harness's,
 as logged in `docs/log/m6.md` (cited `m6:<line>`); "no count" means the log gives none.
 
 **Model changes during M6** (both recorded, not silent): resumed 2026-09-22 with
@@ -485,3 +487,86 @@ Builder total, counted entries only: **3968**, of which tickets 16–46 account 
 - 20: 95 tool uses, 0 / 2 / 9 (m6:301).
 
 Totals: **3 Critical, 33 Major, 127 Minor**, across 807 counted tool uses. Majors went to fix tickets 23, 24, 26, 27, 28, 29, 30, 32, 33, 36, 37 and 41. Fix tickets 37 and 41 got no re-review (m6:290, m6:308).
+
+### M6 look-and-finish, usability fixes, stash put-back (tickets 47–86)
+
+This stretch follows the 46 checkpoint (m6:321), starts from the first whole-app usability walk (m6:325), and ends with ticket 85 merged (m6:487). Ticket 86 is not built: it waits for the user's yes on the stash preview (m6:485). Ticket 62 was not built either: the user chose the built behaviour (m6:393). Counts are as logged. "Cumulative" or "total" in the log means one count across that ticket's runs; this file does not add those runs together a second time.
+
+| Role | Model | Detail |
+|---|---|---|
+| Prior art / research | researcher (Opus low) | Conflict visuals + finish, no count (m6:322); follow-up 61 cumulative (m6:323); checkout + cherry-pick 26 (m6:327); push/pull 19 (m6:328); commit + stash 44 (m6:329); stash-clash addendum A1–A4 31 (m6:410). |
+| Designed / specified | planner-fable (Opus high) | Look+finish amendment 76 (m6:324); usability fix specs 47–52 59 (m6:330); spec-only 47–49 62 (m6:337); picks, ADR-0044, filed 54–63, 107 (m6:348); spec-only 54–58 51 (m6:352); final-walk plan 46 (m6:408); stash put-back note + ADR-0045, 79 (m6:414); 85/86 spec 47 (m6:483). Spec passes and fixes after scouts: 59 9, 60 8, 52 15, 52 decision 2, 50/51/61 24, 68+69 20, 72 14, 77 36 + 3, 78 34, 82 28, 84 35; 71 and 70 spec fixes no count (m6:417, m6:421). |
+| Specified (decisions) | conductor | Review triage for 54–58 (m6:372) and wave 2 (m6:401). Mid-ticket decisions on 49, 50, 61 and 68+69 (m6:342, m6:388, m6:396, m6:428). 62 closed on the user's choice (m6:393). |
+| Scouts | scout (Opus low) | 49 11, 48 11, 47 12, lane O 20, lane U 19, 59 23, 60 25, 52 14, 50/51/61 11/11/15, 67 12, 71 9, 68+69 18, 77 12, 78 13, 73 13, 74 23, 84 8, 85 15. 70 and 72: no count (m6:420, m6:423). |
+| Doc edits, gap rows | researcher (Opus low) | User batch 8 (m6:319); checkpoint regen, no count (m6:321); usability gap rows 6 (m6:326); design-note pointer edits 7 (m6:338); spec-pass doc edits 10 (m6:349); keymap rows 7 (m6:415). |
+| Reviewed | reviewer (Opus high) | 12 reviews and walks, listed below. |
+
+| Ticket | Agent (model) | As logged | Tool uses |
+|---|---|---|---|
+| Prototype look+finish | builder-opus (medium) | merged `edaf8164` (m6:332) | 106 |
+| Prototype scenes 11–13 | builder-sonnet (Opus low) | merged `ddda6fd6` (m6:336) | 18 |
+| 47 | builder-sonnet (Opus low) | `done`, merged `9dae37a8` (m6:339) | 62 |
+| 48 | builder-sonnet (Opus low) | `done`, 1 continuation, merged `2c794e05` (m6:340) | 56 (incl. continuation) |
+| 49 | builder-opus (medium) | `partial` at the stop case, then continuation `done`, **COMPACTED**, merged `da071a1b` (m6:342–343) | 187 cumulative |
+| 53 (review fix 47–49) | builder-sonnet (Opus low) | `done`, merged `eb4c6a68` (m6:346) | 54 |
+| 54 | builder-sonnet (Opus low) | `done`, merged `fac64a78` (m6:354) | 33 |
+| 57 | builder-opus-xhigh | part A `partial`, **COMPACTED** (m6:356); app half (separate agent after the pause) `done`, **COMPACTED**, merged `6e514378` (m6:361) | 197 + 135 |
+| 55 | builder-opus (medium) | `done`, merged `ed60e73b` (m6:357) | 149 |
+| 56 | builder-sonnet (Opus low) | `partial`, `blocked: needs graft`, then `done` over 3 runs, merged `4d8f687e` (m6:360, m6:363) | 53 cumulative |
+| Contact-sheet split | builder-sonnet (Opus low) | `done`, merged `e1c5995b` (m6:364) | 5 |
+| 58 | builder-opus | `done`, merged `59de71c7` (m6:366) | 132 |
+| 59 | builder-opus | `done`, **COMPACTED**, merged `9a5187b1` (m6:373) | 168 |
+| 64 (review fix 54–58) | builder-opus | `done`, merged `8b8d0826` (m6:377) | 106 |
+| 60 | builder-opus | `done`, **COMPACTED**, merged `0a3a1a53` (m6:383) | 223 |
+| 52 | builder-opus | `partial` at find-and-pin 2, then resumed `done`, **COMPACTED**, merged `6f8c033a` (m6:385, m6:387) | 124 cumulative |
+| 50 | builder-opus | `partial` at find-and-pin 1, then `done` over 2 runs, merged `6e9007dc` (m6:388, m6:390) | 170 cumulative |
+| 51 | builder-opus | `done`, merged `7661ef67` (m6:394) | 129 |
+| 61 | builder-opus | 4 runs, 3 stops at its own find-and-pins, `done`, **COMPACTED**, merged `fb7a967f` (m6:396–397) | 205 cumulative |
+| 63 (acceptance) | builder-fable (Opus high) | `done`, **COMPACTED**, merged `87d00090` (m6:402) | 278 |
+| 65 (review fix, wave 2) | builder-opus | `done`, merged `ccb8cd8e` (m6:404) | 123 |
+| 66 | builder-sonnet (Opus low) | 8/8 ticks, merged `f09d8e47` (m6:411) | 97 |
+| 67 | builder-sonnet (Opus low) | 7/7 ticks, merged `78c0fa04` (m6:422) | 120 |
+| 71 | builder-sonnet (Opus low) | 7/7 ticks, merged `79553aab` (m6:426) | 98 |
+| 68+69 | builder-opus | run 1: 68 done, 69 `partial` 4/13 (m6:428); run 2: 11/11 + 13/13, **COMPACTED**, merged `9d7a5011` (m6:430) | 364 total |
+| 76 (review fix 66/67/71) | builder-sonnet (Opus low) | 10/10 ticks, merged `1094e830` (m6:435) | 105 |
+| 77 | builder-opus-xhigh | 6/6 ticks, **COMPACTED ×2**, merged `1bef5053` (m6:440) | 359 |
+| 79 | builder-opus | run 1 held unmerged (m6:442); run 2 after a network error, merged `18e88d8c` (m6:445) | 30 + no count |
+| 78 (review fix 68+69) | builder-opus | 18/18 ticks, **COMPACTED**, merged `ec98c71e` (m6:443) | 352 |
+| 70 | builder-sonnet (Opus low) | 9/10 ticks, n1 stopped by its rule → 81, **COMPACTED**, merged `c6129790` (m6:448) | 163 |
+| 81 | builder-sonnet (Opus low) | run 1 3/4, blocked on graft-ui, then runs 2–3 4/4, merged `4c16ec00` (m6:450–451) | 73 total |
+| 80 (review fix 77+79) | builder-opus | run 1 died on an API error (no count), resumed 13/13, **COMPACTED**, merged `7ad92863` (m6:453) | no count + 5 |
+| 72 (ops half) | builder-opus | 4/4 ticks, merged (m6:455) | 120 |
+| 72b (app half) | builder-opus | 7/7 ticks, **COMPACTED**, merged `d572438f` (m6:457) | 255 |
+| 73 | builder-fable (Opus high) | run 1 **COMPACTED** (m6:463); run 2 **COMPACTED**, merged `b98fc040` (m6:464) | 235 total |
+| 82 (review fix 72+72b) | builder-opus | 12/12 ticks, **COMPACTED**, merged `1fb1577c` (m6:466) | 217 |
+| 83 (review fix 73) | builder-opus | 9/9 ticks, merged (m6:470) | 86 |
+| 74 | builder-opus | 5/5 ticks, **COMPACTED**, merged `47eea813` (m6:472) | 294 |
+| 75 (acceptance, stash put-back) | builder-fable (Opus high) | 7/7 ticks, **COMPACTED**, merged `fb60034c` (m6:477) | 217 |
+| 84 (review fix 74) | builder-opus | 17/17 ticks, **COMPACTED**, merged `6b5c1d1c` (m6:479) | 314 |
+| 85 | builder-opus | run 1 `partial` 13/18, **COMPACTED** (m6:486); continuation 1 19/19, merged `513adf7c` (m6:487) | 220 + 150 |
+
+Builder total, counted entries only: **6587**. Not counted: 79 run 2 and 80 run 1, because the log gives no number for them.
+
+**Compacted in this stretch:** 49, 57 part A, 57 app half, 59, 60, 52, 61, 63, 68+69 run 2, 77 (×2), 78, 70, 80, 72b, 73 run 1, 73 run 2, 82, 74, 75, 84, 85 run 1.
+
+**Process slips, as logged:** the 76 builder edited main's `verbs.rs`, then restored it (m6:431, m6:435). A reviewer's first gate run was in the 68+69 builder's worktree; its numbers were discarded (m6:429). Two gate failures came from text only: a temp path in 50's NOTES (m6:391) and a home-path pattern in 82's NOTES (m6:468). The conductor's uncommitted fence rows failed a gate and were reverted (m6:473).
+
+**Reviews and walks** (reviewer, Opus high). All figures are Critical / Major / Minor.
+- Usability walk (first): 99 tool uses, 0 / 6 / 11, plus 2 questions (m6:325).
+- 47–49: 95 tool uses, 0 / 2 / 8; ticks 30/30 held (m6:345).
+- 54–58: 65 tool uses, 0 / 2 / 9; 14/14 held (m6:371).
+- Wave 2 (59–61, 50–52, 64): 108 tool uses, 0 / 3 / 9; 22/22 held (m6:400).
+- Usability walk (final): 126 tool uses, 0 / 7 / 6, plus 3 questions (m6:407).
+- 66/67/71: 124 tool uses, 0 / 1 / 10, plus 3 questions; 22/22 held (m6:429).
+- 68+69: 77 tool uses, 0 / 3 / 7. Ticks are logged as "68 9/11 checked held, 69 12/13 held" (m6:437).
+- 77+79: 76 tool uses, 0 / 2 / 13; 9/9 held (m6:447).
+- 72+72b: 69 tool uses, 0 / 4 / 8; 3/3 and 6/6 held (m6:461).
+- 73: 69 tool uses, **1** / 2 / 9; 4 checked, 3 held. The Critical is a false tick, fixed by 83 (m6:469–470).
+- 74: 79 tool uses, 0 / 4 / 8; 22/22 held (m6:474).
+- Usability walk 2: 139 tool uses, 0 / 4 / 15, plus 3 questions. One Major was already known (m6:481).
+
+Totals: **1 Critical, 40 Major, 113 Minor**, across 1126 tool uses.
+
+Other counted helpers in this stretch: planner-fable **755** (71 and 70 spec fixes not counted); scouts **295** (70 and 72 not counted); researcher **219** (two runs not counted).
+
+**M6 whole milestone, counted builder tool uses as logged:** groups ≈ 3432 (m6:152) + tickets 09–46 3968 + tickets 47–85 6587 ≈ **13 987**. This sum is this file's, not the log's; the uncounted runs listed in each section are not included.
