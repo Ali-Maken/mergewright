@@ -143,6 +143,8 @@ Every one holds as the review and scouts state it.
     the box that rewrites other people's history keeps the cursor. Its hint bar shows no `y`.
   - The box's hint bar leads with the key: `y push  ←/→ move  ⏎ choose  esc cancel`.
   - The push journey goes 3 → 2.
+  - A confirm box has no footer of its own; its keys are the screen's hint bar (`hints/lists.rs:57-61`). ADR-0044
+    §3.1's "footer" means that bar for a box (spec pass 50, 2026-09-25).
 - **P16 — approved 2026-09-24: `⏎` in the commit editor's subject commits,** as it does in the finish summary's
   subject. (Ticket 51; ADR-0044 §3.)
   - `⇥` or `↓` reaches the body, where `⏎` is a newline. `⌃⏎` is unchanged.

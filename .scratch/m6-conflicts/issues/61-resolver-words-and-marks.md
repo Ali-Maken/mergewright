@@ -1,93 +1,155 @@
 # resolver-words-and-marks: `no more conflicts this way`; a stop line that keeps a short origin; no tint on a hand-edited both-take
 
-Status: ready
+Status: ready (reconciled with scout 61 on 2026-09-25)
 From: user picks 2026-09-24 items 7 (batch 6, "shorten both") and 8 (batch 2, `no more conflicts this way`); ADR-0044
 §2 row "took both, then a hand edit"; KNOWN_GAPS M6/15 :693, M6/21 :769-770; `docs/log/m6.md:78`.
-Build with: *(blank: brownfield; the conductor sets it after the scout, ADR-0035)*
-Scout brief: (1) `update::resolver` child `walk`: the cross rule's rule 3 (`no more conflicts · ⏎ marks <file> done`,
-and a card's side-keys form) and every place that string reaches (notice, sticky status, the bar). (2)
-`update/banner/stop.rs`: `stop_reason`, `stop_wordings` — the exact rungs today, with an example per origin (`begun
-outside Graft`, `from a previous run`); where the footer picks the fullest rung that fits (`graft-ui` `hints/fitting.rs`
-`fit_status_line` / `StopWording`) and on what width. (3) where `view::resolver` builds `DocView` and whether
-`Choices.edited` is reachable there; how `panes/draw.rs` (after `conflict-band-and-state-colours`) picks the took-both
-split.
-Needs: `conflict-band-and-state-colours` merged (the took-both split this changes); ticket 51 merged (crate order).
-Crates: graft, graft-ui.
+Build with: builder-opus. Why: brownfield in two crates; three independent word/flag changes, one moving a status to a
+notice with a new lifetime, and a flag threaded through the pane and card draws. Not Fable: each is pinned by a test
+and a capture.
+Scout: `.scratch/m6-conflicts/scouts/61.md` (main @ 3c480347). Read it before any source.
+Needs: `conflict-band-and-state-colours` merged (the took-both split); **60 merged** (`DocView.finish`, the finish row,
+the same three `DocView` literals — rebase on 60's); ticket 51 merged (crate order).
+Crates: graft (`update/resolver/walk.rs`, `update/banner/stop.rs`, `view/resolver.rs`, `view/resolver/whole_file.rs`,
+tests), graft-ui (`conflict_resolver.rs`, `panes/band.rs`, `panes/draw.rs`, `draw/block.rs`, tests).
 Lane: wave 2, sixth (last build before acceptance).
 
 ## Read first
-- `.scratch/m6-conflicts/user-batch.md` items 2 and 6.
+- `.scratch/m6-conflicts/user-batch.md` items 2 and 6 (:8, :14-15).
 - `docs/design/02-keymap.md` §2.6 the `n` / `N` row (edited 2026-09-24).
-- `docs/adr/0044-conflict-colours-and-the-confirm-key.md` §2 (the hand-edit row).
-- `crates/graft/MAP.md` §update::resolver (the cross rule :343; `Choices` :355), §update::banner stop.rs (:307-311).
-- `crates/graft-ui/MAP.md` lines 12 (`DocView`), 15 (panes), 16 and 22 (`StopWording`, `fit_status_line`).
+- `docs/adr/0044-conflict-colours-and-the-confirm-key.md` §2 (:60-74, the hand-edit row and the card).
+- 60's spec, Scope "The finish row" and Signatures (`DocView.finish`, drawn instead of `notice`; a warning notice
+  outranks it).
+- `crates/graft/MAP.md` §update::resolver (the cross rule :343; `Choices` :355), §update::banner stop.rs (:307-314).
+- `crates/graft-ui/MAP.md` lines 12 (`DocView`), 15 (panes), 129-131 (`GraphView::stopped`, `StopWording`,
+  `stopped_row`).
+
+## Find and pin first (before any change; stop if the finding differs)
+1. **A hand-edited both-take after the re-read.** Scout 61 could not confirm what a block reads after the `handed_back`
+   re-read of an edited file (`update/mod.rs:299`). Don't assume it.
+   - Write `a_hand_edited_both_take_still_reads_as_took_both`: a file with one block, `b` (took both), then a hand edit
+     through the path that calls `record_edited` (`update/mod.rs:294/309/342`), then drive the re-read to landing.
+   - Pin: the block's state; `state.choices[path].edited`; the result rows the view draws.
+   - **Spec expects:** the block is still `Took(Both)` and `edited` is true. **If the block reads anything else** (open,
+     gone, another side) or `edited` is false: **stop**, report `blocked: after a hand edit the block reads <x>`. The
+     tint rule below needs a spec decision then.
+2. **Today's notice lifetime.** Name in NOTES where `open.notice` is set and cleared (file:line). The rule-3 words take
+   that lifetime. Required: after `j`/`k`, a take landing, or `⏎`, the words are gone. **If today's notice survives any
+   of those:** stop and report; a new clearing rule is a scope change.
+3. **Who reads the stop ladder.** `grep -rn "stop_wordings\|stop_reason\|stop_line_wordings" crates` → NOTES, one line
+   each. Scout 61: `stopped_line` (`view/rows.rs:343`) reads the ladder; `operate.rs:2166/2202/2216` read `stop_reason`
+   in tests. Any other draw reading rungs ≥ 1 changes words with this ticket: list it and regenerate its captures.
 
 ## Scope
 **In:**
-- **Batch 2:** the cross rule's rule 3 says exactly `no more conflicts this way`, no keys, as a notice (not a second copy
-  in the bar; the bar keeps its own `⏎ done`). A card's form: `no more conflicts this way` too, the side keys stay in the
-  bar only. Every place the old string was drawn.
-- **Batch 6:** `stop_wordings` gains a rung right after the full one, **before** any rung that drops the origin:
-  - shell: `<kind> in progress · from the shell · <n> conflicted`
-  - a previous run: `<kind> in progress · from last run · [step k of m · ]<n> conflicted`
-  - then the existing drops, in order, unchanged. Singular counts as today (`1 conflicted` reads the same).
-  The full rung keeps its words (`begun outside Graft`, `from a previous run`, `files conflicted`).
-- **Took both, then a hand edit:** `DocView` carries whether the open file's result was edited by hand
-  (`Choices.edited`); when it is, the result rows of a `Took(Both)` block get no tint (ADR-0044 §2). Separators and the
-  side panes as for took both.
+- **Batch 2 — rule 3 is a notice, not a sticky status** (decided here):
+  - Today `no_more_conflicts` (`walk.rs:88-98`) sets `Status::Sticky { reason: "no more conflicts", keys }`; a sticky
+    status replaces the bar (`view/frame/bars.rs:33-44`), so the words and the keys are one row, and the bar's own
+    hints (`⏎ done`) vanish while it stands. That is the double wording in `docs/log/m6.md:78`.
+  - New: `open.notice = NO_MORE_THIS_WAY` (info, **not** a warning), and `state.status` is not touched. The bar keeps
+    its hints, `⏎ done` included — the next key stays visible (UX §3.1, §2 #6).
+  - The card form: the same notice; no side keys in it. The side keys stay in the bar.
+  - The done-file `n`/`N` with nothing to cross (`walk.rs:110`, `Status::sticky("no more conflicts")`): the same notice.
+  - **With 60's finish row:** `DocView.finish` is drawn instead of `notice`, and only a warning outranks it. So when
+    every file is done, the finish row stands and `n` at the edge shows nothing new: the finish row already names the
+    next key. Rule 3 on a file not yet done has no finish row (not every file done), so its notice shows.
+  - The doc comment `walk.rs:8` says the new words.
+  - `names::side_keys`: if walk was its last caller (MAP.md:330), delete it (clippy dead code); else leave it.
+- **Batch 6 — the stop ladder, "shorten both"** (decided here: one rule for every rung):
+  - **Rung 0, the full rung: unchanged** (`begun outside Graft`, `from a previous run`, `N files conflicted`; the
+    missing `·` before `from a previous run`, `stop.rs:257`, stays).
+  - **Every shorter rung says the count short: `N conflicted`** (`1 conflicted` singular). So the full rung spells it
+    out, and every rung that has had to shorten is short in both parts. This changes the words of the existing drop
+    rungs (`… · 13 files conflicted` → `… · 13 conflicted`); their order and what they drop are unchanged.
+  - **New rung 1**, right after rung 0, before any rung that drops the origin:
+    - shell: `merge in progress · from the shell · 13 conflicted`
+    - previous run: `rebase in progress · from last run · step 3 of 7 · 13 conflicted` (the step only where rung 0 has
+      one; `still` dropped, `from last run` carries it)
+    - this run (no origin clause): the rung is rung 0 with the short count; duplicates are skipped as today (:211).
+  - Shell, 13, the full ladder: `merge in progress · begun outside Graft · 13 files conflicted` →
+    `merge in progress · from the shell · 13 conflicted` → `merge in progress · 13 conflicted` → `merge in progress`.
+  - Fitting is `stopped_row` (`graft-ui hints/fitting.rs:246`; caller `graph_screen/footer.rs:104` at the graph side's
+    width), **not** `fit_status_line`. It is not changed: first whole rung that fits, else the last cut with `…`.
+  - **If rung 1 does not fit whole at 187 with the changes pane open:** record the room `stopped_row` had, and stop.
+    Changing the fitting is a scope change.
+- **Took both, then a hand edit:** `DocView.hand_edited` from `Choices.edited` of the open file. When true, the result
+  rows of a `Took(Both)` block get no tint (ADR-0044 §2); separators and the yours/theirs panes as took both.
+  - Panes (≥ 180): `row_tint` (`panes/band.rs:125`, called `panes/draw.rs:123`) gets `hand_edited`.
+  - Card (< 180): `draw/block.rs:124-125` and `:163-165` tint half/half. Rows showing the **result** text of a
+    hand-edited took-both block: no tint. Rows showing a **side**: that side's tint, unchanged. NOTES says which of the
+    two each of those lines draws.
+  - Only `Took(Both)` changes; took yours / took theirs after a hand edit are unchanged (ADR-0044 §2 names only both).
 
-**Out:**
-- The 80x24 relaunch stop line (KNOWN_GAPS :772).
-- Short forms (`short-words-from-the-draft`).
-- Any change to when `n`/`N` wrap or cross (P2 and ticket 15 stand).
+**Out:** the 80x24 relaunch stop line (KNOWN_GAPS :772); short forms (`short-words-from-the-draft`); when `n`/`N` wrap
+or cross (P2, ticket 15); a new notice-clearing rule; the fitting; the banner's full-rung line.
 
-## The failing test first
-- graft `update::resolver` walk tests: `n_past_the_last_block_says_no_more_conflicts_this_way` — every block taken, no
-  other file open: `n` → notice exactly `no more conflicts this way`; the status line does not repeat it with keys.
-  Red today: `no more conflicts · ⏎ marks <file> done`.
-- graft `update::banner` stop tests: `a_shell_stop_keeps_a_short_origin_before_dropping_it` —
-  `stop_wordings(shell merge, 13 conflicted)[1] == "merge in progress · from the shell · 13 conflicted"`. Red today:
-  rung 1 drops the origin.
+## The failing tests first
+- `n_past_the_last_block_says_no_more_conflicts_this_way` (graft `update::resolver` walk tests): every block taken, no
+  other file to cross to: `n` → `open.notice == NO_MORE_THIS_WAY`; `state.status` unchanged from before `n`; the bar is
+  the resolver's hints. Red today: sticky `no more conflicts · ⏎ marks <file> done`.
+- `a_shell_stop_keeps_a_short_origin_before_dropping_it` (graft `update::banner` stop tests):
+  `stop_wordings(shell merge, 13)[1] == "merge in progress · from the shell · 13 conflicted"`. Red today: rung 1 drops
+  the origin.
 
 ## Signatures
 ```rust
-// graft-ui/src/conflict_resolver.rs
-pub struct DocView { /* existing …, */ pub hand_edited: bool }   // set from Choices.edited for the open file
-// graft/src/update/banner/stop.rs: signatures unchanged; `stop_wordings` returns one more rung.
-// graft/src/update/resolver/walk.rs: the rule-3 words become a const
+// graft/src/update/resolver/walk.rs
 pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
+// graft/src/update/banner/stop.rs: `stop_reason`, `stop_wordings`, `stop_line_wordings` signatures unchanged.
+//   `stop_wordings` returns one more rung; `Wording::words` (private, :242-274) gains short forms for origin and count
+//   (the builder's shape; NOTES names it).
+// graft-ui/src/conflict_resolver.rs
+pub struct DocView { /* existing …, 60's `finish`, */ pub hand_edited: bool }
+// graft-ui panes/band.rs: existing parameters unchanged, `hand_edited: bool` added after `ours_len`
+fn row_tint(/* state, pane, result_row, ours_len, */ hand_edited: bool /* , theme */) -> /* unchanged */;
+// graft view: set in all three literals (view/resolver.rs:67, view/resolver/whole_file.rs:23, :67):
+//   hand_edited: state.choices.get(&open.path).is_some_and(|c| c.edited),
+//   // no entry = no choice recorded for this file = not edited; not a failure being hidden (CLAUDE.md rule 3)
 ```
 
 ## Touches (each entry, and how the builder checks it)
-- **Every string that said `no more conflicts`** (walk, card, done file `n`/`N`, tests).
-  - Check: `grep -rn "no more conflicts" crates` — every hit uses the const or asserts it.
-- **The key row showing the words twice** (`docs/log/m6.md:78`). Check: `no_more_conflicts_is_not_repeated_in_the_bar`.
-- **Stop line at the widths he uses:** 187 with the changes pane open, 160, 120.
-  - Check: `stop_line_keeps_the_short_origin_at_187_with_the_pane_open` (a `view` test at the graph side's real width),
-    and the `m6-18-launch-shell-begun-*` captures regenerated; NOTES says which width shows which rung.
-  - Monotonic: more room never loses a part. Check: the existing `stop_wordings` ordering test, extended.
-- **KNOWN_GAPS M6/21 :769-770** (the origin never drawn; 160 drops the count): the builder reports what each width now
-  draws; the conductor closes or re-words the rows.
-- **Hand-edited both-take.** Check: `a_hand_edited_both_take_has_no_result_tint` (graft-ui buffer) and
-  `doc_view_carries_hand_edited_from_choices` (graft).
-- **Other screens:** the banner's own line (`merge in progress · 2 files conflicted · ⏎ resolve …`) is built from the same
-  wordings. Check: `m6-18-*` captures, and the banner row tests green.
-- **Walk:** `two-files-out-of-order` and any scenario asserting the old notice. Check: `every_scenario::journey`.
-- **Captures:** any showing `no more conflicts` (`grep -rln "no more conflicts" docs/shots`), `m6-18-*`. Regenerate; list.
-- **Docs:** `crates/graft/MAP.md` (the cross rule's words, `stop_wordings`' rungs); `crates/graft-ui/MAP.md` line 12
-  (`hand_edited`).
+- **Every `no more conflicts` string:** `walk.rs:8, :88-98, :110`; tests `resolver/tests.rs:91, :126`,
+  `tests/cross.rs:134, :142`, `tests/file_keys.rs:323`, `update/tests.rs:3121` (comment),
+  `tests/it/m5_walk/resolving.rs:718, :722, :751`. Check: `grep -rn "no more conflicts" crates` — every hit uses the
+  const or asserts it; the tests now assert the notice, not the status.
+- **Not twice, and the bar keeps `⏎ done`:** `no_more_conflicts_is_not_repeated_in_the_bar` (bottom row has no
+  `no more conflicts`; it contains `⏎ done`).
+- **The card:** `a_card_says_no_more_this_way_and_its_bar_keeps_the_side_keys`.
+- **Lifetime:** `the_no_more_notice_is_gone_after_the_next_move` (`j`, a take, `⏎`: one row each).
+- **60's finish row:** `the_finish_row_outranks_no_more_this_way` (every file done, `n` on a done file: the finish
+  row is drawn, the notice is not); `no_more_this_way_shows_before_the_file_is_done`.
+- **Stop ladder:**
+  - `a_previous_run_stop_keeps_a_short_origin`; `a_this_run_stop_has_no_duplicate_rung`.
+  - Monotonic: the existing `stop_wordings` ordering test, extended over origin × step × count (1, 13): each rung
+    strictly narrower than the one before; the count is whole or absent.
+  - `stop_line_keeps_the_short_origin_at_187_with_the_pane_open` (a `view` test at the graph side's real width).
+  - NOTES: which rung 187 (pane open), 160 and 120 draw, for shell and previous-run; KNOWN_GAPS M6/21 :769-770 is the
+    conductor's to close or re-word from that.
+  - Find-and-pin 3's readers; the banner row tests green.
+- **Hand edit:** `a_hand_edited_both_take_has_no_result_tint` (graft-ui buffer, panes), `…_on_the_card` (graft-ui
+  buffer, card), `doc_view_carries_hand_edited_from_choices` (graft), `a_plain_both_take_keeps_its_split` (no edit:
+  today's split, unchanged).
+- **`DocView` literals:** the three in graft, on 60's result, and every graft-ui test literal. Check: the build.
+- **Walk:** `every_scenario::journey`; any scenario asserting the old words (60 moved `two-files-out-of-order` to the
+  summary). No journey count changes.
+- **Captures:** `grep -rln "no more conflicts" docs/shots` (scout 61: `m6/m6-08-no-more-conflicts-{120x40,80x24}`),
+  `m6-18-launch-shell-begun-*`, and every capture whose stop line shows a rung ≥ 1 (`grep -rln "files conflicted"
+  docs/shots`, then keep the graph-footer hits). Each regenerated by its own test; NOTES lists file → test. The
+  contact sheet and `m6-contact-sheet-captions.tsv` are the conductor's.
+- **Docs:** `crates/graft/MAP.md` (the cross rule's words and that they are a notice; `stop_wordings`' rungs and the
+  short-count rule; :312 and :330); `crates/graft-ui/MAP.md` line 12 (`hand_edited`) and 15 (`row_tint`).
 
 ## Acceptance (name the verifying test at tick time)
+- [ ] Find-and-pin 1: `a_hand_edited_both_take_still_reads_as_took_both`, green as expected, or the ticket stopped.
+- [ ] Find-and-pin 2 and 3: the lines in NOTES.
 - [ ] `n_past_the_last_block_says_no_more_conflicts_this_way`: red first, then green.
 - [ ] `a_shell_stop_keeps_a_short_origin_before_dropping_it`: red first, then green.
-- [ ] `a_previous_run_stop_keeps_a_short_origin`
-- [ ] `no_more_conflicts_is_not_repeated_in_the_bar`
-- [ ] `stop_line_keeps_the_short_origin_at_187_with_the_pane_open`
-- [ ] `a_hand_edited_both_take_has_no_result_tint`, `doc_view_carries_hand_edited_from_choices`
+- [ ] every test named under Touches.
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-stop-line-short-origin-187x50.txt` (a shell
       merge, 13 files conflicted, the changes pane open) and `fix-no-more-this-way-120x40.txt`.
-  - **What right looks like:** the stop line reads `merge in progress · from the shell · 13 conflicted`, whole; the
-    resolver's notice reads `no more conflicts this way`, and the bottom row does not repeat it.
+  - **What right looks like:** the graph footer's stop part reads `merge in progress · from the shell · 13 conflicted`,
+    whole, before the bar. The resolver's notice row (under the identity row) reads `no more conflicts this way`; the
+    bottom row has no `no more conflicts` and contains `⏎ done`.
+  - Tint (hand edit): colour, so **unverified** by capture; the buffer tests are the evidence.
 - [ ] MAP.md updated (doc, no test).
 
 ## Gates
@@ -95,6 +157,7 @@ pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
 workspace-wide.
 
 ## Size
-Small to medium: three independent word/flag changes sharing the resolver's view files. One context.
+Medium: three independent changes sharing the resolver's view files, three find-and-pins. One context. If it grows,
+hand off at the seam: the stop ladder (graft `stop.rs` only) is separable.
 
 ## NOTES
