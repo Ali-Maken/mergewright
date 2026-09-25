@@ -122,6 +122,22 @@ fn parse_row(line: &str) -> Result<(String, Option<usize>, String), String> {
     Ok((id.to_owned(), keys, comment.to_owned()))
 }
 
+/// The keys the note's block allows journey `id`. For a walk that counts
+/// its own keys outside the scenario runner (`m6_stash_put_back`), so its
+/// budget is read from the note, not restated.
+#[allow(
+    dead_code,
+    reason = "used by the stash walks in tests/it; the m5_walk example does not include them"
+)]
+pub fn noted_keys(id: &str) -> Result<usize, String> {
+    let rows = parse_counts(&note_text()?)?;
+    rows.iter()
+        .find(|row| row.id == id)
+        .ok_or_else(|| format!("the note's journey-counts has no row {id}"))?
+        .keys
+        .ok_or_else(|| format!("{id}: the note gives no count (`-`)"))
+}
+
 /// The journey id a scenario walks: its name up to `@`, when that is a row
 /// of the block.
 pub fn journey_id<'a>(name: &'a str, rows: &[Row]) -> Option<&'a str> {

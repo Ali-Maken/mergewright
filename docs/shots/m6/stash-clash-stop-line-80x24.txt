@@ -1,0 +1,35 @@
+# m6/stash-clash-stop-line-80x24.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/stash_clash.rs,
+# the_stop_line_words_a_clash_at_80_and_120, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S p` clashed in notes.md, then `esc` shut the
+# resolver and the graph has the keys, at 80 columns.
+#  - The graph screen; no banner, no resolver.
+#  - The bottom hint row begins ` stash@{0} clashed · 1 file conflicted ·`,
+#    then the keys that fit; nothing cut mid-word.
+
+[Graph]  Detail
+ graft /code/api  7 commits
+◌     ▏  Uncommitted changes (1 unmerged)
+◆        [◆ main] commit over the notes                             3m   f3742ab
+│ ■─╮    [stash@{0}] WIP on main: cfa370c add the notes             4m   fa9e094
+│ │ ●    index on main: cfa370c add the notes                       4m   6938905
+●─┴─╯    add the notes                                              5m   cfa370c
+●        Correct the note                                           1y   a82960b
+●        Add the first note                                         1y   fadcfb3
+◇        Add a readme                                               1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ stash@{0} clashed · 1 file conflicted · ⏎ changes  c commit  S stash  . more  p

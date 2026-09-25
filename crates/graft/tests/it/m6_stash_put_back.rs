@@ -58,6 +58,14 @@ pub(crate) fn cursor_to(app: &App, mut state: AppState, target: &str) -> AppStat
     panic!("the cursor never reached {target}");
 }
 
+/// The note's `journey-counts` rows these walks count against
+/// (`docs/design-notes/m6-conflicts.md`). The m5 walk's fence test holds
+/// every row walked, these included.
+pub const POP_TO_DONE: &str = "stash-pop-clash-to-done";
+pub const APPLY_TO_DONE: &str = "stash-apply-clash-to-done";
+pub const PUT_BACK: &str = "stash-clash-put-back";
+pub const JOURNEYS: [&str; 3] = [POP_TO_DONE, APPLY_TO_DONE, PUT_BACK];
+
 /// Keys the journey presses, counted as they go.
 struct Keys<'a> {
     app: &'a App,
@@ -316,9 +324,10 @@ fn done_shot(state: &AppState) {
     );
 }
 
-/// `stash-pop-clash`: `S p` lands in the resolver on the clashed file; `o ⏎`
-/// takes yours and finishes, and the stash is dropped. ≤ 4 keys. Then `u`
-/// brings the stash back. Writes the landing and done captures.
+/// `stash-pop-clash-to-done`: `S p` lands in the resolver on the clashed
+/// file; `o ⏎` takes yours and finishes, and the stash is dropped. Keys
+/// within the note's row. Then `u` brings the stash back, the status line
+/// naming the drop by position. Writes the landing and done captures.
 #[test]
 fn a_stash_pop_that_clashes_is_four_keys() {
     use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, quiet, stash_list, unmerged};
@@ -356,7 +365,12 @@ fn a_stash_pop_that_clashes_is_four_keys() {
     });
     let state = crate::captures::settled_frame(&app, quiet(&app, state));
 
-    assert!(keys.count <= 4, "{} keys", keys.count);
+    let allowed = crate::m5_walk::noted_keys(POP_TO_DONE).unwrap();
+    assert!(
+        keys.count <= allowed,
+        "{} keys, the note allows {allowed}",
+        keys.count
+    );
     assert_eq!(
         std::fs::read_to_string(path.join(NOTES)).expect("the file"),
         "committed\n",
@@ -369,13 +383,18 @@ fn a_stash_pop_that_clashes_is_four_keys() {
     let state = app.key(&state, KeyCode::Char('u'));
     let state = undone(&app, state);
     assert!(state.confirm.is_none(), "undoing the drop asks nothing");
+    assert!(
+        matches!(&state.status, graft::update::Status::Done { what, .. } if what == "undo: drop stash@{0}"),
+        "{:?}",
+        state.status
+    );
     assert_eq!(stash_list(path).len(), 1, "`u` brought the stash back");
     drop(state);
     app.close();
 }
 
-/// `stash-apply-clash`: `S ⏎ o ⏎` — the apply clashes, yours taken, every
-/// file done, and the stash is kept. ≤ 4 keys.
+/// `stash-apply-clash-to-done`: `S ⏎ o ⏎` — the apply clashes, yours taken,
+/// every file done, and the stash is kept. Keys within the note's row.
 #[test]
 fn a_stash_apply_that_clashes_is_four_keys() {
     use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, quiet, stash_list, unmerged};
@@ -402,7 +421,12 @@ fn a_stash_apply_that_clashes_is_four_keys() {
     let state = app.pump(state, "the stage", |state| state.resolver.is_none());
     let state = quiet(&app, state);
 
-    assert!(keys.count <= 4, "{} keys", keys.count);
+    let allowed = crate::m5_walk::noted_keys(APPLY_TO_DONE).unwrap();
+    assert!(
+        keys.count <= allowed,
+        "{} keys, the note allows {allowed}",
+        keys.count
+    );
     assert_eq!(
         std::fs::read_to_string(path.join(NOTES)).expect("the file"),
         "committed\n"
@@ -418,9 +442,9 @@ fn a_stash_apply_that_clashes_is_four_keys() {
     app.close();
 }
 
-/// `stash-pop-clash-back`: `S p`, then `esc u` (+ `y` if the drift box
+/// `stash-clash-put-back`: `S p`, then `esc u` (+ `y` if the drift box
 /// asks) — the tree as it was before the pop, nothing unmerged, the stash
-/// listed. ≤ 2 keys after the clash (+1 for the box).
+/// listed. Keys after the clash within the note's row (+1 for the box).
 #[test]
 fn esc_u_puts_a_clashed_pop_back() {
     use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, stash_list, unmerged};
@@ -439,7 +463,7 @@ fn esc_u_puts_a_clashed_pop_back() {
     let state = keys.press(&state, KeyCode::Escape);
     let state = keys.press(&state, KeyCode::Char('u'));
     let mut state = undone(&app, state);
-    let mut allowed = 2;
+    let mut allowed = crate::m5_walk::noted_keys(PUT_BACK).unwrap();
     if state.confirm.is_some() {
         allowed += 1;
         state = keys.press(&state, KeyCode::Char('y'));

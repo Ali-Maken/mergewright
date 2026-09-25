@@ -193,6 +193,28 @@ fn drop_put_back_drops_by_commit_id_not_position() {
     );
 }
 
+/// Review 72+72b m6: the drop is named as every other stash is, by its
+/// position — the one `check` found by commit in the facts, here 1 because
+/// a second stash sits on top — never by a short sha.
+#[test]
+fn drop_put_back_is_described_by_its_position_in_the_facts() {
+    let (repo, stashed) = about_to_pop_a_conflict();
+    repo.write("other.txt", b"stashed on top\n");
+    repo.git(&["stash", "push", "-q", "-u", "-m", "on top"]);
+
+    let entry = run(&repo, &Operation::DropPutBack { stash: stashed }, NOW);
+
+    assert_eq!(entry.description, "drop stash@{1}");
+    let written = journal_entries(&repo)
+        .into_iter()
+        .find(|written| written.id == entry.id)
+        .expect("the entry is in the journal file");
+    assert_eq!(
+        written.description, "drop stash@{1}",
+        "the file says so too"
+    );
+}
+
 #[test]
 fn drop_put_back_refuses_when_the_stash_is_gone() {
     let (repo, stashed) = about_to_pop_a_conflict();
@@ -238,6 +260,106 @@ fn undo_of_drop_put_back_stores_it_again() {
         listed,
         "the stash is back, message and all"
     );
+}
+
+/// The stash list as `live_clash` takes it: `(commit, position)`.
+fn stashes_now(repo: &TempRepo) -> Vec<(Oid, usize)> {
+    stash_commits(repo)
+        .iter()
+        .enumerate()
+        .map(|(at, hex)| (Oid::from_hex(hex).expect("a stash id"), at))
+        .collect()
+}
+
+/// The index now, read the way the app reads it: the recorder's own
+/// `index_state`.
+fn index_now(repo: &TempRepo) -> graft_core::journal::IndexState {
+    let handle = repo.open();
+    let scratch = repo.path().join(".git/graft");
+    snapshot::index_state(&handle, &scratch, &Never).expect("the index reads")
+}
+
+/// Two stashes that each clash with a commit made since: A (`stash@{0}`)
+/// on `a.txt`, B (`stash@{1}`) on `b.txt`.
+fn two_clashing_stashes() -> (TempRepo, Oid, Oid) {
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"base\n");
+    repo.write("b.txt", b"base\n");
+    repo.commit_all("base");
+    repo.write("b.txt", b"stashed b\n");
+    repo.git(&["stash", "push", "-q", "-m", "B"]);
+    repo.write("a.txt", b"stashed a\n");
+    repo.git(&["stash", "push", "-q", "-m", "A"]);
+    let a = Oid::from_hex(&repo.git(&["rev-parse", "stash@{0}"])).expect("A");
+    let b = Oid::from_hex(&repo.git(&["rev-parse", "stash@{1}"])).expect("B");
+    repo.write("a.txt", b"committed a\n");
+    repo.write("b.txt", b"committed b\n");
+    repo.commit_all("moved on");
+    (repo, a, b)
+}
+
+/// Review 72+72b M2, the four steps with real git (ADR-0045 §2 as amended,
+/// §7): Graft pops A and it clashes; the shell takes ours for `a.txt` and
+/// pops B, which clashes on `b.txt`. The index now is not what Graft last
+/// recorded, so no clash — nothing names A, and nothing would drop it.
+#[test]
+fn a_shell_pop_after_an_unfinished_graft_pop_is_no_clash() {
+    let (repo, a, b) = two_clashing_stashes();
+    clashed(
+        &repo,
+        &Operation::StashPop {
+            index: 0,
+            commit: a,
+        },
+    );
+
+    repo.git(&["checkout", "--ours", "a.txt"]);
+    repo.git(&["add", "a.txt"]);
+    let popped_b = repo.try_git(&["stash", "pop", "stash@{1}"]);
+    assert!(popped_b.is_err(), "B's pop clashes: {popped_b:?}");
+
+    assert_eq!(
+        stashes_now(&repo),
+        vec![(a, 0), (b, 1)],
+        "git kept both stashes"
+    );
+    assert!(
+        repo.git(&["ls-files", "-u"]).contains("b.txt"),
+        "b.txt is unmerged"
+    );
+    let now = index_now(&repo);
+    assert!(now.is_unmerged());
+    assert_eq!(
+        graft_ops::clash::live_clash(&journal_entries(&repo), None, &now, &stashes_now(&repo)),
+        None,
+        "B's conflict is not A's clash"
+    );
+}
+
+/// The plain Graft pop clash, nothing done since: the recorder's encoding
+/// (`finish`'s `index_after`) and the reader's (`index_state` now) agree,
+/// so the clash is tied and found (ADR-0045 §7, last bullet).
+#[test]
+fn a_graft_pop_clash_is_tied_to_the_index_it_left() {
+    let (repo, stashed) = about_to_pop_a_conflict();
+    let (entry, _) = clashed(
+        &repo,
+        &Operation::StashPop {
+            index: 0,
+            commit: stashed,
+        },
+    );
+
+    let found = graft_ops::clash::live_clash(
+        &journal_entries(&repo),
+        None,
+        &index_now(&repo),
+        &stashes_now(&repo),
+    )
+    .expect("the clash is tied to the index it left");
+    assert_eq!(found.entry, entry.id);
+    assert_eq!(found.stash, stashed);
+    assert_eq!(found.index, Some(0));
 }
 
 /// ADR-0045 §6: `u` during a clash is the abort — the tree before the pop,

@@ -859,14 +859,13 @@ pub fn operated(
     // A write that finished before `Esc`'s stop reached it answers here as
     // usual; the cancel it outran is over.
     state.remote.cancelling = None;
-    let remote_op = state
+    let launched_op = state
         .remote
         .running
         .as_ref()
         .filter(|running| running.id == id)
         .and_then(|running| running.op.clone());
-    let launched_op = remote_op.clone();
-    let remote_op = remote_op.filter(Operation::is_remote);
+    let remote_op = launched_op.clone().filter(Operation::is_remote);
     // The drop a stash clash's close launched (m6-conflicts/72b): its `Done`
     // is worded as the end of the clash.
     let clash_drop = state

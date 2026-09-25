@@ -330,7 +330,7 @@ mod tests {
     /// is `Committed` — git kept the stash and the tree is unmerged, which
     /// is the pop's own result, not a failure — so its row reads as any
     /// other, never `failed:`. The drop the last file done launched is a
-    /// `StashDrop` row named by the stash's commit, and it is what `u`
+    /// `StashDrop` row named by its position, as every stash is, and it is what `u`
     /// reaches next.
     #[test]
     fn a_clashed_pop_reads_as_a_normal_row_and_its_drop_as_a_stash_drop() {
@@ -341,7 +341,7 @@ mod tests {
             why: graft_core::journal::PutBackWhy::Pop,
         });
         let stage = entry(2, OperationKind::Stage, "stage notes.md");
-        let mut drop = entry(3, OperationKind::StashDrop, "drop stash 0707070");
+        let mut drop = entry(3, OperationKind::StashDrop, "drop stash@{0}");
         drop.touches = Touches {
             refs: vec!["refs/stash".to_owned()],
             index: false,
@@ -351,7 +351,7 @@ mod tests {
         let view = journal_view(&app, 10);
 
         let drop_row = &view.rows[0];
-        assert_eq!(drop_row.description.as_str(), "drop stash 0707070");
+        assert_eq!(drop_row.description.as_str(), "drop stash@{0}");
         assert_eq!(
             drop_row.mark,
             RowMark::NextUndo,

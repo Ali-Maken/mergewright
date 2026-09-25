@@ -1278,6 +1278,9 @@ mod tests {
                 journey_id(scenario.name, &rows)
                     .unwrap_or_else(|| panic!("{} walks no row of the block", scenario.name))
             })
+            // The stash walks count their own keys against these rows
+            // (`noted_keys`); they are not scenarios of this runner.
+            .chain(crate::m6_stash_put_back::JOURNEYS)
             .collect();
         let noted: BTreeSet<&str> = rows.iter().map(|row| row.id.as_str()).collect();
         assert_eq!(walked, noted, "journeys walked vs the note's rows");

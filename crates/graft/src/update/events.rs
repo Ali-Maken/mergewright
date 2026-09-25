@@ -179,6 +179,8 @@ pub enum Task {
     /// Read the stash list for the `S` overlay
     /// (m3-working-tree-undo-and-stash/06).
     ReadStashes,
+    /// Read the index now for a stash clash's tie (ADR-0045 §2).
+    ReadIndexState,
     /// Read the configured remotes and `HEAD`'s upstream (m4-remotes/05).
     ReadRemotes,
     /// Read one conflicted path for the resolver (m6-conflicts/04).
@@ -387,6 +389,9 @@ pub enum Product {
     /// `Arc` for the same reason as [`Product::Journal`]: the overlay holds
     /// it across frames (m3-working-tree-undo-and-stash/06).
     Stashes(Result<std::sync::Arc<Vec<graft_git::stash::StashEntry>>, String>),
+    /// The index now, for a stash clash's tie, or why it could not be read
+    /// (`Command::ReadIndexState`).
+    IndexState(Result<graft_core::journal::IndexState, String>),
     /// The remotes, `HEAD`'s branch and its upstream, or why they could not
     /// be read (m4-remotes/05).
     Remotes(Result<std::sync::Arc<crate::jobs::remote::RemoteFacts>, String>),

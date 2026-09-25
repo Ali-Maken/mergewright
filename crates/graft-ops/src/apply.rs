@@ -211,7 +211,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         return Ok(folded);
     }
     guard_repush(ctx, op, &facts)?;
-    let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe());
+    let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe_in(&facts));
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
 
@@ -297,11 +297,22 @@ fn closed(
     }
     // A put-back that failed: the index says whether it clashed, never the
     // exit code (ADR-0045 §7). Read before the outcome, which it decides.
-    let clash = match clashed_put_back(ctx, &pending.entry, failure.is_some()) {
-        Ok(clash) => clash,
-        Err(error) => {
-            return close_unreadable_put_back(ctx, &mut pending, commands, failure, &error);
-        }
+    // Only a failure is read: a put-back that went through left nothing
+    // unmerged, and `close_unreadable_put_back` needs git's failure to name.
+    let (failure, clash) = match failure {
+        None => (None, None),
+        Some(failed) => match clashed_put_back(ctx, &pending.entry) {
+            Ok(clash) => (Some(failed), clash),
+            Err(error) => {
+                return Err(close_unreadable_put_back(
+                    ctx,
+                    &mut pending,
+                    commands,
+                    failed,
+                    &error,
+                ));
+            }
+        },
     };
     let status = match (&failure, &clash) {
         // A clash is an outcome, not a failure: the stash's changes are in
@@ -416,19 +427,15 @@ fn succeeded(
     }
 }
 
-/// Did a failed put-back clash? `Some` when the entry carries a
-/// `put_back` (a pop or apply), git failed, and the status lists unmerged
-/// paths (ADR-0045 §1). Not [`stopped_on_conflict`]: a clash is not an
-/// operation in progress — there is nothing to `c`ontinue or `a`bort.
+/// Did a failed put-back clash? Called only when git failed. `Some` when
+/// the entry carries a `put_back` (a pop or apply) and the status lists
+/// unmerged paths (ADR-0045 §1). Not [`stopped_on_conflict`]: a clash is
+/// not an operation in progress — there is nothing to `c`ontinue or `a`bort.
 ///
 /// Nothing unmerged is `None`: a plain failure (`apply --index` refusing,
 /// an untracked file in the way), closed `Aborted` as before.
-fn clashed_put_back(
-    ctx: &Context<'_>,
-    entry: &JournalEntry,
-    failed: bool,
-) -> Result<Option<Clash>, ApplyError> {
-    let Some(put_back) = entry.put_back.as_ref().filter(|_| failed) else {
+fn clashed_put_back(ctx: &Context<'_>, entry: &JournalEntry) -> Result<Option<Clash>, ApplyError> {
+    let Some(put_back) = entry.put_back.as_ref() else {
         return Ok(None);
     };
     // Never stopped: the put-back has already run, and a stop that cut it
@@ -461,32 +468,22 @@ fn close_unreadable_put_back(
     ctx: &mut Context<'_>,
     pending: &mut Pending,
     commands: Vec<String>,
-    failure: Option<run::PlanFailure>,
+    failure: run::PlanFailure,
     unread: &ApplyError,
-) -> Result<Applied, ApplyError> {
-    let git_said = failure
-        .as_ref()
-        .map_or_else(String::new, run::PlanFailure::reason);
+) -> ApplyError {
     let status = EntryStatus::Aborted {
-        reason: format!("{git_said}; the status after could not be read: {unread}"),
+        reason: format!(
+            "{}; the status after could not be read: {unread}",
+            failure.reason()
+        ),
     };
     if let Err(error) = finish(ctx, pending, status, commands) {
-        return Err(ApplyError::Journal {
+        return ApplyError::Journal {
             error,
-            after: failure.map(|failed| failed.error),
-        });
+            after: Some(failure.error),
+        };
     }
-    let entry = pending.entry.clone();
-    match failure {
-        Some(failed) => Err(failed.into_error(entry)),
-        // `clashed_put_back` reads nothing unless git failed.
-        None => Ok(Applied {
-            entry,
-            refresh: Refresh::WorkingTree,
-            step_backup: None,
-            replaced: crate::undo::Replaced::default(),
-        }),
-    }
+    failure.into_error(pending.entry.clone())
 }
 
 /// A put-back that clashed, journaled `Committed`: the answer is

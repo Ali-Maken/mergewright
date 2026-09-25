@@ -213,13 +213,38 @@ pub fn hints_text(hints: &[Hint]) -> String {
 pub struct StopWording {
     full: SanitizedText,
     shorter: Vec<SanitizedText>,
+    before_keys: bool,
 }
 
 impl StopWording {
     /// `full` first, then each `shorter` wording in the order to try them.
     #[must_use]
     pub fn new(full: SanitizedText, shorter: Vec<SanitizedText>) -> Self {
-        Self { full, shorter }
+        Self {
+            full,
+            shorter,
+            before_keys: false,
+        }
+    }
+
+    /// The reason outranks the bar's tail keys: a stop with no banner to
+    /// say it (a stash clash; review 72+72b M1). [`stopped_row_before_keys`]
+    /// then takes the fullest wording that leaves the bar its floor, and
+    /// fits the bar — its own ladder, tail keys first — into what is left.
+    /// Off by default: every other stop fits as today (bar whole, bare bar
+    /// under 12 cells), because it has a banner that names it.
+    #[must_use]
+    pub fn before_keys(self) -> Self {
+        Self {
+            before_keys: true,
+            ..self
+        }
+    }
+
+    /// Whether [`StopWording::before_keys`] was set.
+    #[must_use]
+    pub fn is_before_keys(&self) -> bool {
+        self.before_keys
     }
 
     /// The fullest wording.
@@ -227,6 +252,54 @@ impl StopWording {
     pub fn full(&self) -> &SanitizedText {
         &self.full
     }
+
+    /// Every wording, fullest first.
+    fn fullest_first(&self) -> impl Iterator<Item = &str> {
+        std::iter::once(&self.full)
+            .chain(&self.shorter)
+            .map(SanitizedText::as_str)
+    }
+}
+
+/// The bottom row for a reason that outranks the tail keys
+/// ([`StopWording::before_keys`]): ` <reason> · <bar>`.
+///
+/// The fullest wording is kept whose room still leaves the bar its floor
+/// (ADR-0037 §4: the three most relevant hints at their floor rung, and the
+/// doorway); the bar is then fitted by its own ladder ([`hints_for`]) into
+/// what the wording leaves, so its tail keys give before the reason does.
+/// When not even the shortest wording leaves the floor, the row is
+/// [`stopped_row`]'s: the bar whole, the reason from what is left.
+#[must_use]
+pub fn stopped_row_before_keys(
+    reason: &StopWording,
+    context: &super::HintContext,
+    divider: super::Divider,
+    columns: u16,
+) -> String {
+    let (list, trailer) = super::whole_bar(context, divider);
+    let floor: Vec<Hint> = list
+        .iter()
+        .take(3)
+        .map(|hint| hint.at(hint.floor_rung()))
+        .collect();
+    for wording in reason.fullest_first() {
+        // ` ` before the reason and ` ·` after it: three cells.
+        let Some(room) = usize::from(columns).checked_sub(text_width(wording) + 3) else {
+            continue;
+        };
+        if !fits(&floor, trailer, room) {
+            continue;
+        }
+        let room = u16::try_from(room).unwrap_or(u16::MAX);
+        let bar = super::hints_for(context, divider, room);
+        return format!(" {wording} ·{}", hints_text(&bar));
+    }
+    stopped_row(
+        reason,
+        &super::hints_for(context, divider, columns),
+        columns,
+    )
 }
 
 /// The bottom row while an operation is stopped: `<reason> · <bar>`
@@ -295,4 +368,83 @@ pub fn fit_status_line(reason: &str, keys: Option<&str>, columns: u16) -> String
         return format!("{reason}{suffix}");
     }
     format!("{}{suffix}", fit(reason, room))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Divider, HintContext, hints_for};
+    use super::*;
+
+    /// A stash clash's ladder as `graft::update::clash::stop_wordings`
+    /// writes it: this run's, then from the last run.
+    fn clash_ladder(from_last_run: bool) -> StopWording {
+        let head = if from_last_run {
+            "stash@{0} clash from last run"
+        } else {
+            "stash@{0} clashed"
+        };
+        StopWording::new(
+            graft_term::sanitize_line(&format!("{head} · 1 file conflicted")),
+            [
+                "stash@{0} clashed · 1 conflicted",
+                "stash@{0} clashed",
+                "stash clashed",
+            ]
+            .iter()
+            .map(|words| graft_term::sanitize_line(words))
+            .collect(),
+        )
+        .before_keys()
+    }
+
+    /// Review 72+72b M1: at 80 columns on the graph, the clash's reason is
+    /// drawn before the bar — the fullest wording that leaves the bar its
+    /// floor, the tail keys giving first — and the relaunch drops its origin,
+    /// never the name.
+    #[test]
+    fn a_clash_reason_outranks_the_tail_keys_at_80() {
+        let context = HintContext::WorkingTreeRow;
+        for divider in [Divider::Hidden, Divider::Shown] {
+            let row = stopped_row_before_keys(&clash_ladder(false), &context, divider, 80);
+            assert!(
+                row.starts_with(" stash@{0} clashed · 1 file conflicted ·"),
+                "{divider:?}: {row:?}"
+            );
+            assert!(row.width() <= 80, "{row:?}");
+            let bar = row
+                .strip_prefix(" stash@{0} clashed · 1 file conflicted ·")
+                .expect("the reason leads");
+            let floor = hints_text(&hints_for(&context, divider, 80)[..1]);
+            assert!(
+                bar.starts_with(floor.as_str()),
+                "the floor leads the bar: {bar:?}"
+            );
+
+            let relaunch = stopped_row_before_keys(&clash_ladder(true), &context, divider, 80);
+            assert!(
+                relaunch.starts_with(" stash@{0} clashed · 1 conflicted ·")
+                    || relaunch.starts_with(" stash@{0} clash from last run · 1 file conflicted ·"),
+                "{divider:?}: {relaunch:?}"
+            );
+            assert!(relaunch.width() <= 80, "{relaunch:?}");
+        }
+    }
+
+    /// The pin: a stop without the flag is `stopped_row`'s, the bar whole —
+    /// here at 80 the bar leaves under twelve cells, so the row is the bar
+    /// alone, as it was before.
+    #[test]
+    fn a_stop_without_before_keys_fits_as_today() {
+        let context = HintContext::WorkingTreeRow;
+        let plain = StopWording::new(
+            graft_term::sanitize_line("merge stopped · 1 file conflicted"),
+            Vec::new(),
+        );
+        assert!(!plain.is_before_keys());
+        for columns in [80u16, 120, 187] {
+            let hints = hints_for(&context, Divider::Hidden, columns);
+            let row = stopped_row(&plain, &hints, columns);
+            assert!(row.ends_with(&hints_text(&hints)), "{columns}: {row:?}");
+        }
+    }
 }

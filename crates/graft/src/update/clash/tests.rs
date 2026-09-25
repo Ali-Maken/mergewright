@@ -107,9 +107,64 @@ fn facts(unmerged: bool) -> AppState {
     state
 }
 
+/// The stage tree `pop_entry` recorded as its index after.
+fn popped_index() -> IndexState {
+    IndexState::Unmerged { unmerged: oid(2) }
+}
+
+/// The index reads `commands` asks for.
+fn index_reads(commands: &[Command]) -> Vec<JobId> {
+    commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::ReadIndexState { id } => Some(*id),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A working-tree read landed (`refresh_and_land`'s trigger), holding
+/// `status`.
+fn tree_read_lands(
+    state: &mut AppState,
+    status: Vec<StatusEntry>,
+    next: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    state.working_tree = Some(Arc::new(WorkingTreeStatus { entries: status }));
+    let mut commands = Vec::new();
+    refresh_and_land(state, &mut commands, next);
+    commands
+}
+
+/// The one index read out answers `read`.
+fn index_lands(
+    state: &mut AppState,
+    read: Result<IndexState, String>,
+    next: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    let IndexRead::Pending { id, .. } = state.clash_index else {
+        panic!("no index read out: {:?}", state.clash_index)
+    };
+    let mut commands = Vec::new();
+    index_answered(state, &mut commands, id, read, next);
+    commands
+}
+
+/// A clash landed this run and tied: the pop in the journal, `notes.md`
+/// unmerged, the index read answered with the pop's own stage tree.
+fn tied(next: &mut impl FnMut() -> JobId) -> AppState {
+    let mut state = facts(true);
+    state.clash_facts_seen = true;
+    tree_read_lands(&mut state, vec![entry("notes.md", true)], next);
+    index_lands(&mut state, Ok(popped_index()), next);
+    assert!(state.clash.is_some(), "the fixture's clash is tied");
+    state
+}
+
 #[test]
 fn refresh_clash_follows_the_reads() {
-    // Set on a journal read: the pop is in the journal, the tree unmerged.
+    // A journal read: the pop is in the journal, the tree unmerged — a
+    // candidate, so the index is asked for; the tie holds on its answer.
     let mut state = facts(true);
     state.clash_facts_seen = true;
     let mut commands = Vec::new();
@@ -120,7 +175,10 @@ fn refresh_clash_follows_the_reads() {
         unreachable!("facts() holds a ready journal")
     };
     let product = crate::update::Product::Journal(Ok(read));
-    crate::update::journal::journal_event(&mut state, &mut commands, reading, &product, &mut ids());
+    let mut next = ids();
+    crate::update::journal::journal_event(&mut state, &mut commands, reading, &product, &mut next);
+    assert_eq!(index_reads(&commands).len(), 1, "{commands:?}");
+    index_lands(&mut state, Ok(popped_index()), &mut next);
     let clash = state
         .clash
         .clone()
@@ -135,6 +193,170 @@ fn refresh_clash_follows_the_reads() {
     }));
     refresh_clash(&mut state);
     assert_eq!(state.clash, None, "nothing unmerged, no clash");
+}
+
+/// ADR-0045 §2 (amended): the index is read only while a candidate exists,
+/// one read out at a time; the clash held keeps its value while it is out;
+/// an answer under any other id is dropped.
+#[test]
+fn the_index_is_read_only_while_a_candidate_exists() {
+    let mut next = ids();
+
+    // Nothing unmerged: no candidate, no read.
+    let mut clean = facts(false);
+    let commands = tree_read_lands(&mut clean, vec![entry("notes.md", false)], &mut next);
+    assert!(index_reads(&commands).is_empty(), "{commands:?}");
+
+    // Unmerged, but no entry carries a put-back (a shell merge's conflict).
+    let mut no_put_back = facts(true);
+    if let Loading::Ready(read) = &mut no_put_back.journal.entries {
+        let mut entries = read.entries.clone();
+        entries[0].put_back = None;
+        *read = Arc::new(JournalRead {
+            entries,
+            unreadable: Vec::new(),
+            live: Vec::new(),
+        });
+    }
+    let commands = tree_read_lands(&mut no_put_back, vec![entry("notes.md", true)], &mut next);
+    assert!(index_reads(&commands).is_empty(), "{commands:?}");
+
+    // A candidate, and a clash held from the answer: one read, and the clash
+    // stays while it is out.
+    let mut state = tied(&mut next);
+    let held = state.clash.clone();
+    let first = tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    let [asked] = index_reads(&first)[..] else {
+        panic!("one index read: {first:?}")
+    };
+    assert_eq!(state.clash, held, "kept while the read is out");
+
+    // Another read lands while it is out: none more asked, the one out is
+    // marked stale.
+    let second = tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    assert!(
+        index_reads(&second).is_empty(),
+        "one out at a time: {second:?}"
+    );
+    assert_eq!(
+        state.clash_index,
+        IndexRead::Pending {
+            id: asked,
+            stale: true
+        }
+    );
+}
+
+/// An index answer under another id is dropped; a stale one is not judged
+/// and asks again; the fresh one decides.
+#[test]
+fn a_stale_or_foreign_index_answer_is_not_judged() {
+    let mut next = ids();
+    let mut state = tied(&mut next);
+    let held = state.clash.clone();
+    tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    assert!(matches!(
+        state.clash_index,
+        IndexRead::Pending { stale: true, .. }
+    ));
+
+    // A stale id is dropped: nothing changes.
+    let before = state.clone();
+    let mut commands = Vec::new();
+    index_answered(
+        &mut state,
+        &mut commands,
+        JobId::new(1),
+        Ok(IndexState::Unmerged { unmerged: oid(9) }),
+        &mut next,
+    );
+    assert!(commands.is_empty());
+    assert_eq!(state, before, "an answer under another id is dropped");
+
+    // The stale read answers: not judged, one more asked in its place.
+    let again = index_lands(
+        &mut state,
+        Ok(IndexState::Unmerged { unmerged: oid(9) }),
+        &mut next,
+    );
+    assert_eq!(index_reads(&again).len(), 1, "{again:?}");
+    assert_eq!(state.clash, held, "a stale answer is not judged");
+
+    // The fresh one answers with an index Graft never recorded: no clash.
+    index_lands(
+        &mut state,
+        Ok(IndexState::Unmerged { unmerged: oid(9) }),
+        &mut next,
+    );
+    assert_eq!(state.clash, None, "the tie broke");
+    assert_eq!(
+        state.clash_index,
+        IndexRead::Read(Ok(IndexState::Unmerged { unmerged: oid(9) }))
+    );
+}
+
+/// Rule 3: the index could not be read — no clash (nothing named, nothing
+/// dropped), and the status says it could not tell, sanitised.
+#[test]
+fn an_index_read_failure_is_no_clash_and_says_so() {
+    let mut next = ids();
+    let mut state = tied(&mut next);
+    tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    index_lands(
+        &mut state,
+        Err("index.lock\u{1b}[31m held".to_owned()),
+        &mut next,
+    );
+    assert_eq!(state.clash, None);
+    let Status::Failed(words) = &state.status else {
+        panic!("a failure line: {:?}", state.status)
+    };
+    assert!(
+        words.starts_with("can't tell which stash clashed \u{b7} index.lock"),
+        "{words}"
+    );
+    assert!(!words.contains('\u{1b}'), "sanitised: {words:?}");
+}
+
+/// Review 72+72b m1: the landing's pane owe goes when the clash does. A
+/// clean read first (`esc u`), then an unrelated edit: the pane stays shut.
+#[test]
+fn the_pane_owe_is_dropped_when_the_clash_ends() {
+    let mut next = ids();
+    let mut state = tied(&mut next);
+    state.clash_pane_owed = true;
+    tree_read_lands(&mut state, Vec::new(), &mut next);
+    assert_eq!(state.clash, None, "a clean tree has no clash");
+    assert!(!state.clash_pane_owed, "the owe went with the clash");
+
+    let mut dirty = entry("later.md", false);
+    dirty.untracked = true;
+    tree_read_lands(&mut state, vec![dirty], &mut next);
+    assert!(
+        !state.on_working_tree,
+        "no pane opened for an unrelated edit"
+    );
+}
+
+/// Review 72+72b m1: under a box the owe is not paid — it waits, and is
+/// paid once the box goes.
+#[test]
+fn the_pane_owe_waits_under_a_modal() {
+    let mut next = ids();
+    let mut state = tied(&mut next);
+    state.clash_pane_owed = true;
+    state.search_prompt = Some(String::new());
+    tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    index_lands(&mut state, Ok(popped_index()), &mut next);
+    assert!(!state.on_working_tree, "not under the box");
+    assert!(state.clash_pane_owed, "still owed");
+
+    state.search_prompt = None;
+    tree_read_lands(&mut state, vec![entry("notes.md", true)], &mut next);
+    index_lands(&mut state, Ok(popped_index()), &mut next);
+    assert!(state.on_working_tree, "paid once the box is gone");
+    assert!(!state.clash_pane_owed);
 }
 
 #[test]
@@ -160,6 +382,7 @@ fn refresh_clash_waits_while_a_read_is_out() {
 #[test]
 fn a_clash_found_by_the_launch_is_from_the_last_run() {
     let mut state = facts(true);
+    state.clash_index = IndexRead::Read(Ok(popped_index()));
     refresh_clash(&mut state);
     assert_eq!(
         state.clash.as_ref().map(|clash| clash.origin),
@@ -236,6 +459,55 @@ fn the_notice_names_the_popped_index_after_a_clashed_answer() {
     assert!(state.stopped.is_none() && state.live_entries.is_empty());
 }
 
+/// Review 72+72b m2: a `Clashed` answer whose landing is refused — a
+/// resolver already open — still says it, on the status line; the open
+/// resolver's own notice row is left as it was.
+#[test]
+fn a_refused_landing_puts_the_notice_on_the_status_line() {
+    let mut state = AppState::default();
+    let mut next = ids();
+    let clash = Clash {
+        stash: oid(STASH),
+        why: PutBackWhy::Pop,
+        paths: vec![PathBuf::from("notes.md"), PathBuf::from("todo.md")],
+    };
+    let pop_at = |index| Operation::StashPop {
+        index,
+        commit: oid(STASH),
+    };
+    clashed(
+        &mut state,
+        Some(&pop_at(2)),
+        EntryId::new(7, [7; 10]),
+        &clash,
+        &mut next,
+    );
+    let notice_before = state
+        .resolver
+        .as_ref()
+        .expect("the first landing")
+        .notice
+        .clone();
+
+    clashed(
+        &mut state,
+        Some(&pop_at(0)),
+        EntryId::new(8, [8; 10]),
+        &clash,
+        &mut next,
+    );
+
+    assert_eq!(
+        state.status,
+        Status::Waiting("stash@{0} clashed in 2 files \u{b7} esc, u puts it all back".to_owned())
+    );
+    assert_eq!(
+        state.resolver.as_ref().expect("still open").notice,
+        notice_before,
+        "the resolver's notice row is not doubled"
+    );
+}
+
 #[test]
 fn the_stop_ladder_drops_the_origin_then_the_count_then_the_name() {
     let clash = ClashState {
@@ -248,7 +520,7 @@ fn the_stop_ladder_drops_the_origin_then_the_count_then_the_name() {
         origin: LiveOrigin::PreviousRun,
     };
     assert_eq!(
-        stop_wordings(&clash, 2),
+        stop_wordings(&clash, 2).wordings,
         [
             "stash@{1} clash from last run \u{b7} 2 files conflicted",
             "stash@{1} clashed \u{b7} 2 conflicted",

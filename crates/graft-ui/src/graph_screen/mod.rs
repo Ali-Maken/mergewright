@@ -35,6 +35,7 @@ pub use columns::{absolute_date, initials, relative_date, short_sha};
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintState, LiveC, Rung, StopWording, TabWord,
     every_context, every_hint, fit_status_line, hints_for, hints_text, stopped_row,
+    stopped_row_before_keys,
 };
 pub use layout::{
     Columns, RowLayout, ScreenRows, lanes_that_fit, max_lanes_for, row_at, row_layout, screen_rows,

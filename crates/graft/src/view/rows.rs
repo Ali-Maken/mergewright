@@ -368,14 +368,15 @@ pub(crate) fn box_context(state: &AppState) -> Option<HintContext> {
 /// files get resolved, with the shorter wordings the footer falls back to
 /// (`banner::stop_wordings`). `None` while nothing is stopped.
 pub(crate) fn stopped_line(state: &AppState) -> Option<graft_ui::graph_screen::StopWording> {
-    let mut wordings = crate::update::banner::stop_line_wordings(state)?
-        .into_iter()
-        .map(|line| sanitize_line(&line));
+    let ladder = crate::update::banner::stop_line_wordings(state)?;
+    let mut wordings = ladder.wordings.iter().map(|line| sanitize_line(line));
     let full = wordings.next()?;
-    Some(graft_ui::graph_screen::StopWording::new(
-        full,
-        wordings.collect(),
-    ))
+    let wording = graft_ui::graph_screen::StopWording::new(full, wordings.collect());
+    Some(if ladder.before_keys {
+        wording.before_keys()
+    } else {
+        wording
+    })
 }
 
 /// What the footer offers under this frame's rows.

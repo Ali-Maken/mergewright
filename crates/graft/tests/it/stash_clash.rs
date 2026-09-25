@@ -14,9 +14,11 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::PutBackWhy;
 use graft_ui::detail::DetailFocus;
 
+use graft::session::Clock;
+
 use crate::app_harness::{App, git, press_for_commands};
-use crate::captures::frame;
-use crate::preview::{FORK_EPOCH, dated_commit};
+use crate::captures::{check_shot, frame, frame_at};
+use crate::preview::{FORK_EPOCH, FORK_NOW, dated_commit};
 
 /// The file the stash and the branch both change.
 pub(crate) const NOTES: &str = "notes.md";
@@ -81,6 +83,7 @@ pub(crate) fn quiet(app: &App, state: AppState) -> AppState {
             && state.status_read.is_none()
             && state.journal.reading.is_none()
             && !matches!(state.refs_read, graft::update::RefsRead::Pending(_))
+            && !state.clash_index_out()
     })
 }
 
@@ -278,6 +281,85 @@ fn a_shell_pop_clash_names_no_stash_and_drops_nothing() {
     app.close();
 }
 
+/// Two stashes that each clash with a commit made since: A (`stash@{0}`)
+/// on `a.txt`, B (`stash@{1}`) on `b.txt`.
+fn two_clashing_stashes() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    std::fs::write(path.join("a.txt"), "base\n").expect("writable");
+    std::fs::write(path.join("b.txt"), "base\n").expect("writable");
+    git(path, &["add", "a.txt", "b.txt"]);
+    git(path, &["commit", "-q", "-m", "base"]);
+    std::fs::write(path.join("b.txt"), "stashed b\n").expect("writable");
+    git(path, &["stash", "push", "-q", "-m", "B"]);
+    std::fs::write(path.join("a.txt"), "stashed a\n").expect("writable");
+    git(path, &["stash", "push", "-q", "-m", "A"]);
+    std::fs::write(path.join("a.txt"), "committed a\n").expect("writable");
+    std::fs::write(path.join("b.txt"), "committed b\n").expect("writable");
+    git(path, &["commit", "-q", "-am", "moved on"]);
+    scratch
+}
+
+/// Review 72+72b M2 in the app (ADR-0045 §2 as amended, §7): `S p` clashes
+/// on A; the shell takes ours for `a.txt` and pops B, which clashes on
+/// `b.txt`. The index is not what Graft last recorded, so no clash: the
+/// resolver's theirs names no stash, and `⏎` on `b.txt` drops nothing.
+#[test]
+fn a_shell_pop_after_an_unfinished_graft_pop_names_no_stash_and_drops_nothing() {
+    let scratch = two_clashing_stashes();
+    let path = scratch.path();
+    let (app, state) = App::open(path);
+    let state = popped(&app, state);
+    assert!(state.clash.is_some(), "Graft's pop of A clashed");
+    let state = app.key(&state, KeyCode::Escape);
+    let state = quiet(&app, state);
+
+    git(path, &["checkout", "--ours", "a.txt"]);
+    git(path, &["add", "a.txt"]);
+    let popped_b = std::process::Command::new("git")
+        .arg("-C")
+        .arg(path)
+        .args(["stash", "pop", "stash@{1}"])
+        .output()
+        .expect("git runs");
+    assert!(!popped_b.status.success(), "B's pop clashes");
+    assert_eq!(stash_list(path).len(), 2, "git kept both");
+
+    let state = app.press(&state, KeyPress::control(KeyCode::Char('r')));
+    let state = quiet(&app, state);
+    assert!(state.clash.is_none(), "B's conflict is not A's clash");
+    // `esc` left the keys on the changes pane's list: straight to the row.
+    assert_eq!(state.detail.focus, DetailFocus::Files);
+    let state = app.pump(state, "b.txt in the pane", |state| {
+        matches!(&state.detail.files, Loading::Ready(files)
+            if files.rows.iter().any(|row| row.name.as_str() == "b.txt"))
+    });
+    let state = crate::app_harness::cursor_to(&app, state, "b.txt");
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the conflict file", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_some_and(|open| open.file.is_some())
+    });
+    assert_eq!(
+        graft::update::resolver::side_names(&state).theirs.as_str(),
+        "stashed",
+        "theirs names no stash"
+    );
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = crate::resolver::settled(&app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the stage and the close", |state| {
+        state.operating.is_none() && state.resolver.is_none() && state.status_read.is_none()
+    });
+    let state = quiet(&app, state);
+    assert_eq!(stash_list(path).len(), 2, "A and B are both still listed");
+    assert!(state.clash.is_none());
+    drop(state);
+    app.close();
+}
+
 #[test]
 fn relaunch_with_a_clash_open_names_the_stash() {
     let scratch = a_stash_that_clashes();
@@ -311,39 +393,103 @@ fn relaunch_with_a_clash_open_names_the_stash() {
     app.close();
 }
 
+/// The graph's bottom row at `columns`x`rows`, trimmed at the end.
+fn bottom_row(state: &AppState, columns: u16, rows: u16) -> (Vec<String>, String) {
+    let drawn = frame_at(state, columns, rows, Some(Clock::Fixed(FORK_NOW)));
+    let last = drawn.last().expect("a bottom row").trim_end().to_owned();
+    (drawn, last)
+}
+
+/// Review 72+72b M1: with the resolver shut (`esc`, then the graph) the
+/// clash has no banner, so the stop row names it before the bar's tail keys
+/// — at 80 as at 120. The exact row is asserted, then captured at 80x24.
 #[test]
 fn the_stop_line_words_a_clash_at_80_and_120() {
     let scratch = a_stash_that_clashes();
     let (app, state) = App::open(scratch.path());
     let state = popped(&app, state);
     let state = app.key(&state, KeyCode::Escape);
-    let state = quiet(&app, state);
-    // 120: the graph's footer in the split leads with the full wording.
-    let drawn = frame(&state, 120, 40);
-    assert!(
-        drawn
-            .iter()
-            .any(|row| row.contains("stash@{0} clashed \u{b7} 1 file conflicted \u{b7} ")),
-        "120x40:\n{}",
-        drawn.join("\n")
-    );
-    // The ladder the footer is handed, fullest first (origin, count, name
-    // dropped in turn). At 80 the graph's hint bar leaves the row less than
-    // `stopped_row`'s 12-cell minimum, so no rung is drawn there — as for a
-    // merge stop with the banner unfocused; `graft-ui`'s fitting, filed in
-    // 72b's NOTES, not changed here.
+    let mut state = quiet(&app, state);
+    state.detail.focus = DetailFocus::Graph;
+    let ladder = graft::update::banner::stop_line_wordings(&state).expect("a clash ladder");
     assert_eq!(
-        graft::update::banner::stop_line_wordings(&state),
-        Some(vec![
-            "stash@{0} clashed \u{b7} 1 file conflicted".to_owned(),
-            "stash@{0} clashed \u{b7} 1 conflicted".to_owned(),
-            "stash@{0} clashed".to_owned(),
-            "stash clashed".to_owned(),
-        ])
+        ladder.wordings,
+        [
+            "stash@{0} clashed \u{b7} 1 file conflicted",
+            "stash@{0} clashed \u{b7} 1 conflicted",
+            "stash@{0} clashed",
+            "stash clashed",
+        ]
+    );
+    assert!(
+        ladder.before_keys,
+        "a clash's reason outranks the tail keys"
+    );
+
+    for (columns, rows) in [(80u16, 24u16), (120, 40)] {
+        let (drawn, last) = bottom_row(&state, columns, rows);
+        let lead = " stash@{0} clashed \u{b7} 1 file conflicted \u{b7} ";
+        assert!(
+            drawn.iter().any(|row| row.starts_with(lead)),
+            "{columns}x{rows}:\n{}",
+            drawn.join("\n")
+        );
+        if columns == 80 {
+            assert!(last.starts_with(lead), "80x24 bottom row: {last:?}");
+            assert!(!last.ends_with('\u{2026}'), "nothing cut: {last:?}");
+            check_shot(
+                "m6/stash-clash-stop-line-80x24.txt",
+                &format!("{STOP_LINE_HEADER}\n{}\n", drawn.join("\n")),
+            );
+        }
+    }
+    drop(state);
+    app.close();
+}
+
+/// Review 72+72b M1, the relaunch at 80: the origin drops first, the name
+/// never.
+#[test]
+fn the_relaunch_stop_line_at_80_keeps_the_name() {
+    let scratch = a_stash_that_clashes();
+    let path = scratch.path();
+    let (app, state) = App::open(path);
+    let state = popped(&app, state);
+    drop(state);
+    app.close();
+
+    let (app, state) = App::open(path);
+    let state = app.pump(state, "the launch finds the clash", |state| {
+        state.clash.is_some()
+    });
+    let mut state = quiet(&app, state);
+    state.detail.focus = DetailFocus::Graph;
+    let (drawn, _) = bottom_row(&state, 80, 24);
+    assert!(
+        drawn.iter().any(
+            |row| row.starts_with(" stash@{0} clashed \u{b7} 1 conflicted \u{b7} ")
+                || row
+                    .starts_with(" stash@{0} clash from last run \u{b7} 1 file conflicted \u{b7} ")
+        ),
+        "80x24:\n{}",
+        drawn.join("\n")
     );
     drop(state);
     app.close();
 }
+
+const STOP_LINE_HEADER: &str = "\
+# m6/stash-clash-stop-line-80x24.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/stash_clash.rs,
+# the_stop_line_words_a_clash_at_80_and_120, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S p` clashed in notes.md, then `esc` shut the
+# resolver and the graph has the keys, at 80 columns.
+#  - The graph screen; no banner, no resolver.
+#  - The bottom hint row begins ` stash@{0} clashed · 1 file conflicted ·`,
+#    then the keys that fit; nothing cut mid-word.
+";
 
 #[test]
 fn a_clash_raises_no_banner_and_c_a_do_nothing_new() {
