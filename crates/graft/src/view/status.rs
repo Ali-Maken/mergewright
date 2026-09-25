@@ -97,6 +97,47 @@ pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
     }
 }
 
+/// True while a modal stands over the screen: the credential prompt, the
+/// name prompt, a confirm box (the stash drop box and the banner's abort box
+/// among them), or the Ghost Preview. Every rung of the bottom row asks it
+/// before drawing a status: the modal owns the row, so a status from before
+/// it — a push rejection, a stale `Busy`, a `Done` — never sits under keys
+/// it does not belong to (m6-conflicts/69, Decided 1). It **hides**; it
+/// never clears: `esc` on the modal draws the status again (Decided 2).
+#[must_use]
+pub(crate) fn modal_owns_bottom_row(state: &AppState) -> bool {
+    state.credential.is_some()
+        || state.name_prompt.is_some()
+        || state.confirm.is_some()
+        || state.preview.is_some()
+}
+
+/// The bottom row's problem line while a modal is open: only the modal's
+/// own refusal — today the name prompt's (`NamePrompt::refusal`: an empty
+/// name, or the stash branch's preview refused). No keys: the modal's own
+/// keys are in its box, and `esc` there cancels the modal rather than
+/// dismissing a line.
+#[must_use]
+pub(crate) fn modal_problem(state: &AppState) -> Option<ProblemLine> {
+    let refusal = state.name_prompt.as_ref()?.refusal.as_deref()?;
+    Some(ProblemLine {
+        reason: sanitize_line(refusal),
+        keys: None,
+    })
+}
+
+/// The bottom row's problem line, whoever owns the row: the open modal's
+/// own refusal while one stands ([`modal_problem`]), else the status's
+/// ([`graph_problem`]).
+#[must_use]
+pub(crate) fn bottom_row_problem(state: &AppState) -> Option<ProblemLine> {
+    if modal_owns_bottom_row(state) {
+        modal_problem(state)
+    } else {
+        graph_problem(&state.status)
+    }
+}
+
 /// How far the walk has got. A failure's text came out of git, so it is
 /// sanitised like any other.
 fn history_view(history: &History) -> HistoryView {

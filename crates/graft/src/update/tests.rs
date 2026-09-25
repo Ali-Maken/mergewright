@@ -4421,6 +4421,7 @@ fn box_over_the_graph(walk: JobId, context: &HintContext) -> AppState {
             state.name_prompt = Some(super::name_prompt::NamePrompt {
                 kind,
                 field: graft_ui::text_input::TextField::new("feature"),
+                refusal: None,
             });
             state
         }

@@ -273,6 +273,30 @@ fn nothing_to_do(plan: &PreviewPlan) -> bool {
         && matches!(plan.worktree, WorktreeEffect::Untouched)
 }
 
+/// Why a preview cannot open right now, as the words to show: a write is
+/// already running, or git is mid-operation. `None` when it can.
+///
+/// Split out of [`open_preview`] so a caller whose own modal stays open can
+/// show the refusal inside that modal instead of on the status line under
+/// it: branch-from-stash's name prompt (m6-conflicts/69, conductor
+/// 2026-09-25).
+pub(crate) fn preview_refusal(state: &AppState) -> Option<String> {
+    if state.operating.is_some() {
+        let running = state
+            .remote
+            .running
+            .as_ref()
+            .map_or_else(|| "the write".to_owned(), |it| it.description.clone());
+        return Some(format!("wait for {running} to finish"));
+    }
+    // Every live operation refuses, a merge begun in the shell included:
+    // keymap §2.6a's exception covers `u`/`U` only, and this opens a Ghost
+    // Preview or the journal's revert. No keys: the preview and the journal
+    // overlays hide the banner, so `⇥ banner` would point at nothing.
+    let kind = state.in_progress.as_ref()?.kind;
+    Some(super::undo::live_refusal_words(kind))
+}
+
 /// Opens a preview of `subject`, or refuses in words.
 ///
 /// Refuses — with no job started — while another write is running, while a
@@ -294,24 +318,8 @@ pub fn open_preview(
     if state.preview.is_some() {
         return false;
     }
-    if state.operating.is_some() {
-        let running = state
-            .remote
-            .running
-            .as_ref()
-            .map_or_else(|| "the write".to_owned(), |it| it.description.clone());
-        state.status = Status::Sticky {
-            reason: format!("wait for {running} to finish"),
-            keys: None,
-        };
-        return false;
-    }
-    // Every live operation refuses, a merge begun in the shell included:
-    // keymap §2.6a's exception covers `u`/`U` only, and this opens a Ghost
-    // Preview or the journal's revert. No keys: the preview and the journal
-    // overlays hide the banner, so `⇥ banner` would point at nothing.
-    if let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) {
-        state.status = super::undo::live_refusal(kind, None);
+    if let Some(reason) = preview_refusal(state) {
+        state.status = Status::Sticky { reason, keys: None };
         return false;
     }
 

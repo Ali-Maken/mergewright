@@ -86,8 +86,10 @@ with the entry `Aborted`: the status is `Done` and draws `aborted: rebase main o
 - **`operating`'s other clearers**: `grep -rn "operating = None\|operating.take()" crates/graft/src`: any that can clear a
   resume's job (a cancel: resume is unstoppable, MAP :308) also clears `resuming`, or NOTES says why it cannot be a
   resume. No stale `resuming` survives into a later write's answer: `a_stale_resume_answer_is_dropped`.
-- **Resolver path** (`ReturnTo::Resolver`, `banner.rs:436,443,463`): a `c`/`a` from the resolver reaches `resumed`.
-  Check: `the_resolver_abort_reads_aborted` (resolver open, `a y`, the line reads `aborted: …`).
+- **Resolver path** (`ReturnTo::Resolver`, `banner.rs:436,443,463`): a `c` from the resolver reaches `resumed`. (The
+  resolver has no `a`: that part of this line dropped by the conductor, 2026-09-25; see NOTES.) Check:
+  `the_resolver_abort_reads_aborted` (the abort reached from the resolver's screen through the banner: `esc`, `⇥`,
+  `a`, `y`; the line reads `aborted: …`).
 - **Shell-merge abort** (m6-conflicts/57): `resolver::shell_begun::a_on_the_banner_aborts_a_shell_merge` green;
   `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt` (:83, :124) byte-identical (`git diff --exit-code`);
   TESTING.md:2336 unchanged.

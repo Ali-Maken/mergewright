@@ -42,7 +42,13 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         .repository
         .as_ref()
         .map(|facts| sanitize_path(&facts.path));
-    let problem = super::status::graph_problem(&state.status);
+    // An open modal owns the bottom row: its own refusal is the only problem,
+    // and the search, compare and stop rungs are blanked (`modal_blanked`).
+    // `reveal` is not: under a box `draw_box_bars` writes the whole bar over
+    // the footer, and under the preview `rows_for_frame` reveals nothing, so
+    // the footer's subject never shows under a modal while the hovered row's
+    // refs keep their reveal (m6-conflicts/69, Decided 1).
+    let problem = super::status::bottom_row_problem(state);
     let Some(history) = &state.history else {
         return opening_view(state, location, problem);
     };
@@ -83,9 +89,9 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         pixel: false,
         graphics: None,
         notice: None,
-        search: search_line(state),
-        compare_footer: compare_footer_line(state),
-        stopped: stopped_line(state),
+        search: modal_blanked(state, search_line),
+        compare_footer: modal_blanked(state, compare_footer_line),
+        stopped: modal_blanked(state, stopped_line),
         commit_graph: state.commit_graph_line(),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),
@@ -98,6 +104,20 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
             state.radar.context,
             crate::update::detail::Loading::Ready(_)
         ) && state.radar_column_seen.get(),
+    }
+}
+
+/// A footer rung, or `None` while a modal owns the bottom row
+/// (`status::modal_owns_bottom_row`): the modal's keys stand there, not
+/// the graph's search, compare or stop line.
+fn modal_blanked<'a, T>(
+    state: &'a AppState,
+    rung: impl FnOnce(&'a AppState) -> Option<T>,
+) -> Option<T> {
+    if super::status::modal_owns_bottom_row(state) {
+        None
+    } else {
+        rung(state)
     }
 }
 
@@ -151,9 +171,9 @@ fn opening_view(
         pixel: false,
         graphics: None,
         notice: None,
-        search: search_line(state),
-        compare_footer: compare_footer_line(state),
-        stopped: stopped_line(state),
+        search: modal_blanked(state, search_line),
+        compare_footer: modal_blanked(state, compare_footer_line),
+        stopped: modal_blanked(state, stopped_line),
         commit_graph: state.commit_graph_line(),
         banner: super::frame::banner_lines(state),
         divider_shown: divider_shown(state),

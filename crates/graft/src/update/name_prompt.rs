@@ -71,6 +71,13 @@ pub struct NamePrompt {
     pub kind: NameKind,
     /// The name as typed so far.
     pub field: TextField,
+    /// Why the last `⏎` did not create anything, while the prompt stays
+    /// open: an empty name, or the branch-from-stash preview refusing (a
+    /// write running, git mid-operation). The prompt's own, not
+    /// `AppState::status`: an open modal owns the bottom row, which draws
+    /// this as its problem line (`view::status::modal_problem`). Cleared by
+    /// the next key; gone with the prompt (m6-conflicts/69, Decided 3).
+    pub refusal: Option<String>,
 }
 
 /// Open the prompt for `kind`, replacing whatever was open. `false` when
@@ -88,6 +95,7 @@ pub fn open_name_prompt(state: &mut AppState, kind: NameKind) -> bool {
     state.name_prompt = Some(NamePrompt {
         kind,
         field: TextField::new(""),
+        refusal: None,
     });
     true
 }
@@ -174,6 +182,9 @@ pub fn name_prompt_key(
     let Some(prompt) = state.name_prompt.as_mut() else {
         return false;
     };
+    // The refusal answered the last `⏎`; any key after it is a new try.
+    // `⏎` itself sets it again if the name is still refused.
+    prompt.refusal = None;
     if key.modifiers.control {
         match key.code {
             KeyCode::Char('c') => return false,
@@ -216,6 +227,7 @@ pub fn name_prompt_paste(state: &mut AppState, text: &str) -> bool {
     let Some(prompt) = state.name_prompt.as_mut() else {
         return false;
     };
+    prompt.refusal = None;
     prompt.field.insert_str(text);
     true
 }
@@ -231,15 +243,24 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
     };
     let name = prompt.field.text().to_owned();
     if name.is_empty() {
-        state.status = Status::sticky(match prompt.kind {
-            NameKind::Tag { .. } => "a tag needs a name".to_owned(),
-            NameKind::Branch { .. } | NameKind::BranchFromStash { .. } => {
-                "a branch needs a name".to_owned()
-            }
-        });
+        let words = match prompt.kind {
+            NameKind::Tag { .. } => "a tag needs a name",
+            NameKind::Branch { .. } | NameKind::BranchFromStash { .. } => "a branch needs a name",
+        };
+        refuse(state, words.to_owned());
         return;
     }
     if name_refusal(state).is_some() {
+        return;
+    }
+    // The stash branch's preview would refuse (a write running, git
+    // mid-operation). Said here, inside the prompt that stays open, rather
+    // than by `open_preview` on the status line under it (m6-conflicts/69,
+    // conductor 2026-09-25).
+    if matches!(prompt.kind, NameKind::BranchFromStash { .. })
+        && let Some(reason) = super::preview::preview_refusal(state)
+    {
+        refuse(state, reason);
         return;
     }
     let kind = prompt.kind.clone();
@@ -282,17 +303,24 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
     }
 }
 
+/// Keep the prompt open with `words` as its answer to `⏎`. The status line
+/// is not written: the open prompt owns the bottom row (m6-conflicts/69).
+fn refuse(state: &mut AppState, words: String) {
+    if let Some(prompt) = state.name_prompt.as_mut() {
+        prompt.refusal = Some(words);
+    }
+}
+
 /// `NameKind::BranchFromStash`'s half of [`create`], split out to keep that
 /// function's line count under the limit.
 ///
 /// The overlay closes as the picture opens: the preview draws over the
 /// graph, and an overlay behind a modal box is a screen the `Esc` out of the
-/// box would return to with the stash list already stale. On a refusal (a
-/// write already running, git mid-operation — `open_preview` has already
-/// written the reason to the status line) both the overlay and the prompt —
-/// name typed and all — come back, so the user is where they were, not
-/// retyping over a refusal that was never theirs to fix
-/// (review m5-10-30-31 m6).
+/// box would return to with the stash list already stale. [`create`] has
+/// already asked [`super::preview::preview_refusal`], so `open_preview`
+/// refusing here means a preview is somehow already up; the overlay and the
+/// prompt — name typed and all — still come back rather than losing the
+/// name (review m5-10-30-31 m6).
 fn branch_from_stash(
     state: &mut AppState,
     commands: &mut Vec<Command>,

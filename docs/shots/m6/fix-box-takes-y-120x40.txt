@@ -11,9 +11,9 @@
 # - Frame 2: the box is titled `Force-push …` and is still up after `y`
 #   (asserted: same frame, nothing sent, origin unmoved). No `y push`
 #   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
-#   row is the rejection's sticky line, `push rejected: … · P force with
-#   lease`, not the bar: the status line draws a sticky ahead of the keys,
-#   as it did before this ticket.
+#   row is the box's own bar, `←/→ move  ⏎ choose  esc cancel`: an open
+#   box owns the row, and the rejection's sticky line waits under it until
+#   `esc` (m6-conflicts/69).
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `P`, the plain push box ===
@@ -98,4 +98,4 @@
 ●    Commit 166                                                                                          GF 7y   953abf3
 ●    Commit 165                                                                                          GF 7y   49912f3
 ●    Commit 164                                                                                          GF 7y   1143b38
- push rejected: origin/main has moved · p pull first · P force with lease
+ ←/→ move  ⏎ choose  esc cancel

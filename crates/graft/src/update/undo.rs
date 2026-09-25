@@ -142,9 +142,15 @@ pub(super) fn shell_merge_known(state: &AppState) -> bool {
 /// text). `keys` is `None` where the banner is hidden or absent.
 pub(super) fn live_refusal(kind: graft_git::state::InProgress, keys: Option<String>) -> Status {
     Status::Sticky {
-        reason: format!("finish or abort the {} first", kind.name()),
+        reason: live_refusal_words(kind),
         keys,
     }
+}
+
+/// [`live_refusal`]'s words alone, for a refusal said inside a modal
+/// rather than on the status line (the stash-branch name prompt).
+pub(super) fn live_refusal_words(kind: graft_git::state::InProgress) -> String {
+    format!("finish or abort the {} first", kind.name())
 }
 
 /// A `--continue`/`--skip`/`--abort` answered `Done`: the operation is

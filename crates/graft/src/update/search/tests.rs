@@ -73,6 +73,7 @@ fn text_fields() -> Vec<Modal> {
             at: Oid::from_bytes(&[1; Oid::SHA1_BYTES]).expect("20 bytes"),
         },
         field: TextField::new(""),
+        refusal: None,
     });
 
     let mut credential = on_graph();
