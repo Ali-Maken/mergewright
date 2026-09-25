@@ -64,6 +64,15 @@ impl RefBadges {
         &self.stashes
     }
 
+    /// Whether `id` is any stash entry's own commit (`stash@{n}`, within
+    /// the list's cap of `graft_git::stash::MAX_ENTRIES`). The evil-merge
+    /// probe skips these: a stash commit is a merge whose tree differs
+    /// from its parents by construction.
+    #[must_use]
+    pub fn is_stash(&self, id: Oid) -> bool {
+        self.stashes.iter().any(|&(commit, _)| commit == id)
+    }
+
     /// Every local branch: its tip, shorthand name, whether `HEAD` is on it,
     /// and its upstream (`view::radar::branch_facts`). Order is not
     /// meaningful.

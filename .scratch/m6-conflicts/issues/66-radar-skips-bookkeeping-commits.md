@@ -1,9 +1,9 @@
 # radar-skips-bookkeeping-commits: no duplicate mark from Graft's backups or the stash, no evil-merge mark on a stash
 
-Status: draft
+Status: done
 From: `docs/reviews/m6-usability-final.md` N1 (:89-110); the radar half of n5 (:246-252).
 Build with: (conductor, after the scout)
-Scout: `.scratch/m6-conflicts/scouts/radar-skips-bookkeeping-commits.md` — brief below.
+Scout: `.scratch/m6-conflicts/scouts/66.md` — brief below.
 Needs: none.
 Crates: graft-ops (`mistake_radar/probes.rs`), graft (`update/detail/ops.rs` evil probe, `update/radar*`, `history` ref badges,
 tests, walks).
@@ -100,21 +100,21 @@ impl RefBadges {
   `probe_evil`'s caller.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] The three `probes` tests above, red then green.
-- [ ] Control, green before and after: `duplicates_across_two_branches_are_still_found` (A on `feature`, its
+- [x] The three `probes` tests above, red then green — `graft-ops` `mistake_radar::probes::tests::{duplicates_skip_graft_backup_refs, duplicates_skip_the_stash, duplicates_skip_other_bookkeeping_refs}` (red on `--all`, observed).
+- [x] Control, green before and after: `duplicates_across_two_branches_are_still_found` (A on `feature`, its
       cherry-pick on `main`: one group of two).
-- [ ] `a_stash_commit_is_never_probed_for_an_evil_merge`, red then green.
-- [ ] Control: `an_evil_merge_on_a_branch_is_still_marked` (a real evil-merge fixture keeps `⚠`).
-- [ ] `no_evil_probe_before_the_refs_are_read`.
-- [ ] Walk, real repo (`tests/it`): `a_pull_rebase_marks_no_duplicates` — origin moved, a stash on the pre-rebase tip,
+- [x] `a_stash_commit_is_never_probed_for_an_evil_merge`, red then green — `graft` `update::tests`, through `update`/`follow_selection`.
+- [x] Control: `an_evil_merge_on_a_branch_is_still_marked` (`graft` `update::tests`; plus `view::tests::capture_m2_evil_merge` unchanged) (a real evil-merge fixture keeps `⚠`).
+- [x] `no_evil_probe_before_the_refs_are_read` (`graft` `update::tests`, red then green).
+- [x] Walk, real repo (`tests/it`): `radar_bookkeeping::a_pull_rebase_marks_no_duplicates` (red with `DUPLICATE_WALK = --all`: 4 duplicate findings, observed) — origin moved, a stash on the pre-rebase tip,
       `p r r` through the app: `main`'s rebased rows carry no `ⓘ`; with the cursor on `stash@{0}` that row carries
       no `⚠`.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-radar-bookkeeping-120x40.txt`, from the walk.
+- [x] Capture (rule 6; written by `radar_bookkeeping::a_pull_rebase_marks_no_duplicates`; colour **unverified**, rule 5): `docs/shots/m6/fix-radar-bookkeeping-120x40.txt`, from the walk.
   - **What right looks like:** frame 1, after `p r r`: no `ⓘ` in the marker column of any `main` row. Frame 2, cursor
     on `stash@{0}`: no `⚠` on that row, and the detail pane (if open) has no `EVIL MERGE` line. Frame 3, `.` on
     `main`'s tip: the menu's first item is not `Explain`. Every branch in the fixture has an upstream, so m9's `ⓘ`
     does not appear.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): graft-ops `DUPLICATE_WALK`; graft `RefBadges::is_stash`, `probe_evil` caller.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -122,3 +122,21 @@ workspace-wide.
 
 ## Size
 Small–medium: one constant, one filter, five tests, one walk, one capture. One context.
+
+## NOTES (builder)
+- Scout used: `scouts/66.md`. Stash filter placed in `update/selection.rs` `selected_merge`, per the scout.
+- **Walk deviates from spec by one step:** after `p r r` it presses `P` then `Ctrl+R`. Without `P`, `main`'s tip carries a true
+  `RiskyState / UnpushedOnDefault` `ⓘ` (not a duplicate). Without `Ctrl+R`, the duplicate probe is never re-asked after a write:
+  only `Ctrl+R` resets it (`update/keys.rs:428` → `radar::reset_for_refresh`). **Question for the conductor:** after an in-app
+  rebase, `duplicates` stays the pre-rebase answer until `Ctrl+R` — stale, not re-probed. Out of scope here; not filed.
+- Safety (undo): `probe_duplicates` has one caller, `jobs/radar.rs:182` (grep). Undo after a rebase stays pinned by
+  `graft-ops` `history_ops::rebase_applies_undoes_redoes`; full suite green (3243/3243). Backups are not holding `ours` directly
+  (they hold snapshot commits); the walk asserts `ours` is reachable only from `refs/graft/**` and `refs/stash`.
+- Test-state change: `merge_on_screen` (update tests) and `evil_merge_state` (view tests) now carry empty read refs, since no
+  probe is asked before refs land. Every capture they write is unchanged.
+- `Explain` captures (7): none changes. `m2-17` hit is a commit subject; `m2-explain-panel` is synthetic foxtrot state;
+  foxtrot-dot ones are foxtrot marks; `m2-context-menu` has no mark. All asserted captures unchanged in the run.
+- TESTING.md :824, :1085: cherry-pick-duplicates copies are on branches; still found (`the_cherry_picked_duplicate_is_found_in_its_own_group`).
+- KNOWN_GAPS n5 row: its radar half is closed by this; the drawing half (stash internals' rows) stays open. Conductor edits the row.
+- M6 contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`), 3 parts, each ≤ 179 678 B.
+- Colour unverified (rule 5). No compaction.

@@ -122,6 +122,11 @@ pub fn follow_selection(state: &mut AppState, next_id: &mut impl FnMut() -> JobI
 /// The commit under the cursor, when it is a merge: what the evil-merge
 /// probe is asked about. `None` on the working-tree row, on an ordinary
 /// commit, or before any history has landed.
+///
+/// Also `None` on a stash commit (m6/66): its tree differs from its parents
+/// by construction, so the probe always called it evil. And `None` while
+/// the refs are unread — until they land a stash cannot be told from a
+/// merge, and unknown is not "not a stash".
 fn selected_merge(state: &AppState) -> Option<graft_core::oid::Oid> {
     if state.on_working_tree {
         return None;
@@ -130,7 +135,9 @@ fn selected_merge(state: &AppState) -> Option<graft_core::oid::Oid> {
         .history
         .as_ref()
         .and_then(crate::history::History::selected)?;
-    (row.commit.parents.len() >= 2).then_some(row.commit.id)
+    let id = row.commit.id;
+    let refs = state.refs.as_deref()?;
+    (row.commit.parents.len() >= 2 && !refs.is_stash(id)).then_some(id)
 }
 
 /// `follow_selection` without the evil-merge probe: what the pane itself

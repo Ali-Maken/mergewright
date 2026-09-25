@@ -384,8 +384,17 @@ fn parse_oid(bytes: &[u8]) -> Option<Oid> {
     Oid::from_hex(std::str::from_utf8(bytes).ok()?.trim()).ok()
 }
 
+/// What the duplicate probe walks: every ref the user can merge (PROMPT.md
+/// §1.4, "only across visible refs"). An allowlist, not `--all`: `--all`
+/// also walks Graft's own `refs/graft/**` backups (every pre-rebase commit,
+/// kept for `u`), `refs/stash` (whose base is the pre-rebase tip) and other
+/// tools' bookkeeping such as `refs/prefetch/**` — so every rebased commit's
+/// old self read as a copy. A copy reachable only from some other namespace
+/// (e.g. `refs/pull/*`) is not flagged; it cannot be merged by accident.
+pub(crate) const DUPLICATE_WALK: &[&str] = &["--branches", "--remotes", "--tags", "HEAD"];
+
 /// Commits sharing a patch-id, among the newest `window` commits reachable
-/// from any ref.
+/// from a ref the user can merge ([`DUPLICATE_WALK`]).
 ///
 /// Three `git` spawns: `log --format=%H` names the window itself (and
 /// whether it covers the whole history, from whether fewer than `window`
@@ -409,7 +418,7 @@ pub fn probe_duplicates(
 ) -> Result<Duplicates, RunError> {
     let log_output = GitInvocation::new(repo)
         .arg(GitArg::Word("log".into()))
-        .arg(GitArg::Flag("--all"))
+        .args(DUPLICATE_WALK.iter().copied().map(GitArg::Flag))
         .arg(GitArg::Count("-n", window))
         .arg(GitArg::Flag("--format=%H"))
         .run(stop)?;
@@ -423,7 +432,7 @@ pub fn probe_duplicates(
 
     let patches = GitInvocation::new(repo)
         .arg(GitArg::Word("log".into()))
-        .arg(GitArg::Flag("--all"))
+        .args(DUPLICATE_WALK.iter().copied().map(GitArg::Flag))
         .arg(GitArg::Count("-n", window))
         .arg(GitArg::Flag("-p"))
         .run(stop)?
@@ -740,6 +749,99 @@ mod tests {
             d.groups
         );
         assert_eq!(d.groups[0].len(), 2);
+    }
+
+    /// A scratch repository with one new commit A on `main` (file `a.txt`).
+    fn scratch_with_a() -> (graft_fixtures::Scratch, Oid) {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let path = scratch.path().to_path_buf();
+        let git = |args: &[&str]| {
+            graft_fixtures::git::run(&path, args)
+                .unwrap_or_else(|error| panic!("git {args:?} runs: {error}"))
+        };
+        git(&["config", "user.name", "Fixture"]);
+        git(&["config", "user.email", "fixture@example.invalid"]);
+        std::fs::write(path.join("a.txt"), "a\n").expect("A's file is written");
+        git(&["add", "a.txt"]);
+        git(&["commit", "-m", "A"]);
+        let a = rev_parse(&scratch, "HEAD");
+        (scratch, a)
+    }
+
+    /// The shape a rebase leaves: the current branch reset under A, a new
+    /// commit B, and A's patch replayed on top. Returns A′.
+    fn rebase_a_away(scratch: &graft_fixtures::Scratch, a: Oid) -> Oid {
+        let path = scratch.path();
+        let git = |args: &[&str]| {
+            graft_fixtures::git::run(path, args)
+                .unwrap_or_else(|error| panic!("git {args:?} runs: {error}"))
+        };
+        git(&["reset", "--hard", "HEAD~1"]);
+        std::fs::write(path.join("b.txt"), "b\n").expect("B's file is written");
+        git(&["add", "b.txt"]);
+        git(&["commit", "-m", "B"]);
+        git(&["cherry-pick", &a.to_string()]);
+        rev_parse(scratch, "HEAD")
+    }
+
+    fn groups_holding(repo: &RepoHandle, id: Oid) -> Vec<Vec<Oid>> {
+        probe_duplicates(repo, 500, &())
+            .expect("the probe runs")
+            .groups
+            .into_iter()
+            .filter(|group| group.contains(&id))
+            .collect()
+    }
+
+    #[test]
+    fn duplicates_skip_graft_backup_refs() {
+        let (scratch, a) = scratch_with_a();
+        move_ref(
+            &scratch,
+            "refs/graft/backup/main/01J0000000000000000000000",
+            a,
+        );
+        let a2 = rebase_a_away(&scratch, a);
+        let repo = RepoHandle::open(scratch.path()).expect("the scratch repository opens");
+        assert_eq!(groups_holding(&repo, a2), Vec::<Vec<Oid>>::new());
+    }
+
+    #[test]
+    fn duplicates_skip_the_stash() {
+        let (scratch, a) = scratch_with_a();
+        std::fs::write(scratch.path().join("a.txt"), "dirty\n").expect("a dirty edit");
+        graft_fixtures::git::run(scratch.path(), &["stash"]).expect("the stash is made");
+        let a2 = rebase_a_away(&scratch, a);
+        let repo = RepoHandle::open(scratch.path()).expect("the scratch repository opens");
+        assert_eq!(groups_holding(&repo, a2), Vec::<Vec<Oid>>::new());
+    }
+
+    #[test]
+    fn duplicates_skip_other_bookkeeping_refs() {
+        let (scratch, a) = scratch_with_a();
+        move_ref(&scratch, "refs/prefetch/remotes/origin/main", a);
+        let a2 = rebase_a_away(&scratch, a);
+        let repo = RepoHandle::open(scratch.path()).expect("the scratch repository opens");
+        assert_eq!(groups_holding(&repo, a2), Vec::<Vec<Oid>>::new());
+    }
+
+    /// The control: A kept on `feature`, its copy on `main` — both refs the
+    /// user can merge, so the pair is still one finding.
+    #[test]
+    fn duplicates_across_two_branches_are_still_found() {
+        let (scratch, a) = scratch_with_a();
+        move_ref(&scratch, "refs/heads/feature", a);
+        let a2 = rebase_a_away(&scratch, a);
+        let repo = RepoHandle::open(scratch.path()).expect("the scratch repository opens");
+        let mut groups = groups_holding(&repo, a2);
+        // Both commits share a timestamp second, so `log`'s order between
+        // them is not fixed; the pair is what matters.
+        for group in &mut groups {
+            group.sort();
+        }
+        let mut want = vec![a, a2];
+        want.sort();
+        assert_eq!(groups, vec![want]);
     }
 
     #[test]
