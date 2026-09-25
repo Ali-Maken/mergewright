@@ -175,22 +175,23 @@ impl History {
         let height = height.max(1);
         let withdrew = self.jump.take().is_some();
         self.seeking = None;
-        let last = self.rows.saturating_sub(1);
+        let reach = self.reachable();
+        let (first, last) = (reach.start, reach.end.saturating_sub(1).max(reach.start));
         let offset = self.cursor.saturating_sub(self.top);
         match motion {
             Motion::Down(count) => self.cursor = self.cursor.saturating_add(count).min(last),
-            Motion::Up(count) => self.cursor = self.cursor.saturating_sub(count),
+            Motion::Up(count) => self.cursor = self.cursor.saturating_sub(count).max(first),
             Motion::PageDown => {
                 self.cursor = self.cursor.saturating_add(height).min(last);
                 self.top = self.cursor.saturating_sub(offset);
             }
             Motion::PageUp => {
-                self.cursor = self.cursor.saturating_sub(height);
+                self.cursor = self.cursor.saturating_sub(height).max(first);
                 self.top = self.cursor.saturating_sub(offset);
             }
             Motion::Top => {
-                self.cursor = 0;
-                self.top = 0;
+                self.cursor = first;
+                self.top = first;
             }
             Motion::Bottom if self.phase == Phase::Streaming => {
                 let request = self.ask(Wanted::Last(2 * height), height);
@@ -199,9 +200,11 @@ impl History {
             }
             Motion::Bottom => {
                 self.cursor = last;
-                self.top = self.rows.saturating_sub(height);
+                self.top = reach.end.saturating_sub(height);
             }
         }
+        // A viewport above the rows there are draws blank lines.
+        self.top = self.top.max(first);
         self.follow(height);
         self.wanted(height, withdrew)
     }

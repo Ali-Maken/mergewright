@@ -264,12 +264,54 @@ fn a_jump_in_progress_says_how_far_it_has_got_and_how_to_back_out() {
     assert!(screen[0].contains("Esc cancels"), "{screen:#?}");
 }
 
+/// A stopped walk says so, and names the key that starts a new one when the
+/// header has room: the widest of three wordings that fits after the
+/// location (m6-conflicts/85 A2). A 46-column location and the brand leave
+/// 65 columns for the words at 120, 25 at 80 and 15 at 70.
+#[test]
+fn the_stopped_header_keeps_the_widest_wording_that_fits() {
+    let rows = linear(2);
+    let location = format!("/{}", "r".repeat(45));
+    let header = |columns: u16| {
+        let mut stopped = view(&rows, WalkView::Cancelled { laid_out: 500 }, 0);
+        stopped.location = Some(sanitize_line(&location));
+        text(&draw(&stopped, columns, 5))[0].clone()
+    };
+
+    let wide = header(120);
+    assert!(
+        wide.contains("stopped at 500 rows \u{b7} \u{2303}R reloads"),
+        "{wide}"
+    );
+    let narrow = header(80);
+    assert!(narrow.contains("stopped at 500 rows"), "{narrow}");
+    assert!(
+        !narrow.contains("reloads") && !narrow.contains('…'),
+        "{narrow}"
+    );
+    let narrower = header(70);
+    assert!(narrower.trim_end().ends_with("stopped"), "{narrower}");
+    assert!(!narrower.contains("stopped at"), "{narrower}");
+}
+
+/// A walk resting between requests reads as rows so far; one working on an
+/// ask reads as reading. The two never share words, so the header can say
+/// when `Esc` has something to stop (m6-conflicts/85 A1).
+#[test]
+fn a_paused_walk_and_a_reading_one_read_apart() {
+    let (paused, _) = walk_text(&WalkView::Paused { laid_out: 500 });
+    let (reading, _) = walk_text(&WalkView::Reading { laid_out: 500 });
+    assert_eq!(paused, "500 rows so far");
+    assert_eq!(reading, "reading\u{2026} 500 rows");
+}
+
 #[test]
 fn a_walk_that_is_fine_never_reads_as_an_error() {
     for walk in [
         WalkView::Opening,
         WalkView::Reading { laid_out: 0 },
         WalkView::Reading { laid_out: 1000 },
+        WalkView::Paused { laid_out: 1000 },
         WalkView::Complete { rows: 0 },
         WalkView::Cancelled { laid_out: 500 },
     ] {

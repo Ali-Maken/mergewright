@@ -176,5 +176,9 @@ pub(in crate::update::resolver) fn take_landed(
         // so the footer goes back to the hints rather than a stale count.
         state.status = Status::Ready;
     }
+    // The take wrote the file outside any operation, so no refresh runs:
+    // the changes pane under the resolver would keep the pre-take diff,
+    // markers and all (m6-conflicts/85 B).
+    commands.extend(state.detail.file_written(&path, next_id));
     settle_landed(state, open_left, commands, next_id);
 }

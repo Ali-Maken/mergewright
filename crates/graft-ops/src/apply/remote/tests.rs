@@ -122,19 +122,47 @@ fn case(failure: &RemoteFailure) -> (Operation, &'static [&'static str]) {
             pull(),
             &[
                 "pull stopped: main and origin/main diverged",
-                "git pull --rebase",
+                "merge or rebase",
             ],
         ),
         RemoteFailure::WouldOverwrite { .. } => (
             pull(),
-            &[
-                "pull refused: would overwrite src/a.rs (uncommitted)",
-                "commit or stash first",
-            ],
+            &["pull refused: your edits to src/a.rs would be overwritten"],
         ),
         RemoteFailure::Cancelled => (fetch(), &["fetch origin cancelled"]),
         RemoteFailure::Other { .. } => (fetch(), &["fetch origin failed", "something odd"]),
     }
+}
+
+/// The pull that would overwrite edits names them in his words and names no
+/// keys: the app adds the ones that work where he is (`S s stashes them
+/// first`), and ops cannot know them. Not git's advice to commit or stash
+/// (review m6-usability-2 D; the earlier walk's m7).
+#[test]
+fn would_overwrite_names_the_paths_and_no_keys() {
+    let (entry, names) = journaled(&pull_op("main", "origin"));
+    let failure = RemoteFailure::WouldOverwrite {
+        paths: vec!["notes.md".to_owned(), "src/a.rs".to_owned()],
+    };
+    let line = explain(&entry, &failure, &[], &names);
+    assert_eq!(
+        line,
+        "pull refused: your edits to notes.md, src/a.rs would be overwritten"
+    );
+    assert!(!line.contains(" \u{b7} "), "no keys part: {line}");
+}
+
+/// A pull that cannot fast-forward says so without plan shorthand or a
+/// trip to the shell: no milestone number, no git command to run instead
+/// (the earlier walk's m11).
+#[test]
+fn not_fast_forward_says_no_plan_shorthand() {
+    let (entry, names) = journaled(&pull_op("main", "origin"));
+    let line = explain(&entry, &RemoteFailure::NotFastForward, &[], &names);
+    assert_eq!(
+        line,
+        "pull stopped: main and origin/main diverged \u{2014} merge or rebase"
+    );
 }
 
 #[test]

@@ -33,7 +33,7 @@ const STASH: u8 = 0x5a;
 
 /// A `Committed` pop from a merged index into a clash, carrying its
 /// put-back.
-fn pop_entry() -> JournalEntry {
+pub(crate) fn pop_entry() -> JournalEntry {
     JournalEntry {
         id: EntryId::new(7, [7; 10]),
         at_unix_ms: 7,

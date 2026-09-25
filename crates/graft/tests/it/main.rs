@@ -18,6 +18,7 @@ mod context_menu;
 mod coverage;
 mod credential_by_key;
 mod dependency_edges;
+mod esc_and_the_walk;
 mod finish;
 #[cfg(feature = "heavy-tests")]
 mod frames;

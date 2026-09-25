@@ -157,6 +157,12 @@ pub(super) fn launched(
     state.remote.diverged_upstream = None;
 }
 
+/// The keys a pull refused over his edits offers: they work from where he
+/// is, the graph or the changes pane (m6-conflicts/85 D, m2). A stash, then
+/// `p` again, is the whole way through until a pull sets his edits aside
+/// itself (`KNOWN_GAPS` M6/0045).
+pub const OVERWRITE_KEYS: &str = "S s stashes them first";
+
 /// The keys the diverged-pull line offers, and the mark that tells
 /// [`forget_stale_divergence`] the line is still the one on screen.
 pub const DIVERGED_KEYS: &str = "m merge it  r rebase onto it";

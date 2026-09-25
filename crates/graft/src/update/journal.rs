@@ -153,7 +153,12 @@ pub(super) fn journal_key(
     if next.journal.shown {
         return shown_key(next, commands, key, next_id);
     }
-    if key.code == KeyCode::Char('J') && next.graph_has_focus() {
+    // From the graph or from the changes pane, as `c` and `p` are: a
+    // refusal that names `J` must name a key that works where he is
+    // (m6-conflicts/85 m2). The overlay stands where the graph does and
+    // takes the keys the graph would, so the keyboard goes to the graph.
+    if key.code == KeyCode::Char('J') {
+        next.detail.focus = graft_ui::detail::DetailFocus::Graph;
         next.journal.shown = true;
         next.journal.selected = 0;
         next.journal.expanded = None;

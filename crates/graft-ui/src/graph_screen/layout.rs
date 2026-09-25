@@ -130,6 +130,13 @@ impl<'a> GraphScreen<'a> {
             .as_ref()
             .map_or(0, |(text, _)| text_width(text))
             .min(width.saturating_sub(used));
+        let location = self.view.location.as_ref().map(|path| format!("{path}  "));
+        // What the location leaves for the walk's words, which pick the
+        // widest of their wordings that fits (`walk_text_within`). No banner
+        // reserves room on this path: with one, the walk is not drawn.
+        let walk_room = width
+            .saturating_sub(used)
+            .saturating_sub(location.as_deref().map_or(0, text_width));
 
         let mut push =
             |text: String, style: Style, reserved: usize, spans: &mut Vec<Span<'static>>| {
@@ -141,9 +148,9 @@ impl<'a> GraphScreen<'a> {
                 used += text_width(&text);
                 spans.push(Span::styled(text, style));
             };
-        if let Some(location) = &self.view.location {
+        if let Some(location) = location {
             push(
-                format!("{location}  "),
+                location,
                 foreground(self.theme, Token::Text),
                 reserved,
                 &mut spans,
@@ -153,7 +160,7 @@ impl<'a> GraphScreen<'a> {
             push(text, style, 0, &mut spans);
             return Line::from(spans);
         }
-        self.push_walk_status(folded_lanes, muted, &mut push, &mut spans);
+        self.push_walk_status(folded_lanes, walk_room, muted, &mut push, &mut spans);
         Line::from(spans)
     }
 
@@ -162,11 +169,12 @@ impl<'a> GraphScreen<'a> {
     fn push_walk_status(
         &self,
         folded_lanes: usize,
+        walk_room: usize,
         muted: Style,
         push: &mut impl FnMut(String, Style, usize, &mut Vec<Span<'static>>),
         spans: &mut Vec<Span<'static>>,
     ) {
-        let (walk, token) = walk_text(&self.view.walk);
+        let (walk, token) = walk_text_within(&self.view.walk, walk_room);
         push(walk, foreground(self.theme, token), 0, spans);
         let filters = left_out(self.view.filters, folded_lanes);
         if !filters.is_empty() {
@@ -417,21 +425,43 @@ fn breakpoint_lanes(columns: u16) -> usize {
     }
 }
 
-/// The header's account of the walk, and the token it is drawn in.
+/// The header's account of the walk, and the token it is drawn in: the
+/// widest wording, as [`walk_text_within`] gives it with room to spare.
+#[cfg(test)]
 pub(super) fn walk_text(walk: &WalkView) -> (String, Token) {
+    walk_text_within(walk, usize::MAX)
+}
+
+/// The header's account of the walk in at most `room` columns, where a
+/// state has shorter wordings: a stopped walk keeps the widest of
+/// `stopped at N rows · ⌃R reloads`, `stopped at N rows`, `stopped` that
+/// fits (m6-conflicts/85 A2). Every other state has one wording, cut by the
+/// caller like any header text.
+pub(super) fn walk_text_within(walk: &WalkView, room: usize) -> (String, Token) {
     match walk {
         WalkView::Opening => ("opening…".to_owned(), Token::TextMuted),
         WalkView::Reading { laid_out: 0 } => ("reading history…".to_owned(), Token::TextMuted),
-        WalkView::Reading { laid_out } => (format!("{laid_out} rows so far"), Token::TextMuted),
+        WalkView::Reading { laid_out } => (format!("reading… {laid_out} rows"), Token::TextMuted),
+        WalkView::Paused { laid_out } => (format!("{laid_out} rows so far"), Token::TextMuted),
         WalkView::Jumping { laid_out } => (format!("laying out… {laid_out} rows"), Token::Accent),
         WalkView::Complete { rows: 0 } => ("no commits yet".to_owned(), Token::TextMuted),
         WalkView::Complete { rows: 1 } => ("1 commit".to_owned(), Token::TextMuted),
         WalkView::Complete { rows } => (format!("{rows} commits"), Token::TextMuted),
-        WalkView::Cancelled { laid_out } => {
-            (format!("stopped at {laid_out} rows"), Token::TextMuted)
-        }
+        WalkView::Cancelled { laid_out } => (stopped_words(*laid_out, room), Token::TextMuted),
         WalkView::Failed(reason) => (format!("history failed: {reason}"), Token::Warning),
     }
+}
+
+/// A stopped walk's words, widest first; the last rung when none fits (the
+/// caller cuts it). `⌃` spells Ctrl as the bar does.
+fn stopped_words(laid_out: usize, room: usize) -> String {
+    let rungs = [
+        format!("stopped at {laid_out} rows \u{b7} \u{2303}R reloads"),
+        format!("stopped at {laid_out} rows"),
+        "stopped".to_owned(),
+    ];
+    let widest = rungs.iter().find(|words| text_width(words) <= room);
+    widest.unwrap_or(&rungs[2]).clone()
 }
 
 pub(super) fn text_width(text: &str) -> usize {

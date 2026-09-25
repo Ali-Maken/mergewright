@@ -44,6 +44,8 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `History::seeking` (field) — the commit a pending `Find` is to select.
 - `History::seek` (fn) — select a commit: at once if on hand, else a `Find` request (a jump, so Esc withdraws it).
 - `History::restore` (fn) — put cursor/top back (search cancelled) and ask for that window.
+- `History::is_reading` (fn) — streaming and working on something asked (a jump, an outstanding request, or no window yet). With `awaiting`, what `Esc` cancels and what the header calls reading (`update::walk_is_reading`, m6-conflicts/85). Once cancelled or failed, motions clamp to the held window.
+- `DetailState::file_written` (fn) — a file written outside any operation (a resolver take): drops that path's cached working-tree diffs and re-asks the cursor's diff when it is that path (m6-conflicts/85 B).
 - `History::strip_rows` (field) — pixel tier's strip height; requests widen to whole strips plus the row above. `None` (text tiers) asks exactly as before.
 
 ## view::strips

@@ -53,7 +53,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         return opening_view(state, location, problem);
     };
 
-    let walk = walk_view(history);
+    let walk = walk_view(state, history);
     let thread = thread(history);
     let live = visible_rows(state, history, thread.as_ref(), now_seconds);
     let compaction = compaction(state, history, thread.as_ref(), &live);
@@ -193,13 +193,20 @@ fn opening_view(
     }
 }
 
-/// The header's words for where the walk is.
-fn walk_view(history: &History) -> WalkView {
+/// The header's words for where the walk is. Reading (or jumping) exactly
+/// when `update::walk_is_reading` says so — the one predicate `Esc` reads
+/// too, so the header never says reading while `Esc` would do nothing, nor
+/// rests while `Esc` would stop it (m6-conflicts/85 A1).
+fn walk_view(state: &AppState, history: &History) -> WalkView {
+    let reading = crate::update::walk_is_reading(state);
     match &history.phase {
-        Phase::Streaming if history.jump.is_some() => WalkView::Jumping {
+        Phase::Streaming if reading && history.jump.is_some() => WalkView::Jumping {
             laid_out: history.rows,
         },
-        Phase::Streaming => WalkView::Reading {
+        Phase::Streaming if reading => WalkView::Reading {
+            laid_out: history.rows,
+        },
+        Phase::Streaming => WalkView::Paused {
             laid_out: history.rows,
         },
         Phase::Complete => WalkView::Complete { rows: history.rows },

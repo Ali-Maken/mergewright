@@ -1,6 +1,6 @@
 # 85 — usability walk 2 fixes: Esc and the history walk (A), stale diff after a take (B), pull words (D)
 
-Status: draft
+Status: partial (builder compacted; see NOTES — remainder to split)
 Blocked by: none (84 merged). **86 runs after 85**: both edit the `graft` crate (`update/stash.rs` among them).
 Crates: graft-ops (`apply/remote.rs` words only), graft-ui (graph header words), graft (and `docs/shots/m6`, the
 `TESTING.md` rows named below, the m6 captions TSV)
@@ -92,20 +92,20 @@ impl DetailState {
 ```
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **A1** `update::keys::tests::esc_on_a_loaded_history_does_nothing` (red first: a settled 6-commit fixture;
+- [x] **A1** `update::keys::tests::esc_on_a_loaded_history_does_nothing` (red first: a settled 6-commit fixture;
       `Esc` → no `Command::CancelJob`, `awaiting` unchanged, header `6 commits`).
-- [ ] **A1** `update::keys::tests::esc_while_reading_cancels_the_walk` (rows asked, not laid out → `CancelJob`;
+- [x] **A1** `update::keys::tests::esc_while_reading_cancels_the_walk` (rows asked, not laid out → `CancelJob`;
       header `stopped at <N> rows · ⌃R reloads`).
-- [ ] **A1** `view::tests::the_header_reads_reading_exactly_when_esc_would_cancel` (every `WalkView` × the predicate).
-- [ ] **A2** graft-ui `graph_screen::tests::the_stopped_header_keeps_the_widest_wording_that_fits` (120 and 80).
-- [ ] **A3** `update::keys::tests::g_after_a_cancelled_walk_lands_on_the_last_laid_out_row` (red first: no
+- [x] **A1** `view::tests::the_header_reads_reading_exactly_when_esc_would_cancel` (every `WalkView` × the predicate).
+- [x] **A2** graft-ui `graph_screen::tests::the_stopped_header_keeps_the_widest_wording_that_fits` (120 and 80).
+- [x] **A3** `update::keys::tests::g_after_a_cancelled_walk_lands_on_the_last_laid_out_row` (red first: no
       `ShowRows`; cursor on the last laid-out row; the view has rows).
-- [ ] **A walk** (real repo, `tests/it/`, builder names the file; a fixture longer than one row request, laptop tier):
+- [x] **A walk** (real repo, `tests/it/`, builder names the file; a fixture longer than one row request, laptop tier):
       `esc_then_g_on_a_long_history_draws_its_last_rows` — `esc G`: header unchanged, bottom rows drawn, no `stopped`.
-- [ ] **A capture** (rule 6; colour **unverified**, rule 5): `docs/shots/m6/esc-then-g-120x40.txt`, written by that
+- [x] **A capture** (rule 6; colour **unverified**, rule 5): `docs/shots/m6/esc-then-g-120x40.txt`, written by that
       walk through `check_shot`. **What right looks like:** the header reads `<N> commits`, not `stopped`; the graph
       pane's last rows are commits (sha, subject), not blank; the bar is the row's own keys.
-- [ ] **B** `update::resolver::tests::a_landed_take_drops_the_panes_cached_diff` (red first: pane cursor on the
+- [x] **B** `update::resolver::tests::a_landed_take_drops_the_panes_cached_diff` (red first: pane cursor on the
       file, diff cached with markers; the take lands → no cached entry for the path, and a `ReadFileDiff` for it).
       Plus one test per other write site the scout found (named in NOTES), or the line showing it already refreshes.
 - [ ] **B walk** `m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` (`S p o esc`: the pane's
@@ -113,19 +113,20 @@ impl DetailState {
 - [ ] **B capture:** `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt`, from that walk. **What right looks like:**
       the changes pane on `notes.md` under `CONFLICTS`; the body shows the taken line and no marker line; the header
       reads `diff vs HEAD <main's sha7>` (m-b), not the stash's.
-- [ ] **m-b** `view::detail::tests::the_uncommitted_header_names_head_not_the_top_row` (red first: row 0 is `fix`'s
+- [x] **m-b** `view::detail::tests::the_uncommitted_header_names_head_not_the_top_row` (red first: row 0 is `fix`'s
       tip, HEAD is `main`; and a stash commit on top). Replaces the test at `:284`.
-- [ ] **m-i** `update::resolver::tests::u_in_the_resolver_says_where_undo_is` (the three arms, `u` and `U`; notice
+- [x] **m-i** `update::resolver::tests::u_in_the_resolver_says_where_undo_is` (the three arms, `u` and `U`; notice
       set, no command, `state.status` untouched). `every_key_the_bar_draws_is_answered` and
       `every_bound_action_is_hinted_live_or_is_named_here` green **without** a new `NEVER_HINTED` row — if one is
       needed, stop: that is a spec change.
-- [ ] **D, graft-ops** `apply::remote::tests::would_overwrite_names_the_paths_and_no_keys` and
+- [x] **D, graft-ops** `apply::remote::tests::would_overwrite_names_the_paths_and_no_keys` and
       `not_fast_forward_says_no_plan_shorthand`; NOTES: `grep -rn "(M5)\|commit or stash first\|shell: git pull"
       crates/graft-ops/src` → empty.
-- [ ] **D, app** `update::remote::tests::a_pull_that_would_overwrite_names_s_s` (reason + keys `S s stashes them
+- [x] **D, app** `update::remote::tests::a_pull_that_would_overwrite_names_s_s` (reason + keys `S s stashes them
       first`; keys whole at 80).
-- [ ] **m2** `update::stash::tests::s_opens_the_stash_list_from_the_changes_pane`,
-      `update::journal::tests::j_opens_the_journal_from_the_changes_pane`.
+- [x] **m2** `update::keys::tests::s_opens_the_stash_list_from_the_changes_pane`,
+      `update::keys::tests::j_opens_the_journal_from_the_changes_pane` (moved from stash/journal tests: they go
+      through the full dispatcher; see NOTES).
 - [ ] **D walk** (real repo, builder names the file): `a_ff_pull_over_overlapping_edits_names_keys_that_work` —
       origin ahead, an unsaved edit to the same file: `p` → the status above, tree and HEAD unchanged; then the keys it
       names from the changes pane (`S s ⏎`, then `esc p`) → HEAD at origin's tip, one stash listed. NOTES: the keys
@@ -173,3 +174,61 @@ workspace-wide.
 ## Size
 Large (~75k). If it compacts, the split is: **85a** A + D + m2 (keys, header, pull words; the `esc-then-g` capture) /
 **85b** B + m-b + m-i (detail cache, header's HEAD, resolver `u`; the pane capture).
+
+## NOTES (builder, 2026-09-26)
+
+**Compacted once mid-ticket.** Status partial. Scout used: `.scratch/m6-conflicts/scouts/85.md`.
+
+### Ticks and their tests (all green in the workspace run, 3502/3502 nextest + doctests)
+- A1: `update::keys::tests::esc_on_a_loaded_history_does_nothing`, `esc_on_a_paused_walk_does_nothing`,
+  `esc_while_reading_cancels_the_walk` (first screen asked and a PgDn ask), `view::tests::the_header_reads_reading_exactly_when_esc_would_cancel`
+  (10 states, every `WalkView` variant). Red observed for three of the keys tests by reverting the fix.
+- A2: graft-ui `graph_screen::tests::the_stopped_header_keeps_the_widest_wording_that_fits` (120, 80, 70) and
+  `a_paused_walk_and_a_reading_one_read_apart`.
+- A3: `update::keys::tests::g_after_a_cancelled_walk_lands_on_the_last_laid_out_row` (red observed).
+- A walk: `crates/graft/tests/it/esc_and_the_walk.rs` `esc_then_g_on_a_long_history_draws_its_last_rows` (Linear, 200
+  commits, 120x40). A capture: `docs/shots/m6/esc-then-g-120x40.txt` (written by `check_shot`; colour unverified).
+- B: `update::resolver::tests::a_landed_take_drops_the_panes_cached_diff` (red observed).
+- m-b: `view::detail::tests::the_uncommitted_header_names_head_not_the_top_row` (red **not** run separately).
+- m-i: `update::resolver::tests::u_in_the_resolver_says_where_undo_is` (merge live, Pop clash, set-aside switch and
+  rebase, plain; `u` and `U`). Red not run separately. No `NEVER_HINTED` row added; both bar sweeps green.
+- D graft-ops: both tests named in the tick. `grep -rn "(M5)\|commit or stash first\|shell: git pull" crates/graft-ops/src` → empty.
+- D app: `update::remote::tests::a_pull_that_would_overwrite_names_s_s`.
+- m2: **names differ from the tick** — the tests go through the full dispatcher (`update`), so they live in
+  `update::keys::tests::s_opens_the_stash_list_from_the_changes_pane` and
+  `update::keys::tests::j_opens_the_journal_from_the_changes_pane`. Red not run separately.
+
+### Decisions (read these)
+- **Cause of the blank pane after `G`** (cause, not symptom): after a cancel, `History::move_cursor(Bottom)` put cursor
+  and top at `rows-1`, outside the held window; nobody can fetch it, so `visible()` was empty. Fix: once the walk is
+  Cancelled/Failed, motions clamp to the held window (`History::reachable`, `scroll/query.rs`, `scroll/apply.rs`).
+  "Last laid-out row" is therefore read as the last row **on hand**; the header keeps `stopped at <laid_out> rows`.
+- `walk_is_reading` = `awaiting.is_some()` and (no history, or `History::is_reading`: streaming and a jump, an
+  outstanding request or no window yet). The header draws Reading/Jumping exactly then; otherwise a new
+  `WalkView::Paused` (`N rows so far`). Reading words became `reading… N rows`. M6/24 exception kept: no history and
+  nothing awaited still draws Opening.
+- B write sites: `file_written`'s only caller is `take_landed`. The other resolver writes already refresh as
+  Operations: ⏎ stage, `d` restart, whole-file `o`/`t` (`update/mod.rs:520-545`, `operate.rs:57`); `e` and `M` hand back
+  through `update/mod.rs:390`.
+- m2: opening `S`/`J` from the pane moves focus to the graph (the overlay takes the graph's keys).
+- D: the m4 walk `pull-dirty-file-refused` (`tests/it/m4_walk/fetch_pull.rs`) now asserts the new words — that is a real
+  repo pressing `p`, so the first half of the D walk is covered; the `S s ⏎`, `esc p` half is **not walked**.
+
+### Touches (checked)
+- Esc tests that expected a cancel: `update::tests::esc_cancels_the_walk_the_screen_is_waiting_for` and
+  `no_chunk_lands_after_esc` now cancel while reading (`laid_out_so_far`). Pool/cancel tests green.
+- Captures: `grep -rl "stopped at" docs/shots` → none. `diff vs HEAD` in 10 m3/m4/m5 captures; all `check_shot`
+  captures green in nextest, so none drifted. Remote words: `grep` of `commit or stash first\|(M5)` in docs/shots,
+  TESTING.md, README.md → empty after rewording TESTING.md rows 4-5 (m4 pull) and README.md pull paragraph (its diverged
+  wording was already stale: the app says `m merge it · r rebase onto it`).
+- Journeys and m5_walk: in `tests/it`, green in the workspace run. Changes-pane key tests green.
+- MAP.md: graft (`History::is_reading`, `DetailState::file_written`), graft-ui (`WalkView`). Not yet: graft-ops words,
+  escape rule, header HEAD, resolver `u` lines.
+
+### Remaining (for the split)
+1. B walk `m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` + capture
+   `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt`.
+2. D walk `a_ff_pull_over_overlapping_edits_names_keys_that_work` (`S s ⏎`, `esc p` from the changes pane).
+3. `.scratch/m6-conflicts/pty-walk-m6.py` m6-20…25 at three sizes, update pass then check pass — **not run**.
+4. Contact sheet rebuild + captions TSV rows for the two new captures.
+5. TESTING.md rows for the two new captures and the D walk; remaining MAP.md lines (above).

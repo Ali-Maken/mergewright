@@ -412,8 +412,15 @@ pub enum OrderNotice {
 pub enum WalkView {
     /// No walk has started yet: the repository is still opening.
     Opening,
-    /// Rows are laid out as the screen asks; this many so far.
+    /// The walk is working: the screen asked for rows it has not had yet.
+    /// The one state (with `Opening` and `Jumping`) in which `Esc` stops it.
     Reading {
+        /// Rows laid out so far.
+        laid_out: usize,
+    },
+    /// Not every commit has a row, and nothing is asked: the walk waits for
+    /// the screen to want more. `Esc` leaves it alone — nothing is running.
+    Paused {
         /// Rows laid out so far.
         laid_out: usize,
     },

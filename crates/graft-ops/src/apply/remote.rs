@@ -244,12 +244,17 @@ pub(crate) fn explain(
             "{} · {retry} to try again",
             with_target("authentication failed", target)
         ),
+        // No plan shorthand and no shell command: the app's own line names
+        // `m`/`r` wherever it knows the tip to aim them at
+        // (m6-conflicts/85, the earlier walk's m11).
         RemoteFailure::NotFastForward => format!(
-            "pull stopped: {} and {} diverged — merge or rebase (M5); shell: git pull --rebase",
+            "pull stopped: {} and {} diverged — merge or rebase",
             names.local, names.remote_side
         ),
+        // His edits, named as `EditsAt::words` names them, and no keys: the
+        // app adds the ones that work where he is (m6-conflicts/85 D).
         RemoteFailure::WouldOverwrite { paths } => format!(
-            "pull refused: would overwrite {} (uncommitted) · commit or stash first",
+            "pull refused: your edits to {} would be overwritten",
             paths.join(", ")
         ),
         RemoteFailure::Unreachable { target } => {

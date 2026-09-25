@@ -1490,12 +1490,13 @@ at the next refresh.
    the bare's tip, the bare unchanged. `U`: `HEAD` forward to the bare's tip
    again.
 4. **pull-diverged-refused** — the teammate commits, ours locally; `p`:
-   sticky `pull stopped: … diverged … merge or rebase … git pull --rebase`;
+   sticky `pull stopped: … diverged … m merge it · r rebase onto it`;
    `HEAD` unchanged, `origin/main` advanced to the bare's tip (the fetch half
    happened), the bare unchanged.
 5. **pull-dirty-file-refused** — the teammate edits a tracked file and
    pushes; the same file is edited in the clone; `p`: sticky `pull refused:
-   would overwrite … (uncommitted) … commit or stash first`; the file's
+   your edits to … would be overwritten · S s stashes them first`
+   (m6-conflicts/85 D; `S` works from the graph and the changes pane); the file's
    bytes are identical before and after, `HEAD` unchanged.
 6. **pull-no-upstream-refused** — `branch --unset-upstream`; `p`: the line
    contains `has no upstream`, nothing was queued (`operating` empty), no

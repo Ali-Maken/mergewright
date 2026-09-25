@@ -20,6 +20,8 @@ mod live_c_tests;
 mod predicates;
 #[cfg(test)]
 mod tab_words_tests;
+#[cfg(test)]
+mod tests;
 mod view_change;
 
 pub(in crate::update) use actions::strip_rows_for;
@@ -477,7 +479,8 @@ fn move_cursor(next: &mut AppState, commands: &mut Vec<Command>, motion: Motion)
 }
 
 /// `Esc` (once the detail pane is closed): backs a `G` still walking out first, then leaves Focus
-/// mode, then cancels the walk (m1-the-graph/17, ADR-0023, DESIGN.md §2.2).
+/// mode, then cancels the walk while it is reading, else nothing (m1-the-graph/17, ADR-0023,
+/// DESIGN.md §2.2, m6-conflicts/85).
 fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
     let height = next.graph_rows();
     // A search still running: stop it and put the selection back.
@@ -514,10 +517,19 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         super::history::give_up_promotion(next, commands);
         return;
     }
+    // Then the walk — **only while it is reading** (m6-conflicts/85 A1). A
+    // walk resting between asks, or complete, stays `awaiting` for as long
+    // as it is on screen (it serves rows on request), and cancelling it
+    // then stopped a history nothing was loading: `stopped at 6 rows` on a
+    // 6-commit repo, and a long one left unscrollable. With nothing
+    // running, `Esc` does nothing.
+    //
     // Stop waiting first, then ask the job to stop. The order
     // matters: a job that finishes between the two lines still
     // sends its result, and it has to find nobody waiting for it.
-    if let Some(id) = next.awaiting.take() {
+    if super::walk_is_reading(next)
+        && let Some(id) = next.awaiting.take()
+    {
         commands.push(Command::CancelJob(id));
         super::history::set_phase(next, crate::history::Phase::Cancelled);
     }

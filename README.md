@@ -161,10 +161,11 @@ password, a rejection or a hang**.
 - **Pull**: `p` fast-forwards the current branch from its upstream. Undoable:
   `u` puts the branch and the working tree back, and leaves the tracking ref
   where the fetch put it; `U` pulls again. A diverged branch is refused in
-  words that name the shell command (`pull stopped: main and origin/main
-  diverged — merge or rebase (M5); shell: git pull --rebase`); an
+  words that name the keys that settle it (`pull stopped: main and origin/main
+  diverged`, with `m merge it` and `r rebase onto it`); an
   uncommitted edit to a file the pull would change is refused before
-  anything moves (`pull refused: would overwrite <file> (uncommitted)`). No
+  anything moves (`pull refused: your edits to <file> would be overwritten ·
+  S s stashes them first`). No
   upstream: `main has no upstream — P pushes and sets one`.
 - **Push**: `P` opens a box first — `Push main → origin/main?`, the commit
   count, `sets upstream` when it will, `can't be undone from here — origin
