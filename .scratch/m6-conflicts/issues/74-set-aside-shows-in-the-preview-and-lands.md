@@ -1,7 +1,7 @@
 # set-aside-shows-in-the-preview-and-lands: the preview says the edits go aside; every end lands where the note says
 
 Status: ready
-Blocked by: 73, 82 (shares files; see 82 Touches)
+Blocked by: 73 (merged), 82 (shares files; see 82 Touches). 67 capture delete (Touches :99-100) done by 73.
 From: pick 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :25): "the preview says so; a clash putting them back
 lands on the conflict screen".
 Build with: (conductor, after the scout; planner suggests Opus — words and routing over 73's and 72b's answers)
