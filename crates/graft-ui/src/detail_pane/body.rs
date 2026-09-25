@@ -89,8 +89,10 @@ fn render_diff_body(
     buf: &mut Buffer,
     muted: Style,
 ) {
-    if diff.untracked {
-        draw_line(buf, area, 0, "untracked \u{b7} no diff yet (M3)", muted);
+    // An untracked file is read as all added lines (m6-conflicts/81); only
+    // one with no bytes has nothing to draw. Binary goes to the line below.
+    if diff.untracked && diff.hunks.is_empty() && diff.binary.is_none() {
+        draw_line(buf, area, 0, "empty file", muted);
         return;
     }
     if let Some(binary) = &diff.binary {

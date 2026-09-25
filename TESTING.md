@@ -1133,8 +1133,8 @@ ASCII: `! i + * o # :`.
 of graft itself, `k` from the top row lands on `Uncommitted changes (…)`,
 its highlight moves and HEAD's row un-highlights; `Enter` opens
 `UNCOMMITTED · N staged N unstaged N untracked` / `diff vs HEAD <sha>`, staged
-and unstaged files listed, an untracked file's body reads `untracked · no
-diff yet (M3)`; `j` returns to HEAD's commit and the pane follows. Captures:
+and unstaged files listed, an untracked file's body shows its content as
+added lines (`empty file` when it has none; binary/capped as any diff); `j` returns to HEAD's commit and the pane follows. Captures:
 `docs/shots/m2-working-tree-row.txt` (graph),
 `docs/shots/m2-detail-pane-breakpoints.txt` (the `UNCOMMITTED` pane).
 

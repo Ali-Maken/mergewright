@@ -1150,7 +1150,7 @@ what right looks like: (ticket 78) The same six frames at 80x24: the same six bo
 
 ================================================================================
 docs/shots/m6/fix-tab-words-120x40.txt
-what right looks like: (ticket 70) Every `⇥` word names where `⇥` lands. Frame 1: a rebase stop, the changes pane's files focused: the bar ends `⇥ diff`, not `⇥ graph`. Frame 2: `a`: the bottom row reads `rebase in progress · ⇥ ⇥ banner, then c continue  a abort`, two tabs, as the cycle takes. Frames 3-4: one `⇥` (the diff), then a second (the banner has the keyboard); the refusal is sticky and still stands, counted from the files (an open question in the ticket). Frame 5: a merge begun in the shell, the banner focused: its bar says `c finish`, not `c continue`. Frame 6: an untracked `new.txt`: its row reads `new`, not `bin`; the body still reads `untracked · no diff yet (M3)`, the read graft-git does not make (ticket NOTES). Colour unverified.
+what right looks like: (ticket 70) Every `⇥` word names where `⇥` lands. Frame 1: a rebase stop, the changes pane's files focused: the bar ends `⇥ diff`, not `⇥ graph`. Frame 2: `a`: the bottom row reads `rebase in progress · ⇥ ⇥ banner, then c continue  a abort`, two tabs, as the cycle takes. Frames 3-4: one `⇥` (the diff), then a second (the banner has the keyboard); the refusal is sticky and still stands, counted from the files (an open question in the ticket). Frame 5: a merge begun in the shell, the banner focused: its bar says `c finish`, not `c continue`. Frame 6: an untracked `new.txt`: its row reads `new`, not `bin`; the body shows its content as added lines, `1 + hello from new` (ticket 81). Colour unverified.
 ================================================================================
 
 --- frame 1: files focused: the bar ends `⇥ diff`
@@ -1385,8 +1385,8 @@ CONFLICTS (13)                ▎
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
 UNCOMMITTED · 1 untracked
 diff vs HEAD a82960b
-UNTRACKED (1)                 untracked · no diff yet (M3)
-  ? new.txt               new
+UNTRACKED (1)                 ▎
+  ? new.txt               new       1 + hello from new
 
 
 
@@ -1537,8 +1537,8 @@ diff vs HEAD a82960b
 
 UNTRACKED (1)
   ? new.txt                                                                  new
-untracked · no diff yet (M3)
-
+▎
+      1 + hello from new
 
 
 

@@ -55,8 +55,8 @@ pub enum DiffSpec {
     /// `Commit` stages. No untracked files — the index does not have them.
     Staged,
     /// The worktree against the index: what plain edits leave unstaged.
-    /// Untracked files are included, hunk-less, as [`DiffSpec::WorkingTreeVsHead`]
-    /// includes them.
+    /// Untracked files are included, as [`DiffSpec::WorkingTreeVsHead`]
+    /// includes them; [`file_diff`] reads each as all added lines.
     Unstaged,
 }
 
@@ -312,10 +312,65 @@ fn staged_against(repo: &RepoHandle) -> Result<Vec<u8>, DiffError> {
     }
 }
 
+/// An untracked file as all added lines: `git diff --no-index /dev/null
+/// <path>`, parsed and capped like any other diff (m6-conflicts/81). The
+/// index has no entry for the file, so no plumbing command can diff it;
+/// `--no-index` compares two paths and never reads or writes `.git/index`.
+/// It exits 1 when the sides differ, so `run_raw` and the code is judged
+/// here. An empty file prints nothing: hunk-less, like git's own output.
+fn untracked_file_diff(
+    repo: &RepoHandle,
+    entry: &FileEntry,
+    opts: DiffOptions,
+    max_lines: usize,
+    stop: &dyn Stop,
+) -> Result<FileDiff, DiffError> {
+    let mut invocation = GitInvocation::new(repo).args([
+        GitArg::Flag("diff"),
+        GitArg::Flag("--no-index"),
+        GitArg::Flag("--no-color"),
+        GitArg::Flag("--no-ext-diff"),
+        GitArg::Count("-U", u32::from(opts.context)),
+    ]);
+    if opts.ignore_whitespace {
+        invocation = invocation.arg(GitArg::Flag("-w"));
+    }
+    invocation = invocation
+        .arg(GitArg::Path(b"/dev/null".to_vec()))
+        .arg(GitArg::Path(entry.path.clone()))
+        .output_cap(OUTPUT_CAP);
+    let raw = invocation.run_raw(stop)?;
+    if raw.output.truncated {
+        return Err(DiffError::TooLarge { bytes: OUTPUT_CAP });
+    }
+    match raw.code {
+        Some(0 | 1) => {}
+        Some(status) => {
+            return Err(DiffError::Run(RunError::Exited {
+                status,
+                stderr_first_line: crate::commit_graph::first_line(&raw.output.stderr),
+                command: invocation.command_line(),
+            }));
+        }
+        None => {
+            return Err(DiffError::Run(RunError::Signalled {
+                command: invocation.command_line(),
+            }));
+        }
+    }
+    let mut diff = parse_unified(&raw.output.stdout)
+        .map_err(DiffError::Parse)?
+        .pop()
+        .unwrap_or_else(|| empty_diff(entry));
+    diff.entry = entry.clone();
+    apply_truncation(&mut diff, max_lines);
+    Ok(diff)
+}
+
 /// One file's full diff.
 ///
-/// An [`FileStatus::Untracked`] entry has no diff yet (M3 stages it first):
-/// this returns hunk-less, `truncated: None`, with no git spawned.
+/// An [`FileStatus::Untracked`] entry is read from the working tree as all
+/// added lines ([`untracked_file_diff`]).
 ///
 /// # Errors
 /// See [`DiffError`].
@@ -328,7 +383,7 @@ pub fn file_diff(
     stop: &dyn Stop,
 ) -> Result<FileDiff, DiffError> {
     if entry.status == FileStatus::Untracked {
-        return Ok(empty_diff(entry));
+        return untracked_file_diff(repo, entry, *opts, max_lines, stop);
     }
 
     let mut invocation = file_diff_command(repo, spec)?;

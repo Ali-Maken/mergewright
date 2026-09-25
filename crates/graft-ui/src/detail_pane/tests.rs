@@ -1256,3 +1256,43 @@ fn capture_for_docs_shots() {
     );
     shots.finish();
 }
+
+/// `commit_view`'s diff as an untracked file's (m6-conflicts/81), with
+/// `hunks` kept or emptied.
+fn untracked_view(keep_hunks: bool) -> DetailView {
+    let mut view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        unreachable!("commit_view's body is a diff")
+    };
+    let mut diff = (**diff).clone();
+    diff.untracked = true;
+    if !keep_hunks {
+        diff.hunks.clear();
+    }
+    view.body = BodyView::Diff(Arc::new(diff));
+    view
+}
+
+#[test]
+fn an_untracked_file_with_lines_draws_its_lines() {
+    let view = untracked_view(true);
+    let screen = text(&draw(&view, DetailLayout::Right { columns: 80 }, 80, 30));
+    assert!(
+        screen.iter().any(|line| line.contains("&& !refreshing {")),
+        "{screen:#?}"
+    );
+    assert!(
+        !screen.iter().any(|line| line.contains("no diff yet")),
+        "{screen:#?}"
+    );
+}
+
+#[test]
+fn an_empty_untracked_file_says_empty_file() {
+    let view = untracked_view(false);
+    let screen = text(&draw(&view, DetailLayout::Right { columns: 80 }, 80, 30));
+    assert!(
+        screen.iter().any(|line| line.contains("empty file")),
+        "{screen:#?}"
+    );
+}
