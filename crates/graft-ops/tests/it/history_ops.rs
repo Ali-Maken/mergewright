@@ -23,7 +23,7 @@ use graft_ops::facts::read_facts;
 use graft_ops::operation::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     Invocation, Lease, MergeParams, Operation, PickParams, PushParams, RebaseParams,
-    RefDeleteParams, Refusal, ResetMode, ResetParams, ResetTarget, RevertParams, Source,
+    RefDeleteParams, Refusal, ResetMode, ResetParams, ResetTarget, RevertParams, SetAside, Source,
     StashParams, StashScope, TagCreateParams, Tip,
 };
 use graft_ops::preview;
@@ -1483,27 +1483,22 @@ fn stale_preview_is_refused() {
         "a refusal journals nothing and runs nothing"
     );
 
-    // A rebase over a dirty tracked file.
+    // A rebase over a dirty tracked file is no longer refused: the edit is
+    // set aside and put back (ADR-0045 §4, m6-conflicts/73).
     let dirty = diverged();
     dirty.git(&["switch", "-q", "feature"]);
     let op = rebase_op(&dirty, "refs/heads/main");
     dirty.write("base.txt", b"edited, not committed\n");
-    let refused = try_run(&dirty, &op, NOW).expect_err("the tree is dirty");
-    assert!(
-        matches!(
-            refused,
-            ApplyError::Refused(Refusal::DirtyTree { count: 1 })
-        ),
-        "{refused:?}"
-    );
+    try_run(&dirty, &op, NOW).expect("the edit is set aside");
     assert_eq!(
         dirty.read("base.txt"),
         b"edited, not committed\n".to_vec(),
-        "the edit is untouched"
+        "the edit is back"
     );
 
     // An untracked file never counts as dirty (hard choice 4).
-    dirty.write("base.txt", b"base\n");
+    let dirty = diverged();
+    dirty.git(&["switch", "-q", "feature"]);
     dirty.write("scratch.tmp", b"untracked\n");
     try_run(&dirty, &rebase_op(&dirty, "refs/heads/main"), NOW + 1)
         .expect("an untracked file does not block a rebase");
@@ -2481,43 +2476,41 @@ fn dirty(repo: &TempRepo) {
     repo.write("base.txt", b"edited, not committed\n");
 }
 
-/// A preview of a rebase on a dirty tree is refused before anything is
-/// drawn, with the same refusal `apply` would give.
-///
-/// Group F (`set-aside-around-rebase-and-switch`, ADR-0045) flips this:
-/// the edits are set aside instead, and this becomes a set-aside test.
+/// A preview of a rebase on a dirty tree is drawn, and says what it would
+/// set aside (ADR-0045 §4; flipped by m6-conflicts/73 from 67's refusal).
 #[test]
-fn a_rebase_preview_refuses_a_dirty_tree() {
+fn a_rebase_preview_on_a_dirty_tree_says_what_is_set_aside() {
     let repo = diverged();
     repo.git(&["switch", "-q", "feature"]);
+    let clean = preview_of(&repo, &rebase_op(&repo, "refs/heads/main"));
+    assert_eq!(clean.set_aside, None, "a clean tree sets nothing aside");
     dirty(&repo);
-    let refused = try_preview(&repo, &rebase_op(&repo, "refs/heads/main"))
-        .expect_err("a dirty tree refuses a rebase");
-    assert!(
-        matches!(
-            refused,
-            preview::PreviewError::Refused(Refusal::DirtyTree { count: 1 })
-        ),
-        "{refused:?}"
+    let plan = preview_of(&repo, &rebase_op(&repo, "refs/heads/main"));
+    assert_eq!(
+        plan.set_aside,
+        Some(SetAside {
+            files: 1,
+            staged: 0
+        })
     );
 }
 
-/// The same for a checkout. Group F flips this too (ADR-0045).
+/// The same for a checkout (flipped by m6-conflicts/73).
 #[test]
-fn a_checkout_preview_refuses_a_dirty_tree() {
+fn a_checkout_preview_on_a_dirty_tree_says_what_is_set_aside() {
     let repo = diverged();
     dirty(&repo);
     let op = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
     });
-    let refused = try_preview(&repo, &op).expect_err("a dirty tree refuses a checkout");
-    assert!(
-        matches!(
-            refused,
-            preview::PreviewError::Refused(Refusal::DirtyTree { count: 1 })
-        ),
-        "{refused:?}"
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        plan.set_aside,
+        Some(SetAside {
+            files: 1,
+            staged: 0
+        })
     );
 }
 

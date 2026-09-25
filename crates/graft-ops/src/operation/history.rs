@@ -12,7 +12,8 @@
 //!   `-F -` is **not** accepted by `merge` ("could not read file '-'").
 //! - `rebase <onto>` on a conflict exits 1 leaving `rebase-merge/`; on a
 //!   dirty tracked file it refuses before starting ("You have unstaged
-//!   changes"), which is why `check` refuses `DirtyTree` first.
+//!   changes"), which is why `apply` sets changed tracked files aside
+//!   around it (ADR-0045 §4; before m6-conflicts/73, `check` refused them).
 //! - `revert --no-edit -m 1 <non-merge>` is **accepted** by git 2.54 (older
 //!   gits refused), so `check` refuses `MainlineOnNonMerge` itself; a merge
 //!   without `-m` is refused by git ("is a merge but no -m option was given").
@@ -418,8 +419,10 @@ fn source_holds(source: &Source, tip: Oid, facts: &RepoFacts) -> Result<(), Refu
     }
 }
 
-/// Staged or unstaged changes to tracked files: what a rebase or a switch
-/// would carry or refuse over. Untracked files never count (hard choice 4).
+/// Staged or unstaged changes to tracked files: what a switch to a new
+/// branch, or a branch from a stash, refuses over. Untracked files never
+/// count (hard choice 4). A rebase or checkout sets them aside instead
+/// ([`Operation::sets_aside`](super::Operation::sets_aside)).
 fn dirty_tracked(facts: &RepoFacts) -> usize {
     facts
         .status
@@ -457,10 +460,11 @@ pub(super) fn check_merge(params: &MergeParams, facts: &RepoFacts) -> Result<(),
     source_holds(&params.source, params.source_tip, facts)
 }
 
+/// No clean-tree rule: changed tracked files are set aside around the
+/// rebase and put back after it (ADR-0045 §4, `apply::set_aside`).
 pub(super) fn check_rebase(params: &RebaseParams, facts: &RepoFacts) -> Result<(), Refusal> {
     head_is(&params.branch, facts)?;
-    source_holds(&params.onto, params.onto_tip, facts)?;
-    clean_tree(facts)
+    source_holds(&params.onto, params.onto_tip, facts)
 }
 
 pub(super) fn check_pick(params: &PickParams, facts: &RepoFacts) -> Result<(), Refusal> {
@@ -497,7 +501,8 @@ pub(super) fn check_checkout(params: &CheckoutParams, facts: &RepoFacts) -> Resu
     {
         return Err(Refusal::NoSuchRef { name: name.clone() });
     }
-    clean_tree(facts)
+    // No clean-tree rule, as for a rebase (ADR-0045 §4).
+    Ok(())
 }
 
 pub(super) fn check_branch_create(
@@ -601,8 +606,9 @@ pub(super) fn plan_merge(params: &MergeParams) -> Vec<Invocation> {
 /// never sees: the first rewrites every branch pointing inside the rebased
 /// range (verified — `f1` moved under a rebase of `f2`), so `u` restores the
 /// branch and leaves the others rewritten, silently; the second stashes and
-/// pops outside any entry, which is the case hard choice 4 refuses
-/// `DirtyTree` for. Both are turned off explicitly (m5/07 review, M2).
+/// pops outside any entry, which is why the set-aside is Graft's own, inside
+/// the entry (ADR-0045 §4). Both are turned off explicitly (m5/07 review,
+/// M2).
 ///
 /// M7's chain rebase (ADR-0032) opts back in deliberately, with every moved
 /// branch in `touches.refs` and in the preview's `ref_moves`.

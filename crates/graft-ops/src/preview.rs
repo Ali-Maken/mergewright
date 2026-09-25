@@ -35,7 +35,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
 
 use crate::facts::FactsError;
-use crate::operation::{Invocation, Operation, Refusal, RepoFacts, Tip, short};
+use crate::operation::{Invocation, Operation, Refusal, RepoFacts, SetAside, Tip, short};
 use crate::undo::{InversePlan, NotInvertible, Step, plan_revert_to as inverse_plans};
 
 /// How many replayed commits a rebase forecasts one by one. Past it the
@@ -187,6 +187,9 @@ pub struct PreviewPlan {
     /// The tips this plan was drawn against: `check` refuses
     /// [`Refusal::Moved`] if any of them has moved by confirm time.
     pub against: Vec<Tip>,
+    /// What a rebase or checkout would set aside first and put back after
+    /// (ADR-0045 §4): `op.sets_aside(facts)`, never a second count.
+    pub set_aside: Option<SetAside>,
 }
 
 /// Why a preview could not be drawn.
@@ -357,6 +360,7 @@ pub fn plan(
         .map(Invocation::command_line)
         .collect();
     drawn.against = op.tips();
+    drawn.set_aside = op.sets_aside(facts);
     Ok(drawn)
 }
 
@@ -375,6 +379,7 @@ fn blank() -> PreviewPlan {
         conflicts: ConflictForecast::Clean,
         undo: UndoNote::Undoable,
         against: Vec::new(),
+        set_aside: None,
     }
 }
 

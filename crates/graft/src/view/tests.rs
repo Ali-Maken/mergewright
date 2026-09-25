@@ -3455,6 +3455,7 @@ fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan
         conflicts: ConflictForecast::Clean,
         undo: UndoNote::Undoable,
         against: Vec::new(),
+        set_aside: None,
     }
 }
 
