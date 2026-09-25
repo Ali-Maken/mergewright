@@ -606,9 +606,9 @@ fn history_ops_launch_unstoppable() {
 /// remembers the upstream they aim at (m5-history-and-ghost-preview/08,
 /// piece 9).
 ///
-/// `graft_ops`' own line for this sends the user to the shell
-/// (`git pull --rebase`). M5 put both verbs inside Graft, so the app words
-/// it as a state with keys — and `r` then previews a rebase onto the
+/// `graft_ops`' own line for this says "merge or rebase" and names no
+/// keys. M5 put both verbs inside Graft, so the app words it as a state
+/// with keys — and `r` then previews a rebase onto the
 /// *tracking ref*, whatever row the cursor is on, because the sentence on
 /// screen is what the user is answering.
 /// `main` at `OURS`, `origin/main` at `THEIRS`, the remote facts landed.
@@ -652,6 +652,37 @@ fn rejected_at_head(state: &mut AppState) {
         params: push_params(state).expect("an upstream"),
         sent: Some(oid(OURS)),
     });
+}
+
+/// A pull refused over his edits names the keys that get him through from
+/// where he is: `S s` stashes them, then `p` again (m6-conflicts/85 D). The
+/// reason is `ops`' own; the keys are whole at 80 columns.
+#[test]
+fn a_pull_that_would_overwrite_names_s_s() {
+    let mut state = diverged();
+    let op = Operation::Pull(PullParams {
+        branch: "refs/heads/main".to_owned(),
+        upstream: upstream(Some(THEIRS)),
+    });
+    let reason = "pull refused: your edits to notes.md would be overwritten";
+    let status = remote_failed(
+        &mut state,
+        &op,
+        &RemoteFailure::WouldOverwrite {
+            paths: vec!["notes.md".to_owned()],
+        },
+        reason,
+    );
+    assert_eq!(
+        status,
+        Status::Sticky {
+            reason: reason.to_owned(),
+            keys: Some("S s stashes them first".to_owned()),
+        }
+    );
+    state.status = status;
+    let screen = crate::view::tests::draw(&state, 80, 24);
+    assert!(screen.contains("S s stashes them first"), "{screen}");
 }
 
 #[test]

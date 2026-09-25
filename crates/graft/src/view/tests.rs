@@ -20,7 +20,7 @@ use crate::update::{AppState, Banner, GitCheck, Harness, Screen, Status};
 
 /// Draw `state` into a terminal of exactly this size and return what the
 /// cells ended up holding.
-fn draw(state: &AppState, columns: u16, rows: u16) -> String {
+pub(crate) fn draw(state: &AppState, columns: u16, rows: u16) -> String {
     let mut terminal =
         Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
     terminal
@@ -794,6 +794,7 @@ fn a_pending_jump_reads_as_one() {
     history.rows = 1500;
     let state = AppState {
         history: Some(history),
+        awaiting: Some(graft_core::job::JobId::new(1)),
         ..AppState::default()
     };
 
@@ -801,6 +802,78 @@ fn a_pending_jump_reads_as_one() {
         graph_view(&state, state.harness.clock.now_seconds()).walk,
         WalkView::Jumping { laid_out: 1500 }
     );
+}
+
+/// The header says the walk is reading (`Opening`, `Reading`, `Jumping`)
+/// exactly when `update::walk_is_reading` says `Esc` would cancel it — one
+/// predicate, both readers (m6-conflicts/85 A1). Every walk state the
+/// screen can hold, each view against the predicate.
+///
+/// Not covered: no history and no walk awaited — a walk that failed or was
+/// cancelled before `Started` (`KNOWN_GAPS` M6/24) — which still draws
+/// `Opening` while `Esc` has nothing to stop.
+#[test]
+fn the_header_reads_reading_exactly_when_esc_would_cancel() {
+    use crate::history::Window;
+    let walk_id = graft_core::job::JobId::new(1);
+    let with = |awaited: bool, edit: &dyn Fn(&mut History)| {
+        let mut history = history_of(3, 0);
+        history.phase = Phase::Streaming;
+        history.rows = 500;
+        edit(&mut history);
+        AppState {
+            history: Some(history),
+            awaiting: awaited.then_some(walk_id),
+            ..AppState::default()
+        }
+    };
+    let opening = AppState {
+        awaiting: Some(walk_id),
+        ..AppState::default()
+    };
+    let states = vec![
+        opening,
+        with(true, &|history| history.outstanding = Some(0..40)),
+        with(true, &|history| history.window = None::<Window>),
+        with(true, &|history| history.jump = Some(4)),
+        with(true, &|_| {}),
+        with(true, &|history| history.phase = Phase::Complete),
+        with(true, &|history| {
+            history.phase = Phase::Complete;
+            history.outstanding = Some(0..40);
+        }),
+        with(false, &|history| history.phase = Phase::Cancelled),
+        with(false, &|history| {
+            history.phase = Phase::Failed("gone".to_owned());
+        }),
+        with(false, &|history| history.phase = Phase::Complete),
+    ];
+    let mut seen = Vec::new();
+    for state in &states {
+        let walk = graph_view(state, 0).walk;
+        let reads_reading = matches!(
+            walk,
+            WalkView::Opening | WalkView::Reading { .. } | WalkView::Jumping { .. }
+        );
+        assert_eq!(
+            reads_reading,
+            crate::update::walk_is_reading(state),
+            "{walk:?}"
+        );
+        seen.push(std::mem::discriminant(&walk));
+    }
+    // Every WalkView the enum has was drawn at least once.
+    for walk in [
+        WalkView::Opening,
+        WalkView::Reading { laid_out: 0 },
+        WalkView::Paused { laid_out: 0 },
+        WalkView::Jumping { laid_out: 0 },
+        WalkView::Complete { rows: 0 },
+        WalkView::Cancelled { laid_out: 0 },
+        WalkView::Failed(sanitize_line("gone")),
+    ] {
+        assert!(seen.contains(&std::mem::discriminant(&walk)), "{walk:?}");
+    }
 }
 
 #[test]

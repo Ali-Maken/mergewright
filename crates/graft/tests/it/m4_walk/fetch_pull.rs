@@ -238,9 +238,11 @@ fn pull_dirty_file_refused() -> Scenario {
                 sticky_containing(
                     state,
                     &[
-                        "pull refused: would overwrite",
-                        "(uncommitted)",
-                        "commit or stash first",
+                        // m6-conflicts/85 D: the file in his words, and
+                        // keys that work from where he is.
+                        "pull refused: your edits to",
+                        "would be overwritten",
+                        "S s stashes them first",
                     ],
                 )
             }),

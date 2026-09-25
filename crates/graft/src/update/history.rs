@@ -87,6 +87,22 @@ pub(in crate::update) fn give_up_promotion(next: &mut AppState, commands: &mut V
     }
 }
 
+/// **The one reading of "the history walk is reading"**: the walk the screen
+/// waits on is working on an ask — opening, rows asked and not yet laid out,
+/// or a `G`/find under way (`History::is_reading`). `Esc` with nothing else
+/// to back out of cancels the walk only then, and the header draws
+/// `Opening`/`Reading`/`Jumping` only then (`view::rows::walk_view`), so the
+/// header says reading exactly when `Esc` would stop something. A walk
+/// resting between asks, or complete, is not reading: `Esc` leaves it be
+/// (m6-conflicts/85 A1).
+pub(crate) fn walk_is_reading(state: &AppState) -> bool {
+    state.awaiting.is_some()
+        && state
+            .history
+            .as_ref()
+            .is_none_or(crate::history::History::is_reading)
+}
+
 /// Moves the walk on screen to `phase`. Called only for the walk the screen
 /// was waiting for, which always has a [`crate::history::History`].
 pub(in crate::update) fn set_phase(next: &mut AppState, phase: Phase) {

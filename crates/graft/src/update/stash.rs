@@ -168,7 +168,12 @@ pub(super) fn stash_key(
     if next.stash.shown {
         return shown_key(next, commands, key, next_id);
     }
-    if key.code == KeyCode::Char('S') && next.graph_has_focus() {
+    // From the graph or from the changes pane, as `c` and `p` are: a
+    // refusal that names `S` must name a key that works where he is
+    // (m6-conflicts/85 m2). The overlay stands where the graph does and
+    // takes the keys the graph would, so the keyboard goes to the graph.
+    if key.code == KeyCode::Char('S') {
+        next.detail.focus = graft_ui::detail::DetailFocus::Graph;
         next.stash.shown = true;
         next.stash.selected = 0;
         next.stash.preview = Loading::Idle;

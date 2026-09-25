@@ -219,6 +219,11 @@ impl<K: Eq, V> Bounded<K, V> {
     pub fn clear(&mut self) {
         self.entries.clear();
     }
+
+    /// Forget every entry whose key `drop` picks.
+    pub fn forget(&mut self, mut drop: impl FnMut(&K) -> bool) {
+        self.entries.retain(|(key, _)| !drop(key));
+    }
 }
 
 /// The detail pane's state (`AppState::detail`); hidden by default.

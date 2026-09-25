@@ -277,15 +277,43 @@ pub(crate) fn stash_name(state: &AppState) -> Option<String> {
 /// esc, u undoes the rebase too` (m6-conflicts/74).
 fn notice_words(index: Option<usize>, files: usize, undoes: Option<&str>) -> String {
     let noun = if files == 1 { "file" } else { "files" };
+    let who = match undoes {
+        Some(_) => "your edits".to_owned(),
+        None => stash_words(index),
+    };
+    format!(
+        "{who} clashed in {files} {noun} \u{b7} {}",
+        undo_clause_words(undoes)
+    )
+}
+
+/// What `u` does for a clash, as its landing notice says it: `esc, u puts
+/// it all back`, or for a set-aside `esc, u undoes the <rebase|switch> too`.
+/// The one wording: the notice and the resolver's answer to `u`
+/// (m6-conflicts/85 m-i) both take it from here.
+fn undo_clause_words(undoes: Option<&str>) -> String {
     match undoes {
-        Some(what) => {
-            format!("your edits clashed in {files} {noun} \u{b7} esc, u undoes the {what} too")
-        }
-        None => format!(
-            "{} clashed in {files} {noun} \u{b7} esc, u puts it all back",
-            stash_words(index)
-        ),
+        Some(what) => format!("esc, u undoes the {what} too"),
+        None => "esc, u puts it all back".to_owned(),
     }
+}
+
+/// [`undo_clause_words`] for the clash standing, or `None` with no clash.
+/// A set-aside's operation is read off the journal entry that put the edits
+/// back — a checkout's switch, else a rebase, as [`clashed`] words it at the
+/// landing.
+#[must_use]
+pub(crate) fn undo_clause(state: &AppState) -> Option<String> {
+    let clash = state.clash.as_ref()?;
+    let undoes = (clash.clash.why == PutBackWhy::SetAside).then(|| {
+        let checkout = matches!(&state.journal.entries, Loading::Ready(read)
+        if read.entries.iter().any(|entry| {
+            entry.id == clash.clash.entry
+                && entry.kind == graft_core::journal::OperationKind::Checkout
+        }));
+        if checkout { "switch" } else { "rebase" }
+    });
+    Some(undo_clause_words(undoes))
 }
 
 /// The stop line's wordings while a clash is open and nothing is stopped,
@@ -412,4 +440,4 @@ pub(crate) fn drops(why: PutBackWhy) -> bool {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

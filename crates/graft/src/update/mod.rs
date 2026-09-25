@@ -55,6 +55,7 @@ pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeAt, TakeRequest, Task,
 };
 pub(crate) use geometry::context_menu_area;
+pub(crate) use history::walk_is_reading;
 pub use relaunch::LiveOrigin;
 pub use state::{
     AppState, Banner, CHROME_ROWS, ClashState, GraphOverlay, Harness, HeadLanding, Quit, RefsRead,

@@ -33,7 +33,8 @@ impl History {
         let height = height.max(1);
         let withdrew = self.jump.take().is_some();
         self.seeking = None;
-        self.cursor = at.min(self.rows.saturating_sub(1));
+        let reach = self.reachable();
+        self.cursor = at.min(reach.end.saturating_sub(1)).max(reach.start);
         self.follow(height);
         self.wanted(height, withdrew)
     }
@@ -48,9 +49,12 @@ impl History {
     /// with the header stuck on "seeking" (m1-the-graph/65).
     pub fn scroll(&mut self, lines: isize, height: usize) -> Option<RowRequest> {
         let height = height.max(1);
-        let last = self.rows.saturating_sub(1);
+        let reach = self.reachable();
+        let last = reach.end.saturating_sub(1).max(reach.start);
         self.top = if lines.is_negative() {
-            self.top.saturating_sub(lines.unsigned_abs())
+            self.top
+                .saturating_sub(lines.unsigned_abs())
+                .max(reach.start)
         } else {
             self.top.saturating_add(lines.unsigned_abs()).min(last)
         };
@@ -113,6 +117,32 @@ impl History {
         self.jump.take()?;
         self.seeking = None;
         self.wanted(height.max(1), true)
+    }
+
+    /// The walk is working on an ask: rows the screen asked for have not
+    /// come (a range, a `G`, a search's find, or the first screen). A walk
+    /// resting between asks, complete, stopped or failed is not reading.
+    /// Half of `update::walk_is_reading`, which also needs the walk to be
+    /// the one the screen waits on (m6-conflicts/85 A1).
+    #[must_use]
+    pub fn is_reading(&self) -> bool {
+        self.phase == Phase::Streaming
+            && (self.jump.is_some() || self.outstanding.is_some() || self.window.is_none())
+    }
+
+    /// The rows a motion can land on. While a walk is alive, every row it
+    /// has laid out: the rows not on hand are asked for. Once it has gone —
+    /// stopped or failed — nobody answers an ask, so only the rows on hand:
+    /// a cursor past them had nothing to draw, which is what `Esc` then `G`
+    /// on a long history showed (m6-conflicts/85 A3).
+    pub(super) fn reachable(&self) -> Range<usize> {
+        match self.phase {
+            Phase::Streaming | Phase::Complete => 0..self.rows,
+            Phase::Cancelled | Phase::Failed(_) => self
+                .window
+                .as_ref()
+                .map_or(0..0, |window| window.first..window.end()),
+        }
     }
 
     /// The rows on screen in a `height`-row viewport, as far as they have

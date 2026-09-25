@@ -155,7 +155,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `GraphView::marker_column` (field) — the marker slot may draw a glyph this session: sticky once a finding is known, never toggles off on scroll (m2-details-and-diffs/13).
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `OrderNotice` (enum) — header notice: `Sorting` (date order while sorting) or `Provisional` (sort stopped; order stays).
-- `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.
+- `WalkView` (enum) — walk state for the header: opening, reading, jumping, paused (`N rows so far`, nothing asked — m6-conflicts/85), complete, cancelled (`stopped at N rows · ⌃R reloads`, shortened to fit the header), failed. Reading/Jumping are drawn exactly when `Esc` would cancel.
 - `GraphScreen` (struct) — the graph screen, ready to render.
 - `GraphScreen::new` (fn) — draw `view` in `theme`.
 - `GraphScreen::graph_area` (fn) — the graph column's rectangle inside the screen area, every body row tall: where pixel images are placed.
