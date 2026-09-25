@@ -204,3 +204,130 @@ Not studied `(?)`.
   earlier research, not retried).
 - Praise is thin across the board: vendor pages describe, issue trackers complain. No user-praise source was read.
 - Line numbers marked `~` in lazygit were derived from an offset of a `sed` range, not read directly.
+
+---
+
+# Addendum (2026-09-25): conflicted stash pop, and auto-stash around pull and switch
+
+For M6 picks 15–16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md`): a stash pop that clashes lands on the conflict
+screen; pull-with-rebase and branch switch set unsaved edits aside and put them back, a clash landing on the conflict
+screen. §1–5 above cover save/pop/drop keys only; `push-pull.md` has no auto-stash coverage (grep: no hit for
+"autostash"/"stash"). Not repeated here.
+
+## A1. Git's facts that bind the design
+
+Verified on git 2.54.0 (Apple Git-157) in a scratch repo, 2026-09-25, and against git source (master) and docs.
+
+1. **A conflicted `pop` keeps the stash; you drop it yourself.** Docs: "Applying the state can fail with conflicts; in
+   this case, it is not removed from the stash list. You need to resolve the conflicts by hand and call `git stash drop`
+   manually afterwards." — https://git-scm.com/docs/git-stash. Source prints "The stash entry is kept in case you need
+   it again." and only drops on success (`builtin/stash.c:902-907`, https://github.com/git/git/blob/master/builtin/stash.c).
+   Observed: exit 1, `stash@{0}` still listed.
+2. **Index after a conflicted apply:** clashing paths are unmerged (stages 1/2/3; `UU`); **the stash's clean paths
+   are left staged** even if they were unstaged when stashed (observed: `g` stashed unstaged, came back `M ` staged).
+   Anything the user had staged beforehand stays staged and is now indistinguishable from the stash's clean paths
+   (observed: pre-staged `h` shown `M ` next to them). `--index` refuses outright when it can't reinstate the index:
+   "this can fail, when you have conflicts" (git-stash docs); Magit hit this as "conflicts in index. Try without
+   --index" — https://github.com/magit/magit/issues/4993.
+3. **No `MERGE_HEAD`, no operation state.** Observed: only `HEAD`, `ORIG_HEAD` in `.git` after the conflicted pop.
+   There is nothing to `--continue` or `--abort`; "done" is "no unmerged paths left", then `git stash drop`. A reader
+   that detects "in a conflict" by `MERGE_HEAD`/`rebase-merge/` will **not** see this state. Conflict markers are
+   labelled `Updated upstream` / `Stashed changes` (observed); VS Code keys on that label (below).
+4. **Pop refuses before touching anything if a dirty file overlaps:** "Your local changes to the following files would
+   be overwritten by merge … Aborting", exit 1, stash kept (observed). That is a refusal, not a conflict.
+5. **Autostash (`rebase --autostash`, `rebase.autoStash`, `pull --autostash`, `merge --autostash`/`merge.autoStash`):**
+   "Automatically create a temporary stash entry before the operation begins, and apply it after the operation ends …
+   the final stash application after a successful rebase might result in non-trivial conflicts." —
+   https://git-scm.com/docs/git-rebase, https://git-scm.com/docs/git-merge (merge records it in ref
+   `MERGE_AUTOSTASH`), https://git-scm.com/docs/git-pull. All default false.
+   On a clashing put-back git **stores the entry in the stash list as `autostash`** and leaves the conflict in the tree
+   (`sequencer.c:4843-4868`, https://github.com/git/git/blob/master/sequencer.c; message "Your changes are safe in the
+   stash. You can run "git stash pop" or "git stash drop" at any time.").
+   **Observed: `git rebase --autostash` exited 0** ("Successfully rebased") with `UU f` and `stash@{0}: autostash`.
+   VS Code's PR confirms the same for `git pull --autostash`: "exits with 0 when re-applying the autostash fails and
+   only reports it on stderr" — https://github.com/microsoft/vscode/pull/325762. **Exit code cannot be trusted; the
+   index (unmerged entries) must be read after.**
+6. **Switch/checkout has no `--autostash`.** `git switch -m` is the nearest: docs (master) say conflicting local changes
+   "are automatically stashed before the switch and reapplied afterwards … If reapplying the stash results in
+   conflicts, the entry is saved to the stash list" — https://git-scm.com/docs/git-switch. **On 2.54.0 I observed
+   otherwise:** `switch -m` exit 0, `UU f`, **no stash entry**. Question: which git version introduced the stash-list
+   behaviour? Not confirmed. Either way, the app doing stash → switch → pop itself is under its own control.
+
+## A2. Per tool: conflicted pop/apply
+
+| Tool | What he sees | Where he lands | Stash after | Finish | Source |
+|---|---|---|---|---|---|
+| lazygit | git's error text in a popup | Files panel refreshed; `UU` files resolved in its merge view | kept (plain `git stash pop`) | resolve, then drop by hand in Stash panel `d` + confirm | `pkg/gui/controllers/stash_controller.go:136-150` (calls `Stash.Pop`, returns git's error) |
+| VS Code | warning: "There are merge conflicts while applying the stash. Please resolve them before committing your changes." + **Show Changes** | Source Control view; merge editor titles the incoming side **"Stashed Changes"** | kept | resolve, stage, then *Git: Drop Stash* from palette | `extensions/git/src/commands.ts:5607-5612`, `:862-877`; `git.ts:2694-2695` (https://github.com/microsoft/vscode) |
+| Magit | stash kept unless clean | status buffer, conflicts in Unmerged section | pop removes "on complete success" only | resolve, `k` on stash `(?)` | https://docs.magit.vc/magit/Stashing.html; falls back to `git apply --3way` (same page) |
+| JetBrains | conflicts "need to be resolved" | its Resolve Conflicts dialog `(?)` | Pop removes, Apply keeps — docs silent on pop-with-conflict `(?)` | `(?)` | https://www.jetbrains.com/help/idea/shelving-and-unshelving-changes.html |
+| Sublime Merge, GitUp, Fork, Tower | not read | — | — | — | Fork asks for `--index` option: https://github.com/fork-dev/Tracker/issues/878; SM freeze on apply into big conflicts: https://github.com/sublimehq/sublime_merge/issues/1965 |
+
+**No tool read finishes the job**: every one that I could confirm leaves the stash in the list and the drop to the user.
+
+Step count, "pop clashes → resolved → stash gone" (one file, one hunk), best confirmed:
+- lazygit: `g`, `Enter` (confirm) → `Esc` error → `2` files → `Enter` file → pick hunk `Space` → `Esc` → `5` stash →
+  `d` → `Enter` = **~10** (`(?)` whether resolving auto-stages; not run).
+- VS Code: palette Pop Stash (~3) → **Show Changes** → open file → accept → Complete Merge → palette Drop Stash, pick
+  (~3) = **~10** `(?)` counted from code, not walked.
+
+## A3. Per tool: auto-stash around switch and pull
+
+- **lazygit switch:** on "uncommitted changes" error asks **"Autostash?** You must stash and pop your changes to
+  bring them across. Do this automatically? (enter/esc)", then `stash push` → checkout → `stash pop`; on a pop clash
+  "re-render the UI even if the pop operation failed (e.g. conflict)" and returns the error —
+  `pkg/gui/controllers/helpers/refs_helper.go:91-112`, strings `pkg/i18n/english.go:1642-1645`. Stash kept (git pop).
+  Steps: `Space`, `Enter` = **2** to switch; clash → Files panel. Same for new branch (`refs_helper.go:404-420`).
+- **VS Code switch:** modal "Your local changes would be overwritten by checkout." — **Stash & Checkout**, **Migrate
+  Changes** (stash, checkout, pop), **Force Checkout** — `commands.ts:2961-2980`. Clash → the stash-conflict warning
+  above. Users ask it to honour `git.autoStash` silently instead of the modal:
+  https://github.com/microsoft/vscode/issues/240571 (PR open: https://github.com/microsoft/vscode/pull/305697).
+- **VS Code pull:** `git.autoStash` passes `--autostash` (`git.ts:2467-2469`). A clashing put-back is **invisible**:
+  https://github.com/microsoft/vscode/issues/262360 "Invisible autostash"; fix open, also because the `autostash`
+  entry is filtered out of the stash list (PR #325762 above).
+- **Sublime Merge pull --rebase --autostash:** "SM shows a successful command execution, not a failed one" —
+  https://github.com/sublimehq/sublime_merge/issues/1199 (open since 2021).
+- **JetBrains Smart Checkout:** "will shelve uncommitted changes, check out the selected branch, and then unshelve the
+  changes. If a conflict occurs during the unshelve operation, you will be prompted to merge the changes." —
+  https://www.jetbrains.com/help/idea/manage-branches.html. Update Project saves changes by **Stash** or **Shelve**
+  (setting) — https://www.jetbrains.com/help/idea/settings-version-control-git.html. Whether the shelf is deleted after
+  a clashing unshelve `(?)`; docs say shelves "remain available unless explicitly deleted" (shelving page above).
+  Steps: branch popup, pick branch, **Smart Checkout** = **3**, clash → merge dialog directly. JetBrains support forum
+  not fetched (403 earlier, §5).
+- **Magit:** checkout with changes is guarded; a `--merge` checkout option PR was closed unmerged 2026-08-17 —
+  https://github.com/magit/magit/pull/5618. Rebase `--autostash` switch `(?)` not read.
+- **lazygit, losing edits without autostash:** https://github.com/jesseduffield/lazygit/issues/4823 — staged changes
+  lost aborting a rebase; user asks for "a dialog that asks to stash the changes or autostash".
+- GitUp: refuses merge-conflict work unless the repo is clean ("the repo must be clean to resolve them") —
+  https://github.com/git-up/GitUp/issues/403; user's workaround was the Terminal.
+
+Praise: none found in primary sources (issue trackers only carry complaints). Complaints cluster on one thing: **the
+clash is silent or dumped as raw git text** (VS Code #262360, SM #1199, GitUp #403).
+
+## A4. What this means for Graft
+
+- **Take** — JetBrains' landing: a clashing put-back goes straight to the conflict screen (manage-branches doc). It
+  matches the user's pick.
+- **Take** — keep the stash until the conflict is resolved (git fact A1.1, A1.5). Losing the edits is the one outcome
+  "you cannot lose work" forbids.
+- **Invent** — finish drops the stash. Every tool I read leaves the drop to the user (A2), and he forgets it. On the
+  conflict screen's finish, offer to drop *that* entry, found by its commit id, not `stash@{0}`: the index shifts.
+  Reason: nothing found fits.
+- **Invent** — the app's own conflict state for "stash put-back". There is no `MERGE_HEAD` (A1.3), so detection can't
+  lean on git's operation files. Record which stash id and why (pop / switch / pull) when the app starts it.
+  **Question:** how does Graft detect a stash clash the user made from the shell? Only unmerged entries plus the
+  `Stashed changes` label (VS Code's trick, `commands.ts:867`) remain.
+- **Take** — read the index after every put-back, never the exit code (A1.5: exit 0 with conflicts). This is the bug
+  in VS Code and Sublime Merge.
+- **Reject** — handing it all to `--autostash`. Its stash is only visible as `autostash`, and switch has no
+  equivalent (A1.6). Do stash → op → pop in the app, so one code path covers pull, switch and a plain pop.
+- **Reject** — `--index` by default. It refuses on conflict (A1.2, Magit #4993). Say plainly that staged/unstaged
+  split is lost on a clash.
+- **Question, not decided:** "abort" on a stash clash has no git verb. Is it reset-to-before plus keep the stash? That
+  would also throw away what the user had staged before (A1.2). Needs design, and the undo journal must cover it.
+- Step targets: switch with edits **2** (lazygit), 3 for JetBrains with a dialog; clashing pop to done **~10** in the
+  best two tools. Graft's aim: land on the conflict screen with zero extra steps, and drop in the finish step (0 extra).
+
+Gaps: Sublime Merge, GitUp, Fork, Tower pop/autostash UI not read; JetBrains shelf retention after a clash, Magit
+drop key and autostash switch, lazygit auto-stage after resolving — all `(?)`. Step counts in A2 are read from code, not
+walked.
