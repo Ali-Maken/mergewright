@@ -1,6 +1,8 @@
 # ADR-0045 — A stash put back is recorded by Graft; setting edits aside around a rebase or switch is one entry
 
-Date: 2026-09-25 (amended 2026-09-25: §2 tie to the index, §7 table rows — review m6-final-fixes-72-72b M2)
+Date: 2026-09-25 (amended 2026-09-25: §2 tie to the index, §7 table rows — review m6-final-fixes-72-72b M2; amended
+2026-09-26: §3 set-aside close words, §5 where the edits are, new §8 the preview forecasts the put-back — review
+m6-final-fixes-74 M1–M3, see "Amendment 2026-09-26" at the end)
 Status: accepted. Direction by the user: picks 15 and 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :24-25,
 field notes :67, "all three took the recommended option"). Mechanism by the design pass:
 `docs/design-notes/m6-stash-put-back.md`. Study: `docs/research/commit-stash.md` addendum A1–A4.
@@ -58,6 +60,7 @@ When the last clashed file is marked done, a **pop** or **set-aside** clash ends
 `Operation::DropPutBack { stash }`: `stash drop stash@{n}`, `n` looked up in the facts `apply` reads, refused
 `NoSuchStash` when it is gone, journal kind `StashDrop` with `pins: [stash]`, so `u` puts it back (the existing
 `StashStore` inverse). An **apply** clash never drops. Undo is the guard, not a confirm (GitUp; lazygit #4491).
+(Amended 2026-09-26: what the set-aside close says, and what taking the branch side everywhere costs — see the end.)
 
 ### 4. Setting aside is one entry, in this order
 For `Rebase` and `Checkout` when tracked files are changed (`Operation::sets_aside`); untracked files are left where
@@ -84,6 +87,9 @@ they are and covered by the entry's backup, as every write is (ADR-0009).
 | a kill anywhere after 3 | as git left it | in the stash list | relaunch: the interrupted line names `stash@{n}` |
 | 6, clash | markers | in the list | the resolver (§2, §3) |
 | 6, other failure | the operation's result | in the list | `your edits are in stash@{n} · S p puts them back` |
+
+(Amended 2026-09-26: the words come from where `apply` says the edits are, never from a second read of the list —
+see the end.)
 
 ### 6. Undo and redo
 - **Undo** of a set-aside entry: the generic inverse (branch back by compare-and-swap, `HEAD`, index and working tree
@@ -127,3 +133,51 @@ they are and covered by the entry's backup, as every write is (ADR-0009).
 - (2026-09-25) While a Graft put-back clash is a candidate, each working-tree or journal read that lands asks for one
   index read (`index_state`: a copy of `.git/index`, `ls-files --stage`, `write-tree` on temp indexes). An unchanged
   index writes no new tree object after the first. No read at all in a repository with no such entry.
+- (2026-09-26) A preview of a rebase or checkout with edits to set aside spawns two more git commands (three for a
+  rebase) and writes loose, unreachable objects (§8). A clean tree spawns none.
+
+## Amendment 2026-09-26 (review `docs/reviews/m6-final-fixes-74.md` M1–M3; ticket 84)
+
+### §5 amended — `apply` says where the edits are; the app only words it
+The review found three paths (`graft-ops/src/apply/set_aside.rs:444`, `:122-163`, `:445`) where the status line said
+`your edits are in stash@{n} · S p puts them back` while the edits were already in the tree: the app read the stash
+list again (`crates/graft/src/jobs/operate.rs:344-360`) and took "still listed" for "not back". Only `apply` knows
+whether the put-back ran. So every `ApplyError` a set-aside ends in, other than `Clashed`, carries
+`graft_ops::EditsAt`, and the app reads no list to guess:
+
+| `EditsAt` | When | The line's clause |
+|---|---|---|
+| `Stash { n }` | step 6 failed, nothing unmerged (§5 last row) | `your edits are in stash@{n} · S p puts them back` |
+| `Back { copy: Some(n) }` | the put-back ran clean; the drop failed | `your edits are back · a copy stays in stash@{n}` |
+| `Back { copy: None }` | the put-back ran clean; the copy was not found to drop | `your edits are back · a copy may still be in S` |
+| `Backup { copy }` | stored (3), then the reset (4) failed or stopped | `u restores the backup`, + ` · a copy is in stash@{n}` when `Some(n)` |
+
+The operation's own failure (the error's Display) is the line's reason and comes first; the clause is the part kept
+whole at narrow widths (`fit_status_line`'s keys). `S p` is named only when the edits are not in the tree.
+
+### §3 amended — a set-aside close names what it dropped
+The set-aside close reads as the pop's does: `every file done · set-aside copy dropped ✓ · u brings it back`.
+Ticket 74's `every file done · your edits are back ✓` is withdrawn: after `o branch` in every block his edits are not
+back, and the line said they were. Taking the branch side everywhere and pressing `⏎` still drops the copy, as a pop
+taken `yours` everywhere does: the edits are then one `u` away (the drop's `StashStore` inverse puts `S` back in the
+list; `S` shows it), not lost, and the close line says `u brings it back`. **Rejected:** keep `S` when any block took
+the branch side — a stash he would forget (A2, the reason §3 drops at all), and a rule that depends on takes he cannot
+see from the close.
+
+### §8 (new) — the preview forecasts the put-back
+M5's promise is "you see the result before you confirm". A box that said `no conflicts expected` over a put-back that
+clashes (review M2: `graft-ops/src/preview/kinds.rs:351-376`, a checkout never forecasts) broke it. So `plan`, only
+when `set_aside` is `Some`, forecasts step 6:
+1. `git stash create` of the tree now → `S'` (objects only), run on a temporary copy of the index, as `index_state`
+   does, so `.git/index` is not rewritten.
+2. `landed`: a checkout's target commit; a rebase's `git merge-tree --write-tree HEAD <upstream>` tree — one spawn
+   standing for the replayed tree (m5 hard choice 5 refused chaining the replay). When that merge conflicts, or the
+   replay forecast is not `Clean`, the put-back is `NotChecked("the rebase may stop first")`.
+3. `git merge-tree --write-tree --merge-base=HEAD <landed> <S'>`: the three-way merge `stash apply` does (base `S^1` =
+   `HEAD`). Exit 0 → `Clean`; conflicts → `Likely { paths }`; anything else → `NotChecked(<reason>)` — a hole, never
+   a clean bill, and never a failed preview.
+
+Result: `PreviewPlan::put_back: Option<ConflictForecast>`, `Some` exactly when `set_aside` is. It is a forecast
+(`may`), as every forecast is: the approximation for a rebase, and edits made between the preview and `y`, can
+differ. Cost: two spawns for a checkout, three for a rebase, on the preview job, checked for `stop` between them; no
+ref, index or file written. Words: `docs/design-notes/m6-stash-put-back.md`, amendment 2026-09-26.

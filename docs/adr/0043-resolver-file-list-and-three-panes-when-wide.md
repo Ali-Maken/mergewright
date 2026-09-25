@@ -1,6 +1,6 @@
 # ADR-0043 — The resolver: a file list always, three panes when wide, the card below
 
-Date: 2026-09-23
+Date: 2026-09-23 (amended 2026-09-24: §2 pane widths, §6 whole-file shapes; amended 2026-09-26: §4 the set-aside row)
 Status: accepted (the user's proposal on the prototype walk, 2026-09-23; audited in
 `docs/research/conflict-layout-audit.md`; walked as prototype v2). Supersedes ADR-0042.
 
@@ -61,11 +61,26 @@ The audit (`conflict-layout-audit.md`) found:
    | cherry-pick | `yours · main` | `picked · 3f2a1b …` |
    | revert | `yours · main` | `reverting · 3f2a1b …` |
    | stash pop | `yours · main` | `stashed · stash@{0}` |
+   | edits set aside, put back after a rebase or switch (added 2026-09-26) | `branch · main` | `yours · edits set aside` |
 
    The prototype's `main (yours)` is **not** used. Keymap §2.1 says trailing
    parentheses carry a key, never a word. The rebase explainer line is gone, because
    the names now say who owns which side (ADR-0041's carve-out is still met). Git's
    raw marker labels (`HEAD`, `Stashed changes`) are no longer shown.
+
+   **Amended 2026-09-26** (review `docs/reviews/m6-final-fixes-74.md` M3): the set-aside
+   row. Ticket 74 drew it `yours · main` | `set aside · your edits`, bar `o yours  t set
+   aside`: both sides said "your", and `o yours` wrote the branch's lines over his
+   uncommitted edit. The rule, as for a rebase: **`yours` is the side that is his
+   work**. After a rebase or switch, stage 2 is the branch as it now stands — upstream's
+   lines, or a teammate's after a switch — so it is `branch · <HEAD's name>`; stage 3 is
+   his uncommitted edits, `yours · edits set aside`. Bar: `o branch  t yours`. Keys stay
+   positional (`o` stage 2, `t` stage 3). In the journey `pull-rebase-stop-then-clash`,
+   `t` is `yours` both in the rebase stop and in the put-back that follows.
+   **Stash pop keeps `yours · main`:** a pop does not move `HEAD`, so stage 2 is the
+   branch he was on, and only one side says "your". The `branch` role word takes
+   whatever rung `short_form` already gives the verb `branch`; no new short-form row
+   (ticket 84 checks it).
 5. **Every pane numbers its own lines, with no gaps.** Each side is numbered as the
    file would read if that side were taken in every block (`Projection::Ours`,
    `::Theirs`). The result pane counts a taken block as its taken lines, and an open

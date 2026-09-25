@@ -4,6 +4,8 @@ Picks 15–17 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :24-26). Review 
 (`docs/reviews/m6-usability-final.md` :125-208). Studies: `docs/research/commit-stash.md` addendum **A1–A4**,
 `docs/research/checkout-cherry-pick.md` (**CC**), `docs/research/push-pull.md` (**PP**), UX = `ux-principles.md`.
 Decision record: **ADR-0045**. Read: MAP.md of graft-core, graft-git, graft-ops, graft, graft-ui; keymap §2.1–2.9. No source.
+**Amended 2026-09-26** (review `docs/reviews/m6-final-fixes-74.md` M1–M3; ticket 84): see the last section. Lines it
+changes are marked `[A]`.
 
 **Promise:** *a real conflict is resolvable without leaving the app* (M6), now also for a stash put back by hand or by
 Graft; and *you cannot lose work* (M3): edits set aside are in the tree or in the stash list at every instant.
@@ -51,11 +53,13 @@ Decisions: one per journey (the picture), plus one per block taken. `u` after an
   notice `stash@{0} clashed in 2 files · esc, u puts it all back`. `Esc` → changes pane on `CONFLICTS`.
 - Last file done, pop or set-aside → resolver closes to the pane; the drop runs; status
   `every file done · stash@{0} dropped ✓ · u brings it back`. Apply: `every file done · stash@{0} kept ✓`.
+  `[A]` set-aside: `every file done · set-aside copy dropped ✓ · u brings it back`.
 - Rebase/switch, put-back clean → graph on `HEAD`, the op's own done line `+ · your edits are back`.
 - Put-back clashes → as a pop clash; notice `your edits clashed in 2 files · esc, u undoes the rebase too`.
 - Rebase stops (edits aside) → P5 as today; the stash row `graft: your edits, set aside…` shows in `S`. `c` that
   finishes it → put back → clean line, or the clash landing. `a` → the rebase aborts, edits put back.
 - Put-back fails for another reason → sticky `your edits are in stash@{0} · S p puts them back`, stash kept.
+  `[A]` the words follow where `apply` says the edits are (ADR-0045 §5 amended).
 - Graft killed mid-way → relaunch; the interrupted line names the stash: `… interrupted · edits in stash@{0}`.
 - Relaunch with a clash open → stop line `stash@{0} clash from last run · 1 file conflicted`; `⏎` on `CONFLICTS`.
 - `⏎` on a disabled menu slot → the menu stays; the status shows its reason (the drop menu's rule).
@@ -80,7 +84,7 @@ pub enum Operation { /* … */ DropPutBack { stash: Oid } }                   //
 impl Operation { pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside>; } // Rebase | Checkout, tracked edits
 pub struct PreviewPlan { /* … */ pub set_aside: Option<SetAside> }
 // graft-ui (F)
-pub enum SideRoles { /* … */ SetAside }                                     // ours "yours", theirs "set aside"
+pub enum SideRoles { /* … */ SetAside }                                     // [A] ours "branch", theirs "yours"
 // graft (G)
 pub struct HistoryVerb { pub label: SanitizedText, pub op: Option<Operation>, pub disabled: Option<SanitizedText> }
 // graft-ui (G)
@@ -109,8 +113,10 @@ and Cherry-pick hold the first two places); `Refusal::DirtyTree` doc; KNOWN_GAPS
 ## New UI (existing surfaces only; no new screen, so no prototype)
 - **Resolver on a clash:** as today, no banner row. Names `yours · main` | `stashed · stash@{0}` (ADR-0043 table), or
   `yours · main` | `set aside · your edits`; bar `o yours  t set aside`. Notice row words above. First look: the notice.
+  `[A]` set-aside: `branch · main` | `yours · edits set aside`; bar `o branch  t yours` (ADR-0043 §4 amended).
 - **Preview, rebase or checkout on a dirty tree:** one row under `working tree:`,
   `your edits: 3 files set aside, put back after` + ` · 1 staged comes back unstaged` when any. Cut from the right.
+  `[A]` and the conflict line forecasts the put-back too (below).
 - **Stop line** while a clash is open and the resolver is shut: `stash@{0} clashed · 1 file conflicted`; shorter
   wordings drop the count, then the name (ladder as `stop_wordings`).
 - **`.` menu on a commit row:** 1 `Checkout <b>` (or `Checkout — already on main`, dim), 2 `Cherry-pick <sha7>` (always
@@ -123,3 +129,32 @@ and Cherry-pick hold the first two places); `Refusal::DirtyTree` doc; KNOWN_GAPS
 - E is a journal-format change, additive, one pure rule with a table test: builder-opus after its scout.
 - G and the acceptance ticket are routing and words. **Order:** A(66) → D(67) → G → B(68, 69) → C(70) → E → F → H.
   E and F last: their walks cross the bottom row (B) and `⇥` words (C).
+
+## Amendment 2026-09-26 (review m6-final-fixes-74 M1–M3; ticket 84)
+Decisions in ADR-0045 (§3, §5 amended, §8 new) and ADR-0043 §4 (amended). Here: the words and the journeys.
+
+**Prior art, added rows.**
+| Aspect | Best answer found | Ours | Rec · why |
+|---|---|---|---|
+| Forecast the put-back | not recorded in A1–A4 or CC (studies not re-read for this amendment) | `merge-tree` of the edits onto the landed tree, the m5 forecast's machinery | **I**. M5's promise; the box said `no conflicts expected` over a clash (review M2) |
+| Naming the sides of a put-back clash | JetBrains Smart Checkout's dialog `(?)` — not in the studies | `branch · <b>` \| `yours · edits set aside` | **I**. UX heuristic 2 (`ux-principles.md:52`, ours/theirs flip): `yours` is his work, as the rebase row already says |
+
+**Journeys.** Counts unchanged. `switch-dirty-clash` and `pull-rebase-stop-then-clash` walk `o` (take the branch);
+keeping his edits is `t` instead, same count. Their landing now reads `branch · <b>` | `yours · edits set aside`,
+bar `o branch  t yours`; their end reads `every file done · set-aside copy dropped ✓ · u brings it back`. Taking the
+branch side everywhere then `⏎` drops the copy: his edits are one `u` away (ADR-0045 §3 amended).
+
+**Preview: the conflict line folds the put-back.** Words, in the line that says `no conflicts expected` today:
+| op forecast | put-back (`PreviewPlan::put_back`) | line |
+|---|---|---|
+| `Clean` | `None` or `Clean` | `no conflicts expected` (with edits aside, now true of the put-back too) |
+| `Clean` | `Likely { paths }` | `your edits may clash when put back: <paths>` (paths listed and cut as the op's `may conflict:` list) |
+| `Clean` | `NotChecked(r)` | `your edits' put-back: not checked (<r>)` |
+| `Likely` / `NotChecked` | `Some(_)` | the op's line as today + ` · put-back not checked` (cut first) |
+The row `your edits: N files set aside, put back after …` is unchanged.
+
+**Failure words** (ADR-0045 §5 amended): `<the operation's failure> · <clause>`, clause by `EditsAt`; the clause is
+kept whole at narrow widths, the failure cut first.
+
+**Done line shape** (review m3, M4): every done line is `<what> ✓`, then ` · <also>`, then ` · <keys>`. The clean
+put-back's `your edits are back` is `also`; `u brings it back` is `keys`.
