@@ -785,3 +785,78 @@ fn staging_reads_do_not_write_the_index() {
         after.len()
     );
 }
+
+/// An untracked file's diff, read back from a real repo's
+/// [`DiffSpec::Unstaged`] listing (m6-conflicts/81).
+fn untracked_diff(content: &[u8], max_lines: usize) -> FileDiff {
+    let fixture = Fixture::empty_repo();
+    std::fs::write(fixture.root().join("new.bin"), content).expect("file written");
+    let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
+    let list = list_files(&repo, &DiffSpec::Unstaged, &DiffOptions::default(), &())
+        .expect("list_files succeeds");
+    let entry = list
+        .files
+        .iter()
+        .find(|entry| entry.path == b"new.bin")
+        .expect("the untracked file is listed");
+    assert_eq!(entry.status, FileStatus::Untracked);
+    // `git diff` porcelain refreshes `.git/index` (module doc); `--no-index`
+    // must not. A tracked file makes the index exist to compare.
+    std::fs::write(fixture.root().join("t.txt"), "t\n").expect("t.txt written");
+    fixture.git(&["add", "t.txt"]);
+    let index = fixture.root().join(".git").join("index");
+    let before = std::fs::read(&index).expect("the index reads");
+    let diff = file_diff(
+        &repo,
+        &DiffSpec::Unstaged,
+        entry,
+        &DiffOptions::default(),
+        max_lines,
+        &(),
+    )
+    .expect("file_diff reads an untracked file");
+    let after = std::fs::read(&index).expect("the index reads again");
+    assert!(before == after, "reading an untracked file wrote the index");
+    assert_eq!(diff.entry, *entry, "the entry is kept as listed");
+    diff
+}
+
+#[test]
+fn untracked_file_diff_is_one_all_added_hunk() {
+    let diff = untracked_diff(b"one\ntwo\nthree\n", usize::MAX);
+    assert_eq!(diff.hunks.len(), 1);
+    let lines = &diff.hunks[0].lines;
+    let texts: Vec<&[u8]> = lines.iter().map(|line| line.text.as_slice()).collect();
+    assert_eq!(texts, [&b"one"[..], b"two", b"three"]);
+    assert!(
+        lines
+            .iter()
+            .all(|line| line.kind == super::super::LineKind::Added)
+    );
+    assert!(diff.binary.is_none());
+}
+
+#[test]
+fn untracked_binary_file_gives_the_binary_note() {
+    let diff = untracked_diff(b"\0\x01\x02binary\0", usize::MAX);
+    assert!(diff.hunks.is_empty());
+    assert!(diff.binary.is_some());
+}
+
+#[test]
+fn untracked_empty_file_gives_no_hunks_and_no_error() {
+    let diff = untracked_diff(b"", usize::MAX);
+    assert!(diff.hunks.is_empty());
+    assert!(diff.binary.is_none());
+}
+
+#[test]
+fn untracked_file_over_the_line_cap_is_truncated() {
+    let body = (0..50).fold(String::new(), |mut body, n| {
+        body.push_str(&format!("line {n}\n"));
+        body
+    });
+    let diff = untracked_diff(body.as_bytes(), 10);
+    let truncated = diff.truncated.expect("the cap's line is set");
+    assert_eq!(truncated.total_lines, 50);
+}
