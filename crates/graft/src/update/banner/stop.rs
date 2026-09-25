@@ -184,27 +184,34 @@ pub fn stop_reason(
     stop: &crate::update::state::Stop,
     live: Option<(&InProgressDetail, usize)>,
 ) -> String {
-    Wording::of(stop, live).words(true, true, true)
+    Wording::of(stop, live).words(Origin::Full, true, Count::Full)
 }
 
 /// [`stop_reason`] and the shorter wordings the footer falls back to when
 /// the full one does not fit (m6-conflicts/24, review m6-amend-11-12 M1),
-/// fullest first. Each drops whole parts, lowest value first: `begun outside
-/// Graft` / `from a previous run`, then the step, then the count. So the
-/// count is drawn whole or not at all, and the last wording — the only one
-/// the footer ever cuts — carries no number.
+/// fullest first.
+///
+/// Rung 0 is [`stop_reason`], every part spelled out. Every later rung has
+/// had to shorten, so it says the count short (`13 conflicted`) and drops
+/// whole parts, lowest value first (m6-conflicts/61, "shorten both"): first
+/// the origin goes short (`from the shell`, `from last run`), then it goes,
+/// then the step, then the count. So the count is drawn whole or not at
+/// all, and the last wording — the only one the footer ever cuts — carries
+/// no number. A rung that repeats the one before (a stop from this run has
+/// no origin to shorten) is skipped.
 #[must_use]
 pub fn stop_wordings(
     stop: &crate::update::state::Stop,
     live: Option<(&InProgressDetail, usize)>,
 ) -> Vec<String> {
     let wording = Wording::of(stop, live);
-    let mut rungs: Vec<String> = Vec::with_capacity(4);
+    let mut rungs: Vec<String> = Vec::with_capacity(5);
     for (origin, step, count) in [
-        (true, true, true),
-        (false, true, true),
-        (false, false, true),
-        (false, false, false),
+        (Origin::Full, true, Count::Full),
+        (Origin::Short, true, Count::Short),
+        (Origin::Gone, true, Count::Short),
+        (Origin::Gone, false, Count::Short),
+        (Origin::Gone, false, Count::Gone),
     ] {
         let words = wording.words(origin, step, count);
         // A part the stop does not have drops nothing: skip the repeat.
@@ -213,6 +220,28 @@ pub fn stop_wordings(
         }
     }
     rungs
+}
+
+/// How much of who began the stop a wording says.
+#[derive(Clone, Copy)]
+enum Origin {
+    /// `begun outside Graft`, `from a previous run`.
+    Full,
+    /// `from the shell`, `from last run`.
+    Short,
+    /// Nothing.
+    Gone,
+}
+
+/// How a wording says the conflicted count.
+#[derive(Clone, Copy)]
+enum Count {
+    /// `13 files conflicted`: the full rung only.
+    Full,
+    /// `13 conflicted`: every rung that has had to shorten.
+    Short,
+    /// Nothing.
+    Gone,
 }
 
 /// The facts [`stop_reason`] words, gathered once for every wording.
@@ -237,9 +266,9 @@ impl Wording {
         }
     }
 
-    /// The words with or without each droppable part: who began it
+    /// The words with each droppable part at the form asked: who began it
     /// (`origin`), the step, the count.
-    fn words(&self, origin: bool, step: bool, count: bool) -> String {
+    fn words(&self, origin: Origin, step: bool, count: Count) -> String {
         use crate::update::relaunch::LiveOrigin;
 
         let name = self.name;
@@ -253,12 +282,17 @@ impl Wording {
             }
             LiveOrigin::PreviousRun | LiveOrigin::OutsideGraft => {
                 let mut words = match (self.origin, origin) {
-                    (LiveOrigin::PreviousRun, true) => {
+                    (LiveOrigin::PreviousRun, Origin::Full) => {
                         format!("{name} still in progress from a previous run")
                     }
-                    (LiveOrigin::PreviousRun, false) => format!("{name} still in progress"),
-                    (_, true) => format!("{name} in progress \u{b7} begun outside Graft"),
-                    (_, false) => format!("{name} in progress"),
+                    // `still` goes: `from last run` carries it.
+                    (LiveOrigin::PreviousRun, Origin::Short) => {
+                        format!("{name} in progress \u{b7} from last run")
+                    }
+                    (LiveOrigin::PreviousRun, Origin::Gone) => format!("{name} still in progress"),
+                    (_, Origin::Full) => format!("{name} in progress \u{b7} begun outside Graft"),
+                    (_, Origin::Short) => format!("{name} in progress \u{b7} from the shell"),
+                    (_, Origin::Gone) => format!("{name} in progress"),
                 };
                 if let Some((at, of)) = at_step {
                     words.push_str(&format!(" \u{b7} step {at} of {of}"));
@@ -266,9 +300,15 @@ impl Wording {
                 words
             }
         };
-        if count && self.count > 0 {
-            let files = if self.count == 1 { "file" } else { "files" };
-            reason.push_str(&format!(" \u{b7} {} {files} conflicted", self.count));
+        if self.count > 0 {
+            match count {
+                Count::Full => {
+                    let files = if self.count == 1 { "file" } else { "files" };
+                    reason.push_str(&format!(" \u{b7} {} {files} conflicted", self.count));
+                }
+                Count::Short => reason.push_str(&format!(" \u{b7} {} conflicted", self.count)),
+                Count::Gone => {}
+            }
         }
         reason
     }

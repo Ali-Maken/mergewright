@@ -1,6 +1,6 @@
 # resolver-words-and-marks: `no more conflicts this way`; a stop line that keeps a short origin; no tint on a hand-edited both-take
 
-Status: blocked (find-and-pin 2 differs from the spec, 2026-09-25; hand-edit tint dropped, ADR-0044 @ 6bad98dc)
+Status: blocked (rung 1 does not fit whole at 187 with the pane open, 2026-09-25; see NOTES, third pass)
 From: user picks 2026-09-24 items 7 (batch 6, "shorten both") and 8 (batch 2, `no more conflicts this way`); ADR-0044
 §2 row "took both, then a hand edit"; KNOWN_GAPS M6/15 :693, M6/21 :769-770; `docs/log/m6.md:78`.
 Build with: builder-opus. Why: brownfield in two crates; three independent word/flag changes, one moving a status to a
@@ -38,6 +38,14 @@ Lane: wave 2, sixth (last build before acceptance).
 3. **Who reads the stop ladder.** `grep -rn "stop_wordings\|stop_reason\|stop_line_wordings" crates` → NOTES, one line
    each. Scout 61: `stopped_line` (`view/rows.rs:343`) reads the ladder; `operate.rs:2166/2202/2216` read `stop_reason`
    in tests. Any other draw reading rungs ≥ 1 changes words with this ticket: list it and regenerate its captures.
+
+## Decisions
+- **Notice lifetime (conductor, 2026-09-25): (a), today's lifetime.** `no more conflicts this way` stays up while `j`/`k`
+  go nowhere: it stays true, the Out list forbids a new clearing rule, and (b) would change every notice. `⏎`
+  unchanged: the notice stands while the stage is in flight and is replaced when it lands; that landing is the visible
+  answer. Pin: `the_notice_lifetime_today` (`update/resolver/tests/cross.rs`).
+- **Hand-edit tint dropped (conductor, 2026-09-25):** ADR-0044 amended at 6bad98dc; pin
+  `a_hand_edited_both_take_reads_as_no_block_after_the_reread`.
 
 ## Scope
 **In:**
@@ -136,9 +144,10 @@ pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
 ## Acceptance (name the verifying test at tick time)
 - [x] Find-and-pin 1: the ticket stopped; pinned as observed by `a_hand_edited_both_take_reads_as_no_block_after_the_reread`
       (`tests/it/resolver/handover.rs`); the tint part dropped (ADR-0044 @ 6bad98dc).
-- [ ] Find-and-pin 2 and 3: the lines in NOTES, and (conductor, 2026-09-25) as tests.
+- [x] Find-and-pin 2 and 3: the lines in NOTES, and (conductor, 2026-09-25) as tests: `the_notice_lifetime_today`
+      (`update/resolver/tests/cross.rs`), `only_the_graph_footer_reads_the_short_stop_rungs` (`tests/it/stop_ladder_readers.rs`).
 - [ ] `n_past_the_last_block_says_no_more_conflicts_this_way`: red first, then green.
-- [ ] `a_shell_stop_keeps_a_short_origin_before_dropping_it`: red first, then green.
+- [x] `a_shell_stop_keeps_a_short_origin_before_dropping_it`: red first, then green (`update/banner/tests.rs`).
 - [ ] every test named under Touches.
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-stop-line-short-origin-187x50.txt` (a shell
       merge, 13 files conflicted, the changes pane open) and `fix-no-more-this-way-120x40.txt`.
@@ -216,4 +225,46 @@ Merged main (ADR-0044 amendment 6bad98dc). Tint scope, its signatures, Touches a
 - Helper made `pub(super)`: `staged` in `tests/words_and_c.rs` (used by the pin test).
 - Ticks: find-and-pin 1 only. Batches 2 and 6, captures, sheet, MAP.md untouched. No journey rows lowered. No
   KNOWN_GAPS row closed. Did not compact.
+
+**2026-09-25, builder (opus), third pass. Blocked: rung 1 does not fit whole at 187 with the pane open.**
+Decision above written in; pin 3 made a test; batch 6 built; stopped at Scope's "record the room, and stop".
+
+- **Pin 3, as a test:** `only_the_graph_footer_reads_the_short_stop_rungs` (`crates/graft/tests/it/stop_ladder_readers.rs`)
+  scans non-test sources of graft and graft-ui for `stop_wordings(` / `stop_line_wordings(`: exactly
+  `graft/src/update/banner/stop.rs` (the definitions) and `graft/src/view/rows.rs` (`stopped_line`, the graph footer).
+- **Batch 6, built** (`update/banner/stop.rs`): `Wording::words(origin: Origin, step: bool, count: Count)`, with
+  private enums `Origin { Full, Short, Gone }` and `Count { Full, Short, Gone }`. Rungs: (Full, step, Full) →
+  (Short, step, Short) → (Gone, step, Short) → (Gone, no step, Short) → (Gone, no step, Gone); repeats skipped.
+  Tests, red first then green: `a_shell_stop_keeps_a_short_origin_before_dropping_it`,
+  `a_previous_run_stop_keeps_a_short_origin`, `a_this_run_stop_has_no_duplicate_rung`,
+  `stop_wordings_drop_whole_parts_lowest_value_first` (re-worded), and the new monotonic
+  `every_stop_ladder_narrows_and_keeps_its_count_whole` (origin × merge/rebase-with-step × count 0, 1, 13: each rung
+  strictly narrower, the count whole or absent).
+- **The stop — measured, not inferred.** The room `stopped_row` computed (a temporary `eprintln!` in
+  `graft-ui/src/graph_screen/hints/fitting.rs:246`, reverted; driven by `capture_a_launch_into_a_shell_merge`, a
+  shell merge with 13 files conflicted):
+  - 120x40 (pane below): **columns 120, bar 61, room 56**: rung 1 (50 cells) fits; the footer reads
+    `merge in progress · from the shell · 13 conflicted · ⏎ resolve …`.
+  - **187x50 (pane beside the graph): columns 108, bar 61, room 44.** Rung 1 is 50 cells, **6 short**; the footer
+    reads rung 2, `merge in progress · 13 conflicted · ⏎ resolve …`.
+  - 160: not measured.
+  - Changing the fitting is out of scope. Options for the conductor: (a) accept rung 2 at 187 (the origin shows
+    from 120 below and in the banner's full rung); (b) a shorter bar beside the stop; (c) a shorter rung-1 wording
+    (e.g. `merge · from the shell · 13 conflicted`, 38 cells) — a words change, the user's.
+- **Pinned as observed:** `capture_a_launch_into_a_shell_merge` (`tests/it/conflict_interim/landing_shots.rs`) asserts
+  rung 1 at 120 and rung 2 at 187, with the room in its comment. `relaunch_into_a_live_conflict`
+  (`tests/it/conflict_interim.rs:896`, a previous-run merge) now expects `merge in progress · from last run` at 120.
+  Its two rebase siblings (`:1050`, `:1098`) are unchanged (`rebase still in progress`, a substring of rung 0 and of
+  the no-origin rungs; which rung they draw was not checked).
+- **Captures retaken** (`GRAFT_UPDATE_SHOTS=1`, each by its own test): `docs/shots/m6/fix-landing-b-launch-120x40.txt`
+  and `…-187x50.txt` ← `capture_a_launch_into_a_shell_merge`. m6 sheet rebuilt: 3 parts, 176 181 / 178 148 /
+  141 772 B. No earlier milestone's captures retaken.
+- **Stale, not retaken** (pty walk captures, not checked by the fast tier; they show old rung-≥1 words):
+  `m6/m6-18-launch-shell-begun-{120x40,187x50,200x50}.txt` (`m5_walk/conflict_journeys.rs:40`) and
+  `m6/m6-06-relaunch-sticky-120x40.txt` (`m5_walk/resolved_operations.rs:580`). Also the comment at
+  `m5_walk/conflict_journeys.rs:378-383` describes the old 120-col rung. For the resume.
+- MAP.md: `crates/graft/MAP.md` `stop_wordings` line updated.
+- **Not started:** batch 2 (rule 3 as a notice) and its tests/captures (`fix-no-more-this-way-120x40`, m6-08); the
+  187 capture `fix-stop-line-short-origin-187x50`. No journey rows lowered (none of this pass changes a step count).
+  No KNOWN_GAPS row closed. Did not compact.
 
