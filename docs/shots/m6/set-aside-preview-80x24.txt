@@ -1,0 +1,36 @@
+# m6/set-aside-preview-<size>.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# a_dirty_pull_rebase_is_three_keys, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `p` refused as diverged, then `r`, three files
+# edited and one of them staged.
+#  - The rebase preview box, `[ Confirm ]` offered.
+#  - Under `working tree:` the row `your edits: 3 files set aside, put back
+#    after · 1 staged comes back unstaged`. At 80 columns the staged clause
+#    may be cut; the file count may not.
+
+ graft /code/api  152 rows so far
+  ●    [origin/main] theirs                                         6m   7be74b5
+● │ ▏  ours                                                         6m   9d3d925
+●─╯    Commit 200                                                   1y   d5ae5fd
+●      Commit 199                                                   1y   13e6ab1
+●      Commit 198                                                   1y   f5055d9
+●      Commit 197                                                   1y   2cce853
+●      Commit 196                                                   1y   325da3f
+●      Commit 195                                                   1y   0722297
+●      Commit 194                                                   1y   b6a4a47
+●      Commit 193                                                   1y   60af0eb
+●      Commit 192                                                   1y   aceb8c5
+╭ Preview: rebase main onto origin/main ───────────────────────────────────────╮
+│ 1 commit replayed                                                            │
+│ main 9d3d925 → 1 new commit                                                  │
+│ working tree: 1 file updated                                                 │
+│ your edits: 3 files set aside, put back after · 1 staged comes back unstaged │
+│ no conflicts expected                                                        │
+│ undo: u takes this back                                                      │
+│ 1 lane continue outside this view                                            │
+│ git rebase --no-update-refs --no-autostash origin/main                       │
+│ ▸[ Cancel ]   [ Confirm ]                                                    │
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
+

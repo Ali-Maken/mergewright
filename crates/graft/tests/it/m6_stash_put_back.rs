@@ -64,7 +64,19 @@ pub(crate) fn cursor_to(app: &App, mut state: AppState, target: &str) -> AppStat
 pub const POP_TO_DONE: &str = "stash-pop-clash-to-done";
 pub const APPLY_TO_DONE: &str = "stash-apply-clash-to-done";
 pub const PUT_BACK: &str = "stash-clash-put-back";
-pub const JOURNEYS: [&str; 3] = [POP_TO_DONE, APPLY_TO_DONE, PUT_BACK];
+pub const JOURNEYS: [&str; 8] = [
+    POP_TO_DONE,
+    APPLY_TO_DONE,
+    PUT_BACK,
+    set_aside::PULL_REBASE,
+    set_aside::REJECTED_PUSH,
+    set_aside::SWITCH,
+    set_aside::SWITCH_CLASH,
+    set_aside::STOP_THEN_CLASH,
+];
+
+/// m6-conflicts/74: a rebase or checkout over edits sets them aside.
+mod set_aside;
 
 /// Keys the journey presses, counted as they go.
 struct Keys<'a> {

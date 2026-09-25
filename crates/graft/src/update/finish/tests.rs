@@ -577,6 +577,7 @@ fn a_refusal_keeps_the_summary_open_with_the_words() {
                 refresh: None,
                 remote: None,
                 refused: None,
+                edits_in: None,
             })),
         ),
     );

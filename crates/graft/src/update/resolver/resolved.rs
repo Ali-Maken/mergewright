@@ -151,10 +151,11 @@ fn to_next(
 /// A clash Graft recorded (`AppState::clash`, m6-conflicts/72b) ends here
 /// too (ADR-0045 §3): a **pop** or set-aside launches
 /// `Operation::DropPutBack` — its answer says `every file done ·
-/// stash@{0} dropped ✓ · u brings it back`; an **apply** runs nothing,
+/// stash@{0} dropped ✓ · u brings it back` (a set-aside's: `every file
+/// done · your edits are back ✓`); an **apply** runs nothing,
 /// `every file done · stash@{0} kept ✓`. A shell pop has no record, and
 /// closes as it always did.
-fn close_after_last(
+pub(crate) fn close_after_last(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
@@ -168,7 +169,7 @@ fn close_after_last(
         }
         let drop = graft_ops::operation::Operation::DropPutBack { stash: clash.stash };
         match crate::update::operate::launch(state, commands, drop, next_id) {
-            Ok(()) => state.clash_drop = state.operating.map(|id| (id, clash.index)),
+            Ok(()) => state.clash_drop = state.operating.map(|id| (id, clash.index, clash.why)),
             // Unreachable: the stage that brought us here has just answered,
             // and nothing else launches in the same update. Worded, never
             // dropped: the stash stays and says why.

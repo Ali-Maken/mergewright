@@ -90,6 +90,136 @@ fn aborting_a_rebase_does_not_read_as_done() {
     );
 }
 
+/// The rebase's entry, set aside around (m6-conflicts/74).
+fn set_aside(mut entry: JournalEntry) -> JournalEntry {
+    entry.put_back = Some(graft_core::journal::PutBack {
+        stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+        why: graft_core::journal::PutBackWhy::SetAside,
+    });
+    entry
+}
+
+/// m6-conflicts/74: `a y` on a rebase that stopped with edits set aside;
+/// the abort and the put-back both went through. 68's aborted wording,
+/// extended: `aborted: rebase … ✓ · your edits are back`.
+#[test]
+fn aborting_a_stopped_rebase_says_your_edits_are_back() {
+    let (state, commands) = keys(
+        stopped(InProgress::Rebase, &[]),
+        &[KeyCode::Char('a'), KeyCode::Char('y')],
+    );
+    let (id, how) = sent_resume(&commands);
+    assert_eq!(how, Resume::Abort);
+    let mut done = applied(
+        OperationKind::Rebase,
+        "rebase main onto origin/main",
+        aborted("aborted"),
+    );
+    done.entry = set_aside(done.entry);
+    let state = answer(&state, id, Operated::Done(done));
+    assert_eq!(
+        state.status,
+        Status::done_with_keys(
+            "aborted: rebase main onto origin/main",
+            "your edits are back"
+        )
+    );
+    let row = bottom_row(&state, 120, 40);
+    assert!(
+        row.contains("aborted: rebase main onto origin/main \u{2713} \u{b7} your edits are back"),
+        "{row:?}"
+    );
+    // The `c` that finishes it says the same after its own words.
+    assert_eq!(
+        resumed_words(
+            &Resume::Continue,
+            &set_aside(entry(
+                OperationKind::Rebase,
+                "rebase main onto origin/main",
+                EntryStatus::Committed,
+            )),
+        ),
+        Status::done_with_keys("rebase main onto origin/main", "your edits are back")
+    );
+}
+
+/// m6-conflicts/74, review 72+72b m8: `c` finishes a stopped rebase and
+/// the put-back after it clashes — `resumed`'s `Clashed` arm. The
+/// operation is over (no stop), the clash is recorded, and the resolver
+/// opens on the clashed file with the set-aside's notice.
+#[test]
+fn a_continue_whose_put_back_clashes_lands_on_the_clash() {
+    let mut before = stopped(InProgress::Rebase, &[]);
+    before.stopped = Some(stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 0));
+    let (state, commands) = keys(before, &[KeyCode::Char('c')]);
+    let (id, how) = sent_resume(&commands);
+    assert_eq!(how, Resume::Continue);
+    let state = answer(
+        &state,
+        id,
+        Operated::Clashed {
+            entry: graft_core::journal::EntryId::new(1, [0; 10]),
+            clash: graft_ops::clash::Clash {
+                stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+                why: graft_core::journal::PutBackWhy::SetAside,
+                paths: vec![std::path::PathBuf::from("notes.md")],
+            },
+        },
+    );
+    assert!(state.stopped.is_none(), "the rebase is over");
+    assert!(state.clash.is_some(), "the clash is recorded");
+    let open = state.resolver.as_ref().expect("landed in the resolver");
+    assert_eq!(open.path, std::path::PathBuf::from("notes.md"));
+    assert_eq!(
+        open.notice.as_ref().map(|(words, _)| words.as_str()),
+        Some("your edits clashed in 1 file \u{b7} esc, u undoes the rebase too")
+    );
+}
+
+/// Review 72+72b m8: `kept_open`'s `Clashed` arm. `resumed` reaches
+/// `kept_open` only when the finish summary's refusal test says the answer
+/// is a refusal, and `finish::answers::refusal` says `None` for every
+/// `Clashed` — a merge (the summary's one kind) sets nothing aside — so
+/// the arm is reached here directly: it re-reads everything and leaves the
+/// status quiet.
+#[test]
+fn kept_open_rereads_everything_after_a_clash() {
+    let mut state = stopped(InProgress::Rebase, &[]);
+    state.status = Status::Busy("continuing".to_owned());
+    let mut next = {
+        let mut at = 200u64;
+        move || {
+            at += 1;
+            JobId::new(at)
+        }
+    };
+    let commands = crate::update::banner::kept_open(
+        &mut state,
+        Operated::Clashed {
+            entry: graft_core::journal::EntryId::new(1, [0; 10]),
+            clash: graft_ops::clash::Clash {
+                stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+                why: graft_core::journal::PutBackWhy::SetAside,
+                paths: vec![std::path::PathBuf::from("notes.md")],
+            },
+        },
+        &mut next,
+    );
+    assert_eq!(state.status, Status::Ready);
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadWorkingTree(..))),
+        "{commands:?}"
+    );
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadRefs(..))),
+        "{commands:?}"
+    );
+}
+
 /// The table in the ticket, one row each.
 #[test]
 #[allow(

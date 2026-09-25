@@ -733,21 +733,21 @@ pub fn resumed(
         } => {
             state.live_entries = vec![entry];
             stopped_again(state, kind, paths.len(), stalled.as_deref());
-            let mut commands = super::operate::refresh_scope(
-                state,
-                graft_ops::apply::Refresh::Everything,
-                next_id,
-            );
+            let everything = graft_ops::apply::Refresh::Everything;
+            let mut commands = super::operate::refresh_scope(state, everything, next_id);
             land_in_resolver(state, &mut commands, &paths, next_id);
             commands
         }
-        // The operation finished and a stash put back after it clashed
-        // (ADR-0045 §4's set-aside, m6-conflicts/74): the operation is over,
-        // the clash is the stash landing's (m6-conflicts/72b).
+        // Over, but its set-aside clashed putting back (ADR-0045 §4, m6-conflicts/74).
         crate::jobs::operate::Operated::Clashed { entry, clash } => {
             super::undo::operation_ended(state);
             super::clash::clashed(state, None, entry, &clash, next_id)
         }
+        crate::jobs::operate::Operated::Failed {
+            edits_in: Some(at),
+            refresh,
+            ..
+        } => edits_left_aside(state, at, refresh, next_id),
         crate::jobs::operate::Operated::Failed {
             error,
             refresh,
@@ -767,6 +767,23 @@ pub fn resumed(
                 None => Vec::new(),
             }
         }
+    }
+}
+
+/// `resumed`'s answer when the rebase closed — continued or aborted — and
+/// the edits set aside around it could not be put back (m6-conflicts/74):
+/// the operation is over, and the line says where the edits are.
+fn edits_left_aside(
+    state: &mut AppState,
+    at: usize,
+    refresh: Option<graft_ops::apply::Refresh>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    super::undo::operation_ended(state);
+    state.status = super::operate::edits_in_status(at);
+    match refresh {
+        Some(what) => super::operate::refresh_scope(state, what, next_id),
+        None => Vec::new(),
     }
 }
 
@@ -821,7 +838,14 @@ fn closing(how: &Resume, entry: &graft_core::journal::JournalEntry) -> Closing {
 #[must_use]
 pub(crate) fn resumed_words(how: &Resume, entry: &graft_core::journal::JournalEntry) -> Status {
     match closing(how, entry) {
-        Closing::Finished(what) => Status::done(what),
+        // A rebase that set edits aside put them back as it closed: a
+        // closing answer means they came back clean, and the line says so
+        // after the tick — `aborted: rebase … ✓ · your edits are back`
+        // (m6-conflicts/74). Nothing after it for any other entry.
+        Closing::Finished(what) => Status::Done {
+            what,
+            keys: super::clash::edits_back(entry).map(str::to_owned),
+        },
         Closing::Unfinished(reason) => Status::sticky(reason),
     }
 }

@@ -99,6 +99,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("t", "picked"),    // the same, in a cherry-pick
     ("t", "reverting"), // the same, in a revert
     ("t", "stashed"),   // the same, after a stash pop
+    ("t", "set aside"), // the same, edits set aside clashing (m6-conflicts/74)
     ("b", "both"),      // the same, `Take::Both`
     // `Ctrl+O`/`Ctrl+T`, every open block (m6-conflicts/16): `take_all_key`.
     ("⌃O/⌃T", "all"),

@@ -20,6 +20,9 @@ pub enum SideRoles {
     Revert,
     /// A stash pop: `yours` / `stashed`.
     StashPop,
+    /// Edits set aside around a rebase or switch, clashing as they come
+    /// back (ADR-0045 §4): `yours` / `set aside` (m6-conflicts/74).
+    SetAside,
 }
 
 impl SideRoles {
@@ -28,9 +31,11 @@ impl SideRoles {
     pub const fn ours(self) -> &'static str {
         match self {
             SideRoles::Rebase => "upstream",
-            SideRoles::Merge | SideRoles::CherryPick | SideRoles::Revert | SideRoles::StashPop => {
-                "yours"
-            }
+            SideRoles::Merge
+            | SideRoles::CherryPick
+            | SideRoles::Revert
+            | SideRoles::StashPop
+            | SideRoles::SetAside => "yours",
         }
     }
 
@@ -43,6 +48,7 @@ impl SideRoles {
             SideRoles::CherryPick => "picked",
             SideRoles::Revert => "reverting",
             SideRoles::StashPop => "stashed",
+            SideRoles::SetAside => "set aside",
         }
     }
 }
@@ -99,4 +105,15 @@ pub fn number_width(doc: &DocView) -> usize {
         .max()
         .unwrap_or(0);
     widest.max(1).to_string().len()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SideRoles;
+
+    #[test]
+    fn set_aside_roles_name_the_panes_yours_and_set_aside() {
+        assert_eq!(SideRoles::SetAside.ours(), "yours");
+        assert_eq!(SideRoles::SetAside.theirs(), "set aside");
+    }
 }

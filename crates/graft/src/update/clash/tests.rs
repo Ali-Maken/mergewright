@@ -540,7 +540,7 @@ fn the_close_words() {
         }
     );
     assert_eq!(
-        dropped_status(Some(0)),
+        dropped_status(Some(0), PutBackWhy::Pop),
         Status::Done {
             what: "every file done \u{b7} stash@{0} dropped".to_owned(),
             keys: Some("u brings it back".to_owned()),
@@ -548,4 +548,146 @@ fn the_close_words() {
     );
     assert!(drops(PutBackWhy::Pop) && drops(PutBackWhy::SetAside));
     assert!(!drops(PutBackWhy::Apply));
+}
+
+/// A set-aside's clash (m6-conflicts/74), as `clashed` records it after
+/// `launched`.
+fn set_aside_clash(state: &mut AppState, launched: Option<&Operation>, files: usize) {
+    let mut next = ids();
+    let clash = Clash {
+        stash: oid(STASH),
+        why: PutBackWhy::SetAside,
+        paths: (0..files)
+            .map(|at| PathBuf::from(format!("file{at}.md")))
+            .collect(),
+    };
+    clashed(state, launched, EntryId::new(7, [7; 10]), &clash, &mut next);
+}
+
+fn a_checkout() -> Operation {
+    Operation::Checkout(graft_ops::operation::CheckoutParams {
+        to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/fix".to_owned()),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+    })
+}
+
+/// m6-conflicts/74: a put-back that clashes lands in the resolver with the
+/// set-aside's names — `yours · main` | `set aside · your edits`, bar roles
+/// `yours`/`set aside` — and the notice names the edits and what `u` takes
+/// back with them: the switch after a checkout, the rebase otherwise.
+#[test]
+fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
+    let mut state = AppState {
+        refs: Some(Arc::new(refs_with_stash())),
+        ..AppState::default()
+    };
+    set_aside_clash(&mut state, Some(&a_checkout()), 1);
+
+    let open = state.resolver.as_ref().expect("landed in the resolver");
+    assert_eq!(open.path, PathBuf::from("file0.md"));
+    assert_eq!(
+        open.notice.as_ref().map(|(words, _)| words.as_str()),
+        Some("your edits clashed in 1 file \u{b7} esc, u undoes the switch too")
+    );
+    let names = crate::update::resolver::side_names(&state);
+    assert_eq!(
+        names.roles,
+        graft_ui::conflict_resolver::SideRoles::SetAside
+    );
+    assert_eq!(names.ours.as_str(), "yours \u{b7} main");
+    assert_eq!(names.theirs.as_str(), "set aside \u{b7} your edits");
+    assert_eq!(
+        format!("o {}  t {}", names.roles.ours(), names.roles.theirs()),
+        "o yours  t set aside"
+    );
+
+    // After a `c` that finished a stopped rebase there is no launched op:
+    // the rebase is what `u` takes back.
+    let mut resumed = AppState::default();
+    set_aside_clash(&mut resumed, None, 2);
+    assert_eq!(
+        resumed
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.as_str()),
+        Some("your edits clashed in 2 files \u{b7} esc, u undoes the rebase too")
+    );
+    // A pop's words are unchanged.
+    assert_eq!(
+        notice_words(Some(0), 2, None),
+        "stash@{0} clashed in 2 files \u{b7} esc, u puts it all back"
+    );
+}
+
+/// The stop line while a set-aside's clash is open and the resolver shut:
+/// `your edits clashed · 1 file conflicted`; the count goes, then all but
+/// `your edits clashed`. The stash is never named.
+#[test]
+fn a_put_back_clash_stop_line_says_your_edits() {
+    let mut clash = ClashState {
+        clash: StashClash {
+            entry: EntryId::new(7, [7; 10]),
+            stash: oid(STASH),
+            index: Some(0),
+            why: PutBackWhy::SetAside,
+        },
+        origin: LiveOrigin::ThisRun,
+    };
+    assert_eq!(
+        stop_wordings(&clash, 1).wordings,
+        [
+            "your edits clashed \u{b7} 1 file conflicted",
+            "your edits clashed \u{b7} 1 conflicted",
+            "your edits clashed",
+        ]
+    );
+    clash.origin = LiveOrigin::PreviousRun;
+    assert_eq!(
+        stop_wordings(&clash, 2).wordings,
+        [
+            "your edits clash from last run \u{b7} 2 files conflicted",
+            "your edits clashed \u{b7} 2 conflicted",
+            "your edits clashed",
+        ]
+    );
+    assert!(stop_wordings(&clash, 2).before_keys);
+}
+
+/// The drop after a set-aside's last file answered: `every file done ·
+/// your edits are back ✓` — the stash is not named, he never named it.
+#[test]
+fn a_put_back_clash_done_says_your_edits_are_back() {
+    assert_eq!(
+        dropped_status(Some(0), PutBackWhy::SetAside),
+        Status::Done {
+            what: "every file done \u{b7} your edits are back".to_owned(),
+            keys: None,
+        }
+    );
+    // Through the close: the last file done launches the drop, and its
+    // answer is worded as the set-aside's end.
+    let mut state = AppState {
+        refs: Some(Arc::new(refs_with_stash())),
+        ..AppState::default()
+    };
+    set_aside_clash(&mut state, Some(&a_checkout()), 1);
+    let mut commands = Vec::new();
+    let mut next = ids();
+    crate::update::resolver::close_after_last(&mut state, &mut commands, &mut next);
+    let id = state.operating.expect("the drop is running");
+    let applied = graft_ops::apply::Applied {
+        entry: pop_entry(),
+        refresh: graft_ops::apply::Refresh::Everything,
+        step_backup: None,
+        replaced: graft_ops::undo::Replaced::default(),
+    };
+    crate::update::operate::operated(&mut state, id, Operated::Done(applied), &mut next);
+    assert_eq!(
+        state.status,
+        Status::Done {
+            what: "every file done \u{b7} your edits are back".to_owned(),
+            keys: None,
+        }
+    );
 }

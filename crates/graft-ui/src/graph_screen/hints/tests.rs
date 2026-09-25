@@ -1453,6 +1453,7 @@ fn resolver_verbs_are_role_words() {
         SideRoles::CherryPick,
         SideRoles::Revert,
         SideRoles::StashPop,
+        SideRoles::SetAside,
     ] {
         for word in [roles.ours(), roles.theirs()] {
             assert_eq!(super::short_form(word), None, "{word} has a short form");

@@ -204,13 +204,14 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
 /// `base`/`restart` combinations of a document, a whole-file card and a done
 /// file (whose lists read neither flag, so one form covers each) — each under
 /// every [`SideRoles`]. Each once more with `finishable` (m6-conflicts/31),
-/// except under [`SideRoles::StashPop`]: a stash pop has no operation to
-/// finish, so no `c`.
+/// except under [`SideRoles::StashPop`] and [`SideRoles::SetAside`]: a
+/// stash put back has no operation to finish, so no `c`.
 fn resolver_forms() -> Vec<HintContext> {
     ALL_ROLES
         .iter()
         .flat_map(|&roles| {
-            let finishables: &[bool] = if roles == SideRoles::StashPop {
+            let finishables: &[bool] = if matches!(roles, SideRoles::StashPop | SideRoles::SetAside)
+            {
                 &[false]
             } else {
                 &[false, true]
@@ -244,12 +245,13 @@ fn resolver_forms() -> Vec<HintContext> {
 }
 
 /// Every [`SideRoles`], for [`resolver_forms`].
-const ALL_ROLES: [SideRoles; 5] = [
+const ALL_ROLES: [SideRoles; 6] = [
     SideRoles::Merge,
     SideRoles::Rebase,
     SideRoles::CherryPick,
     SideRoles::Revert,
     SideRoles::StashPop,
+    SideRoles::SetAside,
 ];
 
 /// `context` wrapped in [`HintContext::Marked`], for the contexts a Mistake

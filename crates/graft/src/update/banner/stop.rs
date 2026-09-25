@@ -330,12 +330,7 @@ pub struct StopLadder {
 /// working-tree read. `None` while nothing is stopped.
 #[must_use]
 pub fn stop_line(state: &AppState) -> Option<String> {
-    let Some(stop) = state.stopped.as_ref() else {
-        return clash_wordings(state)?.wordings.into_iter().next();
-    };
-    let count = unmerged_paths(state).len();
-    let live = state.in_progress.as_ref().map(|detail| (detail, count));
-    Some(stop_reason(stop, live))
+    stop_line_wordings(state)?.wordings.into_iter().next()
 }
 
 /// [`stop_wordings`] for the stop standing in `state`, worded like
@@ -349,9 +344,33 @@ pub fn stop_line_wordings(state: &AppState) -> Option<StopLadder> {
     };
     let count = unmerged_paths(state).len();
     let live = state.in_progress.as_ref().map(|detail| (detail, count));
+    let mut wordings = stop_wordings(stop, live);
+    // A rebase that set edits aside and stopped (ADR-0045 §4,
+    // m6-conflicts/74): the fullest wording says where they are, and it is
+    // the first part to go. Added here, not on `Stop`: every other reader
+    // of the stop is unchanged.
+    if edits_aside(state)
+        && let Some(full) = wordings.first()
+    {
+        let aside = format!("{full} \u{b7} edits aside");
+        wordings.insert(0, aside);
+    }
     Some(StopLadder {
-        wordings: stop_wordings(stop, live),
+        wordings,
         before_keys: false,
+    })
+}
+
+/// A live entry — the stop's, `Pending` — set edits aside and waits to put
+/// them back (`JournalEntry::put_back`, read off the journal as last read).
+fn edits_aside(state: &AppState) -> bool {
+    let crate::update::detail::Loading::Ready(read) = &state.journal.entries else {
+        return false;
+    };
+    read.entries.iter().any(|entry| {
+        state.live_entries.contains(&entry.id)
+            && entry.status == graft_core::journal::EntryStatus::Pending
+            && crate::update::clash::set_aside_entry(entry)
     })
 }
 

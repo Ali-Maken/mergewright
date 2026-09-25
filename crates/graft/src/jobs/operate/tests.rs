@@ -85,6 +85,45 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
     }
 }
 
+/// m6-conflicts/74: a checkout that set edits aside failed, and its set-aside
+/// copy is still listed — `edits_in` is its position now. The same failure
+/// with the copy gone (the edits came back), a failure that set nothing
+/// aside, or a stash list that could not be read: `None`, and the error's
+/// own words (which name the stash) stand.
+#[test]
+fn a_kept_set_aside_is_found_by_its_commit() {
+    let stash = graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes");
+    let other = graft_core::oid::Oid::from_bytes(&[0x11; 20]).expect("20 bytes");
+    let aside = || {
+        let mut failed = failed_checkout(None);
+        if let ApplyError::Git { entry, .. } = &mut failed {
+            entry.put_back = Some(graft_core::journal::PutBack {
+                stash,
+                why: graft_core::journal::PutBackWhy::SetAside,
+            });
+        }
+        Err(failed)
+    };
+    let listed = |list: Vec<(graft_core::oid::Oid, usize)>| {
+        move || Ok::<_, graft_git::stash::StashError>(list)
+    };
+    assert_eq!(
+        edits_kept_in(&aside(), listed(vec![(other, 0), (stash, 1)])),
+        Some(1)
+    );
+    assert_eq!(edits_kept_in(&aside(), listed(vec![(other, 0)])), None);
+    assert_eq!(
+        edits_kept_in(&Err(failed_checkout(None)), listed(vec![(stash, 0)])),
+        None
+    );
+    assert_eq!(
+        edits_kept_in(&aside(), || Err(graft_git::stash::StashError::Reflog(
+            "unreadable".to_owned()
+        ))),
+        None
+    );
+}
+
 /// Review m10 (m6-conflicts/80): refs are not `HEAD`. `git switch` moves
 /// `HEAD` and then fails on its `post-checkout` hook
 /// (`graft-ops/tests/it/checkout_hook_fails.rs` shows it on a real

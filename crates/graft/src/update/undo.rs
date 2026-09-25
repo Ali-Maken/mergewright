@@ -621,7 +621,31 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
                 && !undone.contains(&entry.id)
                 && !state.live_entries.contains(&entry.id)
         })
-        .map(|entry| entry.description.as_str());
+        .map(|entry| {
+            // Edits set aside around it wait in the stash list (ADR-0045
+            // §5, m6-conflicts/74): named by where they are now, while
+            // they are still listed.
+            let aside = entry
+                .put_back
+                .as_ref()
+                .filter(|put_back| put_back.why == graft_core::journal::PutBackWhy::SetAside)
+                .and_then(|put_back| {
+                    state
+                        .refs
+                        .as_deref()?
+                        .stashes()
+                        .iter()
+                        .find_map(|(commit, at)| {
+                            (*commit == put_back.stash)
+                                .then(|| format!(" \u{b7} edits in stash@{{{at}}}"))
+                        })
+                })
+                // No clause when nothing was set aside, the refs are not
+                // read yet, or the stash is no longer listed: none of those
+                // is a failure, and the line is true without it.
+                .unwrap_or_default();
+            format!("{}{aside}", entry.description)
+        });
     let first = interrupted.next()?;
     let more = interrupted.count();
     let rest = if more == 0 {
@@ -1286,6 +1310,60 @@ mod tests {
 
         state.journal.notice_seen = true;
         assert_eq!(interrupted_notice(&state), None);
+    }
+
+    /// m6-conflicts/74: Graft killed mid-rebase with edits set aside; the
+    /// relaunch's interrupted line names the stash they wait in, by its
+    /// position in the list now. Once the stash is gone from the list (he
+    /// put them back), the clause goes too.
+    #[test]
+    fn relaunch_after_a_kill_names_the_stash_the_edits_are_in() {
+        let stash = graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes");
+        let other = graft_core::oid::Oid::from_bytes(&[0x11; 20]).expect("20 bytes");
+        let mut entry = torn_entry(0, "rebase main onto origin/main");
+        entry.put_back = Some(graft_core::journal::PutBack {
+            stash,
+            why: graft_core::journal::PutBackWhy::SetAside,
+        });
+        let journal = JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![entry],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+            })),
+            ..JournalState::default()
+        };
+        let with_stashes = |stashes: &[(graft_core::oid::Oid, usize)]| {
+            let main = graft_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
+                .expect("a valid ref name");
+            AppState {
+                journal: journal.clone(),
+                refs: Some(Arc::new(
+                    crate::refs::badges(
+                        &[(main.clone(), other)],
+                        &graft_git::repo::HeadState::Branch(main),
+                        &std::collections::HashMap::new(),
+                        stashes,
+                        |_, _| Err("no upstreams in this fixture".to_owned()),
+                    )
+                    .expect("badges builds from plain data"),
+                )),
+                ..AppState::default()
+            }
+        };
+
+        let listed = with_stashes(&[(other, 0), (stash, 1)]);
+        assert_eq!(
+            interrupted_notice(&listed).as_deref(),
+            Some(
+                "an operation was interrupted: rebase main onto origin/main \u{b7} edits in stash@{1} \u{b7} J to inspect"
+            )
+        );
+        let gone = with_stashes(&[(other, 0)]);
+        assert_eq!(
+            interrupted_notice(&gone).as_deref(),
+            Some("an operation was interrupted: rebase main onto origin/main \u{b7} J to inspect")
+        );
     }
 
     #[test]

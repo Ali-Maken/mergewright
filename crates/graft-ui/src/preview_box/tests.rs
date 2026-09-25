@@ -404,3 +404,72 @@ fn a_revert_preview_draws_the_old_footer() {
     assert!(!bottom.contains("y confirm"), "{bottom:?}");
     assert_eq!(footer_label(&view, 200), FOOTER);
 }
+
+/// m6-conflicts/74: the set-aside row's words, from the plan's counts.
+#[test]
+fn set_aside_row_words() {
+    assert_eq!(
+        set_aside_row(1, 0)[0],
+        "your edits: 1 file set aside, put back after"
+    );
+    assert_eq!(
+        set_aside_row(3, 0)[0],
+        "your edits: 3 files set aside, put back after"
+    );
+    assert_eq!(
+        set_aside_row(3, 1)[0],
+        "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged"
+    );
+    assert_eq!(
+        set_aside_row(3, 2)[0],
+        "your edits: 3 files set aside, put back after \u{b7} 2 staged come back unstaged"
+    );
+}
+
+/// Longest first, each shorter one a cut from the right: the staged clause
+/// goes first, and no wording loses the file count.
+#[test]
+fn set_aside_row_cuts_the_staged_clause_first() {
+    let rungs = set_aside_row(3, 1);
+    assert_eq!(
+        rungs,
+        vec![
+            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged"
+                .to_owned(),
+            "your edits: 3 files set aside, put back after".to_owned(),
+            "your edits: 3 files set aside".to_owned(),
+        ]
+    );
+    for pair in rungs.windows(2) {
+        assert!(pair[0].starts_with(&pair[1]), "{pair:?}");
+    }
+    // At 80 columns the whole row fits the box's text column (76 cells);
+    // at 60 the staged clause goes and the rest stays whole.
+    assert_eq!(fitting_line(&rungs, 80), rungs[0]);
+    assert_eq!(fitting_line(&rungs, 60), rungs[1]);
+    assert_eq!(fitting_line(&rungs, 40), rungs[2]);
+    // Narrower than even the last: the last, for `fit` to cut.
+    assert_eq!(fitting_line(&rungs, 20), rungs[2]);
+}
+
+/// The row drawn in a real box at 80 and 120 columns: whole at both, one
+/// row, inside the borders.
+#[test]
+fn the_set_aside_row_draws_whole_at_80_and_120() {
+    for width in [80u16, 120] {
+        let rungs = set_aside_row(3, 1);
+        let mut view = rebase_view();
+        view.lines
+            .insert(2, sanitize_line(&fitting_line(&rungs, width)));
+        let drawn = rows(&view, &theme(), width, 12);
+        let row = drawn
+            .iter()
+            .find(|row| row.contains("your edits:"))
+            .unwrap_or_else(|| panic!("no row at {width}:\n{}", drawn.join("\n")));
+        assert!(row.contains(&rungs[0]), "{width}: {row}");
+        assert!(
+            row.starts_with("│ ") && row.ends_with('│'),
+            "{width}: {row}"
+        );
+    }
+}

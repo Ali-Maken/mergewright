@@ -7,7 +7,7 @@
 //! `stopped` changes; only the stop line reads both.
 
 use graft_core::job::JobId;
-use graft_core::journal::{EntryId, PutBackWhy};
+use graft_core::journal::{EntryId, JournalEntry, PutBackWhy};
 use graft_ops::clash::{Clash, StashClash, clash_candidate, live_clash};
 use graft_ops::operation::Operation;
 use graft_term::sanitize_line;
@@ -233,7 +233,15 @@ pub(super) fn clashed(
     let Some(first) = clash.paths.first().cloned() else {
         return commands;
     };
-    let notice = notice_words(index, clash.paths.len());
+    // A set-aside's `u` takes back the operation it was set aside around:
+    // a checkout's switch, else a rebase — the one kind that also reaches
+    // here with nothing launched, from the `c` that finished it.
+    let what = match launched {
+        Some(Operation::Checkout(_)) => "switch",
+        _ => "rebase",
+    };
+    let undoes = (clash.why == PutBackWhy::SetAside).then_some(what);
+    let notice = notice_words(index, clash.paths.len(), undoes);
     if super::resolver::land_on_clash(state, &mut commands, first, next_id) {
         super::resolver::set_notice(state, (notice, false));
     } else {
@@ -264,13 +272,20 @@ pub(crate) fn stash_name(state: &AppState) -> Option<String> {
 }
 
 /// The landing's notice: `stash@{0} clashed in 2 files · esc, u puts it all
-/// back`.
-fn notice_words(index: Option<usize>, files: usize) -> String {
+/// back`. A set-aside's names the edits and the operation `u` undoes with
+/// them (`undoes`: `rebase`, `switch`): `your edits clashed in 2 files ·
+/// esc, u undoes the rebase too` (m6-conflicts/74).
+fn notice_words(index: Option<usize>, files: usize, undoes: Option<&str>) -> String {
     let noun = if files == 1 { "file" } else { "files" };
-    format!(
-        "{} clashed in {files} {noun} \u{b7} esc, u puts it all back",
-        stash_words(index)
-    )
+    match undoes {
+        Some(what) => {
+            format!("your edits clashed in {files} {noun} \u{b7} esc, u undoes the {what} too")
+        }
+        None => format!(
+            "{} clashed in {files} {noun} \u{b7} esc, u puts it all back",
+            stash_words(index)
+        ),
+    }
 }
 
 /// The stop line's wordings while a clash is open and nothing is stopped,
@@ -281,7 +296,14 @@ fn notice_words(index: Option<usize>, files: usize) -> String {
 /// `stash@{0} clash from last run · 1 file conflicted`.
 #[must_use]
 pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> StopLadder {
-    let name = stash_words(clash.clash.index);
+    // A set-aside's clash is `your edits`, never the stash he never named
+    // (m6-conflicts/74); its last rung is its own name, not `stash clashed`.
+    let set_aside = clash.clash.why == PutBackWhy::SetAside;
+    let name = if set_aside {
+        "your edits".to_owned()
+    } else {
+        stash_words(clash.clash.index)
+    };
     let full_head = match clash.origin {
         LiveOrigin::PreviousRun => format!("{name} clash from last run"),
         LiveOrigin::ThisRun | LiveOrigin::OutsideGraft => format!("{name} clashed"),
@@ -298,7 +320,11 @@ pub(crate) fn stop_wordings(clash: &ClashState, conflicted: usize) -> StopLadder
         count(&full_head, true),
         count(&short_head, false),
         short_head.clone(),
-        "stash clashed".to_owned(),
+        if set_aside {
+            short_head.clone()
+        } else {
+            "stash clashed".to_owned()
+        },
     ] {
         if rungs.last() != Some(&words) {
             rungs.push(words);
@@ -324,13 +350,52 @@ pub(crate) fn kept_status(index: Option<usize>) -> Status {
 }
 
 /// The `DropPutBack` the close launched answered `Done`:
-/// `every file done · stash@{0} dropped ✓ · u brings it back`.
+/// `every file done · stash@{0} dropped ✓ · u brings it back`. A
+/// set-aside's: `every file done · your edits are back ✓` — the stash is
+/// not named, he never named it (m6-conflicts/74).
 #[must_use]
-pub(crate) fn dropped_status(index: Option<usize>) -> Status {
-    Status::Done {
-        what: format!("every file done \u{b7} {} dropped", stash_words(index)),
-        keys: Some("u brings it back".to_owned()),
+pub(crate) fn dropped_status(index: Option<usize>, why: PutBackWhy) -> Status {
+    match why {
+        PutBackWhy::SetAside => Status::Done {
+            what: "every file done \u{b7} your edits are back".to_owned(),
+            keys: None,
+        },
+        PutBackWhy::Pop | PutBackWhy::Apply => Status::Done {
+            what: format!("every file done \u{b7} {} dropped", stash_words(index)),
+            keys: Some("u brings it back".to_owned()),
+        },
     }
+}
+
+/// `your edits are back` for an entry that set edits aside, answered
+/// `Done`: the put-back ran clean and the set-aside copy is dropped
+/// (ADR-0045 §4). `None` for every other entry, so a clean-tree rebase's
+/// line is unchanged (m6-conflicts/74). Drawn after the tick
+/// (`Status::Done::keys`): `rebase main onto origin/main ✓ · your edits
+/// are back`. The one place the clause is worded: the op's own done line
+/// and a stopped rebase's close both take it from here.
+#[must_use]
+pub(crate) fn edits_back(entry: &JournalEntry) -> Option<&'static str> {
+    set_aside_entry(entry).then_some("your edits are back")
+}
+
+/// `entry` set edits aside around its operation (ADR-0045 §4).
+#[must_use]
+pub(crate) fn set_aside_entry(entry: &JournalEntry) -> bool {
+    entry
+        .put_back
+        .as_ref()
+        .is_some_and(|put_back| put_back.why == PutBackWhy::SetAside)
+}
+
+/// The clash standing is a set-aside's (m6-conflicts/74): its names and
+/// words are `your edits`, never the stash.
+#[must_use]
+pub(crate) fn set_aside(state: &AppState) -> bool {
+    state
+        .clash
+        .as_ref()
+        .is_some_and(|clash| clash.clash.why == PutBackWhy::SetAside)
 }
 
 /// Whether finishing this clash drops its stash: a pop or a set-aside does,

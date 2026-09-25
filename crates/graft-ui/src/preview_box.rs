@@ -313,5 +313,45 @@ impl Widget for &PreviewBoxWidget<'_> {
     }
 }
 
+/// The set-aside row a rebase or checkout over a dirty tree adds under
+/// `working tree:` (m6-conflicts/74; ADR-0045 §4): `files` tracked files
+/// set aside, `staged` of them staged. Wordings longest first, each a cut
+/// from the right of the one before — the staged clause goes first, and
+/// the file count never goes. [`fitting_line`] picks one for a width.
+///
+/// Counts, not `graft_ops::operation::SetAside`: `ui` does not depend on
+/// `ops` (ARCHITECTURE.md crate rules).
+#[must_use]
+pub fn set_aside_row(files: usize, staged: usize) -> Vec<String> {
+    let head = format!(
+        "your edits: {} set aside",
+        crate::stash_screen::files_label(files)
+    );
+    let after = format!("{head}, put back after");
+    let mut rungs = Vec::with_capacity(3);
+    if staged > 0 {
+        let verb = if staged == 1 { "comes" } else { "come" };
+        rungs.push(format!(
+            "{after} \u{b7} {staged} staged {verb} back unstaged"
+        ));
+    }
+    rungs.push(after);
+    rungs.push(head);
+    rungs
+}
+
+/// The longest of `wordings` (longest first) that fits the box's text
+/// column at `width` columns — the borders and their one-cell gutters
+/// taken off. When none fits, the last, which the row's own `fit` then
+/// cuts from the right; no wordings at all is an empty row.
+#[must_use]
+pub fn fitting_line(wordings: &[String], width: u16) -> String {
+    let text = usize::from(width).saturating_sub(4);
+    match wordings.iter().find(|words| cells(words) <= text) {
+        Some(fits) => fits.clone(),
+        None => wordings.last().cloned().unwrap_or_else(String::new),
+    }
+}
+
 #[cfg(test)]
 mod tests;

@@ -1094,6 +1094,48 @@ fn r_on_a_dirty_tree_opens_the_preview() {
     );
 }
 
+/// m6-conflicts/74: a plan that sets edits aside draws one row right under
+/// `working tree:`, worded from its counts — whole at 120 columns, the
+/// staged clause gone at 60, the file count kept at both. A plan that sets
+/// nothing aside draws no such row.
+#[test]
+fn the_set_aside_row_sits_under_the_working_tree_line() {
+    let plan = PreviewPlan {
+        set_aside: Some(graft_ops::operation::SetAside {
+            files: 3,
+            staged: 1,
+        }),
+        ..a_plan()
+    };
+    let (mut state, _) = opened_over(opened_by("r"), plan);
+    for (columns, want) in [
+        (
+            120,
+            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged",
+        ),
+        (60, "your edits: 3 files set aside, put back after"),
+    ] {
+        state.size = Size { columns, rows: 40 };
+        let view = preview_box(&state).expect("a box");
+        let lines: Vec<&str> = view.lines.iter().map(SanitizedText::as_str).collect();
+        let tree = lines
+            .iter()
+            .position(|line| line.starts_with("working tree:"))
+            .expect("a working tree line");
+        assert_eq!(lines.get(tree + 1), Some(&want), "{columns}: {lines:?}");
+    }
+
+    let (clean, _) = opened_over(opened_by("r"), a_plan());
+    let view = preview_box(&clean).expect("a box");
+    assert!(
+        view.lines
+            .iter()
+            .all(|line| !line.as_str().contains("your edits")),
+        "{:?}",
+        view.lines
+    );
+}
+
 /// A merge the preview refuses by itself (`--ff-only` on diverged
 /// branches) takes the same route: the status line, not the
 /// `preview failed:` box.
@@ -1193,6 +1235,7 @@ fn the_preview_refusal_and_the_write_refusal_read_the_same() {
             refresh: None,
             remote: None,
             refused: Some(refusal),
+            edits_in: None,
         },
         &mut || JobId::new(10),
     );
