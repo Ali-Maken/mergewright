@@ -241,7 +241,7 @@ Staged (1)
 
 ================================================================================
 docs/shots/m5-ui-context-menu-verbs-160x48.txt
-what right looks like: Capture header "What right looks like": the same context menu — row's own actions first, then history verbs naming real branches (`Merge main into feature (m)`, `Rebase feature onto main (r)`, `Cherry-pick <sha7>`, `Reset feature to here, mixed`/`, hard`, `Delete branch main`), then ambient verbs, rows opaque, trailing `(key)` only where live. At 160 columns the graph's date and sha columns sit far right of the menu and stop dead at its rows, so no verb has a stray sha beside it.
+what right looks like: Capture header "What right looks like": the same context menu — `Checkout main` then `Cherry-pick <sha7>` first (since m6-conflicts/71), then the row's own actions, then the rest of the history verbs naming real branches (`Merge main into feature (m)`, `Rebase feature onto main (r)`, `Reset feature to here, mixed`/`, hard`, `Delete branch main`), then ambient verbs, rows opaque, trailing `(key)` only where live. At 160 columns the graph's date and sha columns sit far right of the menu and stop dead at its rows, so no verb has a stray sha beside it.
 ================================================================================
 
 # m5-ui-context-menu-verbs-160x48.txt: 160x48, drawn by `view::view`
@@ -264,8 +264,10 @@ what right looks like: Capture header "What right looks like": the same context 
 # What right looks like:
 #  - The menu is anchored under `main`'s row and is wide enough for its
 #    longest label, with the cursor on the first item.
-#  - The row's own actions come first (`Copy SHA (y)`, `Compare with this
-#    (x)`, `Open details (⏎)`), then the history verbs, then the ambient
+#  - `Checkout main` then `Cherry-pick <sha7>` come first (m6-conflicts/71),
+#    then `Explain` if the row is marked, then the row's own actions
+#    (`Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`),
+#    then the rest of the history verbs, then the ambient
 #    ones (`Fetch (f)` … `Undo (u)`). The menu lists every verb valid for
 #    this row at every width — it does not filter against the hint bar,
 #    because a verb you can only discover at 160 columns is the failure
@@ -301,13 +303,13 @@ what right looks like: Capture header "What right looks like": the same context 
   ◆  ⓘ [◆ feature] finish the feature                                                                                                            GF now  8d6cd28
   ●    start the feature                                                                                                                         GF 2m   52f3b96
 ● │ ▏  [main] main moves again                                                                                                                   GF 3m   45fa51d
+ Checkout main
+ Cherry-pick 45fa51d
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
- Checkout main
  Merge main into feature (m)
  Rebase feature onto main (r)
- Cherry-pick 45fa51d
  Revert 45fa51d
  Reset feature to here, mixed
  Reset feature to here, hard
@@ -348,7 +350,7 @@ what right looks like: Capture header "What right looks like": the same context 
 
 ================================================================================
 docs/shots/m5-ui-context-menu-verbs-80x24.txt
-what right looks like: Capture header "What right looks like": the context menu anchors under the clicked row, cursor on the first item, listing the row's own actions (`Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`), then history verbs naming the real branches (`Checkout main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`, `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here, mixed`/`, hard`, `Delete branch main`), then ambient verbs — never naming the checked-out branch where git would refuse it. Rows are opaque, a trailing `(key)` appears only where that key is live (`m`, `r`), and at 80 columns the menu still fits inside the graph pane.
+what right looks like: Capture header "What right looks like": the context menu anchors under the clicked row, cursor on the first item, leading with `Checkout main` then `Cherry-pick <sha7>` (since m6-conflicts/71), then the row's own actions (`Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`), then the rest of the history verbs naming the real branches (`Merge main into feature (m)`, `Rebase feature onto main (r)`, `Revert <sha7>`, `Reset feature to here, mixed`/`, hard`, `Delete branch main`), then ambient verbs — never naming the checked-out branch where git would refuse it. Rows are opaque, a trailing `(key)` appears only where that key is live (`m`, `r`), and at 80 columns the menu still fits inside the graph pane.
 ================================================================================
 
 # m5-ui-context-menu-verbs-80x24.txt: 80x24, drawn by `view::view`
@@ -371,8 +373,10 @@ what right looks like: Capture header "What right looks like": the context menu 
 # What right looks like:
 #  - The menu is anchored under `main`'s row and is wide enough for its
 #    longest label, with the cursor on the first item.
-#  - The row's own actions come first (`Copy SHA (y)`, `Compare with this
-#    (x)`, `Open details (⏎)`), then the history verbs, then the ambient
+#  - `Checkout main` then `Cherry-pick <sha7>` come first (m6-conflicts/71),
+#    then `Explain` if the row is marked, then the row's own actions
+#    (`Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`),
+#    then the rest of the history verbs, then the ambient
 #    ones (`Fetch (f)` … `Undo (u)`). The menu lists every verb valid for
 #    this row at every width — it does not filter against the hint bar,
 #    because a verb you can only discover at 160 columns is the failure
@@ -406,13 +410,13 @@ what right looks like: Capture header "What right looks like": the context menu 
   ◆  ⓘ [◆ feature] finish the feature                               now  8d6cd28
   ●    start the feature                                            2m   52f3b96
 ● │ ▏  [main] main moves again                                      3m   45fa51d
+ Checkout main
+ Cherry-pick 45fa51d
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
- Checkout main
  Merge main into feature (m)
  Rebase feature onto main (r)
- Cherry-pick 45fa51d
  Revert 45fa51d
  Reset feature to here, mixed
  Reset feature to here, hard

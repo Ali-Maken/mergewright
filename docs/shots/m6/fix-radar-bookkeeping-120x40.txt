@@ -107,10 +107,11 @@
 
  graft /code/api  152 rows so far
 ◆     ▏  [◆ main ⇄ origin] ours                                                                          GF now  0000000
+ Checkout — already on main
+ Cherry-pick 0000000
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
- Cherry-pick 0000000
  Revert 0000000
  Reset main to here, mixed
  Reset main to here, hard
@@ -118,7 +119,6 @@
  Pull (p)
  Push (P)
  Undo (u)
-●        Commit 193                                                                                      GF 7y   60af0eb
 ●        Commit 192                                                                                      GF 7y   aceb8c5
 ●        Commit 191                                                                                      GF 7y   11d68ff
 ●        Commit 190                                                                                      GF 7y   91900bd

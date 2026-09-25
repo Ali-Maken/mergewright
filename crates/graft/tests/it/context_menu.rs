@@ -619,8 +619,10 @@ fn context_menu_claims(columns: u16) -> String {
         "# What right looks like:\n\
              #  - The menu is anchored under `main`'s row and is wide enough for its\n\
              #    longest label, with the cursor on the first item.\n\
-             #  - The row's own actions come first (`Copy SHA (y)`, `Compare with this\n\
-             #    (x)`, `Open details (\u{23ce})`), then the history verbs, then the ambient\n\
+             #  - `Checkout main` then `Cherry-pick <sha7>` come first (m6-conflicts/71),\n\
+             #    then `Explain` if the row is marked, then the row's own actions\n\
+             #    (`Copy SHA (y)`, `Compare with this (x)`, `Open details (\u{23ce})`),\n\
+             #    then the rest of the history verbs, then the ambient\n\
              #    ones (`Fetch (f)` \u{2026} `Undo (u)`). The menu lists every verb valid for\n\
              #    this row at every width \u{2014} it does not filter against the hint bar,\n\
              #    because a verb you can only discover at 160 columns is the failure\n\

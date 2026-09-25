@@ -48,7 +48,11 @@ pub(super) const WORKING_TREE_ROW: usize = usize::MAX;
 /// with at least one finding lists `Explain`.
 pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
     let mut marked = false;
-    let mut verbs = Vec::new();
+    let mut slots = verbs::Slots {
+        verbs: Vec::new(),
+        leading: 0,
+        dim_first: None,
+    };
     if let Some(entry) = next
         .history
         .as_ref()
@@ -63,14 +67,14 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
         // dropped keys still work, and a verb that cannot say which branch it
         // moves is one this menu is better off not offering.
         if let Some(refs) = next.refs.as_deref() {
-            verbs = verbs::history_verbs(id, &parents, &subject, refs, &findings);
+            slots = verbs::history_slots(id, &parents, &subject, refs, &findings);
         }
     }
-    let labels = verbs.iter().map(|verb| verb.label.clone()).collect();
+    let labels = slots.verbs.iter().map(|verb| verb.label.clone()).collect();
     next.context_menu = Some(OpenMenu {
         row,
-        menu: ContextMenu::for_row(marked, labels),
-        verbs,
+        menu: ContextMenu::for_row(marked, labels, slots.leading, slots.dim_first),
+        verbs: slots.verbs,
     });
 }
 
@@ -275,7 +279,15 @@ pub fn apply_context_action(
             };
             preview_history_verb(state, chosen, next_id)
         }
+        ContextAction::Unavailable => unavailable(),
     }
+}
+
+/// The dim slot is always drawn disabled: `Enter` and a click answer with
+/// its reason before dispatch, so reaching here is a routing bug.
+fn unavailable() -> Vec<Command> {
+    debug_assert!(false, "the dim slot was dispatched");
+    Vec::new()
 }
 
 /// The commit an action acts on. `CopySha`, `CompareWithThis` and `Explain`
