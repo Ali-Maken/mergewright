@@ -1,18 +1,25 @@
 # set-aside-around-rebase-and-switch: a rebase or checkout on a dirty tree sets the edits aside and puts them back, one entry
 
 Status: ready
-Blocked by: 72
+Blocked by: 72, 72b
 From: pick 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :25); review N4, second half (`docs/reviews/m6-usability-final.md`
 :158-160).
 Build with: (conductor, after the scout; planner: the Fable candidate — a git write whose inverse must be proven, a wrong
 step order loses edits and no diff shows it; design note "Genuinely risky")
 Scout: `.scratch/m6-conflicts/scouts/set-aside-around-rebase-and-switch.md` — brief below.
-Needs: E `stash-clash-lands-on-the-resolver` (`PutBack`, `PutBackWhy::SetAside`, `PendingLine::put_back`,
-`ApplyError::Clashed`, `Clash`, `live_clash`); 67 (`plan` runs `check` first).
+Needs: 72 (`PutBack`, `PutBackWhy::SetAside`, `PendingLine::put_back`, `ApplyError::Clashed`, `Clash`, `live_clash`,
+`DropPutBack`); 72b merged (its `Clashed` arm and `refresh_clash` receive a set-aside clash with no change here);
+67 (`plan` runs `check` first).
 Crates: graft-ops (operation check, apply sequence, resume, recover, inverse, preview plan); graft-git only if the scout
-finds no `stash create` / `stash store` / `stash apply <commit>` wrapper; graft **tests only**: the one update test 67
-wrote that this ticket's `check` change flips (below). No other graft file.
-Group: **F1**, the write. F2 `set-aside-shows-in-the-preview-and-lands` (app and words) follows it.
+finds no `stash create` / `stash store` / `stash apply <commit>` wrapper; graft **tests only**: 67's app test for `r` on a
+dirty tree, which this ticket's `check` change flips (below). No other graft file.
+Group: **F1**, the write. 74 (app and words) follows it.
+
+## Amended 2026-09-25 (planner, after scout 72)
+- E split into 72 (ops) and 72b (app). The ops shapes this ticket uses are 72's, unchanged. A set-aside clash is
+  answered `Clashed { why: SetAside }` from inside Rebase/Checkout's own apply (step 6), not from 72's stash failure
+  branch; the entry it writes (`index_before` merged, `index_after` unmerged, `put_back` set) is what 72b's
+  `refresh_clash` → `live_clash` finds. The app lands it through 72b with stash words until 74 rewords them.
 
 ## Read first
 - `docs/adr/0045-stash-put-back-is-recorded-and-one-entry.md` — all of it. §4–§7 are this ticket's spec.
@@ -23,7 +30,7 @@ Group: **F1**, the write. F2 `set-aside-shows-in-the-preview-and-lands` (app and
   :103-116 (inverse, `InversePlan` pins, `RepoStateNow`), :161-179 (apply, resume, `recover_interrupted`), :198-212
   (`preview::plan`).
 - `crates/graft-git/MAP.md` §stash.
-- E's MAP.md entries for `PutBack`, `Clashed`, `live_clash` (merged before this).
+- 72's MAP.md entries for `PutBack`, `Clashed`, `live_clash`, the stash failure branch (the index read to copy).
 
 ## Decided (ADR-0045 — not open here)
 - **Which:** `Rebase` and `Checkout` with tracked changes. Untracked files stay; the backup covers them (ADR-0009).
@@ -40,28 +47,27 @@ Group: **F1**, the write. F2 `set-aside-shows-in-the-preview-and-lands` (app and
 - **Undo:** generic inverse + `StashDrop(S)` only when this entry's `refs/stash` moved to S. **Redo:** after-state +
   `StashStore(S)` only when the undo's `refs/stash` moved. Pending: not undoable (`a` is the way back).
 - **Recover** (killed mid-way): `recover_interrupted` closes it as today; the interrupted entry keeps `put_back`, so the
-  app can name `stash@{n}` (F2).
+  app can name `stash@{n}` (74).
 
 ## Scout brief (≤1 page, code not intent)
 1. `graft-git` stash wrappers: `create`, `store -m`, `apply <commit>`, `drop` by index; which exist, their signatures.
-2. `apply`'s shape for `Rebase` and `Checkout` (`operation/history.rs:460-501`): where `check` runs, where the snapshot and
-   `begin` happen, where the op's own commands run. Is there one place to wrap steps 1–4 before and 6 after?
+2. `apply`'s shape for `Rebase` and `Checkout` (`operation/history.rs:460-501`, `apply.rs:193-262`): where `check` runs,
+   where the snapshot and `begin` happen, where the op's own commands run. Is there one place to wrap steps 1–4 before
+   and 6 after? How `stopped_on_conflict` (`apply.rs:361-377`) sees a rebase that stops with S aside.
 3. `resume` (Continue / Skip / Abort): where a rebase finishing, being skipped to the end, or aborted returns; does it
    read the Pending line (so `put_back` is reachable after a relaunch)?
 4. `recover_interrupted` and `Journal::mark_interrupted`: do they carry the Pending line's fields onto the closed entry?
 5. `inverse` for a Committed entry whose `touches` includes `refs/stash`: what it emits today (push/pop precedent,
    m6-conflicts/07 F2); where the "refs/stash moved" test lives.
 6. The `Stop` trait: how existing tests inject a stop before a given step (list one test to copy).
-7. `preview::plan` for Rebase and Checkout: where `PreviewPlan` is built and whether it already reads `status`
-   (scout 67 :15 says `read_facts` always does).
-8. Every test asserting `DirtyTree` for rebase or checkout (67's three, 67's table rows, older ones: grep), in which
-   crate.
+7. `preview::plan` for Rebase and Checkout: where `PreviewPlan` is built.
+8. Every test asserting `DirtyTree` for rebase or checkout (67's, as merged, and older ones: grep), in which crate.
 9. What `is_history` is computed from (a kind list, or the refusal set its MAP line describes).
 
 ## Scope
 **In:** `sets_aside`; `check` no longer refusing `DirtyTree` for Rebase/Checkout; the six-step sequence; resume and
 recover carrying it; inverse and redo; `PreviewPlan::set_aside`; the tests below; the flipped tests' expectations.
-**Out:** app words, landing, preview row, walks, captures (F2); `--index` on put-back (rejected, ADR); pull (above).
+**Out:** app words, landing, preview row, walks, captures (74); `--index` on put-back (rejected, ADR); pull (above).
 
 ## Signatures
 ```rust
@@ -73,7 +79,7 @@ impl Operation {
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside>;
 }
 pub struct PreviewPlan { /* … */ pub set_aside: Option<SetAside> }
-// `ApplyError::Clashed { entry, clash: Clash { why: PutBackWhy::SetAside, .. } }` — from E, unchanged.
+// `ApplyError::Clashed { entry, clash: Clash { why: PutBackWhy::SetAside, .. } }` — from 72, unchanged.
 // graft-git (only if missing; scout Q1): the wrapper names the scout finds, or
 pub fn create(repo: &RepoHandle, message: &str, stop: &dyn Stop) -> Result<Option<Oid>, RunError>; // None: nothing to set aside
 pub fn store(repo: &RepoHandle, commit: Oid, message: &str, stop: &dyn Stop) -> Result<(), RunError>;
@@ -90,7 +96,7 @@ pub fn apply_commit(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<R
   tree or in the stash list, never neither, asserted by reading both. (ADR §7, §5 table.)
 - `a_clean_put_back_drops_the_set_aside_stash` — stash list as before; entry Committed.
 - `a_clashing_put_back_is_clashed_and_keeps_the_stash` — `Clashed { why: SetAside }`, entry Committed, index unmerged,
-  S in the list; `live_clash` finds it.
+  S in the list; `live_clash` over the journal it wrote finds it.
 - `a_put_back_that_fails_without_conflict_keeps_the_stash` — an untracked file in the way: `Git`, S listed, words name
   it. (ADR §7: the index decides, not the exit code.)
 - `a_rebase_that_stops_keeps_the_edits_aside_until_it_ends` — Pending, S listed; `resume(Continue)` → put back; the
@@ -98,12 +104,12 @@ pub fn apply_commit(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<R
 - `a_refused_rebase_puts_the_edits_back_on_the_same_tip`.
 - `relaunch_after_a_kill_keeps_put_back_on_the_entry` — `recover_interrupted`; the closed entry has `put_back`.
 - `undo_after_a_clashed_put_back_drops_the_duplicate_stash`; `redo_after_that_undo_stores_it_again`.
-- **Flipped from 67** (renamed in place, never disabled):
+- **Flipped from 67** (renamed in place, never disabled; names as merged, from 67's NOTES):
   - graft-ops `a_rebase_preview_refuses_a_dirty_tree` → `a_rebase_preview_on_a_dirty_tree_says_what_is_set_aside`
     (`set_aside: Some(SetAside { files: 1, staged: 0 })`, no refusal); the same for checkout.
   - graft-ops `every_preview_refuses_exactly_what_check_refuses`: unchanged, green with the new `check`.
-  - graft `r_on_a_dirty_tree_opens_no_preview_and_says_why` → `r_on_a_dirty_tree_opens_the_preview` (the box opens;
-    no refusal status). F2 asserts the row's words; this ticket asserts only that the box opens.
+  - graft: 67's `r`-on-a-dirty-tree test → `r_on_a_dirty_tree_opens_the_preview` (the box opens; no refusal status).
+    74 asserts the row's words; this ticket asserts only that the box opens.
 
 ## Touches (each entry, and how the builder checks it)
 - **`Operation::check`** — `DirtyTree` gone for Rebase/Checkout only. Check: `grep -n "DirtyTree" crates/graft-ops/src`,
@@ -114,13 +120,12 @@ pub fn apply_commit(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<R
 - **Journal**: `put_back` written for SetAside; `pins ∋ S` keeps S past gc. Check: round-trip test reads the line.
 - **Undo / redo / drift** (m6-conflicts/07 F2, `InversePlan`): Check: the undo tests above plus the existing undo suite.
 - **`resume` / `recover_interrupted`**: Check: the stop and relaunch tests above; existing resume suite green.
-- **E's `live_clash`**: a SetAside clash must satisfy its rule (index_before merged, index_after unmerged). Check: the
-  clash test calls `live_clash` on the journal it wrote.
+- **72's `live_clash`**: a SetAside clash satisfies its rule. Check: the clash test above.
+- **72b's app routing**: a `Clashed { SetAside }` lands through `land_on_clash` with stash words until 74. Check:
+  workspace gates green at this hash; no graft source file in the diff.
 - **Radar (ticket 66)**: S lives in `refs/stash` → the allowlist already skips it. Check: 66's
   `duplicates_skip_the_stash` green.
-- **App** (`graft`): `Clashed { SetAside }` reaches E's routing with E's stash words until F2 rewords it. Check:
-  workspace gates green at this hash.
-- **67's capture** `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt`: now untrue. F2 replaces it; NOTES flags it.
+- **67's capture** `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt`: now untrue. 74 replaces it; NOTES flags it.
 - **Keymap / hint bars**: none here. **Captures**: none written here.
 - **MAP.md**: graft-ops `sets_aside`, `SetAside`, the sequence, `check`, resume/recover/inverse lines, `PreviewPlan`.
 

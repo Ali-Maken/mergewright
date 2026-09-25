@@ -1,17 +1,16 @@
 # acceptance-stash-put-back: walk picks 15–17, count every journey against the note, captures, TESTING.md
 
 Status: ready
-Blocked by: 67, 71, 72, 73, 74 (and 68–70 for the bottom row and tab words)
+Blocked by: 67, 71, 72, 72b, 73, 74 (and 68–70 for the bottom row and tab words)
 From: the acceptance update for picks 15–17 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :24-26). Promises: M6
 "a real conflict is resolvable without leaving the app" (now a stash put back by hand or by Graft); M3 "you cannot lose
 work" (edits set aside are in the tree or the stash list at every instant).
 Build with: **Fable** — the acceptance ticket (judges the pass against the note; does not count against the Fable build
 expectation).
-Needs: 67, `checkout-and-cherry-pick-lead-the-menu`, `stash-clash-lands-on-the-resolver`,
-`set-aside-around-rebase-and-switch`, `set-aside-shows-in-the-preview-and-lands`, all merged; **and** the conductor's
-doc rows (design note "Where I'd differ"): the ten journey rows in `docs/design-notes/m6-conflicts.md`'s
-`journey-counts` fence, keymap §2.1/§2.6/§2.9, the `DirtyTree` doc line, KNOWN_GAPS rows (staged-after-clash,
-fast-forward pull over overlapping edits, row 50).
+Needs: 67, 71, 72, 72b, 73, 74, all merged; **and** the conductor's doc rows (design note "Where I'd differ"): the ten
+journey rows in `docs/design-notes/m6-conflicts.md`'s `journey-counts` fence, keymap §2.1/§2.6/§2.9, the `DirtyTree`
+doc line, KNOWN_GAPS rows (staged-after-clash, fast-forward pull over overlapping edits, row 50, 71's cherry-pick
+question).
 Crates: graft (tests only), scripts, docs (TESTING.md, captions TSV). A behaviour defect found here is filed with its
 line (rule 7), not fixed.
 Scout: none; ticket 43's NOTES and 63's NOTES describe the harness and the sheet script.
@@ -21,7 +20,8 @@ Scout: none; ticket 43's NOTES and 63's NOTES describe the harness and the sheet
 - `docs/adr/0045-stash-put-back-is-recorded-and-one-entry.md` §5 (the survival table), §6.
 - Ticket 63 "Scope" and NOTES (the harness: `m5_walk::every_scenario`, `journey_counts_match_the_note`, the pty walk,
   `scripts/contact-sheet.sh`).
-- NOTES of every ticket in Needs (captures and TESTING.md rows each listed for this ticket).
+- The amendment blocks of 71, 72, 73, 74 (what changed after their scouts), and NOTES of every ticket in Needs
+  (captures and TESTING.md rows each listed for this ticket).
 - TESTING.md "Times I left" (:87-117) and "Conflict journeys", "Captures" (:2284-2386, lines as they stand).
 
 ## Scope
@@ -44,7 +44,7 @@ Scout: none; ticket 43's NOTES and 63's NOTES describe the harness and the sheet
    `m6-25-menu-fixed-slots` (`.` on a branch row). Matrix and captions TSV updated
    (`captures_are_named_keyed_and_listed_in_the_matrix`).
 5. **Contact sheet:** `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`, parts ≤ 200 000 B, this pass's
-   captures in spec order (67's `fix-rebase-refused-before-preview` is gone: F2 deleted it).
+   captures in spec order (67's `fix-rebase-refused-before-preview` is gone: 74 deleted it).
 6. **TESTING.md**, every line concrete:
    - "Conflict journeys": one row per journey above — start, keys, count, landing words, git truth. Landing words are the
      note's, e.g. `stash-pop-clash-to-done`: resolver on `notes.md`, notice `stash@{0} clashed in 1 file · esc, u puts
@@ -53,8 +53,8 @@ Scout: none; ticket 43's NOTES and 63's NOTES describe the harness and the sheet
    - "Captures": what right looks like for m6-20 … m6-25 (the words each spec's capture line gives).
    - "Times I left": the stash-pop-clash row (N3, 11 keys) → closed, naming `stash-pop-clash-to-done`; the dirty-pull row
      (N4, 16 keys) → closed, naming `rejected-push-dirty-to-pushed`.
-   - The colour paragraph: dim menu slots and resolver roles are asserted in buffer tests (named); a capture carries no
-     colour; **unverified** until he looks.
+   - The colour paragraph: the dim `Checkout — already on <b>` slot and the resolver roles are asserted in buffer tests
+     (named); a capture carries no colour; **unverified** until he looks.
    - Every row the Needs tickets' NOTES listed (`every file done` for a pop, `later milestone`, menu positions,
      `preview failed:` for a refusal) rewritten.
 7. **Perf:** the release perf run from its script to `docs/perf/acceptance-stash-put-back.txt`; summary lines only. The
