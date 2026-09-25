@@ -19,3 +19,8 @@
 
 Also approved with these: P13 (six colour tokens in PROMPT.md §5). Batch 11 (`c finish` shown right away) is superseded by P11.
 Not answered: batch 1 "does the conflict screen look right" — his words after the demo: "looks better than before". Batch 5 (next milestone) — asked again after this build.
+
+## 2026-09-25 (after the final usability walk)
+15. Stash pop that conflicts: fix in M6; resolve on the conflict screen like a merge (target ~7 keys, today 11).
+16. Pull with rebase / switch branch with unsaved edits: set them aside, do it, put them back; the preview says so; a clash putting them back lands on the conflict screen.
+17. Checkout / cherry-pick: fixed `.` menu places now; own keys and a branch picker in M7, prototyped first.
