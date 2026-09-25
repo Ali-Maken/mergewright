@@ -175,6 +175,8 @@ fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
         AppEvent::Progress(id, Progress::History(HistoryUpdate::Window(window))),
     );
     state.history.as_mut().expect("a walk").cursor = cursor;
+    // Refs read, no stash: the evil probe waits for them (m6/66).
+    state.refs = Some(Arc::new(crate::refs::RefBadges::default()));
     (state, merge_id)
 }
 
@@ -2468,6 +2470,89 @@ fn the_selected_merge_is_probed_with_the_pane_closed() {
         "the selected merge is probed: {commands:?}"
     );
     assert_eq!(next.detail.evil_at, Some(merge));
+}
+
+use super::detail::Loading as EvilLoading;
+use graft_ops::mistake_radar::probes::EvilVerdict;
+
+/// Refs naming `stash` as `stash@{0}` and nothing else.
+fn refs_with_stash(stash: Oid) -> Arc<crate::refs::RefBadges> {
+    let badges = crate::refs::badges(
+        &[],
+        &graft_git::repo::HeadState::Detached(stash),
+        &std::collections::HashMap::new(),
+        &[(stash, 0)],
+        |_, _| unreachable!("no branches to count"),
+    )
+    .expect("no refs to fail reading");
+    Arc::new(badges)
+}
+
+/// m6/66: a stash commit is a merge whose tree differs from both parents by
+/// construction, so probing it always said `EVIL MERGE`. Through
+/// `follow_selection`, not `probe_evil`: the filter is on the selection.
+/// `view::radar` draws `⚠` only when `evil_at` names the row, so `evil_at`
+/// staying `None` is what keeps the mark off.
+#[test]
+fn a_stash_commit_is_never_probed_for_an_evil_merge() {
+    let (mut state, stash) = merge_on_screen(JobId::new(41), 1);
+    state.refs = Some(refs_with_stash(stash));
+    // Even a verdict already cached for it must not surface.
+    state.detail.evil_cache.insert(
+        stash,
+        EvilVerdict::Evil {
+            files: vec![b"x".to_vec()],
+        },
+    );
+    let (next, commands) = update(&state, key(KeyCode::Char(' ')));
+    assert!(
+        !commands.iter().any(|c| matches!(c, Command::EvilProbe(..))),
+        "a stash commit is not probed: {commands:?}"
+    );
+    assert_eq!(next.detail.evil_at, None);
+    assert!(!matches!(
+        next.detail.evil,
+        EvilLoading::Ready(EvilVerdict::Evil { .. })
+    ));
+}
+
+/// m6/66: before the refs land the app cannot tell a stash from a merge,
+/// and unknown is not "not a stash" — so no probe is asked yet.
+#[test]
+fn no_evil_probe_before_the_refs_are_read() {
+    let (mut state, _) = merge_on_screen(JobId::new(41), 1);
+    state.refs = None;
+    let (next, commands) = update(&state, key(KeyCode::Char(' ')));
+    assert!(
+        !commands.iter().any(|c| matches!(c, Command::EvilProbe(..))),
+        "no probe before the refs: {commands:?}"
+    );
+    assert_eq!(next.detail.evil_at, None);
+}
+
+/// m6/66 control: a real merge, with refs read and a stash elsewhere, is
+/// still probed and carries its verdict.
+#[test]
+fn an_evil_merge_on_a_branch_is_still_marked() {
+    let (mut state, merge) = merge_on_screen(JobId::new(41), 1);
+    let elsewhere = Oid::from_bytes(&[0x77; Oid::SHA1_BYTES]).expect("20 bytes");
+    state.refs = Some(refs_with_stash(elsewhere));
+    let (next, commands) = update(&state, key(KeyCode::Char(' ')));
+    let Some(Command::EvilProbe(id, _)) = commands
+        .iter()
+        .find(|c| matches!(c, Command::EvilProbe(_, oid) if *oid == merge))
+    else {
+        panic!("the merge is probed: {commands:?}");
+    };
+    let evil = EvilVerdict::Evil {
+        files: vec![b"x".to_vec()],
+    };
+    let (marked, _) = update(
+        &next,
+        AppEvent::Produced(*id, Product::EvilProbe(merge, evil.clone())),
+    );
+    assert_eq!(marked.detail.evil_at, Some(merge));
+    assert_eq!(marked.detail.evil, EvilLoading::Ready(evil));
 }
 
 #[test]

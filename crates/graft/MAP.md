@@ -80,6 +80,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `RefBadges::remotes` (fn) — `(Oid, &[u8])` per remote-tracking branch, short name (`origin/main`): what `history::preview_seeds` colours ghost lanes from (m5/08).
 - `RefBadges::tags` (fn) — `(Oid, &[u8])` per tag, short name (`v1.2.0`): what the name prompt checks a typed tag name against, so `t` can say `exists` before it runs anything (m5-history-and-ghost-preview/10).
 - `RefBadges::stashes` (fn) — `&[(Oid, usize)]`: every stash entry's commit and index, newest first, so each one gets its own badge rather than only `stash@{0}` (m3-working-tree-undo-and-stash/06).
+- `RefBadges::is_stash` (fn) — `(id) -> bool`: whether `id` is any stash entry's own commit; `selection::follow_selection` uses it to keep stash commits away from the evil-merge probe (m6-conflicts/66).
 - `RefLabel` (enum) — one ref before sanitising: detached HEAD, branch, remote, tag, `Stash(usize)` (the entry's index, drawn `stash@{n}`; m3-working-tree-undo-and-stash/06).
 - `Upstream` (enum) — a branch against its upstream: none, in sync (remote), apart (counts).
 - `AheadBehindCache` (struct) — counts keyed by (branch tip, upstream tip), shared by refs jobs.
@@ -520,7 +521,7 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `DetailState::evil` (field) — `Loading<graft_ops::mistake_radar::probes::EvilVerdict>`: the evil-merge verdict for `evil_at`'s commit (m2-details-and-diffs/14).
 - `DetailState::evil_cache` (field) — `Bounded<Oid, EvilVerdict>` (16): verdicts already probed; never cleared by `refresh`, because a merge's tree cannot change.
 - `DetailState::evil_at` (field) — `Option<Oid>`: which commit `evil` is about; what `view::radar` matches a row against.
-- `DetailState::probe_evil` (fn) — `(&mut self, selected: Option<Oid>, &Policy, next_id) -> Vec<Command>`: idempotent, called once at the tail of every `update` (`selection::follow_selection`, which passes the selected merge whether or not the pane is open — M2 review M3, so the graph row is marked too). Nothing when nothing is selected or the evil-merge kind is off (a pending probe is cancelled); cache hit → `Ready`, miss → `Pending` + `Command::EvilProbe`.
+- `DetailState::probe_evil` (fn) — `(&mut self, selected: Option<Oid>, &Policy, next_id) -> Vec<Command>`: idempotent, called once at the tail of every `update` (`selection::follow_selection`, which passes the selected merge whether or not the pane is open — M2 review M3, so the graph row is marked too; never a stash commit, and nothing until the refs are read — m6-conflicts/66). Nothing when nothing is selected or the evil-merge kind is off (a pending probe is cancelled); cache hit → `Ready`, miss → `Pending` + `Command::EvilProbe`.
 - `DetailState::evil_probed` (fn) — stale-dropped by id; caches the verdict and shows it.
 - `DetailState::explain_requested` (field) — `Option<Oid>`: `Explain` chosen from the context menu on a marked row (`context-actions-menu`, m2-details-and-diffs/12); read and cleared by `open_explain` (m2-details-and-diffs/17).
 - `DetailState::explain` (field) — `Option<graft_ui::detail::ExplainView>`: the open Explain panel, set by `open_explain`, cleared by `close_explain`.

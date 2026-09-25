@@ -1143,6 +1143,8 @@ fn evil_merge_state() -> AppState {
             rows: 16,
         },
         radar: radar_state_with_empty_default_chain(),
+        // Read, with no stash: the evil probe waits for the refs (m6/66).
+        refs: Some(std::sync::Arc::new(crate::refs::RefBadges::default())),
         ..AppState::default()
     }
 }

@@ -26,7 +26,7 @@ use graft_fixtures::remote::{HungRemote, LocalRemote};
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame, without_invented_id};
 
-fn local() -> LocalRemote {
+pub(crate) fn local() -> LocalRemote {
     let remote =
         LocalRemote::new(Shape::Linear).expect("the Linear shape clones into a local remote");
     // Graft's own git keeps the user's config; a global `core.hooksPath`
@@ -51,7 +51,7 @@ fn local() -> LocalRemote {
 }
 
 /// Hermetic `git` in `dir` (the fixture's own runner), trimmed stdout.
-fn run(remote: &LocalRemote, dir: &Path, args: &[&str]) -> String {
+pub(crate) fn run(remote: &LocalRemote, dir: &Path, args: &[&str]) -> String {
     remote
         .git(dir, args)
         .unwrap_or_else(|why| panic!("git {args:?}: {why}"))
@@ -68,7 +68,7 @@ fn executable(path: &Path) {
     std::fs::set_permissions(path, permissions).expect("the hook can be made executable");
 }
 
-fn rev(repo: &Path, name: &str) -> String {
+pub(crate) fn rev(repo: &Path, name: &str) -> String {
     git(repo, &["rev-parse", name]).trim().to_owned()
 }
 
@@ -87,13 +87,13 @@ fn journal(repo: &Path) -> Vec<JournalEntry> {
         .to_vec()
 }
 
-fn plain(c: char) -> KeyPress {
+pub(crate) fn plain(c: char) -> KeyPress {
     KeyPress::plain(KeyCode::Char(c))
 }
 
 /// Everything `f`/`p`/`P` decide from has landed: rows, refs, the working
 /// tree, and the remote facts with no re-read in flight.
-fn ready(app: &App, state: AppState) -> AppState {
+pub(crate) fn ready(app: &App, state: AppState) -> AppState {
     app.pump(state, "the first rows, refs and remote facts", |state| {
         state.working_tree.is_some()
             && state.refs.is_some()
@@ -111,7 +111,7 @@ fn ready(app: &App, state: AppState) -> AppState {
 }
 
 /// Runs the pending write to its answer, whatever it was.
-fn finish(app: &App, state: AppState, what: &str) -> AppState {
+pub(crate) fn finish(app: &App, state: AppState, what: &str) -> AppState {
     assert!(
         state.operating.is_some(),
         "{what}: queued; status {:?}",
@@ -121,7 +121,7 @@ fn finish(app: &App, state: AppState, what: &str) -> AppState {
 }
 
 /// The box `P` opened: `→` off `Cancel`, `Enter`.
-fn confirm(app: &App, state: &AppState) -> AppState {
+pub(crate) fn confirm(app: &App, state: &AppState) -> AppState {
     assert!(
         state.confirm.is_some(),
         "P opened no box; status {:?}",
@@ -1164,7 +1164,7 @@ fn lease_box_keeps_on_y(app: &App, state: AppState) -> Vec<Vec<String>> {
 }
 
 /// `P` `→` `⏎` rejected, then `p` refused as diverged: the state `r` answers.
-fn rejected_then_diverged(app: &App, state: AppState, branch: &str) -> AppState {
+pub(crate) fn rejected_then_diverged(app: &App, state: AppState, branch: &str) -> AppState {
     let state = ready(app, state);
     let state = app.press(&state, plain('P'));
     let state = confirm(app, &state);
