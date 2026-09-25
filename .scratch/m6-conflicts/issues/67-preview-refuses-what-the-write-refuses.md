@@ -1,6 +1,6 @@
 # preview-refuses-what-the-write-refuses: no `[ Confirm ]` for an operation `check` would refuse
 
-Status: ready
+Status: done
 From: `docs/reviews/m6-usability-final.md` N4 (:146-160), the bug half. The other half (pull or switch with a dirty tree)
 is decided by pick 16: `docs/design-notes/m6-stash-put-back.md`, ADR-0045, group F `set-aside-around-rebase-and-switch`.
 Build with: **Sonnet** — one line in ops, one wording function taking the op, one answer route in the app; every
@@ -104,16 +104,20 @@ pub(crate) fn refusal_status(op: &graft_ops::Operation, refusal: &graft_ops::Ref
 - **MAP.md:** graft-ops `preview::plan` ("runs `check` first"); graft `refusal_status`, the `Refused` route.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] The four tests above, red then green.
-- [ ] `every_preview_refuses_exactly_what_check_refuses`.
-- [ ] Control: `a_merge_preview_on_a_dirty_tree_still_draws` (merge is not refused dirty, scout :11).
-- [ ] `the_preview_refusal_and_the_write_refusal_read_the_same` (same `Status` from both callers for `DirtyTree`).
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt`,
-      written by a test. **F replaces it** (the dirty-tree refusal no longer exists after F).
-  - **What right looks like:** after `p r` with one changed file: no preview box; the bottom row reads
-    `rebase needs a clean tree · S stash 1 changed file`; the graph is where it was.
-- [ ] NOTES: the pinned lists (tests turned red, capture fixtures' tree states).
-- [ ] MAP.md updated (doc, no test).
+- [x] The four tests above: ops `history_ops::a_rebase_preview_refuses_a_dirty_tree`,
+      `history_ops::a_checkout_preview_refuses_a_dirty_tree` (seen red before the `plan` line, green after);
+      app `update::preview::tests::r_on_a_dirty_tree_opens_no_preview_and_says_why`,
+      `update::preview::tests::a_refused_merge_preview_says_why_on_the_status_line` (green; "red" only by
+      construction — `PreviewFailure::Refused` did not exist before, so they could not compile against the old route,
+      which put every `Err` in the `preview failed:` box: `update/preview.rs:718-747` on `49de926e`).
+- [x] `history_ops::every_preview_refuses_exactly_what_check_refuses` (seen red before the line).
+- [x] Control: `history_ops::a_merge_preview_on_a_dirty_tree_still_draws`.
+- [x] `update::preview::tests::the_preview_refusal_and_the_write_refusal_read_the_same`.
+- [x] Capture: `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt`, written and asserted by
+      `remote_by_key::capture_fix_rebase_refused_before_preview`. Colour **unverified**. Contact sheet rebuilt
+      (3 parts, each ≤ 179 678 B); caption row added to `m6-contact-sheet-captions.tsv`.
+- [x] NOTES: below.
+- [x] MAP.md updated (doc, no test).
 
 ## For the conductor
 Journey row: none from this ticket. The dirty-tree journeys are group F's (`m6-stash-put-back.md` Journeys).
@@ -124,3 +128,30 @@ workspace-wide.
 
 ## Size
 Medium–small: one line in ops, one wording function, one answer route, a kind table, one capture. One context.
+
+## NOTES (builder, 2026-09-25)
+- Scout used: `.scratch/m6-conflicts/scouts/67.md`. No compaction.
+- **Signatures as specified.** `plan` unchanged; `refusal_status(op, refusal) -> Status` in `update/operate.rs`.
+  New: `update::preview::PreviewFailure { Refused(Refusal), Failed(String) }` — the preview job's `Err`
+  (was `String`), so the answer route can tell a refusal from a failure. `Product::Preview` carries it.
+- **Write-time caller gets the op:** `Running::op` now holds every op `launch_with` launched, not only remote
+  ones (was `op.is_remote().then(..)`). Its two readers checked: `operate::operated` now filters
+  `.filter(Operation::is_remote)` for the remote wordings; `view::credential::what_it_stops` matches only
+  Fetch/Pull/Push (a credential prompt only comes from those). `history_refusal`'s `DirtyTree` arm calls
+  `refusal_status` with it. With no op (undo/redo/time machine/banner writes) a `DirtyTree` falls to the
+  refusal's own sentence instead of the old "it needs a clean tree" — none of those launch paths is checked
+  for a clean tree today.
+- **Tests turned red by the `plan` line alone** (full workspace run): one —
+  `m5_walk::every_scenario::rebase_dirty_tree_refused_offers_stash` (now `Refused(DirtyTree{count:1})` before
+  the box; it waited for `PreviewReady` then confirmed). Not a picture pinned on purpose: it pinned the
+  refusal's words after confirm. Updated to the new journey: `r`, new `Wait::PreviewAnswered` (plan landed
+  or box closed), then "no preview box" and the same status assertions. Group F changes it again.
+- **Captures:** `grep -rln "preview failed" docs/shots` → none. The m5 preview captures
+  (`m5-01-preview-rebase-*`, `m5-02-preview-merge-*`, `m5-ui-preview-*`) are asserted byte-for-byte by
+  `crates/graft/tests/it/preview.rs` and stayed green, and `git diff` shows none changed — so their
+  fixtures pass `check`. Read `tests/it/preview.rs`: its preview fixtures only write-then-commit (`dated_commit`, `commit`), so the trees are clean; `three_to_stage` leaves untracked files but draws no preview.
+- **TESTING.md:** `grep -n "preview failed" TESTING.md` → no rows. Nothing for the acceptance ticket.
+- `grep -n "needs a clean tree" crates/graft/src` → one wording site (`operate.rs` `refusal_status`); the other
+  hit is a test's expected string. `preview failed:` → one site, the `PreviewFailure::Failed` arm.
+- Push is not in the ops table test (needs a remote; its `check` does not read the tree) — said in the test.
+- `live_refusal` pre-job gate untouched (`open_preview`); existing in-progress tests green.

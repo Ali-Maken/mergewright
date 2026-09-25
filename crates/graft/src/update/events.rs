@@ -367,7 +367,7 @@ pub enum Product {
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.
-    Preview(Result<std::sync::Arc<super::preview::Planned>, String>),
+    Preview(Result<std::sync::Arc<super::preview::Planned>, super::preview::PreviewFailure>),
     /// The journal's time machine finished, stopped part-way, or hit
     /// §6.7's drift rail (m5-history-and-ghost-preview/08). Not a plain
     /// `Result`, for [`Product::Undone`]'s reasons.

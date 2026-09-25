@@ -2418,3 +2418,144 @@ fn a_fast_forward_merge_and_the_fork_point_rule_agree() {
     run(&repo, &op, NOW);
     assert_eq!(really_changed(&before, &files_now(&repo)), drawn(&plan));
 }
+
+// ── the preview refuses what the write refuses (m6-conflicts/67) ────────
+
+/// One tracked file changed, nothing staged.
+fn dirty(repo: &TempRepo) {
+    repo.write("base.txt", b"edited, not committed\n");
+}
+
+/// A preview of a rebase on a dirty tree is refused before anything is
+/// drawn, with the same refusal `apply` would give.
+///
+/// Group F (`set-aside-around-rebase-and-switch`, ADR-0045) flips this:
+/// the edits are set aside instead, and this becomes a set-aside test.
+#[test]
+fn a_rebase_preview_refuses_a_dirty_tree() {
+    let repo = diverged();
+    repo.git(&["switch", "-q", "feature"]);
+    dirty(&repo);
+    let refused = try_preview(&repo, &rebase_op(&repo, "refs/heads/main"))
+        .expect_err("a dirty tree refuses a rebase");
+    assert!(
+        matches!(
+            refused,
+            preview::PreviewError::Refused(Refusal::DirtyTree { count: 1 })
+        ),
+        "{refused:?}"
+    );
+}
+
+/// The same for a checkout. Group F flips this too (ADR-0045).
+#[test]
+fn a_checkout_preview_refuses_a_dirty_tree() {
+    let repo = diverged();
+    dirty(&repo);
+    let op = Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+    });
+    let refused = try_preview(&repo, &op).expect_err("a dirty tree refuses a checkout");
+    assert!(
+        matches!(
+            refused,
+            preview::PreviewError::Refused(Refusal::DirtyTree { count: 1 })
+        ),
+        "{refused:?}"
+    );
+}
+
+/// Control: `check` does not refuse a merge on a dirty tree (git refuses
+/// only if the merge touches the dirty file), so its picture is still drawn.
+#[test]
+fn a_merge_preview_on_a_dirty_tree_still_draws() {
+    let repo = diverged();
+    dirty(&repo);
+    let plan = preview_of(
+        &repo,
+        &merge_op(&repo, "refs/heads/feature", FastForward::Never),
+    );
+    assert!(!plan.ghosts.is_empty(), "the merge commit is drawn");
+}
+
+/// `diverged()` with the `v0.9` tag `local_kinds` deletes.
+fn diverged_tagged() -> TempRepo {
+    let repo = diverged();
+    repo.git(&["tag", "v0.9"]);
+    repo
+}
+
+/// `plan` is `Err(Refused(r))` exactly when `check` is `Err(r)`, for every
+/// kind `plan` draws, on a clean tree and on a dirty one. Push is left out:
+/// it needs a remote, and its `check` does not read the tree.
+#[test]
+fn every_preview_refuses_exactly_what_check_refuses() {
+    for dirty_tree in [false, true] {
+        let mut cases: Vec<(TempRepo, Operation)> = Vec::new();
+
+        // One repository per operation, each built against its own ids: a
+        // tree dirtied by one case must not reach the next.
+        let kinds = local_kinds(&diverged_tagged()).len() + 1;
+        for at in 0..kinds {
+            let fresh = diverged_tagged();
+            let mut ops = local_kinds(&fresh);
+            ops.push(Operation::BranchCreate(BranchCreateParams {
+                name: "switched".to_owned(),
+                at: id(&fresh, "HEAD"),
+                checkout: true,
+            }));
+            let op = ops.swap_remove(at);
+            cases.push((fresh, op));
+        }
+
+        let rebasing = diverged();
+        rebasing.git(&["switch", "-q", "feature"]);
+        let rebase = rebase_op(&rebasing, "refs/heads/main");
+        cases.push((rebasing, rebase));
+
+        let stashed = diverged();
+        stashed.write("base.txt", b"wip\n");
+        run(
+            &stashed,
+            &Operation::StashPush(StashParams {
+                message: None,
+                scope: StashScope::All {
+                    include_untracked: false,
+                },
+            }),
+            NOW,
+        );
+        let from_stash = Operation::BranchFromStash(BranchFromStashParams {
+            name: "from-stash".to_owned(),
+            index: 0,
+            commit: id(&stashed, "refs/stash"),
+        });
+        cases.push((stashed, from_stash));
+
+        let mut refused = 0;
+        for (repo, op) in cases {
+            if dirty_tree {
+                dirty(&repo);
+            }
+            let handle = repo.open();
+            let facts = facts_for(&handle, &op);
+            let checked = op.check(&facts);
+            let planned = preview::plan(&handle, &git_version(), &op, &facts, &Never);
+            match (&checked, &planned) {
+                (Ok(()), Ok(_)) => {}
+                (Err(want), Err(preview::PreviewError::Refused(got))) => {
+                    assert_eq!(got, want, "{} (dirty: {dirty_tree})", op.describe());
+                    refused += 1;
+                }
+                _ => panic!(
+                    "{} (dirty: {dirty_tree}): check {checked:?}, plan {:?}",
+                    op.describe(),
+                    planned.as_ref().err()
+                ),
+            }
+        }
+        // The table is not vacuous: a dirty tree refuses something.
+        assert_eq!(refused > 0, dirty_tree, "refusals: {refused}");
+    }
+}

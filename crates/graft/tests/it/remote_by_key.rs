@@ -1243,3 +1243,70 @@ fn capture_fix_plain_box_after_rebase() {
     drop(state);
     app.close();
 }
+
+/// The caption of `fix-rebase-refused-before-preview-120x40.txt`
+/// (m6-conflicts/67).
+const REFUSED_BEFORE_PREVIEW_HEADER: &str = "\
+# TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
+# capture_fix_rebase_refused_before_preview in
+# crates/graft/tests/it/remote_by_key.rs (asserted). A teammate pushed; `P`
+# `→` `⏎` was rejected; `p` named the divergence; one tracked file was then
+# edited; `r` (m6-conflicts/67). Group F (ADR-0045) replaces this capture:
+# after it, a dirty tree is set aside rather than refused.
+#
+# What right looks like:
+# - No preview box: the rebase is refused before one opens.
+# - The bottom row reads `rebase needs a clean tree · S stash 1 changed file`.
+# - The graph is where it was before `r` (asserted: same top row, same cursor).
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+";
+
+/// Regenerates `docs/shots/m6/fix-rebase-refused-before-preview-120x40.txt`
+/// (m6-conflicts/67): `r` on the diverged line with a dirty tree opens no
+/// preview and says why on the status line.
+///
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it remote_by_key::capture_fix_rebase_refused_before_preview`.
+#[test]
+fn capture_fix_rebase_refused_before_preview() {
+    let remote = local();
+    let work = remote.work();
+    remote
+        .commit_on_remote("theirs")
+        .expect("a teammate's push");
+    remote.commit_locally("ours").expect("a local commit");
+    let branch = remote.default_branch();
+
+    let (app, state) = App::open(work);
+    let state = rejected_then_diverged(&app, state, branch);
+    let tracked = git(work, &["ls-files"]);
+    let first = tracked.lines().next().expect("a tracked file");
+    std::fs::write(work.join(first), b"edited, not committed\n").expect("the edit");
+
+    let state = ready(&app, state);
+    let before = state.history.as_ref().map(|it| (it.top, it.cursor));
+    let state = app.press(&state, plain('r'));
+    let state = app.pump(state, "the preview's answer", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_none_or(|preview| !matches!(preview.plan, Loading::Pending(_) | Loading::Idle))
+    });
+    assert!(state.preview.is_none(), "a preview box is open");
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "rebase needs a clean tree".to_owned(),
+            keys: Some("S stash 1 changed file".to_owned()),
+        }
+    );
+    assert_eq!(state.history.as_ref().map(|it| (it.top, it.cursor)), before);
+
+    let drawn = frame(&state, 120, 40).join("\n");
+    check_shot(
+        "m6/fix-rebase-refused-before-preview-120x40.txt",
+        &format!("{REFUSED_BEFORE_PREVIEW_HEADER}{drawn}\n"),
+    );
+    drop(state);
+    app.close();
+}

@@ -318,7 +318,9 @@ fn sha1(message: &[u8]) -> [u8; 20] {
 ///
 /// # Errors
 /// [`PreviewError`]: a `git` read failed, the repository could not be read,
-/// the caller stopped, or the operation would plainly be refused and there
+/// the caller stopped, `op.check(facts)` refused it (checked first, exactly
+/// as `apply` checks before writing), or the operation would plainly be
+/// refused and there
 /// is nothing worth drawing ([`Refusal::NotFastForward`],
 /// [`Refusal::NotOnBranch`]).
 pub fn plan(
@@ -331,6 +333,9 @@ pub fn plan(
     if stop.should_stop() {
         return Err(PreviewError::Stopped);
     }
+    // The same gate `apply` runs before it writes: a picture of a write
+    // that would be refused is not a preview (m6-conflicts/67).
+    op.check(facts).map_err(PreviewError::Refused)?;
     let mut drawn = match op {
         Operation::Merge(params) => kinds::merge(repo, git, params, stop)?,
         Operation::Rebase(params) => kinds::rebase(repo, git, params, stop)?,

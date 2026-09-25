@@ -538,9 +538,10 @@ impl Walk<'_> {
             }
             Wait::Ready => self.pump(state, "rows, refs, the tree and the journal", ready),
             Wait::PreviewReady => self.pump(state, "the preview's plan", |state| {
-                state.preview.as_ref().is_some_and(|preview| {
-                    !matches!(preview.plan, Loading::Pending(_) | Loading::Idle)
-                })
+                state.preview.as_ref().is_some_and(plan_landed)
+            }),
+            Wait::PreviewAnswered => self.pump(state, "the preview's answer", |state| {
+                state.preview.as_ref().is_none_or(plan_landed)
             }),
             Wait::ResolverLanded => {
                 self.pump(state, "the stop's landing in the resolver", resolver_landed)
@@ -765,6 +766,11 @@ pub(super) fn status_text(state: &AppState) -> String {
             keys: Some(keys),
         } => format!("{reason} · {keys}"),
     }
+}
+
+/// The open preview's job has answered with a plan or a failure.
+fn plan_landed(preview: &graft::update::preview::PreviewState) -> bool {
+    !matches!(preview.plan, Loading::Pending(_) | Loading::Idle)
 }
 
 /// The stop landed in the resolver (m6-conflicts/18) and its first read is in.

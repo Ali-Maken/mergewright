@@ -95,7 +95,10 @@ pub struct Running {
     pub id: JobId,
     /// `Operation::describe`, or `undo`/`redo`.
     pub description: String,
-    /// The operation, when it talks to a remote.
+    /// The operation launched, when it is one (`None` for undo, redo, the
+    /// time machine and the banner's writes). Remote or not: a refusal's
+    /// words take their verb from it (`operate::refusal_status`); the remote
+    /// wordings filter on [`Operation::is_remote`].
     pub op: Option<Operation>,
     /// Whether `Esc` may stop this write.
     pub stoppable: Stoppable,
