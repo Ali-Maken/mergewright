@@ -224,7 +224,7 @@ pub(super) fn draw_tab_banner(
         theme,
         || {
             graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
-                &crate::view::rows::banner_context(&banner),
+                &crate::view::rows::banner_context(state, &banner),
                 graft_ui::graph_screen::Divider::Hidden,
                 area.width,
             ))

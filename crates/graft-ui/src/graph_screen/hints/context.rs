@@ -35,6 +35,10 @@ pub enum HintContext {
         /// out rather than teaching a key that cannot act (m5-09 review,
         /// Major 2).
         conflicted: bool,
+        /// The live operation is a merge, begun in Graft or in the shell:
+        /// `c` opens the finish summary, so the bar says `c finish`
+        /// rather than `c continue` (m6-conflicts/70, n2).
+        merge: bool,
     },
     /// The Ghost Preview box has focus: its own border draws the footer,
     /// so the main footer's list is empty.
@@ -47,6 +51,10 @@ pub enum HintContext {
         /// What `c` does while an operation is live; `None` when nothing
         /// is, and `c` commits (m6-conflicts/52).
         live: Option<LiveC>,
+        /// Where one `⇥` lands from here (m6-conflicts/70): the diff from
+        /// the file list, the banner or the graph from the diff. Read off
+        /// the one reading of the cycle (`graft::update::banner::tab_target`).
+        tab: TabWord,
     },
     /// The undo journal browser has focus (overlay; draws its own footer
     /// today — reserved for the `?` help overlay, M8).
@@ -228,6 +236,33 @@ pub enum LiveC {
     /// A bisect, or a rebase, cherry-pick or revert the shell began: `c`
     /// only refuses in words, so no `c` hint.
     Refuses,
+}
+
+/// Where one `⇥` lands from the changes pane, as its hint names it
+/// (m6-conflicts/70): `⇥ diff`, `⇥ banner` or `⇥ graph`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TabWord {
+    /// The graph: from the diff with no banner drawn.
+    Graph,
+    /// The diff: from the file list.
+    Diff,
+    /// The operation banner: from the diff while an operation is live.
+    Banner,
+}
+
+impl TabWord {
+    /// Every form, for [`crate::graph_screen::hints::every_context`].
+    pub const ALL: [TabWord; 3] = [TabWord::Graph, TabWord::Diff, TabWord::Banner];
+
+    /// The hint's verb: `graph`, `diff` or `banner`.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            TabWord::Graph => "graph",
+            TabWord::Diff => "diff",
+            TabWord::Banner => "banner",
+        }
+    }
 }
 
 /// The acting button `y` confirms in a confirm box (ADR-0044 §3.1,

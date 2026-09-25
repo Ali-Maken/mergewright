@@ -896,7 +896,8 @@ fn relaunch_into_a_live_conflict() {
     stop_line_reads(
         &state,
         "merge in progress \u{b7} from last run",
-        &["\u{23ce} resolve", "c continue", "a abort"],
+        // A merge's `c` is `c finish` (m6-conflicts/70, n2).
+        &["\u{23ce} resolve", "c finish", "a abort"],
     );
     // Still open on disk: the launch read recovered nothing (as-built §1).
     assert_eq!(
@@ -1310,8 +1311,8 @@ fn the_banner_and_its_keys_are_on_the_frame_at_every_width() {
         );
         let hints = drawn
             .iter()
-            .find(|line| line.contains("c continue"))
-            .unwrap_or_else(|| panic!("no line teaches `c continue` {at}"));
+            .find(|line| line.contains("c finish"))
+            .unwrap_or_else(|| panic!("no line teaches `c finish` {at}"));
         assert!(hints.contains("a abort"), "{hints:?} {at}");
         assert!(hints.contains("⇥ graph"), "the way out {hints:?} {at}");
         assert!(
@@ -1436,7 +1437,7 @@ fn below_a_hundred_columns_the_banner_draws_above_the_tab_line() {
         "the tab line sits under it: {drawn:?}"
     );
     assert!(
-        drawn[23].contains("c continue"),
+        drawn[23].contains("c finish"),
         "and the banner's keys are the bottom row: {drawn:?}"
     );
     drop(state);
@@ -1486,7 +1487,7 @@ fn the_tab_layout_banner_costs_one_row_drawn_and_two_focused() {
     let pane_bottom = |state: &AppState| {
         frame(state, 80, 12)
             .iter()
-            .rposition(|line| !line.trim().is_empty() && !line.contains("c continue"))
+            .rposition(|line| !line.trim().is_empty() && !line.contains("a abort"))
             .expect("the pane draws something")
     };
     assert_eq!(
@@ -1787,7 +1788,7 @@ fn the_banner_and_its_keys_draw_once_on_the_graph_tab() {
         assert_eq!(banners, 1, "the banner draws once {at}");
         let key_rows = drawn
             .iter()
-            .filter(|line| line.contains("c continue"))
+            .filter(|line| line.contains("c finish"))
             .count();
         assert!(key_rows <= 1, "its keys are listed once {at}");
         if focused {
@@ -1900,3 +1901,4 @@ fn a_click_on_the_detail_tab_does_not_move_the_hidden_graph() {
 
 mod landing_shots;
 mod resume_words;
+mod tab_walk;

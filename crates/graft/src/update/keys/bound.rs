@@ -71,6 +71,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("<>", "resize"),   // `detail::keys`, while the pane is shown (ADR-0028)
     ("⇥", "graph"),     // `detail::keys`: cycles focus back to the graph
     ("⇥", "banner"),    // `banner::take_focus`: back into a live operation's banner
+    ("⇥", "diff"),      // `detail::keys`: from the file list to the diff (m6-conflicts/70)
     ("space", "stage"), // `detail::keys::changes_pane_write_key`
     ("d", "discard"),   // the same, `operate::request_discard`
     ("⌃A", "all"),      // the same, `operate::stage_all`

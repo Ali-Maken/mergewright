@@ -6,7 +6,7 @@
 #
 # Judge by eye:
 # - The row directly above the options row reads, from column 3, exactly
-#   `merge begun in the shell — esc, ⇥ banner, then c finishes it` — whole at 120 columns.
+#   `merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it` — whole at 120 columns.
 # - The options row ends at `[ Commit ]`, nothing after it.
 # - `git commit` and `…` appear nowhere in the editor's rows.
 # - The title row reads `COMMIT ── ⎇ main ── 2 files staged`.
@@ -35,7 +35,7 @@ COMMIT ── ⎇ main ── 2 files staged
 
 
 
-  merge begun in the shell — esc, ⇥ banner, then c finishes it
+  merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it
   [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
 ⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 UNCOMMITTED · 2 staged

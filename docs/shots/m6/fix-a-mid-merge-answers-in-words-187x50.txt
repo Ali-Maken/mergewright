@@ -61,4 +61,4 @@
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- merge begun in the shell · ⇥ banner, then c finishes it
+ merge begun in the shell · ⇥ ⇥ banner, then c finishes it

@@ -36,7 +36,7 @@ mod fitting;
 mod lists;
 
 pub use catalogue::{every_context, every_hint};
-pub use context::{ConfirmYes, HintContext, LiveC};
+pub use context::{ConfirmYes, HintContext, LiveC, TabWord};
 use fitting::fit_list;
 pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row};
 use lists::{TAIL, context_list};

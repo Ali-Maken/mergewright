@@ -252,6 +252,7 @@ mod tests {
         shown.hint_context = HintContext::Banner {
             skippable: false,
             conflicted: true,
+            merge: false,
         };
         assert!(
             last_row(&shown).starts_with(" merge stopped · 1 file conflicted ·"),

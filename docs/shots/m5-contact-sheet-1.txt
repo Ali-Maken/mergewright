@@ -1059,7 +1059,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 29a1432
 UNSTAGED (1)                  reading…
@@ -1180,7 +1180,7 @@ what right looks like: Capture header "Judge by eye": the changes pane is open o
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+ space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more
 
 ================================================================================
 docs/shots/m5-hints-changes-80x24.txt
@@ -1261,7 +1261,7 @@ reading…
 
 
 
- space stage  d discard  c commit  ⌃A all  e edit  ⇥ graph  . more
+ space stage  d discard  c commit  ⌃A all  e edit  ⇥ diff  . more
 
 ================================================================================
 docs/shots/m5-hints-detail-120x40.txt
@@ -2666,7 +2666,7 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 ●      Ship release 14                                                                                   GF 2h   0f8d5d6
 ●      Ship release 13                                                                                   GF 2h   78ddfac
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- merge stopped · 16 files conflicted · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · 16 files conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
 diff vs HEAD 80393eb
 CONFLICTS (16)                ▎
@@ -2806,7 +2806,7 @@ what right looks like: Capture header "What right looks like": the banner `MERGI
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- merge stopped · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · 16 conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 
 ================================================================================
 docs/shots/m5-ui-banner-conflict-80x24.txt
@@ -2908,7 +2908,7 @@ what right looks like: Capture header "What right looks like": at 80x24 the pict
 ●      Ship release 14                                              2h   0f8d5d6
 ●      Ship release 13                                              2h   78ddfac
  no commit-graph file · B build one · X never here
- merge stopped · ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph
+ merge stopped · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph
 
 ================================================================================
 docs/shots/m5-ui-banner.txt

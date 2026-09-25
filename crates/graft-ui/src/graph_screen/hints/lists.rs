@@ -1,7 +1,7 @@
 //! The design note's priority table: one list of hints per context, and
 //! [`TAIL`], what the whole screen answers after them.
 
-use super::{Hint, HintContext, LiveC, hint};
+use super::{Hint, HintContext, LiveC, TabWord, hint};
 
 mod resolver;
 
@@ -19,21 +19,18 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         HintContext::Banner {
             skippable,
             conflicted,
-        } => banner_list(*skippable, *conflicted),
-        HintContext::ChangesPane { unmerged, live } => changes_pane_list(*unmerged, *live),
+            merge,
+        } => banner_list(*skippable, *conflicted, *merge),
+        HintContext::ChangesPane {
+            unmerged,
+            live,
+            tab,
+        } => changes_pane_list(*unmerged, *live, *tab),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
-        // Keymap §2.9: `b` (branch from this stash) is named there as
-        // planned, so it is listed and not drawn.
-        HintContext::Stash => vec![
-            hint("⏎", "apply"),
-            hint("p", "pop"),
-            hint("d", "drop"),
-            hint("b", "branch"),
-            hint("esc", "close"),
-        ],
+        HintContext::Stash => stash_list(),
         // Keymap §2.3a: the Map view answers `Enter`, the movement keys and
         // `M`/`Esc`. `M` is left out for the reason the journal leaves `J`
         // out — one way of saying "close" is enough for a bar this short.
@@ -183,6 +180,18 @@ fn plain_row_list() -> Vec<Hint> {
     ]
 }
 
+/// The stash list's keys. Keymap §2.9: `b` (branch from this stash) is
+/// named there as planned, so it is listed and not drawn.
+fn stash_list() -> Vec<Hint> {
+    vec![
+        hint("⏎", "apply"),
+        hint("p", "pop"),
+        hint("d", "drop"),
+        hint("b", "branch"),
+        hint("esc", "close"),
+    ]
+}
+
 /// The banner's own keys (design note, "Banner focused"), every one of them
 /// answered by `graft::update::banner::banner_key` while the banner has
 /// focus.
@@ -193,8 +202,11 @@ fn plain_row_list() -> Vec<Hint> {
 /// while something is conflicted — with nothing unmerged they refuse in
 /// words, and a hint whose key can only say "no" is a hint that lies
 /// (m5-09 review, Major 2).
-fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
-    let mut list = vec![hint("c", "continue")];
+///
+/// On a merge `c` opens the finish summary, so it says `c finish`
+/// (m6-conflicts/70, n2).
+fn banner_list(skippable: bool, conflicted: bool, merge: bool) -> Vec<Hint> {
+    let mut list = vec![hint("c", if merge { "finish" } else { "continue" })];
     if skippable {
         list.push(hint("s", "skip"));
     }
@@ -217,8 +229,10 @@ fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
 /// (`update::operate::stage_selected`). All three bound by m6-conflicts/04.
 ///
 /// While an operation is live, `c` is said the way it acts ([`said_live`]).
-fn changes_pane_list(unmerged: bool, live: Option<LiveC>) -> Vec<Hint> {
-    let list = changes_pane_table(unmerged);
+///
+/// `⇥` names where it lands (`tab`, m6-conflicts/70).
+fn changes_pane_list(unmerged: bool, live: Option<LiveC>, tab: TabWord) -> Vec<Hint> {
+    let list = changes_pane_table(unmerged, tab);
     match live {
         Some(c) => said_live(list, c),
         None => list,
@@ -249,7 +263,7 @@ pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
         .collect()
 }
 
-fn changes_pane_table(unmerged: bool) -> Vec<Hint> {
+fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {
     if unmerged {
         vec![
             // `⏎ resolve` leads (Proposed change 2a).
@@ -258,7 +272,7 @@ fn changes_pane_table(unmerged: bool) -> Vec<Hint> {
             hint("e", "edit"),
             hint("space", "resolved"),
             hint("c", "commit"),
-            hint("⇥", "graph"),
+            hint("⇥", tab.word()),
         ]
     } else {
         vec![
@@ -267,7 +281,7 @@ fn changes_pane_table(unmerged: bool) -> Vec<Hint> {
             hint("c", "commit"),
             hint("⌃A", "all"),
             hint("e", "edit"),
-            hint("⇥", "graph"),
+            hint("⇥", tab.word()),
         ]
     }
 }

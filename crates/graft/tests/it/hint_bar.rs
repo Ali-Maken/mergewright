@@ -210,7 +210,7 @@ fn the_changes_pane_hints_the_keys_that_write() {
     // (m5/14-22 review, Minor 1), so name them: 93 cells fit the changes
     // pane's whole vocabulary, in the order the tier hands it out.
     assert_eq!(
-        beside, " space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more",
+        beside, " space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ diff  . more",
         "every key the pane answers, beside the graph"
     );
 

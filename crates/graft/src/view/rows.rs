@@ -8,7 +8,7 @@ use graft_term::{SanitizedText, sanitize_line, sanitize_path};
 use graft_ui::graph_column::RowPaint;
 use graft_ui::graph_screen::{
     BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, OrderNotice,
-    ProblemLine, SHA_WIDTH, SearchLine, WalkView, short_sha,
+    ProblemLine, SHA_WIDTH, SearchLine, TabWord, WalkView, short_sha,
 };
 use std::collections::BTreeSet;
 
@@ -398,7 +398,7 @@ pub(crate) fn footer_context(
         // own bar is what `hint_context` answers (m6-conflicts/04).
         // The finish summary likewise, over the resolver too (m6-conflicts/19).
         _ if state.resolver.is_some() || state.finish.is_some() => hint_context(state, rows),
-        Some(banner) if banner.focused => banner_context(banner),
+        Some(banner) if banner.focused => banner_context(state, banner),
         _ => live_wrapped(state, hint_context(state, rows)),
     }
 }
@@ -452,10 +452,34 @@ fn live_c(state: &AppState) -> Option<LiveC> {
 /// The hint context a focused banner puts the footer in. One function
 /// rather than two literals: the tab layout draws the banner's hints
 /// outside the graph screen (`view::frame`), and the two must not drift.
-pub(crate) fn banner_context(banner: &graft_ui::graph_screen::BannerView) -> HintContext {
+///
+/// `merge` comes from the live operation's kind, begun in Graft or in the
+/// shell: `c` opens the finish summary on both, so the bar says `c finish`
+/// (m6-conflicts/70, n2).
+pub(crate) fn banner_context(
+    state: &AppState,
+    banner: &graft_ui::graph_screen::BannerView,
+) -> HintContext {
+    use graft_git::state::InProgress;
     HintContext::Banner {
         skippable: banner.skippable,
         conflicted: banner.conflict.is_some(),
+        merge: crate::update::commit_editor::live_operation(state)
+            .is_some_and(|(kind, _)| kind == InProgress::Merge),
+    }
+}
+
+/// The changes pane's `⇥` word: where one `Tab` lands from here, read off
+/// the one reading of the cycle (`update::banner::tab_target`,
+/// m6-conflicts/70). A target the pane's bar never shows while it has
+/// focus (`Files`, or no move at all under a modal, which draws its own
+/// bar) falls to `graph`, the word the pane said before.
+fn tab_word(state: &AppState) -> TabWord {
+    use crate::update::banner::{TabTarget, tab_target};
+    match tab_target(state) {
+        Some(TabTarget::Diff) => TabWord::Diff,
+        Some(TabTarget::Banner) => TabWord::Banner,
+        Some(TabTarget::Graph | TabTarget::Files) | None => TabWord::Graph,
     }
 }
 
@@ -608,6 +632,7 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
         return HintContext::ChangesPane {
             unmerged: cursor_file_unmerged(state),
             live: live_c(state),
+            tab: tab_word(state),
         };
     }
     if state.on_working_tree {
@@ -730,6 +755,7 @@ mod tests {
             HintContext::Banner {
                 skippable: false,
                 conflicted: true,
+                merge: false,
             }
         );
     }
@@ -755,6 +781,7 @@ mod tests {
             HintContext::Banner {
                 skippable: false,
                 conflicted: false,
+                merge: false,
             }
         );
     }

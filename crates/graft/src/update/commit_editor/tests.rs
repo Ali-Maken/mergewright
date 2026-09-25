@@ -437,7 +437,8 @@ fn a_merge_in_progress_refuses_and_names_the_keys() {
     // m5-history-and-ghost-preview/15, piece 6: the refusal names the
     // banner's keys, not only the shell command ADR-0034's interim showed.
     // The banner is where a merge ends, either way, and it is two rows up.
-    assert!(refusal.contains("c continue"), "{refusal}");
+    // A merge's `c` is `c finish` (m6-conflicts/70, n2).
+    assert!(refusal.contains("c finish"), "{refusal}");
     assert!(refusal.contains("a abort"), "{refusal}");
     assert!(
         !refusal.contains("git commit"),
@@ -498,14 +499,14 @@ fn a_graft_begun_operation_names_the_banner() {
         InProgress::Revert,
     ] {
         let refusal = editor
-            .refusal(None, Some((kind, Begun::InGraft)))
+            .refusal(None, Some((kind, Begun::InGraft)), 1)
             .expect("a refusal");
         assert!(refusal.contains("esc, ⇥ banner, then "), "{refusal}");
         assert!(!refusal.contains("esc, then c"), "{refusal}");
     }
     assert_eq!(
-        editor.refusal(None, Some((InProgress::Merge, Begun::InGraft))),
-        Some("merge in progress — esc, ⇥ banner, then c continue  a abort".to_owned())
+        editor.refusal(None, Some((InProgress::Merge, Begun::InGraft)), 1),
+        Some("merge in progress — esc, ⇥ banner, then c finish  a abort".to_owned())
     );
 }
 
@@ -1003,12 +1004,12 @@ fn every_refusal_fits_80_columns() {
         InProgress::Bisect,
     ] {
         for begun in [Begun::InGraft, Begun::InShell] {
-            arms.extend(editor.refusal(Some(&empty), Some((kind, begun))));
+            arms.extend(editor.refusal(Some(&empty), Some((kind, begun)), 1));
         }
     }
-    arms.extend(editor.refusal(None, None)); // working tree not read yet
-    arms.extend(editor.refusal(Some(&empty), None)); // nothing staged
-    arms.extend(editor.refusal(Some(&with_staged), None)); // subject empty
+    arms.extend(editor.refusal(None, None, 1)); // working tree not read yet
+    arms.extend(editor.refusal(Some(&empty), None, 1)); // nothing staged
+    arms.extend(editor.refusal(Some(&with_staged), None, 1)); // subject empty
     assert_eq!(arms.len(), 13, "every arm answered: {arms:#?}");
     let widest = arms.iter().max_by_key(|words| words.width()).expect("arms");
     for words in &arms {
@@ -1044,11 +1045,12 @@ type LiveRow = (
 
 /// See [`LiveRow`].
 const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
+    // A merge's `c` opens the finish summary: `c finish` (m6-conflicts/70).
     (
         (InProgress::Merge, Begun::InGraft),
-        "merge in progress — esc, ⇥ banner, then c continue  a abort",
+        "merge in progress — esc, ⇥ banner, then c finish  a abort",
         "merge in progress",
-        GRAFT_KEYS,
+        Some("⇥ banner, then c finish  a abort"),
     ),
     (
         (InProgress::Merge, Begun::InShell),
@@ -1113,11 +1115,11 @@ fn the_editor_words_are_unchanged() {
     let editor = CommitEditor::new();
     for (live, words, _, _) in EVERY_LIVE_OPERATION {
         assert_eq!(
-            editor.refusal(None, Some(live)).as_deref(),
+            editor.refusal(None, Some(live), 1).as_deref(),
             Some(words),
             "{live:?}"
         );
-        assert_eq!(operation_refusal(live).editor_words(), words, "{live:?}");
+        assert_eq!(operation_refusal(live, 1).editor_words(), words, "{live:?}");
     }
 }
 
@@ -1127,7 +1129,7 @@ fn the_editor_words_are_unchanged() {
 fn the_pane_status_is_the_editor_words_split() {
     for (live, _, reason, keys) in EVERY_LIVE_OPERATION {
         assert_eq!(
-            operation_refusal(live).status(),
+            operation_refusal(live, 1).status(),
             Status::Sticky {
                 reason: reason.to_owned(),
                 keys: keys.map(str::to_owned)

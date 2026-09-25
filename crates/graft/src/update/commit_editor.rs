@@ -127,9 +127,11 @@ impl OperationRefusal {
 
 /// The refusal for a live operation. Finishing a merge, rebase, cherry-pick
 /// or revert Graft began is the operation banner's (keymap §2.6a); `⇥` leads
-/// there from the panes.
+/// there from the panes, and the keys name as many `⇥` as it takes from
+/// where the keyboard is (`tabs`, [`refusal_tabs`]; m6-conflicts/70).
 #[must_use]
-pub fn operation_refusal((kind, begun): (InProgress, Begun)) -> OperationRefusal {
+pub fn operation_refusal((kind, begun): (InProgress, Begun), tabs: u8) -> OperationRefusal {
+    let to_banner = crate::update::banner::tab_keys(tabs);
     let (reason, keys) = match (kind, begun) {
         // A bisect draws no banner — that is M7's — so there are no keys to
         // name and git's own command is still the way out.
@@ -146,7 +148,7 @@ pub fn operation_refusal((kind, begun): (InProgress, Begun)) -> OperationRefusal
         // (`resume_target`), so no `a abort`.
         (InProgress::Merge, Begun::InShell) => (
             "merge begun in the shell".to_owned(),
-            Some("⇥ banner, then c finishes it".to_owned()),
+            Some(format!("{to_banner}, then c finishes it")),
         ),
         // Any other begun in the shell has no entry of Graft's; the banner's
         // keys refuse it (m6-07 F12), so the way out is git's own command.
@@ -158,12 +160,31 @@ pub fn operation_refusal((kind, begun): (InProgress, Begun)) -> OperationRefusal
             ),
             None,
         ),
+        // On a merge the banner's `c` opens the finish summary, so it is
+        // named `c finish`, as the banner's own bar names it (n2).
+        (InProgress::Merge, Begun::InGraft) => (
+            format!("{} in progress", kind.name()),
+            Some(format!("{to_banner}, then c finish  a abort")),
+        ),
         (_, Begun::InGraft) => (
             format!("{} in progress", kind.name()),
-            Some("⇥ banner, then c continue  a abort".to_owned()),
+            Some(format!("{to_banner}, then c continue  a abort")),
         ),
     };
     OperationRefusal { reason, keys }
+}
+
+/// How many `⇥` a refusal names from where the keyboard is: the one
+/// reading of the cycle ([`crate::update::banner::tabs_to_banner`]). With
+/// the editor open it is the count from the pane under it, which `esc`
+/// hands the keyboard back to.
+///
+/// `None` there means no banner is drawn — a bisect, or a non-merge begun
+/// in the shell — and those arms of [`operation_refusal`] name no keys, so
+/// the `1` it falls back to is never drawn.
+#[must_use]
+pub fn refusal_tabs(state: &AppState) -> u8 {
+    crate::update::banner::tabs_to_banner(state).unwrap_or(1)
 }
 
 /// Everything the editor holds between keys.
@@ -290,11 +311,12 @@ impl CommitEditor {
         &self,
         status: Option<&WorkingTreeStatus>,
         in_progress: Option<(InProgress, Begun)>,
+        tabs: u8,
     ) -> Option<String> {
         // Finishing an operation is the banner's (m6-conflicts/39, 48);
         // the words are `operation_refusal`'s, shared with the pane.
         if let Some(live) = in_progress {
-            return Some(operation_refusal(live).editor_words());
+            return Some(operation_refusal(live, tabs).editor_words());
         }
         // An amend with nothing staged is a reword, which is allowed
         // (`Operation::check`).
@@ -366,7 +388,7 @@ pub fn open(
     // pane answers in words instead (m6-conflicts/48). Nothing is read and
     // the draft stays where `Esc` left it.
     if let Some(live) = live_operation(state) {
-        state.status = operation_refusal(live).status();
+        state.status = operation_refusal(live, refusal_tabs(state)).status();
         return Vec::new();
     }
     if amend {
@@ -401,7 +423,7 @@ pub fn head_message_arrived(state: &mut AppState, id: JobId, message: Result<Str
     // An operation became live while the read was in flight: refuse as
     // `open` would have, whatever the read said.
     if let Some(live) = live_operation(state) {
-        state.status = operation_refusal(live).status();
+        state.status = operation_refusal(live, refusal_tabs(state)).status();
         return;
     }
     match message {
@@ -773,10 +795,11 @@ fn button_key(
 fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
     let status = state.working_tree.as_deref();
     let in_progress = live_operation(state);
+    let tabs = refusal_tabs(state);
     let Some(editor) = state.commit_editor.as_ref() else {
         return Vec::new();
     };
-    if editor.refusal(status, in_progress).is_some() {
+    if editor.refusal(status, in_progress, tabs).is_some() {
         return Vec::new();
     }
     let operation = editor.operation();

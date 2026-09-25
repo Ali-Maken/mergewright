@@ -481,7 +481,7 @@ fn hints_at_80_show_three_and_more() -> Scenario {
             Step::See("the changes pane, on an unmerged file", |state| {
                 let drawn = bar(state)?;
                 let wanted =
-                    " ⏎ resolve  M mergetool  e edit  space resolved  c continue  ⇥ graph  . more";
+                    " ⏎ resolve  M mergetool  e edit  space resolved  c continue  ⇥ diff  . more";
                 check(drawn.trim_end() == wanted, || {
                     format!("the bar is {drawn:?}, not {wanted:?}")
                 })

@@ -3,7 +3,7 @@
 //! [`every_hint`]).
 
 use super::lists::{TAIL, context_list};
-use super::{ConfirmYes, EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, WAY_BACK};
+use super::{ConfirmYes, EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, TabWord, WAY_BACK};
 use crate::conflict_resolver::SideRoles;
 
 /// **Every context the footer can be put in**, every field combination, each
@@ -37,31 +37,7 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::BranchRow { current: false },
         HintContext::BranchRow { current: true },
         HintContext::PlainRow,
-        HintContext::Banner {
-            skippable: true,
-            conflicted: true,
-        },
-        HintContext::Banner {
-            skippable: false,
-            conflicted: true,
-        },
-        HintContext::Banner {
-            skippable: true,
-            conflicted: false,
-        },
-        HintContext::Banner {
-            skippable: false,
-            conflicted: false,
-        },
         HintContext::Preview,
-        HintContext::ChangesPane {
-            unmerged: false,
-            live: None,
-        },
-        HintContext::ChangesPane {
-            unmerged: true,
-            live: None,
-        },
         HintContext::Journal,
         HintContext::Stash,
         HintContext::Map,
@@ -74,6 +50,8 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::Credential,
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
+    all.extend(banner_forms());
+    all.extend(changes_pane_forms());
     all.extend(changes_pane_live_forms());
     all.extend(resolver_forms());
     all.extend(finish_forms());
@@ -91,18 +69,64 @@ pub fn every_context() -> Vec<HintContext> {
     all
 }
 
-/// Every live-operation form of [`HintContext::ChangesPane`]: each
-/// [`LiveC`] over each `unmerged`.
-fn changes_pane_live_forms() -> Vec<HintContext> {
-    [false, true]
+/// Every [`HintContext::Banner`] form a live operation can put it in: a
+/// merge is never skippable and every other kind is (m6-conflicts/70 added
+/// `merge`), each with a conflict or without.
+fn banner_forms() -> Vec<HintContext> {
+    let mut forms = Vec::new();
+    for merge in [false, true] {
+        for conflicted in [true, false] {
+            forms.push(HintContext::Banner {
+                skippable: !merge,
+                conflicted,
+                merge,
+            });
+        }
+    }
+    forms
+}
+
+/// Every [`HintContext::ChangesPane`] form with nothing live: `⇥ diff` from
+/// the file list, `⇥ graph` from the diff (no banner to go to), each over
+/// `unmerged`.
+fn changes_pane_forms() -> Vec<HintContext> {
+    [TabWord::Graph, TabWord::Diff]
         .into_iter()
-        .flat_map(|unmerged| {
-            LIVE_C.into_iter().map(move |c| HintContext::ChangesPane {
-                unmerged,
-                live: Some(c),
-            })
+        .flat_map(|tab| {
+            [false, true]
+                .into_iter()
+                .map(move |unmerged| HintContext::ChangesPane {
+                    unmerged,
+                    live: None,
+                    tab,
+                })
         })
         .collect()
+}
+
+/// Every live-operation form of [`HintContext::ChangesPane`]: each
+/// [`LiveC`] over each `unmerged`, with each `⇥` word that `c` can stand
+/// beside. `c finish`/`c continue` always have a banner, so from the diff
+/// `⇥` names it; `Refuses` is a bisect (no banner, `⇥ graph`) or a
+/// shell-begun rebase (a banner, `⇥ banner`).
+fn changes_pane_live_forms() -> Vec<HintContext> {
+    let mut forms = Vec::new();
+    for c in LIVE_C {
+        let tabs: &[TabWord] = match c {
+            LiveC::Finish | LiveC::Continue => &[TabWord::Diff, TabWord::Banner],
+            LiveC::Refuses => &[TabWord::Diff, TabWord::Banner, TabWord::Graph],
+        };
+        for &tab in tabs {
+            for unmerged in [false, true] {
+                forms.push(HintContext::ChangesPane {
+                    unmerged,
+                    live: Some(c),
+                    tab,
+                });
+            }
+        }
+    }
+    forms
 }
 
 /// Every [`LiveC`], for the forms that carry one.
