@@ -1,6 +1,6 @@
 # resolver-words-and-marks: `no more conflicts this way`; a stop line that keeps a short origin; no tint on a hand-edited both-take
 
-Status: blocked (find-and-pin 1 differs from the spec, 2026-09-25; see NOTES)
+Status: blocked (find-and-pin 2 differs from the spec, 2026-09-25; hand-edit tint dropped, ADR-0044 @ 6bad98dc)
 From: user picks 2026-09-24 items 7 (batch 6, "shorten both") and 8 (batch 2, `no more conflicts this way`); ADR-0044
 §2 row "took both, then a hand edit"; KNOWN_GAPS M6/15 :693, M6/21 :769-770; `docs/log/m6.md:78`.
 Build with: builder-opus. Why: brownfield in two crates; three independent word/flag changes, one moving a status to a
@@ -71,13 +71,14 @@ Lane: wave 2, sixth (last build before acceptance).
     width), **not** `fit_status_line`. It is not changed: first whole rung that fits, else the last cut with `…`.
   - **If rung 1 does not fit whole at 187 with the changes pane open:** record the room `stopped_row` had, and stop.
     Changing the fitting is a scope change.
-- **Took both, then a hand edit:** `DocView.hand_edited` from `Choices.edited` of the open file. When true, the result
-  rows of a `Took(Both)` block get no tint (ADR-0044 §2); separators and the yours/theirs panes as took both.
-  - Panes (≥ 180): `row_tint` (`panes/band.rs:125`, called `panes/draw.rs:123`) gets `hand_edited`.
-  - Card (< 180): `draw/block.rs:124-125` and `:163-165` tint half/half. Rows showing the **result** text of a
-    hand-edited took-both block: no tint. Rows showing a **side**: that side's tint, unchanged. NOTES says which of the
-    two each of those lines draws.
-  - Only `Took(Both)` changes; took yours / took theirs after a hand edit are unchanged (ADR-0044 §2 names only both).
+- **Took both, then a hand edit: dropped (conductor, 2026-09-25).** Pin `a_hand_edited_both_take_reads_as_no_block_after_the_reread` shows the block is gone after the re-read; ADR-0044 amended at 6bad98dc: the row never draws, nothing is built.
+~~- **Took both, then a hand edit:** `DocView.hand_edited` from `Choices.edited` of the open file. When true, the result~~
+~~  rows of a `Took(Both)` block get no tint (ADR-0044 §2); separators and the yours/theirs panes as took both.~~
+~~  - Panes (≥ 180): `row_tint` (`panes/band.rs:125`, called `panes/draw.rs:123`) gets `hand_edited`.~~
+~~  - Card (< 180): `draw/block.rs:124-125` and `:163-165` tint half/half. Rows showing the **result** text of a~~
+~~    hand-edited took-both block: no tint. Rows showing a **side**: that side's tint, unchanged. NOTES says which of the~~
+~~    two each of those lines draws.~~
+~~  - Only `Took(Both)` changes; took yours / took theirs after a hand edit are unchanged (ADR-0044 §2 names only both).~~
 
 **Out:** the 80x24 relaunch stop line (KNOWN_GAPS :772); short forms (`short-words-from-the-draft`); when `n`/`N` wrap
 or cross (P2, ticket 15); a new notice-clearing rule; the fitting; the banner's full-rung line.
@@ -97,13 +98,7 @@ pub(crate) const NO_MORE_THIS_WAY: &str = "no more conflicts this way";
 // graft/src/update/banner/stop.rs: `stop_reason`, `stop_wordings`, `stop_line_wordings` signatures unchanged.
 //   `stop_wordings` returns one more rung; `Wording::words` (private, :242-274) gains short forms for origin and count
 //   (the builder's shape; NOTES names it).
-// graft-ui/src/conflict_resolver.rs
-pub struct DocView { /* existing …, 60's `finish`, */ pub hand_edited: bool }
-// graft-ui panes/band.rs: existing parameters unchanged, `hand_edited: bool` added after `ours_len`
-fn row_tint(/* state, pane, result_row, ours_len, */ hand_edited: bool /* , theme */) -> /* unchanged */;
-// graft view: set in all three literals (view/resolver.rs:67, view/resolver/whole_file.rs:23, :67):
-//   hand_edited: state.choices.get(&open.path).is_some_and(|c| c.edited),
-//   // no entry = no choice recorded for this file = not edited; not a failure being hidden (CLAUDE.md rule 3)
+// (dropped 2026-09-25: DocView.hand_edited and row_tint(hand_edited) — ADR-0044 @ 6bad98dc)
 ```
 
 ## Touches (each entry, and how the builder checks it)
@@ -125,10 +120,10 @@ fn row_tint(/* state, pane, result_row, ours_len, */ hand_edited: bool /* , them
   - NOTES: which rung 187 (pane open), 160 and 120 draw, for shell and previous-run; KNOWN_GAPS M6/21 :769-770 is the
     conductor's to close or re-word from that.
   - Find-and-pin 3's readers; the banner row tests green.
-- **Hand edit:** `a_hand_edited_both_take_has_no_result_tint` (graft-ui buffer, panes), `…_on_the_card` (graft-ui
-  buffer, card), `doc_view_carries_hand_edited_from_choices` (graft), `a_plain_both_take_keeps_its_split` (no edit:
-  today's split, unchanged).
-- **`DocView` literals:** the three in graft, on 60's result, and every graft-ui test literal. Check: the build.
+~~- **Hand edit:** `a_hand_edited_both_take_has_no_result_tint` (graft-ui buffer, panes), `…_on_the_card` (graft-ui~~
+~~  buffer, card), `doc_view_carries_hand_edited_from_choices` (graft), `a_plain_both_take_keeps_its_split` (no edit:~~
+~~  today's split, unchanged).~~
+~~- **`DocView` literals:** the three in graft, on 60's result, and every graft-ui test literal. Check: the build.~~ (dropped with the tint)
 - **Walk:** `every_scenario::journey`; any scenario asserting the old words (60 moved `two-files-out-of-order` to the
   summary). No journey count changes.
 - **Captures:** `grep -rln "no more conflicts" docs/shots` (scout 61: `m6/m6-08-no-more-conflicts-{120x40,80x24}`),
@@ -136,11 +131,12 @@ fn row_tint(/* state, pane, result_row, ours_len, */ hand_edited: bool /* , them
   docs/shots`, then keep the graph-footer hits). Each regenerated by its own test; NOTES lists file → test. The
   contact sheet and `m6-contact-sheet-captions.tsv` are the conductor's.
 - **Docs:** `crates/graft/MAP.md` (the cross rule's words and that they are a notice; `stop_wordings`' rungs and the
-  short-count rule; :312 and :330); `crates/graft-ui/MAP.md` line 12 (`hand_edited`) and 15 (`row_tint`).
+  short-count rule; :312 and :330). ~~`crates/graft-ui/MAP.md` line 12 (`hand_edited`) and 15 (`row_tint`)~~ (dropped with the tint).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Find-and-pin 1: `a_hand_edited_both_take_still_reads_as_took_both`, green as expected, or the ticket stopped.
-- [ ] Find-and-pin 2 and 3: the lines in NOTES.
+- [x] Find-and-pin 1: the ticket stopped; pinned as observed by `a_hand_edited_both_take_reads_as_no_block_after_the_reread`
+      (`tests/it/resolver/handover.rs`); the tint part dropped (ADR-0044 @ 6bad98dc).
+- [ ] Find-and-pin 2 and 3: the lines in NOTES, and (conductor, 2026-09-25) as tests.
 - [ ] `n_past_the_last_block_says_no_more_conflicts_this_way`: red first, then green.
 - [ ] `a_shell_stop_keeps_a_short_origin_before_dropping_it`: red first, then green.
 - [ ] every test named under Touches.
@@ -149,7 +145,7 @@ fn row_tint(/* state, pane, result_row, ours_len, */ hand_edited: bool /* , them
   - **What right looks like:** the graph footer's stop part reads `merge in progress · from the shell · 13 conflicted`,
     whole, before the bar. The resolver's notice row (under the identity row) reads `no more conflicts this way`; the
     bottom row has no `no more conflicts` and contains `⏎ done`.
-  - Tint (hand edit): colour, so **unverified** by capture; the buffer tests are the evidence.
+~~  - Tint (hand edit): colour, so **unverified** by capture; the buffer tests are the evidence.~~
 - [ ] MAP.md updated (doc, no test).
 
 ## Gates
@@ -198,4 +194,26 @@ Scout 61 used; its lines re-checked against this tree (after 60, 52, 50, 51, 64)
   `stop.rs` only), the hand-edit tint (blocked above), captures, sheet, MAP.md. No journey rows lowered. No KNOWN_GAPS
   row closed.
 - Did not compact.
+
+**2026-09-25, builder (opus), second pass. Blocked at find-and-pin 2, as the conductor said. No product code changed.**
+Merged main (ADR-0044 amendment 6bad98dc). Tint scope, its signatures, Touches and acceptance rows struck above.
+
+- **Find-and-pin 2 — differs from the spec.** `blocked: j/k with no row to step to leave the notice up`.
+  - Test (pinned as observed, green): `the_notice_lifetime_today`, `crates/graft/src/update/resolver/tests/cross.rs`.
+    Fixture: every block of `three.txt` taken, an info notice on the notice row.
+  - `j`/`k` with **no row to step to** (a one-file list, tested; `k` on the first row or `j` on the last take the same no-target path, read in code, not tested): the file stays and **the
+    notice stands**. Cause in code: `update/resolver/files.rs:200-216 step_file` computes no target and does
+    nothing. Rule 3 fires exactly when no other file is left to do, so a one-file merge (the common case) is
+    precisely where `j`/`k` would leave `no more conflicts this way` up.
+  - `j`/`k` **onto another row**: fresh resolver, notice gone.
+  - A take landing: replaced by `all blocks taken · ⏎ marks three.txt done` (`take.rs:212`).
+  - `⏎`: **still up while the stage is in flight**; replaced once it lands (`resolved.rs:64-95`). Whether "gone after
+    `⏎`" means at the press or at the landing is for the conductor; today it is at the landing.
+  - The ticket's Out list forbids "a new notice-clearing rule", so making `j`/`k` at the edge clear it is a scope
+    change: conductor's call. Options: (a) accept that the words stay (they stay true: nothing changed); (b) clear
+    the notice on a `j`/`k` that goes nowhere (one line in `step_file`, touches every notice, not only rule 3).
+- **Find-and-pin 3:** not made a test yet (stopped). The readers are listed in the first pass above.
+- Helper made `pub(super)`: `staged` in `tests/words_and_c.rs` (used by the pin test).
+- Ticks: find-and-pin 1 only. Batches 2 and 6, captures, sheet, MAP.md untouched. No journey rows lowered. No
+  KNOWN_GAPS row closed. Did not compact.
 

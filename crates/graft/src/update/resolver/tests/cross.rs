@@ -167,3 +167,76 @@ fn a_cross_waits_for_the_take_in_flight() {
     assert_eq!(open_path(&state), Path::new("a"), "nothing selected");
     assert_eq!(sticky(&state).0, "still writing the last take");
 }
+
+/// Every block of `three.txt` taken, the cursor on the last, and an info
+/// notice standing, in a list of `paths` where only `three.txt` is unmerged.
+fn all_taken_with_a_notice(paths: &[&str]) -> AppState {
+    let mut file = three();
+    for block in 0..3 {
+        file.take(block, Take::Ours).expect("the block");
+    }
+    let mut state = on("three.txt", file, paths, &["three.txt"]);
+    let open = state.resolver.as_mut().expect("open");
+    open.cursor_block = Some(2);
+    open.notice = Some(("today's notice".to_owned(), false));
+    state
+}
+
+/// Find-and-pin 2 of m6-conflicts/61, pinned **as observed** (2026-09-25):
+/// how long an info notice on the resolver's notice row lives today, after
+/// `j`/`k`, a take landing and `⏎`.
+///
+/// Differs from the ticket's requirement ("after `j`/`k` … the words are
+/// gone"): `j`/`k` with no row to step to (a one-file list, or the list's
+/// edge) change nothing, so the notice stands (`files.rs:200-216
+/// step_file`: no target, no `select_file`). With a row to step to, the
+/// switch builds a fresh resolver and the notice is gone. `⏎` leaves it up
+/// while its stage is in flight; the stage landing replaces it
+/// (`resolved.rs:64-95 resolved_advance`: the next file, a reopen, or a
+/// close — which branch this fixture takes is not asserted). A take landing
+/// replaces it (`take.rs:212`).
+#[test]
+fn the_notice_lifetime_today() {
+    let one = all_taken_with_a_notice(&["three.txt"]);
+    for code in [KeyCode::Char('j'), KeyCode::Char('k')] {
+        let (after, _) = press(&one, code);
+        assert_eq!(open_path(&after), Path::new("three.txt"), "{code:?}");
+        assert_eq!(
+            notice(&after),
+            Some("today's notice"),
+            "{code:?} with nowhere to step: the notice stands"
+        );
+    }
+    let three_rows = all_taken_with_a_notice(&["a.txt", "three.txt", "z.txt"]);
+    for (code, lands_on) in [(KeyCode::Char('j'), "z.txt"), (KeyCode::Char('k'), "a.txt")] {
+        let (after, _) = press(&three_rows, code);
+        assert_eq!(open_path(&after), Path::new(lands_on), "{code:?}");
+        assert_eq!(notice(&after), None, "{code:?} onto another row: gone");
+    }
+
+    // A take landing: the all-taken words replace it.
+    let (after, commands) = press(&one, KeyCode::Char('o'));
+    let (after, _) = landed(&after, &sent(&commands)[0]);
+    assert_eq!(
+        notice(&after),
+        Some("all blocks taken · ⏎ marks three.txt done")
+    );
+
+    // `⏎`: up while the stage is in flight, gone once it lands.
+    let (pressed, _) = press(&one, KeyCode::Enter);
+    assert_eq!(notice(&pressed), Some("today's notice"), "stage in flight");
+    let id = pressed
+        .resolver
+        .as_ref()
+        .and_then(|open| open.staging)
+        .expect("`⏎` launched a stage");
+    let (landed_state, _) = update(
+        &pressed,
+        AppEvent::Produced(id, super::words_and_c::staged("three.txt")),
+    );
+    assert_ne!(
+        notice(&landed_state),
+        Some("today's notice"),
+        "the stage landed"
+    );
+}
