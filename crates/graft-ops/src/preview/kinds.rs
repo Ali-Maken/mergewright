@@ -381,7 +381,7 @@ pub(super) fn checkout(
 /// back to the branch's own entry covers a scope that named the branch
 /// instead. A scope that named neither has no tip to give, and saying
 /// "nothing changes" would be a guess.
-fn head_tip(facts: &RepoFacts) -> Option<Oid> {
+pub(super) fn head_tip(facts: &RepoFacts) -> Option<Oid> {
     if let Some(oid) = facts.refs.get("HEAD").copied().flatten() {
         return Some(oid);
     }

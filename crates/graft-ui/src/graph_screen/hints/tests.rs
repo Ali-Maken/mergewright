@@ -1447,6 +1447,9 @@ fn resolver_verbs_are_role_words() {
     };
     assert!(bar(SideRoles::Merge).starts_with(" o yours  t theirs  b both"));
     assert!(bar(SideRoles::Rebase).starts_with(" o upstream  t yours  b both"));
+    // ADR-0043 §4 amended (m6-conflicts/84): the branch, then his edits.
+    assert!(bar(SideRoles::SetAside).starts_with(" o branch  t yours  b both"));
+    assert!(bar(SideRoles::StashPop).starts_with(" o yours  t stashed  b both"));
     for roles in [
         SideRoles::Merge,
         SideRoles::Rebase,

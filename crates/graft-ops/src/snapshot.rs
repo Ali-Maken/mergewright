@@ -322,6 +322,43 @@ pub fn commit_trees(
     commit_tree(repo, joined, parents, &format!("graft {id} {label}"), stop)
 }
 
+/// `git stash create` over a temporary copy of the index, as
+/// [`index_state`] copies it: the stash commit of the tree now, or `None`
+/// when git found nothing to stash. Objects only — `stash create` refreshes
+/// the index it reads, and that is the copy, so `.git/index` is not
+/// rewritten (ADR-0045 §8, the put-back forecast).
+pub(crate) fn stash_create_on_copy(
+    repo: &RepoHandle,
+    scratch: &Path,
+    stop: &dyn Stop,
+) -> Result<Option<Oid>, SnapshotError> {
+    let temp = TempIndex::copied_from(repo, scratch)?;
+    let output = graft_git::run::GitInvocation::new(repo)
+        .env("GIT_INDEX_FILE", temp.path())
+        .arg(graft_git::run::GitArg::Flag("stash"))
+        .arg(graft_git::run::GitArg::Flag("create"))
+        .run(stop)
+        .map_err(plumbing::stopped)?;
+    let printed = String::from_utf8_lossy(&output.stdout);
+    match printed.trim() {
+        "" => Ok(None),
+        line => plumbing::oid_from(line.as_bytes(), "stash create").map(Some),
+    }
+}
+
+/// A commit over `tree` with `parents`, made with Graft's own identity and
+/// referenced by nothing: a loose object the next `gc` prunes. The put-back
+/// forecast needs its landed tree as a commit, because `merge-tree` on the
+/// oldest git it runs on (2.40) takes commits for its branches.
+pub(crate) fn scratch_commit(
+    repo: &RepoHandle,
+    tree: Oid,
+    parents: &[Oid],
+    stop: &dyn Stop,
+) -> Result<Oid, SnapshotError> {
+    commit_tree(repo, tree, parents, "graft: put-back forecast", stop)
+}
+
 /// Point an existing backup ref at another commit (the after-snapshot).
 pub fn move_backup_ref(
     repo: &RepoHandle,

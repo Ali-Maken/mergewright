@@ -744,10 +744,11 @@ pub fn resumed(
             super::clash::clashed(state, None, entry, &clash, next_id)
         }
         crate::jobs::operate::Operated::Failed {
-            edits_in: Some(at),
+            error,
+            edits: Some(at),
             refresh,
             ..
-        } => edits_left_aside(state, at, refresh, next_id),
+        } => edits_left_aside(state, &error, at, refresh, next_id),
         crate::jobs::operate::Operated::Failed {
             error,
             refresh,
@@ -771,16 +772,18 @@ pub fn resumed(
 }
 
 /// `resumed`'s answer when the rebase closed — continued or aborted — and
-/// the edits set aside around it could not be put back (m6-conflicts/74):
-/// the operation is over, and the line says where the edits are.
+/// the edits set aside around it did not come back cleanly
+/// (m6-conflicts/74, /84): the operation is over, and the line is its
+/// failure, then where `graft_ops` says the edits are.
 fn edits_left_aside(
     state: &mut AppState,
-    at: usize,
+    failure: &str,
+    at: graft_ops::EditsAt,
     refresh: Option<graft_ops::apply::Refresh>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     super::undo::operation_ended(state);
-    state.status = super::operate::edits_in_status(at);
+    state.status = super::operate::edits_status(failure, at);
     match refresh {
         Some(what) => super::operate::refresh_scope(state, what, next_id),
         None => Vec::new(),
@@ -844,7 +847,8 @@ pub(crate) fn resumed_words(how: &Resume, entry: &graft_core::journal::JournalEn
         // (m6-conflicts/74). Nothing after it for any other entry.
         Closing::Finished(what) => Status::Done {
             what,
-            keys: super::clash::edits_back(entry).map(str::to_owned),
+            also: super::clash::edits_back(entry).map(str::to_owned),
+            keys: None,
         },
         Closing::Unfinished(reason) => Status::sticky(reason),
     }
@@ -906,7 +910,13 @@ fn kept_open(
             refresh: Some(what),
             ..
         } => super::operate::refresh_scope(state, what, next_id),
-        // Wrote refs and files before it stopped: everything is stale.
+        // Unreachable from the app today, kept so the match stays whole and
+        // right if that changes: `resumed` comes here only when the finish
+        // summary's refusal test says the answer is a refusal, and
+        // `finish::answers::refusal` is `None` for every `Clashed` — the
+        // summary finishes a merge, and a set-aside never wraps a merge
+        // (review m6-final-fixes-74 m8). Were it reached: the put-back wrote
+        // refs and files before it clashed, so everything is stale.
         crate::jobs::operate::Operated::Clashed { .. } => {
             super::operate::refresh_scope(state, graft_ops::apply::Refresh::Everything, next_id)
         }

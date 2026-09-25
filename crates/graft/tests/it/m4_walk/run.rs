@@ -370,17 +370,13 @@ pub(super) fn status_text(state: &AppState) -> String {
     match &state.status {
         Status::Ready => String::new(),
         Status::Copied { short } => format!("copied {short}"),
-        Status::Failed(text)
-        | Status::Busy(text)
-        | Status::Waiting(text)
-        | Status::Done {
-            what: text,
-            keys: None,
-        } => text.clone(),
-        Status::Done {
-            what,
-            keys: Some(keys),
-        } => format!("{what} · {keys}"),
+        Status::Failed(text) | Status::Busy(text) | Status::Waiting(text) => text.clone(),
+        Status::Done { what, also, keys } => [Some(what), also.as_ref(), keys.as_ref()]
+            .into_iter()
+            .flatten()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(" · "),
         Status::Sticky { reason, keys: None } => reason.clone(),
         Status::Sticky {
             reason,

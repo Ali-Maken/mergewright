@@ -62,10 +62,14 @@ pub enum ApplyError {
         /// The entry, with whatever after-state could be read. Boxed: an
         /// entry is much larger than every other variant.
         entry: Box<JournalEntry>,
-        /// What `git` said.
+        /// What `git` said. When `edits` is `Some`, only git's own failure:
+        /// where the edits are is `edits`, worded by the caller.
         error: RunError,
         /// A backup exists, so `u` can put the repository back.
         recoverable: bool,
+        /// Where a set-aside's edits are, when the entry set edits aside and
+        /// did not end in a clean put-back or a clash (ADR-0045 §5 amended).
+        edits: Option<EditsAt>,
     },
     /// The caller asked to stop.
     #[error("stopped")]
@@ -126,6 +130,52 @@ pub enum ApplyError {
         /// What git said.
         error: RunError,
     },
+}
+
+/// Where a set-aside's edits are when the entry did not end in a clean
+/// put-back or a clash (ADR-0045 §5 amended, m6-conflicts/84). Decided here,
+/// where it is known whether the put-back ran; the app words it and reads no
+/// stash list to guess.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EditsAt {
+    /// Not in the tree; the copy is listed at `n`. `S p` puts them back.
+    Stash {
+        /// The copy's position in the stash list, read by commit id.
+        n: usize,
+    },
+    /// Back in the tree; a copy stays listed at `n`, or was not found to
+    /// drop (`None`).
+    Back {
+        /// The copy's position, when it was found.
+        copy: Option<usize>,
+    },
+    /// Stored, then the reset (ADR-0045 §4 step 4) failed or stopped: the
+    /// entry's backup has them.
+    Backup {
+        /// The copy's position, when the list could be read.
+        copy: Option<usize>,
+    },
+}
+
+impl EditsAt {
+    /// Where the edits are, in `graft-ops`' own words (no keys): the tail
+    /// [`ApplyError::explain`] adds.
+    #[must_use]
+    pub fn words(&self) -> String {
+        match self {
+            EditsAt::Stash { n } => format!("your edits are in stash@{{{n}}}"),
+            EditsAt::Back { copy: Some(n) } => {
+                format!("your edits are back · a copy stays in stash@{{{n}}}")
+            }
+            EditsAt::Back { copy: None } => {
+                "your edits are back · a copy may still be in the stash list".to_owned()
+            }
+            EditsAt::Backup { copy: Some(n) } => {
+                format!("the backup has your edits · a copy is in stash@{{{n}}}")
+            }
+            EditsAt::Backup { copy: None } => "the backup has your edits".to_owned(),
+        }
+    }
 }
 
 /// A field of an entry's after-state that could not be read, or could not be
@@ -212,6 +262,17 @@ pub(super) fn joined(unread: &[AfterState]) -> String {
 }
 
 impl ApplyError {
+    /// Where a set-aside's edits are, `Some` only for a set-aside that ended
+    /// other than clean or clashed (ADR-0045 §5 amended). The one place the
+    /// app asks.
+    #[must_use]
+    pub fn edits_at(&self) -> Option<EditsAt> {
+        match self {
+            ApplyError::Git { edits, .. } => *edits,
+            _ => None,
+        }
+    }
+
     /// One line for the status line.
     pub fn explain(&self) -> String {
         match self {
@@ -219,8 +280,13 @@ impl ApplyError {
                 entry,
                 error,
                 recoverable,
+                edits,
             } => {
                 let mut line = format!("{}: {}", entry.description, reason_for(error));
+                if let Some(edits) = edits {
+                    line.push_str(" · ");
+                    line.push_str(&edits.words());
+                }
                 if *recoverable {
                     line.push_str(" · u restores the backup");
                 }

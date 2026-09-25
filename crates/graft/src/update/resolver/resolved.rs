@@ -243,6 +243,7 @@ fn last_done(state: &AppState, done: &Path, summary_coming: bool) -> Status {
     };
     Status::Done {
         what: format!("{} done", done.display()),
+        also: None,
         keys: Some(keys),
     }
 }
@@ -318,6 +319,7 @@ pub(crate) fn every_file_done(state: &AppState) -> Status {
     let (what, keys) = every_file_done_parts(state);
     Status::Done {
         what: what.to_owned(),
+        also: None,
         keys,
     }
 }

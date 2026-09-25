@@ -39,6 +39,7 @@ fn a_resume_git_fails_answers_failed() {
         entry: Box::new(entry),
         error: RunError::GitNotFound,
         recoverable: true,
+        edits: None,
     }));
     assert!(
         matches!(answered, Operated::Failed { .. }),
@@ -82,46 +83,27 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
         }),
         error: RunError::GitNotFound,
         recoverable: true,
+        edits: None,
     }
 }
 
-/// m6-conflicts/74: a checkout that set edits aside failed, and its set-aside
-/// copy is still listed — `edits_in` is its position now. The same failure
-/// with the copy gone (the edits came back), a failure that set nothing
-/// aside, or a stash list that could not be read: `None`, and the error's
-/// own words (which name the stash) stand.
+/// m6-conflicts/84 (ADR-0045 §5 amended): where the edits are is
+/// `graft_ops`' answer, carried as it is — the job reads no stash list. A
+/// failure that set nothing aside carries none.
 #[test]
-fn a_kept_set_aside_is_found_by_its_commit() {
-    let stash = graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes");
-    let other = graft_core::oid::Oid::from_bytes(&[0x11; 20]).expect("20 bytes");
-    let aside = || {
-        let mut failed = failed_checkout(None);
-        if let ApplyError::Git { entry, .. } = &mut failed {
-            entry.put_back = Some(graft_core::journal::PutBack {
-                stash,
-                why: graft_core::journal::PutBackWhy::SetAside,
-            });
-        }
-        Err(failed)
-    };
-    let listed = |list: Vec<(graft_core::oid::Oid, usize)>| {
-        move || Ok::<_, graft_git::stash::StashError>(list)
-    };
-    assert_eq!(
-        edits_kept_in(&aside(), listed(vec![(other, 0), (stash, 1)])),
-        Some(1)
+fn a_failure_carries_where_graft_ops_says_the_edits_are() {
+    let at = graft_ops::EditsAt::Back { copy: Some(1) };
+    let mut failed = failed_checkout(None);
+    if let ApplyError::Git { edits, .. } = &mut failed {
+        *edits = Some(at);
+    }
+    assert!(
+        matches!(answer(Err(failed)), Operated::Failed { edits: Some(found), .. } if found == at)
     );
-    assert_eq!(edits_kept_in(&aside(), listed(vec![(other, 0)])), None);
-    assert_eq!(
-        edits_kept_in(&Err(failed_checkout(None)), listed(vec![(stash, 0)])),
-        None
-    );
-    assert_eq!(
-        edits_kept_in(&aside(), || Err(graft_git::stash::StashError::Reflog(
-            "unreadable".to_owned()
-        ))),
-        None
-    );
+    assert!(matches!(
+        answer(Err(failed_checkout(None))),
+        Operated::Failed { edits: None, .. }
+    ));
 }
 
 /// Review m10 (m6-conflicts/80): refs are not `HEAD`. `git switch` moves

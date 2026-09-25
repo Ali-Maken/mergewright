@@ -144,7 +144,7 @@ fn a_failed_last_stage_opens_nothing() {
                 refresh: None,
                 remote: None,
                 refused: None,
-                edits_in: None,
+                edits: None,
             })),
         ),
     );
@@ -314,6 +314,7 @@ fn the_last_file_of_a_rebase_shows_the_finish_row() {
         after.status,
         Status::Done {
             what: "conflicted.rs done".to_owned(),
+            also: None,
             keys: Some("every file done · c continues the rebase".to_owned()),
         }
     );

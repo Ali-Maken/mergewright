@@ -29,7 +29,9 @@ use crate::facts::FactsError;
 use crate::operation::{Operation, RepoFacts};
 use crate::snapshot::SnapshotError;
 
-use super::{AfterState, Applied, ApplyError, Context, Pending, Refresh, finish, reason_for};
+use super::{
+    AfterState, Applied, ApplyError, Context, EditsAt, Pending, Refresh, finish, reason_for,
+};
 
 /// The message `S` is created and listed under (ADR-0045 §4 step 3).
 pub(super) fn words(description: &str) -> String {
@@ -127,31 +129,33 @@ pub(super) fn abandon(
     error: RunError,
 ) -> Result<Applied, ApplyError> {
     let listed = listed_at(ctx, stash);
-    let (reason, error) = match &listed {
-        Ok(Some(at)) => {
-            let kept = in_stash(*at);
-            (
-                format!("{} · {kept}", reason_for(&error)),
-                naming(error, &kept),
-            )
-        }
+    // `error` stays git's own words: where the edits are is `edits`, and the
+    // caller words it (ADR-0045 §5 amended).
+    let (reason, edits) = match &listed {
+        Ok(Some(at)) => (
+            format!("{} · {}", reason_for(&error), in_stash(*at)),
+            Some(EditsAt::Backup { copy: Some(*at) }),
+        ),
         // Not listed: the tree was never touched, the edits are where they
-        // were. An unreadable list says so rather than guessing.
-        Ok(None) => (reason_for(&error), error),
+        // were.
+        Ok(None) => (reason_for(&error), None),
+        // Unreadable: stored or not, the reset may have run, and the backup
+        // holds the tree as it was either way.
         Err(why) => (
             format!(
                 "{}; the stash list could not be read to find {}: {why}",
                 reason_for(&error),
                 short(stash)
             ),
-            error,
+            Some(EditsAt::Backup { copy: None }),
         ),
     };
     if let Err(journal) = finish(ctx, &mut pending, EntryStatus::Aborted { reason }, commands) {
+        // No outcome line to say where the edits are: the error says it.
         return Err(ApplyError::Journal {
             error: journal,
             after: Some(error),
-            kept: None,
+            kept: edits.map(|edits| edits.words()),
         });
     }
     let recoverable = pending.entry.worktree_before.is_some();
@@ -159,6 +163,7 @@ pub(super) fn abandon(
         entry: Box::new(pending.entry),
         error,
         recoverable,
+        edits,
     })
 }
 
@@ -207,10 +212,15 @@ pub(super) fn close(
     let outcome = match put_back(ctx, stash, &mut commands) {
         Returned::Back => Outcome::Back,
         Returned::Clashed(paths) => Outcome::Clashed(paths),
-        Returned::Kept(kept) => Outcome::Kept {
-            words: kept.words(ctx, stash),
-            error: kept.into_error(),
-        },
+        Returned::Kept(kept) => {
+            // One read of the list serves the words and where the edits are.
+            let listed = listed_at(ctx, stash);
+            Outcome::Kept {
+                words: kept.words(&listed, stash),
+                edits: kept.edits(&listed),
+                error: kept.into_error(),
+            }
+        }
     };
     let status = status_for(&outcome, ended.failure.as_ref(), ended.done);
     let mut unread = match finish(ctx, &mut pending, status, commands) {
@@ -284,11 +294,22 @@ fn answer(
                 unread,
             })
         }
-        Outcome::Kept { words, error } => Err(match (failure, error) {
+        Outcome::Kept {
+            words,
+            edits,
+            error,
+        } => Err(match (failure, error) {
             (Some(failed), _) | (None, Ok(failed)) => ApplyError::Git {
                 entry: Box::new(entry),
-                error: naming(failed, &words),
+                // Known place: git's own words, and `edits` for the caller
+                // to word. Unknown: the words ride on git's line, so every
+                // place that shows the error still says where they are.
+                error: match edits {
+                    Some(_) => failed,
+                    None => naming(failed, &words),
+                },
                 recoverable,
+                edits,
             },
             // No git error to carry the words: a read failed after the
             // operation went through. The entry is journaled, so it is an
@@ -304,10 +325,12 @@ fn answer(
             }
         }),
         Outcome::Back => match failure {
+            // Put back clean and dropped: the edits are simply back.
             Some(error) => Err(ApplyError::Git {
                 entry: Box::new(entry),
                 error,
                 recoverable,
+                edits: None,
             }),
             None if unread.is_empty() => Ok(applied(entry)),
             None => Err(ApplyError::AfterState {
@@ -325,6 +348,8 @@ enum Outcome {
     Kept {
         /// What went wrong and where the edits are.
         words: String,
+        /// Where the edits are, when it is known.
+        edits: Option<EditsAt>,
         /// git's error, or the read that failed.
         error: Result<RunError, FactsError>,
     },
@@ -373,20 +398,38 @@ impl Kept {
         }
     }
 
+    /// Where the edits are, when it is known (ADR-0045 §5 amended), from
+    /// `listed`, the one read of the stash list [`close`] made.
+    fn edits(&self, listed: &Result<Option<usize>, FactsError>) -> Option<EditsAt> {
+        let at = listed.as_ref().ok().copied().flatten();
+        match self {
+            // Not back: the copy in the list is the only place they are. An
+            // unfound or unreadable copy has no position to name.
+            Kept::Git { back: false, .. } => at.map(|n| EditsAt::Stash { n }),
+            Kept::Git { back: true, .. } => Some(EditsAt::Back { copy: at }),
+            // Whether the put-back clashed is unknown: no place is claimed.
+            Kept::Unread(_) => None,
+            Kept::Unlisted(_) => Some(EditsAt::Back { copy: None }),
+        }
+    }
+
     /// The entry's reason: what went wrong, then where the edits are.
-    fn words(&self, ctx: &Context<'_>, stash: Oid) -> String {
+    fn words(&self, listed: &Result<Option<usize>, FactsError>, stash: Oid) -> String {
         match self {
             Kept::Git { error, back: false } => {
-                format!("{} · {}", reason_for(error), where_kept(ctx, stash))
+                format!("{} · {}", reason_for(error), where_listed(listed, stash))
             }
             Kept::Git { error, back: true } => format!(
                 "your edits are back, and the set-aside copy could not be dropped: {} · {}",
                 reason_for(error),
-                where_kept(ctx, stash)
+                match listed {
+                    Ok(Some(at)) => format!("a copy stays in stash@{{{at}}}"),
+                    _ => where_listed(listed, stash),
+                }
             ),
             Kept::Unread(why) => format!(
                 "the status after putting your edits back could not be read: {why} · {}",
-                where_kept(ctx, stash)
+                where_listed(listed, stash)
             ),
             // The list is what could not be read, so the copy is named by
             // its commit rather than by a second read of the same list.
@@ -401,8 +444,13 @@ impl Kept {
 
 /// Where `S` is, for words: `stash@{n}` when listed, else its commit.
 fn where_kept(ctx: &Context<'_>, stash: Oid) -> String {
-    match listed_at(ctx, stash) {
-        Ok(Some(at)) => in_stash(at),
+    where_listed(&listed_at(ctx, stash), stash)
+}
+
+/// [`where_kept`] over a list already read.
+fn where_listed(listed: &Result<Option<usize>, FactsError>, stash: Oid) -> String {
+    match listed {
+        Ok(Some(at)) => in_stash(*at),
         Ok(None) => format!("your edits are in stash commit {}", short(stash)),
         Err(why) => format!(
             "your edits are in stash commit {} (the stash list could not be read: {why})",

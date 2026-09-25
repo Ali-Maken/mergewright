@@ -120,7 +120,7 @@ fn a_dirty_pull_rebase_is_three_keys() {
     }
     assert!(stash_list(work).is_empty(), "no stash left behind");
     assert!(
-        matches!(&state.status, Status::Done { what, keys: Some(clause) }
+        matches!(&state.status, Status::Done { what, also: Some(clause), keys: None }
             // The op's own done line, as a clean-tree rebase words it; the
             // note's example says `rebased`, the op has always said `rebase`.
             if what == "rebase main onto origin/main" && clause == "your edits are back"),
@@ -231,7 +231,7 @@ fn a_dirty_switch_is_three_keys() {
     assert_eq!(read(path, &other), EDIT);
     assert!(stash_list(path).is_empty(), "no stash left behind");
     assert!(
-        matches!(&state.status, Status::Done { keys: Some(clause), .. } if clause == "your edits are back"),
+        matches!(&state.status, Status::Done { also: Some(clause), keys: None, .. } if clause == "your edits are back"),
         "{:?}",
         state.status
     );
@@ -329,7 +329,7 @@ fn a_dirty_switch_that_clashes_is_five_keys() {
     let state = app.pump(state, "the stage, the drop and their reads", |state| {
         state.resolver.is_none()
             && state.operating.is_none()
-            && matches!(&state.status, Status::Done { what, .. } if what.contains("your edits are back"))
+            && matches!(&state.status, Status::Done { what, .. } if what.contains("set-aside copy dropped"))
     });
 
     assert!(keys.count <= allowed(SWITCH_CLASH), "{} keys", keys.count);
@@ -337,9 +337,170 @@ fn a_dirty_switch_that_clashes_is_five_keys() {
         git(path, &["symbolic-ref", "HEAD"]).trim(),
         "refs/heads/main"
     );
-    assert_eq!(read(path, "base.txt"), "main's base\n", "yours taken");
+    assert_eq!(read(path, "base.txt"), "main's base\n", "branch taken");
     assert_eq!(unmerged(path), "");
     assert!(stash_list(path).is_empty(), "the set-aside is dropped");
+    assert_eq!(
+        state.status,
+        Status::Done {
+            what: "every file done \u{b7} set-aside copy dropped".to_owned(),
+            also: None,
+            keys: Some("u brings it back".to_owned()),
+        }
+    );
+
+    // Review m6-final-fixes-74 M3: what `u brings it back` promises — the
+    // dropped copy listed again, his edits one `S` away. Not counted: the
+    // journey ends at the drop.
+    let state = quiet(&app, state);
+    let state = app.key(&state, KeyCode::Char('u'));
+    assert!(
+        state.confirm.is_none(),
+        "`u` asks nothing: {:?}",
+        state.status
+    );
+    let state = app.settle_write(state, "the undo of the drop");
+    assert_eq!(
+        stash_list(path).len(),
+        1,
+        "`u` brings the set-aside copy back: {:?}",
+        stash_list(path)
+    );
+    drop(state);
+    app.close();
+}
+
+/// Review m6-final-fixes-74 M3: `. ⏎ y t ⏎` — the same clash, `t yours`
+/// keeps his edit: on main, `base.txt` holds his edit, the copy dropped.
+/// Same count as taking the branch.
+#[test]
+fn t_in_a_set_aside_clash_keeps_your_edits() {
+    let scratch = fix_dirty_over_mains_base();
+    let path = scratch.path();
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 40);
+    let state = cursor_to(&app, opened(&app, state), &rev(path, "main"));
+
+    let mut keys = counted(&app);
+    let state = keys.press(&state, KeyCode::Char('.'));
+    let state = keys.press(&state, KeyCode::Enter);
+    let state = planned(&app, state);
+    let state = keys.press(&state, KeyCode::Char('y'));
+    let state = crate::captures::settled_frame(&app, landed(&app, state));
+    assert_eq!(
+        state.resolver.as_ref().map(|open| open.path.as_path()),
+        Some(Path::new("base.txt")),
+        "the put-back's clash lands in the resolver on the clashed file"
+    );
+    let state = keys.press(&state, KeyCode::Char('t'));
+    let state = crate::resolver::settled(&app, state);
+    let state = keys.press(&state, KeyCode::Enter);
+    let state = app.pump(state, "the stage, the drop and their reads", |state| {
+        state.resolver.is_none()
+            && state.operating.is_none()
+            && matches!(&state.status, Status::Done { what, .. } if what.contains("set-aside copy dropped"))
+    });
+
+    assert!(keys.count <= allowed(SWITCH_CLASH), "{} keys", keys.count);
+    assert_eq!(
+        git(path, &["symbolic-ref", "HEAD"]).trim(),
+        "refs/heads/main"
+    );
+    assert_eq!(read(path, "base.txt"), EDIT, "yours (his edit) taken");
+    assert_eq!(unmerged(path), "");
+    assert!(stash_list(path).is_empty(), "the set-aside is dropped");
+    assert_eq!(
+        state.status,
+        Status::Done {
+            what: "every file done \u{b7} set-aside copy dropped".to_owned(),
+            also: None,
+            keys: Some("u brings it back".to_owned()),
+        }
+    );
+    drop(state);
+    app.close();
+}
+
+/// Review m6-final-fixes-74 m1: `. ⏎ y` into the clash, then `esc u` (no
+/// take, so no drift box): back on `fix`, the index and the tree as before
+/// the switch, staged split included, the stash list as before.
+#[test]
+fn esc_u_undoes_a_clashed_switch() {
+    let scratch = fix_dirty_over_mains_base();
+    let path = scratch.path();
+    // A staged edit too, so the split is part of what `u` must restore.
+    let other = shared_file(path);
+    std::fs::write(path.join(&other), EDIT).expect("the scratch repo is writable");
+    git(path, &["add", "--", &other]);
+    let staged = git(path, &["diff", "--cached", "--name-only"]);
+    let unstaged = git(path, &["diff", "--name-only"]);
+    let stashes = stash_list(path);
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 40);
+    let state = cursor_to(&app, opened(&app, state), &rev(path, "main"));
+
+    let state = app.key(&state, KeyCode::Char('.'));
+    let state = app.key(&state, KeyCode::Enter);
+    let state = planned(&app, state);
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = crate::captures::settled_frame(&app, landed(&app, state));
+    assert!(state.resolver.is_some(), "landed in the clash");
+
+    let mut keys = counted(&app);
+    let state = keys.press(&state, KeyCode::Escape);
+    let state = quiet(&app, state);
+    let state = keys.press(&state, KeyCode::Char('u'));
+    assert!(
+        state.confirm.is_none(),
+        "`u` asks nothing: {:?}",
+        state.status
+    );
+    let state = app.settle_write(state, "the undo");
+
+    assert_eq!(keys.count, 2, "esc u");
+    assert_eq!(
+        git(path, &["symbolic-ref", "HEAD"]).trim(),
+        "refs/heads/fix"
+    );
+    assert_eq!(git(path, &["diff", "--cached", "--name-only"]), staged);
+    assert_eq!(git(path, &["diff", "--name-only"]), unstaged);
+    assert_eq!(read(path, "base.txt"), EDIT);
+    assert_eq!(read(path, &other), EDIT);
+    assert_eq!(unmerged(path), "");
+    assert_eq!(stash_list(path), stashes, "the stash list as before");
+    drop(state);
+    app.close();
+}
+
+/// Review m6-final-fixes-74 M2: `. ⏎` on main's row over the clash fixture
+/// — the box warns before the switch that putting the edit back may clash.
+/// Writes the preview capture.
+#[test]
+fn the_preview_warns_before_a_switch_that_clashes() {
+    let scratch = fix_dirty_over_mains_base();
+    let path = scratch.path();
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 40);
+    let state = cursor_to(&app, opened(&app, state), &rev(path, "main"));
+    let state = app.key(&state, KeyCode::Char('.'));
+    let state = app.key(&state, KeyCode::Enter);
+    let state = planned(&app, state);
+
+    let drawn = frame_at(&state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
+    let text = drawn.join("\n");
+    assert!(
+        text.contains("your edits may clash when put back: base.txt"),
+        "{text}"
+    );
+    assert!(
+        text.contains("your edits: 1 file set aside, put back after"),
+        "{text}"
+    );
+    assert!(!text.contains("no conflicts expected"), "{text}");
+    check_shot(
+        "m6/set-aside-clash-preview-120x40.txt",
+        &format!("{CLASH_PREVIEW_HEADER}\n{text}\n"),
+    );
     drop(state);
     app.close();
 }
@@ -444,7 +605,7 @@ fn a_stopped_rebase_then_a_clash_is_eight_keys() {
     let state = app.pump(state, "the stage, the drop and their reads", |state| {
         state.resolver.is_none()
             && state.operating.is_none()
-            && matches!(&state.status, Status::Done { what, .. } if what.contains("your edits are back"))
+            && matches!(&state.status, Status::Done { what, .. } if what.contains("set-aside copy dropped"))
     });
 
     assert!(
@@ -460,6 +621,51 @@ fn a_stopped_rebase_then_a_clash_is_eight_keys() {
     assert_eq!(read(work, &g), "theirs\n", "yours (HEAD's) taken for G");
     assert_eq!(unmerged(work), "");
     assert!(stash_list(work).is_empty(), "the set-aside is dropped");
+    drop(state);
+    app.close();
+}
+
+/// Review m6-final-fixes-74 m2: `p r r` to the stop on F, then `esc a y` —
+/// `esc` leaves the resolver for the banner, `a` asks, `y` aborts. The
+/// branch back on its own tip, G's edit in the tree, no stash left, and the
+/// line `aborted: rebase … ✓ · your edits are back`.
+#[test]
+fn aborting_a_stopped_rebase_puts_the_edits_back() {
+    let remote = local();
+    let work = remote.work();
+    let (f, g, _) = diverged_on_f_with_g_edited(&remote);
+    let tip = rev(work, "HEAD");
+    let (app, state) = App::open(work);
+    let state = app.resize(&state, 120, 40);
+
+    let mut keys = counted(&app);
+    let state = pull_refused(&mut keys, state);
+    let state = rebase_preview(&mut keys, state);
+    let state = keys.press(&state, KeyCode::Char('r'));
+    let state = resolver_on(&app, state, &f);
+
+    let state = quiet(&app, app.key(&state, KeyCode::Escape));
+    let state = app.key(&state, KeyCode::Char('a'));
+    assert!(state.confirm.is_some(), "`a` asks: {:?}", state.status);
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = app.settle_write(state, "the abort and the put-back");
+
+    assert_eq!(rev(work, "HEAD"), tip, "the branch on its own tip again");
+    assert!(
+        !work.join(".git/rebase-merge").exists(),
+        "no rebase left open"
+    );
+    assert_eq!(read(work, &g), EDIT, "G's edit is back");
+    assert_eq!(unmerged(work), "");
+    assert!(stash_list(work).is_empty(), "no stash left behind");
+    assert_eq!(
+        state.status,
+        Status::Done {
+            what: "aborted: rebase main onto origin/main".to_owned(),
+            also: Some("your edits are back".to_owned()),
+            keys: None,
+        }
+    );
     drop(state);
     app.close();
 }
@@ -537,17 +743,22 @@ fn preview_shots(app: &App, state: &AppState) {
             "m6/set-aside-preview-120x40.txt",
             "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged",
         ),
+        // Review m6-final-fixes-74 m5: at 80 the box's 76 inner columns
+        // still hold `set_aside_row`'s longest rung (76 cells), so the row is
+        // whole there too; the exact line is asserted, not a prefix.
         (
             80,
             24,
             "m6/set-aside-preview-80x24.txt",
-            "your edits: 3 files set aside",
+            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged",
         ),
     ] {
         let sized = app.resize(state, columns, rows);
         let drawn = frame_at(&sized, columns, rows, Some(Clock::Fixed(FORK_NOW)));
         assert!(
-            drawn.iter().any(|line| line.contains(row)),
+            drawn
+                .iter()
+                .any(|line| line.trim_matches(|c| c == '\u{2502}' || c == ' ') == row),
             "{name}:\n{}",
             drawn.join("\n")
         );
@@ -559,14 +770,18 @@ fn landing_shot(state: &AppState) {
     let drawn = frame_at(state, 120, 40, Some(Clock::Fixed(FORK_NOW)));
     let text = drawn.join("\n");
     for words in [
-        "yours \u{b7} main",
-        "set aside \u{b7} your edits",
+        "branch \u{b7} main",
+        "yours \u{b7} edits set aside",
         "your edits clashed in 1 file \u{b7} esc, u undoes the switch too",
-        "o yours",
-        "t set aside",
+        "o branch",
+        "t yours",
     ] {
         assert!(text.contains(words), "no `{words}`:\n{text}");
     }
+    assert!(
+        !text.contains("set aside \u{b7}"),
+        "`set aside` is no pane's name:\n{text}"
+    );
     check_shot(
         "m6/set-aside-clash-landing-120x40.txt",
         &format!("{LANDING_HEADER}\n{text}\n"),
@@ -613,10 +828,26 @@ const LANDING_HEADER: &str = "\
 #
 # What right looks like: `. ⏎ y` on main's row with `base.txt` edited;
 # main changed it too, so putting the edit back clashes.
-#  - The resolver open on base.txt; panes `yours · main` and
-#    `set aside · your edits`.
+#  - The resolver open on base.txt; panes `branch · main` and
+#    `yours · edits set aside`; `set aside ·` is no pane's name.
 #  - The notice `your edits clashed in 1 file · esc, u undoes the switch too`.
-#  - The bar offers `o yours` and `t set aside`; no git error text anywhere.
+#  - The bar offers `o branch` and `t yours`; no git error text anywhere.
+";
+
+const CLASH_PREVIEW_HEADER: &str = "\
+# m6/set-aside-clash-preview-120x40.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# the_preview_warns_before_a_switch_that_clashes, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `. ⏎` on main's row with `base.txt` edited; main
+# changed it too, so putting the edit back would clash.
+#  - The checkout preview box, `[ Confirm ]` offered.
+#  - Under `working tree:` the row `your edits: 1 file set aside, put back
+#    after`.
+#  - The conflict line `your edits may clash when put back: base.txt`; no
+#    `no conflicts expected` anywhere in the box.
 ";
 
 const DONE_HEADER: &str = "\

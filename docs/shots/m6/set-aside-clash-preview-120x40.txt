@@ -1,0 +1,54 @@
+# m6/set-aside-clash-preview-120x40.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# the_preview_warns_before_a_switch_that_clashes, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `. ⏎` on main's row with `base.txt` edited; main
+# changed it too, so putting the edit back would clash.
+#  - The checkout preview box, `[ Confirm ]` offered.
+#  - Under `working tree:` the row `your edits: 1 file set aside, put back
+#    after`.
+#  - The conflict line `your edits may clash when put back: base.txt`; no
+#    `no conflicts expected` anywhere in the box.
+
+ graft /code/api  7 commits
+◆   ▏  [main] main changes the base                                                                      GF 2m   075a112
+│ ●    [◆ fix] fix the bug                                                                               GF 3m   fbb2394
+● │    main moves on                                                                                     GF 4m   37926a7
+●─╯    add the base                                                                                      GF 5m   ed332bc
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: checkout main ──────────────────────────────────────────────────────────────────────────────────────────────╮
+│ HEAD → main                                                                                                          │
+│ working tree: 3 files updated                                                                                        │
+│ your edits: 1 file set aside, put back after                                                                         │
+│ your edits may clash when put back: base.txt                                                                         │
+│ undo: u takes this back                                                                                              │
+│ git switch main                                                                                                      │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+

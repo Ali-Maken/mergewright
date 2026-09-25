@@ -574,7 +574,7 @@ fn a_failed_resume_keeps_a_abort() {
             refresh: None,
             remote: None,
             refused: None,
-            edits_in: None,
+            edits: None,
         },
         &mut || JobId::new(8),
     );
@@ -1288,7 +1288,7 @@ fn the_stop_line_outlives_a_dismissed_problem() {
                 refresh: None,
                 remote: None,
                 refused: None,
-                edits_in: None,
+                edits: None,
             })),
         ),
     );

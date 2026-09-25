@@ -536,6 +536,7 @@ fn the_close_words() {
         kept_status(Some(0)),
         Status::Done {
             what: "every file done \u{b7} stash@{0} kept".to_owned(),
+            also: None,
             keys: None,
         }
     );
@@ -543,6 +544,7 @@ fn the_close_words() {
         dropped_status(Some(0), PutBackWhy::Pop),
         Status::Done {
             what: "every file done \u{b7} stash@{0} dropped".to_owned(),
+            also: None,
             keys: Some("u brings it back".to_owned()),
         }
     );
@@ -571,10 +573,11 @@ fn a_checkout() -> Operation {
     })
 }
 
-/// m6-conflicts/74: a put-back that clashes lands in the resolver with the
-/// set-aside's names — `yours · main` | `set aside · your edits`, bar roles
-/// `yours`/`set aside` — and the notice names the edits and what `u` takes
-/// back with them: the switch after a checkout, the rebase otherwise.
+/// m6-conflicts/74, /84: a put-back that clashes lands in the resolver with
+/// the set-aside's names — `branch · main` | `yours · edits set aside`, bar
+/// roles `branch`/`yours` (ADR-0043 §4 amended) — and the notice names the
+/// edits and what `u` takes back with them: the switch after a checkout, the
+/// rebase otherwise.
 #[test]
 fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
     let mut state = AppState {
@@ -594,11 +597,11 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
         names.roles,
         graft_ui::conflict_resolver::SideRoles::SetAside
     );
-    assert_eq!(names.ours.as_str(), "yours \u{b7} main");
-    assert_eq!(names.theirs.as_str(), "set aside \u{b7} your edits");
+    assert_eq!(names.ours.as_str(), "branch \u{b7} main");
+    assert_eq!(names.theirs.as_str(), "yours \u{b7} edits set aside");
     assert_eq!(
         format!("o {}  t {}", names.roles.ours(), names.roles.theirs()),
-        "o yours  t set aside"
+        "o branch  t yours"
     );
 
     // After a `c` that finished a stopped rebase there is no launched op:
@@ -655,15 +658,24 @@ fn a_put_back_clash_stop_line_says_your_edits() {
 }
 
 /// The drop after a set-aside's last file answered: `every file done ·
-/// your edits are back ✓` — the stash is not named, he never named it.
+/// set-aside copy dropped ✓ · u brings it back` (ADR-0045 §3 amended) —
+/// what was dropped, never the stash's position (he never named it), and
+/// not `your edits are back`, which `o branch` everywhere makes false.
 #[test]
-fn a_put_back_clash_done_says_your_edits_are_back() {
+fn a_put_back_clash_done_names_the_dropped_copy() {
+    let closed = Status::Done {
+        what: "every file done \u{b7} set-aside copy dropped".to_owned(),
+        also: None,
+        keys: Some("u brings it back".to_owned()),
+    };
+    assert_eq!(dropped_status(Some(0), PutBackWhy::SetAside), closed);
     assert_eq!(
-        dropped_status(Some(0), PutBackWhy::SetAside),
-        Status::Done {
-            what: "every file done \u{b7} your edits are back".to_owned(),
-            keys: None,
-        }
+        crate::view::status::done_line(
+            "every file done \u{b7} set-aside copy dropped",
+            None,
+            Some("u brings it back")
+        ),
+        "every file done \u{b7} set-aside copy dropped \u{2713} \u{b7} u brings it back"
     );
     // Through the close: the last file done launches the drop, and its
     // answer is worded as the set-aside's end.
@@ -683,11 +695,5 @@ fn a_put_back_clash_done_says_your_edits_are_back() {
         replaced: graft_ops::undo::Replaced::default(),
     };
     crate::update::operate::operated(&mut state, id, Operated::Done(applied), &mut next);
-    assert_eq!(
-        state.status,
-        Status::Done {
-            what: "every file done \u{b7} your edits are back".to_owned(),
-            keys: None,
-        }
-    );
+    assert_eq!(state.status, closed);
 }

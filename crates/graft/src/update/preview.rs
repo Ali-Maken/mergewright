@@ -852,7 +852,7 @@ fn plan_lines(plan: &PreviewPlan, clipped: usize, columns: u16) -> Vec<Sanitized
             columns,
         ));
     }
-    lines.push(conflict_line(&plan.conflicts));
+    lines.push(conflict_line(&plan.conflicts, plan.put_back.as_ref()));
     // A plan that changes nothing has nothing to take back, and offering
     // `u` over it teaches the box says things it does not mean
     // (review 08 Minor 7).
@@ -1007,13 +1007,39 @@ fn worktree_line(effect: &WorktreeEffect) -> String {
 /// word, not theirs (CONTEXT.md, "These are our words"). `expected` and
 /// `may` already say the line is a prediction, which is all the
 /// parenthetical was adding.
-fn conflict_line(forecast: &ConflictForecast) -> String {
-    match forecast {
-        ConflictForecast::Clean => "no conflicts expected".to_owned(),
-        ConflictForecast::Likely { paths } => {
-            format!("may conflict: {}", list(paths, 3))
+///
+/// With edits set aside the line folds in the put-back's own forecast
+/// (`PreviewPlan::put_back`, review m6-final-fixes-74 M2; the note's
+/// "Preview: the conflict line folds the put-back" table): a clean operation
+/// says what putting the edits back may do; an operation that may stop
+/// itself was never followed to the put-back, and says so after its own
+/// words, where a cut at the tail takes it first.
+fn conflict_line(forecast: &ConflictForecast, put_back: Option<&ConflictForecast>) -> String {
+    match (forecast, put_back) {
+        (ConflictForecast::Clean, None | Some(ConflictForecast::Clean)) => {
+            "no conflicts expected".to_owned()
         }
-        ConflictForecast::NotChecked(why) => format!("conflicts: not checked ({why})"),
+        (ConflictForecast::Clean, Some(ConflictForecast::Likely { paths })) => {
+            format!("your edits may clash when put back: {}", list(paths, 3))
+        }
+        (ConflictForecast::Clean, Some(ConflictForecast::NotChecked(why))) => {
+            format!("your edits' put-back: not checked ({why})")
+        }
+        (ConflictForecast::Likely { paths }, put_back) => {
+            with_put_back(format!("may conflict: {}", list(paths, 3)), put_back)
+        }
+        (ConflictForecast::NotChecked(why), put_back) => {
+            with_put_back(format!("conflicts: not checked ({why})"), put_back)
+        }
+    }
+}
+
+/// The operation's own forecast line, then ` · put-back not checked` when
+/// edits are set aside: an operation that may stop is not followed further.
+fn with_put_back(line: String, put_back: Option<&ConflictForecast>) -> String {
+    match put_back {
+        Some(_) => format!("{line} · put-back not checked"),
+        None => line,
     }
 }
 

@@ -5,17 +5,17 @@
 #
 # What right looks like: `. ⏎ y` on main's row with `base.txt` edited;
 # main changed it too, so putting the edit back clashes.
-#  - The resolver open on base.txt; panes `yours · main` and
-#    `set aside · your edits`.
+#  - The resolver open on base.txt; panes `branch · main` and
+#    `yours · edits set aside`; `set aside ·` is no pane's name.
 #  - The notice `your edits clashed in 1 file · esc, u undoes the switch too`.
-#  - The bar offers `o yours` and `t set aside`; no git error text anywhere.
+#  - The bar offers `o branch` and `t yours`; no git error text anywhere.
 
 files   ▸ base.txt · 1 of 1 open
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ base.txt · 1 conflict · 1 open
 your edits clashed in 1 file · esc, u undoes the switch too
-▏ ── conflict 1 of 1 · open ── o yours  t set aside  b both ────────────────────────────────────────────────────────────
-▏ yours · main                                              │set aside · your edits
+▏ ── conflict 1 of 1 · open ── o branch  t yours  b both ───────────────────────────────────────────────────────────────
+▏ branch · main                                             │yours · edits set aside
 ▏ 1 main's base                                             │1 my edit
 ▏ ──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────
 
@@ -49,4 +49,4 @@ your edits clashed in 1 file · esc, u undoes the switch too
 
 
 
- o yours  t set aside  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎  j/k  M  d start over  esc close
+ o branch  t yours  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close

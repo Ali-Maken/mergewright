@@ -399,6 +399,8 @@ fn close_resume(
             entry: Box::new(entry),
             error,
             recoverable,
+            // A set-aside's resume closes through `set_aside::close`.
+            edits: None,
         });
     }
     let applied = Applied {
