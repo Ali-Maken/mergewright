@@ -35,4 +35,4 @@ STAGED (2)
 
 
 
- merge begun in the shell · ⇥ banner, then c finishes it
+ merge begun in the shell · ⇥ ⇥ banner, then c finishes it

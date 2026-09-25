@@ -296,6 +296,7 @@ fn the_divider_hint_follows_the_pane_not_the_context() {
         HintContext::ChangesPane {
             unmerged: false,
             live: None,
+            tab: TabWord::Graph,
         },
     ] {
         let with = hints_text(&hints_for(&context, Divider::Shown, 200));
@@ -319,6 +320,7 @@ fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
         HintContext::ChangesPane {
             unmerged: false,
             live: None,
+            tab: TabWord::Graph,
         },
     ] {
         let hints = hints_for(&context, Divider::Shown, 120);
@@ -349,6 +351,7 @@ fn a_pane_hints_only_its_own_keys() {
         &HintContext::ChangesPane {
             unmerged: false,
             live: None,
+            tab: TabWord::Graph,
         },
         Divider::Hidden,
         200,
@@ -361,6 +364,7 @@ fn a_pane_hints_only_its_own_keys() {
         &HintContext::ChangesPane {
             unmerged: true,
             live: None,
+            tab: TabWord::Graph,
         },
         Divider::Hidden,
         200,
@@ -384,6 +388,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             &HintContext::Banner {
                 skippable: true,
                 conflicted: true,
+                merge: false,
             },
             Divider::Shown,
             80,
@@ -395,6 +400,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             &HintContext::Banner {
                 skippable: false,
                 conflicted: true,
+                merge: false,
             },
             Divider::Shown,
             80,
@@ -406,6 +412,7 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
             &HintContext::Banner {
                 skippable: true,
                 conflicted: false,
+                merge: false,
             },
             Divider::Shown,
             80,
@@ -563,18 +570,22 @@ fn the_banner_never_draws_a_stop_or_m_tool() {
         HintContext::Banner {
             skippable: true,
             conflicted: true,
+            merge: false,
         },
         HintContext::Banner {
             skippable: false,
             conflicted: true,
+            merge: false,
         },
         HintContext::Banner {
             skippable: true,
             conflicted: false,
+            merge: false,
         },
         HintContext::Banner {
             skippable: false,
             conflicted: false,
+            merge: false,
         },
     ];
     for context in banners {
@@ -921,6 +932,7 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
         HintContext::ChangesPane {
             unmerged: false,
             live: None,
+            tab: TabWord::Graph,
         },
         HintContext::Journal,
     ] {
@@ -1377,6 +1389,7 @@ fn unmerged_rows_lead_with_resolve() {
     let unmerged = context_list(&HintContext::ChangesPane {
         unmerged: true,
         live: None,
+        tab: TabWord::Graph,
     });
     assert_eq!(
         hints_text(&unmerged),
@@ -1386,6 +1399,7 @@ fn unmerged_rows_lead_with_resolve() {
     let banner_plain = context_list(&HintContext::Banner {
         skippable: false,
         conflicted: true,
+        merge: false,
     });
     assert_eq!(
         hints_text(&banner_plain),
@@ -1395,6 +1409,7 @@ fn unmerged_rows_lead_with_resolve() {
     let banner_skippable = context_list(&HintContext::Banner {
         skippable: true,
         conflicted: true,
+        merge: false,
     });
     assert_eq!(
         hints_text(&banner_skippable),
@@ -1406,6 +1421,7 @@ fn unmerged_rows_lead_with_resolve() {
     let banner_no_conflict = context_list(&HintContext::Banner {
         skippable: true,
         conflicted: false,
+        merge: false,
     });
     assert!(
         !hints_text(&banner_no_conflict).contains("resolve"),
@@ -1501,6 +1517,7 @@ fn operation_live_leads_with_the_way_back() {
         HintContext::ChangesPane {
             unmerged: true,
             live: None,
+            tab: TabWord::Graph,
         },
     ] {
         let context = HintContext::OperationLive {
@@ -1540,6 +1557,7 @@ fn stopped_row_drops_the_reason_under_twelve_cells() {
         &HintContext::Banner {
             skippable: false,
             conflicted: true,
+            merge: false,
         },
         Divider::Hidden,
         80,
@@ -1566,6 +1584,7 @@ fn stopped_row_keeps_the_bar_whole() {
     let context = HintContext::Banner {
         skippable: true,
         conflicted: true,
+        merge: false,
     };
     for columns in [40u16, 60, 80, 120, 187, 200] {
         let hints = hints_for(&context, Divider::Hidden, columns);
@@ -1603,6 +1622,7 @@ fn stopped_row_keeps_the_count_whole_at_108_cells() {
         &HintContext::Banner {
             skippable: false,
             conflicted: true,
+            merge: false,
         },
         Divider::Hidden,
         108,
@@ -1628,6 +1648,7 @@ fn stopped_row_keeps_the_count_whole_at_108_cells() {
             &HintContext::Banner {
                 skippable: false,
                 conflicted: true,
+                merge: false,
             },
             Divider::Hidden,
             columns,
@@ -1650,6 +1671,7 @@ fn stopped_row_cuts_only_the_last_wording() {
         &HintContext::Banner {
             skippable: false,
             conflicted: true,
+            merge: false,
         },
         Divider::Hidden,
         80,
@@ -1762,4 +1784,49 @@ fn done_list_marks_start_over() {
     );
     let d = hints.iter().find(|hint| hint.key == "d").expect("d drawn");
     assert!(d.keeps_words, "{hints:?}");
+}
+
+/// The changes pane's `⇥` names where it lands (m6-conflicts/70): from the
+/// file list, the diff, in both arms of the table and with `c` said either
+/// way. The other two words follow the same field.
+#[test]
+fn the_files_list_bar_names_where_tab_goes() {
+    for unmerged in [false, true] {
+        for live in [None, Some(LiveC::Continue)] {
+            for (tab, word) in [
+                (TabWord::Diff, "⇥ diff"),
+                (TabWord::Banner, "⇥ banner"),
+                (TabWord::Graph, "⇥ graph"),
+            ] {
+                let list = context_list(&HintContext::ChangesPane {
+                    unmerged,
+                    live,
+                    tab,
+                });
+                let text = hints_text(&list);
+                assert!(text.ends_with(word), "{unmerged} {live:?}: {text:?}");
+            }
+        }
+    }
+}
+
+/// A merge's banner says `c finish`, because `c` opens the finish summary
+/// there; a rebase's banner still says `c continue` (m6-conflicts/70, n2).
+#[test]
+fn a_merge_banner_says_c_finish() {
+    for conflicted in [false, true] {
+        let merge = hints_text(&context_list(&HintContext::Banner {
+            skippable: false,
+            conflicted,
+            merge: true,
+        }));
+        assert!(merge.contains("c finish"), "{merge:?}");
+        assert!(!merge.contains("continue"), "{merge:?}");
+        let rebase = hints_text(&context_list(&HintContext::Banner {
+            skippable: true,
+            conflicted,
+            merge: false,
+        }));
+        assert!(rebase.contains("c continue"), "{rebase:?}");
+    }
 }

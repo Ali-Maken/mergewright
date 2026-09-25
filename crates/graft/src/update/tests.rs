@@ -4237,6 +4237,33 @@ fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, ban
     );
 }
 
+/// The changes pane for [`screen_for`]: `tab` is where the focus sits,
+/// `⇥ diff` from the file list, the other two from the diff
+/// (m6-conflicts/70). From the diff there is a diff in it: the write keys
+/// there act on the hunk under the diff cursor.
+fn changes_pane_screen(
+    walk: JobId,
+    unmerged: bool,
+    live: Option<graft_ui::graph_screen::LiveC>,
+    tab: graft_ui::graph_screen::TabWord,
+) -> AppState {
+    let mut state = changes_pane_open(walk, unmerged);
+    if let Some(c) = live {
+        operation_live_as(
+            &mut state,
+            c,
+            tab == graft_ui::graph_screen::TabWord::Banner,
+        );
+    }
+    if tab != graft_ui::graph_screen::TabWord::Diff {
+        state.detail.focus = DetailFocus::Diff;
+        let (diff, diff_raw) = long_diff("a.rs");
+        state.detail.diff = Loading::Ready(diff);
+        state.detail.diff_raw = Some(diff_raw);
+    }
+    state
+}
+
 /// The half of [`states_for`] that is one arm per context — kept apart from
 /// the width and the pane, which every arm shares.
 ///
@@ -4270,16 +4297,19 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
+        // `merge` is `!skippable` in every form `every_context` makes, the
+        // kind `stopped_operation` already picks from `skippable`.
         HintContext::Banner {
             skippable,
             conflicted,
+            merge: _,
         } => vec![stopped_operation(walk, *skippable, *conflicted)],
-        HintContext::ChangesPane { unmerged, live } => {
-            let mut state = changes_pane_open(walk, *unmerged);
-            if let Some(c) = live {
-                operation_live_as(&mut state, *c, false);
-            }
-            vec![state]
+        HintContext::ChangesPane {
+            unmerged,
+            live,
+            tab,
+        } => {
+            vec![changes_pane_screen(walk, *unmerged, *live, *tab)]
         }
         // The row's own screen with a merge standing and the banner handed
         // back (m6-conflicts/12): `⇥` leads, and every other key on the

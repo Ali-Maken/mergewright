@@ -15,7 +15,7 @@ use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
 use super::footer::{commit_graph_segments, grouped, segments_width};
-use super::hints::HintContext;
+use super::hints::{HintContext, TabWord};
 use super::layout::walk_text;
 use super::*;
 use crate::graph_column::{GraphColumn, RowPaint};
@@ -939,6 +939,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
     view.hint_context = HintContext::ChangesPane {
         unmerged: false,
         live: None,
+        tab: TabWord::Graph,
     };
     view.divider_shown = true;
     let footer = text(&draw(&view, 200, 8))
@@ -953,6 +954,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
     view.hint_context = HintContext::ChangesPane {
         unmerged: true,
         live: None,
+        tab: TabWord::Graph,
     };
     view.divider_shown = false;
     let unmerged_footer = text(&draw(&view, 200, 8))
@@ -1200,19 +1202,23 @@ fn every_hint_context() -> Vec<HintContext> {
         HintContext::Banner {
             skippable: true,
             conflicted: true,
+            merge: false,
         },
         HintContext::Banner {
             skippable: false,
             conflicted: false,
+            merge: false,
         },
         HintContext::Preview,
         HintContext::ChangesPane {
             unmerged: false,
             live: None,
+            tab: TabWord::Graph,
         },
         HintContext::ChangesPane {
             unmerged: true,
             live: None,
+            tab: TabWord::Graph,
         },
         HintContext::Journal,
         HintContext::Stash,
@@ -1706,6 +1712,7 @@ fn capture_the_ladder_for_docs_shots() {
             HintContext::ChangesPane {
                 unmerged: false,
                 live: None,
+                tab: TabWord::Graph,
             },
             Divider::Shown,
         ),
@@ -1970,7 +1977,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 63;
+const COVERAGE_SLOTS: usize = 73;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -1990,25 +1997,15 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::BranchRow { current: true } => 2,
         HintContext::PlainRow => 3,
         // Both fields are plain `bool`s, so the arm stays exhaustive.
+        // `merge` is `!skippable` in every form a live operation makes
+        // (m6-conflicts/70), so it takes no slot of its own.
         HintContext::Banner {
             skippable,
             conflicted,
+            merge: _,
         } => 4 + 2 * usize::from(*skippable) + usize::from(*conflicted),
         HintContext::Preview => 8,
-        HintContext::ChangesPane {
-            unmerged: false,
-            live: None,
-        } => 9,
-        HintContext::ChangesPane {
-            unmerged: true,
-            live: None,
-        } => 10,
-        // m6-conflicts/52: each `c` an operation can make, over each
-        // `unmerged` (43–48).
-        HintContext::ChangesPane {
-            unmerged,
-            live: Some(c),
-        } => 43 + 2 * live_c_slot(*c) + usize::from(*unmerged),
+        HintContext::ChangesPane { .. } => changes_pane_slot(context),
         HintContext::Journal => 11,
         HintContext::Stash => 12,
         HintContext::Dragging => 13,
@@ -2045,6 +2042,45 @@ fn coverage_slot(context: &HintContext) -> usize {
             focus: crate::finish_summary::SummaryFocus::Body,
             ..
         } => 35,
+    }
+}
+
+/// [`coverage_slot`] for the changes pane (m6-conflicts/70 split it out).
+fn changes_pane_slot(context: &HintContext) -> usize {
+    match context {
+        // Nothing live: `⇥ graph` from the diff keeps 9–10; `⇥ diff` from
+        // the file list is 63–64 (m6-conflicts/70). `⇥ banner` with nothing
+        // live is not a screen, and shares 9–10.
+        HintContext::ChangesPane {
+            unmerged,
+            live: None,
+            tab: TabWord::Graph | TabWord::Banner,
+        } => 9 + usize::from(*unmerged),
+        HintContext::ChangesPane {
+            unmerged,
+            live: None,
+            tab: TabWord::Diff,
+        } => 63 + usize::from(*unmerged),
+        // m6-conflicts/52: each `c` an operation can make, over each
+        // `unmerged`: from the file list, `⇥ diff` (43–48); from the diff
+        // with a banner, `⇥ banner` (65–70); a bisect's `⇥ graph` (71–72,
+        // which `c finish`/`c continue`, never bannerless, share).
+        HintContext::ChangesPane {
+            unmerged,
+            live: Some(c),
+            tab: TabWord::Diff,
+        } => 43 + 2 * live_c_slot(*c) + usize::from(*unmerged),
+        HintContext::ChangesPane {
+            unmerged,
+            live: Some(c),
+            tab: TabWord::Banner,
+        } => 65 + 2 * live_c_slot(*c) + usize::from(*unmerged),
+        HintContext::ChangesPane {
+            unmerged,
+            live: Some(_),
+            tab: TabWord::Graph,
+        } => 71 + usize::from(*unmerged),
+        _ => unreachable!("only called on a `ChangesPane`"),
     }
 }
 

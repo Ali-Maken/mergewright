@@ -18,6 +18,8 @@ mod bound;
 #[cfg(test)]
 mod live_c_tests;
 mod predicates;
+#[cfg(test)]
+mod tab_words_tests;
 mod view_change;
 
 pub(in crate::update) use actions::strip_rows_for;

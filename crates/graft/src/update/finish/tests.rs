@@ -446,7 +446,7 @@ fn esc_from_the_summary_over(focus: graft_ui::detail::DetailFocus) -> AppState {
     // (c) the footer is the banner's.
     assert_eq!(
         crate::view::rows::footer_context(&state, &[], Some(&banner)),
-        crate::view::rows::banner_context(&banner)
+        crate::view::rows::banner_context(&state, &banner)
     );
     state
 }

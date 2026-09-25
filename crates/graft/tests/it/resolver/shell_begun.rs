@@ -982,7 +982,7 @@ fn undo_through_the_drift_box(app: &App, state: &AppState) -> AppState {
 // ------------------------ the editor's words reach the banner (m6-conflicts/39)
 
 /// The words ticket 39 gives a merge begun in the shell.
-const SHELL_WORDS: &str = "merge begun in the shell — esc, ⇥ banner, then c finishes it";
+const SHELL_WORDS: &str = "merge begun in the shell — esc, ⇥ ⇥ banner, then c finishes it";
 
 /// **The keys the commit editor names reach the summary** (ticket 39): from
 /// J3's state, the editor opened from the changes pane says `esc, ⇥ banner,
@@ -1100,7 +1100,7 @@ fn capture_fix_a_mid_merge_answers_in_words() {
     let pane = settled_frame(&app, super::editor_words::pane_focused(&app, state));
     let refused = app.key(&pane, KeyCode::Char('a'));
     assert!(refused.commit_editor.is_none(), "`a` opened the editor");
-    assert_eq!(refused.status, super::editor_words::shell_merge_refusal());
+    assert_eq!(refused.status, super::editor_words::shell_merge_refusal(2));
     let mut captures = graft_fixtures::Captures::new();
     for (columns, rows) in [(187_u16, 50_u16), (80, 24)] {
         let sized = app.resize(&refused, columns, rows);
@@ -1118,7 +1118,7 @@ fn capture_fix_a_mid_merge_answers_in_words() {
             frame
                 .iter()
                 .any(|row| row.contains("merge begun in the shell")
-                    && row.contains("⇥ banner, then c finishes it")),
+                    && row.contains("⇥ ⇥ banner, then c finishes it")),
             "no footer row holds the reason and the keys whole at {columns}x{rows}:\n{body}"
         );
         assert!(!body.contains("COMMIT ──"), "an editor is drawn:\n{body}");

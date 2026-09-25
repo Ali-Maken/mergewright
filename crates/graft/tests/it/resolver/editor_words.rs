@@ -117,19 +117,28 @@ pub(super) fn editor_open(app: &App, state: AppState) -> AppState {
     state
 }
 
-/// The pane's answer to `c`/`a` on a merge Graft began.
-fn graft_merge_refusal() -> Status {
+/// `⇥` once per `Tab` to the banner (m6-conflicts/70): two from the pane's
+/// file list (the diff, then the banner), three from the graph with the
+/// pane open.
+fn tabs(count: usize) -> String {
+    "⇥ ".repeat(count)
+}
+
+/// The pane's answer to `c`/`a` on a merge Graft began, `count` tabs from
+/// the banner. A merge's `c` is `c finish` (m6-conflicts/70, n2).
+fn graft_merge_refusal(count: usize) -> Status {
     Status::Sticky {
         reason: "merge in progress".to_owned(),
-        keys: Some("⇥ banner, then c continue  a abort".to_owned()),
+        keys: Some(format!("{}banner, then c finish  a abort", tabs(count))),
     }
 }
 
-/// The pane's answer to `c`/`a` on a merge begun in the shell.
-pub(super) fn shell_merge_refusal() -> Status {
+/// The pane's answer to `c`/`a` on a merge begun in the shell, `count` tabs
+/// from the banner.
+pub(super) fn shell_merge_refusal(count: usize) -> Status {
     Status::Sticky {
         reason: "merge begun in the shell".to_owned(),
-        keys: Some("⇥ banner, then c finishes it".to_owned()),
+        keys: Some(format!("{}banner, then c finishes it", tabs(count))),
     }
 }
 
@@ -174,14 +183,14 @@ fn answers_in_words(state: &AppState, key: char, refusal: &Status) {
 fn a_mid_operation_still_refuses_in_words() {
     let (graft_begun, app, state) = resolved_graft_merge();
     let pane = pane_focused(&app, state);
-    answers_in_words(&pane, 'a', &graft_merge_refusal());
+    answers_in_words(&pane, 'a', &graft_merge_refusal(2));
     c_opens_the_summary(&pane);
     app.close();
     drop(graft_begun);
 
     let (shell_begun, app, state) = resolved_shell();
     let pane = pane_focused(&app, state);
-    answers_in_words(&pane, 'a', &shell_merge_refusal());
+    answers_in_words(&pane, 'a', &shell_merge_refusal(2));
     c_opens_the_summary(&pane);
     app.close();
     drop(shell_begun);
@@ -203,9 +212,10 @@ fn every_way_to_open_the_editor_refuses_mid_operation() {
         guard += 1;
     }
     let pane = pane_focused(&app, graph.clone());
-    for (where_, state) in [("graph", &graph), ("changes pane", &pane)] {
+    // Graph → Files → Diff → banner is three `⇥`; the pane's files, two.
+    for (where_, state, count) in [("graph", &graph, 3), ("changes pane", &pane, 2)] {
         eprintln!("{where_}");
-        answers_in_words(state, 'a', &shell_merge_refusal());
+        answers_in_words(state, 'a', &shell_merge_refusal(count));
         c_opens_the_summary(state);
     }
     app.close();
@@ -243,7 +253,7 @@ fn head_message_arriving_mid_operation_does_not_open() {
         state.head_message.is_none()
     });
     assert!(landed.commit_editor.is_none(), "the amend editor opened");
-    assert_eq!(landed.status, shell_merge_refusal());
+    assert_eq!(landed.status, shell_merge_refusal(2));
     app.close();
     drop(scratch);
 }
@@ -263,7 +273,7 @@ fn the_pane_words_fit_at_80() {
         refused.status,
         Status::Sticky {
             reason: "cherry-pick in progress".to_owned(),
-            keys: Some("⇥ banner, then c continue  a abort".to_owned()),
+            keys: Some("⇥ ⇥ banner, then c continue  a abort".to_owned()),
         }
     );
     let sized = app.resize(&refused, 80, 24);
@@ -272,7 +282,7 @@ fn the_pane_words_fit_at_80() {
     assert!(
         frame
             .iter()
-            .any(|row| row.contains("⇥ banner, then c continue  a abort")),
+            .any(|row| row.contains("⇥ ⇥ banner, then c continue  a abort")),
         "the keys are not whole:\n{body}"
     );
     assert!(
@@ -307,12 +317,12 @@ fn pin_the_panes_keys(app: &App, state: AppState, refusal: &Status) {
 #[test]
 fn after_esc_the_panes_a_answers_in_words_and_c_opens_the_summary() {
     let (graft_begun, app, state) = resolved_graft_merge();
-    pin_the_panes_keys(&app, state, &graft_merge_refusal());
+    pin_the_panes_keys(&app, state, &graft_merge_refusal(2));
     app.close();
     drop(graft_begun);
 
     let (shell_begun, app, state) = resolved_shell();
-    pin_the_panes_keys(&app, state, &shell_merge_refusal());
+    pin_the_panes_keys(&app, state, &shell_merge_refusal(2));
     app.close();
     drop(shell_begun);
 }
@@ -337,7 +347,11 @@ pub(super) fn editor_words(state: &AppState) -> String {
         .commit_editor
         .as_ref()
         .expect("open")
-        .refusal(state.working_tree.as_deref(), live_operation(state))
+        .refusal(
+            state.working_tree.as_deref(),
+            live_operation(state),
+            graft::update::commit_editor::refusal_tabs(state),
+        )
         .expect("a refusal")
 }
 
@@ -350,7 +364,7 @@ fn the_keys_the_commit_editor_names_reach_the_banner_on_a_graft_begun_merge() {
     let open = editor_open(&app, state);
     assert_eq!(
         editor_words(&open),
-        "merge in progress — esc, ⇥ banner, then c continue  a abort"
+        "merge in progress — esc, ⇥ ⇥ banner, then c finish  a abort"
     );
 
     let (banner, tabs) = esc_then_tabs_to_the_banner(&app, &open);
@@ -386,7 +400,7 @@ fn the_graft_merge_words_fit_at_80_by_24() {
     let open = editor_open(&app, state);
     super::shell_begun::the_words_fit(
         &open,
-        "merge in progress — esc, ⇥ banner, then c continue  a abort",
+        "merge in progress — esc, ⇥ ⇥ banner, then c finish  a abort",
         80,
         24,
     );

@@ -1016,6 +1016,7 @@ fn every_hint_the_focused_banner_draws_is_answered_by_banner_key() {
         let context = HintContext::Banner {
             skippable: banner.skippable,
             conflicted: banner.conflict.is_some(),
+            merge: false,
         };
 
         for columns in [40u16, 80, 100, 120, 160, 200] {
@@ -1054,6 +1055,7 @@ fn the_banner_always_teaches_continue_and_abort() {
                 &HintContext::Banner {
                     skippable,
                     conflicted,
+                    merge: false,
                 },
                 Divider::Shown,
                 columns,

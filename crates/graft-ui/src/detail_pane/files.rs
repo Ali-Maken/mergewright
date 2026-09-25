@@ -57,6 +57,9 @@ fn file_row_text(row: &FileRow, width: usize) -> String {
                 let letter = status_letter(status);
                 let counts = match (added, removed) {
                     (Some(added), Some(removed)) => format!("+{added} \u{2212}{removed}"),
+                    // No counts: an untracked file has no diff against the
+                    // index to count (`new`); anything else is binary.
+                    _ if matches!(status, FileStatusView::Untracked) => "new".to_string(),
                     _ => "bin".to_string(),
                 };
                 (format!("{indent}{letter} {}", row.name.as_str()), counts)
@@ -148,5 +151,38 @@ mod tests {
         };
         let text = file_row_text(&heading, 40);
         assert!(text.starts_with("CONFLICTS (2)"), "{text:?}");
+    }
+
+    fn counts_row(status: FileStatusView, added: Option<u32>) -> FileRow {
+        FileRow {
+            depth: 1,
+            name: sanitize_line("new.txt"),
+            kind: FileRowKind::File {
+                status,
+                added,
+                removed: added.map(|_| 0),
+            },
+            entry: Some(0),
+        }
+    }
+
+    /// An untracked file has no counts because it has no diff against the
+    /// index, not because it is binary: its row says `new`
+    /// (m6-conflicts/70, n1).
+    #[test]
+    fn an_untracked_file_reads_new_not_bin() {
+        let text = file_row_text(&counts_row(FileStatusView::Untracked, None), 40);
+        assert!(text.ends_with(" new"), "{text:?}");
+        assert!(!text.contains("bin"), "{text:?}");
+    }
+
+    /// Any other row with absent counts is a binary file, and still reads
+    /// `bin`; a row with counts still reads them (m6-conflicts/70).
+    #[test]
+    fn a_binary_file_still_reads_bin() {
+        let binary = file_row_text(&counts_row(FileStatusView::Modified, None), 40);
+        assert!(binary.ends_with(" bin"), "{binary:?}");
+        let counted = file_row_text(&counts_row(FileStatusView::Added, Some(1)), 40);
+        assert!(counted.ends_with("+1 \u{2212}0"), "{counted:?}");
     }
 }

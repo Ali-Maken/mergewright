@@ -102,7 +102,7 @@ fn esc_from_the_landing_shows_the_banner_row_on_a_real_merge() {
         let body = frame.join("\n");
         let row = footer(&frame, "\u{23ce} resolve");
         assert!(
-            row.contains("\u{23ce} resolve  c continue  a abort"),
+            row.contains("\u{23ce} resolve  c finish  a abort"),
             "{columns}x{rows}: {body}"
         );
         assert!(!body.contains("esc dismiss"), "{columns}x{rows}: {body}");
