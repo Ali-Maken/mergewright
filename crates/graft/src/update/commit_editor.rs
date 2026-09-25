@@ -561,7 +561,7 @@ fn open_editor_key(
         .as_ref()
         .map_or(Field::Subject, |editor| editor.focus);
     match focus {
-        Field::Subject => subject_key(state, key),
+        Field::Subject => subject_key(state, key, next_id),
         Field::Body => body_key(state, key),
         Field::CommitButton => button_key(state, key, next_id),
         option => option_key(state, key, option),
@@ -673,13 +673,23 @@ pub fn committed(state: &mut AppState) {
     state.external_editor = None;
 }
 
-/// Keys while the subject has focus. `Enter` moves to the body rather than
-/// inserting a newline: a subject is one line by definition.
-fn subject_key(state: &mut AppState, key: &KeyPress) -> Vec<Command> {
+/// Keys while the subject has focus. `Enter` commits, exactly as `Ctrl+Enter`
+/// and the button do (m6 usability P16, ADR-0044 §3): most commits are one
+/// line, and the finish summary's subject already commits on `Enter`. The
+/// same refusals hold — a live operation, nothing staged, an empty subject —
+/// and a refused press leaves the focus where it is. `Down` and `Tab` still
+/// reach the body.
+fn subject_key(
+    state: &mut AppState,
+    key: &KeyPress,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    if key.code == KeyCode::Enter {
+        return commit(state, next_id);
+    }
     with_editor(state, |editor| match key.code {
-        // `Enter` and `Down` both leave the subject, because a subject is one
-        // line by definition and there is nothing below it but the body.
-        KeyCode::Enter | KeyCode::Down => editor.focus = Field::Body,
+        // Nothing is below the subject but the body.
+        KeyCode::Down => editor.focus = Field::Body,
         KeyCode::Char(character) => editor.subject.insert(character),
         KeyCode::Backspace => editor.subject.backspace(),
         KeyCode::Delete => editor.subject.delete(),

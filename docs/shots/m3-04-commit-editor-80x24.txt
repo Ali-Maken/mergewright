@@ -23,4 +23,4 @@ COMMIT ── ⎇ main ── 1 file staged
 
 
   [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel

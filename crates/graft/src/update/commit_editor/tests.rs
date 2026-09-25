@@ -101,19 +101,203 @@ fn the_title_counts_the_staged_files() {
     );
 }
 
+/// `⏎` from the subject against `⌃⏎` from a clone of the same state: the
+/// commands and what is left on screen must be the same (P16: `⏎` is `⌃⏎`
+/// while the subject has focus).
+fn enter_matches_ctrl_enter(open: &AppState) -> (AppState, Vec<Command>) {
+    assert_eq!(
+        open.commit_editor.as_ref().expect("open").focus,
+        Field::Subject,
+        "the press under test is from the subject"
+    );
+    let (entered, commands) = update(open, key(KeyCode::Enter));
+    let (controlled, control_commands) = update(&open.clone(), control(KeyCode::Enter));
+    assert_eq!(commands, control_commands, "⏎ sends what ⌃⏎ sends");
+    assert_eq!(entered.operating, controlled.operating);
+    (entered, commands)
+}
+
 #[test]
-fn enter_in_the_subject_moves_to_the_body_and_inserts_nothing() {
+fn enter_in_the_subject_commits() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "fix: x");
+    let (fired, commands) = enter_matches_ctrl_enter(&open);
+    assert_eq!(
+        commands
+            .iter()
+            .filter(|command| matches!(command, Command::Operate(..)))
+            .count(),
+        1,
+        "{commands:?}"
+    );
+    let Some(Operation::Commit(params)) = operate(&commands) else {
+        panic!("⏎ in the subject commits: {commands:?}");
+    };
+    assert_eq!(params.message, "fix: x\n");
+    assert!(fired.operating.is_some(), "one write, and it is in flight");
+}
+
+#[test]
+fn enter_in_the_subject_commits_the_body_too() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
-    let (moved, _) = update(&open, key(KeyCode::Enter));
-    let editor = moved.commit_editor.as_ref().expect("still open");
-    assert_eq!(editor.focus, Field::Body);
-    assert_eq!(
-        editor.subject.text(),
-        "subject",
-        "no newline in the subject"
+    let (open, _) = update(&open, key(KeyCode::Tab)); // to the body
+    let open = typed(&open, "body");
+    let (open, _) = update(&open, key(KeyCode::BackTab)); // back to the subject
+    let (_, commands) = enter_matches_ctrl_enter(&open);
+    let Some(Operation::Commit(params)) = operate(&commands) else {
+        panic!("{commands:?}");
+    };
+    assert_eq!(params.message, "subject\n\nbody\n");
+}
+
+#[test]
+fn enter_with_a_template_commits_what_ctrl_enter_would() {
+    let (open, commands) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let Some(Command::ReadCommitTemplate(id)) = commands.first() else {
+        panic!("`c` asks for the template: {commands:?}");
+    };
+    let (filled, _) = update(
+        &open,
+        AppEvent::Produced(
+            *id,
+            Product::CommitTemplate(Ok(Some("# comment\nWhy:\n".to_owned()))),
+        ),
     );
-    assert!(editor.body.is_empty(), "and none in the body either");
+    let filled = typed(&filled, "subject");
+    let (_, commands) = enter_matches_ctrl_enter(&filled);
+    let Some(Operation::Commit(params)) = operate(&commands) else {
+        panic!("{commands:?}");
+    };
+    assert_eq!(params.message, "subject\n\nWhy:\n");
+}
+
+#[test]
+fn a_refused_enter_sends_nothing() {
+    let mut merging = ready(&["a.rs"]);
+    merging.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+        theirs: Ok(None),
+    });
+    merging.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
+    let rows: [(&str, AppState, &str, &str); 3] = [
+        ("nothing staged", ready(&[]), "subject", "nothing staged"),
+        ("empty subject", ready(&["a.rs"]), "", "subject empty"),
+        (
+            "a merge in progress",
+            merging.clone(),
+            "subject",
+            "merge in progress",
+        ),
+    ];
+    for (row, state, subject, words) in rows {
+        let open = if state.in_progress.is_some() {
+            opened_under(&state)
+        } else {
+            update(&state, key(KeyCode::Char('c'))).0
+        };
+        let open = typed(&open, subject);
+        let (after, commands) = enter_matches_ctrl_enter(&open);
+        assert!(commands.is_empty(), "{row}: {commands:?}");
+        assert!(after.operating.is_none(), "{row}");
+        let before = open.commit_editor.as_ref().expect("open");
+        let editor = after.commit_editor.as_ref().expect("still open");
+        assert_eq!(editor.focus, Field::Subject, "{row}: focus stays");
+        assert_eq!(editor.subject.text(), before.subject.text(), "{row}");
+        assert_eq!(editor.body.text(), before.body.text(), "{row}");
+        let (controlled, _) = update(&open, control(KeyCode::Enter));
+        let refusal = |state: &AppState| {
+            crate::view::commit_editor_view(state)
+                .expect("open")
+                .refusal
+                .as_deref()
+                .map(str::to_owned)
+        };
+        let shown = refusal(&after).expect("a refusal row");
+        assert_eq!(Some(shown.clone()), refusal(&controlled), "{row}");
+        assert!(shown.contains(words), "{row}: {shown}");
+    }
+}
+
+#[test]
+fn enter_while_a_job_runs_is_eaten_like_ctrl_enter() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let (running, _) = update(&open, control(KeyCode::Enter));
+    let id = running.operating.expect("a write is in flight");
+    let (after, commands) = enter_matches_ctrl_enter(&running);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(after.operating, Some(id));
+    let before = running.commit_editor.as_ref().expect("open");
+    let editor = after.commit_editor.as_ref().expect("still open");
+    assert_eq!(editor.focus, Field::Subject);
+    assert_eq!(editor.subject.text(), before.subject.text());
+    assert_eq!(editor.body.text(), before.body.text());
+    let (_, commands) = update(&after, key(KeyCode::Escape));
+    assert!(
+        commands.contains(&Command::CancelJob(id)),
+        "esc is still answered: {commands:?}"
+    );
+}
+
+#[test]
+fn enter_in_the_subject_amends_in_the_amend_editor() {
+    let (asked, commands) = update(&ready(&["a.rs"]), key(KeyCode::Char('a')));
+    let Some(Command::ReadHeadMessage(id)) = commands.first() else {
+        panic!("{commands:?}");
+    };
+    let (open, _) = update(
+        &asked,
+        AppEvent::Produced(*id, Product::HeadMessage(Ok("old subject\n".into()))),
+    );
+    let (_, commands) = enter_matches_ctrl_enter(&open);
+    let Some(Operation::Amend(params)) = operate(&commands) else {
+        panic!("⏎ in the amend editor's subject amends: {commands:?}");
+    };
+    assert_eq!(params.message, "old subject\n");
+}
+
+#[test]
+fn a_pasted_newline_does_not_commit() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let mut pasted = open.clone();
+    assert!(paste(&mut pasted, "fix: x\n"));
+    assert!(pasted.operating.is_none(), "a paste writes nothing");
+    let editor = pasted.commit_editor.as_ref().expect("still open");
+    assert_eq!(editor.focus, Field::Subject);
+    assert_eq!(editor.subject.text(), "fix: x");
+}
+
+#[test]
+fn down_and_tab_still_move_to_the_body() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    for leave in [KeyCode::Down, KeyCode::Tab] {
+        let (moved, commands) = update(&open, key(leave));
+        assert!(commands.is_empty(), "{leave:?}: {commands:?}");
+        let editor = moved.commit_editor.as_ref().expect("still open");
+        assert_eq!(editor.focus, Field::Body, "{leave:?}");
+        assert_eq!(editor.subject.text(), "subject", "{leave:?}");
+        assert!(editor.body.is_empty(), "{leave:?}");
+    }
+}
+
+#[test]
+fn enter_in_the_body_is_a_newline() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let (open, _) = update(&open, key(KeyCode::Tab));
+    let open = typed(&open, "one");
+    let (open, commands) = update(&open, key(KeyCode::Enter));
+    assert!(commands.is_empty(), "{commands:?}");
+    let open = typed(&open, "two");
+    let editor = open.commit_editor.as_ref().expect("still open");
+    assert_eq!(editor.focus, Field::Body);
+    assert_eq!(editor.body.text(), "one\ntwo");
+    assert!(open.operating.is_none());
 }
 
 #[test]
@@ -139,7 +323,7 @@ fn tab_walks_subject_body_options_button_and_back() {
 fn enter_on_the_button_commits_the_subject_and_the_body() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
-    let (open, _) = update(&open, key(KeyCode::Enter)); // to the body
+    let (open, _) = update(&open, key(KeyCode::Down)); // to the body
     let open = typed(&open, "body");
     // Tab from the body: options, then the button.
     let (open, _) = update(&open, key(KeyCode::Tab));

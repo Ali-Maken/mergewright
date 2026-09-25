@@ -167,8 +167,22 @@ pub struct CommitEditorScreen<'a> {
     pub theme: &'a Theme,
 }
 
-/// The key hints under the editor (design note, "Commit editor").
-const FOOTER: &str = "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel";
+/// The key hints under the editor while the subject has focus: `⏎` commits
+/// from there and `⇥` is the way to the body (m6 usability P16, pick 14).
+const FOOTER_SUBJECT: &str = "⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel";
+
+/// The key hints under the editor anywhere else (design note, "Commit
+/// editor"): in the body `⏎` is a newline, so only `⌃⏎` and the button commit.
+const FOOTER_OTHER: &str = "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel";
+
+/// The footer for whichever field has focus. One word per key, not per mode:
+/// the amend editor says `commit` too, as its button does.
+fn footer(focus: Field) -> &'static str {
+    match focus {
+        Field::Subject => FOOTER_SUBJECT,
+        _ => FOOTER_OTHER,
+    }
+}
 
 /// Rows the editor needs before the body gets any: title, blank, subject,
 /// blank, then the options row and the footer at the bottom.
@@ -213,7 +227,7 @@ impl Widget for &CommitEditorScreen<'_> {
                 format!("{} — esc dismisses", status.as_str()),
                 Token::Warning,
             ),
-            None => (FOOTER.to_owned(), Token::TextMuted),
+            None => (footer(self.view.focus).to_owned(), Token::TextMuted),
         };
         buf.set_string(
             area.x,

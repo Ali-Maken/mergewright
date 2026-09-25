@@ -37,7 +37,7 @@ COMMIT ── ⎇ main ── 2 files staged
 
   merge begun in the shell — esc, ⇥ banner, then c finishes it
   [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
-⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel
+⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel
 UNCOMMITTED · 2 staged
 diff vs HEAD ddeed32
 STAGED (2)                    ▎
