@@ -701,5 +701,6 @@ fn base_shown_words_are_singular_at_one() {
     assert_eq!(base_shown_words(1), "base shown for 1 conflict");
     assert_eq!(base_shown_words(3), "base shown for 3 conflicts");
 }
+mod abort_words;
 mod three_panes;
 mod words_and_c;

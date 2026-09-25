@@ -593,6 +593,7 @@ pub fn resume(
     let description = format!("{verb} {}", kind.name());
     let id = next_id();
     state.operating = Some(id);
+    state.resuming = Some((id, what.clone()));
     state.status = Status::Busy(description.clone());
     super::remote::launched(
         state,
@@ -689,9 +690,14 @@ pub fn resumed(
     outcome: crate::jobs::operate::Operated,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
-    if state.operating != Some(id) {
+    // One guard: the answer is the job `operating` waits for **and** the
+    // resume `resuming` kept. `resume` always sets both together.
+    let Some((_, how)) = state
+        .resuming
+        .take_if(|(resume, _)| state.operating == Some(id) && *resume == id)
+    else {
         return Vec::new();
-    }
+    };
     state.operating = None;
     state.remote.running = None;
     // The finish summary's own `--continue` first: a refusal keeps the
@@ -702,15 +708,16 @@ pub fn resumed(
     }
     match outcome {
         crate::jobs::operate::Operated::Done(applied) => {
-            resumed_done(state, &applied, finish, next_id)
+            resumed_done(state, &how, &applied, finish, next_id)
         }
         // It ran; only its record is short. The re-read confirms the end
         // the same way it does for `Done`.
         crate::jobs::operate::Operated::Incomplete { applied, error } => {
             super::undo::operation_ended(state);
+            let (Closing::Finished(what) | Closing::Unfinished(what)) =
+                closing(&how, &applied.entry);
             state.status = Status::sticky(format!(
-                "{} \u{2014} could not confirm it fully: {error}",
-                applied.entry.description
+                "{what} \u{2014} could not confirm it fully: {error}"
             ));
             super::operate::refresh_scope(state, applied.refresh, next_id)
         }
@@ -756,17 +763,71 @@ pub fn resumed(
     }
 }
 
+/// How a resume that closed its entry ended, in words: finished (the
+/// renderer adds the tick) or not.
+enum Closing {
+    Finished(String),
+    Unfinished(String),
+}
+
+/// The one wording of a resume's close. Keys on the `Resume` sent **and**
+/// the entry's status: a failed continue closes `Aborted` exactly as an
+/// abort does (`graft_ops::apply::resume::close_resume`), so neither alone
+/// can say which happened (m6-conflicts/68).
+fn closing(how: &Resume, entry: &graft_core::journal::JournalEntry) -> Closing {
+    use graft_core::journal::EntryStatus;
+
+    let what = &entry.description;
+    match (&entry.status, how) {
+        // A shell-begun merge's abort is its own `AbortMerge` entry, which
+        // commits and already reads `abort merge of …`: no second word.
+        (
+            EntryStatus::Committed,
+            Resume::Continue | Resume::ContinueWith { .. } | Resume::Abort,
+        ) => Closing::Finished(what.clone()),
+        (EntryStatus::Committed, Resume::Skip) => {
+            Closing::Finished(format!("{what}, last commit skipped"))
+        }
+        // The abort the user asked for worked: it keeps its tick, and the
+        // prefix makes the line true.
+        (EntryStatus::Aborted { .. }, Resume::Abort) => {
+            Closing::Finished(format!("aborted: {what}"))
+        }
+        (
+            EntryStatus::Aborted { reason },
+            Resume::Continue | Resume::ContinueWith { .. } | Resume::Skip,
+        ) => Closing::Unfinished(format!("{what} did not finish: {reason}")),
+        // Not expected on a closing answer; here so nothing says `✓` over it.
+        (EntryStatus::Pending, _) => {
+            Closing::Unfinished(format!("{what} did not finish: still open"))
+        }
+    }
+}
+
+/// What the status line says once a `--continue`/`--skip`/`--abort` closed
+/// its entry. A `Status`, not a string: the tick is the renderer's, and a
+/// close that did not finish must not be a `Done`. Nothing else builds
+/// these words.
+#[must_use]
+pub(crate) fn resumed_words(how: &Resume, entry: &graft_core::journal::JournalEntry) -> Status {
+    match closing(how, entry) {
+        Closing::Finished(what) => Status::done(what),
+        Closing::Unfinished(reason) => Status::sticky(reason),
+    }
+}
+
 /// The operation finished: the entry ends, the scope re-reads and the
 /// cursor lands on HEAD. A merge committed from the finish summary says so
 /// in its own words (`merged feature into main`).
 fn resumed_done(
     state: &mut AppState,
+    how: &Resume,
     applied: &graft_ops::apply::Applied,
     finish: Option<super::finish::FinishAnswer>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     super::undo::operation_ended(state);
-    state.status = Status::done(applied.entry.description.clone());
+    state.status = resumed_words(how, &applied.entry);
     let commands = super::operate::refresh_scope(state, applied.refresh, next_id);
     finished_lands_on_head(state, &commands);
     if let Some(super::finish::FinishAnswer::Merged(Some(words))) = finish {

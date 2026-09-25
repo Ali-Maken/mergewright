@@ -1899,3 +1899,4 @@ fn a_click_on_the_detail_tab_does_not_move_the_hidden_graph() {
 }
 
 mod landing_shots;
+mod resume_words;

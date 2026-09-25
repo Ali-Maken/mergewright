@@ -23,6 +23,7 @@ mod last_file;
 mod modal;
 mod opens_summary;
 mod restart;
+mod resume_words;
 mod shell_begun;
 mod stash_pop;
 mod take_all;

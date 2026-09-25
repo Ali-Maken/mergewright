@@ -1153,6 +1153,7 @@ fn every_field_spelled_out() -> AppState {
         refs_read: RefsRead::Pending(JobId::new(3)),
         working_tree: None,
         operating: None,
+        resuming: None,
         screen: Screen::Graph,
         lanes_expanded: false,
         focus: false,

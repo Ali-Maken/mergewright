@@ -1,6 +1,6 @@
 # resume-words-say-what-happened: an abort reads `aborted: … ✓`, a final skip says it skipped
 
-Status: draft (reconciled with the scout, 2026-09-25)
+Status: done (2026-09-25)
 From: `docs/reviews/m6-usability-final.md` N2 (:112-123).
 Build with: **Opus**. Alone this is Sonnet-sized (one function, one state field), but it shares group B's one context with
 `69-a-box-owns-the-bottom-row`, which needs Opus (see there).
@@ -98,28 +98,31 @@ with the entry `Aborted`: the status is `Done` and draws `aborted: rebase main o
 - **MAP.md:** graft `update::banner` (`resumed_words`), `AppState::resuming`.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `aborting_a_rebase_does_not_read_as_done`, red then green.
-- [ ] `the_resume_words_say_what_happened`: the table above, one row each, including the shell-merge abort row and the
-      `did not finish` row (a `Sticky`, no `✓`).
-- [ ] **Pin (rule 7; the scout could not confirm it):** `a_resume_git_fails_answers_failed`: the `jobs::operate` mapping
-      from `graft_ops::apply::resume`'s error to `Operated` sends an `ApplyError::Git` whose entry is `Aborted` to
-      `Operated::Failed`, never `Done`. If it reaches `Done`: **stop** and report with the line; do not reword around it.
-- [ ] `a_stale_resume_answer_is_dropped`: a `resumed` answer whose id is not `resuming`'s changes nothing.
-- [ ] `the_resolver_abort_reads_aborted`.
-- [ ] Real repo (`tests/it`): `a_relaunched_rebase_abort_reads_aborted`: relaunch into a stopped rebase, `a y`;
-      `git status` shows no rebase; the line reads `aborted: rebase main onto fix ✓`.
-- [ ] Real repo: `a_final_skip_says_it_skipped`: a two-commit rebase stopping on the last, `s y`: the line reads
-      `<d>, last commit skipped ✓`; `git log` lacks the skipped commit; the journal's entry for the rebase is
-      `Committed` (the scout found no ops test for this, Q3).
-- [ ] **Pin (not read by the scout):** `abort_then_u_words`: after `a_relaunched_rebase_abort_reads_aborted`'s `a y`,
-      press `u`. Assert what the status line reads and record it in NOTES. If it words the abort as done (`<d> ✓` with no
-      `aborted:`), report it as a finding with its line; do not fix here.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-abort-reads-aborted-120x40.txt`, from the
-      relaunch test.
-  - **What right looks like:** the bottom row reads `aborted: rebase main onto fix ✓`; no `REBASING` in the header; the
-    cursor on `main`'s tip.
-- [ ] NOTES: the journal-browser finding (`view/journal.rs:190,218`) for the conductor's KNOWN_GAPS row.
-- [ ] MAP.md updated (doc, no test).
+- [x] `aborting_a_rebase_does_not_read_as_done` (`update::banner::tests::resume_words`), red then green — red observed
+      (`left: Done { what: "rebase main onto fix" }`), green after `resumed_words`.
+- [x] `the_resume_words_say_what_happened`: eight rows (continue, continue-with, final skip, shell-merge `AbortMerge`
+      abort, Graft-begun abort, continue over `Aborted`, skip over `Aborted`, continue over `Pending`); each non-`Done`
+      row drawn at 120x40 has no `✓`.
+- [x] **Pin:** `a_resume_git_fails_answers_failed` (`jobs::operate::tests`): `answer(Err(ApplyError::Git { entry: Aborted,
+      .. }))` is `Operated::Failed` (`jobs/operate.rs` `answer`, its `Err(error) =>` arm). It does not reach `Done`.
+- [x] `a_stale_resume_answer_is_dropped` (another job's id; and `operating`/`resuming` disagreeing: one guard, one drop).
+      Plus `a_resume_that_dies_takes_its_resuming_with_it` (the `write_job_ended` clearer).
+- [x] `the_resolver_abort_reads_aborted` (`update::resolver::tests::abort_words`). See NOTES: the resolver has no `a`.
+- [x] Real repo: `a_relaunched_rebase_abort_reads_aborted` (`tests/it/conflict_interim/resume_words.rs`): no
+      `.git/rebase-merge`, `git status` names no rebase, the footer reads `aborted: rebase feature onto main ✓`, cursor
+      on HEAD. (Fixture's description, not the spec's illustrative `main onto fix`.)
+- [x] Real repo: `a_final_skip_says_it_skipped` (`tests/it/resolver/resume_words.rs`): Graft-begun `TwoStopRebase` at
+      step 2, `Esc`, `⇥`, `s y`: line `<d>, last commit skipped ✓`; `git log` lacks `REBASE_HEAD`'s subject; the
+      journal's rebase entry is `Committed` (scout Q3 now confirmed by a test).
+- [x] **Pin:** `abort_then_u_words` (`tests/it/conflict_interim/resume_words.rs`): reads `nothing to undo`; see NOTES.
+      Not a finding.
+- [x] Capture: `docs/shots/m6/fix-abort-reads-aborted-120x40.txt`, from `a_relaunched_rebase_abort_reads_aborted`
+      (`check_shot`). Caption in `m6-contact-sheet-captions.tsv` (`contact_sheet_captions_cover_every_m6_capture`).
+      Colour **unverified**.
+  - **What right looks like (as built):** the graph footer reads `aborted: rebase feature onto main ✓`; no `REBASING`
+    in the header; the cursor on HEAD, which after an abort is `feature`'s tip, not `main`'s (see NOTES).
+- [x] NOTES: the journal-browser finding, below.
+- [x] MAP.md updated (`resumed`, `resumed_words`, `AppState::resuming`; doc, no test).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -127,3 +130,39 @@ workspace-wide.
 
 ## Size
 Small: one field, one function, two callers, eight tests, one capture. One context shared with 69.
+
+## NOTES (builder, 2026-09-25)
+- Scout used: `.scratch/m6-conflicts/scouts/resume-words-say-what-happened.md`, with the amended spec.
+- **Cause fixed.** `resumed_done` worded every close `Status::done(description)` because the `Resume` sent was gone by
+  the answer. `AppState::resuming` now keeps it; `banner::resumed_words` keys on it and the entry's status.
+- **Shell-merge row keyed on status:** `(Committed, Abort)` → `<d>` covers the `AbortMerge` entry (the only abort that
+  closes `Committed`) with no second word. An `Aborted` entry on a `Done` answer to an abort is always the user's
+  abort: a failed abort is `Err(ApplyError::Git)` → `Failed` (pinned).
+- **Cursor after the abort:** on HEAD, which is `feature`'s tip (`Change every file on feature`), not `main`'s: an abort
+  puts HEAD back on the branch being rebased. The spec's "main's tip" was wrong for this fixture; the caption says so.
+- **Resolver path (spec premise corrected, rule 7):** the resolver has **no `a`**. Keymap §2.6's table names none; with
+  the resolver open `a` is claimed and sends no resume (asserted in the test). The only resolver → `resumed` route is
+  `c` (`ReturnTo::Resolver` in `banner.rs` `continue_pressed`), whose words are unchanged. Aborting from the resolver is
+  `Esc`, `⇥`, `a`, `y` through the banner; the test drives that and reads `aborted: …`.
+- **`operating`'s other clearers:** `operate::write_job_ended` (a resume job that panicked, or was cancelled by
+  shutdown; `job_failed`/`job_cancelled` both reach it) now also clears `resuming` when the ids match.
+  `remote::cancelled` (`remote/in_flight.rs:85`) needs `remote.cancelling == id`, which `Esc` never sets for a resume
+  (`Stoppable::No` in `banner::resume`). `undo::undone`/`reverted_to` and `operate::operated`: not resume jobs; a later
+  resume overwrites `resuming`, and the guard needs both ids, so a stale one never words a later answer.
+- **`abort_then_u_words` (observed):** after the relaunched abort, `u` reads `nothing to undo ✓` (`Status::done`),
+  `in_progress` stays `None`, no `.git/rebase-merge`. It does not word the abort as done: not a finding. Question: the
+  relaunch fixture's entry has no backup, so this does not show what `u` says after aborting a rebase Graft began in
+  this run.
+- **Journal-browser finding (for KNOWN_GAPS, not fixed):** a user's abort reads `failed: aborted` in the journal browser.
+  `crates/graft/src/view/journal.rs:190` (row: `EntryStatus::Aborted { reason } => format!("failed: {}", …)`) and
+  `:218` (detail: `Some(format!("failed: {reason}"))`), at `6e1d42bc`. The browser has no `Resume`; telling an
+  abort's reason (`"aborted"`, `graft_ops::apply::resume::close_resume`) from a failure's needs the ops constant.
+- **Touches:** `resumed_done` and the `Incomplete` arm both go through `closing` (`grep -n "entry.description"
+  banner.rs`: one hit, inside `closing`). Resolver path: above. Shell-merge abort:
+  `resolver::shell_begun::a_on_the_banner_aborts_a_shell_merge` green; `fix-shell-merge-abort-and-undo-120x40.txt` and
+  `fix-landing-after-continue-rebase-*` unchanged (`git status docs/shots` lists only the new capture). TESTING.md: no
+  line names a Graft-begun abort's or a final skip's closing line (`grep -n abort TESTING.md`: only :2336, the shell
+  merge, unchanged); nothing for the acceptance ticket to reword. Existing banner tests that answer a resume now set
+  `resuming` beside `operating` (8 sites in `banner/tests.rs`); `every_field_spelled_out` gains the field.
+  Journal/undo, keymap, graft-ui: none.
+- No compaction.
