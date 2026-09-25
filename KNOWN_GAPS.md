@@ -47,7 +47,7 @@ until the milestone that needs them.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
-| Rebase with a dirty tree (review N3) | DESIGN.md never says whether Graft surfaces git's refusal or offers `--autostash`. Decide in M5's design; if autostash, the popped stash needs DESIGN.md §6.3's untracked-safe snapshot handling, not a bare `git stash` | M5 |
+| Rebase with a dirty tree (review N3) | **Decided 2026-09-25: ADR-0045** (his pick 16). Graft sets the edits aside with its own stash entry, not `--autostash`, and puts them back as one journal entry; a clash opens the resolver. Built by tickets 73–74; close this row when 75's walk passes | M6 |
 | 50k+ refs in the sidebar and ref badges (review N4) | PROMPT.md §6.3 requires handling repos with 50k+ refs; branch-tree filtering, badge lookup and ranking at that scale are undesigned. Validate in M1's performance pass, not assumed free. m1/30 part 1: badge lookup 179 ns, `badges()` on 50k refs 1.35 s (debug, off-thread); frames with 50k refs pass the 16 ms release check like frames without them (m1-the-graph/30f, 7 of 7; idle-wake keys aside, see "Idle-wake keys can miss 16 ms"). No sidebar exists in M1, so branch-tree filtering/ranking is unmeasured | Frame part: ticket 30's remainder. Sidebar filtering/ranking: the milestone that builds the sidebar |
 
 ## Design gaps (step 2 review round 2, 2026-09-12)
@@ -803,3 +803,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M6/63 | **`m4-03-160x48` sometimes catches the pulse glyph `◦`** in compare mode (ticket 63 NOTES). | unverified (flake) | M7 |
 | M6/63 | **Question: `m6-07` shows `c continue the rebase`; is `c continues the rebase` meant** (the banner's form)? Wording, his call. Source: ticket 63 NOTES | question | M7 |
 | M6/66 | **Question: the duplicate probe is not re-run after a write** — only `Ctrl+R` re-reads it (`crates/graft/src/update/keys.rs:428`, per the 66 builder; unconfirmed by the conductor). A cherry-pick made in the app may not show its duplicate until a reload. Source: ticket 66 NOTES | question | M7 |
+| M6/0045 | **After a stash or set-aside clash is resolved, every file is staged**, as git leaves it; files he had staged before cannot be told apart, so Graft does not unstage them (`docs/adr/0045-stash-put-back-is-recorded-and-one-entry.md` :94-95). A put-back also loses the staged/unstaged split on the clean path; the preview says so (:96) | **broken** (by design, accepted) | M8 |
+| M6/0045 | **A fast-forward pull over overlapping unsaved edits still fails with git's words**; set-aside covers rebase and checkout only (ADR-0045 :97; pick 16 names pull with rebase and switch) | **broken** | M7 |

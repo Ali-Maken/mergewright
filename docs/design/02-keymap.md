@@ -147,7 +147,10 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   dedicated key.** Rename, delete branch/tag, cherry-pick, reset to here,
   explain/fix a Mistake Radar marker, create branch/tag from an arbitrary
   commit, copy SHA and open-in-browser are all reachable in at most two
-  steps without owning a letter.
+  steps without owning a letter. On a commit row, Checkout holds the `.`
+  menu's first place and Cherry-pick its second, fixed; when either cannot
+  act it stays in place, dim, with its reason (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
+  Own keys and a picker: M7.
 - **Every binding is remappable** in `[keys]` in `config.toml`; Graft detects
   and warns about remap collisions at startup rather than picking silently.
 
@@ -272,7 +275,7 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts this way` (P2; wording approved 2026-09-24). On a done file, `n`/`N` cross straight to the next file not done (ticket 17 D6). |
 | `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G` (`Home`/`End` as `g`/`G`; conductor 2026-09-24: they scroll today, kept), the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open. When every file is done and the summary is not open (after `Esc` from it; a rebase, cherry-pick or revert), the resolver shows the finish row `✓ every file done — c …`, `c` leads the bar, and a click on the row does what `c` does (P8, P11) |
-| `Enter` | Mark this file done and move to the next conflicted file. After the last: a merge → the finish summary opens by itself (P11, approved 2026-09-24); a rebase, cherry-pick or revert → stays on it with the finish row (P8); a stash pop closes to the graph |
+| `Enter` | Mark this file done and move to the next conflicted file. After the last: a merge → the finish summary opens by itself (P11, approved 2026-09-24); a rebase, cherry-pick or revert → stays on it with the finish row (P8); a stash clash (pop, apply, or edits set aside around a rebase/switch) → closes to the changes pane; a pop or set-aside then drops the stash by commit id, no box, `u` brings it back; an apply keeps it (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
 | `e` | Open `$EDITOR` at the cursor block |
 | `M` | Launch the configured external mergetool on this file |
 | `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |
@@ -374,8 +377,8 @@ graph pane's global bindings above are not live while it has focus.
 | Key | Action |
 |---|---|
 | `s` | Save a new stash (message prompt; **modal**, §2.1 — `Tab` switches staged-only vs everything, `Enter` saves, `Esc` cancels) |
-| `Enter` | Apply |
-| `p` | Pop (apply, then drop) |
+| `Enter` | Apply. A clash opens the resolver on the first clashed file; the stash is kept (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
+| `p` | Pop (apply, then drop). A clash opens the resolver on the first clashed file; the stash is kept until the last file is done, then dropped, `u` brings it back (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
 | `d` | Drop (undoable) |
 | `b` | Create a branch from this stash — **planned, not yet built** (no milestone has claimed it yet; candidate for M5, which owns branch creation) |
 | `Space` | Preview the diff |
