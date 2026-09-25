@@ -50,6 +50,8 @@ pub(super) fn journeys() -> Vec<Scenario> {
         captured(a_finish(), "m6-15-finish-summary"),
         b_finish(),
         b_finish_again_after_undo(),
+        b_abort_shell_merge(),
+        b_undo_a_take_in_the_shell(),
         captured(summary_open_git_combined(), "m6-16-summary-expanded"),
         captured(back_after_esc(), "m6-19-after-esc-esc"),
         open_a_done_file(),
@@ -773,6 +775,98 @@ fn b_finish_again_after_undo() -> Scenario {
             ],
             vec![vec![route()], c_enter(), vec![end()], merged_landing()],
         ]),
+    )
+}
+
+/// `a → ⏎` from the banner of a merge begun in the shell (m6-conflicts/57):
+/// the merge is gone as far as git and the app know, and the journal holds
+/// one `AbortMerge` for `u` to put back.
+fn b_abort_shell_merge() -> Scenario {
+    Scenario {
+        expect: |_, marks| {
+            let aborted = marks.get("aborted")?;
+            let entries = entries_of(aborted, OperationKind::AbortMerge);
+            check(entries == 1, || {
+                format!("{entries} AbortMerge entries, not one")
+            })
+        },
+        ..journey(
+            "b-abort-shell-merge",
+            two_files_in_the_shell,
+            vec![
+                launched(),
+                vec![
+                    route(),
+                    key(ch('a')),
+                    Step::See("the abort box says u puts it back", |state| {
+                        a_row_reads(state, "u puts the merge back")
+                    }),
+                    key(KeyCode::Right),
+                    key(KeyCode::Enter),
+                    Step::Write("the abort"),
+                    Step::WaitFor(Wait::Ready),
+                    Step::WaitFor(Wait::NotInProgress),
+                    end(),
+                    Step::Shell(no_merge_head),
+                    Step::See("the status names the abort", |state| {
+                        status_containing(state, "abort merge of feature")
+                    }),
+                    Step::Mark("aborted"),
+                ],
+            ],
+        )
+    }
+}
+
+/// Some row of the frame drawn at the app's size reads `line`.
+fn a_row_reads(state: &AppState, line: &str) -> Result<(), String> {
+    let frame = crate::captures::frame(state, state.size.columns, state.size.rows);
+    check(frame.iter().any(|row| row.contains(line)), || {
+        format!("no row reads {line:?}")
+    })
+}
+
+fn no_merge_head(fixture: &Fixture) -> Result<(), String> {
+    let merge_head = fixture.git(&["rev-parse", "-q", "--verify", "MERGE_HEAD"]);
+    check(merge_head.is_err(), || {
+        format!("MERGE_HEAD is still there: {merge_head:?}")
+    })
+}
+
+/// `u` from the banner after a whole-file `t` on `gone.txt` in a merge begun
+/// in the shell (m6-conflicts/57): the file is conflicted again, the merge
+/// still open, the banner keeps the keyboard.
+fn b_undo_a_take_in_the_shell() -> Scenario {
+    journey(
+        "b-undo-a-take-in-the-shell",
+        two_files_in_the_shell,
+        vec![
+            launched(),
+            vec![key(KeyCode::Enter), Step::WaitFor(Wait::ConflictOpened)],
+            done_by('t', "gone.txt"),
+            // The start: out of the resolver, the banner focused.
+            vec![
+                key(KeyCode::Escape),
+                Step::See("Esc lands on the banner", |state| {
+                    check(state.resolver.is_none() && state.banner_focus, || {
+                        "Esc did not leave the resolver for the banner".to_owned()
+                    })
+                }),
+            ],
+            vec![
+                route(),
+                key(ch('u')),
+                Step::Write("the undo"),
+                Step::WaitFor(Wait::ConflictedPath("gone.txt")),
+                end(),
+                Step::Shell(merge_head_is_back),
+                Step::See("the banner keeps the keyboard", |state| {
+                    check(state.banner_focus, || {
+                        "the banner lost the keyboard".to_owned()
+                    })
+                }),
+            ],
+        ],
     )
 }
 

@@ -46,9 +46,9 @@ pub(super) fn folded_step(
     let Some(live) = facts.in_progress else {
         return Ok(None);
     };
-    // Finishing a merge is not a step inside it: it ends the span, and is
-    // an entry of its own (m6-conflicts/20).
-    if matches!(op, Operation::FinishMerge(_)) {
+    // Finishing or aborting a merge is not a step inside it: it ends the
+    // span, and is an entry of its own (m6-conflicts/20, /57).
+    if matches!(op, Operation::FinishMerge(_) | Operation::AbortMerge(_)) {
         return Ok(None);
     }
     let span = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?.cloned();

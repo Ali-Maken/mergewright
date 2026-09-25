@@ -365,20 +365,19 @@ pub fn banner_key(
             }
             None => nothing_conflicted(state),
         },
-        // `u`/`U` are refused **in words**, focused or not — the one thing
-        // §2.6 says about them while an operation is live. They used to
-        // fall into the silent arm below, so the key the user pressed on
-        // purpose drew nothing at all (review M3): `keys.rs` runs
-        // `banner_key` before the undo path, so `undo`'s own refusal — the
-        // same words — was reached only with the banner unfocused. Undo
-        // itself is still refused; what changed is that it says so.
-        KeyCode::Char('u' | 'U') if plain => {
-            // `banner_key` returned early unless `banner_view` was `Some`,
-            // which needs a live operation — the one thing
-            // `in_progress_refusal` reads. So this is always `Some` here,
-            // and there is no failure being passed over.
-            if let Some(refusal) = super::undo::in_progress_refusal(state) {
-                state.status = refusal;
+        // `u`/`U` answer exactly as the global keys do, focused or not —
+        // `undo_key` is the one path. That is a refusal **in words** while an
+        // operation is live (§2.6a); they used to fall into the silent arm
+        // below, so the key pressed on purpose drew nothing at all (review
+        // M3). In a merge begun in the shell they are sent, and ops' gate
+        // decides (§2.6a's one exception, m6-conflicts/57).
+        KeyCode::Char(letter @ ('u' | 'U')) if plain => {
+            // The refusal first: `undo_key` asks the undo-after-push box
+            // before `launch` refuses, and a box on a key that then refuses
+            // is not what the banner has ever answered.
+            match super::undo::in_progress_refusal(state) {
+                Some(refusal) => state.status = refusal,
+                None => commands.extend(super::undo::undo_key(state, letter == 'U', next_id)),
             }
         }
         // Swallowed on purpose, and **silently**: §2.1's modal rule.
@@ -499,23 +498,57 @@ fn skip_pressed(state: &mut AppState) {
     });
 }
 
-/// `a`: a confirm box, always openable.
+/// `a`: a confirm box, always openable, cursor on `[ Cancel ]`.
+///
+/// A merge begun in the shell is aborted as an `AbortMerge` entry of its
+/// own (m6-conflicts/57), so its box says what the abort does to the branch
+/// and that `u` takes it back. Only once that is known
+/// (`undo::shell_merge_known`): while the launch's journal read is out, a
+/// merge Graft began looks the same, and its abort is not undone by `u`.
 fn abort_pressed(state: &mut AppState) {
     let Some(kind) = live(state).map(|detail| detail.kind) else {
         return;
     };
+    let lines = if super::undo::shell_merge_known(state) {
+        vec![
+            format!("{} goes back to before the merge", head_word(state)),
+            "u puts the merge back".to_owned(),
+        ]
+    } else {
+        vec![
+            "everything goes back to before it started".to_owned(),
+            "the journal keeps the entry".to_owned(),
+        ]
+    };
     state.confirm = Some(PendingConfirm {
         view: graft_ui::confirm::ConfirmView::new(
             sanitize_line(&format!("Abort the {}?", kind.name())),
-            vec![
-                sanitize_line("everything goes back to before it started"),
-                sanitize_line("the journal keeps the entry"),
-            ],
+            lines.iter().map(|line| sanitize_line(line)).collect(),
             sanitize_line(kind.abort_command()),
         )
         .with_labels("Cancel", "Abort"),
         then: ConfirmThen::Resume(Resume::Abort),
     });
+}
+
+/// `HEAD` as the abort box names it: its branch's short name, or the
+/// commit's short id when detached. `HEAD` itself before the refs read has
+/// answered — true, and nothing better is known yet.
+fn head_word(state: &AppState) -> String {
+    let Some(refs) = state.refs.as_deref() else {
+        return "HEAD".to_owned();
+    };
+    if let Some(tip) = super::preview::current_branch(refs) {
+        return tip
+            .name
+            .strip_prefix("refs/heads/")
+            .unwrap_or(&tip.name)
+            .to_owned();
+    }
+    refs.head().map_or_else(
+        || "HEAD".to_owned(),
+        |oid| oid.to_string().chars().take(7).collect(),
+    )
 }
 
 /// Queue a `--continue`/`--skip`/`--abort`.

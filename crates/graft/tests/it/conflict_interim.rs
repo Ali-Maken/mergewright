@@ -911,6 +911,52 @@ fn relaunch_into_a_live_conflict() {
     app.close();
 }
 
+/// **`u` still refuses after a relaunch into a merge Graft began**
+/// (m6-conflicts/57, decision 1). The launch's journal read names the
+/// merge's `Pending` entry as live, so it is not a merge begun in the shell:
+/// `u` and `U` refuse in words, on the banner and off it, and nothing
+/// is sent. `a` is its way back.
+#[test]
+fn u_still_refuses_after_relaunch_into_a_merge_begun_in_graft() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+    drop(state);
+    app.close();
+
+    let (app, state) = App::open(repo);
+    let state = launched(&app, state);
+    assert_eq!(state.live_entries.len(), 1, "the merge's entry is live");
+    assert!(state.banner_focus, "the banner has the keyboard");
+    let refusal = Status::Sticky {
+        reason: "finish or abort the merge first".to_owned(),
+        keys: Some("\u{21e5} banner".to_owned()),
+    };
+    let off_the_banner = app.key(&state, KeyCode::Escape);
+    assert!(
+        !off_the_banner.banner_focus,
+        "Esc gives the panes the keyboard"
+    );
+    for (place, state) in [("banner", &state), ("panes", &off_the_banner)] {
+        for letter in ['u', 'U'] {
+            let (after, commands) = crate::app_harness::press_for_commands(
+                state,
+                KeyPress::plain(KeyCode::Char(letter)),
+            );
+            assert!(
+                !commands
+                    .iter()
+                    .any(|command| matches!(command, Command::Undo(..) | Command::Redo(..))),
+                "{letter} on the {place}: {commands:?}"
+            );
+            assert_eq!(after.status, refusal, "{letter} on the {place}");
+        }
+    }
+    drop(state);
+    app.close();
+}
+
 /// `Shape::StoppedRebase` as a killed Graft leaves it: git's rebase state
 /// on disk and the journal's `Pending` line for the rebase that stopped,
 /// with no outcome after it. `head_before` is the branch the rebase started

@@ -100,12 +100,51 @@ pub(super) fn after_push_chosen(
 /// A bisect is deliberately not covered: it draws no banner (`banner::live`
 /// answers `None` for one, and bisect banners are M7's), so `⇥ banner`
 /// would point at nothing.
+///
+/// **One exception** (keymap §2.6a, m6-conflicts/57): a merge begun in the
+/// shell ([`shell_merge_known`]) answers `None`, so `u`/`U` are sent. What a
+/// step there may undo is ops' decision, not this one's: its gate lets
+/// through only an entry whose after-state is that same merge, and answers
+/// anything older with `NotInvertible::OperationLive` — worded by
+/// [`undone`] in the same sentence as this refusal.
 pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
     let kind = super::banner::live(state)?.kind;
-    Some(Status::Sticky {
+    if shell_merge_known(state) {
+        return None;
+    }
+    Some(live_refusal(kind, Some(BANNER_KEYS.to_owned())))
+}
+
+/// The key that reaches the banner, as every "finish or abort" line names it.
+const BANNER_KEYS: &str = "\u{21e5} banner";
+
+/// A merge is live, **and it is known that Graft did not begin it**: the
+/// launch's journal read has answered and named no entry of Graft's live
+/// (`commit_editor::live_operation`'s `InShell`).
+///
+/// Until that read answers, `live_entries` is empty for a merge Graft began
+/// too, so `live_operation` alone would call it the shell's. That is fine
+/// for the commit editor's words (git's own command works either way) but
+/// not for `u`, and not for the abort box, which promises `u` puts the merge
+/// back: both treat "not read yet" as "begun in Graft" (decision 1).
+pub(super) fn shell_merge_known(state: &AppState) -> bool {
+    use super::commit_editor::Begun;
+    matches!(
+        super::commit_editor::live_operation(state),
+        Some((graft_git::state::InProgress::Merge, Begun::InShell))
+    ) && matches!(state.journal.entries, super::detail::Loading::Ready(_))
+}
+
+/// The one wording of "an operation is live, so not now"
+/// (m6-conflicts/57): `u`/`U`'s refusal, the preview's, and ops' own
+/// `NotInvertible::OperationLive` answer all build their status here, so the
+/// three cannot drift (`operation_live_words_match_ops` pins it to ops'
+/// text). `keys` is `None` where the banner is hidden or absent.
+pub(super) fn live_refusal(kind: graft_git::state::InProgress, keys: Option<String>) -> Status {
+    Status::Sticky {
         reason: format!("finish or abort the {} first", kind.name()),
-        keys: Some("\u{21e5} banner".to_owned()),
-    })
+        keys,
+    }
 }
 
 /// A `--continue`/`--skip`/`--abort` answered `Done`: the operation is
@@ -254,11 +293,12 @@ pub fn undone(
             // graph's `origin/main` badge reads as a bug.
             let still_there = super::remote::pushed_since(state, &applied.entry);
             state.status = Status::done(format!("{}{still_there}", applied.entry.description));
-            // Taking back a finish leaves git mid-operation again, and only
-            // the read this asks for can say so: it pays the landing
-            // (`land_after_undo`, ticket 41). `in_progress` is always `None`
-            // here in practice — `launch` refuses while one is live — but
-            // the check keeps the flag honest if that ever changes.
+            // Taking back a finish or an abort leaves git mid-operation
+            // again, and only the read this asks for can say so: it pays the
+            // landing (`land_after_undo`, ticket 41). With a merge begun in
+            // the shell already live (a whole-file step undone inside it,
+            // m6-conflicts/57) there is no landing to owe: the banner keeps
+            // whatever focus it had.
             state.undo_landing_owed = state.in_progress.is_none();
             refresh(state, applied.refresh, next_id)
         }
@@ -273,6 +313,14 @@ pub fn undone(
         // back. Cleared by the next key, like any other acknowledgement.
         Undone::Nothing(why) => {
             state.status = Status::done(why);
+            Vec::new()
+        }
+        // Ops' gate: the entry is older than the merge git is standing in
+        // (m6-conflicts/57). A refusal, so `Sticky`, in `u`'s own words;
+        // the banner is named only where there is one (a bisect has none).
+        Undone::OperationLive { kind } => {
+            let keys = super::banner::banner_focusable(kind).then(|| BANNER_KEYS.to_owned());
+            state.status = live_refusal(kind, keys);
             Vec::new()
         }
         // `Esc`, answered. A clean cancel is an acknowledgement — `Done`,
@@ -735,6 +783,140 @@ mod tests {
         ));
         assert!(commands.is_empty(), "{commands:?}");
         assert_eq!(state.operating, None);
+    }
+
+    /// A stopped merge, and the journal as the app last read it: `Some`
+    /// holds the entries git is still inside (`JournalRead::live`), `None`
+    /// is the launch read still out.
+    fn merging(journal: Option<Vec<EntryId>>) -> AppState {
+        let (entries, live_entries) = match journal {
+            Some(live) => (
+                Loading::Ready(Arc::new(JournalRead {
+                    entries: Vec::new(),
+                    unreadable: Vec::new(),
+                    live: live.clone(),
+                })),
+                live,
+            ),
+            None => (Loading::Pending(JobId::new(40)), Vec::new()),
+        };
+        AppState {
+            in_progress: Some(graft_git::state::InProgressDetail {
+                kind: graft_git::state::InProgress::Merge,
+                step: None,
+                head_name: None,
+                onto: None,
+                theirs: Ok(None),
+            }),
+            live_entries,
+            journal: JournalState {
+                entries,
+                ..JournalState::default()
+            },
+            ..AppState::default()
+        }
+    }
+
+    /// Keymap §2.6a's one exception (m6-conflicts/57): in a merge **begun
+    /// in the shell** — the journal read, and no entry of Graft's live —
+    /// `u` and `U` are sent, and ops' gate answers.
+    #[test]
+    fn u_in_a_merge_begun_in_the_shell_is_sent() {
+        for redo in [false, true] {
+            let mut state = merging(Some(Vec::new()));
+            let commands = undo_key(&mut state, redo, &mut ids());
+            let sent = if redo {
+                Command::Redo(JobId::new(1), false)
+            } else {
+                Command::Undo(JobId::new(1), false)
+            };
+            assert_eq!(commands, vec![sent], "redo {redo}: {:?}", state.status);
+        }
+    }
+
+    /// A merge Graft began folds its steps into its own live entry, so `a`
+    /// is its way back: `u` refuses as before.
+    #[test]
+    fn u_still_refuses_in_a_merge_begun_in_graft() {
+        let mut state = merging(Some(vec![EntryId::new(7, [7; 10])]));
+        for redo in [false, true] {
+            assert!(undo_key(&mut state, redo, &mut ids()).is_empty());
+            assert_eq!(
+                state.status,
+                live_refusal(
+                    graft_git::state::InProgress::Merge,
+                    Some("\u{21e5} banner".to_owned())
+                )
+            );
+        }
+    }
+
+    /// Until the launch's journal read answers, `live_entries` is empty for
+    /// a merge Graft began too, so "begun in the shell" is not known yet:
+    /// refused as before (decision 1).
+    #[test]
+    fn u_refuses_while_the_launch_journal_read_is_out() {
+        let mut state = merging(None);
+        for redo in [false, true] {
+            assert!(undo_key(&mut state, redo, &mut ids()).is_empty());
+            assert_eq!(state.operating, None);
+            assert_eq!(
+                state.status,
+                live_refusal(
+                    graft_git::state::InProgress::Merge,
+                    Some("\u{21e5} banner".to_owned())
+                )
+            );
+        }
+    }
+
+    /// The app's refusal and ops' own answer are the same sentence for
+    /// every kind, so `u` reads the same whichever side refused it.
+    #[test]
+    fn operation_live_words_match_ops() {
+        use graft_git::state::InProgress;
+        use graft_ops::undo::{NotInvertible, UndoError};
+        for kind in [
+            InProgress::Merge,
+            InProgress::Rebase,
+            InProgress::CherryPick,
+            InProgress::Revert,
+            InProgress::Bisect,
+        ] {
+            let ops = UndoError::Nothing(NotInvertible::OperationLive { kind }).explain();
+            let Status::Sticky { reason, .. } = live_refusal(kind, None) else {
+                panic!("a refusal is sticky");
+            };
+            assert_eq!(reason, ops, "{kind:?}");
+        }
+    }
+
+    /// Ops' gate refused (an entry older than the merge): a refusal in the
+    /// app's words, sticky, pointing at the banner — not the plain `Done`
+    /// that "nothing to undo" gets.
+    #[test]
+    fn an_operation_live_answer_is_a_refusal() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..merging(Some(Vec::new()))
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::OperationLive {
+                kind: graft_git::state::InProgress::Merge,
+            },
+            &mut ids(),
+        );
+        assert!(commands.is_empty(), "nothing ran: {commands:?}");
+        assert_eq!(state.operating, None);
+        assert_eq!(
+            state.status,
+            Status::Sticky {
+                reason: "finish or abort the merge first".to_owned(),
+                keys: Some("\u{21e5} banner".to_owned()),
+            }
+        );
     }
 
     #[test]

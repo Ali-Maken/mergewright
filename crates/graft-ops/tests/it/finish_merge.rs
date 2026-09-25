@@ -14,11 +14,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use graft_core::journal::{EntryStatus, JournalEntry, MergeState, OperationKind};
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
+use graft_git::state::InProgress;
 use graft_ops::apply::{ApplyError, Resume};
 use graft_ops::journal::in_force;
-use graft_ops::operation::Refusal;
+use graft_ops::operation::{MergeEnd, Refusal};
 use graft_ops::restore::{self, RestoreError};
-use graft_ops::undo::{self, MergeDrift, UndoError};
+use graft_ops::undo::{self, NotInvertible, UndoError};
 
 use crate::conflict_fixtures::{downstream_of, run_resume, two_file_conflict};
 use crate::conflict_ops::journal_ids;
@@ -249,18 +250,17 @@ fn an_unmerged_shell_merge_is_refused_unmerged_not_not_in_progress() {
     assert_eq!(maybe_read(&git_path(&repo, "MERGE_MSG")), msg);
 }
 
-/// What still reaches `NotInProgress`: an abort or a skip of a merge with
-/// no entry, and nothing in progress at all.
+/// What still reaches `NotInProgress`: a skip of a merge with no entry, and
+/// nothing in progress at all. An abort of one used to be here too; since
+/// m6-conflicts/57 it aborts, as `AbortMerge` (`abort_merge.rs`).
 #[test]
-fn abort_and_skip_of_a_shell_merge_stay_not_in_progress() {
+fn skip_of_a_shell_merge_stays_not_in_progress() {
     let repo = shell_merge_resolved();
-    for how in [Resume::Abort, Resume::Skip] {
-        let refused = run_resume(&repo, how, NOW).expect_err("not Graft's");
-        assert!(
-            matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
-            "{refused:?}"
-        );
-    }
+    let refused = run_resume(&repo, Resume::Skip, NOW).expect_err("not Graft's");
+    assert!(
+        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+        "{refused:?}"
+    );
     assert!(merging(&repo));
     assert!(journal_ids(&repo).is_empty());
 
@@ -461,8 +461,12 @@ fn a_stop_before_set_merge_state_rolls_back() {
     assert!(!in_force(&all, &last.id), "not in force");
 }
 
+/// A merge begun since the entry is no longer drift the user can force
+/// past: it is the undo gate's refusal (m6-conflicts/57, decision 3) — the
+/// entry was not recorded inside the merge standing now. Before 57 this was
+/// `MergeDrift::Begun` behind the force box.
 #[test]
-fn undo_refuses_drift_when_a_new_merge_was_begun() {
+fn undo_refuses_when_a_new_merge_was_begun() {
     let repo = shell_merge_resolved();
     finish(&repo, Resume::Continue, NOW);
     // A merge that changes nothing on disk: only git's merge state moves.
@@ -476,19 +480,19 @@ fn undo_refuses_drift_when_a_new_merge_was_begun() {
     let count = entries(&repo).len();
     let files = merge_files(&repo);
 
-    let refused = run_undo(&repo, NOW + 1, false).expect_err("drift");
-    match refused {
-        UndoError::Drift(drift) => {
-            assert_eq!(drift.merge, Some(MergeDrift::Begun), "the merge moved");
-            assert!(drift.refs.is_empty() && !drift.head && !drift.worktree);
-            assert!(drift.index.is_none(), "{:?}", drift.index);
-            assert!(
-                drift.explain().contains("a merge is in progress now"),
-                "{}",
-                drift.explain()
-            );
-        }
-        other => panic!("expected drift, got {}", other.explain()),
+    for force in [false, true] {
+        let refused = run_undo(&repo, NOW + 1, force).expect_err("a merge is live");
+        assert!(
+            matches!(
+                refused,
+                UndoError::Nothing(NotInvertible::OperationLive {
+                    kind: InProgress::Merge
+                })
+            ),
+            "force {force}: {}",
+            refused.explain()
+        );
+        assert_eq!(refused.explain(), "finish or abort the merge first");
     }
     assert_eq!(entries(&repo).len(), count, "nothing journaled");
     assert_eq!(oid(&repo, "HEAD"), head, "nothing moved");
@@ -701,9 +705,11 @@ fn git_applies_merge_autostash_when_the_merge_is_finished() {
 }
 
 /// So `c` refuses while `MERGE_AUTOSTASH` waits: finishing would apply the
-/// stash, and `u` would put the tree back without it.
+/// stash, and `u` would put the tree back without it. Refused **by name**
+/// since m6-conflicts/57 — it used to say `NotInProgress`, "nothing Graft
+/// started is in progress", about a merge standing in front of the user.
 #[test]
-fn c_is_refused_while_merge_autostash_waits() {
+fn finish_refuses_while_git_holds_an_autostash() {
     let repo = autostashed_merge_resolved();
     let head = oid(&repo, "HEAD");
 
@@ -715,13 +721,76 @@ fn c_is_refused_while_merge_autostash_waits() {
     ] {
         let refused = run_resume(&repo, how, NOW).expect_err("refused");
         assert!(
-            matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+            matches!(
+                refused,
+                ApplyError::Refused(Refusal::AutostashWaits {
+                    end: MergeEnd::Finish
+                })
+            ),
             "{refused:?}"
+        );
+        assert_eq!(
+            refused.explain(),
+            "git set your changes aside for this merge (autostash); finish it in the shell: \
+             git commit"
         );
     }
     assert!(journal_ids(&repo).is_empty(), "no entry");
     assert_eq!(oid(&repo, "HEAD"), head, "no commit");
     assert!(merging(&repo), "still merging");
+    assert!(
+        git_path(&repo, "MERGE_AUTOSTASH").exists(),
+        "the stash waits"
+    );
+    assert_eq!(repo.read("notes.txt"), b"committed\n", "not applied");
+}
+
+/// The check for the other end, in plain git: `merge --abort` applies
+/// `MERGE_AUTOSTASH` too, so an abort from Graft would spend a stash its
+/// `u` could not give back.
+#[test]
+fn git_applies_merge_autostash_when_the_merge_is_aborted() {
+    let repo = autostashed_merge_resolved();
+    repo.git(&["merge", "--abort"]);
+    assert!(!merging(&repo), "aborted");
+    assert!(
+        !git_path(&repo, "MERGE_AUTOSTASH").exists(),
+        "the abort used the stash up"
+    );
+    assert_eq!(
+        repo.read("notes.txt"),
+        b"my uncommitted edit\n",
+        "and applied it"
+    );
+}
+
+/// So `a` refuses while `MERGE_AUTOSTASH` waits, by name, before anything
+/// is written: the stash is never at risk (m6-conflicts/57).
+#[test]
+fn abort_refuses_while_git_holds_an_autostash() {
+    let repo = autostashed_merge_resolved();
+    let head = oid(&repo, "HEAD");
+    let files = merge_files(&repo);
+
+    let refused = run_resume(&repo, Resume::Abort, NOW).expect_err("refused");
+    assert!(
+        matches!(
+            refused,
+            ApplyError::Refused(Refusal::AutostashWaits {
+                end: MergeEnd::Abort
+            })
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(
+        refused.explain(),
+        "git set your changes aside for this merge (autostash); abort it in the shell: git merge \
+         --abort"
+    );
+    assert!(journal_ids(&repo).is_empty(), "no entry");
+    assert_eq!(oid(&repo, "HEAD"), head, "HEAD unmoved");
+    assert!(merging(&repo), "still merging");
+    assert_eq!(merge_files(&repo), files, "the merge files untouched");
     assert!(
         git_path(&repo, "MERGE_AUTOSTASH").exists(),
         "the stash waits"

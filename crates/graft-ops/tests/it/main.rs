@@ -1,5 +1,6 @@
 //! `graft-ops`'s integration tests, one binary (PROMPT.md §7.1).
 
+mod abort_merge;
 mod chained_backup;
 mod conflict_fixtures;
 mod conflict_ops;
@@ -17,4 +18,5 @@ mod shell_begun_merge;
 mod stash_pop_redo;
 mod support;
 mod undo_cancel;
+mod undo_gate;
 mod unmerged_index;
