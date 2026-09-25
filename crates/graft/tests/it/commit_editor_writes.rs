@@ -322,3 +322,215 @@ fn nothing_staged_makes_no_commit() {
     assert!(state.commit_editor.is_some(), "the editor stays open");
     app.close();
 }
+
+/// A repository of the run's own with one file staged on a root commit — not
+/// the corpus copy `staged_repo` builds on. The corpus commits are dated 2021
+/// and the app's commit is dated now, and no fixed clock reads both the same
+/// forever; here every commit is made now, so every age reads `now` under
+/// the wall clock.
+fn fresh_staged_repo() -> tempfile::TempDir {
+    let scratch = tempfile::TempDir::with_prefix("graft-subject-enter-")
+        .expect("a temp directory for the repository");
+    let repo = scratch.path();
+    git(
+        repo,
+        &["init", "-q", "-b", "main", "--object-format=sha1", "."],
+    );
+    git(repo, &["config", "user.name", "Graft Test"]);
+    git(repo, &["config", "user.email", "test@example.invalid"]);
+    std::fs::write(repo.join("sample.txt"), "one\n").expect("the scratch repo is writable");
+    git(repo, &["add", "sample.txt"]);
+    commit(repo, "add sample");
+    std::fs::write(repo.join("sample.txt"), "one\ntwo\n").expect("the scratch repo is writable");
+    git(repo, &["add", "sample.txt"]);
+    scratch
+}
+
+/// The caption of [`capture_fix_subject_enter_commits`]'s files.
+fn subject_enter_header(columns: u16, rows: u16) -> String {
+    format!(
+        "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_fix_subject_enter_commits in
+# crates/graft/tests/it/commit_editor_writes.rs (asserted; the commit is
+# made by real git; its id and its parent's, both made by the run and new
+# every run, are zeroed). One file staged, `c`, `fix: x` typed, then `⏎`
+# with the subject focused (m6-conflicts/51).
+#
+# Judge by eye:
+# - Frame 1: the footer reads exactly
+#   `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole at
+#   {columns} columns. The body is empty. The options row ends `[ Commit ]`.
+# - Frame 2: the editor is gone; the status line reads `commit \"fix: x\" ✓`
+#   and the graph's top row is `[◆ main] fix: x`, with nothing uncommitted.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== {columns}x{rows} ===
+"
+    )
+}
+
+/// The write's answer closes the editor; the graph and the changes pane are
+/// re-read after it. Waits until a frame shows the commit and nothing is
+/// still loading.
+fn graph_shows_the_commit(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the graph to show the commit", |state| {
+        let rows = crate::captures::frame(state, 120, 40);
+        rows.iter().any(|row| row.contains("[◆ main] fix: x"))
+            && !rows.iter().any(|row| {
+                row.contains("Uncommitted changes")
+                    || row.contains("reading\u{2026}")
+                    || row.contains("sorting\u{2026}")
+            })
+    })
+}
+
+/// `⏎` in the subject makes the commit over real git (m6-conflicts/51, P16):
+/// `c`, a subject, `⏎` — no `⇥ ⇥` to reach the button first — and the
+/// capture of the frames either side of it.
+///
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo nextest run -E
+/// 'test(capture_fix_subject_enter_commits)'`.
+#[test]
+fn capture_fix_subject_enter_commits() {
+    let scratch = fresh_staged_repo();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = ready(&app, state);
+    let parent = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
+
+    let state = app.key(&state, KeyCode::Char('c'));
+    let typed = app.typed(&state, "fix: x");
+    assert_eq!(
+        typed.commit_editor.as_ref().map(|editor| editor.focus),
+        Some(graft_ui::commit_editor::Field::Subject),
+        "the editor opens on the subject"
+    );
+    let entered = app.key(&typed, KeyCode::Enter);
+    assert!(entered.operating.is_some(), "⏎ started the commit");
+    let landed = app.settled(entered);
+
+    assert_eq!(git(repo, &["log", "-1", "--format=%B"]), "fix: x\n\n");
+    assert_eq!(git(repo, &["rev-parse", "HEAD~1"]).trim(), parent);
+    assert!(landed.commit_editor.is_none(), "the editor closed");
+    assert!(
+        matches!(landed.status, Status::Done { .. }),
+        "{:?}",
+        landed.status
+    );
+    let landed = graph_shows_the_commit(&app, landed);
+    // Both ids are the run's own: the root commit and this one are made now.
+    let made = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
+
+    let mut captures = graft_fixtures::Captures::new();
+    for (columns, rows) in [(120_u16, 40_u16), (80, 24)] {
+        let first = crate::captures::frame_at(&typed, columns, rows, None);
+        assert_eq!(
+            first.last().map(String::as_str),
+            Some("⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel"),
+            "the footer, whole at {columns}x{rows}"
+        );
+        let second = crate::captures::frame_at(&landed, columns, rows, None);
+        let body = format!(
+            "{}== frame 1: `fix: x` typed, subject focused ==\n{}\n\n\
+             == frame 2: after `⏎` ==\n{}\n",
+            subject_enter_header(columns, rows),
+            first.join("\n"),
+            second.join("\n"),
+        );
+        captures.check(
+            format!(
+                "{}/../../docs/shots/m6/fix-subject-enter-commits-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            crate::captures::without_invented_id(
+                &crate::captures::without_invented_id(&body, &made),
+                &parent,
+            ),
+        );
+    }
+    app.close();
+    captures.finish();
+}
+
+/// Waits for the status re-read after a stage: the user presses `c` once the
+/// file shows as staged, and the editor's refusal is drawn from that status.
+fn status_shows_it_staged(app: &App, state: AppState, repo: &Path) -> AppState {
+    let state = app.settled(state);
+    assert_eq!(
+        git(repo, &["diff", "--cached", "--name-only"]).trim(),
+        "sample.txt",
+        "space staged the file; status {:?}",
+        state.status
+    );
+    app.pump(state, "the status re-read after the stage", |state| {
+        state.working_tree.as_ref().is_some_and(|status| {
+            status
+                .entries
+                .iter()
+                .any(|entry| entry.staged.is_some() && entry.unstaged.is_none())
+        })
+    })
+}
+
+/// The journey "stage one file and commit" (design note
+/// `m6-usability-fixes.md`, Journeys), walked over real git and counted:
+/// from the uncommitted row, `⏎ j space c <msg> ⏎`. The typed message is
+/// one step, as the note counts it. P16 set the ceiling at 6 (it was 9 with
+/// `⇥ ⇥ ⇥` to the button).
+#[test]
+fn stage_one_file_and_commit_is_six_steps() {
+    let scratch = staged_repo();
+    let repo = scratch.path();
+    // `staged_repo` staged its edit; take it back to the worktree so the
+    // journey stages it.
+    git(repo, &["reset", "-q", "--", "sample.txt"]);
+    let before = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
+
+    let (app, state) = App::open(repo);
+    let state = ready(&app, state);
+    // Where the journey starts: the uncommitted row (`k` from the top row).
+    let state = app.key(&state, KeyCode::Char('k'));
+    assert!(
+        state.on_working_tree,
+        "the journey starts on the uncommitted row"
+    );
+
+    // Every step goes through `step`, which counts it; waiting between
+    // steps is the app's, not the user's, and is not counted.
+    let steps = std::cell::Cell::new(0_u32);
+    let step = |state: &AppState, code: KeyCode| {
+        steps.set(steps.get() + 1);
+        app.key(state, code)
+    };
+    let state = step(&state, KeyCode::Enter);
+    let state = app.pump(state, "the changes pane's file list", |state| {
+        matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
+    });
+    let state = step(&state, KeyCode::Char('j'));
+    let state = step(&state, KeyCode::Char(' '));
+    let state = status_shows_it_staged(&app, state, repo);
+    let state = step(&state, KeyCode::Char('c'));
+    assert!(state.commit_editor.is_some(), "`c` opens the editor");
+    // The message: one step, as the note counts it.
+    let state = app.typed(&state, "fix: x");
+    steps.set(steps.get() + 1);
+    let state = step(&state, KeyCode::Enter);
+    assert!(
+        state.operating.is_some(),
+        "⏎ started no write; refusal {:?}",
+        graft::view::commit_editor_view(&state).and_then(|view| view.refusal),
+    );
+    let state = app.settled(state);
+
+    assert_eq!(git(repo, &["log", "-1", "--format=%s"]).trim(), "fix: x");
+    assert_eq!(git(repo, &["rev-parse", "HEAD~1"]).trim(), before);
+    assert!(state.commit_editor.is_none(), "the editor closed");
+    let steps = steps.get();
+    assert!(
+        steps <= 6,
+        "the journey took {steps} steps; the note allows 6"
+    );
+    assert_eq!(steps, 6, "the count recorded in the note");
+    app.close();
+}

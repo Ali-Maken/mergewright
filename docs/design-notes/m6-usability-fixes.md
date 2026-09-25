@@ -57,7 +57,7 @@ Every one holds as the review and scouts state it.
 | Task | Today | After the builds that need no answer | After P12, P14, P15, P16 | Best tool |
 |---|---|---|---|---|
 | Push | `P → ⏎` **3**. `P y` cancels without a word | `P → ⏎` **3**. `P y` leaves the box up | `P y` **2** (P15) | lazygit `P` 1, with no box (PP §1.1) |
-| Stage one file and commit (Zed) | `⏎ j space c <msg> ⇥ ⇥ ⇥ ⏎` **9** | **9** | `⏎ j space c <msg> ⏎` **6** (P16) | lazygit `space c <msg> ⏎` 4 (CS §4) |
+| Stage one file and commit (Zed) | `⏎ j space c <msg> ⇥ ⇥ ⇥ ⏎` **9**; since ticket 51, `⏎ j space c <msg> ⏎` **6** (walked: `stage_one_file_and_commit_is_six_steps`) | **9** | `⏎ j space c <msg> ⏎` **6** (P16, built in 51) | lazygit `space c <msg> ⏎` 4 (CS §4) |
 | Finish a merge from the pane (`editor-to-finish`) | `c Esc ⇥ ⇥ c ⏎`. The note counts from the editor: **5** | `c ⇥ ⇥ c ⏎` **5** from the pane. The first `c` answers in words | `c y` **2** (P14 with P12) | lazygit 1 (a bare confirm, rejected). JetBrains `(?)` |
 | Rejected push → pull → rebase → push | `p r r P → ⏎` **6**, and the box is the **force box** | **6**, and the box is the **plain box** | `p r r P y` **5** (P15) | JetBrains 3–4. VS Code 2, but it merges silently (#174198) (PP §4) |
 | Force push after his own rebase | `P → ⏎` (rejected), then `P → ⏎`: **6** | **6**, unchanged: the tip has not moved | **6** (the force box keeps `→ ⏎`). With P17: `P → ⏎` **3** | lazygit `P enter` 2 |

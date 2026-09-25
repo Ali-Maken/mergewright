@@ -1,7 +1,7 @@
 # enter-in-commit-subject-commits: `⏎` in the commit editor's subject commits, as it does in the finish summary
 
-Status: ready (unblocked 2026-09-24: P16 approved, picks item 14; ADR-0044 §3; keymap §2.10 edited in the spec pass.
-Reconciled with scout 51 on 2026-09-25)
+Status: done 2026-09-25 (was: ready, unblocked 2026-09-24: P16 approved, picks item 14; ADR-0044 §3; keymap §2.10
+edited in the spec pass. Reconciled with scout 51 on 2026-09-25)
 From: `docs/reviews/m6-usability.md` M2 (:77-86).
 Build with: builder-opus. Why: brownfield in two crates; a private signature change and a footer that becomes
 focus-dependent. Not Fable: it reuses the existing submit path, and the failing test compares against `⌃⏎`.
@@ -121,22 +121,25 @@ fn footer(focus: Field) -> &'static str;   // Field::Subject → FOOTER_SUBJECT,
 - **MAP.md:** graft §`update::commit_editor` (`subject_key`'s `Enter`); graft-ui §`commit_editor` (the two footers).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `enter_in_the_subject_commits`: red first, then green.
-- [ ] `enter_in_the_subject_commits_the_body_too`
-- [ ] `enter_with_a_template_commits_what_ctrl_enter_would`
-- [ ] `a_refused_enter_sends_nothing` (three rows)
-- [ ] `enter_while_a_job_runs_is_eaten_like_ctrl_enter`
-- [ ] `enter_in_the_subject_amends_in_the_amend_editor`
-- [ ] `a_pasted_newline_does_not_commit`
-- [ ] `down_and_tab_still_move_to_the_body`, `enter_in_the_body_is_a_newline`
-- [ ] `the_footer_follows_focus`
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-subject-enter-commits-120x40.txt` and
-      `-80x24`.
+- [x] `enter_in_the_subject_commits`: red first (observed: commands differed from `⌃⏎`'s, focus went to the body),
+      then green. `graft/src/update/commit_editor/tests.rs`.
+- [x] `enter_in_the_subject_commits_the_body_too`
+- [x] `enter_with_a_template_commits_what_ctrl_enter_would`
+- [x] `a_refused_enter_sends_nothing` (three rows: nothing staged, empty subject, a merge in progress)
+- [x] `enter_while_a_job_runs_is_eaten_like_ctrl_enter`
+- [x] `enter_in_the_subject_amends_in_the_amend_editor`
+- [x] `a_pasted_newline_does_not_commit`
+- [x] `down_and_tab_still_move_to_the_body`, `enter_in_the_body_is_a_newline`
+- [x] `the_footer_follows_focus` (`graft-ui/src/commit_editor/tests.rs`; the amend editor's footer is the same
+      `footer(Field::Subject)` — the view has no amend flag to vary it by)
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-subject-enter-commits-120x40.txt` and
+      `-80x24`, by `capture_fix_subject_enter_commits` (`graft/tests/it/commit_editor_writes.rs`, real git). Not
+      judged by eye here: the user judges it.
   - Scene: the editor with `fix: x` typed, subject focused; second frame after `⏎`.
   - **What right looks like:** frame 1's footer reads `⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel`, whole
     at both sizes; the body is empty; the options row ends `[ Commit ]`. Frame 2: the editor is gone and the status
     line names the new commit.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): graft `editor_key` line; graft-ui `CommitEditorScreen` line.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -146,3 +149,40 @@ workspace-wide.
 Small to medium. One context.
 
 ## NOTES
+Builder, 2026-09-25. Scout 51 used; its lines re-checked on this tree after 52 and 50 (`subject_key` now :678,
+`open_editor_key` :526, `commit` :763, graft-ui `FOOTER` :171). No compaction.
+
+- **Change.** `subject_key` takes `next_id`; `Enter` → `commit(state, next_id)`, the path `⌃⏎` and the button take.
+  Case (a), a job running: no code change, `editor_key` eats it (pinned by the job test). Case (b), a live
+  operation: `commit` → `refusal` → nothing sent; focus stays on the subject.
+- **Old-rule tests changed** (`grep -rn "Enter" crates/graft/src/update/commit_editor`):
+  `enter_in_the_subject_moves_to_the_body_and_inserts_nothing` replaced by `down_and_tab_still_move_to_the_body`;
+  `enter_on_the_button_commits_the_subject_and_the_body` reaches the body with `Down` now. No other subject-`Enter`.
+- **Pins.** `view/frame/tests.rs` `BEHIND`: the needle is now `⏎ commit  ⇥ body` (the frame is subject-focused);
+  new `the_editors_needle_is_drawn_without_a_box` proves the needle is drawn with no box, so the sweep is not
+  vacuous. `view/tests.rs:2417` ("footer offers ⌃⏎/Commit"): left, still true — that capture has the body focused.
+  `update/tests.rs:4027` press map: no change needed (the editor is not a hint context).
+- **Captures, file → test:**
+  - `m6/fix-subject-enter-commits-{120x40,80x24}` → `commit_editor_writes::capture_fix_subject_enter_commits` (new).
+    Built on a fresh repo whose commits are all made by the run, so ages read `now` and do not drift; both ids
+    zeroed. Stable 5/5 runs.
+  - `m6/fix-editor-names-the-banner-{120x40,80x24}` → `resolver::shell_begun::capture_fix_editor_names_the_banner`.
+  - `m3-amend` → `view::tests::capture_m3_amend`.
+  - `m3-04-commit-editor-{80x24,160x48}`, `m3-05-commit-refused-{80x24,160x48}` → pty,
+    `.scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py <size> commit commit-refused-nothing-staged`.
+    m3-05 also picks up ticket 40's refusal row (it was stale: reason beside the button); m3-04-160x48 also shows
+    a new fixture id and the counter one column left — not this ticket's change; I did not trace it.
+  - Unchanged, body focused, byte-identical: `m3-commit-editor-{80x24,160x48}`, `m3-commit-editor-refused`.
+  - m6 sheet rebuilt, 3 parts, largest 178 148 B. m3 sheet not rebuilt (conductor's).
+- **m3 sheet caption drift** (conductor's file): `m3-contact-sheet-captions.tsv` row m3-05 says the reason is
+  "beside the button"; since ticket 40 it is on its own row above.
+- **Walks.** Grep `⇥ ⇥ ⇥\|Tab.*Tab.*Tab` over `.scratch/*/pty-walk*.py` and `crates/graft/tests/it`: no hits. New leg
+  `commit_editor_writes::stage_one_file_and_commit_is_six_steps` walks `⏎ j space c <msg> ⏎` over real git from
+  the uncommitted row, counting each key: **observed 6**. Design-note Journeys row lowered to 6 (built).
+  - Found on the way: pressing `c` before the status re-read after `space` lands opens the editor on a stale
+    `nothing staged`, and `⏎` then refuses. The test waits for the re-read, as a user watching the file move
+    does. Existing behaviour, not this ticket's; not filed in KNOWN_GAPS (builders do not edit it).
+- **TESTING.md** grep (`moves to the body\|Enter in Subject\|⇥ ⇥ ⇥`): no lines.
+- **finish/keys.rs**: not in `git diff --stat`. Hint sweeps (`every_key_the_bar_draws_is_answered`) green,
+  unchanged.
+- **Not verified:** colour; the footer in a real terminal by eye; `⌃⏎` in Zed (out of scope).

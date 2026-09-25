@@ -594,17 +594,36 @@ fn every_screen() -> Vec<(String, AppState)> {
 
 /// A key each screen's own bar offers, one or two per screen: the graph's
 /// row, the resolver, the commit editor, the Map view, the journal, the
-/// stash list, and the detail pane with an overlay behind it.
+/// stash list, and the detail pane with an overlay behind it. The editor
+/// opens on its subject, whose footer is `⏎ commit  ⇥ body …`
+/// (m6-conflicts/51); `⌃⏎/Commit` is only drawn with another field focused.
 const BEHIND: [&str; 8] = [
     "b branch",
     "⏎ resolved",
-    "⌃⏎/Commit",
+    "⏎ commit  ⇥ body",
     "zoom to commits",
     "J/esc close",
     "s save",
     "j/k move",
     "/ search",
 ];
+
+/// The editor's needle in [`BEHIND`] is one the editor draws with no box
+/// over it — otherwise the sweep below would pass on a key that is never
+/// there to hide (m6-conflicts/51 changed the footer it names).
+#[test]
+fn the_editors_needle_is_drawn_without_a_box() {
+    for (columns, rows) in [(120_u16, 40_u16), (80, 24)] {
+        let mut state = standing_on(Some(GraphOverlay::CommitEditor));
+        state.size = crate::update::Size { columns, rows };
+        let drawn = whole_frame(&state, columns, rows);
+        assert!(
+            drawn.iter().any(|row| row.contains(BEHIND[2])),
+            "{columns}x{rows}:\n{}",
+            drawn.join("\n")
+        );
+    }
+}
 
 /// **Under a live box every bar offers that box's keys and no other**
 /// (rulings 07b, Q1). `confirm_key` and `name_prompt_key` claim

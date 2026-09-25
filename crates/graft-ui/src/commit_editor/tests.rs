@@ -240,3 +240,37 @@ fn a_failure_costs_the_editor_no_rows() {
         "the subject did not move"
     );
 }
+
+/// P16 / pick 14: `⏎` commits from the subject, so the footer there says so
+/// and names `⇥` as the way to the body; every other field keeps the old one.
+#[test]
+fn the_footer_follows_focus() {
+    let last_row = |focus: Field| {
+        draw(&view(focus, None), 120, 40)
+            .lines()
+            .last()
+            .map(|line| line.trim_end().to_owned())
+            .expect("a footer row")
+    };
+    assert_eq!(
+        FOOTER_SUBJECT,
+        "⏎ commit  ⇥ body  ⌃E $EDITOR  ⌃S sign-off  esc cancel"
+    );
+    assert_eq!(footer(Field::Subject), FOOTER_SUBJECT);
+    assert_eq!(last_row(Field::Subject), FOOTER_SUBJECT);
+    assert_eq!(
+        FOOTER_OTHER, "⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel",
+        "today's footer, byte for byte"
+    );
+    for focus in [
+        Field::Body,
+        Field::Amend,
+        Field::SignOff,
+        Field::NoVerify,
+        Field::AllowEmpty,
+        Field::CommitButton,
+    ] {
+        assert_eq!(footer(focus), FOOTER_OTHER, "{focus:?}");
+        assert_eq!(last_row(focus), FOOTER_OTHER, "{focus:?}");
+    }
+}
