@@ -18,12 +18,13 @@ use graft_git::run::Stop;
 use graft_git::state::InProgress;
 use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume};
 use graft_ops::clash::live_clash;
+use graft_ops::facts::read_facts;
 use graft_ops::journal::journal_path;
 use graft_ops::operation::{CheckoutParams, CheckoutTarget, Operation, RebaseParams, Source, Tip};
 
 use crate::support::{
-    NOW, Never, RepoState, TempRepo, context, journal_for, run_redo, run_undo, run_with_stop,
-    state_of, try_run,
+    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, run_redo, run_undo,
+    run_with_stop, state_of, try_run,
 };
 
 // ── repositories and operations ─────────────────────────────────────────
@@ -116,13 +117,6 @@ enum Tree {
 }
 
 impl Tree {
-    const ALL: [Tree; 4] = [
-        Tree::StagedUnstagedUntracked,
-        Tree::StagedNewFile,
-        Tree::Deletion,
-        Tree::Rename,
-    ];
-
     fn make(self, repo: &TempRepo) {
         match self {
             Tree::StagedUnstagedUntracked => {
@@ -211,37 +205,152 @@ fn resume_with(repo: &TempRepo, how: Resume, at: i64) -> Result<Applied, ApplyEr
 
 // ── the sequence, clean ─────────────────────────────────────────────────
 
-/// ADR-0045 §7: for every tree in the table, for a rebase and a checkout,
-/// apply → undo leaves the index, the files and the stash list exactly as
-/// before; redo leaves them exactly as after.
-#[test]
-fn set_aside_round_trips() {
-    for kind in Kind::BOTH {
-        for tree in Tree::ALL {
-            let repo = diverged();
-            kind.start(&repo);
-            tree.make(&repo);
-            let what = format!("{kind:?} over {tree:?}");
-            let op = kind.op(&repo);
-            let before = whole(&repo);
+/// `git status --porcelain` as its lines, one per path (v1: a staged
+/// rename reads `R  a.txt -> b.txt`).
+fn porcelain(repo: &TempRepo) -> Vec<String> {
+    repo.git(&["status", "--porcelain"])
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
 
-            let applied =
-                try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
-            assert_eq!(applied.entry.status, EntryStatus::Committed, "{what}");
-            set_aside_of(&applied.entry);
-            let after = whole(&repo);
-            assert_ne!(after.0, before.0, "{what}: the operation changed nothing");
-            assert_eq!(after.1, before.1, "{what}: the stash list is as before");
+/// How many staged entries lost their staging, read from git alone: of the
+/// paths staged `before` (a rename's old and new path both), those that
+/// `after` lists changed in the working tree with nothing staged.
+fn staging_lost(before: &[String], after: &[String]) -> usize {
+    let staged_before: Vec<&str> = before
+        .iter()
+        .filter(|line| !line.starts_with(' ') && !line.starts_with('?'))
+        .flat_map(|line| line[3..].split(" -> "))
+        .collect();
+    after
+        .iter()
+        .filter(|line| line.starts_with(' '))
+        .filter(|line| staged_before.contains(&&line[3..]))
+        .count()
+}
 
-            run_undo(&repo, NOW + 1, false)
-                .unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain()));
-            assert_eq!(whole(&repo), before, "{what}: undo put it back exactly");
-
-            run_redo(&repo, NOW + 2, false)
-                .unwrap_or_else(|why| panic!("{what}: redo: {}", why.explain()));
-            assert_eq!(whole(&repo), after, "{what}: redo put it forward exactly");
+impl Tree {
+    /// Each edited file as the put-back must leave it: `Some(bytes)` on
+    /// disk, `None` gone.
+    fn edits(self) -> &'static [(&'static str, Option<&'static [u8]>)] {
+        match self {
+            Tree::StagedUnstagedUntracked => &[
+                ("base.txt", Some(b"staged\nand unstaged\n")),
+                ("junk.tmp", Some(b"untracked\n")),
+            ],
+            Tree::StagedNewFile => &[("n.txt", Some(b"new\n"))],
+            Tree::Deletion => &[("a.txt", None)],
+            Tree::Rename => &[("a.txt", None), ("b.txt", Some(b"a\n"))],
         }
     }
+
+    /// `git status --porcelain` after the put-back, as git gives it without
+    /// `--index` (replayed by hand in the 73 review): the edits are back and
+    /// exactly this much staging is lost.
+    fn after_put_back(self) -> &'static [&'static str] {
+        match self {
+            Tree::StagedUnstagedUntracked => &[" M base.txt", "?? junk.tmp"],
+            Tree::StagedNewFile => &["A  n.txt"],
+            Tree::Deletion => &[" D a.txt"],
+            Tree::Rename => &[" D a.txt", "A  b.txt"],
+        }
+    }
+}
+
+/// ADR-0045 §7, for one kind over one tree:
+/// - after the put-back, before any undo: every edited file's bytes are
+///   back, the index is the shape git gives without `--index`
+///   ([`Tree::after_put_back`]), `SetAside::staged` from the facts read
+///   before equals the staging git lost ([`staging_lost`], 83 M1), and the
+///   stash list is as before;
+/// - undo leaves refs, `HEAD`, index, files and stash list exactly as
+///   before; redo exactly as after.
+fn round_trip(kind: Kind, tree: Tree) {
+    let repo = diverged();
+    kind.start(&repo);
+    tree.make(&repo);
+    let what = format!("{kind:?} over {tree:?}");
+    let op = kind.op(&repo);
+    let before = whole(&repo);
+    let status_before = porcelain(&repo);
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+    let promised = op.sets_aside(&facts).expect("the tree is dirty").staged;
+
+    let applied =
+        try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
+    assert_eq!(applied.entry.status, EntryStatus::Committed, "{what}");
+    set_aside_of(&applied.entry);
+    let after = whole(&repo);
+    assert_ne!(after.0, before.0, "{what}: the operation changed nothing");
+    assert_eq!(after.1, before.1, "{what}: the stash list is as before");
+    for (path, bytes) in tree.edits() {
+        match bytes {
+            Some(bytes) => assert_eq!(repo.read(path), *bytes, "{what}: {path} is back"),
+            None => assert!(!repo.exists(path), "{what}: {path} is gone again"),
+        }
+    }
+    let status_after = porcelain(&repo);
+    assert_eq!(
+        status_after,
+        tree.after_put_back(),
+        "{what}: the index git gives"
+    );
+    assert_eq!(
+        staging_lost(&status_before, &status_after),
+        promised,
+        "{what}: sets_aside().staged is the staging git lost ({status_before:?} → {status_after:?})"
+    );
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain()));
+    assert_eq!(whole(&repo), before, "{what}: undo put it back exactly");
+
+    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{what}: redo: {}", why.explain()));
+    assert_eq!(whole(&repo), after, "{what}: redo put it forward exactly");
+}
+
+// One test per kind and tree, so they run in parallel (73 review, m9).
+
+#[test]
+fn rebase_round_trips_staged_unstaged_untracked() {
+    round_trip(Kind::Rebase, Tree::StagedUnstagedUntracked);
+}
+
+#[test]
+fn rebase_round_trips_a_staged_new_file() {
+    round_trip(Kind::Rebase, Tree::StagedNewFile);
+}
+
+#[test]
+fn rebase_round_trips_a_deletion() {
+    round_trip(Kind::Rebase, Tree::Deletion);
+}
+
+#[test]
+fn rebase_round_trips_a_rename() {
+    round_trip(Kind::Rebase, Tree::Rename);
+}
+
+#[test]
+fn checkout_round_trips_staged_unstaged_untracked() {
+    round_trip(Kind::Checkout, Tree::StagedUnstagedUntracked);
+}
+
+#[test]
+fn checkout_round_trips_a_staged_new_file() {
+    round_trip(Kind::Checkout, Tree::StagedNewFile);
+}
+
+#[test]
+fn checkout_round_trips_a_deletion() {
+    round_trip(Kind::Checkout, Tree::Deletion);
+}
+
+#[test]
+fn checkout_round_trips_a_rename() {
+    round_trip(Kind::Checkout, Tree::Rename);
 }
 
 /// Each command line of `entry`, named by the set-aside step it is, or "the
@@ -373,24 +482,39 @@ fn a_clashing_put_back_is_clashed_and_keeps_the_stash() {
     assert_eq!(found.index, Some(0));
 }
 
+/// Install `script` as a one-shot `post-checkout` hook: it runs in the
+/// working tree's root while the checkout (step 5) runs, after the set-aside
+/// and before the put-back, then deletes itself — so an undo's own checkout
+/// does not run it again. It lives in the git dir, out of the tree's files.
+fn post_checkout(repo: &TempRepo, script: &str) {
+    let hooks = repo.path().join(".git/test-hooks");
+    std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
+    let hook = hooks.join("post-checkout");
+    std::fs::write(&hook, format!("#!/bin/sh\nrm -f \"$0\"\n{script}\n"))
+        .expect("the hook is written");
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
+        .expect("the hook is executable");
+    repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);
+}
+
+/// A checkout whose put-back git refuses with nothing unmerged: the user's
+/// staged new `n.txt`, and a hook that drops an untracked `n.txt` in the
+/// way after the switch.
+fn put_back_refused() -> (TempRepo, Operation) {
+    let repo = diverged();
+    repo.write("n.txt", b"new\n");
+    repo.git(&["add", "n.txt"]);
+    post_checkout(&repo, "echo in the way > n.txt");
+    let op = checkout_to(&repo, "refs/heads/feature");
+    (repo, op)
+}
+
 /// A put-back git refuses with nothing unmerged — an untracked file where
 /// the edits bring back a staged new file — keeps `S` and says where the
 /// edits are. The index decides, not the exit code (ADR-0045 §7).
 #[test]
 fn a_put_back_that_fails_without_conflict_keeps_the_stash() {
-    let repo = diverged();
-    repo.write("n.txt", b"new\n");
-    repo.git(&["add", "n.txt"]);
-    // After the switch, something drops an untracked `n.txt` in the way.
-    let hooks = repo.path().join("hooks");
-    std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
-    let hook = hooks.join("post-checkout");
-    std::fs::write(&hook, "#!/bin/sh\necho in the way > n.txt\n").expect("the hook is written");
-    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
-        .expect("the hook is executable");
-    repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);
-
-    let op = checkout_to(&repo, "refs/heads/feature");
+    let (repo, op) = put_back_refused();
     let (entry, words) = match try_run(&repo, &op, NOW) {
         Err(error @ ApplyError::Git { .. }) => {
             let words = error.explain();
@@ -411,6 +535,79 @@ fn a_put_back_that_fails_without_conflict_keeps_the_stash() {
         entry.status
     );
     assert!(edit_is_somewhere(&repo, "n.txt", b"new\n"));
+}
+
+/// `u` after that refused put-back (73 review, m8): the tree, the index, the
+/// branch and the stash list exactly as before the checkout (ADR-0045 §5,
+/// "`u` restores the backup").
+#[test]
+fn undo_after_a_refused_put_back_restores_everything() {
+    let (repo, op) = put_back_refused();
+    let before = whole(&repo);
+    let Err(ApplyError::Git { .. }) = try_run(&repo, &op, NOW) else {
+        panic!("the put-back should fail");
+    };
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(whole(&repo), before, "undo put it back exactly");
+}
+
+/// The outcome line cannot be written after the put-back clashed (the
+/// journal file replaced by a directory while the checkout runs): the error
+/// still says where the edits are (73 review, m1).
+#[test]
+fn a_journal_failure_after_a_clash_names_the_stash() {
+    let (repo, op) = clashing_checkout();
+    post_checkout(
+        &repo,
+        "j=$(git rev-parse --git-path graft/undo-journal.jsonl) && rm -f \"$j\" && mkdir \"$j\"",
+    );
+    let error = match try_run(&repo, &op, NOW) {
+        Err(error @ ApplyError::Journal { .. }) => error,
+        other => panic!("the outcome line should fail: {other:?}"),
+    };
+    let words = error.explain();
+    assert!(words.contains("stash@{0}"), "{words}");
+    assert!(words.contains("clash"), "{words}");
+    assert_eq!(stash_commits(&repo).len(), 1, "S kept");
+}
+
+/// The status cannot be read after the put-back (a config value `git
+/// status` refuses, set while the checkout runs): the error names
+/// `stash@{n}`, not only the entry's reason (73 review, m2).
+#[test]
+fn an_unreadable_status_after_the_put_back_names_the_stash() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited\n");
+    post_checkout(&repo, "git config status.showUntrackedFiles bogus");
+    let op = checkout_to(&repo, "refs/heads/feature");
+    let error = try_run(&repo, &op, NOW).expect_err("the status should not read");
+    let words = error.explain();
+    assert!(words.contains("stash@{0}"), "{error:?}: {words}");
+    assert!(words.contains("could not be read"), "{words}");
+    assert!(edit_is_somewhere(&repo, "base.txt", b"edited\n"));
+}
+
+/// The stash list cannot be read to drop `S` after a clean put-back (its
+/// reflog made unreadable while the checkout runs): the words say the edits
+/// are back and the copy could not be found to drop — not that the status
+/// was unread (73 review, m3).
+#[test]
+fn an_unlisted_set_aside_after_a_clean_put_back_says_the_edits_are_back() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited\n");
+    post_checkout(
+        &repo,
+        "chmod 000 \"$(git rev-parse --git-path logs/refs/stash)\"",
+    );
+    let op = checkout_to(&repo, "refs/heads/feature");
+    let error = try_run(&repo, &op, NOW).expect_err("the drop should not happen");
+    let words = error.explain();
+    assert!(
+        words.contains("your edits are back; the set-aside copy could not be found to drop"),
+        "{error:?}: {words}"
+    );
+    assert!(!words.contains("status"), "{words}");
+    assert_eq!(repo.read("base.txt"), b"edited\n", "the edit is back");
 }
 
 /// `feature` and `main` rewrite the same line of `shared.txt`, so a rebase
@@ -623,29 +820,89 @@ fn stop_before(repo: &TempRepo, step: u8) -> StopWhen {
     }
 }
 
+/// What a stop before one step leaves behind (73 review, M2): read from the
+/// journal, the stash list and the tree, so a stop drifting to a
+/// neighbouring step changes at least one of them.
+#[derive(Debug, PartialEq, Eq)]
+struct Left {
+    /// The entry written, if any: `true` when it closed `Aborted`.
+    aborted: Option<bool>,
+    /// The step name ([`step_names`]) of the entry's last command.
+    last: Option<&'static str>,
+    stashes: usize,
+    /// `base.txt` still edited on disk (else the tree was reset clean).
+    dirty: bool,
+}
+
+impl Left {
+    fn read(repo: &TempRepo) -> Left {
+        let entries = journal_entries(repo);
+        assert!(entries.len() <= 1, "one entry at most: {entries:?}");
+        let entry = entries.first();
+        Left {
+            aborted: entry.map(|entry| matches!(entry.status, EntryStatus::Aborted { .. })),
+            last: entry.and_then(|entry| step_names(entry).last().copied()),
+            stashes: stash_commits(repo).len(),
+            dirty: repo.read("base.txt") == b"edited\n",
+        }
+    }
+
+    /// What each stop leaves, as ADR-0045 §5 and the 73 review's probe
+    /// describe it.
+    fn expected(step: u8) -> Left {
+        let (aborted, last, stashes, dirty) = match step {
+            // Before `stash create`, or before `begin`: nothing written.
+            1 | 2 => (None, None, 0, true),
+            // Before `stash store`: the entry is closed at the store, `S`
+            // objects only, the tree untouched.
+            3 => (Some(true), Some("stash store"), 0, true),
+            // Before `reset --hard`: `S` listed, the tree untouched.
+            4 => (Some(true), Some("stash store"), 1, true),
+            // Before the operation: the reset is done and the operation
+            // never ran, so the tree is clean and the edits are only in `S`.
+            5 => (Some(true), Some("reset --hard"), 1, false),
+            // Before the put-back: the operation was stopped, and the
+            // put-back never stops — `S` back and dropped.
+            _ => (Some(true), Some("stash drop"), 0, true),
+        };
+        Left {
+            aborted,
+            last,
+            stashes,
+            dirty,
+        }
+    }
+}
+
+/// A repository dirty for [`Kind`], ready to stop: `base.txt` edited, `n.txt`
+/// a staged new file.
+fn dirty_for(kind: Kind) -> (TempRepo, Operation) {
+    let repo = diverged();
+    kind.start(&repo);
+    repo.write("base.txt", b"edited\n");
+    repo.write("n.txt", b"new\n");
+    repo.git(&["add", "n.txt"]);
+    let op = kind.op(&repo);
+    (repo, op)
+}
+
 /// ADR-0045 §5, §7: a stop before each of steps 1–6 in turn leaves every
 /// edit in the tree or in the stash list, never in neither — read from both,
-/// for a rebase and a checkout.
+/// for a rebase and a checkout — and leaves exactly what that step leaves
+/// ([`Left::expected`]).
 #[test]
 fn a_stop_before_each_step_loses_nothing() {
     for kind in Kind::BOTH {
         for step in 1..=6 {
-            let repo = diverged();
-            kind.start(&repo);
-            repo.write("base.txt", b"edited\n");
-            repo.write("n.txt", b"new\n");
-            repo.git(&["add", "n.txt"]);
-            let op = kind.op(&repo);
+            let (repo, op) = dirty_for(kind);
             let stop = stop_before(&repo, step);
             let result = run_with_stop(&repo, &op, NOW, &stop);
             let what = format!(
                 "{kind:?}, stop before step {step}: {:?}",
                 result.as_ref().err()
             );
-            assert!(
-                stop.latched.load(Ordering::Relaxed) || step == 6,
-                "{what}: never fired"
-            );
+            assert!(stop.latched.load(Ordering::Relaxed), "{what}: never fired");
+            assert_eq!(Left::read(&repo), Left::expected(step), "{what}");
             assert!(
                 edit_is_somewhere(&repo, "base.txt", b"edited\n"),
                 "{what}: base.txt lost"
@@ -664,6 +921,31 @@ fn a_stop_before_each_step_loses_nothing() {
                     "{what}: an entry was left open"
                 );
             }
+        }
+    }
+}
+
+/// `u` after a stop at step 4 (`S` listed, tree untouched) or step 5 (tree
+/// reset, edits only in `S`): the tree, the index and the stash list exactly
+/// as before (73 review, m8; ADR-0045 §5, "4 or later").
+#[test]
+fn undo_after_a_stop_at_4_or_5_restores_everything() {
+    for kind in Kind::BOTH {
+        for step in [4, 5] {
+            let (repo, op) = dirty_for(kind);
+            let before = whole(&repo);
+            let stop = stop_before(&repo, step);
+            let result = run_with_stop(&repo, &op, NOW, &stop);
+            let what = format!("{kind:?}, stop before step {step}");
+            assert!(result.is_err(), "{what}: the stop is an error");
+            assert_eq!(
+                Left::read(&repo),
+                Left::expected(step),
+                "{what}: the stop landed"
+            );
+            run_undo(&repo, NOW + 1, false)
+                .unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain()));
+            assert_eq!(whole(&repo), before, "{what}: undo put it back exactly");
         }
     }
 }

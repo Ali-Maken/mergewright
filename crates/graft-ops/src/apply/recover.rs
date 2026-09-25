@@ -80,7 +80,11 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
         };
         ctx.journal
             .mark_interrupted(&id, now.as_ref())
-            .map_err(|error| ApplyError::Journal { error, after: None })?;
+            .map_err(|error| ApplyError::Journal {
+                error,
+                after: None,
+                kept: None,
+            })?;
         recovered.closed.push(id);
     }
     Ok(recovered)

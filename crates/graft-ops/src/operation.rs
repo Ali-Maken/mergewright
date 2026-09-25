@@ -30,7 +30,7 @@ use graft_git::remote::{Remote, TrackedUpstream};
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
 use graft_git::state::InProgress;
-use graft_git::status::{UnmergedHow, WorkingTreeStatus};
+use graft_git::status::{Change, UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
@@ -272,13 +272,18 @@ impl Invocation {
 
 /// What a rebase or checkout sets aside around itself
 /// ([`Operation::sets_aside`], ADR-0045 §4): the tracked files changed, and
-/// how many of those are staged — they come back unstaged, since the
-/// put-back runs without `--index`.
+/// how many staged entries lose their staging when put back — the put-back
+/// runs without `--index`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetAside {
     /// Tracked files with staged or unstaged changes.
     pub files: usize,
-    /// Of those, the ones with staged changes.
+    /// Staged entries whose staging the put-back loses, as git gives it
+    /// (m6-conflicts/83, M1; `set_aside` tests read it back): a staged
+    /// modification, deletion or type change comes back unstaged (`MM` →
+    /// ` M`, `D ` → ` D`); a rename comes back as a staged new file plus an
+    /// unstaged deletion of the old path, so it counts one; a staged new file
+    /// (or copy) comes back staged and does not count.
     pub staged: usize,
 }
 
@@ -840,7 +845,19 @@ impl Operation {
             0 => None,
             files => Some(SetAside {
                 files,
-                staged: changed().filter(|entry| entry.is_staged()).count(),
+                staged: changed()
+                    .filter(|entry| {
+                        matches!(
+                            entry.staged,
+                            Some(
+                                Change::Modified
+                                    | Change::Deleted
+                                    | Change::Renamed
+                                    | Change::TypeChanged
+                            )
+                        )
+                    })
+                    .count(),
             }),
         }
     }

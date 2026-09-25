@@ -33,13 +33,17 @@ pub enum ApplyError {
     /// it did not run: a write Graft cannot record is a write it must not
     /// make. After it ran, the outcome line is missing — and `after` carries
     /// git's own failure, which would otherwise be lost behind this one
-    /// (m3/03 review, Minor 1).
-    #[error("{}", journal_failed(.error, .after.as_ref()))]
+    /// (m3/03 review, Minor 1). `kept` says where a set-aside's edits are
+    /// when the put-back left them in the stash list (kept, or clashed), so
+    /// the missing outcome line does not take that with it (m6-conflicts/83).
+    #[error("{}", journal_failed(.error, .after.as_ref(), .kept.as_deref()))]
     Journal {
         /// What the journal said.
         error: JournalError,
         /// What git said, when the operation had already failed.
         after: Option<RunError>,
+        /// Where the set-aside edits are, when not simply back in the tree.
+        kept: Option<String>,
     },
     /// The operation ran and is journaled, but part of what it left behind
     /// could not be read, or could not be kept reachable. The write happened,
@@ -171,14 +175,31 @@ pub enum AfterState {
     /// records none — which `u` reads as "not merging" (m6-conflicts/20).
     #[error("the merge in progress after the operation: {0}")]
     MergeState(crate::merge_state::MergeStateError),
+    /// A set-aside stash was kept after the put-back because a read failed —
+    /// the status after it, or the stash list to drop it by — with no git
+    /// failure to carry the words. `words` say what failed (`error`'s text
+    /// included) and where the edits are (m6-conflicts/83, m2 and m3).
+    #[error("{words}")]
+    SetAsideKept {
+        /// The read that failed.
+        error: FactsError,
+        /// What went wrong and where the edits are, as the entry's reason.
+        words: String,
+    },
 }
 
-/// The journal failing, with git's own failure when there was one.
-fn journal_failed(error: &JournalError, after: Option<&RunError>) -> String {
-    match after {
+/// The journal failing, with git's own failure when there was one, and
+/// where a set-aside's edits are when they are not back in the tree.
+fn journal_failed(error: &JournalError, after: Option<&RunError>, kept: Option<&str>) -> String {
+    let mut line = match after {
         Some(ran) => format!("{error} (git had already failed: {})", reason_for(ran)),
         None => error.to_string(),
+    };
+    if let Some(kept) = kept {
+        line.push_str(" · ");
+        line.push_str(kept);
     }
+    line
 }
 
 /// Every after-state failure on one line.
@@ -224,6 +245,7 @@ impl From<PrepareError> for ApplyError {
             PrepareError::Journal(why) => ApplyError::Journal {
                 error: why,
                 after: None,
+                kept: None,
             },
             PrepareError::Stopped => ApplyError::Stopped,
         }
