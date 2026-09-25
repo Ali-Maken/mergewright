@@ -370,7 +370,9 @@ fn a_plan_that_failed_shows_the_reason_and_offers_close_only() {
     preview_produced(
         &mut state,
         id,
-        Err("main and feature have diverged".to_owned()),
+        Err(PreviewFailure::Failed(
+            "main and feature have diverged".to_owned(),
+        )),
     );
     let view = preview_box(&state).expect("a box");
     assert_eq!(labels(&view), vec!["Close".to_owned()]);
@@ -537,7 +539,9 @@ fn a_plan_for_a_stale_job_is_ignored() {
     preview_produced(
         &mut state,
         JobId::new(4242),
-        Err("from a preview the user already closed".to_owned()),
+        Err(PreviewFailure::Failed(
+            "from a preview the user already closed".to_owned(),
+        )),
     );
     let preview = state.preview.as_ref().expect("still open");
     assert_eq!(preview.rows.len(), drawn);
@@ -964,7 +968,11 @@ fn y_confirm_is_drawn_only_where_y_acts() {
             &mut ids()
         ));
         let id = state.preview.as_ref().expect("open").job;
-        preview_produced(&mut state, id, Err("diverged".to_owned()));
+        preview_produced(
+            &mut state,
+            id,
+            Err(PreviewFailure::Failed("diverged".to_owned())),
+        );
         state
     };
     let undrawable = {
@@ -1040,4 +1048,159 @@ fn confirm_key_refuses_modifiers() {
     assert!(!confirm_key(with('y', true, false), "m"));
     assert!(confirm_key(with('y', false, false), "."));
     assert!(confirm_key(with('r', false, false), "r"));
+}
+
+// ── a refused preview opens no box (m6-conflicts/67) ─────────────────────
+
+/// Opens `subject`'s preview and answers its job with `failure`.
+fn answered_with(subject: PreviewSubject, failure: PreviewFailure) -> (AppState, AppState) {
+    let mut state = on_screen();
+    let before = state.clone();
+    let mut commands = Vec::new();
+    assert!(open_preview(
+        &mut state,
+        &mut commands,
+        subject,
+        false,
+        &mut ids()
+    ));
+    let id = state.preview.as_ref().expect("open").job;
+    preview_produced(&mut state, id, Err(failure));
+    (before, state)
+}
+
+/// `r` on a dirty tree: the job's `Refused` answer closes the waiting box,
+/// and the status line says why in the write's own words, naming `S`.
+/// Group F (ADR-0045) flips this: the edits are set aside instead.
+#[test]
+fn r_on_a_dirty_tree_opens_no_preview_and_says_why() {
+    let (before, state) = answered_with(
+        opened_by("r"),
+        PreviewFailure::Refused(graft_ops::operation::Refusal::DirtyTree { count: 1 }),
+    );
+    assert!(state.preview.is_none(), "a box is open");
+    assert!(preview_box(&state).is_none(), "a box is drawn");
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "rebase needs a clean tree".to_owned(),
+            keys: Some("S stash 1 changed file".to_owned()),
+        }
+    );
+    // Focus is the graph's again: nothing overlays it, and the cursor is
+    // where `r` was pressed.
+    assert!(!state.journal.shown && !state.banner_focus);
+    assert_eq!(
+        state.history.as_ref().map(|it| (it.top, it.cursor)),
+        before.history.as_ref().map(|it| (it.top, it.cursor))
+    );
+}
+
+/// A merge the preview refuses by itself (`--ff-only` on diverged
+/// branches) takes the same route: the status line, not the
+/// `preview failed:` box.
+#[test]
+fn a_refused_merge_preview_says_why_on_the_status_line() {
+    let refusal = graft_ops::operation::Refusal::NotFastForward {
+        branch: "main".to_owned(),
+    };
+    let merge = PreviewSubject::Operation {
+        op: Box::new(Operation::Merge(MergeParams {
+            source: Source::Branch("refs/heads/feature".to_owned()),
+            into: Tip {
+                name: "refs/heads/main".to_owned(),
+                oid: oid(2),
+            },
+            source_tip: oid(3),
+            ff: FastForward::Only,
+        })),
+        opened_by: "m",
+    };
+    let (_, state) = answered_with(merge.clone(), PreviewFailure::Refused(refusal.clone()));
+    assert!(state.preview.is_none(), "a box is open");
+    let PreviewSubject::Operation { op, .. } = merge else {
+        unreachable!("built as an operation above")
+    };
+    assert_eq!(
+        state.status,
+        crate::update::operate::refusal_status(&op, &refusal)
+    );
+}
+
+/// A read that failed is not a refusal: it keeps its `preview failed:` box.
+#[test]
+fn a_failed_preview_still_opens_the_failed_box() {
+    let (_, state) = answered_with(
+        opened_by("r"),
+        PreviewFailure::Failed("git exited 128".to_owned()),
+    );
+    let view = preview_box(&state).expect("the failed box");
+    assert!(
+        view.lines
+            .iter()
+            .any(|line| line.as_str().contains("preview failed: git exited 128")),
+        "{:?}",
+        view.lines
+    );
+}
+
+/// A preview opened from the journal gives the journal back when refused,
+/// as `esc` would.
+#[test]
+fn a_refused_preview_from_the_journal_gives_the_journal_back() {
+    let mut state = on_screen();
+    let mut commands = Vec::new();
+    assert!(open_preview(
+        &mut state,
+        &mut commands,
+        opened_by("r"),
+        true,
+        &mut ids()
+    ));
+    let id = state.preview.as_ref().expect("open").job;
+    preview_produced(
+        &mut state,
+        id,
+        Err(PreviewFailure::Refused(
+            graft_ops::operation::Refusal::DirtyTree { count: 2 },
+        )),
+    );
+    assert!(state.preview.is_none());
+    assert!(state.journal.shown);
+}
+
+/// One wording: a dirty tree refused by the preview (before the box) and
+/// refused by the write (after the confirm) leaves the same status line.
+#[test]
+fn the_preview_refusal_and_the_write_refusal_read_the_same() {
+    let refusal = graft_ops::operation::Refusal::DirtyTree { count: 1 };
+    let (_, previewed) = answered_with(opened_by("r"), PreviewFailure::Refused(refusal.clone()));
+
+    let mut written = AppState::default();
+    let mut commands = Vec::new();
+    crate::update::operate::launch_unstoppable(
+        &mut written,
+        &mut commands,
+        a_rebase(),
+        HISTORY_CANNOT_STOP,
+        Some("r"),
+        &mut || JobId::new(9),
+    );
+    let _refresh: Vec<Command> = crate::update::operate::operated(
+        &mut written,
+        JobId::new(9),
+        crate::jobs::operate::Operated::Failed {
+            error: "the sentence nobody should see here".into(),
+            refresh: None,
+            remote: None,
+            refused: Some(refusal),
+        },
+        &mut || JobId::new(10),
+    );
+    assert_eq!(previewed.status, written.status);
+    assert!(
+        matches!(&previewed.status, Status::Sticky { reason, .. } if reason == "rebase needs a clean tree"),
+        "{:?}",
+        previewed.status
+    );
 }

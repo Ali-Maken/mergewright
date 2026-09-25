@@ -131,6 +131,20 @@ pub struct PreviewRequest {
     pub resident: HashSet<Oid>,
 }
 
+/// Why the preview job drew nothing.
+///
+/// Two answers, routed apart (m6-conflicts/67): a refusal is not a failure,
+/// and must not read as one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PreviewFailure {
+    /// `graft_ops::preview::plan` refused the operation — the same refusal
+    /// the write would give. No box: the status line says why.
+    Refused(graft_ops::operation::Refusal),
+    /// A read failed. The line the `preview failed:` box prints, written
+    /// for the user.
+    Failed(String),
+}
+
 /// What the job came back with: the plan, and the commits it had to read to
 /// anchor ghosts whose parents were not on screen.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -540,7 +554,11 @@ pub fn preview_click(
 /// Lays the slice out **once**, here, rather than per frame: `layout` is a
 /// pure function over a few hundred commits and the result is what the
 /// graph draws until the box closes.
-pub fn preview_produced(state: &mut AppState, id: JobId, result: Result<Arc<Planned>, String>) {
+pub fn preview_produced(
+    state: &mut AppState,
+    id: JobId,
+    result: Result<Arc<Planned>, PreviewFailure>,
+) {
     // The same seeds the live graph was laid out with, rebuilt from the
     // walk's own facts and the badges: the ghosts have to sit in the same
     // lanes and carry the same colours as the real rows around them, or the
@@ -569,7 +587,11 @@ pub fn preview_produced(state: &mut AppState, id: JobId, result: Result<Arc<Plan
     }
     let planned = match result {
         Ok(planned) => planned,
-        Err(error) => {
+        Err(PreviewFailure::Refused(refusal)) => {
+            refused(state, &refusal);
+            return;
+        }
+        Err(PreviewFailure::Failed(error)) => {
             preview.plan = Loading::Failed(error);
             preview.cursor = 0;
             return;
@@ -605,6 +627,29 @@ pub fn preview_produced(state: &mut AppState, id: JobId, result: Result<Arc<Plan
     }
     preview.plan = Loading::Ready(planned);
     preview.cursor = 0;
+}
+
+/// The preview's operation was refused: close the box, and say why on the
+/// status line, in the words the write would use.
+///
+/// No box: the preview is modal, so the key the words name (`S`) would need
+/// `esc` first (UX §1.3), and a picture of a write that cannot run is not
+/// the result before you confirm. Focus goes back where the key was
+/// pressed — nothing but the box moved it; the journal comes back if the
+/// preview was opened from there, as `close_preview` does.
+fn refused(state: &mut AppState, refusal: &graft_ops::operation::Refusal) {
+    let Some(preview) = state.preview.take() else {
+        return;
+    };
+    if preview.return_to_journal {
+        state.journal.shown = true;
+    }
+    state.status = match &preview.subject {
+        PreviewSubject::Operation { op, .. } => super::operate::refusal_status(op, refusal),
+        // The time machine is planned by `plan_revert_to`, which the job
+        // never maps to `Refused`; if it ever does, its sentence stands.
+        PreviewSubject::RevertTo(_) => Status::sticky(refusal.explain()),
+    };
 }
 
 /// Where the commit on absolute history row `row` ended up in the laid-out

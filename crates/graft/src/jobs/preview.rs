@@ -29,37 +29,52 @@ use graft_git::version::system_git;
 
 use super::Cancel;
 use crate::repos::RepoStore;
-use crate::update::preview::{PREVIEW_ANCHOR_CAP, Planned, PreviewRequest, PreviewSubject};
+use crate::update::preview::{
+    PREVIEW_ANCHOR_CAP, Planned, PreviewFailure, PreviewRequest, PreviewSubject,
+};
 
 /// Draws one preview, and reads the commits it needs to be drawable.
 ///
-/// The `Err` is the line the preview box prints, so it is written for the
-/// user, not for a log.
+/// A `Refused` answer is the refusal the write would give; a `Failed`
+/// answer is the line the preview box prints, written for the user, not
+/// for a log.
 pub(super) fn run_preview(
     repos: &RepoStore,
     request: &PreviewRequest,
     clock: crate::session::Clock,
     cancel: &Cancel,
-) -> Result<Arc<Planned>, String> {
-    let repo = repos.shared().map_err(|error| error.to_string())?;
+) -> Result<Arc<Planned>, PreviewFailure> {
+    let failed = |line: String| PreviewFailure::Failed(line);
+    let repo = repos.shared().map_err(|error| failed(error.to_string()))?;
     let handle = repo.handle();
-    let git = system_git().map_err(|error| error.to_string())?.version();
+    let git = system_git()
+        .map_err(|error| failed(error.to_string()))?
+        .version();
 
     let plan = match &request.subject {
         PreviewSubject::Operation { op, .. } => {
             let scope = op.facts_scope();
             let facts = graft_ops::facts::read_facts(&handle, git, cancel, &scope)
-                .map_err(|why| why.to_string())?;
-            graft_ops::preview::plan(&handle, &git, op, &facts, cancel)
-                .map_err(|why| why.explain())?
+                .map_err(|why| failed(why.to_string()))?;
+            graft_ops::preview::plan(&handle, &git, op, &facts, cancel).map_err(
+                |why| match why {
+                    // The write would refuse this too: routed to the status
+                    // line, not the `preview failed:` box (m6-conflicts/67).
+                    graft_ops::preview::PreviewError::Refused(refusal) => {
+                        PreviewFailure::Refused(refusal)
+                    }
+                    other => failed(other.explain()),
+                },
+            )?
         }
         PreviewSubject::RevertTo(entry) => {
-            let entries = super::undo::journal_entries(repos, clock, cancel)?;
-            graft_ops::preview::plan_revert_to(&entries, entry).map_err(|why| why.explain())?
+            let entries = super::undo::journal_entries(repos, clock, cancel).map_err(failed)?;
+            graft_ops::preview::plan_revert_to(&entries, entry)
+                .map_err(|why| failed(why.explain()))?
         }
     };
 
-    let anchors = read_anchors(&handle, &plan, &request.resident, cancel)?;
+    let anchors = read_anchors(&handle, &plan, &request.resident, cancel).map_err(failed)?;
     Ok(Arc::new(Planned { plan, anchors }))
 }
 

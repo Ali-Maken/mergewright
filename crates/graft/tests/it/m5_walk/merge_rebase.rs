@@ -312,9 +312,14 @@ fn rebase_dirty_tree_refused_offers_stash() -> Scenario {
             Step::WaitFor(Wait::Ready),
             Step::CursorTo("main"),
             key(ch('r')),
-            Step::WaitFor(Wait::PreviewReady),
-            Step::Confirm,
-            Step::Settle("the refused rebase"),
+            // Refused before any box opens (m6-conflicts/67): the preview
+            // runs the write's own `check`, so there is nothing to confirm.
+            Step::WaitFor(Wait::PreviewAnswered),
+            Step::See("no preview box is open", |state| {
+                check(state.preview.is_none(), || {
+                    "the refused rebase drew a preview".to_owned()
+                })
+            }),
             Step::See("the status names the clean-tree rule and S", |state| {
                 status_containing(state, "rebase needs a clean tree")?;
                 status_containing(state, "S stash 1 changed file")

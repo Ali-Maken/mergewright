@@ -31,6 +31,10 @@ pub enum Wait {
     /// The open preview's plan has landed (ready or failed), and the ghost
     /// rows with it.
     PreviewReady,
+    /// The preview job has answered, either way: its plan landed, or the
+    /// operation was refused and the box closed with the reason on the
+    /// status line (m6-conflicts/67).
+    PreviewAnswered,
     /// Git stopped on a conflict, the working tree re-read names the
     /// unmerged paths, and the banner has the keyboard.
     BannerFocused,

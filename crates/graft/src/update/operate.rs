@@ -118,8 +118,14 @@ fn launch_with(
     let id = next_id();
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
-    let remote = op.is_remote().then(|| op.clone());
-    super::remote::launched(next, id, op.describe(), remote, stoppable, opened_by);
+    super::remote::launched(
+        next,
+        id,
+        op.describe(),
+        Some(op.clone()),
+        stoppable,
+        opened_by,
+    );
     commands.push(Command::Operate(id, Box::new(op)));
 }
 
@@ -764,7 +770,8 @@ pub fn operated(
         .running
         .as_ref()
         .filter(|running| running.id == id)
-        .and_then(|running| running.op.clone());
+        .and_then(|running| running.op.clone())
+        .filter(Operation::is_remote);
     match outcome {
         Operated::Done(applied) => {
             let done = remote_op
@@ -914,16 +921,11 @@ fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Option<Status
         // Hard choice 4: refuse before git runs rather than `--autostash`,
         // whose pop can conflict outside any journal entry. The refusal
         // costs one key, and that key is named.
-        Refusal::DirtyTree { count } => Some(Status::Sticky {
-            reason: format!(
-                "{} needs a clean tree",
-                running.map_or("it", |running| verb_of(&running.description))
-            ),
-            keys: Some(format!(
-                "S stash {count} changed {}",
-                if *count == 1 { "file" } else { "files" }
-            )),
-        }),
+        // The op it launched names the verb, so these words are the ones a
+        // preview refused with before the confirm (m6-conflicts/67).
+        refused @ Refusal::DirtyTree { .. } => running
+            .and_then(|running| running.op.as_ref())
+            .map(|op| refusal_status(op, refused)),
         // Marking a half-resolved file done is the one mistake that loses
         // work quietly: the markers go into the commit. The reason names
         // the file; the keys are the two ways out of it, which is exactly
@@ -939,6 +941,27 @@ fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Option<Status
 /// `refs/heads/main` → `main`; anything else as it stands (`HEAD`).
 fn short_ref(full: &str) -> &str {
     full.rsplit_once('/').map_or(full, |(_, last)| last)
+}
+
+/// The one wording of a refusal of an operation he asked for, whether the
+/// preview refused it before the box opened or the write refused it after
+/// the confirm.
+///
+/// `DirtyTree` names the verb and the key that answers it (hard choice 4:
+/// refuse before git runs rather than `--autostash`, whose pop can conflict
+/// outside any journal entry; the refusal costs one key, and that key is
+/// named). Every other refusal is `Refusal::explain`'s one sentence.
+pub(crate) fn refusal_status(op: &Operation, refusal: &Refusal) -> Status {
+    match refusal {
+        Refusal::DirtyTree { count } => Status::Sticky {
+            reason: format!("{} needs a clean tree", verb_of(&op.describe())),
+            keys: Some(format!(
+                "S stash {count} changed {}",
+                if *count == 1 { "file" } else { "files" }
+            )),
+        },
+        other => Status::sticky(other.explain()),
+    }
 }
 
 /// `rebase feature onto main` → `rebase`.
