@@ -96,7 +96,7 @@ pub fn resolved_advance(
     if let Some(next) = next_not_done(state, &done) {
         to_next(state, commands, &done, next, from, next_id);
     } else if crate::update::banner::banner_view(state).is_none() {
-        close_after_last(state);
+        close_after_last(state, commands, next_id);
     } else {
         stay_after_last(state, commands, &done, from, next_id);
     }
@@ -145,11 +145,37 @@ fn to_next(
 }
 
 /// A conflicted `git stash pop` has no operation, so no banner and no `c`:
-/// nothing is left to do here, and the resolver closes to the graph with
-/// the words on the status line.
-fn close_after_last(state: &mut AppState) {
+/// nothing is left to do here, and the resolver closes to where it was
+/// opened from with the words on the status line.
+///
+/// A clash Graft recorded (`AppState::clash`, m6-conflicts/72b) ends here
+/// too (ADR-0045 §3): a **pop** or set-aside launches
+/// `Operation::DropPutBack` — its answer says `every file done ·
+/// stash@{0} dropped ✓ · u brings it back`; an **apply** runs nothing,
+/// `every file done · stash@{0} kept ✓`. A shell pop has no record, and
+/// closes as it always did.
+fn close_after_last(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     state.resolver = None;
     state.banner_focus = false;
+    if let Some(clash) = state.clash.as_ref().map(|clash| clash.clash.clone()) {
+        if !crate::update::clash::drops(clash.why) {
+            state.status = crate::update::clash::kept_status(clash.index);
+            return;
+        }
+        let drop = graft_ops::operation::Operation::DropPutBack { stash: clash.stash };
+        match crate::update::operate::launch(state, commands, drop, next_id) {
+            Ok(()) => state.clash_drop = state.operating.map(|id| (id, clash.index)),
+            // Unreachable: the stage that brought us here has just answered,
+            // and nothing else launches in the same update. Worded, never
+            // dropped: the stash stays and says why.
+            Err(busy) => state.status = Status::sticky(busy.words()),
+        }
+        return;
+    }
     // The status the `Stage` asked for is still out and still calls this
     // file unmerged; `status_read::settle` gives the verdict when it lands
     // (review m6-amend-13, Minor 1).

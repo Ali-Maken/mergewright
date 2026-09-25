@@ -303,7 +303,7 @@ fn cancel_preview(next: &mut AppState, commands: &mut Vec<Command>) {
 
 /// `Esc`/`S`: the overlay goes away and the reads it asked for, if they are
 /// still in flight, are cancelled — nothing on screen is waiting for them.
-fn close(next: &mut AppState, commands: &mut Vec<Command>) {
+pub(in crate::update) fn close(next: &mut AppState, commands: &mut Vec<Command>) {
     next.stash.shown = false;
     next.stash.selected = 0;
     next.stash.prompt = None;

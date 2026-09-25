@@ -280,6 +280,33 @@ pub struct AppState {
     /// refresh and a `JobFinished` leave it. The footer words it each frame
     /// through `banner::stop_reason`, from the live read.
     pub stopped: Option<Stop>,
+    /// **A stash put back that clashed, live now** (ADR-0045 §2,
+    /// m6-conflicts/72b). Its own field, never a [`Stop`]: a `Stop` is an
+    /// operation git has part-way (`Stop::kind`), and everything that reads
+    /// `stopped` — the banner, `c`/`a`, `live_operation` — means that. A
+    /// clash has no git state and no continue or abort.
+    ///
+    /// Set by `operate::operated`'s `Clashed` arm (`ThisRun`, so the landing
+    /// never waits for a read) and by [`crate::update::clash::refresh_clash`]
+    /// when a journal, working-tree or refs read lands (`PreviousRun` when
+    /// the launch's reads find one); cleared by the same refresh once
+    /// `graft_ops::clash::live_clash` finds none. Read by the resolver's
+    /// names and close, and by the stop line while `stopped` is `None`.
+    pub clash: Option<ClashState>,
+    /// [`crate::update::clash::refresh_clash`] has run on a full set of
+    /// facts (journal, working tree, refs) once: a clash it finds after this
+    /// is this run's, one it finds before is from the last run.
+    pub(crate) clash_facts_seen: bool,
+    /// The `DropPutBack` the resolver's close launched after a popped
+    /// stash's last file, and the stash's position then — what its answer's
+    /// `every file done · stash@{0} dropped ✓` names.
+    pub(crate) clash_drop: Option<(JobId, Option<usize>)>,
+    /// The clash landing opened the resolver from the changes pane while
+    /// the working tree held was still the one from before the put-back —
+    /// clean, so the pane could not stay on it (`selection::reconcile`). The
+    /// next working-tree read that shows the tree dirty lands the pane on
+    /// `CONFLICTS` ([`crate::update::clash::refresh_and_land`]).
+    pub(crate) clash_pane_owed: bool,
     /// A `--continue` finished (`resumed` → `Done`): the graph cursor goes
     /// to the new `HEAD` once the refresh that answer issued has both the
     /// fresh refs and the fresh walk ([`AppState::head_landing`]). Spent by
@@ -769,6 +796,16 @@ pub struct Stop {
     pub kind: graft_git::state::InProgress,
     /// Unmerged paths when it stopped — the count until a read says more.
     pub paths_at_stop: usize,
+}
+
+/// A stash put back that clashed, and whose it is (m6-conflicts/72b):
+/// [`AppState::clash`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClashState {
+    /// The entry, the stash, its position now and why it was put back.
+    pub clash: graft_ops::clash::StashClash,
+    /// This run's clash, or one the launch found (`PreviousRun`).
+    pub origin: super::relaunch::LiveOrigin,
 }
 
 /// Whether [`AppState::refs`] is the answer to the last refs read asked for.

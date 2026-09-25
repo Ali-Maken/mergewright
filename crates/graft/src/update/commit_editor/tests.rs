@@ -183,7 +183,7 @@ fn a_refused_enter_sends_nothing() {
         theirs: Ok(None),
     });
     merging.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
-    let rows: [(&str, AppState, &str, &str); 3] = [
+    let rows: Vec<(&str, AppState, &str, &str)> = vec![
         ("nothing staged", ready(&[]), "subject", "nothing staged"),
         ("empty subject", ready(&["a.rs"]), "", "subject empty"),
         (

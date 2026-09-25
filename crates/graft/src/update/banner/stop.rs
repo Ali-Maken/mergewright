@@ -318,21 +318,36 @@ impl Wording {
 /// working-tree read. `None` while nothing is stopped.
 #[must_use]
 pub fn stop_line(state: &AppState) -> Option<String> {
-    let stop = state.stopped.as_ref()?;
+    let Some(stop) = state.stopped.as_ref() else {
+        return clash_wordings(state)?.into_iter().next();
+    };
     let count = unmerged_paths(state).len();
     let live = state.in_progress.as_ref().map(|detail| (detail, count));
     Some(stop_reason(stop, live))
 }
 
 /// [`stop_wordings`] for the stop standing in `state`, worded like
-/// [`stop_line`] (whose words are the first). `None` while nothing is
-/// stopped.
+/// [`stop_line`] (whose words are the first). With nothing stopped, a stash
+/// clash's (m6-conflicts/72b: `stash@{0} clashed · 1 file conflicted`).
+/// `None` while neither stands.
 #[must_use]
 pub fn stop_line_wordings(state: &AppState) -> Option<Vec<String>> {
-    let stop = state.stopped.as_ref()?;
+    let Some(stop) = state.stopped.as_ref() else {
+        return clash_wordings(state);
+    };
     let count = unmerged_paths(state).len();
     let live = state.in_progress.as_ref().map(|detail| (detail, count));
     Some(stop_wordings(stop, live))
+}
+
+/// The open stash clash's wordings, counted from the last working-tree
+/// read; `None` without one.
+fn clash_wordings(state: &AppState) -> Option<Vec<String>> {
+    let clash = state.clash.as_ref()?;
+    Some(crate::update::clash::stop_wordings(
+        clash,
+        unmerged_paths(state).len(),
+    ))
 }
 
 /// One `Tab` from here lands on the banner, and nothing modal stands in the

@@ -146,7 +146,7 @@ pub(super) fn working_tree_read_landed(
 /// `first` is a path, the list is a job.
 ///
 /// [`KeptCursor`]: super::detail::KeptCursor
-fn land_on_the_work(
+pub(in crate::update) fn land_on_the_work(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     first: Option<std::path::PathBuf>,

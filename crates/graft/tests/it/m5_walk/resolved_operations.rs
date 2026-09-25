@@ -317,10 +317,11 @@ fn stash_pop_conflict_resolves_without_a_banner() -> Scenario {
 }
 
 /// A pop that conflicts, popped **in the app** (`S`, `p`) — a pop run in
-/// the shell has no journal entry for `u` to take back: `⏎`; `u` brings
-/// the conflict back (three stages, the bytes from before `⏎`); `u` again
-/// takes the pop back; `U` puts the conflict back once more. Red today on
-/// finding F2: the redo also drops the stash the conflicted pop kept.
+/// the shell has no journal entry for `u` to take back. The pop lands in
+/// the resolver (72b); `o ⏎` resolves and drops the stash; `u` brings the
+/// stash back; `u` again brings the conflict back (three stages, the bytes
+/// from before `⏎`); a third `u` takes the pop back; `U` puts the conflict
+/// back once more, keeping the stash the conflicted pop kept (finding F2).
 #[allow(
     clippy::too_many_lines,
     reason = "one scenario: its steps and its verdict, read top to bottom"
@@ -343,40 +344,49 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
                 key(ch('p')),
                 Step::Settle("the pop"),
                 Step::WaitFor(Wait::ConflictedPath(POPPED)),
+                Step::WaitFor(Wait::ConflictOpened),
                 Step::Mark("popped"),
-                // Since m6-conflicts/72 a clashed pop is `ApplyError::Clashed`,
-                // and its interim line is Graft's, not git's `Index was not
-                // unstashed` (72b replaces it with the landing); the stash
-                // stays listed.
-                Step::See("the pop clashed, in the interim words", |state| {
-                    status_containing(state, "pop stash@{0} left conflicts in 1 file")
+                // Since m6-conflicts/72b a clashed pop lands in the resolver
+                // on the clashed file, the `S` list closed, the notice naming
+                // the stash; git kept the stash.
+                Step::See("the pop landed in the resolver", |state| {
+                    check(!state.stash.shown, || "the stash list is open".to_owned())?;
+                    check(
+                        state
+                            .resolver
+                            .as_ref()
+                            .is_some_and(|open| open.path == std::path::Path::new(POPPED)),
+                        || "the resolver is not open on the popped file".to_owned(),
+                    )?;
+                    super::vocabulary::notice_containing(state, "stash@{0} clashed in 1 file")
                 }),
-                // The first `Esc` clears the stop's line, the second closes
-                // the stash list.
-                key(KeyCode::Escape),
-                key(KeyCode::Escape),
-                Step::See("the stash list is closed", |state| {
-                    check(!state.stash.shown, || "the stash list is open".to_owned())
-                }),
-                Step::Resolve(POPPED),
             ],
             take('o'),
             vec![
                 Step::Mark("taken"),
+                // `⏎` on the last file: the stage, then the drop of the stash
+                // the pop kept (72b), each run to its answer.
                 key(KeyCode::Enter),
                 Step::Settle("the stage behind ⏎"),
                 Step::WaitFor(Wait::ResolvedPath(POPPED)),
-                Step::See("every file done", |state| {
-                    status_containing(state, "every file done")
+                Step::Settle("the drop after the last file"),
+                Step::WaitFor(Wait::Ready),
+                Step::See("every file done, the stash dropped", |state| {
+                    status_containing(state, "every file done \u{b7} stash@{0} dropped")
                 }),
+                Step::Mark("resolved"),
             ],
+            // The first `u` takes the drop back: the stash is listed again.
+            undo(),
+            vec![Step::Mark("drop undone")],
+            // The second takes back the stage.
             undo(),
             vec![
                 // The pane's `CONFLICTS` row is back: the re-read lists `p`
                 // as unmerged, and git agrees.
                 Step::WaitFor(Wait::ConflictedPath(POPPED)),
                 Step::Mark("undone once"),
-                // The second `u` reaches the pop. The tree is not the one
+                // The third `u` reaches the pop. The tree is not the one
                 // the pop left — `o` changed `p` since — so M3's drift box
                 // asks first; `Undo` is the second choice.
                 key(ch('u')),
@@ -397,6 +407,21 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
         ]),
         expect: |_, marks| {
             let taken = marks.get("taken")?;
+            let popped = marks.get("popped")?;
+            let resolved = marks.get("resolved")?;
+            check(resolved.repo.stash.is_empty(), || {
+                format!(
+                    "after the last file the stash list is {:?}",
+                    resolved.repo.stash
+                )
+            })?;
+            let drop_undone = marks.get("drop undone")?;
+            check(drop_undone.repo.stash == popped.repo.stash, || {
+                format!(
+                    "after the first u the stash list is {:?}; after the pop it was {:?}",
+                    drop_undone.repo.stash, popped.repo.stash
+                )
+            })?;
             let once = marks.get("undone once")?;
             check(stages_in(once, POPPED) == 3, || {
                 format!("after one u: {} stages for p", stages_in(once, POPPED))
@@ -428,7 +453,6 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
             })?;
             // The pop stopped on the conflict, so git kept the stash; the
             // redo of its undo must keep it too.
-            let popped = marks.get("popped")?;
             check(redone.repo.stash == popped.repo.stash, || {
                 format!(
                     "after U the stash list is {:?}; after the pop it was {:?}",

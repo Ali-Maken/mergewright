@@ -81,6 +81,21 @@ pub enum Operated {
         /// the live entry, named by the answer itself (gap row 505).
         entry: graft_core::journal::EntryId,
     },
+    /// A stash put back clashed ([`ApplyError::Clashed`], ADR-0045 §1–2):
+    /// the entry is `Committed`, the stash is still listed, and the tree
+    /// holds unmerged paths with **no** operation in progress — no banner,
+    /// no `c`, no `a`.
+    ///
+    /// Not a failure: the user is in the clash until every file is done
+    /// (`update::resolver`'s close drops a popped stash) or `u` puts it all
+    /// back. Refreshing is always `Everything`: `refs/stash` and the tree
+    /// both moved.
+    Clashed {
+        /// The entry that put the stash back.
+        entry: graft_core::journal::EntryId,
+        /// Which stash, why, and the unmerged paths.
+        clash: graft_ops::clash::Clash,
+    },
     /// Nothing was written, or nothing could be recorded — the one case
     /// with no [`Applied`] to refresh from.
     Failed {
@@ -190,24 +205,18 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         // A failed fetch/pull/push may still have moved remote-tracking refs
         // (a pull fetches before its fast-forward fails): the graph too.
         //
-        // `Conflicted` and `ResumeFailed` are neither of those and are not
-        // failures at all — `run_operation` takes both into
-        // [`Operated::Conflicted`] before this is reached. They are named
-        // here rather than left to a wildcard so a third "git stopped and
-        // its state is live" variant has to be thought about, and they share
-        // this answer because it is the same one: git wrote refs and files
-        // before it stopped.
+        // `Conflicted`, `ResumeFailed` and `Clashed` are neither of those and
+        // are not failures at all — `answer` takes them into
+        // [`Operated::Conflicted`] and [`Operated::Clashed`] before this is
+        // reached. They are named here rather than left to a wildcard so a
+        // fourth "git stopped and the user is in it" variant has to be
+        // thought about, and they share this answer because it is the same
+        // one: git wrote refs and files before it stopped.
         ApplyError::Journal { .. }
         | ApplyError::AfterState { .. }
         | ApplyError::Remote { .. }
         | ApplyError::Conflicted { .. }
         | ApplyError::ResumeFailed { .. }
-        // Interim (m6-conflicts/72; 72b replaces it with the landing): a
-        // stash put back that clashed reaches the app as a failure whose
-        // status is `ApplyError::Clashed`'s own line, sticky —
-        // `<description> left conflicts in N files` — and nothing else. The
-        // refresh is what `Git` gave the same pop before 72 (it touches
-        // `refs/stash`): everything.
         | ApplyError::Clashed { .. } => Some(Refresh::Everything),
         // Cancelled between steps, which can be after some of them ran.
         ApplyError::Stopped => Some(Refresh::WorkingTree),
@@ -340,6 +349,12 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
             paths: Vec::new(),
             stalled: Some(error.to_string()),
             entry: entry.id,
+        },
+        // A stash put back clashed: the user is in it, not past a failure.
+        // See [`Operated::Clashed`].
+        Err(ApplyError::Clashed { entry, clash }) => Operated::Clashed {
+            entry: entry.id,
+            clash,
         },
         Err(error) => {
             let refresh = refresh_after_failure(&error);

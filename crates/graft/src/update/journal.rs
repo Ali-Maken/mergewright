@@ -130,6 +130,9 @@ pub(super) fn journal_event(
     if first_read {
         super::relaunch::journal_read_landed(state, commands, next_id);
     }
+    // Whether a stash put back is still clashing is read out of the journal
+    // (ADR-0045 §2, m6-conflicts/72b).
+    super::clash::refresh_and_land(state, commands, next_id);
     true
 }
 

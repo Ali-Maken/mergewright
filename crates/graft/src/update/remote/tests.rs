@@ -304,7 +304,7 @@ fn push_box_text_table() {
 /// Every refusal `P` can give, as words on the status line.
 #[test]
 fn push_refusals_are_words() {
-    let cases = [
+    let cases = vec![
         (
             with_facts(Vec::new(), Some("refs/heads/main"), None),
             "no remote — add one in the shell: git remote add origin <url>",
