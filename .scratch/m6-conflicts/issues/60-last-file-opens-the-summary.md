@@ -12,6 +12,7 @@ file switch, `d`, `e`, `M`, `u`. (2) graft-ui: how `DocView.notice` is drawn (th
 list's column head and strip label are built from, and the `Resolver { finishable }` hint order. (3) Every test and
 capture that asserts "the resolver stays" after the last file (`every file done ✓ · c finishes the merge`).
 Needs: `finish-summary-is-a-preview` merged (the summary's `y`; the counts below assume it).
+Blocked by: 59, 64 (64 marks `d start over` in the done list before `c finish` joins it).
 Crates: graft, graft-ui.
 Lane: wave 2, second.
 
