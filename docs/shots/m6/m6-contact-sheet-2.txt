@@ -103,7 +103,7 @@ took theirs · feature in 3 blocks · ⏎ marks three.txt done
   11 THREE from feature
   ──────────────────────────────────────────────────────────────────────────────
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B  e  n  N  ⏎  j/k  M  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close
 
 ================================================================================
 docs/shots/m6/m6-14-last-file-done-120x40.txt
