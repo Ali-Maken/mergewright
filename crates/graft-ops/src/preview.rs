@@ -711,9 +711,7 @@ fn not_invertible(why: &NotInvertible) -> PreviewError {
         // The planner never answers this — only the executor's gate does,
         // reading git's state (m6-conflicts/57) — but the words stay true if
         // that changes.
-        NotInvertible::OperationLive { kind } => {
-            format!("finish or abort the {} first", kind.name())
-        }
+        NotInvertible::OperationLive { kind } => crate::undo::operation_live_words(*kind),
     }))
 }
 

@@ -1,7 +1,7 @@
 m6 walk capture: m6-10-stop-lands-in-resolver — scenario a-stop-to-first-conflict, keys m m, unicode tier, 80x24
 
 MERGING
-files   ▸ gone.txt keep?   notes.txt …
+files   ▸ gone.txt keep?   notes.txt •
 ────────────────────────────────────────────────────────────────────────────────
 ▸ gone.txt · modified on yours · main, deleted on theirs · feature
 

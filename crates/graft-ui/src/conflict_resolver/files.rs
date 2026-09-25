@@ -15,7 +15,7 @@
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::Modifier;
 use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
@@ -23,13 +23,15 @@ use graft_term::SanitizedText;
 
 mod column;
 mod strip;
+mod words;
 
 use super::draw::set_text;
 use super::{Arrangement, arrangement};
-use crate::paint::{color, foreground};
+use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use column::{column_plan, column_width};
 use strip::strip_plan;
+use words::{WordsTone, paint_words, words_at_end};
 
 /// One file in the list.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -83,29 +85,6 @@ impl FileState {
             (FileState::Unread, _) => g.unread.to_string(),
         }
     }
-
-    /// The colour the state's words take (ADR-0044 §1): the work still to
-    /// do in `open`, a done file's `done ✓` muted, the rest as the name.
-    fn tone(&self) -> WordsTone {
-        match self {
-            FileState::Open { .. } | FileState::AllTaken | FileState::WholeFile { .. } => {
-                WordsTone::Open
-            }
-            FileState::Done => WordsTone::Muted,
-            FileState::Binary | FileState::Unread => WordsTone::Plain,
-        }
-    }
-}
-
-/// How a cell's state words are coloured, apart from its name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum WordsTone {
-    /// `open`: `n of m open`, `keep or delete`, `⏎ marks done`.
-    Open,
-    /// `text-muted`: `done ✓`.
-    Muted,
-    /// The name's own style: `binary`, the unread `•`.
-    Plain,
 }
 
 /// The list, ready to draw.
@@ -281,22 +260,7 @@ impl Widget for FileList<'_> {
             }
             .intersection(area);
             set_text(buf, at.x, at.y, at, &cell.text, style);
-            // The state words in their tone, restyled over the text just
-            // drawn: the characters stay put, the cursor's BOLD stays on.
-            let tone = match cell.tone {
-                WordsTone::Open => Some(Token::Open),
-                WordsTone::Muted => Some(Token::TextMuted),
-                WordsTone::Plain => None,
-            };
-            if let (Some(token), Some((from, width))) = (tone, cell.words) {
-                let words = Rect {
-                    x: at.x.saturating_add(from),
-                    width,
-                    ..at
-                }
-                .intersection(at);
-                buf.set_style(words, Style::new().fg(color(self.theme.token(token))));
-            }
+            paint_words(buf, at, cell, self.theme);
         }
     }
 }
@@ -396,12 +360,6 @@ fn fit_left(text: &str, width: usize, g: Glyphs) -> String {
     out.push(g.more);
     out.extend(tail.into_iter().rev());
     out
-}
-
-/// Where `words` sit when they end `text`: `(column, width)` in cells.
-fn words_at_end(text: &str, words: &str) -> Option<(u16, u16)> {
-    let at = text.width().checked_sub(words.width())?;
-    Some((cells_u16(at), cells_u16(words.width())))
 }
 
 /// Which files `slots` places show: `(first, shown, hidden)`. Everything

@@ -75,13 +75,13 @@ FILES · 2 conflicted        │▸ gone.txt · modified on yours · main, delet
 
 ================================================================================
 docs/shots/m6/m6-10-stop-lands-in-resolver-80x24.txt
-what right looks like: The same stop at 80x24: compact strip `files   ▸ gone.txt keep?   notes.txt …`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, bottom row starts `o yours`.
+what right looks like: The same stop at 80x24: compact strip `files   ▸ gone.txt keep?   notes.txt •`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, bottom row starts `o yours`.
 ================================================================================
 
 m6 walk capture: m6-10-stop-lands-in-resolver — scenario a-stop-to-first-conflict, keys m m, unicode tier, 80x24
 
 MERGING
-files   ▸ gone.txt keep?   notes.txt …
+files   ▸ gone.txt keep?   notes.txt •
 ────────────────────────────────────────────────────────────────────────────────
 ▸ gone.txt · modified on yours · main, deleted on theirs · feature
 
@@ -831,7 +831,7 @@ FILES · 1 conflicted      │▸ three.txt · 3 conflicts · 0 open
 
 ================================================================================
 docs/shots/m6/m6-13-after-ctrl-t-80x24.txt
-what right looks like: The same at 80x24: compact strip `files   ▸ three.txt ⏎`, identity row `▸ three.txt · 3 conflicts · 0 open`, the same notice; bar `… ⏎  d start over  esc close` (`j/k` and `M` dropped, ticket 56).
+what right looks like: The same at 80x24: compact strip `files   ▸ three.txt ⏎`, identity row `▸ three.txt · 3 conflicts · 0 open`, the same notice; bar `… ⏎  j/k  M  d start over  esc`: every key present, bare at least; `d start over` keeps its words, `esc` goes bare (ADR-0044 §4's order, ticket 64).
 ================================================================================
 
 m6 walk capture: m6-13-after-ctrl-t — scenario three-conflicts-all-theirs, keys m m ⌃t, unicode tier, 80x24
@@ -859,7 +859,7 @@ took theirs · feature in 3 blocks · ⏎ marks three.txt done
   11 THREE from feature
   ──────────────────────────────────────────────────────────────────────────────
 
- o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc
 
 ================================================================================
 docs/shots/m6/m6-14-last-file-done-120x40.txt

@@ -35,15 +35,17 @@ struct Step {
 /// 2. those three to their full verbs. The leading verbs are the ones worth
 ///    the most cells, and they go first so that 80 columns still reads
 ///    `⏎ open  c commit  y sha` and not three abbreviations;
-/// 3. every hint that **keeps its words** ([`Hint::keeps_words`], ADR-0044
-///    §4), at its full verb, in list order — the resolver's way out
-///    (`d start over`, `esc close`), which a bare `d  esc` would hide;
-/// 4. every remaining hint, in priority order, at its **bare key**. A hint
+/// 3. every remaining hint, in priority order, at its **bare key**. A hint
 ///    may only rise above its key once every hint ahead of it is at least
 ///    present — that is the "leaves room for the hints ahead of it" clause,
 ///    and it is what makes the tail of bare keys exist at all;
-/// 5. those tail hints raised, one at a time from the most relevant end,
-///    short rung then full (the two the ladder can raise to).
+/// 4. every hint that **keeps its words** ([`Hint::keeps_words`], ADR-0044
+///    §4), raised to its full verb, in list order — the resolver's way out
+///    (`d start over`, `esc close`) — before any other hint is raised from
+///    its bare key. Words are dropped before keys: at 80 columns the
+///    resolver still shows `j/k  M` bare (m6-conflicts/64, review M1);
+/// 5. the other tail hints raised, one at a time from the most relevant
+///    end, short rung then full (the two the ladder can raise to).
 ///
 /// The list-wide version of this — every hint stepping down a rung together
 /// — was built, measured and reverted: a row context is 22 hints, so below
@@ -61,6 +63,12 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
         }
     }
     let rest = || list.iter().enumerate().skip(floor);
+    for (index, _) in rest() {
+        steps.push(Step {
+            index,
+            rung: Rung::Key,
+        });
+    }
     for (index, _) in rest().filter(|(_, hint)| hint.keeps_words) {
         steps.push(Step {
             index,
@@ -68,12 +76,6 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
         });
     }
     let plain = || rest().filter(|(_, hint)| !hint.keeps_words);
-    for (index, _) in plain() {
-        steps.push(Step {
-            index,
-            rung: Rung::Key,
-        });
-    }
     for (index, hint) in plain() {
         for rung in hint.rungs().iter().skip(1) {
             steps.push(Step { index, rung: *rung });
@@ -94,9 +96,9 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
 pub(super) fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
     let room = usize::from(columns);
     let floor = list.len().min(3);
-    // One slot per list entry, `None` until a step places it: a hint that
-    // keeps its words is placed before the bare keys ahead of it, so the
-    // drawn row is the placed slots in list order, not a prefix.
+    // One slot per list entry, `None` until a step places it; a later step
+    // raises a placed hint in its slot, so the drawn row is always the
+    // placed slots in list order.
     let mut slots: Vec<Option<Hint>> = list
         .iter()
         .enumerate()

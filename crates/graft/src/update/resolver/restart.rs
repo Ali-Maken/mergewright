@@ -14,9 +14,10 @@ use crate::update::confirm::{ConfirmThen, PendingConfirm};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
-/// `d`: a confirm box, `checkout --merge -- <path>` behind it — the discard
-/// verb's one meaning inside the resolver (design note, Proposed change
-/// 2(c)). Refused, quietly, while a read or a take is in flight: the same
+/// `d`: a confirm box with the start-over behind it — `checkout --merge --
+/// <path>` for a file with markers, `checkout --ours|--theirs -- <path>` for
+/// a done whole-file choice (m6-conflicts/58) — the discard verb's one
+/// meaning inside the resolver (design note, Proposed change 2(c)). Refused, quietly, while a read or a take is in flight: the same
 /// concurrent-write worry [`super::base::toggle_base`] guards against, and confirming a
 /// restart mid-write would hand the operation a file the take job is still
 /// writing to.
@@ -24,7 +25,8 @@ use crate::update::state::{AppState, Status};
 /// Refused in words while any write is running: confirming would launch a
 /// second git write over the first (m6-05 review, Major 3). Then refused in
 /// words, before the box, wherever [`start_over_refusal`] says ops would
-/// refuse — the box would promise markers ops will not bring back.
+/// refuse — the box would promise what ops will not bring back: the
+/// markers, or for a whole-file choice the keep-or-delete choice.
 pub(super) fn restart_box(state: &mut AppState) {
     if let Some(words) = super::write_refusal(state) {
         state.status = Status::sticky(words);

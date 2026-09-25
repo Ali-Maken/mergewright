@@ -1160,7 +1160,7 @@ fn no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows() {
 }
 
 /// ADR-0044 §4: only the resolver's way out (`d start over`, `esc close`)
-/// keeps its words ahead of the bare keys; every other context's ladder is
+/// keeps its words ahead of the other hints' words; every other context's ladder is
 /// the plain one.
 #[test]
 fn only_the_resolver_marks_words() {
