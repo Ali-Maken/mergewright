@@ -415,3 +415,23 @@ fn the_bar_over_a_box_during_a_live_operation_is_the_box_s_own() {
         }
     }
 }
+
+/// Review m6-look-finish-wave2 m1: `c` while a write runs, on a rebase
+/// Graft began, is refused in the summary's words and sends nothing — from
+/// the pane, both graph frames and the banner alike. Never silent (rule 3).
+#[test]
+fn c_while_a_write_runs_refuses_in_words() {
+    for frame in FRAMES {
+        let mut state = live(InProgress::Rebase, Begun::InGraft, &[], frame);
+        state.operating = Some(graft_core::job::JobId::new(7));
+        for (from, (after, commands)) in [("key", c(&state)), ("banner", from_the_banner(&state))] {
+            assert!(commands.is_empty(), "{frame:?} {from}: {commands:?}");
+            assert_eq!(
+                after.status,
+                Status::sticky("a write is already running"),
+                "{frame:?} {from}"
+            );
+            assert_eq!(after.operating, state.operating, "{frame:?} {from}");
+        }
+    }
+}

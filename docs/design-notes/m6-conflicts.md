@@ -913,7 +913,8 @@ the picks (:65, `.scratch/m6-conflicts/user-picks-2026-09-24.md`). Specs: "Specs
   the shell, or after `u`): `c` [M] · `y`. **2**, unchanged.
 - **J14 back to a file from the summary, then finish.** `Esc` → the resolver, finish row showing · `c` · `y`. **3**. Not
   in the block: it is rare, and `walk-back-a-done-file` already covers the correction.
-- **Unchanged:** `editor-to-finish` `Esc ⇥ ⇥ c y` **5**; `summary-open-git-combined` `space` (or `⏎`) **1**.
+- **`editor-to-finish`:** `c y` from the changes pane, **2** (was `Esc ⇥ ⇥ c y`, 5; lowered by ticket 52, as the
+  journey-counts fence says). **Unchanged:** `summary-open-git-combined` `space` (or `⏎`) **1**.
 - **Whole journeys:** `a-whole-one-file` `m m O y` **4** (was 5); `a-whole-two-files` `m m o T y` **5** (was 6);
   `b-whole-two-files` `⏎ o T y` **4** (was 5).
 - **The journey-counts block:** P11 and P12 approved 2026-09-24. The `keys` column still holds the as-built counts;
@@ -1116,8 +1117,12 @@ MERGING
 - **Bar by focus:**
   - Files: `y commit  ⏎ diff  j/k move  ⇥ message  esc back`. `space` still toggles the diff, and is drawn as
     `⏎/space diff` if `every_bound_action_is_hinted_live_or_is_named_here` needs it named (as `^O/^T all` is).
-  - Subject: `⏎ commit  ⇥ body  ⌃E editor  esc back`, as built.
-  - Body: `⌃⏎ commit  ⇥ files  ⌃E editor  esc back`, as built.
+  - Subject: `⏎ commit  ⇥ body  ⌃E $EDITOR  esc back`.
+  - Body: `⌃⏎ commit  ⇥ files  ⌃E $EDITOR  esc back`.
+  - `⌃E $EDITOR` is the commit editor's word too (ADR-0044 §3.4 pairs the two subject fields; review wave 2 m6,
+    ticket 65). `esc` stays apart on purpose: the commit editor's `esc cancel` closes the editor without committing;
+    the summary's `esc back` returns to the screen it was opened from (`update::finish::ReturnTo`: the banner or the
+    resolver), so "back" names where he lands.
   - In the subject and the body, `y` is typed text.
 - **`FINISH_MIN`** grows by the frame's 2 columns and 4 rows (2 border rows, 2 preview lines) to (62, 18). Below that,
   as built: `finish needs 62x18 · esc back`.

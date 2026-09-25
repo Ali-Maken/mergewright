@@ -453,6 +453,17 @@ pub(crate) fn continue_pressed(
         let _opened: bool = super::finish::open_finish(state, commands, from, next_id);
         return;
     }
+    // `resume` sends nothing while a write runs; say why, in the summary's
+    // words, rather than let `c` do nothing (review m6-look-finish-wave2
+    // m1). Before the resolver closes, so a refused `c` leaves it open.
+    if super::operate::operation_in_flight(state) {
+        let words = "a write is already running";
+        match from {
+            ReturnTo::Banner => state.status = Status::sticky(words),
+            ReturnTo::Resolver => super::resolver::set_notice(state, (words.to_owned(), true)),
+        }
+        return;
+    }
     if from == ReturnTo::Resolver {
         // The resolver closes to the banner **before** the resume is sent,
         // so from here on this is exactly the banner's `c`: a next stop

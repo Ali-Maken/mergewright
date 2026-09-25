@@ -158,6 +158,6 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("⇥", "message"),    // `finish_key`: files → subject
     ("⇥", "body"),       // the same, subject → body
     ("⇥", "files"),      // the same, body → files
-    ("⌃E", "editor"),    // `control_key` → `edit_outside`
+    ("⌃E", "$EDITOR"),   // `control_key` → `edit_outside`
     ("esc", "back"),     // `finish_key` → `escape`
 ];

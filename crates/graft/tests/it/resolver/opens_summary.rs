@@ -136,10 +136,12 @@ fn relaunch_on_a_resolved_merge_opens_no_summary() {
 }
 
 /// `Space` on the last `CONFLICTS` row marks it resolved outside the
-/// resolver: no summary opens on its own. Observed: the keyboard stays in
-/// the changes pane, not the banner (the name is the ticket's; see NOTES).
+/// resolver: no summary opens on its own, and the keyboard stays in the
+/// changes pane, whose bar offers `c finish` (the landing decided in
+/// `docs/design-notes/m6-conflicts.md`, "The last file done outside the
+/// resolver"; review m6-look-finish-wave2 M2).
 #[test]
-fn space_on_the_last_conflicts_row_lands_on_the_banner() {
+fn space_on_the_last_conflicts_row_opens_no_summary_and_keeps_the_pane() {
     use crate::conflict_interim::{about_to_conflict, mark_resolved, stopped_on_the_conflict};
     let scratch = about_to_conflict();
     let repo = scratch.path();

@@ -92,7 +92,7 @@ use geometry::scrolled_to;
 use handover::{edit_here, mergetool_here};
 use leave::{escape, finish_pressed};
 use open::reopen;
-use resolved::mark_resolved;
+use resolved::{cancel_owed_finish, mark_resolved};
 use restart::restart_box;
 use scroll::scroll_key;
 use take::take_keys;
@@ -381,24 +381,6 @@ fn act(
 }
 
 // ----------------------------------------------------------------- helpers
-
-/// A key that takes him somewhere else cancels the summary the last file
-/// owes (m6-conflicts/60): it opens on the event, never later over what he
-/// moved on to. A file switch also rebuilds the state, which drops it.
-fn cancel_owed_finish(state: &mut AppState, code: KeyCode, plain: bool) {
-    if plain
-        && matches!(
-            code,
-            KeyCode::Escape
-                | KeyCode::Char('j' | 'k' | 'n' | 'N' | 'd' | 'e' | 'M')
-                | KeyCode::Down
-                | KeyCode::Up
-        )
-        && let Some(open) = state.resolver.as_mut()
-    {
-        open.finish_owed = false;
-    }
-}
 
 /// A side, as the status line says it: the side's one name
 /// ([`side_names`]), or `both`.

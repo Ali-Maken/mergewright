@@ -446,3 +446,59 @@ fn the_cursor_row_is_kept_on_screen() {
     view.cursor = 0;
     assert_eq!(top_for_cursor(&view, area), 0, "back up brings the heading");
 }
+
+/// Review m6-look-finish-wave2 m9: the footer's spans come from the hints,
+/// not from splitting their rendered text. The first hint's key alone is
+/// strong, every other character muted, and the words read as the bar's.
+/// Colour unverified (rule 5): the styles are compared as values.
+#[test]
+fn footer_spans_take_the_first_key_from_the_hint() {
+    use crate::graph_screen::{Hint, HintState, Rung, hints_text};
+    let strong = Style::new().add_modifier(Modifier::BOLD);
+    let muted = Style::new().add_modifier(Modifier::DIM);
+    let for_each_focus = [
+        (SummaryFocus::Files, "y"),
+        (SummaryFocus::Subject, "⏎"),
+        (SummaryFocus::Body, "⌃⏎"),
+    ];
+    for (focus, key) in for_each_focus {
+        let mut view = view();
+        view.focus = focus;
+        let hints = footer_hints(&view, 120);
+        let spans = footer_spans(&hints, strong, muted);
+        assert_eq!(spans.len(), 2, "{focus:?}: {spans:?}");
+        assert_eq!(spans[0], (key.to_owned(), strong), "{focus:?}");
+        assert_eq!(spans[1].1, muted, "{focus:?}");
+        let joined: String = spans.iter().map(|(text, _)| text.as_str()).collect();
+        assert_eq!(joined, hints_text(&hints).trim_start(), "{focus:?}");
+    }
+    // A key with a space in it stays whole: splitting at the first space
+    // would have painted `⌃` alone.
+    let spaced = [
+        Hint {
+            key: "⌃ ⏎",
+            verb: "commit",
+            state: HintState::Live,
+            rung: Rung::Full,
+            keeps_words: false,
+        },
+        Hint {
+            key: "esc",
+            verb: "back",
+            state: HintState::Live,
+            rung: Rung::Key,
+            keeps_words: false,
+        },
+    ];
+    assert_eq!(
+        footer_spans(&spaced, strong, muted),
+        vec![
+            ("⌃ ⏎".to_owned(), strong),
+            (" commit  esc".to_owned(), muted)
+        ]
+    );
+    assert!(
+        footer_spans(&[], strong, muted).is_empty(),
+        "no keys, no spans"
+    );
+}
