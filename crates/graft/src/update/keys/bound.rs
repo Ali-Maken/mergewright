@@ -133,6 +133,17 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     // `credential_key` each close on `Esc`.
     ("←/→", "move"), // `confirm::confirm_key`: the cursor between choices
     ("⏎", "choose"), // `confirm::confirm_key`: the choice under the cursor
+    // `confirm::confirm_key`'s `y` arm: the acting button, named by its own
+    // label (`PendingConfirm::yes`, m6-conflicts/50) — one per `ConfirmYes`.
+    ("y", "push"),
+    ("y", "drop"),
+    ("y", "discard"),
+    ("y", "delete"),
+    ("y", "skip"),
+    ("y", "abort"),
+    ("y", "start over"),
+    ("y", "undo"),
+    ("y", "redo"),
     ("⏎", "create"), // `name_prompt::name_prompt_key` → `create`
     ("⇥", "toggle"), // `name_prompt::name_prompt_key`: check out after
     ("⏎", "send"),   // `credential::credential_key`: the answer to git

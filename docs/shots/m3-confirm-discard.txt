@@ -11,6 +11,8 @@
 #   brackets; `Discard` beside it is not.
 # - The pane behind it is still readable; the box does not cover the file it
 #   is asking about.
+# - The hint bar leads with `y discard` (m6-conflicts/50): `y` takes
+#   `[ Discard ]` from wherever the cursor is.
 #
 " graft 3 commits                                                                                                        "
 "◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
@@ -35,7 +37,7 @@
 "     │                                                                                                │                 "
 "     │ ▸[ Cancel ]   [ Discard ]                                                                      │                 "
 "     ╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
-" ←/→ move  ⏎ choose  esc cancel                                                                                         "
+" y discard  ←/→ move  ⏎ choose  esc cancel                                                                              "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "

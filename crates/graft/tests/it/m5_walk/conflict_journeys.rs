@@ -798,7 +798,8 @@ fn b_finish_again_after_undo() -> Scenario {
     )
 }
 
-/// `a → ⏎` from the banner of a merge begun in the shell (m6-conflicts/57):
+/// `a y` from the banner of a merge begun in the shell (m6-conflicts/57;
+/// `y` since m6-conflicts/50):
 /// the merge is gone as far as git and the app know, and the journal holds
 /// one `AbortMerge` for `u` to put back.
 fn b_abort_shell_merge() -> Scenario {
@@ -821,8 +822,8 @@ fn b_abort_shell_merge() -> Scenario {
                     Step::See("the abort box says u puts it back", |state| {
                         a_row_reads(state, "u puts the merge back")
                     }),
-                    key(KeyCode::Right),
-                    key(KeyCode::Enter),
+                    // `y` takes `[ Abort ]` from `Cancel` (m6-conflicts/50).
+                    key(ch('y')),
                     Step::Write("the abort"),
                     Step::WaitFor(Wait::Ready),
                     Step::WaitFor(Wait::NotInProgress),
@@ -1020,8 +1021,8 @@ fn walk_back_a_done_file() -> Scenario {
                 key(ch('j')),
                 Step::WaitFor(Wait::ConflictOpened),
                 key(ch('d')),
-                key(KeyCode::Right),
-                key(KeyCode::Enter),
+                // `y` takes `[ Start over ]` (m6-conflicts/50).
+                key(ch('y')),
                 Step::Settle("the start over"),
                 Step::WaitFor(Wait::ConflictedPath("notes.txt")),
                 Step::WaitFor(Wait::ConflictOpened),
@@ -1050,7 +1051,7 @@ fn walk_back_a_done_file() -> Scenario {
 }
 
 /// Batch 7 (m6-conflicts/58): `gone.txt` kept with `o`, the resolver on
-/// `notes.txt`; `k` opens `gone.txt` done, `d → ⏎` puts the keep-or-delete
+/// `notes.txt`; `k` opens `gone.txt` done, `d y` puts the keep-or-delete
 /// choice back — the card, not markers.
 fn walk_back_a_whole_file_choice() -> Scenario {
     journey(
@@ -1075,8 +1076,8 @@ fn walk_back_a_whole_file_choice() -> Scenario {
                         Sees::Has("git checkout --ours -- gone.txt"),
                     ],
                 ),
-                key(KeyCode::Right),
-                key(KeyCode::Enter),
+                // `y` takes `[ Start over ]` (m6-conflicts/50).
+                key(ch('y')),
                 Step::Settle("the start over"),
                 Step::WaitFor(Wait::ConflictedPath("gone.txt")),
                 Step::WaitFor(Wait::ConflictOpened),

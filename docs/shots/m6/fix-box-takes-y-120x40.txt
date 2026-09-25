@@ -1,0 +1,101 @@
+# TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
+# capture_fix_box_takes_y in crates/graft/tests/it/remote_by_key.rs (asserted).
+# A teammate pushed, one local commit. Frame 1: `P`, the plain push box. Then
+# `y` pushes (rejected: origin moved). Frame 2: `P` again, the force (lease)
+# box, then `y` pressed: it is the frame before `y`, byte for byte.
+#
+# What right looks like:
+# - Frame 1's bottom row (the hint bar) reads
+#   `y push  ←/→ move  ⏎ choose  esc cancel`, whole; the box's bottom
+#   border is a plain `╰…╯`; `[ Cancel ]` under the cursor.
+# - Frame 2: the box is titled `Force-push …` and is still up after `y`
+#   (asserted: same frame, nothing sent, origin unmoved). No `y push`
+#   anywhere: `y` never confirms the force push (ADR-0044 §3). The bottom
+#   row is the rejection's sticky line, `push rejected: … · P force with
+#   lease`, not the bar: the status line draws a sticky ahead of the keys,
+#   as it did before this ticket.
+# - Colour is unverified (CLAUDE.md rule 5).
+#
+=== frame 1: `P`, the plain push box ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
+●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
+●    Commit 199                                                                                          GF 7y   13e6ab1
+●    Commit 198                                                                                          GF 7y   f5055d9
+●    Commit 197                                                                                          GF 7y   2cce853
+●    Commit 196                                                                                          GF 7y   325da3f
+●    Commit 195                                                                                          GF 7y   0722297
+●    Commit 194                                                                                          GF 7y   b6a4a47
+●    Commit 193                                                                                          GF 7y   60af0eb
+●    Commit 192                                                                                          GF 7y   aceb8c5
+●    Commit 191                                                                                          GF 7y   11d68ff
+●    Commit 190                                                                                          GF 7y   91900bd
+●    Commit 189                                                                                          GF 7y   cec3e93
+●    Commit 188                                                                                          GF 7y   0a91ece
+●    Commit 187                                                                                          GF 7y   3121935
+●    ╭ Push main → origin/main ───────────────────────────────────────────────────────────────────────╮  GF 7y   fab25df
+●    │ 1 commit · can't be undone from here — origin keeps what you send                              │  GF 7y   09ae97c
+●    │                                                                                                │  GF 7y   49d7783
+●    │ git push --progress origin refs/heads/main:refs/heads/main                                     │  GF 7y   22d55c9
+●    │                                                                                                │  GF 7y   d212b3e
+●    │ ▸[ Cancel ]   [ Push ]                                                                         │  GF 7y   c8254c5
+●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
+●    Commit 179                                                                                          GF 7y   97b58e5
+●    Commit 178                                                                                          GF 7y   1c9b7ed
+●    Commit 177                                                                                          GF 7y   f93340a
+●    Commit 176                                                                                          GF 7y   5aaeeba
+●    Commit 175                                                                                          GF 7y   6be5928
+●    Commit 174                                                                                          GF 7y   9b67be4
+●    Commit 173                                                                                          GF 7y   937d32b
+●    Commit 172                                                                                          GF 7y   81be718
+●    Commit 171                                                                                          GF 7y   57b8196
+●    Commit 170                                                                                          GF 7y   8ea98be
+●    Commit 169                                                                                          GF 7y   4926766
+●    Commit 168                                                                                          GF 7y   0d60d60
+●    Commit 167                                                                                          GF 7y   fa5ef1d
+●    Commit 166                                                                                          GF 7y   953abf3
+●    Commit 165                                                                                          GF 7y   49912f3
+●    Commit 164                                                                                          GF 7y   1143b38
+ y push  ←/→ move  ⏎ choose  esc cancel
+
+=== frame 2: `y` (rejected), `P`, the lease box, then `y` ===
+ graft /code/api  152 rows so far
+◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
+●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
+●    Commit 199                                                                                          GF 7y   13e6ab1
+●    Commit 198                                                                                          GF 7y   f5055d9
+●    Commit 197                                                                                          GF 7y   2cce853
+●    Commit 196                                                                                          GF 7y   325da3f
+●    Commit 195                                                                                          GF 7y   0722297
+●    Commit 194                                                                                          GF 7y   b6a4a47
+●    Commit 193                                                                                          GF 7y   60af0eb
+●    Commit 192                                                                                          GF 7y   aceb8c5
+●    Commit 191                                                                                          GF 7y   11d68ff
+●    Commit 190                                                                                          GF 7y   91900bd
+●    Commit 189                                                                                          GF 7y   cec3e93
+●    Commit 188                                                                                          GF 7y   0a91ece
+●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
+●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
+●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
+●    │                                                                                                │  GF 7y   49d7783
+●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   22d55c9
+●    │                                                                                                │  GF 7y   d212b3e
+●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   c8254c5
+●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
+●    Commit 179                                                                                          GF 7y   97b58e5
+●    Commit 178                                                                                          GF 7y   1c9b7ed
+●    Commit 177                                                                                          GF 7y   f93340a
+●    Commit 176                                                                                          GF 7y   5aaeeba
+●    Commit 175                                                                                          GF 7y   6be5928
+●    Commit 174                                                                                          GF 7y   9b67be4
+●    Commit 173                                                                                          GF 7y   937d32b
+●    Commit 172                                                                                          GF 7y   81be718
+●    Commit 171                                                                                          GF 7y   57b8196
+●    Commit 170                                                                                          GF 7y   8ea98be
+●    Commit 169                                                                                          GF 7y   4926766
+●    Commit 168                                                                                          GF 7y   0d60d60
+●    Commit 167                                                                                          GF 7y   fa5ef1d
+●    Commit 166                                                                                          GF 7y   953abf3
+●    Commit 165                                                                                          GF 7y   49912f3
+●    Commit 164                                                                                          GF 7y   1143b38
+ push rejected: origin/main has moved · p pull first · P force with lease

@@ -39,7 +39,7 @@
        │                                                                                              │
        │ ▸[ Cancel ]   [ Abort ]                                                                      │
  no com╰──────────────────────────────────────────────────────────────────────────────────────────────╯ X never here
- ←/→ move  ⏎ choose  esc cancel
+ y abort  ←/→ move  ⏎ choose  esc cancel
 UNCOMMITTED
 diff vs HEAD ddeed32
 CONFLICTS (2)                 ▎

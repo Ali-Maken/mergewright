@@ -94,5 +94,5 @@
 ●    Commit 157                                                                                                                                  GF 2d   b57586d
 ●    Commit 156                                                                                                                                  GF 2d   edc7cba
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ←/→ move  ⏎ choose  esc cancel
+ y push  ←/→ move  ⏎ choose  esc cancel
 

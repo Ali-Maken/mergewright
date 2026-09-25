@@ -1,6 +1,6 @@
 # confirm-box-takes-y: `y` confirms a confirm box, as in every preview
 
-Status: blocked 2026-09-25 at find-and-pin 1 (operate.rs:657 label not a function of `then`; see NOTES). Was: ready (unblocked 2026-09-24: P12 and P15 approved, P15 **option (b)** — never in the force-push box; picks
+Status: done 2026-09-25 (conductor chose option (a); see Decisions). It had been blocked at find-and-pin 1 (operate.rs:657 label not a function of `then`). Before that: ready (unblocked 2026-09-24: P12 and P15 approved, P15 **option (b)** — never in the force-push box; picks
 items 3 and 13; ADR-0044 §3; keymap §2.3b and §2.3c edited in the spec pass. Reconciled with scout 50 on 2026-09-25)
 From: `docs/reviews/m6-usability.md` M1 (:65-75), the part that depended on P12.
 Build with: builder-opus. Why: brownfield across two crates, a public graft-ui type change every hint test enumerates,
@@ -23,6 +23,16 @@ Lane: wave 2, fourth (after 60, 52).
 - `crates/graft-ui/MAP.md` line 9 (`confirm`), line 22 (`HintContext`); `crates/graft/MAP.md` §`update::confirm`
   (:254-258), §`update::remote` (`push_box`, `undo_after_push_box`).
 - 52's spec, Signatures (the `LiveC` change to the same enum).
+
+## Decisions (conductor, 2026-09-25)
+- **(a): the `y` word comes from the acting button's own label.** The word and the button come from one value, so
+  they can't drift apart. It's the same principle as decision 2 in `m6-usability-fixes.md`, where one value makes
+  both forms. An untracked file shows `y delete` over `[ Delete ]`; any other file shows `y discard`. The stash-drop
+  box's safe button stays `Keep`, and `y` names that box's acting button (`y drop`).
+- How it's built: `ConfirmThen::takes_y()` is the one exhaustive match for ADR-0044 §3 (lease push, undo-after-push
+  and revert give `false`). `PendingConfirm::yes()` returns
+  `takes_y().then(|| ConfirmYes::from_label(view.choices[1]))`. The key and the bar both read `PendingConfirm::yes()`.
+  This replaces the Signatures' `ConfirmThen::yes`. `ConfirmYes` gains `Delete`.
 
 ## Where `y` is shown: the hint bar (decided here)
 - **The box draws no footer** (scout 50: `confirm.rs:244-246`, empty bottom border). Every key a box answers is on the
@@ -149,21 +159,21 @@ fn act(state: &mut AppState, commands: &mut Vec<Command>, chosen: usize, next_id
   arm in `confirm_key`).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Find-and-pin 1: the site table in NOTES; `the_y_word_is_the_acting_label` green.
-- [ ] Find-and-pin 2: the test pinning the bar's context over a live-operation box (name it at tick time).
-- [ ] `y_confirms_the_push_box_from_cancel`: red first, then green.
-- [ ] `y_is_swallowed_where_the_box_does_not_take_it`: UndoAfterPush, RevertTo, the lease box (both lease sites).
-- [ ] `y_and_enter_emit_the_same_commands`
-- [ ] `the_bar_offers_y_exactly_where_y_acts`
-- [ ] `a_narrow_bar_keeps_the_y_hint`
-- [ ] `every_context` coverage, `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here`
-- [ ] `journey_counts_match_the_note` with the rows below; the `P y` leg's count in NOTES.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-box-takes-y-120x40.txt` and `-80x24`.
+- [x] Find-and-pin 1: the site table in NOTES; `the_y_word_is_the_acting_label` green (`update/confirm.rs` tests; 14 rows, the discard site twice).
+- [x] Find-and-pin 2: `the_bar_over_a_box_during_a_live_operation_is_the_box_s_own` (`update/keys/live_c_tests.rs`): 5 table rows × 3 frames × {abort, skip} → bare `ConfirmBox { yes: Some(..) }`, no `c` hint.
+- [x] `y_confirms_the_push_box_from_cancel`: red first (panicked `y left the box open`), then green.
+- [x] `y_is_swallowed_where_the_box_does_not_take_it`: UndoAfterPush, RevertTo, the lease box from `push_box` (both sites' `then`) plus `repush_chosen` itself. Also shown against real git by `remote_by_key::capture_fix_box_takes_y` (origin unmoved after `y`) and the `m4_walk` legs `push-rejected-then-lease` and `push-plain` (`y` leaves the box up).
+- [x] `y_and_enter_emit_the_same_commands` (10 `y`-live rows: same commands, same state after)
+- [x] `the_bar_offers_y_exactly_where_y_acts` (every row of `every_box`, through `view::rows::box_context` and `hints_for`)
+- [x] `a_narrow_bar_keeps_the_y_hint` (`view/tests.rs`, 80×24, the discard box and the push box)
+- [x] `every_context_reaches_every_shape` (graft-ui), `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here` (graft), all green
+- [x] `journey_counts_match_the_note` green at 3 / 3 / 2. `P y` leg: new scenario `m4_walk` `push-plain-by-y`, test `push_plain_by_y`. Its count is 2 keys (`P`, `y`) because those are the only two keys the scenario sends; the m4 walk has no count check.
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-box-takes-y-120x40.txt` and `-80x24`. Test: `remote_by_key::capture_fix_box_takes_y`. **Differs from the spec on frame 2:** the bottom row is the rejection's sticky line (`push rejected: … · P force with lease`), not the three-key bar. The status line draws a sticky ahead of the bar, and did so before this ticket. The header says so. No `y push` appears anywhere (asserted).
   - Scene: the plain push box; second frame the lease box.
   - **What right looks like:** frame 1's bottom row (the hint bar) reads `y push  ←/→ move  ⏎ choose  esc cancel`,
     whole at 120 and at 80; the box's bottom border is plain `╰…╯` as today; `[ Cancel ]` under the cursor. Frame 2's
     bar is `←/→ move  ⏎ choose  esc cancel`, no `y`.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test): graft-ui `ConfirmBox { yes }` and `ConfirmYes`; graft `PendingConfirm::yes`, `ConfirmThen::takes_y`, and the `y` arm of `confirm_key`.
 
 ## For the conductor (exact text, in this spec's merge commit)
 In the `journey-counts` fence, set these `keys` (comments unchanged):
@@ -225,3 +235,57 @@ The pinning test is still to write.
 
 Next step once the spec answers: start from the failing test `y_confirms_the_push_box_from_cancel` as written.
 Everything else in the spec stands.
+
+**2026-09-25, builder (opus), resumed with decision (a). Done.** Used scout 50. Did not compact.
+
+What was built:
+- graft-ui adds `ConfirmYes` and changes the variant to `HintContext::ConfirmBox { yes }`.
+- graft adds `ConfirmThen::takes_y` (the ADR-0044 §3 match) and `PendingConfirm::yes`. `confirm_key`'s `Enter` and
+  `y` both call `act`. `box_context` reads `yes()`.
+- None of the box-opening sites changed (a diff on stash, banner, undo, operate, resolver/restart and remote/ is empty).
+
+Deviations from the spec, each on purpose:
+- The spec named `ConfirmThen::yes`. The decision lives in `PendingConfirm::yes`, because the word is read from the view.
+- The old test `a_key_the_box_does_not_bind_leaves_it_open*` pressed `y` on the push box. It now presses `Y` and `q`.
+- `two_boxes_over_content::capture_box_keeps_on_y_for_docs_shots` is removed. The plain push box takes `y` now, so
+  that test's claim is false. `fix-box-keeps-on-y-120x40.txt` is retaken over the **lease** box by
+  `capture_fix_box_takes_y`, with a new header and a new caption.
+- The sweep fixture `box_over_the_graph` (`update/tests.rs`) builds each `yes` form. `None` is the revert guard;
+  `Some(v)` is the undo guard labelled with `v.label()`.
+- `keys/bound.rs` gains `("y", <word>)` for each of the 9 words.
+
+Counts: coverage slots 54 → 63 (25 = `None`, 54–62 = each `ConfirmYes`). `every_context` gains 9 forms.
+
+Journey rows lowered in `docs/design-notes/m6-conflicts.md` by me (the builder), as asked:
+`walk-back-a-done-file` 4→3, `walk-back-a-whole-file-choice` 4→3, `b-abort-shell-merge` 3→2. The walks now send `y`.
+
+Walks that keep `→ ⏎` are unchanged and green. They drive: `m3_walk` (discard), `m4_walk/push` (plain and lease push),
+`credentials` (plain push), `hangs_and_undo` (push, undo-after-push), `two_boxes_over_content` (plain push),
+`remote_by_key` (plain push). The pty scripts had no `'→', '⏎'` rows.
+
+Captures retaken (file → test):
+- `m3-confirm-discard`, `m3-confirm-delete-untracked`, `m3-undo-drift` → `view::tests::capture_m3_*`. The
+  delete-untracked header said "`Discard` beside it"; it now says `Delete`, which is what the box draws.
+- `m5-ui-confirm-over-graph-80x24` and `-160x48` → `two_boxes_over_content::capture_two_boxes_over_real_content_for_docs_shots`.
+- `m6/fix-plain-box-after-rebase-187x50` → `remote_by_key::capture_fix_plain_box_after_rebase`.
+- `m6/fix-shell-merge-abort-and-undo-120x40` → `resolver::shell_begun::a_on_the_banner_aborts_a_shell_merge`.
+- `m6/fix-start-over-whole-file-120x40` → `resolver::file_list::start_over::d_on_a_done_modify_delete_file_reopens_its_card`.
+- `m6/m6-09-start-over-box-120x40` and `-80x24` → `pty-walk-m6.py` on `start-over-brings-the-markers-back`. A second
+  run reported "settled".
+- `m6/fix-box-takes-y-*` (new) and `m6/fix-box-keeps-on-y-120x40` → `remote_by_key::capture_fix_box_takes_y`.
+
+Byte-identical (diff exit code 0): `m4-02-push-box-lease-*`, `m5-ui-undo-after-push-80x24`, `m4-remote-keys`.
+
+**Stale, not retaken:** `m4-01-push-box-plain-80x24` and `-160x48` (pty, `pty-walk-m4.py`). They already showed the
+graph's bar under the box, which predates rulings 07b. A retake wrote an unredacted
+`/var/folders/.../graft-remote-…` path, so I reverted it. The m4 script needs its path redaction back before a retake.
+
+Contact sheets: I rebuilt m6 (3 parts: 176 195 / 178 148 / 137 605 B). The m5 sheet (`m5-contact-sheet-2`) and the m3
+sheet include retaken captures; the conductor rebuilds those.
+
+TESTING.md lines that gain "or `y`" (the acceptance ticket edits them): 1261 (discard untracked, `d →`), 1302
+(stash-drop), 1490 (push, `→ ⏎`), 2332–2334 (the three moved walks: the keys become `j d y`, `k d y`, `a y` and the
+counts become 3, 3, 2).
+
+Question (rule 7, no line filed): after a rejection the lease box's keys are never on the bar, because the sticky line
+covers them. Is that intended? It predates this ticket; `fix-box-takes-y-*` frame 2 shows it.

@@ -3,7 +3,7 @@
 //! [`every_hint`]).
 
 use super::lists::{TAIL, context_list};
-use super::{EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, WAY_BACK};
+use super::{ConfirmYes, EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, WAY_BACK};
 use crate::conflict_resolver::SideRoles;
 
 /// **Every context the footer can be put in**, every field combination, each
@@ -68,7 +68,7 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,
-        HintContext::ConfirmBox,
+        HintContext::ConfirmBox { yes: None },
         HintContext::NamePrompt { toggle: true },
         HintContext::NamePrompt { toggle: false },
         HintContext::Credential,
@@ -77,6 +77,12 @@ pub fn every_context() -> Vec<HintContext> {
     all.extend(changes_pane_live_forms());
     all.extend(resolver_forms());
     all.extend(finish_forms());
+    // m6-conflicts/50: a box `y` takes, once per acting button.
+    all.extend(
+        ConfirmYes::ALL
+            .into_iter()
+            .map(|yes| HintContext::ConfirmBox { yes: Some(yes) }),
+    );
     all.extend(plain.iter().filter_map(marked_form));
     let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
     all.extend(rows);
@@ -161,7 +167,7 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
-        | HintContext::ConfirmBox
+        | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
@@ -243,7 +249,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
-        | HintContext::ConfirmBox
+        | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }
@@ -290,7 +296,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
-        | HintContext::ConfirmBox
+        | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Resolver { .. }

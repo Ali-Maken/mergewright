@@ -36,7 +36,7 @@ mod fitting;
 mod lists;
 
 pub use catalogue::{every_context, every_hint};
-pub use context::{HintContext, LiveC};
+pub use context::{ConfirmYes, HintContext, LiveC};
 use fitting::fit_list;
 pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row};
 use lists::{TAIL, context_list};
@@ -330,7 +330,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // states and nothing happened (m5/42).
         HintContext::Banner { .. }
         | HintContext::Dragging
-        | HintContext::ConfirmBox
+        | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         | HintContext::Journal

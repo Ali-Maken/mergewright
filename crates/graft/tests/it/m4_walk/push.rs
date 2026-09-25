@@ -18,7 +18,12 @@ use super::vocabulary::{
 use crate::repo_truth::{check, run_git};
 
 pub(super) fn pushing() -> Vec<Scenario> {
-    vec![push_plain(), push_sets_upstream(), push_detached_refused()]
+    vec![
+        push_plain(),
+        push_plain_by_y(),
+        push_sets_upstream(),
+        push_detached_refused(),
+    ]
 }
 
 /// `push-plain`'s verdict.
@@ -87,6 +92,11 @@ fn push_plain() -> Scenario {
                     box_title_starts(state, "Undo after a push")?;
                     box_message_contains(state, &["undo works on your local branch only"])
                 }),
+                // ADR-0044 §3: `y` never answers this box (m6-conflicts/50).
+                key(ch('y')),
+                Step::See("y leaves the undo-after-push box up", |state| {
+                    box_title_starts(state, "Undo after a push")
+                }),
                 Step::Confirm,
                 Step::Write("the undo"),
                 Step::See("u says origin still has it", |state| {
@@ -110,6 +120,48 @@ fn push_plain() -> Scenario {
             on_screen: "→ origin/",
             when: When::Settled,
         }),
+    }
+}
+
+/// `P y`: the plain push box confirmed by `y` from `Cancel`, as every
+/// preview confirms (m6-conflicts/50). Two keys from the graph to pushed.
+fn push_plain_by_y() -> Scenario {
+    Scenario {
+        name: "push-plain-by-y",
+        shape: Shape::Linear,
+        remote: RemoteKind::Local,
+        setup: stage_pushed_txt,
+        steps: chain(vec![
+            vec![Step::WaitFor(Wait::Ready)],
+            commit_by_key("to push"),
+            vec![
+                Step::Mark("before-push"),
+                key(ch('P')),
+                Step::See("the plain push box, cursor on Cancel", |state| {
+                    box_title_starts(state, "Push ")?;
+                    let open = state.confirm.as_ref().ok_or("no box")?;
+                    check(open.view.selected() == 0, || {
+                        "the cursor is off Cancel".to_owned()
+                    })
+                }),
+                key(ch('y')),
+                Step::Write("the push"),
+                Step::See("P y says pushed", |state| done_containing(state, "pushed ")),
+                Step::Mark("pushed"),
+            ],
+        ]),
+        expect: |fixture, marks| {
+            let pushed = marks.get("pushed")?;
+            let committed = head(pushed)?.to_owned();
+            let before = marks.get("before-push")?;
+            check(bare_ref(before, &fixture.main_ref())? != committed, || {
+                "the bare already had the commit before P y".to_owned()
+            })?;
+            check(bare_ref(pushed, &fixture.main_ref())? == committed, || {
+                "P y did not push".to_owned()
+            })
+        },
+        capture: None,
     }
 }
 
@@ -306,6 +358,12 @@ fn push_rejected_then_lease() -> Scenario {
                         "rewrites history for everyone who has",
                     ],
                 )
+            }),
+            // The force (lease) box never takes `y` (ADR-0044 §3, P15 (b),
+            // m6-conflicts/50): nothing reaches the remote from habit.
+            key(ch('y')),
+            Step::See("y leaves the lease box up", |state| {
+                box_title_starts(state, "Force-push ")
             }),
             Step::Confirm,
             Step::Write("the lease push"),

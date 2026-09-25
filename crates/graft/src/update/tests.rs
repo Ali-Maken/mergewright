@@ -3899,7 +3899,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Banner { .. }
         | HintContext::ChangesPane { .. }
         | HintContext::Dragging
-        | HintContext::ConfirmBox
+        | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
         | HintContext::Credential => Some(context.clone()),
     }
@@ -4231,7 +4231,9 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::Dragging => vec![badge_in_the_air(walk)],
         // A live box over the graph (rulings 07b, Q1): its bar is its own
         // keys, whatever stands behind it.
-        HintContext::ConfirmBox | HintContext::NamePrompt { .. } | HintContext::Credential => {
+        HintContext::ConfirmBox { .. }
+        | HintContext::NamePrompt { .. }
+        | HintContext::Credential => {
             vec![box_over_the_graph(walk, context)]
         }
         // The summary open over a resolved merge, read: one row the user
@@ -4295,16 +4297,32 @@ fn finish_screen_for(
 /// cursor.
 fn box_over_the_graph(walk: JobId, context: &HintContext) -> AppState {
     match context {
-        HintContext::ConfirmBox => {
+        // A box whose `yes` is the context's: the revert drift guard for
+        // `None` (`y` never takes it), otherwise the undo drift guard with
+        // that button's label, so `y` acts where the bar says it does
+        // (m6-conflicts/50).
+        HintContext::ConfirmBox { yes } => {
             let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
-            state.confirm = Some(super::confirm::PendingConfirm {
-                view: graft_ui::confirm::ConfirmView::new(
-                    graft_term::sanitize_line("Discard changes?"),
-                    vec![graft_term::sanitize_line("3 files lose their edits.")],
-                    graft_term::sanitize_line("git restore ."),
-                ),
-                then: super::confirm::ConfirmThen::Undo { redo: false },
-            });
+            let view = graft_ui::confirm::ConfirmView::new(
+                graft_term::sanitize_line("Discard changes?"),
+                vec![graft_term::sanitize_line("3 files lose their edits.")],
+                graft_term::sanitize_line("git restore ."),
+            );
+            let pending = match yes {
+                None => super::confirm::PendingConfirm {
+                    view: view.with_labels("Stop", "Revert"),
+                    then: super::confirm::ConfirmThen::RevertTo {
+                        entry: graft_core::journal::EntryId::new(1, [0; 10]),
+                        description: "commit x".into(),
+                    },
+                },
+                Some(yes) => super::confirm::PendingConfirm {
+                    view: view.with_labels("Cancel", yes.label()),
+                    then: super::confirm::ConfirmThen::Undo { redo: false },
+                },
+            };
+            assert_eq!(pending.yes(), *yes, "the fixture draws the box it claims");
+            state.confirm = Some(pending);
             state
         }
         HintContext::NamePrompt { toggle } => {

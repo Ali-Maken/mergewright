@@ -379,3 +379,39 @@ fn a_mid_operation_still_refuses_in_words_on_plain_data() {
         }
     }
 }
+
+/// Find-and-pin 2 (m6-conflicts/50): a box over a live operation — the
+/// banner's own skip and abort boxes — draws the box's bar, bare, never
+/// wrapped in `OperationLive`: its `c` hint would name a key the box
+/// swallows. Every row of the table, every frame.
+#[test]
+fn the_bar_over_a_box_during_a_live_operation_is_the_box_s_own() {
+    use graft_ui::graph_screen::ConfirmYes;
+    for (kind, begun) in TABLE {
+        for frame in FRAMES {
+            for (label, what, yes) in [
+                ("Abort", graft_ops::apply::Resume::Abort, ConfirmYes::Abort),
+                ("Skip", graft_ops::apply::Resume::Skip, ConfirmYes::Skip),
+            ] {
+                let mut state = live(kind, begun, &["a.rs"], frame);
+                state.confirm = Some(crate::update::confirm::PendingConfirm {
+                    view: graft_ui::confirm::ConfirmView::new(
+                        graft_term::sanitize_line("Abort?"),
+                        Vec::new(),
+                        graft_term::sanitize_line("git merge --abort"),
+                    )
+                    .with_labels("Cancel", label),
+                    then: crate::update::confirm::ConfirmThen::Resume(what),
+                });
+                let (context, hints) = bar(&state);
+                assert_eq!(
+                    context,
+                    HintContext::ConfirmBox { yes: Some(yes) },
+                    "{kind:?} {begun:?} {frame:?}"
+                );
+                assert_eq!(c_hint(&hints), None, "{kind:?} {begun:?} {frame:?}");
+                assert_eq!(hints.first().map(|hint| hint.key), Some("y"));
+            }
+        }
+    }
+}

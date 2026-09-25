@@ -78,7 +78,7 @@ files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
 
 
 
- ←/→ move  ⏎ choose  esc cancel
+ y start over  ←/→ move  ⏎ choose  esc cancel
 ── → ⏎ ──
 MERGING
 files   ▸ gone.txt · keep or delete    shared.rs · 1 of 1 open

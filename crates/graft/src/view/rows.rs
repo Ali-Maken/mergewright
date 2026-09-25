@@ -331,10 +331,13 @@ pub(crate) fn box_context(state: &AppState) -> Option<HintContext> {
                 crate::update::name_prompt::NameKind::Branch { .. }
             ),
         })
-    } else if state.confirm.is_some() {
-        Some(HintContext::ConfirmBox)
     } else {
-        None
+        // `y` on the bar exactly where `confirm_key` lets it act: both read
+        // `PendingConfirm::yes` (m6-conflicts/50).
+        state
+            .confirm
+            .as_ref()
+            .map(|pending| HintContext::ConfirmBox { yes: pending.yes() })
     }
 }
 
