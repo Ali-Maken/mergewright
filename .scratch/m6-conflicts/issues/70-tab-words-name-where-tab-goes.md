@@ -1,134 +1,163 @@
 # tab-words-name-where-tab-goes: every `⇥` hint and refusal names where `⇥` really lands
 
-Status: draft
-From: `docs/reviews/m6-usability-final.md` N6 (:178-191). Folds in **n2** (:223-227, `c continue` vs `c finish` on a
-merge's banner; same hint file) and **n1** (:212-221, an untracked file reads `bin`; the changes pane) — n1's body half
-only after its find.
-Build with: (conductor, after the scout)
-Scout: `.scratch/m6-conflicts/scouts/tab-words-name-where-tab-goes.md` — brief below.
-Needs: none. Runs after group B if both are queued (both regenerate bar captures; `every_context` counts move here).
-Crates: graft-ui (`graph_screen/hints/lists.rs`, `hints/catalogue.rs`, `HintContext`, `detail_pane/files.rs`,
-`graph_screen/tests.rs`), graft (`update/banner.rs` focus cycle, `update/detail/ops.rs`, `update/commit_editor.rs`
-refusal words, `view/rows.rs`, `view/detail.rs`, tests, walks).
+Status: draft (reconciled with the scout, 2026-09-25)
+From: `docs/reviews/m6-usability-final.md` N6 (:178-191). Folds in **n2** (:223-227: `c continue` vs `c finish` on a
+merge; same hint file) and **n1** (:212-221: an untracked file reads `bin` and its body `select a file`; both halves in
+scope, because the scout found the read exists).
+Build with: **Sonnet**. The work is mechanical and bounded: word changes, one context flag, and a cycle table the scout
+already drew. One cause is still untraced (n1's dropped entry), but it has a stop rule below, so it can't turn
+structural unnoticed.
+Scout: `.scratch/m6-conflicts/scouts/tab-words-name-where-tab-goes.md` (at `36efb090`).
+Needs: none by signature. **Order:** builds after 67, 71 and group B (68+69). Rebase on all three; shared files are listed
+under Touches.
+Crates: graft-ui (`graph_screen/hints/lists.rs`, `HintContext`, `detail_pane/files.rs`, `graph_screen/tests.rs`), graft
+(`update/banner/stop.rs`, `update/commit_editor.rs`, `update/detail/ops.rs`, `view/rows.rs`, `view/detail.rs`, tests,
+`tests/it`). Hand off at the seam if the context runs short (graft-ui committed first).
 Group: **C** (the changes pane and the banner's words).
 
 ## Read first
-- `docs/reviews/m6-usability-final.md` N6 (:178-191), n1 (:212-221), n2 (:223-227); the task row "Rebase stop, from the
-  changes pane to abort" (:74).
-- `crates/graft/MAP.md` :244 (`OperationRefusal`), :303 (`take_focus`: the cycle Graph → Files → Diff → banner),
-  :317 (`one_tab_to_banner`), :671 (`footer_context`, `live_wrapped`), :674 (`hint_context`).
+- `docs/reviews/m6-usability-final.md` N6 (:178-191), n1 (:212-221), n2 (:223-227); task row :74.
+- This ticket's scout (whole).
+- `crates/graft/MAP.md` :244 (`OperationRefusal`), :303 (`take_focus`), :318 (`one_tab_to_banner`), :671
+  (`footer_context`), :674 (`hint_context`).
 - `crates/graft-ui/MAP.md` :137 (`HintContext::ChangesPane { unmerged, live }`), the `Banner { skippable, conflicted }`
   entry.
-- `docs/design-notes/m6-usability-fixes.md` "Decided here" item 2 (the pane's refusal words, one value two forms).
-- `docs/design/02-keymap.md` §2.1 ("the hint bar always shows what's active"), §2.8 banner rows (:301-302).
+- `docs/design-notes/m6-usability-fixes.md` "Decided here" item 2.
+- `docs/design/02-keymap.md` §2.1, §2.8 banner rows (:301-302).
+- Spec 69 "Decided 1" (its blanking in `view/rows.rs`, which this ticket edits next to).
 
-## The cause (rule 7, lines at `1b1995cc`; the scout re-reads them on main)
-- The pane's bar always ends `⇥ graph` (`graft-ui/src/graph_screen/hints/lists.rs:261`, `:270`): a literal, not read
-  from the cycle.
-- The cycle is Graph → Files → Diff → banner → Graph while an operation is live (`update/detail/ops.rs:403-408`;
-  `update/banner.rs:256-275`). From Files, `⇥` goes to Diff.
-- `a` in the pane refuses with `rebase in progress · ⇥ banner, then c continue  a abort`
-  (`update/commit_editor.rs:161-163`): one `⇥` named, two needed from Files.
-- n2: the banner's bar says `c continue` for a merge (`lists.rs:197`); the graph and pane say `c finish` (`:239`); both
-  open the finish summary.
-- n1: `bin` is drawn whenever the line counts are absent (`graft-ui/src/detail_pane/files.rs:58-61`); an untracked file
-  has none. The body reads `select a file` when the diff is `Idle` (`graft/src/view/detail.rs:236`), and `show_cursor`
-  leaves it `Idle` when the row has no diff entry (`update/detail/ops.rs:276-285`). Why an untracked row has none: not
-  traced.
+## The cause (rule 7, lines at `36efb090`, from the scout)
+- **The pane's `⇥` word** is a literal `⇥ graph`, used by both arms of the one `ChangesPane` table (unmerged `:261`,
+  plain `:270`, `changes_pane_table` `lists.rs:252-274`).
+- **The cycle** (`detail/ops.rs:403-408`, `banner.rs:256-275`, leaving the banner `banner.rs:~300`) has no layout branch.
+  It is the same at ≥100 and <100 columns. Scout table §2.
+- **The refusal has two literal arms** (`commit_editor.rs`): (Merge, InShell) `"⇥ banner, then c finishes it"`
+  `:148-150`, and (_, InGraft) `"⇥ banner, then c continue  a abort"` `:163`. Neither counts the tabs, and the
+  InGraft arm says `c continue` on a merge.
+- **n2:** `banner_list(skippable, conflicted)` has no operation kind, so `c continue` (`lists.rs:197`) can't become
+  `c finish`.
+- **n1:** `files.rs:58-61` draws `bin` for every row with absent counts. An untracked row carries
+  `FileStatusView::Untracked` (`jobs/detail.rs:413`), and its content is read (`jobs/detail.rs:288,315-317,455`;
+  graft-git `diff/read/tests.rs:~603-619`). The body still reads `select a file` because `show_cursor`
+  (`ops.rs:276-285`) finds no diff entry for the row. **Why it finds none: not traced** (pinned below).
 
 ## Decided here
-- **The words follow the cycle; the cycle does not change.** Every `⇥` the pane draws names its target (`⇥ diff`,
-  `⇥ banner`, `⇥ graph`) from one function that reads the cycle. The refusal names the real count
-  (`⇥ ⇥ banner, then c continue  a abort` from Files; `⇥ banner, …` from Diff). Rejected: making Files' `⇥` jump to the
-  banner during a stop (3 keys, not 4) — `⇥` would mean two things in one pane by state (H4), and `c` in the pane
-  already continues (P14), so only `a` takes the longer road.
-- **Journey** "rebase stop, from the changes pane, abort": `⇥ ⇥ a y` **4**, unchanged; every word on the way now true.
-- **n2:** a merge's banner says `c finish`, as the graph and pane do. Word only; `c` does the same thing.
-- **n1:** an untracked file's count column reads `new`, not `bin`; a real binary still reads `bin`. The cause is that the
-  view infers binary from absent counts; the row must carry why its counts are absent. The body: see find 3.
-
-## Scout brief (≤1 page, code not intent)
-1. `lists.rs:190-280` on main: which `HintContext` arms :197, :239, :261, :270 belong to; every other literal `⇥ …` in the
-   hint tables.
-2. The real cycle, both layouts: `detail/ops.rs:395-415`, `banner.rs:250-280` (`take_focus`), and the sub-100-column
-   Tab layout. For each focus (Graph, Files, Diff, banner) × {operation live, not} × {pane open, hidden} × {≥100, <100
-   columns}: where one `⇥` lands. A table.
-3. n1's body: why an untracked row has no diff entry. The detail job's worktree diff read (`jobs/detail.rs`): does it
-   read untracked files at all, by design (M3 deferred hunk staging in untracked files, `m3-…md:131`) or by accident?
-   What `files.rs` gets for an untracked row (a flag, a status letter).
-4. `OperationRefusal` construction for the pane's `a` (`commit_editor.rs:150-170`): every arm, and whether the keys
-   string is built in one place.
-5. Captures with `⇥ graph` or `c continue` on a merge banner: `grep -rln "⇥ graph\|c continue" docs/shots`.
+1. **The pane's words follow the cycle, and the cycle stays as it is.** Every `⇥` in the pane names its target from a
+   single reading of the cycle. The refusal names the real count. The rejected alternative (Files' `⇥` jumping to the
+   banner) is unchanged from the first draft: H4, P14.
+2. **The reading of the cycle comes from the same calls the cycle makes.** `tab_target` asks whether a banner is drawn
+   through the call `take_focus` uses. It never works it out again from "an operation is live", because the scout
+   could not confirm that the two always agree. `one_tab_to_banner` keeps its `!modal_owns_keys()` check (`stop.rs:347-352`).
+   That check is separate from 69's `modal_owns_bottom_row`, and neither replaces the other.
+3. **The banner's own `⇥ graph` (`:209`) stays a literal.** It is true in every state, because leaving the banner always
+   sets Graph. It is pinned by the banner row of `tab_target_is_where_tab_lands`, not rewired.
+4. **n2 is a `merge` flag on `Banner`,** set by `hint_context` from the live operation's kind (a merge begun in Graft or
+   in the shell; `c` opens the finish summary on both). On a merge the banner says `c finish`. The pane's refusal
+   InGraft arm on a merge also says `c finish` (`⇥ … banner, then c finish  a abort`). The InShell arm keeps
+   `c finishes it`.
+5. **Both refusal arms take their count from one helper,** `tab_keys`. The word forms stay as they are, and the count
+   is the only change.
+6. **n1, word:** match the row's own status. `Untracked` with absent counts reads `new`. Other rows with absent counts
+   read `bin`. There is **no `Counts` enum**. The first draft had one, but the row already carries its status, and the
+   enum would have touched every counts reader for nothing.
+7. **n1, body:** in scope. The fix goes test-first. `an_untracked_file_shows_its_lines` starts red. Before fixing, the
+   builder traces `selected_entry` (`ops.rs:48-53`) → `show_cursor` (`:276-285`) and names in NOTES the line that
+   drops the entry (rule 7). **Stop** if the cause is outside graft, or if the fix needs a new read rather than a
+   dropped one. Hunk staging in untracked files stays out (M3 deferral).
+8. **Journey** "rebase stop, from the changes pane, abort": `⇥ ⇥ a y` **4**, unchanged, and every word on the way is
+   now true.
 
 ## Scope
-**In:** one cycle-reading function; the pane's `⇥` word; the refusal's count; the merge banner's `c finish`; n1's `new`
-word; n1's body if find 3 shows the read exists and the row only drops it (a graft-only fix).
-**Out:** the cycle itself; `a` aborting from the pane (it refuses, by P14); n1's body if find 3 shows no read of
-untracked content exists — then it is a new read, not a fix: NOTES says so with the line, and the conductor files it.
+**In:** `tab_target`, `tabs_to_banner`, `tab_keys`; the pane's `⇥` word; both refusal arms; the `merge` flag and
+`c finish`; `new`; the untracked body.
+**Out:** the cycle; `a` aborting from the pane (P14); the banner's `⇥ graph`; the `NamePrompt` `⇥ toggle` (`:77`);
+hunk staging in untracked files.
 
 ## Signatures
 ```rust
-// graft, update/banner.rs (beside `one_tab_to_banner`, which becomes `tabs_to_banner(state) == Some(1)`)
+// graft, update/banner/stop.rs (beside `one_tab_to_banner`; not banner.rs, which 68 and 69 edit)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TabTarget { Graph, Files, Diff, Banner }
-/// Where one `Tab` goes from the focus the keyboard has now: the one reading of the cycle
-/// (`detail::ops` and `banner::take_focus`), both layouts. The bar's `⇥` word and the refusal's count read it.
-#[must_use] pub(crate) fn tab_target(state: &AppState) -> TabTarget;
-/// How many `Tab`s from here reach the banner; `None` when no banner is drawn.
+/// Where one `Tab` goes from the current focus: the one reading of the cycle (`DetailState::cycle_focus`,
+/// `banner::take_focus`, leaving the banner). `None`: `Tab` moves no focus here.
+#[must_use] pub(crate) fn tab_target(state: &AppState) -> Option<TabTarget>;
+/// How many `Tab`s from here reach the banner; `None` when no banner is drawn (the call `take_focus` makes).
 #[must_use] pub(crate) fn tabs_to_banner(state: &AppState) -> Option<u8>;
+/// `"⇥ banner"`, `"⇥ ⇥ banner"`: the keys both refusal arms name.
+#[must_use] pub(crate) fn tab_keys(tabs: u8) -> String;
+// `one_tab_to_banner(state)` becomes `!modal_owns_keys() && tabs_to_banner(state) == Some(1)`; same output.
 
-// graft-ui, hints: the pane contexts carry the word instead of the literal.
+// graft-ui, graph_screen/hints
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TabWord { Graph, Diff, Banner }   // `word()` -> "graph" | "diff" | "banner"
-// HintContext::ChangesPane { unmerged, live, tab: TabWord }   // + `tab` on the :270 context the scout names
-
-// graft-ui, detail_pane/files.rs — the file row says why it has no counts.
-pub enum Counts { Lines { added: u32, removed: u32 }, Binary, Untracked }   // replaces the Option the scout finds
+pub enum TabWord { Graph, Diff, Banner }            // `word(self) -> &'static str`: "graph" | "diff" | "banner"
+// HintContext::ChangesPane { unmerged: bool, live: LiveC, tab: TabWord }   (both arms of `changes_pane_table` read it)
+// HintContext::Banner { skippable: bool, conflicted: bool, merge: bool }   (`merge` → `c finish`)
 ```
 
 ## The failing tests first
-- graft-ui `graph_screen` tests: `the_files_list_bar_names_where_tab_goes` — `ChangesPane { tab: Diff, .. }` ends
-  `⇥ diff`. Red today (the literal).
-- graft `update` tests: `the_amend_refusal_counts_the_tabs_it_names` — a rebase stop, focus on Files, `a`: the keys read
-  `⇥ ⇥ banner, then c continue  a abort`; pressing `⇥` that many times puts the keyboard on the banner. Red today.
+- graft-ui: `the_files_list_bar_names_where_tab_goes`: `ChangesPane { tab: Diff, .. }` ends `⇥ diff`, both arms
+  (`unmerged` true and false). Red today.
+- graft-ui: `a_merge_banner_says_c_finish`: `Banner { merge: true, .. }` has `c finish`. Red today (`c continue`).
+- graft `update`: `the_amend_refusal_counts_the_tabs_it_names`: a rebase stop, focus Files, `a`: the keys read
+  `⇥ ⇥ banner, then c continue  a abort`, and pressing `⇥` twice puts the keyboard on the banner. Red today.
 - graft-ui: `an_untracked_file_reads_new_not_bin`. Red today.
+- graft: `an_untracked_file_shows_its_lines`: a cursor on an untracked `new.txt` shows its content, not `select a file`.
+  Red today.
 
 ## Touches (each entry, and how the builder checks it)
-- **`one_tab_to_banner`** and the graph's `⇥ banner` hint (`OperationLive { tab_to_banner }`): re-expressed through
-  `tabs_to_banner`; same output. Check: its existing tests green, byte-identical captures.
-- **`tab_target` against the real cycle:** `tab_target_is_where_tab_lands` — every row of scout table 2: press `⇥`,
-  compare the focus with the prediction. 80 and 120 columns.
-- **`every_context` / coverage slots / `every_key_the_bar_draws_is_answered` / `bound_actions`:** `ChangesPane` gains
-  `tab`; `("⇥", "diff")`, `("⇥", "banner")` and `("c", "finish")` on the banner join `bound_actions`. Check: all green;
-  NOTES gives the slot counts old → new.
-- **The banner's `c`** (n2): `every_hint_the_focused_banner_draws_is_answered_by_banner_key` green with `c finish`.
-- **The finish-summary journey rows** that name the banner's `c` word in `m6-conflicts.md` or TESTING.md:
-  `grep -n "c continue" docs/design-notes/m6-conflicts.md TESTING.md`; listed in NOTES.
-- **`OperationRefusal`**: both forms (editor row, pane sticky) read the count. Check:
-  `the_amend_refusal_counts_the_tabs_it_names` and the editor-row test for the same arm.
-- **n1:** `bin` on a real binary unchanged (`a_binary_file_still_reads_bin`); the staged-file `+1 −0` unchanged.
-- **Captures** from scout Q5: each regenerated by its test, or `git diff --exit-code`.
-- **Keymap:** §2.8 `c` row already says a merge opens the summary; no meaning changes. If a hint word is quoted there,
-  the builder lists it; the conductor edits.
-- **Journal/undo:** none.
-- **MAP.md:** graft `tab_target`, `tabs_to_banner`; graft-ui `TabWord`, `ChangesPane { tab }`, `Counts`.
+- **Files shared with earlier tickets (rebase, then re-read the lines):**
+  - `graft/src/view/rows.rs`: **69** edits `graph_view` and `box_context` there. This ticket edits `hint_context`, the
+    `merge` flag and `ChangesPane { tab }`. Check: 69's `a_modal_owns_the_bottom_row` stays green.
+  - `crates/graft/MAP.md`: 67, 68, 69 and 71. `crates/graft-ui/MAP.md`: 71. These are separate entries, so it's a merge
+    and not a rewrite.
+  - `TESTING.md` and the m6 contact sheet: all four earlier tickets. The builder lists rows and captures; the conductor
+    edits and rebuilds.
+  - **No shared source file** with 67 (graft-ops `preview.rs`, `update/preview.rs`, `update/operate.rs`), 71
+    (`update/context_menu*`, graft-ui `context_menu.rs`) or 68 (`update/banner.rs`, `update/state.rs`). Check:
+    `git diff --stat <base>..` lists none of them. `commit_editor.rs` is not 68's: 68's words live in `banner.rs`.
+- **`one_tab_to_banner` / `OperationLive { tab_to_banner }`:** re-expressed with the same output. Check: its tests are
+  green and the captures are byte-identical.
+- **`tab_target` against the real cycle:** `tab_target_is_where_tab_lands`. For every cell of scout table §2, press
+  `⇥` and compare the focus with `tab_target`. Run at 80 and 120 columns. The untraced cell (not live, pane hidden,
+  Graph) is asserted as whatever the key does, and NOTES records it.
+- **`every_context` / coverage slots / `every_key_the_bar_draws_is_answered` / `bound_actions` /
+  `every_hint_the_focused_banner_draws_is_answered_by_banner_key`:** `ChangesPane` gains `tab`, and `Banner` gains
+  `merge`. `("⇥","diff")`, `("⇥","banner")` and `("c","finish")` on the banner join `bound_actions`. All must be
+  green, and NOTES gives the slot counts old → new.
+- **Both refusal arms** (editor row and pane sticky forms): `the_amend_refusal_counts_the_tabs_it_names`,
+  `a_shell_merge_refusal_counts_its_tabs` (the InShell arm, from Files: `⇥ ⇥ banner, then c finishes it`), and
+  `a_graft_merge_refusal_says_c_finish`.
+- **n1:** `a_binary_file_still_reads_bin`; the staged file's `+1 −0` is unchanged.
+- **Captures:** the scout found 31 files matching `⇥ graph|c continue`. The builder runs the suite, and then
+  `git diff --stat docs/shots` lists every file a test rewrote. Each rewrite goes in NOTES with the reason. A file no
+  test writes (historical: m3/m5 dated, `prototype-journeys.txt`, the captions tsv) stays as the record of its
+  milestone, and NOTES lists it as "not regenerated". This includes 69's regenerated `fix-box-takes-y-*` and
+  `m3-09-undo-drift-box-*` if they move again.
+- **Design text:** `grep -n "c continue" docs/design-notes/m6-conflicts.md TESTING.md docs/design/02-keymap.md`. Hits
+  about a merge are listed in NOTES, and the conductor edits them.
+- **Keymap:** no meaning changes. **Journal/undo:** none.
+- **MAP.md:** graft `tab_target`, `tabs_to_banner`, `tab_keys`, `one_tab_to_banner`'s new body, and the n1 cause line.
+  graft-ui `TabWord`, `ChangesPane { tab }`, `Banner { merge }`, and `files.rs`'s `new`.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] The three failing tests above, red then green.
-- [ ] `tab_target_is_where_tab_lands` (scout table 2, every row).
-- [ ] `the_diff_bar_names_the_banner_during_a_stop` (`⇥ banner`), and `⇥ graph` with nothing live.
-- [ ] `a_merge_banner_says_c_finish`; a rebase banner still says `c continue`.
+- [ ] The five failing tests above, red then green.
+- [ ] `tab_target_is_where_tab_lands` (every cell, 80 and 120 columns).
+- [ ] `the_diff_bar_names_the_banner_during_a_stop` (`⇥ banner`); `⇥ graph` with nothing live.
+- [ ] A rebase banner still says `c continue` (a row in `a_merge_banner_says_c_finish`).
+- [ ] `a_shell_merge_refusal_counts_its_tabs`; `a_graft_merge_refusal_says_c_finish`.
 - [ ] `a_binary_file_still_reads_bin`.
-- [ ] n1 body: either `an_untracked_file_shows_its_lines` (find 3: the read exists) or NOTES names the line proving no
-      read exists and the row stays `select a file` (then **not** ticked as fixed; the conductor files a gap).
-- [ ] Walk, real repo (`tests/it`): `abort_a_rebase_from_the_changes_pane_is_four_keys` — `⇥ ⇥ a y` from Files, count
-      asserted ≤ 4, `git status` shows no rebase.
+- [ ] **Pin (the scout could not confirm):** NOTES names the line where `show_cursor` loses the untracked row's entry,
+      and `an_untracked_file_shows_its_lines` proves the fix. If the cause is outside graft or needs a new read, **not**
+      ticked: stop and report with the line.
+- [ ] Walk, real repo (`tests/it`): `abort_a_rebase_from_the_changes_pane_is_four_keys`: `⇥ ⇥ a y` from Files. The
+      count is asserted ≤ 4, and `git status` shows no rebase.
 - [ ] Captures (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-tab-words-120x40.txt` and `-80x24`.
-  - Frame 1: a rebase stop, focus on the changes pane's files: the bar ends `⇥ diff`.
-  - Frame 2: `a`: the bottom row reads `rebase in progress · ⇥ ⇥ banner, then c continue  a abort`.
-  - Frame 3: after one `⇥` (Diff): the bar ends `⇥ banner`. Frame 4: after the second, the banner is focused.
-  - Frame 5: a merge stop, the banner focused: its bar has `c finish`, not `c continue`.
-  - Frame 6: an untracked `new.txt` in the changes pane reads `new`, not `bin`.
+  - Frame 1: a rebase stop, focus on the changes pane's files. The bar ends `⇥ diff`.
+  - Frame 2: `a`. The bottom row reads `rebase in progress · ⇥ ⇥ banner, then c continue  a abort`.
+  - Frame 3: after one `⇥` (Diff), the bar ends `⇥ banner`. Frame 4: after the second, the banner is focused.
+  - Frame 5: a merge stop, the banner focused. Its bar has `c finish`, not `c continue`.
+  - Frame 6: an untracked `new.txt` in the changes pane. The row reads `new`, not `bin`, and the body shows its lines,
+    not `select a file`.
 - [ ] MAP.md updated (doc, no test).
 
 ## Gates
@@ -136,5 +165,5 @@ pub enum Counts { Lines { added: u32, removed: u32 }, Binary, Untracked }   // r
 workspace-wide.
 
 ## Size
-Medium–large: two crates, a graft-ui enum change every hint test enumerates, a cycle table, six frames. One context if
-n1's body stays out; if find 3 shows a graft-only fix that grows, hand off at the seam (graft-ui committed first).
+Medium–large: two crates, two context fields that every hint test enumerates, a cycle table, one traced cause, six
+frames. One context. If the n1 body trace grows, hand off at the seam: the graft-ui half is committed first.
