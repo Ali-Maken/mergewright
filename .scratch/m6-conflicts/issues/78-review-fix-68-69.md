@@ -8,9 +8,9 @@ Blocked by: **77 merged** (it builds in graft-ops + graft now; both touch `updat
 Crates: **graft only**, plus `TESTING.md`, `docs/shots/`. **graft-ui: none.** The credential footer is graft's
 `SanitizedText` (`CredentialView::footer`), and its width comes from `graft_ui::credential_prompt::credential_area`
 (pub). If the fit needs a graft-ui change: `blocked: needs graft-ui`.
-Build with: *(blank: scout first; conductor sets it)*. Brownfield across `update/` and `view/` (ADR-0035). Two
+Build with: **builder-opus** (conductor, after scout 78). Brownfield across `update/` and `view/` (ADR-0035). Two
 structural parts: one seam in `update::update`, and one guard at the one place `operating` is set.
-Scout: needed. Questions below.
+Scout: `.scratch/m6-conflicts/scouts/78.md` (done). Findings to fold in: the two resolver callers already refuse (`resolved.rs:45`, `whole_file.rs:80`); the editor guard `commit_editor.rs:513` covers commit; `wait for … to finish` is built twice (`remote.rs:342`, `preview.rs:284`), make it one; unguarded: `name_prompt.rs:278,286`, `confirm.rs:206`, `preview.rs:706/717`; pin whether confirm/preview can open while a write runs. Overlaps 77 at `undo.rs:256,395`, `confirm.rs:212-225`: rebase on 77 first. Questions below.
 
 ## Read first
 - The review, whole (≤ 1 page of findings).
