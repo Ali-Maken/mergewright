@@ -25,7 +25,7 @@ mod steps;
 
 use std::path::Path;
 
-use graft_core::journal::{EntryStatus, IndexState};
+use graft_core::journal::{EntryStatus, HeadRef, IndexState};
 use graft_core::oid::Oid;
 use graft_git::run::RunError;
 
@@ -272,11 +272,14 @@ pub(crate) fn execute_over_drift(
 
     match outcome {
         None => {
-            let refresh = if pending.entry.touches.refs.is_empty() {
-                Refresh::WorkingTree
-            } else {
-                Refresh::Everything
-            };
+            let refresh = refresh_after(
+                !pending.entry.touches.refs.is_empty(),
+                plan.steps
+                    .iter()
+                    .any(|step| matches!(step, Step::SetHead(_))),
+                &pending.entry.head_before,
+                pending.entry.head_after.as_ref(),
+            );
             let applied = Applied {
                 entry: pending.entry,
                 refresh,
@@ -296,6 +299,29 @@ pub(crate) fn execute_over_drift(
         // `Aborted` reason already; the plan's own failure — or the cancel —
         // is the headline.
         Some(why) => Err(why),
+    }
+}
+
+/// What the caller re-reads after a restore ran: the graph as well whenever a
+/// ref moved **or `HEAD` did** (m6-conflicts/79).
+///
+/// `touches.refs` alone is not enough: a checkout's inverse moves only
+/// `HEAD` — its `touches` names no ref, by design (`CheckoutParams`) — and a
+/// working-tree re-read left the graph's HEAD badge on the branch the undo
+/// had just left. `HEAD` counts as moved when the plan sets it, or when the
+/// entry's recorded after-value differs from its before-value; an after-value
+/// that could not be read is not known to be unmoved, so it re-reads too.
+fn refresh_after(
+    refs_touched: bool,
+    sets_head: bool,
+    head_before: &HeadRef,
+    head_after: Option<&HeadRef>,
+) -> Refresh {
+    let head_moved = sets_head || head_after != Some(head_before);
+    if refs_touched || head_moved {
+        Refresh::Everything
+    } else {
+        Refresh::WorkingTree
     }
 }
 
@@ -392,5 +418,55 @@ fn aborted_reason(why: &RestoreError) -> String {
     match why {
         RestoreError::Run(run) => reason_for(run),
         other => other.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use graft_core::journal::HeadRef;
+
+    use super::refresh_after;
+    use crate::apply::Refresh;
+
+    fn branch(name: &str) -> HeadRef {
+        HeadRef::Branch(format!("refs/heads/{name}"))
+    }
+
+    /// The scope rule as a table (m6-conflicts/79): any ref, a `SetHead`
+    /// step, a recorded `HEAD` move, or an unread `HEAD` re-reads the graph;
+    /// only a restore that provably left refs and `HEAD` alone does not.
+    #[test]
+    fn refresh_covers_head_whenever_the_restore_moves_it() {
+        let main = branch("main");
+        let feature = branch("feature");
+        let rows: [(bool, bool, Option<&HeadRef>, Refresh, &str); 6] = [
+            (
+                false,
+                false,
+                Some(&main),
+                Refresh::WorkingTree,
+                "nothing moved",
+            ),
+            (true, false, Some(&main), Refresh::Everything, "a ref moved"),
+            (
+                false,
+                true,
+                Some(&main),
+                Refresh::Everything,
+                "the plan sets HEAD",
+            ),
+            (
+                false,
+                false,
+                Some(&feature),
+                Refresh::Everything,
+                "HEAD recorded moved",
+            ),
+            (false, false, None, Refresh::Everything, "HEAD after unread"),
+            (true, true, Some(&feature), Refresh::Everything, "all of it"),
+        ];
+        for (refs, sets_head, after, want, why) in rows {
+            assert_eq!(refresh_after(refs, sets_head, &main, after), want, "{why}");
+        }
     }
 }

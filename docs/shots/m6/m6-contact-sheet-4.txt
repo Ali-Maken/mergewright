@@ -440,7 +440,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-120x40.txt
-what right looks like: (ticket 77) The edit an undo replaces, and the way back. Frame 1: a menu checkout of `fix`, `fix.txt` edited, `u`: under what moved, the box reads `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.`, whole. Frame 2: `y`: no changes row, and the bottom row `undo: checkout fix ✓ · U brings back your edit to fix.txt`; KNOWN WRONG, pre-existing: the graph still marks `[◆ fix]` although git's HEAD is `main` (the undo re-reads only the working tree; ticket 77 NOTES). Frame 3: `U`: the changes row is back, `(1 unstaged)`, and `redo: checkout fix ✓`; the edit's bytes are asserted from the file. Colour unverified.
+what right looks like: (ticket 77) The edit an undo replaces, and the way back. Frame 1: a menu checkout of `fix`, `fix.txt` edited, `u`: under what moved, the box reads `Undo replaces your edit to fix.txt; a backup keeps it, and U brings it back.`, whole. Frame 2: `y`: no changes row, and the bottom row `undo: checkout fix ✓ · U brings back your edit to fix.txt`; the graph marks `[◆ main]` and `fix` plain, as git's HEAD is `main`, with the Radar's `ⓘ` on `fix` (ticket 79: an undo that moves HEAD re-reads the graph). Frame 3: `U`: the changes row is back, `(1 unstaged)`, and `redo: checkout fix ✓`; the edit's bytes are asserted from the file. Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), 120x40, no colour recorded. Fixture:
@@ -453,9 +453,8 @@ what right looks like: (ticket 77) The edit an undo replaces, and the way back. 
 #    a backup keeps it, and U brings it back.` — whole, not cut.
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
-#    git (asserted) — KNOWN WRONG in this frame: the graph still marks
-#    `[◆ fix]`, because the undo re-reads only the working tree when its
-#    entry touched no ref (pre-existing, not ticket 77's; see its NOTES).
+#    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
+#    m6-conflicts/79). The Radar has answered: its `ⓘ` is on `fix`.
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
@@ -505,8 +504,8 @@ what right looks like: (ticket 77) The edit an undo replaces, and the way back. 
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ◆ ▏ⓘ [◆ fix] fix the bug                                                                               GF 3m   fbb2394
-● │    [main] main moves on                                                                              GF 4m   37926a7
+  ● ▏ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
+◆ │    [◆ main] main moves on                                                                            GF 4m   37926a7
 ●─╯    add the base                                                                                      GF 5m   ed332bc
 ●      Correct the note                                                                                  GF 1y   a82960b
 ●      Add the first note                                                                                GF 1y   fadcfb3
@@ -602,9 +601,8 @@ what right looks like: (ticket 77) The same three frames at 80x24: the box's lin
 #    a backup keeps it, and U brings it back.` — whole, not cut.
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
-#    git (asserted) — KNOWN WRONG in this frame: the graph still marks
-#    `[◆ fix]`, because the undo re-reads only the working tree when its
-#    entry touched no ref (pre-existing, not ticket 77's; see its NOTES).
+#    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
+#    m6-conflicts/79). The Radar has answered: its `ⓘ` is on `fix`.
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
@@ -638,8 +636,8 @@ what right looks like: (ticket 77) The same three frames at 80x24: the box's lin
 
 === frame 2: `y`, the landing ===
  graft /code/api  6 commits
-  ◆ ▏ⓘ [◆ fix] fix the bug                                          3m   fbb2394
-● │    [main] main moves on                                         4m   37926a7
+  ● ▏ⓘ [fix] fix the bug                                            3m   fbb2394
+◆ │    [◆ main] main moves on                                       4m   37926a7
 ●─╯    add the base                                                 5m   ed332bc
 ●      Correct the note                                             1y   a82960b
 ●      Add the first note                                           1y   fadcfb3

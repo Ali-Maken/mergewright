@@ -10,6 +10,7 @@
 //!   (tickets 39, 40).
 
 use super::*;
+use crate::captures::{radar_answered, settled_frame};
 
 const EDIT: &str = "my hand edit, not in any commit\n";
 
@@ -570,38 +571,6 @@ fn y_to_the_landing(app: &App, state: &AppState) -> AppState {
         state.operating.is_none() && state.in_progress.is_none() && !state.land_on_head
     });
     settled_frame(app, state)
-}
-
-/// Pumps until nothing on the frame is still loading, so a capture never
-/// catches a `reading…` or `sorting…` that a moment later is gone (as
-/// `conflict_interim::landing_shots::settled`).
-fn settled_frame(app: &App, state: AppState) -> AppState {
-    app.pump(state, "a frame with nothing loading", |state| {
-        crate::captures::frame(state, 120, 40)
-            .iter()
-            .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
-    })
-}
-
-/// Pumps until the Mistake Radar has answered: its default-branch context
-/// has landed (`state.radar.context` is `Ready`, which is what builds the
-/// ref findings the rows' `ⓘ` draws from), and neither probe it asks for
-/// then is still running (`radar.duplicates`, every `radar.force_push`).
-/// The radar is its own job, so a frame taken before it lands lacks its
-/// marks; [`settled_frame`] waits only for `reading…` and `sorting…`
-/// (review m6-look-finish-wave2 M3).
-fn radar_answered(app: &App, state: AppState) -> AppState {
-    use graft::update::detail::Loading;
-    app.pump(state, "the radar's answer", |state| {
-        matches!(state.radar.context, Loading::Ready(_))
-            && state.radar.built_from.is_some()
-            && !matches!(state.radar.duplicates, Loading::Pending(_))
-            && !state
-                .radar
-                .force_push
-                .values()
-                .any(|verdict| matches!(verdict, Loading::Pending(_)))
-    })
 }
 
 /// The commit under the graph's cursor.

@@ -177,6 +177,39 @@ pub fn check_shot(name: &str, body: &str) {
     );
 }
 
+/// Pumps until nothing on the frame is still loading, so a capture never
+/// catches a `reading…` or `sorting…` that a moment later is gone (as
+/// `conflict_interim::landing_shots::settled`). Moved here from
+/// `resolver::shell_begun` for the undo-over-drift capture (m6-conflicts/79).
+pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState {
+    app.pump(state, "a frame with nothing loading", |state| {
+        frame(state, 120, 40)
+            .iter()
+            .all(|row| !row.contains("reading\u{2026}") && !row.contains("sorting\u{2026}"))
+    })
+}
+
+/// Pumps until the Mistake Radar has answered: its default-branch context
+/// has landed (`state.radar.context` is `Ready`, which is what builds the
+/// ref findings the rows' `ⓘ` draws from), and neither probe it asks for
+/// then is still running (`radar.duplicates`, every `radar.force_push`).
+/// The radar is its own job, so a frame taken before it lands lacks its
+/// marks; [`settled_frame`] waits only for `reading…` and `sorting…`
+/// (review m6-look-finish-wave2 M3).
+pub fn radar_answered(app: &crate::app_harness::App, state: AppState) -> AppState {
+    use graft::update::detail::Loading;
+    app.pump(state, "the radar's answer", |state| {
+        matches!(state.radar.context, Loading::Ready(_))
+            && state.radar.built_from.is_some()
+            && !matches!(state.radar.duplicates, Loading::Pending(_))
+            && !state
+                .radar
+                .force_push
+                .values()
+                .any(|verdict| matches!(verdict, Loading::Pending(_)))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::without_invented_id;

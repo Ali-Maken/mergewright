@@ -18,7 +18,7 @@ use graft::update::{AppState, Status};
 use graft_core::event::KeyCode;
 
 use crate::app_harness::{App, git};
-use crate::captures::{check_shot, frame_at};
+use crate::captures::{check_shot, frame_at, radar_answered, settled_frame};
 use crate::m6_stash_put_back::{main_and_fix, planned, rev};
 use crate::preview::{FORK_NOW, dated_commit, opened};
 use crate::remote_by_key::ready;
@@ -514,9 +514,8 @@ fn header(size: &str) -> String {
 #    a backup keeps it, and U brings it back.` — whole, not cut.
 # 2. After `y`: no changes row, and the bottom row reads `undo: checkout
 #    fix ✓ · U brings back your edit to fix.txt`. `HEAD` is on `main` in
-#    git (asserted) — KNOWN WRONG in this frame: the graph still marks
-#    `[◆ fix]`, because the undo re-reads only the working tree when its
-#    entry touched no ref (pre-existing, not ticket 77's; see its NOTES).
+#    git and the graph marks `[◆ main]`, `fix` plain (both asserted;
+#    m6-conflicts/79). The Radar has answered: its `ⓘ` is on `fix`.
 # 3. After `U`: the changes row is back, `(1 unstaged)`, and `redo:
 #    checkout fix ✓`. `HEAD` is on `fix` again and the edit's bytes are
 #    back (both asserted from git and the file, not the frame).
@@ -532,18 +531,20 @@ fn capture_fix_undo_drift_way_back() {
     let path = scratch.path();
     let (app, state) = App::open_with_clock(path, Clock::Fixed(FORK_NOW));
     let asked = drift_box_after_a_checkout(&app, path, state);
-    // Each landing is drawn once the write's working-tree re-read is on
-    // screen: the answer ends the job first, and a frame taken between the
-    // two shows the changes row as it was. Only the working tree is
-    // re-read: an undo whose entry touched no ref asks for no more
-    // (`graft_ops::restore`, `Refresh::WorkingTree`), so the graph keeps
-    // `HEAD` where it was — see the header, frame 2.
+    // Each landing is drawn once the write's re-read is on screen: the
+    // answer ends the job first, and a frame taken between the two shows the
+    // changes row as it was. An undo or redo that moves `HEAD` re-reads the
+    // graph too (`graft_ops::restore::refresh_after`, m6-conflicts/79), so
+    // each frame also waits for that reload and the Radar it rebuilds —
+    // else it catches `sorting…` and no `ⓘ`.
     let drawn =
         |state: &AppState| frame_at(state, 120, 40, Some(Clock::Fixed(FORK_NOW))).join("\n");
     let landed = yes(&app, &asked, "the undo over drift");
     let landed = app.pump(landed, "the landing's re-read", |state| {
         !drawn(state).contains("Uncommitted changes")
     });
+    let landed = radar_answered(&app, settled_frame(&app, landed));
+    assert!(drawn(&landed).contains("[◆ main]"), "{}", drawn(&landed));
     assert_eq!(
         git(path, &["symbolic-ref", "HEAD"]).trim(),
         "refs/heads/main"
@@ -552,6 +553,8 @@ fn capture_fix_undo_drift_way_back() {
     let back = app.pump(back, "the redo's re-read", |state| {
         drawn(state).contains("Uncommitted changes (1 unstaged)")
     });
+    let back = radar_answered(&app, settled_frame(&app, back));
+    assert!(drawn(&back).contains("[◆ fix]"), "{}", drawn(&back));
     assert_eq!(
         git(path, &["symbolic-ref", "HEAD"]).trim(),
         "refs/heads/fix"
