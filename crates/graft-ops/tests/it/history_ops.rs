@@ -257,6 +257,61 @@ fn checkout_applies_undoes_redoes() {
     assert!(repo.exists("feature.txt"));
 }
 
+/// A checkout's inverse moves only `HEAD` — its `touches.refs` is empty by
+/// design (`CheckoutParams`) — so a scope read off `touches.refs` alone left
+/// the graph's HEAD badge on the branch the undo just left (m6-conflicts/79).
+/// Both legs, both targets: undo and redo of a branch switch and a detach
+/// each re-read everything, and `HEAD` really did move each time.
+#[test]
+fn an_undo_or_redo_that_moves_head_rereads_the_graph() {
+    for detach in [false, true] {
+        let repo = diverged();
+        let to = if detach {
+            CheckoutTarget::Detached(id(&repo, "feature"))
+        } else {
+            CheckoutTarget::Branch("refs/heads/feature".to_owned())
+        };
+        let op = Operation::Checkout(CheckoutParams {
+            to,
+            head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        });
+        let forward = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+        assert_eq!(forward.refresh, Refresh::Everything, "the checkout itself");
+
+        let undone =
+            run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+        assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
+        assert!(undone.entry.touches.refs.is_empty(), "the premise: no ref");
+        assert_eq!(undone.refresh, Refresh::Everything, "undo moved HEAD");
+
+        let redone =
+            run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+        assert_ne!(
+            repo.git(&["rev-parse", "--symbolic-full-name", "HEAD"]),
+            "refs/heads/main"
+        );
+        assert_eq!(redone.refresh, Refresh::Everything, "redo moved HEAD");
+    }
+}
+
+/// The other side of the rule: an undo that moves neither a ref nor `HEAD`
+/// stays a working-tree re-read, so the fix did not widen every undo.
+#[test]
+fn an_undo_that_leaves_head_alone_rereads_the_working_tree_only() {
+    let repo = diverged();
+    repo.write("main.txt", b"edited\n");
+    run(
+        &repo,
+        &Operation::Stage(graft_ops::operation::Target::Paths(vec![PathBuf::from(
+            "main.txt",
+        )])),
+        NOW,
+    );
+    let undone =
+        run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(undone.refresh, Refresh::WorkingTree);
+}
+
 #[test]
 fn branch_create_applies_undoes_redoes() {
     let repo = diverged();
