@@ -1,6 +1,6 @@
 # ADR-0045 — A stash put back is recorded by Graft; setting edits aside around a rebase or switch is one entry
 
-Date: 2026-09-25
+Date: 2026-09-25 (amended 2026-09-25: §2 tie to the index, §7 table rows — review m6-final-fixes-72-72b M2)
 Status: accepted. Direction by the user: picks 15 and 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :24-25,
 field notes :67, "all three took the recommended option"). Mechanism by the design pass:
 `docs/design-notes/m6-stash-put-back.md`. Study: `docs/research/commit-stash.md` addendum A1–A4.
@@ -23,16 +23,35 @@ Supersedes: `docs/design-notes/m5-history-and-ghost-preview.md` hard choice 4 ("
 written before reads as `None` and re-renders byte-identically. For a pop or apply, `stash` is the entry's commit. For
 a set-aside it is the commit `git stash create` printed **before** the Pending line was written (§4).
 
-### 2. A clash is live by one pure rule over the journal (`graft_ops::live_clash`)
+### 2. A clash is live by one pure rule over the journal and the index now (`graft_ops::clash::live_clash`)
 - No clash while git has an operation in progress, or while nothing is unmerged.
 - Walk the in-force entries newest first. Skip an entry whose `index_before` is unmerged or not recorded (a step taken
   inside the clash: stage, a whole-file choice, start over; or an entry that never touched the index), and an Undo or
   Redo whose `index_after` is unmerged (walking back into the clash). The first entry left must have `index_before`
-  merged, `index_after` unmerged and `put_back: Some` — that is the clash. Anything else: no clash.
+  merged, `index_after` unmerged and `put_back: Some` — that is the **candidate**. Anything else: no clash.
+- **Tied to the index now** (amended 2026-09-25). The newest in-force entry that recorded an `index_after` — the
+  candidate itself, or a step Graft took inside the clash since — must record **exactly the index now**, compared as
+  `IndexState` (the stage tree: every path's stages, modes and blob ids). Anything that changed the index without a
+  journal line since — a shell `add`, a shell pop, a reset, an editor staging a file — breaks the tie: no clash.
+  The index now is read by the same `index_state` the recorder uses (one encoding, so equal content is an equal id),
+  and only while a candidate exists: no read, no cost, when nothing Graft put back is in question. The read failing is
+  no clash, and the status says it could not tell (rule 3: worded, never a silent "no").
 - The stash must still be in the list, found **by commit id**; its position is looked up, never assumed.
-- A pop made in the shell has no record: the resolver works as today and names no stash. Residual, words only: a shell
-  pop that clashes straight after a Graft **apply**-clash was finished, with no Graft write between, is named as that
-  apply's stash. Apply never drops, so nothing is lost.
+- A pop made in the shell has no record: the resolver works as today and names no stash. **Residual: none that
+  drops.** The tie fails only towards "no clash", where the close names no stash and drops nothing, and every stash
+  stays in the list for `S d`. A shell act that leaves the index exactly as Graft last recorded it is, stage for stage
+  and blob for blob, the same conflict.
+- **Replaces** (2026-09-25) the first residual clause: "a shell pop that clashes straight after a Graft
+  **apply**-clash was finished, with no Graft write between, is named as that apply's stash. Apply never drops, so
+  nothing is lost." That held for apply only. Review m6-final-fixes-72-72b M2 reproduced the pop case in git: Graft
+  pops A and it clashes; in the shell `git checkout --ours a.txt && git add a.txt`, then `git stash pop stash@{1}`
+  (B) clashes on `b.txt`. The old rule named A and the close dropped A, a stash he had kept on purpose. Under the tie,
+  the shell `add` and the shell pop each changed the index outside the journal, so no clash: B's conflict resolves as
+  a shell pop, and both stashes stay listed.
+- Signatures (graft-ops `clash`): `clash_candidate(entries, in_progress, any_unmerged, stashes) ->
+  Option<ClashCandidate>` (the walk, plus `expect`: the index the tie needs); `live_clash(entries, in_progress,
+  index_now: &IndexState, stashes) -> Option<StashClash>` (the whole rule, pure; "anything unmerged" is
+  `index_now.is_unmerged()`). The app asks for the index only when `clash_candidate` is `Some`.
 
 ### 3. Finishing drops the stash by commit id, without a box
 When the last clashed file is marked done, a **pop** or **set-aside** clash ends in
@@ -86,7 +105,17 @@ they are and covered by the entry's backup, as every write is (ADR-0009).
 - The put-back's outcome comes from reading the index, never the exit code: a failed `stash apply` with nothing
   unmerged (an untracked file in the way) is "kept", one with unmerged paths is a clash. `stash apply` itself exits 1
   on a clash, so git's exit-0 case (A1.5, `--autostash`) is excluded by not using `--autostash`, not by a test.
-- `live_clash`'s rule as a table test, including the undo-back-into-a-clash row and the shell-pop row.
+- `live_clash`'s rule as a table test, including the undo-back-into-a-clash row and the shell-pop row, and (amended
+  2026-09-25) the tie's rows:
+  - **a shell pop after an unfinished Graft pop** (review 72+72b M2): the index now differs from Graft's last
+    `index_after` → no clash, so nothing is dropped;
+  - the same, the shell pop clashing on the **same path** with other blobs → no clash;
+  - a Graft step inside the clash (a file marked done), the index now equal to that step's `index_after` → the clash;
+  - the newest index-touching entry with `index_after` not recorded → no clash;
+  - a Graft apply clash finished, then a shell pop (the replaced residual) → no clash.
+- The review's four steps replayed in a real repository: `read` of the index + `live_clash` → no clash; the app's
+  close after `⏎` on `b.txt` leaves both stashes listed. And the plain Graft pop clash in a real repository is tied
+  (the recorder's and the reader's encodings agree).
 
 ## Consequences
 - `check` no longer refuses `DirtyTree` for rebase or checkout. Ticket 67's gate keeps its job for every other refusal;
@@ -95,3 +124,6 @@ they are and covered by the entry's backup, as every write is (ADR-0009).
   had staged before are indistinguishable. Named in KNOWN_GAPS.
 - A put-back loses the staged/unstaged split on the clean path too (no `--index`); the preview says so before `y`.
 - A fast-forward pull over overlapping edits still fails with git's words. Out of pick 16's scope; a KNOWN_GAPS row.
+- (2026-09-25) While a Graft put-back clash is a candidate, each working-tree or journal read that lands asks for one
+  index read (`index_state`: a copy of `.git/index`, `ls-files --stage`, `write-tree` on temp indexes). An unchanged
+  index writes no new tree object after the first. No read at all in a repository with no such entry.

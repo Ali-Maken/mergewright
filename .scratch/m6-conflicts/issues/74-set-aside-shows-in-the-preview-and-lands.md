@@ -1,7 +1,7 @@
 # set-aside-shows-in-the-preview-and-lands: the preview says the edits go aside; every end lands where the note says
 
 Status: ready
-Blocked by: 73
+Blocked by: 73, 82 (shares files; see 82 Touches)
 From: pick 16 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :25): "the preview says so; a clash putting them back
 lands on the conflict screen".
 Build with: (conductor, after the scout; planner suggests Opus — words and routing over 73's and 72b's answers)
@@ -103,6 +103,10 @@ pub fn set_aside_row(set_aside: graft_ops::SetAside) -> Vec<String>;   // wordin
 - **Keymap doc** §2.9 `p` row and the `DirtyTree` doc line: owed by the conductor; the builder does not edit
   `docs/design/`.
 - **MAP.md**: graft-ui `SetAside`, `set_aside_row`; graft words and landings.
+- **Review 72+72b m8** (`docs/reviews/m6-final-fixes-72-72b.md`): the `Operated::Clashed` arms in `banner::resumed`
+  (`crates/graft/src/update/banner.rs:745-748`, which also calls `operation_ended`) and `kept_open` (`:884-886`) are
+  unreachable until this ticket and untested. Check: this ticket's tests reach **both** arms (a put-back clash after
+  `c` finishes a stopped rebase, and whichever end reaches `kept_open`), each named in NOTES; lines re-checked after 82.
 
 ## Acceptance (name the verifying test at tick time)
 - [ ] Every test above, red then green.
