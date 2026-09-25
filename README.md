@@ -130,8 +130,10 @@ M5 promises that **you see the result before you confirm**.
   patches. Where they do not, `TESTING.md` "History" says so.
 - **A stale preview is refused**: if `main` moved while the box was open
   (a teammate's push, an editor's git), `Enter` says `main moved since the
-  preview · r again` and runs nothing. A rebase on a dirty tree is refused
-  with `S stash 1 changed file` on the line.
+  preview · r again` and runs nothing. A rebase or a switch on a dirty tree
+  sets your edits aside and puts them back after: the box says so under
+  `working tree:` (`your edits: 3 files set aside, put back after · 1 staged
+  comes back unstaged`), and the done line ends `· your edits are back`.
 - **Conflicts stop honestly.** A merge or rebase that conflicts leaves git
   mid-operation: the header says `MERGING`, the changes pane lists the
   files under `CONFLICTS (n)`, and the footer offers `c continue`,

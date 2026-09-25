@@ -40,6 +40,7 @@ fn fetch_fails(state: &AppState, id: JobId) -> AppState {
                 refresh: None,
                 remote: None,
                 refused: None,
+                edits_in: None,
             })),
         ),
     )

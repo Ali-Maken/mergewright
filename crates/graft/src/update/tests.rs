@@ -5392,8 +5392,21 @@ fn in_roles(mut state: AppState, roles: graft_ui::conflict_resolver::SideRoles) 
         SideRoles::Rebase => Some(InProgress::Rebase),
         SideRoles::CherryPick => Some(InProgress::CherryPick),
         SideRoles::Revert => Some(InProgress::Revert),
-        SideRoles::StashPop => None,
+        SideRoles::StashPop | SideRoles::SetAside => None,
     };
     state.in_progress = kind.map(|kind| crate::update::resolver::fixtures::operation(kind, None));
+    // A set-aside's clash is the resolver with no operation and a recorded
+    // clash whose `why` is `SetAside` (m6-conflicts/74).
+    if roles == SideRoles::SetAside {
+        state.clash = Some(crate::update::state::ClashState {
+            clash: graft_ops::clash::StashClash {
+                entry: graft_core::journal::EntryId::new(7, [7; 10]),
+                stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+                index: Some(0),
+                why: graft_core::journal::PutBackWhy::SetAside,
+            },
+            origin: crate::update::LiveOrigin::ThisRun,
+        });
+    }
     state
 }

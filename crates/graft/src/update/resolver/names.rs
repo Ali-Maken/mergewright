@@ -70,6 +70,14 @@ pub fn side_names(state: &AppState) -> SideNames {
             head().map(|id| branch_like(state, id)),
             incoming(&commit_like),
         ),
+        // Edits Graft set aside around a rebase or switch, clashing as they
+        // came back (m6-conflicts/74): theirs is `your edits`, never the
+        // stash — he never named one.
+        None if state.resolver.is_some() && crate::update::clash::set_aside(state) => (
+            SideRoles::SetAside,
+            head().map(|id| branch_like(state, id)),
+            Some("your edits".to_owned()),
+        ),
         // Theirs is the stash Graft recorded putting back (`stash@{0}`,
         // m6-conflicts/72b); a pop made in the shell has no record, and
         // keeps the role alone.

@@ -144,6 +144,7 @@ fn a_failed_last_stage_opens_nothing() {
                 refresh: None,
                 remote: None,
                 refused: None,
+                edits_in: None,
             })),
         ),
     );

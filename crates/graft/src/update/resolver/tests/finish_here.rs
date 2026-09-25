@@ -353,6 +353,7 @@ fn a_hook_refusal_keeps_the_summary_and_the_resolver_under_it() {
                 refresh: None,
                 remote: None,
                 refused: None,
+                edits_in: None,
             })),
         ),
     );

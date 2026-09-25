@@ -574,6 +574,7 @@ fn a_failed_resume_keeps_a_abort() {
             refresh: None,
             remote: None,
             refused: None,
+            edits_in: None,
         },
         &mut || JobId::new(8),
     );
@@ -1287,6 +1288,7 @@ fn the_stop_line_outlives_a_dismissed_problem() {
                 refresh: None,
                 remote: None,
                 refused: None,
+                edits_in: None,
             })),
         ),
     );
@@ -1622,6 +1624,57 @@ fn every_stop_ladder_narrows_and_keeps_its_count_whole() {
             }
         }
     }
+}
+
+/// m6-conflicts/74: a rebase that stopped with edits set aside. Its stop
+/// line says so after the rest — ` · edits aside` — and that part is the
+/// first a shorter wording drops. A stop whose Pending entry set nothing
+/// aside words exactly as before.
+#[test]
+fn a_stop_with_edits_aside_says_so_and_drops_it_first() {
+    use graft_core::journal::{EntryStatus, PutBack, PutBackWhy};
+
+    let mut entry = done_applied().entry;
+    entry.status = EntryStatus::Pending;
+    entry.description = "rebase main onto origin/main".to_owned();
+    let plain_entry = entry.clone();
+    entry.put_back = Some(PutBack {
+        stash: oid(0x5a),
+        why: PutBackWhy::SetAside,
+    });
+    let with = |entry: graft_core::journal::JournalEntry| {
+        let mut state = stopped(InProgress::Rebase, &["notes.md"]);
+        state.stopped = Some(stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 1));
+        state.live_entries = vec![entry.id.clone()];
+        state.journal.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(
+            crate::jobs::undo::JournalRead {
+                entries: vec![entry],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+            },
+        ));
+        state
+    };
+
+    let aside = with(entry);
+    let ladder = stop_line_wordings(&aside).expect("a stop").wordings;
+    assert_eq!(
+        ladder[0],
+        "rebase stopped at step 3 of 7 \u{b7} 1 file conflicted \u{b7} edits aside"
+    );
+    assert_eq!(
+        ladder[1],
+        "rebase stopped at step 3 of 7 \u{b7} 1 file conflicted"
+    );
+    assert!(
+        ladder[1..].iter().all(|rung| !rung.contains("aside")),
+        "{ladder:?}"
+    );
+    assert_eq!(stop_line(&aside).as_deref(), Some(ladder[0].as_str()));
+
+    let plain = with(plain_entry);
+    let plain_ladder = stop_line_wordings(&plain).expect("a stop").wordings;
+    assert_eq!(plain_ladder, ladder[1..].to_vec());
 }
 
 fn oid(byte: u8) -> graft_core::oid::Oid {

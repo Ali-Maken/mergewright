@@ -793,7 +793,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                     &preview.subject,
                 )
             } else {
-                ready_box(&planned.plan, preview.clipped)
+                ready_box(&planned.plan, preview.clipped, state.size.columns)
             }
         }
     };
@@ -808,15 +808,15 @@ fn closing_box(line: &str, subject: &PreviewSubject) -> PreviewBox {
     view
 }
 
-/// The box for a plan that landed.
-fn ready_box(plan: &PreviewPlan, clipped: usize) -> PreviewBox {
+/// The box for a plan that landed, for a frame `columns` wide.
+fn ready_box(plan: &PreviewPlan, clipped: usize, columns: u16) -> PreviewBox {
     let title = sanitize_line(&format!("Preview: {}", plan.description));
     let mut view = if nothing_to_do(plan) {
         PreviewBox::new(title).with_choices(vec![sanitize_line("Close")])
     } else {
         PreviewBox::new(title)
     };
-    view.lines = plan_lines(plan, clipped);
+    view.lines = plan_lines(plan, clipped, columns);
     view.commands = plan
         .commands
         .iter()
@@ -834,14 +834,24 @@ fn planning_title(subject: &PreviewSubject) -> String {
     }
 }
 
-/// The wording table: ghosts, refs, `HEAD`, the working tree, the forecast,
-/// the undo note, and the slice's own edge.
-fn plan_lines(plan: &PreviewPlan, clipped: usize) -> Vec<SanitizedText> {
+/// The wording table: ghosts, refs, `HEAD`, the working tree and the edits
+/// set aside around it, the forecast, the undo note, and the slice's own
+/// edge. `columns` picks the set-aside row's wording; every other row is
+/// one wording, cut by the box.
+fn plan_lines(plan: &PreviewPlan, clipped: usize, columns: u16) -> Vec<SanitizedText> {
     let mut lines: Vec<String> = Vec::new();
     lines.extend(ghost_line(&plan.ghosts));
     lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));
+    // The edits a rebase or checkout sets aside and puts back after
+    // (ADR-0045 §4, m6-conflicts/74): under the tree line it qualifies.
+    if let Some(aside) = plan.set_aside {
+        lines.push(graft_ui::preview_box::fitting_line(
+            &graft_ui::preview_box::set_aside_row(aside.files, aside.staged),
+            columns,
+        ));
+    }
     lines.push(conflict_line(&plan.conflicts));
     // A plan that changes nothing has nothing to take back, and offering
     // `u` over it teaches the box says things it does not mean

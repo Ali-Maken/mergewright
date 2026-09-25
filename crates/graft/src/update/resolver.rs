@@ -79,6 +79,8 @@ pub use names::side_names;
 pub(in crate::update) use open::box_open;
 pub(crate) use open::land_on_clash;
 pub use open::open_resolver;
+#[cfg(test)]
+pub(crate) use resolved::close_after_last;
 pub use resolved::resolved_advance;
 pub(crate) use resolved::{every_file_done, finish_if_owed, finish_refused_notice, set_notice};
 pub use restart::restart_landed;

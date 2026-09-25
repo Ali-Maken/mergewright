@@ -841,6 +841,26 @@ fn incomplete(
     refresh_scope(state, applied.refresh, next_id)
 }
 
+/// The line a clean write leaves: a clash's drop words the end of the clash;
+/// a remote op its own words; else the entry's description — then, after the
+/// tick, `· your edits are back` when the write set edits aside and they came
+/// back clean (m6-conflicts/74).
+fn done_status(
+    state: &mut AppState,
+    remote_op: Option<&Operation>,
+    clash_drop: Option<(Option<usize>, graft_core::journal::PutBackWhy)>,
+    applied: &graft_ops::apply::Applied,
+) -> Status {
+    if let Some((index, why)) = clash_drop {
+        return super::clash::dropped_status(index, why);
+    }
+    let done = remote_op.and_then(|op| super::remote::remote_done(state, op));
+    Status::Done {
+        what: done.unwrap_or_else(|| applied.entry.description.clone()),
+        keys: super::clash::edits_back(&applied.entry).map(str::to_owned),
+    }
+}
+
 /// An operate job answered. Stale answers (a job that is not the one
 /// `AppState::operating` is waiting for) are dropped. `Operated::Incomplete`
 /// still refreshes — the write happened even though part of its after-state
@@ -870,17 +890,11 @@ pub fn operated(
     // is worded as the end of the clash.
     let clash_drop = state
         .clash_drop
-        .take_if(|(drop, _)| *drop == id)
-        .map(|(_, index)| index);
+        .take_if(|(drop, _, _)| *drop == id)
+        .map(|(_, index, why)| (index, why));
     match outcome {
         Operated::Done(applied) => {
-            let done = remote_op
-                .as_ref()
-                .and_then(|op| super::remote::remote_done(state, op));
-            state.status = match clash_drop {
-                Some(index) => super::clash::dropped_status(index),
-                None => Status::done(done.unwrap_or_else(|| applied.entry.description.clone())),
-            };
+            state.status = done_status(state, remote_op.as_ref(), clash_drop, &applied);
             // The write the editor was open for landed, so the editor and
             // the draft behind it are about a commit that now exists
             // (m3-working-tree-undo-and-stash/05). A failure leaves both
@@ -963,16 +977,32 @@ fn operation_failed(
         refresh: what,
         remote,
         refused,
+        edits_in,
     } = failed
     else {
         // `operated` only ever hands this arm an `Operated::Failed`; the
         // match above is what guarantees it.
         return Vec::new();
     };
-    state.status = failure_line(state, remote_op, remote.as_ref(), refused.as_ref(), error);
+    state.status = match edits_in {
+        Some(at) => edits_in_status(at),
+        None => failure_line(state, remote_op, remote.as_ref(), refused.as_ref(), error),
+    };
     match what {
         Some(what) => refresh_scope(state, what, next_id),
         None => Vec::new(),
+    }
+}
+
+/// The line for edits set aside that could not be put back, their copy
+/// still listed at `stash@{at}` (ADR-0045 §5, m6-conflicts/74): sticky,
+/// `your edits are in stash@{0} · S p puts them back`. Why the put-back
+/// failed is the entry's `Aborted` reason, which `J` shows; the line keeps
+/// to where the edits are and the key that brings them back.
+pub(crate) fn edits_in_status(at: usize) -> Status {
+    Status::Sticky {
+        reason: format!("your edits are in stash@{{{at}}}"),
+        keys: Some("S p puts them back".to_owned()),
     }
 }
 
@@ -2069,6 +2099,7 @@ mod tests {
                 refresh: Some(Refresh::WorkingTree),
                 remote: None,
                 refused: None,
+                edits_in: None,
             },
             &mut ids(),
         );
@@ -2132,6 +2163,7 @@ mod tests {
                     refresh: None,
                     remote: None,
                     refused: Some(refusal.clone()),
+                    edits_in: None,
                 },
                 &mut ids(),
             );
@@ -2155,6 +2187,7 @@ mod tests {
                 refresh: None,
                 remote: None,
                 refused: Some(Refusal::NothingStaged),
+                edits_in: None,
             },
             &mut ids(),
         );
@@ -2183,6 +2216,7 @@ mod tests {
                 refresh: Some(Refresh::WorkingTree),
                 remote: None,
                 refused: None,
+                edits_in: None,
             },
             &mut ids(),
         );
@@ -2221,6 +2255,7 @@ mod tests {
                 refresh: None,
                 remote: None,
                 refused: None,
+                edits_in: None,
             },
             &mut ids(),
         );
@@ -2590,6 +2625,89 @@ mod tests {
     fn untracked_size_is_singular_at_one() {
         assert_eq!(untracked_size(1), " \u{2014} 1 line");
         assert_eq!(untracked_size(7), " \u{2014} 7 lines");
+    }
+
+    /// m6-conflicts/74: a rebase that set edits aside answered `Done` — the
+    /// put-back ran clean. Its own line, the tick, then `your edits are
+    /// back`. The same rebase on a clean tree words exactly as before.
+    #[test]
+    fn a_clean_put_back_says_your_edits_are_back() {
+        let launched = |state: &mut AppState| {
+            let mut commands = Vec::new();
+            launch(
+                state,
+                &mut commands,
+                Operation::DropPutBack {
+                    stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+                },
+                &mut ids(),
+            )
+            .expect("nothing else is running");
+            state.operating.expect("launched")
+        };
+        let mut done = applied("rebase main onto origin/main", Refresh::Everything);
+        done.entry.put_back = Some(graft_core::journal::PutBack {
+            stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+            why: graft_core::journal::PutBackWhy::SetAside,
+        });
+        let mut state = AppState::default();
+        let id = launched(&mut state);
+        operated(&mut state, id, Operated::Done(done), &mut ids());
+        assert_eq!(
+            state.status,
+            Status::done_with_keys("rebase main onto origin/main", "your edits are back")
+        );
+        assert_eq!(
+            crate::view::status::done_line(
+                "rebase main onto origin/main",
+                Some("your edits are back")
+            ),
+            "rebase main onto origin/main \u{2713} \u{b7} your edits are back"
+        );
+
+        let mut clean = AppState::default();
+        let id = launched(&mut clean);
+        let plain = applied("rebase main onto origin/main", Refresh::Everything);
+        operated(&mut clean, id, Operated::Done(plain), &mut ids());
+        assert_eq!(clean.status, Status::done("rebase main onto origin/main"));
+    }
+
+    /// m6-conflicts/74: the put-back failed for a reason other than a clash
+    /// and the set-aside copy is still listed: sticky, naming where the
+    /// edits are and the key that brings them back.
+    #[test]
+    fn a_put_back_failure_names_the_stash_and_s_p() {
+        let mut state = AppState::default();
+        let mut commands = Vec::new();
+        launch(
+            &mut state,
+            &mut commands,
+            Operation::DropPutBack {
+                stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+            },
+            &mut ids(),
+        )
+        .expect("nothing else is running");
+        let id = state.operating.expect("launched");
+        operated(
+            &mut state,
+            id,
+            Operated::Failed {
+                error: "checkout fix: error: … · your edits are in stash@{0}".to_owned(),
+                refresh: Some(Refresh::Everything),
+                remote: None,
+                refused: None,
+                edits_in: Some(0),
+            },
+            &mut ids(),
+        );
+        assert_eq!(
+            state.status,
+            Status::Sticky {
+                reason: "your edits are in stash@{0}".to_owned(),
+                keys: Some("S p puts them back".to_owned()),
+            }
+        );
     }
 
     mod one_write;

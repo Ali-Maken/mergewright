@@ -298,9 +298,11 @@ pub struct AppState {
     /// is this run's, one it finds before is from the last run.
     pub(crate) clash_facts_seen: bool,
     /// The `DropPutBack` the resolver's close launched after a popped
-    /// stash's last file, and the stash's position then — what its answer's
-    /// `every file done · stash@{0} dropped ✓` names.
-    pub(crate) clash_drop: Option<(JobId, Option<usize>)>,
+    /// stash's last file, the stash's position then, and why it was put
+    /// back — what its answer's `every file done · stash@{0} dropped ✓`
+    /// names (a set-aside's: `every file done · your edits are back ✓`,
+    /// m6-conflicts/74).
+    pub(crate) clash_drop: Option<(JobId, Option<usize>, graft_core::journal::PutBackWhy)>,
     /// The clash landing opened the resolver from the changes pane while
     /// the working tree held was still the one from before the put-back —
     /// clean, so the pane could not stay on it (`selection::reconcile`). The
@@ -969,7 +971,9 @@ pub enum Status {
     Done {
         /// What finished, without the tick.
         what: String,
-        /// The next key, worded as it reads in the hint bar, if any.
+        /// The next key, worded as it reads in the hint bar, if any — or
+        /// what else is true after the tick (`your edits are back`,
+        /// m6-conflicts/74).
         keys: Option<String>,
     },
 }

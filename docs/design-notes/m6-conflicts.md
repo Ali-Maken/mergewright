@@ -515,6 +515,11 @@ last-block-to-finished        3                     # Amendment 2026-09-24 J13: 
 stash-pop-clash-to-done       4                     # S p o ⏎ · m6-stash-put-back.md :37-39 · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs
 stash-apply-clash-to-done     4                     # S ⏎ o ⏎ · m6-stash-put-back.md :37-39 · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs
 stash-clash-put-back          2                     # +1 y when the drift box asks · m6-stash-put-back.md :37-39 · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs
+pull-rebase-dirty             3                     # p r r · m6-stash-put-back.md :40 · JetBrains 3–4 · walked in tests/it/m6_stash_put_back/set_aside.rs
+rejected-push-dirty-to-pushed 5                     # p r r P y · m6-stash-put-back.md :41 · JetBrains 3–4 · walked there
+switch-dirty                  3                     # . ⏎ y · m6-stash-put-back.md :42 · lazygit 2, JetBrains 3 · walked there
+switch-dirty-clash            5                     # . ⏎ y o ⏎ · m6-stash-put-back.md :43 · JetBrains ~5 (?) · walked there
+pull-rebase-stop-then-clash   8                     # p r r o ⏎ c o ⏎ · m6-stash-put-back.md :44 · none counted · walked there
 ```
 The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
 moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.
