@@ -40,9 +40,15 @@ pub fn finish_key(
     }
     match key.code {
         KeyCode::Escape => escape(state),
-        // `Shift+Tab` arrives as its own code; P11 is not approved, so it
-        // does nothing here.
-        KeyCode::Tab if !key.modifiers.shift => with_finish(state, |finish| {
+        // `Shift+Tab` arrives as `BackTab` from most terminals and as a
+        // shifted `Tab` from some: both step the focus back (§2.6b).
+        KeyCode::Tab if key.modifiers.shift => with_finish(state, |finish| {
+            finish.focus = finish.focus.prev();
+        }),
+        KeyCode::BackTab => with_finish(state, |finish| {
+            finish.focus = finish.focus.prev();
+        }),
+        KeyCode::Tab => with_finish(state, |finish| {
             finish.focus = finish.focus.next();
         }),
         _ => match finish.focus {
@@ -79,7 +85,9 @@ pub(super) fn control_key(
     }
 }
 
-/// Keys while the file lists have focus.
+/// Keys while the file lists have focus: `y` commits, the one confirm key
+/// of every preview (P12, ADR-0044 §3); `⏎` and `space` show the cursor
+/// file's change.
 pub(super) fn files_key(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -87,12 +95,24 @@ pub(super) fn files_key(
     next_id: &mut impl FnMut() -> JobId,
 ) {
     match key.code {
-        KeyCode::Enter => commit(state, commands, next_id),
-        KeyCode::Char('j') => move_cursor(state, 1),
-        KeyCode::Char('k') => move_cursor(state, -1),
-        KeyCode::Char(' ') => toggle_diff(state, commands, next_id),
+        KeyCode::Char('y') => commit(state, commands, next_id),
+        KeyCode::Enter | KeyCode::Char(' ') => toggle_diff(state, commands, next_id),
+        KeyCode::Char('j') | KeyCode::Down => move_cursor(state, 1),
+        KeyCode::Char('k') | KeyCode::Up => move_cursor(state, -1),
+        KeyCode::PageDown => move_cursor(state, page(state)),
+        KeyCode::PageUp => move_cursor(state, -page(state)),
         _ => {}
     }
+}
+
+/// One page: the list's visible height, the lines the frame leaves it.
+fn page(state: &AppState) -> isize {
+    let Some(view) = crate::view::finish::finish_view(state) else {
+        return 0;
+    };
+    let height =
+        graft_ui::finish_summary::list_height(&view, crate::view::finish::summary_area(state));
+    isize::try_from(height.max(1)).unwrap_or(isize::MAX)
 }
 
 /// Keys while the subject has focus: `⏎` commits (§2.6b).
@@ -171,7 +191,7 @@ pub(super) fn row_path(finish: &FinishState, row: usize) -> Option<PathBuf> {
     }
 }
 
-/// `space`: show the cursor row's staged diff under it, or hide it.
+/// `⏎`/`space`: show the cursor row's staged diff under it, or hide it.
 pub(super) fn toggle_diff(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -196,7 +216,7 @@ pub(super) fn toggle_diff(
     keep_cursor_on_screen(state);
 }
 
-/// `⏎` (files, subject) or `Ctrl+Enter`: commit.
+/// `y` (files), `⏎` (subject) or `Ctrl+Enter`: commit.
 pub(super) fn commit(
     state: &mut AppState,
     commands: &mut Vec<Command>,

@@ -20,6 +20,7 @@ fn summary_captures() {
     let state = c_for_the_summary(&app, state);
 
     closed_captures(&state, &repo);
+    preview_captures(&state);
     let state = expanded_capture(&app, &state);
     drop(state);
     app.close();
@@ -34,7 +35,11 @@ fn closed_captures(state: &AppState, repo: &Path) {
         let frame = crate::captures::frame(state, columns, rows);
         let body = frame.join("\n");
         assert!(
-            body.contains("Finish · merging feature → main · nothing is written until ⏎"),
+            frame[1].starts_with("╭ Preview: finish merging feature into main ─"),
+            "{columns}: {body}"
+        );
+        assert!(
+            frame[2].starts_with("│ 1 merge commit on main · nothing is committed until y"),
             "{columns}: {body}"
         );
         assert!(body.contains("RESOLVED BY YOU · 2"), "{columns}: {body}");
@@ -56,10 +61,55 @@ fn closed_captures(state: &AppState, repo: &Path) {
             body.contains(&first),
             "{columns}: git's first line {first:?}"
         );
+        // The keys are in the frame's bottom border; the app's last row
+        // carries none while nothing is committing.
+        let border = &frame[frame.len() - 2];
+        assert!(
+            border.starts_with("╰ y commit  ⏎/space diff"),
+            "{columns}: {border}"
+        );
         let bar = frame.last().expect("a bar");
-        assert!(bar.trim_start().starts_with("⏎ commit"), "{columns}: {bar}");
+        assert!(bar.trim().is_empty(), "{columns}: {bar:?}");
         crate::captures::check_shot(
             &format!("m6/fix-finish-summary-{columns}x{rows}.txt"),
+            &format!("{body}\n"),
+        );
+    }
+}
+
+/// The summary as a preview (m6-conflicts/59), at the two sizes the ticket
+/// names: the frame's title, its two preview lines, `y commit` leading the
+/// bottom border, and nothing on the app's last row. Colour unverified
+/// (rule 5).
+fn preview_captures(state: &AppState) {
+    for (columns, rows) in [(187, 50), (80, 24)] {
+        let frame = crate::captures::frame(state, columns, rows);
+        let body = frame.join("\n");
+        let top = frame
+            .iter()
+            .position(|line| line.starts_with('╭'))
+            .unwrap_or_else(|| panic!("{columns}: no frame: {body}"));
+        assert!(
+            frame[top].starts_with("╭ Preview: finish merging feature into main ─"),
+            "{columns}: {body}"
+        );
+        assert!(
+            frame[top + 1].starts_with("│ 1 merge commit on main · nothing is committed until y"),
+            "{columns}: {body}"
+        );
+        assert!(
+            frame[top + 2].starts_with("│ undo: u takes this back"),
+            "{columns}: {body}"
+        );
+        let border = &frame[frame.len() - 2];
+        assert!(
+            border.starts_with("╰ y commit  ⏎/space diff"),
+            "{columns}: {border}"
+        );
+        let last = frame.last().expect("a last row");
+        assert!(last.trim().is_empty(), "{columns}: {last:?}");
+        crate::captures::check_shot(
+            &format!("m6/fix-summary-preview-{columns}x{rows}.txt"),
             &format!("{body}\n"),
         );
     }
@@ -84,11 +134,13 @@ fn expanded_capture(app: &App, state: &AppState) -> AppState {
         .expect("the README.md row");
     // The first row under it is the hunk's heading row, blank here (git
     // gives this hunk no function context); the diff lines follow it.
-    let under: Vec<&String> = frame
+    // Inside the frame: its `│ ` border and gutter come off first.
+    let under: Vec<&str> = frame
         .iter()
         .skip(at + 1)
         .take_while(|line| !line.contains("MESSAGE"))
-        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.strip_prefix("│ ").unwrap_or(line))
+        .filter(|line| !line.trim_end_matches('│').trim().is_empty())
         .collect();
     assert!(
         !under.is_empty() && under.iter().all(|line| line.starts_with("    ")),

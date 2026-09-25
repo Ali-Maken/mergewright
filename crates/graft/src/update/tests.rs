@@ -3666,8 +3666,8 @@ fn dead_keys_on(
         .collect()
 }
 
-/// The hints `bar` draws at `columns`. The finish summary draws its own
-/// bar, which below the widget's floor is `esc back` alone
+/// The hints `bar` draws at `columns`. The finish summary draws its keys
+/// in its own frame, and below the widget's floor offers `esc back` alone
 /// (`view::finish::finish_hints`): that is the bar to press, not the
 /// table's whole list.
 fn bar_hints(
@@ -4026,6 +4026,7 @@ fn presses_for(name: &str) -> Vec<Press> {
         "F2" => vec![plain(KeyCode::Function(2))],
         "F3" => vec![plain(KeyCode::Function(3))],
         "j/k" => vec![plain(KeyCode::Char('j')), plain(KeyCode::Char('k'))],
+        "⏎/space" => vec![plain(KeyCode::Enter), plain(KeyCode::Char(' '))],
         "O/T" => vec![plain(KeyCode::Char('O')), plain(KeyCode::Char('T'))],
         "g/G" => vec![plain(KeyCode::Char('g')), plain(KeyCode::Char('G'))],
         "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],

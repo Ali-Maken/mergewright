@@ -23,7 +23,7 @@ pub enum ListLine {
         /// Which of its lines.
         nth: usize,
     },
-    /// `… N more lines · space hides`, under row `row`'s diff.
+    /// `… N more lines · ⏎ hides`, under row `row`'s diff.
     More {
         /// The row it hangs under.
         row: usize,
@@ -40,7 +40,7 @@ pub enum ListLine {
 pub enum Section {
     /// `RESOLVED BY YOU · n`.
     ByYou,
-    /// `COMBINED BY GIT ON ITS OWN · n · space shows the change`, or `· none`.
+    /// `COMBINED BY GIT ON ITS OWN · n · ⏎ shows the change`, or `· none`.
     ByGit,
     /// `CHANGED BY THIS MERGE · n · which were conflicts is not recorded`.
     Unrecorded,
@@ -49,8 +49,11 @@ pub enum Section {
 /// Where each part of the summary goes in an area.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FinishLayout {
-    /// The title row.
-    pub title: Rect,
+    /// The rounded frame: the whole area. Title in its top border, keys in
+    /// its bottom one.
+    pub frame: Rect,
+    /// The two preview lines, first inside the frame.
+    pub preview: Rect,
     /// The scrolled file list.
     pub list: Rect,
     /// `MESSAGE · ⇥ edit`.
@@ -59,7 +62,7 @@ pub struct FinishLayout {
     pub subject: Rect,
     /// The body area, its label row first.
     pub body: Rect,
-    /// The notice row above the bar, when there is a notice.
+    /// The notice row, the frame's last inside row, when there is a notice.
     pub notice: Option<Rect>,
 }
 
@@ -139,11 +142,13 @@ pub fn list_lines(view: &FinishView<'_>) -> Vec<ListLine> {
 
 /// Where each part goes in `area`, or `None` below [`FINISH_MIN`].
 ///
-/// One column below [`TWO_COLUMN_MIN`]: the title, the list (as tall as its
-/// lines, leaving the message its [`MESSAGE_MIN_ROWS`]), then the message
-/// right under it, its body taking what is left. From 160: the list on the
-/// left 60 %, the message on the right, both from the row under the title.
-/// The notice, when there is one, takes the bottom row.
+/// The frame is the whole area; inside it, one cell of gutter either side,
+/// the two preview lines come first. Then, one column below
+/// [`TWO_COLUMN_MIN`]: the list (as tall as its lines, leaving the message
+/// its [`MESSAGE_MIN_ROWS`]), then the message right under it, its body
+/// taking what is left. From 160: the list on the left 60 %, the message on
+/// the right, both from the row under the preview lines. The notice, when
+/// there is one, takes the frame's last inside row.
 #[must_use]
 pub fn layout(view: &FinishView<'_>, area: Rect) -> Option<FinishLayout> {
     if !fits(area) {
@@ -155,21 +160,31 @@ pub fn layout(view: &FinishView<'_>, area: Rect) -> Option<FinishLayout> {
         width,
         height,
     };
-    let title = row(area.y, area.x, area.width, 1);
+    let frame = area;
+    // Inside the border, one cell of gutter either side: no text touches a
+    // border glyph (`frame_box::content_row`'s rule).
+    let inside = Rect {
+        x: area.x + 2,
+        y: area.y + 1,
+        width: area.width - 4,
+        height: area.height - 2,
+    };
+    let preview = row(inside.y, inside.x, inside.width, 2);
     let notice = view
         .notice
         .as_ref()
-        .map(|_| row(area.bottom() - 1, area.x, area.width, 1));
-    let top = area.y + 1;
-    let bottom = area.bottom() - u16::from(notice.is_some());
+        .map(|_| row(inside.bottom() - 1, inside.x, inside.width, 1));
+    let top = inside.y + 2;
+    let bottom = inside.bottom() - u16::from(notice.is_some());
     let rows = bottom - top;
     if area.width >= TWO_COLUMN_MIN {
-        let left = area.width * 3 / 5;
-        let right_x = area.x + left + 2;
-        let right = area.width - left - 2;
+        let left = inside.width * 3 / 5;
+        let right_x = inside.x + left + 2;
+        let right = inside.width - left - 2;
         return Some(FinishLayout {
-            title,
-            list: row(top, area.x, left, rows),
+            frame,
+            preview,
+            list: row(top, inside.x, left, rows),
             message: row(top, right_x, right, 1),
             subject: row(top + 1, right_x, right, 1),
             body: row(top + 2, right_x, right, rows - 2),
@@ -180,11 +195,17 @@ pub fn layout(view: &FinishView<'_>, area: Rect) -> Option<FinishLayout> {
     let list_rows = lines.min(rows - MESSAGE_MIN_ROWS);
     let message_y = top + list_rows;
     Some(FinishLayout {
-        title,
-        list: row(top, area.x, area.width, list_rows),
-        message: row(message_y, area.x, area.width, 1),
-        subject: row(message_y + 1, area.x, area.width, 1),
-        body: row(message_y + 2, area.x, area.width, bottom - message_y - 2),
+        frame,
+        preview,
+        list: row(top, inside.x, inside.width, list_rows),
+        message: row(message_y, inside.x, inside.width, 1),
+        subject: row(message_y + 1, inside.x, inside.width, 1),
+        body: row(
+            message_y + 2,
+            inside.x,
+            inside.width,
+            bottom - message_y - 2,
+        ),
         notice,
     })
 }

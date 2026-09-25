@@ -9,6 +9,7 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
+use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthChar;
 
 use crate::fit::fit;
@@ -60,6 +61,63 @@ pub(crate) fn border_row(left: char, right: char, label: &str, width: usize) -> 
     let clamped = fit(&labelled, full);
     let dashes = "─".repeat(inner - full);
     format!("{left}{clamped}{dashes}{right}")
+}
+
+/// [`border_row`] with styled words: the same cells, but each word keeps
+/// its own style and the corners and dashes take `line`'s. A label cut with
+/// `…` is cut by the same rule, and the `…` takes the style of the word it
+/// cut. The finish summary draws its title and its keys with it
+/// (m6-conflicts/59): the frame in `accent`, one key in `accent` BOLD, the
+/// rest muted.
+#[must_use]
+pub(crate) fn border_row_spans(
+    left: char,
+    right: char,
+    words: &[(&str, Style)],
+    line: Style,
+    width: u16,
+) -> Line<'static> {
+    let width = usize::from(width);
+    let plain: String = words.iter().map(|(word, _)| *word).collect();
+    // Below six cells there is no room for a word and its gutters: the
+    // plain row, in the line's style.
+    if width < 6 || plain.is_empty() {
+        return Line::from(Span::styled(border_row(left, right, &plain, width), line));
+    }
+    // One style per character of `plain`, in order.
+    let styles: Vec<Style> = words
+        .iter()
+        .flat_map(|(word, style)| word.chars().map(move |_| *style))
+        .collect();
+    let inner = width - 2;
+    let full = cells(&plain) + 2;
+    let cut = full > inner;
+    let label = if cut {
+        fit(&plain, inner - 2)
+    } else {
+        plain.clone()
+    };
+    let tail = if cut {
+        " ".repeat(inner - 1 - cells(&label))
+    } else {
+        format!(" {}", "─".repeat(inner - full))
+    };
+    let mut spans = vec![Span::styled(format!("{left} "), line)];
+    let mut run = String::new();
+    let mut run_style = styles.first().copied().unwrap_or(line);
+    for (at, character) in label.chars().enumerate() {
+        let style = styles.get(at).or(styles.last()).copied().unwrap_or(line);
+        if style != run_style && !run.is_empty() {
+            spans.push(Span::styled(std::mem::take(&mut run), run_style));
+        }
+        run_style = style;
+        run.push(character);
+    }
+    if !run.is_empty() {
+        spans.push(Span::styled(run, run_style));
+    }
+    spans.push(Span::styled(format!("{tail}{right}"), line));
+    Line::from(spans)
 }
 
 /// A plain content row: `│ text │`, `text` fit to what is left.
@@ -238,6 +296,35 @@ mod tests {
         assert_eq!(cells(&moved), cells(&row), "the row must not shift");
         assert_eq!(at.offset, cells(" [ Cancel ]  "));
         assert_eq!(at.width, cells("▸[ Undo locally ]"));
+    }
+
+    /// The styled row reads exactly as [`border_row`] does, whole or cut,
+    /// and each word keeps its own style.
+    #[test]
+    fn border_row_spans_reads_as_border_row_and_keeps_each_style() {
+        let bold = Style::new().add_modifier(Modifier::BOLD);
+        let plain = Style::new();
+        let words = [("y", bold), (" commit  esc back", plain)];
+        for width in [4_u16, 6, 12, 20, 40] {
+            let line = border_row_spans('╰', '╯', &words, plain, width);
+            let text: String = line
+                .spans
+                .iter()
+                .map(|span| span.content.as_ref())
+                .collect();
+            assert_eq!(
+                text,
+                border_row('╰', '╯', "y commit  esc back", usize::from(width)),
+                "width {width}"
+            );
+        }
+        let line = border_row_spans('╰', '╯', &words, plain, 40);
+        let y = line
+            .spans
+            .iter()
+            .find(|span| span.content == "y")
+            .expect("the key is its own span");
+        assert_eq!(y.style, bold);
     }
 
     #[test]

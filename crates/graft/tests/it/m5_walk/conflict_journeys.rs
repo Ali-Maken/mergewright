@@ -89,7 +89,7 @@ fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
         "m6-15-finish-summary" => (then(both_done(), &[ch('c')]), "RESOLVED BY YOU"),
         "m6-16-summary-expanded" => (then(both_done(), &[ch('c'), ch(' ')]), "feature's line"),
         "m6-17-after-commit" => (
-            then(both_done(), &[ch('c'), KeyCode::Enter]),
+            then(both_done(), &[ch('c'), ch('y')]),
             "merged feature into main",
         ),
         // The launch's first frame: the app opens on the shell-begun merge.
@@ -172,12 +172,12 @@ fn both_files_done() -> Vec<Step> {
     chain(vec![done_by('o', "gone.txt"), done_by('T', "notes.txt")])
 }
 
-/// `c` → the summary, `⏎` → the commit, everything re-read.
-fn c_enter() -> Vec<Step> {
+/// `c` → the summary, `y` → the commit, everything re-read.
+fn c_y() -> Vec<Step> {
     vec![
         key(ch('c')),
         Step::WaitFor(Wait::FinishReady),
-        key(KeyCode::Enter),
+        key(ch('y')),
         Step::Settle("the merge commit"),
         Step::WaitFor(Wait::Ready),
         Step::WaitFor(Wait::NotInProgress),
@@ -281,7 +281,7 @@ fn every_file_done() -> Vec<Step> {
     ]
 }
 
-/// After `⏎` in the summary: the graph has the keyboard, its cursor on the
+/// After `y` in the summary: the graph has the keyboard, its cursor on the
 /// merge commit (`main`'s tip, `HEAD`), the status `merged feature into
 /// main ✓`, and git agrees: `HEAD^2` is `feature`, nothing in progress.
 fn merged_landing() -> Vec<Step> {
@@ -696,7 +696,7 @@ fn a_finish() -> Scenario {
                     key(ch('c')),
                     Step::WaitFor(Wait::FinishReady),
                     the_summary(),
-                    key(KeyCode::Enter),
+                    key(ch('y')),
                     Step::Settle("the merge commit"),
                     Step::WaitFor(Wait::Ready),
                     Step::WaitFor(Wait::NotInProgress),
@@ -743,7 +743,7 @@ fn b_finish() -> Scenario {
             two_files_in_the_shell,
             chain_all(vec![
                 shell_merge_resolved_in_the_app(),
-                vec![vec![route()], c_enter(), vec![end()]],
+                vec![vec![route()], c_y(), vec![end()]],
                 vec![
                     merged_landing(),
                     vec![Step::Mark("finished")],
@@ -762,7 +762,7 @@ fn b_finish_again_after_undo() -> Scenario {
         chain_all(vec![
             shell_merge_resolved_in_the_app(),
             vec![
-                c_enter(),
+                c_y(),
                 undo(),
                 vec![
                     Step::WaitFor(Wait::BackInProgress),
@@ -774,7 +774,7 @@ fn b_finish_again_after_undo() -> Scenario {
                     }),
                 ],
             ],
-            vec![vec![route()], c_enter(), vec![end()], merged_landing()],
+            vec![vec![route()], c_y(), vec![end()], merged_landing()],
         ]),
     )
 }
@@ -1102,7 +1102,7 @@ fn a_whole_one_file() -> Scenario {
             vec![route()],
             m_m(),
             done_by('O', "shared.txt"),
-            c_enter(),
+            c_y(),
             vec![end()],
             merged_landing(),
         ],
@@ -1118,7 +1118,7 @@ fn a_whole_two_files() -> Scenario {
             vec![route()],
             m_m(),
             both_files_done(),
-            c_enter(),
+            c_y(),
             vec![end()],
             merged_landing(),
         ],
@@ -1137,7 +1137,7 @@ fn b_whole_two_files() -> Scenario {
                 Step::WaitFor(Wait::ConflictOpened),
             ],
             both_files_done(),
-            c_enter(),
+            c_y(),
             vec![end()],
             merged_landing(),
         ],
@@ -1189,7 +1189,7 @@ fn editor_to_finish() -> Scenario {
                     check(state.banner_focus, || "not on the banner".to_owned())
                 }),
             ],
-            c_enter(),
+            c_y(),
             vec![end()],
             merged_landing(),
         ],

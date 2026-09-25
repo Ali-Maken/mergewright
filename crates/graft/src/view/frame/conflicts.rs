@@ -168,7 +168,7 @@ pub(super) fn draw_finish(
             body.x,
             body.bottom() - 1,
             graft_ui::fit::fit(
-                &crate::view::finish::finish_bar(state, body.width),
+                &crate::view::finish::finish_bar(state),
                 usize::from(body.width),
             ),
             Style::default().fg(color(session.theme.token(Token::TextMuted))),

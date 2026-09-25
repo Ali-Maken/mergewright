@@ -1,6 +1,6 @@
 //! The finish summary against a real merge (m6-conflicts/19, the app half
 //! built by m6-conflicts/34): `c` on the resolved merge's banner, the
-//! summary read from the repository, and `⏎` committing through the real
+//! summary read from the repository, and `y` committing through the real
 //! `git merge --continue`. What landed is read back from git, never from
 //! the status line.
 #![allow(
@@ -82,7 +82,7 @@ fn summary_open(app: &App, state: AppState, repo: &Path) -> AppState {
     })
 }
 
-/// `⏎` (or whatever `key` is) and the `--continue` it runs, to its answer.
+/// `y` (or whatever `key` is) and the `--continue` it runs, to its answer.
 fn committed(app: &App, state: &AppState, key: KeyPress) -> AppState {
     let state = app.press(state, key);
     assert!(
@@ -331,7 +331,7 @@ fn done_lands_on_the_merge_commit() {
     let (app, state) = App::open(repo);
     let state = summary_open(&app, state, repo);
 
-    let state = committed(&app, &state, KeyPress::plain(KeyCode::Enter));
+    let state = committed(&app, &state, KeyPress::plain(KeyCode::Char('y')));
     let state = app.pump(state, "the landing the finish owes", |state| {
         state.in_progress.is_none() && !state.land_on_head
     });

@@ -1,4 +1,4 @@
-m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T c ⏎, unicode tier, 80x24
+m6 walk capture: m6-17-after-commit — scenario a-whole-two-files, keys m m o T c y, unicode tier, 80x24
 
  graft <scratch____________________________________________________________>  1…
 ◆─╮ ▏  [◆ main] Merge branch 'feature' into main                    6y   9225152

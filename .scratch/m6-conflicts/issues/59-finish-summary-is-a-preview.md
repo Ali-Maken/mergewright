@@ -1,6 +1,6 @@
 # finish-summary-is-a-preview: the finish summary is framed as the merge preview; `y` commits, `⏎` shows a file's change; arrows, pages and `⇧⇥` work
 
-Status: ready
+Status: done
 From: P12 (approved 2026-09-24, picks item 3) and batch 8 (picks item 4); field notes :60, :63; ADR-0044 §3.
 Build with: builder-opus. The conductor set this after the scout: two crates, a layout change, new border styling and
 many test moves. The shape is decided here, so nothing in it needs Fable.
@@ -191,27 +191,27 @@ impl FinishFocus { #[must_use] pub fn prev(self) -> Self; }   // inverse of `nex
   - `crates/graft/MAP.md` §update::finish (the keys for `finish_key` / `files_key`, and `FinishFocus::prev`).
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `y_in_the_file_list_commits_and_enter_toggles_the_diff`: red first, then green.
-- [ ] `y_in_the_subject_is_typed_text`, `enter_in_the_subject_still_commits`
-- [ ] `arrows_and_pages_move_the_file_cursor`, `backtab_steps_focus_back`
-- [ ] `preview_title_shortens_then_cuts`: full, short and cut at three widths, plus `None` → `Preview: finish the
+- [x] `y_in_the_file_list_commits_and_enter_toggles_the_diff` (graft `update::finish::tests`): seen red before the keys changed, then green.
+- [x] `y_in_the_subject_is_typed_text`, `enter_in_the_subject_still_commits` (graft `update::finish::tests`)
+- [x] `arrows_and_pages_move_the_file_cursor`, `backtab_steps_focus_back` (graft `update::finish::tests`)
+- [x] `preview_title_shortens_then_cuts` (graft-ui `finish_summary::tests`): full, short and cut at three widths, plus `None` → `Preview: finish the
   merge`.
-- [ ] `summary_draws_inside_the_preview_frame`. Buffer: corners, title, the two preview lines, the footer keys. Style:
+- [x] `summary_draws_inside_the_preview_frame` (grid) and `preview_frame_styles` (styles; split for clippy's complexity limit), graft-ui `finish_summary::tests`. Buffer: corners, title, the two preview lines, the footer keys. Style:
   the border cells are `accent`; the footer's `y` is `accent` + BOLD.
-- [ ] `unread_summary_has_no_names`: the title is `Preview: finish the merge`, and line 1 is
+- [x] `unread_summary_has_no_names` (graft-ui `finish_summary::tests`; graft `update::finish::tests` checks `names` is `None`): the title is `Preview: finish the merge`, and line 1 is
   `1 merge commit · nothing is committed until y`.
-- [ ] `hit_round_trips_inside_the_frame`
-- [ ] `y_while_reading_says_wait`, `unavailable_summary_names_y`
-- [ ] `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here` (green)
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-summary-preview-187x50.txt` and `-80x24`.
+- [x] `hit_round_trips_inside_the_frame` (graft-ui, at 80x24, 120x40, 187x50)
+- [x] `y_while_reading_says_wait` (graft), `unavailable_summary_names_y` (graft-ui)
+- [x] `every_key_the_bar_draws_is_answered`, `every_bound_action_is_hinted_live_or_is_named_here` (graft `update::tests`, green)
+- [x] Capture, by `finish::captures::summary_captures` -> `preview_captures`, which asserts each line below (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-summary-preview-187x50.txt` and `-80x24`.
   - **What right looks like:**
     - The top border reads `╭ Preview: finish merging feature into main ─`.
     - The first two inside lines are `1 merge commit on main · nothing is committed until y` and
       `undo: u takes this back`.
-    - The bottom border starts `╰ y commit  ⏎ diff`.
+    - The bottom border starts `╰ y commit  ⏎/space diff` (deviation: see NOTES).
     - The app's last row has no keys.
     - At 80: the same order in one column, and nothing is cut but the title, if it must be.
-- [ ] MAP.md files updated (doc, no test).
+- [x] MAP.md files updated (doc, no test): graft-ui `frame_box`, `finish_summary`, `HintContext::Finish`; graft §update::finish, `view::finish`.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -223,3 +223,17 @@ capture regeneration is mechanical. If the context runs short, stop after graft-
 The graft half is separable at `FinishView.names` / `FINISH_MIN`.
 
 ## NOTES
+Built 2026-09-25 from scout `.scratch/m6-conflicts/scouts/59.md`. **Compacted once mid-ticket** (after captures, before MAP.md and gates); nothing remains.
+
+- **Deviation:** the footer reads `⏎/space diff`, not `⏎ diff`. `space` stays bound, and `every_bound_action_is_hinted_live_or_is_named_here` needs every bound key named; `("⏎/space","diff")` in `bound.rs`, `presses_for` knows `⏎/space`.
+- `border_row_spans` returns `Line<'static>`, not `border_row`'s `String` (it carries styles).
+- Added `FinishView.focused` (= no live box, `view::rows::box_context`): under a confirm box the frame is `border` and shows no keys. Found by `the_bottom_row_under_a_live_box_offers_only_its_keys`.
+- Wording: section head `· ⏎ shows the change`, more row `· ⏎ hides`; unavailable `summary unavailable: … · y commits with git's message`. Inside width is w-4. `FINISH_MIN` 62x18.
+- `finish_bar(state)` lost its width: `committing…` or empty. `finish_hints` is `#[cfg(test)]`.
+- Renames: `enter_commits_with_gits_message_when_unedited` -> `y_commits_…`, `enter_while_reading_says_wait` -> `y_while_reading_says_wait`, `enter_to_the_landing` -> `y_to_the_landing`, `c_enter_finishes_a_shell_begun_merge` -> `c_y_…`, `c_enter_after_u_finishes_the_merge_again` -> `c_y_after_u_…`, walk helper `c_enter()` -> `c_y()`.
+- Enters left on purpose: subject commits (`finish.rs` 118/306, `shell_begun.rs` 931), confirm boxes (`choices.rs` 203/305, `shell_begun.rs` 339/468/982, walk-back 1060), resolver `⏎` (`captures.rs` 17, `choices.rs` 100). The scout listed captures.rs:17 and choices.rs:100/203/305 as finish commits; they are not.
+- `pty-walk-m6.py` sends no finish key itself (grep); its keys come from `conflict_journeys.rs` `captured()` (m6-17 now `c y`; m6-16 still `space`, which still toggles).
+- Retaken: `fix-finish-summary-*` (4), m6-15/16/17 at 5 sizes; new `fix-summary-preview-{187x50,80x24}`. Sheet now 3 parts (179 951 / 170 673 / 85 895 B). m6-15/16 at 187/200 are ~10 KB, over the pty script's 8 KB soft note (full-width borders), far under 200 KB.
+- `docs/shots/m6/prototype-journeys.txt` still says `⏎ commit`: a prototype record, left alone.
+- Colour **unverified** (rule 5): cell-style tests assert tokens only.
+- Journey counts unchanged (`⏎` -> `y` is one key for one key); no row added.
