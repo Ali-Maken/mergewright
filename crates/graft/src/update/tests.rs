@@ -4917,6 +4917,7 @@ fn journal_entry() -> graft_core::journal::JournalEntry {
         reverses: None,
         merge_before: None,
         merge_after: None,
+        put_back: None,
     }
 }
 

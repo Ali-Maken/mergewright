@@ -239,6 +239,7 @@ fn tear_the_journal(repo: &std::path::Path, description: &str) {
         reverses: None,
         merge_before: None,
         merge_after: None,
+        put_back: None,
     };
     journal
         .append_pending(&entry)

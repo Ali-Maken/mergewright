@@ -205,14 +205,14 @@ fn conflicted_pop_undo_is_clean_without_force() {
         NOW,
     );
     let entry = match failed {
-        Err(ApplyError::Git { entry, .. }) => *entry,
+        Err(ApplyError::Clashed { entry, .. }) => *entry,
         other => panic!("the pop should have conflicted: {other:?}"),
     };
 
     let index_after = entry.index_after.expect("the unmerged index is recorded");
     assert!(
         index_after.is_unmerged(),
-        "an aborted pop leaves an unmerged index: {index_after:?}"
+        "a clashed pop leaves an unmerged index: {index_after:?}"
     );
 
     // Nothing has been touched since, so §6.7's comparison must come up

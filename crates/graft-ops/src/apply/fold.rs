@@ -154,6 +154,7 @@ fn inside_live_operation(
         // before- or after-state, the merge's included.
         merge_before: None,
         merge_after: None,
+        put_back: None,
     };
     match failure {
         None => Ok(Applied {

@@ -245,6 +245,7 @@ fn applied(description: &str) -> graft_ops::apply::Applied {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            put_back: None,
         },
         refresh: Refresh::Everything,
         step_backup: None,

@@ -33,6 +33,7 @@ fn a_resume_git_fails_answers_failed() {
         reverses: None,
         merge_before: None,
         merge_after: None,
+        put_back: None,
     };
     let answered = answer(Err(ApplyError::Git {
         entry: Box::new(entry),
@@ -77,6 +78,7 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            put_back: None,
         }),
         error: RunError::GitNotFound,
         recoverable: true,

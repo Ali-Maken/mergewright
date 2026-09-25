@@ -344,11 +344,12 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
                 Step::Settle("the pop"),
                 Step::WaitFor(Wait::ConflictedPath(POPPED)),
                 Step::Mark("popped"),
-                // git's own words for a pop that stopped: the app runs
-                // `stash pop --index`, and git says the index was not
-                // unstashed; the stash stays listed.
-                Step::See("the pop stopped, in git's words", |state| {
-                    status_containing(state, "Index was not unstashed")
+                // Since m6-conflicts/72 a clashed pop is `ApplyError::Clashed`,
+                // and its interim line is Graft's, not git's `Index was not
+                // unstashed` (72b replaces it with the landing); the stash
+                // stays listed.
+                Step::See("the pop clashed, in the interim words", |state| {
+                    status_containing(state, "pop stash@{0} left conflicts in 1 file")
                 }),
                 // The first `Esc` clears the stop's line, the second closes
                 // the stash list.

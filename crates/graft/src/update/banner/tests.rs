@@ -75,6 +75,7 @@ fn done_applied() -> graft_ops::apply::Applied {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            put_back: None,
         },
         refresh: graft_ops::apply::Refresh::Everything,
         step_backup: None,

@@ -201,7 +201,14 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         | ApplyError::AfterState { .. }
         | ApplyError::Remote { .. }
         | ApplyError::Conflicted { .. }
-        | ApplyError::ResumeFailed { .. } => Some(Refresh::Everything),
+        | ApplyError::ResumeFailed { .. }
+        // Interim (m6-conflicts/72; 72b replaces it with the landing): a
+        // stash put back that clashed reaches the app as a failure whose
+        // status is `ApplyError::Clashed`'s own line, sticky —
+        // `<description> left conflicts in N files` — and nothing else. The
+        // refresh is what `Git` gave the same pop before 72 (it touches
+        // `refs/stash`): everything.
+        | ApplyError::Clashed { .. } => Some(Refresh::Everything),
         // Cancelled between steps, which can be after some of them ran.
         ApplyError::Stopped => Some(Refresh::WorkingTree),
     }
