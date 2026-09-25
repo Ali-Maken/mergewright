@@ -295,6 +295,37 @@ pub struct JournalEntry {
     /// The merge git had in progress after it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merge_after: Option<MergeState>,
+    /// The stash this operation put back into the working tree, and why
+    /// (ADR-0045 §1). Written on the `Pending` line by a pop or apply (the
+    /// entry's own stash commit) and by a set-aside. `None` = no put-back, or
+    /// a line written before the field existed; absent from the JSON then, so
+    /// old lines re-render byte-identically. `graft_ops::live_clash` reads it
+    /// to tell a stash clash from any other unmerged index.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub put_back: Option<PutBack>,
+}
+
+/// A stash Graft put back into the working tree (ADR-0045 §1).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PutBack {
+    /// The stash's commit — found in the list by this id, never by position.
+    pub stash: Oid,
+    /// Which operation put it back.
+    pub why: PutBackWhy,
+}
+
+/// Why a stash was put back: it decides whether finishing a clash drops it
+/// (`Pop`, `SetAside`) or keeps it (`Apply`), ADR-0045 §3.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PutBackWhy {
+    /// `git stash pop`.
+    Pop,
+    /// `git stash apply`: the stash stays in the list whatever happens.
+    Apply,
+    /// The user's edits, set aside around a rebase or switch and put back
+    /// after it (ADR-0045 §4).
+    SetAside,
 }
 
 /// The reason recovery writes on an entry a previous run left open.
@@ -368,6 +399,43 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<Holder>(&text).expect("it parses back"),
             unmerged
+        );
+    }
+
+    /// A line as every entry before m6-conflicts/72 wrote it: no `put_back`.
+    const OLD_LINE: &str = r#"{"id":"01J8Z3K4M5N6P7Q8R9S0T1V2W3","at_unix_ms":1,"kind":"stash_pop","description":"pop stash@{0}","status":"committed","touches":{"refs":["refs/stash"],"index":true,"worktree":true},"head_before":{"branch":"refs/heads/main"},"head_after":null,"refs_before":{},"refs_after":{},"index_before":null,"index_after":null,"worktree_before":null,"worktree_after":null,"backup_ref":null,"pins":[],"commands":[],"reverses":null}"#;
+
+    /// ADR-0045 §1: the field is additive. An old line reads as `None` and
+    /// renders back byte for byte, so nothing already on disk changes.
+    #[test]
+    fn a_journal_line_without_put_back_re_renders_byte_identically() {
+        let entry: JournalEntry = serde_json::from_str(OLD_LINE).expect("an old line parses");
+        assert_eq!(entry.put_back, None);
+        assert_eq!(serde_json::to_string(&entry).expect("it renders"), OLD_LINE);
+    }
+
+    #[test]
+    fn put_back_round_trips() {
+        let mut entry: JournalEntry = serde_json::from_str(OLD_LINE).expect("an old line parses");
+        let stash = Oid::from_hex("acf15d58a3b48e5878fe281a624fb5c688dcaee1").expect("a hex oid");
+        for why in [PutBackWhy::Pop, PutBackWhy::Apply, PutBackWhy::SetAside] {
+            entry.put_back = Some(PutBack { stash, why });
+            let text = serde_json::to_string(&entry).expect("it renders");
+            assert_eq!(
+                serde_json::from_str::<JournalEntry>(&text).expect("it parses back"),
+                entry
+            );
+        }
+        entry.put_back = Some(PutBack {
+            stash,
+            why: PutBackWhy::SetAside,
+        });
+        let text = serde_json::to_string(&entry).expect("it renders");
+        assert!(
+            text.ends_with(
+                r#","put_back":{"stash":"acf15d58a3b48e5878fe281a624fb5c688dcaee1","why":"set_aside"}}"#
+            ),
+            "{text}"
         );
     }
 }

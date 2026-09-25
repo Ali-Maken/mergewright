@@ -35,6 +35,7 @@ use graft_git::run::{RunError, Stop};
 use graft_git::state::{self, InProgress};
 use graft_git::version::GitVersion;
 
+use crate::clash::Clash;
 use crate::facts::{self, FactsError};
 use crate::journal::{Journal, JournalError};
 use crate::operation::{Invocation, Operation, Refusal, RepoFacts};
@@ -47,11 +48,11 @@ pub(crate) use resume::live_entry;
 pub use resume::{Resume, resume};
 
 pub(crate) use error::{as_apply_error, reason_for};
-pub(crate) use record::{Pending, PrepareError, begin, finish, kind_name};
+pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};
 pub(crate) use restart::{RestartPrep, prepare_restart, run_restart_prep};
 
 use finish_merge::ending_a_shell_merge;
-use record::pins_for;
+use record::{pins_for, put_back_for};
 use restart::abandon_pending;
 use run::{PlanRun, run_plan, with_cleanup};
 
@@ -213,15 +214,15 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
 
-    let mut pending = begin(
-        ctx,
-        ctx.next_id(),
-        op.kind(),
+    let opening = Opening {
+        kind: op.kind(),
         description,
         touches,
-        pins_for(op),
-        None,
-    )?;
+        pins: pins_for(op),
+        reverses: None,
+        put_back: put_back_for(op),
+    };
+    let mut pending = begin(ctx, ctx.next_id(), opening)?;
 
     // After the before-snapshot, never before it: the state `u` puts back is
     // the resolution the user is starting over from, not the stages this is
@@ -232,7 +233,21 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     };
     commands.extend(plan.iter().map(Invocation::command_line));
 
-    let PlanRun { failure, cleanup } = run_plan(ctx, &plan, op.remote_names().as_ref());
+    let run = run_plan(ctx, &plan, op.remote_names().as_ref());
+    closed(ctx, op, pending, commands, run)
+}
+
+/// The plan has run: close the entry the way git left the repository —
+/// stopped on a conflict (the entry stays `Pending`), a put-back that
+/// clashed, done, or failed.
+fn closed(
+    ctx: &mut Context<'_>,
+    op: &Operation,
+    mut pending: Pending,
+    commands: Vec<String>,
+    run: PlanRun,
+) -> Result<Applied, ApplyError> {
+    let PlanRun { failure, cleanup } = run;
     // Stopped, not failed: the entry stays `Pending` with no outcome line
     // and `resume` closes it (hard choice 2).
     //
@@ -251,9 +266,20 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
             paths,
         });
     }
-    let status = match &failure {
-        None => EntryStatus::Committed,
-        Some(failed) => EntryStatus::Aborted {
+    // A put-back that failed: the index says whether it clashed, never the
+    // exit code (ADR-0045 §7). Read before the outcome, which it decides.
+    let clash = match clashed_put_back(ctx, &pending.entry, failure.is_some()) {
+        Ok(clash) => clash,
+        Err(error) => {
+            return close_unreadable_put_back(ctx, &mut pending, commands, failure, &error);
+        }
+    };
+    let status = match (&failure, &clash) {
+        // A clash is an outcome, not a failure: the stash's changes are in
+        // the tree with the conflicts, git kept the stash, and the entry is
+        // in force so `u` is the way back (ADR-0045 §2, §6).
+        (None, _) | (Some(_), Some(_)) => EntryStatus::Committed,
+        (Some(failed), None) => EntryStatus::Aborted {
             reason: with_cleanup(failed.reason(), &cleanup),
         },
     };
@@ -270,6 +296,9 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     };
 
     let entry = pending.entry;
+    if let Some(clash) = clash {
+        return clashed(entry, clash, unread, cleanup);
+    }
     match failure {
         None => succeeded(entry, op, unread, cleanup),
         // `finish` has already put the after-state failures, if any, into the
@@ -356,6 +385,109 @@ fn succeeded(
             unread,
         })
     }
+}
+
+/// Did a failed put-back clash? `Some` when the entry carries a
+/// `put_back` (a pop or apply), git failed, and the status lists unmerged
+/// paths (ADR-0045 §1). Not [`stopped_on_conflict`]: a clash is not an
+/// operation in progress — there is nothing to `c`ontinue or `a`bort.
+///
+/// Nothing unmerged is `None`: a plain failure (`apply --index` refusing,
+/// an untracked file in the way), closed `Aborted` as before.
+fn clashed_put_back(
+    ctx: &Context<'_>,
+    entry: &JournalEntry,
+    failed: bool,
+) -> Result<Option<Clash>, ApplyError> {
+    let Some(put_back) = entry.put_back.as_ref().filter(|_| failed) else {
+        return Ok(None);
+    };
+    // Never stopped: the put-back has already run, and a stop that cut it
+    // short must not also cut short the read that says what it left
+    // (`record::read_after`, m3/03 review M1).
+    let status =
+        graft_git::status::read(ctx.repo, &()).map_err(|error| ApplyError::Facts(error.into()))?;
+    let paths: Vec<PathBuf> = status
+        .entries
+        .into_iter()
+        .filter(|entry| entry.unmerged)
+        .map(|entry| entry.path)
+        .collect();
+    if paths.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(Clash {
+        stash: put_back.stash,
+        why: put_back.why,
+        paths,
+    }))
+}
+
+/// A put-back failed and the status could not be read to say whether it
+/// clashed. The entry is closed `Aborted` all the same — an entry left open
+/// reads as an operation still running — with both failures in its reason,
+/// and git's failure is the error returned. The after-state `finish` reads
+/// includes the index, clash or not, so `u` puts the tree back either way.
+fn close_unreadable_put_back(
+    ctx: &mut Context<'_>,
+    pending: &mut Pending,
+    commands: Vec<String>,
+    failure: Option<run::PlanFailure>,
+    unread: &ApplyError,
+) -> Result<Applied, ApplyError> {
+    let git_said = failure
+        .as_ref()
+        .map_or_else(String::new, run::PlanFailure::reason);
+    let status = EntryStatus::Aborted {
+        reason: format!("{git_said}; the status after could not be read: {unread}"),
+    };
+    if let Err(error) = finish(ctx, pending, status, commands) {
+        return Err(ApplyError::Journal {
+            error,
+            after: failure.map(|failed| failed.error),
+        });
+    }
+    let entry = pending.entry.clone();
+    match failure {
+        Some(failed) => Err(failed.into_error(entry)),
+        // `clashed_put_back` reads nothing unless git failed.
+        None => Ok(Applied {
+            entry,
+            refresh: Refresh::WorkingTree,
+            step_backup: None,
+            replaced: crate::undo::Replaced::default(),
+        }),
+    }
+}
+
+/// A put-back that clashed, journaled `Committed`: the answer is
+/// [`ApplyError::Clashed`], which carries the entry so the caller still
+/// refreshes. An after-state field that could not be read is not lost
+/// behind it: it goes to `AfterState` instead, whose `applied` holds the
+/// same entry — and the clash is then re-found from the journal by
+/// `live_clash`.
+fn clashed(
+    entry: JournalEntry,
+    clash: Clash,
+    mut unread: Vec<AfterState>,
+    cleanup: Vec<AfterState>,
+) -> Result<Applied, ApplyError> {
+    unread.extend(cleanup);
+    if unread.is_empty() {
+        return Err(ApplyError::Clashed {
+            entry: Box::new(entry),
+            clash,
+        });
+    }
+    Err(ApplyError::AfterState {
+        applied: Box::new(Applied {
+            entry,
+            refresh: Refresh::WorkingTree,
+            step_backup: None,
+            replaced: crate::undo::Replaced::default(),
+        }),
+        unread,
+    })
 }
 
 /// Did git stop on a conflict rather than fail?

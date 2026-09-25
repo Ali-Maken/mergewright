@@ -9,6 +9,7 @@ use graft_git::remote::RemoteFailure;
 use graft_git::run::RunError;
 use graft_git::state::InProgress;
 
+use crate::clash::Clash;
 use crate::facts::FactsError;
 use crate::journal::JournalError;
 use crate::operation::{Refusal, RemoteNames};
@@ -94,6 +95,19 @@ pub enum ApplyError {
         kind: InProgress,
         /// The unmerged paths.
         paths: Vec<PathBuf>,
+    },
+    /// A stash put back (a pop or apply) clashed: git failed and left
+    /// unmerged paths. The entry is journaled `Committed` — the stash's
+    /// changes and the conflicts are the outcome, the index-after is the
+    /// stage tree, and `u` is the way back — and git kept the stash
+    /// (ADR-0045 §1–2). Not retryable, like `Conflicted`; unlike it there is
+    /// no operation in progress, so no `c` and no `a`.
+    #[error("{} left conflicts in {} {}", entry.description, clash.paths.len(), if clash.paths.len() == 1 { "file" } else { "files" })]
+    Clashed {
+        /// The entry, `Committed`.
+        entry: Box<JournalEntry>,
+        /// The stash, why it was put back, and the unmerged paths.
+        clash: Clash,
     },
     /// [`resume`] ran `--continue`, `--skip` or `--abort`, git refused, and
     /// its in-progress state is still there with no unmerged path to explain

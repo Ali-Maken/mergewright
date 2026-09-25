@@ -741,9 +741,9 @@ fn every_refusal_explains_itself_in_one_actionable_sentence() {
     let all = [
         Refusal::Bare,
         Refusal::InProgress(InProgress::Merge),
-        Refusal::Unmerged {
-            paths: vec![PathBuf::from("a"), PathBuf::from("b"), PathBuf::from("c")],
-        },
+        // `Unmerged` left this list in m6-conflicts/72: its words are the
+        // M6 line (`<path> +N still has conflicts · resolve it first`),
+        // pinned by `the_unmerged_refusal_names_no_shell_and_no_milestone`.
         Refusal::PathNotInState {
             path: PathBuf::from("a"),
         },
@@ -776,13 +776,6 @@ fn every_refusal_explains_itself_in_one_actionable_sentence() {
         Refusal::InProgress(InProgress::Merge)
             .explain()
             .contains("`git merge --abort`")
-    );
-    assert!(
-        Refusal::Unmerged {
-            paths: vec![PathBuf::from("a"), PathBuf::from("b"), PathBuf::from("c")]
-        }
-        .explain()
-        .contains("a and 2 more files")
     );
     assert!(
         Refusal::NeedsGit {
@@ -1083,4 +1076,33 @@ fn conflict_refusals_in_words() {
         .explain(),
         "src/a.rs: deleted by them — no markers to take from"
     );
+}
+
+/// ADR-0045's words for `Unmerged`: what to do, in Graft. Before
+/// m6-conflicts/72 they sent the user to the shell "until a later
+/// milestone" — the milestone that resolves conflicts in Graft.
+#[test]
+fn the_unmerged_refusal_names_no_shell_and_no_milestone() {
+    let one = Refusal::Unmerged {
+        paths: vec![PathBuf::from("src/a.rs")],
+    };
+    assert_eq!(
+        one.explain(),
+        "src/a.rs still has conflicts · resolve it first"
+    );
+    let three = Refusal::Unmerged {
+        paths: vec![
+            PathBuf::from("src/a.rs"),
+            PathBuf::from("b.rs"),
+            PathBuf::from("c.rs"),
+        ],
+    };
+    assert_eq!(
+        three.explain(),
+        "src/a.rs +2 still has conflicts · resolve it first"
+    );
+    for words in [one.explain(), three.explain()] {
+        assert!(!words.contains("shell"), "{words}");
+        assert!(!words.contains("milestone"), "{words}");
+    }
 }

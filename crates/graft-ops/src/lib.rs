@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 pub mod apply;
+pub mod clash;
 pub mod conflict;
 pub mod facts;
 pub mod finish;

@@ -6,7 +6,8 @@
 use std::collections::BTreeMap;
 
 use graft_core::journal::{
-    EntryId, EntryStatus, HeadRef, JournalEntry, MergeState, OperationKind, Touches,
+    EntryId, EntryStatus, HeadRef, JournalEntry, MergeState, OperationKind, PutBack, PutBackWhy,
+    Touches,
 };
 use graft_core::oid::Oid;
 
@@ -40,6 +41,20 @@ pub(crate) enum PrepareError {
     Stopped,
 }
 
+/// What an entry is opened with, besides its id: everything its `Pending`
+/// line says that the repository cannot be asked for.
+pub(crate) struct Opening {
+    pub(crate) kind: OperationKind,
+    pub(crate) description: String,
+    pub(crate) touches: Touches,
+    /// Commits the inverse needs alive.
+    pub(crate) pins: Vec<Oid>,
+    /// For `Undo`/`Redo`: the entry reversed.
+    pub(crate) reverses: Option<EntryId>,
+    /// The stash a pop or apply puts back (ADR-0045 §1).
+    pub(crate) put_back: Option<PutBack>,
+}
+
 /// Read the before-state, take the backup, write the `Pending` line.
 ///
 /// A backup is taken when the work touches the index or the working tree
@@ -50,15 +65,19 @@ pub(crate) enum PrepareError {
 pub(crate) fn begin(
     ctx: &mut Context<'_>,
     id: EntryId,
-    kind: OperationKind,
-    description: String,
-    touches: Touches,
-    pins: Vec<Oid>,
-    reverses: Option<EntryId>,
+    opening: Opening,
 ) -> Result<Pending, PrepareError> {
     if ctx.stop.should_stop() {
         return Err(PrepareError::Stopped);
     }
+    let Opening {
+        kind,
+        description,
+        touches,
+        pins,
+        reverses,
+        put_back,
+    } = opening;
     let head_before = facts::head_ref(ctx.repo).map_err(PrepareError::Facts)?;
     let refs_before = facts::read_refs(ctx.repo, &touches.refs).map_err(PrepareError::Facts)?;
     // On every entry, whatever it touches: git's merge files are state the
@@ -66,39 +85,28 @@ pub(crate) fn begin(
     let merge_before = read_merge_state(ctx.repo)
         .map_err(|why| PrepareError::Facts(FactsError::MergeState(why)))?;
 
-    let wanted = snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty();
-    // The snapshot's parents are the pins **and** every commit the entry's
-    // before-fields name: the pre-amend commit, the branch tip a commit is
-    // about to move off. Both are otherwise reachable only through a reflog,
-    // which `gc.reflogExpireUnreachable` drops after 30 days, and after that
-    // undoing an amend would lose the commit outright (m3/03 review, C1).
-    // Every name here is a branch or `refs/stash`, so every value is a commit
-    // git will take as a parent.
-    let parents = with_anchors(
-        pins.clone(),
-        Some(&head_before),
-        &refs_before,
-        merge_before.as_ref(),
-    );
-    let (backup, backup_ref) = if wanted {
+    let backup = if snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty() {
+        // The snapshot's parents are the pins **and** every commit the
+        // entry's before-fields name: the pre-amend commit, the branch tip a
+        // commit is about to move off. Both are otherwise reachable only
+        // through a reflog, which `gc.reflogExpireUnreachable` drops after 30
+        // days, and after that undoing an amend would lose the commit
+        // outright (m3/03 review, C1). Every name here is a branch or
+        // `refs/stash`, so every value is a commit git will take as a parent.
+        let parents = with_anchors(
+            pins.clone(),
+            Some(&head_before),
+            &refs_before,
+            merge_before.as_ref(),
+        );
         let label = format!("{}: {description}", kind_name(kind));
-        let taken = snapshot::take(
-            ctx.repo,
-            ctx.scratch(),
-            &id,
-            &ctx.worktree,
-            &label,
-            &parents,
-            ctx.stop,
-        )
-        .map_err(PrepareError::Snapshot)?;
-        let name = snapshot::backup_ref_name(&ctx.worktree, &id);
-        (Some(taken), Some(name))
+        Some(take_backup(ctx, &id, &label, &parents)?)
     } else {
-        (None, None)
+        None
     };
 
     let entry = JournalEntry {
+        backup_ref: backup.map(|_| snapshot::backup_ref_name(&ctx.worktree, &id)),
         id,
         at_unix_ms: ctx.now_unix_ms,
         kind,
@@ -113,12 +121,12 @@ pub(crate) fn begin(
         index_after: None,
         worktree_before: backup.map(|taken| taken.worktree_tree),
         worktree_after: None,
-        backup_ref,
         pins,
         commands: Vec::new(),
         reverses,
         merge_before,
         merge_after: None,
+        put_back,
     };
     ctx.journal
         .append_pending(&entry)
@@ -127,6 +135,25 @@ pub(crate) fn begin(
         entry,
         before_commit: backup.map(|taken| taken.commit),
     })
+}
+
+/// The before-snapshot under this worktree's backup namespace.
+fn take_backup(
+    ctx: &Context<'_>,
+    id: &EntryId,
+    label: &str,
+    parents: &[Oid],
+) -> Result<snapshot::Snapshot, PrepareError> {
+    snapshot::take(
+        ctx.repo,
+        ctx.scratch(),
+        id,
+        &ctx.worktree,
+        label,
+        parents,
+        ctx.stop,
+    )
+    .map_err(PrepareError::Snapshot)
 }
 
 /// Read the after-state, keep it reachable, write the outcome line.
@@ -311,6 +338,8 @@ pub(super) fn anchors(head: Option<&HeadRef>, refs: &BTreeMap<String, Option<Oid
 pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
     match op {
         Operation::StashPop { commit, .. } | Operation::StashDrop { commit, .. } => vec![*commit],
+        // Finishing a clash drops the stash: `u` stores it back (ADR-0045 §3).
+        Operation::DropPutBack { stash } => vec![*stash],
         // The stash `stash branch` drops: undo stores it back (m5/07).
         Operation::BranchFromStash(params) => vec![params.commit],
         Operation::Merge(_)
@@ -342,6 +371,18 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
         | Operation::FinishMerge(_)
         | Operation::AbortMerge(_) => Vec::new(),
     }
+}
+
+/// The stash an operation puts back into the working tree, written on its
+/// `Pending` line (ADR-0045 §1): a pop's or apply's own stash commit. `None`
+/// for every other operation.
+pub(super) fn put_back_for(op: &Operation) -> Option<PutBack> {
+    let (stash, why) = match op {
+        Operation::StashPop { commit, .. } => (*commit, PutBackWhy::Pop),
+        Operation::StashApply { commit, .. } => (*commit, PutBackWhy::Apply),
+        _ => return None,
+    };
+    Some(PutBack { stash, why })
 }
 
 /// The kind as it reads in a backup commit's message.

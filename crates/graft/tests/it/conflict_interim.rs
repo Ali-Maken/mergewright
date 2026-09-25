@@ -991,6 +991,7 @@ fn killed_mid_rebase() -> graft_fixtures::Scratch {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            put_back: None,
         })
         .expect("the pending line is written");
     scratch

@@ -70,6 +70,34 @@ pub(super) fn find(index: usize, commit: Oid, facts: &RepoFacts) -> Result<&Stas
     }
 }
 
+/// Where the stash `commit` sits in the list now, found by its id: the
+/// position is looked up, never assumed (ADR-0045 §2–3). `NoSuchStash` when
+/// it is gone.
+pub(super) fn position_of(commit: Oid, facts: &RepoFacts) -> Result<usize, Refusal> {
+    facts
+        .stashes
+        .iter()
+        .find(|stash| stash.commit == commit)
+        .map(|stash| stash.index)
+        .ok_or(Refusal::NoSuchStash)
+}
+
+/// `stash drop stash@{n}` for the stash whose commit is `commit`, `n` from
+/// the facts `check` has just passed. Were it somehow not listed, the plan
+/// names the commit itself, which `git stash drop` refuses as "not a stash
+/// reference": a loud failure with nothing dropped, never a guess at a
+/// position.
+pub(super) fn plan_drop_by_commit(commit: Oid, facts: &RepoFacts) -> Invocation {
+    match position_of(commit, facts) {
+        Ok(index) => plan_at("drop", index, false),
+        Err(_) => Invocation::new(vec![
+            GitArg::Flag("stash"),
+            GitArg::Flag("drop"),
+            GitArg::Ref(commit.to_string().into_bytes()),
+        ]),
+    }
+}
+
 /// Apply and pop: the stash must exist as chosen, and none of the paths it
 /// changes may have a change of its own now. That rule keeps M3 out of
 /// conflict territory before M6 resolves conflicts.

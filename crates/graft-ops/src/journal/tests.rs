@@ -51,6 +51,7 @@ pub(crate) fn committed(at: i64, kind: OperationKind, before: u8, after: u8) -> 
         reverses: None,
         merge_before: None,
         merge_after: None,
+        put_back: None,
     }
 }
 
@@ -78,6 +79,7 @@ pub(crate) fn reversal(at: i64, kind: OperationKind, target: &JournalEntry) -> J
         reverses: Some(target.id.clone()),
         merge_before: target.merge_after.clone(),
         merge_after: target.merge_before.clone(),
+        put_back: None,
     }
 }
 

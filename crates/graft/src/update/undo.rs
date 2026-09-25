@@ -699,6 +699,7 @@ mod tests {
                 reverses: None,
                 merge_before: None,
                 merge_after: None,
+                put_back: None,
             },
             refresh,
             step_backup: None,
@@ -1269,6 +1270,7 @@ mod tests {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            put_back: None,
         }
     }
 

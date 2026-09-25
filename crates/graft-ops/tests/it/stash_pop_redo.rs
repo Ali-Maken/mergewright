@@ -30,7 +30,7 @@ struct Lists {
 fn pop_conflict_undo_redo(repo: &TempRepo, index: usize, commit: Oid) -> Lists {
     let failed = try_run(repo, &Operation::StashPop { index, commit }, NOW);
     assert!(
-        matches!(failed, Err(ApplyError::Git { .. })),
+        matches!(failed, Err(ApplyError::Clashed { .. })),
         "the pop should have conflicted: {failed:?}"
     );
     let popped = stash_commits(repo);

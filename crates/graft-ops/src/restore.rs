@@ -29,7 +29,7 @@ use graft_core::journal::{EntryStatus, HeadRef, IndexState};
 use graft_core::oid::Oid;
 use graft_git::run::RunError;
 
-use crate::apply::{AfterState, Applied, Context, Refresh, begin, finish, reason_for};
+use crate::apply::{AfterState, Applied, Context, Opening, Refresh, begin, finish, reason_for};
 use crate::facts::FactsError;
 use crate::journal::JournalError;
 use crate::snapshot::SnapshotError;
@@ -236,15 +236,15 @@ pub(crate) fn execute_over_drift(
     if ctx.stop.should_stop() {
         return Err(RestoreError::Stopped);
     }
-    let mut pending = begin(
-        ctx,
-        ctx.next_id(),
-        plan.kind,
-        plan.description.clone(),
-        plan.touches.clone(),
-        plan.pins.clone(),
-        Some(plan.reverses.clone()),
-    )?;
+    let opening = Opening {
+        kind: plan.kind,
+        description: plan.description.clone(),
+        touches: plan.touches.clone(),
+        pins: plan.pins.clone(),
+        reverses: Some(plan.reverses.clone()),
+        put_back: None,
+    };
+    let mut pending = begin(ctx, ctx.next_id(), opening)?;
 
     // The entry's own before-fields, read by `begin` before the first step
     // and backed by the backup ref it took at the same moment (§6.4). This,

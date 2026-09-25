@@ -497,7 +497,7 @@ fn an_edit_after_a_commit_stops_the_undo_and_forcing_it_keeps_a_backup() {
 // ── failure part-way through ────────────────────────────────────────────
 
 #[test]
-fn a_pop_that_conflicts_leaves_an_aborted_entry_that_undo_restores() {
+fn a_pop_that_conflicts_leaves_a_committed_clash_that_undo_restores() {
     let repo = TempRepo::init();
     repo.write("a.txt", b"one\ntwo\nthree\n");
     repo.commit_all("one");
@@ -524,16 +524,13 @@ fn a_pop_that_conflicts_leaves_an_aborted_entry_that_undo_restores() {
         NOW,
     );
 
+    // Before m6-conflicts/72 this was `Git` + `Aborted`; a clash is now an
+    // outcome of its own, `Committed` (ADR-0045 §1).
     let entry = match failed {
-        Err(ApplyError::Git {
-            entry, recoverable, ..
-        }) => {
-            assert!(recoverable, "a backup was taken, so it is recoverable");
-            *entry
-        }
-        other => panic!("the pop should have failed: {other:?}"),
+        Err(ApplyError::Clashed { entry, .. }) => *entry,
+        other => panic!("the pop should have clashed: {other:?}"),
     };
-    assert!(matches!(entry.status, EntryStatus::Aborted { .. }));
+    assert_eq!(entry.status, EntryStatus::Committed);
     assert!(entry.worktree_before.is_some(), "the backup is recorded");
     assert!(
         entry.head_after.is_some(),
@@ -943,9 +940,10 @@ fn a_conflicted_pops_after_tree_survives_an_aggressive_prune() {
         },
         NOW,
     );
+    // A clash since m6-conflicts/72 (ADR-0045 §1), journaled `Committed`.
     let entry = match failed {
-        Err(ApplyError::Git { entry, .. }) => *entry,
-        other => panic!("the pop should have failed: {other:?}"),
+        Err(ApplyError::Clashed { entry, .. }) => *entry,
+        other => panic!("the pop should have clashed: {other:?}"),
     };
     // The index is unmerged, and since m6-conflicts/08 that is a recorded
     // state of its own — the stage tree — not an absence. Both it and the

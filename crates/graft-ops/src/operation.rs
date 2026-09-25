@@ -130,6 +130,15 @@ pub enum Operation {
     /// (m6-conflicts/57). `apply::resume(Abort)` sends it when no entry of
     /// Graft's is live; a merge Graft began is aborted on its own entry.
     AbortMerge(AbortMergeParams),
+    /// A stash that clashed on its way back, dropped once the last clashed
+    /// file is done (ADR-0045 §3): `stash drop stash@{n}`, `n` looked up by
+    /// the commit in the facts `apply` reads, never assumed. Refused
+    /// `NoSuchStash` when it is gone. Journaled as `StashDrop` with the stash
+    /// pinned, so `u` stores it back.
+    DropPutBack {
+        /// The stash's commit.
+        stash: Oid,
+    },
 }
 
 /// What [`crate::facts::read_facts`] must read for one operation, beyond
@@ -547,11 +556,19 @@ impl Refusal {
                 kind.continue_command(),
                 kind.abort_command()
             ),
-            Self::Unmerged { paths } => format!(
-                "{} unresolved conflicts; resolve and `git add` them in the shell first \
-                 (Graft resolves conflicts in a later milestone).",
-                name_paths(paths)
-            ),
+            // ADR-0045 / m6-conflicts/72: Graft resolves them now, so the
+            // words say what to do here, not in the shell.
+            Self::Unmerged { paths } => match paths.split_first() {
+                Some((first, rest)) if !rest.is_empty() => format!(
+                    "{} +{} still has conflicts · resolve it first",
+                    first.display(),
+                    rest.len()
+                ),
+                _ => format!(
+                    "{} still has conflicts · resolve it first",
+                    name_paths(paths)
+                ),
+            },
             Self::PathNotInState { path } => format!(
                 "{} has no change this can apply to; the status may have moved on, so \
                  refresh and try again.",
@@ -737,7 +754,7 @@ impl Operation {
             Self::StashPush(_) => OperationKind::StashPush,
             Self::StashApply { .. } => OperationKind::StashApply,
             Self::StashPop { .. } => OperationKind::StashPop,
-            Self::StashDrop { .. } => OperationKind::StashDrop,
+            Self::StashDrop { .. } | Self::DropPutBack { .. } => OperationKind::StashDrop,
             Self::Fetch(_) => OperationKind::Fetch,
             Self::Pull(_) => OperationKind::Pull,
             Self::Push(_) => OperationKind::Push,
@@ -855,6 +872,7 @@ impl Operation {
             Self::StashApply { index, .. } => format!("apply stash@{{{index}}}"),
             Self::StashPop { index, .. } => format!("pop stash@{{{index}}}"),
             Self::StashDrop { index, .. } => format!("drop stash@{{{index}}}"),
+            Self::DropPutBack { stash } => format!("drop stash {}", history::short(*stash)),
             Self::Fetch(params) => remote::describe_fetch(params),
             Self::Pull(params) => remote::describe_pull(params),
             Self::Push(params) => remote::describe_push(params),
@@ -958,6 +976,7 @@ impl Operation {
                 stash::check_apply(*index, *commit, facts)
             }
             Self::StashDrop { index, commit } => stash::find(*index, *commit, facts).map(|_| ()),
+            Self::DropPutBack { stash } => stash::position_of(*stash, facts).map(|_| ()),
             Self::Fetch(params) => remote::check_fetch(params, facts),
             Self::Pull(params) => remote::check_pull(params, facts),
             Self::Push(params) => remote::check_push(params, facts),
@@ -993,6 +1012,7 @@ impl Operation {
             Self::StashApply { index, .. } => vec![stash::plan_at("apply", *index, true)],
             Self::StashPop { index, .. } => vec![stash::plan_at("pop", *index, true)],
             Self::StashDrop { index, .. } => vec![stash::plan_at("drop", *index, false)],
+            Self::DropPutBack { stash } => vec![stash::plan_drop_by_commit(*stash, facts)],
             Self::Fetch(params) => remote::plan_fetch(params),
             Self::Pull(params) => remote::plan_pull(params),
             Self::Push(params) => remote::plan_push(params),
@@ -1068,7 +1088,9 @@ impl Operation {
             Self::StashPush(_) | Self::StashApply { .. } | Self::StashPop { .. } => {
                 (vec![stash::STASH_REF.to_owned()], true, true)
             }
-            Self::StashDrop { .. } => (vec![stash::STASH_REF.to_owned()], false, false),
+            Self::StashDrop { .. } | Self::DropPutBack { .. } => {
+                (vec![stash::STASH_REF.to_owned()], false, false)
+            }
             // Tracking refs are not recorded: a fetch can move thousands.
             Self::Fetch(_) => (vec![], false, false),
             // For the browser's `origin/main a1b2c3d → 9f8e7d6`, not for undo.

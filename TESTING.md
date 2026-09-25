@@ -2239,8 +2239,8 @@ credential capture M6 changed.
     takes, `⏎` says `all conflicts resolved` with **no** `c continue`, and
     the journal has one `stage p` entry.
 13. **undo-a-resolution-in-a-stash-pop-conflict** — `S`, `p`
-    in the app conflicts (the Sticky ends `Index was not unstashed.`, the
-    stash stays); `o`, `⏎`; `u` brings back three stages and the bytes from
+    in the app conflicts (the Sticky reads `pop stash@{0} left conflicts in
+    1 file` — m6-conflicts/72's interim line, until 72b — the stash stays); `o`, `⏎`; `u` brings back three stages and the bytes from
     before `⏎`; `u` again (the drift box `Undo “pop stash@{0}”?`, confirmed)
     takes the pop back — no stages, the files and stash list as before;
     `U` puts back the unmerged index (`ls-files -u` three lines) with `p`

@@ -1,6 +1,6 @@
 # stash-clash-lands-on-the-resolver: a pop or apply that clashes is recorded and answered as a clash; done can drop it by id
 
-Status: ready
+Status: done
 Blocked by: 67 (merged)
 From: pick 15 (`.scratch/m6-conflicts/user-picks-2026-09-24.md` :24); review N3 (`docs/reviews/m6-usability-final.md`
 :125-144).
@@ -104,12 +104,60 @@ DropPutBack { stash: Oid },
 - **MAP.md**: graft-core `PutBack`; graft-ops `Clashed`, `live_clash`, `DropPutBack`, the stash failure branch, `Unmerged`.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Every test above, red then green (round-trip tests may be green-first; say so).
-- [ ] Pin (scout could not confirm): what `finish` records as `index_after` on the stash failure branch. The clash test
-      asserts `index_after == IndexState::Unmerged(<stage tree>)` read from the journal file, and NOTES names the line
-      that records it.
-- [ ] NOTES: the interim arm's file:line, for 72b.
-- [ ] MAP.md updated (doc, no test).
+- [x] Every test above, red then green. graft-core `a_journal_line_without_put_back_re_renders_byte_identically`,
+      `put_back_round_trips` (`graft-core/src/journal.rs` tests): red = compile (no field/type). graft-ops
+      `tests/it/stash_clash.rs`: all 7 compile-red first (`Clashed`, `DropPutBack`, `clash` did not exist); then
+      **behaviour-red** checked for `a_pop_that_clashes_answers_clashed_and_keeps_the_stash`,
+      `an_apply_that_clashes_records_apply`, `undo_of_a_clashed_pop_restores_the_tree_and_keeps_the_stash` by
+      disabling the clash branch (3 FAIL), restored → green. `a_failed_apply_with_nothing_unmerged_is_not_a_clash`,
+      `drop_put_back_*`, `undo_of_drop_put_back_stores_it_again` green once compiled (no behaviour-red run).
+      `clash::tests::live_clash_table` (+ `an_undone_pop_is_no_clash`): compile-red only.
+      `operation::tests::the_unmerged_refusal_names_no_shell_and_no_milestone`: **not observed red** — the crate did
+      not compile until after the words changed; the old words (`…in the shell first (Graft resolves conflicts in a
+      later milestone).`) cannot pass its exact `assert_eq`.
+- [x] Pin: `index_after` on the clash branch is recorded by `finish` → `read_after` →
+      `crates/graft-ops/src/apply/record.rs:223` (`snapshot::index_state`, because a pop touches the index). Test:
+      `stash_clash::a_pop_that_clashes_answers_clashed_and_keeps_the_stash` reads the journal **file** and asserts
+      `index_after == Some(snapshot::index_state(..))`, which `is_unmerged()`.
+- [x] NOTES: the interim arm's file:line (below).
+- [x] MAP.md updated (doc, no test): graft-core `PutBack`; graft-ops `clash`, `Clashed`, failure branch,
+      `DropPutBack`, `Unmerged` words, `PendingLine.put_back`.
+
+## NOTES (builder, 2026-09-25)
+- **Scout used**: yes, `.scratch/m6-conflicts/scouts/stash-clash-lands-on-the-resolver.md`. No compaction.
+- **Interim arm is not in `update/operate.rs`**: `ApplyError` never reaches `update/` — `jobs/operate.rs::answer` turns
+  it into `Operated::Failed`. The arm is `crates/graft/src/jobs/operate.rs:211` (`refresh_after_failure`,
+  `Clashed → Some(Refresh::Everything)`, same as `Git` gave the pop). The status is the generic Failed path:
+  `Status::sticky(error.to_string())`, and `Clashed`'s Display is `<description> left conflicts in N file(s)`
+  (`crates/graft-ops/src/apply/error.rs`). 72b replaces both.
+- **Route**: failure branch only (the amendment), `crates/graft-ops/src/apply.rs:397` `clashed_put_back`, status
+  read with no stop. The "Decided" bullet says "whatever git's exit code"; a plain `stash pop|apply` exits 1 on a
+  clash (ADR §7), and a pop that exits 0 has dropped its stash, so reading on success was not added.
+- **Clash + unread after-state** → `ApplyError::AfterState`, not `Clashed` (no error swallowed); the clash is then
+  findable only through the journal, and not at all if `index_after` was the unread field. Rare; 72b should know.
+- **`StashClash.index: Option<usize>`** is always `Some`: I read ADR §2 bullet 3 ("must still be in the list") as a
+  condition, so a stash gone = no clash (`live_clash_table` row "stash gone"). If the design meant "clash, position
+  unknown", that row and `live_clash` flip. Question for the planner.
+- `live_clash` lives in `graft_ops::clash` (not re-exported at the crate root).
+- `DropPutBack::describe` = `drop stash <short id>` (no position without facts). Its plan's fallback, `stash drop
+  <hex>`, is proven refused by git: `stash_clash::git_refuses_a_stash_drop_by_bare_commit_id`.
+- **`begin` signature**: 8 args broke clippy; now `begin(ctx, id, Opening { kind, description, touches, pins,
+  reverses, put_back })` (callers `apply.rs`, `restore.rs`); `apply`'s tail split into `closed()` for length.
+- **Assertions moved** (clash is no longer `Git`/`Aborted`): graft-ops `ops_execution_hard.rs`
+  `a_pop_that_conflicts_leaves_an_aborted_entry…` → renamed `…_a_committed_clash_that_undo_restores`, and
+  `a_conflicted_pops_after_tree_survives_an_aggressive_prune`; `unmerged_index.rs`
+  `conflicted_pop_undo_is_clean_without_force`; `stash_pop_redo.rs` helper. `operation::tests::every_refusal_…`
+  dropped `Unmerged` (its words are no longer a `.`-ended sentence). graft `tests/it/m5_walk/resolved_operations.rs`
+  step "the pop stopped, in git's words" (`Index was not unstashed`) → the interim line; `TESTING.md` scenario 13
+  text to match.
+- **Fixtures gaining `put_back: None`** (all in test code): graft-ops `journal/tests.rs` (2), `apply/fold.rs` (a
+  record, not a journal entry); graft `jobs/operate/tests.rs` (2), `jobs/undo.rs`, `update/{banner/tests, journal,
+  operate, remote/tests, remote/tests/lease, resolver/tests/words_and_c, tests, undo ×2}.rs`, `view/{journal,
+  tests}.rs`, `tests/it/{conflict_interim, undo_by_key}.rs`.
+- **Not done / not verified**: the ticket's `journal_view` test for `J` (a `Committed` clashed pop row, a
+  `DropPutBack` row) — `view/journal.rs` tests are outside my graft allowance. By reading only: `view/journal.rs:190`
+  shows `failed: …` for `Aborted`, so a clashed pop's row **changes** from `failed: <git's line>` to a normal row;
+  `DropPutBack` is a `StashDrop` row with its description. Hand to 72b.
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all

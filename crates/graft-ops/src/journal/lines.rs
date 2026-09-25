@@ -9,7 +9,8 @@
 use std::collections::BTreeMap;
 
 use graft_core::journal::{
-    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, Touches,
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, PutBack,
+    Touches,
 };
 use graft_core::oid::Oid;
 use serde::{Deserialize, Serialize};
@@ -59,6 +60,10 @@ pub struct PendingLine {
     /// (m6-conflicts/20).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merge_before: Option<MergeState>,
+    /// The stash a pop, apply or set-aside puts back (ADR-0045 §1). Left out
+    /// when there is none, the same way (m6-conflicts/72).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub put_back: Option<PutBack>,
 }
 
 /// The after-state, written once the operation finished or failed.
@@ -128,6 +133,7 @@ impl PendingLine {
             pins: entry.pins.clone(),
             reverses: entry.reverses.clone(),
             merge_before: entry.merge_before.clone(),
+            put_back: entry.put_back.clone(),
         }
     }
 
@@ -154,6 +160,7 @@ impl PendingLine {
             reverses: self.reverses,
             merge_before: self.merge_before,
             merge_after: None,
+            put_back: self.put_back,
         }
     }
 }

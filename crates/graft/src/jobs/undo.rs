@@ -727,6 +727,7 @@ mod tests {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            put_back: None,
         }
     }
 }
