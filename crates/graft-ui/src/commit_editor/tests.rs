@@ -274,3 +274,31 @@ fn the_footer_follows_focus() {
         assert_eq!(last_row(focus), FOOTER_OTHER, "{focus:?}");
     }
 }
+
+/// Review m6-look-finish-wave2 m6 (ADR-0044 §3.4 pairs the two subject
+/// fields): `⌃E` reads the same in the commit editor's footer and in the
+/// finish summary's, subject and body alike. `esc` stays apart on purpose:
+/// the editor's `esc cancel` closes it, the summary's `esc back` returns to
+/// where it was opened from (design note, "Finish summary").
+#[test]
+fn ctrl_e_reads_the_same_in_both_subject_fields() {
+    use crate::finish_summary::SummaryFocus;
+    use crate::graph_screen::{Divider, HintContext, hints_for};
+    for focus in [SummaryFocus::Subject, SummaryFocus::Body] {
+        let hints = hints_for(
+            &HintContext::Finish {
+                focus,
+                expandable: false,
+            },
+            Divider::Hidden,
+            200,
+        );
+        let ctrl_e = hints.iter().find(|hint| hint.key == "⌃E").map_or_else(
+            || panic!("{focus:?}: no ⌃E in {hints:?}"),
+            crate::graph_screen::Hint::text,
+        );
+        assert_eq!(ctrl_e, "⌃E $EDITOR", "{focus:?}");
+        assert!(FOOTER_SUBJECT.contains(&ctrl_e), "{FOOTER_SUBJECT}");
+        assert!(FOOTER_OTHER.contains(&ctrl_e), "{FOOTER_OTHER}");
+    }
+}

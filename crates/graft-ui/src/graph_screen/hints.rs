@@ -111,14 +111,21 @@ impl Hint {
     /// What the bar draws for this hint at its rung, key included.
     #[must_use]
     pub fn text(&self) -> String {
+        match self.drawn_verb() {
+            Some(verb) => format!("{} {verb}", self.key),
+            None => self.key.to_owned(),
+        }
+    }
+
+    /// The verb as the bar draws it at this hint's rung: `None` at
+    /// [`Rung::Key`], where only the key is drawn. What [`Hint::text`] puts
+    /// after the key and its space, for a caller that styles the two apart.
+    #[must_use]
+    pub fn drawn_verb(&self) -> Option<&'static str> {
         match self.rung {
-            Rung::Key => self.key.to_owned(),
-            Rung::Short => format!(
-                "{} {}",
-                self.key,
-                short_form(self.verb).unwrap_or(self.verb)
-            ),
-            Rung::Full => format!("{} {}", self.key, self.verb),
+            Rung::Key => None,
+            Rung::Short => Some(short_form(self.verb).unwrap_or(self.verb)),
+            Rung::Full => Some(self.verb),
         }
     }
 

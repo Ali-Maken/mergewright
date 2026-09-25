@@ -5,6 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
+use graft_core::event::KeyCode;
 use graft_core::job::JobId;
 use graft_git::state::InProgress;
 
@@ -210,6 +211,24 @@ fn last_done(state: &AppState, done: &Path, summary_coming: bool) -> Status {
     Status::Done {
         what: format!("{} done", done.display()),
         keys: Some(keys),
+    }
+}
+
+/// A key that takes him somewhere else cancels the summary the last file
+/// owes (m6-conflicts/60): it opens on the event, never later over what he
+/// moved on to. A file switch also rebuilds the state, which drops it.
+pub(super) fn cancel_owed_finish(state: &mut AppState, code: KeyCode, plain: bool) {
+    if plain
+        && matches!(
+            code,
+            KeyCode::Escape
+                | KeyCode::Char('j' | 'k' | 'n' | 'N' | 'd' | 'e' | 'M')
+                | KeyCode::Down
+                | KeyCode::Up
+        )
+        && let Some(open) = state.resolver.as_mut()
+    {
+        open.finish_owed = false;
     }
 }
 

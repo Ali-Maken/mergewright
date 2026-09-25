@@ -583,6 +583,27 @@ fn settled_frame(app: &App, state: AppState) -> AppState {
     })
 }
 
+/// Pumps until the Mistake Radar has answered: its default-branch context
+/// has landed (`state.radar.context` is `Ready`, which is what builds the
+/// ref findings the rows' `ⓘ` draws from), and neither probe it asks for
+/// then is still running (`radar.duplicates`, every `radar.force_push`).
+/// The radar is its own job, so a frame taken before it lands lacks its
+/// marks; [`settled_frame`] waits only for `reading…` and `sorting…`
+/// (review m6-look-finish-wave2 M3).
+fn radar_answered(app: &App, state: AppState) -> AppState {
+    use graft::update::detail::Loading;
+    app.pump(state, "the radar's answer", |state| {
+        matches!(state.radar.context, Loading::Ready(_))
+            && state.radar.built_from.is_some()
+            && !matches!(state.radar.duplicates, Loading::Pending(_))
+            && !state
+                .radar
+                .force_push
+                .values()
+                .any(|verdict| matches!(verdict, Loading::Pending(_)))
+    })
+}
+
 /// The commit under the graph's cursor.
 fn cursor_commit(state: &AppState) -> Option<String> {
     state
@@ -1342,7 +1363,7 @@ fn bisect_frame() -> String {
         state.in_progress.as_ref().map(|detail| detail.kind),
         Some(graft_git::state::InProgress::Bisect)
     );
-    let state = settled_frame(&app, state);
+    let state = radar_answered(&app, settled_frame(&app, state));
     assert!(state.graph_has_focus() && !state.detail.shown && !state.banner_focus);
     let one = frame_187(&state);
     let first = one.join("\n");
@@ -1378,7 +1399,7 @@ fn details_open_frame() -> String {
         state.detail.shown && state.graph_has_focus() && !state.banner_focus,
         "the detail pane open, the graph focused"
     );
-    let state = settled_frame(&app, state);
+    let state = radar_answered(&app, settled_frame(&app, state));
     let two = frame_187(&state);
     let second = two.join("\n");
     let bar = two

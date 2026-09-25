@@ -227,7 +227,7 @@ and any redo prompt should lead with.
 
 ### 2.3c Confirm box
 
-`←`/`→` choose (clamped, Cancel first, ADR-0038 §1) · `Tab` cycles · `Enter` the choice under the cursor · `y` the box's one acting choice, whatever the cursor is on, and the box's footer leads with `y <verb>` (P15, approved 2026-09-24; ADR-0044 §3) — **except** the force-push (lease) box, the undo-after-push box (two acting choices: its answer is the cursor's) and the journal revert's box, where `y` is swallowed and not drawn · `Esc` cancels · `Ctrl+C` passes through (quits, §2.1) · **any other key is swallowed: the box stays** (usability walk M1).
+`←`/`→` choose (clamped, Cancel first, ADR-0038 §1) · `Tab` cycles · `Enter` the choice under the cursor · `y` the box's one acting choice, whatever the cursor is on, and the hint bar leads with `y <verb>` — the box has no footer of its own (P15, approved 2026-09-24; ADR-0044 §3) — **except** the force-push (lease) box, the undo-after-push box (two acting choices: its answer is the cursor's) and the journal revert's box, where `y` is swallowed and not drawn · `Esc` cancels · `Ctrl+C` passes through (quits, §2.1) · **any other key is swallowed: the box stays** (usability walk M1).
 
 ### 2.4 Working tree / staging (detail pane)
 
