@@ -1460,9 +1460,11 @@ fn the_count_follows_the_read() {
     assert_eq!(line.full().as_str(), "merge stopped · 1 file conflicted");
 }
 
-/// Review m6-amend-11-12 M1: the shorter wordings the footer falls back to
-/// drop whole parts — who began it, then the step, then the count — so the
-/// count is never cut inside, and the last wording carries no number.
+/// Review m6-amend-11-12 M1, and m6-conflicts/61 ("shorten both"): the
+/// shorter wordings the footer falls back to drop whole parts — who began
+/// it, then the step, then the count — so the count is never cut inside,
+/// and the last wording carries no number. Only the full rung spells the
+/// count out; every rung that had to shorten says it short.
 #[test]
 fn stop_wordings_drop_whole_parts_lowest_value_first() {
     let merge = detail(InProgress::Merge, None);
@@ -1473,7 +1475,8 @@ fn stop_wordings_drop_whole_parts_lowest_value_first() {
         ),
         [
             "merge in progress · begun outside Graft · 13 files conflicted",
-            "merge in progress · 13 files conflicted",
+            "merge in progress · from the shell · 13 conflicted",
+            "merge in progress · 13 conflicted",
             "merge in progress",
         ]
     );
@@ -1485,8 +1488,9 @@ fn stop_wordings_drop_whole_parts_lowest_value_first() {
         ),
         [
             "rebase still in progress from a previous run · step 3 of 7 · 2 files conflicted",
-            "rebase still in progress · step 3 of 7 · 2 files conflicted",
-            "rebase still in progress · 2 files conflicted",
+            "rebase in progress · from last run · step 3 of 7 · 2 conflicted",
+            "rebase still in progress · step 3 of 7 · 2 conflicted",
+            "rebase still in progress · 2 conflicted",
             "rebase still in progress",
         ]
     );
@@ -1497,7 +1501,8 @@ fn stop_wordings_drop_whole_parts_lowest_value_first() {
         wordings,
         [
             "rebase stopped again at step 4 of 7 · 1 file conflicted",
-            "rebase stopped again · 1 file conflicted",
+            "rebase stopped again at step 4 of 7 · 1 conflicted",
+            "rebase stopped again · 1 conflicted",
             "rebase stopped again",
         ]
     );
@@ -1506,6 +1511,106 @@ fn stop_wordings_drop_whole_parts_lowest_value_first() {
         wordings[0],
         super::stop_reason(&this_run, Some((&again, 1)))
     );
+}
+
+/// m6-conflicts/61: the shell's origin survives, short, one rung longer
+/// than it did — before the count or the step is given up.
+#[test]
+fn a_shell_stop_keeps_a_short_origin_before_dropping_it() {
+    let merge = detail(InProgress::Merge, None);
+    let wordings = super::stop_wordings(
+        &stop(LiveOrigin::OutsideGraft, false, InProgress::Merge, 13),
+        Some((&merge, 13)),
+    );
+    assert_eq!(
+        wordings[1],
+        "merge in progress · from the shell · 13 conflicted"
+    );
+}
+
+/// m6-conflicts/61: a previous run's stop keeps `from last run`, with the
+/// step where the full rung has one, and without `still`.
+#[test]
+fn a_previous_run_stop_keeps_a_short_origin() {
+    let merge = detail(InProgress::Merge, None);
+    let rebase = detail(InProgress::Rebase, Some((3, 7)));
+    let merge_rungs = super::stop_wordings(
+        &stop(LiveOrigin::PreviousRun, false, InProgress::Merge, 1),
+        Some((&merge, 1)),
+    );
+    assert_eq!(
+        merge_rungs[1],
+        "merge in progress · from last run · 1 conflicted"
+    );
+    let rebase_rungs = super::stop_wordings(
+        &stop(LiveOrigin::PreviousRun, false, InProgress::Rebase, 13),
+        Some((&rebase, 13)),
+    );
+    assert_eq!(
+        rebase_rungs[1],
+        "rebase in progress · from last run · step 3 of 7 · 13 conflicted"
+    );
+}
+
+/// m6-conflicts/61: a stop from this run has no origin clause, so its
+/// short-origin rung is the full rung with the short count, and the rung
+/// that would drop the origin repeats it and is skipped.
+#[test]
+fn a_this_run_stop_has_no_duplicate_rung() {
+    let merge = detail(InProgress::Merge, None);
+    let wordings = super::stop_wordings(
+        &stop(LiveOrigin::ThisRun, false, InProgress::Merge, 13),
+        Some((&merge, 13)),
+    );
+    assert_eq!(
+        wordings,
+        [
+            "merge stopped · 13 files conflicted",
+            "merge stopped · 13 conflicted",
+            "merge stopped",
+        ]
+    );
+}
+
+/// Every origin × step × count (0, 1, 13): each rung strictly narrower than
+/// the one before (so none twice), and a count drawn whole or not at all.
+#[test]
+fn every_stop_ladder_narrows_and_keeps_its_count_whole() {
+    let origins = [
+        LiveOrigin::ThisRun,
+        LiveOrigin::PreviousRun,
+        LiveOrigin::OutsideGraft,
+    ];
+    for origin in origins {
+        for (kind, step) in [
+            (InProgress::Merge, None),
+            (InProgress::Rebase, Some((3, 7))),
+        ] {
+            let read = detail(kind, step);
+            for count in [0, 1, 13] {
+                let wordings =
+                    super::stop_wordings(&stop(origin, false, kind, count), Some((&read, count)));
+                for pair in wordings.windows(2) {
+                    assert!(
+                        pair[1].chars().count() < pair[0].chars().count(),
+                        "{origin:?} {kind:?} {count}: {wordings:?}"
+                    );
+                }
+                let short = format!(" · {count} conflicted");
+                let full = format!(
+                    " · {count} {} conflicted",
+                    if count == 1 { "file" } else { "files" }
+                );
+                for rung in &wordings {
+                    let whole = count > 0 && (rung.ends_with(&short) || rung.ends_with(&full));
+                    assert!(
+                        whole || !rung.contains("conflicted"),
+                        "{origin:?} {count}: {rung}"
+                    );
+                }
+            }
+        }
+    }
 }
 
 fn oid(byte: u8) -> graft_core::oid::Oid {

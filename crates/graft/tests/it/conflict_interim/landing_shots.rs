@@ -149,15 +149,21 @@ fn capture_a_launch_into_a_shell_merge() {
     for (columns, rows) in [(120u16, 40u16), (187, 50)] {
         let frame = drawn(&app, &state, columns, rows);
         let row = footer(&frame, "a abort");
-        // With the pane open the footer is the graph column's width, too
-        // narrow for the whole wording: `begun outside Graft` is dropped
-        // whole, and the count is drawn whole — at 187 it once read `1…`
-        // for 13 (m6-conflicts/24, review m6-amend-11-12 M1).
-        assert!(
-            row.trim_start()
-                .starts_with("merge in progress \u{b7} 13 files conflicted \u{b7}"),
-            "{row}"
-        );
+        // The footer is too narrow for the whole wording, so the rungs past
+        // the first say the count short and drop whole parts (m6-conflicts/61).
+        // At 120 (pane below) `stopped_row` has 56 cells beside the bar and
+        // the short origin fits. At 187 the pane sits beside the graph, the
+        // footer gets 108 columns, the bar takes 61 and leaves 44 — six short
+        // of `… · from the shell · 13 conflicted` (50) — so the origin goes.
+        // Pinned as observed; ticket 61 stopped here for a decision. The
+        // count stays whole either way — at 187 it once read `1…` for 13
+        // (m6-conflicts/24, review m6-amend-11-12 M1).
+        let words = if columns == 120 {
+            "merge in progress \u{b7} from the shell \u{b7} 13 conflicted \u{b7}"
+        } else {
+            "merge in progress \u{b7} 13 conflicted \u{b7}"
+        };
+        assert!(row.trim_start().starts_with(words), "{columns}: {row}");
         assert!(
             frame.iter().any(|line| line.contains("CONFLICTS")),
             "the pane is on CONFLICTS:\n{}",

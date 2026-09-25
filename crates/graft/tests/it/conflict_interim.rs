@@ -895,7 +895,7 @@ fn relaunch_into_a_live_conflict() {
     assert_eq!(state.status, Status::Ready);
     stop_line_reads(
         &state,
-        "merge still in progress",
+        "merge in progress \u{b7} from last run",
         &["\u{23ce} resolve", "c continue", "a abort"],
     );
     // Still open on disk: the launch read recovered nothing (as-built §1).

@@ -314,16 +314,41 @@ fn n_from_a_done_file_crosses_to_the_next_open_file() {
     }
 }
 
+/// `n`/`N` on a done file with nothing left to cross to: rule 3's words, as
+/// the same info notice a document gets (m6-conflicts/61), the status line
+/// untouched.
 #[test]
 fn n_from_a_done_file_with_nothing_open_says_no_more() {
+    use crate::update::resolver::walk::NO_MORE_THIS_WAY;
+
     let state = done_on("a.rs", &["a.rs", "b.rs"], &[]);
     for code in [KeyCode::Char('n'), KeyCode::Char('N')] {
         let (after, commands) = press(&state, code);
         assert!(acting(&commands).is_empty(), "{commands:?}");
-        assert_eq!(sticky(&after), ("no more conflicts", None));
+        assert_eq!(
+            after.resolver.as_ref().expect("open").notice,
+            Some((NO_MORE_THIS_WAY.to_owned(), false)),
+            "{code:?}"
+        );
+        assert_eq!(after.status, state.status, "{code:?}");
         assert_eq!(
             after.resolver.as_ref().expect("open").path,
             state.resolver.as_ref().expect("open").path
         );
     }
+}
+
+/// Every file done: 60's finish row takes the notice row and already names
+/// the next key, so `n` at the edge draws nothing new — the finish row
+/// stands, and `no more conflicts this way` is not drawn.
+#[test]
+fn the_finish_row_outranks_no_more_this_way() {
+    let state = done_on("a.rs", &["a.rs", "b.rs"], &[]);
+    let (after, _) = press(&state, KeyCode::Char('n'));
+    assert!(
+        crate::view::resolver::finish_row(&after).is_some(),
+        "every file done: the finish row"
+    );
+    let frame = super::frame_text(&after);
+    assert!(!frame.contains("no more conflicts"), "{frame}");
 }

@@ -162,3 +162,112 @@ fn changed_on_disk_rereads_once() {
     app.close();
     drop(scratch);
 }
+
+/// Find-and-pin 1 of m6-conflicts/61, pinned **as observed** (2026-09-25):
+/// what a block took both ways reads as after the user edits the file in
+/// `$EDITOR` and the resolver reads it back.
+///
+/// The spec expected the block to stay `Took(Both)` with `edited` set. It
+/// does not: a take is written to disk with its markers gone, and the
+/// re-read parses markers only (`update/resolver.rs:11-15`, "re-reading
+/// collapses every block already taken"), so the document comes back with
+/// **no blocks at all**. `edited` is set, and the recorded take survives in
+/// `choices`. Ticket 61 stopped here: the hand-edit tint rule has no
+/// `Took(Both)` block to draw after a re-read, and needs a spec decision.
+#[test]
+fn a_hand_edited_both_take_reads_as_no_block_after_the_reread() {
+    let (scratch, app, state) = stopped(Shape::StoppedMerge);
+    let repo = scratch.path().to_owned();
+    let state = resolver_on(&app, state, "both.txt");
+    let state = app.key(&state, KeyCode::Char('b'));
+    let state = settled(&app, state);
+    assert_eq!(
+        block_states(&state),
+        [graft_git::conflict::BlockState::Took(
+            graft_git::conflict::Take::Both
+        )],
+        "before the edit: the one block took both"
+    );
+    let state = edited_in_the_editor(&app, &state, &repo);
+
+    // The block's state: gone. The document has no blocks.
+    let states = block_states(&state);
+    assert!(states.is_empty(), "{states:?}");
+    // `edited`: set, and the take recorded before the edit is kept.
+    let choices = state
+        .choices
+        .get(Path::new("both.txt"))
+        .expect("a choice recorded for both.txt");
+    assert!(choices.edited, "{choices:?}");
+    assert_eq!(
+        choices.takes,
+        [Some(graft_git::conflict::Take::Both)],
+        "{choices:?}"
+    );
+    // What the view draws: the empty-file notice, and no block rows.
+    assert_eq!(
+        open(&state).notice,
+        Some((
+            "no conflict markers · ⏎ marks it resolved".to_owned(),
+            false
+        ))
+    );
+    let frame = crate::captures::frame_at(&state, 120, 40, None);
+    let body = frame.join("\n");
+    assert!(
+        body.contains("no conflict markers · ⏎ marks it resolved"),
+        "{body}"
+    );
+    assert!(
+        body.contains("and edited"),
+        "the edited text is on screen: {body}"
+    );
+
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// Every block's state in the open document.
+fn block_states(state: &AppState) -> Vec<graft_git::conflict::BlockState> {
+    open(state)
+        .file
+        .as_ref()
+        .expect("a document")
+        .blocks()
+        .iter()
+        .map(|block| block.state)
+        .collect()
+}
+
+/// What `$EDITOR` does to `both.txt` (a line of the result changed by
+/// hand), then `e`'s answer fed back the way the loop feeds it, and the
+/// re-read it queues run for real to its landing.
+fn edited_in_the_editor(app: &App, state: &AppState, repo: &Path) -> AppState {
+    std::fs::write(
+        repo.join("both.txt"),
+        "same on both sides\nthe line, as we changed it\nthe line, as they changed it, and edited\nand a tail\n",
+    )
+    .expect("writing the file");
+    let (_, commands) = press_for_commands(state, KeyPress::plain(KeyCode::Char('e')));
+    assert!(
+        matches!(commands.as_slice(), [Command::OpenExternalEditor { .. }]),
+        "{commands:?}"
+    );
+    let (state, commands) = graft::update::update(
+        state,
+        graft::update::AppEvent::Produced(
+            graft_core::job::JobId::new(9_300),
+            graft::update::Product::HandedOver(Ok(())),
+        ),
+    );
+    for command in commands {
+        app.jobs.dispatch(command);
+    }
+    app.pump(state, "the re-read", |state| {
+        state
+            .resolver
+            .as_ref()
+            .is_none_or(|open| open.job.is_none())
+    })
+}

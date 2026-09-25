@@ -713,18 +713,14 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
             take('t'),
             vec![
                 key(ch('n')),
+                // Rule 3 is a notice, not the status line (m6-conflicts/61):
+                // the bar keeps `⏎ done`, and the words are said once.
                 Step::See("n with nothing open", |state| {
-                    status_containing(state, "no more conflicts · ⏎ marks zdiff3.txt done")
+                    notice_is(state, "no more conflicts this way")?;
+                    no_status_says_no_more(state)
                 }),
                 key(ch('N')),
-                Step::See("N with nothing open", |state| {
-                    status_containing(state, "no more conflicts · ⏎ marks zdiff3.txt done")?;
-                    let on = state.resolver.as_ref().map(|open| open.path.clone());
-                    check(
-                        on.as_deref() == Some(std::path::Path::new("zdiff3.txt")),
-                        || format!("the resolver moved to {on:?}"),
-                    )
-                }),
+                Step::See("N with nothing open", n_back_stays_on_zdiff3),
                 Step::Mark("walked"),
             ],
         ]),
@@ -747,10 +743,29 @@ fn n_past_the_last_block_says_no_more() -> Scenario {
             headless: vec![],
             // The only row under CONFLICTS: the first.
             keys: plain(&[open_nth(0), vec![ch('t'), ch('n')]].concat()),
-            on_screen: "no more conflicts",
+            on_screen: "no more conflicts this way",
             when: When::Settled,
         }),
     }
+}
+
+/// `N` with nothing open says the same and leaves the resolver on `zdiff3.txt`.
+fn n_back_stays_on_zdiff3(state: &graft::update::AppState) -> Result<(), String> {
+    notice_is(state, "no more conflicts this way")?;
+    no_status_says_no_more(state)?;
+    let on = state.resolver.as_ref().map(|open| open.path.clone());
+    check(
+        on.as_deref() == Some(std::path::Path::new("zdiff3.txt")),
+        || format!("the resolver moved to {on:?}"),
+    )
+}
+
+/// The status line does not repeat rule 3's words: they are the notice's.
+fn no_status_says_no_more(state: &graft::update::AppState) -> Result<(), String> {
+    check(
+        !format!("{:?}", state.status).contains("no more conflicts"),
+        || format!("the status says it too: {:?}", state.status),
+    )
 }
 
 /// The resolver's notice is exactly `words`.

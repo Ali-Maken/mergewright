@@ -47,7 +47,7 @@ pub(super) fn applied(description: &str) -> graft_ops::apply::Applied {
 }
 
 /// A `Stage` of `path` that ran and journaled cleanly.
-fn staged(path: &str) -> Product {
+pub(super) fn staged(path: &str) -> Product {
     Product::Operated(Box::new(crate::jobs::operate::Operated::Done(applied(
         &format!("stage {path}"),
     ))))

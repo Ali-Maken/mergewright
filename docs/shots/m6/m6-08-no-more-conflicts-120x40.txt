@@ -6,7 +6,7 @@ files · 13 · 12 done     crlf.txt done ✓               md.md done ✓       
                          three.txt done ✓            ▸ zdiff3.txt ⏎ marks done     … 5 more
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ zdiff3.txt · 1 conflict · 0 open
-all blocks taken · ⏎ marks zdiff3.txt done
+no more conflicts this way
   1 start
 ▏ ── conflict 1 of 1 · took theirs · feature ── o yours  b both ────────────────────────────────────────────────────────
 ▏ 2 middle theirs
@@ -39,4 +39,4 @@ all blocks taken · ⏎ marks zdiff3.txt done
 
 
 
- no more conflicts · ⏎ marks zdiff3.txt done
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
