@@ -1,7 +1,6 @@
 # undo-and-abort-a-shell-begun-merge: `a` aborts, and `u`/`U` undo Graft's own steps, in a merge begun in the shell
 
-Status: done — ops half (m6-conflicts-57a) and app half (m6-conflicts-57b); the capture tick is held on one question
-(NOTES, "App half", question 1)
+Status: done — ops half (m6-conflicts-57a) and app half (m6-conflicts-57b)
 From: user picks 2026-09-24 item 10 (batch 3, "both"); KNOWN_GAPS M6/08 :611 (the question), :612; TESTING.md
 "Times I left" row :113.
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/57-58.md`; the planner re-read the lines
@@ -255,16 +254,16 @@ pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status>;          
       `m5_walk::every_scenario::journey_b_abort_shell_merge`, `::journey_b_undo_a_take_in_the_shell`. Seen red: with
       `shell_merge_known` forced `false`, the first failed on `no row reads "u puts the merge back"`, the second on
       `no write was queued; status Sticky "finish or abort the merge first"`; restored, green.
-- [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt`,
+- [x] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt`,
       three frames: the abort box over the banner; the graph after `→ ⏎`; after `u`, the banner back.
   - **What right looks like:** frame 1 has the lines `main goes back to before the merge` and
     `u puts the merge back`, with the cursor on `[ Cancel ]`. Frame 2 has no `MERGING`, and its status line contains
-    `abort merge of feature`. Frame 3 shows `MERGING` and `CONFLICTS (2)` again, and its status line starts
+    `abort merge of feature`. Frame 3 shows `MERGING` and `Uncommitted changes (2 unmerged)` again (amended
+    2026-09-25 by the conductor, was `CONFLICTS (2)`: ticket 41's landing is kept), and its status line starts
     `undo: abort merge of feature ✓`.
-  - **Held, not ticked:** written by `shell_begun.rs::a_on_the_banner_aborts_a_shell_merge` (5854 B, three frames,
-    stable on rerun), and every line above holds **except** frame 3's `CONFLICTS (2)`: frame 3 draws
-    `Uncommitted changes (2 unmerged)` as the graph's top row, and the detail pane stays on `COMMIT ddeed32`. See NOTES,
-    "App half", question 1.
+  - Verified by `graft tests/it/resolver/shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`, which writes and
+    checks the file (5854 B, three frames, stable on rerun) and asserts each line above on the drawn frames, frame 3's
+    `Uncommitted changes (2 unmerged)` included. Caption row in `m6-contact-sheet-captions.tsv` says the same.
 - [x] MAP.md updated (doc, no test). `crates/graft/MAP.md` §update::undo (`in_progress_refusal`, `shell_merge_known`,
       `live_refusal`, `undone`'s `OperationLive`), §update::banner (`banner_key` `u`/`U`, `abort_pressed`),
       §update::preview (`open_preview`'s refusal source), §jobs (`Undone::OperationLive`).
@@ -482,7 +481,8 @@ are recorded in their Acceptance tick. Its third ("no app-level test covers `a` 
    `Uncommitted changes (2 unmerged)`, not as the changes pane's `CONFLICTS (2)` header. The test pins what is drawn,
    with a comment. Options: (a) change the caption line (no code); (b) make `land_after_undo` open the changes pane as
    a launch does — a spec change to ticket 41's landing, touching `b-finish-again-after-undo` and
-   `fix-undo-shell-merge-*` too. The capture tick is held until you choose.
+   `fix-undo-shell-merge-*` too. **Answered 2026-09-25: (a).** The conductor kept ticket 41's landing; the caption
+   row, the Acceptance line and the test comment now say `Uncommitted changes (2 unmerged)`, and the box is ticked.
 2. **Global `u` and the push box, pre-existing, not changed.** `update/undo.rs:38` — `undo_key` shows the
    undo-after-push box **before** `launch` (:245) checks `in_progress_refusal`. So global `u` during a Graft-begun merge
    whose next undo is a pushed commit shows the push box first, not the refusal. The banner path now asks the refusal

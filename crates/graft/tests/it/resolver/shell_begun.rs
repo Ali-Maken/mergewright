@@ -423,10 +423,9 @@ fn u_puts_the_merge_back(
     let undone = frame_120(app, &state);
     let body = undone.join("\n");
     assert!(undone[0].trim_end().ends_with("MERGING"), "{body}");
-    // The ticket's capture line asked for `CONFLICTS (2)`. Ticket 41's landing
-    // (kept unchanged, as the ticket says) focuses the banner and leaves the
+    // Ticket 41's landing (kept unchanged) focuses the banner and leaves the
     // detail pane on the commit, so the two conflicts show as the graph's
-    // working-tree row. Pinned as drawn; the question is in the ticket's NOTES.
+    // working-tree row, not as `CONFLICTS (2)` (the conductor's call, 2026-09-25).
     assert!(body.contains("Uncommitted changes (2 unmerged)"), "{body}");
     assert_eq!(row_with(&undone, "undo: abort merge"), ABORT_UNDONE_WORDS);
     (state, undone)

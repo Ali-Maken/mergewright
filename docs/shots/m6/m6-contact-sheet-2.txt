@@ -2327,7 +2327,7 @@ what right looks like: (ticket 49) A teammate pushed; `P` was rejected; `p` name
 
 ================================================================================
 docs/shots/m6/fix-shell-merge-abort-and-undo-120x40.txt
-what right looks like: (ticket 57) A merge begun in the shell, the banner focused. Frame 1 (`a`): the box `Abort the merge?` reads `main goes back to before the merge` and `u puts the merge back`, cursor on `▸[ Cancel ]`. Frame 2 (`→ ⏎`): no `MERGING` in the header; the footer reads `abort merge of feature ✓`. Frame 3 (`u`): `MERGING` again, the graph's top row `Uncommitted changes (2 unmerged)`; the footer reads `undo: abort merge of feature ✓ · c finishes the merge`. The ticket asked for `CONFLICTS (2)` in frame 3: the landing leaves the detail pane on the commit (question in ticket 57 NOTES). Colour unverified.
+what right looks like: (ticket 57) A merge begun in the shell, the banner focused. Frame 1 (`a`): the box `Abort the merge?` reads `main goes back to before the merge` and `u puts the merge back`, cursor on `▸[ Cancel ]`. Frame 2 (`→ ⏎`): no `MERGING` in the header; the footer reads `abort merge of feature ✓`. Frame 3 (`u`): `MERGING` again, the graph's top row `Uncommitted changes (2 unmerged)`; the footer reads `undo: abort merge of feature ✓ · c finishes the merge`; the detail pane stays on `COMMIT ddeed32` (ticket 41's landing). Colour unverified.
 ================================================================================
 
 # TestBackend capture (not a pty), no colour recorded. Fixture:
