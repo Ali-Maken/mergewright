@@ -391,10 +391,22 @@ fn parse_oid(bytes: &[u8]) -> Option<Oid> {
 /// tools' bookkeeping such as `refs/prefetch/**` — so every rebased commit's
 /// old self read as a copy. A copy reachable only from some other namespace
 /// (e.g. `refs/pull/*`) is not flagged; it cannot be merged by accident.
-pub(crate) const DUPLICATE_WALK: &[&str] = &["--branches", "--remotes", "--tags", "HEAD"];
+///
+/// Revisions, not flags: the walk ends with `--`, so a tracked file named
+/// `HEAD` at the root cannot make the `HEAD` revision ambiguous (git exits
+/// 128 otherwise). It therefore goes last on the command line.
+pub(crate) fn duplicate_walk() -> [GitArg; 5] {
+    [
+        GitArg::Flag("--branches"),
+        GitArg::Flag("--remotes"),
+        GitArg::Flag("--tags"),
+        GitArg::Ref(b"HEAD".to_vec()),
+        GitArg::Separator,
+    ]
+}
 
 /// Commits sharing a patch-id, among the newest `window` commits reachable
-/// from a ref the user can merge ([`DUPLICATE_WALK`]).
+/// from a ref the user can merge ([`duplicate_walk`]).
 ///
 /// Three `git` spawns: `log --format=%H` names the window itself (and
 /// whether it covers the whole history, from whether fewer than `window`
@@ -418,9 +430,9 @@ pub fn probe_duplicates(
 ) -> Result<Duplicates, RunError> {
     let log_output = GitInvocation::new(repo)
         .arg(GitArg::Word("log".into()))
-        .args(DUPLICATE_WALK.iter().copied().map(GitArg::Flag))
         .arg(GitArg::Count("-n", window))
         .arg(GitArg::Flag("--format=%H"))
+        .args(duplicate_walk())
         .run(stop)?;
     let oids: Vec<Oid> = log_output
         .stdout
@@ -432,9 +444,9 @@ pub fn probe_duplicates(
 
     let patches = GitInvocation::new(repo)
         .arg(GitArg::Word("log".into()))
-        .args(DUPLICATE_WALK.iter().copied().map(GitArg::Flag))
         .arg(GitArg::Count("-n", window))
         .arg(GitArg::Flag("-p"))
+        .args(duplicate_walk())
         .run(stop)?
         .stdout;
 
@@ -842,6 +854,22 @@ mod tests {
         let mut want = vec![a, a2];
         want.sort();
         assert_eq!(groups, vec![want]);
+    }
+
+    /// A tracked file named `HEAD` at the root makes a bare `HEAD` revision
+    /// ambiguous (git exits 128) unless the revisions end with `--`.
+    #[test]
+    fn duplicates_are_found_beside_a_root_file_named_head() {
+        let (scratch, a) = scratch_with_a();
+        move_ref(&scratch, "refs/heads/feature", a);
+        let a2 = rebase_a_away(&scratch, a);
+        std::fs::write(scratch.path().join("HEAD"), "a file, not a ref\n")
+            .expect("the HEAD file is written");
+        graft_fixtures::git::run(scratch.path(), &["add", "HEAD"]).expect("HEAD is staged");
+        graft_fixtures::git::run(scratch.path(), &["commit", "-m", "a file named HEAD"])
+            .expect("HEAD is committed");
+        let repo = RepoHandle::open(scratch.path()).expect("the scratch repository opens");
+        assert_eq!(groups_holding(&repo, a2).len(), 1);
     }
 
     #[test]

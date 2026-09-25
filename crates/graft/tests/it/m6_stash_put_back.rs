@@ -222,6 +222,24 @@ fn capture_menu_fixed_slots() {
             format!("Cherry-pick {}", &fix[..7])
         ]
     );
+    // The `ⓘ` that puts `Explain` third is the "no upstream" mark: fix has
+    // none, in a repository with no remote at all (a known false mark).
+    let fix_id = graft_core::oid::Oid::from_hex(&fix).expect("a full object id");
+    let fix_findings: Vec<_> = on_fix
+        .radar
+        .ref_findings
+        .get(&fix_id)
+        .map(|found| found.iter().map(|finding| &finding.evidence).collect())
+        .unwrap_or_default();
+    assert!(
+        matches!(
+            fix_findings.as_slice(),
+            [graft_ops::mistake_radar::Evidence::Risk(
+                graft_ops::mistake_radar::Risk::NoUpstream { .. }
+            )]
+        ),
+        "{fix_findings:?}"
+    );
     let fix_frame = frame_at(&on_fix, 120, 40, Some(Clock::Fixed(FORK_NOW)));
     let closed = app.key(&on_fix, KeyCode::Escape);
     let home = app.key(&closed, KeyCode::Char('g'));
@@ -259,7 +277,8 @@ const HEADER: &str = "\
 # What right looks like:
 #  - Frame 1, `.` on fix's row: item 1 `Checkout fix`, item 2
 #    `Cherry-pick <sha7>`, item 3 `Explain` (the row carries the radar's
-#    ⓘ, so it is marked), then the row's own actions.
+#    \"no upstream\" ⓘ, a known false mark in a repository with no remote,
+#    so it is marked), then the row's own actions.
 #  - Frame 2, `.` on main's tip (checked out, no other branch): item 1
 #    `Checkout — already on main` (drawn dim: not provable here), item 2
 #    `Cherry-pick <sha7>`.

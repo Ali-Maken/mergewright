@@ -475,8 +475,9 @@ what right looks like: the status line on the 80-column Detail tab — changed b
 #    on the first line, the field shows a fixed 8 mask glyphs (never the
 #    typed length, ADR-0038 §2) and no plaintext, the note says the answer
 #    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
-#    naming the push it cancels. The line behind it still says the push is
-#    running.
+#    naming the push it cancels. The bottom row is the prompt's own keys:
+#    the push's running line waits under it and comes back once the
+#    prompt is answered (m6-conflicts/69).
 # 2. The same 7-character password again, with the prompt's pulse seed the
 #    other way up. The first mask glyph differs between 1 and 2 and nothing
 #    else does. That is the whole of ADR-0038 §2: the glyph flips on every
@@ -513,7 +514,7 @@ what right looks like: the status line on the 80-column Detail tab — changed b
 "                        │ typed here only · never stored by Graft                              │                        "
 "                        ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯                        "
 "                                                                                                                        "
-" push main → origin/main · esc cancels                                                                                  "
+" ⏎ send  esc cancel                                                                                                     "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
@@ -555,7 +556,7 @@ what right looks like: the status line on the 80-column Detail tab — changed b
 "                        │ typed here only · never stored by Graft                              │                        "
 "                        ╰ ⏎ send  ⌃U clear  esc cancel the push ───────────────────────────────╯                        "
 "                                                                                                                        "
-" push main → origin/main · esc cancels                                                                                  "
+" ⏎ send  esc cancel                                                                                                     "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
@@ -597,7 +598,7 @@ what right looks like: the status line on the 80-column Detail tab — changed b
 " 45     -     Json(Status::Ok)                                                  "
 "     46 +     Json(Status::from(&state))                                        "
 " 46  47   }                                                                     "
-" push main → origin/main · esc cancels                                          "
+" ⏎ send  esc cancel                                                             "
 
 ================================================================================
 docs/shots/m6/fix-box-keeps-on-y-120x40.txt
@@ -1947,7 +1948,7 @@ COMMIT ── ⎇ main ── 1 file staged
 
 ================================================================================
 docs/shots/m6/fix-radar-bookkeeping-120x40.txt
-what right looks like: (ticket 66) A teammate pushed; you had a local commit and a stash on it; `p`, `r` `r` rebased, `P` pushed, `Ctrl+R`. Frame 1: no ⓘ in the marker column of any `main` row — your old commit, kept in the undo backup and under the stash, is not a copy. Frame 2, cursor on stash@{0}: no ⚠ on that row. Frame 3, `.` on main's tip: the first item is not `Explain` (since ticket 71 it is the dim `Checkout — already on main`, then `Cherry-pick <sha7>`, then `Copy SHA`). Colour unverified.
+what right looks like: (ticket 66) A teammate pushed; you had a local commit and a stash on it; `p`, `r` `r` rebased, `P` pushed. Frame 1: no ⓘ in the marker column of any `main` row — your old commit, kept in the undo backup and under the stash, is not a copy. Frame 2, cursor on stash@{0}: no ⚠ on that row. Frame 3, `.` on main's tip: the first item is not `Explain` (since ticket 71 it is the dim `Checkout — already on main`, then `Cherry-pick <sha7>`, then `Copy SHA`). Colour unverified.
 ================================================================================
 
 # m6/fix-radar-bookkeeping-120x40.txt: 120x40, drawn by `view::view` from a
@@ -1957,7 +1958,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 #
 # The scene: a teammate pushed, you had a local commit and a stash made on
 # it; `p` named the divergence, `r r` rebased onto their work, `P` pushed
-# it (so the true "unpushed on main" ⓘ is not in the picture), `Ctrl+R`.
+# it (so the true "unpushed on main" ⓘ is not in the picture).
 # Your old commit still lives in Graft's undo backup and under the stash.
 #
 # What right looks like:
@@ -1969,7 +1970,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 #  - Every branch here has an upstream, so no "no upstream" ⓘ either.
 #  - The rebased tip's id is zeroed: it is new every run.
 
-== 1. After `p r r`, `P` and `Ctrl+R`: no ⓘ on any row ==
+== 1. After `p r r` and `P`: no ⓘ on any row ==
 
  graft /code/api  152 rows so far
 ◆        [◆ main ⇄ origin] ours                                                                          GF now  0000000
@@ -2010,7 +2011,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 ●        Commit 170                                                                                      GF 7y   8ea98be
 ●        Commit 169                                                                                      GF 7y   4926766
 ●        Commit 168                                                                                      GF 7y   0d60d60
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ pushed main → origin/main ✓
 
 == 2. Cursor on stash@{0}: no ⚠ ==
 
@@ -2053,7 +2054,7 @@ what right looks like: (ticket 66) A teammate pushed; you had a local commit and
 ●        Commit 170                                                                                      GF 7y   8ea98be
 ●        Commit 169                                                                                      GF 7y   4926766
 ●        Commit 168                                                                                      GF 7y   0d60d60
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ pushed main → origin/main ✓
 
 == 3. `.` on main's tip: the menu does not lead with Explain ==
 

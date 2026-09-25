@@ -10,7 +10,6 @@
 
 use graft::update::AppState;
 use graft::update::detail::Loading;
-use graft_core::event::{KeyCode, KeyPress};
 use graft_fixtures::remote::LocalRemote;
 use graft_ui::context_menu::ContextAction;
 
@@ -116,8 +115,8 @@ fn a_pull_rebase_marks_no_duplicates() {
     let state = confirm(&app, &state);
     let state = finish(&app, state, "the push");
 
-    // `Ctrl+R`: the duplicate probe is asked again for the rebased repo.
-    let state = app.press(&state, KeyPress::control(KeyCode::Char('r')));
+    // No manual refresh: a history or remote write refreshes everything,
+    // which puts the duplicate probe back to idle, so it is asked again.
     let state = ready(&app, state);
     let state = crate::context_menu::settled(&app, state);
     let state = duplicates_landed(&app, state);
@@ -159,7 +158,7 @@ fn a_pull_rebase_marks_no_duplicates() {
     let menu_frame = frame(&menu, 120, 40);
 
     let body = format!(
-        "{HEADER}\n== 1. After `p r r`, `P` and `Ctrl+R`: no \u{24d8} on any row ==\n\n{}\n\n\
+        "{HEADER}\n== 1. After `p r r` and `P`: no \u{24d8} on any row ==\n\n{}\n\n\
          == 2. Cursor on stash@{{0}}: no \u{26a0} ==\n\n{}\n\n\
          == 3. `.` on main's tip: the menu does not lead with Explain ==\n\n{}\n",
         after_pull.join("\n"),
@@ -180,7 +179,7 @@ const HEADER: &str = "\
 #
 # The scene: a teammate pushed, you had a local commit and a stash made on
 # it; `p` named the divergence, `r r` rebased onto their work, `P` pushed
-# it (so the true \"unpushed on main\" ⓘ is not in the picture), `Ctrl+R`.
+# it (so the true \"unpushed on main\" ⓘ is not in the picture).
 # Your old commit still lives in Graft's undo backup and under the stash.
 #
 # What right looks like:

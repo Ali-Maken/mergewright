@@ -29,6 +29,8 @@ use graft_ops::operation::{
 };
 use graft_term::{SanitizedText, sanitize_line};
 
+#[cfg(test)]
+use super::slots::history_slots;
 use crate::refs::{RefBadges, RefLabel};
 use crate::update::preview::{current_branch, short_name_of, source_at};
 
@@ -45,13 +47,15 @@ pub struct HistoryVerb {
     pub op: Operation,
 }
 
-/// The verbs `.` offers on the commit row `id`, in menu order.
+/// The verbs `.` offers on the commit row `id`, in menu order: the flat list
+/// of [`history_slots`], which is what the menu itself builds from. Test-only.
 ///
 /// Empty whenever the repository has not told us enough to name an operation
 /// honestly: no refs yet, an unborn `HEAD`, or a Foxtrot finding whose real
 /// previous tip is not among the merge's parents. An absent item is the
 /// honest answer — a verb that cannot say what it would do is worse than no
 /// verb at all.
+#[cfg(test)]
 pub fn history_verbs(
     id: Oid,
     parents: &[Oid],
@@ -59,145 +63,33 @@ pub fn history_verbs(
     refs: &RefBadges,
     findings: &[Finding],
 ) -> Vec<HistoryVerb> {
-    let mut verbs = Vec::new();
-    // `HEAD` as a `Tip`: the branch it is on, or `HEAD` itself when
-    // detached — the spelling `graft_ops::operation::history::tip_holds`
-    // recognises. `None` only while the branch is unborn, where there is no
-    // commit to operate from.
-    let Some(head) = head_tip(refs) else {
-        return verbs;
-    };
-    let current = current_branch(refs);
-    let here = short(id);
-    let on = refs.on(id);
-
-    // Slot 1 and slot 2 (m6-conflicts/71): the first Checkout, then
-    // Cherry-pick, so `. ⏎` and `. j ⏎` mean the same thing on every row.
-    // Any further Checkout items lead the rest.
-    // A stash row keeps the order it had before the slots (the ticket's
-    // "stash rows: unchanged").
-    let mut checkouts = Vec::new();
-    checkout_verbs(&mut checkouts, id, refs, on, &here);
-    let pick = verb(
-        &format!("Cherry-pick {here}"),
-        Operation::CherryPick(PickParams {
-            commits: vec![id],
-            subject: subject.to_owned(),
-            head: head.clone(),
-        }),
-    );
-    let mut checkouts = checkouts.into_iter();
-    if is_stash_row(on) {
-        verbs.extend(checkouts);
-        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
-        verbs.push(pick);
-    } else {
-        verbs.extend(checkouts.next());
-        verbs.push(pick);
-        verbs.extend(checkouts);
-        // `m` and `r`'s own operations, from the row the cursor is on, built
-        // by the very functions those keys use — the menu teaches the
-        // keyboard, so it must not mean something else.
-        merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
-    }
-
-    verbs.push(revert_verb(id, parents, subject, &head, &here));
-    reset_verbs(&mut verbs, id, &head);
-    delete_verbs(&mut verbs, id, on);
-    fix_verbs(&mut verbs, id, parents, subject, refs, findings, &head);
-
-    verbs
-}
-
-/// The `.` menu's history items and where they sit (m6-conflicts/71):
-/// `verbs[..leading]` go above `Explain` and the row's own actions, the rest
-/// below them. `dim_first` is `(label, reason)` for a slot 1 that cannot
-/// act — the `HEAD` row whose only local branch is the current one — and
-/// carries no verb, so it dispatches nothing.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Slots {
-    pub verbs: Vec<HistoryVerb>,
-    pub leading: usize,
-    pub dim_first: Option<(SanitizedText, SanitizedText)>,
-}
-
-/// [`history_verbs`], split into the menu's slots: Checkout then
-/// Cherry-pick lead (`leading` 2), or a dim `Checkout — already on <b>`
-/// then Cherry-pick (`leading` 1). Empty `verbs` and no dim slot where
-/// `history_verbs` is empty.
-pub(crate) fn history_slots(
-    id: Oid,
-    parents: &[Oid],
-    subject: &str,
-    refs: &RefBadges,
-    findings: &[Finding],
-) -> Slots {
-    let verbs = history_verbs(id, parents, subject, refs, findings);
-    if verbs.is_empty() || is_stash_row(refs.on(id)) {
-        return Slots {
-            verbs,
-            leading: 0,
-            dim_first: None,
-        };
-    }
-    let checkout_first = matches!(verbs[0].op, Operation::Checkout(_));
-    if checkout_first {
-        return Slots {
-            verbs,
-            leading: 2,
-            dim_first: None,
-        };
-    }
-    // No Checkout at all: every local branch here is the current one.
-    let current = refs.on(id).iter().find_map(|label| match label {
-        RefLabel::Branch {
-            name,
-            current: true,
-            ..
-        } => Some(String::from_utf8_lossy(name).into_owned()),
-        _ => None,
-    });
-    let dim_first = current.map(|branch| {
-        (
-            sanitize_line("Checkout"),
-            sanitize_line(&format!("already on {branch}")),
-        )
-    });
-    Slots {
-        verbs,
-        leading: 1,
-        dim_first,
-    }
-}
-
-/// A row carrying a stash badge.
-fn is_stash_row(on: &[RefLabel]) -> bool {
-    on.iter().any(|label| matches!(label, RefLabel::Stash(_)))
+    history_slots(id, parents, subject, refs, findings).verbs
 }
 
 /// `Checkout <b>` for each local branch on the row that `HEAD` is not
 /// already on; on a row carrying no local branch at all, `Checkout <sha7>
-/// , detached` instead.
-fn checkout_verbs(
+/// , detached` instead. Answers the current branch when it is on the row and
+/// was skipped, so the caller can say `already on <b>`.
+pub(super) fn checkout_verbs(
     verbs: &mut Vec<HistoryVerb>,
     id: Oid,
     refs: &RefBadges,
     on: &[RefLabel],
     here: &str,
-) {
-    let Some(head_before) = head_ref(refs) else {
-        return;
-    };
+) -> Option<String> {
+    let head_before = head_ref(refs)?;
     let mut any_local = false;
+    let mut skipped = None;
     for label in on {
         let RefLabel::Branch { name, current, .. } = label else {
             continue;
         };
         any_local = true;
+        let short = String::from_utf8_lossy(name).into_owned();
         if *current {
+            skipped = Some(short);
             continue;
         }
-        let short = String::from_utf8_lossy(name).into_owned();
         verbs.push(verb(
             &format!("Checkout {short}"),
             // The full name: `check_checkout` looks it up in the facts under
@@ -217,6 +109,19 @@ fn checkout_verbs(
             }),
         ));
     }
+    skipped
+}
+
+/// `Cherry-pick <sha7>` onto `HEAD`.
+pub(super) fn pick_verb(id: Oid, subject: &str, head: &Tip, here: &str) -> HistoryVerb {
+    verb(
+        &format!("Cherry-pick {here}"),
+        Operation::CherryPick(PickParams {
+            commits: vec![id],
+            subject: subject.to_owned(),
+            head: head.clone(),
+        }),
+    )
 }
 
 /// `Merge <b> into <cur> (m)` and `Rebase <cur> onto <b> (r)`, the two
@@ -229,7 +134,7 @@ fn checkout_verbs(
 /// "next time you can do this without opening it". Checkout, cherry-pick,
 /// revert, reset and the deletions own no letter — which is why they live
 /// behind `.` at all (`docs/design/02-keymap.md` §2.1) — so they carry none.
-fn merge_and_rebase_verbs(
+pub(super) fn merge_and_rebase_verbs(
     verbs: &mut Vec<HistoryVerb>,
     id: Oid,
     refs: &RefBadges,
@@ -270,7 +175,13 @@ fn merge_and_rebase_verbs(
 /// `Revert <sha7>`, or `Revert <sha7>, -m 1` on a merge: git refuses a
 /// merge without `-m`, so the label says which side is kept rather than
 /// offering a verb that cannot run.
-fn revert_verb(id: Oid, parents: &[Oid], subject: &str, head: &Tip, here: &str) -> HistoryVerb {
+pub(super) fn revert_verb(
+    id: Oid,
+    parents: &[Oid],
+    subject: &str,
+    head: &Tip,
+    here: &str,
+) -> HistoryVerb {
     let is_merge = parents.len() > 1;
     let (label, mainline) = if is_merge {
         (format!("Revert {here}, -m 1"), Some(1))
@@ -300,7 +211,7 @@ fn revert_verb(id: Oid, parents: &[Oid], subject: &str, head: &Tip, here: &str) 
 /// means "that letter is live right now, press it and skip the menu"
 /// (`docs/design/02-keymap.md` §2.1); `mixed` and `hard` are reset modes, not
 /// keys, and wore that shape until m5-history-and-ghost-preview/12.
-fn reset_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, head: &Tip) {
+pub(super) fn reset_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, head: &Tip) {
     let cur = short_name_of(&head.name);
     for (mode, word) in [(ResetMode::Mixed, "mixed"), (ResetMode::Hard, "hard")] {
         verbs.push(verb(
@@ -320,7 +231,7 @@ fn reset_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, head: &Tip) {
 /// — deleting the branch you are standing on is not a thing git will do —
 /// and `Delete tag <t>` for every tag. Both pinned by compare-and-swap to
 /// the commit the row showed.
-fn delete_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, on: &[RefLabel]) {
+pub(super) fn delete_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, on: &[RefLabel]) {
     for label in on {
         match label {
             RefLabel::Branch {
@@ -373,7 +284,7 @@ fn delete_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, on: &[RefLabel]) {
 ///
 /// Absent, all three, when `real_tip` is not among the merge's parents:
 /// nothing here would then be able to say which side it keeps.
-fn fix_verbs(
+pub(super) fn fix_verbs(
     verbs: &mut Vec<HistoryVerb>,
     id: Oid,
     parents: &[Oid],
@@ -436,7 +347,7 @@ fn fix_verbs(
 
 /// `HEAD` as a [`Tip`]: its branch when it has one, else `HEAD` itself at the
 /// commit it is detached on. `None` on an unborn branch.
-fn head_tip(refs: &RefBadges) -> Option<Tip> {
+pub(super) fn head_tip(refs: &RefBadges) -> Option<Tip> {
     if let Some(tip) = current_branch(refs) {
         return Some(tip);
     }
@@ -454,11 +365,11 @@ fn head_ref(refs: &RefBadges) -> Option<HeadRef> {
 }
 
 /// The first seven hex digits, the way every other row label spells a commit.
-fn short(oid: Oid) -> String {
+pub(super) fn short(oid: Oid) -> String {
     oid.to_string().chars().take(7).collect()
 }
 
-fn verb(label: &str, op: Operation) -> HistoryVerb {
+pub(super) fn verb(label: &str, op: Operation) -> HistoryVerb {
     HistoryVerb {
         label: sanitize_line(label),
         op,

@@ -44,18 +44,19 @@ pub(super) fn run_preview(
     clock: crate::session::Clock,
     cancel: &Cancel,
 ) -> Result<Arc<Planned>, PreviewFailure> {
-    let failed = |line: String| PreviewFailure::Failed(line);
-    let repo = repos.shared().map_err(|error| failed(error.to_string()))?;
+    let repo = repos
+        .shared()
+        .map_err(|error| PreviewFailure::Failed(error.to_string()))?;
     let handle = repo.handle();
     let git = system_git()
-        .map_err(|error| failed(error.to_string()))?
+        .map_err(|error| PreviewFailure::Failed(error.to_string()))?
         .version();
 
     let plan = match &request.subject {
         PreviewSubject::Operation { op, .. } => {
             let scope = op.facts_scope();
             let facts = graft_ops::facts::read_facts(&handle, git, cancel, &scope)
-                .map_err(|why| failed(why.to_string()))?;
+                .map_err(|why| PreviewFailure::Failed(why.to_string()))?;
             graft_ops::preview::plan(&handle, &git, op, &facts, cancel).map_err(
                 |why| match why {
                     // The write would refuse this too: routed to the status
@@ -63,18 +64,20 @@ pub(super) fn run_preview(
                     graft_ops::preview::PreviewError::Refused(refusal) => {
                         PreviewFailure::Refused(refusal)
                     }
-                    other => failed(other.explain()),
+                    other => PreviewFailure::Failed(other.explain()),
                 },
             )?
         }
         PreviewSubject::RevertTo(entry) => {
-            let entries = super::undo::journal_entries(repos, clock, cancel).map_err(failed)?;
+            let entries = super::undo::journal_entries(repos, clock, cancel)
+                .map_err(PreviewFailure::Failed)?;
             graft_ops::preview::plan_revert_to(&entries, entry)
-                .map_err(|why| failed(why.explain()))?
+                .map_err(|why| PreviewFailure::Failed(why.explain()))?
         }
     };
 
-    let anchors = read_anchors(&handle, &plan, &request.resident, cancel).map_err(failed)?;
+    let anchors =
+        read_anchors(&handle, &plan, &request.resident, cancel).map_err(PreviewFailure::Failed)?;
     Ok(Arc::new(Planned { plan, anchors }))
 }
 

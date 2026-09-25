@@ -1,3 +1,6 @@
+# HISTORICAL (m6-conflicts/76): no test writes this file; it predates m5's
+# history verbs and m6's fixed slots (a commit row's menu now opens with
+# Checkout, then Cherry-pick, then Explain). Kept for the m2 record.
 # m2-context-menu.txt: TestBackend capture (not a pty), 60x10. Fixture:
 # 5 synthetic commits (history_of(5, 1) in crates/graft/src/view/tests.rs),
 # cursor on row 1 (commit 0404040). `AppState.context_menu` set directly
