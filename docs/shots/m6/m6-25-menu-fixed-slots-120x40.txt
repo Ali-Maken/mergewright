@@ -1,0 +1,42 @@
+m6 walk capture: m6-25-menu-fixed-slots — scenario menu-checkout, keys k ., unicode tier, 120x40
+
+ graft <scratch____________________________________________________________>  6 commits
+  ● ▏ⓘ [fix] fix the bug                                                                                 GF 6y   401cfbe
+ Checkout fix
+ Cherry-pick 401cfbe
+ Explain
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Merge fix into main (m)
+ Rebase main onto fix (r)
+ Revert 401cfbe
+ Reset main to here, mixed
+ Reset main to here, hard
+ Delete branch fix
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O

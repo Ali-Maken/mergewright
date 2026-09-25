@@ -78,6 +78,14 @@ pub const JOURNEYS: [&str; 8] = [
 /// m6-conflicts/74: a rebase or checkout over edits sets them aside.
 mod set_aside;
 
+/// m6-conflicts/75: that checkout, killed before each step and relaunched.
+mod kill;
+
+/// m6-conflicts/75: the menu and the set-aside preview inside the frame
+/// budget. Heavy tier.
+#[cfg(feature = "heavy-tests")]
+mod frame_budget;
+
 /// Keys the journey presses, counted as they go.
 struct Keys<'a> {
     app: &'a App,
@@ -221,6 +229,65 @@ fn a_click_on_the_dim_checkout_slot_keeps_the_menu_and_says_why() {
         "{:?}",
         clicked.status
     );
+    app.close();
+}
+
+/// m6-conflicts/75: the dim of `Checkout — already on main`, read from the
+/// cells the app draws (a capture carries no attributes, CLAUDE.md rule 5).
+/// Every cell of that row's words carries `DIM`; no cell of `Cherry-pick`'s
+/// does. Proves the buffer, not how a terminal renders dim: the look is
+/// **unverified** until the user sees it.
+#[test]
+fn the_checkout_slot_on_head_s_row_is_drawn_dim_and_only_it() {
+    use ratatui::style::Modifier;
+
+    let scratch = main_and_fix();
+    let path = scratch.path();
+    let main = rev(path, "main");
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 40);
+    let state = cursor_to(&app, opened(&app, state), &main);
+    let state = app.key(&state, KeyCode::Char('.'));
+
+    let session = graft::session::Session::settle(
+        &graft::config::Loaded::default(),
+        crate::captures::capabilities(),
+    );
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(120, 40))
+        .expect("test backend opens");
+    terminal
+        .draw(|frame| graft::view::view(&session, &state, frame))
+        .expect("drawing into a test backend cannot fail");
+    let buffer = terminal.backend().buffer();
+    let cells_of = |words: &str| -> Vec<Modifier> {
+        (0..buffer.area.height)
+            .find_map(|y| {
+                let line: Vec<&str> = (0..buffer.area.width)
+                    .map(|x| buffer[(x, y)].symbol())
+                    .collect();
+                let text = line.concat();
+                let at = text.find(words)?;
+                let start = u16::try_from(text[..at].chars().count()).ok()?;
+                let width = u16::try_from(words.chars().count()).ok()?;
+                Some(
+                    (start..start + width)
+                        .map(|x| buffer[(x, y)].modifier)
+                        .collect(),
+                )
+            })
+            .unwrap_or_else(|| panic!("`{words}` is not drawn"))
+    };
+    let dim = cells_of("Checkout — already on main");
+    assert!(
+        dim.iter().all(|cell| cell.contains(Modifier::DIM)),
+        "{dim:?}"
+    );
+    let pick = cells_of(&format!("Cherry-pick {}", &main[..7]));
+    assert!(
+        pick.iter().all(|cell| !cell.contains(Modifier::DIM)),
+        "{pick:?}"
+    );
+    drop(state);
     app.close();
 }
 

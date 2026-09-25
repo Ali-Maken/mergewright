@@ -1,0 +1,26 @@
+m6 walk capture: m6-20-stash-clash-landing — scenario stash-pop-clash-to-done@landing, keys S p, unicode tier, 80x24
+
+files   ▸ notes.md 1/1 open
+────────────────────────────────────────────────────────────────────────────────
+▸ notes.md · 1 conflict · 1 open
+stash@{0} clashed in 1 file · esc, u puts it all back
+▏ ── conflict 1 of 1 · open ── o yours  t stashed  b both ──────────────────────
+▏ yours · main
+▏ 1 committed
+▏ stashed · stash@{0}
+▏ 1 stashed
+▏ ──────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+ o yours  t stashed  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d  esc

@@ -1,0 +1,42 @@
+m6 walk capture: m6-22-set-aside-preview — scenario pull-rebase-dirty@preview, keys p r, unicode tier, 120x40
+
+ graft <scratch________________________________________________________________>  152 rows so far
+●   ▏  ours                                                                                              GF 6y   b95280a
+│      after rebase
+│ ○    [◆ main ↑1 ↓1] ours                                                                               GF —    —
+│ ●    [origin/main] the teammate's commit                                                               GF 6y   0657dff
+●─╯    Commit 200                                                                                        GF 7y   d5ae5fd
+●      Commit 199                                                                                        GF 7y   13e6ab1
+●      Commit 198                                                                                        GF 7y   f5055d9
+●      Commit 197                                                                                        GF 7y   2cce853
+●      Commit 196                                                                                        GF 7y   325da3f
+●      Commit 195                                                                                        GF 7y   0722297
+●      Commit 194                                                                                        GF 7y   b6a4a47
+●      Commit 193                                                                                        GF 7y   60af0eb
+●      Commit 192                                                                                        GF 7y   aceb8c5
+●      Commit 191                                                                                        GF 7y   11d68ff
+●      Commit 190                                                                                        GF 7y   91900bd
+●      Commit 189                                                                                        GF 7y   cec3e93
+●      Commit 188                                                                                        GF 7y   0a91ece
+●      Commit 187                                                                                        GF 7y   3121935
+●      Commit 186                                                                                        GF 7y   fab25df
+●      Commit 185                                                                                        GF 7y   09ae97c
+●      Commit 184                                                                                        GF 7y   49d7783
+●      Commit 183                                                                                        GF 7y   22d55c9
+●      Commit 182                                                                                        GF 7y   d212b3e
+●      Commit 181                                                                                        GF 7y   c8254c5
+●      Commit 180                                                                                        GF 7y   e95ccd4
+●      Commit 179                                                                                        GF 7y   97b58e5
+●      Commit 178                                                                                        GF 7y   1c9b7ed
+╭ Preview: rebase main onto origin/main ───────────────────────────────────────────────────────────────────────────────╮
+│ 1 commit replayed                                                                                                    │
+│ main b95280a → 1 new commit                                                                                          │
+│ working tree: 1 file updated                                                                                         │
+│ your edits: 3 files set aside, put back after · 1 staged comes back unstaged                                         │
+│ no conflicts expected                                                                                                │
+│ undo: u takes this back                                                                                              │
+│ 1 lane continue outside this view                                                                                    │
+│ git rebase --no-update-refs --no-autostash origin/main                                                               │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+
