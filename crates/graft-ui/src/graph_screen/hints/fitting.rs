@@ -9,18 +9,18 @@ use graft_term::SanitizedText;
 use super::{Hint, Rung};
 use crate::fit::fit;
 
-/// One rung's worth of bar: either one more hint at its bare key, or one
-/// hint already drawn raised to a better rung. [`ladder`] puts them in a
+/// One rung's worth of bar: one hint placed at a rung — added at its bare
+/// key (or whole, if it keeps its words), or raised to a better rung. [`ladder`] puts them in a
 /// fixed order and [`fit_list`] takes the longest prefix that fits, which is
 /// what makes the bar monotone in its own width — every prefix costs at
 /// least as much as the one before it, so more room can only add a hint or
 /// improve one, never the reverse.
 #[derive(Clone, Copy, Debug)]
-enum Step {
-    /// Draw the next hint, at its bare key.
-    Add,
-    /// Raise the hint at this index to this rung.
-    Raise(usize, Rung),
+struct Step {
+    /// The hint's index in the list.
+    index: usize,
+    /// The rung it is drawn at from this step on.
+    rung: Rung,
 }
 
 /// ADR-0039's ladder, third amendment: the bar fills **from the most
@@ -35,11 +35,14 @@ enum Step {
 /// 2. those three to their full verbs. The leading verbs are the ones worth
 ///    the most cells, and they go first so that 80 columns still reads
 ///    `⏎ open  c commit  y sha` and not three abbreviations;
-/// 3. every remaining hint, in priority order, at its **bare key**. A hint
+/// 3. every hint that **keeps its words** ([`Hint::keeps_words`], ADR-0044
+///    §4), at its full verb, in list order — the resolver's way out
+///    (`d start over`, `esc close`), which a bare `d  esc` would hide;
+/// 4. every remaining hint, in priority order, at its **bare key**. A hint
 ///    may only rise above its key once every hint ahead of it is at least
 ///    present — that is the "leaves room for the hints ahead of it" clause,
 ///    and it is what makes the tail of bare keys exist at all;
-/// 4. those tail hints raised, one at a time from the most relevant end,
+/// 5. those tail hints raised, one at a time from the most relevant end,
 ///    short rung then full (the two the ladder can raise to).
 ///
 /// The list-wide version of this — every hint stepping down a rung together
@@ -51,15 +54,29 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
     let mut steps = Vec::new();
     for (index, hint) in list.iter().enumerate().take(floor) {
         if hint.rungs().contains(&Rung::Short) {
-            steps.push(Step::Raise(index, Rung::Full));
+            steps.push(Step {
+                index,
+                rung: Rung::Full,
+            });
         }
     }
-    for _ in floor..list.len() {
-        steps.push(Step::Add);
+    let rest = || list.iter().enumerate().skip(floor);
+    for (index, _) in rest().filter(|(_, hint)| hint.keeps_words) {
+        steps.push(Step {
+            index,
+            rung: Rung::Full,
+        });
     }
-    for (index, hint) in list.iter().enumerate().skip(floor) {
+    let plain = || rest().filter(|(_, hint)| !hint.keeps_words);
+    for (index, _) in plain() {
+        steps.push(Step {
+            index,
+            rung: Rung::Key,
+        });
+    }
+    for (index, hint) in plain() {
         for rung in hint.rungs().iter().skip(1) {
-            steps.push(Step::Raise(index, *rung));
+            steps.push(Step { index, rung: *rung });
         }
     }
     steps
@@ -77,24 +94,27 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
 pub(super) fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
     let room = usize::from(columns);
     let floor = list.len().min(3);
-    let mut drawn: Vec<Hint> = list[..floor]
+    // One slot per list entry, `None` until a step places it: a hint that
+    // keeps its words is placed before the bare keys ahead of it, so the
+    // drawn row is the placed slots in list order, not a prefix.
+    let mut slots: Vec<Option<Hint>> = list
         .iter()
-        .map(|hint| hint.at(hint.floor_rung()))
+        .enumerate()
+        .map(|(index, hint)| (index < floor).then(|| hint.at(hint.floor_rung())))
         .collect();
-    if !fits(&drawn, trailer, room) {
+    let drawn = |slots: &[Option<Hint>]| slots.iter().flatten().copied().collect::<Vec<_>>();
+    if !fits(&drawn(&slots), trailer, room) {
         return below_the_floor(list, trailer, room);
     }
-    for step in ladder(list, floor) {
-        let mut candidate = drawn.clone();
-        match step {
-            Step::Add => candidate.push(list[candidate.len()].at(Rung::Key)),
-            Step::Raise(index, rung) => candidate[index] = candidate[index].at(rung),
-        }
-        if !fits(&candidate, trailer, room) {
+    for Step { index, rung } in ladder(list, floor) {
+        let mut candidate = slots.clone();
+        candidate[index] = Some(list[index].at(rung));
+        if !fits(&drawn(&candidate), trailer, room) {
             break;
         }
-        drawn = candidate;
+        slots = candidate;
     }
+    let drawn = drawn(&slots);
     place_doorway(drawn, trailer)
 }
 

@@ -310,9 +310,9 @@ fn resolver_list(base: bool, restart: bool, roles: SideRoles) -> Vec<Hint> {
         hint("M", "mergetool"),
     ]);
     if restart {
-        list.push(hint("d", "start over"));
+        list.push(hint("d", "start over").keeps_words());
     }
-    list.push(hint("esc", "close"));
+    list.push(hint("esc", "close").keeps_words());
     list
 }
 
@@ -332,7 +332,7 @@ fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
         hint("e", "edit"),
         hint("n", "next"),
         hint("M", "mergetool"),
-        hint("esc", "close"),
+        hint("esc", "close").keeps_words(),
     ]
 }
 
@@ -346,7 +346,7 @@ fn resolver_done_list(restart: bool) -> Vec<Hint> {
         list.push(hint("d", "start over"));
     }
     list.push(hint("e", "edit"));
-    list.push(hint("esc", "close"));
+    list.push(hint("esc", "close").keeps_words());
     list
 }
 

@@ -37,4 +37,4 @@ took theirs · feature in 3 blocks · ⏎ marks three.txt done
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close

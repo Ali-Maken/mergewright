@@ -1,6 +1,6 @@
 # hint-words-keep-the-way-out: at 120 columns the resolver's bar keeps `d start over` and `esc close` whole
 
-Status: ready
+Status: blocked: needs graft (crates/graft/tests/it/resolver.rs:159)
 From: user picks 2026-09-24 item 5 (batch 9, option A); `.scratch/m6-conflicts/user-facts-m632.md`; ADR-0044 §4
 (amends ADR-0039's third amendment).
 Amended 2026-09-24 (spec-only pass) after scout `.scratch/m6-conflicts/scouts/54-56.md`. The planner re-read
@@ -89,18 +89,18 @@ impl Hint { #[must_use] pub fn keeps_words(self) -> Self; }   // the builder lis
 - **Docs:** `crates/graft-ui/MAP.md` line 22: the step sequence, the flag, and which lists mark it.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `resolver_bar_keeps_the_way_out_at_120`: red first, then green.
-- [ ] `resolver_bar_keeps_the_way_out_at_120_in_a_rebase` (rebase roles, 120 columns).
-- [ ] `done_bar_keeps_the_way_out_at_100` (`resolver_done_list(true)`: `d start over`, `esc close` whole).
-- [ ] `only_the_resolver_marks_words`
-- [ ] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` (existing, green)
+- [x] `resolver_bar_keeps_the_way_out_at_120`: green. Red-first **not observed**: written before the ladder change but first run after it; the pre-change bar `M mergetool  d  esc` is in the capture diff.
+- [x] `resolver_bar_keeps_the_way_out_at_120_in_a_rebase` (rebase roles, 120 columns).
+- [x] `done_bar_keeps_the_way_out_at_100` (`resolver_done_list(true)`: `d start over`, `esc close` whole).
+- [x] `only_the_resolver_marks_words` (graph_screen/tests.rs)
+- [x] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` (existing, green, unedited)
 - [ ] Capture (rule 6; colour **unverified**, rule 5): `docs/shots/m6/fix-bar-keeps-the-way-out-120x40.txt`, from the
       pty walk (`.scratch/m6-conflicts/pty-walk-m6.py`) against the built binary. No new `graft` capture test is
       added: that would be a `graft` edit.
   - Scene: the merge resolver on `notes.txt`, with `B base` and `d start over` offered, at 120 columns.
   - **What right looks like:** the bottom row contains `d start over` and ends `esc close`; `M` and `j/k` are bare
     keys; no hint is cut mid-word.
-- [ ] MAP.md updated (doc, no test).
+- [x] MAP.md updated (doc, no test).
 
 ## Gates
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc`, all
@@ -110,3 +110,9 @@ workspace-wide.
 Small. One context.
 
 ## NOTES
+- Scout: .scratch/m6-conflicts/scouts/54-56.md.
+- **Blocked:** `graft/tests/it/resolver.rs:153-163` `enter_on_conflicts_row_opens_the_resolver` asserts `M mergetool` at 120 (its comment: `d` and `esc` stay bare), the opposite of this ticket. Edit for lane O: drop `"M mergetool"`, assert `"d start over"` and `"esc close"`, fix the comment. The only red test (3102/3103).
+- Capture box **not ticked**: `fix-bar-keeps-the-way-out-120x40.txt` needs a new m5_walk stem (a graft example), out of crate. The same scene is regenerated in `fix-stop-lands-in-resolver-120x40.txt`. Colour unverified.
+- **Finding for the user:** at 80x24 the resolver now draws `... ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close`: `j/k` and `M` drop off entirely, `⌃O/⌃T all` and `O/T file` go bare. The ticket judged only 120.
+- Pinned 80-column bars in `resolver_hint_ladder` and `resolver_offers_file_keys` updated: `e edit` -> `e`, `esc` -> `esc close`.
+- **Touches:** resolver_list, resolver_card_list, resolver_done_list (the only lists marked; `only_the_resolver_marks_words` over every_hint_context); the ladder is shared by every bar, and an unmarked list gives the same step sequence (all other hint tests and sweeps green, unedited). Captures (bottom row only, checked by git diff -U0): fix-card-names-numbers-120x40/80x24, fix-file-keys-before-120x40, fix-file-list-many-120x40, fix-file-list-rebase-step2-120x40 (rebase: `⏎ done` -> `⏎`), fix-stop-lands-in-resolver-120x40/80x24, fix-take-all-120x40; contact sheet 1 rebuilt (198 129 B). m6-13-* unchanged. `every_key_the_bar_draws_is_answered` green. Cause fix.

@@ -781,7 +781,7 @@ files   ▸ notes.txt · 2 of 2 open
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-card-names-numbers-80x24.txt
@@ -811,7 +811,7 @@ files   ▸ notes.txt 2/2 open
   7 SEVEN from feature
   ──────────────────────────────────────────────────────────────────────────────
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B  e  n  N  ⏎  j/k  M  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-preview-verb-120x40.txt
@@ -1280,7 +1280,7 @@ files · 12   ▸ src/handlers/handler_01.rs 1 of 1 open     src/handlers/handle
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-file-list-rebase-step2-120x40.txt
@@ -1326,7 +1326,7 @@ files   ▸ b.txt · 1 of 1 open
 
 
 
- o upstream  t yours  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o upstream  t yours  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-three-panes-180x50.txt
@@ -1642,7 +1642,7 @@ took theirs · feature in 3 blocks · ⏎ marks three.txt done
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-file-keys-before-120x40.txt
@@ -1688,7 +1688,7 @@ files   gone.txt · •    ▸ notes.txt · 2 of 2 open
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-file-keys-before-200x50.txt
@@ -1892,7 +1892,7 @@ files   ▸ notes.md · 1 of 1 open    shared.rs · •
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k file  M mergetool  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B base  e edit  n next  N prev  ⏎ done  j/k  M  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-stop-lands-in-resolver-80x24.txt
@@ -1922,7 +1922,7 @@ files   ▸ notes.md 1/1 open   shared.rs •
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T all  O/T file  B  e  n  N  ⏎  j/k  M  d  esc
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close
 
 ================================================================================
 docs/shots/m6/fix-stop-lands-in-resolver-187x50.txt
