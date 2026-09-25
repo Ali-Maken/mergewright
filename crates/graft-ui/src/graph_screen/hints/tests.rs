@@ -1687,3 +1687,50 @@ fn done_bar_keeps_the_way_out_at_100() {
     assert!(text.contains("d start over"), "{text}");
     assert!(text.ends_with("esc close"), "{text}");
 }
+
+/// ADR-0044 §4 as it reads (m6-conflicts/64, review M1): every key is
+/// placed bare before a marked hint takes its words, so 80 columns loses
+/// words, never a key — `j/k` and `M` stay on the bar.
+#[test]
+fn resolver_bar_shows_every_key_at_80() {
+    for roles in [SideRoles::Merge, SideRoles::Rebase] {
+        let context = HintContext::Resolver {
+            base: true,
+            restart: true,
+            whole_file: false,
+            done: false,
+            roles,
+            finishable: false,
+        };
+        let keys = |columns| {
+            hints_for(&context, Divider::Hidden, columns)
+                .iter()
+                .map(|hint| hint.key)
+                .collect::<Vec<_>>()
+        };
+        let text = resolver_bar(roles, 80);
+        assert_eq!(keys(80), keys(240), "{text}");
+        assert!(text.contains("j/k"), "{text}");
+        assert!(text.contains("  M  "), "{text}");
+    }
+}
+
+/// m6-conflicts/64 (review m8): the done list marks `d start over` as
+/// ADR-0044 §4 decision 2 says, so it keeps its words once the list grows.
+#[test]
+fn done_list_marks_start_over() {
+    let hints = hints_for(
+        &HintContext::Resolver {
+            base: false,
+            restart: true,
+            whole_file: false,
+            done: true,
+            roles: SideRoles::Merge,
+            finishable: false,
+        },
+        Divider::Hidden,
+        240,
+    );
+    let d = hints.iter().find(|hint| hint.key == "d").expect("d drawn");
+    assert!(d.keeps_words, "{hints:?}");
+}

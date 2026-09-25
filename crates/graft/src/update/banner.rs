@@ -372,9 +372,14 @@ pub fn banner_key(
         // M3). In a merge begun in the shell they are sent, and ops' gate
         // decides (§2.6a's one exception, m6-conflicts/57).
         KeyCode::Char(letter @ ('u' | 'U')) if plain => {
-            // The refusal first: `undo_key` asks the undo-after-push box
-            // before `launch` refuses, and a box on a key that then refuses
-            // is not what the banner has ever answered.
+            // The refusal first where there is one: `undo_key` asks the
+            // undo-after-push box before `launch` refuses, and a box on a key
+            // that then refuses is not what the banner has ever answered. In
+            // a merge begun in the shell there is none (`in_progress_refusal`
+            // is `None`), so `undo_key` runs as is: when the next undo is a
+            // push, the push box opens first, and "Undo locally" then meets
+            // ops' `OperationLive` refusal (review 54–58 m1; KNOWN_GAPS
+            // M6/57 holds the question).
             match super::undo::in_progress_refusal(state) {
                 Some(refusal) => state.status = refusal,
                 None => commands.extend(super::undo::undo_key(state, letter == 'U', next_id)),

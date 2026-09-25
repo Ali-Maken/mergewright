@@ -811,7 +811,7 @@ files   ▸ notes.txt 2/2 open
   7 SEVEN from feature
   ──────────────────────────────────────────────────────────────────────────────
 
- o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc
 
 ================================================================================
 docs/shots/m6/fix-preview-verb-120x40.txt
@@ -1922,7 +1922,7 @@ files   ▸ notes.md 1/1 open   shared.rs •
 
 
 
- o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  d start over  esc close
+ o yours  t theirs  b both  ⌃O/⌃T  O/T  B  e  n  N  ⏎  j/k  M  d start over  esc
 
 ================================================================================
 docs/shots/m6/fix-stop-lands-in-resolver-187x50.txt
@@ -3212,13 +3212,13 @@ what right looks like: (ticket 41) Trimmed to header + footer: the banner is sho
 
 ================================================================================
 docs/shots/m6/m6-10-stop-lands-in-resolver-120x40.txt
-what right looks like: TESTING.md "Conflict journeys", a-stop-to-first-conflict: two-files, keys `m m` from the graph — the merge stops and the frame right after is the resolver, no key between: header `MERGING`; strip `files   ▸ gone.txt · keep or delete    notes.txt · …`; identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`; the card `deleted by them · o keeps the file  t deletes it`; the bottom row `o yours  t theirs  e edit  n next  M mergetool  esc close`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
+what right looks like: TESTING.md "Conflict journeys", a-stop-to-first-conflict: two-files, keys `m m` from the graph — the merge stops and the frame right after is the resolver, no key between: header `MERGING`; strip `files   ▸ gone.txt · keep or delete    notes.txt · •` (`•`: not read yet); identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`; the card `deleted by them · o keeps the file  t deletes it`; the bottom row `o yours  t theirs  e edit  n next  M mergetool  esc close`. Unicode tier; colour, the focus reverse video and the cursor block unverified.
 ================================================================================
 
 m6 walk capture: m6-10-stop-lands-in-resolver — scenario a-stop-to-first-conflict, keys m m, unicode tier, 120x40
 
 MERGING
-files   ▸ gone.txt · keep or delete    notes.txt · …
+files   ▸ gone.txt · keep or delete    notes.txt · •
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ gone.txt · modified on yours · main, deleted on theirs · feature
 
@@ -3266,7 +3266,7 @@ what right looks like: The same stop at 160x48: the strip and the card, `▸ gon
 m6 walk capture: m6-10-stop-lands-in-resolver — scenario a-stop-to-first-conflict, keys m m, unicode tier, 160x48
 
 MERGING
-files   ▸ gone.txt · keep or delete    notes.txt · …
+files   ▸ gone.txt · keep or delete    notes.txt · •
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ gone.txt · modified on yours · main, deleted on theirs · feature
 

@@ -6,6 +6,34 @@ use graft_core::commit::Timestamp;
 
 use super::{ConflictForecast, fold, ghost_oid, parse_ident, parse_offset, sha1};
 
+/// m6-conflicts/64 (review m2): the preview's refusal and the executor's
+/// `explain` both word `OperationLive` through `operation_live_words`.
+#[test]
+fn operation_live_has_one_wording_in_ops() {
+    use graft_git::state::InProgress;
+
+    use super::{PreviewError, not_invertible};
+    use crate::operation::Refusal;
+    use crate::undo::{NotInvertible, UndoError, operation_live_words};
+
+    for kind in [
+        InProgress::Merge,
+        InProgress::Rebase,
+        InProgress::CherryPick,
+        InProgress::Revert,
+        InProgress::Bisect,
+    ] {
+        let why = NotInvertible::OperationLive { kind };
+        let words = operation_live_words(kind);
+        assert_eq!(words, format!("finish or abort the {} first", kind.name()));
+        assert_eq!(UndoError::Nothing(why.clone()).explain(), words, "{kind:?}");
+        let PreviewError::Refused(Refusal::CannotRevertTo(preview)) = not_invertible(&why) else {
+            panic!("{kind:?}: a refusal");
+        };
+        assert_eq!(preview, words, "{kind:?}");
+    }
+}
+
 #[test]
 fn sha1_matches_the_standard_vectors() {
     // FIPS 180-4 / RFC 3174 worked examples.

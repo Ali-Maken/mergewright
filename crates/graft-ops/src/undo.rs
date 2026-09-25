@@ -188,6 +188,15 @@ pub enum NotInvertible {
     },
 }
 
+/// [`NotInvertible::OperationLive`]'s words, `finish or abort the <kind>
+/// first`: the one source for the executor's `explain` and the preview's
+/// refusal (m6-conflicts/64, review m2). The app words its own refusal to
+/// match (`graft`'s `operation_live_words_match_ops`).
+#[must_use]
+pub fn operation_live_words(kind: InProgress) -> String {
+    format!("finish or abort the {} first", kind.name())
+}
+
 /// The inverse of `entry`. For an `Undo` or `Redo` entry, `original` is the
 /// operation at the root of its `reverses` chain
 /// ([`crate::journal::root_operation`]); an operation entry ignores it.

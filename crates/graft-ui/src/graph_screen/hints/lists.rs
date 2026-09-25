@@ -343,7 +343,7 @@ fn resolver_card_list(roles: SideRoles) -> Vec<Hint> {
 fn resolver_done_list(restart: bool) -> Vec<Hint> {
     let mut list = Vec::with_capacity(3);
     if restart {
-        list.push(hint("d", "start over"));
+        list.push(hint("d", "start over").keeps_words());
     }
     list.push(hint("e", "edit"));
     list.push(hint("esc", "close").keeps_words());

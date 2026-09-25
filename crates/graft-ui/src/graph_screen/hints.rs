@@ -84,10 +84,11 @@ pub struct Hint {
     /// `update::tests::every_key_the_bar_draws_is_answered` compares against the
     /// keymap).
     pub rung: Rung,
-    /// Keeps its words ahead of the bare keys (ADR-0044 §4): the ladder
-    /// draws it at [`Rung::Full`] right after the three most relevant, so a
-    /// narrow bar keeps the way out (`d start over`, `esc close`) in words.
-    /// Only the resolver's lists mark one.
+    /// Keeps its words ahead of the other hints' words (ADR-0044 §4): once
+    /// every hint is placed at its bare key, the ladder raises this one to
+    /// [`Rung::Full`] before any other, so a narrow bar keeps the way out
+    /// (`d start over`, `esc close`) in words without hiding a key
+    /// (m6-conflicts/64). Only the resolver's lists mark one.
     pub keeps_words: bool,
 }
 
