@@ -56,8 +56,8 @@ with its own `CARGO_TARGET_DIR` (removed afterwards); the main tree was not buil
   - m5-1 171 317 B, m5-2 111 541 B.
 
   No file under `docs/shots` is over 200 000 B.
-- **Machine paths:** the added lines in the whole diff contain none of `/Users/`, `/private/var`, `/var/folders` or
-  the user name. The two `<os-tmp>/graft-remote-…` mentions are the redacted placeholder, in NOTES and in KNOWN_GAPS.
+- **Machine paths:** the added lines in the whole diff contain no home-directory path, no OS-temp path and not the
+  user name. The two `<os-tmp>/graft-remote-…` mentions are the redacted placeholder, in NOTES and in KNOWN_GAPS.
 - **Architecture:**
   - No `Cargo.toml` changed.
   - The new graft-ui types (`ConfirmYes`, `LiveC`, `FinishRow`) are view vocabulary.
