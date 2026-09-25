@@ -63,3 +63,4 @@ Five captures, five defects he found and three of us missed, plus two design cal
 - 2026-09-24 · demo task log (look-picks.txt): pressed `c` three times mid-file (refused), then `Esc`; finished the file with `⏎`, the summary opened by itself; first key there `k`, then `⏎` once, arrows (↑↓←→) freely, then `y` committed. No options marked with `*`.
 - 2026-09-24 · demo scene 13 (commit editor): "if i exit edit mode, it was blank and nothing" — `Esc` closes the editor and leaves an empty scene. He put it down to the demo; not a product finding.
 - 2026-09-24 · approved the conductor's 14 picks: "ok i guess" (lukewarm; watch these in daily use). Picks in .scratch/m6-conflicts/user-picks-2026-09-24.md.
+- 2026-09-25 · short key words: asked what is OK to pass, then took (a) as built, prefixes only: "OK fine". Ticket 62 closed, nothing built.

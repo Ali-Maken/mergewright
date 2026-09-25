@@ -1,6 +1,6 @@
 # short-words-from-the-draft: the hint bar's short words — batch 4
 
-Status: blocked (conductor question; a product preference, so possibly his)
+Status: done — option (a), as built; nothing to build (user, 2026-09-25: "OK fine")
 From: user picks 2026-09-24 item 6 ("use the 2026-09-21 draft"); `.scratch/m6-conflicts/user-batch.md` item 4;
 KNOWN_GAPS :523.
 Build with: *(blank until unblocked)*
