@@ -292,11 +292,12 @@ pub fn open_preview(
         };
         return false;
     }
+    // Every live operation refuses, a merge begun in the shell included:
+    // keymap §2.6a's exception covers `u`/`U` only, and this opens a Ghost
+    // Preview or the journal's revert. No keys: the preview and the journal
+    // overlays hide the banner, so `⇥ banner` would point at nothing.
     if let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) {
-        state.status = Status::Sticky {
-            reason: format!("finish or abort the {} first", kind_word(kind)),
-            keys: None,
-        };
+        state.status = super::undo::live_refusal(kind, None);
         return false;
     }
 
@@ -327,13 +328,6 @@ pub fn open_preview(
     });
     commands.push(Command::PlanPreview(id, Box::new(request)));
     true
-}
-
-/// git's word for the operation it is part-way through, for the refusal
-/// line. `graft_git`'s own `Display` is what the commit editor's refusal
-/// already says, so the two cannot drift.
-fn kind_word(kind: graft_git::state::InProgress) -> String {
-    kind.name().to_owned()
 }
 
 /// The rows the picture is laid out from: everything the window holds in

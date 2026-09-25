@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M6 stop reached (2026-09-24).** Amendment tickets 16–46 built, merged and gated (3049 passed, 1 skipped, HEAD after 46). Waiting on the user: judge the contact sheet (`docs/shots/m6/m6-contact-sheet-1.txt`, `-2.txt`) by eye, and answer `.scratch/m6-conflicts/user-batch.md` (11 items). M7 is conditional (ADR-0030); no M7 work starts until the user says go.
+**Current step:** **Paused by the user (2026-09-24, night).** M6 look-and-finish build (tickets 54–63, ADR-0044) in progress. Merged and gated: 47–49, 53, 54, 55 (3099 passed, 1 skipped at 49ff5651). Stopped mid-work, uncommitted, worktrees kept: 56 (`.claude/worktrees/agent-a8b08192465158c93`, just started, 11 files changed) and 57 app half, continuation 1 (`.claude/worktrees/agent-a5f59fa70b07d8ea4`, on 7c255e67 = ops half ece3e334 merged with main, 3 files changed). On resume: restart 56 fresh; resume 57 continuation from its worktree (commit its WIP first or hand it to a fresh builder-opus-xhigh). Then wave 2 serial: 58, 59, 60, 52, 50, 51, 61; 62 waits on the user (short words a/b); 63 acceptance. Waiting on the user: short key words a or b; his eye on the new colours (`.scratch/m6-conflicts/try-fixes.sh`, then `cargo run -q -p graft -- ~/graft-try/merge`). Log: `docs/log/m6.md`.
 
 **Running now:** nothing.
 

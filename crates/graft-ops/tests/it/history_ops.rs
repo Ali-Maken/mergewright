@@ -1302,11 +1302,21 @@ fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
     repo.git(&["switch", "-qc", "other"]);
     let _ = repo.try_git(&["merge", "--no-ff", "--no-edit", "-m", "theirs", "feature"]);
     assert!(repo.exists(".git/MERGE_HEAD"), "a merge is live again");
-    let refused = run_resume(&repo, Resume::Abort, NOW + 1).expect_err("not Graft's merge");
-    assert!(
-        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
-        "{refused:?}"
-    );
+    // Since m6-conflicts/57 `Abort` on a merge with no entry of Graft's
+    // aborts it as a shell-begun merge, with an `AbortMerge` entry of its
+    // own — never by closing Graft's stale entry.
+    let aborted = run_resume(&repo, Resume::Abort, NOW + 1)
+        .unwrap_or_else(|why| panic!("the shell's merge aborts: {}", why.explain()));
+    assert_eq!(aborted.entry.kind, OperationKind::AbortMerge);
+    assert_ne!(aborted.entry.id, entry.id, "a new entry, not Graft's");
+    let status = journal_for(&repo.open())
+        .entries()
+        .iter()
+        .find(|held| held.id == entry.id)
+        .expect("Graft's entry is there")
+        .status
+        .clone();
+    assert_eq!(status, EntryStatus::Pending, "not closed by the abort");
 
     // Leg 2: the same branch, but moved on since the entry was written.
     let repo = conflicting();

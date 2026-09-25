@@ -343,6 +343,137 @@ fn abort_is_offered_in_every_state_the_banner_can_be_in() {
     }
 }
 
+/// `HEAD` on `main` at a commit, or detached there: the two shapes the
+/// abort box names `<into>` from.
+fn refs_on(branch: Option<&str>) -> std::sync::Arc<crate::refs::RefBadges> {
+    use graft_core::ref_name::RefName;
+    use graft_git::repo::HeadState;
+    let at = graft_core::oid::Oid::from_bytes(&[0xab; 20]).expect("20 bytes");
+    let name = |full: &str| RefName::new(full.as_bytes().to_vec()).expect("a valid ref name");
+    let head = branch.map_or(HeadState::Detached(at), |short| {
+        HeadState::Branch(name(&format!("refs/heads/{short}")))
+    });
+    let refs = [(name("refs/heads/main"), at)];
+    std::sync::Arc::new(
+        crate::refs::badges(
+            &refs,
+            &head,
+            &std::collections::HashMap::new(),
+            &[],
+            |_, _| {
+                Ok(graft_git::history::AheadBehind {
+                    ahead: 0,
+                    behind: 0,
+                })
+            },
+        )
+        .expect("no ahead/behind walk can fail here"),
+    )
+}
+
+/// A merge stopped, the journal read, and `live` the entries git is still
+/// inside: empty for a merge begun in the shell.
+fn merge_read(live: Vec<graft_core::journal::EntryId>, branch: Option<&str>) -> AppState {
+    AppState {
+        live_entries: live.clone(),
+        journal: crate::update::journal::JournalState {
+            entries: crate::update::detail::Loading::Ready(std::sync::Arc::new(
+                crate::jobs::undo::JournalRead {
+                    entries: Vec::new(),
+                    unreadable: Vec::new(),
+                    live,
+                },
+            )),
+            ..crate::update::journal::JournalState::default()
+        },
+        refs: Some(refs_on(branch)),
+        ..stopped(InProgress::Merge, &["notes.txt", "gone.txt"])
+    }
+}
+
+/// The abort box's message lines, as drawn.
+fn abort_lines(state: &mut AppState) -> Vec<String> {
+    let (claimed, commands) = press(state, KeyCode::Char('a'));
+    assert!(claimed && commands.is_empty(), "{commands:?}");
+    let pending = state.confirm.as_ref().expect("the abort box");
+    assert_eq!(pending.view.selected(), 0, "the cursor starts on Cancel");
+    assert!(matches!(pending.then, ConfirmThen::Resume(Resume::Abort)));
+    pending
+        .view
+        .message
+        .iter()
+        .map(|line| line.as_str().to_owned())
+        .collect()
+}
+
+/// **`a` on a merge begun in the shell** (m6-conflicts/57): the box says
+/// what the abort does to the branch and that `u` takes it back — ops
+/// journals it as an `AbortMerge`. `<into>` is `HEAD`'s branch, or its
+/// short id when detached.
+#[test]
+fn a_on_a_shell_merge_says_u_puts_it_back() {
+    let mut state = merge_read(Vec::new(), Some("main"));
+    assert_eq!(
+        abort_lines(&mut state),
+        [
+            "main goes back to before the merge",
+            "u puts the merge back"
+        ]
+    );
+    let mut detached = merge_read(Vec::new(), None);
+    assert_eq!(
+        abort_lines(&mut detached),
+        [
+            "abababa goes back to before the merge",
+            "u puts the merge back"
+        ]
+    );
+}
+
+/// A merge Graft began, and a merge whose launch journal read is still
+/// out, keep today's lines: the new ones promise a `u` only a shell-begun
+/// abort is known to have.
+#[test]
+fn a_on_a_merge_begun_in_graft_keeps_its_lines() {
+    let today = [
+        "everything goes back to before it started",
+        "the journal keeps the entry",
+    ];
+    let mut graft = merge_read(
+        vec![graft_core::journal::EntryId::new(7, [7; 10])],
+        Some("main"),
+    );
+    assert_eq!(abort_lines(&mut graft), today);
+    let mut unread = AppState {
+        journal: crate::update::journal::JournalState::default(),
+        ..merge_read(Vec::new(), Some("main"))
+    };
+    assert_eq!(abort_lines(&mut unread), today);
+}
+
+/// **`u`/`U` on the focused banner of a merge begun in the shell are
+/// sent** (keymap §2.6a's exception): the same job the global key sends,
+/// and ops' gate decides.
+#[test]
+fn u_on_the_banner_of_a_shell_merge_is_sent() {
+    for (code, redo) in [(KeyCode::Char('u'), false), (KeyCode::Char('U'), true)] {
+        let mut state = merge_read(Vec::new(), Some("main"));
+        let (claimed, commands) = press(&mut state, code);
+        assert!(claimed, "the focused banner still claims {code:?}");
+        let [command] = commands.as_slice() else {
+            panic!("{code:?}: {commands:?} · {:?}", state.status)
+        };
+        assert!(
+            matches!(
+                (command, redo),
+                (Command::Undo(_, false), false) | (Command::Redo(_, false), true)
+            ),
+            "{code:?}: {command:?}"
+        );
+        assert!(state.banner_focus, "the banner keeps the keyboard");
+    }
+}
+
 /// `git mergetool` with no `merge.tool` asks "which one?" on stdin, and
 /// stdin at that moment belongs to a terminal Graft has given away. So the
 /// key refuses before the hand-over, and the line names what does work.

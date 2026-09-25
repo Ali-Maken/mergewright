@@ -12,7 +12,7 @@ use graft_git::version::system_git;
 use graft_ops::apply::{Applied, Context, Refresh};
 use graft_ops::journal::{Journal, journal_path};
 use graft_ops::restore::RestoreError;
-use graft_ops::undo::{self, Drift, UndoError};
+use graft_ops::undo::{self, Drift, NotInvertible, UndoError};
 
 use super::Cancel;
 use crate::repos::RepoStore;
@@ -41,6 +41,16 @@ pub enum Undone {
     /// There was nothing to undo or redo, or the entry cannot be inverted.
     /// An ordinary answer; the reason is already a sentence.
     Nothing(String),
+    /// Ops' gate refused: git is part-way through an operation and the
+    /// entry is not a step inside that same merge
+    /// (`NotInvertible::OperationLive`, m6-conflicts/57). Nothing was
+    /// written. Its own shape rather than [`Undone::Nothing`], because it is
+    /// a refusal the app words (`update::undo::live_refusal`), not an
+    /// acknowledgement.
+    OperationLive {
+        /// What git has in progress.
+        kind: graft_git::state::InProgress,
+    },
     /// The repository moved since the operation, so nothing was touched.
     /// The user decides whether to go ahead (§6.7's rail).
     Drift {
@@ -206,6 +216,7 @@ fn refresh_after_failure(error: &UndoError) -> Option<Refresh> {
 /// string that drops the [`Applied`] the caller refreshes from.
 fn undone_from(error: UndoError, redo: bool, description: impl FnOnce() -> String) -> Undone {
     match error {
+        UndoError::Nothing(NotInvertible::OperationLive { kind }) => Undone::OperationLive { kind },
         UndoError::Nothing(_) => Undone::Nothing(error_line(&error)),
         UndoError::Drift(drift) => Undone::Drift {
             description: description(),
@@ -506,6 +517,19 @@ mod tests {
             refresh_after_failure(&refused),
             Some(Refresh::Everything),
             "the journal changed even where no file did"
+        );
+    }
+
+    /// Ops' undo gate (m6-conflicts/57) reaches the app as its own shape,
+    /// carrying the kind, so `update::undo` words it as a refusal rather
+    /// than as the plain acknowledgement every other `Nothing` is.
+    #[test]
+    fn operation_live_is_its_own_answer() {
+        let kind = graft_git::state::InProgress::Merge;
+        let refused = UndoError::Nothing(NotInvertible::OperationLive { kind });
+        assert_eq!(
+            undone_from(refused, false, String::new),
+            Undone::OperationLive { kind }
         );
     }
 

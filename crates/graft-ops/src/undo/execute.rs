@@ -9,11 +9,14 @@
 //! the user's own `force` goes past it.
 
 use graft_core::journal::{EntryId, JournalEntry};
+use graft_git::state::InProgress;
 
 use crate::apply::{Applied, Context};
 use crate::facts::{self, FactsError};
 use crate::restore::{self, RestoreError};
-use crate::undo::{Drift, InversePlan, NotInvertible, drift, plan_redo, plan_revert_to, plan_undo};
+use crate::undo::{
+    Drift, InversePlan, NotInvertible, RepoStateNow, drift, plan_redo, plan_revert_to, plan_undo,
+};
 
 /// Why an undo or redo did not happen.
 #[derive(Debug, thiserror::Error)]
@@ -151,11 +154,57 @@ fn run_plan(ctx: &mut Context<'_>, plan: &InversePlan, force: bool) -> Result<Ap
     let now = facts::read_state_now(ctx.repo, ctx.scratch(), &names, ctx.stop)
         .map_err(UndoError::Facts)?;
 
+    // Before the rail: a live operation is not drift the user can force
+    // past, it is a refusal. With it here, `drift`'s `MergeDrift::Begun`
+    // is never reached from this path (m6-conflicts/57).
+    refuse_while_live(ctx, &target, &now)?;
+
     let moved = drift(&target, &now);
     if !moved.is_clean() && !force {
         return Err(UndoError::Drift(moved));
     }
     restore::execute(ctx, plan).map_err(UndoError::Restore)
+}
+
+/// The undo gate (m6-conflicts/57, decision 3): while git has an operation
+/// in progress, an entry is reversed only when it was recorded **inside
+/// that same merge** — its `merge_after` names the merge standing now (the
+/// same `MERGE_HEAD` and the same other heads; the message and mode are
+/// `drift`'s business, behind the force box). Anything else is
+/// [`NotInvertible::OperationLive`]: nothing written, no drift box.
+///
+/// Every executor entry point comes through here — `undo`, `redo` and each
+/// step of `revert_to` all run [`run_plan`] — so a redo needs no case of its
+/// own: it reverses an `Undo` entry, whose `merge_after` is the merge that
+/// undo put back.
+///
+/// A **bisect** is let through, as before this gate: it is not an operation
+/// Graft ends (no banner, keymap §2.6a's "not covered by this rule"), and
+/// the app sends `u` during one on purpose. Refusing it here would change a
+/// behaviour nobody asked to change.
+fn refuse_while_live(
+    ctx: &Context<'_>,
+    target: &JournalEntry,
+    now: &RepoStateNow,
+) -> Result<(), UndoError> {
+    let live = graft_git::state::in_progress(ctx.repo)
+        .map_err(|error| UndoError::Facts(FactsError::from(error)))?;
+    let kind = match live {
+        None | Some(InProgress::Bisect) => return Ok(()),
+        Some(kind) => kind,
+    };
+    let inside_this_merge = kind == InProgress::Merge
+        && match (&target.merge_after, &now.merge) {
+            (Some(then), Some(standing)) => {
+                then.merge_head == standing.merge_head && then.other_heads == standing.other_heads
+            }
+            _ => false,
+        };
+    if inside_this_merge {
+        Ok(())
+    } else {
+        Err(UndoError::Nothing(NotInvertible::OperationLive { kind }))
+    }
 }
 
 fn nothing_to_say(why: &NotInvertible) -> String {
@@ -175,6 +224,11 @@ fn nothing_to_say(why: &NotInvertible) -> String {
             format!(
                 "the journal never recorded {field} after that operation, so it cannot be undone"
             )
+        }
+        // The app words this through `update::undo::live_refusal`, and a
+        // graft test pins the two texts equal (`operation_live_words_match_ops`).
+        NotInvertible::OperationLive { kind } => {
+            format!("finish or abort the {} first", kind.name())
         }
     }
 }

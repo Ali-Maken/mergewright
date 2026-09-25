@@ -20,6 +20,7 @@ use graft_core::journal::{
     EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, MergeState, OperationKind, Touches,
 };
 use graft_core::oid::Oid;
+use graft_git::state::InProgress;
 
 use crate::journal::{in_force_all, is_operation, next_redo, next_undo, root_operation, undoable};
 
@@ -175,6 +176,15 @@ pub enum NotInvertible {
     Incomplete {
         /// Which field.
         field: &'static str,
+    },
+    /// git is part-way through an operation, and the entry was not recorded
+    /// inside that same merge: an undo now would be a second history write
+    /// over an unfinished first (keymap §2.6a). Refused by the executor
+    /// before the drift rail, so nothing is written and no box asks
+    /// (m6-conflicts/57).
+    OperationLive {
+        /// What git has in progress.
+        kind: InProgress,
     },
 }
 
