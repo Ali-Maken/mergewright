@@ -66,6 +66,12 @@ plain row it is `│` in `border`. On a block's rows it is the link:
 | took both, then a hand edit | as took both | as took both | `ours-tint` | no tint (line origin unknown) | `theirs-tint` |
 | file done | `│` | `│` | the done card, no tint | | |
 
+- **Amended 2026-09-25 (ticket 61, find-and-pin 1):** the "took both, then a hand edit" row never draws. A hand edit
+  of the result leaves no conflict markers, so the re-read finds no block, and the file shows `no conflict markers · ⏎
+  marks it resolved` (`crates/graft/src/update/resolver.rs:11-15`; test
+  `a_hand_edited_both_take_reads_as_no_block_after_the_reread`). The row stays as the rule, should a block ever survive
+  a hand edit. Nothing is built for it.
+
 - A tint fills its pane's **full width** on those rows, the separator cell included (ediff `:extend`), which makes one
   band across two panes.
 - The cursor block's separator glyphs are BOLD; other blocks the same colours, not bold.
