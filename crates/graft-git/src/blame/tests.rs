@@ -185,3 +185,25 @@ filename a.rs
         PathBuf::from("a.rs")
     );
 }
+
+/// Review Major 1: a porcelain cut at the runner's cap parses cleanly when
+/// the cut lands inside a text line, so the flag alone must refuse it.
+#[test]
+fn a_blame_cut_at_the_output_cap_is_an_error_not_a_short_file() {
+    let cut = &PORCELAIN_2_38[..PORCELAIN_2_38.len() - 5];
+    assert!(
+        parse_porcelain(cut).is_ok(),
+        "the premise: this cut parses as a shorter blame"
+    );
+    let output = GitOutput {
+        stdout: cut.to_vec(),
+        stderr: Vec::new(),
+        truncated: true,
+    };
+    match read_porcelain(&output) {
+        Err(BlameError::Run(RunError::Unparsable(why))) => {
+            assert!(why.contains("cap"), "says why: {why}");
+        }
+        other => panic!("a capped blame must not read as whole: {other:?}"),
+    }
+}

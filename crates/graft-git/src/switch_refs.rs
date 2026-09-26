@@ -2,20 +2,22 @@
 //! its tip, subject, author, date and upstream, plus `@{-1}` — the branch git
 //! itself would switch back to (m7-power-tools/10a).
 //!
-//! Two commands, both through [`GitInvocation`]:
+//! Up to three commands, all through [`GitInvocation`]:
 //! - one `for-each-ref` over `refs/heads` and `refs/remotes`, NUL-separated
 //!   fields, one record per line (no field can hold a newline: ref names
 //!   refuse control characters, `%(subject)` is one line);
-//! - `rev-parse --verify --quiet --symbolic-full-name @{-1}`, measured on git
-//!   2.54: exit 1 and no output with no previous checkout or a deleted
-//!   previous branch; exit 0 and no output when the previous was detached;
-//!   exit 0 and `refs/heads/<x>` otherwise.
+//! - `rev-parse --verify --quiet @{-1}`: exit 1 and no output with no
+//!   previous checkout or a deleted previous branch, exit 0 when there is
+//!   one (measured on 2.38.5 and 2.54);
+//! - then `check-ref-format --branch @{-1}`, the name `git switch -` uses: a
+//!   branch name, or a commit id when the previous checkout was detached.
+//!   It counts only when `refs/heads/<name>` is in the listing.
 
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 
 use crate::repo::RepoHandle;
-use crate::run::{GitArg, GitInvocation, RunError, Stop};
+use crate::run::{GitArg, GitInvocation, RawOutput, RunError, Stop};
 
 /// One branch as the picker shows it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,45 +65,68 @@ pub fn switch_refs(repo: &RepoHandle, stop: &dyn Stop) -> Result<SwitchRefs, Run
         ])
         .run(stop)?;
     let refs = parse_listing(&listed.stdout)?;
-    let previous = previous_branch(repo, stop)?;
+    let previous = previous_branch(repo, &refs, stop)?;
     Ok(SwitchRefs { refs, previous })
 }
 
-fn previous_branch(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RefName>, RunError> {
-    let invocation = GitInvocation::new(repo).args([
+/// `@{-1}` as a listed local branch. `rev-parse` says whether there is a
+/// previous checkout at all; its name is then `check-ref-format --branch`'s,
+/// which is how `git switch -` reads it. `rev-parse --symbolic-full-name`
+/// cannot give the name: it prints nothing when a tag shares it, and names
+/// the tag when only the tag is left (both seen on 2.38.5 and 2.54).
+fn previous_branch(
+    repo: &RepoHandle,
+    refs: &[RefListing],
+    stop: &dyn Stop,
+) -> Result<Option<RefName>, RunError> {
+    let verify = GitInvocation::new(repo).args([
         GitArg::Flag("rev-parse"),
         GitArg::Flag("--verify"),
         GitArg::Flag("--quiet"),
         GitArg::Flag("--symbolic-full-name"),
         GitArg::Word("@{-1}".to_owned()),
     ]);
-    let raw = invocation.run_raw(stop)?;
+    if !has_previous(&verify.run_raw(stop)?, &verify.command_line())? {
+        return Ok(None);
+    }
+    let named = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("check-ref-format"),
+            GitArg::Flag("--branch"),
+            GitArg::Word("@{-1}".to_owned()),
+        ])
+        .run(stop)?;
+    Ok(listed_branch(trim_newline(&named.stdout), refs))
+}
+
+/// Whether `rev-parse --verify --quiet @{-1}` found a previous checkout.
+/// Exit 1 with no output is `--quiet`'s "none" (no previous checkout, or its
+/// branch deleted); exit 0 is "there is one" (a branch, a detached commit,
+/// or a name a tag shares); any other exit is git failing.
+fn has_previous(raw: &RawOutput, command: &str) -> Result<bool, RunError> {
     match raw.code {
-        // No previous checkout, or its branch is gone: `--quiet` says so by
-        // exit 1 alone.
-        Some(1) if raw.output.stdout.is_empty() => Ok(None),
-        Some(0) => {
-            let name = trim_newline(&raw.output.stdout);
-            if name.is_empty() {
-                return Ok(None); // the previous checkout was detached
-            }
-            RefName::new(name)
-                .map(Some)
-                .map_err(|why| RunError::Unparsable(format!("@{{-1}}: {why}")))
-        }
+        Some(1) if raw.output.stdout.is_empty() => Ok(false),
+        Some(0) => Ok(true),
         Some(status) => Err(RunError::Exited {
             status,
-            stderr_first_line: String::from_utf8_lossy(&raw.output.stderr)
-                .lines()
-                .find(|line| !line.trim().is_empty())
-                .unwrap_or_default()
-                .to_owned(),
-            command: invocation.command_line(),
+            stderr_first_line: crate::commit_graph::first_line(&raw.output.stderr),
+            command: command.to_owned(),
         }),
-        None => Err(RunError::Signalled {
-            command: invocation.command_line(),
-        }),
+        // `run_raw` gives no code only when it killed git at the output cap.
+        None => Err(RunError::Unparsable(format!(
+            "{command}: output passed the runner's cap"
+        ))),
     }
+}
+
+/// `refs/heads/<name>` when the listing has it: a detached previous checkout
+/// names a commit id, and a deleted branch is not listed.
+fn listed_branch(name: &[u8], refs: &[RefListing]) -> Option<RefName> {
+    let mut full = b"refs/heads/".to_vec();
+    full.extend_from_slice(name);
+    refs.iter()
+        .find(|listing| listing.name.as_bytes() == full.as_slice())
+        .map(|listing| listing.name.clone())
 }
 
 fn trim_newline(bytes: &[u8]) -> &[u8] {
@@ -152,4 +177,53 @@ fn unparsable(record: &[u8], what: &str) -> RunError {
         "for-each-ref record ({what}): {:?}",
         String::from_utf8_lossy(record)
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::GitOutput;
+
+    fn exited(code: i32, stdout: &[u8], stderr: &[u8]) -> RawOutput {
+        RawOutput {
+            output: GitOutput {
+                stdout: stdout.to_vec(),
+                stderr: stderr.to_vec(),
+                truncated: false,
+            },
+            code: Some(code),
+        }
+    }
+
+    /// Review 18/19/27 Minor 2 (mutation M1): only `--quiet`'s exit 1 means
+    /// "no previous"; git failing any other way is an error, not "none".
+    #[test]
+    fn a_git_failure_reading_the_previous_checkout_is_an_error() {
+        let failed = exited(128, b"", b"fatal: not a git repository\n");
+        match has_previous(&failed, "git rev-parse") {
+            Err(RunError::Exited {
+                status,
+                stderr_first_line,
+                ..
+            }) => {
+                assert_eq!(status, 128);
+                assert_eq!(stderr_first_line, "fatal: not a git repository");
+            }
+            other => panic!("a failure must not read as no previous: {other:?}"),
+        }
+        assert!(!has_previous(&exited(1, b"", b""), "c").expect("none"));
+        assert!(has_previous(&exited(0, b"", b""), "c").expect("one"));
+    }
+
+    /// Review 18/19/27 Minor 2 (mutation M4): a record without the seven
+    /// asked-for fields is an error, not skipped.
+    #[test]
+    fn a_record_of_six_fields_is_an_error() {
+        let six =
+            b"refs/heads/a\x00e83c5163316f89bfbde7d9ab23ca2e25604af290\x00\x00\x00subject\x00Ann\n";
+        match parse_listing(six) {
+            Err(RunError::Unparsable(why)) => assert!(why.contains("seven"), "{why}"),
+            other => panic!("a six-field record must be refused: {other:?}"),
+        }
+    }
 }

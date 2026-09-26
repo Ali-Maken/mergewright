@@ -7,9 +7,12 @@
 
 use std::path::PathBuf;
 
-use super::log::{parse_follow_log, parse_line_log};
-use super::map_to_head;
+use super::function::{blob_content, marked_diff};
+use super::log::{finish, parse_line_records};
+use super::{TraceEnd, map_to_head};
+use super::{parse_follow_log, parse_line_log};
 use crate::diff::parse_unified;
+use crate::run::{GitOutput, RawOutput, RunError};
 
 const LINE_LOG_2_54: &[u8] = include_bytes!("../testdata/git-2.54/line-log.txt");
 const FOLLOW_LOG_2_54: &[u8] = include_bytes!("../testdata/git-2.54/follow-log.txt");
@@ -172,4 +175,62 @@ fn map_to_head_shifts_past_a_removal() {
     assert_eq!(map_to_head(hunks, 7), Some(7), "after it: +2 −2");
     assert_eq!(map_to_head(hunks, 10), Some(10), "past every hunk");
     assert_eq!(map_to_head(&[], 4), Some(4), "no changes");
+}
+
+/// Review 18/19/27 Minor 6 (mutation M17): a log whose oldest commit only
+/// changed the range, not added it, ends as "git stops", not as a start.
+#[test]
+fn a_log_ending_on_a_change_not_an_add_is_not_a_start() {
+    // The 2.38 sample's first record alone: `@@ -3,2 +5,3 @@`, a change.
+    let cut = LINE_LOG_2_38
+        .iter()
+        .skip(1)
+        .position(|&b| b == 0x01)
+        .expect("two records");
+    let raw = RawOutput {
+        output: GitOutput {
+            stdout: LINE_LOG_2_38[..=cut].to_vec(),
+            stderr: Vec::new(),
+            truncated: false,
+        },
+        code: Some(0),
+    };
+    let mut rows = Vec::new();
+    let end = finish(
+        Ok(raw),
+        1000,
+        &mut |batch| rows.extend(batch),
+        parse_line_records,
+        "none",
+    )
+    .expect("finishes");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        end,
+        TraceEnd::GitStops("the history ends before this was added (a shallow clone?)".to_owned())
+    );
+}
+
+/// Review Minor 4: a blob or a marked diff cut at the runner's cap is
+/// refused as too large — not read short, and not reported as a stop.
+#[test]
+fn enclosing_function_refuses_output_cut_at_the_cap() {
+    let cut = GitOutput {
+        stdout: b"fn a() {\n".to_vec(),
+        stderr: Vec::new(),
+        truncated: true,
+    };
+    match blob_content(cut.clone()) {
+        Err(RunError::Unparsable(why)) => assert!(why.contains("cap"), "{why}"),
+        other => panic!("a cut blob must be refused: {other:?}"),
+    }
+    // The runner reports its own kill at the cap as `code: None`.
+    let capped = RawOutput {
+        output: cut,
+        code: None,
+    };
+    match marked_diff(capped) {
+        Err(RunError::Unparsable(why)) => assert!(why.contains("cap"), "{why}"),
+        other => panic!("a capped diff is too large, not stopped: {other:?}"),
+    }
 }

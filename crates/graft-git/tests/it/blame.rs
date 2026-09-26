@@ -8,7 +8,7 @@ use graft_core::oid::Oid;
 use graft_fixtures::Shape;
 use graft_git::blame::{Blame, BlameError, BlameOptions, LineMark, Rev, blame};
 
-use crate::session::{FILE, OLD_FILE, commits, git, git_ok, open};
+use crate::session::{FILE, OLD_FILE, commits, git, git_ok, open, rev};
 
 fn blame_ok(dir: &Path, rev: Rev, path: &str, opts: BlameOptions) -> Blame {
     blame(&open(dir), &rev, Path::new(path), &opts, &())
@@ -353,4 +353,75 @@ fn blame_commit_path_follows_a_rename() {
     );
     assert_eq!(blamed.commits[&ids.priya].path, Path::new(FILE));
     assert_eq!(blamed.commits[&ids.ana].path, Path::new(OLD_FILE));
+}
+
+/// Whether plain `git blame` (no `-M`) names `id` on some line: the premise
+/// that makes the `-M` test below able to fail.
+fn plain_blame_names(dir: &Path, path: &str, id: Oid) -> bool {
+    let out = git_ok(dir, &["blame", "--line-porcelain", "HEAD", "--", path]);
+    let hex = id.to_string();
+    out.split(|&b| b == b'\n')
+        .any(|line| line.starts_with(hex.as_bytes()))
+}
+
+/// Review 18/19/27 Minor 7 (mutation M15): a block moved within the file
+/// stays with the commit that wrote it, because blame runs with `-M`.
+#[test]
+fn a_block_moved_within_the_file_keeps_its_author() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Session);
+    let dir = scratch.path();
+    let path = "src/moved.rs";
+    let first = "fn first_block_that_moves() {\n    let alpha_value = compute_alpha(1, 2, 3);\n    let beta_value = compute_beta(alpha_value);\n    store_result(alpha_value, beta_value);\n}\n";
+    let second = "fn second_block_that_stays() {\n    let gamma_value = compute_gamma(4, 5, 6);\n    let delta_value = compute_delta(gamma_value);\n    store_other(gamma_value, delta_value);\n}\n";
+    std::fs::write(dir.join(path), format!("{first}{second}")).expect("writes");
+    git_ok(dir, &["add", path]);
+    git_ok(dir, &["commit", "-q", "-m", "write both blocks"]);
+    let wrote = rev(dir, "HEAD");
+    std::fs::write(dir.join(path), format!("{second}{first}")).expect("writes");
+    git_ok(dir, &["commit", "-q", "-am", "swap the blocks"]);
+    let moved = rev(dir, "HEAD");
+    assert!(
+        plain_blame_names(dir, path, moved),
+        "the premise: without -M, some moved line is the swap's"
+    );
+
+    let blamed = blame_ok(dir, Rev::Commit(moved), path, BlameOptions::default());
+    assert_eq!(blamed.lines.len(), 10);
+    for line in &blamed.lines {
+        assert_eq!(
+            line.commit,
+            Some(wrote),
+            "{:?}",
+            String::from_utf8_lossy(&line.text)
+        );
+    }
+}
+
+/// Review 18/19/27 Minor 8 (mutation M23): for the working tree, the file on
+/// disk decides "binary", not the committed one — both ways round.
+#[test]
+fn working_tree_binary_is_the_file_on_disk() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Session);
+    let dir = scratch.path();
+
+    // Text in HEAD, binary on disk: refused.
+    std::fs::write(dir.join(FILE), b"fn a() {}\n\0\x01\x02 binary now\n").expect("writes");
+    let refused = blame(
+        &open(dir),
+        &Rev::WorkingTree,
+        Path::new(FILE),
+        &BlameOptions::default(),
+        &(),
+    );
+    assert!(
+        matches!(refused, Err(BlameError::Binary)),
+        "binary on disk: {refused:?}"
+    );
+
+    // Binary in HEAD, text on disk: blamed, every line not committed yet.
+    let pic = "assets/pic.bin";
+    std::fs::write(dir.join(pic), b"now plain text\nsecond line\n").expect("writes");
+    let blamed = blame_ok(dir, Rev::WorkingTree, pic, BlameOptions::default());
+    assert_eq!(blamed.lines.len(), 2);
+    assert!(blamed.lines.iter().all(|line| line.commit.is_none()));
 }

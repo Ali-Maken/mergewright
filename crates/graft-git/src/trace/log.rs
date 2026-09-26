@@ -1,12 +1,14 @@
-//! `git log -L` and `git log --follow`, run and parsed.
+//! `git log -L` and `git log --follow`, run; `-L`'s output parsed (the
+//! `--follow` reader is `follow.rs`).
 
 use std::path::{Path, PathBuf};
 
 use graft_core::oid::Oid;
 
+use super::follow::parse_follow_records;
 use super::{LineRange, TraceCommit, TraceEnd, TraceError};
-use crate::blame::{bytes_path, path_bytes, unquote};
-use crate::diff::{LineKind, ParseError, parse_unified};
+use crate::blame::{bytes_path, path_bytes};
+use crate::diff::{LineKind, ParseError, find, parse_unified, unquote};
 use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, RawOutput, RunError, Stop};
 
@@ -27,7 +29,7 @@ const PLAIN: [&str; 5] = [
 
 /// One parsed commit and whether it started what is traced (added the whole
 /// range, or added the file).
-type Record = (TraceCommit, bool);
+pub(super) type Record = (TraceCommit, bool);
 
 /// Every commit that changed `range` of `path`, newest first, as `git log
 /// -L<start>,<end>:<path> <at>` finds them; `range` is as of `at`. At most
@@ -108,7 +110,7 @@ pub fn file_history(
 }
 
 /// Turns a finished log run into rows for `sink` and a [`TraceEnd`].
-fn finish(
+pub(super) fn finish(
     raw: Result<RawOutput, RunError>,
     cap: usize,
     sink: &mut dyn FnMut(Vec<TraceCommit>),
@@ -180,22 +182,9 @@ pub fn parse_line_log(bytes: &[u8]) -> Result<Vec<TraceCommit>, ParseError> {
         .collect())
 }
 
-/// Parses `git log --follow --raw --numstat -z
-/// --format=%x01%H%x00%an%x00%at%x00%s` output. Pure, no spawn; a
-/// `cargo-fuzz` target.
-///
-/// # Errors
-/// [`ParseError`]; `line` is the 1-indexed commit record.
-pub fn parse_follow_log(bytes: &[u8]) -> Result<Vec<TraceCommit>, ParseError> {
-    Ok(parse_follow_records(bytes)?
-        .into_iter()
-        .map(|(row, _)| row)
-        .collect())
-}
-
 /// The input split at each `\x01`, with the 1-indexed line each record's
 /// header is on. Anything before the first `\x01` must be blank.
-fn records(bytes: &[u8]) -> Result<Vec<(usize, &[u8])>, ParseError> {
+pub(super) fn records(bytes: &[u8]) -> Result<Vec<(usize, &[u8])>, ParseError> {
     let mut chunks = bytes.split(|&b| b == 0x01);
     // `split` always yields at least one piece (the whole input when there
     // is no `\x01`), so the default never stands in for a failure.
@@ -224,14 +213,14 @@ fn newlines(bytes: &[u8]) -> usize {
 
 /// One commit's `%H\0%an\0%at\0%s` fields; the subject is everything after
 /// the third NUL.
-struct Header {
-    id: Oid,
-    author: String,
-    when: i64,
-    subject: String,
+pub(super) struct Header {
+    pub(super) id: Oid,
+    pub(super) author: String,
+    pub(super) when: i64,
+    pub(super) subject: String,
 }
 
-fn parse_header(fields: &[u8], line: usize) -> Result<Header, ParseError> {
+pub(super) fn parse_header(fields: &[u8], line: usize) -> Result<Header, ParseError> {
     let mut parts = fields.splitn(4, |&b| b == 0);
     let mut next = |what| parts.next().ok_or(ParseError { line, what });
     let id = next("missing the commit id")?;
@@ -258,7 +247,7 @@ fn parse_header(fields: &[u8], line: usize) -> Result<Header, ParseError> {
     })
 }
 
-fn parse_line_records(bytes: &[u8]) -> Result<Vec<Record>, ParseError> {
+pub(super) fn parse_line_records(bytes: &[u8]) -> Result<Vec<Record>, ParseError> {
     let mut out = Vec::new();
     for (line, chunk) in records(bytes)? {
         let (header, diff) = match chunk.iter().position(|&b| b == b'\n') {
@@ -318,12 +307,6 @@ fn diff_line_offset(outer: &[u8], inner: &[u8]) -> usize {
     newlines(&outer[..before.min(outer.len())])
 }
 
-fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
-}
-
 /// The path on a `--- a/<path>` line, `a/` stripped, C-quoting undone;
 /// `None` for `/dev/null` or no such line.
 fn side_path(diff: &[u8], prefix: &[u8]) -> Option<Vec<u8>> {
@@ -337,118 +320,4 @@ fn side_path(diff: &[u8], prefix: &[u8]) -> Option<Vec<u8>> {
 
 fn count<'a>(lines: impl Iterator<Item = &'a crate::diff::DiffLine>) -> u32 {
     u32::try_from(lines.count()).unwrap_or(u32::MAX)
-}
-
-fn parse_follow_records(bytes: &[u8]) -> Result<Vec<Record>, ParseError> {
-    let mut out = Vec::new();
-    for (record, (_, chunk)) in records(bytes)?.into_iter().enumerate() {
-        let line = record + 1;
-        // The header's four fields, then the raw and numstat records, all
-        // NUL-terminated; a newline opens the first raw record.
-        let mut fields = chunk.splitn(5, |&b| b == 0);
-        let header: Vec<&[u8]> = fields.by_ref().take(4).collect();
-        if header.len() < 4 {
-            return Err(ParseError {
-                line,
-                what: "a commit record has fewer than four header fields",
-            });
-        }
-        let header = parse_header(&header.join(&0u8), line)?;
-        let rest = fields.next().unwrap_or_default();
-        let files = parse_follow_files(rest, line)?;
-        out.push((
-            TraceCommit {
-                id: header.id,
-                author: header.author,
-                when: header.when,
-                subject: header.subject,
-                path: files.path.map(|p| bytes_path(&p)).unwrap_or_default(),
-                renamed_from: files.renamed_from.map(|p| bytes_path(&p)),
-                added: files.added,
-                removed: files.removed,
-                range_at: None,
-            },
-            files.added_file,
-        ));
-    }
-    Ok(out)
-}
-
-/// What one commit's `--raw --numstat -z` records say about the file.
-#[derive(Default)]
-struct FollowFiles {
-    path: Option<Vec<u8>>,
-    renamed_from: Option<Vec<u8>>,
-    added: u32,
-    removed: u32,
-    added_file: bool,
-}
-
-fn parse_follow_files(rest: &[u8], line: usize) -> Result<FollowFiles, ParseError> {
-    let mut files = FollowFiles::default();
-    let mut tokens = rest.split(|&b| b == 0).map(<[u8]>::trim_ascii_start);
-    let err = |what| ParseError { line, what };
-    while let Some(token) = tokens.next() {
-        if token.is_empty() {
-            continue;
-        }
-        if let Some(raw) = token.strip_prefix(b":") {
-            let status = raw
-                .rsplit(|&b| b == b' ')
-                .next()
-                .and_then(|status| status.first().copied())
-                .ok_or(err("a raw record has no status"))?;
-            let first = tokens.next().ok_or(err("a raw record has no path"))?;
-            match status {
-                b'R' | b'C' => {
-                    let second = tokens.next().ok_or(err("a rename has no new path"))?;
-                    if status == b'R' {
-                        files.renamed_from = Some(first.to_vec());
-                    }
-                    files.path = Some(second.to_vec());
-                }
-                b'A' => {
-                    files.added_file = true;
-                    files.path = Some(first.to_vec());
-                }
-                _ => files.path = Some(first.to_vec()),
-            }
-            continue;
-        }
-        let mut numstat = token.splitn(3, |&b| b == b'\t');
-        let (Some(added), Some(removed), Some(path)) =
-            (numstat.next(), numstat.next(), numstat.next())
-        else {
-            return Err(err("expected a raw or numstat record"));
-        };
-        files.added = files.added.saturating_add(stat(added, line)?);
-        files.removed = files.removed.saturating_add(stat(removed, line)?);
-        if path.is_empty() {
-            // A rename: the old and new paths follow as their own tokens.
-            tokens
-                .next()
-                .ok_or(err("a numstat rename has no old path"))?;
-            let new = tokens
-                .next()
-                .ok_or(err("a numstat rename has no new path"))?;
-            files.path.get_or_insert_with(|| new.to_vec());
-        } else {
-            files.path.get_or_insert_with(|| path.to_vec());
-        }
-    }
-    Ok(files)
-}
-
-/// A numstat count; `-` (binary) is 0.
-fn stat(field: &[u8], line: usize) -> Result<u32, ParseError> {
-    if field == b"-" {
-        return Ok(0);
-    }
-    std::str::from_utf8(field)
-        .ok()
-        .and_then(|text| text.parse().ok())
-        .ok_or(ParseError {
-            line,
-            what: "a numstat count is not a number",
-        })
 }

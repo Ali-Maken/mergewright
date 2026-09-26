@@ -8,6 +8,7 @@
 //! reaches its `sink` as **one batch at the end**, not streamed: a stopped
 //! trace has sent no rows.
 
+mod follow;
 mod function;
 mod log;
 mod whole;
@@ -20,8 +21,9 @@ use graft_core::oid::Oid;
 use crate::diff::ParseError;
 use crate::run::RunError;
 
+pub use follow::parse_follow_log;
 pub use function::{enclosing_function, map_to_head};
-pub use log::{file_history, line_history, parse_follow_log, parse_line_log};
+pub use log::{file_history, line_history, parse_line_log};
 pub use whole::whole_file;
 
 /// The lines a history follows.

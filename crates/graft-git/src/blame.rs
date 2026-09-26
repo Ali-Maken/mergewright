@@ -21,7 +21,15 @@ use graft_core::oid::Oid;
 
 use crate::diff::ParseError;
 use crate::repo::RepoHandle;
-use crate::run::{GitArg, GitInvocation, RunError, Stop};
+use crate::run::{GitArg, GitInvocation, GitOutput, RunError, Stop};
+
+mod ignore_revs;
+mod porcelain;
+
+#[cfg(test)]
+use ignore_revs::count_revisions;
+use ignore_revs::find_ignore_revs;
+pub use porcelain::parse_porcelain;
 
 /// The file git reads ignore-revs from by convention, at the repository root.
 pub const IGNORE_REVS_FILE: &str = ".git-blame-ignore-revs";
@@ -229,7 +237,7 @@ pub fn blame(
         .arg(GitArg::Separator)
         .arg(GitArg::Path(path_bytes(path)))
         .run(stop)?;
-    let (lines, commits) = parse_porcelain(&output.stdout).map_err(BlameError::Parse)?;
+    let (lines, commits) = read_porcelain(&output)?;
     Ok(Blame {
         path: path.to_path_buf(),
         rev: *rev,
@@ -237,6 +245,20 @@ pub fn blame(
         commits,
         ignore_revs: found.and_then(|found| found.summary(opts.ignore_revs)),
     })
+}
+
+/// git's porcelain, parsed. Output cut at the runner's cap is refused: a cut
+/// inside a text line parses cleanly as a shorter file, and the screen would
+/// show it as whole.
+fn read_porcelain(
+    output: &GitOutput,
+) -> Result<(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>), BlameError> {
+    if output.truncated {
+        return Err(BlameError::Run(RunError::Unparsable(
+            "git blame's output passed the runner's 64 MiB cap".to_owned(),
+        )));
+    }
+    parse_porcelain(&output.stdout).map_err(BlameError::Parse)
 }
 
 /// [`BlameError::Untracked`] or [`BlameError::Binary`] before blame runs.
@@ -308,276 +330,6 @@ fn numstat(
         .split(|&b| b == b'\n')
         .find(|line| !line.is_empty());
     Ok(first.map(|line| line.starts_with(b"-\t-\t")))
-}
-
-/// The root's ignore-revs file, as found on disk.
-struct FoundIgnoreRevs {
-    /// Its absolute path, for `--ignore-revs-file`.
-    path: PathBuf,
-    /// How many revisions it lists; `None` when it exists and could not be
-    /// read (git, handed it, reports why).
-    revisions: Option<usize>,
-}
-
-impl FoundIgnoreRevs {
-    /// What [`Blame::ignore_revs`] says: only a readable file that lists
-    /// something is worth a line on screen.
-    fn summary(self, applied: bool) -> Option<IgnoreRevs> {
-        let revisions = self.revisions.filter(|&count| count > 0)?;
-        Some(IgnoreRevs {
-            file: PathBuf::from(IGNORE_REVS_FILE),
-            revisions,
-            applied,
-        })
-    }
-}
-
-/// The root's `.git-blame-ignore-revs`, if there is one. A bare repository
-/// has no root to look in.
-fn find_ignore_revs(repo: &RepoHandle) -> Option<FoundIgnoreRevs> {
-    let path = repo.workdir()?.join(IGNORE_REVS_FILE);
-    match std::fs::read(&path) {
-        Ok(bytes) => Some(FoundIgnoreRevs {
-            path,
-            revisions: Some(count_revisions(&bytes)),
-        }),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-        Err(_unreadable) => Some(FoundIgnoreRevs {
-            path,
-            revisions: None,
-        }),
-    }
-}
-
-/// Non-comment, non-blank lines: what git reads as revisions.
-fn count_revisions(bytes: &[u8]) -> usize {
-    bytes
-        .split(|&b| b == b'\n')
-        .map(<[u8]>::trim_ascii)
-        .filter(|line| !line.is_empty() && !line.starts_with(b"#"))
-        .count()
-}
-
-/// The commit headers one porcelain group may carry, gathered until the
-/// line's text.
-#[derive(Default)]
-struct Headers {
-    author: Option<String>,
-    author_time: Option<i64>,
-    summary: Option<String>,
-    path: Option<PathBuf>,
-    previous: Option<(Oid, PathBuf)>,
-    boundary: bool,
-}
-
-/// Parses `git blame --porcelain` (or `--line-porcelain`) output. Pure, no
-/// spawn; a `cargo-fuzz` target.
-///
-/// Each line is `<id> <orig> <final>[ <count>]`, then header lines (the
-/// commit's `author`…`summary`, `previous`, `boundary`, `filename` the first
-/// time the commit appears; `ignored`/`unblamable` per line), then a tab and
-/// the line's text. The all-zero id is a line not committed yet: its line has
-/// `commit: None` and no entry in the map.
-///
-/// # Errors
-/// [`ParseError`] naming the 1-indexed line where the shape broke.
-pub fn parse_porcelain(
-    bytes: &[u8],
-) -> Result<(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>), ParseError> {
-    let mut lines = Vec::new();
-    let mut commits: BTreeMap<Oid, BlameCommit> = BTreeMap::new();
-    let mut input = bytes.split(|&b| b == b'\n').enumerate().peekable();
-    while let Some((index, line)) = input.next() {
-        if line.is_empty() && input.peek().is_none() {
-            break; // the tail after the final newline
-        }
-        let at = index + 1;
-        let (id, orig_line, final_line) = parse_group_line(line, at)?;
-        let mut headers = Headers::default();
-        let mut mark = LineMark::Plain;
-        let text = loop {
-            let Some((index, header)) = input.next() else {
-                return Err(ParseError {
-                    line: at,
-                    what: "a blame entry ended before its text line",
-                });
-            };
-            if let Some(text) = header.strip_prefix(b"\t") {
-                break text.to_vec();
-            }
-            read_header(header, index + 1, &mut headers, &mut mark)?;
-        };
-        let commit = (!is_zero(&id)).then_some(id);
-        if let Some(id) = commit {
-            record_commit(&mut commits, id, headers, at)?;
-        }
-        lines.push(BlameLine {
-            commit,
-            orig_line,
-            final_line,
-            text,
-            mark,
-        });
-    }
-    Ok((lines, commits))
-}
-
-/// `<id> <orig> <final>[ <count>]`.
-fn parse_group_line(line: &[u8], at: usize) -> Result<(Oid, u32, u32), ParseError> {
-    let mut fields = line.split(|&b| b == b' ');
-    let id = fields.next().and_then(oid).ok_or(ParseError {
-        line: at,
-        what: "expected `<id> <orig> <final>` to start a blame entry",
-    })?;
-    let mut number = || {
-        fields
-            .next()
-            .and_then(|field| std::str::from_utf8(field).ok())
-            .and_then(|field| field.parse::<u32>().ok())
-            .ok_or(ParseError {
-                line: at,
-                what: "a blame entry's line numbers are missing or not numbers",
-            })
-    };
-    let orig = number()?;
-    let fin = number()?;
-    Ok((id, orig, fin))
-}
-
-/// One header line into `headers`/`mark`; unknown keys are skipped (git adds
-/// headers over time — `author-mail`, `committer-*` are not kept).
-fn read_header(
-    line: &[u8],
-    at: usize,
-    headers: &mut Headers,
-    mark: &mut LineMark,
-) -> Result<(), ParseError> {
-    let (key, value) = match line.iter().position(|&b| b == b' ') {
-        Some(space) => (&line[..space], &line[space + 1..]),
-        None => (line, &[][..]),
-    };
-    match key {
-        b"author" => headers.author = Some(lossy(value)),
-        b"author-time" => {
-            headers.author_time = Some(
-                std::str::from_utf8(value)
-                    .ok()
-                    .and_then(|value| value.parse().ok())
-                    .ok_or(ParseError {
-                        line: at,
-                        what: "`author-time` is not a number",
-                    })?,
-            );
-        }
-        b"summary" => headers.summary = Some(lossy(value)),
-        b"filename" => headers.path = Some(bytes_path(&unquote(value))),
-        b"boundary" => headers.boundary = true,
-        b"ignored" => *mark = LineMark::Skipped,
-        b"unblamable" => *mark = LineMark::Unblamable,
-        b"previous" => {
-            let space = value.iter().position(|&b| b == b' ').ok_or(ParseError {
-                line: at,
-                what: "`previous` has no path",
-            })?;
-            let id = oid(&value[..space]).ok_or(ParseError {
-                line: at,
-                what: "`previous` names no valid id",
-            })?;
-            headers.previous = Some((id, bytes_path(&unquote(&value[space + 1..]))));
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-/// Adds a commit the first time its headers appear; later entries for it
-/// carry none and change nothing.
-fn record_commit(
-    commits: &mut BTreeMap<Oid, BlameCommit>,
-    id: Oid,
-    headers: Headers,
-    at: usize,
-) -> Result<(), ParseError> {
-    if commits.contains_key(&id) {
-        return Ok(());
-    }
-    let (Some(author), Some(author_time), Some(summary), Some(path)) = (
-        headers.author,
-        headers.author_time,
-        headers.summary,
-        headers.path,
-    ) else {
-        return Err(ParseError {
-            line: at,
-            what: "a commit's first entry lacks `author`, `author-time`, `summary` or `filename`",
-        });
-    };
-    commits.insert(
-        id,
-        BlameCommit {
-            id,
-            author,
-            author_time,
-            summary,
-            path,
-            previous: headers.previous,
-            boundary: headers.boundary,
-        },
-    );
-    Ok(())
-}
-
-fn oid(hex: &[u8]) -> Option<Oid> {
-    Oid::from_hex(std::str::from_utf8(hex).ok()?).ok()
-}
-
-fn is_zero(id: &Oid) -> bool {
-    id.as_bytes().iter().all(|&b| b == 0)
-}
-
-fn lossy(bytes: &[u8]) -> String {
-    String::from_utf8_lossy(bytes).into_owned()
-}
-
-/// A path git C-quoted (`"src/\303\251.rs"`) back to its bytes; an unquoted
-/// one as it is.
-pub(crate) fn unquote(bytes: &[u8]) -> Vec<u8> {
-    let Some(inner) = bytes
-        .strip_prefix(b"\"")
-        .and_then(|rest| rest.strip_suffix(b"\""))
-    else {
-        return bytes.to_vec();
-    };
-    let mut out = Vec::with_capacity(inner.len());
-    let mut i = 0;
-    while i < inner.len() {
-        if inner[i] != b'\\' || i + 1 >= inner.len() {
-            out.push(inner[i]);
-            i += 1;
-            continue;
-        }
-        let next = inner[i + 1];
-        let octal = inner
-            .get(i + 1..i + 4)
-            .filter(|digits| digits.iter().all(|d| (b'0'..=b'7').contains(d)) && digits[0] <= b'3');
-        if let Some(digits) = octal {
-            out.push((digits[0] - b'0') * 64 + (digits[1] - b'0') * 8 + (digits[2] - b'0'));
-            i += 4;
-            continue;
-        }
-        out.push(match next {
-            b'n' => b'\n',
-            b't' => b'\t',
-            b'r' => b'\r',
-            b'a' => 0x07,
-            b'b' => 0x08,
-            b'f' => 0x0c,
-            b'v' => 0x0b,
-            other => other,
-        });
-        i += 2;
-    }
-    out
 }
 
 #[cfg(unix)]

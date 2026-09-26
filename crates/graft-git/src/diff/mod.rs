@@ -17,6 +17,7 @@ pub use pairs::{Pair, pairs};
 pub use patch::{PatchDirection, PatchError, Selection, hunk_patch};
 pub use read::{DiffError, DiffOptions, DiffSpec, file_diff, list_files};
 pub use unified::parse_unified;
+pub(crate) use unified::{find, unquote};
 
 /// How a file changed between the two sides of a diff.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
