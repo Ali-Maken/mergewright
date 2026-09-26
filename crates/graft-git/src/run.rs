@@ -20,8 +20,9 @@
 //!   deadlock against the runner waiting on another.
 //! - **Cancellation.** [`Stop`] is polled at least every 50 ms. When it says
 //!   stop, the child is killed and reaped before [`run`](GitInvocation::run)
-//!   returns [`RunError::Stopped`]. There are no clock timeouts: stop is the
-//!   only cancellation.
+//!   returns [`RunError::Stopped`]. A stop already asked when `run` is
+//!   called spawns nothing. There are no clock timeouts: stop is the only
+//!   cancellation.
 //! - **Output cap.** Past the cap the child is killed and what was read is
 //!   returned, cut to the cap, with `truncated` set. A capped read is still a
 //!   successful one.
@@ -329,6 +330,12 @@ impl GitInvocation {
     /// [`RunError`]: git missing or unstartable, stopped, exiting non-zero or
     /// killed by a signal.
     pub fn run(&self, stop: &dyn Stop) -> Result<GitOutput, RunError> {
+        // A stop already asked spawns nothing: git given even a moment can
+        // finish a write the caller has already said it does not want
+        // (m7-power-tools/27).
+        if stop.should_stop() {
+            return Err(RunError::Stopped);
+        }
         let mut child = self.spawn()?;
         self.supervise(&mut child, stop)
     }
@@ -347,6 +354,10 @@ impl GitInvocation {
     /// [`RunError`]: git missing or unstartable, stopped, or killed by a
     /// signal Graft did not send. Never [`RunError::Exited`].
     pub fn run_raw(&self, stop: &dyn Stop) -> Result<RawOutput, RunError> {
+        // As in `run`: a stop already asked spawns nothing.
+        if stop.should_stop() {
+            return Err(RunError::Stopped);
+        }
         let mut child = self.spawn()?;
         self.supervise_raw(&mut child, stop)
     }
@@ -538,15 +549,6 @@ mod tests {
     use super::*;
     use crate::fixture::Fixture;
 
-    /// Says stop from its second poll on.
-    struct SecondPoll(AtomicUsize);
-
-    impl Stop for SecondPoll {
-        fn should_stop(&self) -> bool {
-            self.0.fetch_add(1, Ordering::Relaxed) >= 1
-        }
-    }
-
     #[test]
     fn a_stopped_command_is_killed_and_reaped() {
         let invocation =
@@ -557,8 +559,11 @@ mod tests {
                 GitArg::Flag("--no-color"),
             ]);
         let mut child = invocation.spawn().expect("git starts");
-        let stop = SecondPoll(AtomicUsize::new(0));
-        let result = invocation.supervise(&mut child, &stop);
+        // Stop on the very first poll, microseconds after the spawn: git has
+        // not even finished starting, so this is a kill, not an exit a stop
+        // arrived after. A later poll would race a small repository's `log`
+        // to its end.
+        let result = invocation.supervise(&mut child, &AtomicBool::new(true));
         assert!(matches!(result, Err(RunError::Stopped)), "{result:?}");
         assert!(
             child.try_wait().expect("try_wait").is_some(),

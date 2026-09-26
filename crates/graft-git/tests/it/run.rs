@@ -23,6 +23,9 @@ fn rev_parse(repo: &RepoHandle, revision: &str) -> Oid {
     Oid::from_hex(hex.trim()).unwrap_or_else(|why| panic!("{hex:?} is not an id: {why}"))
 }
 
+/// Says stop from its second poll on: `run`'s own poll before it spawns
+/// says go, the first poll after the spawn — microseconds later, before git
+/// has finished starting — says stop.
 struct SecondPoll(AtomicUsize);
 
 impl Stop for SecondPoll {
@@ -105,6 +108,69 @@ fn an_atomic_bool_already_set_stops_before_any_output() {
     let repo = open(&graft_fixtures::borrow(Shape::Linear));
     let result = log_everything(&repo).run(&AtomicBool::new(true));
     assert!(matches!(result, Err(RunError::Stopped)), "{result:?}");
+}
+
+/// Answers `false` for its first `quiet` polls; every later poll waits
+/// `LATE` first, then says stop. The wait gives a short git time to finish
+/// (or to do its write) before the answer lands (m7-power-tools/27).
+struct StopsLate {
+    polls: AtomicUsize,
+    quiet: usize,
+}
+
+const LATE: std::time::Duration = std::time::Duration::from_millis(500);
+
+impl Stop for StopsLate {
+    fn should_stop(&self) -> bool {
+        if self.polls.fetch_add(1, Ordering::Relaxed) < self.quiet {
+            return false;
+        }
+        std::thread::sleep(LATE);
+        true
+    }
+}
+
+fn update_ref_made() -> [GitArg; 3] {
+    [
+        GitArg::Flag("update-ref"),
+        GitArg::Ref(b"refs/heads/made".to_vec()),
+        GitArg::Flag("HEAD"),
+    ]
+}
+
+fn has_made(dir: &Path) -> bool {
+    std::process::Command::new("git")
+        .args(["-C"])
+        .arg(dir)
+        .args(["show-ref", "--verify", "--quiet", "refs/heads/made"])
+        .status()
+        .unwrap_or_else(|why| panic!("git show-ref: {why}"))
+        .success()
+}
+
+/// Race 1b: a stop already asked before `run` is called spawns nothing, so a
+/// write command never gets to write.
+#[test]
+fn a_stop_asked_before_run_spawns_nothing() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Linear);
+    let repo = open(scratch.path());
+    let stop = StopsLate {
+        polls: AtomicUsize::new(0),
+        quiet: 0,
+    };
+    let result = GitInvocation::new(&repo).args(update_ref_made()).run(&stop);
+    assert!(matches!(result, Err(RunError::Stopped)), "{result:?}");
+    assert!(!has_made(scratch.path()), "git never ran");
+
+    let stop = StopsLate {
+        polls: AtomicUsize::new(0),
+        quiet: 0,
+    };
+    let result = GitInvocation::new(&repo)
+        .args(update_ref_made())
+        .run_raw(&stop);
+    assert!(matches!(result, Err(RunError::Stopped)), "{result:?}");
+    assert!(!has_made(scratch.path()), "git never ran");
 }
 
 #[test]
