@@ -269,10 +269,15 @@ pub enum Product {
         graft_core::oid::Oid,
         graft_ops::mistake_radar::probes::EvilVerdict,
     ),
-    /// One branch's force-push verdict, by branch name. Never a `Result`,
-    /// for the same reason [`Product::EvilProbe`] is not: "could not check"
-    /// is one of the verdict's own answers.
-    ForcePushProbe(String, graft_ops::mistake_radar::probes::ForcePushVerdict),
+    /// One branch's force-push verdict, by branch name, with the tip it was
+    /// asked about. Never a `Result`, for the same reason
+    /// [`Product::EvilProbe`] is not: "could not check" is one of the
+    /// verdict's own answers.
+    ForcePushProbe(
+        String,
+        graft_core::oid::Oid,
+        graft_ops::mistake_radar::probes::ForcePushVerdict,
+    ),
     /// The duplicate-commit probe's groups, or why it could not run.
     DuplicatesProbe(Result<std::sync::Arc<graft_ops::mistake_radar::probes::Duplicates>, String>),
     /// The Map view's per-branch bucket counts, or why it could not be built

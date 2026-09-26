@@ -38,7 +38,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use graft::config::Loaded;
-use graft::event_loop::{Exit, Phase, Wake, Wakes, pump};
+use graft::event_loop::{Exit, Phase, Wake, Wakes, is_job_event, pump};
 use graft::history::{HistoryUpdate, Phase as WalkPhase};
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::refs::{RefBadges, badges};
@@ -1513,6 +1513,21 @@ impl<D> Wakes for Paced<'_, D> {
     /// key's latency counts the one strip it waited behind.
     fn waiting(&mut self) -> bool {
         self.looked() || self.no_prefetch
+    }
+
+    /// As `ChannelWakes` answers. Asked before the frame is drawn, so it
+    /// looks without `stamp`ing: the stamp marks a frame already drawn.
+    /// Empty or hung up both answer `false` here; `next_wake` records a
+    /// hang-up, as it does after `looked`.
+    fn job_event_waiting(&mut self) -> bool {
+        if self.seen.is_none()
+            && let Ok(wake) = self.events.try_recv()
+        {
+            self.seen = Some(wake);
+        }
+        self.seen
+            .as_ref()
+            .is_some_and(|posted| is_job_event(&posted.wake))
     }
 
     fn mark(&mut self, phase: Phase) {
