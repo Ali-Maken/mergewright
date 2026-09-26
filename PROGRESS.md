@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M7 pipeline step 5 — waiting on the user (2026-09-26).** Try `python3 prototypes/m7-power-tools/power.py`, plus yes/no on the note's Proposed changes (`docs/design-notes/m7-power-tools.md` :115). Ticket 86 building. Then planner pass 2 (design + specs). Logs: `docs/log/m6.md`, `docs/log/m7.md`.
+**Current step:** **M7 pipeline step 5, rev 2 (2026-09-26).** M6 closed: 86, 87 merged, gates 3529 passed (9034b792). User trying `python3 prototypes/m7-power-tools/power.py` (rev 2: blame, history, journal). Planner pass 2a (specs for G-rewrite, G-editor, G-stops, G-daily, G-perf, G-pick, G-small) running; G-blame/G-history/G-list/G-accept wait on his rev-2 findings. Logs: `docs/log/m7.md`.
 
 **Running now:** nothing.
 
@@ -70,7 +70,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [x] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
 | [x] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
 | [x] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
-| [ ] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
+| [x] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
 | [ ] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
 | [ ] | M8 Polish, **final name**, ship (read-only) — **conditional** (ADR-0030) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
 
