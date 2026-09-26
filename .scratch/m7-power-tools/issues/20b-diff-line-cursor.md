@@ -1,6 +1,6 @@
 # diff-line-cursor — every diff has the line cursor the changes pane has; one call lands graph + file + line
 
-Status: ready
+Status: done
 Blocked by: none. (Independent of 18/20a; holds graft, graft-ui, so it runs before 20c and 20, never beside them.)
 Crates: graft, graft-ui.
 Build with: **Opus**. Brownfield state change in the detail pane plus an async three-read landing; judged by tests,
@@ -74,23 +74,27 @@ pub fn show_line(state: &mut AppState, spec: DetailSpec, path: &Path, at: Option
 `show_line`'s pending state lives on `AppState`; its name and fields are the builder's.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Cursor:** `commit_diff_j_moves_the_line_cursor` (red first) · `commit_diff_view_scrolls_only_when_the_cursor_leaves_it`
+- [x] **Cursor:** `commit_diff_j_moves_the_line_cursor` (red observed first) · `commit_diff_view_scrolls_only_when_the_cursor_leaves_it`
       · `compare_diff_has_the_line_cursor` · `load_whole_file_keeps_the_commit_diff_cursor_line` ·
-      `changes_pane_cursor_is_unchanged` (its existing tests green, named in NOTES).
-- [ ] **`diff_cursor`:** `…_added_line_is_new_side` · `…_removed_line_is_old_side_with_the_old_path` ·
-      `…_heading_is_the_hunks_first_changed_line` · `…_file_row_is_the_files_first_changed_line` ·
-      `…_file_row_before_the_diff_arrives_is_none` · `…_binary_file_says_binary` · `…_untracked_row_has_its_section` ·
-      `…_is_none_with_the_graph_focused`.
-- [ ] **`show_line`:** `show_line_lands_on_commit_file_and_line` (red first; the commit off the loaded window, so the
-      seek is async) · `show_line_puts_the_hunk_heading_on_top` · `show_line_focuses_the_diff_body` ·
-      `show_line_working_tree_lands_on_the_uncommitted_row` · `show_line_path_missing_says_so` ·
-      `show_line_unreachable_commit_says_so_and_moves_nothing` · `a_key_during_a_landing_drops_it` ·
-      `a_second_show_line_replaces_the_first`.
-- [ ] **Capture** (pty, `GRAFT_UPDATE_SHOTS=1`, ≤ 200 KB): `docs/shots/m7/diff-cursor-commit-120x40.txt`. Right: a
-      commit's diff, the cursor on an added line after three `j`, that row carrying the carrier glyph and no other row
-      carrying it. Colour of the bar: unverified (rule 5).
-- [ ] graft MAP.md: `Side`, `LineRef`, `DiffCursor`, `diff_cursor`, `show_line`, the pending landing; the
-      `body_cursor` row updated. NOTES: the carrier chosen and why; the key table as built.
+      `changes_pane_cursor_is_unchanged`, plus `w_keeps_the_cursor_on_its_line_from_the_cache` — all in
+      `crates/graft/src/update/detail/cursor/tests.rs`. Existing changes-pane tests green, named in NOTES.
+- [x] **`diff_cursor`:** `diff_cursor_added_line_is_new_side` · `diff_cursor_removed_line_is_old_side_with_the_old_path` ·
+      `diff_cursor_heading_is_the_hunks_first_changed_line` · `diff_cursor_file_row_is_the_files_first_changed_line` ·
+      `diff_cursor_file_row_before_the_diff_arrives_is_none` · `diff_cursor_binary_file_says_binary` ·
+      `diff_cursor_untracked_row_has_its_section` · `diff_cursor_is_none_with_the_graph_focused`, plus
+      `diff_cursor_side_by_side_removed_row_with_a_pair_is_new_side` — `cursor/tests.rs`.
+- [x] **`show_line`:** `show_line_lands_on_commit_file_and_line` (red observed first, with `advance` stubbed out; commit
+      200 of a 30-row window, so the seek is a `Wanted::Find`) · `show_line_puts_the_hunk_heading_on_top` ·
+      `show_line_focuses_the_diff_body` · `show_line_working_tree_lands_on_the_uncommitted_row` ·
+      `show_line_path_missing_says_so` · `show_line_unreachable_commit_says_so_and_moves_nothing` ·
+      `a_key_during_a_landing_drops_it` · `a_second_show_line_replaces_the_first` — all in
+      `crates/graft/src/update/detail/landing/tests.rs`, driven through `update`.
+- [x] **Capture** `docs/shots/m7/diff-cursor-commit-120x40.txt` — `crates/graft/tests/it/diff_cursor.rs::capture_the_commit_diff_cursor`
+      (in-process harness, real git, real `view::view`; not a pty). It asserts `diff_cursor` = New 2 and exactly one row
+      carries `▎`, the row `▎+ B`. Colour of the bar: unverified (rule 5). Looks-right: the user's.
+- [x] graft MAP.md: `Side`, `LineRef`, `DiffCursor`, `diff_cursor`, `show_line`, `LineLanding`/`LandingStage`/`advance`/
+      `LandingWatch`, `AppState::line_landing`, `KeptLine`; `body_cursor`, `set_options`, `load_all`, `scroll_body` rows
+      updated. Carrier and key table: NOTES.
 
 ## Touches (check each, report how)
 - **`j`/`k` meaning in a commit diff** changes from scroll to cursor. Other `j`/`k` users (file list, resolver, map,
@@ -117,3 +121,49 @@ workspace-wide.
 
 ## Size
 ~55k. If it compacts, split: **-a** the cursor + `diff_cursor` + capture; **-b** `show_line`.
+
+## NOTES (builder, 2026-09-26)
+- **Context compacted** once, after all code, tests and captures were green. Remains after compaction: the ticket
+  ticks and NOTES, the commit. Both done; nothing of the build remains.
+- **Scout:** the conductor's (`scouts/blame-place.md`); no second one.
+- **Carrier:** the changes pane already drew a glyph, `▎` (U+258E, `CURSOR_GLYPH`,
+  `graft-ui/src/detail_pane/line_render.rs:61`, drawn at `:145` on a heading and `:192` on a line). Commit and compare
+  diffs use the same one. No graft-ui drawing change, doc comments only. Side by side draws no cursor in either pane
+  (existing, `side_by_side.rs:277 cursor: false`); the cursor still moves there, unseen, as in the changes pane.
+- **Key table as built** (diff body focused, every spec): `j`/`↓` +1, `k`/`↑` −1, PgDn/PgUp ±10, `g`/`G` first/last —
+  all move the cursor, the view follows only when it leaves (`keys.rs` `diff_key`, scroll branch removed). `L`, `w`,
+  `[`/`]` keep the cursor's side + line and its offset in the view (`DetailState::kept_line`, spent when the diff
+  arrives, at once on a cache hit). This also changes the changes pane: its cursor used to go back to row 0 on these
+  keys. No new key.
+- **Mouse:** unchanged. Wheel over the body scrolls `body_top` without moving the cursor (`mouse.rs:151`); a click in the
+  body does nothing — same in both panes.
+- **Re-shot captures** — the one change in each is `▎` on row 0 of a commit diff (its first hunk heading), because
+  `DetailState::body_cursor()` (`ops.rs:418`) lost its `WorkingTree` guard: `m6/fix-finish-shell-merge-120x40`,
+  `m6/fix-landing-after-continue-rebase-{120x40,187x50}`, `m6/fix-shell-merge-abort-and-undo-120x40`,
+  `m6/fix-undo-shell-merge-120x40`, `m6/stash-clash-done-120x40`, `m7/landed-after-merge-120x40`.
+- **Stale, not regenerated:** `docs/shots/m6/m6-contact-sheet-{1,3,4}.txt` embed copies of those captures without `▎`.
+  `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6` would fix them, but I ran it and it also pulls in drift
+  from before this ticket (changed captions, other captures), so I reverted it — the conductor's call.
+- **Unverified:** diff captures with no test behind them, so not regenerable: `m2-side-by-side`,
+  `m2-detail-keys-resize`, `m2-detail-pane-breakpoints`, `m2-diff-widget`, `m5-contact-sheet-2`,
+  `m6/prototype-journeys`. Whether they would change: not checked.
+- **Touches:**
+  - `j`/`k` elsewhere: `diff_key` has one caller, `keys.rs:126` (`detail_key`, Diff focus). File list, resolver, map,
+    journal, stash, picker, editor, `.` menu have their own handlers; full nextest green.
+  - Write keys: `operate::diff_unit` and `cursor_line` now check `spec == WorkingTree` themselves (they relied on
+    `body_cursor()` being `None` elsewhere). Green: `operate.rs` `space_on_a_hunk_heading_stages_the_whole_hunk`,
+    `space_on_an_added_line_stages_that_line_alone`, `space_on_a_context_line_stages_the_hunk_around_it`,
+    `d_in_the_diff_region_confirms_before_discarding_the_hunk`, `d_on_one_line_names_the_line_and_counts_it`,
+    `e_in_the_diff_carries_the_cursors_new_side_line`; `detail/tests.rs`
+    `a_write_leaves_the_changes_cursor_on_the_same_file`, `staging_the_file_under_the_cursor_keeps_the_cursor_in_its_own_group`,
+    `g_and_capital_g_jump_the_diff_body_to_its_ends`.
+  - `show_cursor` zeroing / `kept_cursor`: the landing places the cursor in `settle` after `follow_selection`, so it
+    runs after both; covered by the landing tests.
+  - Hint bar: `grep -rni scroll crates/graft-ui/src/graph_screen/hints/` → nothing.
+  - Journal/undo: none.
+- **Design calls to check:**
+  - Landing status lines are sticky. `WorkingTree` with a clean tree refuses: `can't show the uncommitted changes:
+    there are none` (wording not in the spec).
+  - A `Commit` landing while a compare base is pinned: `follow_selection` makes the pane a `Compare`, and the landing
+    drops silently at `Selecting`. Not tested; 20 may want the base cleared.
+  - `binary`: an untracked file also has no counts, so it is excluded; once the diff arrives its own binary flag decides.

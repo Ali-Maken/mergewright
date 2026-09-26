@@ -18,6 +18,7 @@ mod context_menu;
 mod coverage;
 mod credential_by_key;
 mod dependency_edges;
+mod diff_cursor;
 mod esc_and_the_walk;
 mod finish;
 mod frame_trace;

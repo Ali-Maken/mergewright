@@ -331,6 +331,11 @@ struct DiffUnit {
 /// the heading at `HunkView::lines[0]` and copies git's lines after it
 /// one for one, so a drawn line `i` is raw line `i - 1`.
 fn diff_unit(state: &AppState) -> Option<DiffUnit> {
+    // Every diff has a line cursor since m7-power-tools/20b; only the
+    // changes pane's is a unit of a write.
+    if state.detail.spec != Some(DetailSpec::WorkingTree) {
+        return None;
+    }
     let cursor = state.detail.body_cursor()?;
     let Loading::Ready(view) = &state.detail.diff else {
         return None;
@@ -382,7 +387,8 @@ pub fn edit_target(state: &AppState) -> Option<(PathBuf, Option<u32>)> {
 /// The new-side line number under the diff cursor, or `None` off the diff
 /// region, on a heading, or on a removed line.
 fn cursor_line(state: &AppState) -> Option<u32> {
-    if state.detail.focus != DetailFocus::Diff {
+    if state.detail.focus != DetailFocus::Diff || state.detail.spec != Some(DetailSpec::WorkingTree)
+    {
         return None;
     }
     let cursor = state.detail.body_cursor()?;

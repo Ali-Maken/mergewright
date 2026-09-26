@@ -334,6 +334,11 @@ pub struct AppState {
     /// `operating` rather than inside it, as `resuming` is: `operating` is
     /// a bare id read in hundreds of places.
     pub(crate) lands_on_head: Option<JobId>,
+    /// A `show_line` still waiting on the graph's seek, the file list or the
+    /// diff (`update::detail::show_line`, m7-power-tools/20b). Moved on by
+    /// `update::detail::advance` after every event; dropped by a key or
+    /// click that moves the graph cursor or the pane's selection.
+    pub line_landing: Option<super::detail::LineLanding>,
     /// The launch found an operation live while a modal owned the keys, so
     /// it set [`AppState::stopped`] and left the keyboard alone. The focus
     /// landing runs on the first working-tree read after the modal closes;
