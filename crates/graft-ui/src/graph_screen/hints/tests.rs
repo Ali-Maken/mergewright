@@ -1834,3 +1834,41 @@ fn a_merge_banner_says_c_finish() {
         assert!(rebase.contains("c continue"), "{rebase:?}");
     }
 }
+
+/// The blame place's bar words (design note pass 2b B1), m7-power-tools/20c.
+mod blame_place {
+    use super::*;
+
+    fn words(list: &[Hint]) -> Vec<String> {
+        list.iter().map(Hint::text).collect()
+    }
+
+    #[test]
+    fn blame_bar_words_in_order() {
+        assert_eq!(
+            words(&blame_place_list(true, true)),
+            [
+                "⏎ that commit",
+                "^ before it",
+                "/ find",
+                "n N match",
+                "space ages",
+                "w whitespace",
+                "i ignore list",
+                "esc back",
+            ]
+        );
+    }
+
+    #[test]
+    fn n_n_only_while_finding() {
+        assert!(!words(&blame_place_list(false, true)).contains(&"n N match".to_owned()));
+        assert!(words(&blame_place_list(true, false)).contains(&"n N match".to_owned()));
+    }
+
+    #[test]
+    fn i_only_with_the_file() {
+        assert!(!words(&blame_place_list(true, false)).contains(&"i ignore list".to_owned()));
+        assert!(words(&blame_place_list(false, true)).contains(&"i ignore list".to_owned()));
+    }
+}

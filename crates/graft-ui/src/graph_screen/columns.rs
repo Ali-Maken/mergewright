@@ -57,32 +57,99 @@ pub fn initials(name: &str) -> String {
 /// (m1-the-graph/53).
 #[must_use]
 pub fn relative_date(then: i64, now: i64) -> String {
+    match age(then, now) {
+        Age::Future => "future".to_owned(),
+        Age::Now => "now".to_owned(),
+        Age::Ago(count, unit) => format!("{count}{}", unit.short()),
+    }
+}
+
+/// [`relative_date`]'s long form, for a sentence rather than a column:
+/// `"7 months ago"`, `"2 weeks ago"`, `"just now"`, `"in the future"`
+/// (m7-power-tools/20c, the blame trailer). Same ladder and rounding, so the
+/// two never disagree: `7mo` is always `7 months ago`.
+#[must_use]
+pub fn relative_date_long(then: i64, now: i64) -> String {
+    match age(then, now) {
+        Age::Future => "in the future".to_owned(),
+        Age::Now => "just now".to_owned(),
+        // Below years a unit never shows `1` (see `relative_date`); a year
+        // can, so the singular is spelled.
+        Age::Ago(1, unit) => format!("1 {} ago", unit.long()),
+        Age::Ago(count, unit) => format!("{count} {}s ago", unit.long()),
+    }
+}
+
+/// One stage of git's relative-date ladder.
+#[derive(Clone, Copy)]
+enum Unit {
+    Minute,
+    Hour,
+    Day,
+    Week,
+    Month,
+    Year,
+}
+
+impl Unit {
+    fn short(self) -> &'static str {
+        match self {
+            Unit::Minute => "m",
+            Unit::Hour => "h",
+            Unit::Day => "d",
+            Unit::Week => "w",
+            Unit::Month => "mo",
+            Unit::Year => "y",
+        }
+    }
+
+    fn long(self) -> &'static str {
+        match self {
+            Unit::Minute => "minute",
+            Unit::Hour => "hour",
+            Unit::Day => "day",
+            Unit::Week => "week",
+            Unit::Month => "month",
+            Unit::Year => "year",
+        }
+    }
+}
+
+enum Age {
+    Future,
+    Now,
+    Ago(i64, Unit),
+}
+
+/// The ladder both forms read; the rounding is documented on
+/// [`relative_date`].
+fn age(then: i64, now: i64) -> Age {
     let elapsed = now.saturating_sub(then);
     if elapsed < 0 {
-        return "future".to_owned();
+        return Age::Future;
     }
     if elapsed < 90 {
-        return "now".to_owned();
+        return Age::Now;
     }
     let minutes = (elapsed + 30) / 60;
     if minutes < 90 {
-        return format!("{minutes}m");
+        return Age::Ago(minutes, Unit::Minute);
     }
     let hours = (minutes + 30) / 60;
     if hours < 36 {
-        return format!("{hours}h");
+        return Age::Ago(hours, Unit::Hour);
     }
     let days = (hours + 12) / 24;
     if days < 14 {
-        return format!("{days}d");
+        return Age::Ago(days, Unit::Day);
     }
     if days < 70 {
-        return format!("{}w", (days + 3) / 7);
+        return Age::Ago((days + 3) / 7, Unit::Week);
     }
     if days < 365 {
-        return format!("{}mo", (days + 15) / 30);
+        return Age::Ago((days + 15) / 30, Unit::Month);
     }
-    format!("{}y", (days + 182) / 365)
+    Age::Ago((days + 182) / 365, Unit::Year)
 }
 
 /// The commit's own recorded date, absolute, in its own offset:
@@ -234,6 +301,26 @@ mod tests {
     fn a_future_date_reads_future_not_an_age() {
         let now = 2_000_000_000;
         assert_eq!(relative_date(now + 60, now), "future");
+    }
+
+    /// The long form reads the same ladder as the short one.
+    #[test]
+    fn the_long_form_spells_the_short_forms_age() {
+        let now = 2_000_000_000;
+        let cases: &[(i64, &str, &str)] = &[
+            (1, "now", "just now"),
+            (90, "2m", "2 minutes ago"),
+            (7200, "2h", "2 hours ago"),
+            (1_209_600, "2w", "2 weeks ago"),
+            (18_144_000, "7mo", "7 months ago"),
+            (31_536_000, "1y", "1 year ago"),
+            (157_680_000, "5y", "5 years ago"),
+        ];
+        for &(elapsed, short, long) in cases {
+            assert_eq!(relative_date(now - elapsed, now), short, "{elapsed}");
+            assert_eq!(relative_date_long(now - elapsed, now), long, "{elapsed}");
+        }
+        assert_eq!(relative_date_long(now + 60, now), "in the future");
     }
 
     #[test]
