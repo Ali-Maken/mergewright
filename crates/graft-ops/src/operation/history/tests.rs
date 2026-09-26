@@ -320,10 +320,16 @@ fn plan_merge_supplies_gits_own_subject_and_never_an_editor() {
 fn plan_replays_pin_by_id_and_never_open_an_editor() {
     let f = facts();
     // `--no-update-refs` and `--no-autostash`: a rebase must move only the
-    // branch the entry records, and must never stash outside one.
+    // branches the entry records (its line lands as `update-ref` rows Graft
+    // writes, ADR-0047), and must never stash outside one. `-i` runs on
+    // Graft's own todo — the editors are the engine's helpers, never the
+    // user's; `--empty=drop` keeps `-i` dropping an already-upstream commit
+    // as the plain rebase did.
     assert_eq!(
         lines(&rebase(), &f),
-        [format!("git rebase --no-update-refs --no-autostash {FEAT}")]
+        [format!(
+            "git rebase -i --no-update-refs --no-autostash --empty=drop {FEAT}"
+        )]
     );
     assert_eq!(
         lines(&pick(), &f),

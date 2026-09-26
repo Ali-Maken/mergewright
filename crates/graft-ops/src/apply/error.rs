@@ -225,6 +225,30 @@ pub enum AfterState {
     /// records none — which `u` reads as "not merging" (m6-conflicts/20).
     #[error("the merge in progress after the operation: {0}")]
     MergeState(crate::merge_state::MergeStateError),
+    /// A rewrite's saved plan (`<git dir>/graft/rewrite/<entry-id>/`) could
+    /// not be removed when its entry closed (ADR-0047 §1). The entry is
+    /// closed all the same; the files are Graft's, not the user's, and a
+    /// banner may name the wrong branch for a later rebase on the same top
+    /// until they are gone.
+    #[error("the rewrite's saved plan at {} could not be removed: {error}", dir.display())]
+    PlanLeft {
+        /// The plan's directory.
+        dir: PathBuf,
+        /// Why.
+        error: std::io::Error,
+    },
+    /// A rewrite ran on the top of the line and `HEAD` could not be switched
+    /// back to his branch after it (ADR-0047 §3): `HEAD` is on the top
+    /// branch. Every branch is where the entry records it.
+    #[error("HEAD is still on {top}: switching back to {home} failed: {error}")]
+    NotHome {
+        /// His branch, short name.
+        home: String,
+        /// The top of the line, short name.
+        top: String,
+        /// git's failure.
+        error: RunError,
+    },
     /// A set-aside stash was kept after the put-back because a read failed —
     /// the status after it, or the stash list to drop it by — with no git
     /// failure to carry the words. `words` say what failed (`error`'s text

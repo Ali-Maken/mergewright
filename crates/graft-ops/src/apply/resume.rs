@@ -6,7 +6,7 @@
 //! The rule they share is M5 hard choice 2 and DESIGN.md §6.4: a stopped
 //! operation is **one entry**, `Pending` from the stop to the finish.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
 use graft_core::oid::Oid;
@@ -16,12 +16,14 @@ use graft_git::state::{self, InProgress};
 
 use crate::facts::{self, FactsError};
 use crate::operation::{Operation, Refusal, opens_in_progress};
+use crate::rewrite::saved::{self, CLEANUP};
 use crate::snapshot;
 
 pub(super) mod shell;
 
 use shell::{Target, refuse_unmerged, shell_merge};
 
+use super::engine::{go_home, plan_of, remove};
 use super::{
     AfterState, Applied, ApplyError, Context, Pending, Refresh, apply, as_apply_error, finish,
     reason_for, set_aside,
@@ -117,10 +119,9 @@ pub(crate) fn live_entry<'a>(
             .map(|oid| (name.clone(), oid)),
         _ => None,
     };
-    Ok(entries.iter().rev().find(|entry| {
-        entry.status == EntryStatus::Pending
+    for entry in entries.iter().rev() {
+        let candidate = entry.status == EntryStatus::Pending
             && opens_in_progress(entry.kind) == Some(kind)
-            && entry.head_before == started_on
             && match &tip_now {
                 Some((name, now)) => match entry.refs_before.get(name) {
                     Some(Some(recorded)) => recorded == now,
@@ -128,8 +129,33 @@ pub(crate) fn live_entry<'a>(
                     _ => true,
                 },
                 None => true,
-            }
-    }))
+            };
+        if candidate
+            && (entry.head_before == started_on || started_on_its_line(repo, entry, &started_on)?)
+        {
+            return Ok(Some(entry));
+        }
+    }
+    Ok(None)
+}
+
+/// A rewrite with branches built on his runs git on the top of the line
+/// (ADR-0047 §3), so git's `head-name` is the top branch while the entry's
+/// `head_before` is his: the entry's saved plan says both.
+fn started_on_its_line(
+    repo: &RepoHandle,
+    entry: &JournalEntry,
+    started_on: &HeadRef,
+) -> Result<bool, ApplyError> {
+    let HeadRef::Branch(git_started_on) = started_on else {
+        return Ok(false);
+    };
+    Ok(match plan_of(repo, &entry.id).map_err(ApplyError::Facts)? {
+        Some((_, plan)) => {
+            plan.top() == git_started_on && entry.head_before == HeadRef::Branch(plan.home)
+        }
+        None => false,
+    })
 }
 
 /// The unmerged paths the status lists now.
@@ -215,18 +241,27 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         Resume::Skip => (flag("--skip"), None),
         Resume::Abort => (flag("--abort"), None),
     };
+    // A rewrite's saved plan (ADR-0047), if this is one.
+    let plan = match kind {
+        InProgress::Rebase => plan_of(ctx.repo, &entry.id).map_err(ApplyError::Facts)?,
+        _ => None,
+    };
     let mut commands = entry.commands.clone();
     commands.push(graft_git::run::command_line(&args));
-    let mut invocation = GitInvocation::new(ctx.repo)
-        .args(args)
-        .env("GIT_EDITOR", "true");
-    if let Some(message) = message {
-        invocation = invocation.stdin(message);
-    }
-    let ran = invocation.run(ctx.stop);
+    let plan_dir = plan.as_ref().map(|(dir, _)| dir.as_path());
+    let ran = resume_invocation(ctx.repo, args, plan_dir, message).run(ctx.stop);
 
     let failure = match ran {
-        Ok(_) => None,
+        Ok(_) => {
+            // A rewrite's `edit` row: git stopped on purpose, exit 0, and
+            // the entry stays `Pending` for the next resume.
+            let live =
+                state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
+            if plan.is_some() && live == Some(kind) {
+                return Err(stopped_on_edit(ctx, kind, entry, commands)?);
+            }
+            None
+        }
         Err(RunError::Stopped) => return Err(ApplyError::Stopped),
         Err(error) => {
             // Still live: git stopped again (a rebase's next conflict) or
@@ -239,7 +274,60 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
             Some(error)
         }
     };
-    close_resume(ctx, entry, aborting, commands, failure)
+    // git is done with the rewrite: `HEAD` back to his branch when git ran
+    // on the top of the line, before the after-state is read, and the plan
+    // removed. Neither fails the resume: each is an after-state note.
+    let mut left = Vec::new();
+    if let Some((dir, plan)) = &plan {
+        left.extend(go_home(ctx.repo, plan, &mut commands));
+        left.extend(remove(dir));
+    }
+    close_resume(ctx, entry, aborting, commands, failure, left)
+}
+
+/// The resume's git command. With a rewrite's saved plan, its editor helper
+/// answers the messages git asks for from here on — a reword or squash row
+/// still to come, a picked commit after its conflict — under the plan's
+/// cleanup (ADR-0047). Without one, `GIT_EDITOR=true`: git's own message
+/// stands.
+fn resume_invocation(
+    repo: &RepoHandle,
+    args: Vec<GitArg>,
+    plan_dir: Option<&Path>,
+    message: Option<Vec<u8>>,
+) -> GitInvocation {
+    let mut invocation = GitInvocation::new(repo).args(args);
+    match plan_dir {
+        Some(dir) => {
+            invocation = invocation.env("GIT_EDITOR", saved::editor(dir));
+            for (key, value) in CLEANUP {
+                invocation = invocation.env(key, value);
+            }
+        }
+        None => invocation = invocation.env("GIT_EDITOR", "true"),
+    }
+    match message {
+        Some(message) => invocation.stdin(message),
+        None => invocation,
+    }
+}
+
+/// git stopped on a rewrite's `edit` row: the same stop `apply` reports,
+/// with whatever the status lists (nothing, for an `edit`).
+fn stopped_on_edit(
+    ctx: &mut Context<'_>,
+    kind: InProgress,
+    mut entry: JournalEntry,
+    commands: Vec<String>,
+) -> Result<ApplyError, ApplyError> {
+    ctx.journal.hold_commands(&entry.id, commands.clone());
+    let paths = unmerged_paths(ctx)?;
+    entry.commands = commands;
+    Ok(ApplyError::Conflicted {
+        entry: Box::new(entry),
+        kind,
+        paths,
+    })
 }
 
 /// Which entry a resume closes, and the checks that run before git does.
@@ -350,15 +438,18 @@ fn before_commit_of(
 
 /// git is done with the operation, one way or the other: write the outcome
 /// line the stop deferred. `aborting` is `Resume::Abort`; every other way
-/// on commits.
+/// on commits. `left` is what a rewrite's close could not tidy (its way
+/// home, its saved plan), reported beside the outcome.
 fn close_resume(
     ctx: &mut Context<'_>,
     entry: JournalEntry,
     aborting: bool,
     commands: Vec<String>,
     failure: Option<RunError>,
+    left: Vec<AfterState>,
 ) -> Result<Applied, ApplyError> {
     let (before_commit, backup_gone) = before_commit_of(ctx, &entry)?;
+    let noted: Vec<AfterState> = backup_gone.into_iter().chain(left).collect();
     let mut pending = Pending {
         entry,
         before_commit,
@@ -371,7 +462,7 @@ fn close_resume(
         let ended = set_aside::Ended {
             failure,
             done: went_through(aborting),
-            unread: backup_gone.into_iter().collect(),
+            unread: noted,
         };
         return set_aside::close(ctx, pending, commands, stash, ended);
     }
@@ -391,7 +482,7 @@ fn close_resume(
             });
         }
     };
-    unread.extend(backup_gone);
+    unread.extend(noted);
     let entry = pending.entry;
     if let Some(error) = failure {
         let recoverable = entry.worktree_before.is_some();

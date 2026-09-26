@@ -373,7 +373,7 @@ pub(super) fn refs_of_branch_create(params: &BranchCreateParams) -> Vec<String> 
 // ── check ───────────────────────────────────────────────────────────────
 
 /// The tip must still be where the preview saw it.
-fn tip_holds(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
+pub(super) fn tip_holds(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
     let now = if tip.name == "HEAD" {
         match &facts.head {
             HeadRef::Detached(oid) => Some(*oid),
@@ -393,7 +393,7 @@ fn tip_holds(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
 
 /// `HEAD` must still be on the tip's branch (or detached, for `HEAD`), and
 /// the tip must hold.
-fn head_is(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
+pub(super) fn head_is(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
     let on_it = match &facts.head {
         HeadRef::Branch(name) => *name == tip.name,
         HeadRef::Detached(_) => tip.name == "HEAD",
@@ -564,7 +564,7 @@ pub(super) fn check_branch_from_stash(
 
 // ── plan ────────────────────────────────────────────────────────────────
 
-fn source_arg(source: &Source) -> GitArg {
+pub(crate) fn source_arg(source: &Source) -> GitArg {
     match source {
         Source::Branch(name) => GitArg::Ref(name.clone().into_bytes()),
         Source::Commit(oid) => GitArg::Oid(*oid),
@@ -602,29 +602,48 @@ pub(super) fn plan_merge(params: &MergeParams) -> Vec<Invocation> {
     vec![Invocation::new(args)]
 }
 
-/// `rebase.updateRefs` and `rebase.autostash` both move things the journal
-/// never sees: the first rewrites every branch pointing inside the rebased
-/// range (verified — `f1` moved under a rebase of `f2`), so `u` restores the
-/// branch and leaves the others rewritten, silently; the second stashes and
-/// pops outside any entry, which is why the set-aside is Graft's own, inside
-/// the entry (ADR-0045 §4). Both are turned off explicitly (m5/07 review,
-/// M2).
-///
-/// M7's chain rebase (ADR-0032) opts back in deliberately, with every moved
-/// branch in `touches.refs` and in the preview's `ref_moves`.
-///
-/// `--no-update-refs` is git 2.38's, which is [`GitVersion::MINIMUM`]. An
-/// older git would reject the option and fail the rebase outright, and it
-/// has no `rebase.updateRefs` to honour either, so below the minimum the
-/// plan stays as it was.
+/// `r` runs through the rewrite engine (ADR-0047 §6): git's `rebase -i` on a
+/// todo of `pick`s Graft wrote, which `apply::engine` hands git. The line of
+/// branches built on his is found when it runs, so the top of the line — the
+/// branch git is started on when there is one — is `apply`'s to add.
 pub(super) fn plan_rebase(params: &RebaseParams, git: GitVersion) -> Vec<Invocation> {
-    let mut args = vec![GitArg::Flag("rebase")];
+    vec![rebase_invocation(source_arg(&params.onto), None, git)]
+}
+
+/// Every rebase and rewrite Graft runs: `git rebase -i [--no-update-refs
+/// --no-autostash --empty=drop] <onto> [<top>]` (ADR-0047 §1).
+///
+/// - `-i`: git runs the todo `GIT_SEQUENCE_EDITOR` copies over its own.
+/// - `--no-update-refs`: `rebase.updateRefs` rewrites every branch pointing
+///   inside the range (verified — `f1` moved under a rebase of `f2`), which
+///   no entry records, so `u` would leave them rewritten (m5/07 review, M2).
+///   The branches that follow are Graft's own `update-ref` lines instead,
+///   each one recorded. The flag only shapes the todo git generates, which
+///   Graft's replaces; it is passed so no git version's rule can reach in.
+/// - `--no-autostash`: an autostash pops outside any entry; the set-aside
+///   is Graft's own, inside it (ADR-0045 §4).
+/// - `--empty=drop`: a commit that becomes empty is dropped, as the plain
+///   `rebase` before ADR-0047 did. `-i` alone stops on it instead (verified,
+///   git 2.54: "The previous cherry-pick is now empty"), a stop with nothing
+///   to resolve.
+/// - `<top>`: the **short** name of the branch at the top of the line, when
+///   branches follow (ADR-0047 §3); a full `refs/heads/…` would detach.
+///
+/// The three flags are git 2.38's at the newest (`--no-update-refs`), which
+/// is [`GitVersion::MINIMUM`]. Below it the plan stays as it was: an older
+/// git rejects the flag, and has no `rebase.updateRefs` to honour.
+pub(crate) fn rebase_invocation(onto: GitArg, top: Option<&str>, git: GitVersion) -> Invocation {
+    let mut args = vec![GitArg::Flag("rebase"), GitArg::Flag("-i")];
     if git >= GitVersion::MINIMUM {
         args.push(GitArg::Flag("--no-update-refs"));
         args.push(GitArg::Flag("--no-autostash"));
+        args.push(GitArg::Flag("--empty=drop"));
     }
-    args.push(source_arg(&params.onto));
-    vec![Invocation::new(args)]
+    args.push(onto);
+    if let Some(top) = top {
+        args.push(GitArg::Ref(top.as_bytes().to_vec()));
+    }
+    Invocation::new(args)
 }
 
 pub(super) fn plan_pick(params: &PickParams) -> Vec<Invocation> {

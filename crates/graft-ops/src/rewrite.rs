@@ -17,7 +17,8 @@
 //! - `progress` — where a stopped rewrite is, for the banner.
 //!
 //! Running it is `apply`'s (`apply::engine`): an [`crate::operation::Operation::Rewrite`]
-//! or a [`crate::operation::Operation::Rebase`] goes through the same run.
+//! or a [`crate::operation::Operation::Rebase`] goes through the same run,
+//! and `apply::resume` takes a stopped one on with the same helper.
 
 use std::collections::BTreeMap;
 
@@ -36,8 +37,8 @@ pub use plan::{dependents, plan};
 pub use progress::progress;
 pub use todo::{default_message, squash_groups, validate};
 
-#[cfg(test)]
-use todo::git_todo;
+pub(crate) use plan::{line_of, line_picks, messages_of, rebase_rows};
+pub(crate) use todo::{GitTodo, git_todo};
 
 /// What git does with one row of the todo: git's own letters, never `exec`
 /// (ADR-0047 §1), so git's step count is the user's own rows.

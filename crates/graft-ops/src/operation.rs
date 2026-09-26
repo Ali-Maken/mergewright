@@ -17,6 +17,7 @@ mod conflict;
 mod finish_merge;
 mod history;
 mod remote;
+mod rewrite;
 mod stage;
 mod stash;
 
@@ -42,7 +43,9 @@ pub use history::{
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
     RevertParams, Source, TagCreateParams, Tip,
 };
-pub(crate) use history::{branch_ref, merge_subject, short, short_ref, tag_ref};
+pub(crate) use history::{
+    branch_ref, merge_subject, rebase_invocation, short, short_ref, source_arg, tag_ref,
+};
 pub use remote::{FetchParams, Lease, PullParams, PushParams, RemoteNames};
 
 /// One write to the repository, as the user asked for it.
@@ -94,8 +97,16 @@ pub enum Operation {
     /// `git merge` into `HEAD`'s branch. One entry from start to finish: a
     /// conflict leaves it `Pending` until `resume` closes it (m5/07).
     Merge(MergeParams),
-    /// `git rebase` of `HEAD`'s branch. One entry across every stop.
+    /// `git rebase` of `HEAD`'s branch, through the rewrite engine: git's
+    /// `rebase -i` on a todo of picks, the branches built on his following
+    /// (ADR-0047 §6). One entry across every stop.
     Rebase(RebaseParams),
+    /// A rewrite of `HEAD`'s branch — squash, fixup, reword, reorder, drop,
+    /// edit, staged changes put into an older commit — planned by
+    /// [`crate::rewrite::plan`] and run as git's `rebase -i` on the todo it
+    /// planned, the branches built on his following (ADR-0047). One entry
+    /// across every stop.
+    Rewrite(crate::rewrite::RewriteParams),
     /// `git cherry-pick` onto `HEAD`.
     CherryPick(PickParams),
     /// `git revert` onto `HEAD`.
@@ -933,6 +944,7 @@ impl Operation {
             Self::Push(_) => OperationKind::Push,
             Self::Merge(_) => OperationKind::Merge,
             Self::Rebase(_) => OperationKind::Rebase,
+            Self::Rewrite(_) => OperationKind::Rewrite,
             Self::CherryPick(_) => OperationKind::CherryPick,
             Self::Revert(_) => OperationKind::Revert,
             Self::Reset(_) => OperationKind::Reset,
@@ -966,6 +978,7 @@ impl Operation {
             self,
             Self::Merge(_)
                 | Self::Rebase(_)
+                | Self::Rewrite(_)
                 | Self::CherryPick(_)
                 | Self::Revert(_)
                 | Self::Reset(_)
@@ -978,14 +991,14 @@ impl Operation {
         )
     }
 
-    /// What a rebase or checkout would set aside before it runs and put
-    /// back after (ADR-0045 §4): `Some` when tracked files are changed,
+    /// What a rebase, rewrite or checkout would set aside before it runs and
+    /// put back after (ADR-0045 §4): `Some` when tracked files are changed,
     /// staged or not; `None` on a clean tree, over untracked files only
     /// (they stay where they are), and for every other kind. Pure over the
     /// facts — the preview and `apply` ask the same question.
     #[must_use]
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
-        if !matches!(self, Self::Rebase(_) | Self::Checkout(_)) {
+        if !matches!(self, Self::Rebase(_) | Self::Rewrite(_) | Self::Checkout(_)) {
             return None;
         }
         let changed = || {
@@ -1029,6 +1042,7 @@ impl Operation {
         match self {
             Self::Merge(params) => vec![params.into.clone()],
             Self::Rebase(params) => vec![params.branch.clone()],
+            Self::Rewrite(params) => rewrite::tips(params),
             Self::CherryPick(params) => vec![params.head.clone()],
             Self::Revert(params) => vec![params.head.clone()],
             Self::Reset(params) => match &params.target {
@@ -1050,6 +1064,10 @@ impl Operation {
         let refs = match self {
             Self::Merge(params) => history::refs_of_merge(params),
             Self::Rebase(params) => history::refs_of_rebase(params),
+            Self::Rewrite(params) => rewrite::tips(params)
+                .into_iter()
+                .map(|tip| tip.name)
+                .collect(),
             Self::CherryPick(params) => vec![params.head.name.clone()],
             Self::Revert(params) => vec![params.head.name.clone()],
             Self::Reset(params) => history::refs_of_reset(params),
@@ -1113,6 +1131,7 @@ impl Operation {
             Self::Push(params) => remote::describe_push(params),
             Self::Merge(params) => history::describe_merge(params),
             Self::Rebase(params) => history::describe_rebase(params),
+            Self::Rewrite(params) => rewrite::describe(params),
             Self::CherryPick(params) => history::describe_pick(params),
             Self::Revert(params) => history::describe_revert(params),
             Self::Reset(params) => history::describe_reset(params),
@@ -1217,6 +1236,7 @@ impl Operation {
             Self::Push(params) => remote::check_push(params, facts),
             Self::Merge(params) => history::check_merge(params, facts),
             Self::Rebase(params) => history::check_rebase(params, facts),
+            Self::Rewrite(params) => rewrite::check(params, facts),
             Self::CherryPick(params) => history::check_pick(params, facts),
             Self::Revert(params) => history::check_revert(params, facts),
             Self::Reset(params) => history::check_reset(params, facts),
@@ -1253,6 +1273,7 @@ impl Operation {
             Self::Push(params) => remote::plan_push(params),
             Self::Merge(params) => history::plan_merge(params),
             Self::Rebase(params) => history::plan_rebase(params, facts.git),
+            Self::Rewrite(params) => rewrite::plan(params, facts.git),
             Self::CherryPick(params) => history::plan_pick(params),
             Self::Revert(params) => history::plan_revert(params),
             Self::Reset(params) => history::plan_reset(params),
@@ -1347,8 +1368,20 @@ impl Operation {
             // A set-aside records `refs/stash` too: its before and after
             // say whether `S` was left in the list, which is what the
             // inverse's stash step reads (ADR-0045 §4 step 2, §6).
+            //
+            // A rebase's branches built on his join these in `apply`, which
+            // finds them when it runs (`apply::engine`).
             Self::Rebase(_) => {
                 let mut refs = vec![commit::head_ref_name(&facts.head)];
+                refs.extend(self.stash_ref_if_set_aside(facts));
+                (refs, true, true)
+            }
+            // Every branch of the line, his first (ADR-0047 §2).
+            Self::Rewrite(params) => {
+                let mut refs: Vec<String> = rewrite::tips(params)
+                    .into_iter()
+                    .map(|tip| tip.name)
+                    .collect();
                 refs.extend(self.stash_ref_if_set_aside(facts));
                 (refs, true, true)
             }

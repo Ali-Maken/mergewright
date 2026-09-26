@@ -7,6 +7,7 @@ use graft_core::oid::Oid;
 use graft_git::state;
 
 use crate::facts::{self, FactsError};
+use crate::rewrite::saved;
 use crate::snapshot;
 use crate::undo::RepoStateNow;
 
@@ -85,6 +86,11 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
                 after: None,
                 kept: None,
             })?;
+        // A rewrite's saved plan (ADR-0047) goes with its entry. One left
+        // behind is harmless to git, but it is reported, not dropped.
+        if let Err(error) = saved::remove(&saved::dir(ctx.repo, &id)) {
+            recovered.plans_left.push((id.clone(), error));
+        }
         recovered.closed.push(id);
     }
     Ok(recovered)
@@ -104,6 +110,9 @@ pub struct Recovered {
     /// `rebase-merge/` …). The banner offers `resume`; nothing was closed
     /// (m5/07). At most one.
     pub live: Vec<EntryId>,
+    /// Closed entries whose rewrite plan (`graft/rewrite/<id>/` under the
+    /// git dir) could not be removed, and why (rewrite-engine-b).
+    pub plans_left: Vec<(EntryId, std::io::Error)>,
 }
 
 /// Hang a recovered entry's after-trees off its backup ref before they are

@@ -1,0 +1,386 @@
+//! The rewrite engine's run half (ADR-0047), against real repositories: every
+//! branch of the line recorded and moved, `u` putting all of them back, an
+//! abort and a relaunch coming home to his branch, and the saved plan gone
+//! once the entry closes.
+//!
+//! Whether a rewrite does what a hand-run `git rebase -i` does is
+//! `rewrite_oracle`'s; here it is what Graft records around it.
+
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
+use std::path::PathBuf;
+
+use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
+use graft_core::oid::Oid;
+use graft_git::state::InProgress;
+use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume};
+use graft_ops::facts::read_facts;
+use graft_ops::operation::{FactsScope, Operation, RebaseParams, Source, Tip};
+use graft_ops::rewrite::{RewriteRequest, TodoAction, plan};
+
+use crate::support::{
+    NOW, Never, TempRepo, context, git_version, journal_for, run, run_undo, state_of, try_run,
+};
+
+fn id(repo: &TempRepo, rev: &str) -> Oid {
+    Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a commit id")
+}
+
+fn tip(repo: &TempRepo, branch: &str) -> Tip {
+    Tip {
+        name: format!("refs/heads/{branch}"),
+        oid: id(repo, branch),
+    }
+}
+
+/// One commit changing its own file, so no two commits conflict.
+fn commit(repo: &TempRepo, name: &str) {
+    repo.write(&format!("{name}.txt"), format!("{name}\n").as_bytes());
+    repo.commit_all(name);
+}
+
+/// A line of three: `feature-a` (two commits) off `main`'s first commit,
+/// `feature-b` one on it, `feature-c` one on that; `main` then moves on.
+/// `HEAD` on `feature-a`.
+fn line() -> TempRepo {
+    let repo = TempRepo::init();
+    commit(&repo, "m1");
+    repo.git(&["switch", "-q", "-c", "feature-a"]);
+    commit(&repo, "a1");
+    commit(&repo, "a2");
+    repo.git(&["switch", "-q", "-c", "feature-b"]);
+    commit(&repo, "b1");
+    repo.git(&["switch", "-q", "-c", "feature-c"]);
+    commit(&repo, "c1");
+    repo.git(&["switch", "-q", "main"]);
+    commit(&repo, "m2");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo
+}
+
+const LINE: [&str; 3] = [
+    "refs/heads/feature-a",
+    "refs/heads/feature-b",
+    "refs/heads/feature-c",
+];
+
+/// `r` of `feature-a` onto `main`.
+fn rebase_onto_main(repo: &TempRepo) -> Operation {
+    Operation::Rebase(RebaseParams {
+        branch: tip(repo, "feature-a"),
+        onto: Source::Branch("refs/heads/main".to_owned()),
+        onto_tip: id(repo, "main"),
+    })
+}
+
+fn head(repo: &TempRepo) -> String {
+    repo.try_git(&["symbolic-ref", "-q", "HEAD"])
+        .unwrap_or_else(|_| "detached".to_owned())
+}
+
+fn parent(repo: &TempRepo, rev: &str) -> Oid {
+    id(repo, &format!("{rev}^"))
+}
+
+// ── Record and undo ─────────────────────────────────────────────────────
+
+#[test]
+fn a_three_branch_rewrite_records_every_ref() {
+    let repo = line();
+    let before: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
+
+    let entry = run(&repo, &rebase_onto_main(&repo), NOW);
+
+    for (name, was) in LINE.iter().zip(&before) {
+        assert_eq!(
+            entry.refs_before.get(*name),
+            Some(&Some(*was)),
+            "{name} is recorded before: {:?}",
+            entry.refs_before
+        );
+        let now = id(&repo, name);
+        assert_ne!(now, *was, "{name} moved");
+        assert_eq!(
+            entry.refs_after.get(*name),
+            Some(&Some(now)),
+            "{name} is recorded after"
+        );
+    }
+    // Each branch is built on the one below, rewritten, and the bottom on
+    // `main`.
+    assert_eq!(parent(&repo, "feature-a~1"), id(&repo, "main"));
+    assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(entry.kind, OperationKind::Rebase);
+    assert_eq!(entry.status, EntryStatus::Committed);
+}
+
+#[test]
+fn undo_puts_every_branch_in_the_line_back() {
+    let repo = line();
+    let before = state_of(&repo);
+
+    run(&repo, &rebase_onto_main(&repo), NOW);
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{why:?}"));
+
+    assert_eq!(state_of(&repo), before);
+}
+
+// ── Stopped, resumed, relaunched ────────────────────────────────────────
+
+/// `line()`, but `feature-b`'s commit and `main`'s second one both change
+/// `shared.txt`: `r` of `feature-a` onto `main` stops on `b1`, with `HEAD`
+/// detached and git's `head-name` the top of the line, `feature-c`.
+fn conflicted_line() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("shared.txt", b"base\n");
+    repo.commit_all("m1");
+    repo.git(&["switch", "-q", "-c", "feature-a"]);
+    commit(&repo, "a1");
+    commit(&repo, "a2");
+    repo.git(&["switch", "-q", "-c", "feature-b"]);
+    repo.write("shared.txt", b"b\n");
+    repo.commit_all("b1");
+    repo.git(&["switch", "-q", "-c", "feature-c"]);
+    commit(&repo, "c1");
+    repo.git(&["switch", "-q", "main"]);
+    repo.write("shared.txt", b"m\n");
+    repo.commit_all("m2");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo
+}
+
+/// Apply `op`, which must stop: the entry it left `Pending`, and the paths.
+fn stopped(repo: &TempRepo, op: &Operation) -> (JournalEntry, Vec<PathBuf>) {
+    match try_run(repo, op, NOW) {
+        Err(ApplyError::Conflicted { entry, paths, .. }) => (*entry, paths),
+        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Ok(applied) => panic!("expected a stop, it finished: {:?}", applied.entry.status),
+    }
+}
+
+/// A resume with a fresh context: the same as after a relaunch.
+fn resume_with(repo: &TempRepo, how: Resume) -> Result<Applied, ApplyError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
+    resume(&mut ctx, how)
+}
+
+/// The saved plans still on disk.
+fn plans_left(repo: &TempRepo) -> Vec<PathBuf> {
+    match std::fs::read_dir(repo.path().join(".git/graft/rewrite")) {
+        Ok(entries) => entries
+            .map(|entry| entry.expect("it reads").path())
+            .collect(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(error) => panic!("the plan root reads: {error}"),
+    }
+}
+
+/// `b1` against `m2`: both sides kept.
+fn resolve(repo: &TempRepo) {
+    repo.write("shared.txt", b"m\nb\n");
+    repo.git(&["add", "shared.txt"]);
+}
+
+fn in_progress(repo: &TempRepo) -> Option<InProgress> {
+    graft_git::state::in_progress(&repo.open()).expect("git's state reads")
+}
+
+#[test]
+fn abort_returns_head_to_his_branch_and_every_ref() {
+    let repo = conflicted_line();
+    let before = state_of(&repo);
+
+    let (entry, paths) = stopped(&repo, &rebase_onto_main(&repo));
+    assert_eq!(paths, [PathBuf::from("shared.txt")]);
+    assert_eq!(entry.status, EntryStatus::Pending);
+    assert_eq!(plans_left(&repo).len(), 1, "the plan waits for the resume");
+
+    let applied =
+        resume_with(&repo, Resume::Abort).unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(state_of(&repo), before, "every branch and HEAD put back");
+    assert_eq!(
+        applied.entry.status,
+        EntryStatus::Aborted {
+            reason: "aborted".to_owned()
+        }
+    );
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new());
+}
+
+#[test]
+fn a_stopped_line_continues_home_with_every_branch_moved() {
+    let repo = conflicted_line();
+    let was: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
+    stopped(&repo, &rebase_onto_main(&repo));
+    resolve(&repo);
+
+    let applied =
+        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    for (name, was) in LINE.iter().zip(&was) {
+        assert_ne!(id(&repo, name), *was, "{name} moved");
+    }
+    assert_eq!(parent(&repo, "feature-a~1"), id(&repo, "main"));
+    assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(repo.git(&["log", "-1", "--format=%B", "feature-b"]), "b1");
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new());
+}
+
+#[test]
+fn kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan() {
+    let repo = conflicted_line();
+    let (entry, _) = stopped(&repo, &rebase_onto_main(&repo));
+
+    // The relaunch: a fresh journal and context, nothing kept in memory.
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
+    let recovered = recover_interrupted(&mut ctx).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(
+        recovered.live,
+        std::slice::from_ref(&entry.id),
+        "the stopped line is still live"
+    );
+    assert!(recovered.closed.is_empty());
+    assert_eq!(in_progress(&repo), Some(InProgress::Rebase));
+    resolve(&repo);
+
+    let applied =
+        resume(&mut ctx, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(applied.entry.id, entry.id);
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new());
+}
+
+/// `R` on `a1` in `line()`, planned as the app would, with `a1` set to
+/// `edit`.
+fn edit_a1(repo: &TempRepo) -> Operation {
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let mut params = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::Open {
+            from: id(repo, "feature-a~1"),
+        },
+        &facts,
+        None,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    assert_eq!(params.todo[0].subject, "a1");
+    params.todo[0].action = TodoAction::Edit;
+    Operation::Rewrite(params)
+}
+
+#[test]
+fn an_edit_row_stops_and_the_resume_takes_the_line_home() {
+    let repo = line();
+    let (entry, paths) = stopped(&repo, &edit_a1(&repo));
+    assert!(paths.is_empty(), "an edit stop lists nothing: {paths:?}");
+    assert_eq!(entry.status, EntryStatus::Pending);
+    assert_eq!(in_progress(&repo), Some(InProgress::Rebase));
+
+    // Amended at the stop, as he would in the shell or the app.
+    repo.write("a1.txt", b"a1 amended\n");
+    repo.git(&["commit", "-q", "--amend", "--no-edit", "-a"]);
+    let applied =
+        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(
+        repo.git(&["show", "feature-c:a1.txt"]),
+        "a1 amended",
+        "the line is built on the amended commit"
+    );
+    assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new());
+}
+
+#[test]
+fn a_relaunch_that_closes_a_rewrite_removes_its_plan() {
+    let repo = conflicted_line();
+    let (entry, _) = stopped(&repo, &rebase_onto_main(&repo));
+    // Called off in the shell while Graft was down: nothing is live.
+    repo.git(&["rebase", "--abort"]);
+
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
+    let recovered = recover_interrupted(&mut ctx).unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(recovered.closed, [entry.id]);
+    assert!(recovered.plans_left.is_empty());
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new());
+}
+
+#[test]
+fn the_plan_dir_is_removed_when_the_entry_closes() {
+    // Done.
+    let repo = line();
+    run(&repo, &rebase_onto_main(&repo), NOW);
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new(), "done");
+
+    // Failed: a pre-rebase hook refuses before git moves anything.
+    let repo = line();
+    let hooks = repo.path().join(".git/test-hooks");
+    std::fs::create_dir_all(&hooks).expect("the hook dir");
+    let hook = hooks.join("pre-rebase");
+    std::fs::write(&hook, b"#!/bin/sh\nexit 1\n").expect("the hook writes");
+    make_executable(&hook);
+    repo.git(&[
+        "config",
+        "core.hooksPath",
+        hooks.to_str().expect("a utf-8 path"),
+    ]);
+    let before = state_of(&repo);
+    let failed = try_run(&repo, &rebase_onto_main(&repo), NOW);
+    assert!(
+        matches!(failed, Err(ApplyError::Git { .. })),
+        "the hook refused: {:?}",
+        failed.map(|applied| applied.entry.status)
+    );
+    assert_eq!(state_of(&repo), before);
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new(), "failed");
+    // Aborted: `abort_returns_head_to_his_branch_and_every_ref`.
+}
+
+fn make_executable(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+}
+
+#[test]
+fn a_resume_never_turns_his_update_refs_config_on() {
+    // `rebase.updateRefs=true` in his config, and a branch of his inside the
+    // range that is not in the line: the run and the resume both leave it
+    // where it was — it is not recorded, so it must not move (ADR-0047 §2).
+    let repo = conflicted_line();
+    repo.git(&["config", "rebase.updateRefs", "true"]);
+    repo.git(&["branch", "lower", "feature-a~1"]);
+    let lower = id(&repo, "lower");
+    stopped(&repo, &rebase_onto_main(&repo));
+    resolve(&repo);
+
+    resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(id(&repo, "lower"), lower, "lower stays");
+    assert_eq!(head(&repo), "refs/heads/feature-a");
+}
