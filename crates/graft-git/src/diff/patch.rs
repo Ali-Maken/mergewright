@@ -126,9 +126,11 @@ impl std::error::Error for PatchError {}
 ///
 /// `--- a/<path>` and `+++ b/<path>` name the diff's path (the old path for a
 /// rename or copy on the `a/` side); `/dev/null` stands in for the side that
-/// does not exist ([`FileStatus::Added`]/[`FileStatus::Deleted`]). A mode
-/// line pair (`old mode`/`new mode`) is added when `diff.old_mode` and
-/// `diff.new_mode` are both known and differ.
+/// does not exist ([`FileStatus::Added`]/[`FileStatus::Deleted`]), and the
+/// header says so with `new file mode`/`deleted file mode` — without it git
+/// reads `/dev/null` as a path (see `write_git_headers`). For any other
+/// status a mode line pair (`old mode`/`new mode`) is added when
+/// `diff.old_mode` and `diff.new_mode` are both known and differ.
 ///
 /// `direction` says which way `ops` will apply the result; it changes nothing
 /// for [`Selection::WholeHunk`] and everything for [`Selection::Lines`] (see
@@ -153,8 +155,7 @@ pub fn hunk_patch(
     check_no_newline_boundaries(&lines)?;
 
     let mut out = Vec::new();
-    write_diff_git_header(&mut out, diff);
-    write_mode_lines(&mut out, diff);
+    write_git_headers(&mut out, diff);
     write_path_lines(&mut out, diff);
     write_hunk(&mut out, hunk_ref, &lines);
     Ok(out)
@@ -277,6 +278,36 @@ fn check_no_newline_boundaries(lines: &[BuiltLine<'_>]) -> Result<(), PatchError
         }
     }
     Ok(())
+}
+
+/// The `diff --git` header and its extended lines.
+///
+/// Under a `diff --git` header, `git apply` treats `/dev/null` in the
+/// `---`/`+++` lines as an ordinary path unless `new file mode` or
+/// `deleted file mode` says the file comes or goes: a deletion without it
+/// empties the file and adds one named `dev/null` (m7 review 06b, C1). So a
+/// creation or deletion always carries its extended line. When the mode is
+/// unknown — git's own diff always prints it, so only a hand-built
+/// [`FileDiff`] lacks it — the `diff --git` line is left out instead, and git
+/// reads the rest as a traditional patch, where `/dev/null` does mean "no
+/// file". Guessing a mode would write one the user never had.
+fn write_git_headers(out: &mut Vec<u8>, diff: &FileDiff) {
+    let creation_or_deletion = match diff.entry.status {
+        FileStatus::Added => Some(("new file mode", diff.new_mode)),
+        FileStatus::Deleted => Some(("deleted file mode", diff.old_mode)),
+        _ => None,
+    };
+    match creation_or_deletion {
+        None => {
+            write_diff_git_header(out, diff);
+            write_mode_lines(out, diff);
+        }
+        Some((label, Some(mode))) => {
+            write_diff_git_header(out, diff);
+            out.extend_from_slice(format!("{label} {mode:o}\n").as_bytes());
+        }
+        Some((_, None)) => {}
+    }
 }
 
 fn write_diff_git_header(out: &mut Vec<u8>, diff: &FileDiff) {

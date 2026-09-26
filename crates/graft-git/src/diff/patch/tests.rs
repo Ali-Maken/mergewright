@@ -396,24 +396,48 @@ fn whole_hunk_selection_keeps_every_line() {
 }
 
 #[test]
-fn added_and_deleted_files_use_dev_null() {
+fn added_and_deleted_files_use_dev_null_under_their_extended_header() {
     let mut hunk = sample_hunk();
     hunk.old_start = 0;
     hunk.old_lines = 0;
     let mut diff = sample_diff(vec![hunk], None);
     diff.entry.status = FileStatus::Added;
+    diff.new_mode = Some(0o100_644);
     let patch =
         hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
     let text = String::from_utf8(patch).expect("ascii");
-    assert!(text.contains("--- /dev/null\n"));
-    assert!(text.contains("+++ b/f.txt\n"));
+    assert!(
+        text.starts_with(
+            "diff --git a/f.txt b/f.txt\nnew file mode 100644\n--- /dev/null\n+++ b/f.txt\n"
+        ),
+        "{text}"
+    );
 
     diff.entry.status = FileStatus::Deleted;
+    diff.new_mode = None;
+    diff.old_mode = Some(0o100_755);
     let patch =
         hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
     let text = String::from_utf8(patch).expect("ascii");
-    assert!(text.contains("--- a/f.txt\n"));
-    assert!(text.contains("+++ /dev/null\n"));
+    assert!(
+        text.starts_with(
+            "diff --git a/f.txt b/f.txt\ndeleted file mode 100755\n--- a/f.txt\n+++ /dev/null\n"
+        ),
+        "{text}"
+    );
+}
+
+#[test]
+fn a_creation_or_deletion_of_unknown_mode_is_written_without_the_diff_git_line() {
+    let mut diff = sample_diff(vec![sample_hunk()], None);
+    for status in [FileStatus::Added, FileStatus::Deleted] {
+        diff.entry.status = status;
+        let patch =
+            hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
+        let text = String::from_utf8(patch).expect("ascii");
+        assert!(text.starts_with("--- "), "{status:?}: {text}");
+        assert!(!text.contains("file mode"), "{status:?}: {text}");
+    }
 }
 
 #[test]
@@ -717,5 +741,251 @@ fn the_whole_hunk_of_a_no_newline_file_reverses_out_byte_for_byte() {
         std::fs::read(fixture.root().join("f.txt")).expect("f.txt reads"),
         b"one\ntwo".to_vec(),
         "discarding the whole hunk restores the committed bytes, newline and all"
+    );
+}
+
+// --- Whole-file creations and deletions (m7-power-tools/31) ---------------
+//
+// Under a `diff --git` header, `git apply` reads `/dev/null` as a path unless
+// an extended header line (`deleted file mode`/`new file mode`) says the file
+// goes or comes. These tests apply the built patch to a real index and read
+// the index back: the text of the patch alone cannot show what git does with
+// it.
+
+/// A repository with `a.txt` and `b.txt` committed.
+fn two_file_fixture() -> Fixture {
+    let fixture = Fixture::empty_repo();
+    std::fs::write(fixture.root().join("a.txt"), "keep\n").expect("a.txt written");
+    std::fs::write(fixture.root().join("b.txt"), "bye\nfor now\n").expect("b.txt written");
+    fixture.git(&["add", "-A"]);
+    fixture.commit("base");
+    fixture
+}
+
+/// The staged diff of `path`, whose status in the index is `status`.
+fn staged_file_diff(repo: &RepoHandle, path: &str, status: FileStatus) -> FileDiff {
+    let entry = FileEntry {
+        path: path.as_bytes().to_vec(),
+        old_path: None,
+        status,
+        added: None,
+        removed: None,
+    };
+    file_diff(
+        repo,
+        &DiffSpec::Staged,
+        &entry,
+        &crate::diff::DiffOptions::default(),
+        usize::MAX,
+        &(),
+    )
+    .expect("file_diff succeeds")
+}
+
+/// Every path in the index, in git's order.
+fn index_paths(fixture: &Fixture) -> Vec<String> {
+    let stdout =
+        graft_fixtures::git::run(fixture.root(), &["ls-files"]).expect("git ls-files runs");
+    String::from_utf8(stdout)
+        .expect("ascii paths")
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+#[test]
+fn a_deleted_files_patch_applied_to_the_index_removes_it_and_adds_no_dev_null() {
+    let fixture = two_file_fixture();
+    fixture.git(&["rm", "-q", "--cached", "b.txt"]);
+    let diff = staged_file_diff(&open(&fixture), "b.txt", FileStatus::Deleted);
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
+
+    fixture.git(&["read-tree", "HEAD"]);
+    apply(&fixture, "delete.diff", &patch, &["--cached"]);
+
+    assert_eq!(
+        index_paths(&fixture),
+        vec!["a.txt".to_owned()],
+        "b.txt goes and nothing named dev/null comes"
+    );
+}
+
+#[test]
+fn an_added_files_patch_applied_to_the_index_creates_it() {
+    let fixture = two_file_fixture();
+    std::fs::write(fixture.root().join("fresh.txt"), "new file\nsecond\n").expect("written");
+    fixture.git(&["add", "fresh.txt"]);
+    let diff = staged_file_diff(&open(&fixture), "fresh.txt", FileStatus::Added);
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
+
+    fixture.git(&["read-tree", "HEAD"]);
+    apply(&fixture, "create.diff", &patch, &["--cached"]);
+
+    assert_eq!(
+        index_paths(&fixture),
+        vec![
+            "a.txt".to_owned(),
+            "b.txt".to_owned(),
+            "fresh.txt".to_owned()
+        ]
+    );
+    assert_eq!(blob(&fixture, ":fresh.txt"), b"new file\nsecond\n".to_vec());
+}
+
+#[test]
+fn a_modified_files_patch_applied_to_the_index_changes_only_it() {
+    let fixture = two_file_fixture();
+    std::fs::write(fixture.root().join("b.txt"), "bye\nfor good\n").expect("written");
+    fixture.git(&["add", "b.txt"]);
+    let diff = staged_file_diff(&open(&fixture), "b.txt", FileStatus::Modified);
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
+
+    fixture.git(&["read-tree", "HEAD"]);
+    apply(&fixture, "modify.diff", &patch, &["--cached"]);
+
+    assert_eq!(
+        index_paths(&fixture),
+        vec!["a.txt".to_owned(), "b.txt".to_owned()]
+    );
+    assert_eq!(blob(&fixture, ":b.txt"), b"bye\nfor good\n".to_vec());
+}
+
+#[test]
+fn unstaging_a_staged_deletion_puts_the_file_back_in_the_index() {
+    let fixture = two_file_fixture();
+    fixture.git(&["rm", "-q", "--cached", "b.txt"]);
+    let diff = staged_file_diff(&open(&fixture), "b.txt", FileStatus::Deleted);
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Reverse).expect("builds");
+
+    apply(&fixture, "undelete.diff", &patch, &["--cached", "-R"]);
+
+    assert_eq!(
+        index_paths(&fixture),
+        vec!["a.txt".to_owned(), "b.txt".to_owned()]
+    );
+    assert_eq!(blob(&fixture, ":b.txt"), b"bye\nfor now\n".to_vec());
+}
+
+#[test]
+fn unstaging_a_staged_addition_takes_the_file_out_of_the_index() {
+    let fixture = two_file_fixture();
+    std::fs::write(fixture.root().join("fresh.txt"), "new file\n").expect("written");
+    fixture.git(&["add", "fresh.txt"]);
+    let diff = staged_file_diff(&open(&fixture), "fresh.txt", FileStatus::Added);
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Reverse).expect("builds");
+
+    apply(&fixture, "unadd.diff", &patch, &["--cached", "-R"]);
+
+    assert_eq!(
+        index_paths(&fixture),
+        vec!["a.txt".to_owned(), "b.txt".to_owned()]
+    );
+}
+
+#[test]
+fn discarding_a_worktree_deletion_brings_the_file_back() {
+    let fixture = two_file_fixture();
+    std::fs::remove_file(fixture.root().join("b.txt")).expect("b.txt removed");
+    let entry = FileEntry {
+        path: b"b.txt".to_vec(),
+        old_path: None,
+        status: FileStatus::Deleted,
+        added: None,
+        removed: None,
+    };
+    let diff = file_diff(
+        &open(&fixture),
+        &DiffSpec::Unstaged,
+        &entry,
+        &crate::diff::DiffOptions::default(),
+        usize::MAX,
+        &(),
+    )
+    .expect("file_diff succeeds");
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Reverse).expect("builds");
+
+    apply(&fixture, "discard.diff", &patch, &["-R"]);
+
+    assert_eq!(
+        std::fs::read(fixture.root().join("b.txt")).expect("b.txt is back"),
+        b"bye\nfor now\n".to_vec()
+    );
+    assert!(
+        !fixture.root().join("dev").exists(),
+        "no dev/null is written into the worktree"
+    );
+}
+
+#[test]
+fn a_deletion_of_unknown_mode_still_applies_as_a_deletion() {
+    let fixture = two_file_fixture();
+    fixture.git(&["rm", "-q", "--cached", "b.txt"]);
+    let mut diff = staged_file_diff(&open(&fixture), "b.txt", FileStatus::Deleted);
+    diff.old_mode = None;
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
+
+    fixture.git(&["read-tree", "HEAD"]);
+    apply(&fixture, "delete.diff", &patch, &["--cached"]);
+
+    assert_eq!(index_paths(&fixture), vec!["a.txt".to_owned()]);
+}
+
+#[test]
+fn a_creation_of_unknown_mode_still_applies_as_a_creation() {
+    let fixture = two_file_fixture();
+    std::fs::write(fixture.root().join("fresh.txt"), "new file\n").expect("written");
+    fixture.git(&["add", "fresh.txt"]);
+    let mut diff = staged_file_diff(&open(&fixture), "fresh.txt", FileStatus::Added);
+    diff.new_mode = None;
+    let patch =
+        hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward).expect("builds");
+
+    fixture.git(&["read-tree", "HEAD"]);
+    apply(&fixture, "create.diff", &patch, &["--cached"]);
+
+    assert_eq!(
+        index_paths(&fixture),
+        vec![
+            "a.txt".to_owned(),
+            "b.txt".to_owned(),
+            "fresh.txt".to_owned()
+        ]
+    );
+    assert_eq!(blob(&fixture, ":fresh.txt"), b"new file\n".to_vec());
+}
+
+#[test]
+fn staging_part_of_a_deletion_is_refused_by_git_and_leaves_the_index_alone() {
+    let fixture = two_file_fixture();
+    fixture.git(&["rm", "-q", "--cached", "b.txt"]);
+    let diff = staged_file_diff(&open(&fixture), "b.txt", FileStatus::Deleted);
+    let patch = hunk_patch(
+        &diff,
+        0,
+        &Selection::Lines(vec![0]),
+        PatchDirection::Forward,
+    )
+    .expect("builds");
+
+    fixture.git(&["read-tree", "HEAD"]);
+    std::fs::write(fixture.root().join("part.diff"), &patch).expect("the patch is written");
+    let refused =
+        graft_fixtures::git::run(fixture.root(), &["apply", "--cached", "part.diff"]).is_err();
+
+    assert!(
+        refused,
+        "git must refuse a deletion that leaves lines behind"
+    );
+    assert_eq!(
+        index_paths(&fixture),
+        vec!["a.txt".to_owned(), "b.txt".to_owned()],
+        "a refused patch changes nothing"
     );
 }
