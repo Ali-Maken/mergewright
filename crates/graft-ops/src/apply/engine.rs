@@ -1,6 +1,8 @@
 //! Running a rewrite (ADR-0047): every [`Operation::Rewrite`] and every
 //! [`Operation::Rebase`] is git's `rebase -i` on a todo Graft wrote, with the
-//! branches built on his following on one line.
+//! branches built on his following on one line — for a rebase (`r`), only
+//! once ticket 05 draws that line in its preview; until then its line is his
+//! branch alone (see [`prepare`]).
 //!
 //! [`apply`](super::apply) drives it in three beats, each where the recording
 //! protocol needs it:
@@ -28,8 +30,8 @@ use crate::operation::{
 };
 use crate::rewrite::saved::{self, CLEANUP, SavedPlan};
 use crate::rewrite::{
-    BranchLine, GitTodo, RewriteError, TodoAction, TodoLine, git_todo, line_of, line_picks,
-    messages_of, rebase_rows, squash_groups,
+    BranchLine, GitTodo, TodoAction, TodoLine, git_todo, line_picks, messages_of, rebase_rows,
+    squash_groups,
 };
 
 use super::run::PlanRun;
@@ -136,10 +138,10 @@ impl Engine {
 /// `Some` for the two operations the engine runs, with everything read that
 /// running them needs; `None` for every other operation.
 ///
+/// A rebase (`r`) runs a one-branch line until ticket 05 (see the switch
+/// point below); a rewrite runs the line its plan found and refused over.
+///
 /// # Errors
-/// [`ApplyError::Refused`] for a rebase whose branches built on his fork,
-/// or one checked out in another worktree, or an old git with branches to
-/// follow (ADR-0047 §4) — before anything is written.
 /// [`ApplyError::Facts`] when a read fails; [`ApplyError::Stopped`].
 pub(super) fn prepare(
     ctx: &Context<'_>,
@@ -149,17 +151,17 @@ pub(super) fn prepare(
     let repo = ctx.repo;
     let (head, onto, line, rows, messages, invocation) = match op {
         Operation::Rebase(params) => {
-            // The branches that follow are found now, not when the preview
-            // was drawn: `RebaseParams` has no line (rewrite-engine-b,
-            // conductor ruling 2026-09-26).
-            let line = line_of(
-                repo,
-                &ctx.git,
-                &params.branch,
-                ctx.default_branch.as_ref(),
-                ctx.stop,
-            )
-            .map_err(from_rewrite)?;
+            // `r` moves his branch alone: the preview `y` confirms names
+            // only his branch, so running the line would move (or refuse
+            // over) branches it never showed (review 02, Major 1).
+            //
+            // SWITCH POINT — ticket 05: once `RebaseParams` carries the line
+            // and the preview draws a `branches:` row for each, take the
+            // line from the params here (found by `rewrite::line_of`, which
+            // `R`/`a` already use). Everything below already runs a line.
+            let line = BranchLine {
+                branches: vec![params.branch.clone()],
+            };
             let rows = rebase_rows(repo, params.onto_tip, params.branch.oid, ctx.stop)
                 .map_err(facts_error)?;
             let top = top_of(&line).map(|top| short_ref(&top.name).to_owned());
@@ -307,15 +309,6 @@ pub(super) fn plan_of(
     Ok(saved::read(&dir)
         .map_err(FactsError::SavedPlan)?
         .map(|plan| (dir, plan)))
-}
-
-/// `plan`'s refusals and failures as `apply`'s.
-fn from_rewrite(error: RewriteError) -> ApplyError {
-    match error {
-        RewriteError::Refused(refusal) => ApplyError::Refused(refusal),
-        RewriteError::Facts(why) => ApplyError::Facts(why),
-        RewriteError::Stopped => ApplyError::Stopped,
-    }
 }
 
 /// A read's failure as `apply`'s, a stop kept as a stop.

@@ -414,3 +414,39 @@ What was verified, and how:
     (m6 rebase-stop walks green); set-aside (stash tests green + `an_unsaved_edit_is_set_aside_and_put_back`); journal
     format (`a_rewrite_entry_round_trips` from -a green); undo (`undo_puts_every_branch_in_the_line_back`); captures
     (six regenerated, item 9); keymap: none; graft: no code touched.
+
+## Review fixes (builder, 2026-09-26; review `docs/reviews/m7-02-rewrite-engine.md` Major 1–3)
+
+No scout: the review names every line; crate set graft-ops only.
+
+1. **Major 1 — `r` runs a one-branch line (option a). Cause.** `apply/engine.rs` `prepare`: `Operation::Rebase`'s line
+   is now `BranchLine { branches: [his branch] }`, not `line_of(…)`. What `y` does equals what the preview drew (his
+   branch alone; the run's command has no `<top>`, same as the preview's `history.rs` line). Switch point commented
+   `SWITCH POINT — ticket 05` in `prepare`. `line_of`, `dependents`, `line_picks`, go-home, the saved plan: intact and
+   still exercised by `R`/`a`/absorb. Removed as dead: `engine::from_rewrite`, the `line_of` crate re-export (05 re-adds).
+   - Tests (red first, both failed before the change): `rewrite_run::r_moves_his_branch_alone_until_the_preview_draws_the_line`
+     (feature-b/-c unmoved, not in `refs_before`), `rewrite_run::r_with_two_branches_on_top_is_not_refused_after_y`.
+   - The seven line tests that drove the line through `r` now drive it through `line_onto_main` (R's plan, which carries
+     the line, with `onto` moved to `main` — what 05's `r` will run): records every ref, undo puts every branch back,
+     abort, continue home, kill+relaunch, relaunch removes plan, `updateRefs` config. All green; `entry.kind` assertion
+     `Rebase` → `Rewrite` (the op they run changed, nothing else).
+   - Cost to the user until 05: `r` leaves a teammate's branch built on his on the old commits (pre-M7 behaviour, as
+     the preview says). `R`/`a` previews: the review does not say they lie; `preview::plan` sends `Rewrite` to
+     `NotPreviewable` today, so not touched.
+2. **Major 2 — `a` gets R2's words. Cause.** `Refusal::NotOnYourBranch { commit, by: RewriteKey }`; `RewriteKey::{Open,
+   AmendInto}.what_it_does()`. Test: `rewrite_plan::a_into_a_commit_off_your_branch_is_refused_in_as_words` (red first:
+   got `R rewrites your branch · …`); `a_commit_off_your_branch_is_refused` still asserts `R`'s.
+3. **Major 3 — split, no behaviour change.** `rewrite/plan.rs` 795 → 290; new `rewrite/dependents.rs` (234),
+   `rewrite/reads.rs` (312). `apply/resume.rs` 521 → 458: `started_on_its_line`, `resume_invocation`, `stopped_on_edit` →
+   `apply/resume/rewrite.rs` (80). Verified by the unchanged test suite (graft-ops 588 green). `resume.rs` is still
+   over ~400; the rest of it is the resume proper. `apply.rs`/`operation.rs` not split (review lists their growth, fix
+   names only plan.rs and resume helpers).
+
+**Touches:** `r` for every caller — workspace nextest (m5/m6 rebase walks, preview captures unchanged: no capture
+regenerated, none failed); preview command line vs run now agree (no `<top>` on either); journal/undo — `refs_before`
+for `r` is his branch only (tested); refusal words — `NotOnYourBranch` has no user outside graft-ops (grep of
+`crates/`); graft: no code touched, no exhaustive match on `Refusal` fields (workspace clippy green); MAP.md updated
+(engine line, RewriteKey, files).
+
+**Gates:** fmt ok; clippy `--all-targets -D warnings` workspace ok; nextest workspace 3650/3651 — the one red is the
+known `graft::it m7_walk::restart_after_done` (M7/17), not touched here; `cargo test --doc` ok.

@@ -290,6 +290,26 @@ fn a_commit_off_your_branch_is_refused() {
 }
 
 #[test]
+fn a_into_a_commit_off_your_branch_is_refused_in_as_words() {
+    // Note R2: `a` gets its own words, not `R`'s (review 02, Major 2).
+    let repo = stacked();
+    repo.git(&["switch", "-q", "-c", "other", "main"]);
+    commit(&repo, "o1");
+    let off = oid(&repo, "other");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo.write("staged.txt", b"staged\n");
+    repo.git(&["add", "staged.txt"]);
+    let refusal = refused(plan_of(&repo, &RewriteRequest::AmendInto { target: off }));
+    assert_eq!(
+        refusal.explain(),
+        format!(
+            "a puts staged changes into a commit on your branch · {} isn't on it",
+            &off.to_string()[..7]
+        )
+    );
+}
+
+#[test]
 fn detached_head_is_refused() {
     let repo = stacked();
     repo.git(&["switch", "-q", "--detach", "feature-a"]);

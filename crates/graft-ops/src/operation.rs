@@ -332,6 +332,27 @@ pub struct RepoFacts {
     pub markers: Vec<PathBuf>,
 }
 
+/// The key that asked for a rewrite, so a refusal names what *that* key does
+/// (note R1/R2: `R` and `a` each have their own words).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RewriteKey {
+    /// `R`: open the rewrite.
+    Open,
+    /// `a`: put staged changes into an older commit.
+    AmendInto,
+}
+
+impl RewriteKey {
+    /// What the key does, as the refusal's first half.
+    #[must_use]
+    pub fn what_it_does(self) -> &'static str {
+        match self {
+            Self::Open => "R rewrites your branch",
+            Self::AmendInto => "a puts staged changes into a commit on your branch",
+        }
+    }
+}
+
 /// Why an operation will not run. Each one is a fact about the repository the
 /// user can act on, never a git error re-worded.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -597,6 +618,8 @@ pub enum Refusal {
     NotOnYourBranch {
         /// The commit.
         commit: Oid,
+        /// Which key asked: each says what it does in its own words.
+        by: RewriteKey,
     },
     /// A merge inside the range: `--rebase-merges` is not in M7.
     MergeInRange {
@@ -833,8 +856,8 @@ impl Refusal {
                     path.display()
                 )
             }
-            Self::NotOnYourBranch { commit } => {
-                format!("R rewrites your branch · {} isn't on it", short(*commit))
+            Self::NotOnYourBranch { commit, by } => {
+                format!("{} · {} isn't on it", by.what_it_does(), short(*commit))
             }
             Self::MergeInRange { merge } => {
                 format!("can't rewrite past a merge ({})", short(*merge))

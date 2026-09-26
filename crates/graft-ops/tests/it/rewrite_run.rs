@@ -73,6 +73,46 @@ fn rebase_onto_main(repo: &TempRepo) -> Operation {
     })
 }
 
+/// The whole line of `feature-a` replayed onto `main`: `R`'s plan (which
+/// carries the line) with its base moved to `main`'s tip — what `r` will run
+/// once ticket 05 draws the line in its preview. Until then `r` moves his
+/// branch alone (review 02, Major 1), so the line's run half is proven here.
+fn line_onto_main(repo: &TempRepo) -> Operation {
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let mut params = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::Open {
+            from: id(repo, "feature-a~1"),
+        },
+        &facts,
+        None,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    let names: Vec<&str> = params
+        .line
+        .branches
+        .iter()
+        .map(|tip| tip.name.as_str())
+        .collect();
+    assert_eq!(names, LINE, "R's plan carries the line");
+    params.onto = id(repo, "main");
+    Operation::Rewrite(params)
+}
+
+/// A fork above his branch: `feature-b` and `experiment` both on
+/// `feature-a`.
+fn forked() -> TempRepo {
+    let repo = line();
+    repo.git(&["switch", "-q", "-c", "experiment", "feature-a"]);
+    commit(&repo, "e1");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo
+}
+
 fn head(repo: &TempRepo) -> String {
     repo.try_git(&["symbolic-ref", "-q", "HEAD"])
         .unwrap_or_else(|_| "detached".to_owned())
@@ -82,6 +122,46 @@ fn parent(repo: &TempRepo, rev: &str) -> Oid {
     id(repo, &format!("{rev}^"))
 }
 
+// ── `r` until ticket 05 ─────────────────────────────────────────────────
+
+#[test]
+fn r_moves_his_branch_alone_until_the_preview_draws_the_line() {
+    // Review 02, Major 1: the preview `y` confirms names his branch only,
+    // so `r` moves only his branch (until ticket 05 draws the line).
+    let repo = line();
+    let b = id(&repo, "feature-b");
+    let c = id(&repo, "feature-c");
+
+    let entry = run(&repo, &rebase_onto_main(&repo), NOW);
+
+    assert_eq!(id(&repo, "feature-b"), b, "feature-b, built on his, stays");
+    assert_eq!(id(&repo, "feature-c"), c, "feature-c stays");
+    assert_eq!(parent(&repo, "feature-a~1"), id(&repo, "main"));
+    assert_eq!(head(&repo), "refs/heads/feature-a");
+    assert!(
+        !entry.refs_before.contains_key("refs/heads/feature-b")
+            && !entry.refs_before.contains_key("refs/heads/feature-c"),
+        "no branch the preview did not name is recorded: {:?}",
+        entry.refs_before
+    );
+    assert_eq!(entry.status, EntryStatus::Committed);
+}
+
+#[test]
+fn r_with_two_branches_on_top_is_not_refused_after_y() {
+    let repo = forked();
+    let b = id(&repo, "feature-b");
+    let e = id(&repo, "experiment");
+
+    let applied = try_run(&repo, &rebase_onto_main(&repo), NOW)
+        .unwrap_or_else(|why| panic!("r is not refused: {}", why.explain()));
+
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert_eq!(parent(&repo, "feature-a~1"), id(&repo, "main"));
+    assert_eq!(id(&repo, "feature-b"), b);
+    assert_eq!(id(&repo, "experiment"), e);
+}
+
 // ── Record and undo ─────────────────────────────────────────────────────
 
 #[test]
@@ -89,7 +169,7 @@ fn a_three_branch_rewrite_records_every_ref() {
     let repo = line();
     let before: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
 
-    let entry = run(&repo, &rebase_onto_main(&repo), NOW);
+    let entry = run(&repo, &line_onto_main(&repo), NOW);
 
     for (name, was) in LINE.iter().zip(&before) {
         assert_eq!(
@@ -112,7 +192,7 @@ fn a_three_branch_rewrite_records_every_ref() {
     assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
     assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
     assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
-    assert_eq!(entry.kind, OperationKind::Rebase);
+    assert_eq!(entry.kind, OperationKind::Rewrite);
     assert_eq!(entry.status, EntryStatus::Committed);
 }
 
@@ -121,7 +201,7 @@ fn undo_puts_every_branch_in_the_line_back() {
     let repo = line();
     let before = state_of(&repo);
 
-    run(&repo, &rebase_onto_main(&repo), NOW);
+    run(&repo, &line_onto_main(&repo), NOW);
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{why:?}"));
 
     assert_eq!(state_of(&repo), before);
@@ -195,7 +275,7 @@ fn abort_returns_head_to_his_branch_and_every_ref() {
     let repo = conflicted_line();
     let before = state_of(&repo);
 
-    let (entry, paths) = stopped(&repo, &rebase_onto_main(&repo));
+    let (entry, paths) = stopped(&repo, &line_onto_main(&repo));
     assert_eq!(paths, [PathBuf::from("shared.txt")]);
     assert_eq!(entry.status, EntryStatus::Pending);
     assert_eq!(plans_left(&repo).len(), 1, "the plan waits for the resume");
@@ -217,7 +297,7 @@ fn abort_returns_head_to_his_branch_and_every_ref() {
 fn a_stopped_line_continues_home_with_every_branch_moved() {
     let repo = conflicted_line();
     let was: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
-    stopped(&repo, &rebase_onto_main(&repo));
+    stopped(&repo, &line_onto_main(&repo));
     resolve(&repo);
 
     let applied =
@@ -238,7 +318,7 @@ fn a_stopped_line_continues_home_with_every_branch_moved() {
 #[test]
 fn kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan() {
     let repo = conflicted_line();
-    let (entry, _) = stopped(&repo, &rebase_onto_main(&repo));
+    let (entry, _) = stopped(&repo, &line_onto_main(&repo));
 
     // The relaunch: a fresh journal and context, nothing kept in memory.
     let handle = repo.open();
@@ -316,7 +396,7 @@ fn an_edit_row_stops_and_the_resume_takes_the_line_home() {
 #[test]
 fn a_relaunch_that_closes_a_rewrite_removes_its_plan() {
     let repo = conflicted_line();
-    let (entry, _) = stopped(&repo, &rebase_onto_main(&repo));
+    let (entry, _) = stopped(&repo, &line_onto_main(&repo));
     // Called off in the shell while Graft was down: nothing is live.
     repo.git(&["rebase", "--abort"]);
 
@@ -376,7 +456,7 @@ fn a_resume_never_turns_his_update_refs_config_on() {
     repo.git(&["config", "rebase.updateRefs", "true"]);
     repo.git(&["branch", "lower", "feature-a~1"]);
     let lower = id(&repo, "lower");
-    stopped(&repo, &rebase_onto_main(&repo));
+    stopped(&repo, &line_onto_main(&repo));
     resolve(&repo);
 
     resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));

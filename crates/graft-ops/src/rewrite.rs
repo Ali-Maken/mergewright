@@ -10,8 +10,10 @@
 //! The pieces:
 //! - `todo` — pure: squash groups, the default squashed message, validation,
 //!   autosquash marking, and the todo text git is handed.
-//! - `plan` — what a request plans to: the range, the refusals, the line of
-//!   dependent branches ([`dependents`]).
+//! - `plan` — what a request plans to: the range and the refusals.
+//! - `dependents` — the line of branches built on his ([`dependents`]) and
+//!   the refusals over it.
+//! - `reads` — the raw history reads both plan from (reads only).
 //! - `saved` — the plan saved under `<git-path graft>/rewrite/<entry-id>/`
 //!   before the `Pending` line, and the message helper git calls.
 //! - `progress` — where a stopped rewrite is, for the banner.
@@ -28,16 +30,19 @@ use graft_core::ref_name::RefName;
 use crate::facts::FactsError;
 use crate::operation::{Refusal, Tip};
 
+mod dependents;
 mod plan;
 mod progress;
+mod reads;
 pub(crate) mod saved;
 mod todo;
 
-pub use plan::{dependents, plan};
+pub use dependents::dependents;
+pub use plan::plan;
 pub use progress::progress;
 pub use todo::{default_message, squash_groups, validate};
 
-pub(crate) use plan::{line_of, line_picks, messages_of, rebase_rows};
+pub(crate) use reads::{line_picks, messages_of, rebase_rows};
 pub(crate) use todo::{GitTodo, git_todo};
 
 /// What git does with one row of the todo: git's own letters, never `exec`
