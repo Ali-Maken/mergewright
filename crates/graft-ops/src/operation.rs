@@ -1032,22 +1032,21 @@ impl Refusal {
 /// counts every other path, ignored or not (the form of Recover's
 /// `put back your edit to <path> +N more`).
 fn in_the_way_of(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> String {
-    let (first, tag, next) = match (ignored.first(), untracked.first()) {
-        (Some(first), _) => (first, " (ignored)", "move {} aside first"),
-        (None, Some(first)) => (first, "", "S stashes {} first"),
-        (None, None) => return format!("nothing is in the way of {doing}"),
+    let Some(first) = ignored.first().or(untracked.first()) else {
+        return format!("nothing is in the way of {doing}");
     };
+    let first = first.display();
     let more = ignored.len() + untracked.len() - 1;
-    let (count, verb, them) = if more == 0 {
-        (String::new(), "is", "it")
-    } else {
-        (format!(" +{more} more"), "are", "them")
-    };
-    format!(
-        "{}{tag}{count} {verb} in the way of {doing} · {}",
-        first.display(),
-        next.replace("{}", them)
-    )
+    match (!ignored.is_empty(), more) {
+        (true, 0) => format!("{first} (ignored) is in the way of {doing} · move it aside first"),
+        (true, more) => format!(
+            "{first} (ignored) +{more} more are in the way of {doing} · move them aside first"
+        ),
+        (false, 0) => format!("{first} is in the way of {doing} · S stashes it first"),
+        (false, more) => {
+            format!("{first} +{more} more are in the way of {doing} · S stashes them first")
+        }
+    }
 }
 
 /// `src/a.rs`, `src/a.rs and src/b.rs`, `src/a.rs and 2 more files`.
