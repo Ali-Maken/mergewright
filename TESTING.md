@@ -111,7 +111,7 @@ stays visible.
 | 2026-09-23 · walk | A rename/rename conflict | Still the shell — no resolver shape for it. Expires M7 | open (M7) |
 | 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
 | 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **0** — `u` on the banner undoes the whole-file take (`crates/graft/tests/it/resolver/shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`), and `a y` aborts the merge with `u` to put it back (`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`). Was: `git merge --abort`, then `Ctrl+R`, `u` — both keys refused while the merge was open. Source: ticket 08 `## Review fixes, part 2`. | closed (m6-conflicts/57, shell_begun::a_on_the_banner_aborts_a_shell_merge, shell_begun::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge) |
-| 2026-09-24 · review N3 | Finish a stash pop that clashed | Until the put-back pass: the clashing pop read as a git error and sent him to the shell — **11 keys** (review N3, `docs/design-notes/m6-stash-put-back.md` :15). Now **4**: `S p o ⏎`, the resolver opens on the clash and the last file done drops the stash (`m5_walk::every_scenario::journey_stash_pop_clash_to_done`, `m6_stash_put_back::a_stash_pop_that_clashes_is_four_keys`) | closed (m6-conflicts/72b, 75; `stash-pop-clash-to-done`) |
+| 2026-09-24 · review N3 | Finish a stash pop that clashed | Until the put-back pass: the clashing pop read as a git error and sent him to the shell — **11 keys** (review N3, `docs/design-notes/m6-stash-put-back.md` :15). Now **5**: `S p y o ⏎` (`y` confirms the pop preview since m6-conflicts/86), the resolver opens on the clash and the last file done drops the stash (`m5_walk::every_scenario::journey_stash_pop_clash_to_done`, `m6_stash_put_back::a_stash_pop_that_clashes_is_five_keys`) | closed (m6-conflicts/72b, 75, 86; `stash-pop-clash-to-done`) |
 | 2026-09-24 · review N4 | Pull and push with edits in the tree | Until the put-back pass: the dirty rebase was refused after confirm — **16 keys** walked (review N4, `m6-stash-put-back.md` :16). Now **5**: `p r r P y`, the edits set aside and put back (`m5_walk::every_scenario::journey_rejected_push_dirty_to_pushed`, `m6_stash_put_back::set_aside::a_rejected_push_with_edits_is_five_keys`) | closed (m6-conflicts/73, 74, 75; `rejected-push-dirty-to-pushed`) |
 
 _Rows marked `walk` are what the M6 acceptance walk says a reach used to be
@@ -1309,16 +1309,19 @@ included) and every `stash list` line.
 14. **stash-save** — `S` `s`, `wip`, `Enter`: `stash list` is exactly
     `stash@{0}: On main: wip`, the file reads as HEAD's. `u`: back (no
     stash, edit on disk). `U`: the stash is listed again, tree clean.
-15. **stash-pop** — `Shape::Stash` (two entries); `p`: one entry fewer, the
+15. **stash-pop** — `Shape::Stash` (two entries); `p`, `y` on its preview
+    (m6-conflicts/86): one entry fewer, the
     tree dirty. `u`: back — both entries, in order, the tree clean.
-16. **stash-apply** — `Enter`: both entries still listed, the tree dirty.
+16. **stash-apply** — `Enter`, `y` on its preview: both entries still listed, the tree dirty.
     `u`: back.
 17. **stash-drop** — `d` `→` `Enter`, or `d` `y`: one entry fewer. Then
     `git gc --prune=now`. `u`: `stash list` is byte for byte what it was —
     the pin in the drop's journal entry kept the commit alive through gc.
 18. **stash-apply-refused-dirty-touched-file** — a file the stash changes
-    gets an uncommitted edit; `Enter` on the stash: the status line reads
-    `… uncommitted changes now …`, nothing changed, no journal file.
+    gets an uncommitted edit; `Enter` on the stash: the preview box over the
+    list reads `your unsaved edits to … are in the way` (m6-conflicts/86;
+    before it, the status line read `… uncommitted changes now …`), nothing
+    changed, no journal file.
 19. **interrupted-entry** — a real discard through the app, then the
     journal's outcome line deleted (a process killed mid-write). On launch
     the footer notice reads `an operation was interrupted: discard
@@ -2245,7 +2248,7 @@ credential capture M6 changed.
     the shell conflicts: no banner; from the changes pane the resolver
     takes, `⏎` says `every file done` with **no** `c continue`, and
     the journal has one `stage p` entry.
-13. **undo-a-resolution-in-a-stash-pop-conflict** — `S`, `p`
+13. **undo-a-resolution-in-a-stash-pop-conflict** — `S`, `p`, `y`
     in the app conflicts and lands in the resolver on `p`, the `S` list
     closed, the notice `stash@{0} clashed in 1 file · esc, u puts it all
     back` (m6-conflicts/72b; the stash stays); `o`, `⏎`: every file done,
@@ -2417,9 +2420,10 @@ putting `g.txt` back clashes once it continues.
 
 | Journey | Start | Keys | Count | Best | What right looks like (frame, then git) |
 |---|---|---|---|---|---|
-| `stash-pop-clash-to-done` | the graph, stash over notes | `S p o ⏎` | 4 | lazygit ~10 | `S p` → no `S` overlay; the resolver on `notes.md`, notice `stash@{0} clashed in 1 file · esc, u puts it all back`, panes `yours · main` and `stashed · stash@{0}`, bottom row starts `o yours`; the stash still listed. `o ⏎` → status `every file done · stash@{0} dropped ✓ · u brings it back`. Git: `git stash list` empty, `notes.md` = `committed`, `git status` clean |
-| `stash-apply-clash-to-done` | the graph, stash over notes | `S ⏎ o ⏎` | 4 | lazygit ~10 | the same landing from `⏎` (apply); after `o ⏎` status `every file done · stash@{0} kept ✓`. Git: one stash still listed |
-| `stash-clash-put-back` | the clash landing above (`S p`, not counted) | `Esc u` | 2 | lazygit ~10 | `Esc` closes the resolver; `u` takes the pop back, no box. Git: one stash listed, `git status` clean, nothing unmerged |
+| `stash-pop-clash-to-done` | the graph, stash over notes | `S p y o ⏎` | 5 | lazygit ~10 | `S p` → the pop preview, `may conflict: notes.md`; `y` → no `S` overlay; the resolver on `notes.md`, notice `stash@{0} clashed in 1 file · esc, u puts it all back`, panes `yours · main` and `stashed · stash@{0}`, bottom row starts `o yours`; the stash still listed. `o ⏎` → status `every file done · stash@{0} dropped ✓ · u brings it back`. Git: `git stash list` empty, `notes.md` = `committed`, `git status` clean |
+| `stash-apply-clash-to-done` | the graph, stash over notes | `S ⏎ y o ⏎` | 5 | lazygit ~10 | the same landing from `⏎ y` (apply, its preview first); after `o ⏎` status `every file done · stash@{0} kept ✓`. Git: one stash still listed |
+| `stash-look-and-leave` | the graph, stash over notes | `S ⏎ esc` | 3 | lazygit 2 (no preview) | `⏎` → a box over the list, `Preview: apply stash@{0}`, `may conflict: notes.md`, `stash@{0} stays in the list`, `y apply` on its edge; `esc` → the list on the same stash (m6-conflicts/86, `m6_stash_put_back::stash_preview::stash_look_and_leave_writes_nothing`). Git: stash list, index and status as before |
+| `stash-clash-put-back` | the clash landing above (`S p y`, not counted) | `Esc u` | 2 | lazygit ~10 | `Esc` closes the resolver; `u` takes the pop back, no box. Git: one stash listed, `git status` clean, nothing unmerged |
 | `pull-rebase-dirty` | the graph, diverged, three edits | `p r r` | 3 | JetBrains 3–4 | `p` refused `… have diverged …`; `r` → the rebase preview, under `working tree:` the row `your edits: 3 files set aside, put back after · 1 staged comes back unstaged`; `r` confirms → status `rebase main onto origin/main ✓ · your edits are back`. Git: `main` is `origin/main` plus one; the three files edited, `git status` ` M one.txt`, ` M three.txt`, ` M two.txt` — `one.txt`'s staging lost, as the row said; stash list empty |
 | `rejected-push-dirty-to-pushed` | the same | `p r r P y` | 5 | JetBrains 3–4 | as above, then `P` → the push box, `y` → pushed. Git: the bare's `main` = `HEAD`; its last two subjects `ours`, `the teammate's commit`; the edits still in the tree |
 | `switch-dirty` | the graph on `main`, dirty; cursor on `fix` (not counted) | `. ⏎ y` | 3 | lazygit 2, JetBrains 3 | on `fix`; status `… · your edits are back`. Git: `HEAD` → `fix`; `base.txt` and `notes.txt` hold the edit; `git status` ` M base.txt`, ` M notes.txt` (the staging lost); stash list empty |
@@ -2464,11 +2468,26 @@ Capture `esc-then-g-120x40`.
 
 **A take, then back to the pane** (m6-conflicts/85 B):
 `m6_stash_put_back::pop::a_take_then_esc_shows_the_file_without_markers` —
-`S p esc ⏎ o esc` (a look at the clashed file in the pane first, which is
+`S p y esc ⏎ o esc` (a look at the clashed file in the pane first, which is
 what caches its diff with the markers): back on the pane, `notes.md` under
 `CONFLICTS`, no `<<<<<<<`, `=======` or `>>>>>>>` line in the diff the pane
 serves nor on disk; header `diff vs HEAD <main's sha7>`. Capture
 `stash-clash-take-esc-pane-120x40`.
+
+**The stash preview** (m6-conflicts/86): `⏎` and `p` on the stash list
+open a Ghost Preview over the list; `y` runs it, `esc` goes back to the same
+stash, `⏎ ⏎` (Cancel is first) writes nothing.
+`m6_stash_put_back::stash_preview::stash_look_and_leave_writes_nothing` —
+`S ⏎ esc` at 3 keys; stash list, index and status unchanged; capture
+`stash-apply-preview-120x40` (`Preview: apply stash@{0}`, `working tree:
+notes.md`, `may conflict: notes.md`, `stash@{0} stays in the list`, `y
+apply`). `the_pop_preview_fits_80_columns` — capture
+`stash-pop-preview-80x24` (`Preview: pop stash@{0}`, `stash@{0} is dropped ·
+u brings it back`, `y pop`, whole at 80).
+`unsaved_edits_in_the_way_are_named_in_the_box` — an unsaved edit to
+`notes.md`: capture `stash-preview-in-the-way-120x40` (`your unsaved edits
+to notes.md are in the way`, one `[ Close ]`, no `y apply`); `y` writes
+nothing. Colour unverified.
 
 **A pull over his edits names keys that work** (m6-conflicts/85 D):
 `pull_over_edits::a_ff_pull_over_overlapping_edits_names_keys_that_work` —
@@ -2529,8 +2548,8 @@ shows `—` for the other two).
 | `m6-17-after-commit` | `m m o T y` | the graph, cursor on `[◆ main] Merge branch 'feature' into main`; no `MERGING`; bottom row `merged feature into main ✓` |
 | `m6-18-launch-shell-begun` | none | the banner (`c finish` on a merge since m6-conflicts/70; retaken by 80), the pane `CONFLICTS (2)`. The stop line is the fullest rung that fits (ticket 61): at 120 and 200 `merge in progress · from the shell · 2 conflicted · ⏎ resolve  c finish  a abort …`; at 187 the origin dropped (`merge in progress · 2 conflicted · ⏎ resolve`); at 160 the count dropped too (`merge in progress · ⏎ resolve`); at 80 only the keys (`⏎ resolve  c finish  a abort …`) |
 | `m6-19-after-esc-esc` | `m m Esc Esc` | the graph; the bottom row **starts** `⇥ banner` |
-| `m6-20-stash-clash-landing` | `S p` | no `S` overlay; the resolver on `notes.md`; notice `stash@{0} clashed in 1 file · esc, u puts it all back`; panes `yours · main` and `stashed · stash@{0}`; the bottom row starts `o yours  t stashed` |
-| `m6-21-stash-clash-done` | `S p o ⏎` | the graph on `main` with its detail, no `CONFLICTS` anywhere; the status `every file done · stash@{0} dropped ✓ · u brings it back` (the last row at 80) |
+| `m6-20-stash-clash-landing` | `S p y` | no `S` overlay; the resolver on `notes.md`; notice `stash@{0} clashed in 1 file · esc, u puts it all back`; panes `yours · main` and `stashed · stash@{0}`; the bottom row starts `o yours  t stashed` |
+| `m6-21-stash-clash-done` | `S p y o ⏎` | the graph on `main` with its detail, no `CONFLICTS` anywhere; the status `every file done · stash@{0} dropped ✓ · u brings it back` (the last row at 80) |
 | `m6-22-set-aside-preview` | `p r` | the rebase preview box; under `working tree:` the row `your edits: 3 files set aside, put back after · 1 staged comes back unstaged`, whole at every size; `[ Confirm ]`, `y confirm` |
 | `m6-23-set-aside-clash-landing` | `j k . ⏎ y` | (`j k` only reach `main`'s row: the cursor opens on the uncommitted row) the resolver on `base.txt`; notice `your edits clashed in 1 file · esc, u undoes the switch too`; panes `branch · main` and `yours · edits set aside`; the bottom row starts `o branch  t yours`; `set aside ·` is no pane's name |
 | `m6-24-set-aside-done` | `p r r` | the graph on the rebased `ours` over `origin/main`, `Uncommitted changes (3 unstaged)` on top; status `rebase main onto origin/main ✓ · your edits are back` |
@@ -2546,7 +2565,7 @@ base.txt`, no `no conflicts expected`), `esc-then-g-120x40` (85 A: header
 `200 commits`, not `stopped`; the last rows are commits),
 `stash-clash-take-esc-pane-120x40` (85 B: the pane on `notes.md` under
 `CONFLICTS`, no marker line, `diff vs HEAD` naming main's tip), and
-`stash-clash-stop-line-80x24` (82): `S p` clashed in `notes.md`, `esc` shut
+`stash-clash-stop-line-80x24` (82): `S p y` clashed in `notes.md`, `esc` shut
 the resolver, the graph focused, at 80x24 — no banner, no resolver; the
 bottom row begins ` stash@{0} clashed · 1 file conflicted · ` then the keys
 that fit; nothing cut mid-word. Colour unverified.

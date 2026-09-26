@@ -1,4 +1,4 @@
-m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, keys S p o ⏎, unicode tier, 187x50
+m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, keys S p y o ⏎, unicode tier, 187x50
 
  graft <scratch____________________________________________________________>  5 commits                      COMMIT 8e361b5
 ◆ ▏  [◆ main] rewrite the notes                                                              GF 6y   8e361b5 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 6y

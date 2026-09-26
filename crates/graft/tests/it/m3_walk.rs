@@ -57,9 +57,6 @@ pub enum Step {
     /// A write was queued by the last key: run it to its answer and insist
     /// it succeeded (`Status::Done`).
     Write(&'static str),
-    /// Run whatever is in flight to its answer, whatever the answer is — for
-    /// a refusal.
-    Settle(&'static str),
     /// Move the file-list cursor onto the row named, the `nth` (0-based) of
     /// that name — a file with staged and unstaged changes is listed twice.
     CursorTo(&'static str, usize),
@@ -249,7 +246,6 @@ fn drive(
                 .fold(state, |state, c| app.key(&state, KeyCode::Char(c))),
             Step::Await(what, ready) => app.pump(state, what, ready),
             Step::Write(what) => settle_write(app, state, what)?,
-            Step::Settle(what) => app.pump(state, what, |state| state.operating.is_none()),
             Step::CursorTo(name, nth) => cursor_to(app, state, name, *nth)?,
             Step::Focus => focus_gained(app, &state)?,
             Step::Shell(fix) => {
@@ -470,6 +466,15 @@ fn editor_open(state: &AppState) -> bool {
 
 fn stash_list_ready(state: &AppState) -> bool {
     state.working_tree.is_some() && matches!(state.stash.entries, Loading::Ready(_))
+}
+
+/// The preview box drawn over the stash list has its plan (m6-conflicts/86:
+/// `⏎` and `p` there preview first, `y` runs).
+fn preview_planned(state: &AppState) -> bool {
+    state
+        .preview
+        .as_ref()
+        .is_some_and(|preview| !matches!(preview.plan, Loading::Idle | Loading::Pending(_)))
 }
 
 fn confirm_open(state: &AppState) -> bool {
@@ -1335,6 +1340,8 @@ fn stash_pop() -> Scenario {
             open_stashes(),
             vec![
                 key(ch('p')),
+                Step::Await("the pop preview", preview_planned),
+                key(ch('y')),
                 Step::Write("the pop"),
                 Step::Mark("popped"),
                 key(ch('u')),
@@ -1371,6 +1378,8 @@ fn stash_apply() -> Scenario {
             open_stashes(),
             vec![
                 key(KeyCode::Enter),
+                Step::Await("the apply preview", preview_planned),
+                key(ch('y')),
                 Step::Write("the apply"),
                 Step::Mark("applied"),
                 key(ch('u')),
@@ -1451,13 +1460,14 @@ fn stash_apply_refused_dirty_touched_file() -> Scenario {
             open_stashes(),
             vec![
                 key(KeyCode::Enter),
-                Step::Settle("the refused apply"),
-                Step::See("the refusal names the file", |state| match &state.status {
-                    Status::Failed(text) if text.contains("uncommitted changes now") => Ok(()),
-                    Status::Sticky { reason, .. } if reason.contains("uncommitted changes now") => {
-                        Ok(())
+                // Since m6-conflicts/86 `⏎` previews first; the refusal is the
+                // preview box's own words, over the list, and nothing ran.
+                Step::Await("the refused preview", preview_planned),
+                Step::See("the refusal names the file", |state| {
+                    match state.preview.as_ref().map(|preview| &preview.plan) {
+                        Some(Loading::Failed(text)) if text.contains("are in the way") => Ok(()),
+                        other => Err(format!("preview {other:?}")),
                     }
-                    other => Err(format!("status {other:?}")),
                 }),
             ],
         ]),

@@ -1,6 +1,6 @@
 # 86 — the stash list previews before it writes (C)
 
-Status: ready — approved by the user 2026-09-26 ("86 yes")
+Status: done (2026-09-26, builder; compacted once mid-ticket — see NOTES) — approved by the user 2026-09-26 ("86 yes")
 approved direction). On "no": nothing is built; `KNOWN_GAPS.md` :773 is updated to observed (walk 2 C) and stays M7.
 Blocked by: 85 (both edit `graft`, `update/stash.rs` among them); the user's yes; the conductor's doc rows below.
 Crates: graft-ops (`preview`), graft (`update/stash.rs`, the preview's opener and confirm), graft-ui only if the
@@ -62,34 +62,34 @@ pub enum Refusal { /* … */ StashInTheWay { paths: Vec<PathBuf> } } // Display:
 ```
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **graft-ops** (real repos, `crates/graft-ops/tests/it/stash_preview.rs`): `a_stash_that_applies_cleanly_forecasts_clean`,
+- [x] **graft-ops** (real repos, `crates/graft-ops/tests/it/stash_preview.rs`): `a_stash_that_applies_cleanly_forecasts_clean`,
       `a_stash_that_clashes_forecasts_its_paths` (red first), `unsaved_edits_in_the_way_refuse_the_preview`,
       `an_untracked_file_in_the_way_refuses_the_preview`, `an_untracked_only_stash_lists_its_files`,
       `the_stash_preview_writes_no_ref_index_or_file` (as 84's writes test: index bytes, `for-each-ref`,
       `git stash list`, `status --porcelain=v2 --no-optional-locks`), `the_stash_preview_honours_stop`,
       `an_old_git_leaves_the_stash_forecast_not_checked`.
-- [ ] **Oracle** `the_stash_forecast_agrees_with_git`: rows clean, clash, tracked in the way, untracked in the way,
+- [x] **Oracle** `the_stash_forecast_agrees_with_git`: rows clean, clash, tracked in the way, untracked in the way,
       staged edits elsewhere, untracked-only. For each: `plan`, then `git stash apply` in a copy — `Clean` ⇒ exit 0 and
       nothing unmerged; `Likely { paths }` ⇒ the unmerged paths equal `paths`; `StashInTheWay` ⇒ git exits non-zero
       (tracked row: and the tree is unchanged, A1.4). A row where they disagree is a failure, not a NOTE.
-- [ ] **App** `update::stash::tests::enter_opens_the_apply_preview_and_writes_nothing` (red first: no write command),
+- [x] **App** `update::stash::tests::enter_opens_the_apply_preview_and_writes_nothing` (red first: no write command),
       `p_opens_the_pop_preview`, `enter_twice_writes_nothing`, `esc_from_the_preview_returns_to_the_same_stash`,
       `y_in_the_preview_applies`, `y_in_the_preview_pops`.
-- [ ] **Walks:** the pop and apply clash walks gain `y` (`S p y o ⏎`, `S ⏎ y o ⏎`), each ≤ `noted_keys(...)` after the
+- [x] **Walks:** the pop and apply clash walks gain `y` (`S p y o ⏎`, `S ⏎ y o ⏎`), each ≤ `noted_keys(...)` after the
       fence edit; new `stash_look_and_leave_writes_nothing` (`S ⏎ esc esc`: tree, index, stash list unchanged; ≤
       `noted_keys("stash-look-and-leave")`); 85's `a_take_then_esc_shows_the_file_without_markers` becomes
       `S p y o esc`.
-- [ ] **Captures** (rule 6; colour **unverified**, rule 5), written by walks through `check_shot`:
+- [x] **Captures** (rule 6; colour **unverified**, rule 5), written by walks through `check_shot`:
       `docs/shots/m6/stash-apply-preview-120x40.txt` — **right:** title `Preview: apply stash@{0}`; `notes.md` under
       `working tree:`; `may conflict: notes.md`; `stash@{0} stays in the list`; `[ Cancel ]` `[ Apply ]`; bar `y apply`.
       `docs/shots/m6/stash-pop-preview-80x24.txt` — **right:** `Preview: pop stash@{0}`; the fate row
       `stash@{0} is dropped · u brings it back` whole; paths cut with `…` only if they must be.
       `docs/shots/m6/stash-preview-in-the-way-120x40.txt` — **right:** `your unsaved edits to notes.md are in the way`;
       no `[ Apply ]`; `esc` offered.
-- [ ] `every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`,
+- [x] `every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`,
       `every_bound_action_is_hinted_live_or_is_named_here` green.
-- [ ] Contact sheet rebuilt; captions rows for the three captures; each part ≤ 200 000 B.
-- [ ] MAP.md: graft-ops (`Refusal::StashInTheWay`, the stash forecast in `## preview`); graft (`stash_key`'s `⏎`/`p`,
+- [x] Contact sheet rebuilt; captions rows for the three captures; each part ≤ 200 000 B.
+- [x] MAP.md: graft-ops (`Refusal::StashInTheWay`, the stash forecast in `## preview`); graft (`stash_key`'s `⏎`/`p`,
       the opener). TESTING.md: "The stash put-back journeys" rows for pop/apply reworded with `y`; rows for the three
       captures and `stash-look-and-leave`. NOTES list each row.
 
@@ -121,3 +121,53 @@ workspace-wide.
 ## Size
 Large (~70k). If it compacts, the split is: **86a** graft-ops (forecast, refusal, oracle) / **86b** graft (keys,
 opener, walks, captures).
+
+## NOTES (builder, 2026-09-26)
+**Compacted: yes, once**, mid-walks. Nothing left undone; the split (86a/86b) is not needed.
+Scout used: `.scratch/m6-conflicts/scouts/86.md` (main repo, untracked).
+
+Ticks, test per tick (full run 3520/3520, doctests green, fmt, clippy `-D warnings`, all workspace-wide):
+- graft-ops: the eight named tests in `crates/graft-ops/tests/it/stash_preview.rs`. Red first seen for
+  `a_stash_that_clashes_forecasts_its_paths` (`NotPreviewable`).
+- Oracle: `stash_preview::the_stash_forecast_agrees_with_git`, six rows, runs `git stash apply --index` (what Graft
+  runs) on a `cp -R` copy. **Gap, not modelled:** with `--index` git can also refuse "conflicts in index" when the
+  stash has staged content; the forecast does not predict that refusal (no oracle row covers it).
+- App: the six named `update::stash::tests::*`. Red first was not run literally: the old tests asserted `Operate`
+  on `⏎`/`p` and were replaced.
+- Walks: `m6_stash_put_back::a_stash_pop_that_clashes_is_five_keys`, `…::a_stash_apply_that_clashes_is_five_keys`
+  (renamed from `_four_keys`), `m6_stash_put_back::stash_preview::stash_look_and_leave_writes_nothing` (counts
+  `S ⏎ esc` = 3 against `noted_keys("stash-look-and-leave")`; the last `esc` closes the list, uncounted),
+  `m5_walk::every_scenario::journey_counts_match_the_note` and the `journey_stash_*` rows. 85's walk's real sequence
+  is `S p y esc ⏎ o esc` (the ticket's `S p y o esc` never looks at the pane first; see its doc).
+- Captures: written by `stash_look_and_leave_writes_nothing`, `the_pop_preview_fits_80_columns`,
+  `unsaved_edits_in_the_way_are_named_in_the_box` (same file). Colour unverified (rule 5); the user judges by eye.
+- Hint bar: `every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`,
+  `every_bound_action_is_hinted_live_or_is_named_here` green in the full run.
+- Sheet: `scripts/contact-sheet.sh --captions-order m6 docs/shots/m6` → now **5 parts** (part 5 new, 4 958 B;
+  largest 179 772 B). Captions: 3 rows added; 5 rows reworded `S p` → `S p y`.
+
+Decisions:
+- `StashInTheWay` is a mapping in `preview::plan` of `check`'s `TouchesChangedFiles` when some of its paths are
+  unsaved or untracked, plus an on-disk check for `stash^3`'s untracked files (ignored files included). `apply`'s own
+  refusal is unchanged. Staged-only edits on a stashed path keep `TouchesChangedFiles` words, now in the box.
+- Every refusal of a **stash** preview stays in the box (`PreviewState::refused`, one `[ Close ]`); other subjects
+  keep 67's close-plus-status-line.
+- No opener record needed: the box draws over the `S` overlay (`draw_stash` → `draw_preview`), which stays open, so
+  `esc` lands on the same stash.
+- `y` runs through `operate::launch` (stoppable, as `⏎`/`p` did), **not** `launch_unstoppable` (which other previews
+  use). The `y apply`/`y pop` edge key uses the footer's `again` slot.
+- m3 walk: `stash-apply-refused-dirty-touched-file` now reads the box's words (`… are in the way`), not the status
+  line; its unused `Step::Settle` removed.
+
+Touches (how checked):
+- Walks updated: `m3_walk` (stash-pop, stash-apply, refused), `stash_by_key`, `stash_clash` (`put_back` helper),
+  `m5_walk/stash_journeys` (`S p y`, m6-20/21 keys), `m5_walk/resolved_operations`, `m6_stash_put_back{,/pop}`.
+  `pull_over_edits` presses only `S s ⏎` (save) — read, unchanged, green.
+- Captures changed **header only** (`git diff --stat`: 1–2 lines each): stash-clash-landing-{120x40,80x24},
+  stash-clash-done-120x40, stash-clash-stop-line-80x24, stash-clash-take-esc-pane-120x40, and pty m6-20/m6-21 at
+  120x40/80x24/187x50 (re-taken with `GRAFT_UPDATE_SHOTS=1`, then a second pass: all `settled`). Frames identical.
+  m6-22…25 not re-run: no stash keys in them (scout).
+- Docs: `docs/design-notes/m6-conflicts.md` fence (5, 5, `stash-look-and-leave 3`); TESTING.md rows 114, M3 15/16/18,
+  M6 13, journey table (+`stash-look-and-leave`), m6-20/21 rows, 85 B and 82 paragraphs, new "The stash preview"
+  paragraph; graft-ops and graft MAP.md; `preview::plan` doc comment. Keymap §2.9 already amended by the conductor.
+- Not done here (conductor's rows): `m6-stash-put-back.md` Journeys marked superseded; KNOWN_GAPS :772/:773.

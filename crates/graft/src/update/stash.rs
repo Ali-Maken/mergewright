@@ -435,9 +435,17 @@ fn save(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnM
     super::operate::say_if_refused(next, launched);
 }
 
-/// `Enter`/`p` on a row: apply or pop it. The commit travels with the
-/// index — `ops` refuses `StashListChanged` if the two have parted, which
-/// an index alone could not detect.
+/// `Enter`/`p` on a row: the **preview** of applying or popping it
+/// (m6-conflicts/86, keymap §2.9) — the files it writes, whether it may
+/// clash, the stash's fate. Nothing is written until `y` in the box, which
+/// runs this very operation (`preview::confirm_preview`, through
+/// `operate::launch` as the key did before). The commit travels with the
+/// index — `ops` refuses `StashListChanged` if the two have parted, which an
+/// index alone could not detect.
+///
+/// The box draws over the list and the list stays open under it, cursor
+/// and all, so `esc` in the box is back on the same stash with no opener
+/// record to keep (`preview::close_preview` leaves `stash` alone).
 fn operate_on_selected(
     next: &mut AppState,
     commands: &mut Vec<Command>,
@@ -451,13 +459,22 @@ fn operate_on_selected(
         return;
     };
     let (index, commit) = (entry.index, entry.commit);
-    let operation = match apply {
-        Apply::Keep => Operation::StashApply { index, commit },
-        Apply::Pop => Operation::StashPop { index, commit },
+    let (op, opened_by) = match apply {
+        Apply::Keep => (Operation::StashApply { index, commit }, "⏎"),
+        Apply::Pop => (Operation::StashPop { index, commit }, "p"),
     };
-    // Unreachable `Err`: `operation_in_flight` returned above.
-    let launched = super::operate::launch(next, commands, operation, next_id);
-    super::operate::say_if_refused(next, launched);
+    // `false`: a preview is already up (it has the keys, so this cannot
+    // reach here) or the refusal is already on the status line.
+    let _opened: bool = super::preview::open_preview(
+        next,
+        commands,
+        super::preview::PreviewSubject::Operation {
+            op: Box::new(op),
+            opened_by,
+        },
+        false,
+        next_id,
+    );
 }
 
 /// `d`: the confirm box for dropping the selected stash. Destructive, so

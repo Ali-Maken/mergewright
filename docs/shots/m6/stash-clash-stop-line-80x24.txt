@@ -3,7 +3,7 @@
 # the_stop_line_words_a_clash_at_80_and_120, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #
-# What right looks like: `S p` clashed in notes.md, then `esc` shut the
+# What right looks like: `S p y` clashed in notes.md, then `esc` shut the
 # resolver and the graph has the keys, at 80 columns.
 #  - The graph screen; no banner, no resolver.
 #  - The bottom hint row begins ` stash@{0} clashed · 1 file conflicted ·`,

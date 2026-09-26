@@ -54,9 +54,9 @@ pub(super) fn journeys() -> Vec<Scenario> {
 /// reach the row the route starts on (the walk's `Step::CursorTo`).
 fn captured(scenario: Scenario, stem: &'static str) -> Scenario {
     let (keys, on_screen) = match stem {
-        "m6-20-stash-clash-landing" => (plain(&[ch('S'), ch('p')]), "stashed · stash@{0}"),
+        "m6-20-stash-clash-landing" => (plain(&[ch('S'), ch('p'), ch('y')]), "stashed · stash@{0}"),
         "m6-21-stash-clash-done" => (
-            plain(&[ch('S'), ch('p'), ch('o'), KeyCode::Enter]),
+            plain(&[ch('S'), ch('p'), ch('y'), ch('o'), KeyCode::Enter]),
             "stash@{0} dropped",
         ),
         "m6-22-set-aside-preview" => (plain(&[ch('p'), ch('r')]), "your edits: 3 files"),
@@ -289,12 +289,15 @@ fn stash_list_open() -> Vec<Step> {
     vec![key(ch('S')), Step::WaitFor(Wait::StashReady)]
 }
 
-/// A pop or apply that clashed: the `S` list closed, the resolver on
+/// A pop or apply, its preview confirmed with `y` (m6-conflicts/86), that
+/// clashed: the `S` list closed, the resolver on
 /// `notes.md` with the stash's side named, the notice saying how to put it
 /// all back; git kept the stash.
 fn clash_landing(verb_key: KeyCode) -> Vec<Step> {
     vec![
         Step::Key(KeyPress::plain(verb_key)),
+        Step::WaitFor(Wait::PreviewReady),
+        key(ch('y')),
         Step::Settle("the pop or apply"),
         Step::WaitFor(Wait::ConflictedPath(NOTES)),
         Step::WaitFor(Wait::ConflictOpened),
@@ -346,8 +349,8 @@ fn resolver_on(state: &AppState, path: &str) -> Checked {
     })
 }
 
-/// `stash-pop-clash-to-done` up to the landing: `S p`, two of its four
-/// keys. The capture m6-20 is this frame.
+/// `stash-pop-clash-to-done` up to the landing: `S p y`, three of its
+/// five keys. The capture m6-20 is this frame.
 fn stash_pop_clash_landing() -> Scenario {
     journey(
         "stash-pop-clash-to-done@landing",
@@ -362,7 +365,7 @@ fn stash_pop_clash_landing() -> Scenario {
     )
 }
 
-/// `stash-pop-clash-to-done`: `S p o ⏎` — the pop clashes, yours kept, the
+/// `stash-pop-clash-to-done`: `S p y o ⏎` — the pop clashes, yours kept, the
 /// last file done drops the stash: `every file done · stash@{0} dropped ✓ ·
 /// u brings it back`, `git stash list` empty, `notes.md` HEAD's.
 fn stash_pop_clash_to_done() -> Scenario {
@@ -405,7 +408,7 @@ fn stash_pop_clash_to_done() -> Scenario {
     )
 }
 
-/// `stash-apply-clash-to-done`: `S ⏎ o ⏎` — the same, but an apply keeps
+/// `stash-apply-clash-to-done`: `S ⏎ y o ⏎` — the same, but an apply keeps
 /// its stash: `every file done · stash@{0} kept ✓`, one entry listed.
 fn stash_apply_clash_to_done() -> Scenario {
     journey(

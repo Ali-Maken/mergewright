@@ -115,7 +115,7 @@ fn s_saves_the_working_tree_and_u_takes_the_stash_back() {
     app.close();
 }
 
-/// `Enter` on a stash applies it: the edit is back in the tree and the
+/// `Enter` then `y` on a stash applies it: the edit is back in the tree and the
 /// entry is still on the list. `u` then takes the application back.
 #[test]
 fn enter_applies_a_stash_and_u_takes_the_application_back() {
@@ -127,7 +127,8 @@ fn enter_applies_a_stash_and_u_takes_the_application_back() {
     let (app, state) = overlay(repo);
     assert_eq!(state.stash.rows().len(), 1, "the overlay lists it");
 
-    let state = app.key(&state, KeyCode::Enter);
+    // `⏎` opens the apply preview; `y` applies (m6-conflicts/86).
+    let state = crate::stash_clash::put_back(&app, &state, KeyCode::Enter);
     let state = app.settle_write(state, "the stash apply");
     assert_eq!(sample(repo), EDITED, "the stash landed in the tree");
     assert_eq!(
@@ -144,7 +145,7 @@ fn enter_applies_a_stash_and_u_takes_the_application_back() {
     app.close();
 }
 
-/// `p` pops: the edit comes back and the entry leaves the list. `u` puts
+/// `p` then `y` pops: the edit comes back and the entry leaves the list. `u` puts
 /// the entry back — at `stash@{0}`, which is the only place git can put it.
 #[test]
 fn p_pops_a_stash_and_u_puts_the_entry_back() {
@@ -153,7 +154,7 @@ fn p_pops_a_stash_and_u_puts_the_entry_back() {
     git_as_graft(repo, &["stash", "push", "-m", "earlier"]);
 
     let (app, state) = overlay(repo);
-    let state = app.key(&state, KeyCode::Char('p'));
+    let state = crate::stash_clash::put_back(&app, &state, KeyCode::Char('p'));
     let state = app.settle_write(state, "the stash pop");
     assert_eq!(sample(repo), EDITED);
     assert!(stash_list(repo).is_empty(), "pop took the entry off");

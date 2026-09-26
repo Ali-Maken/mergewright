@@ -204,6 +204,12 @@ pub struct PreviewState {
     /// The journal browser was open and asked for this; closing the preview
     /// puts it back at the same row.
     pub return_to_journal: bool,
+    /// The plan was refused and the box stays up saying why: a stash
+    /// put-back's preview (m6-conflicts/86), whose words — `your unsaved
+    /// edits to notes.md are in the way` — are about the list under it.
+    /// [`PreviewState::plan`] is then `Failed(<the refusal's words>)`,
+    /// drawn without the `preview failed:` prefix.
+    pub refused: bool,
 }
 
 impl PreviewState {
@@ -342,6 +348,7 @@ pub fn open_preview(
         undrawable: None,
         cursor: 0,
         return_to_journal,
+        refused: false,
     });
     commands.push(Command::PlanPreview(id, Box::new(request)));
     true
@@ -475,6 +482,14 @@ fn footer_keys(mut view: PreviewBox, preview: &PreviewState) -> PreviewBox {
     if !(preview.acts() || preview.planning()) {
         return view;
     }
+    // A stash put-back names its confirm by its verb, `y apply` / `y pop`
+    // (m6-conflicts/86), through the same footer slot `m merge` uses. `y`
+    // is the key either way (`confirm_key`); the opening key is never a
+    // confirm here — no `p p`.
+    if let Some((_, pop)) = stash_put_back(&preview.subject) {
+        view.again = Some((sanitize_line("y"), sanitize_line(stash_verb(pop))));
+        return view;
+    }
     if let PreviewSubject::Operation { opened_by, .. } = &preview.subject {
         view.confirm_key = true;
         view.again = match *opened_by {
@@ -552,6 +567,29 @@ pub fn preview_click(
     true
 }
 
+/// The open preview's plan failed: a refusal closes the box with a status
+/// line (m6-conflicts/67) — except a stash put-back's, which keeps its box:
+/// the refusal is about the list the box sits over, and `esc` is back on it
+/// (m6-conflicts/86; the design note's "Refused: the box's refusal state").
+/// A failed read shows in the box.
+fn plan_failed(state: &mut AppState, failure: PreviewFailure) {
+    let Some(preview) = state.preview.as_mut() else {
+        return;
+    };
+    match failure {
+        PreviewFailure::Refused(refusal) if stash_put_back(&preview.subject).is_some() => {
+            preview.plan = Loading::Failed(refusal.explain());
+            preview.refused = true;
+            preview.cursor = 0;
+        }
+        PreviewFailure::Refused(refusal) => refused(state, &refusal),
+        PreviewFailure::Failed(error) => {
+            preview.plan = Loading::Failed(error);
+            preview.cursor = 0;
+        }
+    }
+}
+
 /// The plan for an open preview landed (or failed).
 ///
 /// Lays the slice out **once**, here, rather than per frame: `layout` is a
@@ -590,13 +628,8 @@ pub fn preview_produced(
     }
     let planned = match result {
         Ok(planned) => planned,
-        Err(PreviewFailure::Refused(refusal)) => {
-            refused(state, &refusal);
-            return;
-        }
-        Err(PreviewFailure::Failed(error)) => {
-            preview.plan = Loading::Failed(error);
-            preview.cursor = 0;
+        Err(failure) => {
+            plan_failed(state, failure);
             return;
         }
     };
@@ -702,14 +735,23 @@ pub fn confirm_preview(
             // The preview has closed on this key, so a refusal (a write
             // began while it was up; `preview_refusal` only runs at open)
             // is said on the row it gave back (m6-conflicts/78).
-            let launched = super::operate::launch_unstoppable(
-                state,
-                commands,
-                *op,
-                HISTORY_CANNOT_STOP,
-                Some(opened_by),
-                next_id,
-            );
+            //
+            // A stash put-back runs as the list's key ran it before the
+            // preview (m6-conflicts/86): one git write, which `Esc` may
+            // stop, so `launch` — not the history ops' `launch_unstoppable`,
+            // whose `Esc` words name a rebase's banner.
+            let launched = if stash_put_back_op(&op).is_some() {
+                super::operate::launch(state, commands, *op, next_id)
+            } else {
+                super::operate::launch_unstoppable(
+                    state,
+                    commands,
+                    *op,
+                    HISTORY_CANNOT_STOP,
+                    Some(opened_by),
+                    next_id,
+                )
+            };
             super::operate::say_if_refused(state, launched);
         }
         PreviewSubject::RevertTo(entry) => {
@@ -780,6 +822,7 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
             view.planning = true;
             view
         }
+        Loading::Failed(words) if preview.refused => closing_box(words, &preview.subject),
         Loading::Failed(error) => {
             closing_box(&format!("preview failed: {error}"), &preview.subject)
         }
@@ -792,6 +835,8 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                     ),
                     &preview.subject,
                 )
+            } else if let Some((index, pop)) = stash_put_back(&preview.subject) {
+                stash_box(&planned.plan, index, pop)
             } else {
                 ready_box(&planned.plan, preview.clipped, state.size.columns)
             }
@@ -817,6 +862,60 @@ fn ready_box(plan: &PreviewPlan, clipped: usize, columns: u16) -> PreviewBox {
         PreviewBox::new(title)
     };
     view.lines = plan_lines(plan, clipped, columns);
+    view.commands = plan
+        .commands
+        .iter()
+        .map(|line| sanitize_line(line))
+        .collect();
+    view
+}
+
+/// Which stash a put-back preview is about, and whether it pops: `None` for
+/// every other subject.
+fn stash_put_back(subject: &PreviewSubject) -> Option<(usize, bool)> {
+    stash_put_back_op(subject.operation()?)
+}
+
+/// [`stash_put_back`] for an operation on its own.
+fn stash_put_back_op(op: &Operation) -> Option<(usize, bool)> {
+    match op {
+        Operation::StashApply { index, .. } => Some((*index, false)),
+        Operation::StashPop { index, .. } => Some((*index, true)),
+        _ => None,
+    }
+}
+
+/// The verb on a stash put-back's confirm button and footer.
+fn stash_verb(pop: bool) -> &'static str {
+    if pop { "pop" } else { "apply" }
+}
+
+/// The box for a stash put-back (m6-conflicts/86): the files it writes,
+/// listed as the conflict line lists its paths; the forecast in the
+/// preview's own words; one row for the stash's fate, kept whole; and
+/// `Cancel` / `Apply` (or `Pop`).
+fn stash_box(plan: &PreviewPlan, index: usize, pop: bool) -> PreviewBox {
+    let name = format!("stash@{{{index}}}");
+    let title = sanitize_line(&format!("Preview: {}", plan.description));
+    let label = if pop { "Pop" } else { "Apply" };
+    let mut view =
+        PreviewBox::new(title).with_choices(vec![sanitize_line("Cancel"), sanitize_line(label)]);
+    let files = match &plan.worktree {
+        WorktreeEffect::Updated { paths, more } => format!(
+            "working tree: {}{}",
+            list(paths, 3),
+            if *more { ", more" } else { "" }
+        ),
+        other => worktree_line(other),
+    };
+    let mut lines = vec![files, conflict_line(&plan.conflicts, None)];
+    if pop {
+        lines.push(format!("{name} is dropped \u{b7} u brings it back"));
+    } else {
+        lines.push(format!("{name} stays in the list"));
+        lines.push(undo_line(&plan.undo));
+    }
+    view.lines = lines.iter().map(|line| sanitize_line(line)).collect();
     view.commands = plan
         .commands
         .iter()

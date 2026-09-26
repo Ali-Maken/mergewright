@@ -105,11 +105,149 @@ fn the_cursor_clamps_at_both_ends() {
     assert_eq!(state.stash.selected, 1);
 }
 
-#[test]
-fn enter_applies_the_selected_stash_with_its_own_commit() {
+// ── ⏎ and p open a preview; y writes (m6-conflicts/86) ─────────────────
+
+/// A key as `keys.rs` routes it: the open preview first, then the overlay.
+fn key(state: &mut AppState, code: KeyCode) -> Vec<Command> {
+    let mut commands = Vec::new();
+    let mut next = ids();
+    let pressed = KeyPress::plain(code);
+    if !super::super::preview::preview_key(state, &mut commands, pressed, &mut next) {
+        stash_key(state, &mut commands, pressed, &mut next);
+    }
+    commands
+}
+
+/// The overlay on a screen the box fits in.
+fn open_on_screen() -> AppState {
     let mut state = open_with_two();
+    state.size = crate::update::Size {
+        columns: 100,
+        rows: 40,
+    };
+    state
+}
+
+/// The preview `code` opened: the operation it pins, and its job.
+fn previewed(state: &AppState) -> (Operation, JobId) {
+    let preview = state.preview.as_ref().expect("a preview is open");
+    let op = preview
+        .subject
+        .operation()
+        .expect("an operation preview")
+        .clone();
+    (op, preview.job)
+}
+
+/// Answer the preview's job with a stash plan for `op`.
+fn planned(state: &mut AppState, op: &Operation) {
+    let (_, job) = previewed(state);
+    let plan = graft_ops::preview::PreviewPlan {
+        description: op.describe(),
+        commands: vec!["git stash apply --index stash@{1}".to_owned()],
+        ghosts: Vec::new(),
+        ref_moves: Vec::new(),
+        head: None,
+        worktree: graft_ops::preview::WorktreeEffect::Updated {
+            paths: vec![PathBuf::from("f0.rs")],
+            more: false,
+        },
+        conflicts: graft_ops::preview::ConflictForecast::Clean,
+        undo: graft_ops::preview::UndoNote::Undoable,
+        against: Vec::new(),
+        set_aside: None,
+        put_back: None,
+    };
+    super::super::preview::preview_produced(
+        state,
+        job,
+        Ok(Arc::new(super::super::preview::Planned {
+            plan,
+            anchors: Vec::new(),
+        })),
+    );
+}
+
+#[test]
+fn enter_opens_the_apply_preview_and_writes_nothing() {
+    let mut state = open_on_screen();
     state.stash.selected = 1;
-    let (_, commands) = press(&mut state, KeyCode::Enter);
+    let commands = key(&mut state, KeyCode::Enter);
+    let (op, job) = previewed(&state);
+    assert_eq!(
+        op,
+        Operation::StashApply {
+            index: 1,
+            commit: oid(11),
+        }
+    );
+    assert!(
+        matches!(commands.as_slice(), [Command::PlanPreview(id, _)] if *id == job),
+        "a plan, no write: {commands:?}"
+    );
+    assert!(state.operating.is_none());
+    assert!(state.stash.shown, "the list stays under the box");
+}
+
+#[test]
+fn p_opens_the_pop_preview() {
+    let mut state = open_on_screen();
+    let commands = key(&mut state, KeyCode::Char('p'));
+    let (op, _) = previewed(&state);
+    assert_eq!(
+        op,
+        Operation::StashPop {
+            index: 0,
+            commit: oid(10),
+        }
+    );
+    assert!(matches!(commands.as_slice(), [Command::PlanPreview(..)]));
+    // `p` again is not a confirm (no `p p`).
+    planned(&mut state, &op);
+    let commands = key(&mut state, KeyCode::Char('p'));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_some());
+}
+
+#[test]
+fn enter_twice_writes_nothing() {
+    let mut state = open_on_screen();
+    key(&mut state, KeyCode::Enter);
+    let (op, _) = previewed(&state);
+    planned(&mut state, &op);
+    let commands = key(&mut state, KeyCode::Enter);
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::Operate(..))),
+        "⏎ on Cancel wrote: {commands:?}"
+    );
+    assert!(state.preview.is_none(), "Cancel closed the box");
+    assert!(state.operating.is_none());
+}
+
+#[test]
+fn esc_from_the_preview_returns_to_the_same_stash() {
+    let mut state = open_on_screen();
+    key(&mut state, KeyCode::Char('j'));
+    key(&mut state, KeyCode::Enter);
+    let (op, _) = previewed(&state);
+    planned(&mut state, &op);
+    let commands = key(&mut state, KeyCode::Escape);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+    assert!(state.stash.shown, "back on the list");
+    assert_eq!(state.stash.selected, 1, "on the same stash");
+}
+
+#[test]
+fn y_in_the_preview_applies() {
+    let mut state = open_on_screen();
+    state.stash.selected = 1;
+    key(&mut state, KeyCode::Enter);
+    let (op, _) = previewed(&state);
+    planned(&mut state, &op);
+    let commands = key(&mut state, KeyCode::Char('y'));
     let [Command::Operate(_, operation)] = commands.as_slice() else {
         panic!("one operate, got {commands:?}");
     };
@@ -120,12 +258,23 @@ fn enter_applies_the_selected_stash_with_its_own_commit() {
             commit: oid(11),
         }
     );
+    assert!(state.preview.is_none());
+    // As `⏎` launched it before the preview: a write `Esc` may stop.
+    let running = state.remote.running.as_ref().expect("a running write");
+    assert!(
+        matches!(running.stoppable, super::super::remote::Stoppable::Yes),
+        "{:?}",
+        running.stoppable
+    );
 }
 
 #[test]
-fn p_pops_it() {
-    let mut state = open_with_two();
-    let (_, commands) = press(&mut state, KeyCode::Char('p'));
+fn y_in_the_preview_pops() {
+    let mut state = open_on_screen();
+    key(&mut state, KeyCode::Char('p'));
+    let (op, _) = previewed(&state);
+    planned(&mut state, &op);
+    let commands = key(&mut state, KeyCode::Char('y'));
     let [Command::Operate(_, operation)] = commands.as_slice() else {
         panic!("one operate, got {commands:?}");
     };

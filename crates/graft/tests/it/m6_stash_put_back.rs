@@ -3,8 +3,9 @@
 //! against the design note's journeys (`menu-checkout` 3, `menu-cherry-pick`
 //! 4; `docs/design-notes/m6-stash-put-back.md` "Journeys").
 //!
-//! m6-conflicts/72b: a stash pop or apply from `S` that clashes — `S p o ⏎`
-//! and `S ⏎ o ⏎` at 4 keys, and `esc u` putting a clashed pop back.
+//! m6-conflicts/72b: a stash pop or apply from `S` that clashes — `S p y o ⏎`
+//! and `S ⏎ y o ⏎` at 5 keys since the stash preview (m6-conflicts/86), and
+//! `esc u` putting a clashed pop back.
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"
@@ -64,10 +65,11 @@ pub(crate) fn cursor_to(app: &App, mut state: AppState, target: &str) -> AppStat
 pub const POP_TO_DONE: &str = "stash-pop-clash-to-done";
 pub const APPLY_TO_DONE: &str = "stash-apply-clash-to-done";
 pub const PUT_BACK: &str = "stash-clash-put-back";
-pub const JOURNEYS: [&str; 8] = [
+pub const JOURNEYS: [&str; 9] = [
     POP_TO_DONE,
     APPLY_TO_DONE,
     PUT_BACK,
+    stash_preview::STASH_LOOK,
     set_aside::PULL_REBASE,
     set_aside::REJECTED_PUSH,
     set_aside::SWITCH,
@@ -83,6 +85,9 @@ mod kill;
 
 /// m6-conflicts/85 B: a take, then `esc`, shows the file without markers.
 mod pop;
+
+/// m6-conflicts/86: the stash preview, looked at and left, and its frames.
+mod stash_preview;
 
 /// m6-conflicts/75: the menu and the set-aside preview inside the frame
 /// budget. Heavy tier.
@@ -406,12 +411,12 @@ fn done_shot(state: &AppState) {
     );
 }
 
-/// `stash-pop-clash-to-done`: `S p` lands in the resolver on the clashed
-/// file; `o ⏎` takes yours and finishes, and the stash is dropped. Keys
+/// `stash-pop-clash-to-done`: `S p y` (the pop preview, then `y`,
+/// m6-conflicts/86) lands in the resolver on the clashed file; `o ⏎` takes yours and finishes, and the stash is dropped. Keys
 /// within the note's row. Then `u` brings the stash back, the status line
 /// naming the drop by position. Writes the landing and done captures.
 #[test]
-fn a_stash_pop_that_clashes_is_four_keys() {
+fn a_stash_pop_that_clashes_is_five_keys() {
     use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, quiet, stash_list, unmerged};
     let scratch = a_stash_that_clashes();
     let path = scratch.path();
@@ -429,11 +434,13 @@ fn a_stash_pop_that_clashes_is_four_keys() {
         !matches!(state.stash.entries, Loading::Idle | Loading::Pending(_))
     });
     let state = keys.press(&state, KeyCode::Char('p'));
+    let state = planned(&app, state);
+    let state = keys.press(&state, KeyCode::Char('y'));
     let state = crate::captures::settled_frame(&app, landed(&app, state));
     assert_eq!(
         state.resolver.as_ref().map(|open| open.path.as_path()),
         Some(Path::new(NOTES)),
-        "`S p` lands in the resolver on the clashed file"
+        "`S p y` lands in the resolver on the clashed file"
     );
     landing_shots(&state);
 
@@ -475,10 +482,10 @@ fn a_stash_pop_that_clashes_is_four_keys() {
     app.close();
 }
 
-/// `stash-apply-clash-to-done`: `S ⏎ o ⏎` — the apply clashes, yours taken,
+/// `stash-apply-clash-to-done`: `S ⏎ y o ⏎` — the apply clashes, yours taken,
 /// every file done, and the stash is kept. Keys within the note's row.
 #[test]
-fn a_stash_apply_that_clashes_is_four_keys() {
+fn a_stash_apply_that_clashes_is_five_keys() {
     use crate::stash_clash::{NOTES, a_stash_that_clashes, landed, quiet, stash_list, unmerged};
     let scratch = a_stash_that_clashes();
     let path = scratch.path();
@@ -496,6 +503,8 @@ fn a_stash_apply_that_clashes_is_four_keys() {
         !matches!(state.stash.entries, Loading::Idle | Loading::Pending(_))
     });
     let state = keys.press(&state, KeyCode::Enter);
+    let state = planned(&app, state);
+    let state = keys.press(&state, KeyCode::Char('y'));
     let state = landed(&app, state);
     let state = keys.press(&state, KeyCode::Char('o'));
     let state = crate::resolver::settled(&app, state);
@@ -524,7 +533,7 @@ fn a_stash_apply_that_clashes_is_four_keys() {
     app.close();
 }
 
-/// `stash-clash-put-back`: `S p`, then `esc u` (+ `y` if the drift box
+/// `stash-clash-put-back`: `S p y`, then `esc u` (+ `y` if the drift box
 /// asks) — the tree as it was before the pop, nothing unmerged, the stash
 /// listed. Keys after the clash within the note's row (+1 for the box).
 #[test]
@@ -535,7 +544,7 @@ fn esc_u_puts_a_clashed_pop_back() {
     let stash_before = stash_list(path);
     let (app, state) = App::open(path);
     let state = crate::stash_clash::overlay_open(&app, state);
-    let state = app.key(&state, KeyCode::Char('p'));
+    let state = crate::stash_clash::put_back(&app, &state, KeyCode::Char('p'));
     let state = landed(&app, state);
 
     let mut keys = Keys {
@@ -569,10 +578,10 @@ fn esc_u_puts_a_clashed_pop_back() {
 const LANDING_HEADER: &str = "\
 # m6/stash-clash-landing-<size>.txt: drawn by `view::view` from a real
 # AppState (crates/graft/tests/it/m6_stash_put_back.rs,
-# a_stash_pop_that_clashes_is_four_keys, asserted). Not a pty capture: a
+# a_stash_pop_that_clashes_is_five_keys, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #
-# What right looks like: `S p` on a stash that clashes in notes.md.
+# What right looks like: `S p y` on a stash that clashes in notes.md.
 #  - No `S` overlay; the resolver open on notes.md.
 #  - Panes named `yours · main` and `stashed · stash@{0}`.
 #  - The notice `stash@{0} clashed in 1 file · esc, u puts it all back`.
@@ -582,7 +591,7 @@ const LANDING_HEADER: &str = "\
 const DONE_HEADER: &str = "\
 # m6/stash-clash-done-120x40.txt: 120x40, drawn by `view::view` from a real
 # AppState (crates/graft/tests/it/m6_stash_put_back.rs,
-# a_stash_pop_that_clashes_is_four_keys, asserted). Not a pty capture: a
+# a_stash_pop_that_clashes_is_five_keys, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #
 # What right looks like: after `o ⏎` on the last clashed file.

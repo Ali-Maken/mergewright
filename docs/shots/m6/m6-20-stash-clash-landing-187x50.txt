@@ -1,4 +1,4 @@
-m6 walk capture: m6-20-stash-clash-landing — scenario stash-pop-clash-to-done@landing, keys S p, unicode tier, 187x50
+m6 walk capture: m6-20-stash-clash-landing — scenario stash-pop-clash-to-done@landing, keys S p y, unicode tier, 187x50
 
 FILES · 1 conflicted    │▸ notes.md · 1 conflict · 1 open
                         │stash@{0} clashed in 1 file · esc, u puts it all back
