@@ -3,7 +3,10 @@
 //! [`every_hint`]).
 
 use super::lists::{TAIL, context_list};
-use super::{ConfirmYes, EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, TabWord, WAY_BACK};
+use super::{
+    BACK_TO_BLAME, BLAME, ConfirmYes, EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, TabWord,
+    WAY_BACK,
+};
 use crate::conflict_resolver::SideRoles;
 
 /// **Every context the footer can be put in**, every field combination, each
@@ -66,7 +69,52 @@ pub fn every_context() -> Vec<HintContext> {
     all.extend(rows);
     let live: Vec<HintContext> = all.iter().flat_map(operation_live_form).collect();
     all.extend(live);
+    all.extend(blame_forms());
     all
+}
+
+/// The blame place's four flag pairs, and the way back to it led on one
+/// bar of each kind the graph or the pane draws while the trail waits
+/// (m7-power-tools/20). One of each is enough: `BackToBlame` adds a lead
+/// and takes nothing away, and every inner bar is swept on its own.
+fn blame_forms() -> Vec<HintContext> {
+    let mut forms: Vec<HintContext> = [false, true]
+        .into_iter()
+        .flat_map(|finding| {
+            [false, true]
+                .into_iter()
+                .map(move |ignore_file| HintContext::Blame {
+                    finding,
+                    ignore_file,
+                })
+        })
+        .collect();
+    let under = [
+        HintContext::WorkingTreeRow,
+        HintContext::PlainRow,
+        HintContext::BranchRow { current: false },
+        HintContext::PaneFocused {
+            row: Box::new(HintContext::PlainRow),
+            opens: false,
+            blamable: true,
+        },
+        HintContext::PaneFocused {
+            row: Box::new(HintContext::PlainRow),
+            opens: true,
+            blamable: false,
+        },
+        HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+            tab: TabWord::Graph,
+        },
+    ];
+    forms.extend(
+        under
+            .into_iter()
+            .map(|inner| HintContext::BackToBlame(Box::new(inner))),
+    );
+    forms
 }
 
 /// Every [`HintContext::Banner`] form a live operation can put it in: a
@@ -196,6 +244,8 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Credential
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
+        | HintContext::Blame { .. }
+        | HintContext::BackToBlame(_)
         | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
@@ -282,6 +332,8 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Finish { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
+        | HintContext::Blame { .. }
+        | HintContext::BackToBlame(_)
         | HintContext::OperationLive { .. } => None,
     }
 }
@@ -305,11 +357,17 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
 fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Marked(_) => {
-            [true, false]
+            // Not `opens` with `blamable` (the file list focused on a file):
+            // there the bar draws `space fold`, and `graft`'s `files_key`
+            // takes `space` to fold a directory and does nothing on a file
+            // — a dead hint older than `B` (m7-power-tools/20e NOTES), so
+            // the form cannot be swept until that is settled.
+            [(true, false), (false, true), (false, false)]
                 .into_iter()
-                .map(|opens| HintContext::PaneFocused {
+                .map(|(opens, blamable)| HintContext::PaneFocused {
                     row: Box::new(context.clone()),
                     opens,
+                    blamable,
                 })
                 .collect()
         }
@@ -328,6 +386,8 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         | HintContext::PaneFocused { .. }
+        | HintContext::Blame { .. }
+        | HintContext::BackToBlame(_)
         | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
@@ -346,6 +406,8 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(EXPLAIN);
     all.push(RESIZE);
     all.push(WAY_BACK);
+    all.push(BLAME);
+    all.push(BACK_TO_BLAME);
     let mut seen = Vec::new();
     all.retain(|hint| {
         let fresh = !seen.contains(hint);

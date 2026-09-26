@@ -2019,7 +2019,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 73;
+const COVERAGE_SLOTS: usize = 79;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2052,8 +2052,25 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::Stash => 12,
         HintContext::Dragging => 13,
         HintContext::Marked(_) => 14,
-        HintContext::PaneFocused { opens: false, .. } => 15,
-        HintContext::PaneFocused { opens: true, .. } => 16,
+        HintContext::PaneFocused {
+            opens: false,
+            blamable: false,
+            ..
+        } => 15,
+        HintContext::PaneFocused {
+            opens: true,
+            blamable: false,
+            ..
+        } => 16,
+        // m7-power-tools/20: `B blame` on the pane (73; the diff focused —
+        // `catalogue::pane_focused_form` says why not the file list), the
+        // blame place's four flag pairs (74–77), the way back to it (78).
+        HintContext::PaneFocused { blamable: true, .. } => 73,
+        HintContext::Blame {
+            finding,
+            ignore_file,
+        } => 74 + 2 * usize::from(*finding) + usize::from(*ignore_file),
+        HintContext::BackToBlame(_) => 78,
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,

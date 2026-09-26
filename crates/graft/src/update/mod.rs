@@ -37,6 +37,7 @@ pub mod map;
 mod mouse;
 pub mod name_prompt;
 pub mod operate;
+pub mod place;
 mod prelude;
 pub mod preview;
 pub mod radar;
@@ -135,6 +136,8 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     if next.commit_graph_line().is_some() != state.commit_graph_line().is_some() {
         show_rows(&mut next, &mut commands);
     }
+    // Any write ends the blame trail: the lines it points at may move.
+    place::after_commands(&mut next, &mut commands);
     keep_unseen_failure(state, &mut next);
     (next, commands)
 }
@@ -234,6 +237,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::ContainedIn(..)
             | Product::EvilProbe(..),
         ) => detail::detail_event(next, commands, event),
+        AppEvent::Produced(id, Product::Blame(answer)) => {
+            place::blame_arrived(next, commands, id, &answer);
+        }
         event @ AppEvent::Produced(
             _,
             Product::RadarContext(_) | Product::ForcePushProbe(..) | Product::DuplicatesProbe(_),
@@ -470,6 +476,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::ReadWorkingTree
         | Task::ListFiles { .. }
         | Task::FileDiff { .. }
+        | Task::Blame
         | Task::ContainedIn { .. }
         | Task::RadarContext { .. }
         | Task::EvilProbe { .. }
@@ -763,6 +770,7 @@ fn took_fact(
         | Product::CommitGraphDeclined(_)
         | Product::Files(_)
         | Product::FileDiff(..)
+        | Product::Blame(_)
         | Product::ContainedIn(..)
         | Product::RadarContext(_)
         | Product::EvilProbe(..)

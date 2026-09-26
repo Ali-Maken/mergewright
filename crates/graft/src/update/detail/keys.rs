@@ -56,6 +56,22 @@ pub(crate) fn enter_opens(detail: &DetailState) -> bool {
     !(detail.shown && detail.focus == DetailFocus::Diff)
 }
 
+/// The pane's two blame rungs (m7-power-tools/20). `Esc` with a trail
+/// hidden under the focused pane (`⏎` landed here) goes back to it before
+/// it closes the pane. `B` blames at the line he is on — unless the
+/// commit-graph offer can be acted on, whose `B` it is (keymap §2.1;
+/// `place::b_key` asks).
+fn place_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let pane_focused = next.detail.shown && next.detail.focus != DetailFocus::Graph;
+    match key.code {
+        KeyCode::Escape if pane_focused => crate::update::place::show_again(next),
+        KeyCode::Char('B') if !key.modifiers.control && !key.modifiers.alt => {
+            crate::update::place::b_key(next, commands)
+        }
+        _ => false,
+    }
+}
+
 /// The pane's keys, answered before the graph's. `true` when the key was the pane's.
 pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     let plain = key.modifiers == Modifiers::NONE;
@@ -72,7 +88,7 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
         }
         return true;
     }
-    if escape_priority(next, key) {
+    if escape_priority(next, key) || place_key(next, commands, key) {
         return true;
     }
     if changes_pane_write_key(next, commands, key, plain) {

@@ -888,7 +888,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
-        | HintContext::Finish { .. } => None,
+        | HintContext::Finish { .. }
+        | HintContext::Blame { .. } => None,
+        HintContext::BackToBlame(inner) => doorway_of(inner),
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
         // still leads to everything, the dropped `⏎` included. So does the

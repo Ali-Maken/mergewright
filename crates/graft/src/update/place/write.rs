@@ -1,0 +1,64 @@
+//! Which commands change the repository's files or history: any of them
+//! ends the trail, because the lines it points at may have moved.
+
+use crate::update::events::Command;
+
+/// True for a command that launches an operation, or hands the terminal to
+/// a tool that edits files. Exhaustive on purpose, no `_` arm: a new
+/// `Command` stops this compiling until it is classified.
+#[must_use]
+pub fn is_write(command: &Command) -> bool {
+    match command {
+        Command::Operate(..)
+        | Command::Resume(..)
+        | Command::RevertTo(..)
+        | Command::Undo(..)
+        | Command::Redo(..)
+        | Command::TakeSide(..)
+        | Command::OpenExternalEditor { .. }
+        | Command::OpenConflictEditor { .. }
+        | Command::OpenMergetool { .. } => true,
+        // Reads, the loop's own business, and answers to a write already
+        // running. `WriteCommitGraph` writes git's lookup cache, never a
+        // file's lines; `EditCommitMessage` writes Graft's own message file
+        // and the commit it feeds is an `Operate`.
+        Command::OpenRepository
+        | Command::CheckSystemGit
+        | Command::ReadHistory(..)
+        | Command::ReadRefs(..)
+        | Command::ReadWorkingTree(..)
+        | Command::PromoteHistory
+        | Command::ShowRows(..)
+        | Command::CancelJob(..)
+        | Command::AnswerCredential(..)
+        | Command::CancelCredential(..)
+        | Command::Search(..)
+        | Command::CopyToClipboard(..)
+        | Command::SaveLayout(..)
+        | Command::WriteCommitGraph
+        | Command::DeclineCommitGraph
+        | Command::ListFiles(..)
+        | Command::ReadFileDiff(..)
+        | Command::ContainedIn(..)
+        | Command::RadarContext(..)
+        | Command::EvilProbe(..)
+        | Command::ForcePushProbe(..)
+        | Command::DuplicatesProbe(..)
+        | Command::BuildMap(..)
+        | Command::PlanPreview(..)
+        | Command::ReadJournal(..)
+        | Command::ReadStashes(..)
+        | Command::ReadIndexState { .. }
+        | Command::ReadRemotes(..)
+        | Command::ReadCommitTemplate(..)
+        | Command::ReadHeadMessage(..)
+        | Command::EditCommitMessage { .. }
+        | Command::Suspend
+        | Command::OpenConflict(..)
+        | Command::LoadBase(..)
+        | Command::ReadConflictSet(..)
+        | Command::ReadFinishSummary(..)
+        | Command::ReadFinishDiff(..)
+        | Command::ReadBlame(..) => false,
+    }
+}

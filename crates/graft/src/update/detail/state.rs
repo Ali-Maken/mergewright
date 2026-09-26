@@ -128,7 +128,12 @@ pub fn toggle_compare(
     oid: Oid,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
-    match state.compare_base {
+    // A compare pinned while a blame trail waits under the graph is a new
+    // task: the trail ends and the base it set aside is dropped, since he
+    // just chose another (20's pinned-base ruling).
+    let mut commands = Vec::new();
+    let left_blame = crate::update::place::end_for_compare(state, &mut commands);
+    commands.extend(match state.compare_base {
         None => {
             state.compare_base = Some(CompareBase { oid, row });
             Vec::new()
@@ -144,7 +149,14 @@ pub fn toggle_compare(
             },
             next_id,
         ),
+    });
+    if left_blame && let Some(base) = state.compare_base {
+        state.status = crate::update::state::Status::Waiting(format!(
+            "left blame for compare base {}",
+            crate::update::place::short(base.oid)
+        ));
     }
+    commands
 }
 
 /// A value a job is fetching.

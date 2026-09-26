@@ -68,6 +68,61 @@ pub(super) fn draw_stash(
     None
 }
 
+/// The blame place over the whole frame (m7-power-tools/20; keymap §2.1:
+/// a modal pane), and its bar on the bottom row: the `/` prompt while it is
+/// open, else a problem or a notice, else the place's keys
+/// ([`draw_status_or_hints`], the ladder every bar uses).
+///
+/// Never returns a pixel rectangle: the place covers the graph.
+pub(super) fn draw_place(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
+    let blame = state.trail.on_screen()?;
+    // The frame less its bottom row, the bar: `update::place::keys`
+    // counts rows from the same split for a click.
+    let body = Rect {
+        height: area.height.saturating_sub(1),
+        ..area
+    };
+    let path = graft_term::sanitize::sanitize_path(&blame.path);
+    blame.view(path.as_str(), state.harness.clock.now_seconds(), |view| {
+        graft_ui::blame::draw_blame(frame, body, view);
+    });
+    if area.height == 0 {
+        return None;
+    }
+    let bar = (area.x, area.bottom() - 1, area.width);
+    if let Some(typed) = &blame.find_prompt {
+        let text = format!(" /{}", graft_term::sanitize::sanitize_line(typed).as_str());
+        frame.buffer_mut().set_string(
+            bar.0,
+            bar.1,
+            graft_ui::fit::fit(&text, usize::from(bar.2)),
+            Style::default().fg(color(session.theme.token(Token::Text))),
+        );
+        return None;
+    }
+    let context = crate::view::rows::place_context(state)?;
+    draw_status_or_hints(
+        frame,
+        state,
+        tier_in_force(session, state),
+        bar,
+        &session.theme,
+        || {
+            graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+                &context,
+                graft_ui::graph_screen::Divider::Hidden,
+                area.width,
+            ))
+        },
+    );
+    None
+}
+
 /// The Map view in the graph's area, with the context menu over it.
 /// Returns the rectangle the detail pane's pixels go in.
 pub(super) fn draw_map(

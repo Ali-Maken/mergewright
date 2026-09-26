@@ -346,7 +346,9 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
-        | HintContext::Finish { .. } => (drawable(context, divider), None),
+        | HintContext::Finish { .. }
+        // The blame place is modal too (keymap §2.1): no doorway.
+        | HintContext::Blame { .. } => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -360,13 +362,28 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // a row context is still answered with the pane up — the graph's
         // own keys fall through to it, and the pane answers the motions
         // itself (m5/31).
-        HintContext::PaneFocused { row, opens } => {
+        HintContext::PaneFocused {
+            row,
+            opens,
+            blamable,
+        } => {
             let (list, trailer) = whole_bar(row, divider);
-            let list = list
+            let mut list: Vec<Hint> = list
                 .into_iter()
                 .filter(|hint| !GRAPH_ONLY.contains(&hint.key) && (*opens || hint.key != ENTER))
                 .collect();
+            if *blamable {
+                // After `⏎` when it is there, else first: the pane's own key.
+                let at = usize::from(list.first().is_some_and(|hint| hint.key == ENTER));
+                list.insert(at, BLAME);
+            }
             (list, trailer)
+        }
+        HintContext::BackToBlame(inner) => {
+            let (list, trailer) = whole_bar(inner, divider);
+            let mut led = vec![BACK_TO_BLAME];
+            led.extend(list);
+            (led, trailer)
         }
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
@@ -393,6 +410,13 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         }
     }
 }
+
+/// `B blame`: the pane's line blamed ([`HintContext::PaneFocused`]).
+const BLAME: Hint = hint("B", "blame");
+
+/// `esc back to blame`: the way back to a hidden blame trail
+/// ([`HintContext::BackToBlame`]).
+const BACK_TO_BLAME: Hint = hint("esc", "back to blame");
 
 /// `⇥ banner`: the way back to a live operation's banner
 /// ([`HintContext::OperationLive`]).
@@ -448,6 +472,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::PaneOverOverlay { .. }
                 | HintContext::Resolver { .. }
                 | HintContext::Finish { .. }
+                | HintContext::Blame { .. }
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the

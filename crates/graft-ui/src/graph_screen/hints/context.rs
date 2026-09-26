@@ -197,7 +197,24 @@ pub enum HintContext {
         /// `⏎` still opens something: the files list has focus, so it opens
         /// the diff. `false` with the diff already focused.
         opens: bool,
+        /// `B` blames the line under the cursor: a file row, a heading or
+        /// a diff line, and the commit-graph offer not up (whose `B` it
+        /// is while it can be acted on, keymap §2.1). Adds `B blame`
+        /// after `⏎` (m7-power-tools/20).
+        blamable: bool,
     },
+    /// **A blame place is on screen** (m7-power-tools/20; design note pass
+    /// 2b B1): modal, its own bar, no doorway.
+    Blame {
+        /// A find is active: `n N match`.
+        finding: bool,
+        /// The repo has `.git-blame-ignore-revs`: `i ignore list`.
+        ignore_file: bool,
+    },
+    /// **A blame trail waits under the graph** (`⏎` landed on a commit):
+    /// the inner context's own bar, led by `esc back to blame` so the way
+    /// back is the last thing the width drops (m7-power-tools/20).
+    BackToBlame(Box<HintContext>),
     /// **An operation is live** over a graph row: the row's own list with
     /// its `c` said the way it acts now ([`LiveC`], m6-conflicts/52), and
     /// `⇥ banner` leading while the banner is one `⇥` away (m6-conflicts/12,

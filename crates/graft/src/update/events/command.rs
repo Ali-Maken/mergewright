@@ -258,6 +258,9 @@ pub enum Command {
     /// than [`Command::ReadFileDiff`]: that one carries the detail pane's
     /// `DiffKey`, and its answer always goes to the detail pane.
     ReadFinishDiff(JobId, std::path::PathBuf),
+    /// Blame one file, under an id `update` chose (a blame place,
+    /// m7-power-tools/20). Cancellable: `Esc` while it reads stops git.
+    ReadBlame(JobId, Box<crate::update::place::BlameRequest>),
 }
 
 /// One block's take, as the resolver asks for it.

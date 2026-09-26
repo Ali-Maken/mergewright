@@ -39,6 +39,12 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     if finish {
         return;
     }
+    // A blame place on screen: modal, every mouse event is its own, and
+    // none reaches the graph behind it (m7-power-tools/20).
+    if super::place::owns_keys(next) {
+        commands.extend(super::place::place_mouse(next, mouse));
+        return;
+    }
     let mut local_jobs = next.local_jobs;
     let resolver =
         super::resolver::resolver_mouse(next, commands, mouse, &mut || local_jobs.next_id());

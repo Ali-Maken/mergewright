@@ -200,6 +200,8 @@ pub enum Task {
     /// Read one staged file's diff for the finish summary's `space`
     /// (m6-conflicts/19).
     ReadFinishDiff,
+    /// Blame one file for a blame place (m7-power-tools/20).
+    Blame,
 }
 
 /// What a job brought back.
@@ -255,6 +257,8 @@ pub enum Product {
             String,
         >,
     ),
+    /// A blame place's blame, or why none (m7-power-tools/20).
+    Blame(Result<std::sync::Arc<super::place::BlameAnswer>, super::place::BlameFailure>),
     /// The refs containing a commit, or why not.
     ContainedIn(
         graft_core::oid::Oid,

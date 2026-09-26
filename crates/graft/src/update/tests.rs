@@ -1200,6 +1200,7 @@ fn every_field_spelled_out() -> AppState {
         head_landing: crate::update::HeadLanding::default(),
         lands_on_head: None,
         line_landing: None,
+        trail: super::place::Trail::default(),
         live_landing_owed: false,
         undo_landing_owed: false,
         status_read: None,
@@ -3966,13 +3967,26 @@ fn every_swept_state_is_the_context_it_claims() {
 /// What `view::rows::footer_context` answers for [`state_for`]'s state,
 /// with no drawn rows to read a badge or a marker from, or `None` where the
 /// graph's footer never classifies the context at all.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one arm per `HintContext` variant, exhaustive on purpose: it grows with the enum"
+)]
 fn classified_form(context: &HintContext) -> Option<HintContext> {
     match context {
         HintContext::BranchRow { .. } | HintContext::Marked(_) => Some(HintContext::PlainRow),
-        HintContext::PaneFocused { opens, .. } => Some(HintContext::PaneFocused {
+        // `B` answers on a file (`blamable`), not on `commit_pane`'s `src/`
+        // row (`screen_for`).
+        HintContext::PaneFocused {
+            opens, blamable, ..
+        } => Some(HintContext::PaneFocused {
             row: Box::new(HintContext::PlainRow),
             opens: *opens,
+            blamable: *blamable,
         }),
+        // The inner bar, led by the way back.
+        HintContext::BackToBlame(inner) => {
+            classified_form(inner).map(|inner| HintContext::BackToBlame(Box::new(inner)))
+        }
         // The resolver is an overlay now, and `view::rows::overlay_context`
         // answers exactly this form for it. `base`/`restart` are both
         // `true` (m6-conflicts/05): `B`/`d` act the moment they are
@@ -4051,7 +4065,9 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
         | HintContext::NamePrompt { .. }
-        | HintContext::Credential => Some(context.clone()),
+        | HintContext::Credential
+        // The place's own bar (`view::rows::place_context`).
+        | HintContext::Blame { .. } => Some(context.clone()),
     }
 }
 
@@ -4188,6 +4204,7 @@ fn presses_for(name: &str) -> Vec<Press> {
         "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],
         "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
         "←/→" => vec![plain(KeyCode::Left), plain(KeyCode::Right)],
+        "n N" => vec![plain(KeyCode::Char('n')), plain(KeyCode::Char('N'))],
         one => {
             let mut letters = one.chars();
             match (letters.next(), letters.next()) {
@@ -4336,6 +4353,10 @@ fn changes_pane_screen(
 /// three do not swallow the same keys — the Map view claims `p`, `d` and
 /// `s`, which the stash list answers. A sweep that picked one of them would
 /// be as blind to the other two as the whole sweep was to this state.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one arm per `HintContext` variant, exhaustive on purpose: it grows with the enum"
+)]
 fn screen_for(context: &HintContext) -> Vec<AppState> {
     let walk = JobId::new(701);
     match context {
@@ -4357,9 +4378,10 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         | HintContext::Marked(_)
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
         HintContext::Resolver { .. } => vec![resolver_for(walk, context)],
-        // The same row, with the pane open on it and its diff focused —
-        // where `⏎` has nothing left to open.
-        HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],
+        // The focused pane, the blame place, a trail under a screen.
+        HintContext::PaneFocused { .. }
+        | HintContext::Blame { .. }
+        | HintContext::BackToBlame(_) => blame_screens(walk, context),
         // `merge` is `!skippable` in every form `every_context` makes, the
         // kind `stopped_operation` already picks from `skippable`.
         HintContext::Banner {
@@ -4422,6 +4444,44 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::Finish { focus, expandable } => {
             vec![finish_screen_for(walk, *focus, *expandable)]
         }
+    }
+}
+
+/// [`screen_for`]'s arms that `B` changed (m7-power-tools/20): the focused
+/// pane, the place, and any screen with a trail waiting under it.
+fn blame_screens(walk: JobId, context: &HintContext) -> Vec<AppState> {
+    match context {
+        // The same row, with the pane open on it and its diff focused —
+        // where `⏎` has nothing left to open. Blamable: the files cursor on
+        // a file, not on the `src/` row.
+        HintContext::PaneFocused {
+            opens, blamable, ..
+        } => {
+            let mut state = commit_pane(walk, *opens);
+            if *blamable {
+                super::place::tests::on_a_file(&mut state);
+            }
+            vec![state]
+        }
+        // A place open from the pane on a commit, its blame read: a line
+        // with a parent for `^`, a find for `n N`, the ignore file for `i`.
+        HintContext::Blame {
+            finding,
+            ignore_file,
+        } => vec![super::place::tests::place_on_screen(
+            commit_pane(walk, false),
+            *finding,
+            *ignore_file,
+        )],
+        // The inner screen with a trail waiting under it.
+        HintContext::BackToBlame(inner) => screen_for(inner)
+            .into_iter()
+            .map(|mut state| {
+                super::place::tests::hide_a_trail(&mut state);
+                state
+            })
+            .collect(),
+        other => screen_for(other),
     }
 }
 
@@ -4608,7 +4668,7 @@ fn two_branch_map() -> crate::map::MapData {
 /// diff in it, focused where `opens` says: `⏎` opens the diff from the
 /// files list, and has nothing left to open once the diff has it
 /// (`detail::keys::enter_opens`).
-fn commit_pane(walk: JobId, opens: bool) -> AppState {
+pub(crate) fn commit_pane(walk: JobId, opens: bool) -> AppState {
     let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
     let spec = state.selected_spec().expect("the cursor is on a commit");
     let focus = if opens {
