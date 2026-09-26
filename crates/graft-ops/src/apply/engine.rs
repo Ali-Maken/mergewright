@@ -149,7 +149,7 @@ pub(super) fn prepare(
     facts: &RepoFacts,
 ) -> Result<Option<Engine>, ApplyError> {
     let repo = ctx.repo;
-    let (head, onto, line, rows, messages, invocation) = match op {
+    let (head, onto, line, rows, messages, invocation, index_base) = match op {
         Operation::Rebase(params) => {
             // `r` moves his branch alone: the preview `y` confirms names
             // only his branch, so running the line would move (or refuse
@@ -173,6 +173,7 @@ pub(super) fn prepare(
                 rows,
                 BTreeMap::new(),
                 invocation,
+                None,
             )
         }
         Operation::Rewrite(params) => {
@@ -186,6 +187,7 @@ pub(super) fn prepare(
                 params.todo.clone(),
                 params.messages.clone(),
                 invocation,
+                params.index_base,
             )
         }
         _ => return Ok(None),
@@ -201,7 +203,7 @@ pub(super) fn prepare(
     let todo = git_todo(&rows, &messages, &message_of, &head.name, &followers);
     Ok(Some(Engine {
         dir: saved::dir(repo, &ctx.next_id()),
-        saved: SavedPlan::new(&head.name, &line, onto),
+        saved: SavedPlan::new(&head.name, &line, onto, index_base),
         todo,
         invocation,
         line,

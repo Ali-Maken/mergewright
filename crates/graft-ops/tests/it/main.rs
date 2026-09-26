@@ -2,6 +2,7 @@
 
 mod abort_merge;
 mod absorb;
+mod absorb_staged;
 mod chained_backup;
 mod checkout_hook_fails;
 mod conflict_fixtures;

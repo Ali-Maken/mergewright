@@ -110,7 +110,6 @@ fn a_hunk_goes_to_the_commit_that_last_changed_its_lines() {
         vec![(hunk("b.txt", 3..4, 3..4), oid(&repo, "feature~1"))]
     );
     assert_eq!(map.stays, vec![]);
-    assert!(!map.stays_unstaged);
 }
 
 #[test]
@@ -156,7 +155,6 @@ fn a_hunk_over_two_commits_stays() {
         map.stays,
         vec![(hunk("a.txt", 4..6, 4..6), StaysWhy::TwoCommitsChangedIt)]
     );
-    assert!(map.stays_unstaged, "a modified file's staging is lost");
 }
 
 #[test]
@@ -185,7 +183,6 @@ fn a_new_file_stays() {
         map.stays,
         vec![(hunk("new.txt", 0..0, 1..3), StaysWhy::NewFile)]
     );
-    assert!(!map.stays_unstaged, "a new file comes back staged");
 }
 
 #[test]
@@ -488,7 +485,7 @@ fn absorb_agrees_with_the_trees(repo: &TempRepo, unsaved: &[(&str, &[u8])]) -> A
     assert_eq!(subjects(repo), before.subjects, "no commit added or lost");
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/feature");
     head_is_old_head_plus_placed(repo, &before, &map);
-    index_and_worktree_hold_the_rest(repo, &before, &map, unsaved);
+    index_and_worktree_hold_the_rest(repo, &before, unsaved);
     each_target_carries_its_hunks(repo, &before, &map);
     map
 }
@@ -508,35 +505,16 @@ fn head_is_old_head_plus_placed(repo: &TempRepo, before: &Before, map: &AbsorbMa
     );
 }
 
-/// The index = the new `HEAD` + the hunks that stay, or — when the map says
-/// the put-back loses the split — only new files staged and the working
-/// tree holding every staged line.
-fn index_and_worktree_hold_the_rest(
-    repo: &TempRepo,
-    before: &Before,
-    map: &AbsorbMap,
-    unsaved: &[(&str, &[u8])],
-) {
-    if map.stays_unstaged {
-        let new_files: Vec<String> = map
-            .stays
-            .iter()
-            .filter(|(_, why)| *why == StaysWhy::NewFile)
-            .map(|(staged, _)| staged.path.to_string_lossy().into_owned())
-            .collect();
-        let staged_now: Vec<String> = repo
-            .git(&["diff", "--cached", "--name-only"])
-            .lines()
-            .map(str::to_owned)
-            .collect();
-        assert_eq!(staged_now, new_files, "only new files come back staged");
-    } else {
-        assert_eq!(
-            repo.git(&["write-tree"]),
-            before.index,
-            "the index kept the split"
-        );
-    }
+/// The index = the new `HEAD` + the hunks that stay — the old index's tree
+/// exactly, since the new `HEAD` is the old one plus the placed hunks (06b:
+/// what stays is still staged) — and the working tree holds every staged
+/// line.
+fn index_and_worktree_hold_the_rest(repo: &TempRepo, before: &Before, unsaved: &[(&str, &[u8])]) {
+    assert_eq!(
+        repo.git(&["write-tree"]),
+        before.index,
+        "the index kept the split"
+    );
     for hunk in &before.printed {
         let path = hunk.path.as_str();
         if unsaved.iter().any(|(edited, _)| *edited == path) {
@@ -634,7 +612,6 @@ fn absorb_agrees_with_the_trees_mixed_placed_and_stays() {
 
     assert_eq!(map.placed.len(), 1);
     assert_eq!(map.stays.len(), 3);
-    assert!(map.stays_unstaged);
 }
 
 #[test]

@@ -292,7 +292,8 @@ impl Invocation {
 /// What a rebase or checkout sets aside around itself
 /// ([`Operation::sets_aside`], ADR-0045 §4): the tracked files changed, and
 /// how many staged entries lose their staging when put back — the put-back
-/// runs without `--index`.
+/// runs without `--index`. Always 0 for absorb, whose put-back goes with the
+/// index (06b, `RewriteParams::index_base`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetAside {
     /// Tracked files with staged or unstaged changes.
@@ -1191,8 +1192,11 @@ impl Operation {
                 .iter()
                 .filter(|entry| entry.is_staged() || entry.is_unstaged())
         };
+        // Absorb puts the edits back with the index (06b): no staging lost.
+        let keeps_index = matches!(self, Self::Rewrite(params) if params.index_base.is_some());
         match changed().count() {
             0 => None,
+            files if keeps_index => Some(SetAside { files, staged: 0 }),
             files => Some(SetAside {
                 files,
                 staged: changed()

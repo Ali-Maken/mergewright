@@ -344,7 +344,14 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
         Operation::BranchFromStash(params) => vec![params.commit],
         // The commit objects written from the index: nothing but the entry
         // holds them until git has melded them in (ADR-0047).
-        Operation::Rewrite(params) => params.made.clone(),
+        // Absorb's index base too: the put-back reads it when the entry
+        // closes, perhaps after a relaunch (06b).
+        Operation::Rewrite(params) => params
+            .made
+            .iter()
+            .copied()
+            .chain(params.index_base)
+            .collect(),
         // A branch put back moves off a tip nothing else may hold.
         Operation::Recover(params) => crate::operation::recover_pins(params),
         Operation::Merge(_)

@@ -147,6 +147,7 @@ fn open(
         line,
         messages,
         made: Vec::new(),
+        index_base: None,
     })
 }
 
@@ -210,13 +211,16 @@ fn amend_into(
         line,
         messages: BTreeMap::new(),
         made: vec![made],
+        index_base: None,
     })
 }
 
 /// Absorb: each staged hunk the map places ([`crate::absorb`]) goes into a
 /// commit object with no ref (parent `HEAD`, one per target), planned as a
-/// fixup right after its target. The rows start at the oldest target.
-/// Hunks that stay are left where they are: the set-aside puts them back.
+/// fixup right after its target — or, when they would empty it, the target
+/// dropped. The rows start at the oldest target. Hunks that stay are left
+/// where they are: the set-aside puts them back with the index, measured
+/// from `index_base` (`HEAD` plus every placed hunk).
 fn absorb(
     repo: &RepoHandle,
     git: &GitVersion,
@@ -242,32 +246,35 @@ fn absorb(
     };
     let rows = range.get(first..).unwrap_or_default();
     refuse_merges(rows)?;
-    let Some(&onto) = rows.first().and_then(|commit| commit.parents.first()) else {
+    let Some(&(mut onto)) = rows.first().and_then(|commit| commit.parents.first()) else {
         return Err(unparsable("absorb's first target has no parent".to_owned()).into());
     };
     let line = line_of(repo, git, &head, default_branch, stop)?;
-    let mut todo = Vec::with_capacity(rows.len() + mapped.placed.len());
-    let mut made = Vec::new();
-    for commit in rows {
-        todo.push(commit.pick());
-        let pieces: Vec<&absorb::Piece> = mapped
-            .placed
-            .iter()
-            .filter(|(_, target)| *target == commit.oid)
-            .map(|(piece, _)| piece)
-            .collect();
-        if pieces.is_empty() {
-            continue;
-        }
-        let subject = format!("fixup! {}", commit.subject);
-        let oid = absorb::commit_pieces(repo, head.oid, &pieces, &subject, stop)?;
-        todo.push(TodoLine {
-            action: TodoAction::Fixup,
-            commit: oid,
-            subject,
-        });
-        made.push(oid);
+    let (mut todo, made) = absorb_rows(repo, head.oid, rows, &mapped, stop)?;
+    // Every row dropped (the staged lines take the top commits out whole):
+    // a todo of drops alone is refused as the branch going back to its
+    // base. The commit below joins as a pick; replayed onto its own parent,
+    // git keeps it as it is.
+    if todo.iter().all(|line| line.action == TodoAction::Drop)
+        && let Some(below) = first.checked_sub(1).and_then(|at| range.get(at))
+    {
+        refuse_merges(std::slice::from_ref(below))?;
+        let Some(&parent) = below.parents.first() else {
+            return Err(
+                unparsable("the commit below absorb's target has no parent".to_owned()).into(),
+            );
+        };
+        todo.insert(0, below.pick());
+        onto = parent;
     }
+    let every_placed: Vec<&absorb::Piece> = mapped.placed.iter().map(|(piece, _)| piece).collect();
+    let index_base = absorb::commit_pieces(
+        repo,
+        head.oid,
+        &every_placed,
+        "graft: absorb's index base",
+        stop,
+    )?;
     Ok(RewriteParams {
         head,
         onto,
@@ -275,7 +282,56 @@ fn absorb(
         line,
         messages: BTreeMap::new(),
         made,
+        index_base: Some(index_base),
     })
+}
+
+/// Absorb's todo over `rows`, and the commit objects its fixups meld in:
+/// each row a pick, followed by a fixup of the pieces placed into it — or,
+/// when they would leave it changing nothing, the row a drop.
+fn absorb_rows(
+    repo: &RepoHandle,
+    head: Oid,
+    rows: &[RangeCommit],
+    mapped: &absorb::Mapped,
+    stop: &dyn Stop,
+) -> Result<(Vec<TodoLine>, Vec<Oid>), RewriteError> {
+    let mut todo = Vec::with_capacity(rows.len() + mapped.placed.len());
+    let mut made = Vec::new();
+    for commit in rows {
+        let pieces: Vec<&absorb::Piece> = mapped
+            .placed
+            .iter()
+            .filter(|(_, target)| *target == commit.oid)
+            .map(|(piece, _)| piece)
+            .collect();
+        if pieces.is_empty() {
+            todo.push(commit.pick());
+            continue;
+        }
+        // Melded in, the pieces would leave the commit changing nothing:
+        // git stops on that fixup, so the commit is dropped instead (review
+        // m7-06 M3). The rows above replay onto the same tree either way.
+        if let Some(&parent) = commit.parents.first()
+            && absorb::empties(repo, commit.oid, parent, &pieces, stop)?
+        {
+            todo.push(TodoLine {
+                action: TodoAction::Drop,
+                ..commit.pick()
+            });
+            continue;
+        }
+        todo.push(commit.pick());
+        let subject = format!("fixup! {}", commit.subject);
+        let oid = absorb::commit_pieces(repo, head, &pieces, &subject, stop)?;
+        todo.push(TodoLine {
+            action: TodoAction::Fixup,
+            commit: oid,
+            subject,
+        });
+        made.push(oid);
+    }
+    Ok((todo, made))
 }
 
 /// The first merge in the range refuses the rewrite: `--rebase-merges` is

@@ -354,10 +354,16 @@ fn closed(
     // A rebase or checkout that set edits aside: step 6, whether the
     // operation went through or git refused it (ADR-0045 §4).
     if let Some(stash) = set_aside::stash_of(&pending.entry) {
+        // Absorb's put-back goes with the index only once it went through.
+        let index_base = match op {
+            Operation::Rewrite(params) if failure.is_none() => params.index_base,
+            _ => None,
+        };
         let ended = set_aside::Ended {
             failure: failure.map(|failed| failed.error),
             done: EntryStatus::Committed,
             unread: cleanup,
+            index_base,
         };
         return set_aside::close(ctx, pending, commands, stash, ended);
     }

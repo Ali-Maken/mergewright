@@ -13,7 +13,9 @@
 //! 5. The operation's own plan.
 //! 6. [`close`] — `stash apply S` without `--index`, the index read
 //!    **whatever the exit code** (ADR-0045 §7), then `S` dropped by id when
-//!    nothing is unmerged; the entry's outcome decided from both.
+//!    nothing is unmerged; the entry's outcome decided from both. Absorb,
+//!    gone through, puts `S` back **with the index** instead (06b,
+//!    `from_index_base`): what stayed is still staged.
 //!
 //! A rebase that stops at 5 leaves the entry `Pending` with `S` in the list;
 //! `resume` runs step 6 when git is done with it, whichever way.
@@ -195,6 +197,10 @@ pub(super) struct Ended {
     /// After-state failures the caller already holds (askpass cleanup, a
     /// backup ref gone while stopped).
     pub(super) unread: Vec<AfterState>,
+    /// Absorb's `RewriteParams::index_base`, when the rewrite went through
+    /// (not failed, not aborted): the put-back goes with the index from it
+    /// ([`put_back`]). `None` for every other operation and ending.
+    pub(super) index_base: Option<Oid>,
 }
 
 /// Step 6 and the outcome line: put `S` back, then close the entry the way
@@ -227,7 +233,7 @@ pub(super) fn close(
     stash: Oid,
     ended: Ended,
 ) -> Result<Applied, ApplyError> {
-    let outcome = match put_back(ctx, stash, &mut commands) {
+    let outcome = match put_back(ctx, stash, ended.index_base, &mut commands) {
         Returned::Back => Outcome::Back,
         Returned::Clashed(paths) => Outcome::Clashed(paths),
         Returned::Kept(kept) => {
@@ -478,13 +484,40 @@ fn where_listed(listed: &Result<Option<usize>, FactsError>, stash: Oid) -> Strin
 }
 
 /// Step 6 itself: `stash apply S`, the status, and the drop.
-fn put_back(ctx: &Context<'_>, stash: Oid, commands: &mut Vec<String>) -> Returned {
+///
+/// With `index_base` — absorb, gone through — and `HEAD`'s tree the one the
+/// plan said it would land on, `S` goes back **with the index**, measured
+/// from the base rather than from the old `HEAD` ([`from_index_base`]).
+/// Otherwise (every other operation; an absorb that failed, was aborted, or
+/// landed elsewhere after a resume) it is ADR-0045 §4's plain `stash apply S`.
+fn put_back(
+    ctx: &Context<'_>,
+    stash: Oid,
+    index_base: Option<Oid>,
+    commands: &mut Vec<String>,
+) -> Returned {
     let never = &();
-    let apply = GitInvocation::new(ctx.repo).args([
-        GitArg::Flag("stash"),
-        GitArg::Flag("apply"),
-        GitArg::Oid(stash),
-    ]);
+    let rebuilt = match index_base {
+        Some(base) => match from_index_base(ctx, stash, base, commands) {
+            Ok(rebuilt) => rebuilt,
+            // Nothing is applied yet: `S` is listed and untouched.
+            Err(error) => return Returned::Kept(Kept::Git { error, back: false }),
+        },
+        None => None,
+    };
+    let apply = match rebuilt {
+        Some(rebuilt) => GitInvocation::new(ctx.repo).args([
+            GitArg::Flag("stash"),
+            GitArg::Flag("apply"),
+            GitArg::Flag("--index"),
+            GitArg::Oid(rebuilt),
+        ]),
+        None => GitInvocation::new(ctx.repo).args([
+            GitArg::Flag("stash"),
+            GitArg::Flag("apply"),
+            GitArg::Oid(stash),
+        ]),
+    };
     commands.push(apply.command_line());
     let applied = apply.run(never);
     // Whatever the exit code: `stash apply` exits 1 on a clash and on a
@@ -510,6 +543,82 @@ fn put_back(ctx: &Context<'_>, stash: Oid, commands: &mut Vec<String>) -> Return
         Err(Dropped::Git(error)) => Returned::Kept(Kept::Git { error, back: true }),
         Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted(why)),
     }
+}
+
+/// `S` rebuilt on `base` for absorb's put-back (06b), or `None` when
+/// `HEAD`'s tree is not `base`'s — the rewrite did not land where it was
+/// planned (a resume skipped a row or resolved a stop differently), and the
+/// base would measure the edits from a tree `HEAD` does not have.
+///
+/// The rebuilt stash has `S`'s working tree, first parent `base`, and as
+/// its index commit `S`'s index tree on `base`. `stash apply --index` then:
+/// - applies `base..index` to the index — exactly the hunks that stayed, the
+///   ones only the index holds and mode changes included (review m7-06 C1);
+/// - merges `S`'s working tree with `base` as the merge base. `HEAD`'s tree
+///   is `base`'s, so the working tree comes back as it was, an edit made on
+///   past a placed hunk included (review m7-06 M6: measured from the old
+///   `HEAD`, both sides changed that line).
+///
+/// Objects only: no ref, index or file is written. `S` itself stays the
+/// listed copy, dropped by id when the put-back is clean.
+fn from_index_base(
+    ctx: &Context<'_>,
+    stash: Oid,
+    base: Oid,
+    commands: &mut Vec<String>,
+) -> Result<Option<Oid>, RunError> {
+    let base_tree = resolve(ctx, &format!("{base}^{{tree}}"))?;
+    if resolve(ctx, "HEAD^{tree}")? != base_tree {
+        return Ok(None);
+    }
+    let index_tree = resolve(ctx, &format!("{stash}^2^{{tree}}"))?;
+    let work_tree = resolve(ctx, &format!("{stash}^{{tree}}"))?;
+    let index = commit_tree(ctx, index_tree, &[base], "graft: index", commands)?;
+    let rebuilt = commit_tree(
+        ctx,
+        work_tree,
+        &[base, index],
+        "graft: your edits, put back with the index",
+        commands,
+    )?;
+    Ok(Some(rebuilt))
+}
+
+/// `git rev-parse --verify <rev>`, as an id.
+fn resolve(ctx: &Context<'_>, rev: &str) -> Result<Oid, RunError> {
+    let output = GitInvocation::new(ctx.repo)
+        .args([
+            GitArg::Flag("rev-parse"),
+            GitArg::Flag("--verify"),
+            GitArg::Word(rev.to_owned()),
+        ])
+        .run(&())?;
+    let printed = String::from_utf8_lossy(&output.stdout);
+    Oid::from_hex(printed.trim())
+        .map_err(|_| RunError::Unparsable(format!("rev-parse {rev} printed {printed:?}")))
+}
+
+/// `git commit-tree <tree> -p … -m <message>`: a commit object, no ref.
+fn commit_tree(
+    ctx: &Context<'_>,
+    tree: Oid,
+    parents: &[Oid],
+    message: &str,
+    commands: &mut Vec<String>,
+) -> Result<Oid, RunError> {
+    let mut args = vec![GitArg::Flag("commit-tree"), GitArg::Oid(tree)];
+    for parent in parents {
+        args.push(GitArg::Flag("-p"));
+        args.push(GitArg::Oid(*parent));
+    }
+    args.push(GitArg::Flag("-m"));
+    args.push(GitArg::Word(message.to_owned()));
+    let git = GitInvocation::new(ctx.repo).args(args);
+    commands.push(git.command_line());
+    let output = git.run(&())?;
+    let printed = String::from_utf8_lossy(&output.stdout);
+    Oid::from_hex(printed.trim())
+        .map_err(|_| RunError::Unparsable(format!("commit-tree printed {printed:?}")))
 }
 
 /// Why the drop did not happen.

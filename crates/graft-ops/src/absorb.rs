@@ -10,7 +10,8 @@
 //!   both must be C's;
 //! - lines blamed only to commits below the range → [`StaysWhy::BeforeYourBranch`];
 //!   to two or more commits → [`StaysWhy::TwoCommitsChangedIt`]; a new file →
-//!   [`StaysWhy::NewFile`]; anything else (a binary or mode-only change, an
+//!   [`StaysWhy::NewFile`]; either side of a staged rename →
+//!   [`StaysWhy::Renamed`]; anything else (a binary or mode-only change, an
 //!   insertion at either end of a file) → [`StaysWhy::NoCommitChangedIt`];
 //! - a hunk placed in C must also apply on C's own tree (the commutation
 //!   check): `git apply --cached --check` on a temporary index. It fails →
@@ -72,6 +73,9 @@ pub enum StaysWhy {
     NewFile,
     /// The lines are older than his branch.
     BeforeYourBranch,
+    /// A staged rename: both sides stay, so no commit loses the old path
+    /// while the new one waits in the index (review m7-06 M2).
+    Renamed,
 }
 
 /// Where each staged hunk goes.
@@ -80,13 +84,12 @@ pub struct AbsorbMap {
     /// Each hunk that is placed, with the commit that gains it, in the
     /// staged diff's order.
     pub placed: Vec<(StagedHunk, Oid)>,
-    /// Each hunk that stays staged, and why.
+    /// Each hunk that stays staged, and why. Every one is still staged
+    /// after the absorb, the ones only the index holds included: the
+    /// set-aside puts the edits back **with the index** onto the rewritten
+    /// `HEAD` (`RewriteParams::index_base`, 06b). ADR-0045's "comes back
+    /// unstaged" does not hold for absorb.
     pub stays: Vec<(StagedHunk, StaysWhy)>,
-    /// The hunks that stay come back **unstaged**: the rewrite sets the
-    /// edits aside and puts them back without `--index` (ADR-0045 §4), so a
-    /// staged change to a file `HEAD` has loses its staging. A new file
-    /// comes back staged. The preview says so.
-    pub stays_unstaged: bool,
 }
 
 /// Where each staged hunk goes, in `base..HEAD` (`head` is `HEAD`'s branch
@@ -114,7 +117,6 @@ pub fn absorb_map(
             .into_iter()
             .map(|(piece, why)| (piece.hunk, why))
             .collect(),
-        stays_unstaged: mapped.stays_unstaged,
     })
 }
 
@@ -129,7 +131,6 @@ pub(crate) struct Piece {
 pub(crate) struct Mapped {
     pub(crate) placed: Vec<(Piece, Oid)>,
     pub(crate) stays: Vec<(Piece, StaysWhy)>,
-    pub(crate) stays_unstaged: bool,
 }
 
 /// [`absorb_map`], with the patches.
@@ -147,6 +148,20 @@ pub(crate) fn mapped(
     let mut stays = Vec::new();
     for diff in staged(repo, head, stop)? {
         let path = path_of(diff.entry.path.clone());
+        if let FileStatus::Renamed { .. } | FileStatus::Copied { .. } = diff.entry.status {
+            // Both sides stay: placing the old side's deletion would take
+            // the file out of history while the new one waits in the index.
+            if let Some(old) = &diff.entry.old_path {
+                stays.push((empty(&path_of(old.clone())), StaysWhy::Renamed));
+            }
+            for hunk in &diff.hunks {
+                stays.push((bare(&path, hunk), StaysWhy::Renamed));
+            }
+            if diff.hunks.is_empty() {
+                stays.push((empty(&path), StaysWhy::Renamed));
+            }
+            continue;
+        }
         if diff.entry.status == FileStatus::Added {
             for hunk in &diff.hunks {
                 stays.push((bare(&path, hunk), StaysWhy::NewFile));
@@ -176,17 +191,14 @@ pub(crate) fn mapped(
             }
         }
     }
-    let stays_unstaged = stays.iter().any(|(_, why)| *why != StaysWhy::NewFile);
-    Ok(Mapped {
-        placed,
-        stays,
-        stays_unstaged,
-    })
+    Ok(Mapped { placed, stays })
 }
 
 /// `HEAD`'s tree plus `pieces`, committed with no ref (parent `head`):
-/// the commit a `fixup` row melds into its target. Built on a temporary
-/// index; the real one is never written.
+/// the commit a `fixup` row melds into its target — and, with every placed
+/// piece, the index base the put-back measures the stays from
+/// (`RewriteParams::index_base`). Built on a temporary index; the real one
+/// is never written.
 pub(crate) fn commit_pieces(
     repo: &RepoHandle,
     head: Oid,
@@ -194,9 +206,60 @@ pub(crate) fn commit_pieces(
     subject: &str,
     stop: &dyn Stop,
 ) -> Result<Oid, FactsError> {
+    let tree = tree_with(repo, head, pieces, stop)?;
+    let commit = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("commit-tree"),
+            GitArg::Oid(tree),
+            GitArg::Flag("-p"),
+            GitArg::Oid(head),
+            GitArg::Flag("-F"),
+            GitArg::Flag("-"),
+        ])
+        .stdin(format!("{subject}\n").into_bytes())
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    parse_oid(String::from_utf8_lossy(&commit.stdout).trim())
+}
+
+/// `target` plus `pieces` is `parent`'s tree: melded in, they would leave
+/// `target` changing nothing, which git's rebase stops on ("would make it
+/// empty"), so the plan drops `target` instead (review m7-06 M3). The
+/// pieces go on `target`'s own tree, as the commutation check put them.
+pub(crate) fn empties(
+    repo: &RepoHandle,
+    target: Oid,
+    parent: Oid,
+    pieces: &[&Piece],
+    stop: &dyn Stop,
+) -> Result<bool, FactsError> {
+    let melded = tree_with(repo, target, pieces, stop)?;
+    Ok(melded == tree_of(repo, parent, stop)?)
+}
+
+/// `commit`'s tree id.
+fn tree_of(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<Oid, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-parse"),
+            GitArg::Flag("--verify"),
+            GitArg::Word(format!("{commit}^{{tree}}")),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    parse_oid(String::from_utf8_lossy(&output.stdout).trim())
+}
+
+/// `commit`'s tree plus `pieces`, written as a tree from a temporary index.
+fn tree_with(
+    repo: &RepoHandle,
+    commit: Oid,
+    pieces: &[&Piece],
+    stop: &dyn Stop,
+) -> Result<Oid, FactsError> {
     let index = TempIndex::fresh(repo.git_dir())?;
     with_index(repo, &index)
-        .args([GitArg::Flag("read-tree"), GitArg::Oid(head)])
+        .args([GitArg::Flag("read-tree"), GitArg::Oid(commit)])
         .run(stop)
         .map_err(FactsError::of_history)?;
     // Bottom of each file first: every patch is placed by `HEAD`'s line
@@ -223,20 +286,7 @@ pub(crate) fn commit_pieces(
         .arg(GitArg::Flag("write-tree"))
         .run(stop)
         .map_err(FactsError::of_history)?;
-    let tree = parse_oid(String::from_utf8_lossy(&tree.stdout).trim())?;
-    let commit = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("commit-tree"),
-            GitArg::Oid(tree),
-            GitArg::Flag("-p"),
-            GitArg::Oid(head),
-            GitArg::Flag("-F"),
-            GitArg::Flag("-"),
-        ])
-        .stdin(format!("{subject}\n").into_bytes())
-        .run(stop)
-        .map_err(FactsError::of_history)?;
-    parse_oid(String::from_utf8_lossy(&commit.stdout).trim())
+    parse_oid(String::from_utf8_lossy(&tree.stdout).trim())
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────
@@ -244,8 +294,9 @@ pub(crate) fn commit_pieces(
 /// The staged diff, `-U0`, one entry per file. Plumbing `diff-index`
 /// rather than porcelain `git diff --cached`: the porcelain refreshes
 /// `.git/index` (a read must not write it) and follows the user's
-/// `diff.*` settings. `--no-renames`: a rename is its deletion and a new
-/// file, so the new side is never placed into a commit that had the old.
+/// `diff.*` settings. `-M`: a rename is read as one, so both its sides stay
+/// ([`StaysWhy::Renamed`]); read as a deletion and a new file, the deletion
+/// was placed and the new file stayed (review m7-06 M2).
 fn staged(repo: &RepoHandle, head: Oid, stop: &dyn Stop) -> Result<Vec<FileDiff>, FactsError> {
     let output = GitInvocation::new(repo)
         .args([
@@ -255,7 +306,7 @@ fn staged(repo: &RepoHandle, head: Oid, stop: &dyn Stop) -> Result<Vec<FileDiff>
             GitArg::Count("-U", 0),
             GitArg::Flag("--no-color"),
             GitArg::Flag("--no-ext-diff"),
-            GitArg::Flag("--no-renames"),
+            GitArg::Flag("-M"),
             GitArg::Oid(head),
         ])
         .run(stop)
