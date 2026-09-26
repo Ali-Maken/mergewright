@@ -40,18 +40,24 @@ Needs: none. It runs in parallel with graft-ops tickets; it can't run alongside 
 ```
 
 ## Acceptance
-- [ ] **App:**
+- [x] **App:** (all in `crates/graft/tests/it/resolver/file_list/start_over.rs`)
   - `d_on_a_done_file_opens_the_start_over_box` (red first);
-  - `y_restores_the_stages_as_at_the_stop`;
+  - `y_restores_the_stages_as_at_the_stop` — characterisation, never red;
   - `esc_in_the_box_changes_nothing`;
-  - `a_restart_git_cannot_do_is_refused_in_words`.
-- [ ] **Walk** `restart_after_done` (`m7_walk` or `m6_walk`; the scout picks the harness): after `⏎` on `three.txt`,
+  - `a_restart_git_cannot_do_is_refused_in_words` (red first).
+  - Built: file `shared.rs` (fixture `app_merge_with_a_whole_file_conflict`), not `three.txt`.
+- [x] Walk `crates/graft/tests/it/m7_walk.rs::restart_after_done` — **differs from the spec:** `shared.rs`, not `three.txt`; one `<<<<<<< ` line, not two (the fixture has one block); route is click·`d`·`y` = 3, checked against the M7 note's fence. Characterisation, never red. Spec text:
+  **Walk** `restart_after_done` (`m7_walk` or `m6_walk`; the scout picks the harness): after `⏎` on `three.txt`,
       motion `d y` ≤ `noted_keys("restart-after-done")`. `git ls-files -u` lists `three.txt` with the stop's oids and
       modes; two `<<<<<<< ` lines are on disk.
-- [ ] **Capture** `docs/shots/m7/restart-after-done-box-120x40.txt`. **Right:** title `Start three.txt over`; `your
+- [x] **Capture** `docs/shots/m7/restart-after-done-box-120x40.txt`, written by
+      `d_on_a_done_file_opens_the_start_over_box` — **differs:** `Start shared.rs over`, `your choices in shared.rs are
+      dropped · not undoable while the merge is open`, bar `y start over …`. Colour unverified. Spec text: **Right:** title `Start three.txt over`; `your
       choices in three.txt are dropped`; bar `y`. Colour unverified.
-- [ ] Hint-bar tests green. TESTING.md: the "Times I left" :109 row gets the walk's name, for the conductor to close.
-      MAP.md (graft).
+- [x] Hint-bar tests green: `cargo nextest run --workspace hint_bar`, 14/14 (the `it::hint_bar` module plus unit tests
+      matching `hint_bar`). TESTING.md "Times I left" :109 row names `m7_walk.rs::restart_after_done`, status "ready to
+      close". MAP.md (graft) `start_over_refusal` entry: refusal words and the done-file box title and line updated. No pub
+      API changed.
 
 ## Touches (check each, report how)
 - **The before-`⏎` start-over:** unchanged. Check: TESTING.md :2215's walk (`start-over-brings-the-markers-back`) green.
