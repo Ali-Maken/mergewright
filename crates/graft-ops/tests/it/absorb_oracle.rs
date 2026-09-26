@@ -8,7 +8,7 @@ use std::path::Path;
 use std::process::Command;
 
 use graft_core::oid::Oid;
-use graft_ops::absorb::{AbsorbMap, StagedHunk};
+use graft_ops::absorb::{AbsorbMap, StagedHunk, StaysWhy};
 use graft_ops::operation::Operation;
 use graft_ops::rewrite::TodoAction;
 
@@ -182,6 +182,7 @@ impl Before {
 fn absorb_agrees_with_the_trees(repo: &TempRepo, unsaved: &[(&str, &[u8])]) -> AbsorbMap {
     let before = Before::read(repo);
     let map = map(repo);
+    each_target_last_changed_its_lines(repo, &before, &map);
     for (path, bytes) in unsaved {
         repo.write(path, bytes);
     }
@@ -202,6 +203,77 @@ fn absorb_agrees_with_the_trees(repo: &TempRepo, unsaved: &[(&str, &[u8])]) -> A
     index_and_worktree_hold_the_rest(repo, &before, unsaved);
     each_target_carries_its_hunks(repo, &before, &map);
     map
+}
+
+// ── The independent target: `git log -L`, not the code's blame ──────────
+
+/// The commit in `main..feature` that last changed `line` of `path` at
+/// `HEAD`, by `git log -L` — git's line-log, a different walk from the
+/// blame the code under test reads. `None`: no commit on the branch did.
+fn last_to_change_line(repo: &TempRepo, path: &str, line: u32) -> Option<Oid> {
+    let range = format!("{line},{line}:{path}");
+    let shown = repo.git(&["log", "-1", "--format=%H", "-L", &range, "main..feature"]);
+    shown
+        .lines()
+        .next()
+        .filter(|first| !first.is_empty())
+        .map(|hex| Oid::from_hex(hex).expect("a commit id"))
+}
+
+/// Where the ticket's rule puts `hunk`, computed from `git log -L` alone:
+/// its old lines (an insertion: the line above and the line below) all last
+/// changed by one commit on the branch → that commit; else nowhere.
+fn expected_target(repo: &TempRepo, hunk: &PrintedHunk) -> Option<Oid> {
+    let exists = repo
+        .try_git(&["cat-file", "-e", &format!("HEAD:{}", hunk.path)])
+        .is_ok();
+    if !exists {
+        return None; // a new file
+    }
+    let count = u32::try_from(
+        repo.git(&["cat-file", "blob", &format!("HEAD:{}", hunk.path)])
+            .lines()
+            .count(),
+    )
+    .expect("a small file");
+    let lines: Vec<u32> = if hunk.old_lines == 0 {
+        vec![hunk.old_start, hunk.old_start + 1]
+    } else {
+        (hunk.old_start..hunk.old_start + hunk.old_lines).collect()
+    };
+    if lines.iter().any(|line| !(1..=count).contains(line)) {
+        return None; // an insertion at either end
+    }
+    let mut commits = lines
+        .iter()
+        .map(|&line| last_to_change_line(repo, &hunk.path, line));
+    let first = commits.next().flatten()?;
+    commits.all(|other| other == Some(first)).then_some(first)
+}
+
+/// Each placed hunk's target is the one `git log -L` names; a hunk it names
+/// no target for is never placed; one it names a target for and the map
+/// keeps must have failed the commutation check (`TwoCommitsChangedIt`).
+fn each_target_last_changed_its_lines(repo: &TempRepo, before: &Before, map: &AbsorbMap) {
+    for printed in &before.printed {
+        let expected = expected_target(repo, printed);
+        let placed = map
+            .placed
+            .iter()
+            .find(|(staged, _)| is(printed, staged))
+            .map(|(_, target)| *target);
+        let stays = map.stays.iter().find(|(staged, _)| is(printed, staged));
+        match (expected, placed) {
+            (Some(want), Some(got)) => assert_eq!(got, want, "{}: the target", printed.path),
+            (None, Some(got)) => panic!("{}: placed into {got}, but no one commit", printed.path),
+            (Some(want), None) => assert!(
+                matches!(stays, Some((_, StaysWhy::TwoCommitsChangedIt))),
+                "{}: {want} changed it, yet it stays as {stays:?}",
+                printed.path
+            ),
+            (None, None) => {}
+        }
+    }
 }
 
 /// The new `HEAD` tree = the old `HEAD` tree + the placed hunks.
@@ -326,6 +398,18 @@ fn absorb_agrees_with_the_trees_mixed_placed_and_stays() {
 
     assert_eq!(map.placed.len(), 1);
     assert_eq!(map.stays.len(), 3);
+}
+
+#[test]
+fn absorb_agrees_with_the_trees_three_targets_one_file_twice() {
+    let repo = branch();
+    // a2 is f1's, a5 is f3's, b1 is f2's.
+    stage(&repo, "a.txt", b"a1\nA2\na3\na4\nA5 changed\n");
+    stage(&repo, "b.txt", b"B1\nb2\nb3\nb4\nb5\n");
+
+    let map = absorb_agrees_with_the_trees(&repo, &[]);
+
+    assert_eq!(map.placed.len(), 3);
 }
 
 #[test]

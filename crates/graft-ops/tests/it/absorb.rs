@@ -206,6 +206,49 @@ fn a_hunk_that_does_not_commute_stays() {
     );
 }
 
+/// `main`: `m1` makes `c.txt`; `feature`: `f1` changes its second line.
+fn one_line_on_the_branch() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("c.txt", b"c1\nc2\nc3\nc4\n");
+    repo.commit_all("m1");
+    repo.git(&["switch", "-q", "-c", "feature"]);
+    repo.write("c.txt", b"c1\nc2 f1\nc3\nc4\n");
+    repo.commit_all("f1");
+    repo
+}
+
+#[test]
+fn a_hunk_over_the_branch_and_older_lines_stays() {
+    // Line 1 is older than the branch, line 2 is f1's: not "all older", so
+    // not `BeforeYourBranch`; two commits, so not placed.
+    let repo = one_line_on_the_branch();
+    stage(&repo, "c.txt", b"C1\nC2\nc3\nc4\n");
+
+    let map = map(&repo);
+
+    assert_eq!(map.placed, vec![]);
+    assert_eq!(
+        map.stays,
+        vec![(hunk("c.txt", 1..3, 1..3), StaysWhy::TwoCommitsChangedIt)]
+    );
+}
+
+#[test]
+fn an_insertion_below_a_branch_line_and_above_an_older_one_stays() {
+    // Above: f1's line 2. Below: m1's line 3. Both neighbours must be one
+    // commit's; judged by the line above alone it would go into f1.
+    let repo = one_line_on_the_branch();
+    stage(&repo, "c.txt", b"c1\nc2 f1\nnew\nc3\nc4\n");
+
+    let map = map(&repo);
+
+    assert_eq!(map.placed, vec![]);
+    assert_eq!(
+        map.stays,
+        vec![(hunk("c.txt", 2..2, 3..4), StaysWhy::TwoCommitsChangedIt)]
+    );
+}
+
 #[test]
 fn absorb_with_nothing_placed_is_refused() {
     let repo = branch();

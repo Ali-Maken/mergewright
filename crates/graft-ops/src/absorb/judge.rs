@@ -78,3 +78,52 @@ pub(super) fn commutes(
         Err(other) => Err(FactsError::of_history(other)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Never;
+
+    impl Stop for Never {
+        fn should_stop(&self) -> bool {
+            false
+        }
+    }
+
+    /// A scratch repository, removed on drop.
+    struct Scratch(std::path::PathBuf);
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            // Best effort: a left-over scratch directory is noise, not a
+            // failure, and a panic in `Drop` would hide the real one.
+            let _removed = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// git's empty tree: `read-tree` knows it without the object stored.
+    const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+    #[test]
+    fn an_apply_failure_other_than_does_not_apply_is_an_error() {
+        // A broken patch is git's exit 128, not the "does not apply" exit
+        // 1: read as a stay, a bug in the patch would hide as a verdict
+        // (review m7-06 M8).
+        let dir = std::env::temp_dir().join(format!("graft-judge-{}", std::process::id()));
+        let scratch = Scratch(dir.clone());
+        std::fs::create_dir_all(&scratch.0).expect("the scratch directory");
+        let status = std::process::Command::new("git")
+            .args(["init", "-q", "."])
+            .current_dir(&dir)
+            .status()
+            .expect("git runs");
+        assert!(status.success());
+        let repo = RepoHandle::open(&dir).expect("it opens");
+        let tree = Oid::from_hex(EMPTY_TREE).expect("an id");
+
+        let judged = commutes(&repo, tree, b"not a patch\n", &Never);
+
+        assert!(judged.is_err(), "{judged:?}");
+    }
+}
