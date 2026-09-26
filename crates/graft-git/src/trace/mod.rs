@@ -21,8 +21,8 @@ use graft_core::oid::Oid;
 use crate::diff::ParseError;
 use crate::run::RunError;
 
-pub use function::{enclosing_function, map_to_head};
 pub use follow::parse_follow_log;
+pub use function::{enclosing_function, map_to_head};
 pub use log::{file_history, line_history, parse_line_log};
 pub use whole::whole_file;
 

@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 
 use graft_core::oid::Oid;
 
-use super::{LineRange, TraceCommit, TraceEnd, TraceError};
 use super::follow::parse_follow_records;
+use super::{LineRange, TraceCommit, TraceEnd, TraceError};
 use crate::blame::{bytes_path, path_bytes};
 use crate::diff::{LineKind, ParseError, find, parse_unified, unquote};
 use crate::repo::RepoHandle;
@@ -110,7 +110,7 @@ pub fn file_history(
 }
 
 /// Turns a finished log run into rows for `sink` and a [`TraceEnd`].
-fn finish(
+pub(super) fn finish(
     raw: Result<RawOutput, RunError>,
     cap: usize,
     sink: &mut dyn FnMut(Vec<TraceCommit>),
@@ -247,7 +247,7 @@ pub(super) fn parse_header(fields: &[u8], line: usize) -> Result<Header, ParseEr
     })
 }
 
-fn parse_line_records(bytes: &[u8]) -> Result<Vec<Record>, ParseError> {
+pub(super) fn parse_line_records(bytes: &[u8]) -> Result<Vec<Record>, ParseError> {
     let mut out = Vec::new();
     for (line, chunk) in records(bytes)? {
         let (header, diff) = match chunk.iter().position(|&b| b == b'\n') {

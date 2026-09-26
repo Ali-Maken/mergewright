@@ -14,3 +14,20 @@ run 8: blame=14.3 line_history=249.3 (1000 rows, capped at 1000) file_history=17
 run 9: blame=13.9 line_history=252.6 (1000 rows, capped at 1000) file_history=18.5 (1000 rows, capped at 1000)
 run 10: blame=14.3 line_history=252.3 (1000 rows, capped at 1000) file_history=17.9 (1000 rows, capped at 1000)
 trace-readers: blame p95=14.3 line_history p95=252.6 file_history p95=18.5
+
+# m7-power-tools/18b blame on a long file — 2026-09-26T14:27:35Z
+# HEAD 770b93a5 +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, 10 runs; p95 is nearest-rank (with 10 runs, the slowest); default options (-M -w)
+# long file: long.txt, 5000 lines, 500 commits each rewriting ~1 line in 50; every 10th line untouched since the first; blame names 46 commits
+run 1: blame-longfile=1358.6
+run 2: blame-longfile=1398.5
+run 3: blame-longfile=1420.5
+run 4: blame-longfile=1407.2
+run 5: blame-longfile=1388.8
+run 6: blame-longfile=1463.5
+run 7: blame-longfile=1481.4
+run 8: blame-longfile=1369.7
+run 9: blame-longfile=1366.3
+run 10: blame-longfile=1374.4
+blame-longfile p95=1481.4

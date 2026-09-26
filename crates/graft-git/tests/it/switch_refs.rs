@@ -181,6 +181,36 @@ fn a_deleted_previous_is_none() {
     assert_eq!(previous, None);
 }
 
+/// Review 18/19/27 Minor 1: with a tag named like the previous branch,
+/// `rev-parse --symbolic-full-name @{-1}` prints nothing and exits 0 (seen on
+/// 2.38.5 and 2.54), which read as "detached". The oracle is git's own
+/// `switch -`.
+#[test]
+fn a_previous_branch_sharing_a_tags_name_is_still_the_branch() {
+    let (_s, dir) = fresh();
+    git(&dir, &["switch", "-q", "-c", "b"]);
+    git(&dir, &["tag", "b"]);
+    git(&dir, &["switch", "-q", "-c", "c"]);
+    let previous = switch_refs(&open(&dir), &()).expect("reads").previous;
+    git(&dir, &["switch", "-q", "-"]);
+    let landed = git(&dir, &["symbolic-ref", "HEAD"]);
+    assert_eq!(landed, b"refs/heads/b\n", "git's own `switch -`");
+    assert_eq!(previous, Some(name("refs/heads/b")));
+}
+
+/// A deleted previous branch with a tag of its name left behind: `@{-1}`
+/// resolves to the tag, which is not a branch to switch back to.
+#[test]
+fn a_deleted_previous_with_a_same_named_tag_is_none() {
+    let (_s, dir) = fresh();
+    git(&dir, &["switch", "-q", "-c", "t"]);
+    git(&dir, &["switch", "-q", "main"]);
+    git(&dir, &["branch", "-q", "-D", "t"]);
+    git(&dir, &["tag", "t"]);
+    let previous = switch_refs(&open(&dir), &()).expect("reads").previous;
+    assert_eq!(previous, None);
+}
+
 #[test]
 fn a_branch_name_with_non_utf8_bytes_round_trips() {
     let (_s, dir) = fresh();

@@ -23,6 +23,7 @@ One line per public item. Update when a public item changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
 ## blame
+Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `blame` and the binary/untracked check; `blame/porcelain.rs` `parse_porcelain` (paths unquoted by `diff`'s own `unquote`); `blame/ignore_revs.rs` finding and counting `.git-blame-ignore-revs`.
 - `Rev` (enum) — `Commit(Oid)` or `WorkingTree` (the file on disk; blamed with no rev, uncommitted lines get `commit: None`).
 - `BlameOptions` (struct) — `ignore_whitespace` (`-w`), `ignore_revs` (the repo's ignore file); both on by default. `ignore_revs: false` also clears a configured `blame.ignoreRevsFile`.
 - `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `path` (the file's path in this commit, from `filename`; differs from the blamed path across a rename), `previous` (parent id and path there), `boundary`.
@@ -32,15 +33,16 @@ One line per public item. Update when a public item changes.
 - `Blame` (struct) — `path`, `rev`, `lines`, `commits` (by id), `ignore_revs` (`Some` only for a readable list of ≥1 id).
 - `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`; refusals come from a `diff-tree --numstat` check before blame spawns.
 - `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`, the conventional name looked for when `blame.ignoreRevsFile` is unset.
-- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…] [<rev>] -- <path>`, parsed.
+- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(Run(Unparsable))`, never a shorter blame (18b).
 - `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.
 
 ## trace
+Files: `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
 - `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
 - `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
 - `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
 - `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`.
-- `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines.
+- `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines. The blob or marked diff cut at the output cap is `Unparsable`, not `Stopped` (18b).
 - `map_to_head` (fn) — a working-tree line number → its `HEAD` line through worktree-vs-HEAD hunks; `None` for an added line.
 - `line_history` (fn) — `git log -L<s>,<e>:<path>`, capped, rows to a sink in one batch at exit (the runner does not stream stdout).
 - `file_history` (fn) — `git log --follow --raw --numstat -z`, capped, the same way.
@@ -103,9 +105,11 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 ## switch_refs
 - `RefListing` (struct) — `name` (full `RefName`, bytes, never lossy), `tip`, `subject`/`author` (lossy, display only), `when` (committer date, unix), `upstream` (`%(upstream)` full; `None` unset; local rows only).
 - `SwitchRefs` (struct) — `refs` (git's ref order, symrefs like `origin/HEAD` left out), `previous`.
-- `switch_refs` (fn) — two commands through `run`, `Stop` honoured (`Err(Stopped)`):
+- `switch_refs` (fn) — up to three commands through `run`, `Stop` honoured (`Err(Stopped)`):
   `for-each-ref --format=%(refname)%00%(objectname)%00%(symref)%00%(upstream)%00%(subject)%00%(authorname)%00%(committerdate:unix) refs/heads refs/remotes`,
-  then `rev-parse --verify --quiet --symbolic-full-name @{-1}` (`run_raw`). Measured git 2.54: exit 1, empty → `None` (no previous checkout, or its branch deleted); exit 0, empty → `None` (previous was detached); exit 0 + `refs/heads/x` → `Some`; any other exit → `Err(Exited)`.
+  then `rev-parse --verify --quiet --symbolic-full-name @{-1}` (`run_raw`) for whether there is a previous checkout: exit 1, empty → `None`; exit 0 → there is one; any other exit → `Err(Exited)`.
+  Then `check-ref-format --branch @{-1}` for its name, as `git switch -` reads it; `Some(refs/heads/<name>)` only when the listing has that branch (a detached previous names a commit id; a deleted one is not listed).
+  `rev-parse`'s own name is not used: with a same-named tag it prints nothing, and with only the tag left it names the tag (both measured on 2.38.5 and 2.54, m7-power-tools/18b).
 
 ## diff
 - `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed { similarity }`, `Copied { similarity }`, `TypeChanged`, `Unmerged`, `Untracked`.
@@ -181,7 +185,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `changed_paths` (fn) — `git diff-tree -r --name-only -z <from> <to>`, capped.
 - `LostRun` (struct) — `tip` (the newest lost commit of a run), `under` (its lost first-parent ancestors, capped at 999) (m7-power-tools/19).
 - `Unreached` (struct) — `lost: Vec<LostRun>` (in candidate order), `checked`, `capped`.
-- `unreached(repo, candidates: &[Oid], cap, stop: &dyn Stop) -> Result<Unreached, RunError>` (fn) — which of the first `cap` candidates (newest first) nothing holds: held = `refs/heads/*`, `refs/tags/*` (peeled), `refs/remotes/*`, every stash entry (`refs/stash` and its reflog), `HEAD`; **never** `refs/graft/**`. Method (a): `rev-list -g --ignore-missing refs/stash`, then one `rev-list --parents --ignore-missing --stdin --not --branches --tags --remotes` fed candidates, `--not`, `HEAD`, the stash entries. A lost candidate on another's first-parent chain folds into that run, whatever the order. A pruned candidate is passed over. Measured p95 **190 ms** for 500 candidates on 100k commits / 50 652 refs, no commit-graph (`docs/perf/lost-commit-cost.txt`; in-process walk 218 ms, per-candidate `--contains` ≈ 97 min extrapolated).
+- `unreached(repo, candidates: &[Oid], cap, stop: &dyn Stop) -> Result<Unreached, RunError>` (fn) — which of the first `cap` candidates (newest first) nothing holds: held = `refs/heads/*`, `refs/tags/*` (peeled), `refs/remotes/*`, every stash entry (`refs/stash` and its reflog), `HEAD`; **never** `refs/graft/**`. Method (a): `rev-list -g --ignore-missing refs/stash`, then one `rev-list --parents --ignore-missing --stdin --not --branches --tags --remotes` fed candidates, then `^HEAD` and `^<stash entry>` lines (a `--not` line on stdin is refused before git 2.42; checked on 2.38.5 and 2.54, m7-power-tools/18b). A lost candidate on another's first-parent chain folds into that run, whatever the order. A pruned candidate is passed over. Measured p95 **190 ms** for 500 candidates on 100k commits / 50 652 refs, no commit-graph (`docs/perf/lost-commit-cost.txt`; in-process walk 218 ms, per-candidate `--contains` ≈ 97 min extrapolated).
 - `first_marker_line` (fn) — the first line that opens a conflict block in a file, 1-indexed; plain fs read. **Seven or more** `<` at column 0, then a space and a label or nothing: the everyday form, `rerere`'s bare `<<<<<<<`, and a path whose `conflict-marker-size` is larger (which `conflict::parse` refuses by name). This guards a stage, so it errs towards seeing a marker (m6-conflicts/01 fix round M3/M5).
 
 ## reflog (m7/22, ADR-0046)

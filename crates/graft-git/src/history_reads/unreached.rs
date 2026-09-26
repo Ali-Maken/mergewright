@@ -8,7 +8,7 @@
 //!
 //! ```text
 //! git rev-list --parents --ignore-missing --stdin --not --branches --tags --remotes
-//!   stdin: <candidate>…  --not  HEAD  <every stash entry>…
+//!   stdin: <candidate>…  ^HEAD  ^<every stash entry>…
 //! ```
 //!
 //! Every commit it prints is reachable from a candidate and from nothing
@@ -16,9 +16,10 @@
 //! each lost candidate's lost first-parent ancestors. The stash entries come
 //! from a first, cheap `git rev-list -g --ignore-missing refs/stash`:
 //! `stash@{1}` and older live only in `refs/stash`'s reflog, and each one
-//! holds its commits. `--stdin` keeps its own `--not` state, apart from the
-//! command line's (checked, git 2.54), so the candidates on stdin stay
-//! positive.
+//! holds its commits. The command line's `--not` does not reach stdin, so
+//! the candidates stay positive, and the negatives on stdin are `^<rev>`
+//! lines, not a `--not` line: git before 2.42 refuses any option on stdin
+//! (checked on 2.38.5 and 2.54, m7-power-tools/18b).
 //!
 //! **Held** is exactly: `refs/heads/*`, `refs/tags/*` (git peels an
 //! annotated tag itself), `refs/remotes/*`, every stash entry, and `HEAD`
@@ -94,9 +95,12 @@ pub fn unreached(
     for candidate in candidates {
         input.push_str(&format!("{candidate}\n"));
     }
-    input.push_str("--not\nHEAD\n");
+    // Negatives as `^<rev>` lines: `--not` on stdin is refused before git
+    // 2.42 ("options not supported in --stdin mode", seen on 2.38.5), and
+    // `^<rev>` is read the same by every version.
+    input.push_str("^HEAD\n");
     for entry in &stash {
-        input.push_str(&format!("{entry}\n"));
+        input.push_str(&format!("^{entry}\n"));
     }
     let output = GitInvocation::new(repo)
         .args([
