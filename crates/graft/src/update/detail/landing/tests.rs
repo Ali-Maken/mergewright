@@ -318,3 +318,38 @@ fn a_second_show_line_replaces_the_first() {
     assert_eq!(state.detail.body_cursor(), Some(4));
     assert!(matches!(state.detail.diff, Loading::Ready(_)));
 }
+
+/// 20's pinned-base ruling: a `Commit(c)` landing while a base is pinned
+/// used to stop silently at `Selecting` (the pane became a compare). Now it
+/// says why and leaves the pane, the cursor and the pin as they were.
+#[test]
+fn show_line_commit_with_a_pinned_base_says_so() {
+    let mut state = on_graph();
+    state.compare_base = Some(super::super::state::CompareBase {
+        oid: commit(9),
+        row: 8,
+    });
+    let before = state.clone();
+    let commands = show_line(
+        &mut state,
+        DetailSpec::Commit(commit(3)),
+        Path::new("src/x.rs"),
+        Some(new_line(3)),
+    );
+    assert!(commands.is_empty(), "nothing is asked for: {commands:?}");
+    assert_eq!(state.line_landing, None);
+    assert_eq!(
+        selected(&state),
+        selected(&before),
+        "the cursor kept its row"
+    );
+    assert_eq!(state.detail.shown, before.detail.shown);
+    assert_eq!(state.detail.spec, before.detail.spec);
+    assert_eq!(state.compare_base, before.compare_base, "still pinned");
+    assert_eq!(
+        state.status,
+        Status::sticky(
+            "can't show 0303030 on its own while compare base 0909090 is pinned · x on the base clears it"
+        )
+    );
+}

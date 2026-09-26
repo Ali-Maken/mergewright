@@ -67,6 +67,17 @@ pub fn show_line(
 ) -> Vec<Command> {
     let mut commands = Vec::new();
     state.line_landing = None;
+    // A pinned base turns the pane into a compare the moment the cursor
+    // reaches `c`, so a commit's own diff can't open while one is pinned
+    // (20's pinned-base ruling). Say so; move nothing.
+    if let (DetailSpec::Commit(commit), Some(base)) = (spec, state.compare_base) {
+        state.status = Status::sticky(format!(
+            "can't show {} on its own while compare base {} is pinned · x on the base clears it",
+            short(commit),
+            short(base.oid)
+        ));
+        return commands;
+    }
     let first = match spec {
         DetailSpec::WorkingTree => {
             if !state.uncommitted_row_shown() {
