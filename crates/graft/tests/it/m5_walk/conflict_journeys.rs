@@ -1266,10 +1266,12 @@ mod tests {
         Ok(inputs)
     }
 
-    /// The conflict journeys and the stash put-back pass's (m6-conflicts/75).
+    /// The conflict journeys, the stash put-back pass's (m6-conflicts/75)
+    /// and plain push (m7-power-tools/25b).
     fn every_counted_journey() -> Vec<Scenario> {
         let mut all = journeys();
         all.extend(super::super::stash_journeys::journeys());
+        all.extend(super::super::remotes::counted_journeys());
         all
     }
 

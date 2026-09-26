@@ -69,6 +69,8 @@ walk! {
     u_after_push_asks_once => "u-after-push-asks-once",
     u_after_push_repush_old_tip => "u-after-push-repush-old-tip",
     u_after_push_cancel_asks_again => "u-after-push-cancel-asks-again",
+    // Plain push, counted against the M6 fence (m7-power-tools/25b).
+    push_journey_is_walk_gated => "push",
     b_creates_and_checks_out => "b-creates-and-checks-out",
     b_refuses_bad_and_existing_names => "b-refuses-bad-and-existing-names",
     t_creates_a_tag => "t-creates-a-tag",

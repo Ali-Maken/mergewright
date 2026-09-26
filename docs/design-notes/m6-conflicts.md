@@ -127,7 +127,7 @@ pub fn resolver_view(state: &AppState) -> Option<DocView>;   // view::resolver �
 ## Where I'd differ from DESIGN.md (Proposed changes — tickets follow DESIGN.md until approved)
 
 1. **§1.5 layout**: document-with-cards (Decision 1) replaces the three full-height columns and the `CONFLICTED FILES`
-   strip; the title row carries `file 1 of 2 · 2 of 3 conflicts open` and `n`/`N` walk files. Trade-off above.
+   strip; the title row carries `file 1 of 2 · 2 of 3 conflicts open` (title superseded by Amendment 2: see the mockup at :153; format from crates/graft/src/view/resolver.rs:183) and `n`/`N` walk files. Trade-off above.
 2. **Keys the doc does not give, needed by the resolver** (each is a `02-keymap.md` edit the conductor makes before the
    binding ticket builds; the specs mark them *pending*): (a) `⏎` on a `CONFLICTS` row (§2.4) and on the focused banner
    (§2.6a) **opens the resolver** — §2.2's global "open / drill in" applied, no new letter; (b) `B` **show/hide base** in
@@ -519,13 +519,16 @@ stash-look-and-leave          3                     # S ⏎ esc · m6-stash-prev
 stash-clash-put-back          2                     # +1 y when the drift box asks · m6-stash-put-back.md :37-39 · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs and m5_walk (75)
 pull-rebase-dirty             3                     # p r r · m6-stash-put-back.md :40 · JetBrains 3–4 · walked in tests/it/m6_stash_put_back/set_aside.rs and m5_walk (75)
 rejected-push-dirty-to-pushed 5                     # p r r P y · m6-stash-put-back.md :41 · JetBrains 3–4 · walked there and in m5_walk (75)
+push                          2                     # P y · m6-usability-fixes.md:59 (P15, approved) · lazygit P 1 (no box; rejected, m4-remotes.md:125) · walked in m5_walk (25b)
 switch-dirty                  3                     # . ⏎ y · m6-stash-put-back.md :42 · lazygit 2, JetBrains 3 · walked there and in m5_walk (75)
 switch-dirty-clash            5                     # . ⏎ y o ⏎ · m6-stash-put-back.md :43 · JetBrains ~5 (?) · walked there and in m5_walk (75)
 pull-rebase-stop-then-clash   8                     # p r r o ⏎ c o ⏎ · m6-stash-put-back.md :44 · none counted · walked there and in m5_walk (75)
 menu-checkout                 3                     # . ⏎ y · m6-stash-put-back.md :45 · JetBrains 3 · walked in m5_walk (ticket 75)
 menu-cherry-pick              4                     # . j ⏎ y · m6-stash-put-back.md :46 · JetBrains/SM 2 · walked in m5_walk (ticket 75)
 ```
-The walk parses **this** block, the only fence tagged `journey-counts`. Text after `#` is a comment. P6's numbers were
+The walk (`tests/it/m5_walk/journeys.rs::parse_counts`) reads every fence tagged exactly `journey-counts` in **this
+note**, in order (`journey-counts-superseded` is skipped); an id counted in two of them is refused. The M7 fences in
+`m7-power-tools.md` are not read by it. Text after `#` is a comment. P6's numbers were
 moved into `keys` by the conductor on 2026-09-24, when ticket 17 built `O`/`T`.
 
 ### Interfaces and data shapes (amendment 2)
