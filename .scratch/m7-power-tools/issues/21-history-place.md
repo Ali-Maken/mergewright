@@ -143,3 +143,7 @@ workspace-wide.
 ~70k. If it compacts, split:
 - **history-place-a:** logic, the `F` routing, the jobs, the tests.
 - **history-place-b:** `draw_history`, snapshots, walks, captures.
+
+## Note (conductor, 2026-09-26, from the 20 respec)
+- history-place must place via `show_line`, as 20 does.
+- `BlameFrom::WorkingTree.line` is now `Option<u32>` (20a/20b): read the respec before you build.
