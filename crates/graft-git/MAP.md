@@ -26,12 +26,12 @@ One line per public item. Update when a public item changes.
 Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `blame` and the binary/untracked check; `blame/porcelain.rs` `parse_porcelain` (paths unquoted by `diff`'s own `unquote`); `blame/ignore_revs.rs` finding and counting `.git-blame-ignore-revs`.
 - `Rev` (enum) — `Commit(Oid)` or `WorkingTree` (the file on disk; blamed with no rev, uncommitted lines get `commit: None`).
 - `BlameOptions` (struct) — `ignore_whitespace` (`-w`), `ignore_revs` (the repo's ignore file); both on by default. `ignore_revs: false` also clears a configured `blame.ignoreRevsFile`.
-- `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `path` (the file's path in this commit, from `filename`; differs from the blamed path across a rename), `previous` (parent id and path there), `boundary`.
+- `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `path` (the file's path in this commit, from `filename`; differs from the blamed path across a rename), `previous` (parent id and path there), `boundary`, `shallow` (id is in `<common_dir>/shallow`; set by `blame` after git exits, never by the parser; 20d).
 - `LineMark` (enum) — `Plain`, `Skipped` (passed over by the ignore list), `Unblamable`.
 - `BlameLine` (struct) — `commit` (`None`: not committed yet), `orig_line`, `final_line`, `text`, `mark`.
 - `IgnoreRevs` (struct) — `file`, `revisions` (count of listed ids), `applied`.
 - `Blame` (struct) — `path`, `rev`, `lines`, `commits` (by id), `ignore_revs` (`Some` only for a readable list of ≥1 id).
-- `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`; refusals come from a `diff-tree --numstat` check before blame spawns.
+- `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`, `Shallow { path, source }` (`<common_dir>/shallow` unreadable; 20d); refusals come from a `diff-tree --numstat` check before blame spawns.
 - `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`, the conventional name looked for when `blame.ignoreRevsFile` is unset.
 - `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(Run(Unparsable))`, never a shorter blame (18b).
 - `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.

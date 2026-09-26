@@ -74,3 +74,20 @@ pub fn commits(dir: &Path) -> Commits {
         you: rev(dir, "main"),
     }
 }
+
+/// A `--depth <depth>` clone of the session fixture at `<temp>/clone`
+/// (m7-power-tools/18c). `file://` so git honours `--depth`: a plain local
+/// path ignores it.
+pub fn shallow_clone(depth: u32) -> tempfile::TempDir {
+    let source = graft_fixtures::borrow(graft_fixtures::Shape::Session);
+    let temp = tempfile::tempdir().unwrap_or_else(|why| panic!("a temp dir: {why}"));
+    let url = format!("file://{}", source.display());
+    let depth = depth.to_string();
+    git_ok(
+        temp.path(),
+        &[
+            "clone", "-q", "--depth", &depth, "--branch", "main", &url, "clone",
+        ],
+    );
+    temp
+}

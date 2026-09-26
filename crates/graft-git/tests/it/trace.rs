@@ -12,7 +12,7 @@ use graft_git::trace::{
     line_history, whole_file,
 };
 
-use crate::session::{FILE, OLD_FILE, commits, git_ok, open, rev};
+use crate::session::{FILE, OLD_FILE, commits, git_ok, open, rev, shallow_clone};
 
 fn function(dir: &Path, at: Oid, path: &str, line: u32) -> Option<LineRange> {
     enclosing_function(&open(dir), at, Path::new(path), line, &())
@@ -530,23 +530,6 @@ fn line_history_crosses_a_non_ascii_rename() {
     let paths: Vec<&Path> = rows.iter().map(|row| row.path.as_path()).collect();
     assert_eq!(paths, [Path::new("café.txt"), Path::new("plain.txt")]);
     assert!(matches!(end, TraceEnd::Start { .. }), "{end:?}");
-}
-
-/// A `--depth <depth>` clone of the session fixture at `<temp>/clone`
-/// (m7-power-tools/18c). `file://` so git honours `--depth`: a plain local
-/// path ignores it.
-fn shallow_clone(depth: u32) -> tempfile::TempDir {
-    let source = graft_fixtures::borrow(Shape::Session);
-    let temp = tempfile::tempdir().unwrap_or_else(|why| panic!("a temp dir: {why}"));
-    let url = format!("file://{}", source.display());
-    let depth = depth.to_string();
-    git_ok(
-        temp.path(),
-        &[
-            "clone", "-q", "--depth", &depth, "--branch", "main", &url, "clone",
-        ],
-    );
-    temp
 }
 
 fn block() -> LineRange {
