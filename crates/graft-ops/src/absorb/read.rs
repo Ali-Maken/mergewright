@@ -40,6 +40,50 @@ pub(super) fn staged(
     parse_unified(&output.stdout).map_err(|error| unparsable(format!("the staged diff: {error:?}")))
 }
 
+/// The staged paths that are submodules (a gitlink, mode `160000`, on either
+/// side). A second, `--raw` read: the patch's `index <a>..<b> 160000` line,
+/// the only place a bump's mode shows, is not one `parse_unified` keeps
+/// (review m7-06 M4).
+pub(super) fn gitlinks(
+    repo: &RepoHandle,
+    head: Oid,
+    stop: &dyn Stop,
+) -> Result<BTreeSet<Vec<u8>>, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("diff-index"),
+            GitArg::Flag("--cached"),
+            GitArg::Flag("--raw"),
+            GitArg::Flag("-z"),
+            GitArg::Flag("--no-renames"),
+            GitArg::Oid(head),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    // `:<old mode> <new mode> <old id> <new id> <status>\0<path>\0`, each.
+    let mut found = BTreeSet::new();
+    let mut fields = output.stdout.split(|byte| *byte == 0);
+    while let Some(header) = fields.next() {
+        if header.is_empty() {
+            continue;
+        }
+        let Some(path) = fields.next() else {
+            return Err(unparsable(format!(
+                "a raw diff record with no path: {:?}",
+                String::from_utf8_lossy(header)
+            )));
+        };
+        let mut modes = header
+            .strip_prefix(b":")
+            .unwrap_or(header)
+            .split(|byte| *byte == b' ');
+        if modes.by_ref().take(2).any(|mode| mode == b"160000") {
+            found.insert(path.to_vec());
+        }
+    }
+    Ok(found)
+}
+
 /// The commits in `base..head`.
 pub(super) fn commits_in(
     repo: &RepoHandle,
@@ -123,7 +167,17 @@ pub(super) fn blame(
     if wanted.is_empty() {
         return Ok(BTreeMap::new());
     }
-    let mut args = vec![GitArg::Flag("blame"), GitArg::Flag("--porcelain")];
+    // `--no-ignore-revs-file` drops his `blame.ignoreRevsFile`: a configured
+    // file that is missing fails the blame, and one that is present blames
+    // a listed commit's lines past it, to a commit the hunk does not
+    // commute to (review m7-06 M1). Not `--ignore-revs-file=`: git keeps
+    // the list sorted, and reads a missing configured file anyway (probed,
+    // git 2.54).
+    let mut args = vec![
+        GitArg::Flag("blame"),
+        GitArg::Flag("--porcelain"),
+        GitArg::Flag("--no-ignore-revs-file"),
+    ];
     for run in runs(&wanted) {
         args.push(GitArg::Flag("-L"));
         args.push(GitArg::Word(format!("{},{}", run.start, run.end - 1)));

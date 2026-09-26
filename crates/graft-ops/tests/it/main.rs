@@ -2,6 +2,7 @@
 
 mod abort_merge;
 mod absorb;
+mod absorb_config;
 mod absorb_oracle;
 mod absorb_staged;
 mod chained_backup;

@@ -96,6 +96,10 @@ fn tree_with(
             .args([
                 GitArg::Flag("apply"),
                 GitArg::Flag("--cached"),
+                // What he staged goes in as staged: his `apply.whitespace=fix`
+                // would strip trailing spaces, and the put-back would then
+                // clash with his own lines (review m7-06 M5).
+                GitArg::Flag("--whitespace=nowarn"),
                 GitArg::Flag("-"),
             ])
             .stdin(piece.patch.clone())

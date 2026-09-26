@@ -64,7 +64,7 @@ pub(crate) fn map(repo: &TempRepo) -> AbsorbMap {
     map_with(repo, &Never).unwrap_or_else(|why| panic!("the map reads: {why}"))
 }
 
-fn hunk(path: &str, old: std::ops::Range<u32>, new: std::ops::Range<u32>) -> StagedHunk {
+pub(crate) fn hunk(path: &str, old: std::ops::Range<u32>, new: std::ops::Range<u32>) -> StagedHunk {
     StagedHunk {
         path: PathBuf::from(path),
         old,

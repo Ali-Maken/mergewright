@@ -64,6 +64,9 @@ pub(super) fn commutes(
             GitArg::Flag("apply"),
             GitArg::Flag("--cached"),
             GitArg::Flag("--check"),
+            // His `apply.whitespace` must not change the verdict: `error`
+            // exits 128, which is not "does not apply" (review m7-06 M5).
+            GitArg::Flag("--whitespace=nowarn"),
             GitArg::Flag("-"),
         ])
         .stdin(patch.to_vec())

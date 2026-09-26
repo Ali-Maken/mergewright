@@ -49,7 +49,7 @@ mod read;
 use build::{bare, empty, staged_hunk, with_context};
 pub(crate) use build::{commit_pieces, empties};
 use judge::{commutes, verdict};
-use read::{FileAtHead, blame, commits_in, staged};
+use read::{FileAtHead, blame, commits_in, gitlinks, staged};
 
 /// One staged hunk: its file and its two sides, as git's `-U0` header says
 /// them — `start..start + count`. An empty side sits at the line it follows
@@ -81,6 +81,9 @@ pub enum StaysWhy {
     /// A staged rename: both sides stay, so no commit loses the old path
     /// while the new one waits in the index (review m7-06 M2).
     Renamed,
+    /// A submodule's commit changed (a gitlink, mode `160000`): absorb
+    /// moves lines, and a submodule bump has none (review m7-06 M4).
+    Submodule,
 }
 
 /// Where each staged hunk goes.
@@ -151,6 +154,7 @@ pub(crate) fn mapped(
     let range = commits_in(repo, base, head, stop)?;
     let mut placed = Vec::new();
     let mut stays = Vec::new();
+    let submodules = gitlinks(repo, head, stop)?;
     for diff in staged(repo, head, stop)? {
         let path = path_of(diff.entry.path.clone());
         if let FileStatus::Renamed { .. } | FileStatus::Copied { .. } = diff.entry.status {
@@ -165,6 +169,10 @@ pub(crate) fn mapped(
             if diff.hunks.is_empty() {
                 stays.push((empty(&path), StaysWhy::Renamed));
             }
+            continue;
+        }
+        if submodules.contains(&diff.entry.path) {
+            stays.push((empty(&path), StaysWhy::Submodule));
             continue;
         }
         if diff.entry.status == FileStatus::Added {
