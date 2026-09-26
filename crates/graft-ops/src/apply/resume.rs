@@ -6,21 +6,22 @@
 //! The rule they share is M5 hard choice 2 and DESIGN.md §6.4: a stopped
 //! operation is **one entry**, `Pending` from the stop to the finish.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, HeadRef, JournalEntry};
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::run::{GitArg, RunError, Stop};
 use graft_git::state::{self, InProgress};
 
 use crate::facts::{self, FactsError};
 use crate::operation::{Operation, Refusal, opens_in_progress};
-use crate::rewrite::saved::{self, CLEANUP};
 use crate::snapshot;
 
+mod rewrite;
 pub(super) mod shell;
 
+use rewrite::{resume_invocation, started_on_its_line, stopped_on_edit};
 use shell::{Target, refuse_unmerged, shell_merge};
 
 use super::engine::{go_home, plan_of, remove};
@@ -137,25 +138,6 @@ pub(crate) fn live_entry<'a>(
         }
     }
     Ok(None)
-}
-
-/// A rewrite with branches built on his runs git on the top of the line
-/// (ADR-0047 §3), so git's `head-name` is the top branch while the entry's
-/// `head_before` is his: the entry's saved plan says both.
-fn started_on_its_line(
-    repo: &RepoHandle,
-    entry: &JournalEntry,
-    started_on: &HeadRef,
-) -> Result<bool, ApplyError> {
-    let HeadRef::Branch(git_started_on) = started_on else {
-        return Ok(false);
-    };
-    Ok(match plan_of(repo, &entry.id).map_err(ApplyError::Facts)? {
-        Some((_, plan)) => {
-            plan.top() == git_started_on && entry.head_before == HeadRef::Branch(plan.home)
-        }
-        None => false,
-    })
 }
 
 /// The unmerged paths the status lists now.
@@ -293,51 +275,6 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         left.extend(remove(dir));
     }
     close_resume(ctx, entry, aborting, commands, failure, left)
-}
-
-/// The resume's git command. With a rewrite's saved plan, its editor helper
-/// answers the messages git asks for from here on — a reword or squash row
-/// still to come, a picked commit after its conflict — under the plan's
-/// cleanup (ADR-0047). Without one, `GIT_EDITOR=true`: git's own message
-/// stands.
-fn resume_invocation(
-    repo: &RepoHandle,
-    args: Vec<GitArg>,
-    plan_dir: Option<&Path>,
-    message: Option<Vec<u8>>,
-) -> GitInvocation {
-    let mut invocation = GitInvocation::new(repo).args(args);
-    match plan_dir {
-        Some(dir) => {
-            invocation = invocation.env("GIT_EDITOR", saved::editor(dir));
-            for (key, value) in CLEANUP {
-                invocation = invocation.env(key, value);
-            }
-        }
-        None => invocation = invocation.env("GIT_EDITOR", "true"),
-    }
-    match message {
-        Some(message) => invocation.stdin(message),
-        None => invocation,
-    }
-}
-
-/// git stopped on a rewrite's `edit` row: the same stop `apply` reports,
-/// with whatever the status lists (nothing, for an `edit`).
-fn stopped_on_edit(
-    ctx: &mut Context<'_>,
-    kind: InProgress,
-    mut entry: JournalEntry,
-    commands: Vec<String>,
-) -> Result<ApplyError, ApplyError> {
-    ctx.journal.hold_commands(&entry.id, commands.clone());
-    let paths = unmerged_paths(ctx, &())?;
-    entry.commands = commands;
-    Ok(ApplyError::Conflicted {
-        entry: Box::new(entry),
-        kind,
-        paths,
-    })
 }
 
 /// Which entry a resume closes, and the checks that run before git does.
