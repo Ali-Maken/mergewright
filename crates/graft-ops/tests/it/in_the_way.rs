@@ -9,6 +9,8 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 mod one_shot;
+#[cfg(feature = "heavy-tests")]
+mod perf;
 mod pull;
 mod replay;
 mod stash;

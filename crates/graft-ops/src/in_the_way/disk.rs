@@ -77,7 +77,7 @@ pub(super) fn on_disk(
 fn stored_as(root: &Path, path: &Path) -> Result<PathBuf, FactsError> {
     use std::os::unix::fs::{DirEntryExt, MetadataExt};
     let mut stored = PathBuf::new();
-    for name in path.iter() {
+    for name in path {
         let looked_up = stored.join(name);
         let on_disk = |source| FactsError::OnDisk {
             path: looked_up.clone(),

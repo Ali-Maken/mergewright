@@ -1,0 +1,6 @@
+# in_the_way::blocking for a switch — 2026-09-26T18:23:26Z
+# git version 2.54.0 (Apple Git-157), Darwin arm64, release build
+# budget: none is written for this read; 100 ms assumed (it runs at the preview and again at y)
+
+m7-28 20000 tracked files, switch changing 100: 55.0 ms
+m7-28 summary: blocking for a switch, median of 7: 29.1 ms (100k commits), 55.0 ms (20000 files)
