@@ -1031,3 +1031,442 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);           
 | submodule-truth | Opus | — | graft-git, graft-ops, graft-ui, graft |
 
 17 specs; pass 2b adds G-blame, G-history, G-list and the acceptance ticket.
+
+---
+
+## Pass 2b (2026-09-26) — G-blame, G-history, G-list, G-accept
+
+**Status: pass 2b, the last.** Nothing above this line was edited. Where 2b changes an earlier line it says so here:
+- Journeys 13–15: the keys and counts in this section's fence supersede the Journeys table's rows 13–15
+  (13: `J ⏎ y` = 3, the `✗` row preselected; 14 and 15: `J n ⏎ y` = 4).
+- Journey 15's KNOWN_GAPS row is now M6/77 (the line number moved).
+- The 2a keymap block's note on `F` is settled below.
+
+**Inputs:** rev 2 "good." (field notes :78); README "Findings while building rev 2"; UX §3.6–3.7, checklist 16–17.
+- He walked blame and history, spending most of his time in history's file pane. Their pass-1b layouts are **approved
+  as drawn**.
+- The journal (open 1 s) and every no-colour carrier (`#` never pressed) are **unjudged**. Every capture is
+  colourless, so each one is the no-colour view. The contact sheet opens with the journal's frames and says so
+  (rule 6).
+- Pass 1b's screens stand (Blame, History, Journal above). 2b adds only what they leave open.
+
+### Rev-2 findings, decided
+
+| # | Finding (README :50-60) | Decision | Why |
+|---|---|---|---|
+| F1 | `J` opens on the newest row; the `✗` is 2 down | Open on the newest `✗` row whose event is newer than every `●` row, until he presses a key; otherwise on the newest row. With no find active, `n`/`N` = next/previous `✗` row | Checklist 3 (pre-select the likely answer); UX §3.1. Journey 13: 4 → 3 |
+| F2 | `F` from any row of a file | Yes: from the file's row or any line of its diff. The file pane opens scrolled to that line | the name row can be 22 rows up (H6) |
+| F3 | Blame and history mock-ups disagree on line 19 | History is right: Lina's retry commit adds line 19. The fixture follows it | one truth for the walks |
+| F4 | Spike first, then main | Either order works. The walks do main (13), then spike (14) | the rules already allow both |
+| F5 | Putting back the checked-out branch changes files | The preview gains `your files:`; unsaved edits are set aside (ADR-0045 §4) | H5; rev 2 added the line |
+| F6 | Only ≥180 was drawn | 120–179 and <120 are below; captured at 140 and 100 | — |
+
+### The `F` clash — decided: `F` follows the focus
+
+- Options: (a) a new letter for file history; (b) move Focus mode off `F`; (c) `F` by focus.
+- **Chosen: (c).**
+  - Graph focused → Focus mode, unchanged (§5.2).
+  - Detail pane focused on a file (its row, or a line of its diff; the changes pane too) → that file's history.
+- Why:
+  - §2.1: a verb applies to the cursor. Both meanings are "narrow to this thing's line through time": a commit's
+    thread, a file's changes.
+  - (a) spends a letter from a thin bank: `H` hides the stash, and `L` loads the whole file in the diff pane.
+  - (b) breaks an M1 key, its captures and his habit.
+- Cost: if `F` in the detail pane falls through to Focus mode today (decision 5's unchecked question), that stops. The
+  `history-place` scout answers the question with a line, and the pane's bar shows `F history`.
+
+### B1. Blame — what 2b adds (G-blame)
+
+- **Problem / User / Solution:** pass 1b's, approved in rev 2: who changed the line he's on, shown at that line. `B`,
+  then motion.
+- **`B` from the detail pane:**
+
+  | Pressed on | Blames | Cursor on |
+  |---|---|---|
+  | an added or context line of a commit's diff | the file as of that commit | that line |
+  | a removed line | the file as of the commit's parent; title `before a1b2c3d` | the old line |
+  | a file row | the file as of that commit | its first changed line |
+  | the changes pane (a file or a line) | the file on disk; uncommitted lines trail `◂ not committed yet` | that line |
+
+  - Refused in words, with no screen: `src/new.rs isn't committed yet · no blame` · `pic.bin is binary · no blame`.
+  - A deleted file blames its parent.
+- **Title, by state:**
+  - `BLAME · <path> · as it is now` / `· as of a1b2c3d` / `· before a1b2c3d` (after `^`).
+  - While git reads: `blaming <path>… · esc cancels`.
+  - git failed: the body reads `git blame stopped: <git's first line> · esc back`.
+- **Ignore-revs line**, under the title. It shows only when the repo lists revisions (status rule):
+  - `skipping 3 commits listed in .git-blame-ignore-revs · i shows them`;
+  - `showing every commit · i skips the 3 in .git-blame-ignore-revs`.
+  - A line git could pass to no one reads `◂ (skipped commit) Tom …`: git's `?`/`*` marks as words (study §4.2).
+- **`^`:** blames git's `previous` of the line's commit.
+  - The cursor goes to where the line came from: the first old-side line of the hunk, in that commit, that made it.
+    This settles the study's §4.1 open point.
+  - `Esc` returns to the newer blame, same line.
+  - At a root commit: `a1b2c3d added this file · nothing before it`.
+- **`⏎`:** the graph at that commit, with the detail pane on it, the file selected and the diff scrolled to the hunk
+  holding this line (journey 9). `Esc` → blame, same line. The bar leads `esc back to blame`.
+- **`/`** finds in the file; **`n`/`N`** go to the next/previous match, as the graph's search does (H4). §2.8's
+  "older/newer change to this line" is now `^`/`Esc` and `L` ("Where I'd differ" 7).
+- **`w`** toggles `-w` (on by default; §2.5's meaning). **`i`** toggles the ignore-revs file, and is bound only when
+  there is one.
+- **Mouse:** a click selects a line; a double-click is `⏎`; the wheel scrolls.
+- **At 24 rows:** title 1 row, ignore line 0–1, bar 1; the rest is code.
+- Distinctions and breakpoints: pass 1b's tables stand.
+
+### H1. History — what 2b adds (G-history)
+
+- **Problem / User / Solution:** pass 1b's, approved in rev 2.
+- **The range from `L`:**
+  - The function around the cursor line, by git's funcname rules for the file's diff driver.
+  - When the repo's attributes name no driver for the file, Graft supplies git's own built-in one for the extension
+    (rust, python, golang, cpp, java, …). So a Rust method is its `fn`, not the whole `impl`.
+  - If that is over 400 lines, or none is found → the cursor's blame block.
+  - The title says which: `fn refresh_token, lines 18–29` / `lines 22–24 · the block blame showed`.
+- **From a blame of the files on disk:** the line maps to HEAD through the working-tree diff. A line with no HEAD
+  counterpart → `line 42 isn't committed yet · no history`, and no screen opens.
+- **`F`:** the whole file, following renames. The list cursor starts on the newest commit; the file pane at the line
+  he was on (F2).
+- **List row:** `sha7 subject who age +a −r`.
+  - The counts are the range's lines (from `L`) or the file's (from `F`).
+  - A rename adds `↳ was src/session.rs` under the commit that renamed it.
+- **File pane:** the whole file as of that commit, with that commit's own adds and removes.
+  - A merge is diffed against its first parent; the first commit is all adds. §2.5 applies.
+  - The `┃` bracket marks the range **where it sits in that commit** (git's own `-L` hunks), so it moves with the code.
+- **States:**
+  - Tracing: rows fill as git answers, or all at once if the runner can't stream (the scout says). Title
+    `tracing… · esc stops`. `Esc` stops git and keeps the rows.
+  - End row: `the file starts here (a1b2c3d added it)` / `git stops tracing here: <git's reason>`.
+  - Capped at 1 000 rows, then `1 000 shown · older not traced`.
+- **Mouse:** a click selects a row; a double-click is `⏎`; the wheel scrolls the pane under it.
+
+### P1. Places and the trail (blame and history)
+
+- **Problem:** journeys 9–11 promise "`Esc` → back, same line" across three screens and the graph.
+- **Rule:**
+  - Blame and History are **places**: full width, opened by uppercase keys (§2.1). They answer their own keys and the
+    §2.2 globals; the graph's verbs are not live in them.
+  - Places stack:
+    - `B` → blame;
+    - `L` → history on top;
+    - `B` in history → that commit's blame on top;
+    - `^` → the older blame on top.
+  - `Esc` pops one. The last `Esc` puts him back where the first key was pressed: same pane, file, line and graph
+    cursor.
+  - `⏎` to the graph **hides** the stack. On the graph, `Esc` shows it again, once anything the graph has open (a
+    menu, a box, a prompt, search, Focus mode, Explain) is closed. The bar says `esc back to blame` /
+    `esc back to history`.
+  - The trail clears on any write, and when `B` or `F` starts a new one. Past 16 places deep, the oldest drops.
+- **Why:** UX §3.1 (continuity); H3 (one exit, always `Esc`).
+
+### J1. Journal — what 2b adds (G-list)
+
+- **Problem / User / Solution:** pass 1b's. **Unjudged by him** (rev 2 had it open for 1 s), so its captures lead the
+  sheet.
+- **Rows arrive in three stages, never blocking `J`:**
+  - `●` rows at once, as today.
+  - `$` rows after the reflog read.
+  - `✗` rows after the lost-commit scan. The title reads:
+    - while it runs: `· finding lost commits…`;
+    - capped: `· looked at the newest 500 steps`;
+    - failed: `· couldn't look for lost commits: <why>`;
+    - done: nothing (status rule).
+- **Which reflogs:** `HEAD` and every local branch. Never remote-tracking or tag logs: a shell fetch loses nothing.
+- **Dedupe (ADR-0046 §2):**
+  - A record whose (ref, old, new) matches a journal entry's before/after is that entry, drawn once as `●`.
+  - A `HEAD` record belongs to a branch record with the same old and new values written within 2 s of it.
+  - A shell rebase's `rebase (…)` `HEAD` records fold into its finish record: one row, `rebased spike onto main`.
+- **Words** (plain, with git's subject beside them; `words()` holds the table):
+
+  | git's subject | Words |
+  |---|---|
+  | `commit: …` / `commit (amend): …` | `committed "…" on main` / `amended "…" on main` |
+  | `reset: moving to …` | `reset main N commits back` (when back along main), else `moved main to 3d4e5f6` |
+  | `checkout: moving from a to b` | `switch from a to b` |
+  | `merge …: Fast-forward` / `pull: Fast-forward` | `fast-forwarded main N commits` |
+  | `branch: Created from …` | `made spike at 4d5e6f7` |
+  | `rebase (finish): …` | `rebased spike onto main` |
+  | `cherry-pick: …` | `took "…" onto main` |
+  | anything else | git's subject |
+- **`✗` rows:**
+  - One row per lost run, at its tip, with `+N under it`.
+  - Placed under the newest event whose old value was that commit.
+  - Words: `was main's tip · no branch holds it` / `was spike's tip · spike is gone`. The branch name comes from git's
+    `moving from X to Y`; if it can't be read, `was HEAD`.
+- **Lost edits** (journey 15; both KNOWN_GAPS M6/77 rows):
+  - Under an undo or redo `●` row that replaced his edits:
+    `└ ✗ lost  your edit to src/a.rs · replaced by this undo · kept in its backup`.
+  - Shown while the file on disk differs from the backup's copy.
+- **`⏎`:** pass 1b's table, plus two rows: a lost edit puts the file back from the backup, and a `$` switch row
+  switches back.
+- **If the ref moved on since:** there is no preview. J's status row reads `main moved on since (now 5f6e7d8) · b makes
+  main-restored at 9a8b7c6`, and `b` opens the name prompt with that name.
+- **The preview** (Ghost Preview frame, confirmed with `y`, ADR-0044 §1):
+
+  ```
+   ╭ Preview: put main back to 9a8b7c6 "Add rate limiter" ─────────────────────────────╮
+   │ now       main → 3d4e5f6  Add metrics endpoint                                     │
+   │ after y   main → 9a8b7c6  Add rate limiter          1 commit back on main          │
+   │ your files: src/api/limit.rs comes back · 1 unsaved file set aside, put back after │
+   │ u undoes it                                                                        │
+   ╰───────────────────────────────────────────────────────── y put it back  esc cancel ╯
+  ```
+
+  When the branch isn't checked out, the files line reads `your files: unchanged (main isn't checked out)`.
+- **Landings:** a put-back lands as pass 1b says. Also:
+  - `b`: the graph, cursor on the new branch's tip, `✓ made main-restored at "Add rate limiter" · u undoes`.
+  - A lost edit: the graph with the changes pane on that file, `✓ your edit to src/a.rs is back · u undoes`.
+- **The command log** (an expanded `●` row): `$ git …` becomes `┆ git …` under `commands Graft ran`, so `$` means only
+  "outside Graft" (UX §3.6).
+- **The list's last line**, muted (`reflog.md` takeaway 12): `a branch deleted outside Graft and never checked out
+  leaves no trace here`.
+- **Carried journal rows** (KNOWN_GAPS):
+  - M6/68: `failed: aborted` → `aborted by you · nothing changed`.
+  - M6/u2: a cut row is cut at a word, with `…`.
+  - M6/u2: two names for one drop → `drop the set-aside copy (stash@{0})` in both places.
+  - The old M3 row "no status line while J is open": refusals need one now.
+- **Breakpoints:**
+
+  | Width | Columns |
+  |---|---|
+  | ≥180 | glyph · source word · time · words · `git: "<subject>"` on shell rows |
+  | 120–179 | glyph · source word · time · words; the selected shell row's git subject on a line under it |
+  | <120 | glyph · time · words; the legend carries the source; git's subject as at 120 |
+
+  At 24 rows the title, legend and bar stay, and the rows scroll.
+- **Distinctions:** pass 1b's table, plus one row. A lost edit and a lost commit share the `✗` glyph, since both are
+  "lost, can be put back". They differ in the words (`your edit to <path>` vs `<sha7> "<subject>"`), and an edit row
+  has no hash.
+
+### Journey counts (2b; the walk parses this block with 2a's)
+
+```journey-counts
+# id                          keys  # decisions · best tool · the keys
+blame-line-to-commit          2     # +0 · tig/Magit/GitHub 2 · B ⏎ (start: the diff pane, cursor on line 22)
+commit-back-to-blame          1     # continuity · Esc (after B ⏎: blame, same line)
+blame-who-at-line             1     # GitLens 0 (always on) · j (the name is on the new row)
+blame-line-before             2     # tig/Magit/GitHub 2 · B ^
+function-history              2     # GitLens ~2 (?), JetBrains ~5 · B L
+file-history                  1     # JetBrains ~2, lazygit ~3 · F (start: the detail pane on the file)
+lost-to-shell-reset           3     # +2 · jj 3–4, GitUp 5; rev 1 ~50 · J ⏎ y (the ✗ row preselected, F1)
+deleted-branch-back           4     # +1 · jj 3–4, GitUp 5 · J n ⏎ y
+edit-in-undo-backup           4     # +1 · today the shell · J n ⏎ y
+```
+
+**Where he lands** (added to the table above):
+
+| Event | Where he lands |
+|---|---|
+| Blame still reading | Blame, with its title line; no keys lost |
+| Blame fails | Blame, showing git's words; `Esc` goes back |
+| `L` on an uncommitted line | Where he was, with the words on the status line |
+| A trace stopped with `Esc` | History, with the rows so far |
+| Put-back refused (the ref moved on) | `J`, with the words on its status row |
+| `b` from `J` | The graph, on the new branch |
+
+### Hard-to-reverse choices (2b)
+
+4. **Places stack, and survive `⏎`.**
+   - Options: each place closes to the graph; or a stack that `⏎` hides.
+   - **Recommend the stack.** Journeys 9–11 promise `Esc` back to the same line (UX §3.1), and M8's future places
+     inherit one rule.
+5. **The put-back is its own journal kind (`recover`).**
+   - Options: record it as Reset / BranchCreate; or a new kind.
+   - **Recommend a new kind.** The journal must say what he did ("put main back (the shell's reset)"), undo stays the
+     generic inverse, and a serde tag, once written, is there for good.
+   - The conductor adds this to ADR-0046 as an amendment.
+6. The lost-commit method is **not** hard to reverse: it sits behind `unreached`, and measurement chooses it.
+
+### Where I'd differ from DESIGN.md (2b; Proposed changes; tickets follow DESIGN.md until approved)
+
+7. **§2.8 `n`/`N`:**
+   - Change: from "older/newer change to this line" to find next/previous, as the graph's search (H4). Older is `^`,
+     newer is `Esc`, and the list is `L`.
+   - Cost: §1.12's footer and the keymap row change.
+8. **§2.3 `F`** follows the focus (above).
+9. **§1.10 command log:**
+   - Change: `$ git …` → `┆ git …`, so `$` means only "outside Graft".
+   - Cost: the M3/M5/M6 journal captures of an expanded row change.
+10. **§2.11:** `⏎` per row kind, `b`, `/`, `n`/`N` (pass 1b's proposal, now specified), and the cursor preselect (F1).
+11. **A new §2.17 History** and a §1.x History mock-up (pass 1b's "still proposed", now with keys).
+
+### Keymap: proposed diff to `docs/design/02-keymap.md` (2b; the conductor applies it)
+
+```diff
+ §2.1 modal panes
++  - **Blame** (§2.8) and **History** (§2.17) are places (M7): full width, opened by `B`/`L`/`F`; each answers its own
++    keys and the §2.2 globals, and none of the graph's verbs is live in them. `Esc` goes back one place; after `⏎` to
++    the graph, `Esc` there returns to the place (once the graph's own menu, box, prompt, search, Focus or Explain is
++    closed).
+ §2.2 Global
+-| `Esc` | Back out / close overlay / cancel. …
++| `Esc` | Back out / close overlay / cancel. … After `⏎` from blame or history: back to it (M7) |
+ §2.3 Graph
+-| `F` | Toggle Focus mode on the selected commit (§5.2). `F` on a file row (History) is not decided here: pass 2b reconciles it (M7) |
++| `F` | Toggle Focus mode on the selected commit (§5.2). With the detail pane focused on a file (its row or a line of its
++|     | diff, the changes pane included): that file's history (§2.17) (M7) |
+ §2.5 Diff pane
++| `B` | Blame this file at this line, as of the commit shown (the file on disk in the changes pane) (§2.8) (M7) |
++| `F` | This file's history, following renames (§2.17) (M7) |
+ §2.8 Blame
++  Opened by `B` from the diff pane. Full width. Who, when and why trail the cursor line. `Esc` goes back (after `^`,
++  to the newer blame).
+-| `Enter` | Jump to the commit in the graph |
++| `Enter` | Jump to the commit in the graph, its diff scrolled to this line; `Esc` comes back (M7) |
+-| `n` / `N` | Older / newer change to this line |
++| `/` | Find in the file (M7) |
++| `n` / `N` | Next / previous match, as the graph's search (M7) |
+-| `^` | Blame the parent revision (walk up, like `git blame` at a prior commit) |
++| `^` | Blame the parent revision, cursor where this line came from; `Esc` comes back (M7) |
++| `L` | History of these lines: the function around the cursor, else its block (§2.17) (M7) |
+ | `Space` | Toggle the age heatmap |
++| `w` | Toggle ignore-whitespace, on by default (§2.5's meaning) (M7) |
++| `i` | Toggle the repo's ignore-revisions file; bound only when the repo has one (M7) |
+ §2.11 Undo journal browser
+-| `Enter` | Revert to just before this entry (Ghost Preview first) |
++| `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged); `$` put that ref back to before it;
++|         | `✗` put back what held the commit, or a lost edit's file (Ghost Preview, `y`) (M7) |
++| `b` | New branch at the row's commit (name prompt; prefilled `<branch>-restored` when the row names one) (M7) |
++| `/` | Find a row (M7) |
++| `n` / `N` | Next / previous match; with no find, next / previous `✗` row (M7) |
++  The cursor opens on the newest `✗` row when its event is newer than every `●` row, until a key is pressed (M7).
++§2.17 History (M7)
++  Opened by `L` in blame (those lines) or `F` on a file (the whole file). Full width. `Esc` goes back.
++| `j` / `k` | List: older / newer commit. File pane: scroll |
++| `Tab` | List ↔ file pane (below 120 columns, swaps the one pane shown) |
++| `n` / `N` | Next / previous change in the file pane, from either focus (as the resolver's blocks) |
++| `B` | Blame the file as of the selected commit, at the file pane's line |
++| `Enter` | The selected commit in the graph, its diff on this file; `Esc` comes back |
++| `w` `v` `[` `]` `L` | §2.5, on the file pane |
+```
+
+### Interfaces and data shapes (2b)
+
+```rust
+// ── graft-git::blame (new) ─────────────────────────────────────────────────────── trace-readers ──
+pub enum Rev { Commit(Oid), WorkingTree }
+pub struct BlameOptions { pub ignore_whitespace: bool, pub ignore_revs: bool }   // both true by default
+pub struct BlameCommit { pub id: Oid, pub author: String, pub author_time: i64, pub summary: String,
+                         pub previous: Option<(Oid, PathBuf)>, pub boundary: bool }
+pub enum LineMark { Plain, Skipped, Unblamable }                                  // git's `?` / `*`
+pub struct BlameLine { pub commit: Option<Oid>, pub orig_line: u32, pub final_line: u32, pub text: Vec<u8>,
+                       pub mark: LineMark }                                       // None = not committed yet
+pub struct IgnoreRevs { pub file: PathBuf, pub revisions: usize, pub applied: bool }
+pub struct Blame { pub path: PathBuf, pub rev: Rev, pub lines: Vec<BlameLine>,
+                   pub commits: BTreeMap<Oid, BlameCommit>, pub ignore_revs: Option<IgnoreRevs> }
+pub enum BlameError { Run(RunError), Parse(ParseError), Binary, Untracked, Stopped }
+pub fn blame(repo: &RepoHandle, rev: &Rev, path: &Path, opts: &BlameOptions, stop: &dyn Stop)
+    -> Result<Blame, BlameError>;
+pub fn parse_porcelain(bytes: &[u8])
+    -> Result<(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>), ParseError>;         // cargo-fuzz target
+
+// ── graft-git::trace (new) ─────────────────────────────────────────────────────── trace-readers ──
+pub enum LineRange { Function { name: String, start: u32, end: u32 }, Block { start: u32, end: u32 } }
+pub fn enclosing_function(repo: &RepoHandle, at: Oid, path: &Path, line: u32, stop: &dyn Stop)
+    -> Result<Option<LineRange>, RunError>;                                       // None → the app uses the block
+pub fn map_to_head(worktree_vs_head: &[Hunk], line: u32) -> Option<u32>;          // pure; None = not committed
+pub struct TraceCommit { pub id: Oid, pub author: String, pub when: i64, pub subject: String, pub path: PathBuf,
+                         pub renamed_from: Option<PathBuf>, pub added: u32, pub removed: u32,
+                         pub range_at: Option<(u32, u32)> }                        // L only: the range in that commit
+pub enum TraceEnd { Start { added_by: Oid }, GitStops(String), Capped { shown: usize }, Stopped }
+pub enum TraceError { Run(RunError), Parse(ParseError) }
+pub fn line_history(repo: &RepoHandle, at: Oid, path: &Path, range: &LineRange, cap: usize,
+                    sink: &mut dyn FnMut(Vec<TraceCommit>), stop: &dyn Stop) -> Result<TraceEnd, TraceError>;
+pub fn file_history(repo: &RepoHandle, at: Oid, path: &Path, cap: usize,
+                    sink: &mut dyn FnMut(Vec<TraceCommit>), stop: &dyn Stop) -> Result<TraceEnd, TraceError>;
+pub fn whole_file(repo: &RepoHandle, commit: Oid, path: &Path, old_path: Option<&Path>, max_lines: usize,
+                  stop: &dyn Stop) -> Result<FileDiff, DiffError>;              // one hunk, every line
+pub fn parse_line_log(bytes: &[u8]) -> Result<Vec<TraceCommit>, ParseError>;     // cargo-fuzz target
+pub fn parse_follow_log(bytes: &[u8]) -> Result<Vec<TraceCommit>, ParseError>;   // cargo-fuzz target
+
+// ── graft-git::history_reads ────────────────────────────────────────────────────── lost-commit-cost ──
+pub struct LostRun { pub tip: Oid, pub under: usize }                           // lost ancestors, capped at 999
+pub struct Unreached { pub lost: Vec<LostRun>, pub checked: usize, pub capped: bool }
+pub fn unreached(repo: &RepoHandle, candidates: &[Oid], cap: usize, stop: &dyn Stop)
+    -> Result<Unreached, RunError>;   // held = branches, tags, remote-tracking, every stash; never refs/graft/**
+
+// ── graft-git::reflog (new) ─────────────────────────────────────────────── journal-list (Fable signature) ──
+pub struct ReflogRecord { pub refname: String, pub old: Option<Oid>, pub new: Option<Oid>, pub at: i64,
+                          pub subject: String }                                  // HEAD + refs/heads/*; None = zero id
+pub fn records(repo: &RepoHandle, cap: usize) -> Result<Vec<ReflogRecord>, ReflogError>;   // gix, no spawn
+
+// ── graft-ops::journal_list (new) ───────────────────────────────────────── journal-list (Fable signature) ──
+pub struct OutsideRecord { pub record: ReflogRecord, pub back: Option<usize> }   // commits back along the ref
+pub struct OutsideStep { pub record: ReflogRecord, pub words: String, pub folded: usize }
+pub enum HeldBy { Branch { name: String, gone: bool }, Head }
+pub struct LostCommit { pub run: LostRun, pub subject: String, pub held_by: HeldBy }
+pub struct LostEdit { pub entry: EntryId, pub backup_tree: Oid, pub paths: Vec<PathBuf> }
+pub enum ListRow { Graft(EntryId), Outside(OutsideStep),
+                   Lost { event: usize, commit: LostCommit }, LostEdit { event: usize, edit: LostEdit } }
+pub enum LostScan { Running, Done, Capped { checked: usize }, Failed(String) }
+pub struct JournalList { pub rows: Vec<ListRow>, pub scan: LostScan }   // newest first; lost rows after their event
+pub fn read_outside(repo: &RepoHandle, git: &Git, cap: usize, stop: &dyn Stop)
+    -> Result<Vec<OutsideRecord>, FactsError>;
+pub fn find_lost(repo: &RepoHandle, entries: &[JournalEntry], outside: &[OutsideRecord], cap: usize,
+                 stop: &dyn Stop) -> Result<Unreached, FactsError>;
+pub fn build(entries: &[JournalEntry], outside: &[OutsideRecord], lost: Option<&Unreached>,
+             subject_of: &dyn Fn(Oid) -> Option<String>, edits: &[LostEdit], scan: LostScan) -> JournalList; // pure
+pub fn words(record: &ReflogRecord, back: Option<usize>) -> String;
+pub enum Recover { Run(Operation), OfferBranch { at: Oid, name: String, why: String } }
+pub fn recover_for(list: &JournalList, row: usize, facts: &RepoFacts) -> Result<Recover, Refusal>;
+
+// ── graft-ops::operation (types: journal-list; check/plan/touches/preview: recover-op) ──
+pub enum RecoverTarget { MoveRef { name: String, to: Oid, expected: Oid }, Recreate { name: String, at: Oid },
+                         Files { entry: EntryId, backup_tree: Oid, paths: Vec<PathBuf> } }
+pub struct RecoverParams { pub target: RecoverTarget, pub because: String }     // "the shell's reset"
+// Operation::Recover(RecoverParams); graft-core OperationKind::Recover (serde `recover`).
+// Refusal gains MovedOnSince { name: String, now: Oid }, HeldAgain { commit: Oid, by: String }.
+pub fn lost_edits(repo: &RepoHandle, git: &Git, entries: &[JournalEntry], stop: &dyn Stop)
+    -> Result<Vec<LostEdit>, FactsError>;                                        // recover-op
+
+// ── graft (app) ──────────────────────────────────────────────────────────── blame-place, history-place ──
+pub enum Place { Blame(Box<BlameState>), History(Box<HistoryState>) }
+pub struct Trail { pub places: Vec<Place>, pub shown: bool, pub origin: Option<Origin> }   // AppState::trail
+pub enum BlameFrom { Commit { commit: Oid, path: PathBuf, line: u32 },
+                     Parent { commit: Oid, path: PathBuf, line: u32 },
+                     WorkingTree { path: PathBuf, line: u32 } }
+pub fn open_blame(state: &mut AppState, from: BlameFrom) -> Vec<Command>;         // B, ^
+pub enum HistoryFrom { Lines { at: Rev, path: PathBuf, line: u32, blamed: Option<Oid> },
+                       File { at: Rev, path: PathBuf, line: Option<u32> } }
+pub fn open_history(state: &mut AppState, from: HistoryFrom) -> Vec<Command>;     // L, F
+pub fn place_key(state: &mut AppState, key: KeyEvent) -> Vec<Command>;
+pub fn trail_back(state: &mut AppState) -> bool;                                  // Esc; false = nothing to go back to
+// GraphOverlay::Place. One cancellable job each for blame, trace and the whole file (the builder names the
+// Command / Progress / Product variants).
+pub fn journal_enter(state: &mut AppState) -> Vec<Command>;                      // journal-screen: ⏎ per row kind
+// ── graft-ui ──
+pub fn draw_blame(frame: &mut Frame, area: Rect, view: &BlameView);
+pub fn draw_history(frame: &mut Frame, area: Rect, view: &HistoryView);
+// journal_screen: JournalRowView gains kind: RowKind { Graft, Outside, Lost, LostEdit }, git_subject, under
+```
+
+### Genuinely risky tickets (2b)
+
+- **`journal-list`** meets all three Fable tests:
+  1. It decides ADR-0046's open points: the dedupe key across `HEAD` and branch logs, where a lost run is placed, the
+     fold, the words, and what `⏎` means per row.
+  2. A wrong choice is structural. `J`, the put-back, the acceptance walk and M8's journal all read this list, and the
+     `recover` tag is written into journal files for good.
+  3. Correctness can't be judged from the diff. git's reflog semantics show only in oracle scenarios scripted with
+     real git: a deleted branch's log vanishes with it, and a shell rebase writes a storm of `HEAD` records.
+
+  → **Fable (signature)**.
+- **`lost-commit-cost`** is the pass-1 risk. Measurement and an oracle judge it. It is one function behind a signature,
+  so it isn't structural (fails test 2) → Opus. It may stop under rule 2 if no method meets the budget.
+- **`trace-readers`:** the funcname rule is tricky, but an oracle against `git log -L` judges it → Opus.
+- **Fable-tier builds in 2b: 1**, plus the acceptance ticket. For the milestone: 2 (`rewrite-engine`, `journal-list`).
+
+### Tickets (pass 2b) — `.scratch/m7-power-tools/issues/`
+
+| Ticket | Build with | Needs | Crates |
+|---|---|---|---|
+| trace-readers | Opus | — | graft-git, graft-fixtures |
+| blame-place | Opus | trace-readers | graft, graft-ui |
+| history-place | Opus | trace-readers, blame-place | graft, graft-ui |
+| lost-commit-cost | Opus | — | graft-git, graft-fixtures, scripts |
+| journal-list | Fable (signature) | lost-commit-cost | graft-core, graft-git, graft-ops, graft-fixtures |
+| recover-op | Opus | journal-list | graft-ops |
+| journal-screen | Opus | journal-list, recover-op, 03 land-on-result, 09 amend-into-and-absorb-keys (row tags) | graft, graft-ui |
+| m7-docs-and-gates | Sonnet | — | graft (tests), docs, captions |
+| m7-acceptance | Fable | every M7 ticket | graft (tests), scripts, docs |
+
+9 specs. With 2a's, there are 26 M7 journeys in all. No third pass is needed.
