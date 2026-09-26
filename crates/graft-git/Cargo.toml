@@ -91,6 +91,12 @@ workspace = true
 name = "trace_perf"
 required-features = ["heavy-tests"]
 
+# Timing for `scripts/m7-perf-lost.sh` (m7-power-tools/19): three ways of
+# finding lost commits on the heavy repository with 50k refs.
+[[example]]
+name = "lost_cost"
+required-features = ["heavy-tests"]
+
 [dev-dependencies]
 # The named fixture corpus (m1-the-graph/01). A dev-dependency only, so it is
 # not an internal dependency edge (ADR-0006). Optional so that the

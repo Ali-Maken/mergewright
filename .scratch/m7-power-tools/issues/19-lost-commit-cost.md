@@ -1,7 +1,6 @@
 # lost-commit-cost — measure finding lost commits on a 50k-ref repo, then ship the method that fits
 
-Status: ready
-Blocked by: none
+Status: done
 Blocked by: none
 Crates: graft-git, graft-fixtures. Scripts `scripts/m7-perf-lost.sh`, `docs/perf/lost-commit-cost.txt`.
 Source: `docs/design-notes/m7-power-tools.md`: "Expected groups" (the pass-2 risk: "finding lost commits on the
@@ -71,22 +70,22 @@ If method (c) wins and needs the `Arc<CommitTable>`, add it as a parameter and s
 the final signature from MAP.md.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] **Oracle:** `unreached_matches_rev_list_all_on_candidates`. Script a repo with each lost form (shell reset, a
+- [x] **Oracle:** (tests/it/unreached.rs, `unreached_matches_rev_list_all_on_candidates`, passes) `unreached_matches_rev_list_all_on_candidates`. Script a repo with each lost form (shell reset, a
       deleted branch, an amended tip) plus held ones. Compare with membership in `git rev-list --branches --tags
       --remotes` plus the stash entries, computed separately in the test.
-- [ ] **Held and lost:**
+- [x] **Held and lost:** (tests/it/unreached.rs, all five pass; mutation-checked: dropping stash entries, `HEAD`, or using `--all` each fails one)
   - `a_commit_only_a_stash_holds_is_held`.
   - `an_older_stash_entry_holds_too` (`stash@{1}`).
   - `a_commit_only_refs_graft_holds_is_lost`.
   - `a_detached_head_holds`.
   - `a_tag_holds_through_peeling`.
-- [ ] **Runs and limits:**
+- [x] **Runs and limits:** (tests/it/unreached.rs, all three pass; plus unit `under_stops_at_the_cap`)
   - `lost_ancestors_fold_into_one_run_with_under`.
   - `cap_checks_only_the_newest_and_says_capped`.
   - `unreached_honours_stop`.
-- [ ] **Measured:** `docs/perf/lost-commit-cost.txt` exists with the three methods and the summary line. The shipped
+- [x] **Measured:** (`scripts/m7-perf-lost.sh`, summary `method=a-rev-list p95=190.0 refs=50652 · held`) `docs/perf/lost-commit-cost.txt` exists with the three methods and the summary line. The shipped
       method is named in NOTES with its p95. A miss → a stop and a question, not a tick.
-- [ ] graft-git MAP.md `history_reads`: `unreached`, `LostRun`, `Unreached`, with the method and its measured p95.
+- [x] graft-git MAP.md (checked by reading the entry) `history_reads`: `unreached`, `LostRun`, `Unreached`, with the method and its measured p95.
 
 ## Touches (check each, report how)
 - `history_reads` exports only. Check: no existing function changed (`git diff --stat`).
@@ -103,3 +102,25 @@ workspace-wide. The perf script runs `--release` outside the gates.
 
 ## Size
 ~50k. No split expected.
+
+## NOTES (builder, 2026-09-26)
+- **Shipped: method (a), one `rev-list`, p95 190.0 ms** (p50 163.7) for 500 candidates, 100k commits, 50 652 refs, no
+  commit-graph, release, M5 laptop. Budget 1 000 ms held. (c) in-process walk p95 217.5 ms, exact. (b) per-candidate
+  `--contains` ≈ 10 s per candidate: timed on 25 and scaled, p95 ≈ 97 min a run, so not judged for correctness.
+- Signature exactly as specified; no `Arc<CommitTable>` needed.
+- (a) is two spawns: `rev-list -g --ignore-missing refs/stash` (every stash entry, `stash@{1}` and older), then
+  `rev-list --parents --ignore-missing --stdin --not --branches --tags --remotes`, stdin = candidates, `--not`, `HEAD`,
+  stash entries. `--stdin` keeps its own `--not` state apart from the command line's (probed, git 2.54).
+- A pruned candidate (object gone) is passed over, not reported (`a_candidate_git_no_longer_has_is_not_reported`).
+- Output past the runner's 64 MiB cap is `RunError::Unparsable`, not a partial answer.
+- (c) as measured has no generation cut-off: without a commit-graph every generation is infinite, so it walks to the
+  root. With a commit-graph it could be cheaper; not measured (the ticket's fixture has none).
+- Fixture: `graft_fixtures::synthetic::with_reflog(scale)` — a temp repo borrowing the heavy repo's objects
+  (alternates) and refs (packed-refs), 1 000 records on HEAD (400) + main/reflog-a/reflog-b (200 each), 20 lost as
+  `commit-tree` commits among HEAD's newest 200. Reflog values are from main's newest 1 000 first-parent commits
+  (recent history; git expires reflogs at 90 days). Candidates in the example: HEAD's 400 + main's newest 100.
+- Perf file's (b) row reads `found=WRONG`: the example printed that for an extrapolated row. Fixed after the run to
+  print `not-judged`; the committed file predates the fix (a rerun costs ~45 min for (b)'s sampling).
+- Heavy-tier clippy (`-p graft-git --features heavy-tests --examples`) fails on the pre-existing `trace_perf.rs`
+  `too_many_lines` (m7/18), not this ticket. `lost_cost` and graft-fixtures heavy lib are clean.
+- Tests were written before the code; the first run was after it. Mutation checks stand in for red.

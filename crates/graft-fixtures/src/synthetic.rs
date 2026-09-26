@@ -74,8 +74,10 @@ const SCRATCH_BRANCH: &str = "refs/heads/topic-scratch";
 const MAIN: &[u8] = b"refs/heads/main";
 
 mod history;
+mod reflog;
 mod scale;
 
+pub use reflog::{LOST, RECORDS, Reflogged, with_reflog};
 pub use scale::{CommitGraph, CommitSize, Scale};
 
 use history::History;
