@@ -1,6 +1,6 @@
 # 28 ignored-file-guard — no write goes over a file git doesn't keep
 
-Status: ready, ADR-0049 accepted by the user 2026-09-26 (scout done: `.scratch/m7-power-tools/scouts/28.md`). Split into **28a** then **28b**. Both are graft-ops,
+Status: **28a done** (2026-09-26); 28b ready. ADR-0049 accepted by the user 2026-09-26 (scout done: `.scratch/m7-power-tools/scouts/28.md`). Split into **28a** then **28b**. Both are graft-ops,
 so they run one after the other, never at the same time.
 Blocked by: 23b (merged 4654b7e1); 22c while it holds graft-ops.
 Decisions: ADR-0049 (proposed, planner 2026-09-26). The spec-only pass replaced "no new decision / `blocked: needs
@@ -134,34 +134,96 @@ holding `MINE`, and asserts all four of these:
 - the journal entry count is unchanged.
 
 "Red" = the result before the fix, **recorded in NOTES**.
-- [ ] `switch_over_an_ignored_file_is_refused`: 23b's probe. Red: preview Ok, `c.txt` overwritten.
-- [ ] `switch_detached_over_an_ignored_file_is_refused`. Red as above.
-- [ ] `new_branch_switch_over_an_ignored_file_is_refused` (BranchCreate `checkout: true`). Red as above.
-- [ ] `branch_from_stash_over_an_ignored_file_is_refused`: probe first; the stash base tracks `c.txt` and `HEAD` doesn't.
+- [x] `switch_over_an_ignored_file_is_refused` (in `crates/graft-ops/tests/it/in_the_way.rs`): 23b's probe. Red: preview Ok, `c.txt` overwritten.
+- [x] `switch_detached_over_an_ignored_file_is_refused`. Red as above.
+- [x] `new_branch_switch_over_an_ignored_file_is_refused` (BranchCreate `checkout: true`). Red as above.
+- [x] `branch_from_stash_over_an_ignored_file_is_refused` (probed: git overwrites, see NOTES): probe first; the stash base tracks `c.txt` and `HEAD` doesn't.
   If git already refuses, the test stays and NOTES say "safe by git", with its stderr.
-- [ ] `merge_fast_forward_over_an_ignored_file_is_refused` and `merge_over_an_ignored_file_is_refused` (`--no-ff`). Red as above.
-- [ ] `pull_over_an_ignored_file_is_refused`: the tracking tip already tracks `c.txt`. Refused before the fetch.
-- [ ] `pull_whose_fetch_brings_an_ignored_path_is_refused_by_git`: the tracking tip lacks `c.txt` and the remote has
+- [x] `merge_fast_forward_over_an_ignored_file_is_refused` and `merge_over_an_ignored_file_is_refused` (`--no-ff`). Red as above.
+- [x] `pull_over_an_ignored_file_is_refused`: the tracking tip already tracks `c.txt`. Refused before the fetch.
+- [x] `pull_whose_fetch_brings_an_ignored_path_is_refused_by_git` (plan-args: `operation::remote::tests`, `git merge --ff-only --no-overwrite-ignore --no-edit …`): the tracking tip lacks `c.txt` and the remote has
   it. The fetch runs, then git refuses the merge (the flag). `c.txt` is still `MINE`, and the error names `c.txt`. If
   `classify_failure` doesn't match git's `untracked working tree files would be overwritten by merge`, it maps it to
   `WouldOverwrite`. Red: `c.txt` overwritten. Update the plan-args tests of pull and `Operation::preview` too.
-- [ ] `hard_reset_over_an_ignored_file_is_refused`; `soft_and_mixed_resets_are_not_refused` (no false refusal).
-- [ ] `put_back_over_an_ignored_file_is_refused_in_the_way`: 23b's C1 test, words moved from `UnsavedEditsTo` to `InTheWay`.
-- [ ] `stash_apply_over_an_ignored_file_is_refused_at_y`: the preview's `StashInTheWay` is unchanged. `apply` now
+- [x] `hard_reset_over_an_ignored_file_is_refused`; `soft_and_mixed_resets_are_not_refused` (no false refusal).
+- [x] `put_back_over_an_ignored_file_is_refused_in_the_way` (and `recover::move_ref_checked_out_refuses_over_an_{untracked,ignored}_file_it_would_overwrite` moved to `InTheWay`): 23b's C1 test, words moved from `UnsavedEditsTo` to `InTheWay`.
+- [x] `stash_apply_over_an_ignored_file_is_refused_at_y`: the preview's `StashInTheWay` is unchanged. `apply` now
   refuses before `begin`. Red: git refused after `begin`, and an `Aborted` entry was journaled.
-- [ ] `stash_whose_staged_new_file_meets_an_ignored_file`: probe (the stash's index adds `c.txt`). Red-first if git
+- [x] `stash_whose_staged_new_file_meets_an_ignored_file` (probed: git overwrites, so red-first): probe (the stash's index adds `c.txt`). Red-first if git
   overwrites it; if not, a proof test, with NOTES as above.
-- [ ] `untracked_file_in_the_way_is_refused_before_git`: `c.txt` not ignored, `S stashes it first`. Red: an `Aborted` entry.
-- [ ] `a_directory_or_a_file_above_is_in_the_way`: the target tracks `dist` and an ignored `dist/` holds a file; the
+- [x] `untracked_file_in_the_way_is_refused_before_git`: `c.txt` not ignored, `S stashes it first`. Red: an `Aborted` entry.
+- [x] `a_directory_or_a_file_above_is_in_the_way` (+ no-false-refusal: `a_tracked_file_above_is_not_in_the_way`, `ignored_build_output_elsewhere_is_not_in_the_way`): the target tracks `dist` and an ignored `dist/` holds a file; the
   target tracks `a/b` and an ignored file `a`. Both refused, naming `dist` and `a`.
-- [ ] `in_the_way_words` (unit, in operation's tests): all four word rows, a mixed case, and one `<doing>` per kind in
+- [x] `in_the_way_words` (unit, `crates/graft-ops/src/operation/tests.rs`): all four word rows, a mixed case, and one `<doing>` per kind in
   the table.
-- [ ] One read: NOTES name the grep proving it. `symlink_metadata` appears only in `in_the_way::on_disk`, and the
+- [x] One read: NOTES name the grep proving it. `symlink_metadata` appears only in `in_the_way::on_disk`, and the
   callers of `blocking` are `preview::plan`, `preview::stash` and `apply::guard_in_the_way`.
-- [ ] `crates/graft-ops/MAP.md`: the module, `Refusal::InTheWay`, `plan`'s read-refusals, pull's plan, the Recover line
+- [x] `crates/graft-ops/MAP.md`: the module, `Refusal::InTheWay`, `plan`'s read-refusals, pull's plan, the Recover line
   and the `preview::stash` line.
-- [ ] Gates run workspace-wide.
+- [x] Gates run workspace-wide: `cargo fmt --all --check` ok; `cargo clippy --workspace --all-targets -- -D warnings`
+  ok; `cargo nextest run --workspace` 3818/3818 passed (1 skipped); `cargo test --workspace --doc` ok.
 Size: about 70k.
+
+### 28a NOTES (builder, 2026-09-26)
+Scout: used scout 28 (`.scratch/m7-power-tools/scouts/28.md`); no second one.
+
+**Red, before the fix** (each tuple is `(preview, apply, bytes after, new journal entries)`, observed by running the
+tests against the unchanged code):
+- switch, switch detached, new-branch switch, merge `--ff-only`, merge `--no-ff`, hard reset: `("preview drew a plan",
+  "apply ran", "theirs\n", 1)` — his `MINE` overwritten, rc 0.
+- branch from stash: the same — **not safe by git**: `stash branch`'s switch overwrote `c.txt` ("theirs").
+- stash whose index adds `c.txt`: `("preview drew a plan", "apply ran", "staged\n", 1)` — **git overwrites** an
+  ignored file from the stash's staged part (no refusal). Red-first, not a proof test.
+- stash apply of a `-u` stash: `("c.txt is in the way", "apply failed: apply stash@{0}: c.txt already exists, no
+  checkout · u restores the backup", "MINE\n", 1)` — git refused, after `begin`: an `Aborted` entry.
+- untracked (not ignored) `c.txt`, switch: `("preview drew a plan", "apply failed: checkout other: error: The
+  following untracked working tree files would be overwritten by checkout: · u restores the backup", "MINE\n", 1)`.
+- `dist/` ignored dir where `other` tracks a file `dist`: `("preview drew a plan", "apply ran", "", 1)` — git
+  **deleted** his ignored directory. `a` ignored file where `other` tracks `a/b`: overwritten likewise.
+- put-back (23b C1): refused already, in `UnsavedEditsTo`'s words (`c.txt has unsaved edits · c commits or S stashes
+  them first`).
+- pull, tracking tip tracks the file: `("pull has no preview", "apply ran", "adds a file\n", 1, <tracking moved>)`.
+- pull, fetch brings the file: red observed by removing `--no-overwrite-ignore` from the plan and running the test
+  (fixture fixed first; its first run failed in setup): his file overwritten ("adds a file"). With the flag git refuses;
+  `classify_failure` already matched `untracked working tree files would be overwritten`, so no graft-git change:
+  `WouldOverwrite { paths: [<file>] }`, entry `Aborted`, file `MINE`.
+- `soft_and_mixed_resets_are_not_refused`, `ignored_build_output_elsewhere_is_not_in_the_way`,
+  `a_tracked_file_above_is_not_in_the_way`: green before and after (guards against false refusal).
+
+**One read — the grep:** `grep -rn symlink_metadata crates/graft-ops/src` → `in_the_way.rs` (`on_disk`, and its
+`file_above` helper for the `ENOTDIR` ancestor walk) plus `merge_state.rs:110`, which stats `MERGE_AUTOSTASH` in the
+git dir, not a worktree path. `grep -rn "in_the_way::blocking\|in_the_way::refused" crates/graft-ops/src` →
+`preview.rs` (`refuse_in_the_way`, called by `plan` after `check`) and `apply.rs` (`guard_in_the_way`) only.
+`preview::stash`'s `occupied` and `preview::recover::in_the_way` are deleted; `plan`'s read covers both before any
+forecast, so `preview::stash` does not call `blocking` itself (the ticket listed it as a caller; one call site fewer).
+
+**Deviations, for the conductor:**
+- Hard reset and checked-out `MoveRef` read `diff-index --cached <to>` (index vs target), not `diff-tree HEAD <to>`: a
+  superset. It also catches a file he `git rm --cached` (e.g. `.env`), which `reset --hard` writes back and no `HEAD`
+  diff names. 23b's own read had a partial version of this (status-untracked paths held in `to`).
+- `on_disk` takes a third argument, `tracked`: a directory counts only when it holds something the index doesn't track
+  (a tracked `dist/` becoming a file `dist` is git's to empty; without this, a false refusal), and an `ENOTDIR`
+  ancestor the index tracks (`a` tracked on `HEAD`, `a/b` on the target) isn't his file.
+- Merge reads `diff-tree --merge-base HEAD <source>` in one spawn (git ≥ 2.30; minimum is 2.38).
+- `doing` also answers the 28b kinds (rebase, rewrite, pick, revert), since the words table is fixed; `written_paths`
+  returns `Ok(None)` for them with a `// 28b` comment, so they are **not guarded yet**.
+
+**Questions (not defects, no line proves loss):**
+- The set-aside's `reset --hard` (checkout, rebase over a dirty tree) writes paths where the index differs from `HEAD`.
+  A `git rm --cached` file that the *target* doesn't have is outside every row of the table, so it is not read. Worth a
+  probe in a later ticket.
+- Deletions are in the switch diff (`--name-only` includes `D`): a path `HEAD` tracks, the target deletes and the index
+  doesn't track (staged `rm --cached`), with the file on disk, is refused although plain `git switch` would leave it.
+  The set-aside runs first there, so refusing is the safer side.
+
+**Touches:** `apply.rs:224` (renamed guard, runs for every covered kind, before `set_aside::create` and `begin`,
+checked by the `entries` count in every test); `preview::plan` doc; 23b's tests (`recover.rs`, both moved to
+`InTheWay`; `grep -rn "UnsavedEditsTo\|has unsaved edits" crates` → only Recover `Files`, its test, MAP); pull's plan
+args (`operation/remote/tests.rs`); captures: `grep -rn "merge --ff-only" docs/shots` → none; graft: `refusal_status`
+words every non-`DirtyTree` refusal via `explain()` and `grep -rn "Refusal::Bare\|Refusal::HeldAgain" crates/graft`
+finds no exhaustive match, so no graft change. **Not edited (outside graft-ops):**
+`docs/capabilities/m4-remotes.md:56` still says `merge --ff-only --no-edit <tracking_ref>`; DESIGN §6.3 and
+`docs/design/02-keymap.md:425` are the conductor's per the ticket.
 
 ## 28b — the replays
 Build with: **Opus** (reasons as 28a). Crates: graft-ops. Needs: 28a's `written_paths`, `blocking`, `doing` and

@@ -221,7 +221,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         return Ok(folded);
     }
     guard_repush(ctx, op, &facts)?;
-    guard_untracked(ctx, op, &facts)?;
+    guard_in_the_way(ctx, op, &facts)?;
     let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe_in(&facts));
     // A rebase or rewrite: read the line of branches and write the todo
     // before `touches`, which records every branch of the line (ADR-0047).
@@ -457,26 +457,26 @@ fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<
     }))
 }
 
-/// A checked-out branch put back is a `reset --hard`, which writes over an
-/// untracked or ignored file at a path the target writes without a word.
-/// `check` cannot see trees or the disk, so the preview's question is asked
-/// again here, before the `Pending` line: facts can change between the
-/// picture and `y` (m7/23, conductor ruling; review m7-22, C1).
-fn guard_untracked(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<(), ApplyError> {
-    let Operation::Recover(params) = op else {
-        return Ok(());
-    };
-    let paths =
-        crate::preview::in_the_way(ctx.repo, params, facts, ctx.stop).map_err(
+/// His files git doesn't keep, where the write puts its own (ADR-0049):
+/// the preview's question asked again here, before the set-aside and the
+/// `Pending` line, because facts can change between the picture and `y`
+/// and `check` cannot see trees or the disk. A refusal leaves nothing
+/// behind: no stash, no entry.
+fn guard_in_the_way(
+    ctx: &Context<'_>,
+    op: &Operation,
+    facts: &RepoFacts,
+) -> Result<(), ApplyError> {
+    let blocking =
+        crate::in_the_way::blocking(ctx.repo, op, facts, ctx.stop).map_err(
             |error| match error {
                 FactsError::Stopped => ApplyError::Stopped,
                 other => ApplyError::Facts(other),
             },
         )?;
-    if paths.is_empty() {
-        Ok(())
-    } else {
-        Err(ApplyError::Refused(Refusal::UnsavedEditsTo { paths }))
+    match crate::in_the_way::refused(op, blocking) {
+        Some(refused) => Err(ApplyError::Refused(refused)),
+        None => Ok(()),
     }
 }
 

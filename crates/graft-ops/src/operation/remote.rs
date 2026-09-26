@@ -281,6 +281,9 @@ pub(super) fn plan_pull(params: &PullParams) -> Vec<Invocation> {
     let merge = Invocation::new(vec![
         GitArg::Flag("merge"),
         GitArg::Flag("--ff-only"),
+        // ADR-0049 §4: the fetch runs between Graft's read of the files in
+        // the way and this write, so git's own guard stands at write time.
+        GitArg::Flag("--no-overwrite-ignore"),
         GitArg::Flag("--no-edit"),
         GitArg::Ref(params.upstream.tracking_ref.clone().into_bytes()),
     ]);

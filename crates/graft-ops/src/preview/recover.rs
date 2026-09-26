@@ -10,8 +10,8 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::facts::FactsError;
-use crate::operation::{FilesEffect, RecoverParams, RecoverTarget, Refusal, RepoFacts, branch_ref};
-use crate::snapshot::{SnapshotError, tracked_paths_now};
+use crate::operation::{FilesEffect, RecoverParams, RecoverTarget, RepoFacts, branch_ref};
+use crate::snapshot::SnapshotError;
 use crate::undo::tree_diff;
 
 use super::{Landing, PreviewError, PreviewPlan, RefMove, Target, WorktreeEffect, blank, worktree};
@@ -35,13 +35,9 @@ pub(super) fn recover(
                 &facts.head,
                 graft_core::journal::HeadRef::Branch(head) if *head == full
             );
+            // His files in the reset's way were refused by `plan` before
+            // this runs (`in_the_way`, ADR-0049).
             if on_head {
-                let in_the_way = in_the_way(repo, params, facts, stop).map_err(preview_error)?;
-                if !in_the_way.is_empty() {
-                    return Err(PreviewError::Refused(Refusal::UnsavedEditsTo {
-                        paths: in_the_way,
-                    }));
-                }
                 let aside = set_aside_count(params, facts);
                 (plan.worktree, plan.files) = reset_effect(repo, *expected, *to, aside, stop)?;
             } else {
@@ -74,74 +70,6 @@ pub(super) fn recover(
         }
     }
     Ok(plan)
-}
-
-/// His files a checked-out `MoveRef`'s `reset --hard` would write over:
-/// every path `to` adds or changes against `expected` (and every untracked
-/// path `to` holds) that the index does not track and that stands on disk.
-///
-/// Decided from the disk, not from `git status` (review m7-22, C1): status
-/// never lists an **ignored** file, yet `reset --hard` writes over it, and
-/// the backup (`add -A`) cannot hold it, so `u` could not bring it back.
-/// Tracked paths are the set-aside's (ADR-0045 §4), never in the way. The
-/// stash preview's `occupied` is the same rule. Both the preview and
-/// `apply` refuse over these (`Refusal::UnsavedEditsTo`). Empty for every
-/// other target.
-pub(crate) fn in_the_way(
-    repo: &RepoHandle,
-    params: &RecoverParams,
-    facts: &RepoFacts,
-    stop: &dyn Stop,
-) -> Result<Vec<PathBuf>, FactsError> {
-    let RecoverTarget::MoveRef { name, to, expected } = &params.target else {
-        return Ok(Vec::new());
-    };
-    let on_head = matches!(
-        &facts.head,
-        graft_core::journal::HeadRef::Branch(head) if *head == branch_ref(name)
-    );
-    let Some(root) = repo.workdir().filter(|_| on_head) else {
-        // Not checked out: an `update-ref` writes no file. A bare
-        // repository has no files to write over.
-        return Ok(Vec::new());
-    };
-    let mut written: BTreeSet<PathBuf> = tree_diff(repo, *expected, *to, stop, &mut Vec::new())?
-        .into_iter()
-        .filter_map(|(path, holds)| holds.map(|_| path))
-        .collect();
-    let untracked: Vec<PathBuf> = facts
-        .status
-        .entries
-        .iter()
-        .filter(|entry| entry.untracked)
-        .map(|entry| entry.path.clone())
-        .collect();
-    if !untracked.is_empty() {
-        written.extend(held_in(repo, *to, &untracked, stop).map_err(run_error)?);
-    }
-    if written.is_empty() {
-        return Ok(Vec::new());
-    }
-    let tracked = tracked_paths_now(repo, stop, &mut Vec::new())?;
-    let mut found = Vec::new();
-    for path in written.into_iter().filter(|path| !tracked.contains(path)) {
-        match std::fs::symlink_metadata(root.join(&path)) {
-            Ok(_) => found.push(path),
-            Err(why) if why.kind() == std::io::ErrorKind::NotFound => {}
-            // A file where `to` needs a directory (`a` for `a/b`) is in the
-            // way too: git would remove it to make the directory.
-            Err(why) if why.kind() == std::io::ErrorKind::NotADirectory => found.push(path),
-            Err(source) => return Err(FactsError::OnDisk { path, source }),
-        }
-    }
-    Ok(found)
-}
-
-fn run_error(why: RunError) -> FactsError {
-    match why {
-        RunError::Stopped => FactsError::Stopped,
-        other => FactsError::Snapshot(SnapshotError::Run(other)),
-    }
 }
 
 /// A checked-out branch put back is a `reset --hard` from `expected` to

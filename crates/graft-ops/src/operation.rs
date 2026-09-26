@@ -414,8 +414,10 @@ pub enum Refusal {
     /// A stash put-back refused before writing anything: unsaved edits
     /// (worktree ≠ index) to a path the stash writes, or a file where the
     /// stash would create an untracked one (m6-conflicts/86). Only the stash
-    /// preview says it; `apply` still refuses the first with
-    /// [`Refusal::TouchesChangedFiles`], and git refuses the second.
+    /// preview says it for the first; `apply` still refuses that with
+    /// [`Refusal::TouchesChangedFiles`]. The second — ignored files
+    /// included — both the preview and `apply` refuse, from
+    /// [`crate::in_the_way::blocking`] (ADR-0049).
     ///
     /// The three sets are named apart (review 86, m4 and m5): edits of his
     /// read `your unsaved edits to …`, a file that is not his edit reads
@@ -705,6 +707,19 @@ pub enum Refusal {
         /// The files in the way.
         paths: Vec<PathBuf>,
     },
+    /// Files git doesn't keep stand where the operation would write its own
+    /// (ADR-0049): git would write over them, and the backup can't hold an
+    /// ignored one. Read by [`crate::in_the_way::blocking`], in the preview
+    /// and again at `y`, before anything is written.
+    InTheWay {
+        /// What the operation is doing, in words: `switching to other`.
+        doing: String,
+        /// Ignored files in the way, sorted. They decide the next step:
+        /// neither `S` nor `c` takes one.
+        ignored: Vec<PathBuf>,
+        /// Untracked files in the way, sorted: `S` stashes them.
+        untracked: Vec<PathBuf>,
+    },
 }
 
 impl Refusal {
@@ -950,8 +965,36 @@ impl Refusal {
                     name_paths(paths)
                 )
             }
+            Self::InTheWay {
+                doing,
+                ignored,
+                untracked,
+            } => in_the_way_of(doing, ignored, untracked),
         }
     }
+}
+
+/// [`Refusal::InTheWay`] in words. The first ignored path names the line
+/// when there is one, since an ignored file decides the next step; `+N more`
+/// counts every other path, ignored or not (the form of Recover's
+/// `put back your edit to <path> +N more`).
+fn in_the_way_of(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> String {
+    let (first, tag, next) = match (ignored.first(), untracked.first()) {
+        (Some(first), _) => (first, " (ignored)", "move {} aside first"),
+        (None, Some(first)) => (first, "", "S stashes {} first"),
+        (None, None) => return format!("nothing is in the way of {doing}"),
+    };
+    let more = ignored.len() + untracked.len() - 1;
+    let (count, verb, them) = if more == 0 {
+        (String::new(), "is", "it")
+    } else {
+        (format!(" +{more} more"), "are", "them")
+    };
+    format!(
+        "{}{tag}{count} {verb} in the way of {doing} · {}",
+        first.display(),
+        next.replace("{}", them)
+    )
 }
 
 /// `src/a.rs`, `src/a.rs and src/b.rs`, `src/a.rs and 2 more files`.
