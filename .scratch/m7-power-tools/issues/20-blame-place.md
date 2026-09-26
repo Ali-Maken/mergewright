@@ -121,9 +121,9 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
 `BlameState` and `Origin` fields are the builder's; `Origin` restores graph cursor, focus, spec, file and line exactly.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Open** (20e: 3 of 14 green in `update/place/tests.rs` — `b_on_a_diff_line_opens_blame_at_that_line`,
-      `a_job_side_refusal_pops_and_says_so`, `b_with_the_graph_focused_is_unchanged`; the other 11 not written; red
-      shown only by mutation, see NOTES 20e): `b_on_a_diff_line_opens_blame_at_that_line` (red first) · `b_on_a_removed_line_blames_the_parent_at_the_old_line`
+- [x] **Open** (20g: all 14 green in `update/place/tests.rs`; the 11 20g wrote went green on first run against 20e's
+      code, red shown by mutation — Compare base/head swapped and the Parent arm's old path dropped redden
+      `b_on_a_compare_blames_head_or_base` and `b_on_a_renamed_files_removed_line_uses_the_old_path`; see NOTES 20g): `b_on_a_diff_line_opens_blame_at_that_line` (red first) · `b_on_a_removed_line_blames_the_parent_at_the_old_line`
       · `b_on_a_renamed_files_removed_line_uses_the_old_path` · `b_on_a_file_row_lands_on_the_first_changed_line` ·
       `b_on_a_heading_lands_on_the_hunks_first_changed_line` · `b_on_a_compare_blames_head_or_base` ·
       `b_on_the_changes_pane_blames_the_working_tree` · `b_on_a_changes_pane_removed_line_blames_head` ·
@@ -133,8 +133,10 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
 - [x] **Routing** (20e, all 5 in `update/place/tests.rs`): `slash_in_blame_finds_in_the_file_not_the_graph` · `graph_verbs_are_inert_in_blame` (`m r a c o u`)
       · `l_and_w_in_blame_never_reach_the_diff_pane` · `a_click_in_blame_never_reaches_the_graph` ·
       `esc_in_blame_never_cancels_a_running_write`.
-- [ ] **Navigation** (20e: all green in `update/place/tests.rs` except `esc_on_the_graph_closes_search_before_returning_to_blame`
-      and `is_write_covers_every_operation_launch`, not written; `came_from` units:
+- [x] **Navigation** (20g: all green in `update/place/tests.rs`; 20g added `esc_on_the_graph_closes_search_before_returning_to_blame`
+      (pane closed: with it open the pane's own `Esc` comes first), `is_write_covers_every_operation_launch` (all 9 write
+      variants), the rename half of `enter_lands_on_the_commit_with_the_diff_at_this_line`, and the `⏎`+`Esc Esc` half of
+      `esc_from_blame_returns_where_b_was_pressed`, which was red — see NOTES 20g; `came_from` units:
       `came_from_a_line_mid_hunk_is_the_hunks_first_old_line`, `came_from_a_pure_add_at_line_1_is_line_1`,
       `came_from_a_line_after_a_hunk_shifts_by_it`; the rename half of `enter_lands_…` not covered): `caret_opens_the_parent_and_esc_comes_back_to_the_same_line` · `caret_lands_where_the_line_came_from`
       (+ `came_from` unit tests: mid-hunk, pure add at line 1) · `caret_at_the_root_says_nothing_before_it` ·
@@ -438,3 +440,63 @@ each reverted: `claims_b`→false turns 19 place tests red; `back_to_blame` retu
 3. Pinned-base ruling: the `show_line` guard and all its listed tests; set-aside is built, the guard is not.
 4. Shallow Part C tests (Part B drawing is in graft-ui `blame.rs:386`, `:447`).
 5. Walks, Captures, the re-shoots; keymap-doc check.
+
+## NOTES (builder 20g, 2026-09-26): Open, Navigation, pinned-base, shallow Part C done; sweep form not restored
+
+Not compacted. No scout: 20e's NOTES named every seam. Commits: afce6cba, e2561ac8, and the one carrying these notes.
+
+**Built (code).**
+- `show_line` guard (`update/detail/landing.rs`, top of `show_line`): `Commit(c)` with a base other than `c` pinned →
+  sticky `can't show <c> on its own while compare base <base> is pinned · x on the base clears it`; nothing moves.
+  **Red first:** `show_line_commit_with_a_pinned_base_says_so` (landing/tests.rs) failed with ShowRows/ListFiles
+  before the guard. The base's own row is exempt (`follow_selection` leaves it on its own diff, `selection.rs:151`):
+  `show_line_on_the_pinned_base_itself_lands`, red first (the unexempted guard refused it). Not in the ruling — added
+  because `leave` re-pins before it calls `show_line(origin.spec)`, and `origin.spec` is `Commit(base)` when `B` was
+  pressed on the base's row.
+- **Defect found and fixed (cause):** leaving the trail left a pending `⏎` landing alive (`place.rs` `leave`: the
+  `Spot` check returned before touching `line_landing`). `⏎` on a commit off the rows on hand, `Esc` back to blame,
+  `Esc` out: the walk's answer then landed on that commit after he had left. Now `leave` with `restore` drops
+  `line_landing` first. Red: the `⏎`+`Esc Esc` half of `esc_from_blame_returns_where_b_was_pressed` failed with the
+  landing still `Commit(a1a1a1a)`.
+
+**Tests (all in `update/place/tests.rs` unless said).** Written against 20e's code, which existed: green on first run
+except the two above; red by mutation, each reverted — Compare base/head swap and Parent's old path dropped (2
+Open tests red); `enter`/`^` shallow checks off, the `Shallow` mark arm off, `leave`'s re-pin off (6 tests red).
+- Open: `b_on_a_removed_line_blames_the_parent_at_the_old_line` · `b_on_a_renamed_files_removed_line_uses_the_old_path`
+  · `b_on_a_file_row_lands_on_the_first_changed_line` · `b_on_a_heading_lands_on_the_hunks_first_changed_line` ·
+  `b_on_a_compare_blames_head_or_base` · `b_on_the_changes_pane_blames_the_working_tree` ·
+  `b_on_a_changes_pane_removed_line_blames_head` · `b_with_staged_and_unstaged_edits_says_the_lines_moved` ·
+  `b_on_an_untracked_file_says_so_and_opens_nothing` · `b_on_a_binary_file_says_so_and_opens_nothing` ·
+  `b_while_the_commit_graph_offer_is_up_goes_to_the_offer`.
+- Pinned base: `show_line_commit_with_a_pinned_base_says_so` (landing) · `b_sets_a_pinned_base_aside` ·
+  `enter_with_a_compare_base_lands_on_the_commits_own_changes` · `esc_after_enter_with_a_base_goes_back_to_blame` ·
+  `esc_from_blame_restores_the_compare_base` (+ the uncommitted-row case) · `a_write_with_a_base_aside_pins_it_again`
+  · `x_while_blame_is_hidden_ends_the_trail_and_says_so` · `a_job_side_refusal_restores_the_base`.
+- Shallow Part C: `a_shallow_boundary_line_is_marked_shallow` (precedence: unblamable > shallow > skipped) ·
+  `enter_on_a_shallow_line_says_the_clone_is_shallow_and_opens_nothing` ·
+  `caret_on_a_shallow_line_says_the_clone_is_shallow_not_nothing_before_it` (boundary made parentless, as git has it) ·
+  `caret_at_the_root_says_nothing_before_it` still green.
+
+**Sweep form: not restored — needs a decision.** `docs/design/02-keymap.md` does not say what `space` does on a
+commit pane's file row: §2.2:186 is only the generic "toggle stage where staging applies, else expand/collapse";
+§2.4 is staging, §2.5 has no `space`. So by the ticket I did not change the handler. Putting the form back
+(`catalogue.rs` `pane_focused_form`, adding `(true, true)`) turns `every_key_the_bar_draws_is_answered` red: 210 hits,
+all `space fold` on `PaneFocused { opens: true, blamable: true }`, every row kind, 100–200 columns. A red gate can't be
+committed, so the narrowing stays as 20e left it, `NEVER_HINTED` untouched. Two causes to choose between: the handler
+(`update/detail/keys.rs:282`, a keymap line for `space` on a file) or the bar (don't draw `space fold` off a
+directory — needs an "on a directory" fact in `PaneFocused`; `blamable` is not it, it is false under the offer).
+
+**Touches:**
+- `show_line` callers (grep): `place.rs` `leave` (base re-pinned first; spec is `Compare` or `Commit(base)` — exempt)
+  and `place/keys.rs` `enter` (base set aside, so the guard cannot fire). All 20b landing tests green.
+- Base drawing reads the live pin: `compare_base` readers are `view/detail.rs`, `view/entries.rs`, `view/rows.rs`
+  (grep), no copy. Journal/undo: no `compare_base` in `update/undo*` or `jobs/` (grep) — not journaled.
+- `detail_key` compare rung and `escape_key`: covered by `esc_after_enter_with_a_base_goes_back_to_blame` (base
+  stays set aside after one `Esc`).
+- Keymap §2.2 (`Esc`) / §2.8: a set-aside line would help §2.8 (`⏎` with a base pinned) — report only, not edited.
+- Esc order seen in `esc_on_the_graph_closes_search…`: with the pane open and the graph focused, `Esc` closes the pane
+  before the search's line — pre-existing order, noted, not changed.
+- Captures: none change (no drawing edited). graft-ui: untouched.
+
+**Left for the next builder:** Walks (incl. `commit_back_to_blame` with a base pinned), Captures, the re-shoots,
+the capture `blame-then-commit-with-base-120x40.txt`, the keymap-doc check against 20e's key table, the sweep form.

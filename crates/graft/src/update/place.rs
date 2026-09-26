@@ -467,7 +467,13 @@ fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: bool) {
     if let Some(base) = origin.base {
         state.compare_base = Some(base);
     }
-    if !restore || Spot::of(state) == origin.spot {
+    if !restore {
+        return;
+    }
+    // A `⏎` landing still on its way (the walk seeking the commit) is the
+    // trail's; he has left it, so it must not land later.
+    state.line_landing = None;
+    if Spot::of(state) == origin.spot {
         return;
     }
     commands.extend(show_line(state, origin.spec, &origin.path, origin.at));
