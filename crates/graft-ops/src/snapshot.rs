@@ -44,7 +44,8 @@ use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
 
-use plumbing::{TempIndex, add_all, commit_tree, mktree, try_write_tree, update_ref, write_tree};
+pub(crate) use plumbing::{TempIndex, path_of};
+use plumbing::{add_all, commit_tree, mktree, try_write_tree, update_ref, write_tree};
 use stage_tree::{stage_tree, tree_stage_entries};
 
 /// How much of the repository a snapshot has to cover before one operation.

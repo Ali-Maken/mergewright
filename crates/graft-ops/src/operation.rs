@@ -647,6 +647,8 @@ pub enum Refusal {
     },
     /// The todo cannot run as written.
     BadTodo(crate::rewrite::TodoProblem),
+    /// Absorb placed none of the staged hunks: every one stays staged.
+    NothingToAbsorb,
 }
 
 impl Refusal {
@@ -865,6 +867,10 @@ impl Refusal {
                 short(*commit)
             ),
             Self::BadTodo(problem) => problem.explain(),
+            Self::NothingToAbsorb => {
+                "none of your staged lines belong to a commit on your branch · c commits them"
+                    .to_owned()
+            }
         }
     }
 }

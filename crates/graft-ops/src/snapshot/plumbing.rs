@@ -15,7 +15,7 @@ use super::SnapshotError;
 /// A copy of the real index, removed when it goes out of scope on **every**
 /// path — a leaked temp index would be re-copied forever and is invisible to
 /// the user.
-pub(super) struct TempIndex {
+pub(crate) struct TempIndex {
     path: PathBuf,
 }
 
@@ -49,7 +49,7 @@ impl TempIndex {
     /// A name no index file exists at yet: `update-index` creates it. The
     /// stage tree is built on one of these rather than on a copy, so nothing
     /// the real index holds can survive into it.
-    pub(super) fn fresh(scratch: &Path) -> Result<TempIndex, SnapshotError> {
+    pub(crate) fn fresh(scratch: &Path) -> Result<TempIndex, SnapshotError> {
         let path = scratch.join(Self::unique_name("tmp-stage-index"));
         if path.exists() {
             std::fs::remove_file(&path)?;
@@ -63,7 +63,7 @@ impl TempIndex {
         format!("{prefix}-{}-{unique}", std::process::id())
     }
 
-    pub(super) fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 }
@@ -122,7 +122,7 @@ pub(super) fn try_write_tree(
     }
 }
 
-pub(super) fn path_of(name: Vec<u8>) -> PathBuf {
+pub(crate) fn path_of(name: Vec<u8>) -> PathBuf {
     use std::os::unix::ffi::OsStringExt;
     PathBuf::from(std::ffi::OsString::from_vec(name))
 }

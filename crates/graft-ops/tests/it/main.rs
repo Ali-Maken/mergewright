@@ -1,6 +1,7 @@
 //! `graft-ops`'s integration tests, one binary (PROMPT.md §7.1).
 
 mod abort_merge;
+mod absorb;
 mod chained_backup;
 mod checkout_hook_fails;
 mod conflict_fixtures;
