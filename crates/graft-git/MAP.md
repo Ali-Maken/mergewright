@@ -18,6 +18,7 @@ One line per public item. Update when a public item changes.
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
 - `stash` (mod) — the stash list, from `refs/stash`'s own reflog (m3/01).
 - `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
+- `switch_refs` (mod, `switch_refs.rs`) — every local and remote branch with tip, subject, author, date, upstream, and `@{-1}`: what the branch picker lists (m7-power-tools/10a).
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
@@ -98,6 +99,13 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 ## contained
 - `Contained` (struct) — `branches`, `remotes`, `tags` (short names as bytes: `main`, `origin/main`, `v1.0`), capped 200 per class; `more` counts the rest. Symrefs (`origin/HEAD`) left out.
 - `contained_in` (fn) — one `for-each-ref --contains <oid>` over heads/remotes/tags through `run`; an id naming no commit is git's `Exited`.
+
+## switch_refs
+- `RefListing` (struct) — `name` (full `RefName`, bytes, never lossy), `tip`, `subject`/`author` (lossy, display only), `when` (committer date, unix), `upstream` (`%(upstream)` full; `None` unset; local rows only).
+- `SwitchRefs` (struct) — `refs` (git's ref order, symrefs like `origin/HEAD` left out), `previous`.
+- `switch_refs` (fn) — two commands through `run`, `Stop` honoured (`Err(Stopped)`):
+  `for-each-ref --format=%(refname)%00%(objectname)%00%(symref)%00%(upstream)%00%(subject)%00%(authorname)%00%(committerdate:unix) refs/heads refs/remotes`,
+  then `rev-parse --verify --quiet --symbolic-full-name @{-1}` (`run_raw`). Measured git 2.54: exit 1, empty → `None` (no previous checkout, or its branch deleted); exit 0, empty → `None` (previous was detached); exit 0 + `refs/heads/x` → `Some`; any other exit → `Err(Exited)`.
 
 ## diff
 - `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed { similarity }`, `Copied { similarity }`, `TypeChanged`, `Unmerged`, `Untracked`.

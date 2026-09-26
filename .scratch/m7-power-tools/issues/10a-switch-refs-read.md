@@ -1,6 +1,6 @@
 # switch-refs-read — one read of local + remote branches with tip, subject, author, date, upstream; and `@{-1}`
 
-Status: ready
+Status: done
 Blocked by: none
 Crates: graft-git only (`switch_refs.rs` new, or beside `contained`; builder's choice, named in MAP.md).
 Source: scout `.scratch/m7-power-tools/scouts/10.md` Q2 (`@{-1}` read nowhere; no read lists local + remote with
@@ -41,16 +41,16 @@ pub fn switch_refs(repo: &RepoHandle, stop: &dyn Stop) -> Result<SwitchRefs, Run
 (`RunError` = the error `GitInvocation::run` returns.)
 
 ## Acceptance
-- [ ] `lists_local_and_remote_with_tip_subject_author_date` (red first)
-- [ ] `leaves_out_the_remote_head_symref`
-- [ ] `upstream_is_read_for_a_local_branch` (one tracking `origin/x`, one tracking a local branch: `refs/heads/a`)
-- [ ] `previous_is_the_branch_before_the_last_switch`
-- [ ] `no_previous_checkout_is_none_not_an_error` (fresh repo)
-- [ ] `a_detached_previous_is_none`
-- [ ] `a_deleted_previous_is_none`
-- [ ] `a_branch_name_with_non_utf8_bytes_round_trips`
-- [ ] `switch_refs_honours_stop`
-- [ ] MAP.md (graft-git): the two commands exactly, and the `@{-1}` rules above.
+- [x] `lists_local_and_remote_with_tip_subject_author_date` (red first) — `crates/graft-git/tests/it/switch_refs.rs::lists_local_and_remote_with_tip_subject_author_date`
+- [x] `leaves_out_the_remote_head_symref` — `crates/graft-git/tests/it/switch_refs.rs::leaves_out_the_remote_head_symref`
+- [x] `upstream_is_read_for_a_local_branch` (one tracking `origin/x`, one tracking a local branch: `refs/heads/a`) — `crates/graft-git/tests/it/switch_refs.rs::upstream_is_read_for_a_local_branch`
+- [x] `previous_is_the_branch_before_the_last_switch` — `crates/graft-git/tests/it/switch_refs.rs::previous_is_the_branch_before_the_last_switch`
+- [x] `no_previous_checkout_is_none_not_an_error` (fresh repo) — `crates/graft-git/tests/it/switch_refs.rs::no_previous_checkout_is_none_not_an_error`
+- [x] `a_detached_previous_is_none` — `crates/graft-git/tests/it/switch_refs.rs::a_detached_previous_is_none`
+- [x] `a_deleted_previous_is_none` — `crates/graft-git/tests/it/switch_refs.rs::a_deleted_previous_is_none`
+- [x] `a_branch_name_with_non_utf8_bytes_round_trips` — `crates/graft-git/tests/it/switch_refs.rs::a_branch_name_with_non_utf8_bytes_round_trips`
+- [x] `switch_refs_honours_stop` — `crates/graft-git/tests/it/switch_refs.rs::switch_refs_honours_stop`
+- [x] MAP.md (graft-git) — `## switch_refs` section (doc, no test): the two commands exactly, and the `@{-1}` rules above.
 
 ## Touches (check each, report how)
 - **Other `for-each-ref` readers** (`contained`, ops' `plumbing.rs`, `dependents.rs`): untouched. Check: grep; their
@@ -62,3 +62,9 @@ Workspace-wide gates (CLAUDE.md "Gates"). Tests laptop-safe (throwaway repos in 
 
 ## Size
 Small (~25k).
+
+## Notes (builder, 2026-09-26)
+- `@{-1}` flags measured in a throwaway repo, git 2.54: `rev-parse --verify --quiet --symbolic-full-name @{-1}`. Exit 1 + empty = none/deleted; exit 0 + empty = detached; else `refs/heads/x`. Uses `run_raw` so exit 1 is not an error.
+- Non-UTF-8 test writes the ref into `packed-refs`: APFS refuses a non-UTF-8 loose-ref file name. The test first asserts git itself lists it.
+- Red first observed: tests written before the module compiled; only the non-UTF-8 test failed on first run (fixture, not code).
+- Compaction: none.

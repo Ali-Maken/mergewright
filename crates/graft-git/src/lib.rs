@@ -25,5 +25,6 @@ pub mod run;
 pub mod stash;
 pub mod state;
 pub mod status;
+pub mod switch_refs;
 pub mod trace;
 pub mod version;
