@@ -823,8 +823,10 @@ fn a_rebase_that_stops_keeps_the_edits_aside_until_it_ends() {
     }
 }
 
-/// git refuses the rebase before it starts (an untracked file in the way of
-/// `main`'s tree): the edits go back onto the same tip, then the refusal.
+/// git refuses the rebase before it starts (a `pre-rebase` hook says no):
+/// the edits go back onto the same tip, then the refusal. An untracked file
+/// in the way of `main`'s tree no longer gets this far: Graft refuses it
+/// before the set-aside (ADR-0049, `in_the_way::rebase_over_an_ignored_file_is_refused`).
 #[test]
 fn a_refused_rebase_puts_the_edits_back_on_the_same_tip() {
     let repo = TempRepo::init();
@@ -837,7 +839,13 @@ fn a_refused_rebase_puts_the_edits_back_on_the_same_tip() {
     repo.write("feature.txt", b"f\n");
     repo.commit_all("one on feature");
     repo.write("base.txt", b"edited\n");
-    repo.write("u.txt", b"untracked, in the way\n");
+    let hooks = repo.path().join(".git/test-hooks");
+    std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
+    let hook = hooks.join("pre-rebase");
+    std::fs::write(&hook, b"#!/bin/sh\nexit 1\n").expect("the hook is written");
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
+        .expect("the hook is executable");
+    repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);
     let tip = id(&repo, "refs/heads/feature");
     let op = rebase_onto(&repo, "refs/heads/main");
 
@@ -850,7 +858,6 @@ fn a_refused_rebase_puts_the_edits_back_on_the_same_tip() {
     assert_eq!(id(&repo, "refs/heads/feature"), tip, "the same tip");
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/feature");
     assert_eq!(repo.read("base.txt"), b"edited\n", "the edit is back");
-    assert_eq!(repo.read("u.txt"), b"untracked, in the way\n");
     assert!(stash_commits(&repo).is_empty(), "S dropped");
 }
 

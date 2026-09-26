@@ -1,6 +1,6 @@
 # 28 ignored-file-guard — no write goes over a file git doesn't keep
 
-Status: **28a done** (2026-09-26); 28b ready. ADR-0049 accepted by the user 2026-09-26 (scout done: `.scratch/m7-power-tools/scouts/28.md`). Split into **28a** then **28b**. Both are graft-ops,
+Status: **done** — 28a (2026-09-26), 28b (2026-09-26). ADR-0049 accepted by the user 2026-09-26 (scout done: `.scratch/m7-power-tools/scouts/28.md`). Split into **28a** then **28b**. Both are graft-ops,
 so they run one after the other, never at the same time.
 Blocked by: 23b (merged 4654b7e1); 22c while it holds graft-ops.
 Decisions: ADR-0049 (proposed, planner 2026-09-26). The spec-only pass replaced "no new decision / `blocked: needs
@@ -232,17 +232,71 @@ Read first: this file; ADR-0049 §2; 28a's NOTES; MAP.md §rewrite and `apply::e
 Scope in: the replay rows of decision 4 (they replace 28a's `Ok(None)` arms), with one `diff-tree --stdin` for all
 commits. The engine's `switch <home>` needs no guard of its own: every path it writes is in the union (say so in
 MAP.md). Scope out: `c` after a stop.
-- [ ] `rebase_over_an_ignored_file_is_refused` (`onto` tracks `c.txt`). Red: overwritten.
-- [ ] `rebase_whose_middle_commit_writes_an_ignored_path_is_refused`: commit A adds `c.txt` and B deletes it, so the
+All tests below are in `crates/graft-ops/tests/it/in_the_way.rs`, asserting 28a's four checks (preview words, apply
+words, bytes still `MINE`, 0 new journal entries). Red tuples in 28b NOTES.
+- [x] `rebase_over_an_ignored_file_is_refused` (`onto` tracks `c.txt`). Red: overwritten.
+- [x] `rebase_whose_middle_commit_writes_an_ignored_path_is_refused`: commit A adds `c.txt` and B deletes it, so the
   landed tree lacks it. Red: `c.txt` gone after `y`.
-- [ ] `rewrite_over_an_ignored_file_is_refused`: `R` over a branch whose commit X removed `.env` from git, with `.env`
-  ignored on disk. `onto` is below X. Red: `.env` gone.
-- [ ] `amend_into_over_an_ignored_file_is_refused` (`a`, through the same `Rewrite`).
-- [ ] `cherry_pick_over_an_ignored_file_is_refused` (one commit, and two commits: `picking 2 commits`).
-- [ ] `revert_of_a_delete_over_an_ignored_file_is_refused` (the scout's probe).
-- [ ] `replay_with_ignored_build_output_elsewhere_runs`: an ignored `target/` that no commit writes. `Ok`, no refusal.
-- [ ] MAP.md updated; gates run workspace-wide.
+- [x] `rewrite_over_an_ignored_file_is_refused`: `R` over a branch whose commit X removed `.env` from git, with `.env`
+  ignored on disk. `onto` is below X. Red: `.env` gone. (X's row made a reword, see NOTES.)
+- [x] `amend_into_over_an_ignored_file_is_refused` (`a`, through the same `Rewrite`; fixture changed, see NOTES).
+- [x] `cherry_pick_over_an_ignored_file_is_refused` (one commit, and two commits: `picking 2 commits`).
+- [x] `revert_of_a_delete_over_an_ignored_file_is_refused` (the scout's probe).
+- [x] `replay_with_ignored_build_output_elsewhere_runs`: an ignored `target/` that no commit writes. `Ok`, no refusal.
+- [x] MAP.md updated (`crates/graft-ops/MAP.md` §in_the_way: replay rows, spawns, the engine's `switch <home>`); gates
+  run workspace-wide: `cargo fmt --all --check` ok; `cargo clippy --workspace --all-targets -- -D warnings` ok;
+  `cargo test --workspace --doc` ok; `cargo nextest run --workspace` — see NOTES (one flaky graft capture).
 Size: about 45k.
+
+### 28b NOTES (builder, 2026-09-26)
+Scout: used scout 28 and 28a's NOTES; no second scout.
+
+**Red, before the fix** (`(preview, apply, bytes after, new entries)`, observed by running the tests against 28a's
+`Ok(None)` arms):
+- rebase, `onto` tracks `c.txt`: `("preview drew a plan", "apply ran", "theirs\n", 1)`.
+- rebase, middle commit adds then deletes `c.txt`: `("preview drew a plan", "apply ran", "", 1)` — his file gone.
+- rewrite (`R`, X reworded): `("rewrite has no preview", "apply ran", "", 1)` — `.env` gone. (`preview::plan` refuses
+  a `Rewrite` as `NotPreviewable`; since 28a's read runs before that, it now answers `InTheWay`.)
+- amend-into: `("rewrite has no preview", "apply ran", "", 1)` — `c.txt` gone.
+- cherry-pick, one commit and two: `("preview drew a plan", "apply ran", "theirs\n", 1)` each (two-commit red observed
+  by disabling the arm for `len > 1`, then restoring it).
+- revert of a delete: `("preview drew a plan", "apply ran", "theirs\n", 1)`.
+- `replay_with_ignored_build_output_elsewhere_runs`: green before and after (no false refusal).
+
+**What was built:** `in_the_way::replayed_paths` — rebase: `diff-tree HEAD <onto_tip>` + `rev-list --no-merges
+<onto_tip>..HEAD`; rewrite: `diff-tree HEAD <onto>` + non-`drop` todo rows + `made` + dependents' commits
+(`rev-list --no-merges <head>..<top>`, only when the line has a top above his branch); pick: its commits; revert: the
+commit against `parent` (else parent `mainline`, via `rev-parse ^@`). Every commit's own change in **one**
+`diff-tree --stdin --no-commit-id --root` (`<commit>` alone = first parent; `<commit> <parent>` for revert).
+
+**Deviations / findings, for the conductor:**
+- **Ticket fixtures changed.** (1) `R` with every row a plain pick: git's rebase skips unchanged leading picks (it
+  never checks out `onto`), so `.env` survived and the red could not show. The test makes X's row a reword so git
+  must replay it. (2) `a` into X in the `.env` fixture: the same skip means git never writes `onto`'s tree, and the
+  first run conflicted (`y.txt` absent at X). The amend test now uses T/U/V: `a` into T, U adds `c.txt`, V deletes
+  it — the replay above the fixup writes his path. Red observed as above.
+- **Question (false refusal, safe side):** because of that skip, `HEAD`→`onto` over-reads when the leading rows are
+  unchanged picks: `a` into the first commit of a branch that `git rm --cached .env` is refused although git would
+  not write `.env`. Modelling git's skip was not done (it is git-internal behaviour, not in ADR-0049's table).
+- **Dropped rows are left out** of the rewrite union (git applies nothing for them). The table says "the todo's rows";
+  I read `drop` as writing nothing.
+- **Changed a 23b-era test:** `set_aside::a_refused_rebase_puts_the_edits_back_on_the_same_tip` used an untracked
+  file in the way to make git refuse after the set-aside; Graft now refuses that before the set-aside (correct per
+  ADR-0049 §1). The test now makes git refuse with a `pre-rebase` hook, keeping what it proves (edits put back on the
+  same tip, `S` dropped). Cause, not symptom: the premise changed.
+- **Flaky, not mine (question):** second full nextest run, `graft::it status_under_a_box::capture_fix_status_under_a_box`
+  failed once (`docs/shots/m6/fix-status-under-a-box-120x40.txt` line 151: drawn has a Mistake Radar `ⓘ` the capture
+  lacks); it passed in the first full run and alone. No graft code touched here.
+
+**Gates:** fmt ok; clippy ok; doctests ok; nextest run 1: 3886/3887 (the `set_aside` test above, then fixed; its
+module re-run 50/50); run 2: 3886/3887 (only the flaky capture above; passes alone).
+
+**Touches:** `apply::guard_in_the_way` — unchanged, now fires for the four replay kinds (every test's entry count
+proves it runs before `begin`); `preview::plan` — unchanged, same read; `apply::engine`'s `switch <home>` — no guard,
+its paths are in the union (MAP.md); set-aside order — `set_aside.rs` test above; `Refusal::InTheWay` words — 28a's,
+unchanged (`doing` already answered the replay kinds); graft — no `Refusal` match change (`grep -rn "Refusal::" crates/graft/src`
+shows no exhaustive match; full nextest green but for the flaky capture); captures — no drawing code changed;
+`docs/capabilities/m4-remotes.md:56` — updated to `merge --ff-only --no-overwrite-ignore --no-edit` (carried line).
 
 ## Touches (both; the Touches line of each report says how each was checked)
 - `apply`'s guard site (`apply.rs:224`), the set-aside order (`apply/set_aside.rs`), and `preview::plan`'s

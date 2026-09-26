@@ -53,8 +53,8 @@ status: works
 - **How:** `p` on the graph screen, while `HEAD` is on a branch with an
   upstream.
 - **Behaviour:** Runs `fetch --progress <remote>` then
-  `merge --ff-only --no-edit <tracking_ref>` — never a merge commit, never
-  a rebase. Moves the branch, updates the worktree's files, and is
+  `merge --ff-only --no-overwrite-ignore --no-edit <tracking_ref>` — never
+  a merge commit, never a rebase, never over an ignored file (ADR-0049). Moves the branch, updates the worktree's files, and is
   undoable: `u` moves the branch back and restores file bytes while leaving
   the remote-tracking ref exactly where the fetch left it (undo never moves
   a tracking ref); `U` redoes it.
