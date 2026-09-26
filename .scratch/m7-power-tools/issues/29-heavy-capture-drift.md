@@ -1,7 +1,7 @@
 # 29 heavy-capture-drift — six heavy-tier captures no longer match
 
 Status: ready
-Blocked by: the M7/ⓘ debugger (holds graft).
+Blocked by: none (the M7/ⓘ debugger merged).
 Crates: graft (heavy-tier capture tests; `docs/shots/`).
 Build with: Opus. The cause is unverified; a wrong regeneration would hide a real UI change (rule 6).
 Scout: none. Source: `docs/reviews/m7-06-absorb.md` §Gates, "The heavy tier's 11 failures".
