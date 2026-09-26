@@ -440,7 +440,7 @@ fn clean_tree(facts: &RepoFacts) -> Result<(), Refusal> {
 }
 
 /// A name git would accept under `prefix`, that no ref holds yet.
-fn new_ref(full: &str, short: &str, facts: &RepoFacts) -> Result<(), Refusal> {
+pub(super) fn new_ref(full: &str, short: &str, facts: &RepoFacts) -> Result<(), Refusal> {
     if let Err(graft_core::error::Error::RefName { reason, .. }) = RefName::new(full.as_bytes()) {
         return Err(Refusal::BadRefName {
             name: short.to_owned(),
@@ -681,7 +681,7 @@ pub(super) fn plan_reset(params: &ResetParams) -> Vec<Invocation> {
 }
 
 /// `update-ref <name> <to> <expected>`: compare-and-swap.
-fn update_ref(name: &str, to: Oid, expected: Oid) -> Invocation {
+pub(super) fn update_ref(name: &str, to: Oid, expected: Oid) -> Invocation {
     Invocation::new(vec![
         GitArg::Flag("update-ref"),
         GitArg::Ref(name.as_bytes().to_vec()),
