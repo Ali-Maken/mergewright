@@ -258,3 +258,6 @@ Size: about 45k.
   ADR-0049; a builder doesn't edit them.
 - Captures: no drawing code changes. The refusal line on a switch is a scenario for the milestone's acceptance ticket
   (the conductor adds it).
+
+## Carried to 28b (conductor, 2026-09-26)
+- `docs/capabilities/m4-remotes.md:56` still shows the old pull line. 28a changed pull to `merge --ff-only --no-overwrite-ignore`; update that doc line.

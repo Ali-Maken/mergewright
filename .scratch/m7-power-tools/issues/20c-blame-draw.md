@@ -1,6 +1,6 @@
 # blame-draw — the blame place's picture: gutter, trailer, breakpoints, title states, its bar words
 
-Status: partial — draw done; hint contexts blocked on `graft` (NOTES)
+Status: partial — draw merged a7611fb8; hints half carried to 20
 Blocked by: 20b-diff-line-cursor (shares graft-ui; sequence only, no signature needed)
 Crates: graft-ui.
 Build with: **Sonnet**. A pure draw function against a mock-up that fixes every cell, judged by unit tests and
