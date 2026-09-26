@@ -82,7 +82,7 @@ pub(in crate::apply) fn refuse_octopus(
 /// `Continue` over unmerged paths: refused before git runs, the same words
 /// for a merge Graft began and one begun in the shell.
 pub(super) fn refuse_unmerged(ctx: &Context<'_>) -> Result<(), ApplyError> {
-    let paths = unmerged_paths(ctx)?;
+    let paths = unmerged_paths(ctx, ctx.stop)?;
     if paths.is_empty() {
         Ok(())
     } else {

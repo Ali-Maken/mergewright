@@ -93,6 +93,12 @@ pub(super) fn create(
 
 /// Steps 3 and 4: list `S`, then clear the tracked edits from the tree.
 /// Each command goes on the entry before it runs, so a failure shows it.
+///
+/// The stop is asked before each step, not only inside it: the runner asks
+/// only once git is spawned, so a stop already asked for would still start
+/// the next step, and on a loaded machine that git can finish before the
+/// kill lands — a stop "before 3" that stored `S` anyway (M7/02b). Between
+/// two steps is the one place the outcome is exact, as in `restore`.
 pub(super) fn put_aside(
     ctx: &Context<'_>,
     stash: Oid,
@@ -110,6 +116,9 @@ pub(super) fn put_aside(
         vec![GitArg::Flag("reset"), GitArg::Flag("--hard")],
     ];
     for args in steps {
+        if ctx.stop.should_stop() {
+            return Err(RunError::Stopped);
+        }
         let git = GitInvocation::new(ctx.repo).args(args);
         commands.push(git.command_line());
         git.run(ctx.stop)?;
