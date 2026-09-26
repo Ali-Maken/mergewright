@@ -194,3 +194,8 @@ workspace-wide.
 ## Size
 ~75k. If it compacts, split: **-a** open, routing, trail, keys, jobs and their tests; **-b** walks, captures,
 re-shoots, hint tests.
+
+## Carried from 20b (conductor, 2026-09-26)
+- A `Commit` landing while a compare base is pinned drops silently: `follow_selection` makes the pane a `Compare`, and the landing stops at `Selecting` (20b NOTES, "Design calls to check"). Blame-place lands through `show_line`, so it hits this.
+- The planner's spec for 20 governs whether the base is cleared. If it is silent on this, do not choose: report `blocked: needs a ruling` naming the case.
+- Either way, a test for the pinned-base case, red first. A silent drop is rule 3.
