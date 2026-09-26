@@ -1,6 +1,6 @@
 # recover-op — the put-back as one journaled operation: move a ref back, recreate a branch, or restore an edit; `u` undoes it
 
-Status: blocked: needs graft (five test literals, `files: None`; see NOTES) — graft-ops done
+Status: done (graft seam landed d1ce35a9; review fixes → 23b)
 Blocked by: 22-journal-list
 Blocked by: journal-list (or journal-list-a for the types)
 Crates: graft-ops only. If graft fails to build on `Operation::Recover` (an exhaustive `match` on `Operation`), stop

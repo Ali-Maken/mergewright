@@ -19,3 +19,8 @@ Split by: conductor, 2026-09-26. 12c's "Remains" steps 3–5. No new decision.
 ## Carried from 12d (conductor)
 - TESTING.md :175 and graft MAP.md :756 don't yet cover the script's exit status (exit 1 on FAIL/MISSING/OVER) or the six `frames/` submodules (run, paced, readings, sink, controls, verdict). Update both.
 - 12d never ran the script for real in release; the first real run in this ticket is also its check — say whether exit status and SUMMARY agree.
+
+## Added by conductor, 2026-09-26: heavy.rs:217
+- KNOWN_GAPS M7/heavy217 (broken): `crates/graft/tests/it/heavy.rs:217`, "the second answer is in the new order", is red and deterministic in the heavy tier (review 22-23 addendum, `docs/reviews/m7-22-journal-recover.md` :318+).
+- It is promotion work, so it belongs here. Fix it at the cause before the perf run: red first as it stands today, then green. Close the row.
+- [ ] heavy.rs:217 green: name the test and the cause.
