@@ -11,11 +11,13 @@
 //! 3. and 4. [`put_aside`] — `stash store -m <words> S`, then `reset --hard`
 //!    (tracked files only; untracked files stay where they are).
 //! 5. The operation's own plan.
-//! 6. [`close`] — `stash apply S` without `--index`, the index read
-//!    **whatever the exit code** (ADR-0045 §7), then `S` dropped by id when
+//! 6. [`close`] — `stash apply --index S`, the index read **whatever the
+//!    exit code** (ADR-0045 §7), falling back to a plain `stash apply S`
+//!    when git could not reinstate the index and wrote nothing (the
+//!    2026-09-26 b amendment, [`put_back`]); then `S` dropped by id when
 //!    nothing is unmerged; the entry's outcome decided from both. Absorb,
-//!    gone through, puts `S` back **with the index** instead (06b,
-//!    `from_index_base`): what stayed is still staged.
+//!    gone through, applies `S` rebuilt on its base (06b,
+//!    `put_back::from_index_base`).
 //!
 //! A rebase that stops at 5 leaves the entry `Pending` with `S` in the list;
 //! `resume` runs step 6 when git is done with it, whichever way.
@@ -31,9 +33,14 @@ use crate::facts::FactsError;
 use crate::operation::{Operation, RepoFacts};
 use crate::snapshot::SnapshotError;
 
+use super::error::staging_named;
 use super::{
     AfterState, Applied, ApplyError, Context, EditsAt, Pending, Refresh, finish, reason_for,
 };
+
+mod put_back;
+
+use put_back::PutBackRan;
 
 /// The message `S` is created and listed under (ADR-0045 §4 step 3).
 pub(super) fn words(description: &str) -> String {
@@ -198,8 +205,9 @@ pub(super) struct Ended {
     /// backup ref gone while stopped).
     pub(super) unread: Vec<AfterState>,
     /// Absorb's `RewriteParams::index_base`, when the rewrite went through
-    /// (not failed, not aborted): the put-back goes with the index from it
-    /// ([`put_back`]). `None` for every other operation and ending.
+    /// (not failed, not aborted): the put-back applies `S` rebuilt on it
+    /// ([`put_back`]). `None` for every other operation and ending, which
+    /// apply `S` itself — with `--index` all the same.
     pub(super) index_base: Option<Oid>,
 }
 
@@ -234,7 +242,7 @@ pub(super) fn close(
     ended: Ended,
 ) -> Result<Applied, ApplyError> {
     let outcome = match put_back(ctx, stash, ended.index_base, &mut commands) {
-        Returned::Back => Outcome::Back,
+        Returned::Back { unstaged } => Outcome::Back { unstaged },
         Returned::Clashed(paths) => Outcome::Clashed(paths),
         Returned::Kept(kept) => {
             // One read of the list serves the words and where the edits are.
@@ -253,7 +261,13 @@ pub(super) fn close(
             // The outcome line would have said where the edits are; the
             // error has to say it instead (73 review, m1).
             let kept = match &outcome {
-                Outcome::Back => None,
+                Outcome::Back { unstaged } if unstaged.is_empty() => None,
+                Outcome::Back { unstaged } => Some(
+                    AfterState::StagingNotKept {
+                        paths: unstaged.clone(),
+                    }
+                    .to_string(),
+                ),
                 Outcome::Clashed(_) => Some(format!(
                     "your edits clashed when put back · {}",
                     where_kept(ctx, stash)
@@ -282,10 +296,13 @@ fn status_for(outcome: &Outcome, failure: Option<&RunError>, done: EntryStatus) 
         (Outcome::Kept { words, .. }, None) => EntryStatus::Aborted {
             reason: words.clone(),
         },
-        (Outcome::Back | Outcome::Clashed(_), Some(failed)) => {
-            EntryStatus::Aborted { reason: failed }
-        }
-        (Outcome::Back | Outcome::Clashed(_), None) => done,
+        // The operation failed and the edits came back onto the unchanged
+        // tip; the reason also says when their staging did not.
+        (Outcome::Back { unstaged }, Some(failed)) => EntryStatus::Aborted {
+            reason: format!("{failed}{}", staging_clause(unstaged)),
+        },
+        (Outcome::Clashed(_), Some(failed)) => EntryStatus::Aborted { reason: failed },
+        (Outcome::Back { .. } | Outcome::Clashed(_), None) => done,
     }
 }
 
@@ -348,26 +365,46 @@ fn answer(
                 }
             }
         }),
-        Outcome::Back => match failure {
-            // Put back clean and dropped: the edits are simply back.
+        Outcome::Back { unstaged } => match failure {
+            // Put back clean and dropped: the edits are simply back (the
+            // entry's reason says when their staging did not come back).
             Some(error) => Err(ApplyError::Git {
                 entry: Box::new(entry),
                 error,
                 recoverable,
                 edits: None,
             }),
-            None if unread.is_empty() => Ok(applied(entry)),
-            None => Err(ApplyError::AfterState {
-                applied: Box::new(applied(entry)),
-                unread,
-            }),
+            None => back(entry, unstaged, unread),
         },
     }
 }
 
+/// The operation went through and the edits are back, `S` dropped. Back
+/// without its staging is a completed write the caller words as
+/// incomplete: [`AfterState::StagingNotKept`], first among what it reports.
+fn back(
+    entry: JournalEntry,
+    unstaged: Vec<PathBuf>,
+    mut unread: Vec<AfterState>,
+) -> Result<Applied, ApplyError> {
+    if !unstaged.is_empty() {
+        unread.insert(0, AfterState::StagingNotKept { paths: unstaged });
+    }
+    if unread.is_empty() {
+        return Ok(applied(entry));
+    }
+    Err(ApplyError::AfterState {
+        applied: Box::new(applied(entry)),
+        unread,
+    })
+}
+
 /// Step 6's answer, with the words already read for a kept `S`.
 enum Outcome {
-    Back,
+    /// As [`Returned::Back`].
+    Back {
+        unstaged: Vec<PathBuf>,
+    },
     Clashed(Vec<PathBuf>),
     Kept {
         /// What went wrong and where the edits are.
@@ -392,8 +429,10 @@ fn applied(entry: JournalEntry) -> Applied {
 
 /// What step 6 came to.
 enum Returned {
-    /// Put back with nothing unmerged, and `S` dropped.
-    Back,
+    /// Put back with nothing unmerged, and `S` dropped. `unstaged`: the
+    /// staged paths whose staging did not come back (git could not reinstate
+    /// the index, [`PutBackRan::Unstaged`]); empty when the index came back.
+    Back { unstaged: Vec<PathBuf> },
     /// Put back with these paths unmerged; `S` kept.
     Clashed(Vec<PathBuf>),
     /// `S` kept for another reason.
@@ -403,22 +442,30 @@ enum Returned {
 /// Why `S` is still in the list after step 6.
 enum Kept {
     /// git failed: the apply (nothing came back), or the drop after a clean
-    /// apply (`back`: the edits are in the tree **and** in the list).
-    Git { error: RunError, back: bool },
+    /// apply (`back`: the edits are in the tree **and** in the list;
+    /// `unstaged` as [`Returned::Back`]'s).
+    Git {
+        error: RunError,
+        back: bool,
+        unstaged: Vec<PathBuf>,
+    },
     /// The status could not be read after the apply, so whether it clashed
     /// is unknown; `S` is not dropped on a guess.
     Unread(FactsError),
     /// The apply was clean, but the stash list could not be read to find
     /// `S`'s position to drop it: the edits are back **and** `S` is still
     /// listed (73 review, m3).
-    Unlisted(FactsError),
+    Unlisted {
+        why: FactsError,
+        unstaged: Vec<PathBuf>,
+    },
 }
 
 impl Kept {
     fn into_error(self) -> Result<RunError, FactsError> {
         match self {
             Kept::Git { error, .. } => Ok(error),
-            Kept::Unread(why) | Kept::Unlisted(why) => Err(why),
+            Kept::Unread(why) | Kept::Unlisted { why, .. } => Err(why),
         }
     }
 
@@ -433,23 +480,32 @@ impl Kept {
             Kept::Git { back: true, .. } => Some(EditsAt::Back { copy: at }),
             // Whether the put-back clashed is unknown: no place is claimed.
             Kept::Unread(_) => None,
-            Kept::Unlisted(_) => Some(EditsAt::Back { copy: None }),
+            Kept::Unlisted { .. } => Some(EditsAt::Back { copy: None }),
         }
     }
 
-    /// The entry's reason: what went wrong, then where the edits are.
+    /// The entry's reason: what went wrong, then where the edits are — and,
+    /// when they are back without their staging, ` · staging not kept:
+    /// <paths>` (ADR-0045 amendment 2026-09-26 b).
     fn words(&self, listed: &Result<Option<usize>, FactsError>, stash: Oid) -> String {
         match self {
-            Kept::Git { error, back: false } => {
+            Kept::Git {
+                error, back: false, ..
+            } => {
                 format!("{} · {}", reason_for(error), where_listed(listed, stash))
             }
-            Kept::Git { error, back: true } => format!(
-                "your edits are back, and the set-aside copy could not be dropped: {} · {}",
+            Kept::Git {
+                error,
+                back: true,
+                unstaged,
+            } => format!(
+                "your edits are back, and the set-aside copy could not be dropped: {} · {}{}",
                 reason_for(error),
                 match listed {
                     Ok(Some(at)) => format!("a copy stays in stash@{{{at}}}"),
                     _ => where_listed(listed, stash),
-                }
+                },
+                staging_clause(unstaged)
             ),
             Kept::Unread(why) => format!(
                 "the status after putting your edits back could not be read: {why} · {}",
@@ -457,12 +513,23 @@ impl Kept {
             ),
             // The list is what could not be read, so the copy is named by
             // its commit rather than by a second read of the same list.
-            Kept::Unlisted(why) => format!(
+            Kept::Unlisted { why, unstaged } => format!(
                 "your edits are back; the set-aside copy could not be found to drop ({why}) · \
-                 it is stash commit {}",
-                short(stash)
+                 it is stash commit {}{}",
+                short(stash),
+                staging_clause(unstaged)
             ),
         }
+    }
+}
+
+/// ` · staging not kept: <first>[ +N more]`, or nothing when the index came
+/// back.
+fn staging_clause(unstaged: &[PathBuf]) -> String {
+    if unstaged.is_empty() {
+        String::new()
+    } else {
+        format!(" · staging not kept: {}", staging_named(unstaged))
     }
 }
 
@@ -483,142 +550,56 @@ fn where_listed(listed: &Result<Option<usize>, FactsError>, stash: Oid) -> Strin
     }
 }
 
-/// Step 6 itself: `stash apply S`, the status, and the drop.
+/// Step 6 itself: the apply ([`put_back::run_put_back`]) and the drop.
 ///
 /// With `index_base` — absorb, gone through — and `HEAD`'s tree the one the
-/// plan said it would land on, `S` goes back **with the index**, measured
-/// from the base rather than from the old `HEAD` ([`from_index_base`]).
-/// Otherwise (every other operation; an absorb that failed, was aborted, or
-/// landed elsewhere after a resume) it is ADR-0045 §4's plain `stash apply S`.
+/// plan said it would land on, the input is `S` rebuilt on the base
+/// ([`put_back::from_index_base`]); otherwise `S` itself. Either goes back
+/// with `--index`, falling back to a plain apply when git cannot reinstate
+/// the index (ADR-0045 §4 step 6, amended 2026-09-26 b). `S` is the listed
+/// copy either way, and the one dropped.
 fn put_back(
     ctx: &Context<'_>,
     stash: Oid,
     index_base: Option<Oid>,
     commands: &mut Vec<String>,
 ) -> Returned {
-    let never = &();
-    let rebuilt = match index_base {
-        Some(base) => match from_index_base(ctx, stash, base, commands) {
-            Ok(rebuilt) => rebuilt,
+    let input = match index_base {
+        Some(base) => match put_back::from_index_base(ctx, stash, base, commands) {
+            Ok(rebuilt) => rebuilt.unwrap_or(stash),
             // Nothing is applied yet: `S` is listed and untouched.
-            Err(error) => return Returned::Kept(Kept::Git { error, back: false }),
+            Err(error) => {
+                return Returned::Kept(Kept::Git {
+                    error,
+                    back: false,
+                    unstaged: Vec::new(),
+                });
+            }
         },
-        None => None,
+        None => stash,
     };
-    let apply = match rebuilt {
-        Some(rebuilt) => GitInvocation::new(ctx.repo).args([
-            GitArg::Flag("stash"),
-            GitArg::Flag("apply"),
-            GitArg::Flag("--index"),
-            GitArg::Oid(rebuilt),
-        ]),
-        None => GitInvocation::new(ctx.repo).args([
-            GitArg::Flag("stash"),
-            GitArg::Flag("apply"),
-            GitArg::Oid(stash),
-        ]),
+    let unstaged = match put_back::run_put_back(ctx, input, commands) {
+        Ok(PutBackRan::Whole) => Vec::new(),
+        Ok(PutBackRan::Unstaged { paths }) => paths,
+        Ok(PutBackRan::Clashed { paths }) => return Returned::Clashed(paths),
+        Ok(PutBackRan::Failed { error }) => {
+            return Returned::Kept(Kept::Git {
+                error,
+                back: false,
+                unstaged: Vec::new(),
+            });
+        }
+        Err(why) => return Returned::Kept(Kept::Unread(why)),
     };
-    commands.push(apply.command_line());
-    let applied = apply.run(never);
-    // Whatever the exit code: `stash apply` exits 1 on a clash and on a
-    // refusal alike, and only the index tells them apart (ADR-0045 §7).
-    let status = match graft_git::status::read(ctx.repo, never) {
-        Ok(status) => status,
-        Err(why) => return Returned::Kept(Kept::Unread(why.into())),
-    };
-    let unmerged: Vec<PathBuf> = status
-        .entries
-        .into_iter()
-        .filter(|entry| entry.unmerged)
-        .map(|entry| entry.path)
-        .collect();
-    if !unmerged.is_empty() {
-        return Returned::Clashed(unmerged);
-    }
-    if let Err(error) = applied {
-        return Returned::Kept(Kept::Git { error, back: false });
-    }
     match drop_by_id(ctx, stash, commands) {
-        Ok(()) => Returned::Back,
-        Err(Dropped::Git(error)) => Returned::Kept(Kept::Git { error, back: true }),
-        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted(why)),
+        Ok(()) => Returned::Back { unstaged },
+        Err(Dropped::Git(error)) => Returned::Kept(Kept::Git {
+            error,
+            back: true,
+            unstaged,
+        }),
+        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted { why, unstaged }),
     }
-}
-
-/// `S` rebuilt on `base` for absorb's put-back (06b), or `None` when
-/// `HEAD`'s tree is not `base`'s — the rewrite did not land where it was
-/// planned (a resume skipped a row or resolved a stop differently), and the
-/// base would measure the edits from a tree `HEAD` does not have.
-///
-/// The rebuilt stash has `S`'s working tree, first parent `base`, and as
-/// its index commit `S`'s index tree on `base`. `stash apply --index` then:
-/// - applies `base..index` to the index — exactly the hunks that stayed, the
-///   ones only the index holds and mode changes included (review m7-06 C1);
-/// - merges `S`'s working tree with `base` as the merge base. `HEAD`'s tree
-///   is `base`'s, so the working tree comes back as it was, an edit made on
-///   past a placed hunk included (review m7-06 M6: measured from the old
-///   `HEAD`, both sides changed that line).
-///
-/// Objects only: no ref, index or file is written. `S` itself stays the
-/// listed copy, dropped by id when the put-back is clean.
-fn from_index_base(
-    ctx: &Context<'_>,
-    stash: Oid,
-    base: Oid,
-    commands: &mut Vec<String>,
-) -> Result<Option<Oid>, RunError> {
-    let base_tree = resolve(ctx, &format!("{base}^{{tree}}"))?;
-    if resolve(ctx, "HEAD^{tree}")? != base_tree {
-        return Ok(None);
-    }
-    let index_tree = resolve(ctx, &format!("{stash}^2^{{tree}}"))?;
-    let work_tree = resolve(ctx, &format!("{stash}^{{tree}}"))?;
-    let index = commit_tree(ctx, index_tree, &[base], "graft: index", commands)?;
-    let rebuilt = commit_tree(
-        ctx,
-        work_tree,
-        &[base, index],
-        "graft: your edits, put back with the index",
-        commands,
-    )?;
-    Ok(Some(rebuilt))
-}
-
-/// `git rev-parse --verify <rev>`, as an id.
-fn resolve(ctx: &Context<'_>, rev: &str) -> Result<Oid, RunError> {
-    let output = GitInvocation::new(ctx.repo)
-        .args([
-            GitArg::Flag("rev-parse"),
-            GitArg::Flag("--verify"),
-            GitArg::Word(rev.to_owned()),
-        ])
-        .run(&())?;
-    let printed = String::from_utf8_lossy(&output.stdout);
-    Oid::from_hex(printed.trim())
-        .map_err(|_| RunError::Unparsable(format!("rev-parse {rev} printed {printed:?}")))
-}
-
-/// `git commit-tree <tree> -p … -m <message>`: a commit object, no ref.
-fn commit_tree(
-    ctx: &Context<'_>,
-    tree: Oid,
-    parents: &[Oid],
-    message: &str,
-    commands: &mut Vec<String>,
-) -> Result<Oid, RunError> {
-    let mut args = vec![GitArg::Flag("commit-tree"), GitArg::Oid(tree)];
-    for parent in parents {
-        args.push(GitArg::Flag("-p"));
-        args.push(GitArg::Oid(*parent));
-    }
-    args.push(GitArg::Flag("-m"));
-    args.push(GitArg::Word(message.to_owned()));
-    let git = GitInvocation::new(ctx.repo).args(args);
-    commands.push(git.command_line());
-    let output = git.run(&())?;
-    let printed = String::from_utf8_lossy(&output.stdout);
-    Oid::from_hex(printed.trim())
-        .map_err(|_| RunError::Unparsable(format!("commit-tree printed {printed:?}")))
 }
 
 /// Why the drop did not happen.

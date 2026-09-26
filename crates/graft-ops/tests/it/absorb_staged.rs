@@ -7,12 +7,15 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use graft_core::journal::EntryStatus;
 use graft_ops::absorb::{StaysWhy, absorb_map};
+use graft_ops::apply::{AfterState, ApplyError, Resume};
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{FactsScope, Operation, Tip};
 use graft_ops::rewrite::{RewriteParams, RewriteRequest, TodoAction, plan};
 
 use crate::absorb::{branch, oid, stage};
+use crate::set_aside::resume_with;
 use crate::support::{
     NOW, Never, RepoState, TempRepo, git_version, run_undo, stash_list, state_of, try_run,
 };
@@ -373,4 +376,131 @@ fn undo_after_absorb_after_editing_on() {
     absorb(&repo);
 
     undo_restores(&repo, &before);
+}
+
+// ── review m7-06b C2 and M1: an absorb that stops, then goes on ─────────
+
+/// Absorb planned over what the caller staged (a placed hunk and an
+/// index-only stay), with `f3` set to `Edit` so the rewrite stops there,
+/// after `B3` went into `f2` (as `rewrite_run.rs`'s `edit_a1`). It must stop
+/// with nothing unmerged and `S` waiting in the list.
+fn absorb_stopped_at_f3(repo: &TempRepo) {
+    let mut params = planned(repo);
+    let at = params
+        .todo
+        .iter()
+        .position(|line| line.subject == "f3")
+        .expect("f3 is a row");
+    params.todo[at].action = TodoAction::Edit;
+    match try_run(repo, &Operation::Rewrite(params), NOW) {
+        Err(ApplyError::Conflicted { paths, .. }) => assert!(paths.is_empty(), "{paths:?}"),
+        other => panic!("absorb should stop at f3: {other:?}"),
+    }
+    assert_eq!(stash_list(repo).lines().count(), 1, "S waits in the list");
+}
+
+/// C2: aborted, `HEAD` is back on `S`'s base, so `--index` is exact: the
+/// index-only `O3` is still staged, the placed `B3` staged again, and the
+/// set-aside copy dropped.
+#[test]
+fn abort_after_absorb_stops_keeps_index_only_lines() {
+    let repo = branch();
+    stage_placed(&repo);
+    index_only_stay(&repo);
+    let before = state_of(&repo);
+    absorb_stopped_at_f3(&repo);
+
+    let applied = resume_with(&repo, Resume::Abort, NOW + 1)
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain()));
+
+    assert!(matches!(applied.entry.status, EntryStatus::Aborted { .. }));
+    assert_eq!(repo.git(&["show", ":old.txt"]), "o1\no2\nO3\no4\no5");
+    assert_eq!(repo.read("old.txt"), b"o1\no2\no3\no4\no5\n");
+    assert_eq!(
+        repo.git(&["status", "--porcelain=v1"]),
+        "M  b.txt\nMM old.txt"
+    );
+    assert_eq!(stash_list(&repo), "", "S dropped");
+    assert_eq!(state_of(&repo), before, "exactly as before the absorb");
+}
+
+/// The abort's undo row: an `Aborted` entry is not in force, so `u` has
+/// nothing of it to undo, and the repository stays exactly as before the
+/// absorb.
+#[test]
+fn undo_after_absorb_stops_then_aborts() {
+    let repo = branch();
+    stage_placed(&repo);
+    index_only_stay(&repo);
+    let before = state_of(&repo);
+    absorb_stopped_at_f3(&repo);
+    resume_with(&repo, Resume::Abort, NOW + 1)
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain()));
+    let undone = run_undo(&repo, NOW + 2, false);
+    assert!(
+        format!("{undone:?}").contains("NothingToUndo"),
+        "the abort was the way back: {undone:?}"
+    );
+    assert_eq!(state_of(&repo), before);
+}
+
+/// M1: `c` at the stop with nothing changed lands on the plan's tree, so
+/// the rebuilt stash goes back: `B3` placed, `O3` still staged, `S` dropped.
+#[test]
+fn absorb_stopped_then_continued_as_planned_keeps_the_stay() {
+    let repo = branch();
+    stage_placed(&repo);
+    index_only_stay(&repo);
+    let before = state_of(&repo);
+    absorb_stopped_at_f3(&repo);
+
+    let applied = resume_with(&repo, Resume::Continue, NOW + 1)
+        .unwrap_or_else(|why| panic!("continue: {}", why.explain()));
+
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    f2_carries_b3(&repo);
+    assert_eq!(repo.git(&["show", ":old.txt"]), "o1\no2\nO3\no4\no5");
+    assert_eq!(
+        repo.git(&["status", "--porcelain=v1"]),
+        "MM old.txt",
+        "B3 went into f2; the stay is still staged"
+    );
+    assert_eq!(stash_list(&repo), "");
+    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{why:?}"));
+    assert_eq!(state_of(&repo), before, "undo exact");
+}
+
+/// M1: `c` after amending `f3` at the stop lands on a tree the plan did not
+/// name, so `S` itself goes back with `--index`. `B3` is already in `HEAD`,
+/// so git cannot reinstate the index and writes nothing: the plain apply
+/// runs, the words name what lost its staging, and `u` puts back the split
+/// exactly (ADR-0045 amendment 2026-09-26 b).
+#[test]
+fn absorb_stopped_then_continued_elsewhere_says_the_staging_went() {
+    let repo = branch();
+    stage_placed(&repo);
+    index_only_stay(&repo);
+    let before = state_of(&repo);
+    absorb_stopped_at_f3(&repo);
+    repo.write("a.txt", b"a1 amended\na2\na3\na4\na5\n");
+    repo.git(&["commit", "-q", "--amend", "--no-edit", "-a"]);
+
+    let (applied, unread) = match resume_with(&repo, Resume::Continue, NOW + 1) {
+        Err(ApplyError::AfterState { applied, unread }) => (*applied, unread),
+        other => panic!("the staging should not all come back: {other:?}"),
+    };
+
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    let [AfterState::StagingNotKept { paths }] = unread.as_slice() else {
+        panic!("{unread:?}");
+    };
+    assert_eq!(paths, &["b.txt", "old.txt"].map(std::path::PathBuf::from));
+    f2_carries_b3(&repo);
+    assert_eq!(
+        stash_list(&repo),
+        "",
+        "S dropped: the backup holds the split"
+    );
+    run_undo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{why:?}"));
+    assert_eq!(state_of(&repo), before, "undo exact, O3 staged again");
 }

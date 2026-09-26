@@ -354,7 +354,8 @@ fn closed(
     // A rebase or checkout that set edits aside: step 6, whether the
     // operation went through or git refused it (ADR-0045 §4).
     if let Some(stash) = set_aside::stash_of(&pending.entry) {
-        // Absorb's put-back goes with the index only once it went through.
+        // Absorb's rebuilt stash only once it went through; otherwise `S`
+        // itself, still with `--index` (`set_aside::put_back`).
         let index_base = match op {
             Operation::Rewrite(params) if failure.is_none() => params.index_base,
             _ => None,

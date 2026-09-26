@@ -260,6 +260,37 @@ pub enum AfterState {
         /// What went wrong and where the edits are, as the entry's reason.
         words: String,
     },
+    /// The put-back brought the edits back, but git could not reinstate the
+    /// index on the landed tree (`stash apply --index` refused and wrote
+    /// nothing), so it ran without `--index`. `paths`: the staged paths
+    /// whose staging did not come back. `u` restores the split exactly
+    /// (ADR-0045 §6, amended 2026-09-26 b).
+    #[error("{}", staging_not_kept_words(paths))]
+    StagingNotKept {
+        /// The staged paths whose staging did not come back.
+        paths: Vec<PathBuf>,
+    },
+}
+
+/// `your edits are back · staging not kept: <first>[ +N more] · u undoes it,
+/// staging included`.
+fn staging_not_kept_words(paths: &[PathBuf]) -> String {
+    format!(
+        "your edits are back · staging not kept: {} · u undoes it, staging included",
+        staging_named(paths)
+    )
+}
+
+/// `<first>[ +N more]`: the paths whose staging did not come back, as the
+/// words name them (also on a kept set-aside's reason).
+pub(super) fn staging_named(paths: &[PathBuf]) -> String {
+    let first = paths
+        .first()
+        .map_or_else(String::new, |path| path.display().to_string());
+    match paths.len() {
+        0 | 1 => first,
+        n => format!("{first} +{} more", n - 1),
+    }
 }
 
 /// The journal failing, with git's own failure when there was one, and
