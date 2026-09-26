@@ -1,6 +1,6 @@
 # blame-place — `B` opens blame at the line he's on; who, when and why trail that line; `^`, `⏎`, `Esc` back
 
-Status: ready
+Status: split → 20e (build), 20f (walks, captures). Boxes tick here.
 Blocked by: none (18, 20a–d, the debugger all merged).
 Crates: graft + graft-ui (graft-ui for the hints and Part B only, line 204 and the shallow ruling).
 Build with: **Opus**. App wiring and a modal place on a decided design, judged by walks and tests. The one structural

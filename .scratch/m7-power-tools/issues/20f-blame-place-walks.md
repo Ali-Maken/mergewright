@@ -1,0 +1,11 @@
+# 20f blame-place-walks — 20's walks and captures
+
+Status: ready
+Blocked by: 20e (same files).
+Crates: graft (tests, `docs/shots/`).
+Build with: Opus (unchanged from 20).
+Scout: none. Read 20's NOTES and 20e's report.
+Split by: conductor, 2026-09-26, along 20's builder's seam (20-b). No new decision.
+
+## Scope
+From `20-blame-place.md`: the m7_walk journeys, the 7 captures, the pane-bar re-shoots, the hint sweep tests, and the shallow capture. Tick 20's **Walks** and **Captures** boxes in place, each naming its test. Captures ≤ 200 KB, each with its "Right:" line. They are judged by eye at the M7 stop.
