@@ -21,6 +21,12 @@
 # latency starts at its send; `oversleep` is that thread's own wake, kept
 # visible but outside the latency. Control D (`machine:` lines) still
 # shows the OS timer slack with no Graft code at all.
+#
+# Failed runs (m7-power-tools/12d, review 04 Major 1): `SUMMARY runs:` counts
+# each run's exit; a spread verdict is FAIL(<run> failed) when a plain run
+# failed, MISSING(k of 3) when a scenario has fewer than 3 cells, then OVER
+# or ok. The script exits 1 unless every run passed and every spread is ok.
+# `scripts/m7-perf-key-selftest.sh` checks this on canned outputs.
 set -u
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/m7-04-slow-key.txt}
@@ -28,18 +34,32 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 FEATURES=heavy-tests
 
-cargo test --release --features "$FEATURES" --no-run --quiet 2>"$WORK/build.err" || {
-  echo "release build failed:" >&2
-  tail -20 "$WORK/build.err" >&2
-  exit 1
+CANNED=${M7_PERF_KEY_CANNED:-}
+if [ -z "$CANNED" ]; then
+  cargo test --release --features "$FEATURES" --no-run --quiet 2>"$WORK/build.err" || {
+    echo "release build failed:" >&2
+    tail -20 "$WORK/build.err" >&2
+    exit 1
+  }
+fi
+
+# M7_PERF_KEY_CANNED=<dir> (scripts/m7-perf-key-selftest.sh only): each run
+# prints <dir>/<label>.out and exits <dir>/<label>.exit instead of testing.
+canned() { # label
+  cat "$CANNED/$1.out" || return 1
+  return "$(cat "$CANNED/$1.exit")"
 }
 
 run() { # label control
   local label=$1 control=$2
   local t0=$SECONDS
-  GRAFT_FRAME_TRACE="$WORK/trace.txt" GRAFT_FRAME_RUN="$label" GRAFT_FRAME_CONTROL="$control" \
-    cargo test --release --features "$FEATURES" --quiet -- frames:: frame_trace:: --nocapture --test-threads=1 \
-    >"$WORK/$label.out" 2>&1
+  if [ -n "$CANNED" ]; then
+    canned "$label" >"$WORK/$label.out" 2>&1
+  else
+    GRAFT_FRAME_TRACE="$WORK/trace.txt" GRAFT_FRAME_RUN="$label" GRAFT_FRAME_CONTROL="$control" \
+      cargo test --release --features "$FEATURES" --quiet -- frames:: frame_trace:: --nocapture --test-threads=1 \
+      >"$WORK/$label.out" 2>&1
+  fi
   local status=$?
   echo "run $label control=$control exit $status, $((SECONDS - t0))s" >>"$WORK/runs.txt"
 }
@@ -74,6 +94,23 @@ work = sys.argv[1]
 def fields(line):
     return dict(re.findall(r'(\w+)=(\S+)', line))
 
+# Every run's exit, from `## runs`: a failed run is never read as a pass
+# (review 04 Major 1). A failure after a run's `frames:` line (rows on hand,
+# pixel images drawn) leaves the line looking fine; one before it drops the
+# scenario's cell.
+exits = collections.OrderedDict()
+for line in open(f"{work}/runs.txt"):
+    m = re.match(r'run (\S+) control=\S+ exit (\d+),', line)
+    if m:
+        exits[m.group(1)] = int(m.group(2))
+failed = [label for label, status in exits.items() if status != 0]
+if failed:
+    named = ", ".join(f"{label} exit {exits[label]}" for label in failed)
+    print(f"SUMMARY runs: FAILED {len(failed)} of {len(exits)}: {named}")
+else:
+    print(f"SUMMARY runs: {len(exits)} of {len(exits)} exit 0")
+plain_failed = [label for label in failed if label.startswith("plain")]
+
 # Run-to-run spread over the three plain runs (KNOWN_GAPS: p99 noisy).
 spread = collections.defaultdict(list)
 for n in (1, 2, 3):
@@ -83,11 +120,21 @@ for n in (1, 2, 3):
             key = f"tier={f['tier']} refs={f['refs']} pane={f['pane']}"
             spread[key].append((int(f["p50_us"]), int(f["p99_us"]), int(f["max_us"])))
 print("## spread over 3 plain runs (p50 / p99 / max, µs)")
+if not spread:
+    print("SUMMARY spread none: no frames: p99 line in any plain run gate(p99<=16ms)=MISSING(0 of 3)")
 for key, runs in spread.items():
     p99s = [r[1] for r in runs]
     maxes = [r[2] for r in runs]
     cells = "  ".join(f"{a}/{b}/{c}" for a, b, c in runs)
-    verdict = "ok" if max(p99s) <= 16000 else "OVER"
+    # A failed run first: its cell, or the cell it never printed, proves nothing.
+    if plain_failed:
+        verdict = f"FAIL({','.join(plain_failed)} failed)"
+    elif len(runs) < 3:
+        verdict = f"MISSING({len(runs)} of 3)"
+    elif max(p99s) > 16000:
+        verdict = "OVER"
+    else:
+        verdict = "ok"
     print(f"SUMMARY spread {key}: {cells}  p99 range {min(p99s)}-{max(p99s)} max range {min(maxes)}-{max(maxes)} gate(p99<=16ms)={verdict}")
 
 rows = []
@@ -139,11 +186,34 @@ for r in rows:
         print(" ".join(f"{k}={v}" for k, v in r.items()))
 PY
 } 2>&1 | sed "s|$HOME|~|g" >"$WORK/new.txt"
+SUMMARISED=("${PIPESTATUS[@]}")
+
+# The script's own verdict (review 04 Major 1), after the perf file is
+# written: non-zero when any run failed, any spread is not `ok` (FAIL,
+# MISSING, OVER), or summarising the runs itself failed.
+verdict() {
+  local why=() failed bad
+  if [ "${SUMMARISED[0]}" != 0 ] || [ "${SUMMARISED[1]}" != 0 ]; then
+    why+=("summarising the runs failed (status ${SUMMARISED[*]})")
+  fi
+  failed=$(grep '^SUMMARY runs: ' "$WORK/new.txt")
+  case $failed in
+    "") why+=("no SUMMARY runs line") ;;
+    *FAILED*) why+=("${failed#SUMMARY }") ;;
+  esac
+  bad=$(grep '^SUMMARY spread ' "$WORK/new.txt" | grep -vc 'gate(p99<=16ms)=ok$')
+  [ "$bad" -eq 0 ] || why+=("$bad spread line(s) not ok")
+  if [ "${#why[@]}" -gt 0 ]; then
+    printf 'm7-perf-key FAILED: %s\n' "${why[@]}" >&2
+    return 1
+  fi
+}
 
 if [ ! -s "$OUT" ]; then
   cp "$WORK/new.txt" "$OUT"
   echo "wrote $OUT"
-  exit 0
+  verdict
+  exit
 fi
 
 REV=$(($(grep -c '^# ===== rev ' "$OUT") + 2))
@@ -173,7 +243,7 @@ def idle(text):
 def spread(text):
     out = {}
     for line in text.splitlines():
-        m = re.match(r'SUMMARY spread (tier=\S+ refs=\S+ pane=\S+): .* p99 range (\S+) max range (\S+) gate\S+=(\S+)', line)
+        m = re.match(r'SUMMARY spread (tier=\S+ refs=\S+ pane=\S+): .* p99 range (\S+) max range (\S+) gate\(p99<=16ms\)=(.+)$', line)
         if m:
             out[m.group(1)] = (m.group(2), m.group(3), m.group(4))
     return out
@@ -194,3 +264,4 @@ PY
   cat "$WORK/new.txt"
 } >>"$OUT"
 echo "appended rev $REV to $OUT"
+verdict
