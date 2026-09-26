@@ -3,10 +3,10 @@
 //!
 //! - **Files:** `stash^1`→`stash` (the tracked changes), then the paths of
 //!   `stash^3` (the untracked files a `-u` stash carries).
-//! - **In the way:** a file where the stash would create an untracked one.
-//!   git refuses to write over it (`already exists, no checkout`), ignored
-//!   files included — which the status does not list, so the disk is read.
-//!   Unsaved edits to a tracked path are found from the facts, before any
+//! - **In the way:** a file the index doesn't track, where the stash writes
+//!   one, ignored files included (the status doesn't list those): read from
+//!   the disk by `crate::in_the_way::blocking` in `plan`, and again at `y`
+//!   (ADR-0049). Unsaved edits to a tracked path are found from the facts, before any
 //!   spawn ([`in_the_way`]).
 //! - **Staged part:** git's `--index` rule, checked first: when the stash's
 //!   staged part no longer applies to the index (`apply --cached --check`
@@ -87,8 +87,7 @@ pub(super) fn in_the_way(commit: Oid, facts: &RepoFacts, touched: Vec<PathBuf>) 
 ///
 /// # Errors
 /// [`PreviewError::Stopped`] on a stop between spawns;
-/// [`PreviewError::Refused`] with [`Refusal::StashInTheWay`] when a file
-/// stands where the stash creates an untracked one, or
+/// [`PreviewError::Refused`] with
 /// [`Refusal::StashIndexNoLongerApplies`] when its staged part no longer
 /// applies to the index (git's `--index` rule, [`forecast`]);
 /// [`PreviewError::Read`] when the stash's parents or paths could not be
@@ -119,14 +118,8 @@ pub(super) fn forecast_stash(
         }
         None => Vec::new(),
     };
-    let occupied = occupied(repo, &untracked)?;
-    if !occupied.is_empty() {
-        return Err(PreviewError::Refused(Refusal::StashInTheWay {
-            unsaved: Vec::new(),
-            staged: Vec::new(),
-            untracked: occupied,
-        }));
-    }
+    // A file on disk where the stash creates one was refused by `plan`
+    // before this runs (`in_the_way`, ADR-0049).
     for path in untracked {
         if paths.len() >= PATHS_CAP {
             more = true;
@@ -338,35 +331,6 @@ fn path_of(bytes: &[u8]) -> PathBuf {
     {
         PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
     }
-}
-
-/// Which of `paths` something already stands at on disk (a file, a link or
-/// a directory): the untracked files git would refuse to write over.
-fn occupied(repo: &RepoHandle, paths: &[PathBuf]) -> Result<Vec<PathBuf>, PreviewError> {
-    let Some(root) = repo.workdir() else {
-        // A bare repository has no working tree to put a stash back into;
-        // `check` refuses it first. Nothing stands in the way of nothing.
-        return Ok(Vec::new());
-    };
-    let mut found = Vec::new();
-    for path in paths {
-        match std::fs::symlink_metadata(root.join(path)) {
-            Ok(_) => found.push(path.clone()),
-            Err(why) if why.kind() == std::io::ErrorKind::NotFound => {}
-            // A parent that is a file (`a` where the stash creates `a/b`)
-            // is in the way too: git cannot make the directory.
-            Err(why) if why.kind() == std::io::ErrorKind::NotADirectory => {
-                found.push(path.clone());
-            }
-            Err(why) => {
-                return Err(PreviewError::Read(RunError::Unparsable(format!(
-                    "{} could not be read: {why}",
-                    path.display()
-                ))));
-            }
-        }
-    }
-    Ok(found)
 }
 
 fn stopped(stop: &dyn Stop) -> Result<(), PreviewError> {

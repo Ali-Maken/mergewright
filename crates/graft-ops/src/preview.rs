@@ -27,8 +27,6 @@ mod put_back;
 mod recover;
 mod stash;
 
-pub(crate) use recover::in_the_way;
-
 use std::path::PathBuf;
 
 use graft_core::commit::{Identity, Timestamp};
@@ -349,8 +347,11 @@ fn sha1(message: &[u8]) -> [u8; 20] {
 /// the caller stopped, `op.check(facts)` refused it (checked first, exactly
 /// as `apply` checks before writing), or the operation would plainly be
 /// refused and there is nothing worth drawing ([`Refusal::NotFastForward`],
-/// [`Refusal::NotOnBranch`], and for a stash apply or pop
-/// [`Refusal::StashInTheWay`] when files on disk are in its way).
+/// [`Refusal::NotOnBranch`]). Files git doesn't keep, standing where the
+/// write puts its own, are read once, right after `check` and before any
+/// forecast, by [`crate::in_the_way::blocking`] — the read `apply` repeats
+/// at `y` — and refused as [`Refusal::InTheWay`], or for a stash apply or
+/// pop as [`Refusal::StashInTheWay`] (ADR-0049).
 ///
 /// A stash apply or pop is the one exception to "exactly as `check`": its
 /// `TouchesChangedFiles` becomes [`Refusal::StashInTheWay`] naming the
@@ -377,6 +378,9 @@ pub fn plan(
         ) => PreviewError::Refused(stash::in_the_way(*commit, facts, paths)),
         (_, refused) => PreviewError::Refused(refused),
     })?;
+    // ADR-0049: a file git doesn't keep, where the write puts one of its
+    // own, is refused before any forecast — and again by `apply` at `y`.
+    refuse_in_the_way(repo, op, facts, stop)?;
     let mut drawn = match op {
         Operation::StashApply { index, commit } | Operation::StashPop { index, commit } => {
             let (worktree, conflicts) = stash::forecast_stash(repo, git, *index, *commit, stop)?;
@@ -421,6 +425,26 @@ pub fn plan(
         None => None,
     };
     Ok(drawn)
+}
+
+/// [`crate::in_the_way::blocking`], the read `apply` repeats at `y`, as the
+/// preview's refusal.
+fn refuse_in_the_way(
+    repo: &RepoHandle,
+    op: &Operation,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<(), PreviewError> {
+    let blocking = crate::in_the_way::blocking(repo, op, facts, stop).map_err(|why| match why {
+        FactsError::Stopped | FactsError::Snapshot(crate::snapshot::SnapshotError::Stopped) => {
+            PreviewError::Stopped
+        }
+        other => PreviewError::Facts(other),
+    })?;
+    match crate::in_the_way::refused(op, blocking) {
+        Some(refused) => Err(PreviewError::Refused(refused)),
+        None => Ok(()),
+    }
 }
 
 /// A plan with the fields every kind fills the same way, ready to be

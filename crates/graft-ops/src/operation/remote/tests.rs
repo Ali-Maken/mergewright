@@ -148,7 +148,7 @@ fn pull_plans_fetch_then_local_fast_forward() {
         lines(&pull()),
         [
             "git fetch --progress origin",
-            "git merge --ff-only --no-edit refs/remotes/origin/main"
+            "git merge --ff-only --no-overwrite-ignore --no-edit refs/remotes/origin/main"
         ]
     );
     let remote: Vec<bool> = pull().plan(&facts()).iter().map(|i| i.remote).collect();

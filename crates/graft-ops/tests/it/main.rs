@@ -10,6 +10,7 @@ mod conflict_set;
 mod finish;
 mod finish_merge;
 mod history_ops;
+mod in_the_way;
 mod journal_list_oracle;
 mod lost_work;
 mod mistake_radar;

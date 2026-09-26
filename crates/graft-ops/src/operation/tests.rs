@@ -1384,3 +1384,223 @@ fn moves_head_covers_every_operation() {
         assert_eq!(op.moves_head(), lands, "{}", op.describe());
     }
 }
+
+/// m7-power-tools/28a (ADR-0049): the four word rows, a mixed case, and one
+/// `<doing>` per kind in the table.
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one row per kind in ADR-0049's `<doing>` table, read top to bottom against it"
+)]
+fn in_the_way_words() {
+    use super::{
+        BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
+        MergeParams, PickParams, RebaseParams, RecoverParams, RecoverTarget, ResetMode,
+        ResetParams, ResetTarget, RevertParams, Source, Tip,
+    };
+    use crate::in_the_way::doing;
+
+    let words = |ignored: &[&str], untracked: &[&str]| {
+        Refusal::InTheWay {
+            doing: "switching to other".to_owned(),
+            ignored: ignored.iter().map(PathBuf::from).collect(),
+            untracked: untracked.iter().map(PathBuf::from).collect(),
+        }
+        .explain()
+    };
+    assert_eq!(
+        words(&["c.txt"], &[]),
+        "c.txt (ignored) is in the way of switching to other · move it aside first"
+    );
+    assert_eq!(
+        words(&["c.txt", "d.txt", "e.txt"], &[]),
+        "c.txt (ignored) +2 more are in the way of switching to other · move them aside first"
+    );
+    assert_eq!(
+        words(&[], &["c.txt"]),
+        "c.txt is in the way of switching to other · S stashes it first"
+    );
+    assert_eq!(
+        words(&[], &["c.txt", "d.txt"]),
+        "c.txt +1 more are in the way of switching to other · S stashes them first"
+    );
+    // Mixed: the ignored path names the line and decides the next step;
+    // `+N` counts the untracked ones too.
+    assert_eq!(
+        words(&["z.env"], &["a.txt", "b.txt"]),
+        "z.env (ignored) +2 more are in the way of switching to other · move them aside first"
+    );
+
+    let tip = |name: &str| Tip {
+        name: name.to_owned(),
+        oid: oid(1),
+    };
+    let sha = |byte: u8| oid(byte).to_string()[..7].to_owned();
+    let cases: Vec<(Operation, Option<String>)> = vec![
+        (
+            Operation::Checkout(CheckoutParams {
+                to: CheckoutTarget::Branch("refs/heads/other".to_owned()),
+                head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            }),
+            Some("switching to other".to_owned()),
+        ),
+        (
+            Operation::Checkout(CheckoutParams {
+                to: CheckoutTarget::Detached(oid(0x0a)),
+                head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            }),
+            Some(format!("switching to {}", sha(0x0a))),
+        ),
+        (
+            Operation::BranchCreate(BranchCreateParams {
+                name: "fresh".to_owned(),
+                at: oid(2),
+                checkout: true,
+            }),
+            Some("switching to fresh".to_owned()),
+        ),
+        (
+            Operation::BranchCreate(BranchCreateParams {
+                name: "fresh".to_owned(),
+                at: oid(2),
+                checkout: false,
+            }),
+            None,
+        ),
+        (
+            Operation::BranchFromStash(BranchFromStashParams {
+                name: "from-stash".to_owned(),
+                index: 0,
+                commit: oid(3),
+            }),
+            Some("switching to from-stash".to_owned()),
+        ),
+        (
+            Operation::Merge(MergeParams {
+                source: Source::Branch("refs/heads/other".to_owned()),
+                into: tip("refs/heads/main"),
+                source_tip: oid(4),
+                ff: FastForward::Default,
+            }),
+            Some("merging other".to_owned()),
+        ),
+        (
+            Operation::Merge(MergeParams {
+                source: Source::Commit(oid(4)),
+                into: tip("refs/heads/main"),
+                source_tip: oid(4),
+                ff: FastForward::Never,
+            }),
+            Some(format!("merging {}", sha(4))),
+        ),
+        (
+            Operation::Pull(super::PullParams {
+                branch: "refs/heads/main".to_owned(),
+                upstream: graft_git::remote::TrackedUpstream {
+                    remote: "origin".to_owned(),
+                    remote_branch: "refs/heads/main".to_owned(),
+                    tracking_ref: "refs/remotes/origin/main".to_owned(),
+                    tracking_tip: Some(oid(7)),
+                },
+            }),
+            Some("pulling origin/main".to_owned()),
+        ),
+        (
+            Operation::Reset(ResetParams {
+                target: ResetTarget::Head {
+                    branch: tip("refs/heads/main"),
+                    mode: ResetMode::Hard,
+                },
+                to: oid(5),
+            }),
+            Some(format!("resetting main to {}", sha(5))),
+        ),
+        (
+            Operation::Reset(ResetParams {
+                target: ResetTarget::Head {
+                    branch: tip("refs/heads/main"),
+                    mode: ResetMode::Mixed,
+                },
+                to: oid(5),
+            }),
+            None,
+        ),
+        (
+            Operation::Recover(RecoverParams {
+                target: RecoverTarget::MoveRef {
+                    name: "main".to_owned(),
+                    to: oid(6),
+                    expected: oid(1),
+                },
+                because: "the shell's reset".to_owned(),
+            }),
+            Some(format!("putting main back to {}", sha(6))),
+        ),
+        (
+            Operation::Rebase(RebaseParams {
+                branch: tip("refs/heads/main"),
+                onto: Source::Branch("refs/heads/feat".to_owned()),
+                onto_tip: oid(0x0b),
+            }),
+            Some("rebasing onto feat".to_owned()),
+        ),
+        (
+            Operation::Rebase(RebaseParams {
+                branch: tip("refs/heads/main"),
+                onto: Source::Commit(oid(0x0b)),
+                onto_tip: oid(0x0b),
+            }),
+            Some(format!("rebasing onto {}", sha(0x0b))),
+        ),
+        (
+            Operation::Rewrite(crate::rewrite::RewriteParams {
+                head: tip("refs/heads/main"),
+                onto: oid(0x0b),
+                todo: Vec::new(),
+                line: crate::rewrite::BranchLine {
+                    branches: vec![tip("refs/heads/main")],
+                },
+                messages: BTreeMap::new(),
+                made: Vec::new(),
+            }),
+            Some("rewriting main".to_owned()),
+        ),
+        (
+            Operation::CherryPick(PickParams {
+                commits: vec![oid(0x0c)],
+                subject: "s".to_owned(),
+                head: tip("refs/heads/main"),
+            }),
+            Some(format!("picking {}", sha(0x0c))),
+        ),
+        (
+            Operation::CherryPick(PickParams {
+                commits: vec![oid(0x0c), oid(0x0d)],
+                subject: "s".to_owned(),
+                head: tip("refs/heads/main"),
+            }),
+            Some("picking 2 commits".to_owned()),
+        ),
+        (
+            Operation::Revert(RevertParams {
+                commit: oid(0x0e),
+                subject: "s".to_owned(),
+                mainline: None,
+                parents: 1,
+                parent: None,
+                head: tip("refs/heads/main"),
+            }),
+            Some(format!("reverting {}", sha(0x0e))),
+        ),
+        (
+            Operation::StashApply {
+                index: 0,
+                commit: oid(3),
+            },
+            None,
+        ),
+    ];
+    for (op, expected) in cases {
+        assert_eq!(doing(&op), expected, "{}", op.describe());
+    }
+}

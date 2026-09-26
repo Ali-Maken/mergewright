@@ -215,8 +215,11 @@ fn move_ref_checked_out_refuses_over_an_untracked_file_it_would_overwrite() {
     repo.write("c.txt", b"his own c, never added\n");
     let op = move_ref("main", three, two);
     let before = whole_state(&repo);
-    let in_the_way = Refusal::UnsavedEditsTo {
-        paths: vec![PathBuf::from("c.txt")],
+    // ADR-0049: `InTheWay`, no longer `UnsavedEditsTo` (m7-power-tools/28a).
+    let in_the_way = Refusal::InTheWay {
+        doing: format!("putting main back to {}", &three.to_string()[..7]),
+        ignored: Vec::new(),
+        untracked: vec![PathBuf::from("c.txt")],
     };
 
     let applied = try_run(&repo, &op, NOW);
@@ -260,8 +263,10 @@ fn move_ref_checked_out_refuses_over_an_ignored_file_it_would_overwrite() {
         "status lists nothing"
     );
     let op = move_ref("main", three, two);
-    let in_the_way = Refusal::UnsavedEditsTo {
-        paths: vec![PathBuf::from("c.txt")],
+    let in_the_way = Refusal::InTheWay {
+        doing: format!("putting main back to {}", &three.to_string()[..7]),
+        ignored: vec![PathBuf::from("c.txt")],
+        untracked: Vec::new(),
     };
 
     let handle = repo.open();
