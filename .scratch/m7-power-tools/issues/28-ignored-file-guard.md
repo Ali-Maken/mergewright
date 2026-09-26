@@ -1,6 +1,6 @@
 # 28 ignored-file-guard — no write goes over a file git doesn't keep
 
-Status: ready (scout done: `.scratch/m7-power-tools/scouts/28.md`). Split into **28a** then **28b**. Both are graft-ops,
+Status: ready, ADR-0049 accepted by the user 2026-09-26 (scout done: `.scratch/m7-power-tools/scouts/28.md`). Split into **28a** then **28b**. Both are graft-ops,
 so they run one after the other, never at the same time.
 Blocked by: 23b (merged 4654b7e1); 22c while it holds graft-ops.
 Decisions: ADR-0049 (proposed, planner 2026-09-26). The spec-only pass replaced "no new decision / `blocked: needs

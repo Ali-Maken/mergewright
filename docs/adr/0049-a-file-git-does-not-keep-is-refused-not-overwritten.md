@@ -1,7 +1,7 @@
 # ADR-0049 — A file git doesn't keep, in a write's way, is refused before the write; it is not backed up
 
 Date: 2026-09-26
-Status: **proposed** (planner, ticket m7-power-tools/28). Amends DESIGN §6.3 step 2 (`docs/design/06-undo-journal-design.md:94-96`).
+Status: **accepted** (user, 2026-09-26: "Refuse, name the file"; planner, ticket m7-power-tools/28). Amends DESIGN §6.3 step 2 (`docs/design/06-undo-journal-design.md:94-96`).
 Evidence: review `docs/reviews/m7-22-journal-recover.md` §C1; scout `.scratch/m7-power-tools/scouts/28.md` (git 2.54.0 probe:
 switch, merge ff/no-ff, pull, rebase, cherry-pick, revert and `reset --hard` all overwrote an ignored `c.txt`, rc 0; stash apply refused).
 

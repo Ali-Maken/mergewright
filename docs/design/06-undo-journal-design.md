@@ -92,8 +92,9 @@ and clean — and before any undo whose inverse rewrites the working tree
 
 1. Start from the pre-op index tree.
 2. For every untracked file in scope, `git hash-object -w` its contents into
-   a blob and add it to that tree at its path (ignored files too, when the
-   operation in question would also remove them).
+   a blob and add it to that tree at its path. Ignored files are not
+   backed up: an operation that would write over one is refused before it
+   starts, naming the file (ADR-0049, 2026-09-26).
 3. Commit that combined tree under `refs/graft/backup/<worktree>/<ulid>`
    (the `<ulid>` being the owning journal entry's `id`, §6.1) — one
    object graph that represents tracked *and* untracked content as it stood
