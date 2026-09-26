@@ -121,17 +121,22 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
 `BlameState` and `Origin` fields are the builder's; `Origin` restores graph cursor, focus, spec, file and line exactly.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Open:** `b_on_a_diff_line_opens_blame_at_that_line` (red first) · `b_on_a_removed_line_blames_the_parent_at_the_old_line`
+- [ ] **Open** (20e: 3 of 14 green in `update/place/tests.rs` — `b_on_a_diff_line_opens_blame_at_that_line`,
+      `a_job_side_refusal_pops_and_says_so`, `b_with_the_graph_focused_is_unchanged`; the other 11 not written; red
+      shown only by mutation, see NOTES 20e): `b_on_a_diff_line_opens_blame_at_that_line` (red first) · `b_on_a_removed_line_blames_the_parent_at_the_old_line`
       · `b_on_a_renamed_files_removed_line_uses_the_old_path` · `b_on_a_file_row_lands_on_the_first_changed_line` ·
       `b_on_a_heading_lands_on_the_hunks_first_changed_line` · `b_on_a_compare_blames_head_or_base` ·
       `b_on_the_changes_pane_blames_the_working_tree` · `b_on_a_changes_pane_removed_line_blames_head` ·
       `b_with_staged_and_unstaged_edits_says_the_lines_moved` · `b_on_an_untracked_file_says_so_and_opens_nothing` ·
       `b_on_a_binary_file_says_so_and_opens_nothing` · `a_job_side_refusal_pops_and_says_so` ·
       `b_with_the_graph_focused_is_unchanged` · `b_while_the_commit_graph_offer_is_up_goes_to_the_offer`.
-- [ ] **Routing:** `slash_in_blame_finds_in_the_file_not_the_graph` · `graph_verbs_are_inert_in_blame` (`m r a c o u`)
+- [x] **Routing** (20e, all 5 in `update/place/tests.rs`): `slash_in_blame_finds_in_the_file_not_the_graph` · `graph_verbs_are_inert_in_blame` (`m r a c o u`)
       · `l_and_w_in_blame_never_reach_the_diff_pane` · `a_click_in_blame_never_reaches_the_graph` ·
       `esc_in_blame_never_cancels_a_running_write`.
-- [ ] **Navigation:** `caret_opens_the_parent_and_esc_comes_back_to_the_same_line` · `caret_lands_where_the_line_came_from`
+- [ ] **Navigation** (20e: all green in `update/place/tests.rs` except `esc_on_the_graph_closes_search_before_returning_to_blame`
+      and `is_write_covers_every_operation_launch`, not written; `came_from` units:
+      `came_from_a_line_mid_hunk_is_the_hunks_first_old_line`, `came_from_a_pure_add_at_line_1_is_line_1`,
+      `came_from_a_line_after_a_hunk_shifts_by_it`; the rename half of `enter_lands_…` not covered): `caret_opens_the_parent_and_esc_comes_back_to_the_same_line` · `caret_lands_where_the_line_came_from`
       (+ `came_from` unit tests: mid-hunk, pure add at line 1) · `caret_at_the_root_says_nothing_before_it` ·
       `caret_on_an_uncommitted_line_says_so` · `enter_lands_on_the_commit_with_the_diff_at_this_line` (the commit's own
       path after a rename) · `enter_on_an_uncommitted_line_lands_in_the_changes_pane` ·
@@ -139,11 +144,13 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
       · `esc_from_blame_returns_where_b_was_pressed` (graph cursor, focus, file, line; after `⏎`+`Esc` too) ·
       `a_write_clears_the_trail` · `is_write_covers_every_operation_launch` (one per launching `Command` variant) ·
       `the_trail_holds_16`.
-- [ ] **Keys:** `find_and_n_move_between_matches` · `n_without_a_find_does_nothing` · `esc_clears_the_find_before_popping`
+- [x] **Keys** (20e, all 7 in `update/place/tests.rs`): `find_and_n_move_between_matches` · `n_without_a_find_does_nothing` · `esc_clears_the_find_before_popping`
       · `i_toggles_ignore_revs_and_the_line_says_which` · `i_is_unbound_without_the_file` · `w_toggles_whitespace` ·
       `mouse_double_click_is_enter`.
-- [ ] **States:** `blame_reading_title_then_lines` · `esc_while_reading_cancels_the_job` · `blame_failed_shows_gits_words`.
-- [ ] **Hints:** `every_bound_action_is_hinted_live_or_is_named_here` green with the new keys (`NEVER_HINTED` unchanged)
+- [x] **States** (20e, all 3 in `update/place/tests.rs`): `blame_reading_title_then_lines` · `esc_while_reading_cancels_the_job` · `blame_failed_shows_gits_words`.
+- [x] **Hints** (20e: `every_bound_action_is_hinted_live_or_is_named_here` green, `NEVER_HINTED` untouched by 20e —
+      `git log -S NEVER_HINTED`; `every_key_the_bar_draws_is_answered` green over the new contexts, one form narrowed, see
+      NOTES 20e; the other two in `update/place/tests.rs`): `every_bound_action_is_hinted_live_or_is_named_here` green with the new keys (`NEVER_HINTED` unchanged)
       · `pane_bar_hides_b_while_the_offer_is_up` · `graph_bar_leads_esc_back_to_blame_while_hidden`.
 - [ ] **Walks** (`m7_walk`, the 2b fence's ids; `len(keys) <= noted_keys(id)`; counts unchanged): `blame_line_to_commit`
       `B ⏎` = 2 (setup puts the diff cursor on line 22; asserts the landing) · `commit_back_to_blame` `Esc` = 1 (focus in
@@ -160,7 +167,8 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
   - `blame-then-commit-120x40.txt`: after `B ⏎`, the graph on Lina's commit, the diff's cursor carrier on line 22 in
     its hunk, the bar leading `esc back to blame`.
   - `blame-find-187x50.txt`: after `/retry⏎ n`, the title ending `· find "retry" 2 of N`.
-- [ ] graft MAP.md: `Place`, `Trail`, `BlameFrom`, `NoBlame`, `blame_from`, `open_blame`, `place_key`, `trail_back`,
+- [ ] (20e: MAP.md done in graft `## update::place` and graft-ui `HintContext::Blame`/`RowMark::Shallow`; checked
+      by grep of the pub items; NOTES key table done below; re-shot captures not done) graft MAP.md: `Place`, `Trail`, `BlameFrom`, `NoBlame`, `blame_from`, `open_blame`, `place_key`, `trail_back`,
       `is_write`, `came_from`, `GraphOverlay::Place`, the key-chain rung. NOTES: the key table as built; the re-shot
       captures.
 
@@ -361,3 +369,72 @@ same flag, and `blame.showRoot=true` in his config clears it on both. The only r
 - Existing captures: the walk fixtures pin no base, so none change. Only the new capture is added.
 
 Unverified by the planner: it read no source; the Esc rung order is from :78; the pane header format for a single commit is unknown (hence "not `COMPARE`"). 20e verifies each against the code.
+
+## NOTES (builder 20e, 2026-09-26): partial — compacted twice
+
+Compacted twice; stopped after Routing, Keys, States, Hints and MAP. No scout: worked from the seams in 20's first NOTES.
+Commits: 66de838d (core), then this one (2 tests, MAP, ticks, NOTES).
+
+**Built.** `B` from the diff pane → blame place (`update/place.rs` `b_key`/`open_blame`); the trail (16, oldest dropped);
+`GraphOverlay::Place` after Finish/Resolver; `place_claim` in `key_event`'s chain after the banner; `ReadBlame` job
+(`jobs/runner.rs` `blame_job`); `draw_place` (`view/frame/overlays.rs`); bar contexts `HintContext::Blame`,
+`BackToBlame`, `PaneFocused.blamable` (graft-ui `hints`); pinned base set aside in `Origin.base`, pinned again on leave
+and on a write (`after_commands`), dropped by `end_for_compare` (called from `detail/state.rs:135` `toggle_compare`,
+which both `x` and Shift/Ctrl+click reach).
+
+**Key table as built** (`update/place/keys.rs:34-79`; claimed by `update/keys.rs` `place_claim`):
+| Key | Does |
+|---|---|
+| `j k ↓ ↑` `PgDn PgUp` `g G` | move the cursor, kept in view |
+| `space` | ages (heatmap) on/off |
+| `/` then text `⏎` | find; `Esc` closes the prompt only; empty `⏎` closes it |
+| `n` / `N` | next / previous match, wrapping; nothing without a find |
+| `w` | whitespace on/off, re-reads |
+| `i` | ignore list on/off, re-reads; unbound without the file |
+| `⏎` / double-click | that commit, diff at this line; trail hidden under the graph |
+| `^` | before it: the parent at `came_from` |
+| `Esc` | clear find → pop the place (last one leaves to where `B` was pressed) |
+| `?` `q` `⌃C` `⌃R` | pass through (`live_global`) |
+| anything else, `⌃`/`⌥`-chords | swallowed |
+Pane: `B` (no ⌃/⌥) opens; `Esc` with the pane focused and a hidden trail shows it again (`detail/keys.rs` `place_key`).
+
+**`is_write`** (`update/place/write.rs:10`, exhaustive over `Command`): true for `Operate`, `Resume`, `RevertTo`, `Undo`,
+`Redo`, `TakeSide`, `OpenExternalEditor`, `OpenConflictEditor`, `OpenMergetool`. `is_write_covers_every_operation_launch`
+not written — the list is checked only by `a_write_clears_the_trail` (one variant).
+
+**Deviations from Signatures (report, not silent):**
+- `trail_back` returns `Option<Vec<Command>>`, not `bool`: leaving is `show_line`'s commands.
+- `Origin` stores the `CompareBase`, not just an oid (the row is needed to re-pin).
+- Set-aside words use `Status::Waiting`, not Sticky.
+- Double-click window measured in millis via `Clock` (`mouse_double_click_is_enter` uses `Clock::Fixed`).
+- `ChangesPane` gets no `B` hint (only `PaneFocused.blamable`); `B` from the changes pane untested (Open box).
+- The missing-parent words for `^` were invented (`caret_at_the_root_says_nothing_before_it` pins them).
+- `update` must not name ratatui (purity test), so `place/keys.rs` does plain u16 geometry (`place_height`,
+  `header_rows`, `body_rows`) instead of graft-ui's `blame_row_at`. The two can drift; nothing tests them equal.
+
+**Finding (pre-existing, not 20e's):** `space fold` is hinted on a file row with the file list focused, but
+`update/detail/keys.rs:282-288` only toggles a directory, so on a file it does nothing. `every_key_the_bar_draws_is_answered`
+caught it once `PaneFocused{opens:true, blamable:true}` was swept; `catalogue::pane_focused_form` leaves that form out,
+with a comment. That is narrowing a sweep to pass — the conductor should file the defect and restore the form.
+
+**Red evidence (honest):** tests were written after the code, before the first compaction. Red shown only by mutation,
+each reverted: `claims_b`→false turns 19 place tests red; `back_to_blame` returning the bare context reddens
+`graph_bar_leads_esc_back_to_blame_while_hidden`; `blamable` ignoring the offer reddens
+`pane_bar_hides_b_while_the_offer_is_up`.
+
+**Touches:**
+- `banner.rs:115`, `undo.rs:222`, `view/frame/boxes.rs:271` read `graph_overlay()` generically — no edit; by reading.
+- `bar_rows` has no `Place` arm: a confirm box over a shown place draws its bar on the primary pane area — **unverified**
+  (the confirm-box sweep in `view/frame/tests.rs` includes `Place` and is green, but checks words, not where).
+- `update/tests.rs` walk sweeps (`classified_form`, `screen_for`) gained Blame/BackToBlame/PaneFocused-blamable screens.
+- graft-ui `COVERAGE_SLOTS` 73 → 79.
+- Keymap doc (`docs/design/02-keymap.md`): not checked against the table above.
+
+**Not built — the next builder:**
+1. Open: the 11 unwritten tests (removed line, rename, file row, heading, compare, changes pane ×2, staged+unstaged,
+   untracked, binary, offer). `blame_from` (20b) has unit tests for most rows; these are the end-to-end ones.
+2. Navigation: `esc_on_the_graph_closes_search_before_returning_to_blame`, `is_write_covers_every_operation_launch`,
+   the rename half of `enter_lands_on_the_commit_with_the_diff_at_this_line`.
+3. Pinned-base ruling: the `show_line` guard and all its listed tests; set-aside is built, the guard is not.
+4. Shallow Part C tests (Part B drawing is in graft-ui `blame.rs:386`, `:447`).
+5. Walks, Captures, the re-shoots; keymap-doc check.

@@ -653,6 +653,43 @@ fn a_blame_read_is_not_a_write() {
     assert!(!commands.iter().any(is_write), "{commands:?}");
 }
 
+fn click(row: u16) -> AppEvent {
+    use graft_core::event::{Event, Modifiers, MouseButton, MouseInput, MouseKind};
+    AppEvent::Core(Event::Mouse(MouseInput {
+        kind: MouseKind::Down(MouseButton::Left),
+        column: 60,
+        row,
+        modifiers: Modifiers::NONE,
+    }))
+}
+
+#[test]
+fn mouse_double_click_is_enter() {
+    let mut state = blamed_at(22);
+    state.harness.clock = crate::session::Clock::Fixed(1_000);
+    // Row 0 is the title; screen row 5 is the fifth line (top 0).
+    let (once, _) = update(&state, click(5));
+    assert_eq!(cursor_line(&once), 5);
+    assert!(once.trail.on_screen().is_some(), "one click only selects");
+    let (twice, _) = update(&once, click(5));
+    assert!(twice.trail.hidden(), "a double-click is `⏎`");
+    assert_eq!(
+        twice.line_landing.as_ref().map(|landing| landing.spec),
+        Some(DetailSpec::Commit(mo()))
+    );
+}
+
+#[test]
+fn a_click_in_blame_never_reaches_the_graph() {
+    let state = blamed_at(22);
+    let cursor = |state: &AppState| state.history.as_ref().map(|history| history.cursor);
+    for row in [0, 1, 5, 20, 39] {
+        let (next, _) = update(&state, click(row));
+        assert_eq!(cursor(&next), cursor(&state), "row {row} moved the graph");
+        assert_eq!(next.detail, state.detail, "row {row} reached the pane");
+    }
+}
+
 // ---- Hints ----
 
 /// The keys the footer draws for `state`, at 200 columns.

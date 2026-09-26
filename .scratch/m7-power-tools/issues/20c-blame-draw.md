@@ -73,7 +73,12 @@ pub fn blame_row_at(area: Rect, view: &BlameView, y: u16) -> Option<usize>;    /
       `find_title_counts_matches` · `at_24_rows_code_fills_the_rest`. Plus `heatmap_changes_colour_only` (glyphs
       identical on/off; the colour itself unverified, rule 5).
 - [x] **Mouse:** `blame_row_at_maps_y_to_row` (title and ignore rows → `None`).
-- [ ] **Hints — PARTIAL, blocked on `graft`.** Done: `blame_bar_words_in_order` · `n_n_only_while_finding` ·
+- [x] **Hints — finished by 20e.** `HintContext::Blame { finding, ignore_file }` and `BackToBlame` wired; 20e ticks:
+      `graph_bar_leads_esc_back_to_blame_while_hidden`, `pane_bar_offers_b_blame` (both
+      `crates/graft/src/update/place/tests.rs`), plus `every_key_the_bar_draws_is_answered` over the Blame forms. Carry
+      done: `the_trailer_is_on_the_cursor_row_only` shown red by mutation (trailer on every row → 9 trailers vs 1;
+      reverted). Was:
+      Done: `blame_bar_words_in_order` · `n_n_only_while_finding` ·
       `i_only_with_the_file` (`hints/tests.rs` mod `blame_place`), against a standalone
       `pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint>`. **Not done:**
       `graph_bar_leads_esc_back_to_blame`, `pane_bar_offers_b_blame`, and the words as a `HintContext`. Any new
