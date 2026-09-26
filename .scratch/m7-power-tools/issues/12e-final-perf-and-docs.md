@@ -15,3 +15,7 @@ Split by: conductor, 2026-09-26. 12c's "Remains" steps 3–5. No new decision.
 - 12's remaining Acceptance boxes (Release, heap slope, captures byte-identical, MAP.md), ticked in place.
 - If the machine is loaded by other builders during a perf run, say so in NOTES with the run's timestamp; don't
   rerun into green.
+
+## Carried from 12d (conductor)
+- TESTING.md :175 and graft MAP.md :756 don't yet cover the script's exit status (exit 1 on FAIL/MISSING/OVER) or the six `frames/` submodules (run, paced, readings, sink, controls, verdict). Update both.
+- 12d never ran the script for real in release; the first real run in this ticket is also its check — say whether exit status and SUMMARY agree.
