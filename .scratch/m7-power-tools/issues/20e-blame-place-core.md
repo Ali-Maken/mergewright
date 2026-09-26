@@ -1,7 +1,7 @@
 # 20e blame-place-core — 20's build half (20 compacted in orientation)
 
 Status: ready
-Blocked by: the planner's pinned-base ruling (appended to 20 when it lands; conductor).
+Blocked by: none (pinned-base ruling appended to 20, "Ruling (planner): a pinned compare base and the trail").
 Crates: graft + graft-ui (graft-ui for the hints and shallow Part B only, as 20 says).
 Build with: Opus (unchanged from 20).
 Scout: done (`scouts/blame-place.md`), plus 20's builder NOTES (:301), which already list every seam with file:line. **Don't re-orient: start from those NOTES.**

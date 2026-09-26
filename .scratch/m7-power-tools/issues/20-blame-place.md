@@ -321,3 +321,43 @@ same flag, and `blame.showRoot=true` in his config clears it on both. The only r
   - Add a wrapper context that leads with `esc back to blame` while the place is hidden.
   - Add `blamable` to PaneFocused and ChangesPane for `B blame`.
   - The exhaustive matches to update are `hints/catalogue.rs`, the graft-ui hints tests, the graft update/tests.rs sweeps (`classified_form`, `screen_for`, `presses_for`, `states_for`) and `update/keys/bound.rs`.
+
+## Ruling (planner): a pinned compare base and the trail — 2026-09-26
+**Decided:** opening a place sets the base aside, and leaving the trail puts it back. The base is neither cleared nor kept live.
+- When `B` opens a place (a refusal opens none), the base moves into `Origin` (`pub base: Option<Oid>`) and is unpinned. While the trail lives, nothing is pinned, so the graph draws no `▏`, no `x base` badge and no compare footer.
+- `⏎` lands on the commit's **own** diff (`show_line(Commit(c), …)`, as specified). Only when a base is set aside, the sticky status reads
+  `compare base 9f8e7d6 set aside · it comes back when you leave blame`.
+- Popping the last place (by `Esc`, or by a job-side refusal) re-pins `origin.base`, then restores as :80 says. He is back on the compare he left: same file, same line, footer `compare base 9f8e7d6 — move, x again clears`.
+- A write clears the trail **and** re-pins `origin.base`. M2's pin-after-write behaviour then applies, unchanged.
+- `x`, or a `Shift`/`Ctrl`+click, on the graph while the place is hidden pins as today and **ends the trail**. A new compare is a new task, and `Esc` back would otherwise have two bases to choose from. The set-aside base is dropped, because he just chose another one. Status: `left blame for compare base a1b2c3d`.
+- **Cause fix in `show_line` (20b):** a `Commit(c)` landing while a base is pinned no longer drops at `Selecting`. The pane is kept, nothing opens, and the status reads
+  `can't show a1b2c3d on its own while compare base 9f8e7d6 is pinned · x on the base clears it`. After the set-aside, blame can't reach this path. It guards history-place (21) and any later caller.
+
+**Why:**
+- `⏎` promises "the commit that last touched the line": Magit `RET`, tig `Enter`, JetBrains click → the commit in Log (`blame-line-history.md` §1.6, §1.4, §1.1). A base…c compare answers a different question, so **reject** that as the landing. No studied tool pins a compare, so the set-aside is **invented**, after tig's view stack (`q` returns to the earlier view untouched, §1.4).
+- Clearing the base for good breaks UX §2 heuristic 3 (user control) and :121's promise that "`Origin` restores spec exactly". He would have to go back to the base and press `x` again.
+- Keeping the base live breaks the journey. `detail_key`'s compare-base `Esc` rung comes before back-to-blame (:78), so `Esc` in the landed diff would clear the base instead of going back. `commit_back_to_blame` would become 2 steps and lose the base.
+- The landing words apply heuristic 1 and UX §3.2: the footer he knew has gone, so the status says where it went.
+
+**Step counts:** unchanged, with or without a base: `blame_line_to_commit` 2, `commit_back_to_blame` 1, `blame_line_before` 2. From the landing back to the compare is `Esc Esc` = 2, the same as with no base.
+
+**Tests (graft; red first where marked):**
+- `show_line_commit_with_a_pinned_base_says_so` (**red first**: today it drops silently). Asserts the words and an unchanged pane.
+- `enter_with_a_compare_base_lands_on_the_commits_own_changes` (**red first**). Asserts spec `Commit(c)`, cursor on the line, no pin, the set-aside words.
+- `esc_after_enter_with_a_base_goes_back_to_blame` (one `Esc`; the base is still set aside).
+- `esc_from_blame_restores_the_compare_base`. Asserts pin, `Compare{base, head}`, file, line. A second case covers the uncommitted row with the base kept.
+- `a_write_with_a_base_aside_pins_it_again` · `x_while_blame_is_hidden_ends_the_trail_and_says_so` · `a_job_side_refusal_restores_the_base`.
+- Walk: also run `commit_back_to_blame` with a base pinned in setup, asserting `len(keys) <= 1`.
+- Capture (20f): `docs/shots/m7/blame-then-commit-with-base-120x40.txt`. **Right:** after `B ⏎` with a base pinned, the pane header is the commit's own (not `COMPARE`). The graph shows no `▏` and no `x base`. The status row reads the set-aside words.
+
+**Touches (check each, report how):**
+- 20b `show_line` and its tests: the guard; existing landing tests stay green.
+- `Origin.base`, `open_blame`, `trail_back`, and the `is_write` clearing site.
+- `x` in `commit_graph_key`; the `Shift`/`Ctrl`+click compare in `mouse.rs`.
+- The `detail_key` compare-base rung (:26-41) and `escape_key`'s compare-clear rung: neither fires while the base is set aside (tested above).
+- The base drawing (`▏`, badge, footer, `this is the compare base · x clears it`): grep that each reads the live pin, not a copy.
+- Journal/undo: grep whether the pin is journaled. If it is, report it; don't change it.
+- Keymap §2.2 (`Esc`) and §2.8: report whether each needs a set-aside line. The researcher makes the edit.
+- Existing captures: the walk fixtures pin no base, so none change. Only the new capture is added.
+
+Unverified by the planner: it read no source; the Esc rung order is from :78; the pane header format for a single commit is unknown (hence "not `COMPARE`"). 20e verifies each against the code.
