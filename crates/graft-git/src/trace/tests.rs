@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use super::function::{blob_content, marked_diff};
-use super::log::{finish, parse_line_records};
+use super::log::{NO_ADD, finish, parse_line_records};
 use super::{TraceEnd, map_to_head};
 use super::{parse_follow_log, parse_line_log};
 use crate::diff::parse_unified;
@@ -202,13 +202,11 @@ fn a_log_ending_on_a_change_not_an_add_is_not_a_start() {
         &mut |batch| rows.extend(batch),
         parse_line_records,
         "none",
+        &|| Ok(std::collections::BTreeSet::new()),
     )
     .expect("finishes");
     assert_eq!(rows.len(), 1);
-    assert_eq!(
-        end,
-        TraceEnd::GitStops("the history ends before this was added (a shallow clone?)".to_owned())
-    );
+    assert_eq!(end, TraceEnd::GitStops(NO_ADD.to_owned()));
 }
 
 /// Review Minor 4: a blob or a marked diff cut at the runner's cap is

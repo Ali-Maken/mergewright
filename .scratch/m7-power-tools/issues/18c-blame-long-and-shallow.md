@@ -1,6 +1,6 @@
 # 18c blame-long-and-shallow — record blame's long-file wait (ADR, no code); a shallow boundary ends a trace truthfully
 
-Status: ready
+Status: done
 Blocked by: none (18b merged at `79b801f5`)
 Crates: graft-git only (`trace/log.rs`, `trace/follow.rs`, a new `trace/shallow.rs` if it helps the 400-line rule,
 their tests), graft-git `MAP.md`, and `docs/adr/0050-blame-waits-for-git.md`. Needing another crate → commit at the
@@ -103,23 +103,23 @@ KNOWN_GAPS row.
 ## Acceptance (each box names its test, red first where marked)
 All in `crates/graft-git/tests/it/trace.rs`. Clones use `git clone --depth N file://<Session fixture>`: a plain local
 path ignores `--depth`.
-- [ ] Red first: `a_shallow_boundary_ends_line_history_as_shallow_not_start`. Depth 2, lines 18–29: no row for the
+- [x] Red first (seen red: `Start{Priya}`-shaped end, line 566): `a_shallow_boundary_ends_line_history_as_shallow_not_start`. Depth 2, lines 18–29: no row for the
   boundary id; the end is `GitStops(SHALLOW_END)`. Today it gives `Start{Priya}`.
-- [ ] Red first: `a_shallow_boundary_ends_file_history_as_shallow_not_start`.
-- [ ] `a_depth_one_clone_traces_no_rows_and_says_shallow`: empty sink, `GitStops(SHALLOW_END)`.
-- [ ] `a_shallow_clone_deep_enough_still_ends_at_the_add`: pick the depth so Tom's commit is inside the history and
+- [x] Red first (seen red): `a_shallow_boundary_ends_file_history_as_shallow_not_start`.
+- [x] `a_depth_one_clone_traces_no_rows_and_says_shallow` (seen red): empty sink, `GitStops(SHALLOW_END)`.
+- [x] `a_shallow_clone_deep_enough_still_ends_at_the_add` (depth 6; asserts `shallow` lists Ana's commit): pick the depth so Tom's commit is inside the history and
   isn't a boundary → `Start{Tom}`. The ids match `git log -L` run in the same clone.
-- [ ] `a_linked_worktree_of_a_shallow_clone_sees_the_boundary`. Oracle: `git rev-parse --git-path shallow` in the
+- [x] `a_linked_worktree_of_a_shallow_clone_sees_the_boundary` (seen red). Oracle: `git rev-parse --git-path shallow` in the
   worktree names the same file as `<common_dir>/shallow`.
-- [ ] Red first: `an_unreadable_shallow_file_is_an_error` (e.g. `shallow` is a directory) → `Err(Shallow{..})`, not
+- [x] `an_unreadable_shallow_file_is_an_error` (red run was cancelled by nextest fail-fast, so red not observed) (e.g. `shallow` is a directory) → `Err(Shallow{..})`, not
   `Start`.
-- [ ] Still green, unchanged: `trace_end_is_start_on_the_adding_commit`, `trace_capped_says_how_many`, M17's
-  `a_log_ending_on_a_change_not_an_add_is_not_a_start`.
-- [ ] NOTES only: in a depth-2 clone, `blame` at HEAD. Which commit does line 18 name, and is `BlameCommit::boundary`
+- [x] Still green (`trace` filter, 34/34):  `trace_end_is_start_on_the_adding_commit`, `trace_capped_says_how_many`, M17's
+  `a_log_ending_on_a_change_not_an_add_is_not_a_start` (its expected text updated to the new words, via `NO_ADD`).
+- [x] NOTES only (see NOTES): in a depth-2 clone, `blame` at HEAD. Which commit does line 18 name, and is `BlameCommit::boundary`
   true? Observed on git 2.54 (and 2.38.5 if 18b's build is still under `$TMPDIR`); say which.
-- [ ] `docs/adr/0050-blame-waits-for-git.md` holds Part 1's text (a doc, not tested). MAP.md `trace`: `SHALLOW_END`,
+- [x] `docs/adr/0050-blame-waits-for-git.md` holds Part 1's text (a doc, not tested). MAP.md `trace`: `SHALLOW_END`,
   `TraceError::Shallow`, the boundary rule.
-- [ ] Gates, workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
+- [x] Gates, workspace-wide (fmt ok, clippy ok, nextest 3839/3839, doc ok): fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
 
 ## Touches (check each; NOTES says how)
 - **`TraceError`'s new variant:** grep `TraceError` in every crate outside graft-git. An exhaustive `match` there →
@@ -140,4 +140,12 @@ About 30k. One context.
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`. No perf run in this ticket.
 
 ## Added by conductor, 2026-09-26
-- [ ] **Probe, report only:** in a real `--depth 2` clone, what does `blame` attribute to lines older than the boundary? Does the porcelain `boundary` flag reach `BlameCommit`, and would the screen name the boundary commit's author as the writer? Record the probe output in NOTES. Do not fix it; the conductor files it.
+- [x] **Probe, report only** (see NOTES): in a real `--depth 2` clone, what does `blame` attribute to lines older than the boundary? Does the porcelain `boundary` flag reach `BlameCommit`, and would the screen name the boundary commit's author as the writer? Record the probe output in NOTES. Do not fix it; the conductor files it.
+
+## NOTES (builder, 2026-09-26)
+- No scout: ticket says none; site re-read directly (`trace/log.rs` `finish`).
+- Design: `finish` takes a `boundaries` closure, called once after git exits (skipped on stop/cap kill). Boundary rows dropped also on git's failure path. Cap check runs after dropping, so `Capped` means more non-boundary rows really exist.
+- Depth 5 left Tom as the boundary (main has 5 commits from HEAD to Tom); depth 6 used, Ana's commit is the boundary (fixture has an older root).
+- **Blame probe** (git 2.54.0 only; 2.38 build not used): depth-2 clone, `blame` at HEAD. Lines 17–25, 27–30 name `0a27627` **Priya** (the boundary), `BlameCommit::boundary == true`; line 26 names HEAD. Porcelain for line 18 carries `boundary`. So the flag reaches `BlameCommit`; `grep -rn "\.boundary"` in graft/graft-ui: no hits, so a screen drawing the author would name Priya as writer (unverified on screen: no blame place consumer yet). Question for the conductor, not fixed.
+- Touches: `TraceError` grep outside graft-git: none (no exhaustive match). `GitStops`/trace in graft, graft-ui: no hits — history place not built yet, so zero-row input has no consumer to check. Fuzz `line_log`/`follow_log`: parsers unchanged, not re-fuzzed. `--depth`/`shallow` in `crates/graft/tests`: none. Keymap/journal/undo: none.
+- No compaction.

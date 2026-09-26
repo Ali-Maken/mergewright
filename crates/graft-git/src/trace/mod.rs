@@ -11,6 +11,7 @@
 mod follow;
 mod function;
 mod log;
+mod shallow;
 mod whole;
 
 use std::fmt;
@@ -25,6 +26,10 @@ pub use follow::parse_follow_log;
 pub use function::{enclosing_function, map_to_head};
 pub use log::{file_history, line_history, parse_line_log};
 pub use whole::whole_file;
+
+/// The end reason when a trace reaches a shallow clone's boundary: what
+/// lies past it was never fetched, so no start can be named (m7/18c).
+pub const SHALLOW_END: &str = "this clone is shallow; nothing older was fetched";
 
 /// The lines a history follows.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -114,6 +119,13 @@ pub enum TraceError {
     Run(RunError),
     /// git's log did not parse.
     Parse(ParseError),
+    /// `<common_dir>/shallow` exists but could not be read (m7/18c).
+    Shallow {
+        /// The file.
+        path: PathBuf,
+        /// Why.
+        source: std::io::Error,
+    },
 }
 
 impl fmt::Display for TraceError {
@@ -125,6 +137,9 @@ impl fmt::Display for TraceError {
                 "git log's output made no sense at line {}: {}",
                 error.line, error.what
             ),
+            TraceError::Shallow { path, source } => {
+                write!(f, "couldn't read {}: {source}", path.display())
+            }
         }
     }
 }

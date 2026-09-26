@@ -8,7 +8,8 @@ use graft_core::oid::Oid;
 use graft_fixtures::Shape;
 use graft_git::diff::{FileStatus, LineKind};
 use graft_git::trace::{
-    LineRange, TraceCommit, TraceEnd, enclosing_function, file_history, line_history, whole_file,
+    LineRange, SHALLOW_END, TraceCommit, TraceEnd, TraceError, enclosing_function, file_history,
+    line_history, whole_file,
 };
 
 use crate::session::{FILE, OLD_FILE, commits, git_ok, open, rev};
@@ -529,4 +530,146 @@ fn line_history_crosses_a_non_ascii_rename() {
     let paths: Vec<&Path> = rows.iter().map(|row| row.path.as_path()).collect();
     assert_eq!(paths, [Path::new("café.txt"), Path::new("plain.txt")]);
     assert!(matches!(end, TraceEnd::Start { .. }), "{end:?}");
+}
+
+/// A `--depth <depth>` clone of the session fixture at `<temp>/clone`
+/// (m7-power-tools/18c). `file://` so git honours `--depth`: a plain local
+/// path ignores it.
+fn shallow_clone(depth: u32) -> tempfile::TempDir {
+    let source = graft_fixtures::borrow(Shape::Session);
+    let temp = tempfile::tempdir().unwrap_or_else(|why| panic!("a temp dir: {why}"));
+    let url = format!("file://{}", source.display());
+    let depth = depth.to_string();
+    git_ok(
+        temp.path(),
+        &[
+            "clone", "-q", "--depth", &depth, "--branch", "main", &url, "clone",
+        ],
+    );
+    temp
+}
+
+fn block() -> LineRange {
+    LineRange::Block { start: 18, end: 29 }
+}
+
+fn shallow_end() -> TraceEnd {
+    TraceEnd::GitStops(SHALLOW_END.to_owned())
+}
+
+#[test]
+fn a_shallow_boundary_ends_line_history_as_shallow_not_start() {
+    let temp = shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let boundary = rev(&dir, "HEAD~1");
+    let (rows, end) = trace_lines(&dir, rev(&dir, "HEAD"), &block(), 1000);
+    assert!(rows.iter().all(|row| row.id != boundary), "{rows:?}");
+    assert_eq!(rows.len(), 1, "only the commit above the boundary");
+    assert_eq!(end, shallow_end());
+}
+
+#[test]
+fn a_shallow_boundary_ends_file_history_as_shallow_not_start() {
+    let temp = shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let boundary = rev(&dir, "HEAD~1");
+    let (rows, end) = trace_file(&dir, rev(&dir, "HEAD"), 1000);
+    assert!(rows.iter().all(|row| row.id != boundary), "{rows:?}");
+    assert_eq!(rows.len(), 1, "only the commit above the boundary");
+    assert_eq!(end, shallow_end());
+}
+
+#[test]
+fn a_depth_one_clone_traces_no_rows_and_says_shallow() {
+    let temp = shallow_clone(1);
+    let dir = temp.path().join("clone");
+    let head = rev(&dir, "HEAD");
+    let (rows, end) = trace_lines(&dir, head, &block(), 1000);
+    assert!(rows.is_empty(), "{rows:?}");
+    assert_eq!(end, shallow_end());
+    let (rows, end) = trace_file(&dir, head, 1000);
+    assert!(rows.is_empty(), "{rows:?}");
+    assert_eq!(end, shallow_end());
+}
+
+#[test]
+fn a_shallow_clone_deep_enough_still_ends_at_the_add() {
+    // Depth 6: Ana's root is the boundary; Tom's commit is inside.
+    let temp = shallow_clone(6);
+    let dir = temp.path().join("clone");
+    let tom = rev(&dir, "HEAD~4");
+    let (rows, end) = trace_lines(&dir, rev(&dir, "HEAD"), &block(), 1000);
+    let shallow = std::fs::read_to_string(dir.join(".git").join("shallow"))
+        .expect("the clone is shallow: git wrote its boundary list");
+    assert_eq!(
+        shallow.trim(),
+        rev(&dir, "HEAD~5").to_string(),
+        "Ana's commit"
+    );
+    assert_eq!(end, TraceEnd::Start { added_by: tom });
+    assert_eq!(rows.last().map(|row| row.author.as_str()), Some("Tom"));
+    let oracle = git_ok(
+        &dir,
+        &[
+            "log",
+            "--format=%H",
+            "-s",
+            "-L18,29:src/auth/session.rs",
+            "HEAD",
+        ],
+    );
+    let expected: Vec<Oid> = String::from_utf8_lossy(&oracle)
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|hex| Oid::from_hex(hex).expect("an id"))
+        .collect();
+    let ours: Vec<Oid> = rows.iter().map(|row| row.id).collect();
+    assert_eq!(ours, expected);
+}
+
+#[test]
+fn a_linked_worktree_of_a_shallow_clone_sees_the_boundary() {
+    let temp = shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let linked = temp.path().join("linked");
+    let linked_arg = linked.to_str().expect("a UTF-8 temp path");
+    git_ok(
+        &dir,
+        &["worktree", "add", "-q", "--detach", linked_arg, "HEAD"],
+    );
+    let named =
+        String::from_utf8(git_ok(&linked, &["rev-parse", "--git-path", "shallow"])).expect("UTF-8");
+    let named = linked.join(named.trim());
+    let ours = open(&linked).common_dir().join("shallow");
+    assert_eq!(
+        named.canonicalize().expect("git's shallow file"),
+        ours.canonicalize().expect("<common_dir>/shallow"),
+        "the oracle names the same file"
+    );
+    let (rows, end) = trace_lines(&linked, rev(&linked, "HEAD"), &block(), 1000);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(end, shallow_end());
+}
+
+#[test]
+fn an_unreadable_shallow_file_is_an_error() {
+    let temp = shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let head = rev(&dir, "HEAD");
+    let shallow = dir.join(".git").join("shallow");
+    std::fs::remove_file(&shallow).expect("removing shallow");
+    std::fs::create_dir(&shallow).expect("shallow as a directory");
+    let result = line_history(
+        &open(&dir),
+        head,
+        Path::new(FILE),
+        &block(),
+        1000,
+        &mut |_| {},
+        &(),
+    );
+    match result {
+        Err(TraceError::Shallow { path, .. }) => assert_eq!(path, shallow),
+        other => panic!("expected Err(Shallow), got {other:?}"),
+    }
 }

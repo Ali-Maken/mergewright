@@ -1,12 +1,14 @@
 //! `git log -L` and `git log --follow`, run; `-L`'s output parsed (the
 //! `--follow` reader is `follow.rs`).
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use graft_core::oid::Oid;
 
 use super::follow::parse_follow_records;
-use super::{LineRange, TraceCommit, TraceEnd, TraceError};
+use super::shallow::shallow_boundaries;
+use super::{LineRange, SHALLOW_END, TraceCommit, TraceEnd, TraceError};
 use crate::blame::{bytes_path, path_bytes};
 use crate::diff::{LineKind, ParseError, find, parse_unified, unquote};
 use crate::repo::RepoHandle;
@@ -66,6 +68,7 @@ pub fn line_history(
         sink,
         parse_line_records,
         "no commit changed these lines",
+        &|| shallow_boundaries(repo),
     )
 }
 
@@ -106,16 +109,23 @@ pub fn file_history(
         sink,
         parse_follow_records,
         "no commit changed this file",
+        &|| shallow_boundaries(repo),
     )
 }
 
 /// Turns a finished log run into rows for `sink` and a [`TraceEnd`].
+///
+/// `boundaries` reads a shallow clone's boundary ids (once, after git
+/// exits). A boundary row is dropped: git diffed it against nothing, so its
+/// counts are unknowable. Dropping one ends the trace as [`SHALLOW_END`];
+/// `Capped` still wins when more rows remain past the cap.
 pub(super) fn finish(
     raw: Result<RawOutput, RunError>,
     cap: usize,
     sink: &mut dyn FnMut(Vec<TraceCommit>),
     parse: fn(&[u8]) -> Result<Vec<Record>, ParseError>,
     nothing: &str,
+    boundaries: &dyn Fn() -> Result<BTreeSet<Oid>, TraceError>,
 ) -> Result<TraceEnd, TraceError> {
     let raw = match raw {
         Ok(raw) => raw,
@@ -132,6 +142,7 @@ pub(super) fn finish(
         // hit (checked above): the stop.
         return Ok(TraceEnd::Stopped);
     };
+    let boundaries = boundaries()?;
     if code != 0 {
         let reason = crate::commit_graph::first_line(&raw.output.stderr);
         let reason = reason.strip_prefix("fatal: ").unwrap_or(&reason).to_owned();
@@ -140,28 +151,44 @@ pub(super) fn finish(
         // reason, returned below, is the answer the screen shows.
         if let Ok(records) = parse(&raw.output.stdout) {
             send(
-                records.into_iter().take(cap).map(|(row, _)| row).collect(),
+                records
+                    .into_iter()
+                    .filter(|(row, _)| !boundaries.contains(&row.id))
+                    .take(cap)
+                    .map(|(row, _)| row)
+                    .collect(),
                 sink,
             );
         }
         return Ok(TraceEnd::GitStops(reason));
     }
-    let mut records = parse(&raw.output.stdout).map_err(TraceError::Parse)?;
+    let records = parse(&raw.output.stdout).map_err(TraceError::Parse)?;
+    let fetched = records.len();
+    let mut records: Vec<Record> = records
+        .into_iter()
+        .filter(|(row, _)| !boundaries.contains(&row.id))
+        .collect();
     if records.len() > cap {
         records.truncate(cap);
         send(records.into_iter().map(|(row, _)| row).collect(), sink);
         return Ok(TraceEnd::Capped { shown: cap });
     }
-    let end = match records.last() {
-        Some((row, true)) => TraceEnd::Start { added_by: row.id },
-        Some((_, false)) => TraceEnd::GitStops(
-            "the history ends before this was added (a shallow clone?)".to_owned(),
-        ),
-        None => TraceEnd::GitStops(nothing.to_owned()),
+    let end = if records.len() < fetched {
+        TraceEnd::GitStops(SHALLOW_END.to_owned())
+    } else {
+        match records.last() {
+            Some((row, true)) => TraceEnd::Start { added_by: row.id },
+            Some((_, false)) => TraceEnd::GitStops(NO_ADD.to_owned()),
+            None => TraceEnd::GitStops(nothing.to_owned()),
+        }
     };
     send(records.into_iter().map(|(row, _)| row).collect(), sink);
     Ok(end)
 }
+
+/// The end when the oldest commit git gave changed the lines but did not
+/// add them, and no boundary explains it.
+pub(super) const NO_ADD: &str = "history ends here without the commit that added these lines";
 
 fn send(rows: Vec<TraceCommit>, sink: &mut dyn FnMut(Vec<TraceCommit>)) {
     if !rows.is_empty() {
