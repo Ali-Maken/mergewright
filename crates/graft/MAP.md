@@ -740,6 +740,9 @@ loop, `pump`/`pump_with`), plus the pre-existing `graphics`, `redetect`,
 - `Wake` (enum) — something that wakes the loop.
 - `Wakes` (trait) — a seam so `pump` can be driven by a scripted list in tests.
 - `Wakes::waiting` (fn) — is a wake already here, never blocking; the loop asks before each idle-prefetched strip (m1-the-graph/30h). `ChannelWakes` keeps a wake it saw for `next_wake` and `unhandled_input`.
+- `Wakes::mark` (fn) — `(&mut self, Phase)`, empty default: `pump` calls it as each phase of a frame ends. A timing seam for the `frames` perf harness (m7-power-tools/04); `ChannelWakes` keeps the empty default, so the product pays nothing.
+- `Phase` (enum) — `Drained`, `Updated`, `CarriedOut`, `Drawn`: where the frame for one wake stands, in order.
+- Frame trace (tests, m7-power-tools/04): `tests/it/frame_trace.rs` holds `Gate` (the `frames` verdict: asserts p99 ≤ 16 ms, prints p50/p99/max and the keys over), `FrameTrace` (`GRAFT_FRAME_TRACE=<file>`: one line per key of its phases; off when unset) and `WriteClock`. `frames` reads `GRAFT_FRAME_CONTROL` (`a` no idle pause, `b` a core held busy, `c` no idle prefetch) and has `the_machine_alone_after_idle_and_warm`. Driven by `scripts/m7-perf-key.sh`.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
 - `ChannelWakes::unhandled_input` (fn) — the terminal input queued after the wake that ended the loop, in order; the rest is dropped with the loop.

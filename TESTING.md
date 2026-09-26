@@ -166,6 +166,23 @@ million](#frames-at-a-million)).
 cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
 ```
 
+**The frame gate is the p99** (m7-power-tools/04): each `frames::` scroll
+passes when its p99 input-to-frame is ≤ 16 ms; its line prints
+`p50_us= p99_us= max_us= over_budget=` every run, and every key over the
+budget is listed, recorded not failing. One outlier in 420 keys no longer
+fails the run.
+
+**Where a slow key's time goes:** `scripts/m7-perf-key.sh` (~10 min) runs
+the release `frames::` tests 3 times plain and once per control (A no idle
+pause, B a core held busy, C no idle prefetch), with every key's phases
+traced, and writes `docs/perf/m7-04-slow-key.txt`. Read its `SUMMARY`
+lines. Right looks like: `gate(p99<=16ms)=ok` on every `spread` line across
+all 3 runs. The phase columns name where the idle keys' time goes:
+`oversleep` is the harness's own timed wait waking late (not Graft's work),
+`draw` is Graft's frame. What it cannot show: the real terminal (keys are
+made in the test, output goes to memory), so a pty's wake and the
+terminal's own paint are not in these numbers.
+
 In the debug run above those same tests measure and print their numbers
 (`debug build, budget recorded not asserted`) without failing; so does
 `frames::`'s rows-on-hand check (`rows on hand recorded not asserted: N of M

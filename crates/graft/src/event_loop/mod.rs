@@ -96,6 +96,26 @@ pub trait Wakes {
     /// answer is `true`; a source that has ended says `true` too, so the loop
     /// goes straight to finding that out.
     fn waiting(&mut self) -> bool;
+
+    /// One phase of the frame for the wake just handed out has ended. A
+    /// timing seam for the `frames` perf harness (m7-power-tools/04), which
+    /// stamps each phase to find where a slow key's time went. The real
+    /// source keeps this empty default: the call compiles to nothing.
+    fn mark(&mut self, _phase: Phase) {}
+}
+
+/// Where the loop stands in the frame for one wake, in order. The frame
+/// starts when [`Wakes::next_wake`] returns and ends at [`Phase::Drawn`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Phase {
+    /// The terminal's replies to earlier image writes are read.
+    Drained,
+    /// `update` has returned the next state.
+    Updated,
+    /// The frame's commands are dispatched or carried out.
+    CarriedOut,
+    /// The frame is on the terminal.
+    Drawn,
 }
 
 /// The real source: one channel fed by the input thread and the signal thread.
