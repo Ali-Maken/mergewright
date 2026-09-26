@@ -1,0 +1,40 @@
+# m7-power-tools/19 lost-commit cost — 2026-09-26T11:35:19Z
+# HEAD 0d42b5c0 +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, 10 warm runs per method; p95 is nearest-rank (with 10 runs, the slowest)
+# synthetic synthetic-100000-refs50000-no-commit-graph (100000 commits), 50652 refs, 1000 reflog records (20 lost), 500 candidates
+a-rev-list run 1: 162.4 ms, 20 lost
+a-rev-list run 2: 164.9 ms, 20 lost
+a-rev-list run 3: 167.8 ms, 20 lost
+a-rev-list run 4: 162.8 ms, 20 lost
+a-rev-list run 5: 190.0 ms, 20 lost
+a-rev-list run 6: 163.7 ms, 20 lost
+a-rev-list run 7: 152.5 ms, 20 lost
+a-rev-list run 8: 149.7 ms, 20 lost
+a-rev-list run 9: 168.1 ms, 20 lost
+a-rev-list run 10: 165.3 ms, 20 lost
+# b per-candidate: projected 5021688.4 ms a run, over 30 s; timing 25 candidates and scaling
+b per-candidate run 1: 5847234.2 ms (scaled)
+b per-candidate run 2: 4389786.0 ms (scaled)
+b per-candidate run 3: 3933489.7 ms (scaled)
+b per-candidate run 4: 3616840.9 ms (scaled)
+b per-candidate run 5: 3577834.3 ms (scaled)
+b per-candidate run 6: 4118093.7 ms (scaled)
+b per-candidate run 7: 3818167.0 ms (scaled)
+b per-candidate run 8: 3556835.2 ms (scaled)
+b per-candidate run 9: 3710413.9 ms (scaled)
+b per-candidate run 10: 3917776.8 ms (scaled)
+c-in-process run 1: 217.5 ms, 20 lost
+c-in-process run 2: 210.6 ms, 20 lost
+c-in-process run 3: 209.5 ms, 20 lost
+c-in-process run 4: 212.3 ms, 20 lost
+c-in-process run 5: 210.0 ms, 20 lost
+c-in-process run 6: 212.5 ms, 20 lost
+c-in-process run 7: 209.8 ms, 20 lost
+c-in-process run 8: 211.2 ms, 20 lost
+c-in-process run 9: 210.5 ms, 20 lost
+c-in-process run 10: 211.7 ms, 20 lost
+method=a-rev-list p50=163.7 p95=190.0 max=190.0 runs=10 found=exact
+method=b-per-candidate p50=3818167.0 p95=5847234.2 max=5847234.2 runs=10 extrapolated found=WRONG
+method=c-in-process p50=210.6 p95=217.5 max=217.5 runs=10 found=exact
+lost-commit-cost: method=a-rev-list p95=190.0 cands=500 refs=50652 · budget 1000 ms · held
