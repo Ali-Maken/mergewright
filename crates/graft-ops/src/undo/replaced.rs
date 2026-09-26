@@ -28,7 +28,8 @@ use std::path::PathBuf;
 
 use graft_core::journal::IndexState;
 use graft_core::oid::Oid;
-use graft_git::run::{GitArg, GitInvocation, RunError};
+use graft_git::repo::RepoHandle;
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::apply::Context;
 use crate::facts::FactsError;
@@ -155,7 +156,7 @@ fn in_index(
 
 /// One side of a raw diff record: the mode and blob a path holds in the
 /// second tree, `None` where it is absent there.
-type Holds = Option<(String, Oid)>;
+pub(crate) type Holds = Option<(String, Oid)>;
 
 /// `git diff-tree -r -z --no-renames <from> <to>`: every path that differs,
 /// with what it holds in `to`. Logged to `commands`.
@@ -165,7 +166,19 @@ fn raw_diff(
     to: Oid,
     commands: &mut Vec<String>,
 ) -> Result<BTreeMap<PathBuf, Holds>, FactsError> {
-    let invocation = GitInvocation::new(ctx.repo).args(vec![
+    tree_diff(ctx.repo, from, to, ctx.stop, commands)
+}
+
+/// [`raw_diff`] outside an undo: the put-back's preview and `lost_edits`
+/// (m7/23) read the same records. `from` and `to` are trees or commits.
+pub(crate) fn tree_diff(
+    repo: &RepoHandle,
+    from: Oid,
+    to: Oid,
+    stop: &dyn Stop,
+    commands: &mut Vec<String>,
+) -> Result<BTreeMap<PathBuf, Holds>, FactsError> {
+    let invocation = GitInvocation::new(repo).args(vec![
         GitArg::Flag("diff-tree"),
         GitArg::Flag("-r"),
         GitArg::Flag("-z"),
@@ -174,7 +187,7 @@ fn raw_diff(
         GitArg::Oid(to),
     ]);
     commands.push(invocation.command_line());
-    let output = invocation.run(ctx.stop).map_err(|why| match why {
+    let output = invocation.run(stop).map_err(|why| match why {
         RunError::Stopped => FactsError::Stopped,
         other => FactsError::Snapshot(SnapshotError::Run(other)),
     })?;

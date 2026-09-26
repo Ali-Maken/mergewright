@@ -97,6 +97,7 @@ fn on_screen() -> AppState {
 /// A plan that does something: one ghost, one branch moving onto it.
 pub(in crate::update) fn a_plan() -> PreviewPlan {
     PreviewPlan {
+        files: None,
         description: "rebase feature onto main".to_owned(),
         commands: vec!["git rebase --no-update-refs --no-autostash main".to_owned()],
         ghosts: vec![GhostCommit {
@@ -127,6 +128,7 @@ pub(in crate::update) fn a_plan() -> PreviewPlan {
 /// A plan with nothing in it: a merge that is already up to date.
 fn an_empty_plan() -> PreviewPlan {
     PreviewPlan {
+        files: None,
         description: "merge main into feature".to_owned(),
         commands: vec!["git merge --no-edit --ff --no-edit main".to_owned()],
         ghosts: Vec::new(),

@@ -15,6 +15,8 @@
 mod execute;
 mod replaced;
 
+pub(crate) use replaced::tree_diff;
+
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 

@@ -47,7 +47,8 @@ pub use history::{
 pub(crate) use history::{
     branch_ref, merge_subject, rebase_invocation, short, short_ref, source_arg, tag_ref,
 };
-pub use recover::{NoPutBack, RecoverParams, RecoverTarget};
+pub(crate) use recover::pins as recover_pins;
+pub use recover::{FilesEffect, NoPutBack, RecoverParams, RecoverTarget};
 pub use remote::{FetchParams, Lease, PullParams, PushParams, RemoteNames};
 
 /// One write to the repository, as the user asked for it.
@@ -153,6 +154,10 @@ pub enum Operation {
         /// The stash's commit.
         stash: Oid,
     },
+    /// A put-back from the journal's list (ADR-0046 §3, m7-power-tools/23):
+    /// a branch moved back, a deleted branch made again, or an edit an undo
+    /// replaced restored from that undo's backup. `u` undoes it.
+    Recover(RecoverParams),
 }
 
 /// What [`crate::facts::read_facts`] must read for one operation, beyond
@@ -693,6 +698,13 @@ pub enum Refusal {
     },
     /// The row has no put-back of its own, and why.
     NoPutBack(NoPutBack),
+    /// A file put-back over files with changes of his own — staged,
+    /// unstaged or untracked: the restore would write over them, and there
+    /// is no set-aside here, since the edit *is* the file (m7/23).
+    UnsavedEditsTo {
+        /// The files in the way.
+        paths: Vec<PathBuf>,
+    },
 }
 
 impl Refusal {
@@ -931,6 +943,13 @@ impl Refusal {
                 format!("this step made {name} · there was nothing before it to go back to")
             }
             Self::NoPutBack(NoPutBack::Nothing) => "nothing here to put back".to_owned(),
+            Self::UnsavedEditsTo { paths } => {
+                let verb = if paths.len() == 1 { "has" } else { "have" };
+                format!(
+                    "{} {verb} unsaved edits · c commits or S stashes them first",
+                    name_paths(paths)
+                )
+            }
         }
     }
 }
@@ -1024,6 +1043,7 @@ impl Operation {
             Self::RestartConflict(_) => OperationKind::RestartConflict,
             Self::FinishMerge(_) => OperationKind::FinishMerge,
             Self::AbortMerge(_) => OperationKind::AbortMerge,
+            Self::Recover(_) => OperationKind::Recover,
         }
     }
 
@@ -1064,7 +1084,13 @@ impl Operation {
     /// facts — the preview and `apply` ask the same question.
     #[must_use]
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
-        if !matches!(self, Self::Rebase(_) | Self::Rewrite(_) | Self::Checkout(_)) {
+        let wraps = match self {
+            Self::Rebase(_) | Self::Rewrite(_) | Self::Checkout(_) => true,
+            // A branch put back while checked out is a `reset --hard`.
+            Self::Recover(params) => recover::moves_checked_out(params, facts),
+            _ => false,
+        };
+        if !wraps {
             return None;
         }
         let changed = || {
@@ -1150,6 +1176,7 @@ impl Operation {
             // The branch being pushed: a re-push has to prove its commit is
             // on it before it will draw a force-push (ADR-0038 §4).
             Self::Push(params) => vec![params.branch.clone()],
+            Self::Recover(params) => recover::refs(params),
             _ => vec![],
         };
         FactsScope {
@@ -1211,6 +1238,7 @@ impl Operation {
             Self::RestartConflict(params) => conflict::describe_restart(params),
             Self::FinishMerge(params) => finish_merge::describe(params),
             Self::AbortMerge(params) => finish_merge::describe_abort(params),
+            Self::Recover(params) => recover::describe(params),
         }
     }
 
@@ -1315,6 +1343,7 @@ impl Operation {
             Self::ResolveWholeFile(params) => conflict::check_resolve(params, facts),
             Self::RestartConflict(params) => conflict::check_restart(&params.path, facts),
             Self::FinishMerge(_) | Self::AbortMerge(_) => finish_merge::check(facts),
+            Self::Recover(params) => recover::check(params, facts),
         }
     }
 
@@ -1352,6 +1381,7 @@ impl Operation {
             Self::RestartConflict(params) => conflict::plan_restart(params),
             Self::FinishMerge(params) => finish_merge::plan(params),
             Self::AbortMerge(_) => finish_merge::plan_abort(),
+            Self::Recover(params) => recover::plan(params, facts),
         }
     }
 
@@ -1463,6 +1493,11 @@ impl Operation {
             }
             Self::TagCreate(params) => (vec![history::tag_ref(&params.name)], false, false),
             Self::BranchFromStash(params) => return history::touches_branch_from_stash(params),
+            Self::Recover(params) => {
+                let mut touches = recover::touches(params, facts);
+                touches.refs.extend(self.stash_ref_if_set_aside(facts));
+                return touches;
+            }
         };
         Touches {
             refs,

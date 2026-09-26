@@ -45,6 +45,7 @@ fn commit(id: u8, parents: &[u8]) -> Commit {
 
 fn plan() -> PreviewPlan {
     PreviewPlan {
+        files: None,
         description: "rebase feature onto main".to_owned(),
         commands: vec!["git rebase refs/heads/main".to_owned()],
         ghosts: Vec::new(),

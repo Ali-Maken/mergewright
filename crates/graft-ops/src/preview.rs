@@ -24,7 +24,10 @@
 
 mod kinds;
 mod put_back;
+mod recover;
 mod stash;
+
+pub(crate) use recover::untracked_in_the_way;
 
 use std::path::PathBuf;
 
@@ -37,7 +40,9 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
 
 use crate::facts::FactsError;
-use crate::operation::{Invocation, Operation, Refusal, RepoFacts, SetAside, Tip, short};
+use crate::operation::{
+    FilesEffect, Invocation, Operation, Refusal, RepoFacts, SetAside, Tip, short,
+};
 use crate::undo::{InversePlan, NotInvertible, Step, plan_revert_to as inverse_plans};
 
 /// How many replayed commits a rebase forecasts one by one. Past it the
@@ -207,6 +212,9 @@ pub struct PreviewPlan {
     /// standing for the replayed branch, and a rebase that may stop first
     /// is `NotChecked`.
     pub put_back: Option<ConflictForecast>,
+    /// A put-back's `your files:` line (`Operation::Recover`, m7/23);
+    /// `None` for every other operation.
+    pub files: Option<FilesEffect>,
 }
 
 /// Why a preview could not be drawn.
@@ -389,6 +397,7 @@ pub fn plan(
         Operation::BranchDelete(params) | Operation::TagDelete(params) => kinds::ref_delete(params),
         Operation::BranchFromStash(params) => kinds::branch_from_stash(repo, params, facts, stop)?,
         Operation::Push(params) => kinds::push(repo, params, facts, stop)?,
+        Operation::Recover(params) => recover::recover(repo, params, facts, stop)?,
         other => return Err(PreviewError::Refused(Refusal::NotPreviewable(other.kind()))),
     };
     drawn.description = op.describe();
@@ -431,6 +440,7 @@ fn blank() -> PreviewPlan {
         against: Vec::new(),
         set_aside: None,
         put_back: None,
+        files: None,
     }
 }
 

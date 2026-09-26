@@ -22,7 +22,7 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
 
-use crate::operation::{CheckoutTarget, Operation, RepoFacts};
+use crate::operation::{CheckoutTarget, Operation, RecoverParams, RecoverTarget, RepoFacts};
 use crate::snapshot::{self, SnapshotError};
 
 use super::{ConflictForecast, PreviewError, forecast_one, kinds};
@@ -73,7 +73,13 @@ pub(super) fn forecast(
             }
             (params.branch.oid, Landing::Replayed(params.onto_tip))
         }
-        // `sets_aside` is `Some` for a rebase or a checkout only.
+        // A branch put back while checked out: a `reset --hard` to `to`.
+        Operation::Recover(RecoverParams {
+            target: RecoverTarget::MoveRef { to, expected, .. },
+            ..
+        }) => (*expected, Landing::At(*to)),
+        // `sets_aside` is `Some` for a rebase, a rewrite, a checkout or a
+        // checked-out put-back only.
         _ => return Ok(not_checked("nothing is put back after this")),
     };
     stopped(stop)?;

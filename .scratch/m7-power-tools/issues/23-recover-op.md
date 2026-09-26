@@ -1,6 +1,6 @@
 # recover-op — the put-back as one journaled operation: move a ref back, recreate a branch, or restore an edit; `u` undoes it
 
-Status: ready
+Status: blocked: needs graft (five test literals, `files: None`; see NOTES) — graft-ops done
 Blocked by: 22-journal-list
 Blocked by: journal-list (or journal-list-a for the types)
 Crates: graft-ops only. If graft fails to build on `Operation::Recover` (an exhaustive `match` on `Operation`), stop
@@ -93,7 +93,7 @@ pub fn lost_edits(repo: &Repo, git: &Git, entries: &[JournalEntry], stop: &dyn S
 ```
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Targets** (real repos, `tests/it/recover.rs`):
+- [x] **Targets** (real repos, `tests/it/recover.rs`) — each test below, by name, in `recover.rs`:
   - `move_ref_not_checked_out_moves_only_the_ref`.
   - `move_ref_checked_out_resets_and_puts_unsaved_edits_back`.
   - `move_ref_refuses_when_moved_on_since`.
@@ -102,20 +102,77 @@ pub fn lost_edits(repo: &Repo, git: &Git, entries: &[JournalEntry], stop: &dyn S
   - `files_restores_the_edit_and_leaves_the_index`.
   - `files_refuses_over_unsaved_edits`.
   - `held_again_is_refused`.
-- [ ] **Undo:** `u_undoes_each_target`, one case per target; the repo equals the pre-`y` snapshot (refs, index,
-      worktree, `status --porcelain=v2`).
-- [ ] **Lost edits:**
-  - `lost_edits_finds_the_edit_an_undo_over_drift_replaced` (red first).
+- [x] **Undo:** `u_undoes_each_target`, one case per target (MoveRef off `HEAD`, MoveRef checked out with an edit set
+      aside, Recreate, Files); the repo equals the pre-`y` snapshot (refs, index, every file's bytes, `HEAD`,
+      `status --porcelain=v2 --untracked-files=all`, stash list), after asserting `y` changed it. Plus
+      `u_after_gc_puts_the_branch_back_on_a_tip_only_the_entry_holds` (the `expected` pin).
+- [x] **Lost edits:**
+  - `lost_edits_finds_the_edit_an_undo_over_drift_replaced` (**not red first**: written after the code; its teeth
+    shown by mutation instead — dropping the drift condition and the on-disk filter made it and the two below fail).
   - `lost_edits_finds_the_same_after_a_redo_over_drift`.
   - `an_edit_already_back_on_disk_is_not_lost`.
-- [ ] **Preview:**
+- [x] **Preview:**
   - `recover_preview_lists_your_files`.
   - `recover_preview_says_unchanged_when_not_checked_out`.
-- [ ] **Journal:**
+- [x] **Journal:**
   - `a_recover_entry_describes_itself_in_words` (the `describe` strings above).
   - `touches_match_what_changed`.
-- [ ] MAP.md (graft-ops): `Operation::Recover`, `FilesEffect`, `lost_edits`. NOTES: the scout answers used; each
-      `Operation` match site touched.
+- [x] MAP.md (graft-ops): `Operation::Recover`, `FilesEffect`, `lost_edits` — MAP lines added (checked by reading).
+      NOTES: below.
+
+## NOTES (m7-power-tools-23 builder)
+**Blocked on graft (tests only).** `PreviewPlan` gained `files`; graft's lib builds, but five test literals in graft
+spell every field and now miss it (`cargo clippy --all-targets` workspace-wide fails there). Each needs `files: None,`:
+`crates/graft/src/update/preview/slice/tests.rs:47`, `crates/graft/src/update/preview/tests.rs:99` and `:129`,
+`crates/graft/src/update/stash/tests.rs:161`, `crates/graft/src/view/tests.rs:3507`. No graft `match` on `Operation`
+is exhaustive (its sites use `_`), so `Operation::Recover` broke nothing there. Gates run: fmt workspace-wide ok;
+clippy `-p graft-ops --all-targets` and `-p graft` (lib) ok; nextest `--workspace --exclude graft` 1934/1934; doc
+tests workspace ok. graft's own tests not run (they do not compile until the five lines land).
+
+No scout: the conductor's call (22's NOTES describe the seam); I read the sites myself.
+
+**`Operation` match sites touched** (graft-ops): `operation.rs` `kind`, `sets_aside` (checked-out `MoveRef` wraps),
+`facts_scope`, `describe`, `check`, `plan`, `touches`; `apply/record.rs` `pins_for` (exhaustive; pins
+`MoveRef.expected`, so `u` survives `gc`); `preview.rs` `plan` (new `preview/recover.rs`); `preview/put_back.rs`
+`forecast` (checked-out `MoveRef`: from `expected`, lands at `to`). Not touched, by choice: `is_history` (refresh is
+`Everything` anyway, since the entry touches a ref; a `Files` put-back refreshes the working tree only).
+
+**Deviations from the spec, and why:**
+- `lost_edits(repo: &RepoHandle, entries, stop)` — no `git: &Git` (no such type in graft-ops; 22 dropped it the same
+  way). It lives in `journal_list` (beside `LostEdit`, `find_lost`), not `operation`: `operation` is pure by rule and
+  this reads the repository.
+- `lost_edits`' rule has a third condition the spec lacks: the backup must also differ from the **reversed** entry's
+  after-state (his drift). The spec's two conditions alone list every file the undo itself wrote — undoing a checkout
+  would list the checkout's own files, all held by commits. Test: `lost_edits_finds_the_edit_an_undo_over_drift_replaced`
+  asserts `o.txt` (the checkout's file) is not listed. Same rule as `undo::replaced`. An unrecorded after-state narrows
+  nothing (unknown ≠ unchanged); both unrecorded → the entry is skipped.
+- `FilesEffect` lives in `operation` (as the spec says), re-exported beside `RecoverTarget`.
+- New refusal `Refusal::UnsavedEditsTo { paths }` for the Files words; it counts staged and untracked paths too (the
+  restore writes over the file whatever state it is in).
+- `HeldAgain` is decided from the facts only: `MoveRef` when the branch is already at `to`, `Recreate` when the name
+  is at `at`. "Reachable from some other ref" is not checked at `y` (it needs a walk; `recover_for` already refuses
+  that case from the list).
+- `MoveRef` whose branch is gone → `NoSuchRef` (the spec named no refusal for it).
+- `FilesEffect::Changes` for a checked-out `MoveRef`: `come_back` = paths present in `to` that differ from `expected`
+  (added or changed), `go` = paths absent from `to`. For `Files`: present in the backup / absent.
+
+**Round 2 (conductor rulings):**
+- Open point 1, **refuse**: a checked-out `MoveRef` over an untracked file at a path `to` holds is refused
+  `UnsavedEditsTo { paths }` in `preview` (`preview/recover.rs`) and again in `apply` (`guard_untracked`, before the
+  `Pending` line), both through one read, `preview::untracked_in_the_way` (`ls-tree <to> -- <untracked paths>`; no
+  spawn when nothing is untracked). Words reused: `c.txt has unsaved edits · c commits or S stashes them first` fits;
+  `S` stashes untracked files with its `-u` toggle. Red first:
+  `move_ref_checked_out_refuses_over_an_untracked_file_it_would_overwrite` failed with "his file was overwritten"
+  (c.txt became `c\n`), now passes: refused at `y` and in the preview, bytes unchanged, nothing journaled.
+- Open point 2, **tested, acceptable**: `files_over_a_path_the_backup_lacks_changes_nothing` — git refuses the
+  pathspec, the entry closes `Aborted`, repo state (refs, index, files, status, stashes) unchanged. Passed as-is.
+
+**Touches:** every `Operation` match — graft-ops build + clippy, the sites above; graft lib builds (`cargo clippy -p
+graft`), graft tests blocked as listed. `PreviewPlan` users — graft-ops preview tests green; graft's five literals
+above. Set-aside — `set_aside.rs` tests green, plus `move_ref_checked_out_resets_and_puts_unsaved_edits_back`.
+Undo/redo — no new inverse code; `undo_*` tests green, `u_undoes_each_target`. `undo::replaced::raw_diff` now calls
+a crate-shared `tree_diff(repo, …, stop)`; `undo_replaced*` tests green. Journal format — `a_recover_entry_round_trips`
+green. UI, keymap, captures: none.
 
 ## Touches (check each, report how)
 - **Every `Operation` match** (scout Q1–Q2). Check: the build, plus each site listed in NOTES.

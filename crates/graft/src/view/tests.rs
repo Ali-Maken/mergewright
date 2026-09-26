@@ -3505,6 +3505,7 @@ fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan
         WorktreeEffect, ghost_oid,
     };
     PreviewPlan {
+        files: None,
         description: "rebase feature onto main".to_owned(),
         commands: vec!["git rebase --no-update-refs --no-autostash main".to_owned()],
         ghosts: vec![GhostCommit {

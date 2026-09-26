@@ -345,6 +345,8 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
         // The commit objects written from the index: nothing but the entry
         // holds them until git has melded them in (ADR-0047).
         Operation::Rewrite(params) => params.made.clone(),
+        // A branch put back moves off a tip nothing else may hold.
+        Operation::Recover(params) => crate::operation::recover_pins(params),
         Operation::Merge(_)
         | Operation::Rebase(_)
         | Operation::CherryPick(_)

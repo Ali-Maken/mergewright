@@ -159,6 +159,7 @@ fn planned_with(
 ) {
     let (_, job) = previewed(state);
     let plan = graft_ops::preview::PreviewPlan {
+        files: None,
         description: op.describe(),
         commands: vec!["git stash apply --index stash@{1}".to_owned()],
         ghosts: Vec::new(),

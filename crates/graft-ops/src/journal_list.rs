@@ -13,6 +13,7 @@
 //! and folded into a rebase is `steps`' business; the plain words are
 //! `words`'; the put-back is `recover`'s.
 
+mod edits;
 mod recover;
 mod rows;
 mod steps;
@@ -29,6 +30,7 @@ use graft_git::run::Stop;
 
 use crate::facts::FactsError;
 
+pub use edits::{LOST_EDITS_CAP, lost_edits};
 pub use recover::{Recover, recover_for, recover_scope};
 pub use words::words;
 
