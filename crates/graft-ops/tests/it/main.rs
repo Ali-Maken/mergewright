@@ -11,6 +11,7 @@ mod finish;
 mod finish_merge;
 mod history_ops;
 mod journal_list_oracle;
+mod lost_work;
 mod mistake_radar;
 mod octopus_merge;
 mod ops_execution;

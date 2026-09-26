@@ -69,6 +69,7 @@ mod digest;
 pub mod fifo;
 mod filesystem;
 pub mod git;
+pub mod lost_work;
 mod memory;
 mod permissions;
 pub mod remote;

@@ -102,7 +102,7 @@ fn the_list(repo: &TempRepo) -> JournalList {
     )
 }
 
-fn branch_exists(handle: &RepoHandle, name: &str) -> bool {
+pub(crate) fn branch_exists(handle: &RepoHandle, name: &str) -> bool {
     let full = RefName::new(format!("refs/heads/{name}").into_bytes()).expect("a ref name");
     handle
         .reference(&full)
@@ -112,7 +112,7 @@ fn branch_exists(handle: &RepoHandle, name: &str) -> bool {
 
 /// Each row in one line: `$ <words>`, `● <kind>`, `✗ <subject> <held by>
 /// under <row>`.
-fn lines(list: &JournalList, entries: &[JournalEntry]) -> Vec<String> {
+pub(crate) fn lines(list: &JournalList, entries: &[JournalEntry]) -> Vec<String> {
     list.rows
         .iter()
         .map(|row| match row {
