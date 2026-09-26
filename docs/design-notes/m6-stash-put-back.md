@@ -36,8 +36,8 @@ Graft; and *you cannot lose work* (M3): edits set aside are in the tree or in th
 ## Journeys (keys; UX 1.3; start: graph, cursor on the named row)
 | id | Task | Keys | Count | Today | Best tool |
 |---|---|---|---|---|---|
-| `stash-pop-clash-to-done` | pop clashes, one block, done, stash gone | `S p` → resolver · `o ⏎` → dropped | **4** | 11 | lazygit ~10, VS Code ~10 (A2) |
-| `stash-apply-clash-to-done` | apply clashes, done, stash kept | `S ⏎ o ⏎` | **4** | 8 (review's 11 minus `S d y`) | ~7 (A2 minus the drop) |
+| `stash-pop-clash-to-done` | pop clashes, one block, done, stash gone | `S p` → resolver · `o ⏎` → dropped | **4** | 11 | lazygit ~10, VS Code ~10 (A2) | **Superseded 2026-09-26: 5 keys (`S p y o ⏎` / `S ⏎ y o ⏎`), stash preview, `m6-stash-preview.md`.**
+| `stash-apply-clash-to-done` | apply clashes, done, stash kept | `S ⏎ o ⏎` | **4** | 8 (review's 11 minus `S d y`) | ~7 (A2 minus the drop) | **Superseded 2026-09-26: 5 keys (`S p y o ⏎` / `S ⏎ y o ⏎`), stash preview, `m6-stash-preview.md`.**
 | `stash-clash-put-back` | give up: tree as before the pop | `esc u` (+`y` if a take was made) | **2** | 2, unchanged (not walked) | none found |
 | `pull-rebase-dirty` | diverged, 3 edited files | `p r r` | **3** | refused | JetBrains 3–4 (PP §4) |
 | `rejected-push-dirty-to-pushed` | from a rejection | `p r r P y` | **5** | 16 walked; 15 after 67 | JetBrains 3–4 |
