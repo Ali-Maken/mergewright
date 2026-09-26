@@ -1,6 +1,6 @@
 # land-on-result — every write that moves HEAD lands the cursor on the new HEAD; a fast-forward pull sets edits aside
 
-Status: draft (respecified 2026-09-26 against `scouts/03.md`, HEAD ed624165)
+Status: ready (respecified 2026-09-26 against `scouts/03.md`, HEAD ed624165)
 Blocked by: none
 Crates: graft (`update/operate.rs` `launch`/`operated`, `update/banner/stop.rs`, `update/remote/in_flight.rs`, the test
 harness's `settled`); graft-ops (`operation.rs` `moves_head`/`sets_aside`/`touches`/journal record, facts, `apply.rs`
