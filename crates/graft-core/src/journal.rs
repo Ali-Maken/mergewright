@@ -60,6 +60,13 @@ pub enum OperationKind {
     /// `git rebase`: the current branch replayed onto another commit. One
     /// entry across every conflict stop.
     Rebase,
+    /// A history rewrite of the current branch — squash, fixup, reword,
+    /// reorder, drop, edit, or staged changes put into an older commit — run
+    /// by git's own `rebase -i` on a todo Graft wrote, with every branch
+    /// built on it following (ADR-0047). One entry across every stop; its
+    /// inverse is a rebase's: every recorded branch back, then the index and
+    /// the working tree.
+    Rewrite,
     /// `git cherry-pick`: commits replayed onto `HEAD`.
     CherryPick,
     /// `git revert`: a commit's reverse patch committed onto `HEAD`.
@@ -412,6 +419,22 @@ mod tests {
         let entry: JournalEntry = serde_json::from_str(OLD_LINE).expect("an old line parses");
         assert_eq!(entry.put_back, None);
         assert_eq!(serde_json::to_string(&entry).expect("it renders"), OLD_LINE);
+    }
+
+    /// ADR-0047: a rewrite is a kind of its own on disk, `"rewrite"`, and a
+    /// line written with it reads back to the same entry. Old lines never
+    /// carry it, so `a_journal_line_without_put_back_re_renders_byte_identically`
+    /// still holds for them.
+    #[test]
+    fn a_rewrite_entry_round_trips() {
+        let mut entry: JournalEntry = serde_json::from_str(OLD_LINE).expect("an old line parses");
+        entry.kind = OperationKind::Rewrite;
+        let text = serde_json::to_string(&entry).expect("it renders");
+        assert!(text.contains(r#""kind":"rewrite""#), "{text}");
+        assert_eq!(
+            serde_json::from_str::<JournalEntry>(&text).expect("it parses back"),
+            entry
+        );
     }
 
     #[test]

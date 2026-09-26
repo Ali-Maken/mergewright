@@ -402,6 +402,7 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::Push => "push",
         OperationKind::Merge => "merge",
         OperationKind::Rebase => "rebase",
+        OperationKind::Rewrite => "rewrite",
         OperationKind::CherryPick => "cherry-pick",
         OperationKind::Revert => "revert",
         OperationKind::Reset => "reset",

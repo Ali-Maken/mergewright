@@ -26,6 +26,7 @@ use std::path::PathBuf;
 use graft_core::error::RefNameRule;
 use graft_core::journal::{HeadRef, OperationKind, Touches};
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::remote::{Remote, TrackedUpstream};
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
@@ -580,6 +581,61 @@ pub enum Refusal {
         /// The path.
         path: PathBuf,
     },
+    // ── The rewrite's refusals (ADR-0047; m7 R1's words) ──────────────
+    /// `R` or `a` on a commit that is not on the branch `HEAD` is on.
+    NotOnYourBranch {
+        /// The commit.
+        commit: Oid,
+    },
+    /// A merge inside the range: `--rebase-merges` is not in M7.
+    MergeInRange {
+        /// The first merge in the range, oldest first.
+        merge: Oid,
+    },
+    /// Two branches both built on his, neither on the other: Graft moves
+    /// one line and does not guess which.
+    ForkedDependents {
+        /// One of them.
+        a: RefName,
+        /// The other.
+        b: RefName,
+    },
+    /// A branch built on his is checked out in another worktree: git will
+    /// not move a branch checked out elsewhere, and leaving it behind is the
+    /// duplicated history the line exists to prevent.
+    DependentElsewhere {
+        /// The branch.
+        branch: RefName,
+        /// The worktree it is checked out in.
+        worktree: PathBuf,
+    },
+    /// `a` on an older commit with nothing staged. (The ticket's
+    /// `NothingStaged{target}`; the unit [`Refusal::NothingStaged`] is the
+    /// commit's and already taken.)
+    NothingStagedFor {
+        /// The commit that would have gained the changes.
+        target: Oid,
+    },
+    /// `HEAD` is detached (or on a branch with no commit): a rewrite
+    /// rewrites a branch.
+    NotOnABranch,
+    /// Branches built on his would follow, and this git's `rebase -i` has
+    /// no `update-ref` (git ≥ 2.38). A rewrite with none still runs.
+    GitTooOld {
+        /// The version needed, as the words say it.
+        need: &'static str,
+    },
+    /// `a` into `HEAD` with nothing built on it: not a rewrite — the app's
+    /// plain amend does it.
+    PlainAmend,
+    /// `a` into the repository's first commit: there is nothing to replay
+    /// it onto.
+    RootCommit {
+        /// The commit.
+        commit: Oid,
+    },
+    /// The todo cannot run as written.
+    BadTodo(crate::rewrite::TodoProblem),
 }
 
 impl Refusal {
@@ -764,6 +820,40 @@ impl Refusal {
                     path.display()
                 )
             }
+            Self::NotOnYourBranch { commit } => {
+                format!("R rewrites your branch · {} isn't on it", short(*commit))
+            }
+            Self::MergeInRange { merge } => {
+                format!("can't rewrite past a merge ({})", short(*merge))
+            }
+            Self::ForkedDependents { a, b } => format!(
+                "{} and {} are both built on yours · Graft moves one line",
+                ref_words(a),
+                ref_words(b)
+            ),
+            Self::DependentElsewhere { branch, worktree } => format!(
+                "{} is checked out in another worktree ({}) · it can't follow",
+                ref_words(branch),
+                worktree.display()
+            ),
+            Self::NothingStagedFor { target } => {
+                format!(
+                    "nothing staged to put into {} · space stages",
+                    short(*target)
+                )
+            }
+            Self::NotOnABranch => "you're not on a branch · switch first (C)".to_owned(),
+            Self::GitTooOld { need } => {
+                format!("branches built on yours can follow only with git {need} or newer")
+            }
+            Self::PlainAmend => {
+                "that's the newest commit · a plain amend puts the changes in".to_owned()
+            }
+            Self::RootCommit { commit } => format!(
+                "{} is the first commit · there is nothing below it to replay onto",
+                short(*commit)
+            ),
+            Self::BadTodo(problem) => problem.explain(),
         }
     }
 }
@@ -791,6 +881,11 @@ fn in_the_way_words(unsaved: &[PathBuf], staged: &[PathBuf], untracked: &[PathBu
     format!("{} {verb} in the way", clauses.join(" and "))
 }
 
+/// A branch as the words name it: `feature-b`, not `refs/heads/feature-b`.
+fn ref_words(name: &RefName) -> String {
+    String::from_utf8_lossy(name.shorthand()).into_owned()
+}
+
 fn name_paths(paths: &[PathBuf]) -> String {
     match paths {
         [] => "no files".to_owned(),
@@ -811,7 +906,8 @@ fn name_paths(paths: &[PathBuf]) -> String {
 pub(crate) fn opens_in_progress(kind: OperationKind) -> Option<InProgress> {
     match kind {
         OperationKind::Merge => Some(InProgress::Merge),
-        OperationKind::Rebase => Some(InProgress::Rebase),
+        // A rewrite runs git's `rebase -i` (ADR-0047).
+        OperationKind::Rebase | OperationKind::Rewrite => Some(InProgress::Rebase),
         OperationKind::CherryPick => Some(InProgress::CherryPick),
         OperationKind::Revert => Some(InProgress::Revert),
         _ => None,

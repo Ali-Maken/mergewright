@@ -73,9 +73,33 @@ pub enum FactsError {
     /// be read (m6-conflicts/20).
     #[error("the merge in progress: {0}")]
     MergeState(#[from] crate::merge_state::MergeStateError),
+    /// A history read a rewrite plans from — the branch's commits, the
+    /// branches built on it, the worktrees they are checked out in — failed
+    /// (ADR-0047).
+    #[error("reading the branch's history: {0}")]
+    History(RunError),
+    /// The default branch could not be worked out, so the rewrite's range
+    /// has no base to stop at.
+    #[error("the default branch: {0}")]
+    Branches(#[from] graft_git::branches::BranchError),
+    /// A rewrite's saved plan (`graft/rewrite/<entry>/`) could not be read,
+    /// written or removed.
+    #[error("the rewrite's saved plan: {0}")]
+    SavedPlan(std::io::Error),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
+}
+
+impl FactsError {
+    /// A history read's failure: stopped is [`FactsError::Stopped`], never
+    /// an error of its own.
+    pub(crate) fn of_history(error: RunError) -> Self {
+        match error {
+            RunError::Stopped => Self::Stopped,
+            other => Self::History(other),
+        }
+    }
 }
 
 impl FactsError {

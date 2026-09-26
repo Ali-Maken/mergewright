@@ -1,6 +1,6 @@
 # rewrite-engine — every rewrite runs git's `rebase -i` on a todo Graft writes; dependents follow on one line
 
-Status: ready
+Status: partial — rewrite-engine-a done (m7-power-tools-02a); rewrite-engine-b open, see Handoff
 Blocked by: none
 Crates: graft-ops only. No other crate's matches may break: a new `Operation`/`OperationKind`/`Refusal` variant that
 graft matches exhaustively gets a `NotPreviewable`-style arm in graft-ops's own `Display`/`kind` code. If graft fails to
@@ -116,7 +116,10 @@ pub fn progress(repo: &Repo, stop: &dyn Stop) -> Result<Option<RewriteProgress>,
 `Fixup` rows add nothing.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Pure** (`crates/graft-ops/src/rewrite/tests.rs`):
+- [x] **Pure** (`crates/graft-ops/src/rewrite/tests.rs`) — all six green; red shown for
+      `default_message_leads_with_the_kept_row_then_newest_first` (git's oldest-first order stubbed in: left
+      `…wip\n\nHandle expired tokens`, right `…Handle expired tokens\n\nwip`), then restored. Also
+      `the_git_todo_asks_where_git_asks_and_the_line_follows`, `an_empty_git_todo_is_a_noop`:
   - `squash_groups_meld_into_the_row_below`;
   - `default_message_leads_with_the_kept_row_then_newest_first` (red first);
   - `fixup_adds_no_message`;
@@ -145,7 +148,10 @@ pub fn progress(repo: &Repo, stop: &dyn Stop) -> Result<Option<RewriteProgress>,
   - `kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan` (the plan dir read after a simulated kill: the
     Pending entry + `rebase-merge/` left by a stopped rewrite);
   - `the_plan_dir_is_removed_when_the_entry_closes` (done, aborted, failed).
-- [ ] **Refusals**, each asserting the words:
+- [x] **Refusals**, each asserting the words (`crates/graft-ops/tests/it/rewrite_plan.rs`, all seven named tests
+      green; `an_old_git_refuses_only_the_chain` passes `GitVersion 2.37.0` to `plan` directly instead of a fake
+      `git --version` — `plan` takes the version as a parameter, so it is the same input; plus
+      `amend_into_head_with_nothing_built_on_it_is_a_plain_amend`). Written after the code, not red first:
   - `a_fork_is_refused_naming_both`;
   - `a_dependent_in_another_worktree_is_refused_with_its_path`;
   - `a_merge_in_range_is_refused`;
@@ -153,12 +159,13 @@ pub fn progress(repo: &Repo, stop: &dyn Stop) -> Result<Option<RewriteProgress>,
   - `detached_head_is_refused`;
   - `amend_into_with_nothing_staged_is_refused`;
   - `an_old_git_refuses_only_the_chain` (a fake `git --version` < 2.38, as 84/86 did).
-- [ ] **Dependents:**
+- [x] **Dependents** (`rewrite_plan.rs`, the four named green, plus `a_backup_at_the_same_commit_is_not_a_dependent`):
   - `a_teammate_branch_on_top_is_a_dependent`;
   - `main_containing_the_branch_is_not_a_dependent`;
   - `a_branch_merged_long_ago_is_not_a_dependent` (merge between);
   - `dependents_honour_stop`.
-- [ ] **Progress:**
+- [x] **Progress** (`rewrite_plan.rs`, the three named green, plus `no_rebase_no_progress`; the branch test runs a
+      real `git rebase -i` with `update-ref` lines and a hand-written `plan.json`):
   - `progress_names_the_branch_of_the_step` (`feature-b, 2 of 3`);
   - `progress_of_a_shell_rebase_has_no_branch`;
   - `progress_lists_pending_oldest_first`.
@@ -196,3 +203,112 @@ Large (~80k). If it compacts, split:
 - **rewrite-engine-b:** apply, resume, record, undo, the plan dir, the oracle.
 
 The signatures land in -a first.
+
+## NOTES (builder, 2026-09-26)
+
+**Compacted mid-ticket.** Per the split above, -a is done and committed; -b is open (Handoff below). Scout used:
+`.scratch/m7-power-tools/scouts/02.md`.
+
+What was verified, and how:
+- The gates, workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest (3559 passed), `test --doc`.
+- git 2.54.0 (Apple Git-157), by throwaway scripts:
+  - `rebase-merge/done` keeps full 40-hex ids as the todo gave them;
+  - when git asks for a message, the last line of `done` names the commit it is on;
+  - a squash group holding a squash asks once, on the group's last row, even when that row is a fixup;
+  - `msgnum`/`end` count `update-ref` lines: 4/6 where his rows are 3/4. `progress_names_the_branch_of_the_step`
+    asserts both.
+- Not verified: anything about running a rewrite. That is -b.
+
+Deviations and decisions, each for the conductor to accept or send back:
+1. **`NothingStaged{target}` is `NothingStagedFor { target }`.** The unit `Refusal::NothingStaged` already exists (the
+   commit's; graft matches it at `crates/graft/src/update/operate.rs:2203`).
+2. **Extra refusals:** `PlainAmend` (`a` into HEAD with nothing built on it), `RootCommit { commit }` (`a` into the
+   first commit), `BadTodo(TodoProblem)`.
+   - The note has no words for `GitTooOld`, `PlainAmend` or `RootCommit`, so mine are in `explain()` (`operation.rs`).
+     The conductor or planner should confirm them.
+3. **A dependent checked out in another worktree stays in the line**, and `plan` refuses it as `DependentElsewhere`.
+   - The ticket's wording ("not checked out in another worktree") would drop it from the line silently.
+   - That would leave duplicated history, and `DependentElsewhere` would then be unreachable.
+4. **A branch at the same commit as his is not a dependent.** This protects a backup made just before a rewrite.
+   Test: `a_backup_at_the_same_commit_is_not_a_dependent`.
+5. **The default branch** comes from `Branches::resolve(repo, None)`. The app's `graph.default_branch` override is not
+   visible to graft-ops. Question for the conductor: should `plan` take it?
+6. **When `from` is the repository's first commit**, the range stops above it and it becomes `onto`: there is nothing
+   to replay it onto. Test: `open_deeper_than_the_base_reaches_from`.
+7. **Message cleanup (built in -a, runs in -b).** Every commit git makes gets `commit.cleanup=whitespace` through
+   `GIT_CONFIG_COUNT` env (`saved::CLEANUP`).
+   - Result: a fed message keeps `#123 fixes login`.
+   - Where no message was written, the helper runs `git stripspace --strip-comments`.
+   - Oracle still owed (-b): a reword whose message has a `#` line.
+8. **`RebaseParams` gains no `line`/`drops` fields.** Adding them breaks about 12 struct literals in graft:
+   - `update/drag.rs:270`, `update/preview.rs:1404`, `update/operate.rs:2134`, `context_menu/verbs.rs:167,339`;
+   - tests: `preview/tests.rs:145,764`, `verbs/tests.rs:109,190,363`, `remote/tests.rs:723`, `view/tests.rs:3589`.
+   - Plan for -b: the engine infers the line at apply time via `dependents()`.
+   - Cost: the line is not pinned by the preview. Adding the fields needs a graft seam ticket.
+9. **The Touches line names a test that doesn't exist.** `the_journal_reads_every_line_written_before` is not in the
+   repo. I added `a_rewrite_entry_round_trips` (graft-core `journal.rs`). The nearest existing tests,
+   `a_journal_line_without_put_back_re_renders_byte_identically` and `tests/it/unmerged_index.rs:365` (a golden),
+   stay green.
+10. **Other crates' matches.**
+    - `OperationKind`: `graft/src/update/preview.rs:262`, `update/journal.rs:279` and `view/journal.rs:125` all have
+      `_` arms.
+    - `Refusal`: `graft/src/update/operate.rs:1097` has an `other =>` arm.
+    - The workspace builds and is green, so nothing is blocked on graft.
+    - `Operation::Rewrite` is not added yet (-b), so no `Operation` match is touched.
+11. **`history_ops.rs:567-600` (the scout's "invert it").** My reading is that it does not invert, for -b to confirm:
+    - The test rebases `upper` (HEAD) with `lower` *below* it, inside the range.
+    - ADR-0047 moves only branches *above* his branch (built on it). Branches inside the range still don't move under
+      `--no-update-refs`, and Graft's todo adds `update-ref` only for the line.
+    - So its assertions still hold. -b should re-point its doc comment and add the inverted case as
+      `a_three_branch_rewrite_records_every_ref` (red first).
+12. **The -b run half is written but not wired.** `saved.rs`, `todo::git_todo` and `plan::line_picks` sit behind
+    `expect(dead_code, reason = "…rewrite-engine-b")`. `expect` warns once they are used, so -b must delete those
+    attributes.
+
+## Handoff → rewrite-engine-b
+
+Done in -a (commit `m7-power-tools-02a`):
+- **The `rewrite` module:** types, `plan`, `dependents`, `progress`, the pure functions, the saved-plan format and
+  helper (`saved.rs`), and `git_todo`.
+- **Refusals:** the new `Refusal` variants and their words.
+- **The new kind:** `OperationKind::Rewrite`; `opens_in_progress(Rewrite)` → `Rebase`; `kind_name` → `rewrite`.
+- **Errors:** the new `FactsError` variants.
+
+Next, in order:
+1. **`Operation::Rewrite(RewriteParams)`.** Wire every `operation.rs` site:
+   - `kind`, `is_history`, `sets_aside`, `tips` (head + line), `facts_scope` (line names);
+   - `describe` (`rewrite <branch>` / `put staged changes into <short>`);
+   - `check` (on `head.name`, tip CAS → `Moved`, `validate` → `BadTodo`), `plan`, `touches` (line refs + stash if
+     set aside, index, worktree).
+   - `record.rs`: `pins_for` → `made`. `preview::plan` falls to `NotPreviewable`.
+2. **`plan_rebase` → `git rebase -i [--no-update-refs] --no-autostash <onto> [<top short name>]`.**
+   - Keep the `git rebase ` prefix: graft tests `m5_walk/preview.rs:75` and `tests/it/preview.rs:216` assert it.
+   - Pass `--no-update-refs` only when git ≥ 2.38; `<top>` must be the **short** name (a full ref detaches).
+   - Update `operation/history/tests.rs:322`.
+   - Fix the stale comment at `history.rs:613`.
+3. **`apply/engine.rs`.**
+   - Build the line: `dependents` for Rebase, `params.line` for Rewrite.
+   - Build the todo: `replayed_commits` picks + `line_picks` + `git_todo`.
+   - `saved::save` to `saved::dir(repo, ctx.next_id())` before `begin`; remove it if `begin` fails.
+   - Run env: `GIT_SEQUENCE_EDITOR=saved::sequence_editor`, `GIT_EDITOR=saved::editor`, `CLEANUP`.
+   - After a finish with top ≠ home: `git switch <home short>`.
+   - Exit 0 while `rebase-merge/` is still live is an edit stop → `Conflicted{paths: []}`.
+   - Remove the plan dir on close; a failed removal is a new `AfterState` (e.g. `PlanLeft`).
+4. **Resume.**
+   - `live_entry` accepts `head-name` == the saved plan's top.
+   - Continue/Skip pass `GIT_EDITOR` + `CLEANUP`.
+   - Exit 0 with the rebase still live → Conflicted.
+   - After a finish or abort with top ≠ home, switch home before `close_resume`.
+   - Remove the plan dir.
+   - `recover_interrupted` removes the plan dirs of the entries it closes.
+5. **The `-c` question.** Resume needs no `-c rebase.updateRefs`: it affects only todo generation, and the todo is
+   already written.
+   - Prove it: `rebase.updateRefs=true` in the repo config, an edit stop, `resume(Continue)`, and a branch inside the
+     range stays unmoved.
+6. **Tests:** the oracle file (10 rows plus an unsaved-edit row, with a `cp -R` TempRepo helper), record/undo/abort/kill,
+   the plan-dir removal test, and a `#123` reword.
+
+Gotchas:
+- In a worktree-isolated agent, inline git in temp dirs is refused. Put experiments in a script file and run `sh`.
+- The helper script embeds `repo.git_dir()`. Check it is absolute.
+- Check that `--continue` after a conflicted pick opens the editor (the helper must answer it).

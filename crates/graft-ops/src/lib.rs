@@ -18,6 +18,7 @@ pub mod mistake_radar;
 pub mod operation;
 pub mod preview;
 pub mod restore;
+pub mod rewrite;
 pub mod snapshot;
 pub mod undo;
 
