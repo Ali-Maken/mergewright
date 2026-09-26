@@ -65,6 +65,11 @@ pub enum RowMark {
     Skipped,
     /// git could not say who: trails `◂ git can't say who`.
     Unblamable,
+    /// Its commit is where this shallow clone starts: nothing older was
+    /// fetched, so who wrote the line is unknown. Only `who.sha7` is drawn,
+    /// marked `^` as git marks a boundary (20's shallow ruling); the name,
+    /// age and subject never are.
+    Shallow,
 }
 
 /// One line of the blamed file.
@@ -378,6 +383,14 @@ impl Line<'_> {
         let first = matches!(self.row.block, BlockPos::First | BlockPos::Single);
         let cells = self.gutter.cells();
         let mut text = format!(" {bracket} ");
+        if self.row.mark == RowMark::Shallow {
+            if let Some(who) = &self.row.who
+                && (first || self.cursor)
+            {
+                text.push_str(&shallow_gutter(self.gutter, &who.sha7));
+            }
+            return pad(&text, cells);
+        }
         if let Some(who) = &self.row.who {
             let named = first || self.cursor;
             match self.gutter {
@@ -412,6 +425,18 @@ impl Line<'_> {
     }
 }
 
+/// A shallow-boundary row's gutter words after the bracket: git's `^` form
+/// of the sha (`^` + 6 hex, so the width holds) and words in place of the
+/// name, which is not known.
+fn shallow_gutter(gutter: Gutter, sha7: &str) -> String {
+    let marked: String = std::iter::once('^').chain(sha7.chars().take(6)).collect();
+    match gutter {
+        Gutter::Wide => format!("{marked} shallow clone · can't say who"),
+        Gutter::Middle => format!("{marked} shallow"),
+        Gutter::Narrow => "shallow".to_owned(),
+    }
+}
+
 /// The trailer for the cursor row, fitted to `room` cells, or `None` when
 /// even `◂ Name · age` would not fit (the gutter already names him).
 fn trailer(row: &BlameRowView, now: i64, room: usize) -> Option<String> {
@@ -419,6 +444,11 @@ fn trailer(row: &BlameRowView, now: i64, room: usize) -> Option<String> {
     match row.mark {
         RowMark::NotCommitted => return fixed("◂ not committed yet"),
         RowMark::Unblamable => return fixed("◂ git can't say who"),
+        RowMark::Shallow => {
+            let sha7 = row.who.as_ref().map_or("", |who| who.sha7.as_str());
+            let full = format!("◂ can't say who · this clone starts at {sha7}");
+            return fixed(&full).or_else(|| fixed("◂ can't say who"));
+        }
         RowMark::Plain | RowMark::Skipped => {}
     }
     let who = row.who.as_ref()?;

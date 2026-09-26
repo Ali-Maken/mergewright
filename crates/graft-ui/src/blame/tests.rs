@@ -490,3 +490,112 @@ fn snapshot_187x50_long_line() {
         snapshot(&view(&rows, ON_27), 187, 50)
     );
 }
+
+// --- Shallow boundary (20's shallow ruling, Part B) ------------------------------
+
+fn priya() -> Who {
+    Who {
+        sha7: "0a27627".into(),
+        name: "Priya".into(),
+        author_time: NOW - TOM_AGE,
+        subject: "Import the session module".into(),
+    }
+}
+
+/// Lines 17–19 from the shallow boundary, then Lina's 20: the cursor on 18,
+/// the boundary block's middle row.
+fn shallow_rows() -> Vec<BlameRowView> {
+    let shallow = |line_no, text: &str, block| BlameRowView {
+        line_no,
+        text: text.into(),
+        who: Some(priya()),
+        block,
+        mark: RowMark::Shallow,
+    };
+    vec![
+        shallow(17, "    // Refresh the token.", BlockPos::First),
+        shallow(18, "    pub fn refresh_token(&mut self) {", BlockPos::Middle),
+        shallow(19, "        let mut attempt = 0;", BlockPos::Last),
+        row(20, "        loop {", lina(), BlockPos::Single),
+    ]
+}
+
+/// Index of line 18 in [`shallow_rows`].
+const SHALLOW_18: usize = 1;
+
+#[test]
+fn a_shallow_row_never_draws_its_authors_name() {
+    let rows = shallow_rows();
+    for width in [187, 140, 100] {
+        for cursor in [0, SHALLOW_18, 2] {
+            let lines = draw(&view(&rows, cursor), width, 10);
+            for n in 17..=19 {
+                let line = line_of(&lines, n);
+                assert!(!line.contains("Priya"), "{width}: {line}");
+                assert!(!line.contains("PR "), "{width} initials: {line}");
+                assert!(!line.contains("Import the session"), "{width}: {line}");
+                assert!(!line.contains("10mo"), "{width} age: {line}");
+            }
+        }
+    }
+}
+
+#[test]
+fn shallow_gutter_words_at_each_width() {
+    let rows = shallow_rows();
+    let at_187 = draw(&view(&rows, SHALLOW_18), 187, 10);
+    assert!(
+        line_of(&at_187, 17).starts_with(" ┌ ^0a2762 shallow clone · can't say who"),
+        "{}",
+        line_of(&at_187, 17)
+    );
+    assert!(
+        line_of(&at_187, 18).starts_with(" ▸ ^0a2762 shallow clone · can't say who"),
+        "{}",
+        line_of(&at_187, 18)
+    );
+    assert!(line_of(&at_187, 19).starts_with(" └ "), "{}", line_of(&at_187, 19));
+    assert!(!line_of(&at_187, 19).contains("shallow"));
+    let at_140 = draw(&view(&rows, SHALLOW_18), 140, 10);
+    assert!(
+        line_of(&at_140, 18).starts_with(" ▸ ^0a2762 shallow "),
+        "{}",
+        line_of(&at_140, 18)
+    );
+    let gutter_140 = line_of(&at_140, 18).split('│').next().unwrap_or("");
+    assert_eq!(gutter_140.trim_end(), " ▸ ^0a2762 shallow");
+    let at_100 = draw(&view(&rows, SHALLOW_18), 100, 10);
+    assert!(
+        line_of(&at_100, 18).starts_with(" ▸ shallow│"),
+        "{}",
+        line_of(&at_100, 18)
+    );
+}
+
+#[test]
+fn shallow_trailer_sheds_to_cant_say_who() {
+    let rows = shallow_rows();
+    let lines = draw(&view(&rows, SHALLOW_18), 187, 10);
+    assert!(
+        line_of(&lines, 18).ends_with("{    ◂ can't say who · this clone starts at 0a27627"),
+        "{}",
+        line_of(&lines, 18)
+    );
+    let row = &rows[SHALLOW_18];
+    assert_eq!(
+        trailer(row, NOW, 30).as_deref(),
+        Some("◂ can't say who"),
+        "short of room"
+    );
+    assert_eq!(trailer(row, NOW, 10), None, "no room at all");
+}
+
+#[test]
+fn snapshot_187x50_shallow() {
+    let rows = shallow_rows();
+    snap!(
+        "blame_187x50_shallow",
+        "row 18 reads `▸ ^0a2762 shallow clone · can't say who`, its trailer `◂ can't say who · this clone starts at 0a27627`; 17 opens the block with the same words, 19 closes it bare; Priya nowhere.",
+        snapshot(&view(&rows, SHALLOW_18), 187, 50)
+    );
+}

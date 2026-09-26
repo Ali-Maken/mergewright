@@ -1,0 +1,10 @@
+---
+source: crates/graft-ui/src/blame/tests.rs
+description: "Right: row 18 reads `▸ ^0a2762 shallow clone · can't say who`, its trailer `◂ can't say who · this clone starts at 0a27627`; 17 opens the block with the same words, 19 closes it bare; Priya nowhere."
+expression: "snapshot(&view(&rows, SHALLOW_18), 187, 50)"
+---
+ BLAME · src/auth/session.rs · as it is now
+ ┌ ^0a2762 shallow clone · can't say who      │ 17      // Refresh the token.
+ ▸ ^0a2762 shallow clone · can't say who      │ 18      pub fn refresh_token(&mut self) {    ◂ can't say who · this clone starts at 0a27627
+ └                                            │ 19          let mut attempt = 0;
+ ─ a1b2c3d Lina   7mo  Retry refresh once on… │ 20          loop {
