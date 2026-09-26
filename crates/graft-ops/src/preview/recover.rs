@@ -7,10 +7,10 @@ use std::path::PathBuf;
 
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, Stop};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::facts::FactsError;
-use crate::operation::{FilesEffect, RecoverParams, RecoverTarget, RepoFacts, branch_ref};
+use crate::operation::{FilesEffect, RecoverParams, RecoverTarget, Refusal, RepoFacts, branch_ref};
 use crate::snapshot::SnapshotError;
 use crate::undo::tree_diff;
 
@@ -36,6 +36,12 @@ pub(super) fn recover(
                 graft_core::journal::HeadRef::Branch(head) if *head == full
             );
             if on_head {
+                let in_the_way = untracked_in_the_way(repo, params, facts, stop)?;
+                if !in_the_way.is_empty() {
+                    return Err(PreviewError::Refused(Refusal::UnsavedEditsTo {
+                        paths: in_the_way,
+                    }));
+                }
                 let aside = set_aside_count(params, facts);
                 (plan.worktree, plan.files) = reset_effect(repo, *expected, *to, aside, stop)?;
             } else {
@@ -68,6 +74,42 @@ pub(super) fn recover(
         }
     }
     Ok(plan)
+}
+
+/// His untracked files a checked-out `MoveRef`'s `reset --hard` would write
+/// over: the untracked paths `to` holds. `reset --hard` overwrites them
+/// silently (git's `checkout` refuses), and the set-aside covers tracked
+/// files only, so both the preview and `apply` refuse over them
+/// (`Refusal::UnsavedEditsTo`). Empty for every other target, and without
+/// a spawn when nothing is untracked.
+pub(crate) fn untracked_in_the_way(
+    repo: &RepoHandle,
+    params: &RecoverParams,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<Vec<PathBuf>, RunError> {
+    let RecoverTarget::MoveRef { name, to, .. } = &params.target else {
+        return Ok(Vec::new());
+    };
+    let on_head = matches!(
+        &facts.head,
+        graft_core::journal::HeadRef::Branch(head) if *head == branch_ref(name)
+    );
+    let untracked: Vec<PathBuf> = facts
+        .status
+        .entries
+        .iter()
+        .filter(|entry| entry.untracked)
+        .map(|entry| entry.path.clone())
+        .collect();
+    if !on_head || untracked.is_empty() {
+        return Ok(Vec::new());
+    }
+    let held = held_in(repo, *to, &untracked, stop)?;
+    Ok(untracked
+        .into_iter()
+        .filter(|path| held.contains(path))
+        .collect())
 }
 
 /// A checked-out branch put back is a `reset --hard` from `expected` to
@@ -132,7 +174,7 @@ fn held_in(
     tree: Oid,
     paths: &[PathBuf],
     stop: &dyn Stop,
-) -> Result<BTreeSet<PathBuf>, PreviewError> {
+) -> Result<BTreeSet<PathBuf>, RunError> {
     use std::os::unix::ffi::{OsStrExt, OsStringExt};
     let mut args = vec![
         GitArg::Flag("--literal-pathspecs"),

@@ -27,6 +27,8 @@ mod put_back;
 mod recover;
 mod stash;
 
+pub(crate) use recover::untracked_in_the_way;
+
 use std::path::PathBuf;
 
 use graft_core::commit::{Identity, Timestamp};

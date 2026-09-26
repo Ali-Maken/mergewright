@@ -156,13 +156,16 @@ No scout: the conductor's call (22's NOTES describe the seam); I read the sites 
 - `FilesEffect::Changes` for a checked-out `MoveRef`: `come_back` = paths present in `to` that differ from `expected`
   (added or changed), `go` = paths absent from `to`. For `Files`: present in the backup / absent.
 
-**Open, not built (for KNOWN_GAPS, unverified — no test either way):**
-- A checked-out `MoveRef` is `reset --hard`, which overwrites an **untracked** file at a path `to` holds, silently
-  (git's `checkout` would refuse). The set-aside covers tracked files only. The preview's `come_back` names the path,
-  but nothing refuses. Question for the conductor: refuse in `preview`/`apply` when an untracked path is in
-  `come_back`?
-- `Files` over a path the backup does not hold and the index does not track: `git restore --source` errors
-  ("pathspec did not match"); the entry would close `Aborted`. Not reached by `lost_edits` in any test.
+**Round 2 (conductor rulings):**
+- Open point 1, **refuse**: a checked-out `MoveRef` over an untracked file at a path `to` holds is refused
+  `UnsavedEditsTo { paths }` in `preview` (`preview/recover.rs`) and again in `apply` (`guard_untracked`, before the
+  `Pending` line), both through one read, `preview::untracked_in_the_way` (`ls-tree <to> -- <untracked paths>`; no
+  spawn when nothing is untracked). Words reused: `c.txt has unsaved edits · c commits or S stashes them first` fits;
+  `S` stashes untracked files with its `-u` toggle. Red first:
+  `move_ref_checked_out_refuses_over_an_untracked_file_it_would_overwrite` failed with "his file was overwritten"
+  (c.txt became `c\n`), now passes: refused at `y` and in the preview, bytes unchanged, nothing journaled.
+- Open point 2, **tested, acceptable**: `files_over_a_path_the_backup_lacks_changes_nothing` — git refuses the
+  pathspec, the entry closes `Aborted`, repo state (refs, index, files, status, stashes) unchanged. Passed as-is.
 
 **Touches:** every `Operation` match — graft-ops build + clippy, the sites above; graft lib builds (`cargo clippy -p
 graft`), graft tests blocked as listed. `PreviewPlan` users — graft-ops preview tests green; graft's five literals

@@ -203,6 +203,77 @@ fn move_ref_checked_out_resets_and_puts_unsaved_edits_back() {
     assert_eq!(stash_list(&repo), "", "the set-aside stash is dropped");
 }
 
+/// `reset --hard` would write `c.txt` over his untracked `c.txt`: refused
+/// in the preview and again at `y`, and his file's bytes stay (conductor
+/// ruling on open point 1; `git checkout` refuses the same case).
+#[test]
+fn move_ref_checked_out_refuses_over_an_untracked_file_it_would_overwrite() {
+    let repo = three_commits();
+    let three = id(&repo, "HEAD");
+    repo.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    let two = id(&repo, "HEAD");
+    repo.write("c.txt", b"his own c, never added\n");
+    let op = move_ref("main", three, two);
+    let before = whole_state(&repo);
+    let in_the_way = Refusal::UnsavedEditsTo {
+        paths: vec![PathBuf::from("c.txt")],
+    };
+
+    let applied = try_run(&repo, &op, NOW);
+    assert_eq!(
+        repo.read("c.txt"),
+        b"his own c, never added\n",
+        "his file was overwritten"
+    );
+    match applied {
+        Err(ApplyError::Refused(refusal)) => assert_eq!(refusal, in_the_way),
+        Err(other) => panic!("not a refusal: {}", other.explain()),
+        Ok(_) => panic!("ran; expected a refusal"),
+    }
+
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+    match preview::plan(&handle, &git_version(), &op, &facts, &Never) {
+        Err(preview::PreviewError::Refused(refusal)) => assert_eq!(refusal, in_the_way),
+        other => panic!("preview not refused: {other:?}"),
+    }
+    assert_eq!(whole_state(&repo), before, "nothing written");
+    assert!(entries(&repo).is_empty(), "nothing journaled");
+}
+
+/// Open point 2: a `Files` put-back of a path the backup does not hold and
+/// the index does not track. git refuses the pathspec; the entry closes
+/// `Aborted` and nothing on disk or in the repository changes.
+#[test]
+fn files_over_a_path_the_backup_lacks_changes_nothing() {
+    let repo = main_and_other();
+    let undo = undo_over_drift(&repo);
+    let before = whole_state(&repo);
+
+    let result = try_run(&repo, &files_of(&undo, &["never.txt"]), NOW + 2);
+
+    assert!(
+        result.is_err(),
+        "git refuses the path: {:?}",
+        result.is_ok()
+    );
+    assert_eq!(
+        whole_state(&repo),
+        before,
+        "nothing on disk or in git changed"
+    );
+    let last = entries(&repo).pop().expect("an entry");
+    assert!(
+        matches!(
+            last.status,
+            graft_core::journal::EntryStatus::Aborted { .. }
+        ),
+        "{:?}",
+        last.status
+    );
+}
+
 #[test]
 fn move_ref_refuses_when_moved_on_since() {
     let repo = with_feature();

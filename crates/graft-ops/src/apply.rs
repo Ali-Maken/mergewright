@@ -221,6 +221,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         return Ok(folded);
     }
     guard_repush(ctx, op, &facts)?;
+    guard_untracked(ctx, op, &facts)?;
     let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe_in(&facts));
     // A rebase or rewrite: read the line of branches and write the todo
     // before `touches`, which records every branch of the line (ADR-0047).
@@ -454,6 +455,28 @@ fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<
         commit: source,
         branch: crate::operation::short_ref(&params.branch).to_owned(),
     }))
+}
+
+/// A checked-out branch put back is a `reset --hard`, which writes over an
+/// untracked file at a path the target holds without a word. `check` cannot
+/// see trees, so the preview's question is asked again here, before the
+/// `Pending` line: facts can change between the picture and `y` (m7/23,
+/// conductor ruling).
+fn guard_untracked(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<(), ApplyError> {
+    let Operation::Recover(params) = op else {
+        return Ok(());
+    };
+    let paths = crate::preview::untracked_in_the_way(ctx.repo, params, facts, ctx.stop).map_err(
+        |error| match error {
+            RunError::Stopped => ApplyError::Stopped,
+            other => ApplyError::Snapshot(crate::snapshot::SnapshotError::Run(other)),
+        },
+    )?;
+    if paths.is_empty() {
+        Ok(())
+    } else {
+        Err(ApplyError::Refused(Refusal::UnsavedEditsTo { paths }))
+    }
 }
 
 /// The plan ran through: what the caller re-reads, and what the record of it
