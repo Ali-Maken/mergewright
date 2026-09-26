@@ -1,6 +1,6 @@
 # journal-list — the journal and git's reflog as one list: outside rows, lost-commit rows, what `⏎` puts back
 
-Status: ready
+Status: partial (all but the "lost work" fixture; see NOTES)
 Blocked by: 19-lost-commit-cost
 Blocked by: lost-commit-cost (its `unreached` signature and measured method)
 Crates: graft-core (`OperationKind::Recover`), graft-git (`reflog` module), graft-ops (`journal_list` module, and the
@@ -141,7 +141,9 @@ Scripted with real git, and a journal written by Graft's own ops where a `●` r
 Times are fixed, 10:12–10:44, as the note's mock-up.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Pure `build`** (`journal_list/tests.rs`):
+- [x] **Pure `build`** (`journal_list/tests/build.rs`; all 9 named below pass; red first for `a_graft_op_is_one_row_not_two`
+  shown by stubbing `match_entries`, then restored. Also `a_deleted_branch_is_named_from_heads_switch`,
+  `a_record_that_moved_nothing_is_no_row`, `a_graft_switch_is_one_row`):
   - `a_graft_op_is_one_row_not_two` (red first: its reflog records would otherwise draw a `$` twin).
   - `head_and_branch_records_pair_within_the_window`.
   - `a_shell_rebase_folds_into_one_row`.
@@ -151,8 +153,12 @@ Times are fixed, 10:12–10:44, as the note's mock-up.
   - `a_lost_edit_sits_under_its_undo`.
   - `later_stages_keep_earlier_rows_in_order`.
   - `scan_state_is_carried`.
-- [ ] **`words`:** one test per table row, plus `an_unknown_subject_is_gits_own`.
-- [ ] **Oracle** (real git, `tests/it/journal_list_oracle.rs`), each asserting the rows' kinds, words and placement:
+- [x] **`words`:** one test per table row, plus `an_unknown_subject_is_gits_own` (`journal_list/tests/words.rs`:
+  `a_commit_is_committed_on_its_branch`, `an_amend_is_amended_on_its_branch`, `a_reset_back_along_the_branch_counts_commits`,
+  `a_reset_elsewhere_names_the_target`, `a_checkout_is_a_switch_between_names`, `a_fast_forward_counts_commits`,
+  `a_new_branch_is_made_at_its_commit`, `a_rebase_finish_names_its_upstream`, `a_cherry_pick_is_taken_onto_the_branch`,
+  `an_unknown_subject_is_gits_own`).
+- [x] **Oracle** (all 8 named below pass on git 2.54.0, plus `a_graft_switch_is_one_graft_row`; real git, `tests/it/journal_list_oracle.rs`), each asserting the rows' kinds, words and placement:
   - `shell_reset_hard_shows_the_lost_commit_under_it`.
   - `a_deleted_branch_once_checked_out_is_found_from_head`.
   - `a_branch_deleted_and_never_checked_out_leaves_nothing`: documents takeaway 12. It asserts no row.
@@ -161,7 +167,8 @@ Times are fixed, 10:12–10:44, as the note's mock-up.
   - `a_shell_fetch_is_no_row` (remote logs aren't read).
   - `a_stash_held_commit_is_not_lost`.
   - `a_graft_backup_ref_does_not_hold`.
-- [ ] **`recover_for`:**
+- [x] **`recover_for`** (`journal_list/tests/recover.rs`; all 7 named below pass, plus `a_commit_held_again_is_refused`,
+  `under_a_graft_row_main_is_moved_back_from_its_after_value`):
   - `checked_out_main_is_moved_back`.
   - `a_gone_branch_is_recreated`.
   - `moved_on_offers_main_restored`.
@@ -169,10 +176,13 @@ Times are fixed, 10:12–10:44, as the note's mock-up.
   - `a_head_only_commit_offers_restored`.
   - `a_graft_row_is_refused`.
   - `a_lost_edit_recovers_its_files`.
-- [ ] **Format:** `a_recover_entry_round_trips`, and the existing journal golden tests stay green (old lines read).
-- [ ] **`records`:** `records_reads_head_and_branches_newest_first`, `a_missing_log_is_empty`, `records_caps`.
-- [ ] MAP.md: graft-git `reflog`; graft-ops `journal_list` and the new `operation` types; graft-core
-      `OperationKind::Recover`; graft-fixtures the shape. NOTES: each open point as decided, with the oracle row.
+- [x] **Format:** `a_recover_entry_round_trips` (graft-core `journal.rs`), and the existing journal golden tests stay green
+      (workspace nextest 3718/3718).
+- [x] **`records`:** `records_reads_head_and_branches_newest_first`, `a_missing_log_is_empty`, `records_caps`
+      (graft-git `reflog/tests.rs`; also `records_reads_what_git_wrote`, `a_remote_tracking_log_is_not_read`,
+      `first_parent_distance_counts_back_along_the_first_parent`).
+- [ ] MAP.md: graft-git `reflog` [done]; graft-ops `journal_list` and the new `operation` types [done]; graft-core
+      `OperationKind::Recover` [done]; graft-fixtures the shape [**not done**: the fixture is not built]. NOTES: each open point as decided, with the oracle row.
 
 ## Touches (check each, report how)
 - **Journal file format (graft-core):** a new serde tag. Check: the round trip, plus the existing goldens.
@@ -195,3 +205,57 @@ workspace-wide.
 - **journal-list-a:** types, `records`, `words`, `build` (pure), and their tests. The signatures land here.
 - **journal-list-b:** `read_outside`, `find_lost`, `recover_for`, the fixture, the oracle, and `OperationKind::Recover`
   with its round trip.
+
+## NOTES (m7-power-tools-22 builder)
+**Compacted once mid-ticket.** Stopped at the seam after it. **Remains:** the graft-fixtures "lost work" shape (section
+"The fixture"), its graft-ops test, and its MAP line. Everything else in both halves (a and b) is built and green.
+Plan for the remainder: graft-fixtures depends on no Graft crate, so the fixture builds the git side (A–D; shell reset
+losing D "Add rate limiter"; spike/E "Try redis cache" deleted; a stash holding S; 10:12–10:44 through
+`GIT_COMMITTER_DATE`/`GIT_AUTHOR_DATE`) and takes callbacks at the two Graft points (the `fetch` entry; the undo over drift
+replacing an edit to `src/a.rs`). A graft-ops test supplies them with `support::run`/`run_undo` and asserts the list.
+`tests/it/journal_list_oracle.rs`'s `git_at` and `lines` helpers are the pattern.
+
+No scout: greenfield modules, per the conductor. Sites read myself: `OperationKind` (graft-core `journal.rs`, serde
+snake_case; `Recover` added before `RevertTo`); `kind_name` (graft-ops `apply/record.rs`, exhaustive; arm added);
+`Refusal`/`explain` (`operation.rs`; `MovedOnSince`, `HeldAgain`, `NoPutBack` were free, so no suffix); `FactsError`
+(`facts.rs`; `Reflog` added, reusing graft-git's existing `history::ReflogError`); `RepoFacts.refs` (full name →
+`Option<Oid>`, what `recover_for` reads). `graft` builds unchanged: its `_`/`other =>` arms absorb the new kind and
+refusals. journal-screen must give them words there.
+
+**Signature deviations from the spec:**
+- `read_outside(repo, cap, stop)` has no `git: &Git`: gix reads the logs, nothing spawns, and graft-ops has no such type.
+- `build` gains `branch_exists: &dyn Fn(&str) -> bool` after `subject_of`: `HeldBy::Branch.gone` is what the ref store
+  says now, not a guess from the logs.
+- `recover_for(list, row, entries, facts)` gains `entries`: a lost row under a `●` row needs its entry's after-value
+  (`expected`) and description (`because`).
+- Added `recover_scope(list, row) -> FactsScope`: the refs `recover_for` reads (the branch, `<b>-restored`, `-2`…`-9`).
+- Added `Recover` (`Run(RecoverParams)` / `OfferBranch { at, name, why }`), `NoPutBack` and `Refusal::NoPutBack`. The spec
+  had no way to say "offer a new branch" or "this row has nothing to put back". No `Operation::Recover` yet: that is
+  journal-screen's.
+
+**Open points decided (oracle: git 2.54.0, scripts run with `sh`):**
+- Pair window **2 s**. Every HEAD/branch twin (reset, commit, `update-ref` on the checked-out branch, rebase finish) was in
+  the same second; the extra second covers the clock ticking over. Test: `head_and_branch_records_pair_within_the_window`.
+- `back`: first-parent distance ≤ 100 through gix (reset: new back from old; fast-forward: old back from new). Otherwise
+  the words name the target. Oracle: `shell_reset_hard_shows_the_lost_commit_under_it` ("reset main 1 commit back").
+- A record with old == new is dropped unless it is `checkout:`. `git stash push` writes HEAD `reset: moving to HEAD`, and
+  so does a rebase finish's HEAD record. Tests: `a_record_that_moved_nothing_is_no_row`; oracle
+  `a_stash_held_commit_is_not_lost`.
+- A shell rebase folds into the branch's finish record. Its HEAD run (`rebase (start|pick|finish)`) and the branch's
+  `rebase (finish): … onto <sha>` all fall in one second. `onto` is named from `rebase (start): checkout X`. Test:
+  `a_shell_rebase_folds_into_one_row`.
+- HEAD's branch is inferred from the logs (`checkout: moving from a to b`, twins, rebase finish). An unpaired HEAD commit
+  reads `committed "E" on spike`, and a deleted branch is named from HEAD's switch. Oracle:
+  `a_deleted_branch_once_checked_out_is_found_from_head`.
+- A branch deleted without ever being checked out leaves nothing, because its only log goes with it. Oracle:
+  `a_branch_deleted_and_never_checked_out_leaves_nothing`.
+- Lost candidates come from `HEAD` and `refs/heads/*` only, not `refs/stash` or tags. A dropped stash is `u`'s to bring
+  back.
+- A Graft checkout entry carries no ref oids, so its `checkout:` record is matched by names within 60 s. Tests:
+  `a_graft_switch_is_one_row`; oracle `a_graft_switch_is_one_graft_row`. Every other entry claims, per changed ref, the
+  nearest-in-time unclaimed step with that (old, new).
+- Graft's `refs/graft/**` backups never hold a commit. Oracle: `a_graft_backup_ref_does_not_hold`.
+
+**Touches:** journal format checked by `a_recover_entry_round_trips` and the existing goldens. The graft
+`OperationKind`/`Refusal` matches checked by workspace clippy and nextest. `history::previous_tips` left alone; its tests
+are green. No UI, keymap or captures.

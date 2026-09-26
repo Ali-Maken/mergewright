@@ -58,6 +58,9 @@ One line per public item. Update when a public item changes.
 - `Operation::touches` (fn) — stage/unstage `{[], index}`, discard `{[], index, worktree}`, commit/amend `{[branch full name | "HEAD"], index}`, stash push/apply/pop `{["refs/stash"], index, worktree}`, stash drop `{["refs/stash"]}` (m3/02); fetch `{}` (tracking refs never recorded), pull `{[branch], index, worktree}` (**not** the tracking ref: undo never moves one), push `{[upstream tracking ref if known]}` for the browser, never for undo (m4/04); rebase/checkout add `refs/stash` when `sets_aside` is `Some` (m6-conflicts/73).
 - `Operation::describe_in` (fn, m6-conflicts/82 m6) — `(&self, &RepoFacts) -> String`: `DropPutBack` as `drop stash@{n}`, `n` from the facts' stash list by commit; every other kind, or a stash not listed, `describe()`. `apply` records an entry's description through it.
 - `Operation::describe` (fn) — `stage src/a.rs`, `stage 3 files`, `stage a hunk of src/a.rs`, `commit "<subject>"`, `amend "<subject>"`, `stash "<msg>"` / `stash the working tree`, `apply|pop|drop stash@{n}` (m3/02); `fetch all remotes`/`fetch origin`, `pull origin/main`, `push main → origin/main[ (set upstream)]`, `force-push main → origin/main (with lease)` (m4/04).
+- `RecoverTarget` (enum, m7/22) — what `⏎` on a journal-list row puts back: `MoveRef { name, to, expected }` (a branch back to `to`, only if still at `expected`), `Recreate { name, at }` (a gone branch), `Files { entry, backup_tree, paths }` (a lost edit from an undo's backup). `RecoverParams` (struct) — `target`, `because` (the event's words, for the entry's description). No `Operation::Recover` yet: journal-screen wires the op.
+- `NoPutBack` (enum, m7/22) — why a row has nothing for `⏎`: `Graft` (use revert-to), `Switch { back_to }`, `Created { name }`, `Nothing`.
+- `Refusal`, m7/22 additions — `MovedOnSince { name, now }` (`<name> moved on since (now <sha7>)`), `HeldAgain { commit, by }` (`<sha7> is on <by> again · nothing to put back`), `NoPutBack(NoPutBack)` (its own words per variant).
 
 ## conflict
 The resolver's job-side half (m6-conflicts/03): no `Operation`, no journal line. A block take is an fs write with no `git` command in it — a step inside the live `Pending` span, like a hand edit (design note hard choice 2). The whole-file shapes, which *are* `git` writes, go through `Operation::ResolveWholeFile`.
@@ -156,6 +159,7 @@ What a merge will commit, for the finish summary (m6-conflicts/09). Reads only.
 - `FactsError` (enum) — `Status`, `Head`, `Refs`, `Stash`, `State`, `Snapshot`, `NonUtf8Ref` (a ref name the journal cannot record as text; never mangled silently), `Markers { path, source }`, `Ancestry(RunError)` (an ancestry read the re-push guard needed failed — refusing to guess is the point of the guard, m5/07 review fix M5), `Stopped`, `Remote(RemoteError)` (m4/04); `explain` (m3/03).
 - `FactsError::MergeState(MergeStateError)` (m6-conflicts/20) — git's merge files could not be read.
 - `FactsError::{History(RunError), Branches(BranchError), SavedPlan(io::Error)}` (m7/02) — a rewrite's history read, the default branch, or its saved plan could not be read; `of_history` (crate-private) maps a stopped run to `Stopped`.
+- `FactsError::Reflog(ReflogError)` (m7/22) — git's reflog could not be read (`reading git's reflog: …`).
 
 ## merge_state
 git's merge in progress, as files (m6-conflicts/20). The one place Graft writes git's merge files, and only to put back bytes git wrote.
@@ -293,6 +297,19 @@ Ghost Preview's planner: what an operation *would* do, drawn before it runs. One
 - `finding_from_evil` (fn) — `Evil` → an `EvilMerge` finding on the merge; else `None`.
 - `findings_from_force_push` (fn) — `Rewritten` → a `ForcePushedRemote` finding at `current`; `NotCheckable` and `Clean` → `None`.
 - `findings_from_duplicates` (fn) — one `DuplicateCommit` finding per copy, `copies` = the rest of its group.
+
+## journal_list (m7/22, ADR-0046)
+The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost. Three stages so `J` never waits.
+- `RECORDS_CAP` (2000), `LOST_CAP` (500), `PAIR_WINDOW_SECS` (2: a `HEAD` record and a branch record with the same old/new this close are one step), `BACK_LIMIT` (100: "N commits back" counted this far) (consts).
+- `OutsideRecord` (struct) — `record: ReflogRecord`, `back: Option<usize>` (reset: new's distance back from old; fast-forward: old's back from new).
+- `OutsideStep` (struct) — `record` (the branch's record when paired; the finish when a rebase folded), `words`, `folded`.
+- `HeldBy` (enum) — `Branch { name, gone }`, `Head`. `LostCommit` (struct) — `run: LostRun`, `subject`, `held_by`. `LostEdit` (struct) — `entry`, `backup_tree`, `paths`.
+- `ListRow` (enum) — `Graft(EntryId)`, `Outside(OutsideStep)`, `Lost { event, commit }`, `LostEdit { event, edit }` (`event` indexes `rows`). `LostScan` (enum) — `Running`, `Done`, `Capped { checked }`, `Failed(String)`. `JournalList` (struct) — `rows` (newest first, lost rows right after their event), `scan`.
+- `read_outside(repo, cap, stop) -> Result<Vec<OutsideRecord>, FactsError>` (fn) — stage 2's read, through gix.
+- `find_lost(repo, entries, outside, cap, stop) -> Result<Unreached, FactsError>` (fn) — stage 3: candidates are records' olds and entries' `HEAD`/`refs/heads/*` befores, newest first, once each, through `history_reads::unreached`.
+- `build(entries, outside, lost, subject_of, branch_exists, edits, scan) -> JournalList` (fn, pure) — folds a shell rebase's records into one row, drops records that moved nothing (not a `checkout:`), pairs `HEAD`/branch twins, claims a Graft entry's records for its `●` row, places each lost run under the newest event whose old values held its tip.
+- `words(record, back) -> String` (fn) — the J1 table (`committed "X" on main`, `reset main 1 commit back`, `switch from a to b`, …); an unknown subject is git's own.
+- `Recover` (enum) — `Run(RecoverParams)`, `OfferBranch { at, name, why }`. `recover_for(list, row, entries, facts) -> Result<Recover, Refusal>` (fn) — what `⏎` on a row puts back, or why not. `recover_scope(list, row) -> FactsScope` (fn) — the refs `recover_for` reads (the branch, `<b>-restored`, `-2`…`-9`).
 
 ## bin (test-only)
 - `askpass_test_helper` (bin) — stands in for Graft's askpass mode (M4 05b) in `tests/it/remote_ops.rs`: reads `GRAFT_ASKPASS_SOCKET`, calls `graft_git::run::askpass::respond` with `argv[1]`. Nothing ships it (m4/04).

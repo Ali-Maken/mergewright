@@ -18,6 +18,7 @@ mod fixture;
 pub mod history;
 pub mod history_reads;
 pub mod mailmap;
+pub mod reflog;
 pub mod remote;
 pub mod repo;
 pub mod run;

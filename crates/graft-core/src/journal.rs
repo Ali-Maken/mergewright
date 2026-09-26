@@ -104,6 +104,14 @@ pub enum OperationKind {
     /// back as it stood — the stages, the hand edits, git's merge files
     /// (m6-conflicts/57).
     AbortMerge,
+    /// A put-back from the journal's list (ADR-0046 §3, hard choice 5 of the
+    /// M7 note): a branch moved back to where the shell's step found it, a
+    /// deleted branch made again at its lost tip, or an edit an undo
+    /// replaced put back from that undo's backup. Its own kind so the
+    /// journal says what he did (`put main back (the shell's reset)`); its
+    /// `u` is the generic inverse from the recorded refs and trees
+    /// (m7-power-tools/22; the operation is recover-op's).
+    Recover,
     /// The journal's time machine: every in-force entry back to a target,
     /// reversed one `Undo` entry at a time (DESIGN.md §6.6).
     ///
@@ -431,6 +439,21 @@ mod tests {
         entry.kind = OperationKind::Rewrite;
         let text = serde_json::to_string(&entry).expect("it renders");
         assert!(text.contains(r#""kind":"rewrite""#), "{text}");
+        assert_eq!(
+            serde_json::from_str::<JournalEntry>(&text).expect("it parses back"),
+            entry
+        );
+    }
+
+    /// ADR-0046 amendment (hard choice 5): a put-back from the journal's
+    /// list is a kind of its own on disk, `"recover"`, written for good.
+    /// Old lines never carry it and read as before.
+    #[test]
+    fn a_recover_entry_round_trips() {
+        let mut entry: JournalEntry = serde_json::from_str(OLD_LINE).expect("an old line parses");
+        entry.kind = OperationKind::Recover;
+        let text = serde_json::to_string(&entry).expect("it renders");
+        assert!(text.contains(r#""kind":"recover""#), "{text}");
         assert_eq!(
             serde_json::from_str::<JournalEntry>(&text).expect("it parses back"),
             entry

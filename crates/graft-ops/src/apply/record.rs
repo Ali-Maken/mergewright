@@ -419,6 +419,7 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::RestartConflict => "restart conflict",
         OperationKind::FinishMerge => "finish merge",
         OperationKind::AbortMerge => "abort merge",
+        OperationKind::Recover => "recover",
         OperationKind::RevertTo => "revert to",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",
