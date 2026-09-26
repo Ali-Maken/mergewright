@@ -12,7 +12,9 @@
 //!
 //! Spawns, whatever the size of the change: one for the paths the
 //! operation writes (a few more for a stash: its parents and each of its
-//! trees), one `ls-files` for the index. Never one per path.
+//! trees; for a replay, a `rev-list` of the replayed commits and one
+//! `diff-tree --stdin` over all of them), one `ls-files` for the index.
+//! Never one per path or per commit.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -27,6 +29,7 @@ use crate::operation::{
     CheckoutTarget, Operation, RecoverTarget, Refusal, RepoFacts, ResetMode, ResetTarget, Source,
     branch_ref, short, short_ref,
 };
+use crate::rewrite::TodoAction;
 use crate::snapshot::{SnapshotError, tracked_paths_now};
 
 /// Paths on disk that git doesn't keep and that the operation would write
@@ -180,11 +183,6 @@ fn source_words(source: &Source) -> String {
 /// index differs from the target — `diff-index --cached <to>` — not only
 /// `HEAD`'s diff to it. A file he `git rm --cached` is in no diff of
 /// `HEAD`'s, yet `reset --hard` writes it back over his bytes.
-#[expect(
-    clippy::match_same_arms,
-    reason = "the replay kinds' arm is 28b's to fill, kept apart from the kinds that write \
-              nothing so it is found"
-)]
 pub(crate) fn written_paths(
     repo: &RepoHandle,
     op: &Operation,
@@ -243,17 +241,85 @@ pub(crate) fn written_paths(
             let parents = parents_of(repo, *commit, stop)?;
             stash_paths(repo, *commit, &parents, stop)?
         }
-        // 28b: the replays' rows (the diff to `onto` plus each replayed
-        // commit's own diff) replace these.
         Operation::Rebase(_)
         | Operation::Rewrite(_)
         | Operation::CherryPick(_)
-        | Operation::Revert(_) => return Ok(None),
+        | Operation::Revert(_) => replayed_paths(repo, op, stop)?,
         // Stage, unstage, discard, the conflict kinds, commits and every
         // ref-only kind write only paths the index tracks, or none.
         _ => return Ok(None),
     };
     Ok(Some(paths))
+}
+
+/// A replay's rows of ADR-0049 §4: a rebase or rewrite moves `HEAD` to
+/// `onto` (git's `reset --hard`), then each replayed commit writes the
+/// paths of its own change; a pick or revert only the latter. The engine's
+/// `switch <home>` afterwards writes only paths in this union. Empty for a
+/// kind that isn't a replay.
+fn replayed_paths(
+    repo: &RepoHandle,
+    op: &Operation,
+    stop: &dyn Stop,
+) -> Result<BTreeSet<PathBuf>, FactsError> {
+    let (onto, replayed) = match op {
+        Operation::Rebase(params) => (
+            Some(params.onto_tip),
+            commits_between(repo, params.onto_tip, head(), stop)?,
+        ),
+        Operation::Rewrite(params) => {
+            let mut replayed: Vec<Replayed> = params
+                .todo
+                .iter()
+                .filter(|line| line.action != TodoAction::Drop)
+                .map(|line| Replayed::first_parent(line.commit))
+                .collect();
+            replayed.extend(params.made.iter().copied().map(Replayed::first_parent));
+            // The dependents' commits follow his rows as picks, and git is
+            // started on the top of the line.
+            if let Some(top) = params.line.top()
+                && top.name != params.head.name
+            {
+                replayed.extend(commits_between(
+                    repo,
+                    params.head.oid,
+                    GitArg::Oid(top.oid),
+                    stop,
+                )?);
+            }
+            (Some(params.onto), replayed)
+        }
+        Operation::CherryPick(params) => (
+            None,
+            params
+                .commits
+                .iter()
+                .copied()
+                .map(Replayed::first_parent)
+                .collect(),
+        ),
+        Operation::Revert(params) => {
+            let against = if let Some(parent) = params.parent {
+                Some(parent)
+            } else {
+                // `-m n` reverts against parent `n`; no `-m`, the first.
+                let nth = usize::from(params.mainline.unwrap_or(1)).saturating_sub(1);
+                parents_of(repo, params.commit, stop)?.get(nth).copied()
+            };
+            let replayed = Replayed {
+                commit: params.commit,
+                against,
+            };
+            (None, vec![replayed])
+        }
+        _ => return Ok(BTreeSet::new()),
+    };
+    let mut paths = match onto {
+        Some(onto) => diff_tree(repo, &[], [head(), GitArg::Oid(onto)], stop)?,
+        None => BTreeSet::new(),
+    };
+    paths.extend(own_changes(repo, &replayed, stop)?);
+    Ok(paths)
 }
 
 /// Where a checkout lands: the branch's tip as the facts read it.
@@ -374,6 +440,98 @@ fn listed(
         ],
         stop,
     )
+}
+
+/// One commit a replay applies, and the commit its change is taken against.
+struct Replayed {
+    commit: Oid,
+    /// `None`: its first parent (a root commit: its whole tree).
+    against: Option<Oid>,
+}
+
+impl Replayed {
+    fn first_parent(commit: Oid) -> Self {
+        Self {
+            commit,
+            against: None,
+        }
+    }
+}
+
+/// The commits a rebase of `tip` onto `base` replays: `rev-list
+/// --no-merges <base>..<tip>` (git drops merges from a rebase that doesn't
+/// keep them).
+fn commits_between(
+    repo: &RepoHandle,
+    base: Oid,
+    tip: GitArg,
+    stop: &dyn Stop,
+) -> Result<Vec<Replayed>, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args(vec![
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--no-merges"),
+            tip,
+            GitArg::Ref(format!("^{base}").into_bytes()),
+        ])
+        .run(stop)
+        .map_err(run_error)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.lines()
+        .map(|line| {
+            Oid::from_hex(line.trim())
+                .map(Replayed::first_parent)
+                .map_err(|_| {
+                    FactsError::Snapshot(SnapshotError::NotAnOid {
+                        what: "rev-list",
+                        printed: line.to_owned(),
+                    })
+                })
+        })
+        .collect()
+}
+
+/// Every path the replayed commits change, each against the commit it is
+/// taken against: one `diff-tree --stdin` for all of them.
+fn own_changes(
+    repo: &RepoHandle,
+    replayed: &[Replayed],
+    stop: &dyn Stop,
+) -> Result<BTreeSet<PathBuf>, FactsError> {
+    if replayed.is_empty() {
+        return Ok(BTreeSet::new());
+    }
+    // `<commit>` alone is diffed against its parent; `<commit> <parent>`
+    // against the parent named.
+    let mut input = String::new();
+    for one in replayed {
+        input.push_str(&one.commit.to_string());
+        if let Some(against) = one.against {
+            input.push(' ');
+            input.push_str(&against.to_string());
+        }
+        input.push('\n');
+    }
+    let output = GitInvocation::new(repo)
+        .args(vec![
+            GitArg::Flag("diff-tree"),
+            GitArg::Flag("--stdin"),
+            GitArg::Flag("--no-commit-id"),
+            GitArg::Flag("--root"),
+            GitArg::Flag("-r"),
+            GitArg::Flag("--name-only"),
+            GitArg::Flag("--no-renames"),
+            GitArg::Flag("-z"),
+        ])
+        .stdin(input.into_bytes())
+        .run(stop)
+        .map_err(run_error)?;
+    Ok(output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|name| !name.is_empty())
+        .map(path_of)
+        .collect())
 }
 
 /// A commit's parents, in order: `rev-parse <commit>^@`.
