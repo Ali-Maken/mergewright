@@ -1,7 +1,7 @@
 # idle-layout-advance — while he isn't typing, the layout runs ahead; `G` is warm; a key always preempts it
 
 Status: ready
-Blocked by: 04-slow-key-cause
+Blocked by: 04-slow-key-cause, 04b-harness-input-thread
 Crates: graft (`event_loop::pump` idle step, `History`), graft-graph (`StreamingLayout` bounded advance, `truncate`
 fingerprint).
 Source: note "Pass 2a" R8 step 4. The rows, quoted:
