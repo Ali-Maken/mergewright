@@ -139,6 +139,42 @@ fn ignore_revs_false_clears_a_configured_list_too() {
     assert_eq!(blamed.lines[30].commit, Some(ids.rustfmt), "line 31");
 }
 
+/// m7-power-tools/18d: an empty `--ignore-revs-file=` does not clear a
+/// configured file git cannot open; `--no-ignore-revs-file` does.
+#[test]
+fn ignore_revs_false_skips_a_configured_file_that_is_missing() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Session);
+    let dir = scratch.path();
+    let ids = commits(dir);
+    git_ok(dir, &["config", "blame.ignoreRevsFile", "no-such-file"]);
+    let opts = BlameOptions {
+        ignore_revs: false,
+        ..BlameOptions::default()
+    };
+    let blamed = blame_ok(dir, Rev::Commit(ids.you), FILE, opts);
+    assert_eq!(blamed.lines[30].commit, Some(ids.rustfmt), "line 31");
+}
+
+/// The `(None, true)` arm: nothing at the root, a configured file that is
+/// missing. git's own fatal comes back, not a quiet blame without the list.
+#[test]
+fn ignore_revs_true_with_a_missing_configured_file_is_gits_error() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Session);
+    let dir = scratch.path();
+    let ids = commits(dir);
+    std::fs::remove_file(dir.join(".git-blame-ignore-revs")).expect("removes");
+    git_ok(dir, &["config", "blame.ignoreRevsFile", "no-such-file"]);
+    let result = blame(
+        &open(dir),
+        &Rev::Commit(ids.you),
+        Path::new(FILE),
+        &BlameOptions::default(),
+        &(),
+    );
+    let why = result.expect_err("git refuses").to_string();
+    assert!(why.contains("could not open object name list"), "{why}");
+}
+
 #[test]
 fn ignore_whitespace_is_on_by_default() {
     assert!(BlameOptions::default().ignore_whitespace);

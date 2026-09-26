@@ -33,7 +33,7 @@ Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `
 - `Blame` (struct) — `path`, `rev`, `lines`, `commits` (by id), `ignore_revs` (`Some` only for a readable list of ≥1 id).
 - `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`, `Shallow { path, source }` (`<common_dir>/shallow` unreadable; 20d); refusals come from a `diff-tree --numstat` check before blame spawns.
 - `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`, the conventional name looked for when `blame.ignoreRevsFile` is unset.
-- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(Run(Unparsable))`, never a shorter blame (18b).
+- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…|--no-ignore-revs-file] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(Run(Unparsable))`, never a shorter blame (18b).
 - `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.
 
 ## trace
