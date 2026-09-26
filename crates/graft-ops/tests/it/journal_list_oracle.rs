@@ -15,12 +15,14 @@ use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::history::read_commit;
 use graft_git::repo::RepoHandle;
+use graft_ops::facts::read_facts;
 use graft_ops::journal_list::{
-    HeldBy, JournalList, LOST_CAP, ListRow, LostScan, RECORDS_CAP, build, find_lost, read_outside,
+    HeldBy, JournalList, LOST_CAP, ListRow, LostScan, RECORDS_CAP, Recover, build, find_lost,
+    read_outside, recover_for, recover_scope,
 };
 use graft_ops::operation::{Operation, ResetMode, ResetParams, ResetTarget, Tip};
 
-use crate::support::{Never, TempRepo, journal_for, run};
+use crate::support::{Never, TempRepo, git_version, journal_for, run};
 
 /// The shell's clock for a scenario: fixed seconds, well before now, so
 /// every step has its own second and Graft's steps (stamped now) come after.
@@ -305,6 +307,103 @@ fn a_graft_backup_ref_does_not_hold() {
         shown[..2],
         ["● Reset", "✗ D · main · under 0"],
         "{shown:#?}"
+    );
+}
+
+// ── detached checkouts of a name that is not a branch (review m7-22, M1) ──
+
+/// What `⏎` on the list's `✗` row offers, with the refs `recover_scope`
+/// names read from the repository the way the app reads them.
+fn recover_lost(repo: &TempRepo, list: &JournalList) -> Recover {
+    let row = list
+        .rows
+        .iter()
+        .position(|row| matches!(row, ListRow::Lost { .. }))
+        .expect("a lost row");
+    let handle = repo.open();
+    let facts = read_facts(&handle, git_version(), &Never, &recover_scope(list, row))
+        .expect("the facts read");
+    recover_for(list, row, &[], &facts).expect("a put-back or an offer")
+}
+
+/// He checks out `<name>` detached, commits, and switches back to `main`:
+/// the commit is held by nothing. Returns the commit.
+fn detached_work_on(repo: &TempRepo, name: &str) -> Oid {
+    git_at(repo, SHELL + 11, &["checkout", "-q", name]);
+    commit_at(repo, SHELL + 12, "detached.txt", "Detached work");
+    let work = id(repo, "HEAD");
+    git_at(repo, SHELL + 13, &["checkout", "-q", "main"]);
+    work
+}
+
+/// `git checkout origin/main` leaves `HEAD` detached, though git's subject
+/// reads `moving from main to origin/main`. The next switch leaves from the
+/// hex id, git's proof. The list says `HEAD`, never "origin/main gone", and
+/// `⏎` offers `restored`: a `refs/heads/origin/main` would shadow the
+/// remote branch for every later `git rebase origin/main`.
+#[test]
+fn a_detached_checkout_of_a_remote_branch_is_not_a_branch() {
+    let repo = a_to_d();
+    git_at(
+        &repo,
+        SHELL + 10,
+        &["update-ref", "refs/remotes/origin/main", "HEAD"],
+    );
+    let work = detached_work_on(&repo, "origin/main");
+
+    let list = the_list(&repo);
+
+    let short = &work.to_string()[..7];
+    assert_eq!(
+        lines(&list, &[])[..4],
+        [
+            format!("$ switch from {short} to main"),
+            "✗ Detached work · HEAD · under 0".to_owned(),
+            "$ committed \"Detached work\" on HEAD".to_owned(),
+            "$ switch from main to origin/main".to_owned(),
+        ]
+    );
+    assert_eq!(
+        recover_lost(&repo, &list),
+        Recover::OfferBranch {
+            at: work,
+            name: "restored".to_owned(),
+            why: "no branch held it, only HEAD".to_owned(),
+        }
+    );
+    assert!(
+        repo.try_git(&["rev-parse", "--verify", "-q", "refs/heads/origin/main"])
+            .is_err(),
+        "no local branch of that name"
+    );
+}
+
+/// The same with a tag: `git checkout v1` is detached at the tag.
+#[test]
+fn a_detached_checkout_of_a_tag_is_not_a_branch() {
+    let repo = a_to_d();
+    git_at(&repo, SHELL + 10, &["tag", "v1", "HEAD~1"]);
+    let work = detached_work_on(&repo, "v1");
+
+    let list = the_list(&repo);
+
+    let short = &work.to_string()[..7];
+    assert_eq!(
+        lines(&list, &[])[..4],
+        [
+            format!("$ switch from {short} to main"),
+            "✗ Detached work · HEAD · under 0".to_owned(),
+            "$ committed \"Detached work\" on HEAD".to_owned(),
+            "$ switch from main to v1".to_owned(),
+        ]
+    );
+    assert_eq!(
+        recover_lost(&repo, &list),
+        Recover::OfferBranch {
+            at: work,
+            name: "restored".to_owned(),
+            why: "no branch held it, only HEAD".to_owned(),
+        }
     );
 }
 

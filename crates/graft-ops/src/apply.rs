@@ -458,20 +458,21 @@ fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<
 }
 
 /// A checked-out branch put back is a `reset --hard`, which writes over an
-/// untracked file at a path the target holds without a word. `check` cannot
-/// see trees, so the preview's question is asked again here, before the
-/// `Pending` line: facts can change between the picture and `y` (m7/23,
-/// conductor ruling).
+/// untracked or ignored file at a path the target writes without a word.
+/// `check` cannot see trees or the disk, so the preview's question is asked
+/// again here, before the `Pending` line: facts can change between the
+/// picture and `y` (m7/23, conductor ruling; review m7-22, C1).
 fn guard_untracked(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<(), ApplyError> {
     let Operation::Recover(params) = op else {
         return Ok(());
     };
-    let paths = crate::preview::untracked_in_the_way(ctx.repo, params, facts, ctx.stop).map_err(
-        |error| match error {
-            RunError::Stopped => ApplyError::Stopped,
-            other => ApplyError::Snapshot(crate::snapshot::SnapshotError::Run(other)),
-        },
-    )?;
+    let paths =
+        crate::preview::in_the_way(ctx.repo, params, facts, ctx.stop).map_err(
+            |error| match error {
+                FactsError::Stopped => ApplyError::Stopped,
+                other => ApplyError::Facts(other),
+            },
+        )?;
     if paths.is_empty() {
         Ok(())
     } else {

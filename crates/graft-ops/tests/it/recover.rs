@@ -242,6 +242,70 @@ fn move_ref_checked_out_refuses_over_an_untracked_file_it_would_overwrite() {
     assert!(entries(&repo).is_empty(), "nothing journaled");
 }
 
+/// Review m7-22 C1: an **ignored** file where `to` tracks one is his work
+/// too. `git status` never lists it, but `reset --hard` writes over it and
+/// the backup (`add -A`) cannot hold it, so `u` could not bring it back.
+/// Decided from the disk: refused in the preview and again at `y`.
+#[test]
+fn move_ref_checked_out_refuses_over_an_ignored_file_it_would_overwrite() {
+    let repo = three_commits();
+    let three = id(&repo, "HEAD");
+    repo.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    let two = id(&repo, "HEAD");
+    repo.write(".git/info/exclude", b"c.txt\n");
+    repo.write("c.txt", b"HIS IGNORED FILE\n");
+    assert_eq!(
+        repo.git(&["status", "--porcelain"]),
+        "",
+        "status lists nothing"
+    );
+    let op = move_ref("main", three, two);
+    let in_the_way = Refusal::UnsavedEditsTo {
+        paths: vec![PathBuf::from("c.txt")],
+    };
+
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+    match preview::plan(&handle, &git_version(), &op, &facts, &Never) {
+        Err(preview::PreviewError::Refused(refusal)) => assert_eq!(refusal, in_the_way),
+        other => panic!("preview not refused: {other:?}"),
+    }
+
+    let applied = try_run(&repo, &op, NOW);
+    assert_eq!(
+        repo.read("c.txt"),
+        b"HIS IGNORED FILE\n",
+        "his ignored file was overwritten"
+    );
+    match applied {
+        Err(ApplyError::Refused(refusal)) => assert_eq!(refusal, in_the_way),
+        Err(other) => panic!("not a refusal: {}", other.explain()),
+        Ok(_) => panic!("ran; expected a refusal"),
+    }
+    assert_eq!(id(&repo, "refs/heads/main"), two, "the branch did not move");
+    assert!(entries(&repo).is_empty(), "nothing journaled");
+}
+
+/// A tracked file `to` changes is the set-aside's, not "in the way": the
+/// disk check skips every path the index tracks.
+#[test]
+fn a_tracked_file_the_put_back_changes_is_not_in_the_way() {
+    let repo = three_commits();
+    let three = id(&repo, "HEAD");
+    repo.write("a.txt", b"a, changed later\n");
+    repo.commit_all("four");
+    let four = id(&repo, "HEAD");
+    repo.git(&["reset", "-q", "--hard", &three.to_string()]);
+    repo.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    let two = id(&repo, "HEAD");
+    // `a.txt` is tracked at `two` and changes at `four`: not in the way.
+    run(&repo, &move_ref("main", four, two), NOW);
+
+    assert_eq!(id(&repo, "refs/heads/main"), four);
+    assert_eq!(repo.read("a.txt"), b"a, changed later\n");
+}
+
 /// Open point 2: a `Files` put-back of a path the backup does not hold and
 /// the index does not track. git refuses the pathspec; the entry closes
 /// `Aborted` and nothing on disk or in the repository changes.
@@ -513,6 +577,55 @@ fn an_edit_already_back_on_disk_is_not_lost() {
     repo.write("a.txt", HIS_EDIT);
 
     assert!(lost(&repo).is_empty(), "{:?}", lost(&repo));
+}
+
+/// Review m7-22 M2: a path is lost only where the undo **wrote**. He edits
+/// `b.txt`, which neither the checkout nor its undo touches, the undo is
+/// forced over his drift, and he edits `b.txt` again: that edit is on disk,
+/// not lost. Only `a.txt`, which the undo wrote over, is.
+#[test]
+fn an_edit_to_a_file_the_undo_never_wrote_is_not_lost() {
+    let repo = main_and_other();
+    run(&repo, &checkout_other(), NOW);
+    repo.write("a.txt", HIS_EDIT);
+    repo.write("b.txt", b"his b\n");
+    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.read("b.txt"), b"his b\n", "the undo left b.txt");
+    repo.write("b.txt", b"his b, edited again\n");
+
+    let found = lost(&repo);
+
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].paths, vec![PathBuf::from("a.txt")]);
+}
+
+/// The one-side-unknown arm: the reversed entry recorded no worktree, so
+/// nothing tells his drift from the checkout's own files. Unknown is not
+/// unchanged: every path the undo wrote over that is not on disk now is
+/// claimed, the checkout's `o.txt` included.
+#[test]
+fn a_reversed_entry_with_no_recorded_worktree_claims_every_path_the_undo_wrote() {
+    let repo = main_and_other();
+    let undo = undo_over_drift(&repo);
+    let mut entries = entries(&repo);
+    let reversed = undo
+        .reverses
+        .clone()
+        .expect("the undo reverses the checkout");
+    for entry in &mut entries {
+        if entry.id == reversed {
+            entry.worktree_after = None;
+        }
+    }
+
+    let found = lost_edits(&repo.open(), &entries, &Never).expect("lost edits read");
+
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].entry, undo.id);
+    assert_eq!(
+        found[0].paths,
+        vec![PathBuf::from("a.txt"), PathBuf::from("o.txt")]
+    );
 }
 
 // ── preview ─────────────────────────────────────────────────────────────

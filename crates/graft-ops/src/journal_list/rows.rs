@@ -210,10 +210,15 @@ fn record_hint(record: &graft_git::reflog::ReflogRecord, on: Option<&str>) -> Hi
     if let Some(name) = branch_short(&record.refname) {
         return Hint::Branch(name.to_owned());
     }
-    if let Some((from, _)) = checkout_names(&record.subject)
-        && !is_hex_id(from)
-    {
-        return Hint::SwitchedFrom(from.to_owned());
+    if let Some((from, _)) = checkout_names(&record.subject) {
+        // git writes a full hex id as `from` when `HEAD` was detached: the
+        // tip it left was `HEAD`'s alone, whatever branch `on` inferred
+        // (review m7-22, M1).
+        return if is_hex_id(from) {
+            Hint::Head
+        } else {
+            Hint::SwitchedFrom(from.to_owned())
+        };
     }
     on.map_or(Hint::Head, |name| Hint::On(name.to_owned()))
 }

@@ -90,6 +90,15 @@ pub enum FactsError {
     /// journal's list, m7-power-tools/22).
     #[error("reading git's reflog: {0}")]
     Reflog(#[from] graft_git::history::ReflogError),
+    /// A path could not be looked for on disk: the put-back's check for his
+    /// files in the way (review m7-22, C1).
+    #[error("reading {path} on disk: {source}")]
+    OnDisk {
+        /// The path, relative to the working tree.
+        path: PathBuf,
+        /// What the read said.
+        source: std::io::Error,
+    },
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
