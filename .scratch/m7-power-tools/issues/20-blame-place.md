@@ -1,7 +1,7 @@
 # blame-place — `B` opens blame at the line he's on; who, when and why trail that line; `^`, `⏎`, `Esc` back
 
 Status: draft (respecified 2026-09-26 against the scout; was `ready`)
-Blocked by: 18-trace-readers, 20a, 20b, 20c (all landed or merging); the M7/ⓘ debugger while it holds graft
+Blocked by: 18-trace-readers, 20a, 20b, 20c (all landed or merging); the M7/ⓘ debugger while it holds graft; 20d (BlameCommit::shallow, Part A of the boundary ruling)
 Crates: graft.
 Build with: **Opus**. App wiring and a modal place on a decided design, judged by walks and tests. The one structural
 piece (the places stack) the note decides (2b hard choice 4); the key-routing choices are decided below.
@@ -209,3 +209,88 @@ re-shoots, hint tests.
 - **The hint shape:** 20c's NOTES propose one. The keymap and 20c's spec govern the words. If the proposal and the spec disagree, follow the spec and say so.
 - **Tick 20c's Hints box in 20c's file**, in place.
 - **Red check owed by 20c:** `the_trailer_is_on_the_cursor_row_only` was never seen red. Show it red under a mutation (the trailer drawn on every row) and note it in 20c's tick.
+
+## Ruling (planner): shallow boundary — 2026-09-26
+
+**The finding** (18c's probe, relayed by the conductor): in a `--depth 2` clone, `git blame` credits lines 17–25 and
+27–30 to the boundary commit 0a27627 (Priya). `BlameCommit::boundary` is true, but nothing reads it, so the place
+would name Priya as the writer. That's false: git stopped there because the clone has nothing older.
+
+**Why `boundary` can't be the signal** (from git's source, `blame.c` "treat root commit as boundary"; **unverified
+here**, the builder pins it): git sets `boundary` on any parentless commit unless `--root`/`blame.showRoot`. A
+shallow cut *is* parentless to git, so a real root in a full clone (whose author did write the lines) carries the
+same flag, and `blame.showRoot=true` in his config clears it on both. The only reliable fact is git's own list,
+`<common_dir>/shallow`, which 18c already reads (`shallow_boundaries`).
+
+**Prior art, decided:**
+- git's default output marks a boundary line `^0a2762` (the sha shortened by one so the width holds) and still prints
+  the author. **Take** the `^` marker on the sha; **reject** the name, since the name is what the trailer promises (pass
+  1b: "who changed the line he's on") and he doesn't read `^`.
+- The mock-ups (§1.12; pass 1b): gutter `sha7 name age subject` on a block's first row, trailer `◂ Name · age ·
+  subject · sha7`. **Take** the layout and the block brackets unchanged; a shallow block swaps who/age/subject for
+  words, as the existing marks (`◂ not committed yet`, `◂ git can't say who`) already do.
+- tig/Magit/GitLens: the study (`blame-line-history.md`) records nothing on shallow clones. Nothing to take.
+- **Invent** the words, reusing 18c's `SHALLOW_END` so blame and history say the same thing.
+
+**What he sees on a boundary line (words exact):**
+
+| Where | Shows |
+|---|---|
+| Gutter ≥180 (46), block's first row or cursor row | `^0a2762 shallow clone · can't say who` |
+| Gutter 120–179 (22) | `^0a2762 shallow` |
+| Gutter <120 (10) | `shallow` (after the bracket / `▸`) |
+| Trailer (cursor row) | `◂ can't say who · this clone starts at 0a27627` → short of room `◂ can't say who` → no trailer |
+| `⏎` on it | status `line 18 is from 0a27627 or older · this clone is shallow; nothing older was fetched`, opens nothing, no job |
+| `^` on it | the same status, opens nothing (never the root's `nothing before it`) |
+| Heatmap | the oldest bucket (colour unverified, rule 5) |
+
+- `^0a2762` = `^` + the first 6 hex, git's form. The status tail is `graft_git::trace::SHALLOW_END` verbatim;
+  `line 18` is the final line number.
+- `⏎` refuses because the boundary's diff is against nothing (every line an add), the same reason 18c drops its
+  history rows.
+- Its name, age and subject are **never drawn** anywhere in the place for a shallow row.
+- **Precedence** of a row's mark: not committed → `Unblamable` → **`Shallow`** → `Skipped` → `Plain`.
+- Blocks, find, `w`, `i`, mouse: unchanged. A real root in a full clone is unchanged (named; `^` says
+  `nothing before it`).
+
+**What gets built**
+- **Part A — graft-git (the seam; not in 20's set).** One field set by `blame`, one error variant:
+  ```rust
+  pub struct BlameCommit { /* …as 20a… */ pub boundary: bool,
+                           pub shallow: bool }   // id is in <common_dir>/shallow; set by `blame`, not the parser
+  pub enum BlameError { Run(RunError), Parse(ParseError), Binary, Untracked, Stopped,
+                        Shallow { path: PathBuf, source: std::io::Error } }   // Display `couldn't read <path>: <source>`
+  ```
+  `blame` calls 18c's `shallow_boundaries(repo)` once after git exits. `parse_porcelain` leaves `shallow: false`
+  (unchanged, so it isn't re-fuzzed). Tests in `crates/graft-git/tests/it/` (clone `--depth 2 file://<session>`, as
+  18c): **red first** `blame_marks_lines_from_the_shallow_boundary` (the ids of 17–25, 27–30 are the shallow file's
+  id; `shallow` true; other lines false) · `a_full_clones_root_commit_is_not_shallow` (`shallow` false; record
+  `boundary`'s value in NOTES, which confirms or refutes the git-source claim above) · `an_unreadable_shallow_file_fails_blame`.
+  MAP.md `blame`: the field and the variant. **Placement is the conductor's:** widen 20's set to graft-git
+  (`blame.rs`, its tests, MAP.md) if no concurrent builder holds graft-git; otherwise run Part A first as its own
+  graft-git slice (Sonnet, ~10k). 20 needs `BlameCommit::shallow` either way.
+- **Part B — graft-ui (`blame.rs`, in 20's set):** `pub enum RowMark { Plain, NotCommitted, Skipped, Unblamable,
+  Shallow }`. With `Shallow`, `who` is `Some` and only `who.sha7` is drawn. Tests in `blame/tests.rs`: **red first**
+  `a_shallow_row_never_draws_its_authors_name` (name "Priya" absent from every cell at 187, 140 and 100) ·
+  `shallow_gutter_words_at_each_width` · `shallow_trailer_sheds_to_cant_say_who` · insta
+  `snapshot_187x50_shallow` (Right line = the gutter and trailer rows of the table).
+- **Part C — graft (the place):** the row mapping applies the precedence; `⏎` and `^` check `shallow` before the root
+  and uncommitted checks. Tests: **red first** `a_shallow_boundary_line_is_marked_shallow` ·
+  `enter_on_a_shallow_line_says_the_clone_is_shallow_and_opens_nothing` ·
+  `caret_on_a_shallow_line_says_the_clone_is_shallow_not_nothing_before_it` · `caret_at_the_root_says_nothing_before_it`
+  stays green.
+- **Capture:** `docs/shots/m7/blame-shallow-187x50.txt`, pty, a `--depth 2 file://` clone of the session fixture,
+  cursor on line 18. **Right:** row 18 reads `▸ ^0a2762 shallow clone · can't say who`, its trailer `◂ can't say who ·
+  this clone starts at 0a27627`; the boundary block's other rows carry brackets and no name; `Priya` appears nowhere
+  on the screen.
+- **Needs** gains: `graft_git::blame::BlameCommit::shallow`, `BlameError::Shallow`, `graft_git::trace::SHALLOW_END`.
+- **Split:** Parts B and C go with **-a**; the capture with **-b**.
+
+**Touches (check each, report how):**
+- `BlameCommit {` literals in every crate (graft-git tests, fuzz, graft tests): grep; each gains `shallow: false`.
+- `BlameError` matches in graft: the new variant shows as the failed body `git blame stopped: couldn't read …`
+  (git didn't stop, but the case needs a broken `.git`; accepted, say so in NOTES). Grep for an exhaustive match.
+- `RowMark` matches in graft-ui: grep; the 20c snapshots stay byte-identical (no row there is shallow).
+- History-place (21): unaffected. `L` from a shallow line traces through 18c's rule. No edit.
+- Walks: unchanged (full-clone fixture). Journey counts: unchanged.
+- The TESTING.md row for the capture (the acceptance ticket assembles the sheet).

@@ -79,5 +79,65 @@ branch, with no upstream), "his branch" = **his unpushed commits, at most the la
 - The keys ticket (`amend-into-and-absorb-keys`): a new `StaysWhy` variant and a new refusal need words there; say so
   in the report.
 - `a`-into on the same branch still refuses a commit "not on your branch" (it uses `base_of`). Out of scope; report it
-  to the conductor as a follow-up question, don't fix it here.
+  to the conductor as a follow-up question, don't fix it here. **Superseded by the ruling below.**
 - KNOWN_GAPS M7/06 "first-commit fallback" row: the conductor updates it from the report (builders don't read it).
+
+## Ruling (planner): `a`-into on a branch with no upstream — 2026-09-26
+
+**Owner: this ticket (graft-ops), not 09.** The refusal is the engine's: `rewrite::plan` returns
+`NotOnYourBranch { commit, by: AmendInto }` (graft-ops MAP :263, :273). Ticket 09 (graft) only renders `explain()` on
+the status line, so it changes nothing there. It belongs here because it must share the one range function Question
+2's ruling builds.
+
+**Decision: yes, the same rule, one function.** When the base resolution gives `base == HEAD`, `a` accepts a target
+exactly when absorb could place a hunk into it: the fallback range above (≤ 10, unpushed, above any merge, not the
+root).
+- **Why the same:** both keys promise "a commit on your branch" (`RewriteKey::what_it_does()`). If absorb puts a hunk
+  into c5 while `a` on c5 says `isn't on it`, one of them is lying (ux-principles: consistency, same meaning across
+  keys). One function means they can't drift.
+- **Why keep the cap for a pick he points at:** the cap is what "your commits" means with no upstream. Dropping it
+  for `a` would make the two sets differ again. The cost is small: `a` on an unpushed commit 11+ back on an
+  upstream-less branch is refused, with words that say why. `R` can still reach it (its `from` rule, MAP :263).
+- **Why the pushed stop binds `a` too:** he works in a team. Rewriting a commit a remote ref holds is the harm
+  absorb's rule exists to prevent. Pointing at the commit doesn't change who else holds it.
+
+**What gets built (graft-ops; `rewrite/plan.rs` + the shared function, wherever the M7 split puts it):**
+```rust
+pub(crate) struct UnpushedRange { pub base: Oid, pub commits: Vec<Oid> /* newest first */, pub stop: RangeStop }
+pub(crate) enum RangeStop { Cap, Pushed, Merge(Oid), Root }        // what ended the walk
+pub(crate) fn unpushed_range(repo: &Repo, git: &Git, head: &Tip, stop: &dyn Stop)
+    -> Result<UnpushedRange, RewriteError>;                          // absorb's fallback and AmendInto both call it
+// Refusal additions (words in explain(), exact):
+AlreadyPushed { commit: Oid, by: RewriteKey }   // "<short> is already pushed · <a|absorb> only changes commits you haven't pushed"
+BeyondReach  { commit: Oid }                    // "<short> is more than 10 commits back · a reaches your last 10 unpushed commits"
+```
+(Signatures use graft-ops' own `Repo`/`Git`/`Stop` types as `absorb_map` does; match them, don't invent new ones.)
+- Only when `base == HEAD`. With an upstream or a real default branch, `AmendInto` is unchanged.
+- A target that isn't a first-parent ancestor of HEAD → `NotOnYourBranch` as today.
+- Otherwise the target is in `commits` → plan as today. If not, the refusal comes from `stop`: `Pushed` →
+  `AlreadyPushed`; `Cap` → `BeyondReach`; `Merge(m)` → the existing `MergeInRange { merge: m }`; `Root` → the existing
+  `RootCommit`.
+- Refusal order: the new two sit where `NotOnYourBranch` sits (after `NothingStagedFor`).
+
+**Tests (red first, each named at tick time):**
+1. `a_into_on_main_without_upstream_takes_an_unpushed_commit`: c1..c4 on `main`, no remote, target c3 → a plan with
+   the `Fixup` row after c3 (today `NotOnYourBranch`).
+2. `a_into_below_a_remote_ref_is_already_pushed`: `refs/remotes/origin/main` at c3 of c1..c6. c5 → plan; c2 →
+   `AlreadyPushed`.
+3. `a_into_eleven_back_is_beyond_reach`: 12 commits, no remote. 10 back → plan; 11 back → `BeyondReach`.
+4. `a_into_below_a_merge_is_merge_in_range`.
+5. `absorb_and_a_into_agree_on_the_range`: over the fixtures of 1–4 and Question 2's tests 2–4, the set of commits
+   `absorb_map` may place into equals the set `AmendInto` plans for.
+6. Regression, unchanged: an `a`-into test on a branch with an upstream (name one existing test).
+
+**Touches (check each, report how):**
+- `Refusal` matches outside graft-ops: grep `Refusal::` in `crates/graft`. An exhaustive match → `blocked: needs
+  graft` naming the arm; a `Display`/`explain()`-only use is fine.
+- Ticket 09's `a_off_the_branch_is_refused_in_words`: still true for a commit off the chain. It doesn't cover the new
+  words; the conductor adds a 09 test if 09 hasn't landed.
+- `R` (`Open`): unchanged. Say so, citing its test.
+- Journal/undo, keymap, captures: none (a refusal is status words; a plan runs the existing preview).
+- MAP.md (graft-ops) `rewrite`: `AmendInto`'s range rule and the two refusals.
+
+**Size:** about 10k on top of 06c. If 06c is already past its budget, the conductor runs this section unchanged as its
+own graft-ops slice after 06c.
