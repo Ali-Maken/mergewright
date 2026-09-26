@@ -311,6 +311,26 @@ starts, once the AFTER block has landed; `Enter` shows a row's changes
 ╰ ⏎ revert to before this  (Ghost Preview shown first)  esc close ─────────╯
 ```
 
+M7 (ADR-0048; keymap §2.11) adds shell (`$`) rows from the reflog and lost
+(`✗`) rows under the event that lost them; `⏎` acts per row kind, `b` makes a
+branch at the row's commit, `/` finds, `n`/`N` step matches (or `✗` rows):
+
+```
+ ┌─ JOURNAL · what happened in this repo, newest first ─────────────────────────────────────────────────────────┐
+ │   ●  Graft          10:44   fetch · origin/main moved 2 commits                                              │
+ │   $  outside Graft  10:41   reset main 1 commit back               git: "reset: moving to HEAD~1"            │
+ │ ▸    └ ✗ lost       9a8b7c6 "Add rate limiter" · was main's tip · no branch holds it                          │
+ │   $  outside Graft  10:37   switch from spike to main              git: "checkout: moving from spike to main"│
+ │      └ ✗ lost       4d5e6f7 "Try redis cache" · was spike's tip · spike is gone                               │
+ │   ●  Graft          10:12   switch from main to spike                                                        │
+ │  ● done in Graft: u can undo it · $ done outside Graft: u never touches it · ✗ a commit no branch holds      │
+ └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ ⏎ put main back to it  b new branch here  / find  esc close          (bar is per row)
+```
+
+An expanded `●` row lists `commands Graft ran`, each drawn `┆ git …`; `$`
+means only "outside Graft".
+
 ### 1.11 Stash list + diff
 
 ```
@@ -333,8 +353,11 @@ starts, once the AFTER block has landed; `Enter` shows a row's changes
 │ 7f6e5d4  AK  1h    42       self.do_refresh();                         │
 │ 0a9b8c7  RM  1d    43   }                                               │
 │ 88ee11c  AK  6mo   44   self.notify_listeners();                       │
-╰ ⏎ open commit  n/N older/newer change  ^ blame parent  space heatmap ───╯
+╰ ⏎ open commit  / find  n/N next match  ^ blame parent  space heatmap ───╯
 ```
+
+M7 (ADR-0048; keymap §2.8): full width, a place (`Esc` back); the cursor
+line trails `◂ Name · age · subject`; `L` opens §1.17 on those lines.
 
 Colour (not shown) ages from a bright "recent" hue to a dim "old" hue, redundant
 with the printed relative age so it never depends on colour alone.
@@ -417,5 +440,27 @@ point and never shown again unless replayed from the palette).
 `?` always shows the keymap for whichever pane has focus — it's the same
 table as §2 below, filtered to the current context, so the hint bar and this
 overlay are never out of sync with each other or with reality.
+
+### 1.17 File history (`L` from blame, `F` on a file) — M7
+
+Added 2026-09-26 (ADR-0048; keymap §2.17). Left: the commits that changed
+the file or the lines. Right: the whole file at the selected commit, its adds
+and removes marked in place; `┃` brackets the traced lines.
+
+```
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 4 changes
+   7f6e5d4  Handle expired tokens       you    0d  +1 −1 │ a1b2c3d · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −1
+   c4d5e6f  Move session TTL to config  Priya  4mo +1 −1 │      17      /// Refresh the token when the server says it expired.
+ ▸ a1b2c3d  Retry refresh once on 401   Lina   7mo +3 −1 │ ┃    18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+   5e6f7a8  Add token refresh           Tom   10mo +12   │ ┃    19  +       let mut attempt = 0;
+                                                         │ ┃    21              let resp = client.refresh(&self.token)?;
+                                                         │ ┃        −           if resp.status() == 401 {
+                                                         │ ┃    22  +           if resp.status() == 401 && attempt == 0 {
+ j/k older·newer  tab file  n/N next change  B blame here  ⏎ that commit  esc back
+```
+
+Widths: ≥180 list 56 cells; 120–179 list 40 (initials); <120 one pane,
+`Tab` swaps. Colour (green/red, unverified) doubles the `+`/`−` column and the
+removed rows' missing line number.
 
 ---

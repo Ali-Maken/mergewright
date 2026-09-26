@@ -183,3 +183,6 @@ workspace-wide.
 - **journal-screen-a:** stages, preselect, keys, `journal_enter`, landings, the carried rows, and their tests.
 - **journal-screen-b:** drawing (`RowKind`, breakpoints, legend, the command log), snapshots, walks, captures, and the
   re-shoot of the old J captures.
+
+## Carried (conductor, 2026-09-26)
+- ADR-0048 (`┆ git …` for Graft's commands): `docs/shots/m3-journal-expanded.txt` and `docs/shots/m3-contact-sheet.txt` still show `$ git`. This ticket draws the command log, so it re-takes them. Add a tick naming the capture test.

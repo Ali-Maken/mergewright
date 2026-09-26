@@ -88,6 +88,19 @@ The label drawn on a graph row for a local branch, remote branch, tag, `HEAD`
 or stash. Distinct from a Mistake Radar **marker**.
 _Avoid_: chip, tag, label
 
+**Place**:
+A full-width screen opened by an uppercase key that stacks on the one it was
+opened from: **Blame** (`B`) and **File history** (`L`/`F`), M7. `Esc` pops
+one; `⏎` to the graph hides the stack and `Esc` there shows it again
+(ADR-0048). Internal word; never on screen.
+_Avoid_: view stack, page, mode
+
+**File history**:
+The screen listing the commits that changed a file (`F`) or a range of its
+lines (`L` from blame), beside the whole file at the selected commit with that
+commit's adds and removes marked (keymap §2.17). On screen: `HISTORY`.
+_Avoid_: log, file log, timeline
+
 ## Operations and safety
 
 **Operation**:
@@ -102,7 +115,9 @@ _Avoid_: history, undo stack, operation log
 
 **Command Log**:
 The visible, append-only list of the exact `git` commands Graft ran. A
-transparency feature for the user; not the undo mechanism.
+transparency feature for the user; not the undo mechanism. Graft's own
+commands are drawn `┆ git …`; `$` marks only what ran outside Graft (M7,
+ADR-0048).
 _Avoid_: console, output pane, terminal log
 
 **Job**:

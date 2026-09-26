@@ -982,7 +982,7 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);           
    - Cost: git users used to the oldest-first todo.
 2. **Keymap §2.1 "cherry-pick is a rare verb".** Decision 5 gave it `o`; the doc still says rare. This is a doc edit
    only.
-3. **One switch rule** (:772).
+3. **One switch rule** (:772). (approved 2026-09-26, applied)
    - Change: a clean switch onto a branch is instant everywhere — picker, `.` Checkout, `b ⇥`. The M5 note put
      Checkout behind a Ghost Preview.
    - Decision 4 approved it for the picker; extending it to `.` Checkout is my proposal.
@@ -1278,18 +1278,18 @@ edit-in-undo-backup           4     # +1 · today the shell · J n ⏎ y
 
 ### Where I'd differ from DESIGN.md (2b; Proposed changes; tickets follow DESIGN.md until approved)
 
-7. **§2.8 `n`/`N`:**
+7. **§2.8 `n`/`N`:** (approved 2026-09-26, applied)
    - Change: from "older/newer change to this line" to find next/previous, as the graph's search (H4). Older is `^`,
      newer is `Esc`, and the list is `L`.
    - Cost: §1.12's footer and the keymap row change.
-8. **§2.3 `F`** follows the focus (above).
-9. **§1.10 command log:**
+8. **§2.3 `F`** follows the focus (above). (approved 2026-09-26, applied)
+9. **§1.10 command log:** (approved 2026-09-26, applied)
    - Change: `$ git …` → `┆ git …`, so `$` means only "outside Graft".
    - Cost: the M3/M5/M6 journal captures of an expanded row change.
-10. **§2.11:** `⏎` per row kind, `b`, `/`, `n`/`N` (pass 1b's proposal, now specified), and the cursor preselect (F1).
-11. **A new §2.17 History** and a §1.x History mock-up (pass 1b's "still proposed", now with keys).
+10. **§2.11:** (approved 2026-09-26, applied) `⏎` per row kind, `b`, `/`, `n`/`N` (pass 1b's proposal, now specified), and the cursor preselect (F1).
+11. **A new §2.17 History** (approved 2026-09-26, applied) and a §1.x History mock-up (pass 1b's "still proposed", now with keys).
 
-### Keymap: proposed diff to `docs/design/02-keymap.md` (2b; the conductor applies it)
+### Keymap: proposed diff to `docs/design/02-keymap.md` (2b; the conductor applies it) (approved 2026-09-26, applied)
 
 ```diff
  §2.1 modal panes

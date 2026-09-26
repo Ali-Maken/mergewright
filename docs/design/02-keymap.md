@@ -75,6 +75,12 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   - The **branch picker** (§2.16, M7) is a text field: it claims every key
     but `Ctrl+C`; `↑`/`↓` move, `⏎` switches, `Tab` shows the branch on the
     graph, `Esc` closes. Amended 2026-09-26 (M7, user "all yes").
+  - **Blame** (§2.8) and **History** (§2.17) are places (M7): full width,
+    opened by `B`/`L`/`F`; each answers its own keys and the §2.2 globals,
+    and none of the graph's verbs is live in them. `Esc` goes back one
+    place; after `⏎` to the graph, `Esc` there returns to the place (once
+    the graph's own menu, box, prompt, search, Focus or Explain is closed).
+    Amended 2026-09-26 (M7 pass 2b; ADR-0048).
   - The **interactive rebase editor** (§2.7) binds `p r e s f d` to
     pick/reword/edit/squash/fixup/drop — git's own convention for
     `rebase -i` todo lines, which every Git user already knows. `r` here is
@@ -152,7 +158,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   commit, copy SHA and open-in-browser are all reachable in at most two
   steps without owning a letter. On a commit row, Checkout holds the `.`
   menu's first place and Cherry-pick its second, fixed; Checkout dims in place
-  on the branch you are on (`Checkout — already on <b>`). Cherry-pick has its
+  on the branch you are on (`Checkout — already on <b>`). Checkout, like the picker's `⏎` and the name prompt's `⇥`, follows one switch rule: instant on a clean tree (`u` goes back); a preview (`y`) only with unsaved edits or a detached target (approved 2026-09-26, pass-2b decision 1; ADR-0048). Cherry-pick has its
   own key, `o` (§2.3), and keeps the menu's second place; it dims in place with
   `o`'s refusal words (already on <b>; a merge). Labels carry their keys
   (`(o)`). `C` opens the branch picker (§2.16). On the uncommitted row the menu gains `Put staged changes into their commits (absorb)`: `⏎` opens a preview mapping each staged hunk to its commit, `y` writes; a hunk no commit on your branch changed stays staged, in words. Amended 2026-09-26 (M7, user "all yes"). Rows carrying a stash badge keep the older order (conductor, 2026-09-25) (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
@@ -166,7 +172,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `Ctrl+P`, `:` | Command palette |
 | `?` | Context help for the focused pane |
 | `Tab` / `Shift+Tab` | Next / previous pane |
-| `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1) |
+| `Esc` | Back out / close overlay / cancel. A failure held while a box was open (drawn with `esc dismiss` once the box closes) is dismissed first; that `Esc` cancels nothing, the next one cancels (ticket 78 Decided 1). After `⏎` from blame or history: back to it (M7, ADR-0048) |
 | `Ctrl+Z`, `u` | Undo (ADR-0002) |
 | `Ctrl+Shift+Z`, `U` | Redo |
 | `Ctrl+R` | Manual refresh |
@@ -210,7 +216,7 @@ and any redo prompt should lead with.
 | `e` | Open in `$EDITOR` |
 | `Enter` (on a sidebar branch/tag/stash) | Checkout / open |
 | `M` | Toggle Map view (§5.1, §2.3a) |
-| `F` | Toggle Focus mode on the selected commit (§5.2). `F` on a file row (History) is not decided here: pass 2b reconciles it (M7) |
+| `F` | Toggle Focus mode on the selected commit (§5.2). With the detail pane focused on a file (its row or a line of its diff, the changes pane included): that file's history (§2.17) (M7, ADR-0048) |
 | `O` | Toggle the Overview strip (§5.3) |
 | `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
 | `1` | Toggle first-parent view (m1/15) |
@@ -232,7 +238,7 @@ and any redo prompt should lead with.
 | Key | Action |
 |---|---|
 | `m` / `r` | Confirm, when the preview was opened by that same key and its plan has landed (`m m`, `r r`). The cursor still rests on Cancel (ADR-0038 §1); a preview opened any other way gains only `y` — `.` still closes what `.` opened (P1, approved 2026-09-23) |
-| `y` | Confirm, in any merge/rebase/operation preview (opened by `m`, `r`, `.`, `a` on an older commit or with a branch built on HEAD, `o`, the picker's `⏎` with unsaved edits, the name prompt, or the stash list's `Enter`/`p` — amended 2026-09-26, ticket 86; Amended 2026-09-26 (M7, user "all yes")); the rewrite editor's `y` starts it (§2.7) once its plan has landed. The cursor still rests on Cancel (ADR-0038 §1). Not in a journal revert preview (user ruling 2026-09-23, `docs/field-notes.md`). The same `y` confirms every confirm box with one acting choice (§2.3c) and the finish summary's file list (§2.6b) — one confirm key (P12, P15, approved 2026-09-24; ADR-0044 §3) |
+| `y` | Confirm, in any merge/rebase/operation preview (opened by `m`, `r`, `.` (Checkout only with unsaved edits or a detached target, §2.1), `a` on an older commit or with a branch built on HEAD, `o`, the picker's `⏎` with unsaved edits, the name prompt (its `⇥` switch only with unsaved edits), or the stash list's `Enter`/`p` — amended 2026-09-26, ticket 86; Amended 2026-09-26 (M7, user "all yes")); the rewrite editor's `y` starts it (§2.7) once its plan has landed. The cursor still rests on Cancel (ADR-0038 §1). Not in a journal revert preview (user ruling 2026-09-23, `docs/field-notes.md`). The same `y` confirms every confirm box with one acting choice (§2.3c) and the finish summary's file list (§2.6b) — one confirm key (P12, P15, approved 2026-09-24; ADR-0044 §3) |
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
 
@@ -264,6 +270,8 @@ and any redo prompt should lead with.
 | `[` / `]` | Decrease / increase context lines |
 | `<` / `>` | Shrink / grow the detail pane on the focused divider, 4 cells a step; no-op with no divider shown (ADR-0028, m2-details-and-diffs/10b) |
 | `L` | Load the full file, past the truncation point (PROMPT.md §6.3) |
+| `B` | Blame this file at this line, as of the commit shown (the file on disk in the changes pane) (§2.8) (M7, ADR-0048) |
+| `F` | This file's history, following renames (§2.17) (M7, ADR-0048) |
 
 ### 2.6 Conflict resolver
 
@@ -394,12 +402,20 @@ Amended 2026-09-26 (M7, user "all yes"). **Modal** (§2.1): a text field; claims
 
 ### 2.8 Blame
 
+Opened by `B` from the diff pane. Full width. Who, when and why trail the
+cursor line. `Esc` goes back (after `^`, to the newer blame). Amended
+2026-09-26 (M7 pass 2b; ADR-0048).
+
 | Key | Action |
 |---|---|
-| `Enter` | Jump to the commit in the graph |
-| `n` / `N` | Older / newer change to this line |
-| `^` | Blame the parent revision (walk up, like `git blame` at a prior commit) |
+| `Enter` | Jump to the commit in the graph, its diff scrolled to this line; `Esc` comes back (M7) |
+| `/` | Find in the file (M7) |
+| `n` / `N` | Next / previous match, as the graph's search (M7) |
+| `^` | Blame the parent revision, cursor where this line came from; `Esc` comes back (M7) |
+| `L` | History of these lines: the function around the cursor, else its block (§2.17) (M7) |
 | `Space` | Toggle the age heatmap |
+| `w` | Toggle ignore-whitespace, on by default (§2.5's meaning) (M7) |
+| `i` | Toggle the repo's ignore-revisions file; bound only when the repo has one (M7) |
 
 ### 2.9 Stash list
 
@@ -431,8 +447,28 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 | Key | Action |
 |---|---|
 | `↑ ↓`, `j k` | Move |
-| `Enter` | Revert to just before this entry (Ghost Preview first) |
+| `Enter` | Per row: `●` revert to just before it (Ghost Preview, `→ ⏎`, unchanged); `$` put that ref back to before it; `✗` put back what held the commit, or a lost edit's file (Ghost Preview, `y`) (M7) |
+| `b` | New branch at the row's commit (name prompt; prefilled `<branch>-restored` when the row names one) (M7) |
+| `/` | Find a row (M7) |
+| `n` / `N` | Next / previous match; with no find, next / previous `✗` row (M7) |
 | `Esc` | Close |
+
+The cursor opens on the newest `✗` row when its event is newer than every
+`●` row, until a key is pressed (M7). Amended 2026-09-26 (M7 pass 2b; ADR-0048).
+
+### 2.17 History (M7)
+
+Opened by `L` in blame (those lines) or `F` on a file (the whole file). Full
+width. `Esc` goes back. Added 2026-09-26 (M7 pass 2b; ADR-0048).
+
+| Key | Action |
+|---|---|
+| `j` / `k` | List: older / newer commit. File pane: scroll |
+| `Tab` | List ↔ file pane (below 120 columns, swaps the one pane shown) |
+| `n` / `N` | Next / previous change in the file pane, from either focus (as the resolver's blocks) |
+| `B` | Blame the file as of the selected commit, at the file pane's line |
+| `Enter` | The selected commit in the graph, its diff on this file; `Esc` comes back |
+| `w` `v` `[` `]` `L` | §2.5, on the file pane |
 
 ### 2.12 Command palette
 
