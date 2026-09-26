@@ -92,3 +92,11 @@ As rewrite-engine. The release runs go through the script only.
 
 ## Size
 Medium-large (~60k).
+
+## Carried from 04b (conductor, 2026-09-26)
+
+With the harness now feeding keys first-in-first-out like the app (04b), the **first key** in 4 scenarios reads
+12–23 ms max: it queues behind startup job events (`docs/perf/m7-04-slow-key.txt` rev 2). Which events, and whether
+the real app's key 1 waits the same way, are **not identified**. Identify them by measurement (per-event timing in the
+trace, the perf script) before this ticket's idle-advance work changes the same queue; say in NOTES whether the cause is
+in Graft and, if so, fix it at the cause. Acceptance: one more tick naming the test or perf line that shows it.
