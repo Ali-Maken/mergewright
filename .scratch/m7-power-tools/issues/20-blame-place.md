@@ -1,8 +1,8 @@
 # blame-place — `B` opens blame at the line he's on; who, when and why trail that line; `^`, `⏎`, `Esc` back
 
-Status: draft (respecified 2026-09-26 against the scout; was `ready`)
-Blocked by: 18-trace-readers, 20a, 20b, 20c (all landed or merging); the M7/ⓘ debugger while it holds graft; 20d (BlameCommit::shallow, Part A of the boundary ruling)
-Crates: graft.
+Status: ready
+Blocked by: none (18, 20a–d, the debugger all merged).
+Crates: graft + graft-ui (graft-ui for the hints and Part B only, line 204 and the shallow ruling).
 Build with: **Opus**. App wiring and a modal place on a decided design, judged by walks and tests. The one structural
 piece (the places stack) the note decides (2b hard choice 4); the key-routing choices are decided below.
 Scout: done, `.scratch/m7-power-tools/scouts/blame-place.md`. No second scout.
