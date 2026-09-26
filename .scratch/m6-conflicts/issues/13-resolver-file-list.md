@@ -122,7 +122,7 @@ pub enum Product { /* existing */ ConflictSet(Result<Arc<ConflictSet>, String>) 
 - [x] Captures are pinned by `it::resolver::file_list::file_list_capture` (which also writes `fix-file-list-187x50.txt`, his size), `…::file_list_many_capture` and `…::a_rebase_lists_only_this_steps_files`. **The look is the user's call (rule 6); colour is unverified (rule 5); the order follows D1.** `docs/shots/m6/fix-file-list-{120x40,160x48,80x24,200x50}.txt` (two-file merge, after `o` on `gone.txt`), `…-many-120x40.txt` (12 files), `…-rebase-step2-120x40.txt` (`TwoStopRebase` at step 2). **What right looks like:**
   - At 120, the row under the header reads `files   gone.txt · done ✓    ▸ notes.txt · 2 of 2 open`. A rule follows, then `▸ notes.txt · 2 conflicts · 2 open`.
   - At 80, the compact strip reads `✓ gone.txt   ▸ notes.txt 2/2 open`.
-  - At 200, a left column headed `FILES · 2 conflicted`, `▸ notes.txt` in it, `│`, then the card (three panes are ticket 14's).
+  - At 200, a left column headed `FILES · 2 conflicted` (`gone.txt done ✓`, `▸ notes.txt 2 of 2 open`), `│`, then the identity row `▸ notes.txt · 2 conflicts · 2 open` over three panes `yours · main │ result │ theirs · feature` — what shipped, per `docs/shots/m6/fix-file-list-200x50.txt`.
   - Many: 3 grid rows, the last cell `… N more`.
   - Rebase step 2: the strip names `b.txt` only; `a.txt` appears nowhere on screen.
   - The user judges by eye.

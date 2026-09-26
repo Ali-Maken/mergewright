@@ -199,8 +199,9 @@ impl Journal {
                 .map(|name| (name.clone(), now.refs.get(name).copied().flatten()))
                 .collect();
             if closed.touches.index {
-                // `None` when the index is unmerged: there is no tree to
-                // record, and `drift` reads the gap as unknown.
+                // An unmerged index is recorded as its own state
+                // (`IndexState::Unmerged`), not a gap, so `drift` can
+                // compare it (m6-conflicts/08).
                 closed.index_after = Some(now.index);
             } else {
                 closed.index_after = closed.index_before;

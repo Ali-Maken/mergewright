@@ -34,7 +34,7 @@ fix-three-panes-200x50.txt	(ticket 14) The same at 200x50: titles row `yours · 
 fix-advance-120x40.txt	(ticket 15) `three.txt` after one `t`: identity row `▸ three.txt · 3 conflicts · 2 open`; block 1's header `conflict 1 of 3 · took theirs · feature`; the `▏` rule on block 2's rows; footer `took theirs · feature in three.txt · 2 of 3 open ✓`. Colour unverified.
 fix-advance-187x50.txt	(ticket 15) The same at 187x50: identity row `▸ three.txt · 3 conflicts · 2 open`; the result pane's rule `── 1 of 3 · took theirs · feature`; the `▏` rule on block 2's rows; footer `took theirs · feature in three.txt · 2 of 3 open ✓`. Colour unverified.
 fix-take-all-120x40.txt	(ticket 16) After Ctrl+T on `three.txt`: all three block headers read `took theirs · feature`; the notice reads `took theirs · feature in 3 blocks · ⏎ marks three.txt done`; the bar shows `⌃O/⌃T all`. Colour unverified; Ctrl+T in Zed's terminal unverified.
-fix-file-keys-before-120x40.txt	(ticket 17) BEFORE `T`: the resolver on `notes.txt`; the bar offers `O/T` and `j/k` (bare at 120). Colour unverified.
+fix-file-keys-before-120x40.txt	(ticket 17) BEFORE `T`: the resolver on `notes.txt`; at 120 the bar has `O/T file` and `⏎ done` full, `j/k` bare. Colour unverified.
 fix-file-keys-before-200x50.txt	(ticket 17) BEFORE `T`, the same at 200 columns: `O/T file`, `⏎ done`, `j/k file` in full.
 fix-file-keys-120x40.txt	(ticket 17) `T` on `notes.txt` settles the whole file and moves on — strip `notes.txt · done ✓` with `▸ gone.txt`, identity row `▸ gone.txt · modified on yours · main, deleted on theirs · feature`, notice `notes.txt done ✓ · ▸ gone.txt`. After `PgUp` (changes nothing, clears the stage's status line), the bottom row is the card's bar: `o`/`t`, no `O/T`, no `j/k`. Colour unverified.
 fix-file-keys-200x50.txt	(ticket 17; recaptured by 42) The same steps at 200 columns: side list `notes.txt  done ✓`, the name whole; identity row, notice, and the card's bar with no O/T or j/k.
@@ -115,7 +115,7 @@ m6-19-after-esc-esc-160x48.txt	The same at 160x48: the bottom row starts `⇥ ba
 m6-19-after-esc-esc-187x50.txt	The same at 187x50: the bottom row starts `⇥ banner`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
 m6-19-after-esc-esc-200x50.txt	The same at 200x50: the bottom row starts `⇥ banner  . explain  m merge  r rebase  ⏎ open`; `c finish`, not `c commit` (ticket 52; re-taken by 63).
 m6-19-after-esc-esc-80x24.txt	The same at 80x24: the bottom row starts `⇥ banner  . explain  m merge`.
-../m5-hints-ladder.txt	the uncommitted row has no `space fold` — changed by M6 (a6a47ee): on the uncommitted-changes row the hint ladder no longer offers `space fold` (`space` now needs a commit row, `NEEDS_A_COMMIT` in graft-ui hints.rs); every other rung as the M5 sheet showed it.
+../m5-hints-ladder.txt	the uncommitted row has no `space fold` — changed by M6 (a6a47ee): on the uncommitted-changes row the hint ladder no longer offers `space fold` (`space` now needs a commit row, `NEEDS_A_COMMIT` in graft-ui hints.rs); every other rung as the M5 sheet showed it — at the capture's three bar widths, 80, 120 and 160 cells.
 ../m5-hints-uncommitted-80x24.txt	the uncommitted row has no `space fold` — the cursor on the uncommitted-changes row at 80 columns: the hint bar's keys for that row, with no `space fold`.
 ../m5-hints-uncommitted-120x40.txt	the uncommitted row has no `space fold` — the same at 120 columns.
 ../m5-hints-uncommitted-160x48.txt	the uncommitted row has no `space fold` — the same at 160 columns.
