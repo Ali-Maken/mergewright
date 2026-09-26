@@ -1,6 +1,6 @@
 # 18c blame-long-and-shallow — record blame's long-file wait (ADR, no code); a shallow boundary ends a trace truthfully
 
-Status: draft
+Status: ready
 Blocked by: none (18b merged at `79b801f5`)
 Crates: graft-git only (`trace/log.rs`, `trace/follow.rs`, a new `trace/shallow.rs` if it helps the 400-line rule,
 their tests), graft-git `MAP.md`, and `docs/adr/0050-blame-waits-for-git.md`. Needing another crate → commit at the
