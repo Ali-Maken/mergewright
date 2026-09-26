@@ -1,0 +1,50 @@
+ PROTOTYPE m7 rev 2 · scene 3 of 4: C · lost in the shell · ] next scene  [ back  Backspace restart  # colour on  q quit
+ Your task: You ran git reset --hard in the shell and lost your 'Add rate limiter' commit. Get it back. Also: where did your spike branch go? You deleted it in the shell by
+            mistake. Bring it back too.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Graph  ·  you are on main
+
+   ○         8b9c0d1  origin/main                                   Fix typo in login copy                                                  Omar   20m
+   ○         7a8b9c0                                                Bump deps                                                               Omar   1h
+ ▸ │ ●       9a8b7c6  main ← HEAD  ↺ put back                       Add rate limiter                                                        you    10:05
+   ├─╯
+   ○         3d4e5f6  ○ main was here                               Add metrics endpoint                                                    you    1d
+   ○         2c3d4e5                                                Session store cleanup                                                   Omar   2d
+
+ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ COMMIT 9a8b7c6  Add rate limiter
+ you, today 10:05
+
+   src/api/limit.rs  +48  (new file)
+   src/api/mod.rs     +2
+
+   Rate limit per API key: 100 requests a minute, 429 with Retry-After.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ QUESTION  Did it work? Answer from what the screen shows you.
+     1  yes, it's back     2  no     3  can't tell
+ ✓ put back · main has "Add rate limiter" again · u undoes
+ J journal  u undo  ⏎ open  c commit  b branch  m merge  r rebase  . more

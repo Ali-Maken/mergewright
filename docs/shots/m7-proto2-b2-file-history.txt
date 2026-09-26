@@ -1,0 +1,50 @@
+ PROTOTYPE m7 rev 2 · scene 2 of 4: B · how this got this way · ] next scene  [ back  Backspace restart  # colour on  q quit
+ Your task: You're reading the blame, on line 22. How did this function get the way it is? Then go back to the changes and ask the same of the whole file: what has happened
+            to it?
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ HISTORY  ·  src/auth/session.rs  ·  the whole file  ·  7 changes
+
+ commits that changed this file, newest first            │ 7f6e5d4 · you · today · Handle expired tokens · this file +7
+ ▸ 7f6e5d4  Handle expired tokens      you     0d  +7    │     11     impl Session {
+   b8c9d0e  Log session ids at debug … Sara   2mo  +3    │     12         pub fn new(id: SessionId, token: Token) -> Self {
+   c4d5e6f  Move session TTL to config Priya  4mo  +4 −2 │     13             let ttl = config::session_ttl();
+   a1b2c3d  Retry refresh once on 401  Lina   7mo  +3 −1 │     14             Session { id, token, ttl }
+   5e6f7a8  Add token refresh          Tom   10mo  +12   │     15         }
+   1a2b3c4  Move session into auth/    Omar    1y  ±0    │     16
+     ↳ was src/session.rs                                │     17         /// Refresh the token when the server says it expired.
+   0f1e2d3  Session store              Omar  15mo  +19   │     18         pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+                                                         │     19             let mut attempt = 0;
+                                                         │     20             loop {
+                                                         │     21                 let resp = client.refresh(&self.token)?;
+                                                         │     22                 if resp.status() == 401 && attempt == 0 {
+                                                         │     23                     attempt += 1;
+                                                         │     24                     continue;
+                                                         │     25                 }
+                                                         │     26                 self.ttl = resp.ttl().unwrap_or(self.ttl); // the server may shorten it; keep ours
+                                                         │     27                 debug!(session = %self.id, user = %self.user_id, ttl = ?self.ttl, attempt, "token refreshed; one retry le
+                                                         │     28  +              if resp.token_expired() {
+                                                         │     29  +                  self.token = Token::empty();
+                                                         │     30  +                  return Err(Error::TokenExpired);
+                                                         │     31  +              }
+                                                         │     32                 self.token = resp.token()?;
+                                                         │     33                 return Ok(());
+                                                         │     34             }
+                                                         │     35         }
+                                                         │     36
+                                                         │     37         pub fn save(&self, store: &Store) -> Result<()> {
+                                                         │     38             debug!(session = %self.id, "saving session");
+                                                         │     39             store.put(&self.id, self)
+                                                         │     40         }
+                                                         │     41
+                                                         │     42  +      pub fn expired(&self) -> bool {
+                                                         │     43  +          self.token.age() > self.ttl
+                                                         │     44  +      }
+                                                         │     45     }
+                                                         │
+
+
+
+
+
+ j/k older·newer  tab file  n/N next change  B blame here  ⏎ that commit  esc back
