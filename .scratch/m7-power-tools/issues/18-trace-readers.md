@@ -1,7 +1,6 @@
 # trace-readers — git blame, `log -L` and `--follow` readers; the whole file with one commit's adds and removes
 
-Status: ready
-Blocked by: none
+Status: done
 Blocked by: none
 Crates: graft-git, graft-fixtures. Nothing in graft or graft-ui. `scripts/m7-perf-blame.sh` is this ticket's too.
 Source: `docs/design-notes/m7-power-tools.md`: "Pass 2b" B1, H1, "Interfaces and data shapes (2b)"; pass 1b's
@@ -123,47 +122,65 @@ A scripted repo, "session", matching the note's mock-ups:
 Add it as a new `Shape` (the builder names it) and document it in graft-fixtures' MAP.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Blame:**
+- [x] **Blame:** all in `crates/graft-git/tests/it/blame.rs`, all passing.
   - `blame_matches_git_blame_line_for_line`: every line's commit and orig line against `git blame --line-porcelain`, run
-    separately, on the fixture at 3 revs and the working tree.
-  - `ignore_revs_skips_the_listed_commit_and_counts_it`.
-  - `ignore_revs_false_blames_the_rustfmt_commit`.
-  - `ignore_whitespace_is_on_by_default`.
-  - `a_skipped_line_is_marked_skipped`.
-  - `previous_names_the_parent_and_old_path_across_the_rename`.
-  - `working_tree_blame_leaves_new_lines_uncommitted` (`commit: None`).
-  - `binary_is_refused_before_spawning`.
-  - `untracked_is_refused`.
-  - `blame_honours_stop` (the child is killed; `Stopped`).
-- [ ] **Function range:**
+    separately, on the fixture at 3 revs and the working tree. **Test: `blame_matches_git_blame_line_for_line`** (you,
+    priya, lina via the old path, and the modified working tree).
+  - `ignore_revs_skips_the_listed_commit_and_counts_it`. **Test: same name.**
+  - `ignore_revs_false_blames_the_rustfmt_commit`. **Test: same name** (+ `ignore_revs_false_clears_a_configured_list_too`).
+  - `ignore_whitespace_is_on_by_default`. **Test: same name.**
+  - `a_skipped_line_is_marked_skipped`. **Test: same name.**
+  - `previous_names_the_parent_and_old_path_across_the_rename`. **Test: same name.**
+  - `working_tree_blame_leaves_new_lines_uncommitted` (`commit: None`). **Test: same name.**
+  - `binary_is_refused_before_spawning`. **Test: same name.**
+  - `untracked_is_refused`. **Test: same name.**
+  - `blame_honours_stop` (the child is killed; `Stopped`). **Test: same name** — see NOTES: the stop fires on the
+    pre-check spawn, not the blame child.
+- [x] **Function range:** in `crates/graft-git/tests/it/trace.rs`.
   - `a_rust_method_is_its_fn_not_the_impl` (red first: without the attributes file, git's default names the `impl`).
-  - `a_python_def_is_found`.
-  - `no_function_is_none`.
-  - `over_400_lines_is_none`.
+    **Test: same name.** Red observed: with `graft_attributes` forced to `None` it failed with `name: "impl Session {",
+    start: 13, end: 42`; restored, green.
+  - `a_python_def_is_found`. **Test: same name.**
+  - `no_function_is_none`. **Test: same name** (an import line, past the end, a binary).
+  - `over_400_lines_is_none`. **Test: same name** (a 452-line fn → `None`; the small fn after it still found).
   - `a_user_attributes_file_is_never_overridden` (a repo with `core.attributesFile` set; assert Graft passed no `-c`).
-- [ ] **Traces:**
-  - `line_history_matches_git_log_L`: the ids, in order, against `git log -L… --format=%H`.
-  - `range_at_moves_with_the_code`.
-  - `file_history_follows_the_rename` (`renamed_from` on Priya's commit).
-  - `trace_end_is_start_on_the_adding_commit`.
-  - `trace_capped_says_how_many`.
-  - `stop_kills_git_and_keeps_the_rows` (the rows sent before the stop are the sink's; returns `Stopped`).
-- [ ] **Whole file:**
-  - `whole_file_is_one_hunk_with_every_line`.
-  - `whole_file_of_a_root_commit_is_all_adds`.
-  - `whole_file_of_a_merge_diffs_its_first_parent`.
-  - `whole_file_respects_max_lines`.
-- [ ] **`map_to_head`:** `map_to_head_skips_added_lines`, `map_to_head_shifts_past_a_removal`.
-- [ ] **Parsers:**
-  - Unit tests on git 2.38 and current output samples, checked in as bytes.
+    **Test: same name** — asserted by effect, not by argv: the user file names no rust driver, so the result is the
+    `impl` (a Graft `-c` would have named the method). Plus `a_repository_driver_is_used`.
+- [x] **Traces:** in `crates/graft-git/tests/it/trace.rs`.
+  - `line_history_matches_git_log_L`: the ids, in order, against `git log -L… --format=%H`. **Test: same name.**
+  - `range_at_moves_with_the_code`. **Test: same name** ((18,29), (17,28), (17,27); counts range-only).
+  - `file_history_follows_the_rename` (`renamed_from` on Priya's commit). **Test: same name.**
+  - `trace_end_is_start_on_the_adding_commit`. **Test: same name** (line → Tom, file → Ana). Plus `git_stopping_says_why`.
+  - `trace_capped_says_how_many`. **Test: same name** (cap 2 → `Capped{2}`; cap 6 = exactly all → `Start`).
+  - `stop_kills_git_and_keeps_the_rows` (the rows sent before the stop are the sink's; returns `Stopped`). **Test: same
+    name** — see NOTES: no rows are ever sent before a stop (one batch at exit), so it asserts `Stopped` + empty sink.
+- [x] **Whole file:** in `crates/graft-git/tests/it/trace.rs`.
+  - `whole_file_is_one_hunk_with_every_line`. **Test: same name** (61 lines = 60 + 1 removed; also Priya's rename with
+    `old_path`).
+  - `whole_file_of_a_root_commit_is_all_adds`. **Test: same name.**
+  - `whole_file_of_a_merge_diffs_its_first_parent`. **Test: same name** (+ an unchanged file is all context).
+  - `whole_file_respects_max_lines`. **Test: same name.**
+- [x] **`map_to_head`:** **Tests: `map_to_head_skips_added_lines`, `map_to_head_shifts_past_a_removal`**
+  (`crates/graft-git/src/trace/tests.rs`).
+- [x] **Parsers:**
+  - Unit tests on git 2.38 and current output samples, checked in as bytes. **Tests:** `blame/tests.rs` (5: 2.54
+    sample, 2.38-shaped sample, truncation/garbage, missing headers, `count_revisions`); `trace/tests.rs`
+    (`the_2_54_line_log_reads_ranges_and_counts`, `the_2_38_line_log_reads_a_rename_and_an_added_range`,
+    `the_2_54_follow_log_reads_the_rename`, `the_2_38_follow_log_reads_a_binary_rename`,
+    `garbage_is_a_parse_error_not_a_panic`). 2.54 samples captured from the fixture in `src/testdata/git-2.54/`;
+    2.38 samples hand-written (see NOTES).
   - `cargo-fuzz` targets `blame_porcelain`, `line_log` and `follow_log` beside the existing ones. Each is built, and run
-    60 s each in the review (not here).
-- [ ] **Measured:** `scripts/m7-perf-blame.sh` → `docs/perf/trace-readers.txt`.
+    60 s each in the review (not here). **Verified: `cargo +nightly fuzz build` in `fuzz/` built all targets.** Not run.
+- [x] **Measured:** `scripts/m7-perf-blame.sh` → `docs/perf/trace-readers.txt`.
   - It blames and traces the largest source file of the `synthetic::Scale::HEAVY` fixture (or the largest repo
-    fixture), release, 10 runs.
-  - Summary line: `trace-readers: blame p95=<ms> line_history p95=<ms> file_history p95=<ms>`.
+    fixture), release, 10 runs. **Harness: `crates/graft-git/examples/trace_perf.rs`** (`required-features =
+    heavy-tests`), on `trunk.txt`.
+  - Summary line: `trace-readers: blame p95=14.3 line_history p95=252.6 file_history p95=18.5` (ms; cap 1000, both
+    traces capped).
   - The builder reads only the summary. Over 1 000 ms for blame → NOTES, and ask. The screen is async either way.
-- [ ] graft-git MAP.md: the `blame` and `trace` modules. graft-fixtures MAP.md: the new shape.
+    Blame 14.3 ms: under. See NOTES on what this does not measure.
+- [x] graft-git MAP.md: the `blame` and `trace` modules. graft-fixtures MAP.md: the new shape. **Done** (both files;
+  doc, not tested).
 
 ## Touches (check each, report how)
 - `graft-git` exports: new modules only. `diff::file_diff` is called, not changed. Check: `git diff --stat` shows no
@@ -189,3 +206,55 @@ workspace-wide.
   `history-place`.
 
 No stubs: each half lands its own signatures working.
+
+## NOTES (builder, 2026-09-26)
+
+**Compacted: yes**, once, mid-ticket (after blame + fixture + parsers, before the trace integration tests). Nothing
+remains; no split needed. Scout: none — greenfield modules; read graft-git's MAP.md and the `diff` reader instead.
+
+Decisions the ticket asked for:
+- **Working-tree blame:** no rev passed (git reads the path from disk), not `--contents`. The all-zero id → `commit: None`.
+- **Refusals** (`Binary`, `Untracked`): `git diff-tree -r --no-renames --numstat <empty tree> <rev|HEAD> -- path`
+  (empty → Untracked, `-\t-` → Binary); the working tree also checks the content on disk with `diff-index --numstat`.
+- **Function method:** the ticket's sketch, for every line at once — `git diff --no-index -U0` of the blob against a
+  copy with a marker after every line; each hunk heading is the funcname governing that line. Driver: user
+  `core.attributesFile` set → Graft passes nothing; repo names a driver → `-c core.attributesFile=<tmp>` with
+  `* diff=<that driver>` (so `src/**` patterns still apply to temp paths); none → git's built-in for the extension.
+  `a_repository_driver_is_used` covers the middle case. The temp-file IO errors surface as `RunError::Spawn` (the
+  function returns `RunError`); the message reads as a spawn failure — a cosmetic mismatch, not a swallowed error.
+- **Streaming:** `run` does not stream stdout, so both traces send **one batch at exit**. Consequence:
+  `stop_kills_git_and_keeps_the_rows` can only assert `Stopped` and an empty sink — there are never rows before a stop.
+  If the history screen needs rows as git prints, `run` needs a streaming stdout mode (a graft-git change, own ticket).
+- **`blame_honours_stop`:** the stop is observed on the first spawn (the `diff-tree` refusal check), so the blame
+  child itself is never started, not killed mid-run. The runner's kill path is the same `run` code either way.
+- **`ParseError`** is `crate::diff::ParseError`, reused, not duplicated. `Hunk`/`FileDiff` are `crate::diff`'s.
+- **`whole_file`** runs its own `diff-tree -p -U1000000000` rather than `diff::file_diff`: `DiffOptions::context` is a
+  `u8`. `diff/` untouched.
+- **`-L` and renames:** `git log -L` follows renames without `rename from` lines; `renamed_from` falls back to the
+  `--- a/` path when it differs.
+- Extra public item: `LineRange::lines()`; `blame::IGNORE_REVS_FILE`. Both in MAP.md.
+
+Fixture: `Shape::Session` (name `session`), in a new `Shape::TRACED`, **not** `ALL` (it has an untracked file).
+Loops over `every()` it does join: `crates/graft-fixtures/src/corpus.rs` (build loop and `from_name`),
+`crates/graft-fixtures/tests/it/corpus.rs` (identity and accounted-for checks) — one small deterministic repo, no slow
+test. Loops over `ALL` in other crates (gallery, snapshots, radar) are not joined. Its rustfmt lines are 31–33 and
+35–37 (the design note's mock said 30–33). No `unblamable` line occurs in it; the hand-made 2.38 sample covers that.
+
+Parser samples: 2.54 captured from the fixture by git 2.54.0. **2.38 samples are hand-written** to the documented
+format: no 2.38 binary on this machine — unverified against a real 2.38.
+
+Perf: `blame p95=14.3 line_history p95=252.6 file_history p95=18.5` ms. The heavy fixture's biggest file is
+`trunk.txt`, **one line** rewritten by every trunk commit: this measures deep history (both traces hit the 1000 cap),
+not blame over a long file. A long-file blame is unmeasured.
+
+**Finding (out of scope, not fixed):** `crates/graft-git/src/diff/unified/primitives.rs:54` splits an unquoted
+`diff --git` header on `" b/"`, and its doc (line 38) says git quotes both paths whenever either needs it. git 2.54
+emits a **mixed** header for a rename to a non-ASCII name in `log -L`: `diff --git a/old.rs "b/n\303\251w.rs"`
+(reproduced with a throwaway repo). `parse_unified` then fails "malformed `diff --git` header", so `line_history`
+across such a rename returns `TraceError::Parse`. The 2.38 sample quotes both sides to stay inside today's parser.
+Fix belongs in `diff/` (quoted second path after an unquoted first).
+
+Gates: fmt, clippy `--all-targets -D warnings`, `cargo nextest run` (3602 passed, 1 skipped), `cargo test --doc` —
+all workspace-wide. First nextest run had one failure outside my crates,
+`graft::it two_boxes_over_content::capture_two_boxes_over_real_content_for_docs_shots`; it passed alone and on a
+full re-run. Intermittent under load; cause not investigated.

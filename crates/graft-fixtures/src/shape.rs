@@ -92,6 +92,14 @@ pub enum Shape {
     /// set at step 2 names `b.txt` alone. In `STEPPED`, not `STOPPED`: see
     /// there.
     TwoStopRebase,
+    /// `src/auth/session.rs`, written by four people over fourteen months,
+    /// renamed from `src/session.rs` once and reformatted once, with a
+    /// `.git-blame-ignore-revs` naming the reformat, a binary file and an
+    /// untracked one (m7-power-tools/18). What every blame and history walk
+    /// in M7 runs against; see `shapes/trace.rs` for who wrote which line.
+    /// In `TRACED`, not `ALL`: its untracked file leaves the working tree
+    /// unclean.
+    Session,
 }
 
 impl Shape {
@@ -133,6 +141,10 @@ impl Shape {
     /// expects its thirteen unmerged paths — the marker files included.
     pub const STEPPED: &'static [Shape] = &[Shape::TwoStopRebase];
 
+    /// Shapes built for blame and history (m7-power-tools/18), listed apart
+    /// from `ALL` because the working tree carries an untracked file.
+    pub const TRACED: &'static [Shape] = &[Shape::Session];
+
     /// The shape's directory name inside the corpus, and the name tests and
     /// reports call it by.
     pub fn name(self) -> &'static str {
@@ -161,6 +173,7 @@ impl Shape {
             Shape::StoppedRebase => "stopped-rebase",
             Shape::StoppedMerge => "stopped-merge",
             Shape::TwoStopRebase => "two-stop-rebase",
+            Shape::Session => "session",
         }
     }
 
@@ -170,12 +183,13 @@ impl Shape {
     }
 
     /// Every shape the corpus builds: [`Shape::ALL`], [`Shape::STOPPED`],
-    /// then [`Shape::STEPPED`].
+    /// [`Shape::STEPPED`], then [`Shape::TRACED`].
     pub fn every() -> impl Iterator<Item = Shape> {
         Shape::ALL
             .iter()
             .chain(Shape::STOPPED)
             .chain(Shape::STEPPED)
+            .chain(Shape::TRACED)
             .copied()
     }
 }

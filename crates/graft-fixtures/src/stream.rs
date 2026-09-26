@@ -129,6 +129,31 @@ impl Stream {
         self.commit_at(IDENTITY, when, refname, message, parents, files)
     }
 
+    /// A commit by `identity` at the exact Unix time `when` (`by`) that also
+    /// deletes `deleted` — a rename is a delete of the old path plus the new
+    /// path in `files`, and git's `-M` finds it from the content. For the
+    /// trace shape (m7-power-tools/18), whose file is written by four people
+    /// over a year and renamed once. `next_time` is left untouched, as in
+    /// [`commit_at_time`](Self::commit_at_time).
+    pub fn commit_full(
+        &mut self,
+        (identity, when): (&str, u64),
+        refname: &[u8],
+        message: &[u8],
+        parents: &[Mark],
+        files: &[FileContent<'_>],
+        deleted: &[&[u8]],
+    ) -> Mark {
+        let mark = self.commit_head(identity, when, refname, message, parents);
+        for path in deleted {
+            self.bytes.extend_from_slice(b"D ");
+            self.bytes.extend_from_slice(path);
+            self.bytes.push(b'\n');
+        }
+        self.write_files(files);
+        mark
+    }
+
     /// A commit by `identity`, authored and committed at `when`.
     fn commit_at(
         &mut self,
@@ -138,6 +163,32 @@ impl Stream {
         message: &[u8],
         parents: &[Mark],
         files: &[FileContent<'_>],
+    ) -> Mark {
+        let mark = self.commit_head(identity, when, refname, message, parents);
+        self.write_files(files);
+        mark
+    }
+
+    /// Every file of a commit, then the blank line that ends the command.
+    fn write_files(&mut self, files: &[FileContent<'_>]) {
+        for (path, content) in files {
+            self.bytes.extend_from_slice(b"M 100644 inline ");
+            self.bytes.extend_from_slice(path);
+            self.bytes.push(b'\n');
+            self.write_data(content);
+        }
+        self.bytes.push(b'\n');
+    }
+
+    /// A commit command up to its file changes: header, identity, message
+    /// and parents.
+    fn commit_head(
+        &mut self,
+        identity: &str,
+        when: u64,
+        refname: &[u8],
+        message: &[u8],
+        parents: &[Mark],
     ) -> Mark {
         let mark = self.reserve_mark();
 
@@ -155,13 +206,6 @@ impl Stream {
                 self.write_line(&format!("merge :{}", parent.0));
             }
         }
-        for (path, content) in files {
-            self.bytes.extend_from_slice(b"M 100644 inline ");
-            self.bytes.extend_from_slice(path);
-            self.bytes.push(b'\n');
-            self.write_data(content);
-        }
-        self.bytes.push(b'\n');
         mark
     }
 

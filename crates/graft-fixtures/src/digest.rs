@@ -20,6 +20,7 @@ const GENERATOR: &[&str] = &[
     include_str!("shapes/history.rs"),
     include_str!("shapes/merges.rs"),
     include_str!("shapes/refs.rs"),
+    include_str!("shapes/trace.rs"),
     include_str!("stream.rs"),
     include_str!("shape.rs"),
     include_str!("git.rs"),

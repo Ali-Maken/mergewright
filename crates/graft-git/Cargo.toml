@@ -85,6 +85,12 @@ heavy-tests = ["graft-fixtures/heavy-tests"]
 [lints]
 workspace = true
 
+# Timing for `scripts/m7-perf-blame.sh` (m7-power-tools/18): the heavy
+# synthetic repository exists only with `heavy-tests`.
+[[example]]
+name = "trace_perf"
+required-features = ["heavy-tests"]
+
 [dev-dependencies]
 # The named fixture corpus (m1-the-graph/01). A dev-dependency only, so it is
 # not an internal dependency edge (ADR-0006). Optional so that the
