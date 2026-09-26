@@ -14,8 +14,12 @@ use super::{AfterState, ApplyError, Context, reason_for, remote};
 pub(super) struct PlanRun {
     /// The invocation that failed, if one did.
     pub(super) failure: Option<PlanFailure>,
-    /// Askpass servers that would not shut down cleanly. Never fatal.
+    /// Askpass servers that would not shut down cleanly, a rewrite that
+    /// could not go home or remove its plan (`engine`). Never fatal.
     pub(super) cleanup: Vec<AfterState>,
+    /// git exited 0 and is still in the middle of a rewrite: it stopped on
+    /// an `edit` row (`engine`). A stop, not a finish.
+    pub(super) edit_stop: bool,
 }
 
 /// The invocation that failed.
@@ -34,6 +38,14 @@ struct RemoteFailed {
 }
 
 impl PlanFailure {
+    /// A local invocation's failure.
+    pub(super) fn local(error: RunError) -> Self {
+        PlanFailure {
+            error,
+            remote: None,
+        }
+    }
+
     /// The entry's `Aborted` reason.
     pub(super) fn reason(&self) -> String {
         match &self.remote {
@@ -119,11 +131,16 @@ pub(super) fn run_plan(
             })
         };
         if failure.is_some() {
-            return PlanRun { failure, cleanup };
+            return PlanRun {
+                failure,
+                cleanup,
+                edit_stop: false,
+            };
         }
     }
     PlanRun {
         failure: None,
         cleanup,
+        edit_stop: false,
     }
 }

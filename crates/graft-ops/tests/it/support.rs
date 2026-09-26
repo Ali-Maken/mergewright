@@ -36,6 +36,29 @@ impl TempRepo {
     /// global-config knobs that would otherwise reach in (signing, CRLF
     /// translation) turned off locally, where local wins.
     pub fn init() -> TempRepo {
+        let repo = TempRepo::scratch();
+        repo.git(&["init", "-q", "-b", "main", "."]);
+        repo.harden(Path::new("."));
+        repo
+    }
+
+    /// A byte-for-byte copy (`cp -R`) in a scratch directory of its own: the
+    /// same commits, refs, index and working tree, for running a second
+    /// route to the same result beside the first (the rewrite oracle).
+    pub fn copy(&self) -> TempRepo {
+        let copy = TempRepo::scratch();
+        let status = std::process::Command::new("cp")
+            .arg("-R")
+            .arg(self.path.join("."))
+            .arg(&copy.path)
+            .status()
+            .unwrap_or_else(|why| panic!("cp runs: {why}"));
+        assert!(status.success(), "cp -R copies the repository");
+        copy
+    }
+
+    /// An empty scratch directory, unique to this process and call.
+    fn scratch() -> TempRepo {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let unique = NEXT.fetch_add(1, Ordering::Relaxed);
         let path =
@@ -44,10 +67,7 @@ impl TempRepo {
             std::fs::remove_dir_all(&path).expect("an old scratch clears");
         }
         std::fs::create_dir_all(&path).expect("the scratch is made");
-        let repo = TempRepo { path };
-        repo.git(&["init", "-q", "-b", "main", "."]);
-        repo.harden(Path::new("."));
-        repo
+        TempRepo { path }
     }
 
     /// The same hermetic config, applied to a linked worktree's own git dir.

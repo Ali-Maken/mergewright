@@ -153,13 +153,6 @@ fn names(row: &TodoLine, target: &str) -> bool {
 }
 
 /// The todo git runs, and the messages its helper hands back.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the run half: `apply::engine` wires it in rewrite-engine-b"
-    )
-)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct GitTodo {
     /// The file `GIT_SEQUENCE_EDITOR` copies over git's.
@@ -190,13 +183,6 @@ pub(crate) struct GitTodo {
 /// `message_of` gives a row's whole message, for a squash group with no
 /// message written ([`default_message`]). `home` is his branch's full name;
 /// `followers` each dependent's full name and commits, bottom first.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the run half: `apply::engine` wires it in rewrite-engine-b"
-    )
-)]
 pub(crate) fn git_todo(
     todo: &[TodoLine],
     messages: &BTreeMap<usize, String>,
@@ -252,13 +238,6 @@ pub(crate) fn git_todo(
 
 /// His rows with the words git runs them by, then the `update-ref` lines
 /// and each dependent's picks.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the run half: `apply::engine` wires it in rewrite-engine-b"
-    )
-)]
 fn todo_text(
     todo: &[TodoLine],
     words: &[TodoAction],
@@ -293,13 +272,6 @@ fn todo_text(
 }
 
 /// `<word> <full id> <subject>`.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the run half: `apply::engine` wires it in rewrite-engine-b"
-    )
-)]
 fn push_line(text: &mut String, action: TodoAction, line: &TodoLine) {
     text.push_str(&format!(
         "{} {} {}\n",

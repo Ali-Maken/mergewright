@@ -561,13 +561,19 @@ fn a_merge_follows_the_picture_not_the_readers_merge_ff() {
     );
 }
 
-/// A rebase moves only the branch the entry records.
+/// A rebase moves only the branches the entry records.
 ///
 /// `rebase.updateRefs=true` rewrites every branch pointing inside the
 /// replayed range. Those refs are in neither `refs_before`/`refs_after` nor
 /// the preview's `ref_moves`, so §6.7's rail cannot see them and `u` would
 /// leave them rewritten (m5/07 review, M2). The user works on dependent
 /// branches, which is exactly who turns this on.
+///
+/// Since ADR-0047 the branches built **on** his (above his tip) do move and
+/// are recorded: `rewrite_run::a_three_branch_rewrite_records_every_ref`.
+/// `lower` here is **inside** the range, below his tip: not in the line, so
+/// it still stays (ADR-0047 §2), and `rewrite_run::
+/// a_resume_never_turns_his_update_refs_config_on` holds it across a resume.
 #[test]
 fn a_rebase_moves_only_the_branch_the_entry_records() {
     let repo = TempRepo::init();

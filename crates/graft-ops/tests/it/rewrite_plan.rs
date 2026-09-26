@@ -11,6 +11,7 @@
 #![allow(clippy::expect_used)]
 
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::version::GitVersion;
@@ -82,7 +83,7 @@ fn plan_with(
     req: &RewriteRequest,
 ) -> Result<graft_ops::rewrite::RewriteParams, RewriteError> {
     let handle = repo.open();
-    plan(&handle, git, req, &facts(&handle), &Never)
+    plan(&handle, git, req, &facts(&handle), None, &Never)
 }
 
 /// The refusal a plan came back with, in the status line's words.
@@ -109,6 +110,7 @@ fn a_teammate_branch_on_top_is_a_dependent() {
         &repo.open(),
         &git_version(),
         &tip(&repo, "feature-a"),
+        None,
         &Never,
     )
     .expect("the line reads");
@@ -133,6 +135,7 @@ fn main_containing_the_branch_is_not_a_dependent() {
         &repo.open(),
         &git_version(),
         &tip(&repo, "feature-a"),
+        None,
         &Never,
     )
     .expect("the line reads");
@@ -161,6 +164,7 @@ fn a_branch_merged_long_ago_is_not_a_dependent() {
         &repo.open(),
         &git_version(),
         &tip(&repo, "feature-a"),
+        None,
         &Never,
     )
     .expect("the line reads");
@@ -175,6 +179,7 @@ fn a_backup_at_the_same_commit_is_not_a_dependent() {
         &repo.open(),
         &git_version(),
         &tip(&repo, "feature-a"),
+        None,
         &Never,
     )
     .expect("the line reads");
@@ -191,6 +196,7 @@ fn dependents_honour_stop() {
         &repo.open(),
         &git_version(),
         &tip(&repo, "feature-a"),
+        None,
         &Always,
     );
     assert!(
@@ -373,6 +379,52 @@ fn open_runs_from_head_down_to_where_the_branch_left_main() {
         "feature-b and feature-c follow"
     );
     assert_eq!(planned.head, tip(&repo, "feature-a"));
+}
+
+#[test]
+fn the_default_branch_override_wins() {
+    // `develop` off `main`, his branch off `develop`. Resolved on its own,
+    // the default branch is `main`; the app's override says `develop`.
+    let repo = TempRepo::init();
+    commit(&repo, "m1");
+    repo.git(&["switch", "-q", "-c", "develop"]);
+    commit(&repo, "d1");
+    repo.git(&["switch", "-q", "-c", "feature"]);
+    commit(&repo, "f1");
+    let handle = repo.open();
+    let from = oid(&repo, "feature");
+    let subjects = |planned: &graft_ops::rewrite::RewriteParams| -> Vec<String> {
+        planned
+            .todo
+            .iter()
+            .map(|line| line.subject.clone())
+            .collect()
+    };
+
+    let resolved = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::Open { from },
+        &facts(&handle),
+        None,
+        &Never,
+    )
+    .expect("it plans");
+    assert_eq!(subjects(&resolved), ["d1", "f1"]);
+    assert_eq!(resolved.onto, oid(&repo, "main"));
+
+    let develop = RefName::new("refs/heads/develop").expect("a ref name");
+    let overridden = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::Open { from },
+        &facts(&handle),
+        Some(&develop),
+        &Never,
+    )
+    .expect("it plans");
+    assert_eq!(subjects(&overridden), ["f1"]);
+    assert_eq!(overridden.onto, oid(&repo, "develop"));
 }
 
 #[test]

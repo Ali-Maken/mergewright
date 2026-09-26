@@ -67,6 +67,10 @@ impl RangeCommit {
 /// records it. On `HEAD` with nothing built on it this is no rewrite — the
 /// app keeps its plain amend — and is refused.
 ///
+/// `default_branch` is the user's `graph.default_branch` when set: it wins
+/// over git's guess (ADR-0001 rule 1), for the base of the range and for
+/// which branch is never a dependent.
+///
 /// # Errors
 /// [`RewriteError::Refused`], checked in this order: not on a branch;
 /// nothing staged (`AmendInto`); the commit not on his branch; the first
@@ -79,6 +83,7 @@ pub fn plan(
     git: &GitVersion,
     req: &RewriteRequest,
     facts: &RepoFacts,
+    default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<RewriteParams, RewriteError> {
     if stop.should_stop() {
@@ -101,8 +106,10 @@ pub fn plan(
         oid,
     };
     match req {
-        RewriteRequest::Open { from } => open(repo, git, head, *from, stop),
-        RewriteRequest::AmendInto { target } => amend_into(repo, git, head, *target, facts, stop),
+        RewriteRequest::Open { from } => open(repo, git, head, *from, default_branch, stop),
+        RewriteRequest::AmendInto { target } => {
+            amend_into(repo, git, head, *target, facts, default_branch, stop)
+        }
     }
 }
 
@@ -111,6 +118,7 @@ fn open(
     git: &GitVersion,
     head: Tip,
     from: Oid,
+    default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<RewriteParams, RewriteError> {
     if !ancestor(repo, from, head.oid, stop)? {
@@ -118,7 +126,7 @@ fn open(
             commit: from,
         }));
     }
-    let onto = match base_of(repo, &head, stop)? {
+    let onto = match base_of(repo, &head, default_branch, stop)? {
         Some(base) if !ancestor(repo, from, base, stop)? => base,
         // `from` is at the base or deeper, or there is no base: the rows run
         // down to `from` itself.
@@ -131,7 +139,7 @@ fn open(
     };
     let range = read_range(repo, onto, head.oid, false, stop)?;
     refuse_merges(&range)?;
-    let line = line_of(repo, git, &head, stop)?;
+    let line = line_of(repo, git, &head, default_branch, stop)?;
     let todo = autosquash(range.iter().map(RangeCommit::pick).collect());
     let by_oid: BTreeMap<Oid, &str> = range
         .iter()
@@ -168,6 +176,7 @@ fn amend_into(
     head: Tip,
     target: Oid,
     facts: &RepoFacts,
+    default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<RewriteParams, RewriteError> {
     if !facts
@@ -190,7 +199,7 @@ fn amend_into(
     };
     let range = read_range(repo, onto, head.oid, false, stop)?;
     refuse_merges(&range)?;
-    let line = line_of(repo, git, &head, stop)?;
+    let line = line_of(repo, git, &head, default_branch, stop)?;
     if target == head.oid && line.branches.len() == 1 {
         return Err(RewriteError::Refused(Refusal::PlainAmend));
     }
@@ -229,9 +238,10 @@ pub(crate) fn line_of(
     repo: &RepoHandle,
     git: &GitVersion,
     head: &Tip,
+    default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<BranchLine, RewriteError> {
-    let line = match dependents(repo, git, head, stop)? {
+    let line = match dependents(repo, git, head, default_branch, stop)? {
         Dependents::Line(line) => line,
         Dependents::Fork { a, b } => {
             return Err(RewriteError::Refused(Refusal::ForkedDependents { a, b }));
@@ -264,6 +274,9 @@ pub(crate) fn line_of(
 /// built on his, and leaving it behind is the duplicated history the chain
 /// exists to prevent. [`plan`] refuses it in words instead.
 ///
+/// `default_branch` is the user's `graph.default_branch` when set; it wins
+/// over git's guess.
+///
 /// # Errors
 /// [`FactsError`] when a read fails, [`FactsError::Stopped`] when `stop`
 /// asks.
@@ -271,12 +284,13 @@ pub fn dependents(
     repo: &RepoHandle,
     _git: &GitVersion,
     branch: &Tip,
+    default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<Dependents, FactsError> {
     if stop.should_stop() {
         return Err(FactsError::Stopped);
     }
-    let default = default_branch(repo)?;
+    let default = default_branch_of(repo, default_branch)?;
     let mut found: Vec<(Tip, Vec<Oid>)> = Vec::new();
     for head in local_branches(repo, Some(branch.oid), stop)? {
         if head.name == branch.name
@@ -431,12 +445,17 @@ fn canonical(path: &std::path::Path) -> PathBuf {
 /// Where his branch left its base: the merge-base with its upstream when
 /// one is set and fetched, else with the default branch. `None` when there
 /// is neither, or they share no history.
-fn base_of(repo: &RepoHandle, head: &Tip, stop: &dyn Stop) -> Result<Option<Oid>, FactsError> {
+fn base_of(
+    repo: &RepoHandle,
+    head: &Tip,
+    default_branch: Option<&RefName>,
+    stop: &dyn Stop,
+) -> Result<Option<Oid>, FactsError> {
     let upstream = graft_git::remote::upstream_of(repo, &head.name)?
         .and_then(|upstream| upstream.tracking_tip);
     let against = match upstream {
         Some(tip) => Some(tip),
-        None => match default_branch(repo)? {
+        None => match default_branch_of(repo, default_branch)? {
             Some(name) => facts::read_refs(repo, std::slice::from_ref(&name))?
                 .get(&name)
                 .copied()
@@ -453,9 +472,13 @@ fn base_of(repo: &RepoHandle, head: &Tip, stop: &dyn Stop) -> Result<Option<Oid>
     history_reads::merge_base(repo, head.oid, against).map_err(FactsError::of_history)
 }
 
-/// The default branch's full name (ADR-0001's chain, no override).
-fn default_branch(repo: &RepoHandle) -> Result<Option<String>, FactsError> {
-    Branches::resolve(repo, None)?
+/// The default branch's full name: the user's override when set, else
+/// ADR-0001's chain.
+fn default_branch_of(
+    repo: &RepoHandle,
+    user_override: Option<&RefName>,
+) -> Result<Option<String>, FactsError> {
+    Branches::resolve(repo, user_override)?
         .default_branch()
         .map(|name| {
             String::from_utf8(name.as_bytes().to_vec()).map_err(|error| {
@@ -540,10 +563,6 @@ pub(crate) fn read_range(
 
 /// Each branch built on his, with its own commits as picks, bottom first:
 /// what follows his rows in the todo git runs.
-#[expect(
-    dead_code,
-    reason = "the run half: `apply::engine` wires it in rewrite-engine-b"
-)]
 pub(crate) fn line_picks(
     repo: &RepoHandle,
     line: &BranchLine,
@@ -560,6 +579,79 @@ pub(crate) fn line_picks(
                 branch.name.clone(),
                 commits.iter().map(RangeCommit::pick).collect(),
             ))
+        })
+        .collect()
+}
+
+/// The picks of `r` (a rebase of `head` onto `onto`): the commits git's own
+/// `rebase -i <onto>` would list, oldest first — on `head` and not on
+/// `onto`, merges left out, and a commit whose change `onto` already has
+/// left out too (git's `--cherry-mark` rule, which the plain `rebase`
+/// before ADR-0047 reported as "patch contents already upstream").
+pub(crate) fn rebase_rows(
+    repo: &RepoHandle,
+    onto: Oid,
+    head: Oid,
+    stop: &dyn Stop,
+) -> Result<Vec<TodoLine>, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--reverse"),
+            GitArg::Flag("--topo-order"),
+            GitArg::Flag("--right-only"),
+            GitArg::Flag("--cherry-pick"),
+            GitArg::Flag("--no-merges"),
+            GitArg::Word("--format=%x1e%H%x00%s%x1f".to_owned()),
+            GitArg::Word(format!("{onto}...{head}")),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.split('\u{1e}')
+        .skip(1)
+        .map(|record| {
+            let record = record.split('\u{1f}').next().unwrap_or(record);
+            let Some((oid, subject)) = record.split_once('\0') else {
+                return Err(unparsable(format!("rev-list record {record:?}")));
+            };
+            Ok(TodoLine {
+                action: TodoAction::Pick,
+                commit: parse_oid(oid)?,
+                subject: subject.to_owned(),
+            })
+        })
+        .collect()
+}
+
+/// Each commit's whole message, as git stores it.
+pub(crate) fn messages_of(
+    repo: &RepoHandle,
+    commits: &[Oid],
+    stop: &dyn Stop,
+) -> Result<BTreeMap<Oid, String>, FactsError> {
+    if commits.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+    let mut args = vec![
+        GitArg::Flag("rev-list"),
+        GitArg::Word("--no-walk=unsorted".to_owned()),
+        GitArg::Word("--format=%x1e%H%x00%B%x1f".to_owned()),
+    ];
+    args.extend(commits.iter().map(|oid| GitArg::Oid(*oid)));
+    let output = GitInvocation::new(repo)
+        .args(args)
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.split('\u{1e}')
+        .skip(1)
+        .map(|record| {
+            let record = record.split('\u{1f}').next().unwrap_or(record);
+            let Some((oid, message)) = record.split_once('\0') else {
+                return Err(unparsable(format!("rev-list record {record:?}")));
+            };
+            Ok((parse_oid(oid)?, message.to_owned()))
         })
         .collect()
 }

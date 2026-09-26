@@ -11,13 +11,6 @@
 //!   `rebase-merge/done`, and answers with that commit's message if one was
 //!   written, otherwise with what git offered minus its comment lines — the
 //!   same text git's default cleanup would have left.
-//!
-//! rewrite-engine-a wrote this with the format [`super::progress`] reads;
-//! the writing half is unused until `apply::engine` lands in -b.
-#![expect(
-    dead_code,
-    reason = "the run half: `apply::engine` wires it in rewrite-engine-b"
-)]
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -26,8 +19,6 @@ use graft_core::journal::EntryId;
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use serde::{Deserialize, Serialize};
-
-use crate::operation::Tip;
 
 use super::BranchLine;
 use super::todo::GitTodo;
@@ -73,30 +64,6 @@ impl SavedPlan {
         self.line
             .last()
             .map_or(self.home.as_str(), |(name, _)| name)
-    }
-
-    /// The line as tips.
-    ///
-    /// # Errors
-    /// A tip that is not a commit id: only a hand-edited file holds one, and
-    /// a relaunch must not guess which branch it meant.
-    pub(crate) fn tips(&self) -> io::Result<Vec<Tip>> {
-        self.line
-            .iter()
-            .map(|(name, oid)| {
-                Oid::from_hex(oid)
-                    .map(|oid| Tip {
-                        name: name.clone(),
-                        oid,
-                    })
-                    .map_err(|_| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!("plan.json: {name}'s tip {oid:?} is not a commit id"),
-                        )
-                    })
-            })
-            .collect()
     }
 }
 

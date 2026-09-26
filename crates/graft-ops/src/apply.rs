@@ -16,6 +16,7 @@
 //!
 //! [`Journal::unresolved`]: crate::journal::Journal::unresolved
 
+mod engine;
 mod error;
 mod finish_merge;
 mod fold;
@@ -29,8 +30,9 @@ mod set_aside;
 
 use std::path::{Path, PathBuf};
 
-use graft_core::journal::{EntryId, EntryStatus, JournalEntry, PutBack, PutBackWhy};
+use graft_core::journal::{EntryId, EntryStatus, JournalEntry, PutBack, PutBackWhy, Touches};
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{RunError, Stop};
 use graft_git::state::{self, InProgress};
@@ -52,6 +54,7 @@ pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};
 pub(crate) use restart::{RestartPrep, prepare_restart, run_restart_prep};
 
+use engine::Engine;
 use finish_merge::ending_a_shell_merge;
 use record::{pins_for, put_back_for};
 use restart::abandon_pending;
@@ -122,6 +125,11 @@ pub struct Context<'a> {
     /// Progress and credential prompts for a remote operation; `None` is
     /// headless (no prompt, no progress). [`Context::open`] leaves it `None`.
     pub remote: Option<RemoteHooks>,
+    /// The user's `graph.default_branch`, when set: it wins over git's guess
+    /// when a rebase finds the branches built on his (ADR-0001 rule 1,
+    /// ADR-0047 §4) — the default branch never follows. [`Context::open`]
+    /// leaves it `None`, git's guess; the app sets it.
+    pub default_branch: Option<RefName>,
 }
 
 impl<'a> Context<'a> {
@@ -156,6 +164,7 @@ impl<'a> Context<'a> {
             random,
             stop,
             remote: None,
+            default_branch: None,
         })
     }
 
@@ -213,7 +222,10 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     }
     guard_repush(ctx, op, &facts)?;
     let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe_in(&facts));
-    let touches = op.touches(&facts);
+    // A rebase or rewrite: read the line of branches and write the todo
+    // before `touches`, which records every branch of the line (ADR-0047).
+    let engine = engine::prepare(ctx, op, &facts)?;
+    let touches = touches_of(op, &facts, engine.as_ref());
     let plan = op.plan(&facts);
 
     // ADR-0045 §4, step 1: a rebase or checkout over changed tracked files
@@ -235,12 +247,13 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         })),
     };
     // Step 2.
-    let mut pending = begin(ctx, ctx.next_id(), opening)?;
+    let mut pending = open_entry(ctx, opening, engine.as_ref())?;
     // Steps 3 and 4.
     if let Some(stash) = aside
         && let Err(error) = set_aside::put_aside(ctx, stash, &aside_words, &mut commands)
     {
-        return set_aside::abandon(ctx, pending, commands, stash, error);
+        let left = engine.as_ref().and_then(Engine::remove_plan);
+        return set_aside::abandon(ctx, pending, commands, stash, error, left);
     }
 
     // After the before-snapshot, never before it: the state `u` puts back is
@@ -251,10 +264,65 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         Err(error) => return abandon_pending(ctx, &mut pending, error),
     }
     // Step 5 for a set-aside; `closed` runs step 6.
-    commands.extend(plan.iter().map(Invocation::command_line));
-
-    let run = run_plan(ctx, &plan, op.remote_names().as_ref());
+    let run = if let Some(engine) = &engine {
+        commands.push(engine.command_line());
+        engine.run(ctx, &mut commands)?
+    } else {
+        commands.extend(plan.iter().map(Invocation::command_line));
+        run_plan(ctx, &plan, op.remote_names().as_ref())
+    };
     closed(ctx, op, pending, commands, run)
+}
+
+/// Step 2, the `Pending` line — after a rewrite's plan is saved, never
+/// before it (ADR-0047 §1), and with the plan removed again when the line
+/// cannot be written.
+fn open_entry(
+    ctx: &mut Context<'_>,
+    opening: Opening,
+    engine: Option<&Engine>,
+) -> Result<Pending, ApplyError> {
+    if let Some(engine) = engine {
+        engine.save(ctx.repo)?;
+    }
+    begin(ctx, ctx.next_id(), opening).map_err(|why| {
+        let why = ApplyError::from(why);
+        match engine {
+            Some(engine) => engine.abandon(why),
+            None => why,
+        }
+    })
+}
+
+/// What the entry records: the operation's own refs, and for a rewrite every
+/// branch of its line beside them (ADR-0047 §2).
+fn touches_of(op: &Operation, facts: &RepoFacts, engine: Option<&Engine>) -> Touches {
+    let mut touches = op.touches(facts);
+    for name in engine.into_iter().flat_map(Engine::refs) {
+        if !touches.refs.iter().any(|recorded| recorded == name) {
+            touches.refs.push(name.to_owned());
+        }
+    }
+    touches
+}
+
+/// git stopped — on a conflict, or a rewrite's `edit` row: the entry stays
+/// `Pending` with no outcome line and `resume` closes it (hard choice 2).
+fn held(
+    ctx: &mut Context<'_>,
+    mut pending: Pending,
+    commands: Vec<String>,
+    kind: InProgress,
+    paths: Vec<PathBuf>,
+) -> ApplyError {
+    ctx.journal
+        .hold_commands(&pending.entry.id, commands.clone());
+    pending.entry.commands = commands;
+    ApplyError::Conflicted {
+        entry: Box::new(pending.entry),
+        kind,
+        paths,
+    }
 }
 
 /// The plan has run: close the entry the way git left the repository —
@@ -267,24 +335,20 @@ fn closed(
     commands: Vec<String>,
     run: PlanRun,
 ) -> Result<Applied, ApplyError> {
-    let PlanRun { failure, cleanup } = run;
-    // Stopped, not failed: the entry stays `Pending` with no outcome line
-    // and `resume` closes it (hard choice 2).
+    let PlanRun {
+        failure,
+        cleanup,
+        edit_stop,
+    } = run;
+    // Stopped, not failed.
     //
     // `cleanup` is dropped on this path and nothing is lost by it: it is
-    // filled only by `remote::run`, which `run_plan` reaches only when
+    // filled by `remote::run`, which `run_plan` reaches only when
     // `remote_names()` is `Some`, while `starts_in_progress()` is `Some`
-    // only for merge, rebase, cherry-pick and revert — all local. The two
-    // are disjoint by construction, so `cleanup` here is always empty.
-    if let Some((kind, paths)) = stopped_on_conflict(ctx, op, failure.is_some())? {
-        ctx.journal
-            .hold_commands(&pending.entry.id, commands.clone());
-        pending.entry.commands = commands;
-        return Err(ApplyError::Conflicted {
-            entry: Box::new(pending.entry),
-            kind,
-            paths,
-        });
+    // only for merge, rebase, cherry-pick and revert — all local; and by
+    // `Engine::run` only when git did not stop. So here it is always empty.
+    if let Some((kind, paths)) = stopped_on_conflict(ctx, op, failure.is_some() || edit_stop)? {
+        return Err(held(ctx, pending, commands, kind, paths));
     }
     // A rebase or checkout that set edits aside: step 6, whether the
     // operation went through or git refused it (ADR-0045 §4).
@@ -524,13 +588,15 @@ fn clashed(
 /// A non-zero exit from an operation that opens its own in-progress state,
 /// with that state live afterwards, is a stop: `MERGE_HEAD` or
 /// `rebase-merge/` is there and the work is half done. Anything else
-/// non-zero is a failure and closes the entry (m5/07, hard choice 2).
+/// non-zero is a failure and closes the entry (m5/07, hard choice 2). A
+/// rewrite that exits 0 on an `edit` row is a stop too (`stopped`), with
+/// nothing unmerged.
 fn stopped_on_conflict(
     ctx: &Context<'_>,
     op: &Operation,
-    failed: bool,
+    stopped: bool,
 ) -> Result<Option<(InProgress, Vec<PathBuf>)>, ApplyError> {
-    if !failed {
+    if !stopped {
         return Ok(None);
     }
     let Some(started) = op.starts_in_progress() else {

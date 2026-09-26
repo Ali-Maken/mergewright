@@ -342,6 +342,9 @@ pub(super) fn pins_for(op: &Operation) -> Vec<Oid> {
         Operation::DropPutBack { stash } => vec![*stash],
         // The stash `stash branch` drops: undo stores it back (m5/07).
         Operation::BranchFromStash(params) => vec![params.commit],
+        // The commit objects written from the index: nothing but the entry
+        // holds them until git has melded them in (ADR-0047).
+        Operation::Rewrite(params) => params.made.clone(),
         Operation::Merge(_)
         | Operation::Rebase(_)
         | Operation::CherryPick(_)

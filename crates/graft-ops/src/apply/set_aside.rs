@@ -121,12 +121,17 @@ pub(super) fn put_aside(
 /// is closed `Aborted`, and when `S` made it into the list the words say
 /// where the edits are (ADR-0045 §5: stopped at 3, `S` is objects only,
 /// pinned by the backup; at 4, `S` is listed and `u` restores the backup).
+///
+/// `left` is what the caller could not clean up as the entry closes (a
+/// rewrite's saved plan, `engine::remove`): it joins the `Aborted` reason,
+/// as every after-state failure of an aborted entry does (`finish`).
 pub(super) fn abandon(
     ctx: &mut Context<'_>,
     mut pending: Pending,
     commands: Vec<String>,
     stash: Oid,
     error: RunError,
+    left: Option<AfterState>,
 ) -> Result<Applied, ApplyError> {
     let listed = listed_at(ctx, stash);
     // `error` stays git's own words: where the edits are is `edits`, and the
@@ -149,6 +154,10 @@ pub(super) fn abandon(
             ),
             Some(EditsAt::Backup { copy: None }),
         ),
+    };
+    let reason = match left {
+        Some(left) => format!("{reason}; {left}"),
+        None => reason,
     };
     if let Err(journal) = finish(ctx, &mut pending, EntryStatus::Aborted { reason }, commands) {
         // No outcome line to say where the edits are: the error says it.
