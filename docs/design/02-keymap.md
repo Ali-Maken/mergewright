@@ -453,8 +453,10 @@ Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a 
 | `n` / `N` | Next / previous match; with no find, next / previous `✗` row (M7) |
 | `Esc` | Close |
 
-The cursor opens on the newest `✗` row when its event is newer than every
-`●` row, until a key is pressed (M7). Amended 2026-09-26 (M7 pass 2b; ADR-0048).
+The cursor opens on the newest `✗` row under a `$` row, when that `$` row is
+newer than every `●` row except a fetch, until a key is pressed; a `✗` under a
+`●` is never preselected, `n` reaches it (M7). Amended 2026-09-26 (M7 pass 2b;
+ADR-0048; F1 amended after review M4).
 
 ### 2.17 History (M7)
 

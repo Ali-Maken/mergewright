@@ -72,7 +72,7 @@ Needs: every signature above, as built. Each walk calls the app through the exis
   - **Recover:** the "lost work" fixture.
     1. `J ⏎ y`: main has D again.
     2. `u`: back to the reset state.
-    3. `J ⏎ y`, then `J n ⏎ y`: spike is back.
+    3. `J n ⏎ y` (amended 2026-09-26, was `J ⏎ y`; see the ruling below), then `J n ⏎ y`: spike is back.
     4. `J n ⏎ y`: the edit to `src/a.rs` is back.
 
     No shell step anywhere after the fixture is built.
@@ -126,3 +126,15 @@ workspace-wide; then `scripts/m7-accept.sh`.
 ~70k. If it compacts, split:
 - **m7-acceptance-a:** the script, the id-coverage test, the missing walks.
 - **m7-acceptance-b:** the promise scenarios, `TESTING.md`, the contact sheet.
+
+## Ruling (planner, 2026-09-26) — F1's preselect in the Recover scenario
+
+The rule is 24's "Ruling (planner, 2026-09-26)": preselect the newest `✗` under a `$` row, when that `$` is newer
+than every `●` except a fetch. The lost-work fixture changes order first (24's ruling; graft-fixtures).
+- Step 1 `J ⏎ y` = 3: the journey `lost-to-shell-reset` as the note counts it (:1250).
+- Step 3 is `J n ⏎ y` = 4, not `J ⏎ y`. After step 2's `u`, the undo is a `●` row newer than the reset (06 §6.5), so
+  nothing is preselected and the cursor opens on the newest row. `n` moves to D's `✗`. That is not journey 13's start
+  state (he just worked in Graft, and `U` would redo it in 1), so it is asserted in the scenario, not against
+  `noted_keys("lost-to-shell-reset")`.
+- Recover scenario total: 3 + 1 + 4 + 4 + 4 = **16** keys. `promise_recover_without_leaving` asserts it, and the
+  `TESTING.md` entry says 16.

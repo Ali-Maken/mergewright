@@ -18,6 +18,9 @@ and the 2b keymap diff.
    `CONTEXT.md` Command Log.
 5. **Journal (§2.11):** `⏎` per row kind (`●` `$` `✗`), `b`, `/`, `n`/`N` (with no find: next/previous `✗`), cursor
    preselects the newest `✗` newer than every `●`. Mock-up §1.10.
+   - **Wording amended (planner, 2026-09-26; review `m7-22-journal-recover.md` M4):** the newest `✗` **under a `$`
+     row**, when that `$` row is newer than every `●` row **except a fetch**. Same intent, matches the approved rev-2
+     frame (`docs/shots/m7-proto2-c-journal.txt:18-20`: `● fetch` above the preselected `✗`).
 6. **History (§2.17, mock-up §1.17)** and blame are **places**: full width, stacked, `Esc` pops one, `⏎` to the graph
    hides the stack. `CONTEXT.md` Place, File history.
 

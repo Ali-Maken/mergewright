@@ -1061,6 +1061,11 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);           
 | F5 | Putting back the checked-out branch changes files | The preview gains `your files:`; unsaved edits are set aside (ADR-0045 §4) | H5; rev 2 added the line |
 | F6 | Only ≥180 was drawn | 120–179 and <120 are below; captured at 140 and 100 | — |
 
+> **F1 amended (planner, 2026-09-26; review M4):** preselect the newest `✗` row **under a `$` row**, when that `$` row is
+> newer than every `●` row **except a fetch**. A `✗` under a `●` (a lost edit, a commit Graft's op lost) is never
+> preselected; `n` reaches it. Matches rev 2's frame and the mock-up above (`● fetch` over the preselected `✗`).
+> ADR-0048 §5 amended. The fixture's Graft discard and undo move before the shell's spike steps (24's ruling).
+
 ### The `F` clash — decided: `F` follows the focus
 
 - Options: (a) a new letter for file history; (b) move Focus mode off `F`; (c) `F` by focus.

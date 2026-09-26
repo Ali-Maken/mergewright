@@ -33,7 +33,8 @@ Rows this ticket closes:
   - Title suffixes (J1): `· finding lost commits…` / `· looked at the newest 500 steps` / `· couldn't look for lost
     commits: <why>`. Nothing once done.
 - **Preselect (F1):** when stage 3 lands, **and no key has been pressed since `J`**, the cursor moves to the newest `✗`
-  row whose event is newer than every `●` row. Otherwise it stays.
+  row whose event is newer than every `●` row. Otherwise it stays. **Superseded by "Ruling (planner, 2026-09-26)"
+  below.**
 - **Rows:** pass 1b's mock-up.
   - Columns: glyph `●`/`$`, the source word `Graft`/`outside Graft`, time, words, and `git: "<subject>"` on `$` rows.
   - `✗` rows are indented `└ ✗ lost`, with the sha7, the quoted subject, and `was <b>'s tip · no branch holds it` /
@@ -187,3 +188,55 @@ workspace-wide.
 ## Carried (conductor, 2026-09-26)
 - ADR-0048 (`┆ git …` for Graft's commands): `docs/shots/m3-journal-expanded.txt` and `docs/shots/m3-contact-sheet.txt` still show `$ git`. This ticket draws the command log, so it re-takes them. Add a tick naming the capture test.
 - 22b's question (fixture): the first commit's reflog reads `commit (initial): Start the api` — not in the note's J1 words table, so git's text shows. Decide the row's words (or confirm git's text) and assert them.
+
+## Ruling (planner, 2026-09-26) — F1's preselect; review `docs/reviews/m7-22-journal-recover.md` M4
+
+**The rule 24 builds** (replaces "Preselect (F1)" under Decided): when stage 3 lands and no key has been pressed since
+`J`, the cursor moves to **the newest `✗` row that sits under a `$` row, when that `$` row is newer than every `●` row
+except a fetch** (`OperationKind::Fetch`). Otherwise it stays on the newest row. A lost edit (always under a `●`) and a
+commit lost under a `●` row are never preselected; `n` reaches them.
+
+Why this reading, not "every undoable `●`":
+- It is what he approved. Rev 2's frame (`docs/shots/m7-proto2-c-journal.txt:18-20`) and the note's mock-up (:239-241)
+  both put `● fetch 10:44` above the preselected `✗`. A fetch moves only `origin/*`, nothing he holds; J1 already
+  says a fetch loses nothing (:1173).
+- `$` only: a loss under a `●` is Graft's, and `u` or `⏎` on that `●` reaches it. The shell's loss is the one only the
+  journal answers (legend: "`$` … u never touches it"). A `●` newer than the `$` means he has worked in Graft since,
+  so the likely answer is no longer the loss (UX checklist 3, pre-select the *likely* answer).
+- "Undoable" would not fix the fixture: its Undo and Discard `●` rows (10:43–10:43:40) are undoable and newer than the
+  reset. It is also not one predicate in `06-undo-journal-design.md` §6.4 (push).
+
+Counts unchanged: 13 `J ⏎ y` = 3; 14 and 15 `J n ⏎ y` = 4 (note :1250-1252).
+
+**The fixture must change first — graft-fixtures, not 24's crates.** 22b put the Graft discard (10:43) and undo
+(10:43:40) newer than the shell's reset (22b NOTES, "Order follows the mock-up"), so no `✗` qualifies.
+- Move the discard and the undo (the lost edit to `src/a.rs`) **before the shell's spike steps** (after A–D, before
+  `switch -c spike`). The fetch stays at 10:44, the newest row. Newest first, the list then reads: `● fetch` ·
+  `$ reset └ ✗ D` · `$ switch spike→main └ ✗ E` · … · `● undo └ ✗ your edit` · `● discard`.
+- Both orders matter: the reset above every other `●` (13 preselects D); E's `✗` above the edit's (14 and 15 each
+  need one `n` from the top).
+- Free to move: a discard and its undo write no `HEAD`/`refs/heads` record (22b NOTES), so no wall-clock pairing.
+- The shell steps after them must leave the lost edit showing (the file on disk still differs from the backup's
+  copy) and must not commit `src/a.rs` into E.
+- Crates: **graft-fixtures** (`lost_work`: order and times; `src/lost_work/tests.rs` time and order tests) and
+  **graft-ops tests only** (`tests/it/lost_work.rs`: `the_lost_work_fixture_draws_every_row_in_place` asserts the new
+  row order; `the_lost_rows_are_the_fixtures_commits_and_his_edit` stays green). Outside 24's crate set: the conductor
+  routes it before 24's walks. If it has not landed, 24 reports `blocked: needs graft-fixtures (lost_work order)` at
+  the walks and stops.
+
+**Tests 24 adds** (to the Preselect box; name each at tick time):
+- `the_newest_lost_row_is_preselected` (red first): on the lost-work fixture, cursor on `✗ 9a8b7c6`-shape row D, with
+  `● fetch` above it.
+- `a_fetch_above_does_not_stop_the_preselect`: a list with `● fetch` newer than `$ reset └ ✗`.
+- `no_preselect_when_a_graft_row_is_newer`: a `●` discard newer than the `$` row → the newest row.
+- `a_lost_row_under_a_graft_row_is_never_preselected`: a lost edit under the newest `●` → the newest row.
+- Walk `lost_to_shell_reset` = 3 on the changed fixture proves it end to end.
+- Put the rule in one pure function in graft (row index out, no terminal), so the four tests call it directly.
+
+**Text for the note at F1** (the conductor inserts it after `m7-power-tools.md:1062`; the same words replace
+`docs/design/02-keymap.md:456`; the planner had no in-place edit tool):
+
+> **F1 amended (planner, 2026-09-26; review M4):** preselect the newest `✗` row **under a `$` row**, when that `$` row is
+> newer than every `●` row **except a fetch**. A `✗` under a `●` (a lost edit, a commit Graft's op lost) is never
+> preselected; `n` reaches it. Matches rev 2's frame and the mock-up above (`● fetch` over the preselected `✗`).
+> ADR-0048 §5 amended. The fixture's Graft discard and undo move before the shell's spike steps (24's ruling).
