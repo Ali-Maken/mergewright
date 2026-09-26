@@ -2676,7 +2676,7 @@ files   gone.txt · keep or delete    ▸ shared.rs · done ✓
 
 ================================================================================
 docs/shots/m6/fix-done-start-over-cannot-120x40.txt
-what right looks like: (ticket 28; retaken by 58) Done `gone.txt` in a merge begun in the shell: `▸ gone.txt · done ✓` with nothing after it, bar `e edit  esc close`, and after `d` the status row `can't start over · gone.txt: the conflict's sides were not kept`. (Until ticket 58 this was Graft's own merge; a done whole-file file there now starts over.) Colour unverified.
+what right looks like: (ticket 28; retaken by 58) Done `gone.txt` in a merge begun in the shell: `▸ gone.txt · done ✓` with nothing after it, bar `e edit  esc close`, and after `d` the status row `git can't bring back the conflict in gone.txt: the conflict's sides were not kept` (words m7-power-tools/17). (Until ticket 58 this was Graft's own merge; a done whole-file file there now starts over.) Colour unverified.
 ================================================================================
 
 MERGING
@@ -2759,7 +2759,7 @@ files   ▸ gone.txt · done ✓    notes.txt · 2 of 2 open
 
 
 
- can't start over · gone.txt: the conflict's sides were not kept · esc dismiss
+ git can't bring back the conflict in gone.txt: the conflict's sides were not kept · esc dismiss
 
 ================================================================================
 docs/shots/m6/fix-done-start-over-cannot-200x50.txt

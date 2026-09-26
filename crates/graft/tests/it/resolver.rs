@@ -13,7 +13,7 @@
 mod base;
 mod card_names;
 mod file_keys;
-mod file_list;
+pub(crate) mod file_list;
 pub(crate) use file_list::gone_notes_and_readme_merge;
 mod editor_words;
 #[cfg(feature = "heavy-tests")]
@@ -22,7 +22,7 @@ mod handover;
 mod last_file;
 mod modal;
 mod opens_summary;
-mod restart;
+pub(crate) mod restart;
 mod resume_words;
 mod shell_begun;
 mod stash_pop;

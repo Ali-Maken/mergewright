@@ -362,3 +362,38 @@ fn a_restart_git_cannot_do_is_refused_in_words() {
     app.close();
     drop(scratch);
 }
+
+/// Every file done, the summary closed with `Esc`: the finish row shows.
+/// Then `shared.rs` opened from the list and `d y`: a file is open again,
+/// so the finish row is gone (m7-power-tools/17).
+#[test]
+fn restart_after_the_last_file_hides_the_finish_row() {
+    const FINISH: &str = "every file done";
+    let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
+    let (app, state) = on_gone_card(&scratch);
+    let state = shared_done(&app, &state);
+    let state = app.key(&state, KeyCode::Char('o'));
+    let state = app.pump(state, "gone.txt kept, the summary", |state| {
+        state.operating.is_none() && state.finish.is_some()
+    });
+    let state = app.key(&state, KeyCode::Escape);
+    let body = crate::captures::frame(&state, 120, 40).join("\n");
+    assert!(body.contains(FINISH), "{body}");
+
+    let state = done_open(&app, &state, "shared.rs");
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_some(), "d's box: {:?}", state.status);
+    let state = app.key(&state, KeyCode::Char('y'));
+    let state = app.pump(state, "the restart, and shared.rs read again", |state| {
+        state.operating.is_none()
+            && state.status_read.is_none()
+            && rows(state)
+                .iter()
+                .any(|(path, row)| path == "shared.rs" && *row != RowState::Done)
+    });
+    let body = crate::captures::frame(&state, 120, 40).join("\n");
+    assert!(!body.contains(FINISH), "{body}");
+    drop(state);
+    app.close();
+    drop(scratch);
+}

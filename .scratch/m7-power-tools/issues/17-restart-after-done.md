@@ -1,6 +1,6 @@
 # restart-after-done — `d` on a file already marked done starts it over, inside the operation
 
-Status: done (partial acceptance — see NOTES)
+Status: done
 Blocked by: none
 Crates: graft (the resolver's `d` on a done row); graft-ui only if the done row can't show `d` on the bar.
 Source: note "Pass 2a" R4 "Start over after `⏎`"; `TESTING.md` "Times I left" :109 ("still the shell — `git checkout
@@ -72,16 +72,17 @@ Scout used (`.scratch/m7-power-tools/scouts/17.md`). `d` on a done file already 
 
 Ticks:
 - [x] `d_on_a_done_file_opens_the_start_over_box` (`tests/it/resolver/file_list/start_over.rs`; red first on the words).
-- [x] `y_restores_the_stages_as_at_the_stop` — `d y`; `ls-files -u` mode+oid+stage equal the stop's; one `<<<<<<< ` on disk (the fixture has one block). `y` already confirmed (label `Start over` → `ConfirmYes::StartOver`); green on first run.
+- [x] `y_restores_the_stages_as_at_the_stop` — `d y`; `ls-files -u` mode+oid+stage equal the stop's; one `<<<<<<< ` on disk (the fixture has one block). **Characterises existing behaviour: never red.** `y` already confirmed (label `Start over` → `ConfirmYes::StartOver`) and the stages already matched; not test-first.
 - [x] `esc_in_the_box_changes_nothing`.
 - [x] `a_restart_git_cannot_do_is_refused_in_words`.
 - [x] Capture `docs/shots/m7/restart-after-done-box-120x40.txt` (test `d_on_a_done_file_opens_the_start_over_box`) — the file is `shared.rs`, not `three.txt` (fixture `app_merge_with_a_whole_file_conflict`). Colour unverified.
-- [ ] Walk `restart_after_done` in m7_walk: **not built**. Input count covered only by the it test (open, `d`, `y`).
-- [ ] `restart_after_the_last_file_hides_the_finish_row`: **not added**.
+- [x] Walk `crates/graft/tests/it/m7_walk.rs::restart_after_done` — route click·`d`·`y` = 3 ≤ `restart-after-done` read from the M7 note's `journey-counts` fence (`m5_walk::parse_counts`, now re-exported); stop's stages and one `<<<<<<< ` checked. File `shared.rs`, not `three.txt`. Characterisation: passed on its first run.
+- [x] `resolver::file_list::start_over::restart_after_the_last_file_hides_the_finish_row` — `every file done` shown after `Esc` from the summary, gone after `d y`. Characterisation: passed on its first run.
+- Test helpers made `pub(crate)` for the walk: `resolver::file_list::{rows, click_file, on_gone_card, shared_done}`, `resolver::restart::app_merge_with_a_whole_file_conflict`.
 
 Word changes (done file only; before-`⏎` box unchanged):
 - Title `Start <file> over?` → `Start <file> over`.
 - Line `takes and edits in this file are lost` / `edits since the choice are lost` → `your choices in <file> are dropped` (suffix `· not undoable while the <op> is open` kept).
 - Refusal `can't start over · <why>` → `git can't bring back the conflict in <file>: <reason>`; a leading `<file>: ` in ops' reason is stripped. The reason is ops' (`NoStagesKept`), not git's: ops doesn't use resolve-undo, kept as asked.
 
-Captures regenerated: `m6/fix-done-start-over-cannot-120x40.txt`, `m6/fix-start-over-whole-file-120x40.txt`. m6 contact sheets still carry the old words (not reassembled).
+Captures regenerated: `m6/fix-done-start-over-cannot-120x40.txt`, `m6/fix-start-over-whole-file-120x40.txt`. m6 contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): parts 1 and 3 changed, all parts ≤ 179 832 B; captions rows for the two shots updated to the new words.
