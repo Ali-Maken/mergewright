@@ -1,7 +1,7 @@
 # 31 patch-extended-headers — a deleted file's patch writes `dev/null` into history
 
 Status: ready
-Blocked by: 18d (holds graft-git).
+Blocked by: none (18d merged).
 Crates: graft-git only (`diff/patch.rs`, its tests, MAP.md).
 Build with: Opus (a git write path; absorb, and the app's hunk stage and discard use it).
 Scout: none. Source: `docs/reviews/m7-06b-absorb-staged.md` §C1 (Critical) and Question 1.
