@@ -1077,6 +1077,54 @@ impl Operation {
         )
     }
 
+    /// True when finishing this write moves `HEAD` — its ref or its commit —
+    /// so the graph cursor lands on the new `HEAD`'s row after it (UX §3.1,
+    /// m7-power-tools/03). False for everything that leaves `HEAD` where it
+    /// was: stage, stash, tag, fetch, push, a branch moved or deleted that
+    /// `HEAD` is not on, and the resolver's per-file writes. A put-back
+    /// (`Recover`) is false: the journal screen owns its own landing.
+    ///
+    /// No `_` arm: a new kind must say which it is.
+    #[must_use]
+    pub fn moves_head(&self) -> bool {
+        match self {
+            Self::Commit(_)
+            | Self::Amend(_)
+            | Self::Merge(_)
+            | Self::Rebase(_)
+            | Self::Rewrite(_)
+            | Self::CherryPick(_)
+            | Self::Revert(_)
+            | Self::Pull(_)
+            | Self::Checkout(_)
+            | Self::BranchFromStash(_)
+            // The shell-begun merge, committed: a new merge commit on
+            // `HEAD`. Sent by `apply::resume`, whose finish lands already.
+            | Self::FinishMerge(_) => true,
+            Self::Reset(params) => matches!(params.target, ResetTarget::Head { .. }),
+            // A new branch switched to moves `HEAD`, as a checkout does.
+            Self::BranchCreate(params) => params.checkout,
+            Self::Stage(_)
+            | Self::Unstage(_)
+            | Self::Discard(_)
+            | Self::StashPush(_)
+            | Self::StashApply { .. }
+            | Self::StashPop { .. }
+            | Self::StashDrop { .. }
+            | Self::Fetch(_)
+            | Self::Push(_)
+            | Self::BranchDelete(_)
+            | Self::TagCreate(_)
+            | Self::TagDelete(_)
+            | Self::ResolveWholeFile(_)
+            | Self::RestartConflict(_)
+            // `merge --abort` puts the tree back to `HEAD`; `HEAD` stays.
+            | Self::AbortMerge(_)
+            | Self::DropPutBack { .. }
+            | Self::Recover(_) => false,
+        }
+    }
+
     /// What a rebase, rewrite or checkout would set aside before it runs and
     /// put back after (ADR-0045 §4): `Some` when tracked files are changed,
     /// staged or not; `None` on a clean tree, over untracked files only

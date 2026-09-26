@@ -1,0 +1,40 @@
+ graft /code/api  9 commits
+  ◆─╮ ▏ⓘ [◆ feature] Merge branch 'main' into feature                                                    GF futu…0000000
+  ● │    finish the feature                                                                              GF now  8d6cd28
+  ● │    start the feature                                                                               GF 2m   52f3b96
+●─│─╯    [main] main moves again                                                                         GF 3m   45fa51d
+● │      main moves on                                                                                   GF 4m   37926a7
+●─╯      add the base                                                                                    GF 5m   ed332bc
+●        Correct the note                                                                                GF 1y   a82960b
+●        Add the first note                                                                              GF 1y   fadcfb3
+◇        Add a readme                                                                                    GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ merge main into feature ✓
+COMMIT 0000000 · Graft Fixture <fixture@example.invalid> · YYYY-MM-DD hh:mm +zzzz · future · parents 8d6cd28, 45fa51d ·…
+Merge branch 'main' into feature · backward merge · no upstream (feature) · evil merge: clean
+A main-one.txt          +1 −0
+A main-two.txt          +1 −0       1 + one
+
+
+
+
+
+
+
+
+
+
+
+

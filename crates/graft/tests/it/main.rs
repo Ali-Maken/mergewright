@@ -28,6 +28,7 @@ mod gallery;
 mod heavy;
 mod hint_bar;
 mod idle_advance;
+mod land_on_result;
 mod lane_cap;
 mod m3_walk;
 mod m4_walk;

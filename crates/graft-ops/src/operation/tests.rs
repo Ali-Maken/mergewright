@@ -1106,3 +1106,281 @@ fn the_unmerged_refusal_names_no_shell_and_no_milestone() {
         assert!(!words.contains("milestone"), "{words}");
     }
 }
+
+// ---- moves_head -------------------------------------------------------------
+
+fn tip(name: &str, byte: u8) -> super::Tip {
+    super::Tip {
+        name: name.to_owned(),
+        oid: oid(byte),
+    }
+}
+
+/// Every write that is not a history or remote kind: none moves `HEAD` but
+/// the two commits.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one row per variant, as a table: split, the rows no longer read as one list"
+)]
+fn working_tree_cases() -> Vec<(Operation, bool)> {
+    let commit = CommitParams {
+        message: "m".to_owned(),
+        sign_off: false,
+        no_verify: false,
+        allow_empty: false,
+    };
+    let paths = || Target::Paths(vec![PathBuf::from("a")]);
+    vec![
+        (Operation::Stage(paths()), false),
+        (Operation::Unstage(paths()), false),
+        (Operation::Discard(paths()), false),
+        (Operation::Commit(commit.clone()), true),
+        (Operation::Amend(commit), true),
+        (
+            Operation::StashPush(StashParams {
+                message: None,
+                scope: StashScope::All {
+                    include_untracked: false,
+                },
+            }),
+            false,
+        ),
+        (
+            Operation::StashApply {
+                index: 0,
+                commit: oid(1),
+            },
+            false,
+        ),
+        (
+            Operation::StashPop {
+                index: 0,
+                commit: oid(1),
+            },
+            false,
+        ),
+        (
+            Operation::StashDrop {
+                index: 0,
+                commit: oid(1),
+            },
+            false,
+        ),
+        (Operation::DropPutBack { stash: oid(1) }, false),
+        (
+            resolve("p.rs", Side::Ours, UnmergedHow::DeletedByThem),
+            false,
+        ),
+        (restart("p.rs"), false),
+        (
+            Operation::FinishMerge(super::FinishMergeParams {
+                merge_head: oid(0x0b),
+                message: None,
+            }),
+            true,
+        ),
+        // `merge --abort` puts the tree back to `HEAD`; `HEAD` stays.
+        (
+            Operation::AbortMerge(super::AbortMergeParams {
+                merge_head: oid(0x0b),
+            }),
+            false,
+        ),
+        (
+            Operation::Recover(super::RecoverParams {
+                target: super::RecoverTarget::MoveRef {
+                    name: "main".to_owned(),
+                    to: oid(0x0a),
+                    expected: oid(0x0b),
+                },
+                because: "the shell's reset".to_owned(),
+            }),
+            false,
+        ),
+    ]
+}
+
+fn remote_cases() -> Vec<(Operation, bool)> {
+    vec![
+        (
+            Operation::Fetch(super::FetchParams {
+                remote: None,
+                prune: false,
+            }),
+            false,
+        ),
+        (
+            Operation::Pull(super::PullParams {
+                branch: "refs/heads/main".to_owned(),
+                upstream: graft_git::remote::TrackedUpstream {
+                    remote: "origin".to_owned(),
+                    remote_branch: "refs/heads/main".to_owned(),
+                    tracking_ref: "refs/remotes/origin/main".to_owned(),
+                    tracking_tip: Some(oid(7)),
+                },
+            }),
+            true,
+        ),
+        (
+            Operation::Push(super::PushParams {
+                branch: "refs/heads/main".to_owned(),
+                remote: "origin".to_owned(),
+                remote_branch: "refs/heads/main".to_owned(),
+                set_upstream: false,
+                lease: None,
+                source_commit: None,
+            }),
+            false,
+        ),
+    ]
+}
+
+/// The history kinds, both reset targets and a new branch both ways.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one row per variant, as a table: split, the rows no longer read as one list"
+)]
+fn history_cases() -> Vec<(Operation, bool)> {
+    use super::{
+        BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
+        MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams,
+        ResetTarget, RevertParams, Source, TagCreateParams,
+    };
+    let main = || tip("refs/heads/main", 0x0a);
+    let create = |checkout| {
+        Operation::BranchCreate(BranchCreateParams {
+            name: "nb".to_owned(),
+            at: oid(0x0a),
+            checkout,
+        })
+    };
+    let reset = |target| {
+        Operation::Reset(ResetParams {
+            target,
+            to: oid(0x0d),
+        })
+    };
+    vec![
+        (
+            Operation::Merge(MergeParams {
+                source: Source::Branch("refs/heads/feat".to_owned()),
+                into: main(),
+                source_tip: oid(0x0b),
+                ff: FastForward::Default,
+            }),
+            true,
+        ),
+        (
+            Operation::Rebase(RebaseParams {
+                branch: main(),
+                onto: Source::Branch("refs/heads/feat".to_owned()),
+                onto_tip: oid(0x0b),
+            }),
+            true,
+        ),
+        (
+            Operation::Rewrite(crate::rewrite::RewriteParams {
+                head: main(),
+                onto: oid(0x0b),
+                todo: Vec::new(),
+                line: crate::rewrite::BranchLine {
+                    branches: vec![main()],
+                },
+                messages: BTreeMap::new(),
+                made: Vec::new(),
+            }),
+            true,
+        ),
+        (
+            Operation::CherryPick(PickParams {
+                commits: vec![oid(0x0c)],
+                subject: "s".to_owned(),
+                head: main(),
+            }),
+            true,
+        ),
+        (
+            Operation::Revert(RevertParams {
+                commit: oid(0x0c),
+                subject: "s".to_owned(),
+                mainline: None,
+                parents: 1,
+                parent: Some(oid(0x0b)),
+                head: main(),
+            }),
+            true,
+        ),
+        (
+            reset(ResetTarget::Head {
+                branch: main(),
+                mode: ResetMode::Hard,
+            }),
+            true,
+        ),
+        // `branch -f` of a branch `HEAD` is not on: `HEAD` stays.
+        (
+            reset(ResetTarget::Branch(tip("refs/heads/feat", 0x0b))),
+            false,
+        ),
+        (
+            Operation::Checkout(CheckoutParams {
+                to: CheckoutTarget::Branch("refs/heads/feat".to_owned()),
+                head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            }),
+            true,
+        ),
+        (create(true), true),
+        (create(false), false),
+        (
+            Operation::BranchDelete(RefDeleteParams {
+                name: "refs/heads/feat".to_owned(),
+                expected: oid(0x0b),
+            }),
+            false,
+        ),
+        (
+            Operation::TagCreate(TagCreateParams {
+                name: "v1".to_owned(),
+                at: oid(0x0a),
+                message: None,
+            }),
+            false,
+        ),
+        (
+            Operation::TagDelete(RefDeleteParams {
+                name: "refs/tags/v1".to_owned(),
+                expected: oid(0x0a),
+            }),
+            false,
+        ),
+        (
+            Operation::BranchFromStash(BranchFromStashParams {
+                name: "nb".to_owned(),
+                index: 0,
+                commit: oid(0x50),
+            }),
+            true,
+        ),
+    ]
+}
+
+/// Every variant, both reset targets, a new branch both ways: which finished
+/// writes land the graph cursor on the new `HEAD` (m7-power-tools/03, UX
+/// §3.1). `moves_head` has no `_` arm, so a new variant fails to compile
+/// until it is added there; the count below makes it fail here until it is
+/// added to this table too.
+#[test]
+fn moves_head_covers_every_operation() {
+    let mut cases = working_tree_cases();
+    cases.extend(remote_cases());
+    cases.extend(history_cases());
+    let kinds: std::collections::BTreeSet<_> = cases
+        .iter()
+        .map(|(op, _)| std::mem::discriminant(op))
+        .map(|kind| format!("{kind:?}"))
+        .collect();
+    assert_eq!(kinds.len(), 30, "one row per variant");
+    for (op, lands) in cases {
+        assert_eq!(op.moves_head(), lands, "{}", op.describe());
+    }
+}

@@ -92,5 +92,18 @@ fn settled(state: &AppState) -> bool {
         .finish
         .as_ref()
         .is_none_or(|open| open.job.is_none() && open.diff_job.is_none());
-    window && refs && status && quiet && writes_landed && planned && resolver_read && finish_read
+    // A finished write that moved `HEAD` owes the cursor a landing on its
+    // new row (`AppState::land_on_head`): a key fed before it is spent acts
+    // on the row the cursor was on, and a capture shows it mid-way
+    // (m7-power-tools/03).
+    let landed = !state.land_on_head;
+    window
+        && refs
+        && status
+        && quiet
+        && writes_landed
+        && planned
+        && resolver_read
+        && finish_read
+        && landed
 }

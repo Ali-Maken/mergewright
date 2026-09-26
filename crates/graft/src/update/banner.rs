@@ -43,12 +43,13 @@ use super::state::{AppState, Status};
 
 mod stop;
 
+pub(super) use stop::finished_lands_on_head;
 pub(super) use stop::land_in_resolver;
+use stop::stopped_again;
 pub use stop::{
     StopLadder, one_tab_to_banner, stop_line, stop_line_wordings, stop_reason, stop_wordings,
 };
 pub(crate) use stop::{TabTarget, tab_keys, tab_target, tabs_to_banner};
-use stop::{finished_lands_on_head, stopped_again};
 pub(super) use stop::{refs_answered, walk_started};
 
 /// The banner's word for an operation, as the header draws it.

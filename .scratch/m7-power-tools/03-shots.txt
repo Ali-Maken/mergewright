@@ -1,0 +1,14 @@
+m7-power-tools/03-a: captures moved by the landing (GRAFT_UPDATE_SHOTS=1 full run, then `git diff docs/shots`).
+Classified by reading each `git diff -U0` hunk (4 files, 11 lines).
+
+docs/shots/m5-ui-undo-after-push-80x24.txt            cursor row only   (2 frames: `▏` from `Commit 200` to the new commit `to push`)
+docs/shots/m6/fix-subject-enter-commits-80x24.txt     cursor row only   (`▏` from `add sample` to the new commit `fix: x`)
+docs/shots/m6/fix-subject-enter-commits-120x40.txt    cursor row only   (same)
+docs/shots/m6/fix-radar-bookkeeping-120x40.txt        other (explained) frame 1: `▏` from the stash row to main's rebased tip (the rebase landed).
+                                                      frame 2, last row: `pushed main → origin/main ✓` became the hint bar. Cause:
+                                                      radar_bookkeeping.rs:138 (loop :30-41) `cursor_to(&app, state, 'j', &stash)` — before, the
+                                                      cursor was already on the stash so no key was pressed; now it starts on
+                                                      main's tip and `j` is pressed; the diff shows that press cleared the done line. The frame's
+                                                      caption asserts nothing about the status line.
+
+New: docs/shots/m7/landed-after-merge-120x40.txt

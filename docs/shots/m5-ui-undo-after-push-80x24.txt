@@ -33,8 +33,8 @@
 == `u` after a push: the one box with three real answers ==
 
  graft /code/api  152 rows so far
-◆    [◆ main ⇄ origin] to push                                      now  0000000
-● ▏  Commit 200                                                     7y   d5ae5fd
+◆ ▏  [◆ main ⇄ origin] to push                                      now  0000000
+●    Commit 200                                                     7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
 ●    Commit 197                                                     7y   2cce853
@@ -60,8 +60,8 @@
 == `[ Re-push old tip ]`: its own second box, before the remote moves ==
 
  graft /code/api  152 rows so far
-◆    [◆ main ⇄ origin] to push                                      now  0000000
-● ▏  Commit 200                                                     7y   d5ae5fd
+◆ ▏  [◆ main ⇄ origin] to push                                      now  0000000
+●    Commit 200                                                     7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
 ●    Commit 197                                                     7y   2cce853
