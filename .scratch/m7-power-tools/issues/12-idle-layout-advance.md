@@ -154,23 +154,35 @@ impl Wake { pub fn label(&self) -> &'static str; }   // variant name, and the `P
     `SUMMARY spread` max 0.8–6.9 ms over every key of all 3 plain runs (key 1 included), `## slow scroll keys (latency
     over 8 ms)` empty, every `gate(p99<=16ms)=ok`. ✔
   - `Wake::label` unit test: `event_loop::label::tests::every_wake_has_a_label`. ✔
-- [ ] **Part B**, graft (`history::views` tests, over a counting source):
-  - `idle_steps_reach_the_end_of_history_then_return_caught`;
-  - `a_caught_up_idle_step_pulls_nothing` (the parked worker does no work);
-  - `a_request_preempts_the_idle_step_within_one_pull`;
-  - `a_cancel_stops_the_idle_step_within_one_pull`;
-  - `idle_steps_send_no_event` (only `LaidOut`, once);
-  - `an_inclusion_change_resumes_the_idle_step`.
-- [ ] **Part B**, app level (fast tier, corpus shape of a few thousand commits, through `budget_run`):
-  - `g_after_laid_out_lands_without_laying_out`: wait for `LaidOut`, send `G`; no `Progress` between `G` and the
-    landing window; the frame shows the root commit.
-  - `no_wake_after_laid_out`: after `LaidOut`, no wake of any kind for 500 ms with no input.
+- [x] **Part B**, graft (`history::views` tests, over a counting source) — all in `history::idle_tests` (12b), over
+  `Counting<WalkSource>` on the Linear shape, `SMALL` chunks of 8:
+  - `idle_steps_reach_the_end_of_history_then_return_caught`; ✔
+  - `a_caught_up_idle_step_pulls_nothing` (the parked worker does no work); ✔
+  - `a_request_preempts_the_idle_step_within_one_pull`; ✔
+  - `a_cancel_stops_the_idle_step_within_one_pull` (through `serve`, sender still held); ✔
+  - `idle_steps_send_no_event` (only `LaidOut`, once); ✔
+  - `an_inclusion_change_resumes_the_idle_step` (FoxtrotMerge, fold → `reinclude` → `truncate`). ✔
+  - Extra: `an_idle_step_before_any_request_opens_nothing`, `serve_lays_out_to_the_end_between_requests` (the
+    loop on a thread: `LaidOut{200}` with nothing sent on the way, then `G` answered with 0 pulls, no `Progress`). ✔
+- [x] **Part B**, app level (fast tier; **not through `budget_run`** — it and `synthetic` compile only under
+  `heavy-tests`; instead `it::idle_advance` over `app_harness::App` and a 3,000-commit line built with one
+  `git fast-import`, no commit-graph so it is promoted):
+  - `g_after_laid_out_lands_without_laying_out`: wait for `LaidOut` in the final order, send `G`; no `Progress`
+    between `G` and the landing window; the frame shows the root commit, cursor on row 2,999. ✔
+  - `no_wake_after_laid_out`: after `LaidOut` and startup's other jobs (working tree, radar, probes — the walk may
+    say nothing meanwhile), no wake of any kind for 500 ms with no input. ✔
+- [ ] **(12b, M7/04b)** `two_boxes_over_content::capture_two_boxes_over_real_content_for_docs_shots`: `ready()` now
+  ends with `captures::radar_answered`. 20-parallel loop (`it` binary, `--exact`): **before** 26/40 failed, all
+  `ⓘ` missing on the tip row (`committed ◆ ▏ⓘ [◆ main ↑1]` / `drawn ◆ ▏  [◆ main ↑1]`); **after** 0 `ⓘ` failures in
+  120 runs. **Not ticked: the loop is not 0 after** — 5/120 time out in `ready()`'s first pump (a second cause, see
+  12b NOTES; the same 5/120 with the idle advance disabled).
 - [ ] **Part C:** `a_request_during_a_promotion_is_answered_from_the_provisional_layout`;
   `the_promoted_layout_replaces_the_provisional_once_the_anchor_has_a_row`;
   `a_provisional_window_after_sorted_keeps_the_order_notice` (`update::history` tests).
-- [ ] **Part D** (graft-graph): `truncate_keeps_a_fingerprint_for_the_kept_prefix` (mid-chunk cut; the cut chunk has a
+- [x] **Part D** (graft-graph): `truncate_keeps_a_fingerprint_for_the_kept_prefix` (mid-chunk cut; the cut chunk has a
   fingerprint whose row count is the kept rows); `a_rebuild_after_truncate_is_checked` (a source whose re-read differs
-  in the kept prefix → `RebuildDiffers`, after evicting the cut chunk). NOTES says whether each was red.
+  in the kept prefix → `RebuildDiffers`, after evicting the cut chunk). NOTES says whether each was red. ✔ Both in
+  `layout::stream::tests`, green on first run (12b NOTES).
 - [ ] **Release** — `scripts/m7-perf-key.sh docs/perf/m7-12-idle-advance.txt`, run once at the start (rev 1 = before,
   on this ticket's base) and once after (rev N, 3 runs each, the script appends and computes `before=`):
   - every `spread` line `gate(p99<=16ms)=ok`, and p99 no worse than rev 2 of `m7-04-slow-key.txt` beyond its spread;

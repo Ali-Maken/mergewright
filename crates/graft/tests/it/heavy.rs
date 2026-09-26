@@ -315,6 +315,7 @@ fn until_window_for(told: &mpsc::Receiver<HistoryUpdate>, request: u64) -> histo
             HistoryUpdate::Window(window) if window.request == request => return window,
             HistoryUpdate::Window(_)
             | HistoryUpdate::Progress { .. }
+            | HistoryUpdate::LaidOut { .. }
             | HistoryUpdate::Started(_) => {}
         }
     }

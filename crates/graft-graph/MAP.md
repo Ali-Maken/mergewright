@@ -106,7 +106,7 @@ One line per public item. Update when a public item changes.
 - `StreamingLayout::resident`, `checkpoint_rows`, `work`, `source`, `config` (fn) — introspection.
 - `StreamingLayout::checkpoint_stride` (fn) — rows between kept checkpoints; doubles each time `max_checkpoints` was reached (m1-the-graph/60), never shrinks.
 - `StreamingLayout::source_mut` (fn) — the source, mutably.
-- `StreamingLayout::truncate` (fn) — forget rows from a row on (chunks cut, later checkpoints dropped, order truncated), frontier replayed to it; returns `Invalidated`.
+- `StreamingLayout::truncate` (fn) — forget rows from a row on (chunks cut, later checkpoints dropped, order truncated), frontier replayed to it; a mid-chunk cut re-notes the kept prefix's fingerprint (`cache.renote`), so a later rebuild of that chunk is still checked (tests `truncate_keeps_a_fingerprint_for_the_kept_prefix`, `a_rebuild_after_truncate_is_checked`); returns `Invalidated`.
 - `Invalidated` (struct) — `from_row`, `chunks`, `checkpoints` a truncate threw away.
 
 ## layout::cache (pub(crate))

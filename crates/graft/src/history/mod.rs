@@ -24,6 +24,8 @@ mod stream;
 mod views;
 
 #[cfg(test)]
+mod idle_tests;
+#[cfg(test)]
 mod tests;
 
 pub use scroll::Motion;

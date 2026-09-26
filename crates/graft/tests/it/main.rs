@@ -27,6 +27,7 @@ mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 mod hint_bar;
+mod idle_advance;
 mod lane_cap;
 mod m3_walk;
 mod m4_walk;

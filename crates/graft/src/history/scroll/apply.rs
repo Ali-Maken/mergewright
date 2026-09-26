@@ -17,6 +17,7 @@ impl History {
     pub fn apply(&mut self, update: HistoryUpdate, height: usize) {
         match update {
             HistoryUpdate::Started(facts) => self.walk = Some(*facts),
+            HistoryUpdate::LaidOut { rows } => self.laid_out = Some(rows),
             HistoryUpdate::Progress { request, laid_out } => {
                 if request == self.asked {
                     self.rows = self.rows.max(laid_out);

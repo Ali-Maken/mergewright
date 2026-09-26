@@ -51,6 +51,7 @@ fn progress_label(progress: &Progress) -> &'static str {
         Progress::History(HistoryUpdate::Started(_)) => "Progress::History::Started",
         Progress::History(HistoryUpdate::Progress { .. }) => "Progress::History::Progress",
         Progress::History(HistoryUpdate::Window(_)) => "Progress::History::Window",
+        Progress::History(HistoryUpdate::LaidOut { .. }) => "Progress::History::LaidOut",
         Progress::Search(_) => "Progress::Search",
         Progress::Map { .. } => "Progress::Map",
         Progress::Operating { .. } => "Progress::Operating",
@@ -184,6 +185,10 @@ mod tests {
                     request: 1,
                     laid_out: 0,
                 }),
+            )),
+            Wake::Event(AppEvent::Progress(
+                id,
+                Progress::History(HistoryUpdate::LaidOut { rows: 0 }),
             )),
             Wake::Shutdown(15),
             Wake::InputFailed(io::Error::other("x")),
