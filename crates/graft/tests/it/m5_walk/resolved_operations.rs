@@ -333,8 +333,8 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
         remote: Remote::None,
         size: (80, 24),
         // Not the shell pop the scenario above starts from: the pop goes
-        // through the app's stash list (`S`, `p`), so it is a journal entry
-        // the second `u` can take back. A shell pop is in no journal.
+        // through the app's stash list (`S`, `p`, `y` on the preview), so
+        // it is a journal entry the second `u` can take back. A shell pop is in no journal.
         setup: stash_to_pop_over_a_conflict,
         steps: chain(vec![
             vec![
@@ -342,6 +342,8 @@ fn undo_a_resolution_in_a_stash_pop_conflict() -> Scenario {
                 key(ch('S')),
                 Step::WaitFor(Wait::StashReady),
                 key(ch('p')),
+                Step::WaitFor(Wait::PreviewReady),
+                key(ch('y')),
                 Step::Settle("the pop"),
                 Step::WaitFor(Wait::ConflictedPath(POPPED)),
                 Step::WaitFor(Wait::ConflictOpened),

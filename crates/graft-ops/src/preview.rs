@@ -24,6 +24,7 @@
 
 mod kinds;
 mod put_back;
+mod stash;
 
 use std::path::PathBuf;
 
@@ -330,9 +331,13 @@ fn sha1(message: &[u8]) -> [u8; 20] {
 /// [`PreviewError`]: a `git` read failed, the repository could not be read,
 /// the caller stopped, `op.check(facts)` refused it (checked first, exactly
 /// as `apply` checks before writing), or the operation would plainly be
-/// refused and there
-/// is nothing worth drawing ([`Refusal::NotFastForward`],
-/// [`Refusal::NotOnBranch`]).
+/// refused and there is nothing worth drawing ([`Refusal::NotFastForward`],
+/// [`Refusal::NotOnBranch`], and for a stash apply or pop
+/// [`Refusal::StashInTheWay`] when files on disk are in its way).
+///
+/// A stash apply or pop is the one exception to "exactly as `check`": its
+/// `TouchesChangedFiles` becomes [`Refusal::StashInTheWay`] naming the
+/// unsaved or untracked paths, the same refusal in his words (m6-conflicts/86).
 pub fn plan(
     repo: &RepoHandle,
     git: &GitVersion,
@@ -345,8 +350,30 @@ pub fn plan(
     }
     // The same gate `apply` runs before it writes: a picture of a write
     // that would be refused is not a preview (m6-conflicts/67).
-    op.check(facts).map_err(PreviewError::Refused)?;
+    op.check(facts).map_err(|refused| match (op, refused) {
+        // A stash put-back refused over changed files says which of them
+        // git itself would refuse over, in the stash preview's words
+        // (m6-conflicts/86). Refused either way; only the words differ.
+        (
+            Operation::StashApply { commit, .. } | Operation::StashPop { commit, .. },
+            Refusal::TouchesChangedFiles { paths },
+        ) => match stash::in_the_way(*commit, facts) {
+            in_the_way if in_the_way.is_empty() => {
+                PreviewError::Refused(Refusal::TouchesChangedFiles { paths })
+            }
+            in_the_way => PreviewError::Refused(Refusal::StashInTheWay { paths: in_the_way }),
+        },
+        (_, refused) => PreviewError::Refused(refused),
+    })?;
     let mut drawn = match op {
+        Operation::StashApply { commit, .. } | Operation::StashPop { commit, .. } => {
+            let (worktree, conflicts) = stash::forecast_stash(repo, git, *commit, stop)?;
+            PreviewPlan {
+                worktree,
+                conflicts,
+                ..blank()
+            }
+        }
         Operation::Merge(params) => kinds::merge(repo, git, params, stop)?,
         Operation::Rebase(params) => kinds::rebase(repo, git, params, stop)?,
         Operation::CherryPick(params) => kinds::cherry_pick(repo, git, params, stop)?,

@@ -1,0 +1,35 @@
+# m6/stash-pop-preview-80x24.txt: 80x24, drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/stash_preview.rs,
+# the_pop_preview_fits_80_columns, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S p` on the same stash, at 80 columns.
+#  - A box titled `Preview: pop stash@{0}`, whole inside 80 columns.
+#  - `may conflict: notes.md`.
+#  - The fate row: `stash@{0} is dropped · u brings it back`.
+#  - The footer offers `y pop`.
+
+STASHES (1)
+▸ stash@{0}   "WIP on main: cfa370c add the notes"            4m ago   1 file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: pop stash@{0} ──────────────────────────────────────────────────────╮
+│ working tree: notes.md                                                       │
+│ may conflict: notes.md                                                       │
+│ stash@{0} is dropped · u brings it back                                      │
+│ git stash pop --index 'stash@{0}'                                            │
+│ ▸[ Cancel ]   [ Pop ]                                                        │
+╰ y pop  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────╯
+⏎ apply  p pop  s save  d drop  space files  esc close

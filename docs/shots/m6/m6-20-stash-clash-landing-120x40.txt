@@ -1,4 +1,4 @@
-m6 walk capture: m6-20-stash-clash-landing — scenario stash-pop-clash-to-done@landing, keys S p, unicode tier, 120x40
+m6 walk capture: m6-20-stash-clash-landing — scenario stash-pop-clash-to-done@landing, keys S p y, unicode tier, 120x40
 
 files   ▸ notes.md · 1 of 1 open
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

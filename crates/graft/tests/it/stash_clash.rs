@@ -61,6 +61,24 @@ pub(crate) fn overlay_open(app: &App, state: AppState) -> AppState {
     })
 }
 
+/// The stash list's put-back preview has its plan (m6-conflicts/86): `⏎`
+/// or `p` opened it, and `y` is answered only once the picture is up.
+pub(crate) fn previewed(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the stash preview's plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !matches!(preview.plan, Loading::Idle | Loading::Pending(_)))
+    })
+}
+
+/// `key` (`⏎` apply or `p` pop) on the stash list, its preview landed, then
+/// `y`: the put-back as `⏎`/`p` alone ran it before m6-conflicts/86.
+pub(crate) fn put_back(app: &App, state: &AppState, key: KeyCode) -> AppState {
+    let state = previewed(app, app.key(state, key));
+    app.key(&state, KeyCode::Char('y'))
+}
+
 /// The put-back has answered, the resolver's first read has landed and
 /// every read the answer asked for is in.
 pub(crate) fn landed(app: &App, state: AppState) -> AppState {
@@ -87,10 +105,10 @@ pub(crate) fn quiet(app: &App, state: AppState) -> AppState {
     })
 }
 
-/// `S p` from the graph onto a clash, landed.
+/// `S p y` from the graph onto a clash, landed.
 fn popped(app: &App, state: AppState) -> AppState {
     let state = overlay_open(app, state);
-    let state = app.key(&state, KeyCode::Char('p'));
+    let state = put_back(app, &state, KeyCode::Char('p'));
     landed(app, state)
 }
 
@@ -218,7 +236,7 @@ fn after_an_apply_clash_the_stash_is_kept() {
     let scratch = a_stash_that_clashes();
     let (app, state) = App::open(scratch.path());
     let state = overlay_open(&app, state);
-    let state = app.key(&state, KeyCode::Enter);
+    let state = put_back(&app, &state, KeyCode::Enter);
     let state = landed(&app, state);
     assert_eq!(
         state.clash.as_ref().map(|clash| clash.clash.why),
@@ -302,7 +320,7 @@ fn two_clashing_stashes() -> graft_fixtures::Scratch {
     scratch
 }
 
-/// Review 72+72b M2 in the app (ADR-0045 §2 as amended, §7): `S p` clashes
+/// Review 72+72b M2 in the app (ADR-0045 §2 as amended, §7): `S p y` clashes
 /// on A; the shell takes ours for `a.txt` and pops B, which clashes on
 /// `b.txt`. The index is not what Graft last recorded, so no clash: the
 /// resolver's theirs names no stash, and `⏎` on `b.txt` drops nothing.
@@ -486,7 +504,7 @@ const STOP_LINE_HEADER: &str = "\
 # the_stop_line_words_a_clash_at_80_and_120, asserted). Not a pty capture: a
 # character grid with no colour (CLAUDE.md rule 5, colour unverified).
 #
-# What right looks like: `S p` clashed in notes.md, then `esc` shut the
+# What right looks like: `S p y` clashed in notes.md, then `esc` shut the
 # resolver and the graph has the keys, at 80 columns.
 #  - The graph screen; no banner, no resolver.
 #  - The bottom hint row begins ` stash@{0} clashed · 1 file conflicted ·`,

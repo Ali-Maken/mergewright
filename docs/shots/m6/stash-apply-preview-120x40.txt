@@ -1,0 +1,52 @@
+# m6/stash-apply-preview-120x40.txt: 120x40, drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/m6_stash_put_back/stash_preview.rs,
+# stash_look_and_leave_writes_nothing, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S ⏎` on a stash whose notes.md clashes with the
+# commit made since.
+#  - A box over the stash list titled `Preview: apply stash@{0}`.
+#  - `working tree: notes.md`, then `may conflict: notes.md`.
+#  - The fate row: `stash@{0} stays in the list`.
+#  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+
+STASHES (1)
+▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
+│ working tree: notes.md                                                                                               │
+│ may conflict: notes.md                                                                                               │
+│ stash@{0} stays in the list                                                                                          │
+│ undo: u takes this back                                                                                              │
+│ git stash apply --index 'stash@{0}'                                                                                  │
+│ ▸[ Cancel ]   [ Apply ]                                                                                              │
+╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+⏎ apply  p pop  s save  d drop  space files  esc close

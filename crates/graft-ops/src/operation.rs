@@ -371,6 +371,15 @@ pub enum Refusal {
         /// The paths both the stash and the working tree changed.
         paths: Vec<PathBuf>,
     },
+    /// A stash put-back git would refuse before writing anything: unsaved
+    /// edits (worktree ≠ index) to a path the stash writes, or a file where
+    /// the stash would create an untracked one (m6-conflicts/86). Only the
+    /// stash preview says it; `apply` still refuses the first with
+    /// [`Refusal::TouchesChangedFiles`], and git refuses the second.
+    StashInTheWay {
+        /// The paths in the way.
+        paths: Vec<PathBuf>,
+    },
     /// A pull or push with `HEAD` not on a branch (detached or unborn).
     DetachedHead,
     /// No remote is configured at all.
@@ -622,6 +631,9 @@ impl Refusal {
                 name_paths(paths),
                 if paths.len() == 1 { "has" } else { "have" }
             ),
+            Self::StashInTheWay { paths } => {
+                format!("your unsaved edits to {} are in the way", name_paths(paths))
+            }
             // The remote refusals, in the M4 design note's words.
             Self::DetachedHead => "HEAD is detached — check out a branch first".to_owned(),
             Self::NoRemote => {

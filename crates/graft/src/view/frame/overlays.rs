@@ -59,6 +59,10 @@ pub(super) fn draw_stash(
     } else {
         frame.render_widget(widget, area);
     }
+    // The stash list's `⏎`/`p` open a put-back preview over the list, which
+    // stays under it so `esc` is back on the same row (m6-conflicts/86). No
+    // pixels here for the box to cut either.
+    let _preview: Option<Rect> = draw_preview(state, frame, area, &session.theme);
     // As in `draw_journal`: no pixels here for the menu to cut.
     let _menu: Option<Rect> = draw_context_menu(state, frame, area, &session.theme);
     None

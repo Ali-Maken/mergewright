@@ -1,4 +1,4 @@
-m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, keys S p o ⏎, unicode tier, 80x24
+m6 walk capture: m6-21-stash-clash-done — scenario stash-pop-clash-to-done, keys S p y o ⏎, unicode tier, 80x24
 
 Graph  [Detail]
 COMMIT 8e361b5

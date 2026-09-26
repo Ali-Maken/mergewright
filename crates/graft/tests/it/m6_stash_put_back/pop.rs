@@ -32,11 +32,11 @@ fn served_markers(state: &AppState) -> Vec<String> {
         .collect()
 }
 
-/// `S p esc`: the pop clashed, and the file looked at in the changes pane —
+/// `S p y esc`: the pop clashed, and the file looked at in the changes pane —
 /// which caches its diff, markers and all.
 fn looked_at(app: &App, state: AppState) -> AppState {
     let state = crate::stash_clash::overlay_open(app, state);
-    let state = app.key(&state, KeyCode::Char('p'));
+    let state = crate::stash_clash::put_back(app, &state, KeyCode::Char('p'));
     let state = quiet(app, landed(app, state));
     let state = app.key(&state, KeyCode::Escape);
     let state = app.pump(quiet(app, state), "the pane's diff", |state| {
@@ -50,16 +50,18 @@ fn looked_at(app: &App, state: AppState) -> AppState {
     state
 }
 
-/// `S p esc ⏎ o esc`: the pop clashes in `notes.md`; `esc` shows the file
+/// `S p y esc ⏎ o esc`: the pop clashes (`y` confirms the pop preview,
+/// m6-conflicts/86) in `notes.md`; `esc` shows the file
 /// in the changes pane (its diff, markers and all, now cached); `⏎` reopens
 /// the resolver, `o` takes yours, `esc` lands back on the pane with the
 /// cursor on the file. The pane's body has no marker line and neither has
 /// the file on disk. Writes
 /// `docs/shots/m6/stash-clash-take-esc-pane-120x40.txt`.
 ///
-/// Not the ticket's `S p o esc`: on that path the pane never read the file
-/// before the take (its diff is `Idle` under the resolver), so nothing stale
-/// is cached and the walk is green without the fix. The review's own walk
+/// Not 85's ticket's `S p o esc` (86's `S p y o esc`): on that path the
+/// pane never read the file before the take (its diff is `Idle` under the
+/// resolver), so nothing stale is cached and the walk is green without the
+/// fix. The review's own walk
 /// had looked at the file first; `esc ⏎` is that look.
 #[test]
 fn a_take_then_esc_shows_the_file_without_markers() {
@@ -138,7 +140,7 @@ const HEADER: &str = "\
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).
 #
-# What right looks like: `S p esc ⏎ o esc` — a stash pop that clashes in
+# What right looks like: `S p y esc ⏎ o esc` — a stash pop that clashes in
 # notes.md, a look at the file in the changes pane (markers shown then),
 # back into the resolver, `o` takes yours, `esc` back to the changes pane.
 #  - The changes pane on notes.md under `CONFLICTS`.

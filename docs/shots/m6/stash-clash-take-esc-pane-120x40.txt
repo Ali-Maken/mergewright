@@ -4,7 +4,7 @@
 # capture: a character grid with no colour (CLAUDE.md rule 5, colour
 # unverified).
 #
-# What right looks like: `S p esc ⏎ o esc` — a stash pop that clashes in
+# What right looks like: `S p y esc ⏎ o esc` — a stash pop that clashes in
 # notes.md, a look at the file in the changes pane (markers shown then),
 # back into the resolver, `o` takes yours, `esc` back to the changes pane.
 #  - The changes pane on notes.md under `CONFLICTS`.
