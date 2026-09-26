@@ -1376,10 +1376,13 @@ fn force_push_state() -> (AppState, Oid) {
     // remote was rewritten; a capture runs no `git`.
     state.radar.force_push.insert(
         "main".to_owned(),
-        Loading::Ready(ForcePushVerdict::Rewritten {
-            remote_ref: "origin/main".to_owned(),
-            previous: oid(9),
-            current: tip,
+        Loading::Ready(crate::update::radar::Probed {
+            tip,
+            verdict: ForcePushVerdict::Rewritten {
+                remote_ref: "origin/main".to_owned(),
+                previous: oid(9),
+                current: tip,
+            },
         }),
     );
 

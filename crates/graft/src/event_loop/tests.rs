@@ -71,7 +71,7 @@ impl Dispatch for Recorded {
 /// Every scripted wake is already queued, so `waiting` says `true` —
 /// unless `idle` says how many times it answers `false` first.
 struct ScriptedWakes {
-    remaining: std::vec::IntoIter<Wake>,
+    remaining: std::iter::Peekable<std::vec::IntoIter<Wake>>,
     /// `idle[i]`: `waiting` calls that find nothing before wake `i`.
     idle: std::collections::VecDeque<usize>,
     asked: usize,
@@ -84,7 +84,7 @@ impl ScriptedWakes {
 
     fn idle(wakes: Vec<Wake>, idle: Vec<usize>) -> Self {
         Self {
-            remaining: wakes.into_iter(),
+            remaining: wakes.into_iter().peekable(),
             idle: idle.into(),
             asked: 0,
         }
@@ -106,6 +106,10 @@ impl Wakes for ScriptedWakes {
             }
             _ => true,
         }
+    }
+
+    fn job_event_waiting(&mut self) -> bool {
+        self.waiting() && self.remaining.peek().is_some_and(is_job_event)
     }
 }
 
@@ -638,6 +642,62 @@ fn every_frame_is_wrapped_in_a_synchronized_update() {
     assert!(
         bytes.ends_with("\u{1b}[?2026l"),
         "the last bytes out must close it: {bytes:?}"
+    );
+}
+
+fn job_failed(id: u64) -> Wake {
+    Wake::Event(AppEvent::Core(Event::JobFailed(
+        graft_core::job::JobId::new(id),
+        graft_core::job::JobFailure::Failed("no repository".to_owned()),
+    )))
+}
+
+/// Frames written for `wakes`, the one before the first wait included.
+fn frames_for(wakes: Vec<Wake>) -> usize {
+    let (mut terminal, recorder) = terminal(60, 14);
+    pump(
+        &mut terminal,
+        &mut ScriptedWakes::new(wakes),
+        &Recorded::default(),
+        &mut session(),
+        AppState::default(),
+    )
+    .expect("writing to memory cannot fail");
+    recorder.written().matches("\u{1b}[?2026h").count()
+}
+
+/// Job answers queued back to back are updated one after another and drawn
+/// once (m7-power-tools/12): at startup 60-odd queue ahead of key 1, and a
+/// frame each was most of that key's wait.
+#[test]
+fn queued_wakes_draw_once() {
+    // The frame before the wait, then one for all three answers; the quit
+    // key ends the loop before its own.
+    assert_eq!(
+        frames_for(vec![
+            job_failed(1),
+            job_failed(2),
+            job_failed(3),
+            quit_key()
+        ]),
+        2
+    );
+}
+
+/// A key is never folded into the answers ahead of it: they are drawn, then
+/// the key is drawn in its own pass, then the answers behind it again.
+#[test]
+fn a_key_behind_queued_wakes_is_drawn_in_its_own_pass() {
+    // Before the wait; answers 1-2; the unbound key; answer 3.
+    assert_eq!(
+        frames_for(vec![
+            job_failed(1),
+            job_failed(2),
+            unbound_key(),
+            job_failed(3),
+            quit_key(),
+        ]),
+        4
     );
 }
 

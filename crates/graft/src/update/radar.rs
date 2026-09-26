@@ -42,7 +42,7 @@ pub struct RadarState {
     /// name: `Pending` while its probe runs, `Ready` once it answered.
     /// Asked for once the context lands, thrown away by a refresh — a fetch
     /// is exactly when a remote's history can have been rewritten.
-    pub force_push: HashMap<String, Loading<ForcePushVerdict>>,
+    pub force_push: HashMap<String, Loading<Probed>>,
     /// The duplicate-commit probe's groups, over the newest 500 commits.
     /// Asked for once the context lands, thrown away by a refresh, like
     /// [`RadarState::force_push`] — but one repo-wide job, not one per
@@ -74,6 +74,17 @@ pub struct RadarState {
     pub built_from: Option<RefFindings>,
 }
 
+/// One branch's force-push verdict, and the tip the branch stood on when
+/// it was asked. The tip is what places the verdict on a row without looking
+/// the branch up among every ref (m7-power-tools/12).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Probed {
+    /// The branch's tip the probe ran against.
+    pub tip: Oid,
+    /// What the probe found.
+    pub verdict: ForcePushVerdict,
+}
+
 /// What the ref-derived findings depend on: everything `classify_refs` and
 /// the force-push verdicts read off `AppState`.
 ///
@@ -92,9 +103,10 @@ pub struct RefFindings {
 }
 
 impl RefFindings {
-    /// Would a rebuild produce the same maps? Cheap by construction: no
-    /// field here costs more than a pointer or a short name to compare.
-    fn same_as(&self, other: &Self) -> bool {
+    /// Would a rebuild produce the same `classify_refs` answer? Everything
+    /// but the force-push verdicts. Cheap by construction: no field here
+    /// costs more than a pointer or a short name to compare.
+    fn same_refs_as(&self, other: &Self) -> bool {
         fn same_arc<T>(one: Option<&Arc<T>>, two: Option<&Arc<T>>) -> bool {
             match (one, two) {
                 (None, None) => true,
@@ -106,7 +118,6 @@ impl RefFindings {
             && same_arc(self.context.as_ref(), other.context.as_ref())
             && self.head == other.head
             && self.default_branch == other.default_branch
-            && self.force_push_revision == other.force_push_revision
             && self.policy == other.policy
     }
 }
@@ -201,16 +212,20 @@ pub fn refresh_ref_findings(state: &mut AppState) {
         force_push_revision: state.radar.force_push_revision,
         policy: state.radar.policy.clone(),
     };
-    if state
-        .radar
-        .built_from
-        .as_ref()
-        .is_some_and(|before| before.same_as(&now))
-    {
+    let before = state.radar.built_from.as_ref();
+    let same_refs = before.is_some_and(|before| before.same_refs_as(&now));
+    let same_verdicts =
+        before.is_some_and(|before| before.force_push_revision == now.force_push_revision);
+    if same_refs && same_verdicts {
         return;
     }
-    let (ref_findings, force_push_findings, not_checkable) = ref_findings_now(state);
-    state.radar.ref_findings = ref_findings;
+    // A probe answer moves only the verdicts: `classify_refs` is O(refs),
+    // and 32 answers land within a few ms of the first paint
+    // (m7-power-tools/12), so it runs only when the refs themselves moved.
+    if !same_refs {
+        state.radar.ref_findings = classified_now(state);
+    }
+    let (force_push_findings, not_checkable) = force_push_now(state);
     state.radar.force_push_findings = force_push_findings;
     state.radar.force_push_not_checkable = not_checkable;
     state.radar.built_from = Some(now);
@@ -219,42 +234,66 @@ pub fn refresh_ref_findings(state: &mut AppState) {
 /// Findings by the commit they land on.
 type ByCommit = HashMap<Oid, Vec<Finding>>;
 
-/// The three maps [`refresh_ref_findings`] stores, from the state as it is
-/// right now. Empty until the context is `Ready`, the same gate
-/// `view::radar::findings_for` has always applied: nothing shows before the
-/// context that makes a foxtrot tellable from an ordinary merge lands.
-fn ref_findings_now(state: &AppState) -> (ByCommit, ByCommit, HashMap<Oid, String>) {
+/// `classify_refs`'s findings by the commit they land on, from the state as
+/// it is right now: O(refs). [`refresh_ref_findings`] gates it on the
+/// context being `Ready`, the same gate `view::radar::findings_for` has
+/// always applied: nothing shows before the context that makes a foxtrot
+/// tellable from an ordinary merge lands.
+fn classified_now(state: &AppState) -> ByCommit {
     let mut by_commit: ByCommit = HashMap::new();
-    let mut force_push: ByCommit = HashMap::new();
-    let mut not_checkable: HashMap<Oid, String> = HashMap::new();
-    if !matches!(state.radar.context, Loading::Ready(_)) {
-        return (by_commit, force_push, not_checkable);
-    }
     let branches = branch_facts(state);
     let head = head_facts(state);
     for finding in classify_refs(&branches, &head, &state.radar.policy) {
         by_commit.entry(finding.at).or_default().push(finding);
     }
-    // A force-push verdict belongs to a branch, and shows at the tip that
-    // branch stands on. `finding.at` is the verdict's own `current`, so a
-    // branch that moved since its probe answered contributes nothing rather
-    // than marking the wrong row.
-    for branch in &branches {
-        let Some(Loading::Ready(verdict)) = state.radar.force_push.get(branch.name) else {
+    by_commit
+}
+
+/// The force-push maps: each answered verdict at the tip it was asked
+/// about, while its branch still stands there. O(verdicts) — at most
+/// [`MAX_FORCE_PUSH_PROBES`] — and one badge lookup each, never a walk over
+/// every ref.
+///
+/// A branch that moved since its probe was asked contributes nothing, rather
+/// than marking a row its verdict was never about. A `Rewritten` finding's
+/// `at` is the remote's `current`, so it shows only where the branch's tip
+/// is that commit.
+fn force_push_now(state: &AppState) -> (ByCommit, HashMap<Oid, String>) {
+    let mut force_push: ByCommit = HashMap::new();
+    let mut not_checkable: HashMap<Oid, String> = HashMap::new();
+    let Some(refs) = state.refs.as_deref() else {
+        return (force_push, not_checkable);
+    };
+    // By name, so two verdicts at one tip resolve the same way every time.
+    let mut answered: Vec<(&String, &Probed)> = state
+        .radar
+        .force_push
+        .iter()
+        .filter_map(|(name, probed)| match probed {
+            Loading::Ready(probed) => Some((name, probed)),
+            _ => None,
+        })
+        .collect();
+    answered.sort_by(|one, two| one.0.cmp(two.0));
+    for (name, probed) in answered {
+        let still_there = refs.on(probed.tip).iter().any(|label| {
+            matches!(label, RefLabel::Branch { name: here, .. } if here.as_slice() == name.as_bytes())
+        });
+        if !still_there {
             continue;
-        };
-        if let Some(finding) = findings_from_force_push(verdict, &state.radar.policy)
-            .filter(|finding| finding.at == branch.tip)
+        }
+        if let Some(finding) = findings_from_force_push(&probed.verdict, &state.radar.policy)
+            .filter(|finding| finding.at == probed.tip)
         {
             force_push.entry(finding.at).or_default().push(finding);
         }
-        if let ForcePushVerdict::NotCheckable(reason) = verdict {
+        if let ForcePushVerdict::NotCheckable(reason) = &probed.verdict {
             not_checkable
-                .entry(branch.tip)
+                .entry(probed.tip)
                 .or_insert_with(|| reason.clone());
         }
     }
-    (by_commit, force_push, not_checkable)
+    (force_push, not_checkable)
 }
 
 /// The default branch's shorthand name and its tip, purely from facts
@@ -309,8 +348,8 @@ pub fn radar_event(state: &mut AppState, event: AppEvent) {
         AppEvent::Produced(id, Product::RadarContext(result)) => {
             context_landed(state, id, result);
         }
-        AppEvent::Produced(_, Product::ForcePushProbe(branch, verdict)) => {
-            force_push_probed(state, branch, verdict);
+        AppEvent::Produced(_, Product::ForcePushProbe(branch, tip, verdict)) => {
+            force_push_probed(state, branch, tip, verdict);
         }
         AppEvent::Produced(id, Product::DuplicatesProbe(result)) => {
             duplicates_probed(state, id, result);
@@ -437,15 +476,20 @@ fn force_push_candidates(state: &AppState) -> Vec<(String, Oid)> {
     wanted
 }
 
-/// One branch's force-push probe answered.
+/// One branch's force-push probe answered, about the branch at `tip`.
 ///
 /// Kept whatever its id: unlike the detail pane's jobs these are not tied to
 /// the selection, and a verdict for a branch is a verdict for that branch.
-pub fn force_push_probed(state: &mut AppState, branch: String, verdict: ForcePushVerdict) {
+pub fn force_push_probed(
+    state: &mut AppState,
+    branch: String,
+    tip: Oid,
+    verdict: ForcePushVerdict,
+) {
     state
         .radar
         .force_push
-        .insert(branch, Loading::Ready(verdict));
+        .insert(branch, Loading::Ready(Probed { tip, verdict }));
     state.radar.force_push_revision = state.radar.force_push_revision.wrapping_add(1);
 }
 
@@ -760,10 +804,13 @@ mod tests {
             previous: oid(3),
             current: oid(1),
         };
-        force_push_probed(&mut state, "main".to_owned(), verdict.clone());
+        force_push_probed(&mut state, "main".to_owned(), oid(1), verdict.clone());
         assert_eq!(
             state.radar.force_push.get("main"),
-            Some(&Loading::Ready(verdict))
+            Some(&Loading::Ready(Probed {
+                tip: oid(1),
+                verdict
+            }))
         );
 
         reset_for_refresh(&mut state);
@@ -771,6 +818,54 @@ mod tests {
             state.radar.force_push.is_empty(),
             "a fetch is when a remote can have been rewritten"
         );
+    }
+
+    /// m7-power-tools/12: each probe answer re-ran `classify_refs` over every
+    /// ref — 1-5 ms apiece at 50k refs, 32 of them queued ahead of the first
+    /// key. A verdict moves only the force-push maps; the ref findings stay
+    /// the very map they were (a marker planted in it survives).
+    #[test]
+    fn a_force_push_answer_does_not_reclassify_every_ref() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        refresh_ref_findings(&mut state);
+        let mut commands = Vec::new();
+        request_force_push_probes(&mut state, &mut commands, &mut || JobId::new(1));
+        state.radar.ref_findings.insert(oid(99), Vec::new());
+
+        force_push_probed(
+            &mut state,
+            "main".to_owned(),
+            oid(1),
+            ForcePushVerdict::NotCheckable("no reflog".to_owned()),
+        );
+        refresh_ref_findings(&mut state);
+
+        assert!(
+            state.radar.ref_findings.contains_key(&oid(99)),
+            "the ref findings were rebuilt for a force-push answer"
+        );
+        assert_eq!(
+            state.radar.force_push_not_checkable.get(&oid(1)),
+            Some(&"no reflog".to_owned()),
+            "the verdict itself still lands at the branch's tip"
+        );
+    }
+
+    /// A verdict is about the tip it was asked at: once the branch stands
+    /// elsewhere it marks no row, the old tip nor the new one.
+    #[test]
+    fn a_verdict_for_a_branch_that_has_moved_marks_nothing() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        force_push_probed(
+            &mut state,
+            "main".to_owned(),
+            oid(2),
+            ForcePushVerdict::NotCheckable("no reflog".to_owned()),
+        );
+        refresh_ref_findings(&mut state);
+
+        assert!(state.radar.force_push_not_checkable.is_empty());
+        assert!(state.radar.force_push_findings.is_empty());
     }
 
     #[test]

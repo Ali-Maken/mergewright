@@ -300,7 +300,7 @@ impl<S: JobEvents> JobRunner<S> {
                 };
                 self.detail_job(id, task, move |cancel| {
                     let verdict = force_push_probe(&repos, &branch, current, cancel);
-                    Product::ForcePushProbe(branch, verdict)
+                    Product::ForcePushProbe(branch, current, verdict)
                 });
             }
             Command::RadarContext(id, default_tip, default_ref) => {

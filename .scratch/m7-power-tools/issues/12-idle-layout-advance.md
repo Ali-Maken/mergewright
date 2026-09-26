@@ -145,12 +145,15 @@ impl Wake { pub fn label(&self) -> &'static str; }   // variant name, and the `P
   screen, idle resumes; cancel/shutdown → worker freed within one pull.
 
 ## Acceptance (each tick names its test or perf line, at tick time)
-- [ ] **Part A** (perf rev before Part B):
-  - `frame_trace: startup …` lines in `docs/perf/m7-12-idle-advance.txt`; NOTES names each wake kind ahead of key 1,
-    its `update_us`/`draw_us`, the burst length, and whether the cause is in Graft.
-  - If in Graft: the fix's red-first test, named (e.g. `queued_wakes_draw_once` for a drain-then-draw loop), and the
-    rev line showing key 1 ≤ 16 ms in all 3 runs. If outside: the evidence line, and the builder stopped and asked.
-  - `Wake::label` unit test: `every_wake_has_a_label`.
+- [x] **Part A** (perf rev before Part B):
+  - `frame_trace: startup …` lines in `docs/perf/m7-12-idle-advance.txt` (revs 2 and 3); NOTES names each wake kind
+    ahead of key 1, its `update_us`/`draw_us`, the burst length, and that the cause is in Graft. ✔
+  - In Graft: red-first tests `event_loop::tests::queued_wakes_draw_once` (red 4≠2),
+    `a_key_behind_queued_wakes_is_drawn_in_its_own_pass` (red 5≠4), `update::radar::tests::
+    a_force_push_answer_does_not_reclassify_every_ref` (red: "the ref findings were rebuilt"). Rev line: rev 3
+    `SUMMARY spread` max 0.8–6.9 ms over every key of all 3 plain runs (key 1 included), `## slow scroll keys (latency
+    over 8 ms)` empty, every `gate(p99<=16ms)=ok`. ✔
+  - `Wake::label` unit test: `event_loop::label::tests::every_wake_has_a_label`. ✔
 - [ ] **Part B**, graft (`history::views` tests, over a counting source):
   - `idle_steps_reach_the_end_of_history_then_return_caught`;
   - `a_caught_up_idle_step_pulls_nothing` (the parked worker does no work);
@@ -225,3 +228,64 @@ in Graft and, if so, fix it at the cause. Acceptance: one more tick naming the t
 → Specified as **Part A** above. Candidates from `scouts/12.md` "Carried from 04b": `Started` per startup job,
 `Product::{Repository, SystemGit, Refs, WorkingTree}`, `HistoryUpdate::{Started, Progress, Window}`, the `settle`
 follow-ups (radar, probes, journal, `request_at_launch`, `open_explain`), `PromoteHistory` → `TopologicalOrder`.
+
+## NOTES (builder, 2026-09-26)
+
+**I compacted mid-ticket.** Stopped at the first split seam: **Part A is done and committed; B, C, D and the final
+release/heap/budgets/docs items remain** (list at the end).
+
+Scout: used `scouts/12.md` (+ 04/04b NOTES). Its premises match this respec; no new mismatch found.
+
+### Part A — what was ahead of key 1 (rev 2, plain3, FiftyThousand Unicode Closed, the clean run)
+- 68 wakes from the first `Progress::History::Window` to key 1: `Produced::RadarContext` (update 4.2 ms),
+  `Produced::Journal`, then 32× `Started::ForcePushProbe` + `Started::DuplicatesProbe` (draw 0.3–7.8 ms each, update
+  ~0), then 32× `Produced::ForcePushProbe` (**update 1–5 ms each**, draw 0.3–1 ms). All sent within ~36 ms of first
+  paint (`burst_after_first_paint_us` 16–55 ms across runs); the loop took ~170 ms to drain them. Fixture refs: 3–5
+  wakes, no burst.
+- Real app: the same `opening` + `JobRunner` feed the same channel, so a key pressed within ~20–55 ms of first paint
+  waited behind this burst; one pressed later did not.
+- **Cause in Graft, two parts, both fixed at the cause:**
+  1. `update/radar.rs` `refresh_ref_findings`: every probe answer bumps `force_push_revision`, which re-ran
+     `classify_refs` over all 50k refs. Now `ref_findings` rebuilds only when refs/context/HEAD/default/policy move;
+     the force-push maps rebuild alone, O(verdicts ≤ 32), each verdict placed at the tip it was probed at
+     (`Product::ForcePushProbe(branch, tip, verdict)`, `RadarState::force_push: HashMap<String, Loading<Probed>>`).
+     Behaviour change: a verdict whose branch has since moved marks nothing (before: a `NotCheckable` line moved to
+     the new tip). Test `a_verdict_for_a_branch_that_has_moved_marks_nothing` (written after the change, not run red;
+     under the old code it would fail — the old loop placed `NotCheckable` at the branch's current tip).
+  2. `event_loop/running.rs`: one draw per queued job answer. New `Wakes::job_event_waiting` (default `false`;
+     `ChannelWakes` peeks its `seen`); the loop runs job events queued back to back and draws once, bounded by
+     `BATCH_BUDGET` = 8 ms of updates; a key is never folded in (drawn in its own pass). The 8 ms bound has **no test**
+     (it needs a clock seam); verified only by reading. Tests `queued_wakes_draw_once`,
+     `a_key_behind_queued_wakes_is_drawn_in_its_own_pass`.
+- Evidence, rev 3 (same scenario): `Produced::ForcePushProbe` update 1–5 **µs**; 66 of 68 startup wakes undrawn, one
+  draw (286 µs) at the end; last startup wake handled at 20.8 ms after the first window (was ~170 ms). Every plain run
+  max 0.8–6.9 ms; controls B and C, which failed at base (rev 1), exit 0.
+- Load caveat (rule 1): rev 2's plain runs failed with seconds of latency under other agents' load (load avg 14–18,
+  other worktrees' test binaries at 100% CPU) — not the harness. Rev 3 ran at load 6.1 → 1.8 (uptime before/after,
+  not in the perf file). Rev 1 (base) ran at unrecorded load; the before/after `SUMMARY rev3` lines compare against
+  rev 2, which is contaminated — compare rev 3 with rev 1 by eye.
+- Harness change: `frames` `Paced` implements `job_event_waiting` without `stamp` (the stamp marks a drawn frame).
+
+### Extra item (conductor, mid-ticket): `m5_walk::parse_counts` read only one fence
+- `crates/graft/tests/it/m5_walk/journeys.rs`: reads every ```` ```journey-counts ```` fence; a duplicate id across
+  fences is refused; one-fence notes (M5/M6) unchanged. Tests `two_fences_are_read_as_one_block`,
+  `a_duplicate_id_across_fences_is_refused`, `no_block_is_an_error`; `m7_walk::restart_after_done` green; all 148
+  m5/m6/m7 walk tests green. Commits 4e1ea128, 60716460.
+
+### Touches (Part A)
+- `update::radar` callers of `force_push_probed` / readers of `RadarState::force_push`: grep → `radar.rs`,
+  `view/radar.rs` tests, `view/tests.rs` capture fixture, `jobs/runner.rs`, `event_loop/label.rs`, `update/mod.rs`
+  (pattern `..`, unchanged). All compile; radar/view tests green.
+- `running.rs` loop: every walk that waits on frames (m3/m4/m5/m6/m7 walks), `frames`, event-loop tests — workspace
+  nextest 3596/3596 green; captures byte-identical (no `docs/shots` change after the run).
+- Prefetch (m1/30h): its tests green (`event_loop::` 73/73 + 2 new).
+- MAP.md: graft `Wake::label`, `Wakes::job_event_waiting`, `is_job_event`, `Probed`, `force_push_probed`,
+  `refresh_ref_findings`, `force_push_revision` lines updated.
+
+### What remains (for the split)
+- **B + D:** `Views::idle_step`/`IdleWork`, `serve` loop, `HistoryUpdate::LaidOut` (+ arms in `update` apply,
+  `event_loop/label.rs` — ready in the builder's scratch as a two-line add, `tests/it/heavy.rs:315`),
+  `History::laid_out`; the six worker tests and two app-level tests; graft-graph Part D tests.
+- **C + final:** `begin_promotion`, the three `update::history` tests, `g_after_idle` + `idle_gap_wakes` in `frames`,
+  final perf rev, heap-slope before/after, heavy peak-memory, `examples/budgets` `G` on git/git, TESTING.md
+  "Performance", MAP.md history lines, DESIGN §3.6 sentence proposal.

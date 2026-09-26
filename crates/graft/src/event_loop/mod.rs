@@ -24,6 +24,7 @@
 mod graphics;
 mod headless;
 pub mod input;
+mod label;
 pub mod outside;
 pub mod redetect;
 mod row_clear;
@@ -96,6 +97,15 @@ pub trait Wakes {
     /// answer is `true`; a source that has ended says `true` too, so the loop
     /// goes straight to finding that out.
     fn waiting(&mut self) -> bool;
+
+    /// Is the wake already here a job's event — not a key, a signal or a
+    /// terminal change? Never blocks. The loop runs such wakes back to back
+    /// and draws once (m7-power-tools/12): nobody sees a frame per job
+    /// answer, and at startup 60-odd of them queue ahead of the first key.
+    /// A source that cannot tell says `false`, and every wake is drawn.
+    fn job_event_waiting(&mut self) -> bool {
+        false
+    }
 
     /// One phase of the frame for the wake just handed out has ended. A
     /// timing seam for the `frames` perf harness (m7-power-tools/04), which
@@ -197,6 +207,33 @@ impl Wakes for ChannelWakes {
             // Every producer has gone: `next_wake` says so at once.
             Err(TryRecvError::Disconnected) => true,
         }
+    }
+
+    fn job_event_waiting(&mut self) -> bool {
+        self.waiting() && self.seen.as_ref().is_some_and(is_job_event)
+    }
+}
+
+/// A job said something: it started, answered, reported progress, or ended.
+/// Everything else — the user's input, a signal, the terminal — is not.
+#[must_use]
+pub fn is_job_event(wake: &Wake) -> bool {
+    match wake {
+        Wake::Event(event) => said_by_a_job(event),
+        Wake::Shutdown(_) | Wake::InputFailed(_) | Wake::Terminal(_) | Wake::TerminalFailed(_) => {
+            false
+        }
+    }
+}
+
+/// [`is_job_event`] for an event already taken out of its wake.
+fn said_by_a_job(event: &AppEvent) -> bool {
+    match event {
+        AppEvent::Started(..) | AppEvent::Produced(..) | AppEvent::Progress(..) => true,
+        AppEvent::Core(event) => matches!(
+            event,
+            Event::JobFinished(_) | Event::JobFailed(..) | Event::JobCancelled(_)
+        ),
     }
 }
 

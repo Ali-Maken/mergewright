@@ -466,6 +466,7 @@ mod tests {
         crate::update::radar::force_push_probed(
             &mut state,
             "main".to_owned(),
+            tip,
             ForcePushVerdict::Rewritten {
                 remote_ref: "origin/main".to_owned(),
                 previous: oid(9),
@@ -501,6 +502,7 @@ mod tests {
         crate::update::radar::force_push_probed(
             &mut state,
             "main".to_owned(),
+            tip,
             ForcePushVerdict::NotCheckable("no remote-tracking reflog".to_owned()),
         );
         crate::update::radar::refresh_ref_findings(&mut state);

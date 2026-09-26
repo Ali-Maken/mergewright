@@ -5,6 +5,7 @@
 
 use std::collections::VecDeque;
 use std::io::{self, Write};
+use std::time::{Duration, Instant};
 
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
@@ -16,7 +17,7 @@ use ratatui::backend::Backend;
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
 use super::outside::{Handover, Outside};
 use super::redetect;
-use super::{Exit, Phase, Wake, Wakes};
+use super::{Exit, Phase, Wake, Wakes, said_by_a_job};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
 use crate::update::{AppEvent, AppState, Command, Product, Quit, update};
@@ -81,6 +82,11 @@ where
     exit.and_then(|exit| released.map(|()| exit))
 }
 
+/// The most update time job answers queued back to back run before a frame
+/// shows them. Half a 60 Hz frame: a burst longer than this still draws as it
+/// goes, so the screen never sits stale behind a long queue.
+const BATCH_BUDGET: Duration = Duration::from_millis(8);
+
 /// The loop's body: draw, wait, update, repeat.
 fn frames<B, W, D, R>(
     terminal: &mut Terminal<B>,
@@ -100,6 +106,9 @@ where
     // Draw before waiting: the first frame must be on screen while Graft sits
     // idle waiting for the user's first key.
     draw(terminal, session, &state, graphics)?;
+    // When the first update not yet drawn began: job answers queued back to
+    // back share one frame, up to `BATCH_BUDGET` of updates.
+    let mut undrawn_since: Option<Instant> = None;
 
     loop {
         // Idle: nothing is waiting, so get the next page ready.
@@ -128,11 +137,14 @@ where
                 }
                 if changed || replied {
                     draw(terminal, session, &state, graphics)?;
+                    undrawn_since = None;
                 }
                 continue;
             }
         };
 
+        let from_a_job = said_by_a_job(&event);
+        let began = *undrawn_since.get_or_insert_with(Instant::now);
         let (next, commands) = update(&state, event);
         state = next;
         wakes.mark(Phase::Updated);
@@ -148,7 +160,15 @@ where
             None => {}
         }
 
+        // Another job answer is already queued behind this one: run it
+        // before drawing. A key is never taken this way — it waits for this
+        // frame and is drawn in its own pass, acting on the state every
+        // answer ahead of it built.
+        if from_a_job && began.elapsed() < BATCH_BUDGET && wakes.job_event_waiting() {
+            continue;
+        }
         draw(terminal, session, &state, graphics)?;
+        undrawn_since = None;
         wakes.mark(Phase::Drawn);
     }
 }
