@@ -148,6 +148,36 @@ fn has_made(dir: &Path) -> bool {
         .success()
 }
 
+/// Race 1a: a stop that lands after git has already exited is not a stop —
+/// the command ran to the end, and a write it made stands. Reporting
+/// `Stopped` here tells the caller a done write did not happen.
+#[test]
+fn a_stop_after_git_has_exited_reports_the_exit() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Linear);
+    let repo = open(scratch.path());
+    let stop = StopsLate {
+        polls: AtomicUsize::new(0),
+        quiet: 1,
+    };
+    let result = GitInvocation::new(&repo).args(update_ref_made()).run(&stop);
+    assert!(has_made(scratch.path()), "git did the write");
+    assert!(result.is_ok(), "{result:?}");
+
+    let stop = StopsLate {
+        polls: AtomicUsize::new(0),
+        quiet: 1,
+    };
+    let raw = GitInvocation::new(&repo)
+        .args([GitArg::Flag("rev-parse"), GitArg::Flag("HEAD")])
+        .run_raw(&stop)
+        .unwrap_or_else(|why| panic!("run_raw finishes too: {why}"));
+    assert_eq!(raw.code, Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&raw.output.stdout).trim(),
+        rev_parse(&repo, "HEAD").to_string()
+    );
+}
+
 /// Race 1b: a stop already asked before `run` is called spawns nothing, so a
 /// write command never gets to write.
 #[test]
