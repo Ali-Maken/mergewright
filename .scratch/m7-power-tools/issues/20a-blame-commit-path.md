@@ -1,6 +1,6 @@
 # blame-commit-path — each blamed commit carries the file's path in that commit
 
-Status: ready
+Status: done
 Blocked by: 18-trace-readers (landed; scout `.scratch/m7-power-tools/scouts/blame-place.md` "Exists already")
 Crates: graft-git. (Holds graft-git: the conductor must not run it beside `journal-list`.)
 Build with: **Sonnet**. One field read from a porcelain header already parsed; an oracle test against real git judges it.
@@ -29,11 +29,16 @@ pub struct BlameCommit { pub id: Oid, pub author: String, pub author_time: i64, 
 ```
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] `blame_commit_path_follows_a_rename` (red first): fixture renames `a.rs` → `b.rs`; blaming `b.rs` at HEAD, a line
+- [x] `blame_commit_path_follows_a_rename` (tests/it/blame.rs; seen failing first). Uses the `session` fixture's existing rename `src/session.rs` → `src/auth/session.rs` rather than a new a.rs→b.rs fixture; oracle is `git blame --line-porcelain`'s per-line `filename`. Spec was: fixture renames `a.rs` → `b.rs`; blaming `b.rs` at HEAD, a line
       from before the rename has `path == "a.rs"`, a line after has `"b.rs"`. Oracle: `git blame --porcelain` on the same
       repo.
-- [ ] `parse_porcelain` unit test: an entry whose `filename` repeats for a later line of the same commit keeps it.
-- [ ] graft-git MAP.md `BlameCommit` line names `path`.
+- [x] `a_repeated_filename_keeps_the_commits_path` (src/blame/tests.rs; seen failing first) — `parse_porcelain` unit test: an entry whose `filename` repeats for a later line of the same commit keeps it.
+- [x] graft-git MAP.md `BlameCommit` line names `path` (checked by reading the line; no test).
+
+## NOTES
+- `filename` is now required on a commit's first entry (ParseError otherwise, same as `author`); git always prints it.
+- Touches: only `BlameCommit {` literal is `record_commit` in blame.rs; grep finds no `BlameCommit` in crates/graft or fuzz/. Fuzz crate is standalone (not a workspace member), calls only `parse_porcelain`; not built.
+- No compaction.
 
 ## Touches (check each, report how)
 - Every `BlameCommit { .. }` literal (tests, fixtures): grep `BlameCommit {` workspace-wide; each gains the field.

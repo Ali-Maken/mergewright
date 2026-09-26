@@ -160,3 +160,28 @@ fn revisions_count_skips_comments_and_blanks() {
     assert_eq!(count_revisions(b"# a comment\n\n  abc123\n\t\ndef456\n"), 2);
     assert_eq!(count_revisions(b""), 0);
 }
+
+#[test]
+fn a_repeated_filename_keeps_the_commits_path() {
+    let (_, commits) = parse_porcelain(PORCELAIN_2_38).expect("parses");
+    let ana = &commits[&id("1111111111111111111111111111111111111111")];
+    assert_eq!(ana.path, PathBuf::from("src/\u{e9}.rs"));
+    // A later entry of the same commit repeats `filename`: the first stays.
+    let bytes = b"\
+1111111111111111111111111111111111111111 1 1 1
+author A
+author-time 1
+summary s
+filename a.rs
+\tx
+1111111111111111111111111111111111111111 2 2 1
+filename a.rs
+\ty
+";
+    let (lines, commits) = parse_porcelain(bytes).expect("parses");
+    assert_eq!(lines.len(), 2);
+    assert_eq!(
+        commits[&id("1111111111111111111111111111111111111111")].path,
+        PathBuf::from("a.rs")
+    );
+}
