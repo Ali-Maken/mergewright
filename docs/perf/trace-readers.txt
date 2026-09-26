@@ -1,0 +1,16 @@
+# m7-power-tools/18 trace readers — 2026-09-26T10:25:46Z
+# HEAD 477b74d5 +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, 10 runs; p95 is nearest-rank (with 10 runs, the slowest)
+# synthetic 100000 commits, trunk.txt: 1 lines, cap 1000
+run 1: blame=13.0 line_history=247.8 (1000 rows, capped at 1000) file_history=18.0 (1000 rows, capped at 1000)
+run 2: blame=13.5 line_history=246.9 (1000 rows, capped at 1000) file_history=17.8 (1000 rows, capped at 1000)
+run 3: blame=13.7 line_history=248.4 (1000 rows, capped at 1000) file_history=17.6 (1000 rows, capped at 1000)
+run 4: blame=14.3 line_history=251.5 (1000 rows, capped at 1000) file_history=18.0 (1000 rows, capped at 1000)
+run 5: blame=13.8 line_history=252.0 (1000 rows, capped at 1000) file_history=18.4 (1000 rows, capped at 1000)
+run 6: blame=13.9 line_history=251.1 (1000 rows, capped at 1000) file_history=17.8 (1000 rows, capped at 1000)
+run 7: blame=13.7 line_history=247.3 (1000 rows, capped at 1000) file_history=17.2 (1000 rows, capped at 1000)
+run 8: blame=14.3 line_history=249.3 (1000 rows, capped at 1000) file_history=17.7 (1000 rows, capped at 1000)
+run 9: blame=13.9 line_history=252.6 (1000 rows, capped at 1000) file_history=18.5 (1000 rows, capped at 1000)
+run 10: blame=14.3 line_history=252.3 (1000 rows, capped at 1000) file_history=17.9 (1000 rows, capped at 1000)
+trace-readers: blame p95=14.3 line_history p95=252.6 file_history p95=18.5

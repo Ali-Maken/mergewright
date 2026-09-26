@@ -14,6 +14,7 @@ mod conflicts;
 mod history;
 mod merges;
 mod refs;
+mod trace;
 
 use std::fs;
 use std::io;
@@ -90,6 +91,16 @@ impl<'a> Site<'a> {
     /// Runs one `git` in the fixture and returns its stdout.
     pub fn git(&self, args: &[&str]) -> Result<Vec<u8>, BuildError> {
         git::run(self.dir, args).map_err(|source| BuildError::Git {
+            shape: self.shape,
+            source,
+        })
+    }
+
+    /// Runs one `git` in the fixture stamped `date` (anything git accepts,
+    /// `@<seconds> +0000` included) instead of the fixed date, so a commit
+    /// made after an import still has the same id every build.
+    pub fn git_at(&self, args: &[&str], date: &str) -> Result<Vec<u8>, BuildError> {
+        git::run_at(self.dir, args, date).map_err(|source| BuildError::Git {
             shape: self.shape,
             source,
         })
@@ -192,5 +203,6 @@ pub fn build(shape: Shape, dir: &Path, streams: &Path) -> Result<(), BuildError>
         Shape::StoppedRebase => conflicts::stopped_rebase(&site),
         Shape::StoppedMerge => conflicts::stopped_merge(&site),
         Shape::TwoStopRebase => conflicts::two_stop_rebase(&site),
+        Shape::Session => trace::session(&site),
     }
 }

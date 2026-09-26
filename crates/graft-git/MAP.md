@@ -2,6 +2,8 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
+- `blame` (mod) — `git blame --porcelain` read into lines and commits, with `.git-blame-ignore-revs` found and counted (m7-power-tools/18).
+- `trace` (mod) — line and file histories (`git log -L`, `git log --follow`), the function around a line by git's funcname rules, one commit's change as the whole file, working-tree lines mapped to `HEAD` (m7-power-tools/18).
 - `branches` (mod) — choosing the default/integration branch among a repository's refs.
 - `contained` (mod) — which branches, remotes and tags contain a commit, via `git for-each-ref --contains` (m2/01).
 - `diff` (mod) — pure parsers for git's diff output: unified patches, `--raw`/`--numstat` file lists, hunk pairing (m2/02).
@@ -18,6 +20,31 @@ One line per public item. Update when a public item changes.
 - `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
+
+## blame
+- `Rev` (enum) — `Commit(Oid)` or `WorkingTree` (the file on disk; blamed with no rev, uncommitted lines get `commit: None`).
+- `BlameOptions` (struct) — `ignore_whitespace` (`-w`), `ignore_revs` (the repo's ignore file); both on by default. `ignore_revs: false` also clears a configured `blame.ignoreRevsFile`.
+- `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `previous` (parent id and path there), `boundary`.
+- `LineMark` (enum) — `Plain`, `Skipped` (passed over by the ignore list), `Unblamable`.
+- `BlameLine` (struct) — `commit` (`None`: not committed yet), `orig_line`, `final_line`, `text`, `mark`.
+- `IgnoreRevs` (struct) — `file`, `revisions` (count of listed ids), `applied`.
+- `Blame` (struct) — `path`, `rev`, `lines`, `commits` (by id), `ignore_revs` (`Some` only for a readable list of ≥1 id).
+- `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`; refusals come from a `diff-tree --numstat` check before blame spawns.
+- `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`, the conventional name looked for when `blame.ignoreRevsFile` is unset.
+- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…] [<rev>] -- <path>`, parsed.
+- `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.
+
+## trace
+- `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
+- `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
+- `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
+- `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`.
+- `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines.
+- `map_to_head` (fn) — a working-tree line number → its `HEAD` line through worktree-vs-HEAD hunks; `None` for an added line.
+- `line_history` (fn) — `git log -L<s>,<e>:<path>`, capped, rows to a sink in one batch at exit (the runner does not stream stdout).
+- `file_history` (fn) — `git log --follow --raw --numstat -z`, capped, the same way.
+- `parse_line_log` / `parse_follow_log` (fn) — the pure readers behind them; fuzz targets `line_log`, `follow_log`.
+- `whole_file` (fn) — one commit's change to a file as a single hunk over every line (first parent for a merge, all adds for a root, all context if unchanged), cut at `max_lines` with `truncated` set.
 
 ## branches
 - `Chosen` (enum) — how the default branch was chosen (ADR-0001's fallback chain).

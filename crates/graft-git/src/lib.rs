@@ -6,6 +6,7 @@
 //! touches the terminal or the UI.
 #![forbid(unsafe_code)]
 
+pub mod blame;
 pub mod branches;
 pub mod commit_graph;
 pub mod conflict;
@@ -23,4 +24,5 @@ pub mod run;
 pub mod stash;
 pub mod state;
 pub mod status;
+pub mod trace;
 pub mod version;

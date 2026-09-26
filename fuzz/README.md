@@ -23,6 +23,9 @@ cargo +nightly fuzz build                    # proves it compiles
 cargo +nightly fuzz run parse_unified        # runs until stopped (Ctrl-C)
 cargo +nightly fuzz run parse_file_list
 cargo +nightly fuzz run conflict_parse       # never panics, and render(parse(b)) == b (m6-conflicts/01)
+cargo +nightly fuzz run blame_porcelain      # blame --porcelain reader (m7-power-tools/18)
+cargo +nightly fuzz run line_log             # git log -L reader
+cargo +nightly fuzz run follow_log           # git log --follow --raw --numstat -z reader
 ```
 
 Never run from CI, `cargo test`, or a builder's own gates (CLAUDE.md: "One

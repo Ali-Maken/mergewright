@@ -45,3 +45,24 @@ path = "fuzz_targets/conflict_parse.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "blame_porcelain"
+path = "fuzz_targets/blame_porcelain.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "line_log"
+path = "fuzz_targets/line_log.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "follow_log"
+path = "fuzz_targets/follow_log.rs"
+test = false
+doc = false
+bench = false
