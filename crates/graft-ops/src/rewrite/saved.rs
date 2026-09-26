@@ -44,10 +44,16 @@ pub(crate) struct SavedPlan {
     pub(crate) line: Vec<(String, String)>,
     /// Where the first kept row is replayed.
     pub(crate) onto: String,
+    /// Absorb's `RewriteParams::index_base`: a resume that finishes the
+    /// rewrite puts the edits back with the index from it, across a
+    /// relaunch too. Absent in a plan saved before 06b, which reads as
+    /// `None` — ADR-0045's put-back.
+    #[serde(default)]
+    pub(crate) index_base: Option<Oid>,
 }
 
 impl SavedPlan {
-    pub(crate) fn new(home: &str, line: &BranchLine, onto: Oid) -> Self {
+    pub(crate) fn new(home: &str, line: &BranchLine, onto: Oid, index_base: Option<Oid>) -> Self {
         SavedPlan {
             home: home.to_owned(),
             line: line
@@ -56,6 +62,7 @@ impl SavedPlan {
                 .map(|tip| (tip.name.clone(), tip.oid.to_string()))
                 .collect(),
             onto: onto.to_string(),
+            index_base,
         }
     }
 
@@ -169,4 +176,32 @@ fn helper(repo: &RepoHandle, dir: &Path) -> String {
 /// reopened.
 fn quoted(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', r"'\''"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A plan saved before 06b has no `index_base`: it reads as `None`, so
+    /// a relaunch mid-rewrite keeps ADR-0045's put-back for it.
+    #[test]
+    fn a_plan_saved_before_the_index_base_reads_as_none() {
+        let json = br#"{"home":"refs/heads/f","line":[],"onto":"0000000000000000000000000000000000000001"}"#;
+        let plan: SavedPlan = serde_json::from_slice(json).expect("it reads");
+        assert_eq!(plan.index_base, None);
+    }
+
+    #[test]
+    fn the_index_base_round_trips() {
+        let base = Oid::from_hex(&"ab".repeat(20)).expect("an id");
+        let plan = SavedPlan {
+            home: "refs/heads/f".to_owned(),
+            line: Vec::new(),
+            onto: base.to_string(),
+            index_base: Some(base),
+        };
+        let json = serde_json::to_vec(&plan).expect("it writes");
+        let back: SavedPlan = serde_json::from_slice(&json).expect("it reads");
+        assert_eq!(back, plan);
+    }
 }

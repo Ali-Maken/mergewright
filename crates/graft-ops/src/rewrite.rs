@@ -159,6 +159,15 @@ pub struct RewriteParams {
     /// Commit objects Graft wrote from the index (`a` into an older commit),
     /// with no ref. Pinned by the entry until it closes.
     pub made: Vec<Oid>,
+    /// Absorb only: `HEAD`'s tree plus every placed hunk, as a commit with
+    /// no ref (parent `HEAD`) — the tree the rewrite leaves `HEAD` at when it
+    /// goes through. The set-aside then puts the edits back **with the
+    /// index**, measured from this commit, so what stays is still staged
+    /// (the index-only kind included) and an edit made on past a placed
+    /// hunk merges cleanly (06b; supersedes ADR-0045 §4's "comes back
+    /// unstaged" for absorb). Pinned by the entry until it closes. `None`
+    /// for every other rewrite: its put-back is ADR-0045's.
+    pub index_base: Option<Oid>,
 }
 
 /// What the user asked to rewrite.

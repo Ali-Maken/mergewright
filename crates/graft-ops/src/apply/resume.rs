@@ -274,7 +274,8 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
         left.extend(go_home(ctx.repo, plan, &mut commands));
         left.extend(remove(dir));
     }
-    close_resume(ctx, entry, aborting, commands, failure, left)
+    let index_base = plan.as_ref().and_then(|(_, plan)| plan.index_base);
+    close_resume(ctx, entry, aborting, commands, failure, left, index_base)
 }
 
 /// Which entry a resume closes, and the checks that run before git does.
@@ -386,7 +387,9 @@ fn before_commit_of(
 /// git is done with the operation, one way or the other: write the outcome
 /// line the stop deferred. `aborting` is `Resume::Abort`; every other way
 /// on commits. `left` is what a rewrite's close could not tidy (its way
-/// home, its saved plan), reported beside the outcome.
+/// home, its saved plan), reported beside the outcome. `index_base` is an
+/// absorb's, from its saved plan: the put-back uses it only when the
+/// rewrite went through.
 fn close_resume(
     ctx: &mut Context<'_>,
     entry: JournalEntry,
@@ -394,6 +397,7 @@ fn close_resume(
     commands: Vec<String>,
     failure: Option<RunError>,
     left: Vec<AfterState>,
+    index_base: Option<Oid>,
 ) -> Result<Applied, ApplyError> {
     let (before_commit, backup_gone) = before_commit_of(ctx, &entry)?;
     let noted: Vec<AfterState> = backup_gone.into_iter().chain(left).collect();
@@ -407,6 +411,7 @@ fn close_resume(
     // Pending line, so this holds across a relaunch.
     if let Some(stash) = set_aside::stash_of(&pending.entry) {
         let ended = set_aside::Ended {
+            index_base: index_base.filter(|_| failure.is_none() && !aborting),
             failure,
             done: went_through(aborting),
             unread: noted,
