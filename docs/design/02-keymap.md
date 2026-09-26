@@ -72,6 +72,9 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     Continue/Skip/Abort — "commit," "stage" and "amend" aren't valid while
     an operation is in progress, so the letters are free and match the
     buttons' initials exactly.
+  - The **branch picker** (§2.16, M7) is a text field: it claims every key
+    but `Ctrl+C`; `↑`/`↓` move, `⏎` switches, `Tab` shows the branch on the
+    graph, `Esc` closes. Amended 2026-09-26 (M7, user "all yes").
   - The **interactive rebase editor** (§2.7) binds `p r e s f d` to
     pick/reword/edit/squash/fixup/drop — git's own convention for
     `rebase -i` todo lines, which every Git user already knows. `r` here is
@@ -144,14 +147,15 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   everything; plain `a` stays "amend" everywhere. This avoids growing the
   letter bank for "the same verb, but all of them."
 - **Rare verbs live behind `.` (context actions) or the palette, not a
-  dedicated key.** Rename, delete branch/tag, cherry-pick, reset to here,
+  dedicated key.** Rename, delete branch/tag, reset to here,
   explain/fix a Mistake Radar marker, create branch/tag from an arbitrary
   commit, copy SHA and open-in-browser are all reachable in at most two
   steps without owning a letter. On a commit row, Checkout holds the `.`
   menu's first place and Cherry-pick its second, fixed; Checkout dims in place
-  on the branch you are on (`Checkout — already on <b>`); Cherry-pick is always enabled (dimming it is M7's question,
-  KNOWN_GAPS M6/71). Rows carrying a stash badge keep the older order (conductor, 2026-09-25) (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
-  Own keys and a picker: M7.
+  on the branch you are on (`Checkout — already on <b>`). Cherry-pick has its
+  own key, `o` (§2.3), and keeps the menu's second place; it dims in place with
+  `o`'s refusal words (already on <b>; a merge). Labels carry their keys
+  (`(o)`). `C` opens the branch picker (§2.16). On the uncommitted row the menu gains `Put staged changes into their commits (absorb)`: `⏎` opens a preview mapping each staged hunk to its commit, `y` writes; a hunk no commit on your branch changed stays staged, in words. Amended 2026-09-26 (M7, user "all yes"). Rows carrying a stash badge keep the older order (conductor, 2026-09-25) (`docs/design-notes/m6-stash-put-back.md` New UI, Prior art "Menu order"; ADR-0045 does not cover it).
 - **Every binding is remappable** in `[keys]` in `config.toml`; Graft detects
   and warns about remap collisions at startup rather than picking silently.
 
@@ -186,14 +190,17 @@ and any redo prompt should lead with.
 | Key | Action |
 |---|---|
 | `c` | Commit |
-| `a` | Amend |
+| `a` | Amend. On HEAD or the uncommitted row: as before; previewed (`y`) only when a branch is built on HEAD (the dependent branch follows). On an older commit of your branch: put the staged changes into it, previewed, `y`. Amended 2026-09-26 (M7, user "all yes") |
+| `R` | Open the rewrite editor (§2.7) on the cursor's row. Amended 2026-09-26 (M7, user "all yes") |
+| `C` | Open the branch picker (§2.16). Amended 2026-09-26 (M7, user "all yes") |
+| `o` | Take the cursor commit onto your branch (cherry-pick), previewed, `y`. Unsaved edits are set aside and put back (ADR-0045). Amended 2026-09-26 (M7, user "all yes") |
 | `m` | Merge selected branch into current |
 | `r` | Rebase current onto selection |
 | `b` | New branch from selected commit |
 | `t` | New tag at selected commit |
 | `d` | Discard — only reachable once the detail pane is open (`Enter`); see §2.4. Not yet bound directly on the collapsed Uncommitted-changes row (open ticket) |
 | `s` | Stage — same: only reachable once the detail pane is open; see §2.4. Not yet bound directly on the collapsed row |
-| `x` | Mark the selected commit as the compare base, or complete/clear a compare against it (PROMPT.md §4 "Diff any two commits") |
+| `x` | Mark the selected commit as the compare base, or complete/clear a compare against it (PROMPT.md §4 "Diff any two commits"). Between two branch tips it diffs since they split: `changes on <feature> since it left <main>` (Amended 2026-09-26 (M7, user "all yes")) |
 | `+` | Expand/collapse lanes folded behind `+N` (§3.5) |
 | `S` | Stash… |
 | `f` | Fetch |
@@ -203,7 +210,7 @@ and any redo prompt should lead with.
 | `e` | Open in `$EDITOR` |
 | `Enter` (on a sidebar branch/tag/stash) | Checkout / open |
 | `M` | Toggle Map view (§5.1, §2.3a) |
-| `F` | Toggle Focus mode on the selected commit (§5.2) |
+| `F` | Toggle Focus mode on the selected commit (§5.2). `F` on a file row (History) is not decided here: pass 2b reconciles it (M7) |
 | `O` | Toggle the Overview strip (§5.3) |
 | `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
 | `1` | Toggle first-parent view (m1/15) |
@@ -225,7 +232,7 @@ and any redo prompt should lead with.
 | Key | Action |
 |---|---|
 | `m` / `r` | Confirm, when the preview was opened by that same key and its plan has landed (`m m`, `r r`). The cursor still rests on Cancel (ADR-0038 §1); a preview opened any other way gains only `y` — `.` still closes what `.` opened (P1, approved 2026-09-23) |
-| `y` | Confirm, in any merge/rebase/operation preview (opened by `m`, `r`, `.`, the name prompt, or the stash list's `Enter`/`p` — amended 2026-09-26, ticket 86) once its plan has landed. The cursor still rests on Cancel (ADR-0038 §1). Not in a journal revert preview (user ruling 2026-09-23, `docs/field-notes.md`). The same `y` confirms every confirm box with one acting choice (§2.3c) and the finish summary's file list (§2.6b) — one confirm key (P12, P15, approved 2026-09-24; ADR-0044 §3) |
+| `y` | Confirm, in any merge/rebase/operation preview (opened by `m`, `r`, `.`, `a` on an older commit or with a branch built on HEAD, `o`, the picker's `⏎` with unsaved edits, the name prompt, or the stash list's `Enter`/`p` — amended 2026-09-26, ticket 86; Amended 2026-09-26 (M7, user "all yes")); the rewrite editor's `y` starts it (§2.7) once its plan has landed. The cursor still rests on Cancel (ADR-0038 §1). Not in a journal revert preview (user ruling 2026-09-23, `docs/field-notes.md`). The same `y` confirms every confirm box with one acting choice (§2.3c) and the finish summary's file list (§2.6b) — one confirm key (P12, P15, approved 2026-09-24; ADR-0044 §3) |
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
 
@@ -272,11 +279,12 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `Ctrl+O` / `Ctrl+T` | Yours / theirs in every open block of this file, one write; does not mark it done — `Enter` as usual (P3). On a whole-file card or a done file, refused in words. |
 | `O` / `T` | Yours / theirs in every open block of this file, mark it done, move to the next file; on a whole-file card, same as `o`/`t` (P6; the named §2.1 exception) |
 | `B` | Show / hide BASE (UPPERCASE toggles a mode, §2.1) |
+| `d` on a file marked done | Start it over, as before `Enter`: box `Start <file> over`, `y`. %s (Times I left :109) |
 | `d` | Start this file over, behind a confirm box — not undoable while the operation is open (the box says so). A file with conflict markers: `git checkout --merge`. A file one side deleted or added whole (`UD`/`DU`/`AU`/`UA`), in an operation begun in Graft: its conflict stages and the surviving side's file come back, the box saying `the choice comes back: keep or delete` (approved 2026-09-24). Offered only where it can act (ops' gate); still refused in a merge begun in the shell |
 | `n` / `N` | Next / previous block, taken ones included; at the file's last block, cross to the next file; past the end, wrap to the first open block (`wrapped · 2 still open`), else `no more conflicts this way` (P2; wording approved 2026-09-24). On a done file, `n`/`N` cross straight to the next file not done (ticket 17 D6). |
 | `j` / `k`, `↓` / `↑` | Next / previous file in the file list (P7, §2.2's "move selection"); the document scrolls with `n`/`N`, `PgUp`/`PgDn`, `g`/`G` (`Home`/`End` as `g`/`G`; conductor 2026-09-24: they scroll today, kept), the wheel |
 | `c` | Finish: a merge opens the finish summary (§2.6b); anything else continues. Refused while any file is open. When every file is done and the summary is not open (after `Esc` from it; a rebase, cherry-pick or revert), the resolver shows the finish row `✓ every file done — c …`, `c` leads the bar, and a click on the row does what `c` does (P8, P11) |
-| `Enter` | Mark this file done and move to the next conflicted file. After the last: a merge → the finish summary opens by itself (P11, approved 2026-09-24); a rebase, cherry-pick or revert → stays on it with the finish row (P8); a stash clash (pop, apply, or edits set aside around a rebase/switch) → closes to the changes pane; a pop or set-aside then drops the stash by commit id, no box, `u` brings it back; an apply keeps it (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
+| `Enter` | Mark this file done and move to the next conflicted file. After the last: a merge → the finish summary opens by itself (P11, approved 2026-09-24); a rebase, cherry-pick or revert → stays on it with the finish row (P8); a stash clash (pop, apply, or edits set aside around a rebase, switch, cherry-pick or fast-forward pull — the last two %s) → closes to the changes pane; a pop or set-aside then drops the stash by commit id, no box, `u` brings it back; an apply keeps it (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
 | `e` | Open `$EDITOR` at the cursor block |
 | `M` | Launch the configured external mergetool on this file |
 | `Esc` | Close the resolver — never aborts the operation (the banner's own `Esc` is unchanged) |
@@ -295,19 +303,21 @@ replaces it in M6, keeping the same letters for the same verbs.
 **Modal while focused** (§2.1): the banner answers every key itself,
 `Ctrl+C` excepted. A stop with anything unmerged opens the resolver (§2.6)
 on the first conflicted file, and `Esc` there lands on the banner. A stop
-with nothing unmerged focuses the banner. Either way the first key after a
+with nothing unmerged focuses the banner, except an `edit` stop, which gives
+the keyboard to the graph (banner drawn; `⇥` focuses it): `a` amends the
+stopped commit, `space` stages, `c` continues (Amended 2026-09-26 (M7, user "all yes")). Either way the first key after a
 stop goes to the thing that stopped, not to the graph underneath (P5,
 approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo that puts an operation back (ticket 41).
 
 | Key | Action |
 |---|---|
 | `Enter` | Opens the resolver (§2.6) |
-| `c` | Continue — refused, in words, while any path is still unmerged. For a merge, opens the finish summary (§2.6b) — including a merge begun in the shell (P4, approved 2026-09-23); shell-begun rebase and cherry-pick stay M7 |
+| `c` | Continue — refused, in words, while any path is still unmerged. For a merge, opens the finish summary (§2.6b) — including a merge begun in the shell (P4, approved 2026-09-23); a rebase or cherry-pick begun in the shell continues by handing the terminal to `git <kind> --continue`, so git's own editor can ask for a message (Amended 2026-09-26 (M7, user "all yes")) |
 | `s` | Skip this commit (rebase and cherry-pick only; a merge says there is nothing to skip) |
 | `a` | Abort, back to where the operation started, behind a confirm box. A merge begun in the shell aborts too (`git merge --abort`), journaled, so `u` puts the merge back as it was (approved 2026-09-24) |
 | `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
 | `e` | Open the first conflicted file in `$EDITOR` at its first marker (§2.4) |
-| `Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn |
+| `Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn. `Esc` never aborts (KNOWN_GAPS :549; Amended 2026-09-26 (M7, user "all yes")) |
 
 With focus given back, `M` and `e` keep working on the file under the
 cursor in the detail pane (§2.4), and `Space` marks it resolved by staging
@@ -324,7 +334,8 @@ comes back. Those steps are entries of their own there; a block take (`o`,
 `t`, `b` on a marker block) is a file write inside the merge, not an entry.
 Anything older than the merge still refuses. A merge begun in Graft folds its
 steps into one entry, so `a` is its way back.
-Amend refuses for the same reason and names the same keys (M5/15); `c` is
+Amend refuses for the same reason and names the same keys (M5/15), except at
+an `edit` stop, where `a` amends the stopped commit (Amended 2026-09-26 (M7, user "all yes")); `c` is
 the banner's `c` (§2.4, P14).
 A bisect draws no banner until M7, so it is not covered by this rule.
 
@@ -357,12 +368,29 @@ page keys approved 2026-09-24; `docs/design-notes/m6-conflicts.md` Amendment
 **Modal** (§2.1): this pane answers every key itself, `Ctrl+C` excepted; the
 graph pane's global bindings above are not live while it has focus.
 
+Amended 2026-09-26 (M7, user "all yes"): rows newest first, like the graph; opened by `R` on the cursor's row (§2.3). `fixup!` rows arrive pre-marked and visible (no silent autosquash); `p` un-marks one.
+
 | Key | Action |
 |---|---|
-| `p` `r` `e` `s` `f` `d` | pick / reword / edit / squash / fixup / drop |
+| `p` `e` `s` `f` `d` | pick / edit / squash / fixup / drop the row, then move one row older |
+| `r` | Reword: a one-line message field under the row (`⏎` keeps, `Esc` drops, `Ctrl+E` `$EDITOR`) |
 | `Alt+↑` / `Alt+↓` | Reorder (also: drag with the mouse) |
-| `Enter` | Start the rebase |
+| `y` | Start, once the AFTER block has landed (one confirm key, §2.3b) |
+| `Enter` | Show / hide the row's changes (as §2.6b) |
+| `Tab` | Below 120 columns: swap rows ↔ AFTER block |
 | `Esc` | Cancel |
+
+### 2.16 Branch picker (M7)
+
+Amended 2026-09-26 (M7, user "all yes"). **Modal** (§2.1): a text field; claims every key but `Ctrl+C`.
+
+| Key | Action |
+|---|---|
+| typing | Filter |
+| `↑` / `↓` | Move the row |
+| `⏎` | Switch: instant on a clean tree (`u` goes back); a preview (`y`) with unsaved edits or a detached target |
+| `Tab` | Show it on the graph, cursor on its tip, nothing written |
+| `Esc` | Close |
 
 ### 2.8 Blame
 

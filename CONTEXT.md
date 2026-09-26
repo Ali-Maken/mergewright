@@ -45,6 +45,14 @@ A long-lived branch that collects work but is not the **default branch**, such
 as `develop` or a `release/*` line. It never occupies lane 0.
 _Avoid_: trunk, secondary trunk, develop (as a generic term)
 
+**Dependent branch**:
+A branch built on top of another of the user's branches, so its base is that
+branch's commits, not the **default branch**. When he rewrites the branch below
+(amend, rewrite, `a` into an older commit), the dependent branch follows onto
+the new commits. Internal term; on screen it reads `built on`. Added 2026-09-26
+(M7, user "all yes"; ADR-0047).
+_Avoid_: stacked branch, child branch (as generic terms)
+
 **Lane**:
 A vertical column in the graph occupied by one branch's first-parent chain for
 the whole of that chain's life. The **default branch** holds lane 0 and is

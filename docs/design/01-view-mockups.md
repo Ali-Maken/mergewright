@@ -283,15 +283,20 @@ Ghost Preview.
 
 ### 1.9 Interactive rebase editor
 
+Amended 2026-09-26 (M7, user "all yes"): rows **newest first**, like the graph;
+opened by `R` on the cursor's row. `fixup!` commits arrive **pre-marked and
+visible** beside their target (no silent autosquash); `p` un-marks one. `y`
+starts, once the AFTER block has landed; `Enter` shows a row's changes
+(`docs/design-notes/m7-power-tools.md` "Where I'd differ" 1; keys §2.7).
+
 ```
-╭ INTERACTIVE REBASE onto main (4 commits) ── drag to reorder, Alt+↑/↓ ─────╮
-│  pick    a1b2c3d  Fix token refresh race                                 │
-│  fixup   7f6e5d4  fixup! Fix token refresh race                          │
-│  reword  3c2b1a0  Add OAuth provider                                     │
+╭ INTERACTIVE REBASE onto main (4 commits, newest first) ── Alt+↑/↓ reorder ╮
 │  squash  0a9b8c7  Add OAuth provider tests                               │
+│  reword  3c2b1a0  Add OAuth provider                                     │
+│  fixup   7f6e5d4  fixup! Fix token refresh race     (pre-marked · p un-marks) │
+│  pick    a1b2c3d  Fix token refresh race                                 │
 │                                                                            │
-│  fixup! commits detected — autosquash applied automatically              │
-╰ p pick  r reword  e edit  s squash  f fixup  d drop  ⏎ start  esc cancel ─╯
+╰ p pick  r reword  e edit  s squash  f fixup  d drop  ⏎ changes  y start  esc cancel ╯
 ```
 
 ### 1.10 Undo journal browser
