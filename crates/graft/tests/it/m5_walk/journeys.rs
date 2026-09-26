@@ -429,6 +429,6 @@ more text\n";
     fn a_duplicate_id_across_fences_is_refused() {
         let twice = "```journey-counts\na 1\n```\n```journey-counts\nb 1\na 2\n```\n";
         let why = parse_counts(twice).unwrap_err();
-        assert!(why.contains("a") && why.contains("twice"), "{why}");
+        assert!(why.contains("journey a is counted twice"), "{why}");
     }
 }
