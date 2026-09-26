@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M6 checkpoint (2026-09-26).** M6 built and gated: tickets 47–85 merged (3504 passed, 1 skipped, at 513adf7c), acceptance 63 and 75 green, usability walk 2 done (`docs/reviews/m6-usability-2.md`), its Majors fixed in 85 (D stays M7). Waiting on the user: (1) ticket 86, stash-list preview before `⏎`/`p` — yes/no (`docs/design-notes/m6-stash-preview.md:75`); (2) his eye on the captures listed in the checkpoint report; (3) go for M7. Log: `docs/log/m6.md`.
+**Current step:** **M6 closing + M7 pipeline step 2 (2026-09-26).** User: "86 yes · looks fine · M7 go". Ticket 86 (stash-list preview) scouting, then build. M7 prior-art studies running (researcher ×5: interactive rebase, blame/line history, reflog, stacked branches, branch compare + submodules → `docs/research/`). Next: planner-fable design note + specs, then a prototype for the user's eye (pipeline step 5). Logs: `docs/log/m6.md`, `docs/log/m7.md`.
 
 **Running now:** nothing.
 
