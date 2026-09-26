@@ -99,8 +99,12 @@ fn run(remote: &LocalRemote, dir: &Path, args: &[&str]) {
 /// `N rows so far  date order, sorting\u{2026}` in the header, and `N` is
 /// however far the background sort happened to be when the frame was taken
 /// \u{2014} which is a different number every run (ticket 26, requirement 3).
+///
+/// And the radar's answer: the tip row's `ⓘ` is its mark, from a job of its
+/// own, so a frame taken before it lands lacks it (`KNOWN_GAPS` M7/04b: half
+/// the runs under load).
 fn ready(app: &App, state: AppState) -> AppState {
-    app.pump(
+    let state = app.pump(
         state,
         "the settled walk, refs, working tree and remote facts",
         |state| {
@@ -120,7 +124,8 @@ fn ready(app: &App, state: AppState) -> AppState {
                             .is_some_and(|window| !window.rows.is_empty())
                 })
         },
-    )
+    );
+    crate::captures::radar_answered(app, state)
 }
 
 /// The journal read that carries the push, so `u` decides from it — and the

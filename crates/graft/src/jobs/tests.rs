@@ -541,6 +541,9 @@ fn a_history_job_answers_row_requests_until_cancelled() {
                     history::HistoryUpdate::Started(_) => started = true,
                     history::HistoryUpdate::Progress { request, .. } => assert_eq!(request, 1),
                     history::HistoryUpdate::Window(window) => break window,
+                    history::HistoryUpdate::LaidOut { .. } => {
+                        panic!("laid out to the end before the answer")
+                    }
                 }
             }
             other => panic!("the job is still answering, but it said {other:?}"),
@@ -553,6 +556,15 @@ fn a_history_job_answers_row_requests_until_cancelled() {
         (1, 190, 10)
     );
     assert_eq!((window.laid_out, window.done), (200, true));
+    // Resting with every row laid out, the walk says so once (12 Part B),
+    // on the same worker and so before anything the cancel below brings.
+    assert_eq!(
+        next_report(&events),
+        AppEvent::Progress(
+            id,
+            Progress::History(history::HistoryUpdate::LaidOut { rows: 200 })
+        )
+    );
 
     runner.dispatch(Command::CancelJob(id));
     assert_eq!(

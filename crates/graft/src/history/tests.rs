@@ -200,7 +200,7 @@ fn a_configured_default_branch_takes_lane_0() {
                 match update {
                     HistoryUpdate::Started(started) => facts = Some(*started),
                     HistoryUpdate::Window(window) => rows.extend(window.rows.iter().cloned()),
-                    HistoryUpdate::Progress { .. } => {}
+                    HistoryUpdate::Progress { .. } | HistoryUpdate::LaidOut { .. } => {}
                 }
                 Delivery::Received
             },

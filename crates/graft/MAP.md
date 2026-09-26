@@ -45,6 +45,11 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `History::seek` (fn) — select a commit: at once if on hand, else a `Find` request (a jump, so Esc withdraws it).
 - `History::restore` (fn) — put cursor/top back (search cancelled) and ask for that window.
 - `walk_is_reading` (fn, `pub(crate)`, `update`, m6-conflicts/85 A) — `(&AppState) -> bool`: `awaiting` and (no history yet, or `History::is_reading`). The one reading of "the walk is reading": `update::keys::escape_key`'s last arm cancels the walk only when it is true (a parked or complete walk: `Esc` does nothing, no command, no status), and the header's `WalkView` draws reading/jumping exactly then.
+- `serve` (fn) — the history worker's loop: answers each `RowRequest`; between requests, `Views::idle_step` a chunk at a time to the end of history (every `stop` check also takes a waiting request, so a request or cancel ends a step within one pull), then parks in `recv` — no wake, no CPU (m7-power-tools/12 Part B).
+- `Views::idle_step` (fn, `pub(crate)`) — one bounded step nobody asked for: ≤ one `advance(chunk_rows, stop)` of the view last asked for; sends nothing on the way, `HistoryUpdate::LaidOut` once per layout at the end (again after a fold or promotion). Returns `IdleWork`.
+- `IdleWork` (enum, `pub(crate)`) — `Advanced { rows }`, `Caught` (end reached or nothing asked: park), `NobodyListening`.
+- `HistoryUpdate::LaidOut { rows }` — the walk reached the end of history unasked; `rows` is every row of the view. Not a request's answer: the header's "reading" and `Esc` ignore it.
+- `History::laid_out` (field) — `Option<usize>`, the last `LaidOut` total heard; nothing is drawn from it yet.
 - `History::is_reading` (fn) — streaming and working on something asked (a jump, an outstanding request, or no window yet). With `awaiting`, what `Esc` cancels and what the header calls reading (`update::walk_is_reading`, m6-conflicts/85). Once cancelled or failed, motions clamp to the held window.
 - `DetailState::file_written` (fn) — a file written outside any operation (a resolver take): drops that path's cached working-tree diffs and re-asks the cursor's diff when it is that path (m6-conflicts/85 B).
 - `History::strip_rows` (field) — pixel tier's strip height; requests widen to whole strips plus the row above. `None` (text tiers) asks exactly as before.

@@ -1303,3 +1303,127 @@ fn truncate_keeps_the_grid_invariant_and_never_shrinks_the_stride() {
     assert_checkpoint_invariant(&streaming, config.max_checkpoints);
     assert_eq!(streaming.checkpoint_stride(), stride_before);
 }
+
+// ---- truncate keeps the cut chunk checked (KNOWN_GAPS M7 :169) ----------
+
+/// A mid-chunk cut leaves the cut chunk a fingerprint of the rows it kept:
+/// a rebuild of those rows is still checked, not waved through.
+#[test]
+fn truncate_keeps_a_fingerprint_for_the_kept_prefix() {
+    let commits = history(1_000, 5);
+    let mut streaming = stream(&commits, small());
+    streaming.set_viewport(0..40);
+    advance_all(&mut streaming);
+
+    streaming.truncate(250).expect("an in-memory source");
+
+    // No rows at all cannot match a fingerprint of 50: the check fails over
+    // exactly the rows the fingerprint covers. A chunk with no fingerprint
+    // would pass anything.
+    assert_eq!(
+        streaming.cache.check(2, &[]),
+        Err(crate::layout::cache::Differs {
+            start: 200,
+            end: 250
+        }),
+        "chunk 2 keeps a fingerprint over its 50 kept rows"
+    );
+}
+
+/// As [`VecSource`], but once told to, it re-serves the commits in
+/// `lie_about` with no parents: a re-read that differs from the first read.
+struct Rewritten {
+    inner: VecSource,
+    lie_about: std::collections::HashSet<CommitHandle>,
+}
+
+impl CommitSource for Rewritten {
+    type Error = Infallible;
+
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
+        self.inner.pull(limit, stop)
+    }
+
+    fn read(&mut self, handles: &[CommitHandle]) -> Result<Vec<Commit>, Infallible> {
+        self.inner.read(handles)
+    }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {
+        let mut links = self.inner.links(commits)?;
+        for link in &mut links {
+            if self.lie_about.contains(&link.commit) {
+                link.parents = graft_core::commit_handle::Parents::None;
+            }
+        }
+        Ok(links)
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.inner.handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.inner.id_of(handle)
+    }
+}
+
+/// Cut mid-chunk at 250, lay out to the end again so chunk 2 is evicted,
+/// then — the source lying about rows 200..250 if `lie` — read rows
+/// 200..240 back.
+fn rebuilt_after_truncate(lie: bool) -> Result<Vec<crate::Row>, StreamError<Infallible>> {
+    let commits = history(1_000, 5);
+    let mut streaming = StreamingLayout::new(
+        Rewritten {
+            inner: VecSource::new(commits.clone()),
+            lie_about: std::collections::HashSet::new(),
+        },
+        seeds_for(&commits),
+        // Few enough resident chunks that the cut chunk, grown again last,
+        // is still evicted once the viewport is at the far end.
+        StreamConfig {
+            resident_chunks: 2,
+            ..small()
+        },
+    );
+    streaming.set_viewport(0..40);
+    advance_all(&mut streaming);
+    streaming.truncate(250).expect("an in-memory source");
+    // `truncate` wants the source ready to serve the walk from the cut on.
+    streaming.source.inner.position = 250;
+    streaming.set_viewport(900..940);
+    advance_all(&mut streaming);
+    assert!(!streaming.is_resident(200), "chunk 2 was evicted");
+
+    if lie {
+        streaming.source.lie_about = commits[200..250]
+            .iter()
+            .map(|commit| {
+                streaming
+                    .source
+                    .handle_of(&commit.id)
+                    .expect("walked commits are interned")
+            })
+            .collect();
+    }
+    streaming.set_viewport(200..240);
+    streaming.rows(200..240)
+}
+
+/// A chunk cut back by `truncate` and grown again is checked when rebuilt:
+/// an honest re-read gives the rows the whole layout gives, and a re-read
+/// that differs in the kept prefix is refused.
+#[test]
+fn a_rebuild_after_truncate_is_checked() {
+    let commits = history(1_000, 5);
+    let whole = layout(&commits, seeds_for(&commits));
+    let honest = rebuilt_after_truncate(false).expect("an honest rebuild matches");
+    assert_eq!(honest, whole[200..240]);
+
+    match rebuilt_after_truncate(true) {
+        Err(StreamError::RebuildDiffers {
+            start: 200,
+            end: 300,
+        }) => {}
+        other => panic!("expected RebuildDiffers for rows 200..300, got {other:?}"),
+    }
+}

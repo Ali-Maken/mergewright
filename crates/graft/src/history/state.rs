@@ -157,6 +157,14 @@ pub enum HistoryUpdate {
     },
     /// The rows a request asked for.
     Window(Window),
+    /// Laid out to the end of history while nobody was asking: `rows` is
+    /// every row the view has. Sent once per layout that gets there idle —
+    /// again after a fold or a promotion changes the layout — and nothing
+    /// is sent on the way (m7-power-tools/12 Part B).
+    LaidOut {
+        /// Every row of the view.
+        rows: usize,
+    },
 }
 
 /// How far promoting a provisional order to strict topological order has
@@ -239,6 +247,10 @@ pub struct History {
     /// (m1-the-graph/30c). `None` when nothing is out or the newest request
     /// is not a range (`G`, a search's find).
     pub outstanding: Option<Range<usize>>,
+    /// Every row the walk last said it had, once it laid out to the end of
+    /// history unasked ([`HistoryUpdate::LaidOut`]); `None` until then. Kept
+    /// as heard: nothing is drawn from it yet.
+    pub laid_out: Option<usize>,
 }
 
 impl History {
@@ -260,6 +272,7 @@ impl History {
             promotion: None,
             strip_rows: None,
             outstanding: None,
+            laid_out: None,
         }
     }
 }
