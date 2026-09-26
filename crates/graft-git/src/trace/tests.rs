@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use super::log::{parse_follow_log, parse_line_log};
+use super::{parse_follow_log, parse_line_log};
 use super::map_to_head;
 use crate::diff::parse_unified;
 

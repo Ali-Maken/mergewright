@@ -12,9 +12,9 @@
 mod primitives;
 
 use primitives::{
-    find, parse_diff_git_header, parse_mode, parse_percent, parse_range, parse_side_path,
-    unquote_maybe,
+    parse_diff_git_header, parse_mode, parse_percent, parse_range, parse_side_path, unquote_maybe,
 };
+pub(crate) use primitives::{find, unquote};
 
 use super::{BinaryNote, DiffLine, FileDiff, FileEntry, FileStatus, Hunk, LineKind, ParseError};
 
