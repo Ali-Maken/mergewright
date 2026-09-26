@@ -241,7 +241,7 @@ fn a_shell_merge_done_file_answers_d_in_words() {
     assert!(open_now.done.is_some());
     assert_eq!(open_now.restarting, None, "never set");
     assert!(
-        matches!(&state.status, Status::Sticky { reason, .. } if reason == "can't start over · gone.txt: the conflict's sides were not kept"),
+        matches!(&state.status, Status::Sticky { reason, .. } if reason == "git can't bring back the conflict in gone.txt: the conflict's sides were not kept"),
         "{:?}",
         state.status
     );

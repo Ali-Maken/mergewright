@@ -5,7 +5,8 @@
 use super::*;
 
 /// `gone.txt`'s refusal in a merge begun in the shell, in ops' own words.
-const CANNOT: &str = "can't start over · gone.txt: the conflict's sides were not kept";
+const CANNOT: &str =
+    "git can't bring back the conflict in gone.txt: the conflict's sides were not kept";
 
 /// `gone.txt` kept with `o`, the resolver on to `shared.rs`, then
 /// `gone.txt` clicked open read-only.
@@ -219,6 +220,144 @@ fn capture_cannot() {
         "m6/fix-done-start-over-cannot-200x50.txt",
         &format!("{body}\n"),
     );
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// `git ls-files -u -- <name>`: each stage's mode, oid and number.
+fn stages(repo: &Path, name: &str) -> Vec<String> {
+    crate::app_harness::git(repo, &["ls-files", "-u", "--", name])
+        .lines()
+        .map(|line| line.split('\t').next().unwrap_or(line).to_owned())
+        .collect()
+}
+
+/// `d` on a done marker file (m7-power-tools/17): the box titled `Start
+/// shared.rs over` with `your choices in shared.rs are dropped`, and the
+/// bar offering `y`.
+///
+/// What right looks like (`m7/restart-after-done-box-120x40.txt`): title
+/// `Start shared.rs over` (no `?`); the line `your choices in shared.rs are
+/// dropped · not undoable while the merge is open`; the bar names `y`.
+/// Colour unverified.
+#[test]
+fn d_on_a_done_file_opens_the_start_over_box() {
+    let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
+    let (app, state) = on_gone_card(&scratch);
+    let state = shared_done_and_opened(&app, &state);
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_some(), "d's box: {:?}", state.status);
+    let frame = crate::captures::frame(&state, 120, 40);
+    let body = frame.join("\n");
+    assert!(body.contains("Start shared.rs over"), "{body}");
+    assert!(!body.contains("Start shared.rs over?"), "{body}");
+    assert!(
+        body.contains("your choices in shared.rs are dropped"),
+        "{body}"
+    );
+    assert!(
+        frame
+            .last()
+            .is_some_and(|bar| bar.split_whitespace().any(|word| word == "y")),
+        "{body}"
+    );
+    crate::captures::check_shot("m7/restart-after-done-box-120x40.txt", &format!("{body}\n"));
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// `d y` on a done marker file puts back the index exactly as at the stop —
+/// every stage's mode and oid — and the markers on disk (m7-power-tools/17).
+/// Two inputs from the open done file.
+#[test]
+fn y_restores_the_stages_as_at_the_stop() {
+    let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
+    let repo = scratch.path().to_owned();
+    let (app, state) = on_gone_card(&scratch);
+    let at_stop = stages(&repo, "shared.rs");
+    assert_eq!(at_stop.len(), 3, "the stop's stages: {at_stop:?}");
+    let state = shared_done_and_opened(&app, &state);
+    assert!(stages(&repo, "shared.rs").is_empty(), "marked done: staged");
+    let state = app.key(&state, KeyCode::Char('d'));
+    let state = app.key(&state, KeyCode::Char('y'));
+    assert!(state.operating.is_some(), "y launched: {:?}", state.status);
+    let state = app.pump(state, "the restart, and shared.rs read again", |state| {
+        state.operating.is_none()
+            && state.status_read.is_none()
+            && state.resolver.as_ref().is_some_and(|open| {
+                open.path == Path::new("shared.rs") && open.job.is_none() && open.file.is_some()
+            })
+    });
+    assert_eq!(stages(&repo, "shared.rs"), at_stop, "the stop's stages");
+    let disk = std::fs::read_to_string(repo.join("shared.rs")).expect("shared.rs on disk");
+    assert_eq!(
+        disk.lines()
+            .filter(|line| line.starts_with("<<<<<<< "))
+            .count(),
+        1,
+        "{disk}"
+    );
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// `Esc` in the box closes it and writes nothing: shared.rs stays staged,
+/// the row stays done (m7-power-tools/17).
+#[test]
+fn esc_in_the_box_changes_nothing() {
+    let scratch = super::super::restart::app_merge_with_a_whole_file_conflict();
+    let repo = scratch.path().to_owned();
+    let (app, state) = on_gone_card(&scratch);
+    let state = shared_done_and_opened(&app, &state);
+    let staged = crate::app_harness::git(&repo, &["ls-files", "-s", "--", "shared.rs"]);
+    let disk = std::fs::read_to_string(repo.join("shared.rs")).expect("shared.rs on disk");
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_some());
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.confirm.is_none());
+    assert!(state.operating.is_none());
+    assert_eq!(
+        crate::app_harness::git(&repo, &["ls-files", "-s", "--", "shared.rs"]),
+        staged
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.join("shared.rs")).expect("shared.rs on disk"),
+        disk
+    );
+    assert!(
+        rows(&state)
+            .iter()
+            .any(|(path, row)| path == "shared.rs" && *row == RowState::Done)
+    );
+    drop(state);
+    app.close();
+    drop(scratch);
+}
+
+/// Where the conflict can't come back (a merge begun in the shell kept no
+/// stages), `d` answers in words naming the file and the reason, and writes
+/// nothing (m7-power-tools/17).
+#[test]
+fn a_restart_git_cannot_do_is_refused_in_words() {
+    let scratch = gone_and_notes_merge();
+    let repo = scratch.path().to_owned();
+    let (app, state) = opened_on(&scratch);
+    let state = gone_kept(&app, state);
+    let state = done_open(&app, &state, "gone.txt");
+    let staged = crate::app_harness::git(&repo, &["ls-files", "-s"]);
+    let state = app.key(&state, KeyCode::Char('d'));
+    assert!(state.confirm.is_none());
+    assert!(state.operating.is_none());
+    let frame = crate::captures::frame(&state, 120, 40);
+    assert!(
+        frame.iter().any(|row| row.trim().starts_with(CANNOT)),
+        "{}",
+        frame.join("\n")
+    );
+    assert_eq!(crate::app_harness::git(&repo, &["ls-files", "-s"]), staged);
     drop(state);
     app.close();
     drop(scratch);

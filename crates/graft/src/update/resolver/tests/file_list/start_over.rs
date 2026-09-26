@@ -74,7 +74,10 @@ fn a_done_file_that_cannot_start_over_hides_d() {
     assert_eq!(bar(&state), ["e edit", "esc close"]);
 
     let (after, commands) = press(&state, KeyCode::Char('d'));
-    assert_eq!(sticky(&after).0, format!("can't start over · {GONE}"));
+    assert_eq!(
+        sticky(&after).0,
+        "git can't bring back the conflict in gone.txt: deleted by them — no markers to take from"
+    );
     assert!(after.confirm.is_none(), "no box");
     assert!(commands.is_empty(), "nothing sent: {commands:?}");
 
@@ -125,18 +128,18 @@ fn the_box(opening: Answer) -> (String, Vec<String>, String, usize, ConfirmThen)
     )
 }
 
-/// The marker box, byte for byte as it read before whole files could start
-/// over (`d_starts_over_behind_a_box` holds the same words in a live merge).
+/// The marker box on a done file: m7-power-tools/17's title and line. Before
+/// `⏎` the m6 words stand (`d_starts_over_behind_a_box`).
 #[test]
-fn restart_box_words_for_markers_unchanged() {
+fn restart_box_words_for_markers_on_a_done_file() {
     let (title, message, command, cursor, then) =
         the_box(Ok(text(StartOver::Can { kind: MARKERS })));
-    assert_eq!(title, "Start gone.txt over?");
+    assert_eq!(title, "Start gone.txt over");
     assert_eq!(
         message,
         [
             "the conflict comes back with all its markers",
-            "takes and edits in this file are lost · not undoable while the merge is open",
+            "your choices in gone.txt are dropped · not undoable while the merge is open",
         ]
     );
     assert_eq!(command, "git checkout --merge -- gone.txt");
@@ -163,12 +166,12 @@ fn whole_file_box_names_the_surviving_side() {
         for opening in [text, removed] {
             let (title, message, command, cursor, then) =
                 the_box(Ok(opening(StartOver::Can { kind: whole(shape) })));
-            assert_eq!(title, "Start gone.txt over?");
+            assert_eq!(title, "Start gone.txt over");
             assert_eq!(
                 message,
                 [
                     "the choice comes back: keep or delete",
-                    "edits since the choice are lost · not undoable while the merge is open",
+                    "your choices in gone.txt are dropped · not undoable while the merge is open",
                 ],
                 "{shape:?}"
             );
@@ -205,7 +208,7 @@ fn whole_file_box_with_no_operation_open() {
         message,
         [
             "the choice comes back: keep or delete",
-            "edits since the choice are lost"
+            "your choices in gone.txt are dropped"
         ]
     );
 }
@@ -251,7 +254,10 @@ fn a_gate_that_could_not_be_read_hides_d() {
     assert!(!offers_d(&state));
     assert_eq!(identity_row(&state), "▸ gone.txt · done ✓");
     let (after, _) = press(&state, KeyCode::Char('d'));
-    assert_eq!(sticky(&after).0, format!("can't start over · {why}"));
+    assert_eq!(
+        sticky(&after).0,
+        format!("git can't bring back the conflict in gone.txt: {why}")
+    );
     assert!(after.confirm.is_none());
 }
 

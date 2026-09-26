@@ -1,6 +1,6 @@
 # restart-after-done — `d` on a file already marked done starts it over, inside the operation
 
-Status: ready
+Status: done (partial acceptance — see NOTES)
 Blocked by: none
 Crates: graft (the resolver's `d` on a done row); graft-ui only if the done row can't show `d` on the bar.
 Source: note "Pass 2a" R4 "Start over after `⏎`"; `TESTING.md` "Times I left" :109 ("still the shell — `git checkout
@@ -66,3 +66,22 @@ Worktree only; `CARGO_TARGET_DIR` in the worktree; the four gates workspace-wide
 
 ## Size
 Small (~30k).
+
+## NOTES (builder, 2026-09-26)
+Scout used (`.scratch/m7-power-tools/scouts/17.md`). `d` on a done file already existed (m6-conflicts/28): routed by `update/resolver.rs` `act` → `Char('d') => restart::restart_box`. This ticket closed the gap only. No compaction.
+
+Ticks:
+- [x] `d_on_a_done_file_opens_the_start_over_box` (`tests/it/resolver/file_list/start_over.rs`; red first on the words).
+- [x] `y_restores_the_stages_as_at_the_stop` — `d y`; `ls-files -u` mode+oid+stage equal the stop's; one `<<<<<<< ` on disk (the fixture has one block). `y` already confirmed (label `Start over` → `ConfirmYes::StartOver`); green on first run.
+- [x] `esc_in_the_box_changes_nothing`.
+- [x] `a_restart_git_cannot_do_is_refused_in_words`.
+- [x] Capture `docs/shots/m7/restart-after-done-box-120x40.txt` (test `d_on_a_done_file_opens_the_start_over_box`) — the file is `shared.rs`, not `three.txt` (fixture `app_merge_with_a_whole_file_conflict`). Colour unverified.
+- [ ] Walk `restart_after_done` in m7_walk: **not built**. Input count covered only by the it test (open, `d`, `y`).
+- [ ] `restart_after_the_last_file_hides_the_finish_row`: **not added**.
+
+Word changes (done file only; before-`⏎` box unchanged):
+- Title `Start <file> over?` → `Start <file> over`.
+- Line `takes and edits in this file are lost` / `edits since the choice are lost` → `your choices in <file> are dropped` (suffix `· not undoable while the <op> is open` kept).
+- Refusal `can't start over · <why>` → `git can't bring back the conflict in <file>: <reason>`; a leading `<file>: ` in ops' reason is stripped. The reason is ops' (`NoStagesKept`), not git's: ops doesn't use resolve-undo, kept as asked.
+
+Captures regenerated: `m6/fix-done-start-over-cannot-120x40.txt`, `m6/fix-start-over-whole-file-120x40.txt`. m6 contact sheets still carry the old words (not reassembled).

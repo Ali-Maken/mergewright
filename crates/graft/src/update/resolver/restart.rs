@@ -46,6 +46,7 @@ pub(super) fn restart_box(state: &mut AppState) {
         return;
     }
     let path = open.path.clone();
+    let done = open.done.is_some();
     let kind = start_over_kind(state);
     let Some(open) = state.resolver.as_mut() else {
         return;
@@ -61,6 +62,10 @@ pub(super) fn restart_box(state: &mut AppState) {
             "edits since the choice are lost",
         ),
     };
+    // A file marked done drops the choices behind its `⏎`
+    // (m7-power-tools/17's words); before `⏎` it is takes and edits.
+    let dropped = format!("your choices in {} are dropped", path.display());
+    let lost = if done { dropped.as_str() } else { lost };
     // The box names the operation the restart folds into (a merge, a
     // rebase …). A stash-pop conflict has none open, so it makes no claim
     // about one.
@@ -73,7 +78,13 @@ pub(super) fn restart_box(state: &mut AppState) {
     };
     state.confirm = Some(PendingConfirm {
         view: ConfirmView::new(
-            sanitize_line(&format!("Start {} over?", path.display())),
+            // Done: `Start <file> over` (m7-power-tools/17); before `⏎`
+            // the m6 title keeps its `?`.
+            sanitize_line(&format!(
+                "Start {} over{}",
+                path.display(),
+                if done { "" } else { "?" }
+            )),
             vec![sanitize_line(comes_back), sanitize_line(&lost)],
             // The flag the plan runs: one source (`RestartKind::checkout_flag`).
             sanitize_line(&format!(
@@ -133,7 +144,17 @@ pub(crate) fn start_over_refusal(state: &AppState) -> Option<String> {
         };
     }
     match open.done.as_ref().map(|done| &done.start_over) {
-        Some(StartOver::Cannot { why }) => Some(format!("can't start over · {why}")),
+        // m7-power-tools/17's words. Ops' reason already leads with the
+        // path; the words name it once.
+        Some(StartOver::Cannot { why }) => {
+            let path = open.path.display().to_string();
+            let reason = why
+                .strip_prefix(&format!("{path}: "))
+                .unwrap_or(why.as_str());
+            Some(format!(
+                "git can't bring back the conflict in {path}: {reason}"
+            ))
+        }
         Some(StartOver::Can { .. }) | None => None,
     }
 }
