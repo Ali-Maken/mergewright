@@ -11,6 +11,9 @@
 //! - `todo` — pure: squash groups, the default squashed message, validation,
 //!   autosquash marking, and the todo text git is handed.
 //! - `plan` — what a request plans to: the range and the refusals.
+//! - `absorb` — absorb's base, map over it, and rows.
+//! - `unpushed` — "your commits" on a branch with no base of its own: the
+//!   unpushed ones, at most 10, shared by absorb and `a`.
 //! - `dependents` — the line of branches built on his ([`dependents`]) and
 //!   the refusals over it.
 //! - `reads` — the raw history reads both plan from (reads only).
@@ -30,17 +33,21 @@ use graft_core::ref_name::RefName;
 use crate::facts::FactsError;
 use crate::operation::{Refusal, Tip};
 
+mod absorb;
 mod dependents;
 mod plan;
 mod progress;
 mod reads;
 pub(crate) mod saved;
 mod todo;
+mod unpushed;
 
+pub use absorb::absorb_plan_map;
 pub use dependents::dependents;
 pub use plan::plan;
 pub use progress::progress;
 pub use todo::{default_message, squash_groups, validate};
+pub use unpushed::ABSORB_FALLBACK_DEPTH;
 
 pub(crate) use reads::{line_picks, messages_of, rebase_rows};
 pub(crate) use todo::{GitTodo, git_todo};

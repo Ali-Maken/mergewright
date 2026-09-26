@@ -2,7 +2,11 @@
 
 mod abort_merge;
 mod absorb;
+mod absorb_config;
+mod absorb_oracle;
+mod absorb_printed;
 mod absorb_staged;
+mod absorb_unpushed;
 mod chained_backup;
 mod checkout_hook_fails;
 mod conflict_fixtures;

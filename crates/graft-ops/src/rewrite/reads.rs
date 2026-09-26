@@ -37,23 +37,6 @@ impl RangeCommit {
     }
 }
 
-/// The first commit `head` grew from (the first root `rev-list` names).
-pub(super) fn root_of(repo: &RepoHandle, head: Oid, stop: &dyn Stop) -> Result<Oid, FactsError> {
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("rev-list"),
-            GitArg::Word("--max-parents=0".to_owned()),
-            GitArg::Oid(head),
-        ])
-        .run(stop)
-        .map_err(FactsError::of_history)?;
-    let text = String::from_utf8_lossy(&output.stdout);
-    match text.lines().next() {
-        Some(root) => parse_oid(root),
-        None => Err(unparsable(format!("{head} has no first commit"))),
-    }
-}
-
 /// Where his branch left its base: the merge-base with its upstream when
 /// one is set and fetched, else with the default branch. `None` when there
 /// is neither, or they share no history.

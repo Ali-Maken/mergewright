@@ -359,6 +359,15 @@ impl RewriteKey {
             Self::AmendInto => "a puts staged changes into a commit on your branch",
         }
     }
+
+    /// The key itself, as a refusal names it (`a`).
+    #[must_use]
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Open => "R",
+            Self::AmendInto => "a",
+        }
+    }
 }
 
 /// Why an operation will not run. Each one is a fact about the repository the
@@ -682,6 +691,34 @@ pub enum Refusal {
     BadTodo(crate::rewrite::TodoProblem),
     /// Absorb placed none of the staged hunks: every one stays staged.
     NothingToAbsorb,
+    /// Absorb on a branch with no base of its own (the default branch, or
+    /// the only one, with no upstream), and every commit on it is on a
+    /// remote-tracking ref: there is no unpushed commit to put lines into
+    /// (planner ruling, 06c Question 2). Words:
+    /// `every commit on <branch> is already pushed · absorb only changes
+    /// unpushed commits · c commits them`.
+    AllPushed {
+        /// The branch, short name (`main`).
+        branch: String,
+    },
+    /// `a` on a branch with no base of its own, into a commit a
+    /// remote-tracking ref holds: a teammate may have it (06c ruling).
+    /// Words: `<short> is already pushed · a only changes commits you
+    /// haven't pushed`.
+    AlreadyPushed {
+        /// The commit.
+        commit: Oid,
+        /// Which key asked.
+        by: RewriteKey,
+    },
+    /// `a` on a branch with no base of its own, into an unpushed commit
+    /// more than [`crate::rewrite::ABSORB_FALLBACK_DEPTH`] back (06c
+    /// ruling). Words: `<short> is more than 10 commits back · a reaches
+    /// your last 10 unpushed commits`.
+    BeyondReach {
+        /// The commit.
+        commit: Oid,
+    },
     // ── The journal list's put-backs (ADR-0046 §3; m7-power-tools/22) ──
     /// A put-back's branch is no longer where the list saw it: it moved on
     /// since, to `now`. The compare-and-swap the put-back runs under.
@@ -943,6 +980,21 @@ impl Refusal {
                 "none of your staged lines belong to a commit on your branch · c commits them"
                     .to_owned()
             }
+            Self::AllPushed { branch } => format!(
+                "every commit on {branch} is already pushed · absorb only changes unpushed \
+                 commits · c commits them"
+            ),
+            Self::AlreadyPushed { commit, by } => format!(
+                "{} is already pushed · {} only changes commits you haven't pushed",
+                short(*commit),
+                by.key()
+            ),
+            Self::BeyondReach { commit } => format!(
+                "{} is more than {} commits back · a reaches your last {} unpushed commits",
+                short(*commit),
+                crate::rewrite::ABSORB_FALLBACK_DEPTH,
+                crate::rewrite::ABSORB_FALLBACK_DEPTH
+            ),
             Self::MovedOnSince { name, now } => {
                 format!("{name} moved on since (now {})", short(*now))
             }

@@ -1,6 +1,6 @@
 # 06c absorb-config-and-oracle — review 06's remaining Majors
 
-Status: ready
+Status: done
 Blocked by: none (06b merged). Both planner rulings are below.
 Crates: graft-ops only (`absorb.rs` and its split, tests). Another crate needed → commit at the seam, report `blocked:
 needs <crate>` with the signature.
@@ -21,12 +21,12 @@ Each fix is the one the review's section states, at the cause, red first.
   below when it lands. If it has not landed when you reach it, leave that box open and say so.
 
 ## Acceptance
-- [ ] M1: both cases (file missing, file present) as tests, red first.
-- [ ] M4, M5: each as a test, red first.
-- [ ] M7: `wc -l` of every file after the split, all ≤ 400.
-- [ ] M8: the independent oracle named; each of the three rules' tests named, each seen red under a mutation.
-- [ ] Minor 1: per the planner's ruling (below), test named.
-- [ ] Gates workspace-wide.
+- [x] M1: both cases (file missing, file present) as tests, red first. `absorb_config::absorb_ignores_a_configured_ignore_revs_file_that_is_missing` (red: `fatal: could not open object name list`), `absorb_config::absorb_ignores_a_configured_ignore_revs_file_that_is_present` (red: stayed, `left: []`). Fix: `--no-ignore-revs-file` (see NOTES: the review's `--ignore-revs-file=` does not clear a missing file).
+- [x] M4, M5: each as a test, red first. M4 `absorb_config::a_staged_submodule_bump_stays_and_the_rest_is_placed` (red: `cat-file <head>:sub: bad file`; now `StaysWhy::Submodule`). M5 `absorb_config::apply_whitespace_fix_does_not_change_what_is_absorbed`, `absorb_config::apply_whitespace_error_does_not_fail_the_map` (both red with `--whitespace=nowarn` removed from `build.rs`/`judge.rs`).
+- [x] M7: `wc -l` of every file after the split, all ≤ 400. `src/absorb/{mod 235, read 266, judge 131, build 203}`; `src/rewrite/{plan 272, absorb 205, unpushed 182}`; `tests/it/{absorb 343, absorb_oracle 313, absorb_printed 138, absorb_config 115, absorb_staged 376, absorb_unpushed 360}`. Behaviour unchanged: the 31 absorb tests green right after the split commit (e06a9ad3).
+- [x] M8: the independent oracle named; each of the three rules' tests named, each seen red under a mutation. Oracle: `absorb_printed::each_target_last_changed_its_lines` (targets by `git log -L n,n:path main..feature`, never the code's blame), run inside every `absorb_oracle::absorb_agrees_with_the_trees_*` (new: `_three_targets_one_file_twice`); mutant "placed into HEAD" red in all 6 (it survives the old checks). Rules: all-below→any-below red in `absorb::a_hunk_over_the_branch_and_older_lines_stays` (+ the insertion test); insertion-by-line-above-only red in `absorb::an_insertion_below_a_branch_line_and_above_an_older_one_stays`; every-apply-error-as-no-commute red in `absorb::judge::tests::an_apply_failure_other_than_does_not_apply_is_an_error`.
+- [x] Minor 1: per the planner's ruling (below), test named. `absorb_unpushed::*` (12 tests, names per ruling; see NOTES for which were red).
+- [x] Gates workspace-wide. fmt, clippy `--workspace --all-targets -D warnings`, `nextest run --workspace` 3933/3933 (1 skipped), `test --doc --workspace` ok.
 
 ## Touches
 MAP.md (graft-ops) for moved code; every caller of `absorb` (grep: graft's `A` key path). Name how each was checked.
@@ -141,3 +141,26 @@ BeyondReach  { commit: Oid }                    // "<short> is more than 10 comm
 
 **Size:** about 10k on top of 06c. If 06c is already past its budget, the conductor runs this section unchanged as its
 own graft-ops slice after 06c.
+
+## NOTES (builder, 2026-09-26)
+
+No compaction. No scout: the ticket says none, every site was cited, and I read each (absorb.rs, plan.rs, reads.rs, Refusal) myself.
+
+**Deviations, each said:**
+- **M1 flag.** The review's fix, `--ignore-revs-file=` (as `graft-git/src/blame.rs:246` does), does **not** clear a configured file that is missing: probed on git 2.54, `git -c blame.ignoreRevsFile=nope blame --ignore-revs-file= …` still dies `could not open object name list: nope` (git keeps the list sorted, so `""` sorts first and `nope` is read after the clear). `--no-ignore-revs-file` works (probed). **Knock-on for 18's owner: `graft-git/src/blame.rs:246` has the same bug for G-blame** (not fixed: graft-git is not mine).
+- **M4 read.** A bump's mode shows only on the patch's `index a..b 160000` line, which `graft-git`'s `parse_unified` does not keep (`diff/unified.rs:289-300` reads `old mode`/`new mode` lines only). So a second read, `diff-index --cached --raw -z --no-renames`, finds gitlinks. A new reason `StaysWhy::Submodule` (Minor 3: not `NoCommitChangedIt`).
+- **Remote-tracking read (ruling).** The ruling says use a read graft-git exposes. The only one is `contained_in` (`for-each-ref --contains`, one per commit), which graft-git's own MAP measures at ~11 s per commit on 50k refs. I used `rev-list <prefix> --not --remotes` through `GitInvocation` instead (graft-ops already runs rev-list this way): one spawn, git's own reachability. No new graft-git item, so not `blocked`. Conductor: say if you want it moved into graft-git.
+- **Signature.** `unpushed_range(repo, head, stop) -> Result<UnpushedRange, FactsError>`: no `git` (unused, review Minor 5's point), `FactsError` (converts into `RewriteError` at the callers).
+- **New public fn `rewrite::absorb_plan_map(repo, facts, default_branch, stop)`.** Ruling test 2 needs `OutsideYourCommits` observable, and the absorb preview (09) needs the map over the same base the plan uses; `absorb_map` takes a base the app has no way to compute. `absorb_map`'s signature is unchanged (below-range reason `BeforeYourBranch`).
+- **Empty range at `HEAD` a merge / the root:** `MergeInRange { HEAD }` / `RootCommit { HEAD }` (existing words), not `AllPushed`.
+- `plan.rs` absorb moved to `rewrite/absorb.rs` (size); `root_of` removed (its only caller was the dead first-commit fallback).
+
+**Red first, honestly:** M1/M4/M5 and the three rule tests were seen red before their fix or under the mutant. The ruling tests were written **after** the code; red was then shown by putting the old base rule back (`Some(base) => Above(base)`): 8 of 12 red. The 4 green under the old rule: the two regressions (expected), `a_into_below_a_merge_is_merge_in_range` (the old `refuse_merges` already says it), and **`a_into_on_main_without_upstream_takes_an_unpushed_commit` — the ruling's "today `NotOnYourBranch`" is wrong**: `amend_into` only asked `ancestor`, so `a` on main with no upstream already planned. What the ruling adds for `a` is the refusals (`AlreadyPushed`, `BeyondReach`).
+
+**Regression tests named:** `absorb_unpushed::absorb_with_an_upstream_keeps_its_range`, `absorb_unpushed::a_into_with_an_upstream_is_unchanged` (new, upstream set); existing `absorb_oracle::absorb_agrees_with_the_trees_one_target`, `rewrite_plan::amend_into_plans_the_index_as_a_fixup_after_its_target` (default-branch base) stay green. `R` (`Open`) unchanged: it calls `base_of` directly, untouched; `rewrite_plan::open_runs_from_head_down_to_where_the_branch_left_main` green.
+
+**Behaviour change to know:** a branch whose upstream equals `HEAD` (all pushed) now gets the fallback: absorb → `AllPushed` (was `NothingToAbsorb`), `a` into a pushed commit → `AlreadyPushed` (was planned). That is the ruling's `base == HEAD` condition applied as written.
+
+**Words the keys ticket (09) needs:** `StaysWhy::Submodule`, `StaysWhy::OutsideYourCommits`; refusals `AllPushed` (`every commit on <branch> is already pushed · absorb only changes unpushed commits · c commits them`), `AlreadyPushed` (`<short> is already pushed · a only changes commits you haven't pushed`), `BeyondReach` (`<short> is more than 10 commits back · a reaches your last 10 unpushed commits`) — all in `explain()` already; the stays need preview words. 09 should draw stays from `rewrite::absorb_plan_map`.
+
+**Not done / out of scope:** M5's knock-on (`operation/stage.rs`, `apply/set_aside.rs`, `preview/stash.rs` also run `git apply` without pinning `--whitespace`) not checked. Minor 2 (nothing staged → own words) untouched. No git-absorb/jj comparison (neither installed).

@@ -7,44 +7,19 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use graft_core::oid::Oid;
 use graft_ops::absorb::{StaysWhy, absorb_map};
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{FactsScope, Operation, Tip};
 use graft_ops::rewrite::{RewriteParams, RewriteRequest, TodoAction, plan};
 
+use crate::absorb::{branch, oid, stage};
 use crate::support::{
     NOW, Never, RepoState, TempRepo, git_version, run_undo, stash_list, state_of, try_run,
 };
 
-/// `main`: `m1` (`old.txt`). `feature`, `HEAD`: `f1` makes `a.txt`, `f2`
-/// makes `b.txt`, `f3` changes `a.txt`'s last line.
-fn branch() -> TempRepo {
-    let repo = TempRepo::init();
-    repo.write("old.txt", b"o1\no2\no3\no4\no5\n");
-    repo.commit_all("m1");
-    repo.git(&["switch", "-q", "-c", "feature"]);
-    repo.write("a.txt", b"a1\na2\na3\na4\na5\n");
-    repo.commit_all("f1");
-    repo.write("b.txt", b"b1\nb2\nb3\nb4\nb5\n");
-    repo.commit_all("f2");
-    repo.write("a.txt", b"a1\na2\na3\na4\na5 changed\n");
-    repo.commit_all("f3");
-    repo
-}
-
 /// `b.txt`'s third line, staged: `f2` made it, so it is placed into `f2`.
 fn stage_placed(repo: &TempRepo) {
     stage(repo, "b.txt", b"b1\nb2\nB3\nb4\nb5\n");
-}
-
-fn stage(repo: &TempRepo, path: &str, bytes: &[u8]) {
-    repo.write(path, bytes);
-    repo.git(&["add", "--", path]);
-}
-
-fn oid(repo: &TempRepo, rev: &str) -> Oid {
-    Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a commit id")
 }
 
 fn planned(repo: &TempRepo) -> RewriteParams {
