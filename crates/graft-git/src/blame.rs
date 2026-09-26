@@ -54,7 +54,7 @@ pub struct BlameOptions {
     /// `-w`: a whitespace-only change passes the line to the commit before.
     pub ignore_whitespace: bool,
     /// Pass `.git-blame-ignore-revs` when the repository has one; `false`
-    /// clears any configured list too (`--ignore-revs-file ""`).
+    /// clears any configured list too (`--no-ignore-revs-file`).
     pub ignore_revs: bool,
 }
 
@@ -242,8 +242,11 @@ pub fn blame(
         // Asked to pass it, and there is none at the root: a configured
         // `blame.ignoreRevsFile` is git's to honour.
         (None, true) => invocation,
-        // An empty name clears every list, the configured one included.
-        (_, false) => invocation.arg(GitArg::Flag("--ignore-revs-file=")),
+        // `--no-ignore-revs-file` drops the configured `blame.ignoreRevsFile`
+        // before git opens it. An empty `--ignore-revs-file=` does not: git
+        // still opens a configured file first, and a missing one is fatal
+        // ("could not open object name list"), probed on git 2.54 (18d).
+        (_, false) => invocation.arg(GitArg::Flag("--no-ignore-revs-file")),
     };
     if let Rev::Commit(commit) = rev {
         invocation = invocation.arg(GitArg::Oid(*commit));
