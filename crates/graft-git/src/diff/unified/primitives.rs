@@ -35,11 +35,16 @@ pub(crate) fn parse_percent(rest: &[u8]) -> Option<u8> {
 
 /// The `diff --git a/x b/x` line's two paths, `a/`/`b/` prefixes stripped.
 ///
-/// Git quotes both paths together, C-style, whenever either needs it; when
-/// neither is quoted, a path containing a literal `" b/"` is ambiguous (a
-/// long-known git wart) and is not something this parser resolves — the
-/// `---`/`+++`/`rename to`/`copy to` lines are the unambiguous source of the
-/// final path whenever they are present.
+/// Git quotes each path on its own, C-style, only when that path needs it
+/// (`diff.c` quotes the two names separately), so a rename from a plain
+/// name to a non-ASCII one reads `a/plain.txt "b/caf\303\251.txt"`: bare
+/// first, quoted second (m7-power-tools/27, measured on git 2.54). A bare
+/// path never holds a `"` — git would have quoted it — so when the second
+/// is quoted it starts at the first `"`. When neither is quoted, a path
+/// containing a literal `" b/"` is ambiguous (a long-known git wart) and is
+/// not something this parser resolves — the `---`/`+++`/`rename to`/`copy
+/// to` lines are the unambiguous source of the final path whenever they are
+/// present.
 pub(crate) fn parse_diff_git_header(rest: &[u8]) -> Option<(Vec<u8>, Vec<u8>)> {
     if rest.first() == Some(&b'"') {
         let (a, after) = take_quoted(rest)?;
@@ -50,6 +55,13 @@ pub(crate) fn parse_diff_git_header(rest: &[u8]) -> Option<(Vec<u8>, Vec<u8>)> {
             after
         };
         Some((strip_ab(&unquote(a)), strip_ab(&unquote(b))))
+    } else if let Some(quote) = rest.iter().position(|&byte| byte == b'"') {
+        let a = rest[..quote].strip_suffix(b" ")?;
+        let (b, after) = take_quoted(&rest[quote..])?;
+        if !after.is_empty() {
+            return None;
+        }
+        Some((strip_ab(a), strip_ab(&unquote(b))))
     } else {
         let split = find(rest, b" b/")?;
         Some((strip_ab(&rest[..split]), strip_ab(&rest[split + 1..])))
