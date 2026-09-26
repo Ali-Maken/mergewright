@@ -1,6 +1,6 @@
 # m7-journey-ids — give plain push `P y` a journey-counts id and walk it; drop the pull-rebase-push half; fix m6 note :130
 
-Status: ready
+Status: done
 Blocked by: 25 (merged, b42f8454)
 Crates: graft (tests only: `tests/it/m5_walk/`), docs (`docs/design-notes/m6-conflicts.md`: the fence row, :130, :528
 only; `TESTING.md` only if it lists fence rows). No production source.
@@ -50,17 +50,17 @@ Out: a clean-tree `p r r P y` id or walk (ruling b). The force push (`P → ⏎`
 - Ticket 25 NOTES item 12.
 
 ## Acceptance (name the verifying test or the diff line at tick time)
-- [ ] The drop stands: `rejected-push-dirty-to-pushed` is walked. Name the scenario's file:line and the test that runs
+- [x] The drop stands (`stash_journeys.rs:603`, run by `every_scenario::journey_rejected_push_dirty_to_pushed`, `every_scenario.rs:139`; green in full nextest): `rejected-push-dirty-to-pushed` is walked. Name the scenario's file:line and the test that runs
       it (builder said `every_scenario.rs:139`). If it's absent, **stop**: don't drop (b), and report it.
-- [ ] Row `push 2` in the M6 fence: the diff line.
-- [ ] `every_scenario::push_journey_is_walk_gated` green. It routes `P y` (2 inputs ≤ 2) and asserts the three landing
+- [x] Row `push 2` (`m6-conflicts.md:522`) in the M6 fence: the diff line.
+- [x] `every_scenario::push_journey (green; scenario `remotes.rs::push`)_is_walk_gated` green. It routes `P y` (2 inputs ≤ 2) and asserts the three landing
       facts above.
-- [ ] Red first: in a scratch copy, lower `push` to 1, run it, and confirm `within_the_note` fails naming 2 vs 1. Say
+- [x] Red first (seen: `FAIL push: push: 2 inputs sent, the note's journey-counts allows 1: P y`; before the row: `no row for it`): in a scratch copy, lower `push` to 1, run it, and confirm `within_the_note` fails naming 2 vs 1. Say
       so in NOTES; don't commit the scratch.
-- [ ] `journey_counts_match_the_note` green with the new id (ids both ways).
-- [ ] :130 and :528: the diff lines. `git diff --stat -- docs/design-notes/m6-conflicts.md` shows only the row, :130
+- [x] `journey_counts_match (green; `every_counted_journey` now adds `remotes::counted_journeys`)_the_note` green with the new id (ids both ways).
+- [x] :130 and :528 (diff hunks @130, @522, @529 only): the diff lines. `git diff --stat -- docs/design-notes/m6-conflicts.md` shows only the row, :130
       and :528.
-- [ ] No capture changed: `git diff --stat -- 'docs/shots/**'` empty.
+- [x] No capture (empty) changed: `git diff --stat -- 'docs/shots/**'` empty.
 
 ## Touches (check each, report how)
 - `journey_counts_match_the_note` / `within_the_note`: a new id with no scenario, or the reverse, fails. Check: run both.
@@ -81,3 +81,9 @@ workspace-wide.
 
 ## Size
 ~20k.
+
+## NOTES (25b)
+- No compaction. No scout (ticket: every place named).
+- TESTING.md lists fence rows (:2452): `push` row added after it.
+- `journey_counts_match_the_note` needed the scenario in its set: `every_counted_journey` extends with `remotes::counted_journeys()` (`#[cfg(test)]`, else dead code in the example).
+- :528 now says: every `journey-counts` fence in m6-conflicts.md is read, ids unique across them; M7 fences not read by this walk (`journeys.rs:21`).

@@ -3,18 +3,19 @@
 //! **undo cannot be complete, because the remote already has it** — `u`
 //! after a push explains itself before it runs.
 
+use graft::update::Status;
 use graft_core::event::KeyCode;
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
 use super::claim::ghost_equals_git;
-use super::fixture::{Fixture, Remote, ahead_to_merge_and_push, diverged};
-use super::steps::{Capture, Scenario, Step, Wait, When};
+use super::fixture::{Fixture, Remote, ahead_to_merge_and_push, diverged, one_to_push};
+use super::steps::{Capture, Scenario, Sees, Step, Wait, When};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{
     a_status_said, branch, ch, chain, claim_and_confirm, key, plain, same_files, status_containing,
 };
-use crate::repo_truth::check;
+use crate::repo_truth::{check, run_git};
 
 pub(super) fn remote_history() -> Vec<Scenario> {
     vec![
@@ -22,7 +23,15 @@ pub(super) fn remote_history() -> Vec<Scenario> {
         u_after_push_asks_once(),
         u_after_push_repush_old_tip(),
         u_after_push_cancel_asks_again(),
+        push(),
     ]
+}
+
+/// The scenarios here that walk a row of the M6 `journey-counts` fence, so
+/// `journey_counts_match_the_note` sees them (m7-power-tools/25b).
+#[cfg(test)]
+pub(super) fn counted_journeys() -> Vec<Scenario> {
+    vec![push()]
 }
 
 fn pull_diverged_offers_m_and_r() -> Scenario {
@@ -384,6 +393,54 @@ fn u_after_push_cancel_asks_again() -> Scenario {
             }
             Ok(())
         },
+        capture: None,
+    }
+}
+
+/// `push`: plain push, `P y` — 2, the M6 fence's row (P15,
+/// `m6-usability-fixes.md:59`). Starts on the graph, the cursor on the
+/// current branch's row, clean, one commit ahead of `origin`. Lands with
+/// the bare's `main` at the local tip, the push box gone from the frame and
+/// no failure on the status line (m7-power-tools/25b).
+fn push() -> Scenario {
+    Scenario {
+        name: "push",
+        shape: Shape::Linear,
+        remote: Remote::Local,
+        size: (120, 40),
+        setup: one_to_push,
+        steps: vec![
+            Step::WaitFor(Wait::Ready),
+            Step::Route(true),
+            key(ch('P')),
+            Step::Frame(
+                "the push box, drawn",
+                &[Sees::Has("Push main → origin/main")],
+            ),
+            key(ch('y')),
+            Step::Write("the push"),
+            Step::WaitFor(Wait::Ready),
+            Step::Route(false),
+            Step::Frame(
+                "the push box gone",
+                &[Sees::Lacks("Push main → origin/main")],
+            ),
+            Step::See("no failure on the status line", |state| {
+                check(
+                    !matches!(state.status, Status::Failed(_) | Status::Sticky { .. }),
+                    || format!("status {:?}", state.status),
+                )
+            }),
+            Step::Shell(|fixture| {
+                let head = fixture.git(&["rev-parse", "HEAD"])?;
+                let bare = fixture.bare().ok_or("this scenario has no bare")?;
+                let main = run_git(bare, &["rev-parse", "refs/heads/main"])?;
+                check(main.trim() == head.trim(), || {
+                    format!("the bare's main is {main:?}, HEAD {head:?}")
+                })
+            }),
+        ],
+        expect: |_, _| Ok(()),
         capture: None,
     }
 }
