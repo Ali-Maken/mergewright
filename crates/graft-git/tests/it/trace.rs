@@ -466,3 +466,67 @@ fn whole_file_respects_max_lines() {
         "recounted"
     );
 }
+
+/// A copy of the fixture where `plain.txt` was added, then renamed to the
+/// non-ASCII `café.txt` with its middle line changed (m7-power-tools/27).
+/// git quotes the new name in `diff --git` and leaves the old one bare.
+fn renamed_to_non_ascii() -> (graft_fixtures::Scratch, Oid) {
+    let (scratch, _) = with_file("plain.txt", "one\ntwo\nthree\nfour\nfive\n");
+    let dir = scratch.path();
+    git_ok(dir, &["mv", "plain.txt", "café.txt"]);
+    std::fs::write(dir.join("café.txt"), "one\ntwo\nTHREE\nfour\nfive\n")
+        .unwrap_or_else(|why| panic!("writing café.txt: {why}"));
+    git_ok(dir, &["add", "café.txt"]);
+    git_ok(dir, &["commit", "-q", "-m", "rename to café"]);
+    let head = rev(dir, "HEAD");
+    (scratch, head)
+}
+
+#[test]
+fn a_mixed_quoted_diff_git_header_parses() {
+    let (scratch, head) = renamed_to_non_ascii();
+    let patch = git_ok(
+        scratch.path(),
+        &[
+            "diff",
+            "-M",
+            "--no-color",
+            &format!("{head}~"),
+            &head.to_string(),
+        ],
+    );
+    assert!(
+        patch.starts_with(b"diff --git a/plain.txt \"b/caf\\303\\251.txt\"\n"),
+        "the shape under test: {}",
+        String::from_utf8_lossy(&patch)
+    );
+    let files = graft_git::diff::parse_unified(&patch)
+        .unwrap_or_else(|why| panic!("git's own rename patch: {why:?}"));
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].entry.path, "café.txt".as_bytes());
+    assert_eq!(files[0].entry.old_path.as_deref(), Some(&b"plain.txt"[..]));
+    assert!(
+        matches!(files[0].entry.status, FileStatus::Renamed { .. }),
+        "{:?}",
+        files[0].entry.status
+    );
+}
+
+#[test]
+fn line_history_crosses_a_non_ascii_rename() {
+    let (scratch, head) = renamed_to_non_ascii();
+    let mut rows = Vec::new();
+    let end = line_history(
+        &open(scratch.path()),
+        head,
+        Path::new("café.txt"),
+        &LineRange::Block { start: 2, end: 4 },
+        1000,
+        &mut |batch| rows.extend(batch),
+        &(),
+    )
+    .unwrap_or_else(|why| panic!("line history across the rename: {why}"));
+    let paths: Vec<&Path> = rows.iter().map(|row| row.path.as_path()).collect();
+    assert_eq!(paths, [Path::new("café.txt"), Path::new("plain.txt")]);
+    assert!(matches!(end, TraceEnd::Start { .. }), "{end:?}");
+}
