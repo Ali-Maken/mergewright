@@ -1,6 +1,6 @@
 # blame-draw — the blame place's picture: gutter, trailer, breakpoints, title states, its bar words
 
-Status: ready
+Status: partial — draw done; hint contexts blocked on `graft` (NOTES)
 Blocked by: 20b-diff-line-cursor (shares graft-ui; sequence only, no signature needed)
 Crates: graft-ui.
 Build with: **Sonnet**. A pure draw function against a mock-up that fixes every cell, judged by unit tests and
@@ -61,22 +61,32 @@ pub fn blame_row_at(area: Rect, view: &BlameView, y: u16) -> Option<usize>;    /
 ```
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Trailer:** `the_trailer_is_on_the_cursor_row_only` (red first) · `the_trailer_sheds_sha_then_subject` ·
+- [x] **Trailer:** `the_trailer_is_on_the_cursor_row_only` (red first — **not run red**: written with the draw, see
+      NOTES) · `the_trailer_sheds_sha_then_subject` ·
       `a_long_line_drops_the_trailer_and_the_gutter_names_him` · `mid_block_cursor_row_prints_its_name` ·
-      `uncommitted_line_trails_not_committed_yet` · `skipped_line_trails_skipped_commit`.
-- [ ] **Gutter:** `gutter_is_46_at_187` · `gutter_is_22_without_subject_at_140` · `gutter_is_10_with_initials_at_100` ·
+      `uncommitted_line_trails_not_committed_yet` · `skipped_line_trails_skipped_commit` (also covers Unblamable).
+      All in `crates/graft-ui/src/blame/tests.rs`.
+- [x] **Gutter:** `gutter_is_46_at_187` · `gutter_is_22_without_subject_at_140` · `gutter_is_10_with_initials_at_100` ·
       `one_row_block_is_a_dash` · `block_brackets_open_and_close`.
-- [ ] **Title and states:** `title_says_now_as_of_before` · `reading_title_says_esc_cancels` ·
+- [x] **Title and states:** `title_says_now_as_of_before` · `reading_title_says_esc_cancels` ·
       `failed_body_shows_gits_first_line` · `ignore_line_says_skipping_or_showing` · `no_ignore_line_without_the_file` ·
-      `find_title_counts_matches` · `at_24_rows_code_fills_the_rest`.
-- [ ] **Mouse:** `blame_row_at_maps_y_to_row` (title and ignore rows → `None`).
-- [ ] **Hints:** `blame_bar_words_in_order` · `n_n_only_while_finding` · `i_only_with_the_file` ·
-      `graph_bar_leads_esc_back_to_blame` · `pane_bar_offers_b_blame`; `context_lists_match_the_design_note_order`
-      and `whole_list` updated, not weakened.
-- [ ] **Text snapshots** (TestBackend; hand-built rows matching pass 1b's mock-up, lines 18–27, cursor on 22 with Lina
+      `find_title_counts_matches` · `at_24_rows_code_fills_the_rest`. Plus `heatmap_changes_colour_only` (glyphs
+      identical on/off; the colour itself unverified, rule 5).
+- [x] **Mouse:** `blame_row_at_maps_y_to_row` (title and ignore rows → `None`).
+- [ ] **Hints — PARTIAL, blocked on `graft`.** Done: `blame_bar_words_in_order` · `n_n_only_while_finding` ·
+      `i_only_with_the_file` (`hints/tests.rs` mod `blame_place`), against a standalone
+      `pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint>`. **Not done:**
+      `graph_bar_leads_esc_back_to_blame`, `pane_bar_offers_b_blame`, and the words as a `HintContext`. Any new
+      variant or field breaks `graft`'s exhaustive matches (`crates/graft/src/update/tests.rs` :3970, :4341, :4479
+      match every `HintContext`; `view/rows.rs:680` builds `PaneFocused { row, opens }` by struct literal), and adding
+      forms to `every_context` puts them into `graft`'s key sweeps, which need a state per form. See NOTES.
+      `context_lists_match_the_design_note_order` and `whole_list` untouched (byte-identical).
+- [x] **Text snapshots** (TestBackend; hand-built rows matching pass 1b's mock-up, lines 18–27, cursor on 22 with Lina
       `Retry refresh once on 401` `a1b2c3d` 7 months old): 187×50, 140×40, 100×30, and 187×50 with the cursor on the
-      long line 27. Each snapshot's header comment carries a "Right:" line.
-- [ ] graft-ui MAP.md: the `blame` module's items, the new hint flags.
+      long line 27. Each snapshot's header comment carries a "Right:" line. Tests `snapshot_187x50`,
+      `snapshot_140x40`, `snapshot_100x30`, `snapshot_187x50_long_line`; files
+      `crates/graft-ui/src/blame/snapshots/graft_ui__blame__tests__blame_*.snap` (insta `description` = the Right line).
+- [x] graft-ui MAP.md: the `blame` module's items, `relative_date_long`, `blame_place_list` (no hint flags: blocked).
 
 ## Touches (check each, report how)
 - **Hint catalogue tests** (`hints/tests.rs` `all_contexts` :24, `context_lists_match_the_design_note_order` :428,
@@ -95,3 +105,21 @@ workspace-wide.
 
 ## Size
 ~40k.
+
+## NOTES (builder, 2026-09-26)
+- No compaction. Scout: used `.scratch/m7-power-tools/scouts/blame-place.md` (Q7 for hint tests); no second scout.
+- **Blocked: needs `graft`** for the hint contexts. Proposed shape for 20 (which holds both crates):
+  `HintContext::Blame { finding: bool, ignore_file: bool }` → `blame_place_list(finding, ignore_file)`;
+  a `back_to_blame: bool` on the graph-row wrap (or `HintContext::BackToBlame(Box<HintContext>)`) leading
+  `esc back to blame`; `PaneFocused { row, opens, blamable: bool }` inserting `B blame` before the §2.5 view
+  options. Each needs arms in `graft/src/update/tests.rs` :3970/:4341/:4479 and `view/rows.rs:680`.
+- Red-first not honoured for the trailer test: written with the draw in one pass. Its assertion was checked
+  against the drawn row, not against a prior red.
+- Choices the note leaves open: mid-block cursor row prints the name only (sha/age/subject stay on the block's
+  first row); cursor row reverse-video across the full width; gutter and trailer DIM; heatmap buckets
+  <1w/<30d/<180d/<1y/older → LightYellow/Yellow/LightRed/Magenta/DarkGray. All colour **unverified** (rule 5).
+- Gutter subject at 46 cells cuts with `…` (`Retry refresh once on…`); the trailer carries it whole.
+- `relative_date` refactored onto a shared `age()` ladder; `matches_git_log_date_relative_at_every_boundary`
+  still passes unchanged, so the short form is byte-identical.
+- No capture under `docs/shots/`: nothing draws the place until 20 wires it; the four insta snapshots are the
+  text record.

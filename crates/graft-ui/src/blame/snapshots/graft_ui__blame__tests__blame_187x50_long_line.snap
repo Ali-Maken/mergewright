@@ -1,0 +1,16 @@
+---
+source: crates/graft-ui/src/blame/tests.rs
+description: "Right: cursor on the long line 27, its block's last row: no trailer; the gutter prints Tom beside ▸."
+expression: "snapshot(&view(&rows, ON_27), 187, 50)"
+---
+ BLAME · src/auth/session.rs · as it is now
+ ─ 5e6f7a8 Tom   10mo  Add token refresh      │ 18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+ ─ a1b2c3d Lina   7mo  Retry refresh once on… │ 19          let mut attempt = 0;
+ ┌ 5e6f7a8 Tom   10mo  Add token refresh      │ 20          loop {
+ └                                            │ 21              let resp = client.refresh(&self.token)?;
+ ─ a1b2c3d Lina   7mo  Retry refresh once on… │ 22              if resp.status() == 401 && attempt == 0 {
+ ┌ a1b2c3d Lina   7mo  Retry refresh once on… │ 23                  attempt += 1;
+ └                                            │ 24                  continue;
+ ┌ 5e6f7a8 Tom   10mo  Add token refresh      │ 25              }
+ │                                            │ 26              self.token = resp.token()?;
+ ▸         Tom                                │ 27              self.store.persist(&self.token, Duration::from_secs(self.config.session_ttl_seconds), Persist::Atomically, &self.audit_log)

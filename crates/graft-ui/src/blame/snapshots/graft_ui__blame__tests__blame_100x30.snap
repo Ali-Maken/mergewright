@@ -1,0 +1,16 @@
+---
+source: crates/graft-ui/src/blame/tests.rs
+description: "Right: 10-cell gutter: bracket, initials, age; the trailer shed to name and age, the room left."
+expression: "snapshot(&view(&rows, ON_22), 100, 30)"
+---
+ BLAME · src/auth/session.rs · as it is now
+ ─ TO 10mo│ 18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+ ─ LI  7mo│ 19          let mut attempt = 0;
+ ┌ TO 10mo│ 20          loop {
+ └        │ 21              let resp = client.refresh(&self.token)?;
+ ▸ LI  7mo│ 22              if resp.status() == 401 && attempt == 0 {    ◂ Lina · 7 months ago
+ ┌ LI  7mo│ 23                  attempt += 1;
+ └        │ 24                  continue;
+ ┌ TO 10mo│ 25              }
+ │        │ 26              self.token = resp.token()?;
+ └        │ 27              self.store.persist(&self.token, Duration::from_secs(self.config.session_

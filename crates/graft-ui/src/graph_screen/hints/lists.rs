@@ -116,6 +116,32 @@ pub(super) const TAIL: [Hint; 20] = [
     hint("O", "overview"),
 ];
 
+/// The blame place's bar (design note pass 2b B1; m7-power-tools/20c), in
+/// the note's order. `n N match` only while a find is active (2b proposal
+/// 7); `i ignore list` only when the repo has `.git-blame-ignore-revs`. No
+/// `L`: history-place adds `L history of these lines` after `^`.
+///
+/// **Not yet a [`HintContext`]**: adding a variant or a field breaks
+/// `graft`'s exhaustive sweeps, which 20c may not edit. Ticket 20 wires it
+/// (with the graph's `esc back to blame` lead and the pane's `B blame`).
+#[must_use]
+pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
+    let mut list = vec![
+        hint("⏎", "that commit"),
+        hint("^", "before it"),
+        hint("/", "find"),
+    ];
+    if finding {
+        list.push(hint("n N", "match"));
+    }
+    list.extend([hint("space", "ages"), hint("w", "whitespace")]);
+    if ignore_file {
+        list.push(hint("i", "ignore list"));
+    }
+    list.push(hint("esc", "back"));
+    list
+}
+
 fn working_tree_row_list() -> Vec<Hint> {
     vec![
         hint("⏎", "changes"),
