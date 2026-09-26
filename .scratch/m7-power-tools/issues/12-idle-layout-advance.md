@@ -207,6 +207,19 @@ impl Wake { pub fn label(&self) -> &'static str; }   // variant name, and the `P
   the startup lines. NOTES proposes the DESIGN.md §3.6 sentence ("on the history worker whenever no request is
   waiting, to the end of history, then parked") for the conductor to apply. The conductor closes KNOWN_GAPS :149,
   :161, :169 by the test names above.
+- [x] **(12c, review 04) Major 1 — the perf script never passes a failed run.** `scripts/m7-perf-key-selftest.sh`
+  (canned outputs via `M7_PERF_KEY_CANNED`, no cargo): 7 cases, 21 checks. Red first on the old script: 17 of 21
+  failed (a plain run exiting 101 read `gate(p99<=16ms)=ok`, script exit 0). Green after: `SUMMARY runs: FAILED 1 of
+  6: plain2 exit 101`, `gate(p99<=16ms)=FAIL(plain2 failed)`, exit 1; a 2-cell spread reads `MISSING(2 of 3)`, exit
+  1; a failed control, a missing output and the rev comparison all checked. `frames:` p99 line now printed by
+  `frames::verdict::judge` after the pixel and rows-on-hand asserts, before the gate's own assert. Not run on a real
+  release run (no perf runs in 12d). ✔ (12d)
+- [x] **(12c, review 04) Major 3 — `frames.rs` split.** 1706 → `frames.rs` 292 (tests, script, `check_scale`) +
+  `frames/{run 361, paced 348, sink 286, readings 259, controls 160, verdict 122}`; `scroll` 60 lines, the `Run`
+  built by `run::measured`. No behaviour change beyond Major 1's print order: `cargo test --features heavy-1m --test
+  it -- frames:: --list` gives the same 11 tests before and after (two now under `frames::controls::` /
+  `frames::sink::`, still under the script's `frames::` filter); `frames::sink::the_sink_counts_…` passes; clippy
+  `--features heavy-1m --all-targets -D warnings` clean. Scroll tests not run (heavy, release). ✔ (12d)
 
 ## Touches (check each, report how)
 - **`history/views.rs` `serve`/`answer`/`promote`/`reach`, `history/stream.rs`, `jobs/kinds.rs` `ReadHistory` report:**
