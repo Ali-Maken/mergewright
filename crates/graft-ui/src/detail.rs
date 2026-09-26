@@ -540,9 +540,10 @@ pub struct DetailView {
     pub body: BodyView,
     /// First body line on screen.
     pub body_top: usize,
-    /// The line cursor's body row, when the body has one: the changes pane's
-    /// diff region, where `Space` and `d` act on the row under it
-    /// (m3-working-tree-undo-and-stash/04). `None` everywhere else.
+    /// The line cursor's body row, when the body has one: any diff
+    /// (m7-power-tools/20b); on the changes pane `Space` and `d` act on the
+    /// row under it (m3-working-tree-undo-and-stash/04). `None` with no diff
+    /// on show.
     pub body_cursor: Option<usize>,
     /// Which region has the keys.
     pub focus: DetailFocus,

@@ -275,7 +275,7 @@ fn files_key(
     }
 }
 
-/// Keys active with the diff body focused: scrolling, plus the same
+/// Keys active with the diff body focused: the line cursor, plus the same
 /// view-option keys `files_key` falls back to (both panes share them).
 fn diff_key(
     detail: &mut DetailState,
@@ -296,15 +296,11 @@ fn diff_key(
     };
     if let Some(delta) = delta {
         let len = diff_content_len_of(detail);
-        // On the changes pane the cursor leads and the view follows — the
-        // cursor is what `Space` and `d` act on, so it must be the thing that
-        // moves. Everywhere else the diff is read-only and `j`/`k` still
-        // just scroll.
-        if detail.spec == Some(DetailSpec::WorkingTree) {
-            detail.move_body_cursor(delta, len, body_rows);
-        } else {
-            detail.scroll_body(delta, len);
-        }
+        // The cursor leads and the view follows, in every diff
+        // (m7-power-tools/20b): on the changes pane it is what `Space` and
+        // `d` act on, in a commit's diff what `B` blames. One meaning for
+        // `j`/`k` in a diff, whichever pane (UX §3.6).
+        detail.move_body_cursor(delta, len, body_rows);
         return true;
     }
     diff_option_key(detail, commands, ids, code, plain)

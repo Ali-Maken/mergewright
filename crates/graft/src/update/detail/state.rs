@@ -274,9 +274,9 @@ pub struct DetailState {
     pub body_top: usize,
     /// The diff region's line cursor: a row of the flattened diff body
     /// (`graft_ui::detail::DiffView::body_row`), which `Space` and `d` act
-    /// on in the changes pane. Kept on every spec so `j`/`k` in the diff
-    /// region always means the same thing; only the changes pane draws it
-    /// and only the changes pane writes from it.
+    /// on in the changes pane. Every spec has it and draws it, so `j`/`k` in
+    /// the diff region always mean the same thing (m7-power-tools/20b); only
+    /// the changes pane writes from it.
     pub body_cursor: usize,
     /// The pane's size, per orientation (ADR-0028); `<common_dir>/graft/layout`
     /// at startup, written on every resize.
@@ -300,6 +300,20 @@ pub struct DetailState {
     /// that arrives can put it back (`ops::refresh`, `ops::files_arrived`).
     /// `None` at every other moment.
     pub kept_cursor: Option<KeptCursor>,
+    /// The line `w`, `[`/`]` or `L` found the line cursor on, owed to the
+    /// re-read diff when it arrives (m7-power-tools/20b). Any other diff
+    /// shown first drops it.
+    pub kept_line: Option<KeptLine>,
+}
+
+/// Where the line cursor was when the same file was read again under new
+/// options: its line, and how many rows below the view's top it sat.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KeptLine {
+    /// The line under the cursor.
+    pub at: super::cursor::LineRef,
+    /// Rows between the view's top and the cursor.
+    pub offset: usize,
 }
 
 /// Where the changes-pane cursor was before a write's refresh.
@@ -350,6 +364,7 @@ impl Default for DetailState {
             explain: None,
             explain_highlight: Vec::new(),
             kept_cursor: None,
+            kept_line: None,
         }
     }
 }

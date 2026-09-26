@@ -13,14 +13,17 @@ use graft_git::diff::{DiffOptions, FileDiff, FileList};
 use graft_ops::mistake_radar::Policy;
 use graft_ops::mistake_radar::probes::EvilVerdict;
 use graft_term::sanitize::{sanitize_line, sanitize_path_bytes};
-use graft_ui::detail::{ContainedIn, DetailFocus, DiffView, FileListView, WorkingTreeSection};
+use graft_ui::detail::{
+    ContainedIn, DetailFocus, DiffMode, DiffView, FileListView, WorkingTreeSection,
+};
 use graft_ui::detail_pane::DetailLayout;
 
 use crate::update::events::Command;
 
+use super::cursor::{LineRef, line_row, row_line};
 use super::state::{
     BELOW_MIN, DetailSpec, DetailState, DiffKey, GRAPH_MIN_COLUMNS, GRAPH_MIN_ROWS, KeptCursor,
-    Loading, MAX_LINES, RIGHT_MIN, stepped,
+    KeptLine, Loading, MAX_LINES, RIGHT_MIN, stepped,
 };
 
 impl DetailState {
@@ -307,6 +310,25 @@ impl DetailState {
         }
     }
 
+    /// Put the files cursor on `row` and ask for its diff, as a move onto it
+    /// would; nothing when it is already there (its diff is on show or on
+    /// its way). `show_line`'s selection (m7-power-tools/20b).
+    pub(super) fn select_file_row(
+        &mut self,
+        row: usize,
+        next_id: &mut impl FnMut() -> JobId,
+    ) -> Vec<Command> {
+        let Loading::Ready(files) = &mut self.files else {
+            return Vec::new();
+        };
+        if files.cursor == row {
+            return Vec::new();
+        }
+        Arc::make_mut(files).cursor = row;
+        self.max_lines = MAX_LINES;
+        self.show_cursor(next_id)
+    }
+
     /// Show the diff under the files cursor: from the cache, or by asking.
     /// The message row and directories show no diff.
     fn show_cursor(&mut self, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
@@ -318,6 +340,7 @@ impl DetailState {
         self.diff_raw = None;
         self.body_top = 0;
         self.body_cursor = 0;
+        self.kept_line = None;
         let (Some(spec), Some(entry), Some(list)) = (self.spec, self.selected_entry(), &self.list)
         else {
             return commands;
@@ -364,8 +387,12 @@ impl DetailState {
                     .insert(key, (Arc::clone(&view), Arc::clone(&raw)));
                 self.diff = Loading::Ready(view);
                 self.diff_raw = Some(raw);
+                if let Some(kept) = self.kept_line.take() {
+                    self.place_line(kept.at, kept.offset);
+                }
             }
             Err(failure) => {
+                self.kept_line = None;
                 self.diff = Loading::Failed(failure);
                 self.diff_raw = None;
             }
@@ -383,14 +410,12 @@ impl DetailState {
     }
 
     /// The diff region's line cursor, clamped to the diff on show, or `None`
-    /// when there is no diff to put a cursor in. Only the changes pane draws
-    /// it (`DetailSpec::WorkingTree`): a commit's diff is read-only, and a
-    /// marker there would promise a write that is not on offer.
+    /// when there is no diff to put a cursor in. Every spec has it
+    /// (m7-power-tools/20b): blame's `B` needs "the line he's on" in a
+    /// commit's diff as much as in the changes pane. Only the changes pane
+    /// writes from it (`update::operate`'s readers check the spec).
     #[must_use]
     pub fn body_cursor(&self) -> Option<usize> {
-        if self.spec != Some(DetailSpec::WorkingTree) {
-            return None;
-        }
         let Loading::Ready(diff) = &self.diff else {
             return None;
         };
@@ -456,19 +481,66 @@ impl DetailState {
     /// `w`/`[`/`]`: new context/whitespace options, re-reading the current
     /// file under them. Cached identically to any other options change — no
     /// new mechanism (`show_cursor` already keys the cache on `self.options`).
+    ///
+    /// The line cursor stays on the same side and line number of the file
+    /// (m7-power-tools/20b): the rows move under new options, the line does
+    /// not.
     pub fn set_options(
         &mut self,
         options: DiffOptions,
         next_id: &mut impl FnMut() -> JobId,
     ) -> Vec<Command> {
+        let kept = self.line_to_keep();
         self.options = options;
-        self.show_cursor(next_id)
+        let commands = self.show_cursor(next_id);
+        self.keep_line(kept);
+        commands
     }
 
-    /// `L`: read the whole of the current file, past [`MAX_LINES`].
+    /// `L`: read the whole of the current file, past [`MAX_LINES`], the line
+    /// cursor kept on its line as [`Self::set_options`] keeps it.
     pub fn load_all(&mut self, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
+        let kept = self.line_to_keep();
         self.max_lines = usize::MAX;
-        self.show_cursor(next_id)
+        let commands = self.show_cursor(next_id);
+        self.keep_line(kept);
+        commands
+    }
+
+    /// The line under the line cursor and how far down the view it is, for
+    /// a re-read of the same file to put back.
+    fn line_to_keep(&self) -> Option<KeptLine> {
+        let Loading::Ready(view) = &self.diff else {
+            return None;
+        };
+        let cursor = self.body_cursor()?;
+        Some(KeptLine {
+            at: row_line(view, cursor, DiffMode::Unified)?,
+            offset: cursor.saturating_sub(self.body_top),
+        })
+    }
+
+    /// Put `kept` back now if the diff is on hand (a cache hit), else when it
+    /// arrives (`diff_arrived`).
+    fn keep_line(&mut self, kept: Option<KeptLine>) {
+        match (kept, &self.diff) {
+            (Some(kept), Loading::Ready(_)) => self.place_line(kept.at, kept.offset),
+            (kept, _) => self.kept_line = kept,
+        }
+    }
+
+    /// Put the line cursor on `at` (or the nearest row before it on that
+    /// side), `offset` rows below the top of the view. Nothing without a
+    /// diff on show.
+    pub(super) fn place_line(&mut self, at: LineRef, offset: usize) {
+        let Loading::Ready(view) = &self.diff else {
+            return;
+        };
+        let Some(row) = line_row(view, at) else {
+            return;
+        };
+        self.body_cursor = row;
+        self.body_top = row.saturating_sub(offset);
     }
 
     /// `j`/`k`/`PgUp`/`PgDn`/`g`/`G`/wheel in the `Diff` region: move

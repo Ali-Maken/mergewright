@@ -12,7 +12,7 @@
                                                                                                              A ours-deleted.txt                                                       +1 −0
                                                                                                              M three.txt                                                             +12 −0
                                                                                                              M zdiff3.txt                                                             +6 −0
-
+                                                                                                             ▎
                                                                                                                    1 + renamed to a different name by each side
 
 

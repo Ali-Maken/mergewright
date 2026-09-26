@@ -1199,6 +1199,7 @@ fn every_field_spelled_out() -> AppState {
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
         lands_on_head: None,
+        line_landing: None,
         live_landing_owed: false,
         undo_landing_owed: false,
         status_read: None,

@@ -26,7 +26,8 @@ pub struct DiffFocus {
     pub word_tint: bool,
     /// The line cursor's body row, when the body has one
     /// (m3-working-tree-undo-and-stash/04): the row `Space` and `d` act on.
-    /// Only the changes pane sets it; a commit's diff has no cursor.
+    /// Every diff has one since m7-power-tools/20b (a commit's is what `B`
+    /// blames); only the changes pane writes from it.
     pub cursor: Option<usize>,
 }
 

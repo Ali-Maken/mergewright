@@ -14,7 +14,9 @@
 //! plain re-export — nothing outside this module should notice the split.
 
 mod control;
+mod cursor;
 mod keys;
+mod landing;
 mod ops;
 mod state;
 
@@ -24,13 +26,16 @@ pub const LOCAL_JOB_BIT: u64 = 1 << 63;
 
 pub(crate) use control::detail_event;
 pub use control::{LocalJobs, close_explain, effective_layout, open_explain, tab_hint_rows};
+pub use cursor::{DiffCursor, LineRef, Side, diff_cursor};
 pub(crate) use keys::{detail_key, enter_opens};
+pub use landing::{LandingStage, LineLanding, show_line};
+pub(crate) use landing::{LandingWatch, advance};
 /// How many diff lines a read carries before it is cut short; the finish
 /// summary's diff reads use the same budget (m6-conflicts/19).
 pub(crate) use state::MAX_LINES;
 pub use state::{
-    Bounded, CompareBase, DetailSpec, DetailState, DiffKey, KeptCursor, Loading, PaneSize,
-    toggle_compare,
+    Bounded, CompareBase, DetailSpec, DetailState, DiffKey, KeptCursor, KeptLine, Loading,
+    PaneSize, toggle_compare,
 };
 
 #[cfg(test)]

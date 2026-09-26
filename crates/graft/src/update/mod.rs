@@ -185,6 +185,9 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     remote::forget_stale_divergence(next);
     commands.extend(detail::open_explain(next, &mut || local_jobs.next_id()));
     next.local_jobs = local_jobs;
+    // After the pane has followed the selection: a landing opens the pane
+    // itself, and a follow after it would move the pane off its spec.
+    detail::advance(next, commands);
 }
 
 /// The half of [`update`] that answers one event, before the viewport is
@@ -204,6 +207,13 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             Product::CommitGraph(_) | Product::CommitGraphDeclined(_),
         )) => {
             commit_graph::commit_graph_event(next, event);
+        }
+        // A key or click that moves the graph cursor or the pane's
+        // selection drops a `show_line` still landing (m7-power-tools/20b).
+        AppEvent::Core(event @ (Event::Key(_) | Event::Mouse(_))) => {
+            let watch = detail::LandingWatch::of(next);
+            core_event(next, commands, event);
+            watch.drop_if_moved(next);
         }
         AppEvent::Core(event) => core_event(next, commands, event),
         AppEvent::Started(id, task) => started(next, commands, id, &task),
