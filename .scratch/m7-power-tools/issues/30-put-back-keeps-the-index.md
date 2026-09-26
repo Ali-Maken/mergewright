@@ -228,3 +228,11 @@ About 55k: the probe about 8k, the put-back and error about 15k, tests about 25k
 off after T5, with T6-T11 and the ADR left.
 
 ## NOTES (builder)
+
+## Carry (conductor, 2026-09-26): review 06b folds in here
+Source: `docs/reviews/m7-06b-absorb-staged.md`.
+- **C2 (Critical):** an absorb abort loses index-only lines (`apply/resume.rs:414`; `apply.rs:358-361` on failure), and so do `r`/`R` (`rewrite/plan.rs:150`, `index_base: None`). This is the same `put_back` arm as this ticket. Tests: `abort_after_absorb_stops_keeps_index_only_lines`, and an `r` row with an index-only line in the set_aside round trips, red first. When `HEAD^{tree}` equals `S^1^{tree}`, `--index` is exact (review §C2 fix).
+- **M1:** resume tests: continue as planned, continue resolved elsewhere, and abort, each with an undo row. Stops come from an `Edit` row (`tests/it/rewrite_run.rs:366`) or the q3 fixture. These close M7/06b-resume.
+- **M3 + the amendment:** the ADR-0045 amendment this ticket writes must also carry the review's seven points (§"What the ADR-0045 amendment must state"). Absorb's went-through path is one case of your rule.
+- **Absorb C1 test** (after 31 lands): `a_staged_file_deletion_drops_the_commit_that_made_it`.
+- Blocked by adds 31 for that test only; if 31 has not landed, leave that box open and say so.

@@ -209,3 +209,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M7/heavycap | Heavy tier: 6 capture tests red (review 06 §Gates). | closed 2026-09-26 (29, 24eb71bc): no defect. The review ran a pre-20b binary against post-20b captures read from disk (`captures.rs:172-176`), reproduced from 48839e22. Heavy graft 0 capture failures. The fixture panics → M7/borrow4 |
 | M7/28 | Checkout overwrote an ignored file its target tracks; `u` did not restore it. | closed 2026-09-26: 28a + 28b refuse first (ADR-0049); review 28 found no loss (`docs/reviews/m7-28-ignored-guard.md`) |
 | M7/28skip | Guard refused replays git would skip. | moved into M7/28fix (review 28 m1) → 28c |
+| M7/rR-index | `r`/`R` may lose index-only content. | moved into M7/06b-review C2 (review 06b gave the line: `rewrite/plan.rs:150`, `set_aside.rs:515-519`) → 30. `a` loses none (probe r2) |
