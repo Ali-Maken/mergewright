@@ -1,7 +1,7 @@
 # 03b pull-sets-aside — part -b of 03
 
 Status: ready
-Blocked by: 03 part -a (merged cad5ed86); 23b-review-fixes (holds graft-ops)
+Blocked by: 03 part -a (merged cad5ed86); 06b (the set-aside put-back it uses changes; holds graft-ops)
 Crates: graft-ops (`apply.rs` Pull path, `RepoFacts.incoming` + `read_incoming`, `operation.rs` `sets_aside`/`touches`),
 graft (`tests/it/pull_over_edits.rs`, the pull banner words, the m7 walk harness), TESTING.md rows.
 Build with: Opus (unchanged from 03).
