@@ -2242,9 +2242,9 @@ credential capture M6 changed.
    now plain lines, `2 of 2` open, two `<<<<<<< ` lines on disk; `d`: the
    box is titled `Start three.txt over`; confirmed: `git ls-files -u` lists
    `three.txt` with the **same stage oids and modes as at the stop**, the
-   file on disk has the stop's **three** `<<<<<<< ` lines, and the title's
-   count is `3 of 3` again (the resolver's `(open, blocks)`, which the title
-   prints). Start over **after** `⏎` is proven **at the ops level only**:
+   file on disk has the stop's **three** `<<<<<<< ` lines, and the identity
+   row reads `three.txt · 3 conflicts · 3 open` again (the resolver's
+   `(open, blocks)`, which the row prints). Start over **after** `⏎` is proven **at the ops level only**:
    `graft-ops` `tests/it/chained_backup.rs::restart_after_stage_brings_the_conflict_back`
    (git's REUC answers it) and `::restart_survives_a_relaunch` (the recorded
    stage tree answers it). **The app's entry point is not built** — a
@@ -2292,7 +2292,7 @@ credential capture M6 changed.
     has one `<<<<<<<` left (`half_taken_on_disk`). Relaunched: the line is
     exactly `rebase still in progress from a previous run · ⏎ resolve  c
     continue  a abort` with the changes pane open; `⏎` opens `shared.txt`
-    at `1 of 1 conflicts open`; `t`, `⏎`, `c`, the second stop `t`, `⏎`,
+    at `shared.txt · 1 conflict · 1 open`; `t`, `⏎`, `c`, the second stop `t`, `⏎`,
     `c`: `ls-files -u` empty, `HEAD` is `feature`'s rebased tip, its `~2`
     is `main`, one `Rebase` entry `Committed`.
 15. **kill-9-mid-rebase-then-abort** — the same kill; relaunched, `a`,

@@ -150,7 +150,7 @@ footer = its own complete key list (modal, no `. more`, ADR-0039). Eye lands on 
 ```
 120x40 (≥100: sides paired)                                                              80x24 (<100: stacked)
 ╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ────────────────────────────────╮  ╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ─╮
-│ src/auth/token.rs · file 1 of 2 · 2 of 3 conflicts open                      │  │ src/auth/token.rs · 1/2 · 2 of 3 open        │
+│ ▸ src/auth/token.rs · 3 conflicts · 2 open                                   │  │ ▸ src/auth/token.rs · 3 conflicts · 2 open   │
 │ ours = main, what you are rebasing onto · theirs = the commit being replayed │  │ ours = main (onto) · theirs = replayed commit│
 │   38 fn refresh(&mut self) {                                                 │  │   38 fn refresh(&mut self) {                 │
 │▏  39 ── conflict 1 of 3 · open ── o ours  t theirs  b both ──────────────── │  │▏  39 ── conflict 1 of 3 · open ─────────────│
@@ -372,7 +372,7 @@ Keymap rows are still to be written into `docs/design/02-keymap.md` (the conduct
 Resolver per §New UI above; bottom rows and numbering change:
 ```
 stop, 120 cols      │ merge stopped · 1 file conflicted · ⏎ resolve  c finish  a abort  M mergetool  e edit  ⇥ graph   │
-after Esc           │ merge stopped · 1 file conflicted · ⇥ banner  ⏎ open  c commit  . more  …                        │
+after Esc           │ merge stopped · 1 file conflicted · ⇥ banner  ⏎ open  c commit  . more  …                        │  (superseded: `c commit` — shipped is `c finish`, crates/graft-ui/src/graph_screen/hints/lists.rs:209)
 launch, begun in shell  merge in progress · from the shell · 2 conflicted · ⏎ resolve  c finish  a abort …
 card, ≥100:         │   1 line-one                                                                                  │
                     │▏    ── conflict 1 of 3 · open ── o ours  t theirs  b both ───────────────────                 │
