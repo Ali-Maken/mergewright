@@ -237,6 +237,7 @@ fn head_branches(records: &[&ReflogRecord], steps: &[Step]) -> Vec<Option<String
             }
         }
     }
+    let next_leave = next_switch_from(records);
     let mut current: Option<String> = None;
     for index in (0..records.len()).rev() {
         let record = records[index];
@@ -247,15 +248,43 @@ fn head_branches(records: &[&ReflogRecord], steps: &[Step]) -> Vec<Option<String
             current = branch_short(&records[*twin].refname).map(str::to_owned);
         }
         on[index].clone_from(&current);
-        current = after_head_record(&record.subject, current);
+        current = after_head_record(&record.subject, current, next_leave[index]);
     }
     on
 }
 
-/// Where `HEAD` is after a record with this subject.
-fn after_head_record(subject: &str, current: Option<String>) -> Option<String> {
+/// Per record, the `from` of the next newer `checkout:` record in `HEAD`'s
+/// log: how git named where `HEAD` was when it next left. Records are newest
+/// first.
+fn next_switch_from<'a>(records: &[&'a ReflogRecord]) -> Vec<Option<&'a str>> {
+    let mut next = vec![None; records.len()];
+    let mut newer: Option<&'a str> = None;
+    for (index, record) in records.iter().enumerate() {
+        next[index] = newer;
+        if record.refname == "HEAD"
+            && let Some((from, _)) = checkout_names(&record.subject)
+        {
+            newer = Some(from);
+        }
+    }
+    next
+}
+
+/// Where `HEAD` is after a record with this subject. `next_leave` is the
+/// `from` of the next switch away ([`next_switch_from`]).
+fn after_head_record(
+    subject: &str,
+    current: Option<String>,
+    next_leave: Option<&str>,
+) -> Option<String> {
     if let Some((_, to)) = checkout_names(subject) {
-        return (!is_hex_id(to)).then(|| to.to_owned());
+        // `to` is what he typed: `origin/main`, `v1` and `HEAD~3` read like
+        // branch names but leave `HEAD` detached (review m7-22, M1). It is a
+        // branch only when the next switch leaves it by that name — git
+        // writes the hex id when leaving a detached `HEAD`. Otherwise it
+        // stays unknown until a branch record pairs with a later `HEAD`
+        // record (the twin, above).
+        return (!is_hex_id(to) && next_leave == Some(to)).then(|| to.to_owned());
     }
     if let Some(rest) = subject
         .strip_prefix("rebase (finish): returning to ")

@@ -86,9 +86,11 @@ fn checked_out_main_is_moved_back() {
         }))
     );
     assert_eq!(
-        recover_scope(&list, lost_at).refs[..2],
+        recover_scope(&list, lost_at).refs[..4],
         [
             "refs/heads/main".to_owned(),
+            "refs/remotes/main".to_owned(),
+            "refs/tags/main".to_owned(),
             "refs/heads/main-restored".to_owned()
         ]
     );
@@ -147,6 +149,59 @@ fn an_existing_restored_name_gets_a_suffix() {
         panic!("an offer");
     };
     assert_eq!(name, "main-restored-3");
+}
+
+/// Review m7-22 M1, defence in depth: a gone branch is never made again
+/// under a name a remote-tracking branch or a tag has. `restored` instead.
+#[test]
+fn a_name_a_remote_branch_or_tag_has_is_never_made_a_branch() {
+    for (other, why) in [
+        (
+            "refs/remotes/origin/main",
+            "origin/main is a remote branch, not one of yours",
+        ),
+        (
+            "refs/tags/origin/main",
+            "origin/main is a tag, not a branch",
+        ),
+    ] {
+        let outside = [
+            record(
+                "refs/heads/origin/main",
+                4,
+                3,
+                1005,
+                "reset: moving to HEAD~1",
+            ),
+            record("refs/heads/origin/main", 3, 4, 1004, "commit: D"),
+        ];
+        let list = list(&[], &outside, Some(&lost(&[run(4, 0)])), &[]);
+        let mut facts = facts(&[("main", 1)]);
+        facts.refs.insert(other.to_owned(), Some(oid(2)));
+        assert!(
+            recover_scope(&list, 0).refs.contains(&other.to_owned()),
+            "the scope reads {other}"
+        );
+
+        assert_eq!(
+            recover_for(&list, 0, &[], &facts),
+            Ok(Recover::OfferBranch {
+                at: oid(4),
+                name: "restored".to_owned(),
+                why: why.to_owned(),
+            }),
+            "the $ row, against {other}"
+        );
+        assert_eq!(
+            recover_for(&list, lost_row(&list), &[], &facts),
+            Ok(Recover::OfferBranch {
+                at: oid(4),
+                name: "restored".to_owned(),
+                why: why.to_owned(),
+            }),
+            "the ✗ row, against {other}"
+        );
+    }
 }
 
 #[test]

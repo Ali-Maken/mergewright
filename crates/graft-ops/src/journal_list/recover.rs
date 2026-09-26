@@ -72,30 +72,46 @@ pub fn recover_for(
     }
 }
 
-/// The refs [`recover_for`] compares for `rows[row]`: the branch, and the
-/// `-restored` names it may offer. The app reads them into `facts.refs`.
+/// The refs [`recover_for`] compares for `rows[row]`: the branch (and the
+/// remote-tracking branch and tag of that name, which it never makes again),
+/// and the `-restored` names it may offer. The app reads them into
+/// `facts.refs`.
 pub fn recover_scope(list: &JournalList, row: usize) -> FactsScope {
-    let base = match list.rows.get(row) {
+    let refs = match list.rows.get(row) {
         Some(ListRow::Outside(step)) if checkout_names(&step.record.subject).is_none() => {
-            Some(branch_short(&step.record.refname))
+            match branch_short(&step.record.refname) {
+                Some(name) => branch_scope(name),
+                None => restored_scope(None),
+            }
         }
-        Some(ListRow::Lost { commit, .. }) => Some(match &commit.held_by {
-            HeldBy::Branch { name, .. } => Some(name.as_str()),
-            HeldBy::Head => None,
-        }),
-        _ => None,
+        Some(ListRow::Lost { commit, .. }) => match &commit.held_by {
+            HeldBy::Branch { name, .. } => branch_scope(name),
+            HeldBy::Head => restored_scope(None),
+        },
+        _ => Vec::new(),
     };
-    let mut refs = Vec::new();
-    if let Some(base) = base {
-        if let Some(name) = base {
-            refs.push(format!("refs/heads/{name}"));
-        }
-        refs.extend(restored_names(base).map(|name| format!("refs/heads/{name}")));
-    }
     FactsScope {
         remotes: false,
         refs,
     }
+}
+
+/// A branch's own ref, the names it could be confused with, and its
+/// `-restored` names.
+fn branch_scope(name: &str) -> Vec<String> {
+    let mut refs = vec![
+        format!("refs/heads/{name}"),
+        format!("refs/remotes/{name}"),
+        format!("refs/tags/{name}"),
+    ];
+    refs.extend(restored_scope(Some(name)));
+    refs
+}
+
+fn restored_scope(base: Option<&str>) -> Vec<String> {
+    restored_names(base)
+        .map(|name| format!("refs/heads/{name}"))
+        .collect()
 }
 
 /// `<b>-restored`, `<b>-restored-2`, …; `restored`, `restored-2`, … when no
@@ -129,6 +145,28 @@ fn branch_now(name: &str, facts: &RepoFacts) -> Option<Oid> {
         .get(&format!("refs/heads/{name}"))
         .copied()
         .flatten()
+}
+
+/// Why `name` must not be made as a branch: a remote-tracking branch or a
+/// tag has it. A detached checkout of `origin/main` reads like a branch in
+/// the logs; `refs/heads/origin/main` would then shadow the remote one for
+/// every later `git rebase origin/main` (review m7-22, M1).
+fn not_a_branch(name: &str, facts: &RepoFacts) -> Option<String> {
+    let has = |prefix: &str| {
+        facts
+            .refs
+            .get(&format!("{prefix}{name}"))
+            .copied()
+            .flatten()
+            .is_some()
+    };
+    if has("refs/remotes/") {
+        Some(format!("{name} is a remote branch, not one of yours"))
+    } else if has("refs/tags/") {
+        Some(format!("{name} is a tag, not a branch"))
+    } else {
+        None
+    }
 }
 
 fn offer(at: Oid, base: Option<&str>, why: String, facts: &RepoFacts) -> Result<Recover, Refusal> {
@@ -165,9 +203,12 @@ fn outside_step(step: &OutsideStep, facts: &RepoFacts) -> Result<Recover, Refusa
         return offer(old, None, why, facts);
     };
     let target = match branch_now(name, facts) {
-        None => RecoverTarget::Recreate {
-            name: name.to_owned(),
-            at: old,
+        None => match not_a_branch(name, facts) {
+            Some(why) => return offer(old, None, why, facts),
+            None => RecoverTarget::Recreate {
+                name: name.to_owned(),
+                at: old,
+            },
         },
         Some(now) if now == old => {
             return Err(Refusal::HeldAgain {
@@ -199,10 +240,14 @@ fn lost_commit(
         return offer(tip, None, why, facts);
     };
     let because = because_of(list, event, entries, Some(&commit.held_by));
+    let left = left_at(list, event, name, entries);
     let target = match branch_now(name, facts) {
-        None => RecoverTarget::Recreate {
-            name: name.clone(),
-            at: tip,
+        None => match not_a_branch(name, facts) {
+            Some(why) => return offer(tip, None, why, facts),
+            None => RecoverTarget::Recreate {
+                name: name.clone(),
+                at: tip,
+            },
         },
         Some(now) if now == tip => {
             return Err(Refusal::HeldAgain {
@@ -210,13 +255,13 @@ fn lost_commit(
                 by: name.clone(),
             });
         }
-        Some(now) if now == left_at(list, event, name, entries).unwrap_or(tip) => {
-            RecoverTarget::MoveRef {
-                name: name.clone(),
-                to: tip,
-                expected: now,
-            }
-        }
+        // The event left the branch where it is now. `None` (a switch away
+        // left it on the tip itself) is the arm above.
+        Some(now) if Some(now) == left => RecoverTarget::MoveRef {
+            name: name.clone(),
+            to: tip,
+            expected: now,
+        },
         Some(now) => return offer(tip, Some(name), moved_on(name, now), facts),
     };
     Ok(Recover::Run(RecoverParams { target, because }))
