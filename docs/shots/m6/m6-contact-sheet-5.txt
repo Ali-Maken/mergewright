@@ -17,7 +17,7 @@
 
 ================================================================================
 docs/shots/m6/stash-pop-preview-80x24.txt
-what right looks like: (ticket 86) `S p` on the same stash at 80x24: the box `Preview: pop stash@{0}` whole inside 80 columns; `may conflict: notes.md`; the fate row `stash@{0} is dropped · u brings it back`; `[ Pop ]`; the edge offers `y pop`.
+what right looks like: (ticket 86) `S p` on the same stash at 80x24: the box `Preview: pop stash@{0}` whole inside 80 columns; `may conflict: notes.md`; the fate row `stash@{0} is dropped · u brings it back`; `[ Pop ]`; the edge offers `y pop`. (ticket 87) No stash-list bar under the box.
 ================================================================================
 
 # m6/stash-pop-preview-80x24.txt: 80x24, drawn by `view::view` from a real
@@ -30,6 +30,7 @@ what right looks like: (ticket 86) `S p` on the same stash at 80x24: the box `Pr
 #  - `may conflict: notes.md`.
 #  - The fate row: `stash@{0} is dropped · u brings it back`.
 #  - The footer offers `y pop`.
+#  - No stash-list bar under the box; the last row is blank.
 
 STASHES (1)
 ▸ stash@{0}   "WIP on main: cfa370c add the notes"            4m ago   1 file
@@ -54,11 +55,11 @@ STASHES (1)
 │ git stash pop --index 'stash@{0}'                                            │
 │ ▸[ Cancel ]   [ Pop ]                                                        │
 ╰ y pop  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────╯
-⏎ apply  p pop  s save  d drop  space files  esc close
+
 
 ================================================================================
 docs/shots/m6/stash-preview-in-the-way-120x40.txt
-what right looks like: (ticket 86) `S ⏎` with an unsaved edit to notes.md, which the stash also changes: the box over the list says `your unsaved edits to notes.md are in the way`, one `[ Close ]`, no forecast and no `y apply`; `y` writes nothing (asserted).
+what right looks like: (ticket 86) `S ⏎` with an unsaved edit to notes.md, which the stash also changes: the box over the list says `your unsaved edits to notes.md are in the way`, one `[ Close ]`, no forecast and no `y apply`; `y` writes nothing (asserted). (ticket 87) The footer reads `esc back`, no `←→ choose`; no stash-list bar under the box.
 ================================================================================
 
 # m6/stash-preview-in-the-way-120x40.txt: 120x40, drawn by `view::view`
@@ -71,6 +72,8 @@ what right looks like: (ticket 86) `S ⏎` with an unsaved edit to notes.md, whi
 # stash also changes.
 #  - The box over the stash list says `your unsaved edits to notes.md are in
 #    the way` — no forecast, no `y apply`.
+#  - One `[ Close ]`; the footer reads `esc back` (review 86, m3), and no
+#    stash-list bar under the box.
 #  - Nothing was written: `y` does nothing, `esc` goes back to the list.
 
 STASHES (1)
@@ -111,6 +114,6 @@ STASHES (1)
 ╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
 │ your unsaved edits to notes.md are in the way                                                                        │
 │ ▸[ Close ]                                                                                                           │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
-⏎ apply  p pop  s save  d drop  space files  esc close
+╰ esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
 

@@ -162,6 +162,22 @@ pub fn index_state(
     index_state_of(repo, temp.path(), scratch, stop)
 }
 
+/// [`index_state`], then `then` run over the **same** temporary copy of the
+/// index before it is removed: a read that needs the index as it stands
+/// (`apply --cached --check`, the stash preview's `--index` rule) without
+/// touching the real one. `then` gets the state and the copy's path.
+pub(crate) fn index_state_then<T>(
+    repo: &RepoHandle,
+    scratch: &Path,
+    stop: &dyn Stop,
+    then: impl FnOnce(&IndexState, &Path) -> T,
+) -> Result<(IndexState, T), SnapshotError> {
+    let temp = TempIndex::copied_from(repo, scratch)?;
+    let state = index_state_of(repo, temp.path(), scratch, stop)?;
+    let after = then(&state, temp.path());
+    Ok((state, after))
+}
+
 /// [`index_state`] over an index copy the caller already holds.
 fn index_state_of(
     repo: &RepoHandle,

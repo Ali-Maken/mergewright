@@ -41,11 +41,17 @@ const MIN_BOX_ROWS: u16 = 4;
 /// The box's own footer, shown in its bottom border while it is open.
 const FOOTER: &str = "←→ choose  ⏎ act  esc cancel";
 
+/// The footer of a [`PreviewBox::back_only`] box.
+const BACK_ONLY: &str = "esc back";
+
 /// The widest footer rung whose padded label fits `inner` cells:
 /// `y confirm  m merge  ←→ choose  ⏎ act  esc cancel`, then without the
 /// arrows, then without the verb, then plain [`FOOTER`]. Parts whose field
 /// is off are left out of every rung.
 pub(crate) fn footer_label(view: &PreviewBox, inner: usize) -> String {
+    if view.back_only {
+        return BACK_ONLY.to_owned();
+    }
     let confirm = view.confirm_key.then_some("y confirm");
     let again = view
         .again
@@ -114,6 +120,11 @@ pub struct PreviewBox {
     /// The opening verb, when pressing it again confirms: `("m", "merge")`
     /// or `("r", "rebase")`; `None` for every other opener.
     pub again: Option<(SanitizedText, SanitizedText)>,
+    /// A refusal with nothing to choose between: the footer is `esc back`
+    /// alone, no `←→ choose  ⏎ act` over a single `Close` (review 86, m3;
+    /// the stash note's refusal state). Set for the stash put-back's
+    /// closing boxes only.
+    pub back_only: bool,
 }
 
 impl PreviewBox {
@@ -132,6 +143,7 @@ impl PreviewBox {
             planning: false,
             confirm_key: false,
             again: None,
+            back_only: false,
         }
     }
 

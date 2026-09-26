@@ -141,6 +141,22 @@ fn previewed(state: &AppState) -> (Operation, JobId) {
 
 /// Answer the preview's job with a stash plan for `op`.
 fn planned(state: &mut AppState, op: &Operation) {
+    planned_with(
+        state,
+        op,
+        graft_ops::preview::WorktreeEffect::Updated {
+            paths: vec![PathBuf::from("f0.rs")],
+            more: false,
+        },
+    );
+}
+
+/// [`planned`], with the plan's working-tree effect given.
+fn planned_with(
+    state: &mut AppState,
+    op: &Operation,
+    worktree: graft_ops::preview::WorktreeEffect,
+) {
     let (_, job) = previewed(state);
     let plan = graft_ops::preview::PreviewPlan {
         description: op.describe(),
@@ -148,10 +164,7 @@ fn planned(state: &mut AppState, op: &Operation) {
         ghosts: Vec::new(),
         ref_moves: Vec::new(),
         head: None,
-        worktree: graft_ops::preview::WorktreeEffect::Updated {
-            paths: vec![PathBuf::from("f0.rs")],
-            more: false,
-        },
+        worktree,
         conflicts: graft_ops::preview::ConflictForecast::Clean,
         undo: graft_ops::preview::UndoNote::Undoable,
         against: Vec::new(),
@@ -238,6 +251,82 @@ fn esc_from_the_preview_returns_to_the_same_stash() {
     assert!(state.preview.is_none());
     assert!(state.stash.shown, "back on the list");
     assert_eq!(state.stash.selected, 1, "on the same stash");
+}
+
+/// The box's lines for a stash plan whose working-tree effect is `worktree`.
+fn box_lines(worktree: graft_ops::preview::WorktreeEffect) -> Vec<String> {
+    let mut state = open_on_screen();
+    key(&mut state, KeyCode::Enter);
+    let (op, _) = previewed(&state);
+    planned_with(&mut state, &op, worktree);
+    let view = super::super::preview::preview_box(&state).expect("a box");
+    view.lines
+        .iter()
+        .map(|line| line.as_str().to_owned())
+        .collect()
+}
+
+fn names(count: usize) -> Vec<PathBuf> {
+    (0..count).map(|n| PathBuf::from(format!("p{n}"))).collect()
+}
+
+/// Review 86, m1: a stash whose change is only staged names those paths,
+/// never an empty `working tree:` line.
+#[test]
+fn an_index_only_stash_names_its_staged_paths_in_the_box() {
+    let lines = box_lines(graft_ops::preview::WorktreeEffect::IndexOnly {
+        paths: vec![PathBuf::from("notes.md")],
+        more: false,
+    });
+    assert_eq!(lines[0], "index only: notes.md", "{lines:?}");
+    assert!(
+        lines.iter().all(|line| !line.starts_with("working tree:")),
+        "{lines:?}"
+    );
+}
+
+/// Review 86, m2: past the cap the count is unknown, so no `(+n)`; under it
+/// the count is exact.
+#[test]
+fn past_the_cap_the_box_says_and_more() {
+    let lines = box_lines(graft_ops::preview::WorktreeEffect::Updated {
+        paths: names(50),
+        more: true,
+    });
+    assert_eq!(lines[0], "working tree: p0, p1, p2 and more", "{lines:?}");
+    let lines = box_lines(graft_ops::preview::WorktreeEffect::Updated {
+        paths: names(5),
+        more: false,
+    });
+    assert_eq!(lines[0], "working tree: p0, p1, p2 (+2)", "{lines:?}");
+    let lines = box_lines(graft_ops::preview::WorktreeEffect::IndexOnly {
+        paths: names(50),
+        more: true,
+    });
+    assert_eq!(lines[0], "index only: p0, p1, p2 and more", "{lines:?}");
+}
+
+/// Review 86, m3: a refused put-back has only `Close`; its footer is
+/// `esc back`, not `←→ choose  ⏎ act`.
+#[test]
+fn a_refused_stash_box_offers_only_esc_back() {
+    let mut state = open_on_screen();
+    key(&mut state, KeyCode::Enter);
+    let (_, job) = previewed(&state);
+    super::super::preview::preview_produced(
+        &mut state,
+        job,
+        Err(super::super::preview::PreviewFailure::Refused(
+            graft_ops::operation::Refusal::StashIndexNoLongerApplies { index: 0 },
+        )),
+    );
+    let view = super::super::preview::preview_box(&state).expect("a box");
+    assert!(view.back_only, "{view:?}");
+    assert_eq!(view.choices().len(), 1, "{view:?}");
+    assert_eq!(
+        view.lines[0].as_str(),
+        "the staged part of stash@{0} no longer applies"
+    );
 }
 
 #[test]

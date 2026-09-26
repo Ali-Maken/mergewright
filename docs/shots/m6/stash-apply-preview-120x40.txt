@@ -9,6 +9,8 @@
 #  - `working tree: notes.md`, then `may conflict: notes.md`.
 #  - The fate row: `stash@{0} stays in the list`.
 #  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+#  - No stash-list bar under the box: the box's footer is the bar, and the
+#    last row is blank (review 86, M2).
 
 STASHES (1)
 ▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
@@ -49,4 +51,4 @@ STASHES (1)
 │ git stash apply --index 'stash@{0}'                                                                                  │
 │ ▸[ Cancel ]   [ Apply ]                                                                                              │
 ╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
-⏎ apply  p pop  s save  d drop  space files  esc close
+

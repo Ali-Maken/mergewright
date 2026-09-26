@@ -2861,7 +2861,7 @@ CONFLICTS (1)
 
 ================================================================================
 docs/shots/m6/stash-apply-preview-120x40.txt
-what right looks like: (ticket 86) `S ⏎` on a stash whose notes.md clashes with the commit made since: a box over the stash list titled `Preview: apply stash@{0}`; `working tree: notes.md`, `may conflict: notes.md`; the fate row `stash@{0} stays in the list`; `undo: u takes this back`; the git line; `▸[ Cancel ]   [ Apply ]`, the cursor on Cancel; the box edge offers `y apply`. `esc` goes back to the list on the same stash, nothing written (asserted). Colour unverified.
+what right looks like: (ticket 86) `S ⏎` on a stash whose notes.md clashes with the commit made since: a box over the stash list titled `Preview: apply stash@{0}`; `working tree: notes.md`, `may conflict: notes.md`; the fate row `stash@{0} stays in the list`; `undo: u takes this back`; the git line; `▸[ Cancel ]   [ Apply ]`, the cursor on Cancel; the box edge offers `y apply`. `esc` goes back to the list on the same stash, nothing written (asserted). (ticket 87) No stash-list bar under the box: the box footer is the bar, the last row blank. Colour unverified.
 ================================================================================
 
 # m6/stash-apply-preview-120x40.txt: 120x40, drawn by `view::view` from a
@@ -2875,6 +2875,8 @@ what right looks like: (ticket 86) `S ⏎` on a stash whose notes.md clashes wit
 #  - `working tree: notes.md`, then `may conflict: notes.md`.
 #  - The fate row: `stash@{0} stays in the list`.
 #  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+#  - No stash-list bar under the box: the box's footer is the bar, and the
+#    last row is blank (review 86, M2).
 
 STASHES (1)
 ▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
@@ -2915,5 +2917,5 @@ STASHES (1)
 │ git stash apply --index 'stash@{0}'                                                                                  │
 │ ▸[ Cancel ]   [ Apply ]                                                                                              │
 ╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
-⏎ apply  p pop  s save  d drop  space files  esc close
+
 

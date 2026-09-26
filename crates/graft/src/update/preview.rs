@@ -850,6 +850,9 @@ fn closing_box(line: &str, subject: &PreviewSubject) -> PreviewBox {
     let mut view = PreviewBox::new(sanitize_line(&planning_title(subject)))
         .with_choices(vec![sanitize_line("Close")]);
     view.lines = vec![sanitize_line(line)];
+    // The stash note's refusal state: keys `esc back` (review 86, m3).
+    // Other previews keep their footer; see the ticket's NOTES.
+    view.back_only = stash_put_back(subject).is_some();
     view
 }
 
@@ -901,11 +904,14 @@ fn stash_box(plan: &PreviewPlan, index: usize, pop: bool) -> PreviewBox {
     let mut view =
         PreviewBox::new(title).with_choices(vec![sanitize_line("Cancel"), sanitize_line(label)]);
     let files = match &plan.worktree {
-        WorktreeEffect::Updated { paths, more } => format!(
-            "working tree: {}{}",
-            list(paths, 3),
-            if *more { ", more" } else { "" }
-        ),
+        WorktreeEffect::Updated { paths, more } => {
+            format!("working tree: {}", capped_list(paths, *more))
+        }
+        // Only the index changes (review 86, m1): its paths, never an empty
+        // `working tree:` line.
+        WorktreeEffect::IndexOnly { paths, more } => {
+            format!("index only: {}", capped_list(paths, *more))
+        }
         other => worktree_line(other),
     };
     let mut lines = vec![files, conflict_line(&plan.conflicts, None)];
@@ -1085,6 +1091,13 @@ fn worktree_line(effect: &WorktreeEffect) -> String {
             graft_ui::stash_screen::files_label(paths.len()),
             if *more { ", more" } else { "" }
         ),
+        // Only the stash preview draws this, through `stash_box`'s own line;
+        // here for any other box that one day carries it.
+        WorktreeEffect::IndexOnly { paths, more } => format!(
+            "index only: {} staged{}",
+            graft_ui::stash_screen::files_label(paths.len()),
+            if *more { ", more" } else { "" }
+        ),
         WorktreeEffect::Lost { paths } => {
             format!("working tree: LOSES {} (backup saved)", list(paths, 2))
         }
@@ -1162,6 +1175,17 @@ fn list(paths: &[std::path::PathBuf], cap: usize) -> String {
         shown.join(", ")
     } else {
         format!("{} (+{rest})", shown.join(", "))
+    }
+}
+
+/// Three of `paths`, then the rest: `(+n)` when the list is whole, `and
+/// more` when it was cut at `PATHS_CAP` — the true count is not known then,
+/// so a number would be wrong (review 86, m2).
+fn capped_list(paths: &[std::path::PathBuf], more: bool) -> String {
+    if more {
+        format!("{} and more", list(&paths[..paths.len().min(3)], 3))
+    } else {
+        list(paths, 3)
     }
 }
 

@@ -65,11 +65,12 @@ pub(crate) fn cursor_to(app: &App, mut state: AppState, target: &str) -> AppStat
 pub const POP_TO_DONE: &str = "stash-pop-clash-to-done";
 pub const APPLY_TO_DONE: &str = "stash-apply-clash-to-done";
 pub const PUT_BACK: &str = "stash-clash-put-back";
-pub const JOURNEYS: [&str; 9] = [
+pub const JOURNEYS: [&str; 10] = [
     POP_TO_DONE,
     APPLY_TO_DONE,
     PUT_BACK,
     stash_preview::STASH_LOOK,
+    stash_preview::STASH_POP_CLEAN,
     set_aside::PULL_REBASE,
     set_aside::REJECTED_PUSH,
     set_aside::SWITCH,

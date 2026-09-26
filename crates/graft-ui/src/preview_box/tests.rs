@@ -405,6 +405,18 @@ fn a_revert_preview_draws_the_old_footer() {
     assert_eq!(footer_label(&view, 200), FOOTER);
 }
 
+/// Review 86, m3: a refused box with only `Close` has nothing to choose
+/// between; its footer is `esc back`, as the stash note's refusal state says.
+#[test]
+fn a_back_only_box_draws_esc_back() {
+    let mut view = rebase_view().with_choices(vec![sanitize_line("Close")]);
+    view.back_only = true;
+    assert_eq!(footer_label(&view, 200), "esc back");
+    let bottom = rows(&view, &theme(), 120, 12).pop().expect("a row");
+    assert!(bottom.starts_with("╰ esc back ─"), "{bottom:?}");
+    assert!(!bottom.contains("choose"), "{bottom:?}");
+}
+
 /// m6-conflicts/74: the set-aside row's words, from the plan's counts.
 #[test]
 fn set_aside_row_words() {

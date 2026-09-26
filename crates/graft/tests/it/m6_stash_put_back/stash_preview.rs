@@ -13,7 +13,7 @@ use graft_core::event::KeyCode;
 use super::{Keys, planned};
 use crate::app_harness::{App, git};
 use crate::captures::{check_shot, frame_at};
-use crate::preview::FORK_NOW;
+use crate::preview::{FORK_EPOCH, FORK_NOW, dated_commit};
 use crate::stash_clash::{NOTES, a_stash_that_clashes};
 
 /// The note's row: `S ⏎ esc`, a look at what the apply would do, then back.
@@ -49,6 +49,23 @@ fn shows(frame: &[String], words: &str) -> bool {
     frame.iter().any(|row| row.contains(words))
 }
 
+/// Review 86, M2: while the box is open the stash list's bar is not drawn —
+/// the box's footer is the bar, as on the graph — and the frame's last row
+/// is blank.
+fn no_list_bar(frame: &[String]) {
+    assert!(
+        !shows(frame, "space files") && !shows(frame, "s save"),
+        "the list's bar under the box:\n{}",
+        frame.join("\n")
+    );
+    assert_eq!(
+        frame.last().map(|row| row.trim()),
+        Some(""),
+        "the bar row is blank:\n{}",
+        frame.join("\n")
+    );
+}
+
 /// `stash-look-and-leave`: `S ⏎ esc` — the apply preview for a stash that
 /// would clash, looked at and left. Nothing is written: the stash list, the
 /// index and the files are as they were, and the list is back on the same
@@ -78,6 +95,7 @@ fn stash_look_and_leave_writes_nothing() {
     ] {
         assert!(shows(&frame, words), "`{words}`:\n{}", frame.join("\n"));
     }
+    no_list_bar(&frame);
     check_shot(
         "m6/stash-apply-preview-120x40.txt",
         &format!("{APPLY_HEADER}\n{}\n", frame.join("\n")),
@@ -101,6 +119,57 @@ fn stash_look_and_leave_writes_nothing() {
     drop(state);
     app.close();
     assert_eq!(truth(path), before, "still nothing written");
+}
+
+/// The note's row: `S p y`, a pop that does not clash.
+pub const STASH_POP_CLEAN: &str = "stash-pop-clean";
+
+/// `stash-pop-clean`: `S p y` on a stash that pops cleanly. The preview says
+/// `no conflicts expected`, `y` pops it, the change is back in the file and
+/// the stash is gone. Keys within the note's row (review 86, m7).
+#[test]
+fn a_clean_stash_pop_is_three_keys() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    dated_commit(path, NOTES, "base\n", "add the notes", 1);
+    std::fs::write(path.join(NOTES), "stashed\n").expect("the scratch repo is writable");
+    let when = format!("@{} +0000", FORK_EPOCH + 2 * 60);
+    graft_fixtures::git::run_at(path, &["stash", "push"], &when)
+        .unwrap_or_else(|why| panic!("stashing: {why}"));
+    let (app, state) = App::open(path);
+    let mut keys = Keys {
+        app: &app,
+        count: 0,
+    };
+    let state = listed(&mut keys, state);
+    let state = keys.press(&state, KeyCode::Char('p'));
+    let state = planned(&app, state);
+    let frame = drawn(&state, 120, 40);
+    assert!(
+        shows(&frame, "no conflicts expected") && shows(&frame, "y pop"),
+        "a clean pop preview:\n{}",
+        frame.join("\n")
+    );
+    let state = keys.press(&state, KeyCode::Char('y'));
+    let state = app.settle_write(state, "the pop");
+
+    let allowed = crate::m5_walk::noted_keys(STASH_POP_CLEAN).unwrap();
+    assert!(
+        keys.count <= allowed,
+        "{STASH_POP_CLEAN}: {} keys, the note allows {allowed}",
+        keys.count
+    );
+    assert_eq!(
+        std::fs::read_to_string(path.join(NOTES)).expect("the file"),
+        "stashed\n",
+        "the stash's change is back"
+    );
+    assert!(
+        git(path, &["stash", "list"]).trim().is_empty(),
+        "the stash is popped"
+    );
+    drop(state);
+    app.close();
 }
 
 /// `S p` at 80x24: the pop preview for the same stash, its fate row saying
@@ -130,6 +199,7 @@ fn the_pop_preview_fits_80_columns() {
     ] {
         assert!(shows(&frame, words), "`{words}`:\n{}", frame.join("\n"));
     }
+    no_list_bar(&frame);
     check_shot(
         "m6/stash-pop-preview-80x24.txt",
         &format!("{POP_HEADER}\n{}\n", frame.join("\n")),
@@ -165,6 +235,14 @@ fn unsaved_edits_in_the_way_are_named_in_the_box() {
         "a refusal offers no `y`:\n{}",
         frame.join("\n")
     );
+    // Review 86, m3: one `Close`, so nothing to choose; the keys are
+    // `esc back`.
+    assert!(
+        shows(&frame, "╰ esc back ─") && !shows(&frame, "choose"),
+        "a refusal's footer is `esc back`:\n{}",
+        frame.join("\n")
+    );
+    no_list_bar(&frame);
     check_shot(
         "m6/stash-preview-in-the-way-120x40.txt",
         &format!("{IN_THE_WAY_HEADER}\n{}\n", frame.join("\n")),
@@ -192,6 +270,8 @@ const APPLY_HEADER: &str = "\
 #  - `working tree: notes.md`, then `may conflict: notes.md`.
 #  - The fate row: `stash@{0} stays in the list`.
 #  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+#  - No stash-list bar under the box: the box's footer is the bar, and the
+#    last row is blank (review 86, M2).
 ";
 
 const POP_HEADER: &str = "\
@@ -205,6 +285,7 @@ const POP_HEADER: &str = "\
 #  - `may conflict: notes.md`.
 #  - The fate row: `stash@{0} is dropped · u brings it back`.
 #  - The footer offers `y pop`.
+#  - No stash-list bar under the box; the last row is blank.
 ";
 
 const IN_THE_WAY_HEADER: &str = "\
@@ -218,5 +299,7 @@ const IN_THE_WAY_HEADER: &str = "\
 # stash also changes.
 #  - The box over the stash list says `your unsaved edits to notes.md are in
 #    the way` — no forecast, no `y apply`.
+#  - One `[ Close ]`; the footer reads `esc back` (review 86, m3), and no
+#    stash-list bar under the box.
 #  - Nothing was written: `y` does nothing, `esc` goes back to the list.
 ";

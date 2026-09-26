@@ -80,6 +80,52 @@ fn untracked_only() -> TempRepo {
     repo
 }
 
+/// A staged change to line 5 of `f`, stashed; a change to line 3 committed
+/// since. The three-way merge is clean, but git's `--index` put-back first
+/// applies the staged part to the index, whose context no longer matches:
+/// `conflicts in index. Try without --index.` (review 86, M1).
+fn staged_no_longer_applies() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("f", b"1\n2\n3\n4\n5\n6\n");
+    repo.commit_all("one");
+    repo.write("f", b"1\n2\n3\n4\nfive\n6\n");
+    repo.git(&["add", "f"]);
+    repo.git(&["stash", "push", "-q"]);
+    repo.write("f", b"1\n2\nthree\n4\n5\n6\n");
+    repo.commit_all("two");
+    repo
+}
+
+/// A stash whose only change is staged: `notes.md` staged, then its file put
+/// back to the committed bytes. `stash^1`→`stash` is empty; `stash^2` holds
+/// the change (review 86, m1).
+fn index_only() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("notes.md", b"base\n");
+    repo.commit_all("one");
+    repo.write("notes.md", b"staged\n");
+    repo.git(&["add", "notes.md"]);
+    repo.write("notes.md", b"base\n");
+    repo.git(&["stash", "push", "-q"]);
+    repo
+}
+
+/// A stash of `a.txt` and `b.txt`; since, an unsaved edit to `a.txt` and a
+/// staged-only edit to `b.txt` (review 86, m5).
+fn mixed_in_the_way() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"a\n");
+    repo.write("b.txt", b"b\n");
+    repo.commit_all("one");
+    repo.write("a.txt", b"stashed a\n");
+    repo.write("b.txt", b"stashed b\n");
+    repo.git(&["stash", "push", "-q", "-u"]);
+    repo.write("a.txt", b"unsaved a\n");
+    repo.write("b.txt", b"staged b\n");
+    repo.git(&["add", "b.txt"]);
+    repo
+}
+
 fn top_stash(repo: &TempRepo) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", "stash@{0}"])).expect("a full id")
 }
@@ -159,7 +205,9 @@ fn unsaved_edits_in_the_way_refuse_the_preview() {
             assert_eq!(
                 refusal,
                 Refusal::StashInTheWay {
-                    paths: paths(&["notes.md"])
+                    unsaved: paths(&["notes.md"]),
+                    staged: Vec::new(),
+                    untracked: Vec::new(),
                 }
             );
             assert_eq!(
@@ -171,31 +219,102 @@ fn unsaved_edits_in_the_way_refuse_the_preview() {
     }
 }
 
+/// An untracked or ignored file in the way is not his edit: it reads
+/// `<path> is in the way` (review 86, m4 — the conductor's ruling).
 #[test]
 fn an_untracked_file_in_the_way_refuses_the_preview() {
     let repo = untracked_in_the_way();
+    let expected = Refusal::StashInTheWay {
+        unsaved: Vec::new(),
+        staged: Vec::new(),
+        untracked: paths(&["new.txt"]),
+    };
     let answer = plan_with(&repo, &pop_top(&repo), &git_version(), &Never);
-    assert!(
-        matches!(
-            &answer,
-            Err(PreviewError::Refused(Refusal::StashInTheWay { paths: found }))
-                if *found == paths(&["new.txt"])
-        ),
-        "{answer:?}"
-    );
+    match answer {
+        Err(PreviewError::Refused(refusal)) => {
+            assert_eq!(refusal, expected);
+            assert_eq!(refusal.explain(), "new.txt is in the way");
+        }
+        other => panic!("refused, in the way: {other:?}"),
+    }
 
     // An ignored file is not in the status, so `check` does not see it; git
     // still refuses to write over it. The preview reads the disk.
     repo.write(".git/info/exclude", b"new.txt\n");
     let answer = plan_with(&repo, &pop_top(&repo), &git_version(), &Never);
-    assert!(
-        matches!(
-            &answer,
-            Err(PreviewError::Refused(Refusal::StashInTheWay { paths: found }))
-                if *found == paths(&["new.txt"])
-        ),
-        "an ignored file in the way: {answer:?}"
+    match answer {
+        Err(PreviewError::Refused(refusal)) => {
+            assert_eq!(refusal, expected, "an ignored file in the way");
+            assert_eq!(refusal.explain(), "new.txt is in the way");
+        }
+        other => panic!("an ignored file in the way: {other:?}"),
+    }
+}
+
+/// Unsaved edits to one stashed path and staged-only edits to another: the
+/// refusal names both, so fixing the first set does not meet a second
+/// refusal it never mentioned (review 86, m5).
+#[test]
+fn a_mixed_refusal_names_unsaved_and_staged() {
+    let repo = mixed_in_the_way();
+    let answer = plan_with(&repo, &apply_top(&repo), &git_version(), &Never);
+    match answer {
+        Err(PreviewError::Refused(refusal)) => {
+            assert_eq!(
+                refusal,
+                Refusal::StashInTheWay {
+                    unsaved: paths(&["a.txt"]),
+                    staged: paths(&["b.txt"]),
+                    untracked: Vec::new(),
+                }
+            );
+            assert_eq!(
+                refusal.explain(),
+                "your unsaved edits to a.txt and your staged edits to b.txt are in the way"
+            );
+        }
+        other => panic!("refused, both named: {other:?}"),
+    }
+}
+
+/// git's `--index` rule: when the staged part no longer applies to the index,
+/// `stash apply --index` refuses before writing. The preview refuses too,
+/// never `no conflicts expected` (review 86, M1).
+#[test]
+fn a_staged_part_that_no_longer_applies_refuses_the_preview() {
+    let repo = staged_no_longer_applies();
+    let before = written(&repo);
+    for op in [apply_top(&repo), pop_top(&repo)] {
+        let answer = plan_with(&repo, &op, &git_version(), &Never);
+        // `apply --check` ran on the temporary copy: nothing written.
+        assert_eq!(written(&repo), before, "{op:?}");
+        match answer {
+            Err(PreviewError::Refused(refusal)) => {
+                assert_eq!(refusal, Refusal::StashIndexNoLongerApplies { index: 0 });
+                assert_eq!(
+                    refusal.explain(),
+                    "the staged part of stash@{0} no longer applies"
+                );
+            }
+            other => panic!("{op:?}: refused, the staged part: {other:?}"),
+        }
+    }
+}
+
+/// A stash whose change is only staged names the staged paths, never an
+/// empty `working tree:` list (review 86, m1).
+#[test]
+fn an_index_only_stash_names_its_staged_paths() {
+    let repo = index_only();
+    let plan = plan_of(&repo, &apply_top(&repo));
+    assert_eq!(
+        plan.worktree,
+        WorktreeEffect::IndexOnly {
+            paths: paths(&["notes.md"]),
+            more: false
+        }
     );
+    assert_eq!(plan.conflicts, ConflictForecast::Clean);
 }
 
 #[test]
@@ -270,25 +389,34 @@ impl Stop for StopAfter {
     }
 }
 
-/// `plan`'s own first poll passes; the stash forecast's first poll must
-/// answer `Stopped`, not a forecast with a hole in it. Every later poll is
-/// tried too: a stop between any two spawns is `Stopped`.
+/// `plan`'s own first poll passes; every later poll is tried, until the
+/// plan completes: a stop between any two spawns is `Stopped`, never a
+/// forecast with a hole in it, and the plan that finally completes is a real
+/// forecast (review 86, m6: the loop used to end before the last spawn).
 #[test]
 fn the_stash_preview_honours_stop() {
     let repo = clashing();
     let op = pop_top(&repo);
-    let mut stopped = 0;
-    for polls in 1..20 {
+    let mut polls = 1;
+    let plan = loop {
         let stop = StopAfter {
             left: AtomicUsize::new(polls),
         };
         match plan_with(&repo, &op, &git_version(), &stop) {
-            Err(PreviewError::Stopped) => stopped += 1,
-            Ok(_) => break,
+            Err(PreviewError::Stopped) => polls += 1,
+            Ok(plan) => break plan,
             Err(other) => panic!("after {polls} polls: {other:?}"),
         }
-    }
-    assert!(stopped >= 2, "stopped at the first poll and between spawns");
+        assert!(polls < 200, "the plan never completed");
+    };
+    assert!(polls > 2, "stopped at the first poll and between spawns");
+    assert_eq!(
+        plan.conflicts,
+        ConflictForecast::Likely {
+            paths: paths(&["notes.md"])
+        },
+        "completed after {polls} polls"
+    );
 }
 
 /// On a git older than `merge-tree --merge-base` (2.40) the forecast is not
@@ -374,16 +502,22 @@ fn run_on_copy(repo: &TempRepo) -> GitDid {
 /// The forecast agrees with `git stash apply` on every row: `Clean` ⇒ git
 /// exits 0 with nothing unmerged; `Likely { paths }` ⇒ the unmerged paths
 /// are `paths`; `StashInTheWay` ⇒ git exits non-zero (tracked row: the tree
-/// is unchanged, `docs/research/commit-stash.md` A1.4).
+/// is unchanged, `docs/research/commit-stash.md` A1.4);
+/// `StashIndexNoLongerApplies` ⇒ git exits non-zero and writes nothing.
 #[test]
 fn the_stash_forecast_agrees_with_git() {
-    let rows: [(&str, TempRepo); 6] = [
+    let rows: [(&str, TempRepo); 8] = [
         ("clean", stashed()),
         ("clash", clashing()),
         ("tracked in the way", tracked_in_the_way()),
         ("untracked in the way", untracked_in_the_way()),
         ("staged edits elsewhere", staged_elsewhere()),
         ("untracked-only", untracked_only()),
+        (
+            "staged line 5, committed line 3",
+            staged_no_longer_applies(),
+        ),
+        ("index only", index_only()),
     ];
     let mut seen = Vec::new();
     for (row, repo) in &rows {
@@ -410,6 +544,11 @@ fn the_stash_forecast_agrees_with_git() {
                 }
                 seen.push("in the way");
             }
+            Err(PreviewError::Refused(Refusal::StashIndexNoLongerApplies { .. })) => {
+                assert!(!did.ok, "{row}: refused, git exited 0");
+                assert_eq!(did.tree_after, did.tree_before, "{row}: nothing written");
+                seen.push("staged part refused");
+            }
             Err(other) => panic!("{row}: {other:?}"),
         }
     }
@@ -421,6 +560,8 @@ fn the_stash_forecast_agrees_with_git() {
             "in the way",
             "in the way",
             "clean",
+            "clean",
+            "staged part refused",
             "clean"
         ]
     );
