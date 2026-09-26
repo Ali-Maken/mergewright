@@ -14,6 +14,8 @@ switch, merge ff/no-ff, pull, rebase, cherry-pick, revert and `reset --hard` all
    write (switch, fast-forward, `reset --hard`, merge's incoming side, branch-from-stash); for a replay (rebase, rewrite,
    cherry-pick, revert) the diff to the start point **plus every replayed commit's own diff**. The landed tree alone
    misses a path one commit adds and a later one deletes: git overwrites it mid-replay and the end tree hides it.
+   (Amended 2026-09-26: pull's fast-forward writes the incoming side, and a rewrite starts where git's skip of
+   unchanged picks leaves it — see the end.)
 3. **One read, `graft_ops::in_the_way::blocking`**, called by `preview::plan` and by `apply`. It answers untracked and
    ignored apart, because the next step differs: `S` stashes an untracked file (`stash push -u`), but neither `S` nor
    `c` touches an ignored one (git-stash: only `--all` takes ignored files; `add` refuses an ignored path).
@@ -45,3 +47,18 @@ switch, merge ff/no-ff, pull, rebase, cherry-pick, revert and `reset --hard` all
   a step that clears an ignored file.
 - To reverse: making the backup hold ignored paths later would relax these refusals without losing anything.
   Relaxing them first and adding the backup afterwards would lose files in between.
+
+## Amendment 2026-09-26 (review `docs/reviews/m7-28-ignored-guard.md` M1, m1, m4; ticket 28c)
+
+The path table (ticket 28's §4 table, which §2 summarises) changes in two rows, and the stash words in one:
+
+| Kind | Paths, before | Paths, now |
+|---|---|---|
+| Pull | `diff-tree HEAD <tracking tip>`, the checkout row | `diff-tree --merge-base HEAD <tracking tip>`: the incoming side, as for merge. A fast-forward writes only what the tip changed since the base. When his branch is ahead (an unpushed commit that stops tracking `.env`), nothing comes in, and plain git says `Already up to date.` |
+| Rewrite (`R`, `a`, absorb) | `HEAD`→`<onto>`, plus every row not dropped | git's `skip_unnecessary_picks` first: while the next row git is handed is a `pick` whose only parent is the running `onto`, `onto` moves to it and the row is not replayed; `drop` rows are passed over; any other row ends it. Then `HEAD`→`<onto as skipped>`, plus every row from there. Graft never passes `--no-ff`, so git skips: `R` that leaves the untracking commit unchanged, or `a` into it, never writes the old `onto`'s tree. |
+
+A stash put-back over an ignored file now reads as every other kind: `<path> (ignored) is in the way · move it aside
+first` (`+N more … move them aside first` for several). An untracked-only one keeps `<path> is in the way`.
+
+Rebase (`r`) keeps its row, unmodelled: git skips only when the branch already starts from `onto`, a rebase with
+nothing to do. If one is ever refused there, the refusal is on the safe side.

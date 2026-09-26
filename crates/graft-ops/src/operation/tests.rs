@@ -1606,3 +1606,42 @@ fn in_the_way_words() {
         assert_eq!(doing(&op), expected, "{}", op.describe());
     }
 }
+
+/// Review 28 m4: a stash put-back's refusal with an ignored file in it
+/// reads `(ignored)` and `move it aside first`, as every other kind does;
+/// without one, the stash preview's words are unchanged.
+#[test]
+fn stash_in_the_way_words_name_an_ignored_file() {
+    let paths = |names: &[&str]| names.iter().map(PathBuf::from).collect::<Vec<_>>();
+    let words = |unsaved: &[&str], untracked: &[&str], ignored: &[&str]| {
+        Refusal::StashInTheWay {
+            unsaved: paths(unsaved),
+            staged: Vec::new(),
+            untracked: paths(untracked),
+            ignored: paths(ignored),
+        }
+        .explain()
+    };
+    let cases = [
+        (words(&[], &["n.txt"], &[]), "n.txt is in the way"),
+        (
+            words(&[], &[], &["c.txt"]),
+            "c.txt (ignored) is in the way · move it aside first",
+        ),
+        (
+            words(&[], &["n.txt"], &["c.txt", "d.txt"]),
+            "c.txt (ignored) +2 more are in the way · move them aside first",
+        ),
+        (
+            words(&["a.txt"], &[], &["c.txt"]),
+            "your unsaved edits to a.txt and c.txt (ignored) are in the way · move it aside first",
+        ),
+        (
+            words(&["a.txt"], &["n.txt"], &[]),
+            "your unsaved edits to a.txt and n.txt are in the way",
+        ),
+    ];
+    for (seen, wanted) in cases {
+        assert_eq!(seen, wanted);
+    }
+}

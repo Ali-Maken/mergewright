@@ -75,10 +75,12 @@ pub(super) fn in_the_way(commit: Oid, facts: &RepoFacts, touched: Vec<PathBuf>) 
         .into_iter()
         .filter(|path| !unsaved.contains(path) && !untracked.contains(path))
         .collect();
+    // Status never lists an ignored file; those are `in_the_way`'s.
     Refusal::StashInTheWay {
         unsaved,
         staged,
         untracked,
+        ignored: Vec::new(),
     }
 }
 
