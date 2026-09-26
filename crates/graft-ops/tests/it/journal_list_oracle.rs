@@ -1,0 +1,333 @@
+//! m7-power-tools/22: the journal's list against what real git writes.
+//!
+//! Each scenario is run with the system `git` (the shell's steps, dated so
+//! their order is fixed) and Graft's own operations (the `●` rows), then
+//! read back through `read_outside`, `find_lost` and `build` — never from a
+//! hand-written record. What each asserts is the rows' kinds, words and
+//! placement.
+
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use graft_core::journal::{JournalEntry, OperationKind};
+use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
+use graft_git::history::read_commit;
+use graft_git::repo::RepoHandle;
+use graft_ops::journal_list::{
+    HeldBy, JournalList, LOST_CAP, ListRow, LostScan, RECORDS_CAP, build, find_lost, read_outside,
+};
+use graft_ops::operation::{Operation, ResetMode, ResetParams, ResetTarget, Tip};
+
+use crate::support::{Never, TempRepo, journal_for, run};
+
+/// The shell's clock for a scenario: fixed seconds, well before now, so
+/// every step has its own second and Graft's steps (stamped now) come after.
+const SHELL: i64 = 1_700_000_000;
+
+/// `git` in the repository with its commit and reflog clock at `at`.
+fn git_at(repo: &TempRepo, at: i64, args: &[&str]) -> String {
+    let date = format!("{at} +0000");
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo.path())
+        .args(args)
+        .env("GIT_COMMITTER_DATE", &date)
+        .env("GIT_AUTHOR_DATE", &date)
+        .output()
+        .expect("git runs");
+    assert!(
+        output.status.success(),
+        "git {args:?} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout)
+        .trim_end()
+        .to_owned()
+}
+
+/// A commit of `file` with `subject`, at `at`.
+fn commit_at(repo: &TempRepo, at: i64, file: &str, subject: &str) {
+    repo.write(file, format!("{subject}\n").as_bytes());
+    git_at(repo, at, &["add", "-A"]);
+    git_at(repo, at, &["commit", "-q", "-m", subject]);
+}
+
+fn id(repo: &TempRepo, rev: &str) -> Oid {
+    Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
+}
+
+fn now_ms() -> i64 {
+    let since = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("the clock is after 1970");
+    i64::try_from(since.as_millis()).expect("fits")
+}
+
+/// `main` with A–D, each a second apart.
+fn a_to_d() -> TempRepo {
+    let repo = TempRepo::init();
+    for (offset, subject) in ["A", "B", "C", "D"].iter().enumerate() {
+        let offset = i64::try_from(offset).expect("small");
+        commit_at(&repo, SHELL + offset, "f.txt", subject);
+    }
+    repo
+}
+
+fn entries(repo: &TempRepo) -> Vec<JournalEntry> {
+    journal_for(&repo.open()).entries().to_vec()
+}
+
+/// The three stages, run the way the app runs them.
+fn the_list(repo: &TempRepo) -> JournalList {
+    let handle = repo.open();
+    let entries = entries(repo);
+    let outside = read_outside(&handle, RECORDS_CAP, &Never).expect("the reflogs read");
+    let found =
+        find_lost(&handle, &entries, &outside, LOST_CAP, &Never).expect("the lost scan runs");
+    let subject_of = |tip: Oid| {
+        let commit = read_commit(&handle, tip).expect("a lost tip reads");
+        Some(String::from_utf8_lossy(commit.subject()).into_owned())
+    };
+    let exists = |name: &str| branch_exists(&handle, name);
+    build(
+        &entries,
+        &outside,
+        Some(&found),
+        &subject_of,
+        &exists,
+        &[],
+        LostScan::Done,
+    )
+}
+
+fn branch_exists(handle: &RepoHandle, name: &str) -> bool {
+    let full = RefName::new(format!("refs/heads/{name}").into_bytes()).expect("a ref name");
+    handle
+        .reference(&full)
+        .expect("the ref store reads")
+        .is_some()
+}
+
+/// Each row in one line: `$ <words>`, `● <kind>`, `✗ <subject> <held by>
+/// under <row>`.
+fn lines(list: &JournalList, entries: &[JournalEntry]) -> Vec<String> {
+    list.rows
+        .iter()
+        .map(|row| match row {
+            ListRow::Graft(id) => {
+                let entry = entries
+                    .iter()
+                    .find(|entry| entry.id == *id)
+                    .expect("its entry");
+                format!("● {:?}", entry.kind)
+            }
+            ListRow::Outside(step) => format!("$ {}", step.words),
+            ListRow::Lost { event, commit } => {
+                let held = match &commit.held_by {
+                    HeldBy::Branch { name, gone } => {
+                        format!("{name}{}", if *gone { " gone" } else { "" })
+                    }
+                    HeldBy::Head => "HEAD".to_owned(),
+                };
+                format!("✗ {} · {held} · under {event}", commit.subject)
+            }
+            ListRow::LostEdit { event, .. } => format!("✗ edit under {event}"),
+        })
+        .collect()
+}
+
+#[test]
+fn shell_reset_hard_shows_the_lost_commit_under_it() {
+    let repo = a_to_d();
+    git_at(&repo, SHELL + 10, &["reset", "-q", "--hard", "HEAD~1"]);
+
+    let list = the_list(&repo);
+
+    assert_eq!(
+        lines(&list, &[])[..3],
+        [
+            "$ reset main 1 commit back",
+            "✗ D · main · under 0",
+            "$ committed \"D\" on main",
+        ]
+    );
+}
+
+#[test]
+fn a_deleted_branch_once_checked_out_is_found_from_head() {
+    let repo = a_to_d();
+    git_at(&repo, SHELL + 10, &["switch", "-q", "-c", "spike"]);
+    commit_at(&repo, SHELL + 11, "spike.txt", "Try redis cache");
+    git_at(&repo, SHELL + 12, &["switch", "-q", "main"]);
+    git_at(&repo, SHELL + 13, &["branch", "-q", "-D", "spike"]);
+
+    let list = the_list(&repo);
+
+    assert_eq!(
+        lines(&list, &[])[..4],
+        [
+            "$ switch from spike to main",
+            "✗ Try redis cache · spike gone · under 0",
+            "$ committed \"Try redis cache\" on spike",
+            "$ switch from main to spike",
+        ]
+    );
+}
+
+/// `reflog.md` takeaway 12: a branch never checked out has only its own
+/// log, and `branch -D` deletes that. Nothing is left to find.
+#[test]
+fn a_branch_deleted_and_never_checked_out_leaves_nothing() {
+    let repo = a_to_d();
+    let tree = repo.git(&["rev-parse", "HEAD^{tree}"]);
+    let side = git_at(
+        &repo,
+        SHELL + 10,
+        &["commit-tree", "-p", "HEAD", "-m", "Side work", &tree],
+    );
+    git_at(&repo, SHELL + 11, &["branch", "side", &side]);
+    git_at(&repo, SHELL + 12, &["branch", "-q", "-D", "side"]);
+
+    let list = the_list(&repo);
+
+    let shown = lines(&list, &[]);
+    assert!(
+        shown
+            .iter()
+            .all(|line| !line.starts_with('✗') && !line.contains("side")),
+        "{shown:#?}"
+    );
+}
+
+fn graft_reset(repo: &TempRepo) -> JournalEntry {
+    let op = Operation::Reset(ResetParams {
+        target: ResetTarget::Head {
+            branch: Tip {
+                name: "refs/heads/main".to_owned(),
+                oid: id(repo, "main"),
+            },
+            mode: ResetMode::Hard,
+        },
+        to: id(repo, "HEAD~1"),
+    });
+    run(repo, &op, now_ms())
+}
+
+#[test]
+fn a_graft_reset_is_one_graft_row() {
+    let repo = a_to_d();
+    let reset = graft_reset(&repo);
+
+    let list = the_list(&repo);
+
+    let shown = lines(&list, std::slice::from_ref(&reset));
+    assert_eq!(shown[0], "● Reset", "{shown:#?}");
+    assert_eq!(
+        list.rows
+            .iter()
+            .filter(|row| **row == ListRow::Graft(reset.id.clone()))
+            .count(),
+        1
+    );
+    assert!(
+        shown
+            .iter()
+            .all(|line| !line.contains("reset main") && !line.contains("moved main")),
+        "no `$` twin of Graft's reset: {shown:#?}"
+    );
+}
+
+#[test]
+fn a_shell_commit_is_an_outside_row() {
+    let repo = a_to_d();
+    commit_at(&repo, SHELL + 10, "e.txt", "Add metrics endpoint");
+
+    let list = the_list(&repo);
+
+    assert_eq!(
+        lines(&list, &[])[0],
+        "$ committed \"Add metrics endpoint\" on main"
+    );
+}
+
+#[test]
+fn a_shell_fetch_is_no_row() {
+    let upstream = a_to_d();
+    let repo = a_to_d();
+    let before = lines(&the_list(&repo), &[]);
+    repo.git(&[
+        "remote",
+        "add",
+        "origin",
+        &upstream.path().display().to_string(),
+    ]);
+    commit_at(&upstream, SHELL + 20, "u.txt", "Upstream work");
+    git_at(&repo, SHELL + 21, &["fetch", "-q", "origin"]);
+
+    let after = lines(&the_list(&repo), &[]);
+
+    assert_eq!(after, before, "a remote-tracking log is not read");
+}
+
+#[test]
+fn a_stash_held_commit_is_not_lost() {
+    let repo = a_to_d();
+    commit_at(&repo, SHELL + 10, "notes.txt", "Draft notes");
+    repo.write("notes.txt", b"more notes\n");
+    git_at(&repo, SHELL + 11, &["stash", "push", "-q"]);
+    git_at(&repo, SHELL + 12, &["reset", "-q", "--hard", "HEAD~1"]);
+
+    let list = the_list(&repo);
+
+    let shown = lines(&list, &[]);
+    assert_eq!(shown[0], "$ reset main 1 commit back", "{shown:#?}");
+    assert!(
+        shown.iter().all(|line| !line.starts_with('✗')),
+        "{shown:#?}"
+    );
+}
+
+/// Graft's own backup refs (`refs/graft/**`) keep the reset's before-state,
+/// but hold nothing for this list: D is lost, under the Graft row.
+#[test]
+fn a_graft_backup_ref_does_not_hold() {
+    let repo = a_to_d();
+    let reset = graft_reset(&repo);
+    let graft_refs = repo.git(&["for-each-ref", "--format=%(refname)", "refs/graft/"]);
+    assert!(!graft_refs.is_empty(), "the reset made a backup ref");
+
+    let list = the_list(&repo);
+
+    let shown = lines(&list, &[reset]);
+    assert_eq!(
+        shown[..2],
+        ["● Reset", "✗ D · main · under 0"],
+        "{shown:#?}"
+    );
+}
+
+/// A Graft switch writes `checkout: moving from main to spike` and records
+/// `HEAD`'s branches, no commit: it is still one `●` row.
+#[test]
+fn a_graft_switch_is_one_graft_row() {
+    let repo = a_to_d();
+    git_at(&repo, SHELL + 10, &["branch", "spike", "HEAD~1"]);
+    let op = Operation::Checkout(graft_ops::operation::CheckoutParams {
+        to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/spike".to_owned()),
+        head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+    });
+    let switch = run(&repo, &op, now_ms());
+    assert_eq!(switch.kind, OperationKind::Checkout);
+
+    let list = the_list(&repo);
+
+    let shown = lines(&list, &[switch]);
+    assert_eq!(shown[0], "● Checkout", "{shown:#?}");
+    assert!(shown[1].starts_with("$ made spike at "), "{shown:#?}");
+    assert!(
+        shown.iter().all(|line| !line.contains("switch from")),
+        "{shown:#?}"
+    );
+}

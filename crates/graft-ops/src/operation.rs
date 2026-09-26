@@ -16,6 +16,7 @@ mod commit;
 mod conflict;
 mod finish_merge;
 mod history;
+mod recover;
 mod remote;
 mod rewrite;
 mod stage;
@@ -46,6 +47,7 @@ pub use history::{
 pub(crate) use history::{
     branch_ref, merge_subject, rebase_invocation, short, short_ref, source_arg, tag_ref,
 };
+pub use recover::{NoPutBack, RecoverParams, RecoverTarget};
 pub use remote::{FetchParams, Lease, PullParams, PushParams, RemoteNames};
 
 /// One write to the repository, as the user asked for it.
@@ -672,6 +674,25 @@ pub enum Refusal {
     BadTodo(crate::rewrite::TodoProblem),
     /// Absorb placed none of the staged hunks: every one stays staged.
     NothingToAbsorb,
+    // ── The journal list's put-backs (ADR-0046 §3; m7-power-tools/22) ──
+    /// A put-back's branch is no longer where the list saw it: it moved on
+    /// since, to `now`. The compare-and-swap the put-back runs under.
+    MovedOnSince {
+        /// The branch, short name.
+        name: String,
+        /// Where it is now.
+        now: Oid,
+    },
+    /// The lost commit is reachable again — a branch, tag or stash holds it
+    /// — so there is nothing to put back.
+    HeldAgain {
+        /// The commit.
+        commit: Oid,
+        /// What holds it, in words (`main`).
+        by: String,
+    },
+    /// The row has no put-back of its own, and why.
+    NoPutBack(NoPutBack),
 }
 
 impl Refusal {
@@ -894,6 +915,22 @@ impl Refusal {
                 "none of your staged lines belong to a commit on your branch · c commits them"
                     .to_owned()
             }
+            Self::MovedOnSince { name, now } => {
+                format!("{name} moved on since (now {})", short(*now))
+            }
+            Self::HeldAgain { commit, by } => {
+                format!("{} is on {by} again · nothing to put back", short(*commit))
+            }
+            Self::NoPutBack(NoPutBack::Graft) => {
+                "done in Graft · revert to before it instead".to_owned()
+            }
+            Self::NoPutBack(NoPutBack::Switch { back_to }) => {
+                format!("a switch moves no branch · switch back to {back_to} instead")
+            }
+            Self::NoPutBack(NoPutBack::Created { name }) => {
+                format!("this step made {name} · there was nothing before it to go back to")
+            }
+            Self::NoPutBack(NoPutBack::Nothing) => "nothing here to put back".to_owned(),
         }
     }
 }

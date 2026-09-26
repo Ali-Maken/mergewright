@@ -86,6 +86,10 @@ pub enum FactsError {
     /// written or removed.
     #[error("the rewrite's saved plan: {0}")]
     SavedPlan(std::io::Error),
+    /// git's reflog for `HEAD` or a local branch could not be read (the
+    /// journal's list, m7-power-tools/22).
+    #[error("reading git's reflog: {0}")]
+    Reflog(#[from] graft_git::history::ReflogError),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
