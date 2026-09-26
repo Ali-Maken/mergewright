@@ -18,7 +18,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
 use graft::history::{History, Phase, View, Views, WalkSource, seeds_for};
-use graft::jobs::{Dispatch, JobRunner, Shutdown};
+use graft::jobs::{Dispatch, JobEvents, JobRunner, Shutdown};
 use graft::repos::RepoStore;
 use graft::update::{AppEvent, AppState, Size, update};
 use graft_core::commit_handle::CommitHandle;
@@ -537,16 +537,37 @@ pub fn open(repo: &Path) -> Result<Opened, String> {
     Ok((jobs, events, state))
 }
 
+/// As [`open`], with the jobs reporting into `events`, whatever its shape:
+/// `frames` passes the loop's own `Sender<Wake>`, so job results and keys
+/// share one channel, as in the app (m7-power-tools/04b).
+#[allow(
+    dead_code,
+    reason = "used by frames.rs, not visible from budgets.rs's separate compilation of this file"
+)]
+pub fn open_into<S: JobEvents>(repo: &Path, events: S) -> Result<(JobRunner<S>, AppState), String> {
+    let (jobs, state, _store) = start(repo, events)?;
+    Ok((jobs, state))
+}
+
 /// As [`open`], but also hands back the store.
 fn open_with_store(repo: &Path) -> Result<OpenedWithStore, String> {
     let (sender, events) = mpsc::channel();
+    let (jobs, state, store) = start(repo, sender)?;
+    Ok((jobs, events, state, store))
+}
+
+/// Starts the pool reporting into `events` and asks for the opening.
+fn start<S: JobEvents>(
+    repo: &Path,
+    events: S,
+) -> Result<(JobRunner<S>, AppState, Arc<RepoStore>), String> {
     let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
-    let jobs = JobRunner::start(sender, 4, Arc::clone(&store)).map_err(|why| why.to_string())?;
+    let jobs = JobRunner::start(events, 4, Arc::clone(&store)).map_err(|why| why.to_string())?;
     let (state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
     for command in commands {
         jobs.dispatch(command);
     }
-    Ok((jobs, events, state, store))
+    Ok((jobs, state, store))
 }
 
 /// No jump pending and no promotion outstanding: the screen shows final rows.
@@ -585,6 +606,18 @@ fn pump(
 pub fn pump_until(
     jobs: &impl Dispatch,
     events: &Receiver<AppEvent>,
+    state: AppState,
+    done: impl Fn(&AppState) -> bool,
+) -> Result<AppState, String> {
+    pump_until_from(jobs, |patience| events.recv_timeout(patience), state, done)
+}
+
+/// As [`pump_until`], taking each event from `next` (given how long it may
+/// wait): for a harness whose jobs report into a channel of its own shape,
+/// as `frames` does into the loop's `Wake` channel (m7-power-tools/04b).
+pub fn pump_until_from<E: std::fmt::Display>(
+    jobs: &impl Dispatch,
+    mut next: impl FnMut(Duration) -> Result<AppEvent, E>,
     mut state: AppState,
     done: impl Fn(&AppState) -> bool,
 ) -> Result<AppState, String> {
@@ -597,8 +630,7 @@ pub fn pump_until(
         if done(&state) {
             return Ok(state);
         }
-        let event = events
-            .recv_timeout(PATIENCE)
+        let event = next(PATIENCE)
             .map_err(|why| format!("no event for {PATIENCE:?} ({why}); state: {state:?}"))?;
         let (next, commands) = update(&state, event);
         state = next;

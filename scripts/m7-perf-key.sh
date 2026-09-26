@@ -11,6 +11,16 @@
 # The trace itself stays in a temp dir; the perf file keeps the summary
 # lines, the run-to-run spread, and the phase medians. Lines a reader
 # (or a helper) needs first start with SUMMARY.
+#
+# Revisions (m7-power-tools/04b): when the perf file exists, the run is
+# appended as the next `# ===== rev N` section, headed by `SUMMARY revN`
+# lines comparing it with the section before (first key after idle, p99,
+# max). REV_NOTE says what changed. Rev 1 is the file as 04 left it.
+#
+# Since 04b the keys come from an input thread (`KeyFeed`) and a key's
+# latency starts at its send; `oversleep` is that thread's own wake, kept
+# visible but outside the latency. Control D (`machine:` lines) still
+# shows the OS timer slack with no Graft code at all.
 set -u
 cd "$(dirname "$0")/.."
 OUT=${1:-docs/perf/m7-04-slow-key.txt}
@@ -28,7 +38,7 @@ run() { # label control
   local label=$1 control=$2
   local t0=$SECONDS
   GRAFT_FRAME_TRACE="$WORK/trace.txt" GRAFT_FRAME_RUN="$label" GRAFT_FRAME_CONTROL="$control" \
-    cargo test --release --features "$FEATURES" --quiet -- frames:: --nocapture --test-threads=1 \
+    cargo test --release --features "$FEATURES" --quiet -- frames:: frame_trace:: --nocapture --test-threads=1 \
     >"$WORK/$label.out" 2>&1
   local status=$?
   echo "run $label control=$control exit $status, $((SECONDS - t0))s" >>"$WORK/runs.txt"
@@ -52,7 +62,7 @@ run controlC c
     echo "## $label: summary lines"
     # `--nocapture` prints a test's first line after its name: keep from
     # the marker on. Lists of late keys are cut at 600 characters.
-    grep -oE '(frames: .*(p99_us=|idle_wake_us|keys over)|machine: ).*|^test result.*|panicked.*' "$WORK/$label.out" |
+    grep -oE '(frames: .*(p99_us=|idle_wake_us|keys over)|machine: |frame_trace: ).*|^test result.*|panicked.*' "$WORK/$label.out" |
       grep -v '0 passed; 0 failed' |
       awk '{ if (length($0) > 600) print substr($0, 1, 600) " (cut)"; else print }'
   done
@@ -128,5 +138,59 @@ for r in rows:
     if r["kind"] == "idle" or int(r["latency_us"]) > 10000:
         print(" ".join(f"{k}={v}" for k, v in r.items()))
 PY
-} 2>&1 | sed "s|$HOME|~|g" >"$OUT"
-echo "wrote $OUT"
+} 2>&1 | sed "s|$HOME|~|g" >"$WORK/new.txt"
+
+if [ ! -s "$OUT" ]; then
+  cp "$WORK/new.txt" "$OUT"
+  echo "wrote $OUT"
+  exit 0
+fi
+
+REV=$(($(grep -c '^# ===== rev ' "$OUT") + 2))
+# Read the sections before from a copy: the block below appends to $OUT
+# while it runs.
+cp "$OUT" "$WORK/old.txt"
+{
+  echo
+  echo
+  echo "# ===== rev $REV: ${REV_NOTE:-no note} ====="
+  python3 - "$WORK/old.txt" "$WORK/new.txt" "$REV" <<'PY'
+import re, sys
+old_path, new_path, rev = sys.argv[1], sys.argv[2], sys.argv[3]
+# The section before: everything after the last rev marker (all of it for rev 1).
+before = re.split(r'^# ===== rev .*$', open(old_path).read(), flags=re.M)[-1]
+after = open(new_path).read()
+
+def idle(text):
+    # First key after idle, plain runs: latency median(max) per scenario.
+    out = {}
+    for line in text.splitlines():
+        m = re.match(r'SUMMARY idle control=Plain (tier=\S+ refs=\S+ pane=\S+) n=\d+ latency=(\S+) oversleep=(\S+)', line)
+        if m:
+            out[m.group(1)] = (m.group(2), m.group(3))
+    return out
+
+def spread(text):
+    out = {}
+    for line in text.splitlines():
+        m = re.match(r'SUMMARY spread (tier=\S+ refs=\S+ pane=\S+): .* p99 range (\S+) max range (\S+) gate\S+=(\S+)', line)
+        if m:
+            out[m.group(1)] = (m.group(2), m.group(3), m.group(4))
+    return out
+
+b, a = idle(before), idle(after)
+print(f"## rev {rev} against the section before (µs; idle latency median(max) over plain runs)")
+for key in a:
+    lat_b, over_b = b.get(key, ("-", "-"))
+    lat_a, over_a = a[key]
+    print(f"SUMMARY rev{rev} idle {key}: latency before={lat_b} after={lat_a}; oversleep (after: outside the latency) before={over_b} after={over_a}")
+b, a = spread(before), spread(after)
+for key in a:
+    p99_b, max_b, _ = b.get(key, ("-", "-", "-"))
+    p99_a, max_a, gate = a[key]
+    print(f"SUMMARY rev{rev} spread {key}: p99 before={p99_b} after={p99_a}; max before={max_b} after={max_a}; gate(p99<=16ms)={gate}")
+PY
+  echo
+  cat "$WORK/new.txt"
+} >>"$OUT"
+echo "appended rev $REV to $OUT"
