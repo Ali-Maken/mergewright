@@ -441,8 +441,12 @@ pub enum Refusal {
         /// one of the other two sets; alone they stay
         /// [`Refusal::TouchesChangedFiles`].
         staged: Vec<PathBuf>,
-        /// Untracked or ignored files where the stash creates one.
+        /// Untracked files where the stash creates one.
         untracked: Vec<PathBuf>,
+        /// Ignored files where the stash creates one (review 28 m4): named
+        /// first, tagged `(ignored)`, with the next step `move it aside
+        /// first`, in the words of [`Refusal::InTheWay`].
+        ignored: Vec<PathBuf>,
     },
     /// The stash's staged part no longer applies to the index as it stands:
     /// git's `stash apply --index` refuses (`conflicts in index`) and writes
@@ -832,7 +836,8 @@ impl Refusal {
                 unsaved,
                 staged,
                 untracked,
-            } => in_the_way_words(unsaved, staged, untracked),
+                ignored,
+            } => in_the_way_words(unsaved, staged, untracked, ignored),
             Self::StashIndexNoLongerApplies { index } => {
                 format!("the staged part of stash@{{{index}}} no longer applies")
             }
@@ -1052,8 +1057,16 @@ fn in_the_way_of(doing: &str, ignored: &[PathBuf], untracked: &[PathBuf]) -> Str
 /// `src/a.rs`, `src/a.rs and src/b.rs`, `src/a.rs and 2 more files`.
 /// [`Refusal::StashInTheWay`] in words: each non-empty set as its own
 /// clause, joined by `and`. `is` only for one file that is not his edit
-/// (`new.txt is in the way`); every other shape is plural.
-fn in_the_way_words(unsaved: &[PathBuf], staged: &[PathBuf], untracked: &[PathBuf]) -> String {
+/// (`new.txt is in the way`); every other shape is plural. An ignored file
+/// reads as in [`Refusal::InTheWay`] (review 28 m4): the first ignored one
+/// names the files, `(ignored) +N more`, and the next step is `move it
+/// aside first`, since `S` can't take it.
+fn in_the_way_words(
+    unsaved: &[PathBuf],
+    staged: &[PathBuf],
+    untracked: &[PathBuf],
+    ignored: &[PathBuf],
+) -> String {
     let mut clauses = Vec::new();
     if !unsaved.is_empty() {
         clauses.push(format!("your unsaved edits to {}", name_paths(unsaved)));
@@ -1061,15 +1074,26 @@ fn in_the_way_words(unsaved: &[PathBuf], staged: &[PathBuf], untracked: &[PathBu
     if !staged.is_empty() {
         clauses.push(format!("your staged edits to {}", name_paths(staged)));
     }
-    if !untracked.is_empty() {
-        clauses.push(name_paths(untracked));
+    let files = untracked.len() + ignored.len();
+    match (ignored.first(), files) {
+        (Some(first), 1) => clauses.push(format!("{} (ignored)", first.display())),
+        (Some(first), files) => {
+            clauses.push(format!("{} (ignored) +{} more", first.display(), files - 1));
+        }
+        (None, 0) => {}
+        (None, _) => clauses.push(name_paths(untracked)),
     }
-    let verb = if unsaved.is_empty() && staged.is_empty() && untracked.len() == 1 {
+    let verb = if unsaved.is_empty() && staged.is_empty() && files == 1 {
         "is"
     } else {
         "are"
     };
-    format!("{} {verb} in the way", clauses.join(" and "))
+    let sentence = format!("{} {verb} in the way", clauses.join(" and "));
+    match (ignored.is_empty(), files) {
+        (true, _) => sentence,
+        (false, 1) => format!("{sentence} · move it aside first"),
+        (false, _) => format!("{sentence} · move them aside first"),
+    }
 }
 
 /// A branch as the words name it: `feature-b`, not `refs/heads/feature-b`.

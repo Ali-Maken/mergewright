@@ -4,8 +4,9 @@
 
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{
-    FactsScope, Operation, PickParams, RebaseParams, RevertParams, Source, Tip,
+    FactsScope, Operation, PickParams, RebaseParams, Refusal, RevertParams, Source, Tip,
 };
+use graft_ops::preview::PreviewError;
 use graft_ops::rewrite::{RewriteParams, RewriteRequest, TodoAction};
 
 use super::{
@@ -165,6 +166,117 @@ fn amend_into_over_an_ignored_file_is_refused() {
         "c.txt",
         "c.txt (ignored) is in the way of rewriting feature · move it aside first",
     );
+}
+
+/// Review 28 m6: absorb goes through `Rewrite` with `made` fixups. A
+/// staged line of T's is absorbed into T; U, replayed above it, adds
+/// `c.txt` and V deletes it again.
+#[test]
+fn absorb_over_an_ignored_file_is_refused() {
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"a\n");
+    repo.commit_all("one");
+    repo.git(&["switch", "-q", "-c", "feature"]);
+    repo.write("t.txt", b"t1\nt2\nt3\n");
+    repo.commit_all("T");
+    repo.write("c.txt", b"theirs\n");
+    repo.commit_all("U adds c");
+    repo.git(&["rm", "-q", "c.txt"]);
+    repo.git(&["commit", "-q", "-m", "V deletes c"]);
+    ignore(&repo, "c.txt");
+    repo.write("t.txt", b"t1\nt2, fixed\nt3\n");
+    repo.git(&["add", "t.txt"]);
+    let params = rewrite_plan(&repo, &RewriteRequest::Absorb);
+    assert_eq!(params.made.len(), 1, "one hunk placed, into T");
+    assert_refused(
+        &repo,
+        &Operation::Rewrite(params),
+        "c.txt",
+        "c.txt (ignored) is in the way of rewriting feature · move it aside first",
+    );
+}
+
+/// Not refused, run, and his bytes at `path` still `MINE`. The preview of
+/// a rewrite draws nothing (`NotPreviewable`); what matters is that it is
+/// not refused as in the way.
+fn assert_runs(repo: &TempRepo, op: &Operation, path: &str) {
+    let outcome = attempt(repo, op, path);
+    assert!(
+        !matches!(
+            outcome.preview,
+            Err(PreviewError::Refused(Refusal::InTheWay { .. }))
+        ),
+        "the preview refused: {}",
+        preview_words(&outcome.preview)
+    );
+    assert!(
+        outcome.applied.is_ok(),
+        "{}",
+        applied_words(&outcome.applied)
+    );
+    assert_eq!(outcome.bytes, MINE, "his bytes at {path}");
+}
+
+/// Plain `git rebase -i`, the todo edited by `sed -e <script>`, git's
+/// editor answering with the message as it is.
+fn plain_rebase(repo: &TempRepo, script: &str, onto: &str) {
+    let editor = format!("sequence.editor=sed -i.bak -e {script}");
+    repo.git(&[
+        "-c",
+        &editor,
+        "-c",
+        "core.editor=true",
+        "rebase",
+        "-q",
+        "-i",
+        "--autosquash",
+        onto,
+    ]);
+}
+
+/// Review 28 m1: `R` from X with only Y reworded. git skips X's unchanged
+/// pick (its parent is `onto`), so `onto`'s tree — which tracks `.env` —
+/// is never written. Plain git leaves `.env` alone; so must Graft.
+#[test]
+fn rewrite_that_leaves_the_untracking_commit_unchanged_runs() {
+    let plain = env_dropped();
+    plain_rebase(&plain, "2s/^pick/reword/", "main");
+    assert_eq!(std::fs::read(plain.path().join(".env")).unwrap(), MINE);
+
+    let repo = env_dropped();
+    let x = id(&repo, "feature~1");
+    let y = id(&repo, "feature");
+    let mut params = rewrite_plan(&repo, &RewriteRequest::Open { from: x });
+    let row = params
+        .todo
+        .iter()
+        .position(|line| line.commit == y)
+        .expect("Y is a row");
+    params.todo[row].action = TodoAction::Reword;
+    params.messages.insert(row, "Y, reworded\n".to_owned());
+    assert_runs(&repo, &Operation::Rewrite(params), ".env");
+    assert_eq!(repo.git(&["log", "-1", "--format=%s"]), "Y, reworded");
+}
+
+/// Review 28 m1: `a` into X, the first commit on `feature`: git skips X's
+/// pick, stops skipping at the fixup, and replays from X — never writing
+/// `onto`'s `.env`. Plain git's `--autosquash` does the same.
+#[test]
+fn amend_into_the_untracking_commit_runs() {
+    let plain = env_dropped();
+    plain.write("a.txt", b"a, fixed\n");
+    plain.git(&["add", "a.txt"]);
+    plain.git(&["commit", "-q", "--fixup", "feature~1"]);
+    plain_rebase(&plain, "s/^x/x/", "main");
+    assert_eq!(std::fs::read(plain.path().join(".env")).unwrap(), MINE);
+
+    let repo = env_dropped();
+    let x = id(&repo, "feature~1");
+    repo.write("a.txt", b"a, fixed\n");
+    repo.git(&["add", "a.txt"]);
+    let params = rewrite_plan(&repo, &RewriteRequest::AmendInto { target: x });
+    assert_runs(&repo, &Operation::Rewrite(params), ".env");
+    assert_eq!(repo.git(&["show", "feature~1:a.txt"]), "a, fixed");
 }
 
 fn pick(repo: &TempRepo, revs: &[&str]) -> Operation {

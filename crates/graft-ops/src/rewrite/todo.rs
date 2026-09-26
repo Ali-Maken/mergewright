@@ -190,50 +190,82 @@ pub(crate) fn git_todo(
     home: &str,
     followers: &[(String, Vec<TodoLine>)],
 ) -> GitTodo {
-    let mut words: Vec<TodoAction> = todo.iter().map(|line| line.action).collect();
+    let groups = squash_groups(todo);
     let mut asked: Vec<(Oid, String)> = Vec::new();
-    let mut grouped = vec![false; todo.len()];
-    for group in squash_groups(todo) {
+    for group in &groups {
+        if let Some(last) = asks_on(group, todo, messages) {
+            let message = messages
+                .get(&group.kept)
+                .cloned()
+                .unwrap_or_else(|| default_message(group, message_of, todo));
+            asked.push((todo[last].commit, message));
+        }
+    }
+    for row in ungrouped(&groups, todo.len()) {
+        if let Some(message) = messages.get(&row)
+            && matches!(todo[row].action, TodoAction::Pick | TodoAction::Reword)
+        {
+            asked.push((todo[row].commit, message.clone()));
+        }
+    }
+    GitTodo {
+        text: todo_text(todo, &git_words(todo, messages), home, followers),
+        messages: asked,
+    }
+}
+
+/// Each of his rows' word as git is handed it ([`git_todo`]'s rules): a
+/// squash group that asks has its last row written `squash` and its kept
+/// row `pick`; a row of no group with a message of its own is `reword`.
+pub(crate) fn git_words(todo: &[TodoLine], messages: &BTreeMap<usize, String>) -> Vec<TodoAction> {
+    let mut words: Vec<TodoAction> = todo.iter().map(|line| line.action).collect();
+    let groups = squash_groups(todo);
+    for group in &groups {
+        if let Some(last) = asks_on(group, todo, messages) {
+            words[last] = TodoAction::Squash;
+            if words[group.kept] == TodoAction::Reword {
+                words[group.kept] = TodoAction::Pick;
+            }
+        }
+    }
+    for row in ungrouped(&groups, todo.len()) {
+        if messages.contains_key(&row)
+            && matches!(todo[row].action, TodoAction::Pick | TodoAction::Reword)
+        {
+            words[row] = TodoAction::Reword;
+        }
+    }
+    words
+}
+
+/// The row git asks for a squash group's message on — its last, since
+/// `melded` is newest first — when it holds a squash or a message was
+/// written for it; `None` when git is not to ask.
+fn asks_on(
+    group: &SquashGroup,
+    todo: &[TodoLine],
+    messages: &BTreeMap<usize, String>,
+) -> Option<usize> {
+    let has_squash = group
+        .melded
+        .iter()
+        .any(|&row| todo[row].action == TodoAction::Squash);
+    if !has_squash && !messages.contains_key(&group.kept) {
+        return None;
+    }
+    group.melded.first().copied()
+}
+
+/// The rows in no squash group, in order.
+fn ungrouped(groups: &[SquashGroup], rows: usize) -> impl Iterator<Item = usize> {
+    let mut grouped = vec![false; rows];
+    for group in groups {
         grouped[group.kept] = true;
         for &row in &group.melded {
             grouped[row] = true;
         }
-        let has_squash = group
-            .melded
-            .iter()
-            .any(|&row| todo[row].action == TodoAction::Squash);
-        let written = messages.get(&group.kept);
-        if !has_squash && written.is_none() {
-            continue;
-        }
-        let message = written
-            .cloned()
-            .unwrap_or_else(|| default_message(&group, message_of, todo));
-        // `melded` is newest first: its head is the group's last row.
-        let Some(&last) = group.melded.first() else {
-            continue;
-        };
-        words[last] = TodoAction::Squash;
-        if words[group.kept] == TodoAction::Reword {
-            words[group.kept] = TodoAction::Pick;
-        }
-        asked.push((todo[last].commit, message));
     }
-    for (row, line) in todo.iter().enumerate() {
-        if grouped[row] {
-            continue;
-        }
-        if let Some(message) = messages.get(&row)
-            && matches!(line.action, TodoAction::Pick | TodoAction::Reword)
-        {
-            words[row] = TodoAction::Reword;
-            asked.push((line.commit, message.clone()));
-        }
-    }
-    GitTodo {
-        text: todo_text(todo, &words, home, followers),
-        messages: asked,
-    }
+    (0..rows).filter(move |&row| !grouped[row])
 }
 
 /// His rows with the words git runs them by, then the `update-ref` lines

@@ -36,18 +36,23 @@ pub(super) fn on_disk(
     let mut found = BTreeSet::new();
     for path in paths {
         match std::fs::symlink_metadata(root.join(path)) {
-            Ok(meta) if meta.is_dir() => {
-                if holds_untracked(root, path, tracked)? {
+            Ok(meta) => {
+                // A case-insensitive disk finds `Readme.md` under
+                // `README.md`: a tracked file under another spelling is
+                // git's to rename, not his in the way (review 28 M2).
+                let stored = stored_as(root, path)?;
+                if stored != *path && tracked.contains(&stored) {
+                    continue;
+                }
+                if !meta.is_dir() || holds_untracked(root, &stored, tracked)? {
                     found.insert(path.clone());
                 }
-            }
-            Ok(_) => {
-                found.insert(path.clone());
             }
             Err(why) if why.kind() == std::io::ErrorKind::NotFound => {}
             Err(why) if why.kind() == std::io::ErrorKind::NotADirectory => {
                 if let Some(above) = file_above(root, path)?
                     && !tracked.contains(&above)
+                    && !tracked.contains(&stored_as(root, &above)?)
                 {
                     found.insert(above);
                 }
@@ -61,6 +66,44 @@ pub(super) fn on_disk(
         }
     }
     Ok(found.into_iter().collect())
+}
+
+/// The spelling the disk keeps `path` under, one component at a time. On
+/// a disk that ignores case (macOS's default) or normalises Unicode, a
+/// look-up of `README.md` finds `Readme.md`; the entry it found is the one
+/// in the directory with the same inode. Only called for a path something
+/// stands at, so the extra `read_dir` per component is paid only when
+/// there is a file to judge.
+fn stored_as(root: &Path, path: &Path) -> Result<PathBuf, FactsError> {
+    use std::os::unix::fs::{DirEntryExt, MetadataExt};
+    let mut stored = PathBuf::new();
+    for name in path.iter() {
+        let looked_up = stored.join(name);
+        let on_disk = |source| FactsError::OnDisk {
+            path: looked_up.clone(),
+            source,
+        };
+        let inode = std::fs::symlink_metadata(root.join(&looked_up))
+            .map_err(on_disk)?
+            .ino();
+        let mut same_inode = None;
+        let mut exact = false;
+        for entry in std::fs::read_dir(root.join(&stored)).map_err(on_disk)? {
+            let entry = entry.map_err(on_disk)?;
+            if entry.file_name() == name {
+                exact = true;
+                break;
+            }
+            if same_inode.is_none() && entry.ino() == inode {
+                same_inode = Some(entry.file_name());
+            }
+        }
+        match same_inode {
+            Some(spelled) if !exact => stored.push(spelled),
+            _ => stored.push(name),
+        }
+    }
+    Ok(stored)
 }
 
 /// The first ancestor of `path` that stands on disk and isn't a directory.

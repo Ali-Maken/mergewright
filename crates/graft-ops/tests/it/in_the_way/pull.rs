@@ -10,7 +10,8 @@ use graft_fixtures::remote::LocalRemote;
 use graft_git::remote::{RemoteFailure, upstream_of};
 use graft_git::repo::RepoHandle;
 use graft_ops::apply::{Applied, ApplyError, apply};
-use graft_ops::operation::{Operation, PullParams};
+use graft_ops::operation::{Operation, PullParams, Refusal};
+use graft_ops::preview::PreviewError;
 
 use super::{MINE, applied_words, preview_in, preview_words};
 use crate::support::{NOW, Never, context, journal_for};
@@ -122,4 +123,56 @@ fn pull_whose_fetch_brings_an_ignored_path_is_refused_by_git() {
         }
         other => panic!("not git's refusal: {}", applied_words(&other)),
     }
+}
+
+/// Review 28 M1: he is ahead by one commit that stops tracking a file the
+/// tracking tip still tracks, now ignored and holding his bytes. A pull
+/// writes only the incoming side, which is empty here: plain git says
+/// `Already up to date.`, and so must Graft.
+#[test]
+fn pull_while_ahead_by_an_untracking_commit_is_not_refused() {
+    let remote = LocalRemote::new(Shape::Linear).expect("a local remote");
+    let tip = remote.commit_on_remote("adds a file").unwrap();
+    remote_git(&remote, &["fetch", "-q", "origin"]);
+    remote_git(&remote, &["merge", "-q", "--ff-only", &tip]);
+    let added = remote
+        .git(
+            remote.bare(),
+            &["diff-tree", "--no-commit-id", "--name-only", "-r", &tip],
+        )
+        .unwrap();
+    remote_git(&remote, &["rm", "-q", "--cached", &added]);
+    remote_git(&remote, &["commit", "-q", "-m", "stop tracking it"]);
+    let ahead = remote_git(&remote, &["rev-parse", "HEAD"]);
+    ignore_what_it_adds(&remote, &tip);
+    let op = pull(&remote);
+    let handle = RepoHandle::open(remote.work()).unwrap();
+
+    let preview = preview_in(&handle, &op);
+    let applied = run_in(remote.work(), &op);
+
+    assert!(
+        !matches!(
+            preview,
+            Err(PreviewError::Refused(Refusal::InTheWay { .. }))
+        ),
+        "the preview refused: {}",
+        preview_words(&preview)
+    );
+    assert!(applied.is_ok(), "{}", applied_words(&applied));
+    assert_eq!(
+        (
+            std::fs::read(remote.work().join(&added)).unwrap(),
+            remote_git(&remote, &["rev-parse", "HEAD"]),
+        ),
+        (MINE.to_vec(), ahead),
+        "(his bytes, HEAD)"
+    );
+    // Plain git, same repository, same moment: nothing to do.
+    let tracking = format!("origin/{}", remote.default_branch());
+    let plain = remote_git(
+        &remote,
+        &["merge", "--ff-only", "--no-overwrite-ignore", &tracking],
+    );
+    assert!(plain.contains("Already up to date"), "git said: {plain}");
 }

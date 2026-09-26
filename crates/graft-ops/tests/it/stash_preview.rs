@@ -208,6 +208,7 @@ fn unsaved_edits_in_the_way_refuse_the_preview() {
                     unsaved: paths(&["notes.md"]),
                     staged: Vec::new(),
                     untracked: Vec::new(),
+                    ignored: Vec::new(),
                 }
             );
             assert_eq!(
@@ -220,7 +221,9 @@ fn unsaved_edits_in_the_way_refuse_the_preview() {
 }
 
 /// An untracked or ignored file in the way is not his edit: it reads
-/// `<path> is in the way` (review 86, m4 — the conductor's ruling).
+/// `<path> is in the way` (review 86, m4 — the conductor's ruling); an
+/// ignored one adds `(ignored)` and `move it aside first`, since `S` can't
+/// take it (review 28, m4).
 #[test]
 fn an_untracked_file_in_the_way_refuses_the_preview() {
     let repo = untracked_in_the_way();
@@ -228,6 +231,7 @@ fn an_untracked_file_in_the_way_refuses_the_preview() {
         unsaved: Vec::new(),
         staged: Vec::new(),
         untracked: paths(&["new.txt"]),
+        ignored: Vec::new(),
     };
     let answer = plan_with(&repo, &pop_top(&repo), &git_version(), &Never);
     match answer {
@@ -244,8 +248,17 @@ fn an_untracked_file_in_the_way_refuses_the_preview() {
     let answer = plan_with(&repo, &pop_top(&repo), &git_version(), &Never);
     match answer {
         Err(PreviewError::Refused(refusal)) => {
-            assert_eq!(refusal, expected, "an ignored file in the way");
-            assert_eq!(refusal.explain(), "new.txt is in the way");
+            let ignored = Refusal::StashInTheWay {
+                unsaved: Vec::new(),
+                staged: Vec::new(),
+                untracked: Vec::new(),
+                ignored: paths(&["new.txt"]),
+            };
+            assert_eq!(refusal, ignored, "an ignored file in the way");
+            assert_eq!(
+                refusal.explain(),
+                "new.txt (ignored) is in the way · move it aside first"
+            );
         }
         other => panic!("an ignored file in the way: {other:?}"),
     }
@@ -266,6 +279,7 @@ fn a_mixed_refusal_names_unsaved_and_staged() {
                     unsaved: paths(&["a.txt"]),
                     staged: paths(&["b.txt"]),
                     untracked: Vec::new(),
+                    ignored: Vec::new(),
                 }
             );
             assert_eq!(

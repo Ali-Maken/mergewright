@@ -55,13 +55,6 @@ impl Blocking {
     pub fn is_empty(&self) -> bool {
         self.ignored.is_empty() && self.untracked.is_empty()
     }
-
-    /// Both lists as one, sorted: what a stash's refusal names.
-    fn all(self) -> Vec<PathBuf> {
-        let mut all: BTreeSet<PathBuf> = self.ignored.into_iter().collect();
-        all.extend(self.untracked);
-        all.into_iter().collect()
-    }
 }
 
 /// The one read. Empty for a kind ADR-0049 §2 doesn't cover, and in a
@@ -123,7 +116,8 @@ pub(crate) fn refused(op: &Operation, blocking: Blocking) -> Option<Refusal> {
             (!blocking.is_empty()).then(|| Refusal::StashInTheWay {
                 unsaved: Vec::new(),
                 staged: Vec::new(),
-                untracked: blocking.all(),
+                untracked: blocking.untracked,
+                ignored: blocking.ignored,
             })
         }
         _ => refusal(op, blocking),

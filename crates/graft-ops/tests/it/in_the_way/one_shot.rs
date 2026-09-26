@@ -275,3 +275,49 @@ fn a_tracked_file_above_is_not_in_the_way() {
     );
     assert_eq!(outcome.bytes, b"theirs\n");
 }
+
+/// Whether the disk under `dir` finds a name whatever its case (macOS's
+/// default APFS does; most Linux disks don't).
+fn case_insensitive(dir: &std::path::Path) -> bool {
+    std::fs::write(dir.join("CaseProbe"), b"").unwrap();
+    let found = dir.join("caseprobe").exists();
+    std::fs::remove_file(dir.join("CaseProbe")).unwrap();
+    found
+}
+
+/// Review 28 M2: `other` renames the tracked `Readme.md` to `README.md`.
+/// On a case-insensitive disk the stat of `README.md` finds `Readme.md` —
+/// his tracked file, git's to rename, not a file in the way. Plain `git
+/// switch other` succeeds. On a case-sensitive disk nothing is found under
+/// the other spelling, so the test has nothing to show and returns early,
+/// saying so.
+#[test]
+fn a_case_only_rename_is_not_in_the_way() {
+    let repo = TempRepo::init();
+    if !case_insensitive(repo.path()) {
+        eprintln!("skipped: this disk is case-sensitive");
+        return;
+    }
+    repo.write("Readme.md", b"read me\n");
+    repo.commit_all("one");
+    repo.git(&["switch", "-q", "-c", "other"]);
+    repo.git(&["mv", "Readme.md", "README.md"]);
+    repo.git(&["commit", "-q", "-m", "case only"]);
+    repo.git(&["switch", "-q", "main"]);
+    let outcome = attempt(&repo, &switch_to("other"), "README.md");
+    assert_eq!(
+        (
+            preview_words(&outcome.preview),
+            applied_words(&outcome.applied),
+            outcome.bytes,
+            repo.git(&["ls-files"]),
+        ),
+        (
+            "preview drew a plan".to_owned(),
+            "apply ran".to_owned(),
+            b"read me\n".to_vec(),
+            "README.md".to_owned(),
+        ),
+        "(preview, apply, the bytes, the index)"
+    );
+}

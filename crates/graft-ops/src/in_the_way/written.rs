@@ -36,10 +36,13 @@ pub(super) fn written_paths(
             from_head(repo, facts, GitArg::Oid(params.at), stop)?
         }
         Operation::Merge(params) => incoming(repo, facts, params.source_tip, stop)?,
-        // Before the fetch: its tip as last fetched. What the fetch brings
-        // is guarded by git's own `--no-overwrite-ignore` (ADR-0049 §4).
+        // A fast-forward, so the incoming side, as for a merge (review 28
+        // M1: `HEAD`'s whole diff to the tip also counted his own unpushed
+        // commits). Before the fetch: its tip as last fetched. What the
+        // fetch brings is guarded by git's own `--no-overwrite-ignore`
+        // (ADR-0049 §4).
         Operation::Pull(params) => match params.upstream.tracking_tip {
-            Some(tip) => from_head(repo, facts, GitArg::Oid(tip), stop)?,
+            Some(tip) => incoming(repo, facts, tip, stop)?,
             None => BTreeSet::new(),
         },
         Operation::Reset(_) | Operation::Recover(_) => match hard_reset_to(op, facts) {

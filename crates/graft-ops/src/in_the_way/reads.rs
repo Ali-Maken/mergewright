@@ -75,15 +75,16 @@ pub(super) fn parents_of(
     oids(&output.stdout, "rev-parse")
 }
 
-/// One object id a line, as `rev-parse` and `rev-list` print them.
+/// Object ids split by whitespace, as `rev-parse` and `rev-list` print
+/// them (one a line; `--parents` puts a commit's parents after it).
 pub(super) fn oids(stdout: &[u8], what: &'static str) -> Result<Vec<Oid>, FactsError> {
     String::from_utf8_lossy(stdout)
-        .lines()
-        .map(|line| {
-            Oid::from_hex(line.trim()).map_err(|_| {
+        .split_whitespace()
+        .map(|hex| {
+            Oid::from_hex(hex).map_err(|_| {
                 FactsError::Snapshot(SnapshotError::NotAnOid {
                     what,
-                    printed: line.to_owned(),
+                    printed: hex.to_owned(),
                 })
             })
         })
