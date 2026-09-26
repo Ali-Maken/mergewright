@@ -1,6 +1,6 @@
 # 22b lost-work-fixture — the remainder of 22
 
-Status: ready
+Status: done
 Blocked by: 23-recover-op (shares graft-ops; run after it merges)
 Crates: graft-fixtures (the "lost work" shape), graft-ops (its test only).
 Build with: Fable (signature) — unchanged from 22.

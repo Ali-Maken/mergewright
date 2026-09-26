@@ -1,6 +1,6 @@
 # journal-list — the journal and git's reflog as one list: outside rows, lost-commit rows, what `⏎` puts back
 
-Status: partial (all but the "lost work" fixture; see NOTES)
+Status: done (the fixture by 22b)
 Blocked by: 19-lost-commit-cost
 Blocked by: lost-commit-cost (its `unreached` signature and measured method)
 Crates: graft-core (`OperationKind::Recover`), graft-git (`reflog` module), graft-ops (`journal_list` module, and the
@@ -181,8 +181,15 @@ Times are fixed, 10:12–10:44, as the note's mock-up.
 - [x] **`records`:** `records_reads_head_and_branches_newest_first`, `a_missing_log_is_empty`, `records_caps`
       (graft-git `reflog/tests.rs`; also `records_reads_what_git_wrote`, `a_remote_tracking_log_is_not_read`,
       `first_parent_distance_counts_back_along_the_first_parent`).
-- [ ] MAP.md: graft-git `reflog` [done]; graft-ops `journal_list` and the new `operation` types [done]; graft-core
-      `OperationKind::Recover` [done]; graft-fixtures the shape [**not done**: the fixture is not built]. NOTES: each open point as decided, with the oracle row.
+- [x] MAP.md: graft-git `reflog` [done]; graft-ops `journal_list` and the new `operation` types [done]; graft-core
+      `OperationKind::Recover` [done]; graft-fixtures the shape [done, 22b: `lost_work` line]. NOTES: each open point as decided, with the oracle row.
+- [x] **The fixture** (22b): graft-fixtures `lost_work` (`src/lost_work/tests.rs`: `graft_is_called_at_its_three_points_in_order`,
+      `d_and_e_are_held_by_nothing_and_s_by_the_stash`, `heads_log_is_the_shells_steps_at_fixed_times`,
+      `the_ids_are_the_same_every_build`, `start_is_10_12_and_end_is_10_44_utc`); with Graft's real ops, graft-ops
+      `tests/it/lost_work.rs`: `the_lost_work_fixture_draws_every_row_in_place` (every row: `●` fetch, `●` undo with its
+      `✗` edit, `●` discard, `$` reset with `✗` D, `$` switch with `✗` E spike gone, …),
+      `the_lost_rows_are_the_fixtures_commits_and_his_edit` (tips D, E; S in the stash, not lost; the edit's backup holds
+      his bytes), `every_row_is_timed_between_10_12_and_10_44`.
 
 ## Touches (check each, report how)
 - **Journal file format (graft-core):** a new serde tag. Check: the round trip, plus the existing goldens.
@@ -259,3 +266,33 @@ refusals. journal-screen must give them words there.
 **Touches:** journal format checked by `a_recover_entry_round_trips` and the existing goldens. The graft
 `OperationKind`/`Refusal` matches checked by workspace clippy and nextest. `history::previous_tips` left alone; its tests
 are green. No UI, keymap or captures.
+
+## NOTES (m7-power-tools-22b builder)
+No scout: 22's builder left the plan; sites read myself (the oracle's helpers, `support.rs`, recover.rs's M6/77 shape,
+`steps.rs::match_entries`). Not compacted.
+
+**Fixture decisions (read against the build; each proved by a named test):**
+- **The undo reverses a Graft discard, not a switch.** A Graft step that moves `HEAD` writes its reflog records on the
+  wall clock (graft-ops passes no `GIT_COMMITTER_DATE`), and `match_entries` pairs a switch entry with its `checkout:`
+  record within 60 s (`steps.rs:299-306`). With the fixed 10:12–10:44 journal times the records would stay unclaimed as
+  `$` twins at the wall-clock top. A discard and its undo write no `HEAD`/`refs/heads` record. Same lost-edit shape
+  (forced undo over his edit; `lost_edits` finds it). Test: `every_row_is_timed_between_10_12_and_10_44`.
+- **Order follows the mock-up**, not the section's numbering: shell 10:12–10:42 (A–D, spike + E, switch back, delete,
+  reset, stash), then Graft 10:43 discard, 10:43:40 undo, 10:44 fetch (the mock-up's newest row).
+- **`spike` branches off C (`HEAD~1`), not D.** Off D, E's first parent is D, so `find_lost` folds D into E's run
+  (`lost_ancestors_are_one_row_with_under`) and the list shows one `✗`, not the mock-up's two. Observed first (red run),
+  then fixed.
+- **The stash is made after the reset** (S's parent C). Made before, S's parent is D and the stash holds D.
+- **`origin` is cloned bare at C**, before D, so no remote-tracking ref holds D; a teammate pushes two commits at
+  10:30–10:32; Graft's fetch at 10:44 brings them.
+- The graft-ops test reuses `journal_list_oracle.rs`'s `lines` and `branch_exists` (now `pub(crate)`).
+
+**Question (not a defect, no line claims it wrong):** the initial commit reads `$ commit (initial): Start the api`,
+git's own words: the J1 table has no row for `commit (initial):`, so `words` falls back (`an_unknown_subject_is_gits_own`).
+The test asserts it as observed. journal-screen may want `committed "Start the api" on main`; that is a `words` table
+change in graft-ops src, outside 22b.
+
+**Touches:** graft-fixtures gains `pub mod lost_work` (new, nothing else changed; MAP line added). graft-ops tests only:
+new `tests/it/lost_work.rs`, `main.rs` registers it, `journal_list_oracle.rs` two helpers made `pub(crate)` (its 9 tests
+still green). No src, UI, keymap, captures or journal format. Checked by workspace clippy and nextest (3764/3764) and
+`cargo test --doc`.
