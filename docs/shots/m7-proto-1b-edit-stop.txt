@@ -1,0 +1,50 @@
+ PROTOTYPE m7 · scene 1 of 5: Tidy your branch · ] next scene  [ back  Backspace restart  q quit
+ Your task: Tidy your branch feature-a before review: squash the last three commits into one. Sara's branch feature-b is built on yours. Then do it again, but stop at 'wip:
+            tests' to change its files.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  REBASING  step 3 of 7  ·  edit 5d4c3b2 wip: tests  ·  change files, stage them, a amends it  ·  c continues  ·  the banner's a y aborts
+
+ ┌─ still to apply  ·  not commits yet ─────────────────────────────────────────────────────────────┐
+ │ pick   7f6e5d4  Handle expired tokens                                                            │
+ │ pick   6e5d4c3  wip                                                                              │
+ │ feature-b (Sara): 2 commits follow, on top                                                       │
+ └──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+ ▸ ●         9c8d7e6  HEAD · stopped here                           wip: tests                                                              you    now
+   ○         8b7c6d5                                                Add OAuth callback   (fixup melded in)                                  you    now
+   │ ○       2a1f0e9  main                                          Bump version to 2.4                                                     Omar   1d
+   ├─╯
+   ○         1f0e9d8                                                Release 2.3                                                             Omar   2d
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ a amend it  c continue  space stage  ⏎ open  . more

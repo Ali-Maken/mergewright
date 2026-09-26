@@ -1,0 +1,50 @@
+ PROTOTYPE m7 · scene 4 of 5: Switch branch, take one commit · ] next scene  [ back  Backspace restart  q quit  ~ unsaved edits on/off
+ Your task: Switch to Sara's login-page branch to try it. Then go back to feature-a and take Sara's 'Fix null session on logout' commit onto it.
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Graph  ·  you are on feature-a
+
+   ○         c0ffee1  origin/sara/fix-logout                        Fix null session on logout                                              Sara   3h
+   ○         b1ade02                                                Log session ids at debug level                                          Sara   4h
+   │ ○       a11ce03  origin/sara/login-page                        Login page: remember me box                                             Sara   1h
+   │ ○       a11ce02                                                Login page layout                                                       Sara   5h
+   │ │ ◆     2a1f0e9  main  origin/main                             Merge branch 'omar/cache'   (merge)                                     Omar   1d
+   │ │ │ ●   7f6e5d4  feature-a ← HEAD                              Handle expired tokens                                                   you    20m
+   │ │ │ ○   3b2a1f0                                                Add OAuth callback                                                      you    4h
+   ├─┴─┴─╯
+   ○         1f0e9d8                                                Release 2.3                                                             Omar   2d
+
+
+
+ ┌─ SWITCH BRANCH  ·  yours and the remote's  ·  type to find ────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                                                                                                                                    │
+ │  > sa▏                                                                                                                                             │
+ │                                                                                                                                                    │
+ │ ▸ remote  origin/sara/login-page    Sara   1h   Login page: remember me box           no copy of yours yet                                         │
+ │   remote  origin/sara/fix-logout    Sara   3h   Fix null session on logout            no copy of yours yet                                         │
+ │                                                                                                                                                    │
+ │  2 of 15 branches                                                                                                                                  │
+ └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ type to find  ⏎ switch to it  tab show it on the graph  ↑↓ row  esc close

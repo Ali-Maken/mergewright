@@ -1,0 +1,50 @@
+ PROTOTYPE m7 · scene 2 of 5: Why is this line like this? · ] next scene  [ back  Backspace restart  q quit
+ Your task: Line 22 of session.rs looks odd to you. Why is it like this, who changed it and why — and what else has changed that whole function over time?
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ BLAME  ·  src/auth/session.rs  ·  as it is now
+
+   0f1e2d3 Omar   2025-06-04  Session store                  │   4
+                           ·                                 │   5  pub struct Session {
+                           ·                                 │   6      id: SessionId,
+                           ·                                 │   7      token: Token,
+   c4d5e6f Priya  2026-05-21  Move session TTL to config     │   8      ttl: Duration,
+   0f1e2d3 Omar   2025-06-04  Session store                  │   9  }
+                           ·                                 │  10
+                           ·                                 │  11  impl Session {
+                           ·                                 │  12      pub fn new(id: SessionId, token: Token) -> Self {
+   c4d5e6f Priya  2026-05-21  Move session TTL to config     │  13          let ttl = config::session_ttl();
+   0f1e2d3 Omar   2025-06-04  Session store                  │  14          Session { id, token, ttl }
+                           ·                                 │  15      }
+                           ·                                 │  16
+   5e6f7a8 Tom    2025-11-19  Add token refresh              │  17      /// Refresh the token when the server says it expired.
+                           ·                                 │  18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+                           ·                                 │  19          let mut attempt = 0;
+                           ·                                 │  20          loop {
+                           ·                                 │  21              let resp = client.refresh(&self.token)?;
+ ▸ a1b2c3d Lina   2026-03-02  Retry refresh once on 401      │  22              if resp.status() == 401 && attempt == 0 {
+   5e6f7a8 Tom    2025-11-19  Add token refresh              │  23                  attempt += 1;
+                           ·                                 │  24                  continue;
+                           ·                                 │  25              }
+   c4d5e6f Priya  2026-05-21  Move session TTL to config     │  26              self.ttl = resp.ttl().unwrap_or(self.ttl);
+   7f6e5d4 you    2026-09-26  Handle expired tokens          │  27              self.token = resp.token()?; return Ok(());
+   5e6f7a8 Tom    2025-11-19  Add token refresh              │  28          }
+                           ·                                 │  29      }
+   0f1e2d3 Omar   2025-06-04  Session store                  │  30
+                           ·                                 │  31      pub fn save(&self, store: &Store) -> Result<()> {
+   b8c9d0e Sara   2026-07-14  Log session ids at debug level │  32          debug!(session = %self.id, "saving session");
+   0f1e2d3 Omar   2025-06-04  Session store                  │  33          store.put(&self.id, self)
+                           ·                                 │  34      }
+                           ·                                 │  35
+   7f6e5d4 you    2026-09-26  Handle expired tokens          │  36      pub fn expired(&self) -> bool {
+                           ·                                 │  37          self.token.age() > self.ttl
+                           ·                                 │  38      }
+   0f1e2d3 Omar   2025-06-04  Session store                  │  39  }
+                           ·                                 │  40
+
+
+
+
+
+ ⏎ that commit  ^ before it  L history of these lines  n older  N newer  space ages  esc back
