@@ -297,3 +297,27 @@ same flag, and `blame.showRoot=true` in his config clears it on both. The only r
 
 ## Carry from 20d (conductor, 2026-09-26)
 20d built Part A (63d8cdda). The ruling's line numbers are wrong for a whole-file blame of the `--depth 2` clone: every line except 3 and 26 goes to the boundary (20d observed this, with git's own blame as the oracle). Write any boundary-line test against git's blame output, not the ruling's numbers. graft-ui does not yet read `BlameCommit::shallow` or `BlameError::Shallow`; that is Part B, this ticket.
+
+## NOTES (builder, 2026-09-26): partial, compacted during orientation; nothing built
+
+**Compacted.** Context ran out after reading all of the spec and source and before any code. Nothing is built and no box is ticked. The ticket needs the split it names:
+- **20-a:** blame_from, `B` in detail_key, Place/Trail/`GraphOverlay::Place`, place_key, trail_back, is_write, came_from, the blame job (Command/Task/Product/Dispatch/label arms), mouse, the Esc rungs, find/n/N, w/i, the heatmap, shallow Parts B and C. Plus the hint contexts, since the graft sweeps won't compile without them.
+- **20-b:** m7_walk journeys, the 7 captures, the pane-bar re-shoots, the hint sweep tests, the shallow capture.
+
+**Blocked: needs a ruling (20b's pinned-base carry).** `B` from a compare view with a pinned base: the ticket and the design note (only line 746 mentions compare base) don't say whether opening blame clears the base. I did not choose. The builder for 20-a writes the red test once the planner rules.
+
+**Seams found (for the 20-a builder, from reading the source):**
+- Key claim: `update/keys.rs` key_event, after `banner_key` (~:167) and before the context menu (~:178). It comes before undo and before `Esc cancels a running write`, so both stay inert in a place.
+- The place must be in `AppState::modal_owns_keys` (state.rs ~:778), or `search::search_key` in core_event takes `/` first. Leave it out of `modal_owns_bottom_row`, because the bar carries status words.
+- The `GraphOverlay` match sites to extend: view/frame.rs:131, view/rows.rs overlay_context ~:541, banner.rs ~:115, undo.rs ~:222, view/frame/boxes.rs ~:271, mouse.rs ~:36.
+- Rungs:
+  - Esc-back-to-a-hidden-place goes last in `escape_key` (keys.rs ~:484), and in `detail_key` after `escape_priority`, before `Escape if detail.shown => close` (detail/keys.rs ~:110).
+  - `B` goes in `detail_key`, but not while `commit_graph_actionable()` is true.
+- `BlameError` is neither Clone nor PartialEq, and AppState derives both. So the Product carries a cloneable failure enum.
+- The `^` job reads the parent blame and c's file diff (context 0) in one job, then `came_from` maps the line.
+- Suggested `is_write` true set: Operate, Resume, RevertTo, Undo, Redo, TakeSide, OpenExternalEditor, OpenConflictEditor, OpenMergetool. Everything else is false. Check this against the command.rs variant list when building.
+- Hints:
+  - Add `HintContext::Blame{finding, ignore_file}` → the existing `blame_place_list`. It is modal: no doorway, no divider.
+  - Add a wrapper context that leads with `esc back to blame` while the place is hidden.
+  - Add `blamable` to PaneFocused and ChangesPane for `B blame`.
+  - The exhaustive matches to update are `hints/catalogue.rs`, the graft-ui hints tests, the graft update/tests.rs sweeps (`classified_form`, `screen_for`, `presses_for`, `states_for`) and `update/keys/bound.rs`.
