@@ -138,3 +138,6 @@ than every `●` except a fetch. The lost-work fixture changes order first (24's
   `noted_keys("lost-to-shell-reset")`.
 - Recover scenario total: 3 + 1 + 4 + 4 + 4 = **16** keys. `promise_recover_without_leaving` asserts it, and the
   `TESTING.md` entry says 16.
+
+## Carry (conductor, 2026-09-26): review 28 Q2
+Add a scenario: a guard refusal at 80 columns with a long branch name and a deep path. **Right:** the file name and the next step are both visible on the status line.
