@@ -44,8 +44,8 @@ Filed by: conductor, 2026-09-26, from KNOWN_GAPS rows with lines. Not a design c
   still reported `Stopped` (ms, `kill(1)` spawn time).
 - 1a knock-on (all rely on "stop observed after git's exit ⇒ Stopped"):
   - graft `credential_by_key::esc_in_prompt_cancels_push`, `m4_walk::every_scenario::password_prompt_esc_cancels`:
-    Esc → askpass refuses → git exits auth-failed before the stop is polled → now `Aborted "authentication failed"`
-    instead of cancelled. **User-visible**: the app must map "user cancelled the prompt" to Cancelled itself
+    observed: now `Aborted "authentication failed"`; suspected (not traced): Esc → askpass refuses → git exits first →
+    reported, not cancelled. **User-visible if so**: the app would need to map "user cancelled the prompt" to Cancelled itself
     (`graft-ops/src/apply/remote.rs:179` maps only `RunError::Stopped`).
   - graft-ops `undo_cancel::{after_a_part_way_cancel_the_named_key_restores_everything,
     rollback_refused_by_a_moved_ref_is_reported_not_hidden, a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed}`:
