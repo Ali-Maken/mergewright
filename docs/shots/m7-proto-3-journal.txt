@@ -1,0 +1,50 @@
+ PROTOTYPE m7 · scene 3 of 5: Lost a commit in the shell · ] next scene  [ back  Backspace restart  q quit
+ Your task: You ran git reset --hard in the shell and lost your 'Add rate limiter' commit. Get it back. Also: where did your spike branch go? You deleted it in the shell by
+            mistake. Bring it back too.
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Graph
+
+   ●         3d4e5f6  origin/main  main ← HEAD                      Add metrics endpoint                                                    you    1d
+   ○         2c3d4e5                                                Bump deps                                                               Omar   2d
+
+
+
+
+   ┌─ JOURNAL  ·  what happened in this repo, newest first  ·  Graft's steps and the shell's ──────────────────────────────────────────────────────────────────────────────────────────┐
+   │                                                                                                                                                                                   │
+   │   ●  Graft          10:44   fetch · origin/main moved 2 commits                                                                                                                   │
+   │ ▸ $  outside Graft  10:41   reset main 1 commit back                    git: "reset: moving to HEAD~1"                                                                            │
+   │                             ✗ lost  9a8b7c6 Add rate limiter — no branch holds it now                                                                                             │
+   │   $  outside Graft  10:37   switch from spike to main                   git: "checkout: moving from spike to main"                                                                │
+   │   $  outside Graft  10:35   commit on spike: "Try redis cache"          git: "commit: Try redis cache"                                                                            │
+   │   ●  Graft          10:12   switch from main to spike                                                                                                                             │
+   │   ●  Graft          10:05   commit on main: "Add rate limiter"                                                                                                                    │
+   │   ●  Graft          09:58   pull main · 3 commits                                                                                                                                 │
+   │                                                                                                                                                                                   │
+   │                                                                                                                                                                                   │
+   │                                                                                                                                                                                   │
+   │                                                                                                                                                                                   │
+   │  ●  a step done in Graft: u can undo it   ·   $  done outside Graft (the shell, an editor): ⏎ can put it back, u never touches it   ·   ✗  a commit no branch holds               │
+   └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ put back to here  b branch here  / find  j/k row  esc close
