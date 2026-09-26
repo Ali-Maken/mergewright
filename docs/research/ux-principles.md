@@ -91,6 +91,12 @@ Combine: hint bar (recognition, heuristic 6) + palette that **teaches the shortc
 ### 3.5 Undo permits fewer confirmations
 If an op is reliably undoable, ask no confirmation — undo is the safety net and the confirm is a wasted K+M every time. Confirm (or preview) only what undo can't reverse (e.g. push to a shared remote). Heuristics 3 and 5; Graft's M3 promise "you cannot lose work". NN/g (https://www.nngroup.com/articles/confirmation-dialog/): "if you warn people too much, they stop paying attention"; "go to great lengths to provide undo".
 
+### 3.6 Different things must look different (the user, 2026-09-26)
+"We humans understand better with any kind of distinction, whether that distinction is made by colors or graphs or anything else. Plain text, all seems the same." (`docs/field-notes.md`, 2026-09-26.) Every kind of thing on a screen gets its own look: author vs code, the current line vs the rest, added vs removed vs unchanged, a step Graft did vs one done in the shell, before vs after, yours vs theirs. Carry each distinction in colour where the terminal has it **and** in a non-colour carrier (glyph, rule, position, weight, box), because captures can't prove colour (CLAUDE.md rule 5). Put the answer where the eye already is: the person who changed a line sits at that line, not a screen-width away. Found in the M7 prototype: blame names far from the cursor line, a lost commit drawn as a non-row, a put-back whose result didn't show.
+
+### 3.7 Problem → user → solution (the user, 2026-09-26)
+"Do design with problem, user with the problem, solution for user in mind." Every screen in a design note opens with three lines: **Problem**, in his words; **User**, him, in which daily task, in a 187-column Zed terminal, Unicode tier; **Solution**, what he does, counted in steps. Only then the screen.
+
 ---
 
 ## 4. Prototyping UX cheaply
@@ -126,3 +132,5 @@ Pipeline step 5 (CLAUDE.md:34): smallest thing that shows the journey, before sp
 13. Does the screen show anything that isn't needed for this task or status that reads as error when fine? (H8)
 14. Is there an ASCII mockup of every state in the journey, and has the user seen it or a prototype? (4)
 15. Is the journey count written so the acceptance walk can assert it? (1.3)
+16. List every kind of thing the screen shows. Does each kind look different from the others, in colour **and** in a non-colour carrier? Is the answer the user wants at the point the eye already is? (3.6)
+17. Does each screen open with Problem, User and Solution, in his words? (3.7)
