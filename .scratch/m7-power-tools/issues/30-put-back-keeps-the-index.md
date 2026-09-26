@@ -1,7 +1,7 @@
 # 30 put-back-keeps-the-index — every set-aside put-back keeps what he staged
 
 Status: ready
-Blocked by: 06c, 28c (both hold graft-ops; serial). Sequencing note: review 06b is running on the same function
+Blocked by: none for the put-back (06c, 28c merged); 31 only for the absorb C1 test box.
 (`set_aside.rs` `put_back` / `from_index_base`). Any finding it files on the put-back lands before this ticket or is
 folded into it, by the conductor's order. **Don't write 06b's absorb-only amendment of ADR-0045:131.** This ticket's
 amendment, below, replaces that line for every kind.

@@ -210,3 +210,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M7/28 | Checkout overwrote an ignored file its target tracks; `u` did not restore it. | closed 2026-09-26: 28a + 28b refuse first (ADR-0049); review 28 found no loss (`docs/reviews/m7-28-ignored-guard.md`) |
 | M7/28skip | Guard refused replays git would skip. | moved into M7/28fix (review 28 m1) → 28c |
 | M7/rR-index | `r`/`R` may lose index-only content. | moved into M7/06b-review C2 (review 06b gave the line: `rewrite/plan.rs:150`, `set_aside.rs:515-519`) → 30. `a` loses none (probe r2) |
+| M7/28fix | Review 28 Majors (pull while ahead, case-only rename, file size) and the 28skip false refusal for R/a. | closed 2026-09-26 (28c): each red first; files under 400; perf in `docs/perf/m7-28.txt` |
