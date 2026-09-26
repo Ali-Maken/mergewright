@@ -1,7 +1,7 @@
 # 28c ignored-guard-review-fixes — review 28's Majors and fixable Minors
 
 Status: ready
-Blocked by: 06c (holds graft-ops).
+Blocked by: none (06c merged).
 Crates: graft-ops (`in_the_way.rs` and its split, `operation.rs` StashInTheWay words, tests), plus docs: ADR-0049's table and `docs/design/02-keymap.md:425`.
 Build with: Opus (unchanged from 28; git writes).
 Scout: none. The review cites every site with file:line. Re-read each one before editing, because 06b and 06c touched graft-ops.

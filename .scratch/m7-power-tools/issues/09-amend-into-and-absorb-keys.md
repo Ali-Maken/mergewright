@@ -95,3 +95,6 @@ As rewrite-engine.
 
 ## Size
 Medium (~55k).
+
+## Carry (conductor, 2026-09-26): words from 06c
+06c added `StaysWhy::Submodule` and `StaysWhy::OutsideYourCommits` (a hunk that stays), and the refusals `AllPushed`, `AlreadyPushed` and `BeyondReach`, whose words are in `explain()` (graft-ops `operation.rs`). This ticket renders them. Every new `StaysWhy` needs words; test each one.
