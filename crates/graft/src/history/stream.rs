@@ -12,9 +12,10 @@ use crate::jobs::Delivery;
 use crate::repos::RepoStore;
 
 use super::seeds::seeds_for;
+use super::serve::{error_chain, serve};
 use super::source::WalkSource;
 use super::state::{Ended, HistoryUpdate, RowRequest, WalkFacts};
-use super::views::{Views, error_chain, serve};
+use super::views::Views;
 
 /// Walk `store`'s repository in `order`, answering each [`RowRequest`] that
 /// arrives on `requests` with the rows it names.

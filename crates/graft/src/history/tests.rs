@@ -795,8 +795,9 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
     assert_eq!(history.reanchor, None);
 }
 
-/// Sends `request` through the worker's loop and applies what comes back, as
-/// the job and `update` would between them.
+/// Sends `request` through the worker's loop — and the idle steps of any
+/// promotion it began — and applies what comes back, as the job and `update`
+/// would between them.
 fn served<S: CommitSource>(views: &mut Views<'_, S>, history: &mut History, request: RowRequest)
 where
     S::Error: std::fmt::Debug,
@@ -811,6 +812,16 @@ where
     })
     .expect("lays out");
     assert_eq!(ended, Ended::Cancelled, "nobody asks again");
+    // A promotion it began reaches its anchor between requests, and is
+    // swapped in there (m7-power-tools/12 Part C).
+    while views.is_promoting() {
+        views
+            .idle_step(&never, &mut |update| {
+                reports.push(update);
+                Delivery::Received
+            })
+            .expect("lays out");
+    }
     for update in reports {
         history.apply(update, HEIGHT);
     }

@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use graft_core::commit_handle::CommitHandle;
+use graft_graph::layout::Anchor;
 
 use super::super::{History, HistoryUpdate, Phase, Promotion, RowRequest, View, Wanted, Window};
 use super::Motion;
@@ -66,6 +67,7 @@ impl History {
                     self.top = self.rows.saturating_sub(height.max(1));
                 }
                 self.window = Some(window);
+                self.reaim_promotion();
             }
         }
     }
@@ -99,6 +101,22 @@ impl History {
             return Some(request);
         }
         self.wanted(height, true)
+    }
+
+    /// While a promotion swaps in, rows keep coming in the order on screen
+    /// (m7-power-tools/12 Part C), and one may land a `G` or a search jump:
+    /// the swap then re-finds the commit the cursor is on now, not the one
+    /// selected when the order was handed over.
+    fn reaim_promotion(&mut self) {
+        let selected = self.selected().map(|row| Anchor {
+            commit: row.commit.id,
+            offset: self.cursor.saturating_sub(self.top),
+        });
+        if let Some(Promotion::Swapping { anchor, .. }) = &mut self.promotion
+            && selected.is_some()
+        {
+            *anchor = selected;
+        }
     }
 
     /// Takes in the first rows in the promoted order: the cursor goes back on

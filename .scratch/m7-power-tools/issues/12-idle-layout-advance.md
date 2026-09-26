@@ -171,14 +171,19 @@ impl Wake { pub fn label(&self) -> &'static str; }   // variant name, and the `P
     between `G` and the landing window; the frame shows the root commit, cursor on row 2,999. ✔
   - `no_wake_after_laid_out`: after `LaidOut` and startup's other jobs (working tree, radar, probes — the walk may
     say nothing meanwhile), no wake of any kind for 500 ms with no input. ✔
-- [ ] **(12b, M7/04b)** `two_boxes_over_content::capture_two_boxes_over_real_content_for_docs_shots`: `ready()` now
+- [x] **(12b, M7/04b)** `two_boxes_over_content::capture_two_boxes_over_real_content_for_docs_shots`: `ready()` now
   ends with `captures::radar_answered`. 20-parallel loop (`it` binary, `--exact`): **before** 26/40 failed, all
   `ⓘ` missing on the tip row (`committed ◆ ▏ⓘ [◆ main ↑1]` / `drawn ◆ ▏  [◆ main ↑1]`); **after** 0 `ⓘ` failures in
   120 runs. **Not ticked: the loop is not 0 after** — 5/120 time out in `ready()`'s first pump (a second cause, see
-  12b NOTES; the same 5/120 with the idle advance disabled).
-- [ ] **Part C:** `a_request_during_a_promotion_is_answered_from_the_provisional_layout`;
-  `the_promoted_layout_replaces_the_provisional_once_the_anchor_has_a_row`;
-  `a_provisional_window_after_sorted_keeps_the_order_notice` (`update::history` tests).
+  12b NOTES; the same 5/120 with the idle advance disabled). ✔ (12c) Deterministic test first:
+  `history::promotion_tests::a_promotion_before_the_first_window_ends_as_the_normal_path_does` (red: race ended
+  `Streaming, 40 rows`, normal path `Complete, 200`; green after `ready_to_swap`). Loop after (`it` binary,
+  `--exact`, 6 rounds × 20 parallel): **0 failed of 120**, 0 `ⓘ`, 0 `ready()` timeouts. Workspace nextest
+  3687/3687 incl. every `check_shot`: normal-path captures byte-identical.
+- [x] **Part C:** `a_request_during_a_promotion_is_answered_from_the_provisional_layout`;
+  `the_promoted_layout_replaces_the_provisional_once_the_anchor_has_a_row` (both `history::promotion_tests`, red
+  first); `a_provisional_window_after_sorted_keeps_the_order_notice` (`update::history::tests`, green on first
+  run — the UI already swapped order only on a promoted window). ✔ (12c)
 - [x] **Part D** (graft-graph): `truncate_keeps_a_fingerprint_for_the_kept_prefix` (mid-chunk cut; the cut chunk has a
   fingerprint whose row count is the kept rows); `a_rebuild_after_truncate_is_checked` (a source whose re-read differs
   in the kept prefix → `RebuildDiffers`, after evicting the cut chunk). NOTES says whether each was red. ✔ Both in
