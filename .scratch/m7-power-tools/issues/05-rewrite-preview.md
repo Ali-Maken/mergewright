@@ -1,7 +1,7 @@
 # rewrite-preview — one preview names every branch that moves, the chained forecast, and a squash-merged branch's drop
 
 Status: ready
-Blocked by: 02-rewrite-engine
+Blocked by: 02-rewrite-engine, 02b-rewrite-engine-b
 Crates:
 - graft-ops (`preview`);
 - graft-ui (the preview box: new rows);
@@ -12,7 +12,7 @@ forecasts).
 Build with: Opus. It extends an existing preview with reads whose truth an oracle checks (the forecast against a real
 replay; the drop suggestion against a real squash-merge). The approach is decided here.
 Scout: `scout` first (ADR-0035).
-Needs: rewrite-engine (`RewriteParams`, `BranchLine`, `Operation::Rewrite`, `RebaseParams::drops`).
+Needs: rewrite-engine (`RewriteParams`, `BranchLine`, `Operation::Rewrite`) — 02a + 02b. **`RebaseParams::drops` (and `line`) are added by this ticket** (conductor, 2026-09-26: 02 couldn't without graft).
 
 ## Decided
 - **`preview::plan` for `Operation::Rewrite` and `Operation::Rebase`:**

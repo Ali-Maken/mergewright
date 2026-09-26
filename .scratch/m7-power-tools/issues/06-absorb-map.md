@@ -1,7 +1,7 @@
 # absorb-map — each staged hunk goes to the commit that last changed its lines; one that fits none stays staged
 
 Status: ready
-Blocked by: 02-rewrite-engine
+Blocked by: 02-rewrite-engine, 02b-rewrite-engine-b
 Crates: graft-ops only (`absorb`, new; `rewrite::plan` gains the `Absorb` arm)
 Source: note "Pass 2a" R2; prior art "Absorb" (git-absorb, jj; `docs/research/interactive-rebase.md` §4.4).
 Build with: Opus. The algorithm is decided below. An oracle judges it (the final tree equals the old tree plus the

@@ -1,7 +1,7 @@
 # rewrite-editor — `R` opens the rewrite editor on the cursor's row; the result and the message show before `y`
 
 Status: ready
-Blocked by: 02-rewrite-engine, 05-rewrite-preview
+Blocked by: 02-rewrite-engine, 02b-rewrite-engine-b, 05-rewrite-preview
 Crates:
 - graft (`update/rewrite_editor.rs` new, `GraphOverlay`, `text_field_open`/`modal_owns_keys`, the key route, the walks,
   the `journeys` parser);

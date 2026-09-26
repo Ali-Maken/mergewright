@@ -1,7 +1,7 @@
 # rewrite-stops — a stop says where he is and what's left; an `edit` stop hands him the graph; `Esc` never aborts
 
 Status: ready
-Blocked by: 02-rewrite-engine, 03-land-on-result
+Blocked by: 02-rewrite-engine, 02b-rewrite-engine-b, 03-land-on-result
 Crates:
 - graft (`update/banner` + `stop.rs`, the focus rule, the shell-begun `c` hand-over);
 - graft-ui (`still_to_apply.rs` new, the banner's chain words);
