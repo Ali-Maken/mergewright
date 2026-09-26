@@ -8,6 +8,9 @@ use crate::history::{HistoryUpdate, Phase, Promotion};
 use super::events::Command;
 use super::state::AppState;
 
+#[cfg(test)]
+mod tests;
+
 /// One update from history job `id`, taken in if it is the walk on screen.
 pub(super) fn walk_progress(
     next: &mut AppState,

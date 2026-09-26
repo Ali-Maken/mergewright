@@ -1650,7 +1650,7 @@ fn a_walk_that_fell_back_to_date_order_says_it_is_provisional() {
 
 /// A provisional walk and the topological sort it asked for, started as
 /// job `sort`.
-fn sorting(walk: JobId, sort: JobId) -> AppState {
+pub(super) fn sorting(walk: JobId, sort: JobId) -> AppState {
     let (next, commands) = update(
         &awaiting(walk),
         from(walk, started(Order::Topological, Order::CommitDate)),
@@ -1664,7 +1664,7 @@ fn sorting(walk: JobId, sort: JobId) -> AppState {
     next
 }
 
-fn order() -> std::sync::Arc<[graft_core::commit_handle::CommitHandle]> {
+pub(super) fn order() -> std::sync::Arc<[graft_core::commit_handle::CommitHandle]> {
     vec![graft_core::commit_handle::CommitHandle(7)].into()
 }
 

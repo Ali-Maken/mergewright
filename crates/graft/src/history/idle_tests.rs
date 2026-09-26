@@ -112,6 +112,7 @@ fn idle_until_caught(views: &mut Counted<'_>, limit: usize) -> (Vec<HistoryUpdat
                 assert!(rows <= SMALL.chunk_rows, "one step is at most a chunk");
             }
             IdleWork::Caught => return (reports, steps),
+            IdleWork::Promoting { .. } => panic!("no promotion was asked for"),
             IdleWork::NobodyListening => panic!("the test listens"),
         }
     }

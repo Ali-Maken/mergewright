@@ -1,11 +1,10 @@
-//! The layouts one walk is shown through, and answering [`RowRequest`]s
-//! against them: opening a layout the first time a view is asked for,
-//! promoting every layout to a topological order (ADR-0008), and laying out
-//! only as far as each request needs.
+//! The layouts one walk is shown through: opening a layout the first time a
+//! view is asked for, promoting every layout to a topological order
+//! (ADR-0008), and the work done between requests. Answering requests
+//! against them is [`super::serve`].
 
-use std::cell::RefCell;
+use std::ops::Range;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, TryRecvError};
 
 use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
@@ -15,7 +14,8 @@ use graft_graph::{Follow, Included, Seeds};
 
 use crate::jobs::Delivery;
 
-use super::state::{Ended, HistoryUpdate, Promote, RowRequest, View, Wanted, Window};
+use super::serve::answer;
+use super::state::{Ended, HistoryUpdate, Promote, RowRequest, View, Wanted};
 
 /// Opens a fresh source over the same walk, for a view laid out on its own —
 /// or, given a promoted order, a source that hands out that order instead.
@@ -42,6 +42,28 @@ pub struct Views<'o, S: CommitSource> {
     /// The view and row count last announced as laid out to the end
     /// ([`HistoryUpdate::LaidOut`]), so it is said once per layout.
     announced: Option<(View, usize)>,
+    /// A promoted layout opened and not yet swapped in: it reaches its
+    /// anchor between requests, while requests are answered from the layout
+    /// in force (m7-power-tools/12 Part C).
+    pending: Option<Pending<S>>,
+    /// The id of the newest request answered: tells a request answered
+    /// provisionally from one a newer request replaced.
+    answered: u64,
+}
+
+/// A promoted layout on its way to the anchor.
+struct Pending<S: CommitSource> {
+    /// The order it is laid out in.
+    order: Arc<[CommitHandle]>,
+    /// The `Follow` it was opened for.
+    follow: Follow,
+    /// The commit that must have a row before it is swapped in (with at
+    /// least a chunk laid out): the selection the newest request carried.
+    anchor: Option<Oid>,
+    layout: StreamingLayout<Included<S>>,
+    /// The newest request answered from the provisional layout meanwhile,
+    /// with its `Promote`: answered again from this layout once swapped in.
+    ask: Option<RowRequest>,
 }
 
 /// What one [`Views::idle_step`] did.
@@ -50,6 +72,12 @@ pub(crate) enum IdleWork {
     /// The frontier moved; `rows` laid out in this step.
     Advanced {
         /// Rows laid out in this step.
+        rows: usize,
+    },
+    /// A pending promotion moved toward its anchor — or reached it, was
+    /// swapped in, and the last request was answered again.
+    Promoting {
+        /// Rows of the promoted layout laid out towards the anchor.
         rows: usize,
     },
     /// Nothing to do: the frontier is at the end of history, or nothing has
@@ -73,13 +101,18 @@ impl<'o, S: CommitSource> Views<'o, S> {
             first_parent: None,
             shown: None,
             announced: None,
+            pending: None,
+            answered: 0,
         }
     }
 
-    /// One bounded step of work nobody asked for: lays the view last asked
-    /// for out by at most one chunk towards the end of history, checking
-    /// `stop` before every pull (DESIGN.md §3.6). Sends nothing on the way;
-    /// once the end is reached, [`HistoryUpdate::LaidOut`] once.
+    /// One bounded step of work nobody asked for, checking `stop` before
+    /// every pull (DESIGN.md §3.6). A pending promotion first: its layout
+    /// moves a chunk towards the anchor, and once the anchor has a row it is
+    /// swapped in and the last request answered again from it — the one
+    /// window idle work sends. Otherwise the view last asked for moves at
+    /// most one chunk towards the end of history, sending nothing on the
+    /// way; once the end is reached, [`HistoryUpdate::LaidOut`] once.
     ///
     /// `stop` is the caller's "a request is waiting, or the walk is
     /// cancelled": either ends the step within one pull.
@@ -91,6 +124,9 @@ impl<'o, S: CommitSource> Views<'o, S> {
         stop: &dyn Fn() -> bool,
         report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
     ) -> Result<IdleWork, StreamError<S::Error>> {
+        if self.pending.is_some() {
+            return self.promotion_step(stop, report);
+        }
         // Nothing asked yet: nothing is open, and nothing is opened unasked.
         let Some(view) = self.shown.clone() else {
             return Ok(IdleWork::Caught);
@@ -143,13 +179,86 @@ impl<'o, S: CommitSource> Views<'o, S> {
         Ok(layout)
     }
 
-    /// Swaps every layout for ones over `promote`'s order, unless that order
-    /// is already in force, and lays `view`'s out as far as the anchor.
+    /// Answers `request` in its view (see [`answer`]), remembering its id as
+    /// the newest answered once its window is sent.
     ///
-    /// The layouts it replaces stay until the new one has reached the anchor,
-    /// so the swap is one step: never an empty graph refilling. Returns
-    /// `false` if `stop` asked it to stop first, leaving the old layouts in
-    /// force.
+    /// # Errors
+    /// Opening, re-including or laying out failed.
+    pub(super) fn answer(
+        &mut self,
+        request: RowRequest,
+        newer: &mut dyn FnMut() -> Option<RowRequest>,
+        stop: &dyn Fn() -> bool,
+        report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
+    ) -> Result<Option<Ended>, StreamError<S::Error>> {
+        let view = request.view.clone();
+        let layout = self.layout(&view)?;
+        let mut sent = None;
+        let ended = answer(layout, request, newer, stop, &mut |update| {
+            if let HistoryUpdate::Window(window) = &update {
+                sent = Some(window.request);
+            }
+            report(update)
+        })?;
+        if let Some(id) = sent {
+            self.answered = id;
+        }
+        Ok(ended)
+    }
+
+    /// Opens a layout over `promote`'s order for `view` and leaves it
+    /// pending: [`Views::idle_step`] lays it out to the anchor between
+    /// requests. Returns whether the order is in force now — already, or
+    /// because a pending layout kept from an earlier request is ready to
+    /// swap; then the caller answers from it. A pending layout for the same
+    /// order and `Follow` is kept, aimed at the newest anchor.
+    ///
+    /// # Errors
+    /// Opening the source failed.
+    pub(crate) fn begin_promotion(
+        &mut self,
+        view: &View,
+        promote: &Promote,
+    ) -> Result<bool, StreamError<S::Error>> {
+        let in_force = self
+            .promoted
+            .as_ref()
+            .is_some_and(|order| Arc::ptr_eq(order, &promote.order));
+        if in_force {
+            return Ok(true);
+        }
+        let anchor = promote.anchor.map(|anchor| anchor.commit);
+        let kept = self.pending.as_ref().is_some_and(|pending| {
+            Arc::ptr_eq(&pending.order, &promote.order) && pending.follow == view.follow
+        });
+        if !kept {
+            let layout = self.open_layout(view, Some(&promote.order))?;
+            self.pending = Some(Pending {
+                order: Arc::clone(&promote.order),
+                follow: view.follow,
+                anchor,
+                layout,
+                ask: None,
+            });
+        }
+        let Some(pending) = self.pending.as_mut() else {
+            return Ok(false);
+        };
+        pending.anchor = anchor;
+        if ready_to_swap(&pending.layout, anchor) {
+            // Ready: in force before this request is answered.
+            self.swap();
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    /// Promotes at once: begins the promotion and lays the promoted layout
+    /// out to the anchor before returning, as `serve` did before
+    /// m7-power-tools/12 Part C. The worker promotes between requests
+    /// instead ([`Views::idle_step`]); this is for measuring the swap on its
+    /// own (`examples/budgets`). Returns `false` if `stop` stopped it first,
+    /// the promoted layout left pending.
     ///
     /// # Errors
     /// Opening the source, or laying out, failed.
@@ -159,25 +268,101 @@ impl<'o, S: CommitSource> Views<'o, S> {
         promote: &Promote,
         stop: &dyn Fn() -> bool,
     ) -> Result<bool, StreamError<S::Error>> {
-        let anchor = promote.anchor.map(|anchor| anchor.commit);
-        let in_force = self
-            .promoted
-            .as_ref()
-            .is_some_and(|order| Arc::ptr_eq(order, &promote.order));
-        if in_force {
-            return reach(self.layout(view)?, anchor, stop);
+        if self.begin_promotion(view, promote)? {
+            return Ok(true);
         }
-        let mut layout = self.open_layout(view, Some(&promote.order))?;
-        if !reach(&mut layout, anchor, stop)? {
+        let Some(pending) = self.pending.as_mut() else {
+            return Ok(false);
+        };
+        if !reach(&mut pending.layout, pending.anchor, stop)? {
             return Ok(false);
         }
-        self.promoted = Some(Arc::clone(&promote.order));
+        self.swap();
+        Ok(true)
+    }
+
+    /// Whether a promoted layout is pending: opened, not yet swapped in.
+    #[cfg(test)]
+    pub(super) fn is_promoting(&self) -> bool {
+        self.pending.is_some()
+    }
+
+    /// After a request answered from the provisional layout while a
+    /// promotion is pending: `asked` (with its `Promote`) is answered again
+    /// once the promoted layout is swapped in — if it was the request
+    /// answered. A newer request without the order replaced it: the screen
+    /// no longer asks for the order, and the pending layout is dropped.
+    pub(super) fn answered_provisionally(&mut self, asked: RowRequest) {
+        let answered = self.answered;
+        let Some(pending) = self.pending.as_mut() else {
+            return;
+        };
+        if answered == asked.id {
+            pending.ask = Some(asked);
+        } else if answered > asked.id {
+            self.pending = None;
+        }
+    }
+
+    /// The screen has stopped asking for the pending order (a request came
+    /// without it): the promoted layout is dropped unswapped.
+    pub(super) fn abandon_promotion(&mut self) {
+        self.pending = None;
+    }
+
+    /// The pending promotion's step: a chunk towards the anchor, and once it
+    /// has a row, the swap and the last request answered again.
+    fn promotion_step(
+        &mut self,
+        stop: &dyn Fn() -> bool,
+        report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
+    ) -> Result<IdleWork, StreamError<S::Error>> {
+        let Some(pending) = self.pending.as_mut() else {
+            return Ok(IdleWork::Caught);
+        };
+        let before = pending.layout.rows_emitted();
+        if !ready_to_swap(&pending.layout, pending.anchor) {
+            let chunk = pending.layout.config().chunk_rows;
+            pending.layout.advance(chunk, stop)?;
+        }
+        let rows = pending.layout.rows_emitted() - before;
+        if !ready_to_swap(&pending.layout, pending.anchor) {
+            return Ok(IdleWork::Promoting { rows });
+        }
+        let Some(mut request) = self.swap() else {
+            return Ok(IdleWork::Promoting { rows });
+        };
+        if let Some(promote) = request.promote.clone() {
+            let layout = self.layout(&request.view)?;
+            aim(&mut request, promote.around(layout));
+        }
+        // The rows were on screen already, in the order being replaced: no
+        // progress to show, only the one window in the new order.
+        let mut quiet = |update: HistoryUpdate| match update {
+            HistoryUpdate::Progress { .. } => Delivery::Received,
+            other => report(other),
+        };
+        match self.answer(request, &mut || None, stop, &mut quiet)? {
+            Some(Ended::NobodyListening) => Ok(IdleWork::NobodyListening),
+            // Stopped: a request is waiting and the caller answers it from
+            // the layout now in force — or the walk is cancelled, which the
+            // caller's own `stop` check sees.
+            Some(Ended::Cancelled) | None => Ok(IdleWork::Promoting { rows }),
+        }
+    }
+
+    /// Puts the pending layout in force: every other layout goes, and the
+    /// order is the one every layout opens over from now on. Returns the
+    /// request to answer again from it, if one was answered meanwhile.
+    fn swap(&mut self) -> Option<RowRequest> {
+        let pending = self.pending.take()?;
+        self.promoted = Some(pending.order);
         self.all_parents = None;
         self.first_parent = None;
         // A new layout, not yet at the end: announced again once it is.
         self.announced = None;
-        *self.slot(view.follow) = Some(layout);
-        Ok(true)
+        *self.slot(pending.follow) = Some(pending.layout);
+        pending.ask
     }
 
     /// Where `follow`'s layout is kept.
@@ -207,21 +392,41 @@ impl<'o, S: CommitSource> Views<'o, S> {
     }
 }
 
+/// Whether a pending promoted layout is swapped in: once the anchor has a
+/// row and at least its first chunk is laid out, or history has ended.
+///
+/// The first chunk even with no anchor: the swap then lands with the rows
+/// the normal path lands with. A promotion that reached the walk before its
+/// first window carries no anchor, and swapping that in with nothing laid
+/// out answered only the rows asked for, never `done` on a history one chunk
+/// holds — the walk then stayed short of `Complete` for good, where the
+/// normal path, anchored and so a chunk laid out, completed (M7/04b, 12c).
+fn ready_to_swap<S: CommitSource>(layout: &StreamingLayout<S>, anchor: Option<Oid>) -> bool {
+    layout.is_done()
+        || (layout.rows_emitted() >= layout.config().chunk_rows && has_row(layout, anchor))
+}
+
+/// Whether `anchor` has a row in `layout`: at once with no anchor, and once
+/// history has ended, found or not.
+fn has_row<S: CommitSource>(layout: &StreamingLayout<S>, anchor: Option<Oid>) -> bool {
+    layout.is_done()
+        || anchor.is_none_or(|id| {
+            layout
+                .row_of(id)
+                .is_some_and(|row| row < layout.rows_emitted())
+        })
+}
+
 /// Lays `layout` out until `anchor` has a row, or history ends. Returns
 /// `false` if `stop` asked it to stop first.
-fn reach<S: CommitSource>(
+pub(super) fn reach<S: CommitSource>(
     layout: &mut StreamingLayout<S>,
     anchor: Option<Oid>,
     stop: &dyn Fn() -> bool,
 ) -> Result<bool, StreamError<S::Error>> {
     let chunk = layout.config().chunk_rows;
     loop {
-        let found = anchor.is_none_or(|id| {
-            layout
-                .row_of(id)
-                .is_some_and(|row| row < layout.rows_emitted())
-        });
-        if found || layout.is_done() {
+        if has_row(layout, anchor) {
             return Ok(true);
         }
         let advanced = layout.advance(chunk, stop)?;
@@ -231,232 +436,21 @@ fn reach<S: CommitSource>(
     }
 }
 
-/// Answers requests from `requests` until it has no sender left.
-///
-/// Between requests it lays out ahead, a chunk per [`Views::idle_step`], to
-/// the end of history, so a later `G` or search finds its rows laid out; a
-/// request that arrives stops that within one pull and is answered at once.
-/// Once caught up it waits: this is a worker thread, and a walk nobody is
-/// scrolling costs nothing. Requests that queued while one was being answered
-/// are skipped to the newest — only its answer would be looked at.
-///
-/// # Errors
-/// Whatever the layout reports: the source failed, repeated a commit, stalled,
-/// or a rebuilt chunk differed.
-///
-/// Each request is answered in the view it names; a newer request in another
-/// view interrupts the one being answered and is answered next.
-pub fn serve<S: CommitSource>(
-    views: &mut Views<'_, S>,
-    requests: &Receiver<RowRequest>,
-    stop: &dyn Fn() -> bool,
-    report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
-) -> Result<Ended, StreamError<S::Error>> {
-    let mut interrupted: Option<RowRequest> = None;
-    loop {
-        let request = match interrupted.take() {
-            Some(request) => request,
-            None => match next_request(views, requests, stop, report)? {
-                Next::Asked(request) => *request,
-                Next::Ended(ended) => return Ok(ended),
-            },
-        };
-        let view = request.view.clone();
-        let mut request = request;
-        if let Some(promote) = request.promote.clone() {
-            if !views.promote(&view, &promote, stop)? {
-                return Ok(Ended::Cancelled);
-            }
-            // With nothing to anchor to, row numbers are the best guess left.
-            if let Some(around) = promote.around(views.layout(&view)?) {
-                request.wanted = match request.wanted {
-                    Wanted::Rows(_) => Wanted::Rows(around),
-                    Wanted::Find { commit, rows, .. } => Wanted::Find {
-                        commit,
-                        rows,
-                        fallback: around,
-                    },
-                    // Counted from the end, which the new order shares.
-                    last @ Wanted::Last(_) => last,
-                };
-            }
-        }
-        let layout = views.layout(&view)?;
-        let mut latest = None;
-        let mut newer = || {
-            let newest = requests.try_iter().last();
-            latest.clone_from(&newest);
-            newest
-        };
-        if let Some(ended) = answer(layout, request, &mut newer, stop, report)? {
-            return Ok(ended);
-        }
-        // `answer` gives up on a request only for one in another view, or
-        // one carrying a promotion.
-        interrupted = latest.filter(|newest| newest.view != view || newest.promote.is_some());
-    }
-}
-
-/// What [`next_request`] came back with.
-enum Next {
-    /// The newest request waiting. Boxed: a request is 200-odd bytes.
-    Asked(Box<RowRequest>),
-    /// No request will come: cancelled, every sender gone, or nobody
-    /// listening.
-    Ended(Ended),
-}
-
-/// What the "is a request waiting?" check found, kept for the loop to take:
-/// a channel cannot be peeked, only received from.
-enum Arrival {
-    Asked(Box<RowRequest>),
-    SendersGone,
-}
-
-/// Waits for the next request, laying out ahead while none is waiting.
-///
-/// Every check for a request is also a `stop` check, so a cancel or a
-/// request ends the idle step within one pull. Once caught up it parks in
-/// `recv`: no wake, no work, until a request or the senders going.
-fn next_request<S: CommitSource>(
-    views: &mut Views<'_, S>,
-    requests: &Receiver<RowRequest>,
-    stop: &dyn Fn() -> bool,
-    report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
-) -> Result<Next, StreamError<S::Error>> {
-    let arrived = RefCell::new(None);
-    let interrupted = || {
-        if stop() {
-            return true;
-        }
-        let mut arrived = arrived.borrow_mut();
-        if arrived.is_none() {
-            *arrived = match requests.try_recv() {
-                Ok(request) => Some(Arrival::Asked(Box::new(request))),
-                Err(TryRecvError::Disconnected) => Some(Arrival::SendersGone),
-                Err(TryRecvError::Empty) => None,
-            };
-        }
-        arrived.is_some()
+/// Re-aims a request whose row numbers were counted in the order being
+/// replaced: rows by number are asked for `around` the anchor instead. With
+/// nothing to anchor to, row numbers are the best guess left.
+pub(super) fn aim(request: &mut RowRequest, around: Option<Range<usize>>) {
+    let Some(around) = around else {
+        return;
     };
-    loop {
-        if interrupted() {
-            return Ok(match arrived.take() {
-                Some(Arrival::Asked(first)) => {
-                    Next::Asked(requests.try_iter().last().map_or(first, Box::new))
-                }
-                // Every sender is gone: the runner dropped it because the
-                // job was cancelled or Graft is leaving. Nobody can ask
-                // again. With nothing arrived, `stop` said stop.
-                Some(Arrival::SendersGone) | None => Next::Ended(Ended::Cancelled),
-            });
-        }
-        match views.idle_step(&interrupted, report)? {
-            IdleWork::Advanced { .. } => {}
-            IdleWork::NobodyListening => return Ok(Next::Ended(Ended::NobodyListening)),
-            // `recv` failing means every sender is gone, as above.
-            IdleWork::Caught => {
-                return Ok(match requests.recv() {
-                    Ok(first) => Next::Asked(Box::new(requests.try_iter().last().unwrap_or(first))),
-                    Err(_) => Next::Ended(Ended::Cancelled),
-                });
-            }
-        }
-    }
-}
-
-/// Answers one request: lays out only as far as it needs, at most a chunk
-/// per step, then reports the rows it names.
-///
-/// Between chunks it reports progress and asks `newer` whether a newer request
-/// has arrived; one that has replaces this one, so a withdrawn `G` stops
-/// walking within a chunk. Returns `None` once the answer is sent — or,
-/// sending nothing, once a newer request names a different view or carries a
-/// promotion: `layout` cannot answer that one, and the caller must.
-///
-/// # Errors
-/// Whatever the layout reports.
-pub(super) fn answer<S: CommitSource>(
-    layout: &mut StreamingLayout<S>,
-    mut request: RowRequest,
-    newer: &mut dyn FnMut() -> Option<RowRequest>,
-    stop: &dyn Fn() -> bool,
-    report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
-) -> Result<Option<Ended>, StreamError<S::Error>> {
-    let chunk = layout.config().chunk_rows;
-    loop {
-        let reach = match &request.wanted {
-            Wanted::Rows(rows) => rows.end,
-            // A far hit is reached by laying out forward from the frontier;
-            // rows already emitted are found through the retained order and
-            // rebuilt from their checkpoint, never re-walked (DESIGN.md §3.6).
-            Wanted::Find { commit, .. } if layout.row_of(*commit).is_some() => 0,
-            Wanted::Last(_) | Wanted::Find { .. } => usize::MAX,
-        };
-        if layout.is_done() || layout.rows_emitted() >= reach {
-            break;
-        }
-        // Lay out only what this request still needs, a chunk at most: a
-        // whole chunk read from the repository costs about 30 ms unoptimised,
-        // two frames, when a page key needs a screenful (ticket 30c).
-        let needed = chunk.min(reach - layout.rows_emitted());
-        let advanced = layout.advance(needed, stop)?;
-        if advanced.stopped || stop() {
-            return Ok(Some(Ended::Cancelled));
-        }
-        let progress = HistoryUpdate::Progress {
-            request: request.id,
-            laid_out: layout.rows_emitted(),
-        };
-        if report(progress) == Delivery::NobodyListening {
-            return Ok(Some(Ended::NobodyListening));
-        }
-        if let Some(replacement) = newer() {
-            if replacement.view != request.view || replacement.promote.is_some() {
-                return Ok(None);
-            }
-            request = replacement;
-        }
-    }
-
-    let laid_out = layout.rows_emitted();
-    let range = match request.wanted {
-        Wanted::Rows(rows) => rows.start.min(laid_out)..rows.end.min(laid_out),
-        Wanted::Last(count) => laid_out.saturating_sub(count)..laid_out,
-        Wanted::Find {
+    request.wanted = match request.wanted.clone() {
+        Wanted::Rows(_) => Wanted::Rows(around),
+        Wanted::Find { commit, rows, .. } => Wanted::Find {
             commit,
             rows,
-            fallback,
-        } => match layout.row_of(commit) {
-            Some(row) => row.saturating_sub(rows)..row.saturating_add(rows + 1).min(laid_out),
-            None => fallback.start.min(laid_out)..fallback.end.min(laid_out),
+            fallback: around,
         },
+        // Counted from the end, which the new order shares.
+        last @ Wanted::Last(_) => last,
     };
-    layout.set_viewport(range.clone());
-    let rows = layout.rows(range.clone())?;
-    let window = Window {
-        request: request.id,
-        first: range.start,
-        rows: rows.into(),
-        laid_out,
-        done: layout.is_done(),
-        promoted: request.promote.is_some(),
-    };
-    if report(HistoryUpdate::Window(window)) == Delivery::NobodyListening {
-        return Ok(Some(Ended::NobodyListening));
-    }
-    Ok(None)
-}
-
-/// An error and every cause under it, on one line: `StreamError::Source`
-/// says only "reading history", and the reason is in its source.
-pub(super) fn error_chain(error: &dyn std::error::Error) -> String {
-    let mut text = error.to_string();
-    let mut cause = error.source();
-    while let Some(inner) = cause {
-        text.push_str(": ");
-        text.push_str(&inner.to_string());
-        cause = inner.source();
-    }
-    text
 }
