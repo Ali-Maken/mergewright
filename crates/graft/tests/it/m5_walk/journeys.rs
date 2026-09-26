@@ -19,7 +19,8 @@ use crate::repo_truth::keys_label;
 
 /// Where the note lives, from the crate's own directory.
 pub const NOTE: &str = "../../docs/design-notes/m6-conflicts.md";
-/// The one fence the walk parses. `journey-counts-superseded` is not it.
+/// The fence the walk parses (every one of them). `journey-counts-superseded`
+/// is not it.
 const FENCE: &str = "```journey-counts";
 
 /// One row of the block: `id keys [token…] [# comment]`.
@@ -40,27 +41,44 @@ pub fn note_text() -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|why| format!("{}: {why}", path.display()))
 }
 
-/// The rows of the one fence tagged exactly `journey-counts`.
+/// The rows of every fence tagged exactly `journey-counts`, in order; an id
+/// counted in two fences is an error.
 ///
 /// Tokens after `keys` of the form `P6:n` are read and not asserted; any
 /// other token is an error, so a typo cannot pass as a comment. A comment
-/// whose `+`-separated parts are all ids of this block names the row's
+/// whose `+`-separated parts are all ids of its own fence names the row's
 /// parts.
 pub fn parse_counts(note: &str) -> Result<Vec<Row>, String> {
-    let mut fences = note
+    let starts: Vec<usize> = note
         .lines()
         .enumerate()
-        .filter(|(_, line)| line.trim_end() == FENCE);
-    let (start, _) = fences
-        .next()
-        .ok_or_else(|| format!("no {FENCE} fence in the note"))?;
-    if let Some((again, _)) = fences.next() {
-        return Err(format!(
-            "two {FENCE} fences, lines {} and {}",
-            start + 1,
-            again + 1
-        ));
+        .filter(|(_, line)| line.trim_end() == FENCE)
+        .map(|(number, _)| number)
+        .collect();
+    if starts.is_empty() {
+        return Err(format!("no {FENCE} fence in the note"));
     }
+    // A note may keep more than one fence (M7 has pass 2a's and 2b's): each
+    // is read, in order, and an id is a journey's only once across them.
+    let mut rows: Vec<Row> = Vec::new();
+    for start in starts {
+        for row in parse_fence(note, start)? {
+            if rows.iter().any(|seen| seen.id == row.id) {
+                return Err(format!(
+                    "journey {} is counted twice (second time in the fence at line {})",
+                    row.id,
+                    start + 1
+                ));
+            }
+            rows.push(row);
+        }
+    }
+    Ok(rows)
+}
+
+/// The rows of the fence opening at line index `start`. A comment's parts
+/// are ids of this fence.
+fn parse_fence(note: &str, start: usize) -> Result<Vec<Row>, String> {
     let mut raw = Vec::new();
     let mut closed = false;
     for (number, line) in note.lines().enumerate().skip(start + 1) {
@@ -392,9 +410,25 @@ more text\n";
     }
 
     #[test]
-    fn no_block_or_two_blocks_is_an_error() {
+    fn no_block_is_an_error() {
         assert!(parse_counts("```journey-counts-superseded\na 1\n```\n").is_err());
-        let twice = "```journey-counts\na 1\n```\n```journey-counts\nb 1\n```\n";
-        assert!(parse_counts(twice).unwrap_err().contains("two"));
+    }
+
+    /// The M7 note keeps two fences on purpose (pass 2a's and 2b's,
+    /// `docs/design-notes/m7-power-tools.md`): both are read, in order.
+    #[test]
+    fn two_fences_are_read_as_one_block() {
+        let twice = "```journey-counts\na 1\n```\ntext\n```journey-counts\nb 2\n```\n";
+        let rows = parse_counts(twice).unwrap();
+        let read: Vec<(&str, Option<usize>)> =
+            rows.iter().map(|row| (row.id.as_str(), row.keys)).collect();
+        assert_eq!(read, [("a", Some(1)), ("b", Some(2))]);
+    }
+
+    #[test]
+    fn a_duplicate_id_across_fences_is_refused() {
+        let twice = "```journey-counts\na 1\n```\n```journey-counts\nb 1\na 2\n```\n";
+        let why = parse_counts(twice).unwrap_err();
+        assert!(why.contains("a") && why.contains("twice"), "{why}");
     }
 }
