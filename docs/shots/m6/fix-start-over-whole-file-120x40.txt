@@ -54,10 +54,10 @@ files   ▸ gone.txt · done ✓    shared.rs · 1 of 1 open
 
 
 
-                            ╭ Start gone.txt over? ────────────────────────────────────────╮
+                            ╭ Start gone.txt over ─────────────────────────────────────────╮
                             │ the choice comes back: keep or delete                        │
-                            │ edits since the choice are lost · not undoable while the     │
-                            │ merge is open                                                │
+                            │ your choices in gone.txt are dropped · not undoable while    │
+                            │ the merge is open                                            │
                             │                                                              │
                             │ git checkout --ours -- gone.txt                              │
                             │                                                              │

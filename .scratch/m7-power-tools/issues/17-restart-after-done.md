@@ -1,6 +1,6 @@
 # restart-after-done — `d` on a file already marked done starts it over, inside the operation
 
-Status: ready
+Status: done
 Blocked by: none
 Crates: graft (the resolver's `d` on a done row); graft-ui only if the done row can't show `d` on the bar.
 Source: note "Pass 2a" R4 "Start over after `⏎`"; `TESTING.md` "Times I left" :109 ("still the shell — `git checkout
@@ -40,18 +40,24 @@ Needs: none. It runs in parallel with graft-ops tickets; it can't run alongside 
 ```
 
 ## Acceptance
-- [ ] **App:**
+- [x] **App:** (all in `crates/graft/tests/it/resolver/file_list/start_over.rs`)
   - `d_on_a_done_file_opens_the_start_over_box` (red first);
-  - `y_restores_the_stages_as_at_the_stop`;
+  - `y_restores_the_stages_as_at_the_stop` — characterisation, never red;
   - `esc_in_the_box_changes_nothing`;
-  - `a_restart_git_cannot_do_is_refused_in_words`.
-- [ ] **Walk** `restart_after_done` (`m7_walk` or `m6_walk`; the scout picks the harness): after `⏎` on `three.txt`,
+  - `a_restart_git_cannot_do_is_refused_in_words` (red first).
+  - Built: file `shared.rs` (fixture `app_merge_with_a_whole_file_conflict`), not `three.txt`.
+- [x] Walk `crates/graft/tests/it/m7_walk.rs::restart_after_done` — **differs from the spec:** `shared.rs`, not `three.txt`; one `<<<<<<< ` line, not two (the fixture has one block); route is click·`d`·`y` = 3, checked against the M7 note's fence. Characterisation, never red. Spec text:
+  **Walk** `restart_after_done` (`m7_walk` or `m6_walk`; the scout picks the harness): after `⏎` on `three.txt`,
       motion `d y` ≤ `noted_keys("restart-after-done")`. `git ls-files -u` lists `three.txt` with the stop's oids and
       modes; two `<<<<<<< ` lines are on disk.
-- [ ] **Capture** `docs/shots/m7/restart-after-done-box-120x40.txt`. **Right:** title `Start three.txt over`; `your
+- [x] **Capture** `docs/shots/m7/restart-after-done-box-120x40.txt`, written by
+      `d_on_a_done_file_opens_the_start_over_box` — **differs:** `Start shared.rs over`, `your choices in shared.rs are
+      dropped · not undoable while the merge is open`, bar `y start over …`. Colour unverified. Spec text: **Right:** title `Start three.txt over`; `your
       choices in three.txt are dropped`; bar `y`. Colour unverified.
-- [ ] Hint-bar tests green. TESTING.md: the "Times I left" :109 row gets the walk's name, for the conductor to close.
-      MAP.md (graft).
+- [x] Hint-bar tests green: `cargo nextest run --workspace hint_bar`, 14/14 (the `it::hint_bar` module plus unit tests
+      matching `hint_bar`). TESTING.md "Times I left" :109 row names `m7_walk.rs::restart_after_done`, status "ready to
+      close". MAP.md (graft) `start_over_refusal` entry: refusal words and the done-file box title and line updated. No pub
+      API changed.
 
 ## Touches (check each, report how)
 - **The before-`⏎` start-over:** unchanged. Check: TESTING.md :2215's walk (`start-over-brings-the-markers-back`) green.
@@ -66,3 +72,23 @@ Worktree only; `CARGO_TARGET_DIR` in the worktree; the four gates workspace-wide
 
 ## Size
 Small (~30k).
+
+## NOTES (builder, 2026-09-26)
+Scout used (`.scratch/m7-power-tools/scouts/17.md`). `d` on a done file already existed (m6-conflicts/28): routed by `update/resolver.rs` `act` → `Char('d') => restart::restart_box`. This ticket closed the gap only. No compaction.
+
+Ticks:
+- [x] `d_on_a_done_file_opens_the_start_over_box` (`tests/it/resolver/file_list/start_over.rs`; red first on the words).
+- [x] `y_restores_the_stages_as_at_the_stop` — `d y`; `ls-files -u` mode+oid+stage equal the stop's; one `<<<<<<< ` on disk (the fixture has one block). **Characterises existing behaviour: never red.** `y` already confirmed (label `Start over` → `ConfirmYes::StartOver`) and the stages already matched; not test-first.
+- [x] `esc_in_the_box_changes_nothing`.
+- [x] `a_restart_git_cannot_do_is_refused_in_words`.
+- [x] Capture `docs/shots/m7/restart-after-done-box-120x40.txt` (test `d_on_a_done_file_opens_the_start_over_box`) — the file is `shared.rs`, not `three.txt` (fixture `app_merge_with_a_whole_file_conflict`). Colour unverified.
+- [x] Walk `crates/graft/tests/it/m7_walk.rs::restart_after_done` — route click·`d`·`y` = 3 ≤ `restart-after-done` read from the M7 note's `journey-counts` fence (`m5_walk::parse_counts`, now re-exported); stop's stages and one `<<<<<<< ` checked. File `shared.rs`, not `three.txt`. Characterisation: passed on its first run.
+- [x] `resolver::file_list::start_over::restart_after_the_last_file_hides_the_finish_row` — `every file done` shown after `Esc` from the summary, gone after `d y`. Characterisation: passed on its first run.
+- Test helpers made `pub(crate)` for the walk: `resolver::file_list::{rows, click_file, on_gone_card, shared_done}`, `resolver::restart::app_merge_with_a_whole_file_conflict`.
+
+Word changes (done file only; before-`⏎` box unchanged):
+- Title `Start <file> over?` → `Start <file> over`.
+- Line `takes and edits in this file are lost` / `edits since the choice are lost` → `your choices in <file> are dropped` (suffix `· not undoable while the <op> is open` kept).
+- Refusal `can't start over · <why>` → `git can't bring back the conflict in <file>: <reason>`; a leading `<file>: ` in ops' reason is stripped. The reason is ops' (`NoStagesKept`), not git's: ops doesn't use resolve-undo, kept as asked.
+
+Captures regenerated: `m6/fix-done-start-over-cannot-120x40.txt`, `m6/fix-start-over-whole-file-120x40.txt`. m6 contact sheet rebuilt (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): parts 1 and 3 changed, all parts ≤ 179 832 B; captions rows for the two shots updated to the new words.

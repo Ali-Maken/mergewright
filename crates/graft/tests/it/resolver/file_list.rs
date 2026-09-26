@@ -63,7 +63,7 @@ fn gone_and_notes_merge_with(readme: bool) -> Scratch {
 }
 
 /// Each listed file's path and state, as the list derives them.
-fn rows(state: &AppState) -> Vec<(String, RowState)> {
+pub(crate) fn rows(state: &AppState) -> Vec<(String, RowState)> {
     listed_files(state)
         .into_iter()
         .map(|file| (file.path.display().to_string(), file.state))
@@ -173,7 +173,7 @@ fn the_list_survives_a_relaunch() {
 }
 
 /// A left click on `name` in the list's row (row 1), at the app's own size.
-fn click_file(app: &App, state: &AppState, name: &str) -> AppState {
+pub(crate) fn click_file(app: &App, state: &AppState, name: &str) -> AppState {
     let frame = crate::captures::frame(state, state.size.columns, state.size.rows);
     let column = u16::try_from(gone_like_column(&frame, name)).expect("a narrow frame");
     app.mouse_down(state, graft_core::event::MouseButton::Left, column, 1)
@@ -241,7 +241,7 @@ fn a_shell_merge_done_file_answers_d_in_words() {
     assert!(open_now.done.is_some());
     assert_eq!(open_now.restarting, None, "never set");
     assert!(
-        matches!(&state.status, Status::Sticky { reason, .. } if reason == "can't start over · gone.txt: the conflict's sides were not kept"),
+        matches!(&state.status, Status::Sticky { reason, .. } if reason == "git can't bring back the conflict in gone.txt: the conflict's sides were not kept"),
         "{:?}",
         state.status
     );
@@ -253,7 +253,7 @@ fn a_shell_merge_done_file_answers_d_in_words() {
 /// Graft's own merge stopped on `gone.txt` (modify/delete, a card) and
 /// `shared.rs` (one block), with the banner's `⏎` landed on `gone.txt`'s
 /// card and the list read.
-fn on_gone_card(scratch: &Scratch) -> (App, AppState) {
+pub(crate) fn on_gone_card(scratch: &Scratch) -> (App, AppState) {
     let (app, state) = App::open(scratch.path());
     let state = crate::conflict_interim::stopped_on_the_conflict(&app, state);
     let state = app.key(&state, KeyCode::Enter);
@@ -269,7 +269,7 @@ fn on_gone_card(scratch: &Scratch) -> (App, AppState) {
 
 /// From [`on_gone_card`]: `shared.rs` taken and marked done with `⏎`, the
 /// resolver landed back on `gone.txt`'s card.
-fn shared_done(app: &App, state: &AppState) -> AppState {
+pub(crate) fn shared_done(app: &App, state: &AppState) -> AppState {
     let state = click_file(app, state, "shared.rs");
     let state = app.pump(state, "shared.rs", |state| {
         state
