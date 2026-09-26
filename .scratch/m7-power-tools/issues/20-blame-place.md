@@ -294,3 +294,6 @@ same flag, and `blame.showRoot=true` in his config clears it on both. The only r
 - History-place (21): unaffected. `L` from a shallow line traces through 18c's rule. No edit.
 - Walks: unchanged (full-clone fixture). Journey counts: unchanged.
 - The TESTING.md row for the capture (the acceptance ticket assembles the sheet).
+
+## Carry from 20d (conductor, 2026-09-26)
+20d built Part A (63d8cdda). The ruling's line numbers are wrong for a whole-file blame of the `--depth 2` clone: every line except 3 and 26 goes to the boundary (20d observed this, with git's own blame as the oracle). Write any boundary-line test against git's blame output, not the ruling's numbers. graft-ui does not yet read `BlameCommit::shallow` or `BlameError::Shallow`; that is Part B, this ticket.
