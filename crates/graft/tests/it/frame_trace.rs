@@ -24,6 +24,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use graft::event_loop::Wake;
+use graft::jobs::{Delivery, JobEvents};
 use graft::update::AppEvent;
 use graft_core::event::{Event, KeyCode, KeyPress};
 
@@ -156,6 +157,36 @@ impl WriteClock {
     }
 }
 
+/// One wake on the harness's channel, stamped just before it was sent, so a
+/// job event's time in the queue can be told from its time in the loop
+/// (m7-power-tools/12, the startup trace). The app's own channel carries
+/// the bare [`Wake`]; the stamp is the harness's only addition.
+#[derive(Debug)]
+pub struct Posted {
+    /// Just before the send.
+    pub at: Instant,
+    pub wake: Wake,
+}
+
+/// The job pool's side of the harness channel: every result and progress
+/// report goes in as the app's `impl JobEvents for Sender<Wake>` sends it
+/// (`event_loop/mod.rs`), with its send time.
+#[derive(Clone)]
+pub struct Post(pub Sender<Posted>);
+
+impl JobEvents for Post {
+    fn deliver(&self, event: AppEvent) -> Delivery {
+        let posted = Posted {
+            at: Instant::now(),
+            wake: Wake::Event(event),
+        };
+        match self.0.send(posted) {
+            Ok(()) => Delivery::Received,
+            Err(_returned) => Delivery::NobodyListening,
+        }
+    }
+}
+
 /// When the input thread sent one key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sent {
@@ -208,7 +239,7 @@ impl KeyFeed {
     ///
     /// # Errors
     /// When the thread cannot be spawned.
-    pub fn start(keys: Vec<(KeyCode, Duration)>, wakes: Sender<Wake>) -> io::Result<Self> {
+    pub fn start(keys: Vec<(KeyCode, Duration)>, wakes: Sender<Posted>) -> io::Result<Self> {
         let sent = Arc::new(Mutex::new(Vec::with_capacity(keys.len())));
         let stamps = Arc::clone(&sent);
         let thread = thread::Builder::new()
@@ -230,7 +261,10 @@ impl KeyFeed {
                         .push(Sent { due, at });
                     let press = KeyPress::plain(key);
                     wakes
-                        .send(Wake::Event(AppEvent::Core(Event::Key(press))))
+                        .send(Posted {
+                            at,
+                            wake: Wake::Event(AppEvent::Core(Event::Key(press))),
+                        })
                         .map_err(|_gone| format!("the loop hung up before key {index}"))?;
                 }
                 Ok(())
@@ -341,11 +375,11 @@ fn a_key_sent_after_idle_is_received_within_1ms_of_its_send() {
 
     let mut received = Vec::new();
     for key in ['j', 'k'] {
-        let wake = inbox
+        let posted = inbox
             .recv()
             .unwrap_or_else(|why| panic!("the input thread hung up: {why}"));
         let at = Instant::now();
-        match wake {
+        match posted.wake {
             Wake::Event(AppEvent::Core(Event::Key(press))) => {
                 assert_eq!(
                     press,

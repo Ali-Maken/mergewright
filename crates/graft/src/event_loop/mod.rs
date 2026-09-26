@@ -24,6 +24,7 @@
 mod graphics;
 mod headless;
 pub mod input;
+mod label;
 pub mod outside;
 pub mod redetect;
 mod row_clear;

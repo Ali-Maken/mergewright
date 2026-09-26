@@ -32,14 +32,14 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use graft::config::Loaded;
 use graft::event_loop::{Exit, Phase, Wake, Wakes, pump};
-use graft::history::HistoryUpdate;
+use graft::history::{HistoryUpdate, Phase as WalkPhase};
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::refs::{RefBadges, badges};
 use graft::session::Session;
@@ -59,7 +59,7 @@ use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::budget_run;
-use crate::frame_trace::{FrameTrace, Gate, KeyFeed, SentLog, TRACE_VAR, WriteClock};
+use crate::frame_trace::{FrameTrace, Gate, KeyFeed, Post, Posted, SentLog, TRACE_VAR, WriteClock};
 use crate::heavy::MEASURING;
 
 /// PROMPT.md §6.3: input to frame under 16 ms.
@@ -337,6 +337,11 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
             .append(&lines)
             .unwrap_or_else(|why| panic!("{TRACE_VAR}: {why}"));
     }
+    if trace.is_some() {
+        for line in &run.startup {
+            println!("frame_trace: tier={tier:?} refs={refs:?} pane={pane:?} {line}");
+        }
+    }
     let (scrolled, idle) = run.latencies.split_at(script(pane).len());
     let gate = Gate::of(scrolled, INPUT_TO_FRAME);
     println!(
@@ -493,6 +498,9 @@ struct Run {
     by_trigger: Vec<(String, usize, Counts)>,
     /// Per key: its phases, as `GRAFT_FRAME_TRACE` lines (see [`Paced::trace`]).
     trace: Vec<String>,
+    /// Every non-key wake from the first window of rows to key 1's frame,
+    /// and the burst's length (see [`Paced::startup`]).
+    startup: Vec<String>,
 }
 
 fn scroll(
@@ -505,8 +513,9 @@ fn scroll(
 ) -> Result<Run, String> {
     // One channel for job results and keys, as in the app
     // (`impl JobEvents for Sender<Wake>`, event_loop/mod.rs).
-    let (post, events) = mpsc::channel::<Wake>();
-    let (jobs, state) = ready_to_scroll(repo, tier, refs, post.clone(), &events)?;
+    let (post, events) = mpsc::channel::<Posted>();
+    let (jobs, state, before_loop) =
+        ready_to_scroll(repo, tier, refs, Post(post.clone()), &events)?;
 
     let mut session = Session::settle(&Loaded::default(), capabilities(tier));
     let sink = Sink::timed(traced);
@@ -553,6 +562,7 @@ fn scroll(
     let waited = wakes.waited(initial);
     let by_trigger = wakes.written_by_trigger(&counted);
     let trace = wakes.trace(script(pane).len());
+    let startup = wakes.startup(&before_loop);
 
     match jobs.shutdown(Duration::from_secs(10)) {
         Shutdown::Clean => {}
@@ -569,19 +579,34 @@ fn scroll(
         bytes: written.bytes,
         by_trigger,
         trace,
+        startup,
     })
+}
+
+/// One non-key wake near startup: what it was, when it was sent and taken,
+/// and what the loop spent on it (`draw` is `None` before the loop starts:
+/// [`ready_to_scroll`] takes events in without drawing).
+#[derive(Clone, Copy)]
+struct StartupWake {
+    label: &'static str,
+    sent: Instant,
+    recv: Instant,
+    update: Option<Duration>,
+    draw: Option<Duration>,
 }
 
 /// Opens `repo` with its jobs reporting into `post`, and pumps `events`
 /// until the screen is ready to scroll: rows on hand and the refs job
 /// answered, so no stray refs answer lands mid-scroll.
+///
+/// Every event it takes is stamped ([`StartupWake`]) for the startup trace.
 fn ready_to_scroll(
     repo: &Path,
     tier: RenderingTier,
     refs: Refs,
-    post: Sender<Wake>,
-    events: &Receiver<Wake>,
-) -> Result<(JobRunner<Sender<Wake>>, AppState), String> {
+    post: Post,
+    events: &Receiver<Posted>,
+) -> Result<(JobRunner<Post>, AppState, Vec<StartupWake>), String> {
     let (jobs, mut state) = budget_run::open_into(repo, post)?;
     state.settled_tier = Some(tier);
     let ready = |state: &AppState| {
@@ -591,23 +616,48 @@ fn ready_to_scroll(
                 .as_ref()
                 .is_some_and(|h| h.window.as_ref().is_some_and(|w| !w.rows.is_empty()))
     };
-    state =
-        budget_run::pump_until_from(&jobs, |patience| job_event(events, patience), state, ready)?;
+    // `budget_run::pump_until_from`'s loop, with each event timed.
+    let mut taken = Vec::new();
+    loop {
+        if let Some(history) = &state.history
+            && let WalkPhase::Failed(why) = &history.phase
+        {
+            return Err(format!("the walk failed: {why}"));
+        }
+        if ready(&state) {
+            break;
+        }
+        let posted = events
+            .recv_timeout(PATIENCE)
+            .map_err(|why| format!("no event for {PATIENCE:?} ({why}); state: {state:?}"))?;
+        let recv = Instant::now();
+        let label = posted.wake.label();
+        let Wake::Event(event) = posted.wake else {
+            return Err(format!("a wake no job sends: {label}"));
+        };
+        let started = Instant::now();
+        let (next, commands) = update(&state, event);
+        let update_took = started.elapsed();
+        state = next;
+        for command in commands {
+            jobs.dispatch(command);
+        }
+        taken.push(StartupWake {
+            label,
+            sent: posted.at,
+            recv,
+            update: Some(update_took),
+            draw: None,
+        });
+        if let Some(quit) = &state.quit {
+            return Err(format!("Graft quit: {quit:?}"));
+        }
+    }
     if let Refs::FiftyThousand = refs {
         state.refs = Some(Arc::new(fifty_thousand(&state)?));
     }
     print_state_clone(tier, refs, &state);
-    Ok((jobs, state))
-}
-
-/// The next job event on the loop's wake channel, before the script starts
-/// (only the jobs send then).
-fn job_event(wakes: &Receiver<Wake>, patience: Duration) -> Result<AppEvent, String> {
-    match wakes.recv_timeout(patience) {
-        Ok(Wake::Event(event)) => Ok(event),
-        Ok(other) => Err(format!("a wake no job sends: {other:?}")),
-        Err(why) => Err(why.to_string()),
-    }
+    Ok((jobs, state, taken))
 }
 
 /// A terminal of `state`'s size writing into `sink`.
@@ -993,6 +1043,10 @@ enum Kind {
 /// One wake handed to the loop.
 struct Handed {
     kind: Kind,
+    /// [`Wake::label`]: what it was, without its payload.
+    label: &'static str,
+    /// Just before it was sent (the input thread's or a job's send).
+    sent: Instant,
     /// When the loop took it: its frame runs from here to the next stamp.
     at: Instant,
     /// A key: the script's tick for it. Due → sent is the input thread's own
@@ -1027,7 +1081,7 @@ fn slot(phase: Phase) -> usize {
 /// wait, `try_recv` to look). Every call means the loop has drawn the frame
 /// for the wake before it, so each call is stamped.
 struct Paced<'a, D> {
-    events: &'a Receiver<Wake>,
+    events: &'a Receiver<Posted>,
     keys: Vec<(KeyCode, Duration)>,
     /// Keys received so far: the index of the next one.
     next_key: usize,
@@ -1046,7 +1100,7 @@ struct Paced<'a, D> {
     sink: Sink,
     failure: Option<String>,
     /// A wake `waiting` took off the channel to see it; handed out first.
-    seen: Option<Wake>,
+    seen: Option<Posted>,
     /// When the loop first looked for a wake since the last one was handed:
     /// its frame was on the terminal then, before any idle prefetch began.
     looked: Option<Instant>,
@@ -1071,7 +1125,7 @@ impl Handed {
 
 impl<'a, D> Paced<'a, D> {
     fn new(
-        events: &'a Receiver<Wake>,
+        events: &'a Receiver<Posted>,
         keys: Vec<(KeyCode, Duration)>,
         watching: &'a Watching<'a, D>,
         sink: Sink,
@@ -1106,13 +1160,16 @@ impl<'a, D> Paced<'a, D> {
         }
     }
 
-    fn hand(&mut self, kind: Kind, due: Option<Instant>, event: AppEvent) -> Wake {
+    fn hand(&mut self, kind: Kind, due: Option<Instant>, sent: Instant, event: AppEvent) -> Wake {
         let (asked, newest) = self.watching.asked_so_far();
         if let Kind::Window(id) = kind {
             self.answered = self.answered.max(Some(id));
         }
+        let wake = Wake::Event(event);
         self.handed.push(Handed {
             kind,
+            label: wake.label(),
+            sent,
             at: Instant::now(),
             due,
             marks: [None; 4],
@@ -1122,25 +1179,27 @@ impl<'a, D> Paced<'a, D> {
             wrote_before: self.sink.write_spent(),
             wrote_after: Duration::ZERO,
         });
-        self.replay.push(event.clone());
-        Wake::Event(event)
+        if let Wake::Event(event) = &wake {
+            self.replay.push(event.clone());
+        }
+        wake
     }
 
-    fn event(&mut self, event: AppEvent) -> Wake {
+    fn event(&mut self, event: AppEvent, sent: Instant) -> Wake {
         let kind = match &event {
             AppEvent::Progress(_, Progress::History(HistoryUpdate::Window(window))) => {
                 Kind::Window(window.request)
             }
             _ => Kind::Other,
         };
-        self.hand(kind, None, event)
+        self.hand(kind, None, sent, event)
     }
 
     /// Hands `wake` to the loop: the next script key, or a job event.
-    fn take(&mut self, wake: Wake) -> Option<Wake> {
-        let event = match wake {
+    fn take(&mut self, posted: Posted) -> Option<Wake> {
+        let event = match posted.wake {
             Wake::Event(AppEvent::Core(Event::Key(press))) => press,
-            Wake::Event(event) => return Some(self.event(event)),
+            Wake::Event(event) => return Some(self.event(event, posted.at)),
             other => {
                 self.failure = Some(format!("a wake the harness never sends: {other:?}"));
                 return None;
@@ -1157,7 +1216,7 @@ impl<'a, D> Paced<'a, D> {
         }
         self.next_key += 1;
         let press = AppEvent::Core(Event::Key(event));
-        Some(self.hand(Kind::Key(key, sent.at), Some(sent.due), press))
+        Some(self.hand(Kind::Key(key, sent.at), Some(sent.due), sent.at, press))
     }
 
     /// What the frame after each wake wrote, summed by what woke it: the
@@ -1298,6 +1357,78 @@ impl<'a, D> Paced<'a, D> {
                 behind.unwrap_or_else(|| "nothing".to_owned()),
             ));
         }
+        lines
+    }
+
+    /// The startup trace (m7-power-tools/12): every non-key wake from the
+    /// first window of rows to key 1's frame — `before_loop` (taken in by
+    /// [`ready_to_scroll`], not drawn) then the loop's own — one line each:
+    /// `sent`/`recv` in µs after the first window was sent, then what the
+    /// loop spent on it. Then one line: `burst_after_first_paint_us`, the
+    /// first window's send to the last of these wakes' send (in the app the
+    /// first window is painted as it lands, so a key pressed inside this span
+    /// queues behind the rest of the burst), and `loop_start_us`, when this
+    /// harness's loop drew its first frame (key 0 is sent then).
+    fn startup(&self, before_loop: &[StartupWake]) -> Vec<String> {
+        let key_one = self
+            .handed
+            .iter()
+            .position(|handed| matches!(handed.kind, Kind::Key(1, _)))
+            .unwrap_or(self.handed.len());
+        let span = |from: Option<Instant>, to: Option<Instant>| match (from, to) {
+            (Some(from), Some(to)) => Some(to.saturating_duration_since(from)),
+            _ => None,
+        };
+        let in_loop = self.handed[..key_one]
+            .iter()
+            .filter(|handed| !matches!(handed.kind, Kind::Key(..)))
+            .map(|handed| {
+                let [drained, updated, carried, drawn] = handed.marks;
+                StartupWake {
+                    label: handed.label,
+                    sent: handed.sent,
+                    recv: handed.at,
+                    update: span(drained, updated),
+                    draw: span(carried, drawn),
+                }
+            });
+        let mut wakes: Vec<StartupWake> = Vec::new();
+        wakes.extend(before_loop.iter().copied());
+        wakes.extend(in_loop);
+        let Some(first) = wakes
+            .iter()
+            .position(|wake| wake.label == "Progress::History::Window")
+        else {
+            return vec!["startup no window of rows was taken".to_owned()];
+        };
+        let wakes = &wakes[first..];
+        let origin = wakes[0].sent;
+        let micros = |at: Instant| at.saturating_duration_since(origin).as_micros();
+        let took =
+            |spent: Option<Duration>| spent.map_or("-".to_owned(), |d| d.as_micros().to_string());
+        let mut lines: Vec<String> = wakes
+            .iter()
+            .enumerate()
+            .map(|(index, wake)| {
+                format!(
+                    "startup i={index} kind={} sent_us={} recv_us={} update_us={} draw_us={}",
+                    wake.label,
+                    micros(wake.sent),
+                    micros(wake.recv),
+                    took(wake.update),
+                    took(wake.draw),
+                )
+            })
+            .collect();
+        let last_sent = wakes.iter().map(|wake| wake.sent).max().unwrap_or(origin);
+        lines.push(format!(
+            "startup burst_after_first_paint_us={} wakes={} loop_start_us={}",
+            micros(last_sent),
+            wakes.len(),
+            self.drawn
+                .first()
+                .map_or("-".to_owned(), |at| micros(*at).to_string()),
+        ));
         lines
     }
 
