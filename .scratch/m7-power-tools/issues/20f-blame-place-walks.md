@@ -1,7 +1,7 @@
 # 20f blame-place-walks — 20's walks and captures
 
 Status: ready
-Blocked by: 20e (same files).
+Blocked by: 20g (same files).
 Crates: graft (tests, `docs/shots/`).
 Build with: Opus (unchanged from 20).
 Scout: none. Read 20's NOTES and 20e's report.
