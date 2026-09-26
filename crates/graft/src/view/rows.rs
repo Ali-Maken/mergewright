@@ -407,7 +407,7 @@ pub(crate) fn footer_context(
         // The finish summary likewise, over the resolver too (m6-conflicts/19).
         _ if state.resolver.is_some() || state.finish.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(state, banner),
-        _ => live_wrapped(state, hint_context(state, rows)),
+        _ => back_to_blame(state, live_wrapped(state, hint_context(state, rows))),
     }
 }
 
@@ -503,7 +503,27 @@ fn tab_word(state: &AppState) -> TabWord {
 /// not — are out of reach here and the base is `PlainRow`. The graph's own
 /// path passes `GraphView::hint_context` instead, which does have them.
 pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
-    hint_context(state, &[])
+    back_to_blame(state, hint_context(state, &[]))
+}
+
+/// `context` led by `esc back to blame` while the trail waits under the
+/// graph or the pane (m7-power-tools/20): the bars whose `Esc` reaches
+/// `update::place::show_again` — a graph row's or a focused pane's. An
+/// overlay, a drag or a box takes `Esc` first, so it is left alone.
+fn back_to_blame(state: &AppState, context: HintContext) -> HintContext {
+    if !state.trail.hidden() {
+        return context;
+    }
+    match context {
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow
+        | HintContext::Marked(_)
+        | HintContext::PaneFocused { .. }
+        | HintContext::ChangesPane { .. }
+        | HintContext::OperationLive { .. } => HintContext::BackToBlame(Box::new(context)),
+        other => other,
+    }
 }
 
 /// **The bar an open overlay puts the footer in**, or `None` when the graph
@@ -553,12 +573,25 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         // Modal, covers the detail pane, draws its own bar: the resolver's
         // case (m6-conflicts/19).
         GraphOverlay::Finish => return Some(super::finish::finish_context(state)),
+        // Modal over the graph and the pane (keymap §2.1): its own bar.
+        GraphOverlay::Place => return place_context(state),
     };
     if state.graph_has_focus() {
         return Some(overlay);
     }
     Some(HintContext::PaneOverOverlay {
         opens: crate::update::detail::enter_opens(&state.detail),
+    })
+}
+
+/// The blame place's bar (m7-power-tools/20): `n N` only while a find is
+/// active, `i` only while the repository lists revisions to ignore — the
+/// conditions `update::place::place_key` answers on.
+pub(crate) fn place_context(state: &AppState) -> Option<HintContext> {
+    let blame = state.trail.on_screen()?;
+    Some(HintContext::Blame {
+        finding: blame.find.is_some(),
+        ignore_file: blame.ignore_line().is_some(),
     })
 }
 
@@ -680,6 +713,9 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
         HintContext::PaneFocused {
             row: Box::new(row),
             opens: crate::update::detail::enter_opens(&state.detail),
+            // `B`'s own guard (`update::place::blamable`): not while the
+            // commit-graph offer takes the key.
+            blamable: crate::update::place::blamable(state),
         }
     }
 }

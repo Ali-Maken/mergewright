@@ -514,7 +514,11 @@ fn shallow_rows() -> Vec<BlameRowView> {
     };
     vec![
         shallow(17, "    // Refresh the token.", BlockPos::First),
-        shallow(18, "    pub fn refresh_token(&mut self) {", BlockPos::Middle),
+        shallow(
+            18,
+            "    pub fn refresh_token(&mut self) {",
+            BlockPos::Middle,
+        ),
         shallow(19, "        let mut attempt = 0;", BlockPos::Last),
         row(20, "        loop {", lina(), BlockPos::Single),
     ]
@@ -554,7 +558,11 @@ fn shallow_gutter_words_at_each_width() {
         "{}",
         line_of(&at_187, 18)
     );
-    assert!(line_of(&at_187, 19).starts_with(" └ "), "{}", line_of(&at_187, 19));
+    assert!(
+        line_of(&at_187, 19).starts_with(" └ "),
+        "{}",
+        line_of(&at_187, 19)
+    );
     assert!(!line_of(&at_187, 19).contains("shallow"));
     let at_140 = draw(&view(&rows, SHALLOW_18), 140, 10);
     assert!(

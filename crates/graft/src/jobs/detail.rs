@@ -26,6 +26,8 @@ use graft_ui::syntax::{highlight, language_for_first_line, language_for_path};
 use super::Cancel;
 use crate::repos::RepoStore;
 use crate::update::detail::{DetailSpec, DiffKey};
+use crate::update::place::{BlameAnswer, BlameFailure, BlameRequest, came_from};
+use graft_git::blame::{BlameError, blame};
 
 /// Trailer keys that never make a body worth a `✉ message` row.
 const TRAILERS: [&str; 3] = ["signed-off-by:", "co-authored-by:", "reviewed-by:"];
@@ -135,6 +137,65 @@ pub(super) fn read_file_diff(
     // Word spans are always worked out; whether they tint is the widget's call.
     let view = assemble_diff(&diff, true);
     Ok((Arc::new(view), Arc::new(diff)))
+}
+
+/// A blame place's read (m7-power-tools/20): the blame, and for `^` the
+/// line the cursor goes to, from the commit's own diff of the file with no
+/// context (`came_from`).
+pub(super) fn read_blame(
+    repos: &RepoStore,
+    request: &BlameRequest,
+    stop: &Cancel,
+) -> Result<Arc<BlameAnswer>, BlameFailure> {
+    let repo = repos
+        .shared()
+        .map_err(|error| BlameFailure::Failed(error.to_string()))?;
+    let handle = repo.handle();
+    let blame =
+        blame(&handle, &request.rev, &request.path, &request.options, stop).map_err(|error| {
+            match error {
+                BlameError::Binary => BlameFailure::Binary,
+                BlameError::Untracked => BlameFailure::Untracked,
+                other => BlameFailure::Failed(other.to_string()),
+            }
+        })?;
+    let line = match &request.came_from {
+        None => None,
+        Some(asked) => {
+            let entry = FileEntry {
+                path: path_bytes(&asked.path),
+                old_path: (asked.old_path != asked.path).then(|| path_bytes(&asked.old_path)),
+                status: FileStatus::Modified,
+                added: None,
+                removed: None,
+            };
+            let spec = DiffSpec::Commit {
+                commit: asked.commit,
+                against: None,
+            };
+            let options = DiffOptions {
+                context: 0,
+                ignore_whitespace: false,
+            };
+            let diff = file_diff(&handle, &spec, &entry, &options, usize::MAX, stop)
+                .map_err(|error| BlameFailure::Failed(error.to_string()))?;
+            Some(came_from(&diff.hunks, asked.line))
+        }
+    };
+    Ok(Arc::new(BlameAnswer { blame, line }))
+}
+
+/// `path` as git spells it.
+#[cfg(unix)]
+fn path_bytes(path: &std::path::Path) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt;
+    path.as_os_str().as_bytes().to_vec()
+}
+
+/// `path` as git spells it.
+#[cfg(not(unix))]
+fn path_bytes(path: &std::path::Path) -> Vec<u8> {
+    path.to_string_lossy().replace('\\', "/").into_bytes()
 }
 
 /// Which refs contain a commit.

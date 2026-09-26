@@ -28,6 +28,10 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         } => changes_pane_list(*unmerged, *live, *tab),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
+        HintContext::Blame {
+            finding,
+            ignore_file,
+        } => blame_place_list(*finding, *ignore_file),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         HintContext::Stash => stash_list(),
@@ -82,6 +86,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // wrapping every row context at every call site.
         HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
+        | HintContext::BackToBlame(_)
         | HintContext::OperationLive { .. }
         | HintContext::Preview => Vec::new(),
     }
@@ -120,10 +125,7 @@ pub(super) const TAIL: [Hint; 20] = [
 /// the note's order. `n N match` only while a find is active (2b proposal
 /// 7); `i ignore list` only when the repo has `.git-blame-ignore-revs`. No
 /// `L`: history-place adds `L history of these lines` after `^`.
-///
-/// **Not yet a [`HintContext`]**: adding a variant or a field breaks
-/// `graft`'s exhaustive sweeps, which 20c may not edit. Ticket 20 wires it
-/// (with the graph's `esc back to blame` lead and the pane's `B blame`).
+/// [`HintContext::Blame`]'s list (m7-power-tools/20).
 #[must_use]
 pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
     let mut list = vec![

@@ -34,6 +34,10 @@ pub struct LineLanding {
     pub at: Option<LineRef>,
     /// How far it has got.
     pub stage: LandingStage,
+    /// The focus to leave the pane in once landed; `None` is the diff.
+    /// Leaving a blame trail sets it, to put back the focus `B` was
+    /// pressed from (m7-power-tools/20).
+    pub then_focus: Option<DetailFocus>,
 }
 
 /// Where a [`LineLanding`] is.
@@ -87,6 +91,7 @@ pub fn show_line(
         path: path.to_path_buf(),
         at,
         stage: first,
+        then_focus: None,
     });
     advance(state, &mut commands);
     commands
@@ -127,6 +132,11 @@ pub(crate) fn advance(state: &mut AppState, commands: &mut Vec<Command>) {
             LandingStage::Selecting => select(state, commands, &landing),
             LandingStage::Placing => {
                 place(state, landing.spec, landing.at);
+                if state.line_landing.is_none()
+                    && let Some(focus) = landing.then_focus
+                {
+                    state.detail.focus = focus;
+                }
                 return;
             }
         };

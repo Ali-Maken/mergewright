@@ -92,6 +92,18 @@ fn resolver_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress)
 /// leave, and every key that would start a *second* thing on top of it —
 /// `u`, `S`, `m`, `r` — is swallowed rather than obeyed. `Ctrl+C` passes,
 /// and `Tab`/`Esc` give the keyboard back, so the mode always has a door.
+/// A blame place on screen claims every key but the live globals, before
+/// the menu, undo, a write's `Esc` and the panes — so the graph's verbs,
+/// `u` and `Tab` are inert in it, and its `Esc` never stops a running
+/// write (m7-power-tools/20).
+fn place_claim(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    if !super::place::owns_keys(next) || super::place::live_global(key) {
+        return false;
+    }
+    commands.extend(super::place::place_key(next, key));
+    true
+}
+
 fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     if super::banner::take_focus(next, key) {
         return true;
@@ -144,6 +156,8 @@ pub(super) fn dismiss_unseen(next: &mut AppState, key: &KeyPress) -> bool {
 /// The half of [`super::core_event`] that answers a key.
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
+///
+/// A blame place on screen is a modal pane (keymap §2.1, [`place_claim`]).
 pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     // An unseen failure on the row is what this key answers first: `Esc`
     // only dismisses it; any other key dismisses it and acts, without also
@@ -159,12 +173,14 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // the key: a badge in the air is dropped by any key before that key
     // means anything (`drag::drag_key`; only `Esc` is spent doing it), then
     // the confirm box and the preview, then the resolver, then the focused
-    // banner. `||` is the early return, one claim per line.
+    // banner, then a blame place on screen. `||` is the early return, one
+    // claim per line.
     if super::drag::drag_key(next, key)
         || boxes_key(next, commands, key)
         || finish_key(next, commands, key)
         || resolver_key(next, commands, key)
         || banner_key(next, commands, key)
+        || place_claim(next, commands, key)
     {
         return;
     }
@@ -532,5 +548,9 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
     {
         commands.push(Command::CancelJob(id));
         super::history::set_phase(next, crate::history::Phase::Cancelled);
+        return;
     }
+    // Last: a blame trail waiting under the graph comes back
+    // (m7-power-tools/20, `esc back to blame`).
+    super::place::show_again(next);
 }

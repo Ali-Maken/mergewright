@@ -161,5 +161,16 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("⇥", "body"),       // the same, subject → body
     ("⇥", "files"),      // the same, body → files
     ("⌃E", "$EDITOR"),   // `control_key` → `edit_outside`
-    ("esc", "back"),     // `finish_key` → `escape`
+    ("esc", "back"),     // `finish_key` → `escape`; the blame place's `escape`
+    // The blame place (`place::place_key`, m7-power-tools/20). `j/k move`,
+    // `g/G`, `PgUp/PgDn` above are its cursor too; `esc back` pops it.
+    ("B", "blame"),           // `detail::keys` → `place::b_key`
+    ("⏎", "that commit"),     // `place::keys::enter`
+    ("^", "before it"),       // `place::keys::caret`
+    ("/", "find"),            // `place_key`: opens the find prompt
+    ("n N", "match"),         // `place::keys::step_find`
+    ("space", "ages"),        // `place_key`: the heatmap
+    ("w", "whitespace"),      // `place::keys::rerun`, `-w` toggled
+    ("i", "ignore list"),     // `place::keys::rerun`, the ignore file toggled
+    ("esc", "back to blame"), // `detail::keys` / `escape_key` → `place::show_again`
 ];

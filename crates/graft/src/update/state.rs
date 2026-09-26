@@ -339,6 +339,9 @@ pub struct AppState {
     /// `update::detail::advance` after every event; dropped by a key or
     /// click that moves the graph cursor or the pane's selection.
     pub line_landing: Option<super::detail::LineLanding>,
+    /// The blame places opened since `B`, and where `B` was pressed
+    /// (`update::place`, m7-power-tools/20). Empty with no trail.
+    pub trail: super::place::Trail,
     /// The launch found an operation live while a modal owned the keys, so
     /// it set [`AppState::stopped`] and left the keyboard alone. The focus
     /// landing runs on the first working-tree read after the modal closes;
@@ -608,6 +611,11 @@ impl AppState {
             // editor (`resolver::open_resolver`), so the order below it is
             // untouched.
             Some(GraphOverlay::Resolver)
+        } else if self.trail.on_screen().is_some() {
+            // A blame place covers the graph and the pane, as the resolver
+            // does; it never opens over the editor or a box (its `B` is
+            // the pane's, and those claim the keys first).
+            Some(GraphOverlay::Place)
         } else if self.commit_editor.is_some() {
             Some(GraphOverlay::CommitEditor)
         } else if self.map.shown {
@@ -635,6 +643,8 @@ pub enum GraphOverlay {
     /// The conflict resolver (`⏎` on a conflicted file, m6-conflicts/04).
     /// The one overlay that takes the detail pane's area too.
     Resolver,
+    /// A blame place (`B`, m7-power-tools/20): the whole frame, its own bar.
+    Place,
     /// The commit message editor (`c`).
     CommitEditor,
     /// The Map view (`M`).
@@ -749,6 +759,7 @@ impl AppState {
     #[must_use]
     pub fn text_field_open(&self) -> bool {
         self.search_prompt.is_some()
+            || super::place::prompt_open(self)
             || self.commit_editor.is_some()
             || self.stash.prompt.is_some()
             || self.credential.is_some()
@@ -781,6 +792,7 @@ impl AppState {
             || self.preview.is_some()
             || self.resolver.is_some()
             || self.finish.is_some()
+            || super::place::owns_keys(self)
             || (self.banner_focus && super::banner::banner_view(self).is_some())
     }
 

@@ -280,6 +280,7 @@ impl<S: JobEvents> JobRunner<S> {
                     Product::FileDiff(key, result)
                 });
             }
+            Command::ReadBlame(id, request) => self.blame_job(id, *request),
             Command::ContainedIn(id, oid) => {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::ContainedIn { oid }, move |cancel| {
@@ -323,6 +324,15 @@ impl<S: JobEvents> JobRunner<S> {
             // routing bug, not a runtime condition.
             other => unreachable!("not a detail command: {other:?}"),
         }
+    }
+
+    /// A blame place's read (m7-power-tools/20), cancellable like the
+    /// pane's.
+    fn blame_job(&self, id: JobId, request: crate::update::place::BlameRequest) {
+        let repos = Arc::clone(&self.repos);
+        self.detail_job(id, Task::Blame, move |cancel| {
+            Product::Blame(super::detail::read_blame(&repos, &request, cancel))
+        });
     }
 
     /// Queue one of the detail pane's reads under `update`'s id. A job
@@ -1015,6 +1025,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::Search(query) => self.start_search(query),
             command @ (Command::ListFiles(..)
             | Command::ReadFileDiff(..)
+            | Command::ReadBlame(..)
             | Command::ContainedIn(..)
             | Command::RadarContext(..)
             | Command::EvilProbe(..)

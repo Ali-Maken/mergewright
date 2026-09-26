@@ -291,6 +291,7 @@ fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
         Some(GraphOverlay::Map) => state.map.shown = true,
         Some(GraphOverlay::Journal) => state.journal.shown = true,
         Some(GraphOverlay::Stash) => state.stash.shown = true,
+        Some(GraphOverlay::Place) => crate::update::place::tests::open_a_place(&mut state),
     }
     assert_eq!(state.graph_overlay(), overlay, "the state stands on it");
     state
@@ -316,6 +317,7 @@ fn a_live_confirm_box_is_drawn_over_every_overlay() {
         Some(GraphOverlay::Map),
         Some(GraphOverlay::Journal),
         Some(GraphOverlay::Stash),
+        Some(GraphOverlay::Place),
     ];
     let screens = overlays
         .into_iter()
