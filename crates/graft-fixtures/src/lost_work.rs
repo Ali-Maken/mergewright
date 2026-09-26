@@ -13,15 +13,22 @@
 //! | 10:13 | shell | "Add request logging" (B) |
 //! | 10:14 | shell | "Add metrics endpoint" (C); `origin` cloned bare from here, `origin/main` = C |
 //! | 10:15 | shell | "Add rate limiter" (D) |
+//! | 10:16 | Graft | discard of an edit to `src/a.rs` ([`DISCARDED_EDIT`]) |
+//! | 10:16 | Graft | he edits `src/a.rs` again ([`LOST_EDIT`]); undo forced over it (10:16:40): **his edit is lost** to the undo's backup |
 //! | 10:18 | shell | `git switch -c spike HEAD~1`: off C, so E and D are two lost runs, not one |
 //! | 10:21 | shell | "Try redis cache" (E) on `spike` |
 //! | 10:30 | —     | a teammate pushes two commits to `origin` |
 //! | 10:37 | shell | `git switch main`, `git branch -D spike`: **E is lost, spike is gone** |
-//! | 10:41 | shell | `git reset --hard HEAD~1`: **D is lost** |
-//! | 10:42 | shell | `git stash push`: the stash holds S (parent C), which is not lost |
-//! | 10:43 | Graft | discard of an edit to `src/a.rs` ([`DISCARDED_EDIT`]) |
-//! | 10:43 | Graft | he edits `src/a.rs` again ([`LOST_EDIT`]); undo forced over it: **his edit is lost** to the undo's backup |
+//! | 10:41 | shell | `git reset --keep HEAD~1`: **D is lost** |
+//! | 10:42 | shell | `git stash push -- src/metrics.rs`: the stash holds S (parent C), which is not lost |
 //! | 10:44 | Graft | fetch `origin`: `origin/main` moves 2 commits |
+//!
+//! Order follows the planner's ruling (m7-power-tools/22c): the discard and
+//! its undo sit below the shell's spike steps, so the reset is the newest
+//! step with a `✗` under it and E's `✗` is above the edit's. The shell
+//! steps after the undo keep the undone file on disk: E commits only its own
+//! file, the reset is `--keep` (`src/a.rs` is the same in C and D), and the
+//! stash takes `src/metrics.rs` alone.
 //!
 //! The undo reverses a discard, not a switch (the M6/77 tests' vehicle): a
 //! Graft step that moved `HEAD` would write reflog records on the wall
@@ -146,8 +153,10 @@ impl LostWork {
         let origin = root.join("origin.git");
         let shell = Shell { work: &work };
 
-        let commits = shell_steps(&shell, &root, &origin)?;
-        graft_steps(&shell, graft)?;
+        let commits = shell_steps(&shell, graft, &root, &origin)?;
+        graft
+            .fetch(shell.work, ms(END))
+            .map_err(|why| LostWorkError::Graft { step: "fetch", why })?;
 
         Ok(LostWork {
             _scratch: scratch,
@@ -173,8 +182,14 @@ impl LostWork {
     }
 }
 
-/// 10:12–10:42: everything the shell does, up to the stash.
-fn shell_steps(shell: &Shell<'_>, root: &Path, origin: &Path) -> Result<Commits, LostWorkError> {
+/// 10:12–10:42: everything the shell does, up to the stash, with Graft's
+/// discard and undo at 10:16.
+fn shell_steps(
+    shell: &Shell<'_>,
+    graft: &mut dyn Graft,
+    root: &Path,
+    origin: &Path,
+) -> Result<Commits, LostWorkError> {
     git::run_at(root, &["init", "-q", "-b", "main", "work"], &date(START))?;
     shell.harden()?;
 
@@ -198,6 +213,7 @@ fn shell_steps(shell: &Shell<'_>, root: &Path, origin: &Path) -> Result<Commits,
     )?;
     shell.remote_at_c(root, origin)?;
     let limiter = shell.commit(at(10, 15, 0), "src/limit.rs", b"// limit\n", LOST_ON_MAIN)?;
+    graft_edit_steps(shell, graft)?;
 
     shell.git(at(10, 18, 0), &["switch", "-q", "-c", "spike", "HEAD~1"])?;
     let cache = shell.commit(at(10, 21, 0), "src/cache.rs", b"// redis\n", LOST_ON_SPIKE)?;
@@ -205,12 +221,20 @@ fn shell_steps(shell: &Shell<'_>, root: &Path, origin: &Path) -> Result<Commits,
     shell.git(at(10, 37, 0), &["switch", "-q", "main"])?;
     shell.git(at(10, 37, 30), &["branch", "-q", "-D", "spike"])?;
 
-    shell.git(at(10, 41, 0), &["reset", "-q", "--hard", "HEAD~1"])?;
+    shell.git(at(10, 41, 0), &["reset", "-q", "--keep", "HEAD~1"])?;
 
     shell.write("src/metrics.rs", b"// metrics, tuned\n")?;
     shell.git(
         at(10, 42, 0),
-        &["stash", "push", "-q", "-m", "tune metrics"],
+        &[
+            "stash",
+            "push",
+            "-q",
+            "-m",
+            "tune metrics",
+            "--",
+            "src/metrics.rs",
+        ],
     )?;
     let stash = shell.git(at(10, 42, 0), &["rev-parse", "refs/stash"])?;
 
@@ -225,19 +249,17 @@ fn shell_steps(shell: &Shell<'_>, root: &Path, origin: &Path) -> Result<Commits,
     })
 }
 
-/// 10:43–10:44: Graft's discard, his edit, Graft's forced undo over it,
-/// Graft's fetch.
-fn graft_steps(shell: &Shell<'_>, graft: &mut dyn Graft) -> Result<(), LostWorkError> {
+/// 10:16: Graft's discard, his edit, Graft's forced undo over it.
+fn graft_edit_steps(shell: &Shell<'_>, graft: &mut dyn Graft) -> Result<(), LostWorkError> {
     let failed = |step| move |why| LostWorkError::Graft { step, why };
     shell.write(EDITED, DISCARDED_EDIT)?;
     graft
-        .discard(shell.work, EDITED, ms(at(10, 43, 0)))
+        .discard(shell.work, EDITED, ms(at(10, 16, 0)))
         .map_err(failed("discard"))?;
     shell.write(EDITED, LOST_EDIT)?;
     graft
-        .undo_forced(shell.work, ms(at(10, 43, 40)))
-        .map_err(failed("undo"))?;
-    graft.fetch(shell.work, ms(END)).map_err(failed("fetch"))
+        .undo_forced(shell.work, ms(at(10, 16, 40)))
+        .map_err(failed("undo"))
 }
 
 /// The shell's side, in the working repository.
@@ -292,7 +314,8 @@ impl Shell<'_> {
         subject: &str,
     ) -> Result<String, LostWorkError> {
         self.write(file, bytes)?;
-        self.git(at, &["add", "-A"])?;
+        // Only its own file: an uncommitted edit elsewhere stays one.
+        self.git(at, &["add", "--", file])?;
         self.git(at, &["commit", "-q", "-m", subject])?;
         self.git(at, &["rev-parse", "HEAD"])
     }
