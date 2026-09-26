@@ -186,3 +186,4 @@ workspace-wide.
 
 ## Carried (conductor, 2026-09-26)
 - ADR-0048 (`┆ git …` for Graft's commands): `docs/shots/m3-journal-expanded.txt` and `docs/shots/m3-contact-sheet.txt` still show `$ git`. This ticket draws the command log, so it re-takes them. Add a tick naming the capture test.
+- 22b's question (fixture): the first commit's reflog reads `commit (initial): Start the api` — not in the note's J1 words table, so git's text shows. Decide the row's words (or confirm git's text) and assert them.
