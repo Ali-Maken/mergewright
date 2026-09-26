@@ -155,6 +155,7 @@ What a merge will commit, for the finish summary (m6-conflicts/09). Reads only.
 - `read_state_now` (fn) — §6.7's three comparisons read fresh: `HEAD`, the named refs, the index tree (`None` when unmerged, never an error) and the worktree tree (m3/03, review fix M5).
 - `FactsError` (enum) — `Status`, `Head`, `Refs`, `Stash`, `State`, `Snapshot`, `NonUtf8Ref` (a ref name the journal cannot record as text; never mangled silently), `Markers { path, source }`, `Ancestry(RunError)` (an ancestry read the re-push guard needed failed — refusing to guess is the point of the guard, m5/07 review fix M5), `Stopped`, `Remote(RemoteError)` (m4/04); `explain` (m3/03).
 - `FactsError::MergeState(MergeStateError)` (m6-conflicts/20) — git's merge files could not be read.
+- `FactsError::{History(RunError), Branches(BranchError), SavedPlan(io::Error)}` (m7/02) — a rewrite's history read, the default branch, or its saved plan could not be read; `of_history` (crate-private) maps a stopped run to `Stopped`.
 
 ## merge_state
 git's merge in progress, as files (m6-conflicts/20). The one place Graft writes git's merge files, and only to put back bytes git wrote.
@@ -230,6 +231,24 @@ Ghost Preview's planner: what an operation *would* do, drawn before it runs. One
 - `plan` (fn) — `(repo, git, op, facts, stop)`: the picture for one operation. **Runs `op.check(facts)` first**, as `apply` does: `Err(Refused(r))` exactly when `check` is `Err(r)` (m6-conflicts/67: no `[ Confirm ]` for a write `apply` refuses). One exception to "exactly": a stash apply or pop whose `TouchesChangedFiles` covers an unsaved or untracked path is refused as `StashInTheWay { unsaved, staged, untracked }` instead — the staged-only rest of check's list named beside them (m6-conflicts/86, 87). Reads only; the ghosts come from `commits_between` (`replayed_commits` for a rebase, so the ghost count is git's commit count — m5/43) and `merge-tree`, the author of a commit git would write from `git var GIT_AUTHOR_IDENT`. Refuses with `PreviewError::Refused(Refusal)` for the things only a read can find — a re-push whose commit is not on its branch, an `--ff-only` merge of diverged branches (m5/07).
 - `plan_revert_to` (fn) — `(entries, target)`: the time machine's picture, drawn from the very `InversePlan`s `undo::revert_to` will run, so the picture and the act cannot disagree (m5/07).
 - `PreviewError` (enum) — `Facts`, `Read(RunError)`, `Refused(Refusal)`, `Stopped`; `explain` (m5/07).
+
+## rewrite (m7/02 -a, ADR-0047)
+- Every rewrite and every `r` runs git's `rebase -i` on a todo Graft writes; branches built on his follow on one line. The run half (`apply::engine`, resume, record, undo, oracle) is rewrite-engine-b: **not wired yet**.
+- `TodoAction` (enum) — `Pick Reword Edit Squash Fixup Drop`; `word()`, `melds()` (squash/fixup), `keeps()` (pick/reword/edit), `from_word()` (long and one-letter).
+- `TodoLine` (struct) — `action`, `commit: Oid`, `subject`.
+- `BranchLine` (struct) — `branches: Vec<Tip>`, his first, bottom up; `top()`, `dependents()`.
+- `RewriteParams` (struct) — `head: Tip`, `onto`, `todo` (his rows, oldest first), `line`, `messages: BTreeMap<usize, String>` (row → whole message), `made: Vec<Oid>` (commit objects written from the index).
+- `RewriteRequest` (enum) — `Open { from }` (`R`), `AmendInto { target }` (`a` on an older commit).
+- `RewriteError` (enum) — `Refused(Refusal)` (Display = `explain()`), `Facts(FactsError)`, `Stopped`.
+- `plan` (fn) — `(repo, git, req, facts, stop)`. Open: `HEAD` down to the merge-base with the upstream's tracking tip (else the default branch), deeper to `from` if it is; the repository's first commit is never a row (it becomes `onto`). Autosquash rows come back marked and moved; a squash group gets `default_message`. AmendInto: `write-tree` + `commit-tree -p HEAD` (`fixup! <subject>`), a `Fixup` row after the target, `onto = target^`. Refusal order: `NotOnABranch`, `NothingStagedFor`, `NotOnYourBranch`, `RootCommit`, `MergeInRange`, `ForkedDependents`, `DependentElsewhere`, `GitTooOld` (only with dependents), `PlainAmend`.
+- `dependents` (fn) — local branches containing the tip whose first-parent chain reaches it with no merge; not his, not the default branch (`Branches::resolve(repo, None)`: the app's config override is not seen), not at the same commit (a backup). Sorted by chain length; each must contain the one below, else `Dependents::Fork { a, b }`. Checked-out-elsewhere branches stay in (plan refuses them).
+- `Dependents` (enum) — `Line(BranchLine)` | `Fork { a, b }`.
+- `squash_groups` (fn) / `SquashGroup` (struct) — `kept` + `melded` (newest first); a meld passes over dropped rows.
+- `default_message` (fn) — kept row's message, blank line, each melded `Squash` row's message newest first; fixups add nothing.
+- `validate` (fn) / `TodoProblem` (enum) — `MeldsIntoNothing { row }` (`nothing below to meld into`), `EverythingDropped`; `explain()`.
+- `progress` (fn) / `RewriteProgress` (struct) — from `rebase-merge/{done,git-rebase-todo,head-name}` + the saved plans: `step` counts pick-like rows only (git's `msgnum`/`end` count `update-ref` lines too: measured 4/6 vs 3/4, git 2.54), `current`, `pending` (oldest first), `branch: Some((name, i, n))` only for a line of 2+ (i = 1 + `update-ref` lines done), `begun_in_graft` = a saved plan whose top is `head-name`. Short ids resolve via `rev-parse`.
+- The plan dir (crate-private `rewrite::saved`) — `<git dir>/graft/rewrite/<entry-id>/`: `plan.json` (`home`, `line: [[name, tip]]`, `onto`; a format contract — a relaunch reads what an older Graft left), `todo`, `messages/<full id>`, `editor` (the `GIT_EDITOR` helper keyed by the last line of `rebase-merge/done`). `CLEANUP` = `commit.cleanup=whitespace` via `GIT_CONFIG_*` env.
+- `Refusal` additions (m7/02) — `NotOnYourBranch { commit }`, `MergeInRange { merge }`, `ForkedDependents { a, b }`, `DependentElsewhere { branch, worktree }`, `NothingStagedFor { target }` (the unit `NothingStaged` is the commit's), `NotOnABranch`, `GitTooOld { need }`, `PlainAmend`, `RootCommit { commit }`, `BadTodo(TodoProblem)`; words in `explain()` (R1's where the note has them).
 
 ## mistake_radar
 - `CommitFacts` (struct) — what the rules know about one commit: `id`, `parents`, `subject`, `on_default_chain`, `parents_on_default_chain`.

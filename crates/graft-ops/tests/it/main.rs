@@ -17,6 +17,7 @@ mod put_back_forecast;
 mod remote_ops;
 mod restart_gate;
 mod restart_whole_file;
+mod rewrite_plan;
 mod set_aside;
 mod shell_begun_merge;
 mod stash_clash;
