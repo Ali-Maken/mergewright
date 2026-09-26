@@ -13,6 +13,7 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
 
+use crate::absorb;
 use crate::facts::{self, FactsError};
 use crate::operation::{Refusal, RepoFacts, Tip};
 use crate::preview::is_ancestor;
@@ -67,6 +68,10 @@ impl RangeCommit {
 /// records it. On `HEAD` with nothing built on it this is no rewrite — the
 /// app keeps its plain amend — and is refused.
 ///
+/// `Absorb`: each staged hunk goes to the commit that last changed its lines
+/// ([`crate::absorb`]), one commit object per target, each a fixup right
+/// after its target; none placed is [`Refusal::NothingToAbsorb`].
+///
 /// `default_branch` is the user's `graph.default_branch` when set: it wins
 /// over git's guess (ADR-0001 rule 1), for the base of the range and for
 /// which branch is never a dependent.
@@ -110,6 +115,7 @@ pub fn plan(
         RewriteRequest::AmendInto { target } => {
             amend_into(repo, git, head, *target, facts, default_branch, stop)
         }
+        RewriteRequest::Absorb => absorb(repo, git, head, default_branch, stop),
     }
 }
 
@@ -230,6 +236,88 @@ fn amend_into(
         messages: BTreeMap::new(),
         made: vec![made],
     })
+}
+
+/// Absorb: each staged hunk the map places ([`crate::absorb`]) goes into a
+/// commit object with no ref (parent `HEAD`, one per target), planned as a
+/// fixup right after its target. The rows start at the oldest target.
+/// Hunks that stay are left where they are: the set-aside puts them back.
+fn absorb(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    head: Tip,
+    default_branch: Option<&RefName>,
+    stop: &dyn Stop,
+) -> Result<RewriteParams, RewriteError> {
+    let base = match base_of(repo, &head, default_branch, stop)? {
+        Some(base) => base,
+        // No upstream and no default branch to measure from: the whole
+        // history above the first commit is his branch.
+        None => root_of(repo, head.oid, stop)?,
+    };
+    let range = read_range(repo, base, head.oid, false, stop)?;
+    let mapped = absorb::mapped(repo, head.oid, base, stop)?;
+    let Some(first) = range.iter().position(|commit| {
+        mapped
+            .placed
+            .iter()
+            .any(|(_, target)| *target == commit.oid)
+    }) else {
+        return Err(RewriteError::Refused(Refusal::NothingToAbsorb));
+    };
+    let rows = range.get(first..).unwrap_or_default();
+    refuse_merges(rows)?;
+    let Some(&onto) = rows.first().and_then(|commit| commit.parents.first()) else {
+        return Err(unparsable("absorb's first target has no parent".to_owned()).into());
+    };
+    let line = line_of(repo, git, &head, default_branch, stop)?;
+    let mut todo = Vec::with_capacity(rows.len() + mapped.placed.len());
+    let mut made = Vec::new();
+    for commit in rows {
+        todo.push(commit.pick());
+        let pieces: Vec<&absorb::Piece> = mapped
+            .placed
+            .iter()
+            .filter(|(_, target)| *target == commit.oid)
+            .map(|(piece, _)| piece)
+            .collect();
+        if pieces.is_empty() {
+            continue;
+        }
+        let subject = format!("fixup! {}", commit.subject);
+        let oid = absorb::commit_pieces(repo, head.oid, &pieces, &subject, stop)?;
+        todo.push(TodoLine {
+            action: TodoAction::Fixup,
+            commit: oid,
+            subject,
+        });
+        made.push(oid);
+    }
+    Ok(RewriteParams {
+        head,
+        onto,
+        todo,
+        line,
+        messages: BTreeMap::new(),
+        made,
+    })
+}
+
+/// The first commit `head` grew from (the first root `rev-list` names).
+fn root_of(repo: &RepoHandle, head: Oid, stop: &dyn Stop) -> Result<Oid, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Word("--max-parents=0".to_owned()),
+            GitArg::Oid(head),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    match text.lines().next() {
+        Some(root) => parse_oid(root),
+        None => Err(unparsable(format!("{head} has no first commit"))),
+    }
 }
 
 /// His branch and the branches built on it, or the refusal that stops the

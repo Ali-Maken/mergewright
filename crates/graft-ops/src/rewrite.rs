@@ -170,6 +170,10 @@ pub enum RewriteRequest {
         /// The commit that gains them.
         target: Oid,
     },
+    /// Absorb: each staged hunk put into the commit on his branch that last
+    /// changed its lines ([`crate::absorb::absorb_map`]); a hunk that fits
+    /// none stays staged.
+    Absorb,
 }
 
 /// Why [`plan`] has no plan.

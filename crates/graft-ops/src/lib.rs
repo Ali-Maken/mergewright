@@ -7,6 +7,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod absorb;
 pub mod apply;
 pub mod clash;
 pub mod conflict;
