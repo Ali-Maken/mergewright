@@ -45,6 +45,9 @@ pub fn stash_view(state: &AppState, now_seconds: i64) -> StashView<'_> {
         status,
         notice,
         notice_is_failure,
+        // The put-back preview over the list holds every key; its footer is
+        // the bar (review 86, M2).
+        box_open: state.preview.is_some(),
     }
 }
 

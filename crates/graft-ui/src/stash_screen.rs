@@ -85,6 +85,10 @@ pub struct StashView<'a> {
     pub notice: Option<SanitizedText>,
     /// Is `notice` a failure? Drawn in `Warning` rather than muted.
     pub notice_is_failure: bool,
+    /// A box (the put-back preview) is open over the list and holds every
+    /// key: the list's bar row is left blank, as the graph's is under a
+    /// preview (review 86, M2).
+    pub box_open: bool,
 }
 
 /// The overlay itself. Carries the theme like every other screen; the
@@ -168,6 +172,11 @@ impl StashScreen<'_> {
 
     /// The keys, spelled out. `⏎ apply` first: it is what the list is for.
     fn footer(&self) -> &'static str {
+        // The box over the list holds every key and draws its own footer:
+        // the list's bar would name keys it does not answer (review 86, M2).
+        if self.view.box_open {
+            return "";
+        }
         if self.view.prompt.is_some() {
             return "⏎ save  tab scope  esc back";
         }
@@ -441,6 +450,7 @@ mod tests {
             status,
             notice: None,
             notice_is_failure: false,
+            box_open: false,
         }
     }
 
@@ -575,6 +585,24 @@ mod tests {
             "{lines:?}"
         );
         assert!(lines[9].contains("apply"), "{lines:?}");
+    }
+
+    /// Review 86, M2: a box over the list holds every key, so the list's
+    /// own bar is not drawn under it — the box's footer is the bar, as on
+    /// the graph (`HintContext::Preview`).
+    #[test]
+    fn a_box_over_the_list_leaves_the_bar_row_blank() {
+        let mut screen = view(
+            vec![row("stash@{0}", "\"a\"", "2h ago", 1)],
+            StashStatus::Ready,
+        );
+        screen.box_open = true;
+        let lines = grid(&screen, 80, 10);
+        assert_eq!(lines[9], "", "{lines:?}");
+        assert!(
+            lines.iter().all(|line| !line.contains("p pop")),
+            "{lines:?}"
+        );
     }
 
     #[test]

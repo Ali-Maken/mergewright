@@ -114,6 +114,15 @@ pub enum WorktreeEffect {
         /// There were more than the cap.
         more: bool,
     },
+    /// Only the index changes: a stash whose one change is staged, with the
+    /// file itself as committed (review 86, m1). Not an empty `Updated`,
+    /// which reads as "nothing happens"; the staged paths are named.
+    IndexOnly {
+        /// The staged paths, capped.
+        paths: Vec<PathBuf>,
+        /// There were more than the cap.
+        more: bool,
+    },
     /// Uncommitted changes to these paths are thrown away (a `--hard`
     /// reset). The backup still holds them — §6.3 — and the box says so,
     /// but the word the user must read first is `LOSES`.
@@ -357,17 +366,12 @@ pub fn plan(
         (
             Operation::StashApply { commit, .. } | Operation::StashPop { commit, .. },
             Refusal::TouchesChangedFiles { paths },
-        ) => match stash::in_the_way(*commit, facts) {
-            in_the_way if in_the_way.is_empty() => {
-                PreviewError::Refused(Refusal::TouchesChangedFiles { paths })
-            }
-            in_the_way => PreviewError::Refused(Refusal::StashInTheWay { paths: in_the_way }),
-        },
+        ) => PreviewError::Refused(stash::in_the_way(*commit, facts, paths)),
         (_, refused) => PreviewError::Refused(refused),
     })?;
     let mut drawn = match op {
-        Operation::StashApply { commit, .. } | Operation::StashPop { commit, .. } => {
-            let (worktree, conflicts) = stash::forecast_stash(repo, git, *commit, stop)?;
+        Operation::StashApply { index, commit } | Operation::StashPop { index, commit } => {
+            let (worktree, conflicts) = stash::forecast_stash(repo, git, *index, *commit, stop)?;
             PreviewPlan {
                 worktree,
                 conflicts,

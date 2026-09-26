@@ -2486,8 +2486,12 @@ apply`). `the_pop_preview_fits_80_columns` — capture
 u brings it back`, `y pop`, whole at 80).
 `unsaved_edits_in_the_way_are_named_in_the_box` — an unsaved edit to
 `notes.md`: capture `stash-preview-in-the-way-120x40` (`your unsaved edits
-to notes.md are in the way`, one `[ Close ]`, no `y apply`); `y` writes
-nothing. Colour unverified.
+to notes.md are in the way`, one `[ Close ]`, no `y apply`, footer `esc
+back`); `y` writes nothing. No stash-list bar under any of the three boxes;
+the last row is blank (m6-conflicts/87, `no_list_bar`).
+`a_clean_stash_pop_is_three_keys` — `S p y` on a stash that pops cleanly:
+`no conflicts expected`, popped, within the note's `stash-pop-clean` row (87).
+Colour unverified.
 
 **A pull over his edits names keys that work** (m6-conflicts/85 D):
 `pull_over_edits::a_ff_pull_over_overlapping_edits_names_keys_that_work` —

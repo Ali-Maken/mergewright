@@ -8,6 +8,7 @@
 #  - `may conflict: notes.md`.
 #  - The fate row: `stash@{0} is dropped · u brings it back`.
 #  - The footer offers `y pop`.
+#  - No stash-list bar under the box; the last row is blank.
 
 STASHES (1)
 ▸ stash@{0}   "WIP on main: cfa370c add the notes"            4m ago   1 file
@@ -32,4 +33,4 @@ STASHES (1)
 │ git stash pop --index 'stash@{0}'                                            │
 │ ▸[ Cancel ]   [ Pop ]                                                        │
 ╰ y pop  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────╯
-⏎ apply  p pop  s save  d drop  space files  esc close
+

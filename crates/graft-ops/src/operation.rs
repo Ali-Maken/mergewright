@@ -371,14 +371,33 @@ pub enum Refusal {
         /// The paths both the stash and the working tree changed.
         paths: Vec<PathBuf>,
     },
-    /// A stash put-back git would refuse before writing anything: unsaved
-    /// edits (worktree ≠ index) to a path the stash writes, or a file where
-    /// the stash would create an untracked one (m6-conflicts/86). Only the
-    /// stash preview says it; `apply` still refuses the first with
+    /// A stash put-back refused before writing anything: unsaved edits
+    /// (worktree ≠ index) to a path the stash writes, or a file where the
+    /// stash would create an untracked one (m6-conflicts/86). Only the stash
+    /// preview says it; `apply` still refuses the first with
     /// [`Refusal::TouchesChangedFiles`], and git refuses the second.
+    ///
+    /// The three sets are named apart (review 86, m4 and m5): edits of his
+    /// read `your unsaved edits to …`, a file that is not his edit reads
+    /// `<path> is in the way`, and staged-only edits `check` also refuses
+    /// are named beside the unsaved ones, so the first refusal is the whole
+    /// list.
     StashInTheWay {
-        /// The paths in the way.
-        paths: Vec<PathBuf>,
+        /// Tracked paths with unsaved edits.
+        unsaved: Vec<PathBuf>,
+        /// Tracked paths whose only changes are staged. Named only beside
+        /// one of the other two sets; alone they stay
+        /// [`Refusal::TouchesChangedFiles`].
+        staged: Vec<PathBuf>,
+        /// Untracked or ignored files where the stash creates one.
+        untracked: Vec<PathBuf>,
+    },
+    /// The stash's staged part no longer applies to the index as it stands:
+    /// git's `stash apply --index` refuses (`conflicts in index`) and writes
+    /// nothing (review 86, M1). Only the stash preview says it.
+    StashIndexNoLongerApplies {
+        /// Position in the stash list, `0` newest.
+        index: usize,
     },
     /// A pull or push with `HEAD` not on a branch (detached or unborn).
     DetachedHead,
@@ -631,8 +650,13 @@ impl Refusal {
                 name_paths(paths),
                 if paths.len() == 1 { "has" } else { "have" }
             ),
-            Self::StashInTheWay { paths } => {
-                format!("your unsaved edits to {} are in the way", name_paths(paths))
+            Self::StashInTheWay {
+                unsaved,
+                staged,
+                untracked,
+            } => in_the_way_words(unsaved, staged, untracked),
+            Self::StashIndexNoLongerApplies { index } => {
+                format!("the staged part of stash@{{{index}}} no longer applies")
             }
             // The remote refusals, in the M4 design note's words.
             Self::DetachedHead => "HEAD is detached — check out a branch first".to_owned(),
@@ -745,6 +769,28 @@ impl Refusal {
 }
 
 /// `src/a.rs`, `src/a.rs and src/b.rs`, `src/a.rs and 2 more files`.
+/// [`Refusal::StashInTheWay`] in words: each non-empty set as its own
+/// clause, joined by `and`. `is` only for one file that is not his edit
+/// (`new.txt is in the way`); every other shape is plural.
+fn in_the_way_words(unsaved: &[PathBuf], staged: &[PathBuf], untracked: &[PathBuf]) -> String {
+    let mut clauses = Vec::new();
+    if !unsaved.is_empty() {
+        clauses.push(format!("your unsaved edits to {}", name_paths(unsaved)));
+    }
+    if !staged.is_empty() {
+        clauses.push(format!("your staged edits to {}", name_paths(staged)));
+    }
+    if !untracked.is_empty() {
+        clauses.push(name_paths(untracked));
+    }
+    let verb = if unsaved.is_empty() && staged.is_empty() && untracked.len() == 1 {
+        "is"
+    } else {
+        "are"
+    };
+    format!("{} {verb} in the way", clauses.join(" and "))
+}
+
 fn name_paths(paths: &[PathBuf]) -> String {
     match paths {
         [] => "no files".to_owned(),

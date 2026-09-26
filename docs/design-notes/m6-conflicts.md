@@ -514,6 +514,7 @@ b-undo-a-take-in-the-shell    1                     # batch 3: u from the banner
 last-block-to-finished        3                     # Amendment 2026-09-24 J13: `o ⏎ c ⏎` · P11+P12 → 3 (`o ⏎ y`) · JetBrains ~4 (?) · VS Code 3–4 · lazygit 2 (bare, rejected). Approved 2026-09-24; un-commented at 3 by last-file-opens-the-summary, which adds its scenario
 stash-pop-clash-to-done       5                     # S p y o ⏎ · m6-stash-preview.md Journeys (approved 2026-09-26, was 4) · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs and m5_walk (75, 86)
 stash-apply-clash-to-done     5                     # S ⏎ y o ⏎ · m6-stash-preview.md Journeys (approved 2026-09-26, was 4) · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs and m5_walk (75, 86)
+stash-pop-clean               3                     # S p y · m6-stash-preview.md Journeys (approved 2026-09-26) · lazygit g ⏎ 2 (+ panel switch) · walked in tests/it/m6_stash_put_back/stash_preview.rs (87)
 stash-look-and-leave          3                     # S ⏎ esc · m6-stash-preview.md Journeys (approved 2026-09-26) · lazygit 1 (content beside the list) · walked in tests/it/m6_stash_put_back.rs (86)
 stash-clash-put-back          2                     # +1 y when the drift box asks · m6-stash-put-back.md :37-39 · lazygit ~10 (A2) · walked in tests/it/m6_stash_put_back.rs and m5_walk (75)
 pull-rebase-dirty             3                     # p r r · m6-stash-put-back.md :40 · JetBrains 3–4 · walked in tests/it/m6_stash_put_back/set_aside.rs and m5_walk (75)

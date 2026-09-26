@@ -8,6 +8,8 @@
 # stash also changes.
 #  - The box over the stash list says `your unsaved edits to notes.md are in
 #    the way` — no forecast, no `y apply`.
+#  - One `[ Close ]`; the footer reads `esc back` (review 86, m3), and no
+#    stash-list bar under the box.
 #  - Nothing was written: `y` does nothing, `esc` goes back to the list.
 
 STASHES (1)
@@ -48,5 +50,5 @@ STASHES (1)
 ╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
 │ your unsaved edits to notes.md are in the way                                                                        │
 │ ▸[ Close ]                                                                                                           │
-╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────╯
-⏎ apply  p pop  s save  d drop  space files  esc close
+╰ esc back ────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

@@ -182,9 +182,13 @@ fn worktree_effect(plan: &PreviewPlan, before: &Truth, after: &Truth) -> Result<
         .map(|path| path.display().to_string())
         .collect();
     match &plan.worktree {
-        WorktreeEffect::Untouched => check(changed.is_empty(), || {
-            format!("the tree was to stay, changed {changed:?}")
-        }),
+        // Index only (a stash whose one change is staged): the files on
+        // disk stay as they are.
+        WorktreeEffect::Untouched | WorktreeEffect::IndexOnly { .. } => {
+            check(changed.is_empty(), || {
+                format!("the tree was to stay, changed {changed:?}")
+            })
+        }
         WorktreeEffect::Updated { paths, .. } | WorktreeEffect::Lost { paths } => {
             for path in paths {
                 let path = path.display().to_string();
