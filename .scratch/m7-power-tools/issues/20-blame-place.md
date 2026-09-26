@@ -1,7 +1,7 @@
 # blame-place — `B` opens blame at the line he's on; who, when and why trail that line; `^`, `⏎`, `Esc` back
 
 Status: draft (respecified 2026-09-26 against the scout; was `ready`)
-Blocked by: 18-trace-readers (landed), 20a-blame-commit-path, 20b-diff-line-cursor, 20c-blame-draw
+Blocked by: 18-trace-readers, 20a, 20b, 20c (all landed or merging); the M7/ⓘ debugger while it holds graft
 Crates: graft.
 Build with: **Opus**. App wiring and a modal place on a decided design, judged by walks and tests. The one structural
 piece (the places stack) the note decides (2b hard choice 4); the key-routing choices are decided below.
@@ -199,3 +199,13 @@ re-shoots, hint tests.
 - A `Commit` landing while a compare base is pinned drops silently: `follow_selection` makes the pane a `Compare`, and the landing stops at `Selecting` (20b NOTES, "Design calls to check"). Blame-place lands through `show_line`, so it hits this.
 - The planner's spec for 20 governs whether the base is cleared. If it is silent on this, do not choose: report `blocked: needs a ruling` naming the case.
 - Either way, a test for the pinned-base case, red first. A silent drop is rule 3.
+
+## Carried from 20c (conductor, 2026-09-26): 20c was partial, blocked on graft
+- **Crates for 20 widen to graft + graft-ui**, for the hints only (the seam 20c could not cross): `graft-ui/src/graph_screen/hints/` and `graft-ui/src/blame.rs`.
+- **Build 20c's open Hints box** (`20c-blame-draw.md` Acceptance, "Hints — PARTIAL"):
+  - make the bar words a `HintContext`;
+  - `graph_bar_leads_esc_back_to_blame` and `pane_bar_offers_b_blame`;
+  - update graft's exhaustive matches (`update/tests.rs` ~:3970/:4341/:4479, `view/rows.rs:680`).
+- **The hint shape:** 20c's NOTES propose one. The keymap and 20c's spec govern the words. If the proposal and the spec disagree, follow the spec and say so.
+- **Tick 20c's Hints box in 20c's file**, in place.
+- **Red check owed by 20c:** `the_trailer_is_on_the_cursor_row_only` was never seen red. Show it red under a mutation (the trailer drawn on every row) and note it in 20c's tick.
