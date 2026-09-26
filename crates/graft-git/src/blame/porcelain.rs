@@ -174,6 +174,7 @@ fn record_commit(
             path,
             previous: headers.previous,
             boundary: headers.boundary,
+            shallow: false,
         },
     );
     Ok(())

@@ -425,3 +425,85 @@ fn working_tree_binary_is_the_file_on_disk() {
     assert_eq!(blamed.lines.len(), 2);
     assert!(blamed.lines.iter().all(|line| line.commit.is_none()));
 }
+
+/// The final line numbers of every line credited to `id`.
+fn lines_of(blamed: &Blame, id: Oid) -> Vec<u32> {
+    blamed
+        .lines
+        .iter()
+        .filter(|line| line.commit == Some(id))
+        .map(|line| line.final_line)
+        .collect()
+}
+
+/// m7-power-tools/20d: in a `--depth 2` clone git credits the lines it can
+/// go no further back on to the boundary; `blame` marks that commit
+/// `shallow` from git's own `<common_dir>/shallow` list.
+#[test]
+fn blame_marks_lines_from_the_shallow_boundary() {
+    let temp = crate::session::shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let boundary = rev(&dir, "HEAD~1");
+    let listed = std::fs::read_to_string(dir.join(".git").join("shallow")).expect("shallow list");
+    assert_eq!(listed.trim(), boundary.to_string(), "the shallow file's id");
+    let blamed = blame_ok(
+        &dir,
+        Rev::Commit(rev(&dir, "HEAD")),
+        FILE,
+        BlameOptions::default(),
+    );
+    // git's own blame is the oracle for which lines land on the boundary.
+    let expected: Vec<u32> = oracle(&dir, Some(rev(&dir, "HEAD")), FILE)
+        .iter()
+        .zip(1..)
+        .filter(|((id, _), _)| *id == Some(boundary))
+        .map(|(_, line)| line)
+        .collect();
+    let credited = lines_of(&blamed, boundary);
+    assert_eq!(credited, expected);
+    for line in (17..=25).chain(27..=30) {
+        assert!(credited.contains(&line), "the probe's line {line}");
+    }
+    for commit in blamed.commits.values() {
+        assert_eq!(commit.shallow, commit.id == boundary, "{commit:?}");
+    }
+}
+
+/// A full clone's root is parentless like a shallow cut, but not shallow:
+/// its author did write the lines.
+#[test]
+fn a_full_clones_root_commit_is_not_shallow() {
+    let dir = graft_fixtures::borrow(Shape::Session);
+    let root = rev(&dir, "main~5");
+    let blamed = blame_ok(
+        &dir,
+        Rev::Commit(rev(&dir, "main")),
+        FILE,
+        BlameOptions::default(),
+    );
+    let commit = blamed.commits.get(&root).expect("the root names lines");
+    assert!(!commit.shallow);
+    assert!(blamed.commits.values().all(|commit| !commit.shallow));
+    // Recorded in 20d's NOTES: what git's `boundary` says on a real root.
+    eprintln!("root boundary = {}", commit.boundary);
+}
+
+#[test]
+fn an_unreadable_shallow_file_fails_blame() {
+    let temp = crate::session::shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let shallow = dir.join(".git").join("shallow");
+    std::fs::remove_file(&shallow).expect("removing shallow");
+    std::fs::create_dir(&shallow).expect("shallow as a directory");
+    let result = blame(
+        &open(&dir),
+        &Rev::Commit(rev(&dir, "HEAD")),
+        Path::new(FILE),
+        &BlameOptions::default(),
+        &(),
+    );
+    match result {
+        Err(BlameError::Shallow { path, .. }) => assert_eq!(path, shallow),
+        other => panic!("expected Err(Shallow), got {other:?}"),
+    }
+}

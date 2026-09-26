@@ -11,7 +11,7 @@
 mod follow;
 mod function;
 mod log;
-mod shallow;
+pub(crate) mod shallow;
 mod whole;
 
 use std::fmt;

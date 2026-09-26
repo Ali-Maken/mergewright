@@ -22,6 +22,7 @@ use graft_core::oid::Oid;
 use crate::diff::ParseError;
 use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, GitOutput, RunError, Stop};
+use crate::trace::shallow::read_shallow;
 
 mod ignore_revs;
 mod porcelain;
@@ -85,6 +86,10 @@ pub struct BlameCommit {
     pub previous: Option<(Oid, PathBuf)>,
     /// `boundary`: git's walk stopped here (a root commit, usually).
     pub boundary: bool,
+    /// The id is in `<common_dir>/shallow`: git stopped here because the
+    /// clone has nothing older, so who wrote the lines is unknown. Set by
+    /// [`blame`], never by [`parse_porcelain`] (m7-power-tools/20d).
+    pub shallow: bool,
 }
 
 /// What git said about how it attributed a line.
@@ -157,6 +162,13 @@ pub enum BlameError {
     Untracked,
     /// The caller's stop fired; git was killed.
     Stopped,
+    /// `<common_dir>/shallow` exists but could not be read (20d).
+    Shallow {
+        /// The shallow file.
+        path: PathBuf,
+        /// Why reading it failed.
+        source: std::io::Error,
+    },
 }
 
 impl fmt::Display for BlameError {
@@ -171,6 +183,9 @@ impl fmt::Display for BlameError {
             BlameError::Binary => write!(f, "the file is binary"),
             BlameError::Untracked => write!(f, "the file isn't committed yet"),
             BlameError::Stopped => write!(f, "blame was stopped"),
+            BlameError::Shallow { path, source } => {
+                write!(f, "couldn't read {}: {source}", path.display())
+            }
         }
     }
 }
@@ -237,7 +252,12 @@ pub fn blame(
         .arg(GitArg::Separator)
         .arg(GitArg::Path(path_bytes(path)))
         .run(stop)?;
-    let (lines, commits) = read_porcelain(&output)?;
+    let (lines, mut commits) = read_porcelain(&output)?;
+    let shallow =
+        read_shallow(repo).map_err(|(path, source)| BlameError::Shallow { path, source })?;
+    for commit in commits.values_mut() {
+        commit.shallow = shallow.contains(&commit.id);
+    }
     Ok(Blame {
         path: path.to_path_buf(),
         rev: *rev,
