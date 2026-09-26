@@ -51,7 +51,7 @@ fn start_is_10_12_and_end_is_10_44_utc() {
 }
 
 #[test]
-fn graft_is_called_at_its_three_points_in_order() {
+fn graft_discards_and_undoes_before_the_spike_and_fetches_last() {
     let mut graft = StandIn::default();
 
     LostWork::build(&mut graft).expect("the fixture builds");
@@ -59,8 +59,8 @@ fn graft_is_called_at_its_three_points_in_order() {
     assert_eq!(
         graft.calls,
         [
-            ("discard", at(10, 43, 0) * 1000),
-            ("undo", at(10, 43, 40) * 1000),
+            ("discard", at(10, 16, 0) * 1000),
+            ("undo", at(10, 16, 40) * 1000),
             ("fetch", END * 1000),
         ]
     );
@@ -119,7 +119,7 @@ fn heads_log_is_the_shells_steps_at_fixed_times() {
     );
 
     let expected = [
-        (at(10, 42, 0), "reset: moving to HEAD"),
+        // 10:42: a pathspec stash (`-- src/metrics.rs`) writes no HEAD record.
         (at(10, 41, 0), "reset: moving to HEAD~1"),
         (at(10, 37, 0), "checkout: moving from spike to main"),
         (at(10, 21, 0), "commit: Try redis cache"),
@@ -132,6 +132,28 @@ fn heads_log_is_the_shells_steps_at_fixed_times() {
     .map(|(at, subject)| format!("HEAD@{{{at}}} {subject}"))
     .join("\n");
     assert_eq!(log, expected);
+}
+
+/// 22c: the shell's spike steps run after Graft's undo and leave his lost
+/// edit showing: the file on disk is the one the undo put back, and neither
+/// E nor the stash carries it.
+#[test]
+fn the_spike_steps_leave_the_undone_edit_on_disk_and_out_of_e() {
+    let fixture = LostWork::build(&mut StandIn::default()).expect("the fixture builds");
+    let work = fixture.work();
+    let commits = fixture.commits();
+
+    assert_eq!(std::fs::read(work.join(EDITED)).unwrap(), DISCARDED_EDIT);
+    assert_ne!(DISCARDED_EDIT, LOST_EDIT);
+    let e_parent = format!("{}^", commits.e);
+    assert_eq!(
+        git_out(work, &["diff", "--name-only", &e_parent, &commits.e]),
+        "src/cache.rs"
+    );
+    assert_eq!(
+        git_out(work, &["diff", "--name-only", "refs/stash^", "refs/stash"]),
+        "src/metrics.rs"
+    );
 }
 
 #[test]
