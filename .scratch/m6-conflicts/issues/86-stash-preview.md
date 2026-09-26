@@ -1,6 +1,6 @@
 # 86 — the stash list previews before it writes (C)
 
-Status: draft — **waits for the user's yes** to `docs/design-notes/m6-stash-preview.md` (a change to keymap §2.9's
+Status: ready — approved by the user 2026-09-26 ("86 yes")
 approved direction). On "no": nothing is built; `KNOWN_GAPS.md` :773 is updated to observed (walk 2 C) and stays M7.
 Blocked by: 85 (both edit `graft`, `update/stash.rs` among them); the user's yes; the conductor's doc rows below.
 Crates: graft-ops (`preview`), graft (`update/stash.rs`, the preview's opener and confirm), graft-ui only if the

@@ -378,11 +378,13 @@ graph pane's global bindings above are not live while it has focus.
 | Key | Action |
 |---|---|
 | `s` | Save a new stash (message prompt; **modal**, §2.1 — `Tab` switches staged-only vs everything, `Enter` saves, `Esc` cancels) |
-| `Enter` | Apply. A clash opens the resolver on the first clashed file; the stash is kept (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
-| `p` | Pop (apply, then drop). A clash opens the resolver on the first clashed file; the stash is kept until the last file is done, then dropped, `u` brings it back (`docs/design-notes/m6-stash-put-back.md` Journeys; ADR-0045) |
+| `Enter` | Open the **apply preview** for the selected stash (Ghost Preview frame, §2.3b): the files it writes (untracked ones included), whether it may clash with the tree now, `stash@{n} stays in the list`. `y` applies; `Enter` is the choice under the cursor (Cancel first, ADR-0038 §1); `Esc` back to the list. Refused in the box, nothing written, when unsaved or untracked files are in the way (git refuses those). A clash opens the resolver on the first clashed file; the stash is kept (ADR-0045) |
+| `p` | Open the **pop preview**: as `Enter`, with `stash@{n} is dropped · u brings it back`. `y` pops. A clash opens the resolver; the stash is kept until the last file is done, then dropped, `u` brings it back (ADR-0045) |
 | `d` | Drop (undoable) |
 | `b` | Create a branch from this stash — **planned, not yet built** (no milestone has claimed it yet; candidate for M5, which owns branch creation) |
 | `Space` | Preview the diff |
+
+Amended 2026-09-26 (user: "86 yes"; usability walk 2 C): `Enter` and `p` open a preview, `y` goes ahead. Replaces: `Enter` applied and `p` popped at the keypress (m3 ticket 06; kept by `m6-stash-put-back.md` Journeys). See `docs/design-notes/m6-stash-preview.md`.
 
 ### 2.10 Commit message editor
 
