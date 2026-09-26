@@ -1,6 +1,6 @@
 # rewrite-engine — every rewrite runs git's `rebase -i` on a todo Graft writes; dependents follow on one line
 
-Status: partial — rewrite-engine-a done (m7-power-tools-02a); rewrite-engine-b open, see Handoff
+Status: done — rewrite-engine-a (m7-power-tools-02a) and rewrite-engine-b (m7-power-tools-02b)
 Blocked by: none
 Crates: graft-ops only. No other crate's matches may break: a new `Operation`/`OperationKind`/`Refusal` variant that
 graft matches exhaustively gets a `NotPreviewable`-style arm in graft-ops's own `Display`/`kind` code. If graft fails to
@@ -126,28 +126,45 @@ pub fn progress(repo: &Repo, stop: &dyn Stop) -> Result<Option<RewriteProgress>,
   - `validate_refuses_a_bottom_squash`;
   - `validate_refuses_everything_dropped`;
   - `autosquash_rows_are_marked_and_moved_above_their_target`.
-- [ ] **Oracle** (real repos, `crates/graft-ops/tests/it/rewrite_oracle.rs`). Each row runs Graft's plan+apply on a
+- [x] **Oracle** (real repos, `crates/graft-ops/tests/it/rewrite_oracle.rs`, 11 rows green; `TempRepo::copy` is the
+      `cp -R`). Each row runs Graft's plan+apply on a
       repo, and a hand-written `git rebase -i` todo on a `cp -R` copy. It compares every branch's tree and commit
-      messages, HEAD's symbolic ref, and `git status --porcelain=v2`. Rows:
-  - squash 3;
-  - fixup;
-  - reword (the message is Graft's);
-  - reorder;
-  - drop;
-  - `edit` then continue;
-  - squash group after an `edit`;
-  - a 3-branch line (every branch moved, HEAD back on the bottom branch);
-  - `AmendInto` 3 back;
-  - `AmendInto` HEAD with a dependent.
+      messages, HEAD's symbolic ref, and `git status --porcelain=v2`. Every row also asserts the rewrite changed
+      something. Written after the engine, so red was shown by sabotage (then reverted, `git diff` empty): resume
+      with `GIT_EDITOR=true` → `a_squash_group_after_an_edit` red; the engine dropping `messages` → `squash_three`,
+      `reword_keeps_a_hash_line`, `a_three_branch_line`, `a_squash_group_after_an_edit` red; git not started on the
+      top → `a_three_branch_line`, `amend_into_head_with_a_dependent` red. Rows:
+  - squash 3 — `squash_three`;
+  - fixup — `fixup`;
+  - reword (the message is Graft's) — `reword_keeps_a_hash_line` (`#123 fixes login`; the hand side needs
+    `commit.cleanup=whitespace`);
+  - reorder — `reorder`;
+  - drop — `drop`;
+  - `edit` then continue — `edit_then_continue` (amended at the stop);
+  - squash group after an `edit` — `a_squash_group_after_an_edit`;
+  - a 3-branch line (every branch moved, HEAD back on the bottom branch) — `a_three_branch_line`;
+  - `AmendInto` 3 back — `amend_into_three_back`;
+  - `AmendInto` HEAD with a dependent — `amend_into_head_with_a_dependent`;
+  - (Touches) an unsaved edit set aside and put back — `an_unsaved_edit_is_set_aside_and_put_back` (hand side
+    `rebase.autoStash=true`).
 
   A row where they differ is a failure, not a NOTE.
-- [ ] **Record and undo:**
-  - `a_three_branch_rewrite_records_every_ref` (red first: today's rebase records one);
-  - `undo_puts_every_branch_in_the_line_back`;
-  - `abort_returns_head_to_his_branch_and_every_ref`;
+- [x] **Record and undo** (`crates/graft-ops/tests/it/rewrite_run.rs`, all green):
+  - `a_three_branch_rewrite_records_every_ref` (red first: today's rebase records one) — red shown before the engine:
+    `refs/heads/feature-b is recorded before: {"refs/heads/feature-a": …}`;
+  - `undo_puts_every_branch_in_the_line_back` — green on first run (written after the engine landed; not red first);
+  - `abort_returns_head_to_his_branch_and_every_ref` — red first (`nothing Graft started is in progress`: `live_entry`
+    missed `head-name` = the top);
   - `kill_mid_rewrite_then_relaunch_continues_from_the_saved_plan` (the plan dir read after a simulated kill: the
-    Pending entry + `rebase-merge/` left by a stopped rewrite);
-  - `the_plan_dir_is_removed_when_the_entry_closes` (done, aborted, failed).
+    Pending entry + `rebase-merge/` left by a stopped rewrite) — red first (`recovered.live` empty);
+  - `the_plan_dir_is_removed_when_the_entry_closes` (done, aborted, failed) — done and failed (a `pre-rebase` hook)
+    here, green on first run; aborted is asserted in `abort_returns_head_to_his_branch_and_every_ref`.
+  - Also: `a_stopped_line_continues_home_with_every_branch_moved` (red first), `a_resume_never_turns_his_update_refs_config_on`
+    (the `-c` proof; its first red was the same `live_entry` miss, not `lower` moving — it guards the no-`-c`
+    decision, it caught no bug; uses a conflict stop, not an edit stop), `an_edit_row_stops_and_the_resume_takes_the_line_home` (red by forcing
+    `edit_stop = false`: the entry closed `Committed` mid-rebase), `a_relaunch_that_closes_a_rewrite_removes_its_plan`
+    (red by pointing the removal elsewhere), `rewrite_plan::the_default_branch_override_wins` (red by ignoring the
+    override).
 - [x] **Refusals**, each asserting the words (`crates/graft-ops/tests/it/rewrite_plan.rs`, all seven named tests
       green; `an_old_git_refuses_only_the_chain` passes `GitVersion 2.37.0` to `plan` directly instead of a fake
       `git --version` — `plan` takes the version as a parameter, so it is the same input; plus
@@ -169,10 +186,12 @@ pub fn progress(repo: &Repo, stop: &dyn Stop) -> Result<Option<RewriteProgress>,
   - `progress_names_the_branch_of_the_step` (`feature-b, 2 of 3`);
   - `progress_of_a_shell_rebase_has_no_branch`;
   - `progress_lists_pending_oldest_first`.
-- [ ] **The rebase regression net:** every existing graft-ops rebase test green. Assertions on the old command line
-      are updated to the engine's, and NOTES lists each one changed, with why.
-- [ ] MAP.md (graft-ops): `rewrite` module entries, the new variants, and the plan dir. NOTES: ADR-0047's open points,
-      as decided, with the oracle row that proves each.
+- [x] **The rebase regression net:** every existing graft-ops rebase test green (nextest workspace-wide, 3580 passed,
+      1 skipped). Assertions on the old command line
+      are updated to the engine's, and NOTES lists each one changed, with why (NOTES -b, item 9).
+- [x] MAP.md (graft-ops): `rewrite` module entries, the new variants, and the plan dir (`crates/graft-ops/MAP.md`:
+      `Operation`, `Context`, `apply::engine`, `Resume`, `AfterState`, `Recovered`, `rewrite`). NOTES: ADR-0047's open
+      points, as decided, with the oracle row that proves each (NOTES -b, item 1).
 
 ## Touches (check each, report how)
 - **`r` (Rebase) for every caller:** `graft` launches `Operation::Rebase` through `operate::launch`, and its preview and
@@ -312,3 +331,86 @@ Gotchas:
 - In a worktree-isolated agent, inline git in temp dirs is refused. Put experiments in a script file and run `sh`.
 - The helper script embeds `repo.git_dir()`. Check it is absolute.
 - Check that `--continue` after a conflicted pick opens the editor (the helper must answer it).
+
+## NOTES -b (builder, 2026-09-26, ticket 02b)
+
+**Compacted once mid-ticket (during -b).** Nothing was left undone after the compaction; the remainder was finished in
+the same ticket. Scout used: `.scratch/m7-power-tools/scouts/02.md`.
+
+What was verified, and how:
+- Gates, workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -D warnings`, `cargo nextest run` (3580
+  passed, 1 skipped), `cargo test --doc`.
+- git 2.54.0 (Apple Git-157), throwaway scripts (E1–E4 below), then the tests named in Acceptance.
+- Not verified: the app. graft does not yet pass the default-branch override or show `plans_left` (seams, item 3, 5).
+  No capture of a rewrite exists (graft-side, 05).
+
+1. **ADR-0047's open points, as decided, with the row that proves each:**
+   - Messages: the `GIT_EDITOR` helper answers from `messages/<full id>` keyed by the last line of `rebase-merge/done`,
+     else `git stripspace --strip-comments`; every commit under `commit.cleanup=whitespace` (env). Proof:
+     `reword_keeps_a_hash_line` (`#123 …` kept), `squash_three`, `a_squash_group_after_an_edit` (asked after a resume:
+     `resume` passes the plan's helper, not `GIT_EDITOR=true`).
+   - Top-of-line run: `git rebase -i <onto> <top short>`, `update-ref` rows for the lower branches, then `git switch
+     <his branch>`. Proof: `a_three_branch_line`, `amend_into_head_with_a_dependent`; `HEAD` home after resume and
+     abort: `a_stopped_line_continues_home_with_every_branch_moved`, `abort_returns_head_to_his_branch_and_every_ref`.
+   - `edit` stop = exit 0 with `rebase-merge/` live → `Conflicted { paths: [] }`, in `apply` and in `resume`. Proof:
+     `edit_then_continue`, `a_squash_group_after_an_edit`, `an_edit_row_stops_and_the_resume_takes_the_line_home`.
+   - Recorded: every branch of the line in `refs_before`/`refs_after`; undo is the generic inverse. Proof:
+     `a_three_branch_rewrite_records_every_ref`, `undo_puts_every_branch_in_the_line_back`.
+   - **`--empty=drop`** (E1): `rebase -i` alone *stops* on a commit that became empty ("The previous cherry-pick is now
+     empty"); plain `rebase` dropped it. Added so `r` keeps today's behaviour. Gated with `--no-update-refs` and
+     `--no-autostash` on `GitVersion::MINIMUM` (2.38). No oracle row: none of the rows makes a commit empty — a gap
+     (item 8).
+   - **No `-c rebase.updateRefs=false` on resume** (E3): the setting only shapes the todo git generates, and the todo is
+     Graft's. Proof: `a_resume_never_turns_his_update_refs_config_on`.
+   - **`--continue` after a conflicted pick asks the editor** (E4): git offers the original message plus `# Conflicts`
+     comments; the helper strips them. Proof: `a_stopped_line_continues_home_with_every_branch_moved` asserts `b1`'s
+     message is `b1`.
+2. **Ruling: `RebaseParams` has no `line`/`drops`** (to 05). `apply::engine::prepare` finds an `r`'s line at apply time
+   (`rewrite::line_of`) and its rows with `rewrite::rebase_rows` (`rev-list --right-only --cherry-pick --no-merges`, so
+   already-upstream commits are not rows, as plain `rebase` skipped them). The dependents' picks come from `line_picks`
+   (first-parent, not cherry-filtered). Costs until 05: the preview does not show the dependents moving, and its
+   command line for a line reads `git rebase -i … <onto>` while the Command Log records `… <onto> <top>`.
+   **Behaviour change for `r`:** it now refuses a fork above his branch, a dependent checked out in another worktree,
+   and git < 2.38 with dependents (ADR-0047 §4/§6), in the -a refusal words.
+3. **Ruling: the default-branch override.** It lives in graft (`graph.default_branch`), so it is a parameter:
+   - `rewrite::plan(repo, git, req, facts, default_branch: Option<&RefName>, stop)`;
+   - `rewrite::dependents(repo, git, branch, default_branch: Option<&RefName>, stop)`;
+   - `apply::Context.default_branch: Option<RefName>` (`Context::open` sets `None`) for `r`.
+   - **Seam for graft:** set `ctx.default_branch` and pass the override to `plan`/`dependents`. Until then both resolve
+     it as before. Proof the parameter wins: `rewrite_plan::the_default_branch_override_wins`.
+4. **Ruling: `history_ops.rs` `a_rebase_moves_only_the_branch_the_entry_records` stays.** ADR-0047 case: a branch
+   *inside* the replayed range, below his tip — not in the line (§2), so it must not move. The inverted case (branches
+   *above* his tip move and are recorded) is `a_three_branch_rewrite_records_every_ref`. Its doc comment now says so.
+5. **New public items:** `Operation::Rewrite`, `AfterState::PlanLeft { dir, error }`, `AfterState::NotHome { home, top,
+   error }`, `Recovered.plans_left: Vec<(EntryId, io::Error)>`, `Context.default_branch`. **Seam for graft:**
+   `plans_left` is not shown (graft carries `recovered.live` at `graft/src/jobs/undo.rs:583`; nothing reads the new
+   field). The two `AfterState`s
+   reach the user through `ApplyError::AfterState`'s existing words.
+6. **Other crates' matches:** the workspace builds and is green with `Operation::Rewrite` and the new `AfterState`
+   variants — graft has no exhaustive match on either (clippy + nextest workspace-wide). `preview::plan` sends
+   `Rewrite` to `NotPreviewable` (`crates/graft-ops/src/preview.rs:392`).
+7. **Removed:** `SavedPlan::tips` — nothing used it and nothing planned does (the relaunch reads `top()`/`home`).
+8. **Gaps (for KNOWN_GAPS, by the conductor):**
+   - *Unverified:* a kill between git finishing a top-of-line run and `git switch <his branch>` leaves `HEAD` on the top
+     branch; `recover_interrupted` closes the entry `interrupted` and removes the plan but does not go home. A window of
+     one `git switch`. No test.
+   - *Unverified:* `--empty=drop` has no oracle row (item 1).
+   - *Known, matches git:* a picked commit whose message has a whole `#` line loses it when git asks after a conflict
+     (the helper strips, as plain git with default cleanup does).
+   - *Stale, not gate-checked:* older captures still show `git rebase --no-update-refs --no-autostash`:
+     `docs/shots/m5-01-preview-rebase-{80x24,160x48}.txt`, `m5-contact-sheet-{1,2}.txt`, `m5-contact-sheet-captions.tsv`,
+     `m6/m6-22-set-aside-preview-*.txt`, `m6/m6-contact-sheet-4.txt`. They are
+     milestone records; left as they were. Conductor's call.
+9. **The regression net — every assertion changed, with why:**
+   - `operation/history/tests.rs` `plan_replays_pin_by_id_and_never_open_an_editor`: `git rebase --no-update-refs
+     --no-autostash <b>` → `git rebase -i --no-update-refs --no-autostash --empty=drop <b>` (the engine's command).
+   - `tests/it/rewrite_plan.rs`: every `plan`/`dependents` call gains the `None` override argument.
+   - Six graft captures, one line each (the preview's command line): `docs/shots/m5-ui-preview-rebase-{80x24,160x48}.txt`,
+     `m5-ui-preview-scrolled-{80x24,160x48}.txt`, `m6/set-aside-preview-{80x24,120x40}.txt`, regenerated with
+     `GRAFT_UPDATE_SHOTS=1` for the three failing graft tests only. **Note:** they are graft's captures; graft is held by
+     04 — a conflict there is possible if 04 regenerates them too.
+   - `tests/it/support.rs`: `TempRepo::copy` (and `init` now shares `scratch()`); no assertion changed.
+10. **Touches:** `r` for every caller (workspace nextest green, m5/m6 rebase walks included); resume/banner/resolver
+    (m6 rebase-stop walks green); set-aside (stash tests green + `an_unsaved_edit_is_set_aside_and_put_back`); journal
+    format (`a_rewrite_entry_round_trips` from -a green); undo (`undo_puts_every_branch_in_the_line_back`); captures
+    (six regenerated, item 9); keymap: none; graft: no code touched.

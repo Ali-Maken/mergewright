@@ -17,6 +17,7 @@ mod put_back_forecast;
 mod remote_ops;
 mod restart_gate;
 mod restart_whole_file;
+mod rewrite_oracle;
 mod rewrite_plan;
 mod rewrite_run;
 mod set_aside;

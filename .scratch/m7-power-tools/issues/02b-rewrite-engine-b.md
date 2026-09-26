@@ -1,6 +1,7 @@
 # 02b — rewrite engine, part b: apply, resume, record, undo, oracle
 
-Status: ready
+Status: done (m7-power-tools-02b). Every open box in 02 ticked there with its test; decisions, seams and gaps in 02's
+"NOTES -b". Compacted once mid-ticket; nothing left over.
 Blocked by: 02a (merged 66eaf8aa)
 Build with: **Fable (signature)** — continuation of 02 after compaction (split along the handoff's seams; scope, signatures, model unchanged).
 Crates: graft-ops, graft-core. **Not graft** (held by 04).
