@@ -25,7 +25,7 @@ One line per public item. Update when a public item changes.
 ## blame
 - `Rev` (enum) — `Commit(Oid)` or `WorkingTree` (the file on disk; blamed with no rev, uncommitted lines get `commit: None`).
 - `BlameOptions` (struct) — `ignore_whitespace` (`-w`), `ignore_revs` (the repo's ignore file); both on by default. `ignore_revs: false` also clears a configured `blame.ignoreRevsFile`.
-- `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `previous` (parent id and path there), `boundary`.
+- `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `path` (the file's path in this commit, from `filename`; differs from the blamed path across a rename), `previous` (parent id and path there), `boundary`.
 - `LineMark` (enum) — `Plain`, `Skipped` (passed over by the ignore list), `Unblamable`.
 - `BlameLine` (struct) — `commit` (`None`: not committed yet), `orig_line`, `final_line`, `text`, `mark`.
 - `IgnoreRevs` (struct) — `file`, `revisions` (count of listed ids), `applied`.

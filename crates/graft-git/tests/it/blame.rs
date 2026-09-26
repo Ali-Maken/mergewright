@@ -302,3 +302,55 @@ fn blame_honours_stop() {
     // behind (a lock, say) by the killed child.
     assert!(git(&dir, &["status", "--porcelain"]).status.success());
 }
+
+/// The oracle for paths: each line's `filename` from `git blame
+/// --line-porcelain`, which repeats every header on every line.
+fn oracle_paths(dir: &Path, rev: Oid, path: &str) -> Vec<String> {
+    let rev = rev.to_string();
+    let out = git_ok(
+        dir,
+        &[
+            "blame",
+            "--line-porcelain",
+            "-w",
+            "-M",
+            "--ignore-revs-file",
+            ".git-blame-ignore-revs",
+            &rev,
+            "--",
+            path,
+        ],
+    );
+    out.split(|&b| b == b'\n')
+        .filter_map(|line| line.strip_prefix(b"filename "))
+        .map(|name| String::from_utf8_lossy(name).into_owned())
+        .collect()
+}
+
+/// The session fixture renames `OLD_FILE` → `FILE` (Priya's commit), so
+/// blaming `FILE` names both paths.
+#[test]
+fn blame_commit_path_follows_a_rename() {
+    let dir = graft_fixtures::borrow(Shape::Session);
+    let ids = commits(&dir);
+    let blamed = blame_ok(&dir, Rev::Commit(ids.you), FILE, BlameOptions::default());
+    let ours: Vec<String> = blamed
+        .lines
+        .iter()
+        .map(|line| {
+            let id = line.commit.expect("every line at a commit is committed");
+            blamed.commits[&id].path.to_string_lossy().into_owned()
+        })
+        .collect();
+    assert_eq!(ours, oracle_paths(&dir, ids.you, FILE));
+    assert!(
+        ours.iter().any(|p| p == OLD_FILE),
+        "a line from before the rename"
+    );
+    assert!(
+        ours.iter().any(|p| p == FILE),
+        "a line from after the rename"
+    );
+    assert_eq!(blamed.commits[&ids.priya].path, Path::new(FILE));
+    assert_eq!(blamed.commits[&ids.ana].path, Path::new(OLD_FILE));
+}

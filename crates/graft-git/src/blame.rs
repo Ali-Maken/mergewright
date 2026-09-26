@@ -69,6 +69,9 @@ pub struct BlameCommit {
     pub author_time: i64,
     /// `summary`: the subject line.
     pub summary: String,
+    /// `filename`: the file's path in this commit. Differs from the blamed
+    /// path for lines older than a rename git followed.
+    pub path: PathBuf,
     /// `previous`: the parent the line came through and the path it had
     /// there. `None` at a root or boundary commit.
     pub previous: Option<(Oid, PathBuf)>,
@@ -362,6 +365,7 @@ struct Headers {
     author: Option<String>,
     author_time: Option<i64>,
     summary: Option<String>,
+    path: Option<PathBuf>,
     previous: Option<(Oid, PathBuf)>,
     boundary: bool,
 }
@@ -441,8 +445,7 @@ fn parse_group_line(line: &[u8], at: usize) -> Result<(Oid, u32, u32), ParseErro
 }
 
 /// One header line into `headers`/`mark`; unknown keys are skipped (git adds
-/// headers over time — `author-mail`, `committer-*`, `filename` are not
-/// kept).
+/// headers over time — `author-mail`, `committer-*` are not kept).
 fn read_header(
     line: &[u8],
     at: usize,
@@ -467,6 +470,7 @@ fn read_header(
             );
         }
         b"summary" => headers.summary = Some(lossy(value)),
+        b"filename" => headers.path = Some(bytes_path(&unquote(value))),
         b"boundary" => headers.boundary = true,
         b"ignored" => *mark = LineMark::Skipped,
         b"unblamable" => *mark = LineMark::Unblamable,
@@ -497,12 +501,15 @@ fn record_commit(
     if commits.contains_key(&id) {
         return Ok(());
     }
-    let (Some(author), Some(author_time), Some(summary)) =
-        (headers.author, headers.author_time, headers.summary)
-    else {
+    let (Some(author), Some(author_time), Some(summary), Some(path)) = (
+        headers.author,
+        headers.author_time,
+        headers.summary,
+        headers.path,
+    ) else {
         return Err(ParseError {
             line: at,
-            what: "a commit's first entry lacks `author`, `author-time` or `summary`",
+            what: "a commit's first entry lacks `author`, `author-time`, `summary` or `filename`",
         });
     };
     commits.insert(
@@ -512,6 +519,7 @@ fn record_commit(
             author,
             author_time,
             summary,
+            path,
             previous: headers.previous,
             boundary: headers.boundary,
         },
