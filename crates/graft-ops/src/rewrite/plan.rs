@@ -11,15 +11,13 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::version::GitVersion;
 
-use crate::absorb;
 use crate::facts;
 use crate::operation::{Refusal, RepoFacts, RewriteKey, Tip};
 
 use super::dependents::line_of;
-use super::reads::{
-    RangeCommit, ancestor, base_of, commit_index, parents_of, read_range, root_of, unparsable,
-};
+use super::reads::{RangeCommit, ancestor, base_of, commit_index, parents_of, read_range};
 use super::todo::autosquash;
+use super::unpushed::{RangeStop, YourCommits, your_commits};
 use super::{
     RewriteError, RewriteParams, RewriteRequest, TodoAction, TodoLine, default_message,
     squash_groups,
@@ -45,13 +43,21 @@ use super::{
 /// ([`crate::absorb`]), one commit object per target, each a fixup right
 /// after its target; none placed is [`Refusal::NothingToAbsorb`].
 ///
+/// On a branch with no base of its own — the base comes out as `HEAD`, or
+/// there is none (the default or only branch, no upstream) — absorb and
+/// `AmendInto` both reach his unpushed commits only, at most the last
+/// [`super::ABSORB_FALLBACK_DEPTH`], above any merge and the first commit
+/// (06c ruling).
+///
 /// `default_branch` is the user's `graph.default_branch` when set: it wins
 /// over git's guess (ADR-0001 rule 1), for the base of the range and for
 /// which branch is never a dependent.
 ///
 /// # Errors
 /// [`RewriteError::Refused`], checked in this order: not on a branch;
-/// nothing staged (`AmendInto`); the commit not on his branch; the first
+/// nothing staged (`AmendInto`); the commit not on his branch, or past his
+/// unpushed commits on a branch with no base of its own; every commit
+/// pushed there (`Absorb`); the first
 /// commit (`AmendInto`); a merge in the range; the branches built on his
 /// forking, or one checked out in another worktree; git older than 2.38 with
 /// branches to follow; `AmendInto` on `HEAD` with none. [`RewriteError::Facts`]
@@ -64,6 +70,22 @@ pub fn plan(
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<RewriteParams, RewriteError> {
+    let head = head_of(repo, facts, stop)?;
+    match req {
+        RewriteRequest::Open { from } => open(repo, git, head, *from, default_branch, stop),
+        RewriteRequest::AmendInto { target } => {
+            amend_into(repo, git, head, *target, facts, default_branch, stop)
+        }
+        RewriteRequest::Absorb => super::absorb::absorb(repo, git, head, default_branch, stop),
+    }
+}
+
+/// The branch `HEAD` is on and its tip.
+pub(super) fn head_of(
+    repo: &RepoHandle,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<Tip, RewriteError> {
     if stop.should_stop() {
         return Err(RewriteError::Stopped);
     }
@@ -79,17 +101,10 @@ pub fn plan(
         // nothing a rewrite could stand on.
         return Err(RewriteError::Refused(Refusal::NotOnABranch));
     };
-    let head = Tip {
+    Ok(Tip {
         name: name.clone(),
         oid,
-    };
-    match req {
-        RewriteRequest::Open { from } => open(repo, git, head, *from, default_branch, stop),
-        RewriteRequest::AmendInto { target } => {
-            amend_into(repo, git, head, *target, facts, default_branch, stop)
-        }
-        RewriteRequest::Absorb => absorb(repo, git, head, default_branch, stop),
-    }
+    })
 }
 
 fn open(
@@ -174,6 +189,7 @@ fn amend_into(
             by: RewriteKey::AmendInto,
         }));
     }
+    refuse_out_of_reach(repo, &head, target, default_branch, stop)?;
     let Some(&onto) = parents_of(repo, target, stop)?.first() else {
         return Err(RewriteError::Refused(Refusal::RootCommit {
             commit: target,
@@ -215,128 +231,38 @@ fn amend_into(
     })
 }
 
-/// Absorb: each staged hunk the map places ([`crate::absorb`]) goes into a
-/// commit object with no ref (parent `HEAD`, one per target), planned as a
-/// fixup right after its target — or, when they would empty it, the target
-/// dropped. The rows start at the oldest target. Hunks that stay are left
-/// where they are: the set-aside puts them back with the index, measured
-/// from `index_base` (`HEAD` plus every placed hunk).
-fn absorb(
+/// On a branch with no base of its own, `a` reaches exactly the commits
+/// absorb could put a hunk into ([`your_commits`]); a target past them is
+/// refused by what ended the walk (06c ruling). With a base of its own,
+/// nothing here refuses.
+fn refuse_out_of_reach(
     repo: &RepoHandle,
-    git: &GitVersion,
-    head: Tip,
+    head: &Tip,
+    target: Oid,
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
-) -> Result<RewriteParams, RewriteError> {
-    let base = match base_of(repo, &head, default_branch, stop)? {
-        Some(base) => base,
-        // No upstream and no default branch to measure from: the whole
-        // history above the first commit is his branch.
-        None => root_of(repo, head.oid, stop)?,
+) -> Result<(), RewriteError> {
+    let YourCommits::Unpushed(range) = your_commits(repo, head, default_branch, stop)? else {
+        return Ok(());
     };
-    let range = read_range(repo, base, head.oid, false, stop)?;
-    let mapped = absorb::mapped(repo, head.oid, base, stop)?;
-    let Some(first) = range.iter().position(|commit| {
-        mapped
-            .placed
-            .iter()
-            .any(|(_, target)| *target == commit.oid)
-    }) else {
-        return Err(RewriteError::Refused(Refusal::NothingToAbsorb));
-    };
-    let rows = range.get(first..).unwrap_or_default();
-    refuse_merges(rows)?;
-    let Some(&(mut onto)) = rows.first().and_then(|commit| commit.parents.first()) else {
-        return Err(unparsable("absorb's first target has no parent".to_owned()).into());
-    };
-    let line = line_of(repo, git, &head, default_branch, stop)?;
-    let (mut todo, made) = absorb_rows(repo, head.oid, rows, &mapped, stop)?;
-    // Every row dropped (the staged lines take the top commits out whole):
-    // a todo of drops alone is refused as the branch going back to its
-    // base. The commit below joins as a pick; replayed onto its own parent,
-    // git keeps it as it is.
-    if todo.iter().all(|line| line.action == TodoAction::Drop)
-        && let Some(below) = first.checked_sub(1).and_then(|at| range.get(at))
-    {
-        refuse_merges(std::slice::from_ref(below))?;
-        let Some(&parent) = below.parents.first() else {
-            return Err(
-                unparsable("the commit below absorb's target has no parent".to_owned()).into(),
-            );
-        };
-        todo.insert(0, below.pick());
-        onto = parent;
+    if range.commits.contains(&target) {
+        return Ok(());
     }
-    let every_placed: Vec<&absorb::Piece> = mapped.placed.iter().map(|(piece, _)| piece).collect();
-    let index_base = absorb::commit_pieces(
-        repo,
-        head.oid,
-        &every_placed,
-        "graft: absorb's index base",
-        stop,
-    )?;
-    Ok(RewriteParams {
-        head,
-        onto,
-        todo,
-        line,
-        messages: BTreeMap::new(),
-        made,
-        index_base: Some(index_base),
-    })
-}
-
-/// Absorb's todo over `rows`, and the commit objects its fixups meld in:
-/// each row a pick, followed by a fixup of the pieces placed into it — or,
-/// when they would leave it changing nothing, the row a drop.
-fn absorb_rows(
-    repo: &RepoHandle,
-    head: Oid,
-    rows: &[RangeCommit],
-    mapped: &absorb::Mapped,
-    stop: &dyn Stop,
-) -> Result<(Vec<TodoLine>, Vec<Oid>), RewriteError> {
-    let mut todo = Vec::with_capacity(rows.len() + mapped.placed.len());
-    let mut made = Vec::new();
-    for commit in rows {
-        let pieces: Vec<&absorb::Piece> = mapped
-            .placed
-            .iter()
-            .filter(|(_, target)| *target == commit.oid)
-            .map(|(piece, _)| piece)
-            .collect();
-        if pieces.is_empty() {
-            todo.push(commit.pick());
-            continue;
-        }
-        // Melded in, the pieces would leave the commit changing nothing:
-        // git stops on that fixup, so the commit is dropped instead (review
-        // m7-06 M3). The rows above replay onto the same tree either way.
-        if let Some(&parent) = commit.parents.first()
-            && absorb::empties(repo, commit.oid, parent, &pieces, stop)?
-        {
-            todo.push(TodoLine {
-                action: TodoAction::Drop,
-                ..commit.pick()
-            });
-            continue;
-        }
-        todo.push(commit.pick());
-        let subject = format!("fixup! {}", commit.subject);
-        let oid = absorb::commit_pieces(repo, head, &pieces, &subject, stop)?;
-        todo.push(TodoLine {
-            action: TodoAction::Fixup,
-            commit: oid,
-            subject,
-        });
-        made.push(oid);
-    }
-    Ok((todo, made))
+    let refusal = match range.stop {
+        RangeStop::Pushed => Refusal::AlreadyPushed {
+            commit: target,
+            by: RewriteKey::AmendInto,
+        },
+        RangeStop::Cap => Refusal::BeyondReach { commit: target },
+        RangeStop::Merge(merge) => Refusal::MergeInRange { merge },
+        RangeStop::Root => Refusal::RootCommit { commit: target },
+    };
+    Err(RewriteError::Refused(refusal))
 }
 
 /// The first merge in the range refuses the rewrite: `--rebase-merges` is
 /// not in M7.
-fn refuse_merges(range: &[RangeCommit]) -> Result<(), RewriteError> {
+pub(super) fn refuse_merges(range: &[RangeCommit]) -> Result<(), RewriteError> {
     match range.iter().find(|commit| commit.parents.len() > 1) {
         Some(merge) => Err(RewriteError::Refused(Refusal::MergeInRange {
             merge: merge.oid,

@@ -14,13 +14,15 @@ use crate::snapshot::TempIndex;
 use super::read::asks_about;
 use super::{StaysWhy, unparsable, with_index};
 
-/// The commit a hunk goes to, or why it stays. The outer `Err` is a blame
-/// that did not cover a line it was asked about.
+/// The commit a hunk goes to, or why it stays: `below` when every line is
+/// older than the range. The outer `Err` is a blame that did not cover a
+/// line it was asked about.
 pub(super) fn verdict(
     hunk: &Hunk,
     line_count: usize,
     blamed: &BTreeMap<u32, Oid>,
     range: &BTreeSet<Oid>,
+    below: StaysWhy,
 ) -> Result<Result<Oid, StaysWhy>, FactsError> {
     let count = u32::try_from(line_count).unwrap_or(u32::MAX);
     let lines = asks_about(hunk);
@@ -38,7 +40,7 @@ pub(super) fn verdict(
         })
         .collect::<Result<BTreeSet<Oid>, FactsError>>()?;
     if commits.iter().all(|commit| !range.contains(commit)) {
-        return Ok(Err(StaysWhy::BeforeYourBranch));
+        return Ok(Err(below));
     }
     match commits.iter().next() {
         Some(only) if commits.len() == 1 => Ok(Ok(*only)),

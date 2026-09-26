@@ -11,7 +11,8 @@
 //! - lines blamed only to commits below the range → [`StaysWhy::BeforeYourBranch`];
 //!   to two or more commits → [`StaysWhy::TwoCommitsChangedIt`]; a new file →
 //!   [`StaysWhy::NewFile`]; either side of a staged rename →
-//!   [`StaysWhy::Renamed`]; anything else (a binary or mode-only change, an
+//!   [`StaysWhy::Renamed`]; a submodule bump → [`StaysWhy::Submodule`];
+//!   anything else (a binary or mode-only change, an
 //!   insertion at either end of a file) → [`StaysWhy::NoCommitChangedIt`];
 //! - a hunk placed in C must also apply on C's own tree (the commutation
 //!   check): `git apply --cached --check` on a temporary index. It fails →
@@ -84,6 +85,12 @@ pub enum StaysWhy {
     /// A submodule's commit changed (a gitlink, mode `160000`): absorb
     /// moves lines, and a submodule bump has none (review m7-06 M4).
     Submodule,
+    /// On a branch with no base of its own (the default branch, or the only
+    /// one, with no upstream), the lines are older than his unpushed
+    /// commits: pushed, or more than 10 back, or below a merge (06c
+    /// ruling). Where [`StaysWhy::BeforeYourBranch`] would say "older than
+    /// your branch", which there has no answer.
+    OutsideYourCommits,
 }
 
 /// Where each staged hunk goes.
@@ -113,19 +120,7 @@ pub fn absorb_map(
     base: Oid,
     stop: &dyn Stop,
 ) -> Result<AbsorbMap, FactsError> {
-    let mapped = mapped(repo, head.oid, base, stop)?;
-    Ok(AbsorbMap {
-        placed: mapped
-            .placed
-            .into_iter()
-            .map(|(piece, target)| (piece.hunk, target))
-            .collect(),
-        stays: mapped
-            .stays
-            .into_iter()
-            .map(|(piece, why)| (piece.hunk, why))
-            .collect(),
-    })
+    Ok(mapped(repo, head.oid, base, StaysWhy::BeforeYourBranch, stop)?.into_map())
 }
 
 /// A staged hunk and the one-hunk patch that puts it in (with a line of
@@ -141,11 +136,31 @@ pub(crate) struct Mapped {
     pub(crate) stays: Vec<(Piece, StaysWhy)>,
 }
 
-/// [`absorb_map`], with the patches.
+impl Mapped {
+    /// The map without the patches.
+    pub(crate) fn into_map(self) -> AbsorbMap {
+        AbsorbMap {
+            placed: self
+                .placed
+                .into_iter()
+                .map(|(piece, target)| (piece.hunk, target))
+                .collect(),
+            stays: self
+                .stays
+                .into_iter()
+                .map(|(piece, why)| (piece.hunk, why))
+                .collect(),
+        }
+    }
+}
+
+/// [`absorb_map`], with the patches. `below` is the reason a hunk whose
+/// lines are all older than `base..head` stays with.
 pub(crate) fn mapped(
     repo: &RepoHandle,
     head: Oid,
     base: Oid,
+    below: StaysWhy,
     stop: &dyn Stop,
 ) -> Result<Mapped, FactsError> {
     if stop.should_stop() {
@@ -195,7 +210,7 @@ pub(crate) fn mapped(
                 hunk: staged_hunk(&path, hunk),
                 patch: with_context(&diff, hunk, &file)?,
             };
-            match verdict(hunk, file.lines.len(), &blamed, &range)? {
+            match verdict(hunk, file.lines.len(), &blamed, &range, below)? {
                 Ok(target) if commutes(repo, target, &piece.patch, stop)? => {
                     placed.push((piece, target));
                 }
