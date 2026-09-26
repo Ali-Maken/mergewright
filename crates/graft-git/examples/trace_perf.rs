@@ -54,7 +54,7 @@ fn measure() -> Result<(), String> {
 
     let (mut blames, mut lines_, mut files) = (Vec::new(), Vec::new(), Vec::new());
     for run in 1..=RUNS {
-        let (b, l, f) = one_run(run, &repo, head, path, &range, &options)?;
+        let (b, l, f) = one_run(run, &repo, head, path, &range, options)?;
         blames.push(b);
         lines_.push(l);
         files.push(f);
@@ -76,10 +76,10 @@ fn one_run(
     head: Oid,
     path: &Path,
     range: &LineRange,
-    options: &BlameOptions,
+    options: BlameOptions,
 ) -> Result<(Duration, Duration, Duration), String> {
     let started = Instant::now();
-    blame(repo, &Rev::Commit(head), path, options, &()).map_err(|why| why.to_string())?;
+    blame(repo, &Rev::Commit(head), path, &options, &()).map_err(|why| why.to_string())?;
     let b = started.elapsed();
 
     let started = Instant::now();
