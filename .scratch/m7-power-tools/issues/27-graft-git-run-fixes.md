@@ -50,7 +50,7 @@ Filed by: conductor, 2026-09-26, from KNOWN_GAPS rows with lines. Not a design c
   - graft-ops `undo_cancel::{after_a_part_way_cancel_the_named_key_restores_everything,
     rollback_refused_by_a_moved_ref_is_reported_not_hidden, a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed}`:
     `StopOnce` fires when the ref step's ref has landed; git has exited, so the step now succeeds and the undo
-    completes (`Applied`) — later steps don't observe the stop.
+    completes (`Applied`) (observed); why later steps ignore the latched stop is not traced.
   - graft-ops `set_aside::{a_stop_before_each_step_loses_nothing, undo_after_a_stop_at_4_or_5_restores_everything}`
     (Rebase, step 5): stop keyed to `reset --hard` having written `base.txt`; reset now reports done, the rebase is
     stopped before spawning, put-back runs → `stash drop`, edits back in tree, vs ADR-0045 §5's expected `reset --hard`
