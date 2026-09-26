@@ -37,11 +37,12 @@ Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `
 - `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.
 
 ## trace
-Files: `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
+Files: `shallow.rs` reads a shallow clone's boundary ids; `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
 - `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
 - `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
 - `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
-- `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`.
+- `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`, `Shallow { path, source }` (`<common_dir>/shallow` present but unreadable or not ids; `couldn't read <path>: <source>`).
+- `SHALLOW_END` (const) — `GitStops` reason when a trace hits a shallow clone's boundary. Boundary rule (18c, `shallow.rs`): ids from `<common_dir>/shallow` (missing = not shallow), read once after git exits; boundary rows dropped (git diffed them against nothing); any dropped → `GitStops(SHALLOW_END)`, unless `Capped` (more rows past the cap) wins. A log ending on a change with no boundary → `GitStops("history ends here without the commit that added these lines")`.
 - `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines. The blob or marked diff cut at the output cap is `Unparsable`, not `Stopped` (18b).
 - `map_to_head` (fn) — a working-tree line number → its `HEAD` line through worktree-vs-HEAD hunks; `None` for an added line.
 - `line_history` (fn) — `git log -L<s>,<e>:<path>`, capped, rows to a sink in one batch at exit (the runner does not stream stdout).
