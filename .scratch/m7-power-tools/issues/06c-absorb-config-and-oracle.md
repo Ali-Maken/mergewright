@@ -1,7 +1,7 @@
 # 06c absorb-config-and-oracle — review 06's remaining Majors
 
 Status: ready
-Blocked by: 06b (same files, graft-ops). Question 2's ruling from the planner (below) before the Minor 1 box.
+Blocked by: none (06b merged). Both planner rulings are below.
 Crates: graft-ops only (`absorb.rs` and its split, tests). Another crate needed → commit at the seam, report `blocked:
 needs <crate>` with the signature.
 Build with: Opus (config-sensitive git reads; an oracle that must not share the code under test).
