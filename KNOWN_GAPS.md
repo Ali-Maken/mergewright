@@ -871,3 +871,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/04-M2 | **M1's slow key 37 is a separate symptom, cause unnamed.** ADR-0021:35-38 says it is "not the first key after idle"; 04 explained only the idle key (timer slack). Key 37 does not reproduce now. Told apart at the M7 stop | **unverified** | M7 |
 | M7/04-M3 | **`frames.rs` 1163→1560 lines; `scroll` fn 80 lines** (PROMPT 6.2). Fix in 12c | **broken** (readability) | M7 |
 | M7/04-min | **Review 04 minors and questions**, 11 + 2, in `docs/reviews/m7-04-slow-key.md` | **unverified** | M7 |
+| M7/12a | **Part A's 8 ms batch cap on queued job answers has no test** (builder report, 7f64f5c0). Also a behaviour change to check in review: a force-push verdict for a branch that has since moved now marks nothing | **unverified** | M7 |
