@@ -5,9 +5,14 @@
 //!
 //! The real loop (`event_loop::pump`) runs over the real job pool and an
 //! in-memory terminal. Keys arrive on a 60 Hz clock, the way a held key or
-//! a fast hand scrolls, and each key's latency is measured from the tick it
-//! was *due* on — so a loop that falls behind shows up as growing lateness,
-//! not hides behind a queue. A key's frame is the first frame that shows the
+//! a fast hand scrolls, sent by an input thread into the loop's wake channel
+//! as the app's input forwarder sends them ([`KeyFeed`], m7-power-tools/04b).
+//! Each key's latency is measured from its send. The thread keeps the
+//! script's clock, so a loop that falls behind shows up as keys queued in
+//! the channel, counted in their latency, not hidden. The thread's own
+//! sleep, and the OS timer slack on it, lands before the send, where a real
+//! key's arrival is (m7-power-tools/04: up to 10 ms after a 600 ms pause,
+//! with no Graft code running). A key's frame is the first frame that shows the
 //! rows the key asked for: when a key sends a `ShowRows`, the frame drawn
 //! after the job's answer, not the frame drawn while the rows were still
 //! out.
@@ -27,7 +32,7 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, TryRecvError};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -35,7 +40,7 @@ use std::time::{Duration, Instant};
 use graft::config::Loaded;
 use graft::event_loop::{Exit, Phase, Wake, Wakes, pump};
 use graft::history::HistoryUpdate;
-use graft::jobs::{Dispatch, Shutdown};
+use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::refs::{RefBadges, badges};
 use graft::session::Session;
 use graft::update::{AppEvent, AppState, Command, Progress, update};
@@ -54,7 +59,7 @@ use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::budget_run;
-use crate::frame_trace::{FrameTrace, Gate, TRACE_VAR, WriteClock};
+use crate::frame_trace::{FrameTrace, Gate, KeyFeed, SentLog, TRACE_VAR, WriteClock};
 use crate::heavy::MEASURING;
 
 /// PROMPT.md §6.3: input to frame under 16 ms.
@@ -498,22 +503,10 @@ fn scroll(
     control: Control,
     traced: bool,
 ) -> Result<Run, String> {
-    let (jobs, events, mut state) = budget_run::open(repo)?;
-    state.settled_tier = Some(tier);
-    // The screen ready to scroll: rows on hand and the refs job answered, so
-    // no stray refs answer lands mid-scroll.
-    let ready = |state: &AppState| {
-        state.refs.is_some()
-            && state
-                .history
-                .as_ref()
-                .is_some_and(|h| h.window.as_ref().is_some_and(|w| !w.rows.is_empty()))
-    };
-    state = budget_run::pump_until(&jobs, &events, state, ready)?;
-    if let Refs::FiftyThousand = refs {
-        state.refs = Some(Arc::new(fifty_thousand(&state)?));
-    }
-    print_state_clone(tier, refs, &state);
+    // One channel for job results and keys, as in the app
+    // (`impl JobEvents for Sender<Wake>`, event_loop/mod.rs).
+    let (post, events) = mpsc::channel::<Wake>();
+    let (jobs, state) = ready_to_scroll(repo, tier, refs, post.clone(), &events)?;
 
     let mut session = Session::settle(&Loaded::default(), capabilities(tier));
     let sink = Sink::timed(traced);
@@ -524,12 +517,25 @@ fn scroll(
         asked: Mutex::default(),
     };
     let initial = state.clone();
-    let mut wakes = Paced::new(&events, keys(pane, control), &watching, sink.clone());
+    let feed = KeyFeed::start(keys(pane, control), post)
+        .map_err(|why| format!("the input thread did not start: {why}"))?;
+    let mut wakes = Paced::new(
+        &events,
+        keys(pane, control),
+        &watching,
+        sink.clone(),
+        feed.log(),
+    );
     wakes.no_prefetch = control == Control::NoPrefetch;
     let spinner = (control == Control::Busy).then(Spinner::start);
-    let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state)
-        .map_err(|why| format!("the loop failed: {why}"))?;
+    let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state);
     drop(spinner);
+    // Before any early return: a loop that stopped mid-script still leaves
+    // the thread sending into a live channel, so this waits at most the
+    // script's remaining pauses.
+    let stamps = feed.finish();
+    let exit = exit.map_err(|why| format!("the loop failed: {why}"))?;
+    stamps?;
     if !matches!(exit, Exit::Quit) {
         return Err(format!(
             "the loop ended with {exit:?}, not at the end of the script"
@@ -564,6 +570,44 @@ fn scroll(
         by_trigger,
         trace,
     })
+}
+
+/// Opens `repo` with its jobs reporting into `post`, and pumps `events`
+/// until the screen is ready to scroll: rows on hand and the refs job
+/// answered, so no stray refs answer lands mid-scroll.
+fn ready_to_scroll(
+    repo: &Path,
+    tier: RenderingTier,
+    refs: Refs,
+    post: Sender<Wake>,
+    events: &Receiver<Wake>,
+) -> Result<(JobRunner<Sender<Wake>>, AppState), String> {
+    let (jobs, mut state) = budget_run::open_into(repo, post)?;
+    state.settled_tier = Some(tier);
+    let ready = |state: &AppState| {
+        state.refs.is_some()
+            && state
+                .history
+                .as_ref()
+                .is_some_and(|h| h.window.as_ref().is_some_and(|w| !w.rows.is_empty()))
+    };
+    state =
+        budget_run::pump_until_from(&jobs, |patience| job_event(events, patience), state, ready)?;
+    if let Refs::FiftyThousand = refs {
+        state.refs = Some(Arc::new(fifty_thousand(&state)?));
+    }
+    print_state_clone(tier, refs, &state);
+    Ok((jobs, state))
+}
+
+/// The next job event on the loop's wake channel, before the script starts
+/// (only the jobs send then).
+fn job_event(wakes: &Receiver<Wake>, patience: Duration) -> Result<AppEvent, String> {
+    match wakes.recv_timeout(patience) {
+        Ok(Wake::Event(event)) => Ok(event),
+        Ok(other) => Err(format!("a wake no job sends: {other:?}")),
+        Err(why) => Err(why.to_string()),
+    }
 }
 
 /// A terminal of `state`'s size writing into `sink`.
@@ -937,7 +981,8 @@ impl<D> Watching<'_, D> {
 /// What one wake was.
 #[derive(Clone, Copy, Debug)]
 enum Kind {
-    /// The key at this index of the script, due at this tick.
+    /// The key at this index of the script, sent by the input thread at
+    /// this instant: where its latency starts.
     Key(usize, Instant),
     /// A window of rows answering this request.
     Window(u64),
@@ -950,9 +995,9 @@ struct Handed {
     kind: Kind,
     /// When the loop took it: its frame runs from here to the next stamp.
     at: Instant,
-    /// A key the harness slept for: when its `recv_timeout` came back. Its
-    /// lateness from the due tick is the thread's wake, not the loop's work.
-    woke: Option<Instant>,
+    /// A key: the script's tick for it. Due → sent is the input thread's own
+    /// wake from its sleep, before the send and outside the latency.
+    due: Option<Instant>,
     /// When each [`Phase`] of its frame ended, in `Phase` order.
     marks: [Option<Instant>; 4],
     /// `ShowRows` sent before its frame, and by the end of it.
@@ -976,14 +1021,18 @@ fn slot(phase: Phase) -> usize {
     }
 }
 
-/// Wakes for [`pump`]: the script's keys on a 60 Hz clock, job events as
-/// they arrive between ticks. Every call means the loop has drawn the frame
+/// Wakes for [`pump`]: one channel carrying the script's keys, sent by the
+/// [`KeyFeed`] thread on a 60 Hz clock, and job events as they arrive, read
+/// the way `ChannelWakes` reads the app's (`event_loop/mod.rs`: `recv` to
+/// wait, `try_recv` to look). Every call means the loop has drawn the frame
 /// for the wake before it, so each call is stamped.
 struct Paced<'a, D> {
-    events: &'a Receiver<AppEvent>,
+    events: &'a Receiver<Wake>,
     keys: Vec<(KeyCode, Duration)>,
+    /// Keys received so far: the index of the next one.
     next_key: usize,
-    due: Instant,
+    /// When the input thread sent each key.
+    sent: SentLog,
     watching: &'a Watching<'a, D>,
     handed: Vec<Handed>,
     /// `replay[i]`: the event `handed[i]` carried, to replay through `update`.
@@ -996,8 +1045,8 @@ struct Paced<'a, D> {
     written: Vec<usize>,
     sink: Sink,
     failure: Option<String>,
-    /// An event `waiting` took off the channel to see it; handed out first.
-    seen: Option<AppEvent>,
+    /// A wake `waiting` took off the channel to see it; handed out first.
+    seen: Option<Wake>,
     /// When the loop first looked for a wake since the last one was handed:
     /// its frame was on the terminal then, before any idle prefetch began.
     looked: Option<Instant>,
@@ -1022,16 +1071,17 @@ impl Handed {
 
 impl<'a, D> Paced<'a, D> {
     fn new(
-        events: &'a Receiver<AppEvent>,
+        events: &'a Receiver<Wake>,
         keys: Vec<(KeyCode, Duration)>,
         watching: &'a Watching<'a, D>,
         sink: Sink,
+        sent: SentLog,
     ) -> Self {
         Self {
             events,
             keys,
             next_key: 0,
-            due: Instant::now(),
+            sent,
             watching,
             handed: Vec::new(),
             replay: Vec::new(),
@@ -1056,7 +1106,7 @@ impl<'a, D> Paced<'a, D> {
         }
     }
 
-    fn hand(&mut self, kind: Kind, woke: Option<Instant>, event: AppEvent) -> Wake {
+    fn hand(&mut self, kind: Kind, due: Option<Instant>, event: AppEvent) -> Wake {
         let (asked, newest) = self.watching.asked_so_far();
         if let Kind::Window(id) = kind {
             self.answered = self.answered.max(Some(id));
@@ -1064,7 +1114,7 @@ impl<'a, D> Paced<'a, D> {
         self.handed.push(Handed {
             kind,
             at: Instant::now(),
-            woke,
+            due,
             marks: [None; 4],
             asked_before: asked,
             asked_after: asked,
@@ -1084,6 +1134,30 @@ impl<'a, D> Paced<'a, D> {
             _ => Kind::Other,
         };
         self.hand(kind, None, event)
+    }
+
+    /// Hands `wake` to the loop: the next script key, or a job event.
+    fn take(&mut self, wake: Wake) -> Option<Wake> {
+        let event = match wake {
+            Wake::Event(AppEvent::Core(Event::Key(press))) => press,
+            Wake::Event(event) => return Some(self.event(event)),
+            other => {
+                self.failure = Some(format!("a wake the harness never sends: {other:?}"));
+                return None;
+            }
+        };
+        let key = self.next_key;
+        let (Some((code, _)), Some(sent)) = (self.keys.get(key), self.sent.get(key)) else {
+            self.failure = Some(format!("key {key} arrived with no script entry or stamp"));
+            return None;
+        };
+        if event != KeyPress::plain(*code) {
+            self.failure = Some(format!("key {key} arrived as {event:?}, not {code:?}"));
+            return None;
+        }
+        self.next_key += 1;
+        let press = AppEvent::Core(Event::Key(event));
+        Some(self.hand(Kind::Key(key, sent.at), Some(sent.due), press))
     }
 
     /// What the frame after each wake wrote, summed by what woke it: the
@@ -1113,20 +1187,20 @@ impl<'a, D> Paced<'a, D> {
         groups
     }
 
-    /// Each key's latency: due time → its own frame, the one drawn right
+    /// Each key's latency: its send → its own frame, the one drawn right
     /// after it. A key draws from the rows on hand ([`Paced::waited`] checks
     /// they were there); rows it asked for arrive later as their own frame.
     fn latencies(&self) -> Result<Vec<Duration>, String> {
         let mut latencies = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
-            let Kind::Key(_, due) = handed.kind else {
+            let Kind::Key(_, sent) = handed.kind else {
                 continue;
             };
             let drawn = self
                 .drawn
                 .get(index + 1)
                 .ok_or_else(|| format!("no frame was drawn after wake {index}"))?;
-            latencies.push(drawn.saturating_duration_since(due));
+            latencies.push(drawn.saturating_duration_since(sent));
         }
         Ok(latencies)
     }
@@ -1138,7 +1212,7 @@ impl<'a, D> Paced<'a, D> {
     fn breakdown(&self, counted: &[Counts]) -> Vec<String> {
         let mut lines = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
-            let Kind::Key(_, due) = handed.kind else {
+            let Kind::Key(_, sent) = handed.kind else {
                 continue;
             };
             let (Some(drawn), Some(before), Some(after)) = (
@@ -1161,7 +1235,7 @@ impl<'a, D> Paced<'a, D> {
             let frame = after.minus(*before);
             lines.push(format!(
                 "queued {:?} behind {}; own frame {:?}, bytes={} transmits={} placements={}",
-                handed.at.saturating_duration_since(due),
+                handed.at.saturating_duration_since(sent),
                 previous.unwrap_or_else(|| "nothing".to_owned()),
                 drawn.saturating_duration_since(handed.at),
                 frame.bytes,
@@ -1173,8 +1247,10 @@ impl<'a, D> Paced<'a, D> {
     }
 
     /// Per key: one `GRAFT_FRAME_TRACE` line of its phases, in µs.
-    /// `oversleep`: the harness's own wake past the due tick (`-` when the
-    /// key was already due). `queued`: due → handed to the loop. Then the
+    /// `latency`: send → the key's frame. `oversleep`: the input thread's
+    /// own wake past the due tick, before the send, so outside `latency`
+    /// (kept so the OS timer slack stays visible). `queued`: send → handed
+    /// to the loop (the channel hand-over, plus any frame ahead). Then the
     /// loop's phases: `drain`, `update`, `carry` (dispatch), `draw` (view,
     /// render, and `write`, the part inside the terminal's `write`), and
     /// `tail`, `Drawn` → the stamp the latency ends at. `asked`: the key
@@ -1187,7 +1263,7 @@ impl<'a, D> Paced<'a, D> {
         };
         let mut lines = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
-            let Kind::Key(key, due) = handed.kind else {
+            let Kind::Key(key, sent) = handed.kind else {
                 continue;
             };
             let drawn = self.drawn.get(index + 1).copied();
@@ -1205,9 +1281,9 @@ impl<'a, D> Paced<'a, D> {
                 "key={key} code={:?} kind={} latency_us={} oversleep_us={} queued_us={} drain_us={} update_us={} carry_us={} draw_us={} write_us={} tail_us={} asked={} rows_out={} behind={}",
                 self.keys[key].0,
                 if key >= scrolled { "idle" } else { "scroll" },
-                micros(Some(due), drawn),
-                micros(Some(due), handed.woke),
-                micros(Some(due), Some(handed.at)),
+                micros(Some(sent), drawn),
+                micros(handed.due, Some(sent)),
+                micros(Some(sent), Some(handed.at)),
                 micros(Some(handed.at), drained),
                 micros(drained, updated),
                 micros(updated, carried),
@@ -1265,30 +1341,20 @@ impl<D> Wakes for Paced<'_, D> {
         if let Some(looked) = self.looked.take() {
             self.prefetch.push(looked.elapsed());
         }
-        if let Some(event) = self.seen.take() {
-            return Some(self.event(event));
+        if let Some(wake) = self.seen.take() {
+            return self.take(wake);
         }
         if self.next_key < self.keys.len() {
-            let wait = self.due.saturating_duration_since(Instant::now());
-            let mut woke = None;
-            if !wait.is_zero() {
-                match self.events.recv_timeout(wait) {
-                    Ok(event) => return Some(self.event(event)),
-                    Err(RecvTimeoutError::Timeout) => woke = Some(Instant::now()),
-                    Err(RecvTimeoutError::Disconnected) => {
-                        self.failure = Some("the job pool hung up mid-scroll".to_owned());
-                        return None;
-                    }
+            // As the app's loop waits: blocked in `recv` until a job or
+            // the input thread sends.
+            return match self.events.recv() {
+                Ok(wake) => self.take(wake),
+                Err(_hung_up) => {
+                    self.failure =
+                        Some("the job pool and the input thread hung up mid-scroll".to_owned());
+                    None
                 }
-            }
-            let key = self.next_key;
-            let due = self.due;
-            self.next_key += 1;
-            if let Some((_, pause)) = self.keys.get(self.next_key) {
-                self.due += *pause;
-            }
-            let press = KeyPress::plain(self.keys[key].0);
-            return Some(self.hand(Kind::Key(key, due), woke, AppEvent::Core(Event::Key(press))));
+            };
         }
         // The script is over: wait only for rows still out.
         let newest_asked = self.watching.asked().iter().max().copied();
@@ -1304,7 +1370,7 @@ impl<D> Wakes for Paced<'_, D> {
             return None;
         }
         match self.events.recv_timeout(PATIENCE) {
-            Ok(event) => Some(self.event(event)),
+            Ok(wake) => self.take(wake),
             Err(why) => {
                 self.failure = Some(format!("rows still out after {PATIENCE:?}: {why}"));
                 None
@@ -1312,8 +1378,8 @@ impl<D> Wakes for Paced<'_, D> {
         }
     }
 
-    /// The next key is due, or an event has come: the loop stops readying
-    /// strips, so a key's latency counts the one strip it waited behind.
+    /// A key or an event has come: the loop stops readying strips, so a
+    /// key's latency counts the one strip it waited behind.
     fn waiting(&mut self) -> bool {
         self.looked() || self.no_prefetch
     }
@@ -1339,12 +1405,13 @@ impl<D> Paced<'_, D> {
             return true;
         }
         // The script is over: nothing left to measure, so nothing to ready.
-        if self.next_key >= self.keys.len() || Instant::now() >= self.due {
+        if self.next_key >= self.keys.len() {
             return true;
         }
+        // As `ChannelWakes::waiting` looks (event_loop/mod.rs).
         match self.events.try_recv() {
-            Ok(event) => {
-                self.seen = Some(event);
+            Ok(wake) => {
+                self.seen = Some(wake);
                 true
             }
             Err(TryRecvError::Empty) => false,
@@ -1355,8 +1422,8 @@ impl<D> Paced<'_, D> {
 }
 
 /// Control D (m7-power-tools/04): the machine alone, no Graft code at all.
-/// Each lap sleeps [`IDLE`] the way [`Paced`] does (`recv_timeout` on a quiet
-/// channel), then times a fixed piece of CPU and memory work at once
+/// Each lap sleeps [`IDLE`] the way the harness did before 04b's
+/// [`KeyFeed`] (`recv_timeout` on a quiet channel), then times a fixed piece of CPU and memory work at once
 /// (`after_idle`) and again straight after (`warm`), and times a wake
 /// handed over from another thread after the same pause (`handoff`, the
 /// real loop's shape: the input thread sends, the loop's `recv` returns).

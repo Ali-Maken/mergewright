@@ -175,13 +175,20 @@ fails the run.
 **Where a slow key's time goes:** `scripts/m7-perf-key.sh` (~10 min) runs
 the release `frames::` tests 3 times plain and once per control (A no idle
 pause, B a core held busy, C no idle prefetch), with every key's phases
-traced, and writes `docs/perf/m7-04-slow-key.txt`. Read its `SUMMARY`
-lines. Right looks like: `gate(p99<=16ms)=ok` on every `spread` line across
-all 3 runs. The phase columns name where the idle keys' time goes:
-`oversleep` is the harness's own timed wait waking late (not Graft's work),
-`draw` is Graft's frame. What it cannot show: the real terminal (keys are
-made in the test, output goes to memory), so a pty's wake and the
-terminal's own paint are not in these numbers.
+traced, and writes `docs/perf/m7-04-slow-key.txt`; when the file exists it
+appends the run as the next `# ===== rev N` section (`REV_NOTE="…"` says
+what changed), headed by `SUMMARY revN` before/after lines. Read its
+`SUMMARY` lines. Right looks like: `gate(p99<=16ms)=ok` on every `spread`
+line across all 3 runs, and the `frame_trace:` line's `send -> recv` under
+1 ms (asserted in release). Since m7-power-tools/04b the keys come from an
+input thread that sends them into the loop's wake channel, as the app's
+input forwarder does, and a key's latency runs from its send: `oversleep`
+is that thread's own sleep waking late (OS timer slack, before the send, not
+in the latency; the `machine:` lines show it with no Graft code at all),
+`queued` is send → the loop taking it, `draw` is Graft's frame. What it
+cannot show: the real terminal (keys are made in the test, output goes to
+memory), so a pty's wake and the terminal's own paint are not in these
+numbers.
 
 In the debug run above those same tests measure and print their numbers
 (`debug build, budget recorded not asserted`) without failing; so does
