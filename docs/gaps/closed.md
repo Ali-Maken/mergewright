@@ -211,3 +211,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M7/28skip | Guard refused replays git would skip. | moved into M7/28fix (review 28 m1) → 28c |
 | M7/rR-index | `r`/`R` may lose index-only content. | moved into M7/06b-review C2 (review 06b gave the line: `rewrite/plan.rs:150`, `set_aside.rs:515-519`) → 30. `a` loses none (probe r2) |
 | M7/28fix | Review 28 Majors (pull while ahead, case-only rename, file size) and the 28skip false refusal for R/a. | closed 2026-09-26 (28c): each red first; files under 400; perf in `docs/perf/m7-28.txt` |
+| M7/a-into-main | `a` into a commit on main with no upstream. | closed 2026-09-26: 06c built the ruling. The premise was false: `a` never refused there (review 06c Minor 1, `3ef0801c^1` `rewrite/plan.rs:171`) |
