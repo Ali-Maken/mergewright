@@ -606,5 +606,5 @@ fn stopped_on_conflict(
     if live != Some(started) {
         return Ok(None);
     }
-    Ok(Some((started, resume::unmerged_paths(ctx)?)))
+    Ok(Some((started, resume::unmerged_paths(ctx, &())?)))
 }

@@ -894,9 +894,28 @@ fn loose_objects(git_dir: &Path) -> usize {
         .sum()
 }
 
+/// Hold git inside its `post-checkout` hook — after it has moved `HEAD`,
+/// mid-operation — until the runner's stop kills it (its parent pid gone),
+/// so a stop keyed to `HEAD` moving always lands while git is still running
+/// rather than racing git to the finish (M7/02b). Bounded at ten seconds,
+/// so a stop that never fires fails the test instead of hanging it.
+fn hold_git_until_killed(repo: &TempRepo) {
+    post_checkout(
+        repo,
+        "p=$PPID; n=0\n\
+         while kill -0 \"$p\" 2>/dev/null && [ \"$n\" -lt 1000 ]; do sleep 0.01; n=$((n + 1)); done",
+    );
+}
+
 /// A stop that fires just before set-aside step `step` (1–6) runs, keyed
-/// to what the step before it leaves on disk.
+/// to what the step before it leaves on disk. Step 6's is keyed to the
+/// operation (step 5) moving `HEAD`, with git held there until it is killed
+/// ([`hold_git_until_killed`]): there is no poll between 5 and 6, so "before
+/// the put-back" is "during the operation".
 fn stop_before(repo: &TempRepo, step: u8) -> StopWhen {
+    if step >= 6 {
+        hold_git_until_killed(repo);
+    }
     let root = repo.path().to_path_buf();
     let git_dir = root.join(".git");
     let journal = journal_path(&repo.open()).expect("the journal path");
@@ -959,21 +978,26 @@ impl Left {
 
     /// What each stop leaves, as ADR-0045 §5 and the 73 review's probe
     /// describe it.
-    fn expected(step: u8) -> Left {
-        let (aborted, last, stashes, dirty) = match step {
+    fn expected(kind: Kind, step: u8) -> Left {
+        let (aborted, last, stashes, dirty) = match (kind, step) {
             // Before `stash create`, or before `begin`: nothing written.
-            1 | 2 => (None, None, 0, true),
-            // Before `stash store`: the entry is closed at the store, `S`
-            // objects only, the tree untouched.
-            3 => (Some(true), Some("stash store"), 0, true),
+            (_, 1 | 2) => (None, None, 0, true),
+            // Before `stash store`: the store never starts, so the entry is
+            // closed after the create, `S` objects only, the tree untouched.
+            (_, 3) => (Some(true), Some("stash create"), 0, true),
             // Before `reset --hard`: `S` listed, the tree untouched.
-            4 => (Some(true), Some("stash store"), 1, true),
+            (_, 4) => (Some(true), Some("stash store"), 1, true),
             // Before the operation: the reset is done and the operation
             // never ran, so the tree is clean and the edits are only in `S`.
-            5 => (Some(true), Some("reset --hard"), 1, false),
-            // Before the put-back: the operation was stopped, and the
-            // put-back never stops — `S` back and dropped.
-            _ => (Some(true), Some("stash drop"), 0, true),
+            (_, 5) => (Some(true), Some("reset --hard"), 1, false),
+            // A rebase killed part-way is git's live rebase: held `Pending`
+            // for `resume` (ADR-0045 §4, "stops … at 5"), `S` waiting in the
+            // list, the tree as the reset left it. The Pending line on disk
+            // carries no commands; they are held in memory.
+            (Kind::Rebase, _) => (Some(false), None, 1, false),
+            // A checkout killed part-way leaves no live state: the put-back
+            // never stops — `S` back and dropped.
+            (Kind::Checkout, _) => (Some(true), Some("stash drop"), 0, true),
         };
         Left {
             aborted,
@@ -1012,7 +1036,7 @@ fn a_stop_before_each_step_loses_nothing() {
                 result.as_ref().err()
             );
             assert!(stop.latched.load(Ordering::Relaxed), "{what}: never fired");
-            assert_eq!(Left::read(&repo), Left::expected(step), "{what}");
+            assert_eq!(Left::read(&repo), Left::expected(kind, step), "{what}");
             assert!(
                 edit_is_somewhere(&repo, "base.txt", b"edited\n"),
                 "{what}: base.txt lost"
@@ -1035,6 +1059,44 @@ fn a_stop_before_each_step_loses_nothing() {
     }
 }
 
+/// A stop that kills a set-aside rebase part-way leaves git's rebase live:
+/// `apply` holds it as the stop it is — `Conflicted`, the entry `Pending`
+/// with `S` listed — rather than failing the status read after it on the
+/// same stop (M7/02b: `Facts(Status(Run(Stopped)))`, the commands never
+/// held). `a` then puts the edits back and drops `S`.
+#[test]
+fn a_stop_mid_rebase_is_held_and_abort_puts_the_edits_back() {
+    let (repo, op) = dirty_for(Kind::Rebase);
+    let stop = stop_before(&repo, 6);
+    let (entry, paths) = match run_with_stop(&repo, &op, NOW, &stop) {
+        Err(ApplyError::Conflicted { entry, kind, paths }) => {
+            assert_eq!(kind, InProgress::Rebase);
+            (*entry, paths)
+        }
+        other => panic!("the stopped rebase should be held: {other:?}"),
+    };
+    assert!(paths.is_empty(), "killed, not conflicted: {paths:?}");
+    assert!(repo.exists(".git/rebase-merge"), "git's rebase is live");
+    assert_eq!(entry.status, EntryStatus::Pending);
+    assert!(
+        entry.commands.iter().any(|line| line.contains("rebase")),
+        "the commands are held: {:?}",
+        entry.commands
+    );
+    let stash = set_aside_of(&entry);
+    assert_eq!(stash_commits(&repo), vec![stash], "S waits in the list");
+    assert!(edit_is_somewhere(&repo, "base.txt", b"edited\n"));
+    assert!(edit_is_somewhere(&repo, "n.txt", b"new\n"));
+
+    resume_with(&repo, Resume::Abort, NOW + 1)
+        .unwrap_or_else(|why| panic!("abort: {}", why.explain()));
+    assert!(!repo.exists(".git/rebase-merge"), "the rebase is gone");
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/feature");
+    assert_eq!(repo.read("base.txt"), b"edited\n", "the edit is back");
+    assert_eq!(repo.read("n.txt"), b"new\n", "the new file is back");
+    assert!(stash_commits(&repo).is_empty(), "S dropped");
+}
+
 /// `u` after a stop at step 4 (`S` listed, tree untouched) or step 5 (tree
 /// reset, edits only in `S`): the tree, the index and the stash list exactly
 /// as before (73 review, m8; ADR-0045 §5, "4 or later").
@@ -1050,7 +1112,7 @@ fn undo_after_a_stop_at_4_or_5_restores_everything() {
             assert!(result.is_err(), "{what}: the stop is an error");
             assert_eq!(
                 Left::read(&repo),
-                Left::expected(step),
+                Left::expected(kind, step),
                 "{what}: the stop landed"
             );
             run_undo(&repo, NOW + 1, false)

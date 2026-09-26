@@ -159,9 +159,19 @@ fn started_on_its_line(
 }
 
 /// The unmerged paths the status lists now.
-pub(super) fn unmerged_paths(ctx: &Context<'_>) -> Result<Vec<PathBuf>, ApplyError> {
-    let status = graft_git::status::read(ctx.repo, ctx.stop)
-        .map_err(|error| ApplyError::Facts(error.into()))?;
+///
+/// `stop` is `ctx.stop` only before git has run (`refuse_unmerged`). After
+/// it has run — git stopped, or was killed part-way by the stop itself —
+/// pass `&()`: the read is the record of what git left, and a stop that
+/// cancelled git would otherwise cancel it too, every time, turning a held
+/// rebase into a `Facts` error with its commands never held (M7/02b; the
+/// same rule as `record::read_after` and `set_aside::close`).
+pub(super) fn unmerged_paths(
+    ctx: &Context<'_>,
+    stop: &dyn Stop,
+) -> Result<Vec<PathBuf>, ApplyError> {
+    let status =
+        graft_git::status::read(ctx.repo, stop).map_err(|error| ApplyError::Facts(error.into()))?;
     Ok(status
         .entries
         .into_iter()
@@ -321,7 +331,7 @@ fn stopped_on_edit(
     commands: Vec<String>,
 ) -> Result<ApplyError, ApplyError> {
     ctx.journal.hold_commands(&entry.id, commands.clone());
-    let paths = unmerged_paths(ctx)?;
+    let paths = unmerged_paths(ctx, &())?;
     entry.commands = commands;
     Ok(ApplyError::Conflicted {
         entry: Box::new(entry),
@@ -384,7 +394,7 @@ fn still_pending(
     error: RunError,
 ) -> Result<ApplyError, ApplyError> {
     ctx.journal.hold_commands(&entry.id, commands.clone());
-    let paths = unmerged_paths(ctx)?;
+    let paths = unmerged_paths(ctx, &())?;
     entry.commands = commands;
     Ok(if paths.is_empty() {
         ApplyError::ResumeFailed {
