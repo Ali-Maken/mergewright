@@ -8,13 +8,16 @@
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"
 )]
 
+use graft::history::Phase;
+use graft::update::detail::Loading;
 use graft::update::{AppState, Status};
 use graft_core::event::KeyCode;
+use graft_core::job::JobId;
 use graft_fixtures::remote::LocalRemote;
 
 use crate::app_harness::App;
-use crate::captures::{check_shot, frame};
-use crate::remote_by_key::{local, plain, ready, run};
+use crate::captures::{check_shot, frame, radar_has_answered};
+use crate::remote_by_key::{is_ready, local, plain, run};
 
 const SIZES: [(&str, u16, u16); 2] = [("120x40", 120, 40), ("80x24", 80, 24)];
 
@@ -45,6 +48,9 @@ fn header(size: &str) -> String {
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
+# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
+#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
+#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 "
@@ -65,6 +71,31 @@ fn bottom(drawn: &[String]) -> String {
         .last()
         .map(|row| row.trim().to_owned())
         .unwrap_or_default()
+}
+
+/// Nothing a frame draws is still being read: `remote_by_key::ready`'s
+/// facts, plus a **complete** walk, `git --version` (the footer's
+/// commit-graph line) and the radar's answer.
+///
+/// `ready` alone is what `f`/`b` decide from, not what a frame shows. A
+/// frame taken there caught the walk mid-sort (`N rows so far … sorting…`)
+/// and the radar either answered or not, whichever the job pool reached
+/// first: `topic`'s no-upstream `ⓘ` on main's row in frame 4 under load,
+/// none otherwise (`KNOWN_GAPS` M7/ⓘ; the same cause as closed row M7/04b,
+/// in `remote_by_key::ready` instead of `two_boxes_over_content::ready`).
+fn at_rest(state: &AppState) -> bool {
+    is_ready(state)
+        && state.system_git.is_some()
+        && state
+            .history
+            .as_ref()
+            .is_some_and(|history| history.phase == Phase::Complete && history.promotion.is_none())
+        && radar_has_answered(state)
+}
+
+/// Pumps until [`at_rest`].
+fn rested(app: &App, state: AppState) -> AppState {
+    app.pump(state, "a frame with nothing still being read", at_rest)
 }
 
 fn type_in(app: &App, state: AppState, text: &str) -> AppState {
@@ -140,12 +171,24 @@ fn a_second_write_refused(
         work,
         &["remote", "set-url", "origin", &remote.url()],
     );
-    let settled = ready(app, settled);
+    let settled = rested(app, settled);
     let fetching = app.press(&settled, plain('f'));
     let second = fetching.operating.expect("the second fetch launched");
     let prompt = app.press(&fetching, plain('b'));
     let prompt = type_in(app, prompt, "other");
     let refused = app.key(&prompt, KeyCode::Enter);
+    assert!(
+        matches!(refused.radar.context, Loading::Ready(_)),
+        "frame 4 would be drawn before the radar answered: {:?}",
+        refused.radar.context
+    );
+    assert!(
+        refused
+            .history
+            .as_ref()
+            .is_some_and(|history| history.phase == Phase::Complete),
+        "frame 4 would be drawn from a walk still sorting"
+    );
     assert!(refused.name_prompt.is_some(), "refused inside the prompt");
     assert_eq!(refused.operating, Some(second), "no second write started");
 
@@ -165,7 +208,7 @@ fn a_second_write_refused(
 fn sit() -> Sitting {
     let remote = local();
     let (app, state) = App::open(remote.work());
-    let state = ready(&app, state);
+    let state = rested(&app, state);
     let prompt_keys = {
         let open = app.press(&state, plain('b'));
         assert!(open.name_prompt.is_some(), "b opened the name prompt");
@@ -216,6 +259,34 @@ fn check_rows(sitting: &Sitting, size: &str, rows: &[String]) {
         rows[5].contains(sitting.fetched_words.as_str()) && rows[5].contains('\u{2713}'),
         "{}",
         at(5)
+    );
+}
+
+/// `KNOWN_GAPS` M7/ⓘ, both orderings of the race set by hand on a real state:
+/// the radar's answer, or the walk's end, not landed yet is not at rest, so
+/// no frame is taken in either gap; the state [`rested`] hands back is.
+#[test]
+fn a_frame_waits_for_the_radar_and_the_whole_walk() {
+    let remote = local();
+    let (app, state) = App::open(remote.work());
+    let state = rested(&app, state);
+    app.close();
+    assert!(at_rest(&state));
+
+    let mut radar_late = state.clone();
+    radar_late.radar.context = Loading::Pending(JobId::new(u64::MAX));
+    assert!(
+        is_ready(&radar_late) && !at_rest(&radar_late),
+        "`ready` holds before the radar answers; a frame must not"
+    );
+
+    let mut still_sorting = state;
+    if let Some(history) = still_sorting.history.as_mut() {
+        history.phase = Phase::Streaming;
+    }
+    assert!(
+        is_ready(&still_sorting) && !at_rest(&still_sorting),
+        "`ready` holds mid-sort; a frame must not"
     );
 }
 

@@ -18,6 +18,9 @@
 #    with its cause); one `⏎` would now create.
 # 6. `esc`: the prompt closes and the fetch's finished line shows, with its
 #    tick — it arrived under the box and was not acknowledged unseen.
+# - Frame 4's `ⓘ` on main's row is the radar's: `topic` has no upstream.
+#   Frames 5-6 are drawn the moment the fetch answers, when its refresh has
+#   thrown the radar's answer away and not yet read it again: no `ⓘ`.
 # - Colour is unverified (CLAUDE.md rule 5).
 #
 === frame 1: `f` to nowhere, `b`, the fetch fails under the prompt ===
@@ -147,8 +150,8 @@
  branch topic at d5ae5fd…
 
 === frame 4: `f`, `b`, `other ⏎` while the fetch runs ===
- graft /code/api  148 rows so far  date order, sorting…
-◆ ▏  [◆ main ⇄ origin] [topic] Commit 200                                                                GF 7y   d5ae5fd
+ graft /code/api  200 commits
+◆ ▏ⓘ [◆ main ⇄ origin] [topic] Commit 200                                                                GF 7y   d5ae5fd
 ●    Commit 199                                                                                          GF 7y   13e6ab1
 ●    Commit 198                                                                                          GF 7y   f5055d9
 ●    Commit 197                                                                                          GF 7y   2cce853

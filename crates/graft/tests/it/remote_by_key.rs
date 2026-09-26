@@ -94,20 +94,23 @@ pub(crate) fn plain(c: char) -> KeyPress {
 /// Everything `f`/`p`/`P` decide from has landed: rows, refs, the working
 /// tree, and the remote facts with no re-read in flight.
 pub(crate) fn ready(app: &App, state: AppState) -> AppState {
-    app.pump(state, "the first rows, refs and remote facts", |state| {
-        state.working_tree.is_some()
-            && state.refs.is_some()
-            // The refs the last read asked for: after a write's refresh `P`
-            // refuses in words until they land (m6-conflicts/49).
-            && !matches!(state.refs_read, RefsRead::Pending(_))
-            && matches!(state.remotes, Loading::Ready(_))
-            && state.remote.reading.is_none()
-            && state
-                .history
-                .as_ref()
-                .and_then(|history| history.window.as_ref())
-                .is_some_and(|window| !window.rows.is_empty())
-    })
+    app.pump(state, "the first rows, refs and remote facts", is_ready)
+}
+
+/// [`ready`]'s test, for a caller that waits on more than it does.
+pub(crate) fn is_ready(state: &AppState) -> bool {
+    state.working_tree.is_some()
+        && state.refs.is_some()
+        // The refs the last read asked for: after a write's refresh `P`
+        // refuses in words until they land (m6-conflicts/49).
+        && !matches!(state.refs_read, RefsRead::Pending(_))
+        && matches!(state.remotes, Loading::Ready(_))
+        && state.remote.reading.is_none()
+        && state
+            .history
+            .as_ref()
+            .and_then(|history| history.window.as_ref())
+            .is_some_and(|window| !window.rows.is_empty())
 }
 
 /// Runs the pending write to its answer, whatever it was.

@@ -197,17 +197,20 @@ pub fn settled_frame(app: &crate::app_harness::App, state: AppState) -> AppState
 /// marks; [`settled_frame`] waits only for `reading…` and `sorting…`
 /// (review m6-look-finish-wave2 M3).
 pub fn radar_answered(app: &crate::app_harness::App, state: AppState) -> AppState {
+    app.pump(state, "the radar's answer", radar_has_answered)
+}
+
+/// [`radar_answered`]'s test, for a caller that waits on more than it does.
+pub fn radar_has_answered(state: &AppState) -> bool {
     use graft::update::detail::Loading;
-    app.pump(state, "the radar's answer", |state| {
-        matches!(state.radar.context, Loading::Ready(_))
-            && state.radar.built_from.is_some()
-            && !matches!(state.radar.duplicates, Loading::Pending(_))
-            && !state
-                .radar
-                .force_push
-                .values()
-                .any(|verdict| matches!(verdict, Loading::Pending(_)))
-    })
+    matches!(state.radar.context, Loading::Ready(_))
+        && state.radar.built_from.is_some()
+        && !matches!(state.radar.duplicates, Loading::Pending(_))
+        && !state
+            .radar
+            .force_push
+            .values()
+            .any(|verdict| matches!(verdict, Loading::Pending(_)))
 }
 
 #[cfg(test)]
