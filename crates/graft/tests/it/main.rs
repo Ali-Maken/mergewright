@@ -20,6 +20,7 @@ mod credential_by_key;
 mod dependency_edges;
 mod esc_and_the_walk;
 mod finish;
+mod frame_trace;
 #[cfg(feature = "heavy-tests")]
 mod frames;
 mod gallery;

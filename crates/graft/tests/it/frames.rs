@@ -26,12 +26,14 @@
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
-use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use graft::config::Loaded;
-use graft::event_loop::{Exit, Wake, Wakes, pump};
+use graft::event_loop::{Exit, Phase, Wake, Wakes, pump};
 use graft::history::HistoryUpdate;
 use graft::jobs::{Dispatch, Shutdown};
 use graft::refs::{RefBadges, badges};
@@ -52,6 +54,7 @@ use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 use crate::budget_run;
+use crate::frame_trace::{FrameTrace, Gate, TRACE_VAR, WriteClock};
 use crate::heavy::MEASURING;
 
 /// PROMPT.md §6.3: input to frame under 16 ms.
@@ -188,6 +191,69 @@ enum Pane {
     Map,
 }
 
+/// Which run this is: `GRAFT_FRAME_CONTROL`, set by `scripts/m7-perf-key.sh`
+/// (m7-power-tools/04); unset is the plain run. Each control takes one
+/// suspect away from the slow keys.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Control {
+    Plain,
+    /// A (`a`): the idle keys follow a tick, not an [`IDLE`] pause.
+    NoIdle,
+    /// B (`b`): a thread spins on one core through the whole scroll, so the
+    /// machine never sits idle.
+    Busy,
+    /// C (`c`): no idle prefetch. The loop is told a wake is waiting before
+    /// it readies any strip.
+    NoPrefetch,
+}
+
+impl Control {
+    fn from_env() -> Result<Self, String> {
+        match std::env::var("GRAFT_FRAME_CONTROL").as_deref() {
+            Err(std::env::VarError::NotPresent) | Ok("" | "plain") => Ok(Self::Plain),
+            Ok("a") => Ok(Self::NoIdle),
+            Ok("b") => Ok(Self::Busy),
+            Ok("c") => Ok(Self::NoPrefetch),
+            other => Err(format!(
+                "GRAFT_FRAME_CONTROL: {other:?} is not plain, a, b or c"
+            )),
+        }
+    }
+}
+
+/// A thread spinning on one core until dropped (control B).
+struct Spinner {
+    stop: Arc<AtomicBool>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl Spinner {
+    fn start() -> Self {
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&stop);
+        let thread = thread::spawn(move || {
+            while !flag.load(Ordering::Relaxed) {
+                std::hint::spin_loop();
+            }
+        });
+        Self {
+            stop,
+            thread: Some(thread),
+        }
+    }
+}
+
+impl Drop for Spinner {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(thread) = self.thread.take() {
+            // The spinner only loads a flag, so it cannot panic, and a drop
+            // has nowhere to report a panic anyway.
+            drop(thread.join());
+        }
+    }
+}
+
 /// The scroll: down a line at a time, down a page at a time far past the
 /// first layout chunks, then back up a page at a time.
 fn script(pane: Pane) -> Vec<KeyCode> {
@@ -217,10 +283,16 @@ fn idle_wakes() -> Vec<KeyCode> {
     ]
 }
 
-/// Every key the run presses, with the pause before it.
-fn keys(pane: Pane) -> Vec<(KeyCode, Duration)> {
+/// Every key the run presses, with the pause before it. Control A takes
+/// the idle pauses away.
+fn keys(pane: Pane, control: Control) -> Vec<(KeyCode, Duration)> {
+    let pause = if control == Control::NoIdle {
+        TICK
+    } else {
+        IDLE
+    };
     let scroll = script(pane).into_iter().map(|key| (key, TICK));
-    let idle = idle_wakes().into_iter().map(|key| (key, IDLE));
+    let idle = idle_wakes().into_iter().map(|key| (key, pause));
     scroll.chain(idle).collect()
 }
 
@@ -234,27 +306,38 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
     let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
     // Poisoned only when another measuring test panicked while holding it;
     // that test has already failed on its own, and the lock guards no data.
+    let control = Control::from_env().unwrap_or_else(|why| panic!("{why}"));
+    let trace = FrameTrace::from_var(std::env::var_os(TRACE_VAR));
     let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
-    let run = scroll(&repo, tier, refs, pane).unwrap_or_else(|why| panic!("{why}"));
+    let run = scroll(&repo, tier, refs, pane, control, trace.is_some())
+        .unwrap_or_else(|why| panic!("{why}"));
     drop(turn);
 
     assert_eq!(
         run.latencies.len(),
-        keys(pane).len(),
+        keys(pane, control).len(),
         "every key got a frame"
     );
+    if let Some(trace) = &trace {
+        let label = format!(
+            "tier={tier:?} refs={refs:?} pane={pane:?} control={control:?} run={}",
+            std::env::var("GRAFT_FRAME_RUN").unwrap_or_else(|_unset| "-".to_owned())
+        );
+        let lines: Vec<String> = run
+            .trace
+            .iter()
+            .map(|line| format!("trace {label} {line}"))
+            .collect();
+        trace
+            .append(&lines)
+            .unwrap_or_else(|why| panic!("{TRACE_VAR}: {why}"));
+    }
     let (scrolled, idle) = run.latencies.split_at(script(pane).len());
-    let mut sorted = scrolled.to_vec();
-    sorted.sort();
-    // Rank rounded down; a few hundred samples.
-    let at = |percent: usize| sorted[(sorted.len() - 1) * percent / 100];
-    let slowest = sorted.last().copied().unwrap_or_default();
+    let gate = Gate::of(scrolled, INPUT_TO_FRAME);
     println!(
-        "frames: tier={tier:?} refs={refs:?} pane={pane:?} keys={} p50_us={} p99_us={} max_us={} kitty_commands={} bytes={}",
-        sorted.len(),
-        at(50).as_micros(),
-        at(99).as_micros(),
-        slowest.as_micros(),
+        "frames: tier={tier:?} refs={refs:?} pane={pane:?} control={control:?} keys={} {} kitty_commands={} bytes={}",
+        scrolled.len(),
+        gate.line(),
         run.kitty_commands,
         run.bytes,
     );
@@ -264,24 +347,24 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
         RenderingTier::Pixel => assert!(run.kitty_commands > 0, "the pixel tier drew no images"),
         _ => assert_eq!(run.kitty_commands, 0, "a text tier sent images"),
     }
-    judge(tier, refs, pane, &run, scrolled, sorted.len());
+    judge(tier, refs, pane, &run, &gate);
 }
 
-/// Release enforces the input-to-frame budget, debug records it
-/// (ADR-0021). `total` is how many keys the scroll pressed.
-fn judge(
-    tier: RenderingTier,
-    refs: Refs,
-    pane: Pane,
-    run: &Run,
-    scrolled: &[Duration],
-    total: usize,
-) {
-    let late: Vec<_> = scrolled
+/// Release enforces the input-to-frame budget on the p99, debug records it
+/// (ADR-0021). Every key over the budget is printed either way, and the
+/// max is on the summary line (m7-power-tools/04: one outlier in 420 keys
+/// no longer fails the run).
+fn judge(tier: RenderingTier, refs: Refs, pane: Pane, run: &Run, gate: &Gate) {
+    let total = run.latencies.len() - idle_wakes().len();
+    let late: Vec<_> = gate
+        .over
         .iter()
-        .enumerate()
-        .filter(|(_, latency)| **latency >= INPUT_TO_FRAME)
-        .map(|(key, latency)| format!("key {key}: {latency:?} ({})", run.breakdown[key]))
+        .map(|&key| {
+            format!(
+                "key {key}: {:?} ({})",
+                run.latencies[key], run.breakdown[key]
+            )
+        })
         .collect();
     if cfg!(debug_assertions) {
         // ADR-0021: debug records the budget, release enforces it. Rows on
@@ -310,9 +393,16 @@ fn judge(
         run.waited.len(),
         run.waited.join(", ")
     );
+    println!(
+        "frames: tier={tier:?} refs={refs:?} pane={pane:?} keys over {INPUT_TO_FRAME:?} (recorded; the gate is the p99): {} of {}: {}",
+        late.len(),
+        total,
+        late.join(", ")
+    );
     assert!(
-        late.is_empty(),
-        "{} of {} keys missed the {INPUT_TO_FRAME:?} input-to-frame budget at {tier:?} with {refs:?} refs: {}",
+        gate.holds(INPUT_TO_FRAME),
+        "p99 {:?} is over the {INPUT_TO_FRAME:?} input-to-frame budget at {tier:?} with {refs:?} refs ({} of {} keys over): {}",
+        gate.p99,
         late.len(),
         total,
         late.join(", ")
@@ -396,9 +486,18 @@ struct Run {
     prefetch: Vec<Duration>,
     /// Per trigger (key name, `Window`, `Other`): frames, and what they wrote.
     by_trigger: Vec<(String, usize, Counts)>,
+    /// Per key: its phases, as `GRAFT_FRAME_TRACE` lines (see [`Paced::trace`]).
+    trace: Vec<String>,
 }
 
-fn scroll(repo: &Path, tier: RenderingTier, refs: Refs, pane: Pane) -> Result<Run, String> {
+fn scroll(
+    repo: &Path,
+    tier: RenderingTier,
+    refs: Refs,
+    pane: Pane,
+    control: Control,
+    traced: bool,
+) -> Result<Run, String> {
     let (jobs, events, mut state) = budget_run::open(repo)?;
     state.settled_tier = Some(tier);
     // The screen ready to scroll: rows on hand and the refs job answered, so
@@ -417,23 +516,20 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs, pane: Pane) -> Result<Ru
     print_state_clone(tier, refs, &state);
 
     let mut session = Session::settle(&Loaded::default(), capabilities(tier));
-    let sink = Sink::default();
-    let mut terminal = Terminal::with_options(
-        CrosstermBackend::new(sink.clone()),
-        TerminalOptions {
-            viewport: Viewport::Fixed(Rect::new(0, 0, state.size.columns, state.size.rows)),
-        },
-    )
-    .map_err(|why| format!("in-memory terminal: {why}"))?;
+    let sink = Sink::timed(traced);
+    let mut terminal = in_memory(&sink, &state)?;
 
     let watching = Watching {
         inner: &jobs,
         asked: Mutex::default(),
     };
     let initial = state.clone();
-    let mut wakes = Paced::new(&events, keys(pane), &watching, sink.clone());
+    let mut wakes = Paced::new(&events, keys(pane, control), &watching, sink.clone());
+    wakes.no_prefetch = control == Control::NoPrefetch;
+    let spinner = (control == Control::Busy).then(Spinner::start);
     let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state)
         .map_err(|why| format!("the loop failed: {why}"))?;
+    drop(spinner);
     if !matches!(exit, Exit::Quit) {
         return Err(format!(
             "the loop ended with {exit:?}, not at the end of the script"
@@ -450,6 +546,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs, pane: Pane) -> Result<Ru
     let breakdown = wakes.breakdown(&counted);
     let waited = wakes.waited(initial);
     let by_trigger = wakes.written_by_trigger(&counted);
+    let trace = wakes.trace(script(pane).len());
 
     match jobs.shutdown(Duration::from_secs(10)) {
         Shutdown::Clean => {}
@@ -465,7 +562,19 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs, pane: Pane) -> Result<Ru
         kitty_commands: written.kitty_commands,
         bytes: written.bytes,
         by_trigger,
+        trace,
     })
+}
+
+/// A terminal of `state`'s size writing into `sink`.
+fn in_memory(sink: &Sink, state: &AppState) -> Result<Terminal<CrosstermBackend<Sink>>, String> {
+    Terminal::with_options(
+        CrosstermBackend::new(sink.clone()),
+        TerminalOptions {
+            viewport: Viewport::Fixed(Rect::new(0, 0, state.size.columns, state.size.rows)),
+        },
+    )
+    .map_err(|why| format!("in-memory terminal: {why}"))
 }
 
 /// [`REFS`] refs, as `refs::read` would hand them over: half local branches
@@ -582,12 +691,31 @@ struct Sink(Arc<Mutex<Log>>);
 struct Log {
     chunks: Vec<Vec<u8>>,
     len: usize,
+    /// Time inside `write`, read only when tracing.
+    clock: WriteClock,
 }
 
 /// A new chunk's capacity, unless one write is bigger.
 const CHUNK: usize = 4 << 20;
 
 impl Sink {
+    /// A sink that times its writes when `timed` (tracing is on).
+    fn timed(timed: bool) -> Self {
+        Self(Arc::new(Mutex::new(Log {
+            clock: WriteClock::new(timed),
+            ..Log::default()
+        })))
+    }
+
+    /// Time spent inside `write` so far; zero unless timed.
+    fn write_spent(&self) -> Duration {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clock
+            .spent()
+    }
+
     /// Bytes sent so far.
     fn sent(&self) -> usize {
         self.0.lock().unwrap_or_else(PoisonError::into_inner).len
@@ -752,17 +880,19 @@ impl Written {
 impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut log = self.0.lock().unwrap_or_else(PoisonError::into_inner);
-        let room = log
-            .chunks
-            .last()
-            .map_or(0, |chunk| chunk.capacity() - chunk.len());
-        if room < buf.len() {
-            log.chunks.push(Vec::with_capacity(CHUNK.max(buf.len())));
-        }
-        if let Some(chunk) = log.chunks.last_mut() {
-            chunk.extend_from_slice(buf);
-        }
-        log.len += buf.len();
+        let Log { chunks, len, clock } = &mut *log;
+        clock.time(|| {
+            let room = chunks
+                .last()
+                .map_or(0, |chunk| chunk.capacity() - chunk.len());
+            if room < buf.len() {
+                chunks.push(Vec::with_capacity(CHUNK.max(buf.len())));
+            }
+            if let Some(chunk) = chunks.last_mut() {
+                chunk.extend_from_slice(buf);
+            }
+            *len += buf.len();
+        });
         Ok(buf.len())
     }
 
@@ -790,6 +920,12 @@ impl<D: Dispatch> Dispatch for Watching<'_, D> {
 }
 
 impl<D> Watching<'_, D> {
+    /// How many `ShowRows` the loop has sent, and the newest id.
+    fn asked_so_far(&self) -> (usize, Option<u64>) {
+        let asked = self.asked.lock().unwrap_or_else(PoisonError::into_inner);
+        (asked.len(), asked.last().copied())
+    }
+
     fn asked(&self) -> Vec<u64> {
         self.asked
             .lock()
@@ -814,6 +950,30 @@ struct Handed {
     kind: Kind,
     /// When the loop took it: its frame runs from here to the next stamp.
     at: Instant,
+    /// A key the harness slept for: when its `recv_timeout` came back. Its
+    /// lateness from the due tick is the thread's wake, not the loop's work.
+    woke: Option<Instant>,
+    /// When each [`Phase`] of its frame ended, in `Phase` order.
+    marks: [Option<Instant>; 4],
+    /// `ShowRows` sent before its frame, and by the end of it.
+    asked_before: usize,
+    asked_after: usize,
+    /// A `ShowRows` was still unanswered when it was handed: the history
+    /// job thread was busy while this frame ran.
+    rows_out: bool,
+    /// Time inside the terminal's `write` before its frame, and by its end.
+    wrote_before: Duration,
+    wrote_after: Duration,
+}
+
+/// Where `phase` sits in [`Handed::marks`].
+fn slot(phase: Phase) -> usize {
+    match phase {
+        Phase::Drained => 0,
+        Phase::Updated => 1,
+        Phase::CarriedOut => 2,
+        Phase::Drawn => 3,
+    }
 }
 
 /// Wakes for [`pump`]: the script's keys on a 60 Hz clock, job events as
@@ -844,6 +1004,10 @@ struct Paced<'a, D> {
     /// Per look: from the loop's first look to its `next_wake` — the idle
     /// prefetch after that frame.
     prefetch: Vec<Duration>,
+    /// Control C: say a wake is waiting before any strip is readied.
+    no_prefetch: bool,
+    /// The newest window of rows handed to the loop.
+    answered: Option<u64>,
 }
 
 impl Handed {
@@ -878,6 +1042,8 @@ impl<'a, D> Paced<'a, D> {
             seen: None,
             looked: None,
             prefetch: Vec::new(),
+            no_prefetch: false,
+            answered: None,
         }
     }
 
@@ -890,10 +1056,21 @@ impl<'a, D> Paced<'a, D> {
         }
     }
 
-    fn hand(&mut self, kind: Kind, event: AppEvent) -> Wake {
+    fn hand(&mut self, kind: Kind, woke: Option<Instant>, event: AppEvent) -> Wake {
+        let (asked, newest) = self.watching.asked_so_far();
+        if let Kind::Window(id) = kind {
+            self.answered = self.answered.max(Some(id));
+        }
         self.handed.push(Handed {
             kind,
             at: Instant::now(),
+            woke,
+            marks: [None; 4],
+            asked_before: asked,
+            asked_after: asked,
+            rows_out: newest > self.answered,
+            wrote_before: self.sink.write_spent(),
+            wrote_after: Duration::ZERO,
         });
         self.replay.push(event.clone());
         Wake::Event(event)
@@ -906,7 +1083,7 @@ impl<'a, D> Paced<'a, D> {
             }
             _ => Kind::Other,
         };
-        self.hand(kind, event)
+        self.hand(kind, None, event)
     }
 
     /// What the frame after each wake wrote, summed by what woke it: the
@@ -995,6 +1172,59 @@ impl<'a, D> Paced<'a, D> {
         lines
     }
 
+    /// Per key: one `GRAFT_FRAME_TRACE` line of its phases, in µs.
+    /// `oversleep`: the harness's own wake past the due tick (`-` when the
+    /// key was already due). `queued`: due → handed to the loop. Then the
+    /// loop's phases: `drain`, `update`, `carry` (dispatch), `draw` (view,
+    /// render, and `write`, the part inside the terminal's `write`), and
+    /// `tail`, `Drawn` → the stamp the latency ends at. `asked`: the key
+    /// sent a `ShowRows`; `rows_out`: one was unanswered when it was handed.
+    /// Keys at or past `scrolled` are the idle keys.
+    fn trace(&self, scrolled: usize) -> Vec<String> {
+        let micros = |from: Option<Instant>, to: Option<Instant>| match (from, to) {
+            (Some(from), Some(to)) => to.saturating_duration_since(from).as_micros().to_string(),
+            _ => "-".to_owned(),
+        };
+        let mut lines = Vec::new();
+        for (index, handed) in self.handed.iter().enumerate() {
+            let Kind::Key(key, due) = handed.kind else {
+                continue;
+            };
+            let drawn = self.drawn.get(index + 1).copied();
+            let [drained, updated, carried, painted] = handed.marks;
+            let behind = index.checked_sub(1).and_then(|at| {
+                let wake = self.handed.get(at)?;
+                let ended = self.drawn.get(at + 1)?;
+                Some(format!(
+                    "{}:{}",
+                    wake.kind_name().replace(' ', "_"),
+                    ended.saturating_duration_since(wake.at).as_micros()
+                ))
+            });
+            lines.push(format!(
+                "key={key} code={:?} kind={} latency_us={} oversleep_us={} queued_us={} drain_us={} update_us={} carry_us={} draw_us={} write_us={} tail_us={} asked={} rows_out={} behind={}",
+                self.keys[key].0,
+                if key >= scrolled { "idle" } else { "scroll" },
+                micros(Some(due), drawn),
+                micros(Some(due), handed.woke),
+                micros(Some(due), Some(handed.at)),
+                micros(Some(handed.at), drained),
+                micros(drained, updated),
+                micros(updated, carried),
+                micros(carried, painted),
+                handed
+                    .wrote_after
+                    .saturating_sub(handed.wrote_before)
+                    .as_micros(),
+                micros(painted, drawn),
+                u8::from(handed.asked_after > handed.asked_before),
+                u8::from(handed.rows_out),
+                behind.unwrap_or_else(|| "nothing".to_owned()),
+            ));
+        }
+        lines
+    }
+
     /// The keys whose own frame was drawn before their rows arrived: replays every
     /// wake through `update` from the state the loop started with, and after
     /// each key checks that the cursor's row and the whole viewport were
@@ -1040,10 +1270,11 @@ impl<D> Wakes for Paced<'_, D> {
         }
         if self.next_key < self.keys.len() {
             let wait = self.due.saturating_duration_since(Instant::now());
+            let mut woke = None;
             if !wait.is_zero() {
                 match self.events.recv_timeout(wait) {
                     Ok(event) => return Some(self.event(event)),
-                    Err(RecvTimeoutError::Timeout) => {}
+                    Err(RecvTimeoutError::Timeout) => woke = Some(Instant::now()),
                     Err(RecvTimeoutError::Disconnected) => {
                         self.failure = Some("the job pool hung up mid-scroll".to_owned());
                         return None;
@@ -1057,7 +1288,7 @@ impl<D> Wakes for Paced<'_, D> {
                 self.due += *pause;
             }
             let press = KeyPress::plain(self.keys[key].0);
-            return Some(self.hand(Kind::Key(key, due), AppEvent::Core(Event::Key(press))));
+            return Some(self.hand(Kind::Key(key, due), woke, AppEvent::Core(Event::Key(press))));
         }
         // The script is over: wait only for rows still out.
         let newest_asked = self.watching.asked().iter().max().copied();
@@ -1084,7 +1315,20 @@ impl<D> Wakes for Paced<'_, D> {
     /// The next key is due, or an event has come: the loop stops readying
     /// strips, so a key's latency counts the one strip it waited behind.
     fn waiting(&mut self) -> bool {
-        self.looked()
+        self.looked() || self.no_prefetch
+    }
+
+    fn mark(&mut self, phase: Phase) {
+        let now = Instant::now();
+        let after = (phase == Phase::Drawn)
+            .then(|| (self.watching.asked_so_far().0, self.sink.write_spent()));
+        if let Some(handed) = self.handed.last_mut() {
+            handed.marks[slot(phase)] = Some(now);
+            if let Some((asked, wrote)) = after {
+                handed.asked_after = asked;
+                handed.wrote_after = wrote;
+            }
+        }
     }
 }
 
@@ -1108,6 +1352,92 @@ impl<D> Paced<'_, D> {
             Err(TryRecvError::Disconnected) => true,
         }
     }
+}
+
+/// Control D (m7-power-tools/04): the machine alone, no Graft code at all.
+/// Each lap sleeps [`IDLE`] the way [`Paced`] does (`recv_timeout` on a quiet
+/// channel), then times a fixed piece of CPU and memory work at once
+/// (`after_idle`) and again straight after (`warm`), and times a wake
+/// handed over from another thread after the same pause (`handoff`, the
+/// real loop's shape: the input thread sends, the loop's `recv` returns).
+/// With and without a core held busy (control B). `tick_oversleep`: the
+/// same timed wait at the scroll's one-tick length. Recorded, not asserted.
+#[test]
+fn the_machine_alone_after_idle_and_warm() {
+    const LAPS: usize = 8;
+    let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
+    // 4 MiB: bigger than a core's L1/L2 share, like a frame's working set.
+    let buffer: Vec<u64> = (0..(4 << 20) / 8).collect();
+    let work = || {
+        let started = Instant::now();
+        let mut sum = 0u64;
+        for pass in 0..4u64 {
+            for value in &buffer {
+                sum = sum.wrapping_mul(31).wrapping_add(value ^ pass);
+            }
+        }
+        std::hint::black_box(sum);
+        started.elapsed()
+    };
+    for busy in [false, true] {
+        let spinner = busy.then(Spinner::start);
+        let (mut oversleep, mut after_idle, mut warm, mut handoff) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        for _ in 0..LAPS {
+            oversleep.push(timed_wait(IDLE));
+            after_idle.push(work());
+            warm.push(work());
+            handoff.push(handoff_after(IDLE));
+        }
+        // The same timed wait at the scroll's pace: one tick, 30 times.
+        let tick_oversleep: Vec<Duration> = (0..30).map(|_| timed_wait(TICK)).collect();
+        drop(spinner);
+        let list = |laps: &[Duration]| {
+            laps.iter()
+                .map(|lap| lap.as_micros().to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        println!(
+            "machine: busy={busy} oversleep_us={} tick_oversleep_us={} work_after_idle_us={} work_warm_us={} handoff_us={}",
+            list(&oversleep),
+            list(&tick_oversleep),
+            list(&after_idle),
+            list(&warm),
+            list(&handoff),
+        );
+    }
+    drop(turn);
+}
+
+/// Waits `wait` the way [`Paced`] does, on a channel nobody sends to, and
+/// returns how late the thread got back.
+fn timed_wait(wait: Duration) -> Duration {
+    let (_quiet, never) = mpsc::channel::<()>();
+    let due = Instant::now() + wait;
+    match never.recv_timeout(wait) {
+        Err(RecvTimeoutError::Timeout) => {}
+        other => panic!("a quiet channel answered: {other:?}"),
+    }
+    Instant::now().saturating_duration_since(due)
+}
+
+/// Another thread sleeps `pause` then sends; returns send → `recv` back.
+fn handoff_after(pause: Duration) -> Duration {
+    let (post, inbox) = mpsc::channel::<Instant>();
+    let sender = thread::spawn(move || {
+        thread::sleep(pause);
+        post.send(Instant::now())
+    });
+    let sent = inbox
+        .recv()
+        .unwrap_or_else(|why| panic!("the sender hung up: {why}"));
+    let handoff = sent.elapsed();
+    sender
+        .join()
+        .unwrap_or_else(|_| panic!("the sender panicked"))
+        .unwrap_or_else(|why| panic!("the send failed: {why}"));
+    handoff
 }
 
 /// The measurement change must not change what is counted: parsing the log

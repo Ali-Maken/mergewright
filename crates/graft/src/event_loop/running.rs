@@ -16,7 +16,7 @@ use ratatui::backend::Backend;
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
 use super::outside::{Handover, Outside};
 use super::redetect;
-use super::{Exit, Wake, Wakes};
+use super::{Exit, Phase, Wake, Wakes};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
 use crate::update::{AppEvent, AppState, Command, Product, Quit, update};
@@ -112,6 +112,7 @@ where
         // Replies to the frames already drawn: an `ENOENT` here makes the
         // next frame transmit that strip again.
         let replied = graphics.drain()?;
+        wakes.mark(Phase::Drained);
 
         let event = match wake {
             Wake::Event(event) => event,
@@ -134,8 +135,10 @@ where
 
         let (next, commands) = update(&state, event);
         state = next;
+        wakes.mark(Phase::Updated);
 
         state = carry_out(terminal, session, jobs, state, outside, commands)?;
+        wakes.mark(Phase::CarriedOut);
 
         match &state.quit {
             Some(Quit::Requested) => return Ok(Exit::Quit),
@@ -146,6 +149,7 @@ where
         }
 
         draw(terminal, session, &state, graphics)?;
+        wakes.mark(Phase::Drawn);
     }
 }
 
