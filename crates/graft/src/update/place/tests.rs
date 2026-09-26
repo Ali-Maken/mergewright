@@ -794,6 +794,60 @@ fn esc_from_blame_returns_where_b_was_pressed() {
         back.history.as_ref().map(|history| history.cursor),
         before.history.as_ref().map(|history| history.cursor)
     );
+
+    // After `⏎`, `Esc Esc`: with its landing still seeking (Lina's commit is
+    // off the rows on hand), the landing is dropped and nothing moved.
+    let (mut landed, _) = press(&state, KeyCode::Enter);
+    landed.detail.focus = DetailFocus::Diff;
+    let left = esc_esc(&landed);
+    assert_eq!(left.line_landing, None, "the ⏎ landing must not land later");
+    assert_eq!(left.detail.spec, before.detail.spec);
+    assert_eq!(left.detail.focus, before.detail.focus);
+    assert_eq!(left.detail.body_cursor, before.detail.body_cursor);
+    assert_graph_cursor(&left, &before);
+
+    // With the graph moved (the landing got there), leaving lands back.
+    if let Some(history) = landed.history.as_mut() {
+        history.cursor += 1;
+    }
+    let left = esc_esc(&landed);
+    assert_graph_cursor(&left, &before);
+    assert_landed_back(&left, &before);
+}
+
+/// Back on `before`'s spec, file, line and focus: landed already (the pane
+/// had them on hand), or on the way.
+fn assert_landed_back(state: &AppState, before: &AppState) {
+    let at = diff_cursor(before).and_then(|cursor| cursor.at);
+    if let Some(landing) = &state.line_landing {
+        assert_eq!(Some(landing.spec), before.detail.spec);
+        assert_eq!(landing.path, PathBuf::from("a.rs"));
+        assert_eq!(landing.at, at);
+        assert_eq!(landing.then_focus, Some(before.detail.focus));
+    } else {
+        assert_eq!(state.detail.spec, before.detail.spec);
+        assert_eq!(state.detail.focus, before.detail.focus);
+        let cursor = diff_cursor(state).expect("a cursor");
+        assert_eq!(cursor.path, PathBuf::from("a.rs"));
+        assert_eq!(cursor.at, at);
+    }
+}
+
+/// `Esc` back to blame from the landed pane, `Esc` again out of the trail.
+fn esc_esc(landed: &AppState) -> AppState {
+    let (blame, _) = press(landed, KeyCode::Escape);
+    assert!(blame.trail.on_screen().is_some(), "blame first");
+    let (left, _) = press(&blame, KeyCode::Escape);
+    assert!(!left.trail.is_live());
+    left
+}
+
+fn assert_graph_cursor(state: &AppState, before: &AppState) {
+    assert_eq!(
+        state.history.as_ref().map(|history| history.cursor),
+        before.history.as_ref().map(|history| history.cursor),
+        "the graph cursor"
+    );
 }
 
 #[test]

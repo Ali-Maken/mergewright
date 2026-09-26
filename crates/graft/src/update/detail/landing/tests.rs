@@ -353,3 +353,26 @@ fn show_line_commit_with_a_pinned_base_says_so() {
         )
     );
 }
+
+/// The base's own row shows the base's own diff (`follow_selection` leaves
+/// it alone), so a landing on the base itself still lands.
+#[test]
+fn show_line_on_the_pinned_base_itself_lands() {
+    let mut state = on_graph();
+    state.compare_base = Some(super::super::state::CompareBase {
+        oid: commit(3),
+        row: 2,
+    });
+    let commands = show_line(
+        &mut state,
+        DetailSpec::Commit(commit(3)),
+        Path::new("src/x.rs"),
+        Some(new_line(2)),
+    );
+    let (state, commands) = step(&state, files(list_job(&commands), &["src/x.rs"]));
+    let (state, _) = step(&state, diff_answer(&commands, sample_diff()));
+    assert_eq!(state.line_landing, None, "landed");
+    assert_eq!(state.detail.spec, Some(DetailSpec::Commit(commit(3))));
+    assert_eq!(state.detail.body_cursor(), Some(3));
+    assert_eq!(state.compare_base.map(|base| base.oid), Some(commit(3)));
+}
