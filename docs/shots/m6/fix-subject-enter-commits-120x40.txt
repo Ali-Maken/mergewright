@@ -58,8 +58,8 @@ COMMIT ── ⎇ main ── 1 file staged
 
 == frame 2: after `⏎` ==
  graft /code/api  2 commits
-◆    [◆ main] fix: x                                                                                     GT now  0000000
-◇ ▏  add sample                                                                                          GT now  0000000
+◆ ▏  [◆ main] fix: x                                                                                     GT now  0000000
+◇    add sample                                                                                          GT now  0000000
 
 
 

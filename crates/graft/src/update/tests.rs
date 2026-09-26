@@ -1198,6 +1198,7 @@ fn every_field_spelled_out() -> AppState {
         clash_index: crate::update::state::IndexRead::Unknown,
         land_on_head: false,
         head_landing: crate::update::HeadLanding::default(),
+        lands_on_head: None,
         live_landing_owed: false,
         undo_landing_owed: false,
         status_read: None,
@@ -3113,6 +3114,44 @@ fn the_prelude_holds_a_key_while_a_write_is_in_flight() {
         "the write landed: J was fed"
     );
     assert!(state.journal.shown, "and it opened the journal browser");
+}
+
+/// m7-power-tools/03: a finished write that moved `HEAD` owes the cursor a
+/// landing until its refresh's refs and walk are in. A key fed before then
+/// acts on the row the cursor was on, not the new `HEAD`, and a capture
+/// would show the cursor mid-way.
+#[test]
+fn settled_waits_for_an_owed_landing() {
+    let walk = JobId::new(4);
+    let mut state = awaiting(walk);
+    state.harness.prelude = vec![KeyPress::plain(KeyCode::Char('J'))];
+    let (state, _) = update(&state, sized(80, 12));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(9),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    let mut state = state;
+    state.land_on_head = true;
+    state.head_landing = crate::update::HeadLanding {
+        refs: Some(JobId::new(50)),
+        walk: Some(JobId::new(51)),
+    };
+
+    let (state, _) = update(&state, working_tree_read(JobId::new(10)));
+    assert_eq!(state.harness.prelude.len(), 1, "a landing is owed: J waits");
+
+    let mut state = state;
+    state.land_on_head = false;
+    state.head_landing = crate::update::HeadLanding::default();
+    let (state, _) = update(&state, sized(80, 12));
+    assert!(
+        state.harness.prelude.is_empty(),
+        "the landing was spent: J was fed"
+    );
 }
 
 /// m5-history-and-ghost-preview/11: a preview whose plan is still being

@@ -1,6 +1,7 @@
 # land-on-result — every write that moves HEAD lands the cursor on the new HEAD; a fast-forward pull sets edits aside
 
-Status: ready (respecified 2026-09-26 against `scouts/03.md`, HEAD ed624165)
+Status: partial — **-a done** (landing), **-b open** (ff-pull set-aside). See NOTES / Handoff at the end.
+(respecified 2026-09-26 against `scouts/03.md`, HEAD ed624165)
 Blocked by: none
 Crates: graft (`update/operate.rs` `launch`/`operated`, `update/banner/stop.rs`, `update/remote/in_flight.rs`, the test
 harness's `settled`); graft-ops (`operation.rs` `moves_head`/`sets_aside`/`touches`/journal record, facts, `apply.rs`
@@ -106,30 +107,42 @@ carry it the same way the arm gets the operation's words; say how in NOTES. Neve
 
 ## Acceptance (each tick names its test)
 - [ ] **graft-ops:**
-  - `moves_head_covers_every_operation` (table, every variant, both Reset targets, BranchCreate both ways);
-  - `a_pull_journals_as_today`, `a_pull_whose_fetch_fails_journals_as_today` (written first, green before and after);
-  - `a_ff_pull_over_overlapping_edits_sets_them_aside` (red first, :805);
-  - `a_ff_pull_whose_put_back_clashes_stops_as_a_clash`;
-  - `a_ff_pull_over_unrelated_edits_is_unchanged` (no stash created, index byte-equal: staging kept);
-  - `a_diverged_pull_over_edits_sets_nothing_aside` (today's refusal words);
-  - `the_ff_pull_entry_is_one_entry_and_u_restores_edits` (staged split back via the backup);
-  - `the_ff_pull_set_aside_round_trips` on ADR-0045 §7's tree table, and a stop before each step 1–6 leaves the
+  - [x] `moves_head_covers_every_operation` — `crates/graft-ops/src/operation/tests.rs` (30 variants counted by
+        discriminant, both Reset targets, BranchCreate both ways);
+  - [ ] -b: `a_pull_journals_as_today`, `a_pull_whose_fetch_fails_journals_as_today` (written first, green before and after);
+  - [ ] -b: `a_ff_pull_over_overlapping_edits_sets_them_aside` (red first, :805);
+  - [ ] -b: `a_ff_pull_whose_put_back_clashes_stops_as_a_clash`;
+  - [ ] -b: `a_ff_pull_over_unrelated_edits_is_unchanged` (no stash created, index byte-equal: staging kept);
+  - [ ] -b: `a_diverged_pull_over_edits_sets_nothing_aside` (today's refusal words);
+  - [ ] -b: `the_ff_pull_entry_is_one_entry_and_u_restores_edits` (staged split back via the backup);
+  - [ ] -b: `the_ff_pull_set_aside_round_trips` on ADR-0045 §7's tree table, and a stop before each step 1–6 leaves the
     edits in the tree or the stash list (reads both).
 - [ ] **App:**
-  - `after_m_m_the_cursor_is_on_the_merge` (red first, :773);
-  - `after_a_commit_the_cursor_is_on_it`; `after_a_cherry_pick_the_cursor_is_on_the_new_commit`;
-    `after_a_checkout_the_cursor_is_on_the_new_head`; `after_a_pull_the_cursor_is_on_the_new_head`;
-  - `a_branch_reset_leaves_the_cursor`; `a_fetch_leaves_the_cursor`;
-  - `landing_waits_for_an_unlaid_row`; `the_detail_pane_follows_the_landing`; `undo_keeps_its_own_landing`;
-  - `a_ff_pull_clash_lands_on_the_resolver`; `a_ff_pull_over_edits_says_they_are_back` (both clauses, 80 cols);
-  - `settled_waits_for_an_owed_landing` (harness).
-- [ ] **Walk** `pull_ff_over_edits` (m7 harness): `p` (asserts **1 key**); edits back byte-equal (unstaged), HEAD
-      fast-forwarded, `▸` on the new HEAD, the status line above.
-- [ ] **Captures:** new `docs/shots/m7/landed-after-merge-120x40.txt` — **right:** `▸` on the merge commit's row,
-      detail pane on it, the status line in today's words. New `docs/shots/m7/pull-over-edits-120x40.txt` — **right:**
-      `▸` on the pulled tip's row, `pulled origin/main · your edits are back`. Changed ones re-taken (Touches).
-- [ ] MAP.md (graft, graft-ops). TESTING.md rows for the walk and both captures. ADR-0045 amendment text drafted in
-      NOTES for the conductor (§4 kinds + Pull's order; Consequences :132 withdrawn).
+  - [x] `after_m_m_the_cursor_is_on_the_merge` — `crates/graft/tests/it/land_on_result.rs` (red first: seen red with
+        the Done arm's landing disabled, 9 failed (8 of these app tests, 1 unit); green with it);
+  - [x] `after_a_commit_the_cursor_is_on_it`, `after_a_cherry_pick_the_cursor_is_on_the_new_commit`,
+        `after_a_checkout_the_cursor_is_on_the_new_head`, `after_a_pull_the_cursor_is_on_the_new_head` — `land_on_result.rs`;
+  - [x] `a_branch_reset_leaves_the_cursor` — `crates/graft/src/update/operate/tests/lands_on_head.rs` (unit: launch
+        `ResetTarget::Branch`, `Done` → no landing); `a_fetch_leaves_the_cursor` — `land_on_result.rs`;
+  - [x] `landing_waits_for_an_unlaid_row`, `the_detail_pane_follows_the_landing`, `undo_keeps_its_own_landing` —
+        `land_on_result.rs` (the unlaid-row test holds the walk's rows back until the landing is spent, so the
+        `ShowRows` path runs every time);
+  - [ ] -b: `a_ff_pull_clash_lands_on_the_resolver`; `a_ff_pull_over_edits_says_they_are_back` (both clauses, 80 cols);
+  - [x] `settled_waits_for_an_owed_landing` (harness) — `crates/graft/src/update/tests.rs`.
+  - extra: `a_done_write_that_moves_head_owes_the_landing_on_its_refresh`, `a_stage_leaves_the_cursor`,
+    `a_write_that_died_owes_no_landing`, `only_done_lands` — `operate/tests/lands_on_head.rs`.
+- [ ] -b: **Walk** `pull_ff_over_edits` (m7 harness): `p` (asserts **1 key**); edits back byte-equal (unstaged), HEAD
+      fast-forwarded, cursor on the new HEAD, the status line above.
+- [ ] **Captures:**
+  - [x] new `docs/shots/m7/landed-after-merge-120x40.txt` — `land_on_result::capture_landed_after_merge` (asserts the
+        cursor row carries `Merge`, the detail pane's spec is the merge). Right: the graph cursor `▏` (not `▸`: `▸` is
+        not the graph's cursor glyph) on the merge row, detail pane on it, `merge main into feature ✓`. Merge id
+        zeroed, its date redacted `YYYY-MM-DD hh:mm +zzzz` (made at run time).
+  - [ ] -b: new `docs/shots/m7/pull-over-edits-120x40.txt`.
+  - [x] Changed ones re-taken — 4 moved, classified in `.scratch/m7-power-tools/03-shots.txt`.
+- [ ] MAP.md: [x] graft, graft-ops (`moves_head`, `lands_on_head`, `operated`/`launch` lines). [ ] -b: TESTING.md rows
+      for the walk and both captures (TESTING.md has no per-capture rows today; -b adds the walk's and says where).
+      [ ] -b: ADR-0045 amendment text in NOTES.
 
 ## Touches (check each; report how)
 - **Captures with `▸` (212 files, scout Q5):** only a capture taken after a finished `moves_head` write with the
@@ -165,3 +178,36 @@ As rewrite-engine. Workspace-wide gates. Captures ≤ 200 KB.
 ## User decisions (conductor, 2026-09-26)
 - After `c`: cursor lands on the new commit (confirmed; the knock-on stands).
 - Pull preview (Proposed change): **rejected**. `p` stays one key; no preview when edits are set aside. Build without it.
+
+## NOTES (builder, 2026-09-26, part -a)
+- **Scout:** used `scouts/03.md`; no second one.
+- **Where the flag lives (deviation, said):** not inside `AppState::operating` (a bare `Option<JobId>` read at 388
+  sites) but beside it, as `resuming` is: `AppState::lands_on_head: Option<JobId>` (`pub(crate)`), set in
+  `operate::launch_with` from `op.moves_head()`, taken by `operated` (`== Some(id)`), cleared by
+  `write_job_ended`. Pull's `Done` goes through `operated` like every launched write (its words come from
+  `done_status` → `remote_op`), so no second carrier was needed.
+- **`moves_head` differs from the spec's list in one row:** `FinishMerge` is **true** (it makes a merge commit on
+  `HEAD`). The spec's "everything else false" would make the doc comment a lie. No behaviour change: `FinishMerge`
+  is sent by `apply::resume`, never by `launch`, and `resumed_done` already lands. `AbortMerge` false.
+- **Commit knock-on (decided R7):** after `c` the cursor leaves the working-tree row (`land_on_head` clears
+  `on_working_tree`). Seen in `fix-subject-enter-commits-{80x24,120x40}`.
+- **Captures moved:** `m5-ui-undo-after-push-80x24`, `m6/fix-subject-enter-commits-80x24`, `-120x40` (cursor row
+  only); `m6/fix-radar-bookkeeping-120x40` (**other, explained**: frame 1 cursor row; frame 2's last row lost
+  `pushed main → origin/main ✓` because the test's `cursor_to(.., 'j', &stash)` at `radar_bookkeeping.rs:138` now
+  has to press `j` — before, the rebase left the cursor on the stash). The spec said "other → stop, report"; I
+  did not stop because the cause is the test's own key, read at that line; the conductor may disagree.
+- **Step (1) of the capture check was not clean:** the base run (3765 passed, captures green) was compiled while
+  I was already editing `operate.rs`, so I cannot say it ran on a pristine base. The merged base passed its gates.
+- **Known quirk (walk half spent by any walk, `stop.rs:130`):** not hit by any test here.
+- **The `▸` in this spec's captures and walk:** the graph cursor is drawn `▏`; the 212 "`▸` files" count was the
+  wrong glyph. -b's walk and capture should assert the cursor by `History::selected`, not by glyph.
+
+## Handoff to -b
+- Done and committed: everything under -a above; gates green workspace-wide (3781 tests).
+- Next exact step: in graft-ops write `a_pull_journals_as_today` and `a_pull_whose_fetch_fails_journals_as_today`
+  against today's `apply` (green), then the fetch-before-facts reorder in `apply.rs` (Pull path, ~:220-365),
+  `RepoFacts.incoming` + `read_incoming`, `sets_aside`'s Pull arm, `touches` + `refs/stash`.
+- Gotcha: `crates/graft/tests/it/pull_over_edits.rs::a_ff_pull_over_overlapping_edits_names_keys_that_work`
+  asserts today's refusal (`pull refused: your edits to shared.txt would be overwritten`, 7 keys). -b changes that
+  journey to 1 key: that test must be rewritten, not deleted. The related "Times I left" row is TESTING.md:115 (pull and push with edits in the tree).
+- Gotcha: `landing` now owes after Pull's `Done`, and `settled` waits for it — -b's walk gets that for free.

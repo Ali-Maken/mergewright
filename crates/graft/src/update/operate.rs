@@ -44,6 +44,8 @@ pub(super) fn write_job_ended(
         return Vec::new();
     }
     state.operating = None;
+    // A write that died without answering owes no landing.
+    state.lands_on_head = None;
     // A resume that died without answering: nothing will ever take it.
     if state
         .resuming
@@ -134,6 +136,9 @@ fn launch_with(
     // box (`update::remote::tests::a_push_boxed_before_a_reread_launches_and_ops_decides`).
     let id = next_id();
     claim_write(next, id)?;
+    // Decided here, from what was asked, so `Done` never guesses the kind
+    // from its answer (m7-power-tools/03).
+    next.lands_on_head = op.moves_head().then_some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
     super::remote::launched(
         next,
@@ -877,6 +882,7 @@ pub fn operated(
         return Vec::new();
     }
     state.operating = None;
+    let lands_on_head = state.lands_on_head.take() == Some(id);
     // A write that finished before `Esc`'s stop reached it answers here as
     // usual; the cancel it outran is over.
     state.remote.cancelling = None;
@@ -901,7 +907,14 @@ pub fn operated(
             // (m3-working-tree-undo-and-stash/05). A failure leaves both
             // alone: the message is what the user has to fix.
             super::commit_editor::committed(state);
-            refresh_scope(state, applied.refresh, next_id)
+            let commands = refresh_scope(state, applied.refresh, next_id);
+            // A write that moved `HEAD` lands the cursor on its new row once
+            // this refresh's refs and walk are in, exactly as a `--continue`
+            // does (UX §3.1, m7-power-tools/03).
+            if lands_on_head {
+                super::banner::finished_lands_on_head(state, &commands);
+            }
+            commands
         }
         Operated::Incomplete { applied, error } => incomplete(state, &applied, &error, next_id),
         Operated::Conflicted {
@@ -2642,5 +2655,6 @@ mod tests {
     }
 
     mod edits_words;
+    mod lands_on_head;
     mod one_write;
 }

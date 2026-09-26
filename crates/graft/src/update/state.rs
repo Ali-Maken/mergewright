@@ -315,7 +315,8 @@ pub struct AppState {
     /// every journal, working-tree or refs read that lands makes the held
     /// answer stale ([`crate::update::clash::refresh_and_land`]).
     pub(crate) clash_index: IndexRead,
-    /// A `--continue` finished (`resumed` → `Done`): the graph cursor goes
+    /// A `--continue` finished (`resumed` → `Done`), or a write whose launch
+    /// said it moves `HEAD` did ([`AppState::lands_on_head`]): the graph cursor goes
     /// to the new `HEAD` once the refresh that answer issued has both the
     /// fresh refs and the fresh walk ([`AppState::head_landing`]). Spent by
     /// `banner::land_on_head`.
@@ -326,6 +327,13 @@ pub struct AppState {
     /// `HEAD`. `Command::ReadRefs` carries an id `update` chose for exactly
     /// this (the refs answer had no id guard before).
     pub head_landing: HeadLanding,
+    /// The write in `operating` whose finish moves `HEAD`
+    /// (`Operation::moves_head`), so its `Done` owes the same landing as a
+    /// `--continue` ([`AppState::land_on_head`], m7-power-tools/03). Decided
+    /// at launch from the operation, never guessed from the answer. Beside
+    /// `operating` rather than inside it, as `resuming` is: `operating` is
+    /// a bare id read in hundreds of places.
+    pub(crate) lands_on_head: Option<JobId>,
     /// The launch found an operation live while a modal owned the keys, so
     /// it set [`AppState::stopped`] and left the keyboard alone. The focus
     /// landing runs on the first working-tree read after the modal closes;

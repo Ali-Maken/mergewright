@@ -79,15 +79,16 @@ pub(super) fn stopped_again(
     };
 }
 
-/// A `--continue` finished: hand the keyboard to the graph and owe it a
-/// landing on the new `HEAD`, spent once the refresh `resumed` just issued
-/// has both answered its refs read and started its walk.
+/// A `--continue` finished, or a write that moves `HEAD` did
+/// (`operate::operated`'s `Done`, m7-power-tools/03): hand the keyboard to
+/// the graph and owe it a landing on the new `HEAD`, spent once the refresh
+/// just issued has both answered its refs read and started its walk.
 ///
 /// Both, because either alone can put the cursor wrong: refs from before the
 /// `c` name the old `HEAD`, and a seek into the old walk's rows is thrown
 /// away when the fresh walk replaces them (`update::history_started`
 /// reanchors on whatever the old walk had selected).
-pub(super) fn finished_lands_on_head(state: &mut AppState, commands: &[Command]) {
+pub(in crate::update) fn finished_lands_on_head(state: &mut AppState, commands: &[Command]) {
     state.detail.focus = graft_ui::detail::DetailFocus::Graph;
     let refs = commands.iter().find_map(|command| match command {
         Command::ReadRefs(id) => Some(*id),
