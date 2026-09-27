@@ -83,7 +83,7 @@ fn an_index_only_whole_restore_names_the_whole_index_and_u_redo_puts_it_back() {
 
     // The box.
     match run_undo(&repo, NOW + 1, false) {
-        Err(UndoError::Drift(drift)) => {
+        Err(UndoError::Drift { drift, .. }) => {
             assert!(drift.unknown.contains(&"the index"), "{drift:?}");
             assert_eq!(drift.replaced, whole_index, "the box names the index");
         }

@@ -340,7 +340,7 @@ fn undo_touches_only_the_paths_the_operation_changed() {
     // anything it did not expect.
     let stopped = run_undo(&repo, NOW + 1, false);
     match stopped {
-        Err(UndoError::Drift(moved)) => assert!(moved.worktree, "{moved:?}"),
+        Err(UndoError::Drift { drift: moved, .. }) => assert!(moved.worktree, "{moved:?}"),
         other => panic!("the rail should have fired: {other:?}"),
     }
 

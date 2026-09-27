@@ -220,7 +220,7 @@ fn refresh_after_failure(error: &UndoError) -> Option<Refresh> {
     match error {
         // Planning failed, or the rails stopped it: `execute` was never
         // entered, so not even a journal line exists.
-        UndoError::Nothing(_) | UndoError::Drift(_) | UndoError::Facts(_) => None,
+        UndoError::Nothing(_) | UndoError::Drift { .. } | UndoError::Facts(_) => None,
         UndoError::Restore(_) => Some(Refresh::Everything),
         // The time machine (`undo::revert_to`) stopped part-way. Every step
         // in `done` is a full `restore::execute` that ran, journaled its own
@@ -259,7 +259,7 @@ fn undone_from(
             reason: error_line(&error),
             redo: None,
         },
-        UndoError::Drift(drift) => Undone::Drift {
+        UndoError::Drift { drift, .. } => Undone::Drift {
             description: description(),
             drift: *drift,
             redo,
@@ -452,7 +452,7 @@ pub(super) fn run_revert_to(
                 // "stopped after 0 of 2 steps … u again to go ahead", naming
                 // a key that does not re-run it (m6-conflicts/77).
                 Err(UndoError::PartWay { done, error }) => match (done.len(), *error) {
-                    (0, UndoError::Drift(drift)) => RevertedTo::Drift {
+                    (0, UndoError::Drift { drift, .. }) => RevertedTo::Drift {
                         description: aimed_at,
                         total,
                         drift: *drift,

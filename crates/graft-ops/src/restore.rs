@@ -40,6 +40,11 @@ use rollback::{Before, Cancelled, roll_back_after_failure, roll_back_after_stop}
 use steps::run_step;
 
 /// Why a restore could not be made, or could not finish.
+///
+/// A stop has **one shape** here: [`RestoreError::STOPPED`], git's own
+/// `RunError::Stopped` inside [`RestoreError::Run`] (`KNOWN_GAPS` :495). A
+/// stop met while taking the backup or reading facts is folded into it where
+/// it enters, so the cancel path matches one arm.
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreError {
     /// A ref is not where the journal said it was, so the plan stopped
@@ -84,9 +89,6 @@ pub enum RestoreError {
         /// What could not be read or sealed.
         unread: Vec<AfterState>,
     },
-    /// The caller asked to stop.
-    #[error("stopped")]
-    Stopped,
     /// The caller asked to stop, and every step that had already run was put
     /// back: the repository stands exactly where it did before the restore
     /// began, and the entry is `Aborted` and not in force.
@@ -196,17 +198,31 @@ fn after_state(unread: &[AfterState]) -> String {
         .join("; ")
 }
 
+impl RestoreError {
+    /// The one shape a stop takes: git's own stop, as every `git` run
+    /// reports it.
+    pub const STOPPED: RestoreError = RestoreError::Run(RunError::Stopped);
+
+    /// A facts read's failure, the stop kept as [`Self::STOPPED`].
+    pub(crate) fn from_facts(why: FactsError) -> Self {
+        match why {
+            FactsError::Stopped => Self::STOPPED,
+            other => Self::Facts(other),
+        }
+    }
+}
+
 impl From<crate::apply::PrepareError> for RestoreError {
     fn from(why: crate::apply::PrepareError) -> Self {
         use crate::apply::PrepareError;
         match why {
-            PrepareError::Facts(why) => RestoreError::Facts(why),
+            PrepareError::Facts(why) => RestoreError::from_facts(why),
             PrepareError::Snapshot(why) => RestoreError::Snapshot(why),
             PrepareError::Journal(why) => RestoreError::Journal {
                 error: why,
                 after: None,
             },
-            PrepareError::Stopped => RestoreError::Stopped,
+            PrepareError::Stopped => RestoreError::STOPPED,
         }
     }
 }
@@ -263,7 +279,7 @@ pub(crate) fn execute_over_drift(
     replaced: Replaced,
 ) -> Result<Applied, RestoreError> {
     if ctx.stop.should_stop() {
-        return Err(RestoreError::Stopped);
+        return Err(RestoreError::STOPPED);
     }
     // Before `begin`: a refused name leaves no entry and no backup.
     check_ref_names(plan)?;
@@ -431,7 +447,7 @@ fn run_plan(
             Ok(()) => applied.push(step),
             // The runner SIGTERMed git part-way through this step, so
             // whether it landed is not knowable from the error.
-            Err(RestoreError::Stopped) => {
+            Err(RestoreError::Run(RunError::Stopped)) => {
                 cancelled = true;
                 stopped_in = Some(step);
                 break;

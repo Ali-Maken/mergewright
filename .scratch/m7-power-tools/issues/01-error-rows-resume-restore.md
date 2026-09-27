@@ -63,10 +63,10 @@ The conductor decides.
 - [x] :601 `a_failed_read_refs_in_seal_after_is_reported` (red first); `chain_states_maps_each_error_kind`. Ticked by 01a: `error_rows::a_failed_read_refs_in_seal_after_is_reported` (red first) + `error_rows::chain_states_maps_each_error_kind` (green before the fix: see 01a NOTES).
 - [x] :613 `a_facts_failure_is_not_reported_as_stopped` (red first). Ticked by 01a: test `error_rows::a_facts_failure_is_not_reported_as_stopped`. **Was green before the fix**, not red: see 01a NOTES.
 - [x] :640 `live_entry_stops_when_asked` (red first: a stop flagged before the `rev-list` returns `Stopped` promptly). Ticked by 01a: `error_rows::live_entry_stops_when_asked`, red first.
-- [ ] :495 `every_stop_is_one_shape`: a compile-level change; the test asserts the callers' single arm.
+- [x] :495 `every_stop_is_one_shape`: a compile-level change; the test asserts the callers' single arm. Ticked by 01b: `undo::tests::every_stop_is_one_shape` (graft-ops lib).
 - [x] :496 `a_restore_that_fails_mid_way_rolls_back` (red first; a fault injected on the second write). Ticked by 01a: `error_rows::a_restore_that_fails_mid_way_rolls_back` + `error_rows::a_failed_roll_back_names_what_is_left`, both red first.
 - [x] :497 `a_bad_ref_name_is_refused_before_any_write` (red first). Ticked by 01a: `error_rows::a_bad_ref_name_is_refused_before_any_write`, red first.
-- [ ] :494 `drift_on_redo_says_capital_u` (red first).
+- [x] :494 `drift_on_redo_says_capital_u` (red first). Ticked by 01b: `undo::tests::drift_on_redo_says_capital_u`, red first.
 - [ ] NOTES: each row → its test. The conductor closes the KNOWN_GAPS rows from them.
 - [ ] MAP.md (graft-ops, graft).
 
