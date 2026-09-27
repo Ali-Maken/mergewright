@@ -90,6 +90,18 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   for the trail, its keys, mouse and job answers,
   `app::view::frame::overlays::draw_place` for drawing it over the graph,
   `app::jobs::detail` for the blame job (m7-power-tools/20).
+- **Changing the history place** (a line's or a file's history, from blame's
+  `L` or the pane's `F`) → `graft-ui::history` for the picture (pure draw, no
+  state), `app::update::place` with `place/history.rs` (state, `open_history`,
+  `f_key`), `place/history_keys.rs` (its keys and mouse) and
+  `place/history_answer.rs` (trace and whole-file answers);
+  `app::jobs::detail` (`jobs/detail/history.rs`) for the trace job
+  (working-tree lines mapped to `HEAD`, the enclosing function, else the
+  block) and the whole-file read (m7-power-tools/21).
+- **Changing how a switch launches** → `app::update::switch`: the one
+  function every switch goes through — detached target → preview; changed
+  tracked files → preview with the set-aside line; otherwise at once
+  (m7-power-tools/10b).
 - **Changing the Map view or the overview strip** → `ui::map_screen` /
   `ui::overview_strip` for the widgets, `app::map` for the per-branch bucket
   walk, `app::view::map` / `app::view::strip` for their view models,

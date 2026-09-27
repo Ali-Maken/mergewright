@@ -712,6 +712,9 @@ Ask at the end, one line: in which of the three did two different things still l
     - `c0ffee1 is a merge · taking a merge isn't in Graft yet`;
     - `o takes a commit · this row isn't one` (the uncommitted row, a stash row).
   - Unsaved edits the pick touches are set aside (ADR-0045, extended; see "Where I'd differ").
+    *Amended 2026-09-27 (11a, as built):* every changed tracked file is set aside, not only those the pick touches
+    (`sets_aside` reads no commit); untracked files never move; all put back by
+    `crates/graft-ops/src/apply/set_aside/put_back.rs:66` (`.scratch/m7-power-tools/issues/11a-pick-refusals.md` NOTES).
   - Lands on the graph, cursor on the new commit: `✓ took "Fix null session on logout" onto feature-a · u undoes`.
     A conflict lands on the resolver (M6).
 - **`.` menu:** unchanged slots (1 Checkout, 2 Cherry-pick). The labels now carry their keys, `(o)`. Slot 2 dims with
