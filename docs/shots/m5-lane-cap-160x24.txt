@@ -61,7 +61,7 @@
 │ │ │ │ │ │ │ │ │ │ ● ⋮  ⓘ [topic-05] Work on topic-05                          51m  3eb9e24
 ◉▾│ │ │ │ │ │ │ │ │ │ ⋮    Merge branch 'topic-04'                              52m  ea6b0bf
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  . more  <>  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F
+ ⏎ open  c commit  P push  . more  <>  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
 
 == the same terminal, pane closed: the graph has all 160 ==
 
@@ -88,4 +88,4 @@
 │ │ │ │ │ │ │ │ │ │ ●    ⓘ [topic-05] Work on topic-05                                                                                           GF 51m  3eb9e24
 ◉─│─│─│─│─│─│─│─│─│─│─╮    Merge branch 'topic-04'                                                                                               GF 52m  ea6b0bf
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  / search  q quit  F2 status  F3 renderer  x compare  + lane  . more  j/k  space  1  F  H  y
+ ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  . more  1  F  H  y

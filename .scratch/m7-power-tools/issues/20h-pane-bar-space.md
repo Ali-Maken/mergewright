@@ -1,6 +1,6 @@
 # 20h pane-bar-space — the pane bar draws `space` only where the pane answers it; the full sweep back
 
-Status: draft
+Status: done (one deviation from Decision 1, with its lines — see NOTES)
 Blocked by: 20g (merged, partial). **Blocks 20f** (its pane-bar re-shoots and hint sweeps must see this bar).
 Crates: graft-ui (hints) + graft (the context's builder, the sweeps, `docs/shots/`).
 Build with: Opus — the sweep's per-form states are intricate (20e/20g were Opus); one field, one filter, but every exhaustive match and sweep must follow.
@@ -78,19 +78,25 @@ pub enum HintContext {
 No other signature changes. `hints_for(context, divider, columns) -> Vec<Hint>` keeps its shape.
 
 ## Acceptance
-- [ ] Red first: the restored form (`pane_focused_form` with `(true, true)`) turns `every_key_the_bar_draws_is_answered`
-      red before the fix (quote the hit count), green after. Name the commit of each.
-- [ ] `NEVER_HINTED` unchanged (`git diff` on it empty).
-- [ ] graft-ui tests: `pane_focused_drops_the_graphs_space_fold` (every graph row context wrapped: no `space` hint) ·
-      `pane_focused_keeps_the_changes_panes_space` · `pane_focused_folds_offers_space_fold_after_enter_and_b`.
-- [ ] graft tests: `pane_bar_on_a_commits_file_row_draws_no_space` · `pane_bar_on_a_directory_row_offers_space_fold` ·
-      `space_on_a_directory_row_folds_it_and_the_bar_still_says_fold` (fold, then unfold, same hint).
-- [ ] `every_key_the_bar_draws_is_answered` and `every_context_reaches_every_shape` green over **every** `PaneFocused`
-      form, no form left out, no comment excusing one.
-- [ ] Capture `docs/shots/m7/pane-bar-file-vs-directory-120x40.txt` (≤ 200 KB): two frames, the detail pane focused on
-      a commit, cursor on a file row, then on a directory row. **Right:** the file-row bar has no `space`; the
-      directory-row bar reads `… space fold …`; nothing else in the two bars differs except what the row changes.
-- [ ] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, test --doc.
+- [x] Red first: the restored form turns `every_key_the_bar_draws_is_answered` red — **210** dead `space fold`, all
+      `PaneFocused { opens: true, blamable: true }` — at red commit `70692014`; green at this ticket's closing commit
+      (the next one on the branch). Test: `graft update::tests::every_key_the_bar_draws_is_answered`.
+- [x] `NEVER_HINTED` unchanged: diff of `crates` since `70692014`, grepped for `NEVER_HINTED` → 0 lines.
+- [x] graft-ui tests (`graph_screen::hints::tests::pane_space::`): `pane_focused_drops_the_graphs_space_fold` (files
+      list focused only — see NOTES) · `pane_focused_keeps_the_changes_panes_space` ·
+      `pane_focused_folds_offers_space_fold_after_enter_and_b` · plus `pane_focused_on_the_diff_keeps_the_graphs_space_fold`.
+- [x] graft tests (`update::tests::pane_space::`): `pane_bar_on_a_commits_file_row_draws_no_space` ·
+      `pane_bar_on_a_directory_row_offers_space_fold` · `space_on_a_directory_row_folds_it_and_the_bar_still_says_fold` ·
+      plus `space_with_the_diff_focused_folds_the_graphs_merge_and_the_bar_says_so`.
+- [x] `every_key_the_bar_draws_is_answered` and `every_context_reaches_every_shape` green over all five `PaneFocused`
+      forms `(opens, blamable, folds)` = TTF, TFT, TFF, FTF, FFF; no form left out, no excusing comment
+      (`catalogue::pane_focused_form`). `every_swept_state_is_the_context_it_claims` green too (TFF swept on a new
+      `✉ message` row, `update::tests::on_the_message`).
+- [x] Capture `docs/shots/m7/pane-bar-file-vs-directory-120x40.txt` (2.3 KB), pinned by
+      `graft::it pane_bar_space::capture_the_pane_bar_on_a_file_and_on_a_directory` (asserts the file bar has no
+      `space`, the directory bar has `space fold`, and `space` then folds `src/`). By eye: the user's (rule 6). Neither
+      bar has `B blame`: the commit-graph offer holds `B` in that fixture, on both frames alike.
+- [x] Gates workspace-wide: fmt ok, clippy `--all-targets -D warnings` ok, nextest 4060/4060 (1 skipped), test --doc ok.
 
 ## Touches (check each, name how)
 - Every `PaneFocused {` constructor and match, both crates (grep; the compiler finds the rest).
@@ -105,3 +111,35 @@ No other signature changes. `hints_for(context, divider, columns) -> Vec<Hint>` 
 
 ## Size
 Small–medium (~35k).
+
+## NOTES (builder, 2026-09-27)
+
+**Deviation from Decision 1, with the lines.** The ruling says "with a pane focused the graph's `space` is not live".
+That holds only with the **files list** focused: `files_key`'s `space` arm (`update/detail/keys.rs:300`) returns `true`
+on every row, doing nothing on a file. With the **diff** focused, `diff_key` (`keys.rs:313`) and `diff_option_key` have
+no `' '` arm and return `false`, `detail_key` returns `false` (`keys.rs:158-161`), and `update/keys.rs:263` → `graph_key`
+→ `view_change` (`keys/view_change.rs:71`) folds the merge under the graph's cursor. Pinned by
+`space_with_the_diff_focused_folds_the_graphs_merge_and_the_bar_says_so`. So the filter drops the graph's `space fold`
+only when `opens` (files list focused); with the diff focused the hint stays, because the key is live there (H6 both
+ways). The keymap amendment was applied with its last clause corrected to say this — conductor: check
+`docs/design/02-keymap.md` §2.2 `Space`. Whether the diff-focused `space` *should* reach the graph is a handler
+question, out of scope — filed as a question, not built.
+
+- Cause line confirmed: `hints/lists.rs:110` (`TAIL`'s `space fold`), appended to row contexts in `hints.rs`
+  `drawable`, passed through by the `PaneFocused` filter.
+- `folds` from `update::detail::space_folds` (next to `enter_opens`); handler unchanged.
+- `COVERAGE_SLOTS` 79 → 81 (79: blamable with the files list; 80: folds). Impossible `folds` shapes share slot 80.
+- Pinned captures regenerated (their tests demand an exact match; each is a files-list-focused bar that lost only
+  `space` and re-spent the width): `docs/shots/m2-duplicate-commit.txt`, `m2-evil-merge.txt`, `m2-explain-panel.txt`,
+  `m2-force-push.txt`, `m5-lane-cap-160x24.txt` (two bars). Contact sheets quoting those frames are now stale records,
+  not edited (m2 sheets / `m5-contact-sheet-*.txt` wherever they embed them).
+- The three m6 files named in Touches: `m6/fix-c-live-frames-187x50.txt:64` and `m6/m6-contact-sheet-3.txt:1537` are
+  graph-focused bars (they draw `S`, `J`, `M`, `O`, which `PaneFocused` filters) — unaffected. The captions `.tsv`
+  lines concern the uncommitted row — unaffected. `m5-hints-detail-*` and `m7/diff-cursor-commit-120x40.txt` are
+  diff-focused bars — `space` stays, unaffected.
+- Mouse (§2.15): no click handling on a file-list row (`update/mouse.rs:146-155` is the wheel only), so a click on a
+  directory row does not fold it; unchanged.
+- `PaneOverOverlay`: draws no `space`; a directory row there stays unhinted — not built, per scope.
+- Pre-existing, unchanged: `B blame` goes to index 0 on a `Marked` row (the check reads only `list.first()` for `⏎`,
+  and `Marked` leads with `. explain`). `space fold` goes after whichever of `⏎`/`B` is later.
+- Scout: none — the ticket named the seams; read directly. No compaction.

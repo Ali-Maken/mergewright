@@ -40,6 +40,7 @@ mod m7_walk;
 mod many_refs;
 mod name_and_drag;
 mod not_a_repo;
+mod pane_bar_space;
 mod piped_stdout;
 mod preview;
 mod published_repo;

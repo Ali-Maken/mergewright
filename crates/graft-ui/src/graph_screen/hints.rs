@@ -366,19 +366,8 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             row,
             opens,
             blamable,
-        } => {
-            let (list, trailer) = whole_bar(row, divider);
-            let mut list: Vec<Hint> = list
-                .into_iter()
-                .filter(|hint| !GRAPH_ONLY.contains(&hint.key) && (*opens || hint.key != ENTER))
-                .collect();
-            if *blamable {
-                // After `⏎` when it is there, else first: the pane's own key.
-                let at = usize::from(list.first().is_some_and(|hint| hint.key == ENTER));
-                list.insert(at, BLAME);
-            }
-            (list, trailer)
-        }
+            folds,
+        } => pane_focused_bar(row, *opens, *blamable, *folds, divider),
         HintContext::BackToBlame(inner) => {
             let (list, trailer) = whole_bar(inner, divider);
             let mut led = vec![BACK_TO_BLAME];
@@ -411,8 +400,51 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
     }
 }
 
+/// [`whole_bar`] for [`HintContext::PaneFocused`]: the row's own bar minus
+/// the keys the focused pane leaves dead, plus the pane's own `B` and
+/// `space`.
+fn pane_focused_bar(
+    row: &HintContext,
+    opens: bool,
+    blamable: bool,
+    folds: bool,
+    divider: Divider,
+) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(row, divider);
+    // With the files list focused its `space` is the pane's, on every row, so
+    // the graph's merge fold is not live (m7-power-tools/20h). Only that hint
+    // goes: another list's `space` is its own.
+    let mut list: Vec<Hint> = list
+        .into_iter()
+        .filter(|hint| {
+            !GRAPH_ONLY.contains(&hint.key)
+                && (opens || hint.key != ENTER)
+                && !(opens && *hint == FOLD)
+        })
+        .collect();
+    if blamable {
+        // After `⏎` when it is there, else first: the pane's own key.
+        let at = usize::from(list.first().is_some_and(|hint| hint.key == ENTER));
+        list.insert(at, BLAME);
+    }
+    if folds {
+        // After `⏎` and `B` when present, else first.
+        let at = list
+            .iter()
+            .rposition(|hint| hint.key == ENTER || *hint == BLAME)
+            .map_or(0, |at| at + 1);
+        list.insert(at, FOLD);
+    }
+    (list, trailer)
+}
+
 /// `B blame`: the pane's line blamed ([`HintContext::PaneFocused`]).
 const BLAME: Hint = hint("B", "blame");
+
+/// `space fold`: the graph's merge fold ([`TAIL`]) and, with the same word
+/// for the same act, a focused files list's directory fold
+/// ([`HintContext::PaneFocused`]'s `folds`, m7-power-tools/20h).
+const FOLD: Hint = hint("space", "fold");
 
 /// `esc back to blame`: the way back to a hidden blame trail
 /// ([`HintContext::BackToBlame`]).

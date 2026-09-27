@@ -191,6 +191,14 @@ pub enum HintContext {
     /// wrapper's `opens` is set from) — the bar was teaching it at 80
     /// columns on the Detail tab, where the pane draws the only bar there
     /// is (m5/29), and beside the graph above 100 (m5 review Q2, m5/31).
+    ///
+    /// `space` (m7-power-tools/20h): with the files list focused
+    /// (`opens`), `graft`'s `files_key` takes `space` on every row — it
+    /// folds a directory and does nothing on a file — so the graph's merge
+    /// fold (`TAIL`'s `space fold`) is dropped there and `folds` puts the
+    /// pane's own fold back on a directory row. With the diff focused the
+    /// pane does not take `space`; it reaches the graph and folds the merge,
+    /// so the graph's hint stays.
     PaneFocused {
         /// The cursor row's own context, whose list this filters.
         row: Box<HintContext>,
@@ -202,6 +210,11 @@ pub enum HintContext {
         /// is while it can be acted on, keymap §2.1). Adds `B blame`
         /// after `⏎` (m7-power-tools/20).
         blamable: bool,
+        /// The files list has focus and the cursor is on a directory row:
+        /// `space fold`, after `⏎` and `B` (m7-power-tools/20h). Never true
+        /// without `opens`, nor with `blamable` (a directory row has no file
+        /// to blame); `every_context` produces neither shape.
+        folds: bool,
     },
     /// **A blame place is on screen** (m7-power-tools/20; design note pass
     /// 2b B1): modal, its own bar, no doorway.
