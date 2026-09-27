@@ -147,3 +147,14 @@ workspace-wide.
 ## Note (conductor, 2026-09-26, from the 20 respec)
 - history-place must place via `show_line`, as 20 does.
 - `BlameFrom::WorkingTree.line` is now `Option<u32>` (20a/20b): read the respec before you build.
+
+## Note (planner, 2026-09-27, from 20i)
+- 20i rules that `Esc` on the graph screen with a hidden trail goes back to the top place whether the graph or the
+  detail pane is focused, and **the open pane is not closed first**. One predicate decides it, `place::esc_goes_back`
+  (`20i-blame-review-fixes.md`, Ruling — Major 1; keymap §2.1, clarified by 20i). It is place-generic: build history on
+  it, don't add a second rung.
+- Add to **Keys**: `esc_on_the_graph_with_the_pane_open_returns_to_history`. After `⏎` from history, `Tab` to the graph
+  with the pane still shown: the bar leads `esc back to history`, and one `Esc` shows history with the same row selected
+  and the file pane at the same line. Red first.
+- Add history's rows to 20i's `the_bar_leads_esc_back_to_blame_exactly_where_esc_goes_back` table, for the states it
+  lists with the trail's top a history place. The bar reads `back to history`.

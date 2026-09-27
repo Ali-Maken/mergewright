@@ -2,7 +2,8 @@
 
 Status: draft
 Blocked by: 20f (building in graft now; same files: `update/place/tests.rs`, `tests/it/main.rs`, the pane-bar sweeps).
-Crates: graft (+ `docs/shots/m7/`, graft `MAP.md`, `ARCHITECTURE.md`, `20-blame-place.md`'s Navigation tick). **No graft-ui.**
+Crates: graft (+ `docs/shots/m7/`, graft `MAP.md`, `ARCHITECTURE.md`, `docs/design/02-keymap.md` §2.1, `20-blame-place.md`'s
+Navigation tick). **No graft-ui.**
 Build with: Opus. Why: the `Esc` rung order crosses `detail/keys.rs`, `keys.rs` and the bar's wrap; a wrong order is a
 bar/key lie that tests only catch if they press the key (the defect itself). The rest is mechanical.
 Needs: none (no other ticket's new signatures).
@@ -52,7 +53,7 @@ closes after the trail ends: the last `Esc` restores the pane as it was at `B` (
 20g's Navigation note ("pane closed: with it open the pane's own `Esc` comes first", `20-blame-place.md:137`) is
 superseded.
 
-### Keymap amendment (the conductor applies it before the build)
+### Keymap amendment (this ticket's builder applies it, in the Major 1 commit)
 `docs/design/02-keymap.md` §2.1, the Blame/History bullet, lines `:80-83`
 from `` `Esc` goes back one `` through `(M7 pass 2b; ADR-0048).` become:
 
@@ -64,7 +65,8 @@ from `` `Esc` goes back one `` through `(M7 pass 2b; ADR-0048).` become:
 >     Amended 2026-09-26 (M7 pass 2b; ADR-0048); the pane clause 2026-09-27
 >     (m7-power-tools/20i).
 
-(A clarification of the approved reading, not a behaviour change to the spec.) §2.2 `:175` unchanged.
+(A clarification of the approved reading, not a behaviour change to the spec.) §2.2 `:175` unchanged. Change nothing
+else in the keymap.
 
 ## Rulings on the folded Minors
 - **Minor 1:** `BlameLoad::Reading` keeps the `CameFromRequest`; `rerun` (`w`, `i`) resends it. A `Want::CameFrom`
@@ -97,7 +99,7 @@ from `` `Esc` goes back one `` through `(M7 pass 2b; ADR-0048).` become:
    - `update/place/tests.rs` → `update/place/tests/{mod,open,navigation,pinned_base,keys,hints}.rs`, by 20's
      acceptance boxes; shared builders (`pane_at`, `changes_at`, …) in `mod.rs`.
    - Paths callers use (`update::place::…`) unchanged; re-export where a type moved.
-2. **Major 1** per the ruling, red first.
+2. **Major 1** per the ruling, red first, and the keymap amendment above.
 3. **Major 2**: one test through `update`, red shown by mutation (the wiring exists).
 4. **Major 3**: git-backed tests of the blame job + the pure error mapping.
 5. **Minors** 1, 2, 4, 5, 7 (red first where the behaviour is wrong; by mutation where it is right), 8 (test), 6 and 9
@@ -147,6 +149,8 @@ inside `detail_key`), say why in NOTES and name the two places and the test that
       what the bar leads with the `.` menu open over a hidden trail; file it as a question if it leads `back to blame`.
 - [ ] `esc_on_the_graph_closes_search_before_returning_to_blame` still green; its setup no longer needs to close the pane
       (drop that step, or say why not).
+- [ ] **Keymap:** §2.1 carries the amendment verbatim. Check: `grep -n "the pane clause 2026-09-27" docs/design/02-keymap.md`
+      → 1 line; `git diff docs/design/02-keymap.md` touches only `:80-83`'s bullet text.
 - [ ] **Major 2:** `u_on_the_graph_ends_a_hidden_trail_and_pins_the_base_again` — through `update` (a key event, not
       `after_commands`): trail hidden, base set aside, `u` on the graph → no trail, base pinned. Red by mutation: delete
       the `place::after_commands(&mut next, &mut commands);` call (`update/mod.rs:140`) → red (state it).
@@ -194,8 +198,8 @@ inside `detail_key`), say why in NOTES and name the two places and the test that
   `update/detail/tests*` and `update/place/tests/` green.
 - The bar: `view/rows.rs:410` (`BackToBlame` wrap), `back_to_blame`, `place_context`; `every_key_the_bar_draws_is_answered`,
   `every_context_reaches_every_shape`, `every_swept_state_is_the_context_it_claims` green.
-- **21 history-place (not built):** the rung is place-generic. The conductor adds to 21's spec:
-  `esc_on_the_graph_with_the_pane_open_returns_to_history`. Don't build history here.
+- **21 history-place (not built):** the rung is place-generic. Its spec carries the history test and table rows (planner
+  note, 2026-09-27, "from 20i"). Don't build history here.
 - **20f (merged first):** its `commit-back-to-blame` walk and captures — grep `back to blame` in `docs/shots/`; say for
   each whether its frame is a state whose `Esc` behaviour changed. Bar words don't change under this ruling; a
   capture differs only if it drew a rung-2 state with `esc back to blame` (then it was wrong; re-shoot and say so).
@@ -203,11 +207,11 @@ inside `detail_key`), say why in NOTES and name the two places and the test that
 - Journal/undo: no write added. Major 2 pins `u` ending the trail through `update`; `compare_base` stays unjournaled
   (grep `update/undo*`, `jobs/` for `compare_base` → unchanged).
 - Mouse: none changed (Minor 8 is a test).
-- Keymap §2.1 (conductor's amendment above) — check the code matches it.
+- Keymap §2.1: this ticket applies the amendment above; check the code matches it.
 - `20-blame-place.md` (Minor 6), `ARCHITECTURE.md` (Minor 9), graft `MAP.md`.
 - KNOWN_GAPS rows closed by this ticket: M7/20eg-major1..4, m1, m2, m4..m9 (conductor moves them; builders don't edit
   KNOWN_GAPS).
 
 ## Size
-~75k. If it runs over, stop at a green seam after step 3 (split + Majors 1–2) and report; the conductor splits Major 3
-and the Minors into 20j with this spec unchanged.
+~75k. If it runs over, stop at a green seam after step 3 (split + Majors 1–2 + keymap) and report; the conductor splits
+Major 3 and the Minors into 20j with this spec unchanged.
