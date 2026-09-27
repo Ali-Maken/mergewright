@@ -40,6 +40,7 @@ mod shell_begun_merge;
 mod stash_clash;
 mod stash_pop_redo;
 mod stash_preview;
+mod submodule_log;
 mod support;
 mod undo_cancel;
 mod undo_gate;

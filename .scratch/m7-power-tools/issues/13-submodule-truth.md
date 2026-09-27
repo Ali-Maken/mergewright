@@ -61,8 +61,10 @@ pub fn submodule_log(repo: &Repo, git: &Git, path: &Path, from: Oid, to: Oid, st
   - `untracked_inside_is_its_own_fact`;
   - `a_clean_submodule_shows_no_row`;
   - `a_submodule_not_set_up_says_so`;
-  - `submodule_log_lists_pulled_in_and_rewound`;
-  - `submodule_log_honours_stop`.
+  - `submodule_log_lists_pulled_in_and_rewound`; — **13a: passes**, `graft-ops/tests/it/submodule_log.rs`, held to
+    git's own `git diff --submodule=log` in the same test (the oracle);
+  - `submodule_log_honours_stop`. — **13a: passes**, same file.
+  (Box stays open for 13b's five.)
 - [ ] **UI** snapshot tests: the row words at 187 and 80 columns; the diff pane rows.
 - [ ] **Captures** (colour unverified):
   - `docs/shots/m7/submodule-row-120x40.txt`. **Right:** `▣ libs/parser  submodule · pointer moved 3b2a1f0 → 9c8d7e6 ·
