@@ -27,7 +27,8 @@ pub(super) const PORCELAIN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/bl
 pub(super) const PORCELAIN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-porcelain.txt");
 pub(super) const HUMAN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-human.txt");
 pub(super) const HUMAN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-human.txt");
-const EDGES_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-edges-porcelain.txt");
+pub(super) const EDGES_2_38: &[u8] =
+    include_bytes!("../testdata/git-2.38/blame-edges-porcelain.txt");
 pub(super) const EDGES_2_54: &[u8] =
     include_bytes!("../testdata/git-2.54/blame-edges-porcelain.txt");
 pub(super) const EDGES_HUMAN_2_38: &[u8] =
@@ -249,7 +250,7 @@ fn a_blame_cut_at_the_output_cap_is_too_large_not_a_short_file() {
         &(),
         &Knobs {
             cap: 1000,
-            marks: MarksFrom::Auto,
+            ..Knobs::real()
         },
     );
     match result {
@@ -262,6 +263,19 @@ pub(super) const SESSION_FILE: &str = "src/auth/session.rs";
 
 /// The session fixture's file, blamed at `HEAD` through `blame_with`.
 pub(super) fn session_blame(dir: &Path, marks: MarksFrom) -> Blame {
+    session_blame_with(
+        dir,
+        &Knobs {
+            marks,
+            ..Knobs::real()
+        },
+    )
+    .unwrap_or_else(|why| panic!("blames: {why}"))
+}
+
+/// [`session_blame`] with every knob the caller's, the result unwrapped by
+/// the caller.
+pub(super) fn session_blame_with(dir: &Path, knobs: &Knobs) -> Result<Blame, BlameError> {
     let repo = RepoHandle::open(dir).expect("the fixture opens");
     blame_with(
         &repo,
@@ -269,12 +283,8 @@ pub(super) fn session_blame(dir: &Path, marks: MarksFrom) -> Blame {
         Path::new(SESSION_FILE),
         &BlameOptions::default(),
         &(),
-        &Knobs {
-            cap: DEFAULT_CAP,
-            marks,
-        },
+        knobs,
     )
-    .unwrap_or_else(|why| panic!("blames: {why}"))
 }
 
 pub(super) fn head(dir: &Path) -> Oid {

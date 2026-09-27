@@ -43,8 +43,8 @@ mod refusal;
 use ignore_revs::count_revisions;
 use ignore_revs::find_ignore_revs;
 use invocation::{Format, blame_invocation};
-pub(crate) use knobs::{Knobs, MarksFrom};
-pub use marks::parse_marks;
+pub(crate) use knobs::{GitFrom, Knobs, MarksFrom, PorcelainMarks};
+pub use marks::{MarkedLine, parse_marks};
 use marks_pass::{marks_pass_wanted, merge_marks, read_marks};
 pub use porcelain::parse_porcelain;
 use refusal::refuse_early;
@@ -188,10 +188,12 @@ pub enum BlameError {
         /// The cap, in bytes.
         cap: usize,
     },
-    /// The porcelain and the human-format pass (18e) saw different line
-    /// counts: the working-tree file changed between the two reads.
+    /// The porcelain and the human-format pass (18e) disagree on the lines:
+    /// a different count, or a line whose commit differs (18f). The
+    /// working-tree file changed between the two reads.
     Changed {
-        /// Lines in the porcelain.
+        /// Lines in the porcelain. The passes' line counts are equal when
+        /// a line's commit differed.
         first: usize,
         /// Lines in the human format.
         second: usize,
@@ -255,9 +257,9 @@ pub fn blame(
     blame_with(repo, rev, path, opts, stop, &Knobs::real())
 }
 
-/// [`blame`] with the runner's cap and the marks' source set by the caller:
-/// a test lowers the cap to reach the too-large refusal through the real
-/// spawn, or forces the human-format pass.
+/// [`blame`] with its inputs set by the caller ([`Knobs`]): a test lowers a
+/// cap to reach the too-large refusal through the real spawn, forces the
+/// human-format pass, or makes the running git look older than it is.
 #[expect(
     clippy::trivially_copy_pass_by_ref,
     reason = "the same parameters as `blame`, whose public signature takes `&BlameOptions`"
@@ -277,15 +279,33 @@ pub(crate) fn blame_with(
         .output_cap(knobs.cap)
         .run(stop)?;
     let (mut lines, mut commits) = read_porcelain(&output, knobs.cap)?;
+    if knobs.porcelain_marks == PorcelainMarks::Dropped {
+        for line in &mut lines {
+            line.mark = LineMark::Plain;
+        }
+    }
     let porcelain_has_marks = lines.iter().any(|line| line.mark != LineMark::Plain);
     let wanted = match knobs.marks {
         MarksFrom::HumanFormat => true,
-        MarksFrom::Auto => {
-            marks_pass_wanted(repo, *opts, found.is_some(), porcelain_has_marks, stop)?
-        }
+        MarksFrom::Auto => marks_pass_wanted(
+            repo,
+            *opts,
+            found.is_some(),
+            porcelain_has_marks,
+            &knobs.git,
+            stop,
+        )?,
     };
     if wanted {
-        let marks = read_marks(repo, rev, path, *opts, found.as_ref(), knobs.cap, stop)?;
+        let marks = read_marks(
+            repo,
+            rev,
+            path,
+            *opts,
+            found.as_ref(),
+            knobs.marks_cap,
+            stop,
+        )?;
         merge_marks(&mut lines, marks)?;
     }
     let shallow = ShallowList::read(repo).map_err(|error| BlameError::Shallow {
