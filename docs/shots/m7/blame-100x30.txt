@@ -1,0 +1,30 @@
+ BLAME · src/auth/session.rs · as of 74f9a9e
+ skipping 1 commit listed in .git-blame-ignore-revs · i shows them
+ ─ AN   1y│  1  use std::time::{Duration, Instant};
+ ─ PR  4mo│  2  use crate::config::Config;
+ ─ GF  60m│  3  use crate::error::Expired;
+ ┌ AN   1y│  4  use crate::http::{Client, Result};
+ │        │  5
+ │        │  6  pub struct Session {
+ │        │  7      token: String,
+ │        │  8      refresh: String,
+ └        │  9      issued: Instant,
+ ─ PR  4mo│ 10      ttl: Duration,
+ ┌ AN   1y│ 11  }
+ │        │ 12
+ └        │ 13  impl Session {
+ ┌ PR  4mo│ 14      pub fn new(token: String, refresh: String, config: &Config) -> Self {
+ └        │ 15          Session { token, refresh, issued: Instant::now(), ttl: config.session_ttl }
+ ─ AN   1y│ 16      }
+ ┌ TO 10mo│ 17      /// Refresh the token when the server says it expired.
+ └        │ 18      pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+ ─ LI  7mo│ 19          let mut attempt = 0;
+ ┌ TO 10mo│ 20          loop {
+ └        │ 21              let resp = client.refresh(&self.token)?;
+ ▸ LI  7mo│ 22              if resp.status() == 401 && attempt == 0 {    ◂ Lina · 7 months ago
+ └        │ 23                  attempt += 1;
+ ┌ TO 10mo│ 24                  continue;
+ └        │ 25              }
+ ─ GF  60m│ 26              self.token = resp.token().map_err(Expired::from)?;
+ ┌ TO 10mo│ 27              return self.record_refresh(&resp, "refreshed after the server answered 4
+ ⏎ that commit  ^ before it  / find  space ages  w whitespace  i ignore list  esc back

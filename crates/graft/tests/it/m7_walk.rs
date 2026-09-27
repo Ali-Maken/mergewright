@@ -1,6 +1,8 @@
 //! M7 journeys walked through the app, each counted against the M7 note's
 //! `journey-counts` fence (`docs/design-notes/m7-power-tools.md`).
 
+pub mod blame;
+
 use std::path::Path;
 
 use graft::update::resolver::RowState;

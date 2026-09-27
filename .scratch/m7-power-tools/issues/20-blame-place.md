@@ -154,12 +154,21 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
       `git log -S NEVER_HINTED`; `every_key_the_bar_draws_is_answered` green over the new contexts, one form narrowed, see
       NOTES 20e; the other two in `update/place/tests.rs`): `every_bound_action_is_hinted_live_or_is_named_here` green with the new keys (`NEVER_HINTED` unchanged)
       · `pane_bar_hides_b_while_the_offer_is_up` · `graph_bar_leads_esc_back_to_blame_while_hidden`.
-- [ ] **Walks** (`m7_walk`, the 2b fence's ids; `len(keys) <= noted_keys(id)`; counts unchanged): `blame_line_to_commit`
+- [x] **Walks** (20f: all green in `tests/it/m7_walk/blame.rs` — `blame_line_to_commit` · `commit_back_to_blame` ·
+      `commit_back_to_blame_with_a_base_pinned` · `blame_who_at_line` · `blame_line_before`; the harness already reads
+      every fence, duplicate test `m5_walk::journeys::tests::a_duplicate_id_across_fences_is_refused`; count check red
+      by mutation; ⏎ lands on Lina's line **21**, her numbering — see 20f NOTES) (`m7_walk`, the 2b fence's ids; `len(keys) <= noted_keys(id)`; counts unchanged): `blame_line_to_commit`
       `B ⏎` = 2 (setup puts the diff cursor on line 22; asserts the landing) · `commit_back_to_blame` `Esc` = 1 (focus in
       the diff body) · `blame_who_at_line` `j` = 1 (asserts the trailer names the new row's author) · `blame_line_before`
       `B ^` = 2. The harness reads every `journey-counts` fence; if it reads only the first, extend it and add
       `a_duplicate_id_across_fences_fails`. Each walk asserts the commit-graph offer is not shown.
-- [ ] **Captures** (pty, `GRAFT_UPDATE_SHOTS=1` as ticket 08's `check_shot`, ≤ 200 KB, "Right:" line in each test
+- [x] **Captures** (20f: six below + `blame-then-commit-with-base-120x40.txt`, each pinned by its test in
+      `tests/it/blame_place.rs` — `capture_blame_187x50` · `capture_blame_140x40` · `capture_blame_100x30` ·
+      `capture_blame_long_line_187x50` · `capture_blame_find_187x50` · `capture_blame_then_commit_120x40` ·
+      `capture_blame_then_commit_with_base_120x40`; drawn via `frame_at`, not a pty; fixture differences from these
+      words — `2f48ca3` for `a1b2c3d`, the 140 trailer sheds its sha, find uses `/refresh` (8 of 8), the landing line is
+      21 — in 20f NOTES. **The shallow capture is not built: blocked, Graft can't open a shallow clone, 20f NOTES.**)
+      (pty, `GRAFT_UPDATE_SHOTS=1` as ticket 08's `check_shot`, ≤ 200 KB, "Right:" line in each test
       comment):
   - `docs/shots/m7/blame-187x50.txt`: line 22 selected; `▸`, and `◂ Lina · 7 months ago · Retry refresh once on 401 ·
     a1b2c3d` on that row only.
