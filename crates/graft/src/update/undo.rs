@@ -722,7 +722,7 @@ fn interrupted_words(
     {
         return (
             entry.description.clone(),
-            Some(super::operate::edits_clause(*at)),
+            live_edits_clause(state, entry, *at),
         );
     }
     // Closed by an earlier launch: edits set aside around it wait in the
@@ -747,6 +747,38 @@ fn interrupted_words(
     // the stash is no longer listed: none of those is a failure, and the
     // line is true without it.
     (entry.description.clone(), aside)
+}
+
+/// Recovery's words for `at`, the stash index read from the list on every
+/// draw (review m7-30c-to-10c Major 1). Recovery fixed the *kind* (`Stash`,
+/// `Back`, `Backup`); the list moves after `S p`, a drop or a new stash. The
+/// copy is found by the entry's put-back commit, as the earlier-launch branch
+/// does. No longer listed → the stash part goes; a `Stash` with nothing
+/// listed has no true words left, so no clause. Refs not read yet, or no
+/// put-back to look up → recovery's own words stand.
+fn live_edits_clause(
+    state: &AppState,
+    entry: &graft_core::journal::JournalEntry,
+    at: graft_ops::EditsAt,
+) -> Option<String> {
+    use graft_ops::EditsAt;
+    let (Some(refs), Some(put_back)) = (state.refs.as_deref(), entry.put_back.as_ref()) else {
+        return Some(super::operate::edits_clause(at));
+    };
+    let listed = refs
+        .stashes()
+        .iter()
+        .find_map(|(commit, n)| (*commit == put_back.stash).then_some(*n));
+    let live = match (at, listed) {
+        (EditsAt::Stash { .. }, Some(n)) => EditsAt::Stash { n },
+        (EditsAt::Stash { .. }, None) => return None,
+        (EditsAt::Back { copy: Some(_) }, Some(n)) => EditsAt::Back { copy: Some(n) },
+        (EditsAt::Back { copy: Some(_) }, None) => return Some("your edits are back".to_owned()),
+        (EditsAt::Backup { copy: Some(_) }, listed) => EditsAt::Backup { copy: listed },
+        // No copy was found at launch: there is no index to follow.
+        (other, _) => other,
+    };
+    Some(super::operate::edits_clause(live))
 }
 
 /// Re-read what the restore changed — `update::operate`'s own two scopes,

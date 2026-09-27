@@ -175,7 +175,13 @@ pub fn view_with_graphics(
                 screen.ascii = tier == RenderingTier::Ascii;
                 // Only below the terminal's own tier: `F3` clears the override
                 // when it cycles back to the top (m1-the-graph/33).
-                screen.notice = footer_notice(state, tier, area.width);
+                // Fitted to the row it is drawn in: with the detail pane
+                // open the footer is the graph half's, not the frame's
+                // (review m7-30c-to-10c Major 2). The same pure split the
+                // drawing path takes, asked again so the two cannot drift.
+                let footer_width =
+                    primary_pane_area(state, area).map_or(area.width, |graph| graph.width);
+                screen.notice = footer_notice(state, tier, footer_width);
                 screen.pixel = pixels;
                 screen.graphics = pixels.then(|| graphics.clone());
 
