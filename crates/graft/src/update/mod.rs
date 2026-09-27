@@ -542,6 +542,7 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             let staged = matches!(
                 *outcome,
                 crate::jobs::operate::Operated::Done(_)
+                    | crate::jobs::operate::Operated::StagingNotKept { .. }
                     | crate::jobs::operate::Operated::Incomplete { .. }
             );
             let mut local_jobs = next.local_jobs;

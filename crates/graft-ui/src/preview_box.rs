@@ -326,30 +326,22 @@ impl Widget for &PreviewBoxWidget<'_> {
 }
 
 /// The set-aside row a rebase or checkout over a dirty tree adds under
-/// `working tree:` (m6-conflicts/74; ADR-0045 §4): `files` tracked files
-/// set aside, `staged` of them staged. Wordings longest first, each a cut
-/// from the right of the one before — the staged clause goes first, and
-/// the file count never goes. [`fitting_line`] picks one for a width.
+/// `working tree:` (m6-conflicts/74; ADR-0045 §4, amended 2026-09-26 b):
+/// `files` tracked files set aside. Wordings longest first,
+/// `your edits: N files set aside, put back after`, then
+/// `your edits: N files set aside`. No staging words: the put-back keeps
+/// the staging, as `git switch` does. [`fitting_line`] picks one for a width.
 ///
-/// Counts, not `graft_ops::operation::SetAside`: `ui` does not depend on
+/// A count, not `graft_ops::operation::SetAside`: `ui` does not depend on
 /// `ops` (ARCHITECTURE.md crate rules).
 #[must_use]
-pub fn set_aside_row(files: usize, staged: usize) -> Vec<String> {
+pub fn set_aside_row(files: usize) -> Vec<String> {
     let head = format!(
         "your edits: {} set aside",
         crate::stash_screen::files_label(files)
     );
     let after = format!("{head}, put back after");
-    let mut rungs = Vec::with_capacity(3);
-    if staged > 0 {
-        let verb = if staged == 1 { "comes" } else { "come" };
-        rungs.push(format!(
-            "{after} \u{b7} {staged} staged {verb} back unstaged"
-        ));
-    }
-    rungs.push(after);
-    rungs.push(head);
-    rungs
+    vec![after, head]
 }
 
 /// The longest of `wordings` (longest first) that fits the box's text

@@ -43,9 +43,9 @@ fn counted(app: &App) -> Keys<'_> {
 }
 
 /// A teammate pushed, a local commit `ours` adding three files, and those
-/// three edited with one of them staged (a staged modification, which is
-/// what the preview's staged count counts): the state `p` finds diverged
-/// and dirty.
+/// three edited with one of them staged (a staged modification, which the
+/// put-back keeps staged, as `git switch` would): the state `p` finds
+/// diverged and dirty.
 fn diverged_with_three_edits(remote: &LocalRemote) -> (Vec<String>, String) {
     let work = remote.work();
     let theirs = remote
@@ -741,16 +741,16 @@ fn preview_shots(app: &App, state: &AppState) {
             120,
             40,
             "m6/set-aside-preview-120x40.txt",
-            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged",
+            "your edits: 3 files set aside, put back after",
         ),
-        // Review m6-final-fixes-74 m5: at 80 the box's 76 inner columns
-        // still hold `set_aside_row`'s longest rung (76 cells), so the row is
-        // whole there too; the exact line is asserted, not a prefix.
+        // At 80 the box's 76 inner columns hold `set_aside_row`'s longest
+        // rung whole; the exact line is asserted, not a prefix. No staging
+        // words: the put-back keeps the staging (ADR-0045 amendment b, 30b).
         (
             80,
             24,
             "m6/set-aside-preview-80x24.txt",
-            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged",
+            "your edits: 3 files set aside, put back after",
         ),
     ] {
         let sized = app.resize(state, columns, rows);
@@ -816,8 +816,8 @@ const PREVIEW_HEADER: &str = "\
 # edited and one of them staged.
 #  - The rebase preview box, `[ Confirm ]` offered.
 #  - Under `working tree:` the row `your edits: 3 files set aside, put back
-#    after · 1 staged comes back unstaged`. At 80 columns the staged clause
-#    may be cut; the file count may not.
+#    after`, with no staging words: the staging comes back as he left it.
+#    At narrow widths `put back after` may be cut; the file count may not.
 ";
 
 const LANDING_HEADER: &str = "\
@@ -866,4 +866,200 @@ const DONE_HEADER: &str = "\
 #  - The status row reads
 #    `rebase main onto origin/main ✓ · your edits are back` (the op's own
 #    done line, as a clean-tree rebase words it, then the clause).
+";
+
+/// `switch-staging-not-kept` (ticket 30b's Journeys table): `. ⏎ y`, 3
+/// keys. Not a `journey-counts` row of the m6 note, so its count is here.
+const SWITCH_STAGING_NOT_KEPT_KEYS: usize = 3;
+
+/// Twenty lines, `line N`, with line `n` replaced by `with`.
+fn twenty_lines(changed: &[(usize, &str)]) -> String {
+    (1..=20)
+        .map(|n| {
+            changed
+                .iter()
+                .find(|(at, _)| *at == n)
+                .map_or_else(|| format!("line {n}\n"), |(_, with)| format!("{with}\n"))
+        })
+        .collect()
+}
+
+/// Ticket 30 P3's shape: on `main`, a 20-line `f.txt` with line 5 edited
+/// and staged; `fix` changed line 7. `git switch fix` refuses; Graft's
+/// `stash apply --index` cannot reinstate the index on `fix`'s tree, so the
+/// put-back falls back to a plain apply, which lands clean.
+fn staging_that_cannot_come_back() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    dated_commit(path, "f.txt", &twenty_lines(&[]), "add f", 1);
+    git(path, &["branch", "fix"]);
+    git(path, &["switch", "-q", "fix"]);
+    dated_commit(
+        path,
+        "f.txt",
+        &twenty_lines(&[(7, "seven on fix")]),
+        "fix changes line 7",
+        2,
+    );
+    git(path, &["switch", "-q", "main"]);
+    std::fs::write(path.join("f.txt"), twenty_lines(&[(5, "five mine")]))
+        .expect("the scratch repo is writable");
+    git(path, &["add", "--", "f.txt"]);
+    scratch
+}
+
+/// Ticket 30b: the preview says nothing about staging; after `y` the
+/// sticky line names the file and `u`, never `could not confirm`; it
+/// survives a key; `u` puts the split back exactly. Walked at 187x50 and
+/// 80x24, each writing its capture.
+#[test]
+fn a_switch_whose_staging_cannot_come_back_says_so() {
+    for (columns, rows) in [(187u16, 50u16), (80, 24)] {
+        let scratch = staging_that_cannot_come_back();
+        let path = scratch.path();
+        let before = SplitState::of(path);
+        assert_eq!(before.status, "M  f.txt\n");
+        let (app, state) = App::open(path);
+        let state = app.resize(&state, columns, rows);
+
+        let mut keys = counted(&app);
+        let state = switched_over_the_fallback(&mut keys, path, state, (columns, rows));
+        assert_eq!(keys.count, SWITCH_STAGING_NOT_KEPT_KEYS, "{columns}");
+        let line = fallback_line_shot(&state, columns, rows);
+
+        // Sticky: one more key, and the line is still there.
+        let state = app.key(&state, KeyCode::Char('j'));
+        assert_eq!(staging_line(&state, columns, rows), line, "{columns}");
+
+        // Git: on `fix`, both lines in, unstaged, no stash left.
+        assert_eq!(
+            git(path, &["symbolic-ref", "HEAD"]).trim(),
+            "refs/heads/fix"
+        );
+        assert_eq!(git(path, &["status", "--porcelain"]), " M f.txt\n");
+        assert_eq!(
+            read(path, "f.txt"),
+            twenty_lines(&[(5, "five mine"), (7, "seven on fix")])
+        );
+        assert!(stash_list(path).is_empty(), "no stash left behind");
+
+        // `u`, one key: back on `main`, the split exactly as before.
+        let before_undo = keys.count;
+        let state = keys.press(&state, KeyCode::Char('u'));
+        let state = quiet(&app, app.settle_write(state, "the undo"));
+        assert_eq!(keys.count - before_undo, UNDO_KEYS);
+        assert_eq!(
+            git(path, &["symbolic-ref", "HEAD"]).trim(),
+            "refs/heads/main"
+        );
+        assert_eq!(SplitState::of(path), before, "index and tree as before");
+        assert!(stash_list(path).is_empty(), "the stash list as before");
+        drop(state);
+        app.close();
+    }
+}
+
+/// The index and the tree, byte for byte, as `u` must restore them.
+#[derive(Debug, PartialEq, Eq)]
+struct SplitState {
+    status: String,
+    cached: String,
+    unstaged: String,
+    index: String,
+    bytes: String,
+}
+
+impl SplitState {
+    fn of(path: &Path) -> Self {
+        Self {
+            status: git(path, &["status", "--porcelain"]),
+            cached: git(path, &["diff", "--cached"]),
+            unstaged: git(path, &["diff"]),
+            index: git(path, &["ls-files", "-s"]),
+            bytes: read(path, "f.txt"),
+        }
+    }
+}
+
+/// `. ⏎ y` on `fix`, counted: the preview's row has no staging words, and
+/// the answer is in.
+fn switched_over_the_fallback(
+    keys: &mut Keys<'_>,
+    path: &Path,
+    state: AppState,
+    (columns, rows): (u16, u16),
+) -> AppState {
+    let app = keys.app;
+    let state = cursor_to(app, opened(app, state), &rev(path, "fix"));
+    let state = keys.press(&state, KeyCode::Char('.'));
+    let state = keys.press(&state, KeyCode::Enter);
+    let state = planned(app, state);
+    let preview = frame_at(&state, columns, rows, None).join("\n");
+    assert!(
+        preview.contains("your edits: 1 file set aside, put back after"),
+        "{columns}: {preview}"
+    );
+    assert!(
+        !preview.contains("staged") && !preview.contains("staging"),
+        "{columns}: no staging words in the preview:\n{preview}"
+    );
+    let state = keys.press(&state, KeyCode::Char('y'));
+    // Not `settle_write`: the answer is a sticky line, not a `Done`.
+    let state = app.pump(state, "the switch", |state| state.operating.is_none());
+    quiet(app, state)
+}
+
+/// The fallback's line: rung 1 at 187, rung 2 or 3 at 80, whole, never
+/// `could not confirm`. Writes the capture; returns the line.
+fn fallback_line_shot(state: &AppState, columns: u16, rows: u16) -> String {
+    let line = staging_line(state, columns, rows);
+    let rungs = [
+        "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
+        "checkout fix \u{2713} \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
+        "staging not kept: f.txt \u{b7} u undoes it, staging included",
+    ];
+    if columns >= 187 {
+        assert_eq!(line, rungs[0], "{columns}");
+    } else {
+        assert!(rungs[1..].contains(&line.as_str()), "{columns}: {line:?}");
+    }
+    let drawn = frame_at(state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n");
+    assert!(!drawn.contains("could not confirm"), "{drawn}");
+    check_shot(
+        &format!("m7/30b-staging-not-kept-{columns}x{rows}.txt"),
+        &format!(
+            "{}\n{drawn}\n",
+            STAGING_NOT_KEPT_HEADER.replace("<size>", &format!("{columns}x{rows}"))
+        ),
+    );
+    line
+}
+
+/// The bottom row holding the fallback's words, trimmed.
+fn staging_line(state: &AppState, columns: u16, rows: u16) -> String {
+    let drawn = frame_at(state, columns, rows, None);
+    drawn
+        .iter()
+        .find(|row| row.contains("staging not kept"))
+        .map_or_else(
+            || panic!("{columns}: no staging line:\n{}", drawn.join("\n")),
+            |row| row.trim().to_owned(),
+        )
+}
+
+const STAGING_NOT_KEPT_HEADER: &str = "\
+# m7/30b-staging-not-kept-<size>.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# a_switch_whose_staging_cannot_come_back_says_so, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `. ⏎ y` on `fix` from `main`, `f.txt` line 5
+# edited and staged, `fix` changed line 7. git could not put the staging
+# back on `fix`'s tree, so the edits came back unstaged.
+#  - The cursor on `fix`, now HEAD.
+#  - The bottom row: `checkout fix ✓ · your edits are back · staging not
+#    kept: f.txt · u undoes it, staging included` at 187; at 80 `your
+#    edits are back` goes first, the file and `u` stay whole.
+#  - Nowhere `could not confirm`.
 ";

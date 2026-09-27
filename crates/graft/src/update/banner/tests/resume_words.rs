@@ -412,3 +412,48 @@ fn a_resume_that_dies_takes_its_resuming_with_it() {
     assert_eq!(state.operating, None);
     assert_eq!(state.resuming, None);
 }
+
+/// Ticket 30b: `c` finishes a stopped rebase, and its put-back could not
+/// keep the staging (graft-ops `AfterState::StagingNotKept`). The banner
+/// closes exactly as on `Done`; the line is the fallback's sticky rung, led
+/// by what `resumed_done` puts first — never `could not confirm`.
+#[test]
+fn a_resume_whose_put_back_lost_staging_is_done_and_says_so() {
+    let (state, commands) = keys(stopped(InProgress::Rebase, &[]), &[KeyCode::Char('c')]);
+    let (id, how) = sent_resume(&commands);
+    assert_eq!(how, Resume::Continue);
+    let mut done = applied(
+        OperationKind::Rebase,
+        "rebase main onto origin/main",
+        EntryStatus::Committed,
+    );
+    done.entry = set_aside_around(done.entry);
+    let as_done = answer(&state, id, Operated::Done(done.clone()));
+    let paths = vec![std::path::PathBuf::from("one.txt")];
+    let lost = answer(
+        &state,
+        id,
+        Operated::StagingNotKept {
+            applied: done,
+            paths: paths.clone(),
+        },
+    );
+    // Closed as on `Done`.
+    assert_eq!(lost.in_progress, as_done.in_progress);
+    assert_eq!(lost.stopped, as_done.stopped);
+    assert!(lost.stopped.is_none() && !lost.banner_focus);
+    assert_eq!(lost.land_on_head, as_done.land_on_head);
+    // The sticky rung, led by the `Done`'s own words.
+    assert_eq!(
+        lost.status,
+        crate::update::operate::staging_not_kept_status(
+            "rebase main onto origin/main",
+            &paths,
+            lost.size.columns
+        )
+    );
+    let row = bottom_row(&lost, 120, 40);
+    assert!(row.contains("staging not kept: one.txt"), "{row:?}");
+    assert!(row.contains("u undoes it, staging included"), "{row:?}");
+    assert!(!row.contains("could not confirm"), "{row:?}");
+}

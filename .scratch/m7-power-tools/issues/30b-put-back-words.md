@@ -1,6 +1,6 @@
 # 30b put-back-words — the preview and the done line after "every put-back keeps the index"
 
-Status: draft
+Status: done
 Build with: Opus. The words are decided here; the work is small but crosses the operate answer, the resume banner
 and captures in two crates, and every match on `Operated` has to be judged, not pattern-filled.
 Needs: 30's `graft_ops::apply::AfterState::StagingNotKept { paths: Vec<PathBuf> }` (on 30's branch) and
@@ -161,20 +161,35 @@ New:
     red evidence is review q8".
 
 ## Acceptance (each tick names its test inline)
-- [ ] The five red graft tests green, each named, with the new expectation quoted.
-- [ ] The four stale unit tests changed as above, each named.
-- [ ] The five new tests above, each named, red run quoted where marked.
-- [ ] Captures `docs/shots/m7/30b-staging-not-kept-187x50.txt` and `-80x24.txt` exist, under 200 KB, with a
-      `What right looks like:` header. Colour unverified (rule 5).
-- [ ] Changed m6 captures regenerated (`GRAFT_UPDATE_SHOTS=1`, then a green re-run), each listed in NOTES with its
-      one-line diff.
-- [ ] 30's open boxes ticked in 30's file, with test names and "(closed in 30b)":
-  - "every set-aside test in both crates green": `cargo nextest run --workspace -E
-    'test(/set_aside|put_back|stash|absorb|recover|pull/)'`, count quoted;
-  - "Gates";
-  - "Carry, absorb C1".
-- [ ] Gates, workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
-      `cargo test --doc`.
+- [x] The five red graft tests green, each named, with the new expectation quoted:
+  `m6_stash_put_back::set_aside::a_dirty_pull_rebase_is_three_keys` (row `your edits: 3 files set aside, put back
+  after` at 120 and 80); `m5_walk::every_scenario::journey_pull_rebase_dirty`, `…_pull_rebase_dirty_preview`,
+  `…_rejected_push_dirty_to_pushed` (`Sees::Has("your edits: 3 files set aside, put back after")`,
+  `Sees::Lacks("comes back unstaged")`, `three_edits_back` = `["M  one.txt", " M three.txt", " M two.txt"]`);
+  `m5_walk::every_scenario::journey_switch_dirty` (`["M  base.txt", " M notes.txt"]`).
+- [x] The four stale unit tests changed as above: graft-ui `preview_box::tests::set_aside_row_words`,
+  `set_aside_row_cuts_to_the_file_count` (renamed), `the_set_aside_row_draws_whole_at_80_and_120`; graft
+  `update::preview::tests::the_set_aside_row_sits_under_the_working_tree_line` (`staged: 1` kept on purpose; 120 →
+  `…put back after`, 40 → `your edits: 3 files set aside`).
+- [x] The five new tests (plus two), each named, red runs quoted in NOTES:
+  `update::operate::tests::staging_not_kept::staging_not_kept_rungs_cut_the_edits_back_clause_first`,
+  `…::staging_not_kept_words_match_graft_ops`, `jobs::operate::tests::answer_maps_staging_not_kept_alone_to_its_own_outcome`
+  (red), `m6_stash_put_back::set_aside::a_switch_whose_staging_cannot_come_back_says_so` (red),
+  `update::banner::tests::resume_words::a_resume_whose_put_back_lost_staging_is_done_and_says_so` (red), C1
+  `absorb_staged::a_staged_file_deletion_drops_the_commit_that_made_it` (red with 31 reverted). Extra:
+  `…::staging_not_kept_status_picks_the_rung_that_fits`, `…::operated_takes_staging_not_kept_as_done_with_its_line`.
+- [x] Captures `docs/shots/m7/30b-staging-not-kept-187x50.txt` (2.1 KB) and `-80x24.txt` (1.4 KB), each with a
+  `What right looks like:` header, written and re-checked green by
+  `a_switch_whose_staging_cannot_come_back_says_so`. Colour unverified (rule 5): a Sticky draws in the Warning
+  token; not seen.
+- [x] Changed m6 captures regenerated (`GRAFT_UPDATE_SHOTS=1`, then a green re-run), listed in NOTES "Captures":
+  in-process by `a_dirty_pull_rebase_is_three_keys`; pty by `.scratch/m6-conflicts/pty-walk-m6.py <WxH>
+  pull-rebase-dirty@preview pull-rebase-dirty` at 120x40, 80x24, 187x50 (second run without the env var: all six
+  written/settled, exit 0).
+- [x] 30's open boxes ticked in 30's file, with test names and "(closed in 30b)": set-aside filter 407/407; Gates;
+  Carry C1.
+- [x] Gates, workspace-wide: `cargo fmt --check` pass, `cargo clippy --all-targets -- -D warnings` pass,
+  `cargo nextest run` 4051 passed / 4051 run (1 skipped), `cargo test --doc` pass.
 
 ## Touches (check each, say how)
 - `set_aside_row` callers: `grep -rn set_aside_row crates` shows only `update/preview.rs:956` and the tests.
@@ -225,3 +240,75 @@ About 40k: the row and its tests about 6k, the new outcome and its match sites a
 captures about 14k, the C1 test about 4k, docs about 4k.
 
 ## NOTES (builder)
+
+Scout: none, as the ticket says (30's NOTES list every site); each site re-read before editing, and `grep -rn
+"Operated::" crates/graft/src` re-run on the merged branch (line numbers had moved). No compaction.
+
+### What was built
+- `graft_ui::preview_box::set_aside_row(files)`: two rungs, no staging words. Only caller `update/preview.rs:plan_lines`.
+- `Operated::StagingNotKept { applied, paths }` (`jobs/operate.rs`); `answer` maps an `AfterState` whose `unread`
+  is exactly `[StagingNotKept]` to it, anything else stays `Incomplete` (Decided 4).
+- `update/operate.rs`: `staging_not_kept_rungs(what, paths)` (Decided 3's three rungs, built with
+  `view::status::done_line`, so `✓ ·` is `Done`'s own), `staging_not_kept_status(what, paths, columns)` →
+  `Status::Sticky { reason, keys: Some("u undoes it, staging included") }`. `done_what` (a remote op's words, else
+  the description) and `landed` (editor closed, refresh, landing) factored out of the `Done` arm so the new arm
+  shares them.
+- **Rung pick:** the status line has no ladder of its own (`fit_status_line` only cuts `reason` with `…`), so the
+  rung is picked by `fitting_line`'s rule against the status row's text width (`columns - 1`: the row indents one
+  cell), at answer time from `AppState::size`. The key half rides `keys`, so `reason · keys` is exactly the rung and
+  the footer's fit keeps `u undoes it, staging included` whole. **Cost:** a resize after the answer does not re-pick;
+  a narrower window cuts the reason with `…` (keys stay whole). A Status variant carrying the ladder would fix it;
+  not done (every `Status` match would change).
+- `banner.rs`: `resumed_staging_not_kept` = `resumed_done` (banner closed, refresh, landing), then the sticky led by
+  `resumed_done`'s `Done.what` (a finish-summary merge's `merged X into Y` included). An `Unfinished` close keeps its
+  reason plus the shortest rung (not reachable today: a put-back runs only on a close that finished). `kept_open`
+  and `finish::answers::refusal` take it as `Done`. `update/mod.rs` `staged`: the resolver moves on. To stay under
+  clippy's 60-line limit, `resumed`'s `Clashed` arm moved into `ended_in_clash` (same two calls).
+
+### Red runs
+- `answer_maps_…` (arm disabled for one run): `Incomplete { … error: "your edits are back · staging not kept: f.txt
+  · u undoes it, staging included" }`.
+- `a_switch_whose_…` (same): `left: "checkout fix — could not confirm it fully: your edits are back · staging not
+  kept: f.txt · u undoes it, staging included · esc dismiss"`.
+- `a_resume_whose_…` (routed to `resumed_incomplete` for one run): failed on `land_on_head` (`left: false, right:
+  true`) — the old path did not close as `Done`.
+- C1: see 30's ticket (red with 31's header reverted, `graft-git` restored byte-identical after).
+- The rung tests were written with the function; not seen red.
+
+### Captures (one-line diffs)
+- `docs/shots/m6/set-aside-preview-{120x40,80x24}.txt`, `m6-22-set-aside-preview-{120x40,80x24,187x50}.txt`: the
+  row `… put back after · 1 staged comes back unstaged` → `… put back after`.
+- `m6-22-*` also: `git rebase --no-update-refs --no-autostash origin/main` → `git rebase -i --no-update-refs
+  --no-autostash --empty=drop origin/main`. **Not 30b's change**: the captures were stale from earlier work
+  (the rebase command changed before this branch); regenerated with the rest.
+- `set-aside-done-120x40.txt`, `m6-24-set-aside-done-{120x40,80x24,187x50}.txt`: `Uncommitted changes (3
+  unstaged)` → `(1 staged, 2 unstaged)`.
+- `m6-24-…-187x50.txt` also: header `192 rows so far` → `202 commits` — timing of the walk's count, not 30b; the
+  re-run without `GRAFT_UPDATE_SHOTS` matched. It may flake between the two.
+- Captions `m6-contact-sheet-captions.tsv` (set-aside-preview ×2, m6-22 ×2, m6-24 ×2) reworded; sheet reassembled
+  (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`; sheets 1, 3, 4, 5 changed, all under 200 KB).
+
+### Touches
+- `set_aside_row` callers: `grep -rn set_aside_row crates` → `update/preview.rs` and tests only.
+- Every `Operated` match (`grep -rn "Operated::" crates/graft/src`): `update/mod.rs` `staged`; `update/operate.rs`
+  `operated`; `banner.rs` `resumed` and `kept_open`; `finish/answers.rs` `refusal`; `resume_answered` uses `if let
+  Operated::Done` (a merge finish never sets aside, so `StagingNotKept` → `Closed`, as `Incomplete`);
+  `lands_on_head.rs` unchanged (`only_done_lands` asserts `Incomplete` lands nothing; the new
+  `operated_takes_staging_not_kept_as_done_with_its_line` asserts this one lands). The compiler checked
+  exhaustiveness.
+- Checkout preview draws the same row: the new app test asserts it at 187 and 80.
+- Journal browser (`J`): draws the entry's description, no staging words; unchanged (no code path touched).
+- Keymap: no new key; `u` unchanged, pinned by the new test's `u`.
+- Journal/undo: graft reads only; the new app test's `u` checks index and tree byte-equal.
+- Docs: TESTING.md (`pull-rebase-dirty`, `switch-dirty`, new `switch-staging-not-kept` row, `m6-22`), README.md,
+  `docs/design-notes/m6-stash-put-back.md` :33 and :118 (superseded note), graft-ui MAP.md `set_aside_row`, graft
+  MAP.md (`Operated`, `operated`, `resumed`, the two new fns).
+- Out of crate set: only the C1 test file in graft-ops. `graft-git/src/diff/patch.rs` was edited for one red run
+  and restored (`git diff --stat crates/graft-git` empty).
+
+### Gaps for the conductor
+- `M7/30forecast` as the ticket says (not built).
+- The rung is chosen at answer time; a resize afterwards cuts with `…` rather than re-picking (above).
+- A Sticky draws in the Warning colour and, with its own `keys`, has no `esc dismiss`; `Esc` still clears it
+  (`update/keys.rs`). Colour unverified.
+

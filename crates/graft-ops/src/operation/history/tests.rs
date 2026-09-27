@@ -615,12 +615,9 @@ fn facts_over(entries: Vec<StatusEntry>) -> RepoFacts {
 }
 
 /// ADR-0045 §4: `sets_aside` is `Some` for a rebase or checkout exactly when
-/// tracked files are changed, counting them and the staged entries whose
-/// staging the put-back loses (m6-conflicts/83, M1): a staged modification,
-/// deletion or type change comes back unstaged, a rename comes back as a
-/// staged new file plus an unstaged deletion (one lost), and a staged new
-/// file stays staged. Untracked files never count; every other kind is
-/// `None`, dirty or not.
+/// tracked files are changed, counting them; `staged` is 0 since every
+/// put-back keeps the index (amendment 2026-09-26 b, m7-power-tools/30).
+/// Untracked files never count; every other kind is `None`, dirty or not.
 #[test]
 fn sets_aside_table() {
     let clean = facts_over(vec![]);
@@ -647,11 +644,12 @@ fn sets_aside_table() {
         );
         assert_eq!(
             op.sets_aside(&staged_and_unstaged),
-            // b.rs (staged new file) stays staged; c.rs, d.rs and e.rs's
-            // old path come back unstaged.
+            // Every put-back keeps the index (ADR-0045 amendment
+            // 2026-09-26 b): no staging is forecast lost. Before it, c.rs,
+            // d.rs and e.rs's old path counted 3.
             Some(SetAside {
                 files: 5,
-                staged: 3
+                staged: 0
             }),
             "{what}: staged and unstaged"
         );

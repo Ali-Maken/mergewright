@@ -516,9 +516,10 @@ fn rebase_preview_with_edits() -> Vec<Step> {
             "the preview's set-aside row, drawn",
             &[
                 Sees::Has("working tree:"),
-                Sees::Has(
-                    "your edits: 3 files set aside, put back after · 1 staged comes back unstaged",
-                ),
+                Sees::Has("your edits: 3 files set aside, put back after"),
+                // No staging words: the put-back keeps the staging
+                // (ADR-0045 amendment b, ticket 30b).
+                Sees::Lacks("comes back unstaged"),
                 Sees::Above("working tree:", "your edits: 3 files set aside"),
             ],
         ),
@@ -538,13 +539,13 @@ fn rebase_confirmed() -> Vec<Step> {
     ]
 }
 
-/// The three files as he left them, none staged (the put-back loses the
-/// staging of `one.txt`, as git's `stash apply` without `--index` does).
+/// The three files as he left them, `one.txt` still staged: the staging is
+/// kept, as `git switch` keeps it (ADR-0045 amendment b).
 fn three_edits_back(fixture: &Fixture) -> Checked {
     for name in THREE {
         file_is(fixture, name, EDIT)?;
     }
-    status_is(fixture, &[" M one.txt", " M three.txt", " M two.txt"])
+    status_is(fixture, &["M  one.txt", " M three.txt", " M two.txt"])
 }
 
 /// `pull-rebase-dirty` up to the preview: `p r`. The capture m6-22.
@@ -752,7 +753,7 @@ fn first_slot_is(state: &AppState) -> Checked {
 }
 
 /// `switch-dirty`: `. ⏎ y` on `fix`'s row, `main` dirty — on `fix`, both
-/// edits in the tree, no stash left, the staging of `base.txt` lost.
+/// edits in the tree, no stash left, the staging of `base.txt` kept.
 fn switch_dirty() -> Scenario {
     journey(
         "switch-dirty",
@@ -772,7 +773,7 @@ fn switch_dirty() -> Scenario {
                     on_branch(fixture, "fix")?;
                     file_is(fixture, "base.txt", EDIT)?;
                     file_is(fixture, "notes.txt", EDIT)?;
-                    status_is(fixture, &[" M base.txt", " M notes.txt"])?;
+                    status_is(fixture, &["M  base.txt", " M notes.txt"])?;
                     no_stash(fixture)
                 }),
             ],

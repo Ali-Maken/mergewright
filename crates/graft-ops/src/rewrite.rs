@@ -171,9 +171,10 @@ pub struct RewriteParams {
     /// goes through. The set-aside then puts the edits back **with the
     /// index**, measured from this commit, so what stays is still staged
     /// (the index-only kind included) and an edit made on past a placed
-    /// hunk merges cleanly (06b; supersedes ADR-0045 §4's "comes back
-    /// unstaged" for absorb). Pinned by the entry until it closes. `None`
-    /// for every other rewrite: its put-back is ADR-0045's.
+    /// hunk merges cleanly (06b). Pinned by the entry until it closes.
+    /// `None` for every other rewrite, whose put-back applies `S` itself
+    /// with `--index` (ADR-0045 amendment 2026-09-26 b, which covers
+    /// absorb's as one case).
     pub index_base: Option<Oid>,
 }
 

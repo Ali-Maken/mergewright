@@ -33,7 +33,7 @@ use graft_git::remote::{Remote, TrackedUpstream};
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
 use graft_git::state::InProgress;
-use graft_git::status::{Change, UnmergedHow, WorkingTreeStatus};
+use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
@@ -290,20 +290,18 @@ impl Invocation {
 }
 
 /// What a rebase or checkout sets aside around itself
-/// ([`Operation::sets_aside`], ADR-0045 §4): the tracked files changed, and
-/// how many staged entries lose their staging when put back — the put-back
-/// runs without `--index`. Always 0 for absorb, whose put-back goes with the
-/// index (06b, `RewriteParams::index_base`).
+/// ([`Operation::sets_aside`], ADR-0045 §4): the tracked files changed.
+/// `staged` is always 0: every put-back keeps the index (ADR-0045 amendment
+/// 2026-09-26 b, m7-power-tools/30). When git cannot reinstate it, the
+/// after-state says so (`AfterState::StagingNotKept`); the preview does not
+/// forecast that.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetAside {
     /// Tracked files with staged or unstaged changes.
     pub files: usize,
-    /// Staged entries whose staging the put-back loses, as git gives it
-    /// (m6-conflicts/83, M1; `set_aside` tests read it back): a staged
-    /// modification, deletion or type change comes back unstaged (`MM` →
-    /// ` M`, `D ` → ` D`); a rename comes back as a staged new file plus an
-    /// unstaged deletion of the old path, so it counts one; a staged new file
-    /// (or copy) comes back staged and does not count.
+    /// Staged entries whose staging the put-back loses: always 0 since
+    /// m7-power-tools/30, which put every put-back on `--index`. Kept so the
+    /// preview's clause reads it until the app drops that clause.
     pub staged: usize,
 }
 
@@ -1260,35 +1258,14 @@ impl Operation {
         if !wraps {
             return None;
         }
-        let changed = || {
-            facts
-                .status
-                .entries
-                .iter()
-                .filter(|entry| entry.is_staged() || entry.is_unstaged())
-        };
-        // Absorb puts the edits back with the index (06b): no staging lost.
-        let keeps_index = matches!(self, Self::Rewrite(params) if params.index_base.is_some());
-        match changed().count() {
-            0 => None,
-            files if keeps_index => Some(SetAside { files, staged: 0 }),
-            files => Some(SetAside {
-                files,
-                staged: changed()
-                    .filter(|entry| {
-                        matches!(
-                            entry.staged,
-                            Some(
-                                Change::Modified
-                                    | Change::Deleted
-                                    | Change::Renamed
-                                    | Change::TypeChanged
-                            )
-                        )
-                    })
-                    .count(),
-            }),
-        }
+        let files = facts
+            .status
+            .entries
+            .iter()
+            .filter(|entry| entry.is_staged() || entry.is_unstaged())
+            .count();
+        // Every put-back keeps the index (ADR-0045 amendment 2026-09-26 b).
+        (files > 0).then_some(SetAside { files, staged: 0 })
     }
 
     /// `refs/stash`, when this operation sets edits aside.

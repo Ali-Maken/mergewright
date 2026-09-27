@@ -16,6 +16,66 @@
 # file (docs/shots/<name>) and what right looks like for it.
 
 ================================================================================
+docs/shots/m6/stash-apply-preview-120x40.txt
+what right looks like: (ticket 86) `S ⏎` on a stash whose notes.md clashes with the commit made since: a box over the stash list titled `Preview: apply stash@{0}`; `working tree: notes.md`, `may conflict: notes.md`; the fate row `stash@{0} stays in the list`; `undo: u takes this back`; the git line; `▸[ Cancel ]   [ Apply ]`, the cursor on Cancel; the box edge offers `y apply`. `esc` goes back to the list on the same stash, nothing written (asserted). (ticket 87) No stash-list bar under the box: the box footer is the bar, the last row blank. Colour unverified.
+================================================================================
+
+# m6/stash-apply-preview-120x40.txt: 120x40, drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/m6_stash_put_back/stash_preview.rs,
+# stash_look_and_leave_writes_nothing, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# What right looks like: `S ⏎` on a stash whose notes.md clashes with the
+# commit made since.
+#  - A box over the stash list titled `Preview: apply stash@{0}`.
+#  - `working tree: notes.md`, then `may conflict: notes.md`.
+#  - The fate row: `stash@{0} stays in the list`.
+#  - The footer offers `y apply`; `esc` goes back to the list, nothing written.
+#  - No stash-list bar under the box: the box's footer is the bar, and the
+#    last row is blank (review 86, M2).
+
+STASHES (1)
+▸ stash@{0}   "WIP on main: cfa370c add the notes"             4m ago   1 file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: apply stash@{0} ────────────────────────────────────────────────────────────────────────────────────────────╮
+│ working tree: notes.md                                                                                               │
+│ may conflict: notes.md                                                                                               │
+│ stash@{0} stays in the list                                                                                          │
+│ undo: u takes this back                                                                                              │
+│ git stash apply --index 'stash@{0}'                                                                                  │
+│ ▸[ Cancel ]   [ Apply ]                                                                                              │
+╰ y apply  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────────────────╯
+
+
+================================================================================
 docs/shots/m6/stash-pop-preview-80x24.txt
 what right looks like: (ticket 86) `S p` on the same stash at 80x24: the box `Preview: pop stash@{0}` whole inside 80 columns; `may conflict: notes.md`; the fate row `stash@{0} is dropped · u brings it back`; `[ Pop ]`; the edge offers `y pop`. (ticket 87) No stash-list bar under the box.
 ================================================================================

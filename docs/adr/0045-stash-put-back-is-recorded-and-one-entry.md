@@ -181,3 +181,70 @@ Result: `PreviewPlan::put_back: Option<ConflictForecast>`, `Some` exactly when `
 (`may`), as every forecast is: the approximation for a rebase, and edits made between the preview and `y`, can
 differ. Cost: two spawns for a checkout, three for a rebase, on the preview job, checked for `stop` between them; no
 ref, index or file written. Words: `docs/design-notes/m6-stash-put-back.md`, amendment 2026-09-26.
+
+## Amendment 2026-09-26 (b) — every put-back keeps the index (ticket m7-power-tools/30; review m7-28 Q1;
+scout `.scratch/m7-power-tools/scouts/rmcached.md`)
+
+### §4 step 6 amended
+Put back with `git stash apply --index <S>`, then read the status whatever the exit code:
+- nothing unmerged → clean: drop `S` by id, `Committed`;
+- unmerged → the clash (§2). Git resets the index before its merge (`Index was not unstashed`), so it is the clash a
+  plain apply gives;
+- nothing unmerged and no tracked file changed → git could not reinstate the index on the landed tree and wrote
+  nothing. Run `git stash apply <S>` once, and read again with the same outcomes. A clean result is `Committed`, `S`
+  dropped, and `AfterState::StagingNotKept { paths }`:
+  `your edits are back · staging not kept: <path>[ +N more] · u undoes it, staging included`;
+- anything else → as before (`S` kept, `EditsAt::Stash`). A second apply never runs over a tree the first changed.
+Why: `git switch` carries what he staged (a `git rm --cached` stays `D `). A plain apply turned it into ` M`, and it
+dropped content that existed only in the index, with no words. M6 rejected `--index` because it refuses on conflict
+(study `commit-stash.md:324`, Magit #4993). The fallback removes that refusal. Absorb's rebuilt stash (06b) is one
+input to the same apply.
+
+### Consequences :131 replaced
+A put-back keeps the staged/unstaged split, as `git switch` does, except (a) on a clash, where every file ends staged
+(:129), and (b) when git cannot reinstate the index, where the line names the files. In both, `u` restores the split
+exactly (§6). `SetAside.staged` is always 0, and the preview no longer says `N staged come back unstaged`. The
+preview does not forecast (b). This replaces 06b's absorb-only supersession of this line.
+
+### §5 clarified — a path HEAD tracks and the index doesn't
+A `git rm --cached` file, ignored or not, is set aside with the rest. `stash create` writes its bytes into `S`
+(step 1), and `S` is listed (step 3) before the reset (step 4) writes HEAD's copy over it. So its bytes are in the
+tree or the stash list at every instant, and ADR-0049's refusal, which is for bytes nothing else holds, does not
+apply. Pinned by `the_rm_cached_bytes_are_never_only_on_disk` (and `undo_of_the_switch_keeps_the_rm_cached`); the
+round trips by `rebase_round_trips_an_rm_cached`, `checkout_round_trips_an_rm_cached`,
+`rebase_round_trips_index_only_content`, `checkout_round_trips_index_only_content`,
+`rebase_round_trips_a_staged_mode_only_change`, `checkout_round_trips_a_staged_mode_only_change`,
+`rebase_round_trips_a_rename`, `checkout_round_trips_a_rename`, `rebase_round_trips_a_staged_new_file` and
+`checkout_round_trips_a_staged_new_file` (`crates/graft-ops/tests/it/set_aside.rs`).
+
+### Absorb's put-back (review m7-06b M3, "What the ADR-0045 amendment must state")
+1. **Scope.** Absorb that **went through** — `Operation::Rewrite` with `index_base: Some`, and `HEAD^{tree}` equal to
+   the base's tree at close — is one case of the rule above: its input to `stash apply --index` is `S` rebuilt on
+   the base instead of `S`.
+2. **Mechanism, as built.** `index_base` = old `HEAD` + every placed hunk, a commit with no ref. It is pinned by the
+   entry (`record.rs`) and saved in `plan.json` (`SavedPlan::index_base`, `#[serde(default)]`: a plan saved before
+   06b reads as `None`). At step 6, `S` is rebuilt (objects only): working tree `S^{tree}`, parents `base` and a
+   commit of `S^2^{tree}` on `base` (`apply/set_aside/put_back.rs`, `from_index_base`). Then `stash apply --index` of
+   the rebuilt stash. `S` stays the listed copy and is dropped by id.
+3. **The guarantee.** Index == the old index, byte for byte. The working tree is exact, including an edit made on past
+   a placed hunk. It cannot clash, because ours is the merge base.
+4. **Rejected: merging with the old index as base.** It removes every stay from the working tree (review m7-06b,
+   §"What the absorb promise holds now", its probe table).
+5. **Failed, aborted, or resumed onto a different tree** (review m7-06b C2). `S` itself goes back with `--index`, by
+   the rule above — not the plain put-back. Aborted, `HEAD^{tree}` is `S^1^{tree}`, so it is exact: the index-only
+   lines are still staged (`abort_after_absorb_stops_keeps_index_only_lines`). Resumed onto a tree the plan did not
+   name, git usually cannot reinstate the index (a placed hunk is already in `HEAD`) and writes nothing: the plain
+   apply runs and `StagingNotKept` names the files; `u` restores the split
+   (`absorb_stopped_then_continued_elsewhere_says_the_staging_went`). `r` and `R`, which pass `index_base: None`,
+   are the same rule (`every_set_aside_kind_keeps_the_index`).
+6. **The preview.** `SetAside.staged` is 0 for every kind (`set_aside_staged_is_zero_for_every_kind`), so it is no
+   longer true only on absorb's went-through path.
+7. **§7 proof rows, absorb.** An index-only line (`an_index_only_stay_survives_absorb`), an index-only mode
+   (`an_index_only_mode_change_survives_absorb`), a rename (`a_staged_rename_stays_whole`), edited on
+   (`absorb_after_editing_on_leaves_no_markers`), stopped then `c` (`absorb_stopped_then_continued_as_planned_keeps_the_stay`,
+   `absorb_stopped_then_continued_elsewhere_says_the_staging_went`), stopped then `a`
+   (`abort_after_absorb_stops_keeps_index_only_lines`, `undo_after_absorb_stops_then_aborts`), each with its undo row
+   (`crates/graft-ops/tests/it/absorb_staged.rs`).
+
+ADR-0049 is unchanged: its guard refuses a write over bytes nothing else holds, and §5 above shows a set-aside's
+bytes always have a holder.

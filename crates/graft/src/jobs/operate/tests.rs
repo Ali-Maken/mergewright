@@ -129,3 +129,64 @@ fn a_failed_checkout_that_moved_head_rereads_everything() {
         Some(Refresh::WorkingTree)
     );
 }
+
+/// A checkout that ran and committed, as `apply` hands it back inside an
+/// `AfterState` failure.
+fn committed_checkout() -> Box<Applied> {
+    let ApplyError::Git { mut entry, .. } = failed_checkout(None) else {
+        panic!("failed_checkout builds a Git failure");
+    };
+    entry.status = EntryStatus::Committed;
+    Box::new(Applied {
+        entry: *entry,
+        refresh: Refresh::Everything,
+        step_backup: None,
+        replaced: graft_ops::undo::Replaced::default(),
+    })
+}
+
+fn staging_not_kept() -> graft_ops::apply::AfterState {
+    graft_ops::apply::AfterState::StagingNotKept {
+        paths: vec![PathBuf::from("f.txt")],
+    }
+}
+
+/// Ticket 30b, Decided 4: the fallback **alone** is its own outcome; a drop
+/// that failed after it (`SetAsideKept`) or any second unread item is
+/// really unconfirmed, and stays `Incomplete`.
+#[test]
+fn answer_maps_staging_not_kept_alone_to_its_own_outcome() {
+    let alone = answer(Err(ApplyError::AfterState {
+        applied: committed_checkout(),
+        unread: vec![staging_not_kept()],
+    }));
+    assert!(
+        matches!(&alone, Operated::StagingNotKept { paths, applied }
+            if paths == &[PathBuf::from("f.txt")] && applied.entry.description == "checkout feature"),
+        "{alone:?}"
+    );
+
+    let kept = graft_ops::apply::AfterState::SetAsideKept {
+        error: graft_ops::facts::FactsError::State(std::io::Error::other("no stash list")),
+        words: "your edits are in stash@{0} · staging not kept: f.txt".to_owned(),
+    };
+    let drop_failed = answer(Err(ApplyError::AfterState {
+        applied: committed_checkout(),
+        unread: vec![kept],
+    }));
+    assert!(
+        matches!(drop_failed, Operated::Incomplete { .. }),
+        "{drop_failed:?}"
+    );
+
+    let two = answer(Err(ApplyError::AfterState {
+        applied: committed_checkout(),
+        unread: vec![
+            staging_not_kept(),
+            graft_ops::apply::AfterState::BackupGone {
+                name: "refs/graft/backup/x".to_owned(),
+            },
+        ],
+    }));
+    assert!(matches!(two, Operated::Incomplete { .. }), "{two:?}");
+}

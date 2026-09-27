@@ -132,8 +132,10 @@ M5 promises that **you see the result before you confirm**.
   (a teammate's push, an editor's git), `Enter` says `main moved since the
   preview · r again` and runs nothing. A rebase or a switch on a dirty tree
   sets your edits aside and puts them back after: the box says so under
-  `working tree:` (`your edits: 3 files set aside, put back after · 1 staged
-  comes back unstaged`), and the done line ends `· your edits are back`.
+  `working tree:` (`your edits: 3 files set aside, put back after`), and the
+  done line ends `· your edits are back`. Your staging comes back as you left
+  it; if git can't keep your staging, the line names the files and `u`
+  restores it.
 - **Conflicts stop honestly.** A merge or rebase that conflicts leaves git
   mid-operation: the header says `MERGING`, the changes pane lists the
   files under `CONFLICTS (n)`, and the footer offers `c continue`,

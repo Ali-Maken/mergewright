@@ -47,7 +47,7 @@ fn diverged() -> TempRepo {
     repo
 }
 
-fn id(repo: &TempRepo, rev: &str) -> Oid {
+pub(crate) fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
 }
 
@@ -114,6 +114,14 @@ enum Tree {
     Deletion,
     /// `a.txt` renamed with `git mv`.
     Rename,
+    /// `git rm --cached a.txt`: untracked from the index, kept on disk
+    /// (review m7-28 Q1).
+    RmCached,
+    /// `base.txt` staged, then the worktree taken back to `HEAD`'s: only
+    /// the index holds the change (review m7-06b C2).
+    IndexOnly,
+    /// `a.txt` made executable in the index alone.
+    ModeOnly,
 }
 
 impl Tree {
@@ -135,6 +143,17 @@ impl Tree {
             Tree::Rename => {
                 repo.git(&["mv", "a.txt", "b.txt"]);
             }
+            Tree::RmCached => {
+                repo.git(&["rm", "-q", "--cached", "a.txt"]);
+            }
+            Tree::IndexOnly => {
+                repo.write("base.txt", b"staged\n");
+                repo.git(&["add", "base.txt"]);
+                repo.write("base.txt", b"base\n");
+            }
+            Tree::ModeOnly => {
+                repo.git(&["update-index", "--chmod=+x", "--", "a.txt"]);
+            }
         }
     }
 }
@@ -142,7 +161,7 @@ impl Tree {
 // ── reading the repository back ─────────────────────────────────────────
 
 /// The stash list as commit ids, newest first.
-fn stash_commits(repo: &TempRepo) -> Vec<Oid> {
+pub(crate) fn stash_commits(repo: &TempRepo) -> Vec<Oid> {
     repo.git(&["stash", "list", "--format=%H"])
         .lines()
         .map(|line| Oid::from_hex(line).expect("a full id"))
@@ -156,21 +175,21 @@ fn stash_list(repo: &TempRepo) -> String {
 
 /// Everything a round trip must put back: refs, `HEAD`, the index (staged
 /// split included), every file's bytes, and the stash list.
-fn whole(repo: &TempRepo) -> (RepoState, String) {
+pub(crate) fn whole(repo: &TempRepo) -> (RepoState, String) {
     (state_of(repo), stash_list(repo))
 }
 
-fn journal_entries(repo: &TempRepo) -> Vec<JournalEntry> {
+pub(crate) fn journal_entries(repo: &TempRepo) -> Vec<JournalEntry> {
     let handle = repo.open();
     journal_for(&handle).entries().to_vec()
 }
 
-fn last_entry(repo: &TempRepo) -> JournalEntry {
+pub(crate) fn last_entry(repo: &TempRepo) -> JournalEntry {
     journal_entries(repo).pop().expect("an entry was written")
 }
 
 /// The set-aside stash an entry recorded.
-fn set_aside_of(entry: &JournalEntry) -> Oid {
+pub(crate) fn set_aside_of(entry: &JournalEntry) -> Oid {
     match entry.put_back {
         Some(PutBack {
             stash,
@@ -183,7 +202,7 @@ fn set_aside_of(entry: &JournalEntry) -> Oid {
 /// Whether `path` holds `bytes` in the working tree, or in a stash still in
 /// the list (a stash commit's own tree is the working tree it saved,
 /// staged new files included).
-fn edit_is_somewhere(repo: &TempRepo, path: &str, bytes: &[u8]) -> bool {
+pub(crate) fn edit_is_somewhere(repo: &TempRepo, path: &str, bytes: &[u8]) -> bool {
     let in_tree = repo.path().join(path).exists() && repo.read(path) == bytes;
     let expected = String::from_utf8_lossy(bytes).trim_end().to_owned();
     in_tree
@@ -193,7 +212,7 @@ fn edit_is_somewhere(repo: &TempRepo, path: &str, bytes: &[u8]) -> bool {
         })
 }
 
-fn resume_with(repo: &TempRepo, how: Resume, at: i64) -> Result<Applied, ApplyError> {
+pub(crate) fn resume_with(repo: &TempRepo, how: Resume, at: i64) -> Result<Applied, ApplyError> {
     let handle = repo.open();
     // A fresh journal read: `put_back` must come from the Pending line on
     // disk, not from anything kept in memory since the stop.
@@ -207,7 +226,7 @@ fn resume_with(repo: &TempRepo, how: Resume, at: i64) -> Result<Applied, ApplyEr
 
 /// `git status --porcelain` as its lines, one per path (v1: a staged
 /// rename reads `R  a.txt -> b.txt`).
-fn porcelain(repo: &TempRepo) -> Vec<String> {
+pub(crate) fn porcelain(repo: &TempRepo) -> Vec<String> {
     repo.git(&["status", "--porcelain"])
         .lines()
         .map(str::to_owned)
@@ -242,28 +261,29 @@ impl Tree {
             Tree::StagedNewFile => &[("n.txt", Some(b"new\n"))],
             Tree::Deletion => &[("a.txt", None)],
             Tree::Rename => &[("a.txt", None), ("b.txt", Some(b"a\n"))],
-        }
-    }
-
-    /// `git status --porcelain` after the put-back, as git gives it without
-    /// `--index` (replayed by hand in the 73 review): the edits are back and
-    /// exactly this much staging is lost.
-    fn after_put_back(self) -> &'static [&'static str] {
-        match self {
-            Tree::StagedUnstagedUntracked => &[" M base.txt", "?? junk.tmp"],
-            Tree::StagedNewFile => &["A  n.txt"],
-            Tree::Deletion => &[" D a.txt"],
-            Tree::Rename => &[" D a.txt", "A  b.txt"],
+            Tree::RmCached | Tree::ModeOnly => &[("a.txt", Some(b"a\n"))],
+            Tree::IndexOnly => &[("base.txt", Some(b"base\n"))],
         }
     }
 }
 
+/// What he staged and what he did not, as diffs against `HEAD` (blob ids
+/// and modes included): the same before and after a put-back that keeps
+/// the index, since neither branch touches the edited files.
+fn split(repo: &TempRepo) -> (String, String) {
+    (
+        repo.git(&["diff", "--cached", "--no-renames"]),
+        repo.git(&["diff", "--no-renames"]),
+    )
+}
+
 /// ADR-0045 §7, for one kind over one tree:
 /// - after the put-back, before any undo: every edited file's bytes are
-///   back, the index is the shape git gives without `--index`
-///   ([`Tree::after_put_back`]), `SetAside::staged` from the facts read
-///   before equals the staging git lost ([`staging_lost`], 83 M1), and the
-///   stash list is as before;
+///   back, the staged split is as before (`git status`, and [`split`]'s
+///   diffs — every put-back keeps the index, the 2026-09-26 b amendment),
+///   `SetAside::staged` from the facts read before is 0 and equals the
+///   staging git lost ([`staging_lost`], 83 M1), and the stash list is as
+///   before;
 /// - undo leaves refs, `HEAD`, index, files and stash list exactly as
 ///   before; redo exactly as after.
 fn round_trip(kind: Kind, tree: Tree) {
@@ -278,6 +298,8 @@ fn round_trip(kind: Kind, tree: Tree) {
     let facts =
         read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
     let promised = op.sets_aside(&facts).expect("the tree is dirty").staged;
+    assert_eq!(promised, 0, "{what}: no staging is forecast lost");
+    let split_before = split(&repo);
 
     let applied =
         try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{what}: {}", why.explain()));
@@ -293,10 +315,11 @@ fn round_trip(kind: Kind, tree: Tree) {
         }
     }
     let status_after = porcelain(&repo);
+    assert_eq!(status_after, status_before, "{what}: the status as before");
     assert_eq!(
-        status_after,
-        tree.after_put_back(),
-        "{what}: the index git gives"
+        split(&repo),
+        split_before,
+        "{what}: the staged split as before"
     );
     assert_eq!(
         staging_lost(&status_before, &status_after),
@@ -334,6 +357,36 @@ fn rebase_round_trips_a_rename() {
 }
 
 #[test]
+fn rebase_round_trips_an_rm_cached() {
+    round_trip(Kind::Rebase, Tree::RmCached);
+}
+
+#[test]
+fn rebase_round_trips_index_only_content() {
+    round_trip(Kind::Rebase, Tree::IndexOnly);
+}
+
+#[test]
+fn rebase_round_trips_a_staged_mode_only_change() {
+    round_trip(Kind::Rebase, Tree::ModeOnly);
+}
+
+#[test]
+fn checkout_round_trips_an_rm_cached() {
+    round_trip(Kind::Checkout, Tree::RmCached);
+}
+
+#[test]
+fn checkout_round_trips_index_only_content() {
+    round_trip(Kind::Checkout, Tree::IndexOnly);
+}
+
+#[test]
+fn checkout_round_trips_a_staged_mode_only_change() {
+    round_trip(Kind::Checkout, Tree::ModeOnly);
+}
+
+#[test]
 fn checkout_round_trips_staged_unstaged_untracked() {
     round_trip(Kind::Checkout, Tree::StagedUnstagedUntracked);
 }
@@ -355,7 +408,7 @@ fn checkout_round_trips_a_rename() {
 
 /// Each command line of `entry`, named by the set-aside step it is, or "the
 /// operation" for the operation's own lines.
-fn step_names(entry: &JournalEntry) -> Vec<&'static str> {
+pub(crate) fn step_names(entry: &JournalEntry) -> Vec<&'static str> {
     const STEPS: [&str; 5] = [
         "stash create",
         "stash store",
@@ -435,7 +488,7 @@ fn a_clean_put_back_drops_the_set_aside_stash() {
 
 /// `main` and `feature` both change `base.txt`, and the user has edited it
 /// on `main`: checking out `feature` puts the edit back over feature's line.
-fn clashing_checkout() -> (TempRepo, Operation) {
+pub(crate) fn clashing_checkout() -> (TempRepo, Operation) {
     let repo = TempRepo::init();
     repo.write("base.txt", b"base\n");
     repo.commit_all("one");
@@ -486,7 +539,7 @@ fn a_clashing_put_back_is_clashed_and_keeps_the_stash() {
 /// working tree's root while the checkout (step 5) runs, after the set-aside
 /// and before the put-back, then deletes itself — so an undo's own checkout
 /// does not run it again. It lives in the git dir, out of the tree's files.
-fn post_checkout(repo: &TempRepo, script: &str) {
+pub(crate) fn post_checkout(repo: &TempRepo, script: &str) {
     let hooks = repo.path().join(".git/test-hooks");
     std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
     let hook = hooks.join("post-checkout");
@@ -500,7 +553,7 @@ fn post_checkout(repo: &TempRepo, script: &str) {
 /// A checkout whose put-back git refuses with nothing unmerged: the user's
 /// staged new `n.txt`, and a hook that drops an untracked `n.txt` in the
 /// way after the switch.
-fn put_back_refused() -> (TempRepo, Operation) {
+pub(crate) fn put_back_refused() -> (TempRepo, Operation) {
     let repo = diverged();
     repo.write("n.txt", b"new\n");
     repo.git(&["add", "n.txt"]);
@@ -866,13 +919,13 @@ fn a_refused_rebase_puts_the_edits_back_on_the_same_tip() {
 /// A `Stop` that latches once `fired` says the step before it has landed —
 /// keyed to what the step leaves on disk, never to a poll count (the
 /// reasoning of `support::StopWhenGone`).
-struct StopWhen {
+pub(crate) struct StopWhen {
     fired: Box<dyn Fn() -> bool + Sync>,
-    latched: AtomicBool,
+    pub(crate) latched: AtomicBool,
 }
 
 impl StopWhen {
-    fn new(fired: impl Fn() -> bool + Sync + 'static) -> StopWhen {
+    pub(crate) fn new(fired: impl Fn() -> bool + Sync + 'static) -> StopWhen {
         StopWhen {
             fired: Box::new(fired),
             latched: AtomicBool::new(false),
@@ -891,7 +944,7 @@ impl Stop for StopWhen {
 }
 
 /// How many loose objects the repository holds.
-fn loose_objects(git_dir: &Path) -> usize {
+pub(crate) fn loose_objects(git_dir: &Path) -> usize {
     let Ok(fans) = std::fs::read_dir(git_dir.join("objects")) else {
         return 0;
     };
@@ -906,7 +959,7 @@ fn loose_objects(git_dir: &Path) -> usize {
 /// so a stop keyed to `HEAD` moving always lands while git is still running
 /// rather than racing git to the finish (M7/02b). Bounded at ten seconds,
 /// so a stop that never fires fails the test instead of hanging it.
-fn hold_git_until_killed(repo: &TempRepo) {
+pub(crate) fn hold_git_until_killed(repo: &TempRepo) {
     post_checkout(
         repo,
         "p=$PPID; n=0\n\

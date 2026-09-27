@@ -417,37 +417,28 @@ fn a_back_only_box_draws_esc_back() {
     assert!(!bottom.contains("choose"), "{bottom:?}");
 }
 
-/// m6-conflicts/74: the set-aside row's words, from the plan's counts.
+/// m6-conflicts/74: the set-aside row's words, from the plan's count. No
+/// staging words (ADR-0045 amendment b): the put-back keeps the staging.
 #[test]
 fn set_aside_row_words() {
     assert_eq!(
-        set_aside_row(1, 0)[0],
+        set_aside_row(1)[0],
         "your edits: 1 file set aside, put back after"
     );
     assert_eq!(
-        set_aside_row(3, 0)[0],
+        set_aside_row(3)[0],
         "your edits: 3 files set aside, put back after"
-    );
-    assert_eq!(
-        set_aside_row(3, 1)[0],
-        "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged"
-    );
-    assert_eq!(
-        set_aside_row(3, 2)[0],
-        "your edits: 3 files set aside, put back after \u{b7} 2 staged come back unstaged"
     );
 }
 
-/// Longest first, each shorter one a cut from the right: the staged clause
-/// goes first, and no wording loses the file count.
+/// Longest first, the shorter one a cut from the right: `put back after`
+/// goes, the file count never does.
 #[test]
-fn set_aside_row_cuts_the_staged_clause_first() {
-    let rungs = set_aside_row(3, 1);
+fn set_aside_row_cuts_to_the_file_count() {
+    let rungs = set_aside_row(3);
     assert_eq!(
         rungs,
         vec![
-            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged"
-                .to_owned(),
             "your edits: 3 files set aside, put back after".to_owned(),
             "your edits: 3 files set aside".to_owned(),
         ]
@@ -455,13 +446,12 @@ fn set_aside_row_cuts_the_staged_clause_first() {
     for pair in rungs.windows(2) {
         assert!(pair[0].starts_with(&pair[1]), "{pair:?}");
     }
-    // At 80 columns the whole row fits the box's text column (76 cells);
-    // at 60 the staged clause goes and the rest stays whole.
+    // Whole at 80 and 60; at 40 (36 text cells) only the count fits.
     assert_eq!(fitting_line(&rungs, 80), rungs[0]);
-    assert_eq!(fitting_line(&rungs, 60), rungs[1]);
-    assert_eq!(fitting_line(&rungs, 40), rungs[2]);
+    assert_eq!(fitting_line(&rungs, 60), rungs[0]);
+    assert_eq!(fitting_line(&rungs, 40), rungs[1]);
     // Narrower than even the last: the last, for `fit` to cut.
-    assert_eq!(fitting_line(&rungs, 20), rungs[2]);
+    assert_eq!(fitting_line(&rungs, 20), rungs[1]);
 }
 
 /// The row drawn in a real box at 80 and 120 columns: whole at both, one
@@ -469,7 +459,7 @@ fn set_aside_row_cuts_the_staged_clause_first() {
 #[test]
 fn the_set_aside_row_draws_whole_at_80_and_120() {
     for width in [80u16, 120] {
-        let rungs = set_aside_row(3, 1);
+        let rungs = set_aside_row(3);
         let mut view = rebase_view();
         view.lines
             .insert(2, sanitize_line(&fitting_line(&rungs, width)));

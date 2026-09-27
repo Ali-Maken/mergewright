@@ -23,6 +23,7 @@ mod octopus_merge;
 mod ops_execution;
 mod ops_execution_hard;
 mod put_back_forecast;
+mod put_back_index;
 mod recover;
 mod remote_ops;
 mod restart_gate;
