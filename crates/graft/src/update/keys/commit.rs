@@ -23,6 +23,11 @@ pub(super) fn commit_key(next: &mut AppState, commands: &mut Vec<Command>, amend
             super::super::finish::ReturnTo::Banner,
             &mut next_id,
         );
+    } else if amend {
+        // `a` reads the cursor (m7-power-tools/09): an older commit gets
+        // the put-in preview; `HEAD` gets today's amend unless something
+        // is built on it.
+        super::super::amend_into::a_key(next, commands, &mut next_id);
     } else {
         commands.extend(super::super::commit_editor::open(next, amend, &mut next_id));
     }

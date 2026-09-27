@@ -197,6 +197,9 @@ pub(super) fn claim_write(state: &mut AppState, id: JobId) -> Result<(), InFligh
         return Err(busy);
     }
     state.operating = Some(id);
+    // A write starts: the `✎ changed` tags of the last put-in are over
+    // (m7-power-tools/09) — undo, redo and a stage included.
+    state.row_tags.clear();
     Ok(())
 }
 
@@ -1023,6 +1026,16 @@ fn stopped(
     commands
 }
 
+/// The operation job `id` launched, when it launched one.
+fn launched_op(state: &AppState, id: JobId) -> Option<Operation> {
+    state
+        .remote
+        .running
+        .as_ref()
+        .filter(|running| running.id == id)
+        .and_then(|running| running.op.clone())
+}
+
 /// An operate job answered. Stale answers (a job that is not the one
 /// `AppState::operating` is waiting for) are dropped. `Operated::Incomplete`
 /// still refreshes — the write happened even though part of its after-state
@@ -1042,12 +1055,7 @@ pub fn operated(
     // A write that finished before `Esc`'s stop reached it answers here as
     // usual; the cancel it outran is over.
     state.remote.cancelling = None;
-    let launched_op = state
-        .remote
-        .running
-        .as_ref()
-        .filter(|running| running.id == id)
-        .and_then(|running| running.op.clone());
+    let launched_op = launched_op(state, id);
     let remote_op = launched_op.clone().filter(Operation::is_remote);
     // The drop a stash clash's close launched (m6-conflicts/72b): its `Done`
     // is worded as the end of the clash.
@@ -1064,7 +1072,9 @@ pub fn operated(
                 clash_drop,
                 &applied,
             );
-            landed(state, &applied, lands_on_head, next_id)
+            let mut commands = landed(state, &applied, lands_on_head, next_id);
+            super::amend_into::landed(state, launched_op.as_ref(), &mut commands, next_id);
+            commands
         }
         // It ran and was read back; only the staging did not come back
         // (30b). Everything a `Done` does, with its own sticky line.

@@ -138,6 +138,7 @@ fn label_entry<'a>(ghost: &graft_graph::row::Row, label: &str) -> GraphEntry<'a>
         sha: String::new(),
         compare_marked: false,
         marker: None,
+        tag: None,
     }
 }
 
@@ -206,8 +207,9 @@ fn entry<'a>(
         },
         // Neither belongs to a picture: the compare pin and the Mistake
         // Radar are about history as it is, and a preview is about history
-        // as it would be.
+        // as it would be. A row tag is the same: it marks history as it is.
         compare_marked: false,
         marker: None,
+        tag: None,
     }
 }

@@ -1,6 +1,7 @@
 //! M7 journeys walked through the app, each counted against the M7 note's
 //! `journey-counts` fence (`docs/design-notes/m7-power-tools.md`).
 
+pub mod amend_into;
 pub mod blame;
 pub mod history;
 pub mod pr_contents;

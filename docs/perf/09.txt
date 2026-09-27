@@ -1,0 +1,20 @@
+# a on HEAD through the dependents check — 2026-09-27T17:36:50Z
+# git version 2.54.0 (Apple Git-157), Darwin arm64, release build
+# fixture: m7_walk::amend_into's oauth repo (main, feature-a of 2 commits), one file staged
+# measured: a pressed to the amend editor open — the check, then HEAD's message read
+# budget: one frame, 16.7 ms
+
+m7-09 with the check: 37.4 ms
+m7-09 with the check: 38.3 ms
+m7-09 with the check: 39.7 ms
+m7-09 with the check: 41.7 ms
+m7-09 with the check: 42.3 ms
+m7-09 with the check: 138.3 ms
+m7-09 today's amend: 0.2 ms
+m7-09 today's amend: 0.2 ms
+m7-09 today's amend: 0.3 ms
+m7-09 today's amend: 0.5 ms
+m7-09 today's amend: 0.6 ms
+m7-09 today's amend: 40.6 ms
+m7-09 today's amend: 58.2 ms
+m7-09 summary: a to the amend editor, median of 7: 39.7 ms through the dependents check, 0.5 ms today's amend; the check adds 39.2 ms (budget 16.7 ms)

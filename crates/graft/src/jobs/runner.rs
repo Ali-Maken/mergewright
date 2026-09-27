@@ -738,6 +738,45 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Plans `a` into an older commit, or absorb, under an id `update`
+    /// chose (m7-power-tools/09). A read: no `AppState::operating`.
+    fn plan_rewrite(
+        &self,
+        id: JobId,
+        request: graft_ops::rewrite::RewriteRequest,
+        head: Option<graft_ops::operation::Tip>,
+    ) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::PlanRewrite), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                let planned = super::rewrite::plan(&repos, &request, head.as_ref(), cancel);
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::RewritePlanned(planned))
+            })
+        });
+    }
+
+    /// After a put-in landed: the commits it changed on the new line
+    /// (m7-power-tools/09).
+    fn resolve_row_tags(&self, id: JobId, offsets: Vec<u32>) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ResolveRowTags), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::RowTagsResolved(super::rewrite::resolve_row_tags(
+                    &repos, &offsets, cancel,
+                )))
+            })
+        });
+    }
+
     /// Runs one working-tree write, under an id `update` already chose
     /// (m3-working-tree-undo-and-stash/04): the runner reports
     /// [`Progress::Operating`] as soon as the job starts, then `ops::apply`
@@ -1110,6 +1149,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::BuildMap(id, req) => self.build_map(id, req),
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
             Command::ReadHeadMessage(id) => self.read_head_message(id),
+            Command::PlanRewrite { id, request, head } => self.plan_rewrite(id, request, head),
+            Command::ResolveRowTags(id, offsets) => self.resolve_row_tags(id, offsets),
             Command::Operate(id, op) => self.operate(id, op),
             Command::Resume(id, what) => self.resume(id, what),
             Command::Undo(id, force) => self.run_undo(id, false, force),

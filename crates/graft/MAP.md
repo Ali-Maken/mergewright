@@ -217,6 +217,21 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `update` (fn) — the pure state transition function. Its last step, every event, is `keep_unseen_failure(before, next)` (private): a failure replaced under a standing modal goes to `AppState::unseen`; it is dropped once `status` shows it again (m6-conflicts/78).
 - `opening` (fn) — `(PathBuf, Size) -> (AppState, Vec<Command>)`: the state Graft starts in and the jobs that fill it (open the repository, check git, walk history, read refs, read the working tree). The real loop and every integration harness go through it, because the history walk's id is minted here and `awaiting` set from it (m5-history-and-ghost-preview/05).
 
+- `AppState::amend_into` (field) — `update::amend_into::AmendInto`: the put-in plan in flight, the planned put-in its preview draws, and the tag read after it lands (m7-power-tools/09).
+- `AppState::row_tags` (field) — `update::row_tags::RowTags`: which commits carry a `graft_ui::graph_screen::RowTag` after their subject; cleared by `update::operate::claim_write` (m7-power-tools/09).
+
+## update::amend_into
+`a` on an older commit and absorb from the `.` menu (m7-power-tools/09).
+- `AmendInto` (struct) — private fields; `shown_for(op)` (`pub(crate)`): the box words when `op` is the planned put-in; `checking()`: a plan job is in flight.
+- `a_key` (fn, `pub(crate)`) — `a`, from `update::keys::commit::commit_key`: P14's refusal while an operation is live; a second `a` while checking starts nothing; an older commit row → the staged check (`Refusal::NothingStagedFor`'s words), then `Command::PlanRewrite { AmendInto }`; `HEAD`'s row, the uncommitted row, the changes pane → today's amend (`commit_editor::open`) unless refs show another local branch, then `PlanRewrite` with `head` (`checking what's built on <branch>…`).
+- `absorb_chosen` (fn, `pub(crate)`) — the `.` menu's `ContextAction::Absorb`: `PlanRewrite { Absorb }`.
+- `answer` / `planned` / `tags_resolved` (fns, `pub(crate)`) — the plan's answer: the preview (`opened_by` `a` or `.`), a refusal's own words (sticky), or `NothingBuiltOnHead` → today's amend; the tag read's answer sets `RowTag::Changed`, or adds `couldn't mark the changed commit: <why>` to the landing's line.
+- `landed` (fn, `pub(crate)`) — from `operate::operated`'s `Done`: only for the very `Operation::Rewrite` planned, the status `<what> ✓ · <also> · u undoes` and `Command::ResolveRowTags`.
+- `job_ended` / `forget` (fns, `pub(crate)`) — a plan or tag job that will not answer; the preview closed.
+
+## update::row_tags
+- `RowTags` (struct) — `set(oid, tag)`, `on(oid)`, `clear()` (all `pub(crate)`); `view::entries::row_entry` reads `on` into `GraphEntry::tag`.
+
 ## update::selection
 The uncommitted-changes row's one-bit selection: pure rules for setting, clearing and following `AppState::on_working_tree` (m2-details-and-diffs/06b).
 - `move_from_graph` (fn) — a graph motion key, before `History::move_cursor` sees it: sets or clears the flag, returns the motion still left for `History` (or `None`).
@@ -895,6 +910,14 @@ command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
 - `JobRunner::with_clock` (fn) — `(self, session::Clock) -> Self`, builder-style: the clock every job that **writes a journal entry** stamps it from (`operate`, `undo`, `preview`). `Clock::Wall` by default; a test that pins it pins the ages the journal browser then draws (m5/25).
 - `JobRunner::with_askpass_helper` (fn) — name the binary git runs as its askpass helper instead of `current_exe`; under `cargo test` `current_exe` is the test binary, which has no askpass mode (m4-remotes/06).
 - `JobRunner::answer_credential` (fn) — `(&self, JobId, Option<Secret>) -> bool`: hand a waiting job its answer (`None` = cancelled); `false` means the job had already gone and the secret was dropped. What `Command::AnswerCredential`/`CancelCredential` dispatch to.
+
+## jobs::rewrite
+The put-in's reads (m7-power-tools/09).
+- `RewritePlanned` (enum) — `Plan(Box<PlannedPutIn>)`, `Refused(Refusal)`, `NothingBuiltOnHead`; `Product::RewritePlanned`'s answer to `Command::PlanRewrite`.
+- `PlannedPutIn` (struct) — `params` (what `y` runs), `offsets` (each target's first-parent steps below `HEAD`), `words: DoneWords` (`what`, `also`), `shown: BoxWords` (`title`, `confirm`, `rows`).
+- `PUT_IT_IN` / `PUT_THEM_IN` (consts) — the confirm verbs `y` names.
+- `offsets`, `parse_numstat`, `amend_into_words`, `absorb_words`, `stays_words` (fns, `pub(crate)`) — pure: the tag offsets from a plan, and the box and landing words (one `stays staged · <why>` per `StaysWhy`).
+- `Command::ResolveRowTags(id, offsets)` → `Product::RowTagsResolved(Result<Vec<Oid>, String>)`: one `rev-list --first-parent` below the new `HEAD`.
 
 ## history
 - `seeds_for` (re-export from seeds) — see history::seeds.

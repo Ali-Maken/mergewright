@@ -46,6 +46,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
                 sha: short_sha(&line.row.commit.id.to_string(), 7),
                 compare_marked: false,
                 marker: None,
+                tag: None,
             })
             .collect(),
         icons: Icons::Plain,

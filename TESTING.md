@@ -2769,6 +2769,17 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 | new branch at HEAD with edits | same edits; cursor on `main` (HEAD) | `b feature-c ⇥ ⏎` | preview: `feature-c (new) → <sha7>`, `HEAD → feature-c`, `your edits stay as they are`; nothing set aside; `esc` writes nothing (`new_branch_at_head_with_edits_previews_edits_stay`; capture `docs/shots/m7/new-branch-with-edits-preview-120x40.txt`) |
 | remote-only branch (for the picker, 10) | `origin/sara/x` fetched, no local `sara/x` | — (no key yet: the picker is ticket 10) | graft-ops only: `switch --create sara/x --track refs/remotes/origin/sara/x`; `sara/x@{upstream}` = `origin/sara/x` even with `branch.autoSetupMerge=false`; `u` deletes `sara/x`, HEAD back (`graft-ops tests/it/switch_rule.rs::track_*`) |
 
+## M7: put staged changes into their commits (m7-power-tools/09)
+
+`a` reads the cursor: on an older commit of his branch it previews putting the staged changes into it; on `HEAD` it is today's amend unless something is built on his branch. `.` on the uncommitted row offers absorb. Every route ends in the Ghost Preview and `y`. Walks: `crates/graft/tests/it/m7_walk/amend_into.rs`. Colour unverified (rule 5).
+
+| Journey | Start | Keys | What right looks like |
+|---|---|---|---|
+| fix into an older commit | `feature-a` checked out ("Add OAuth callback", then "Handle expired tokens"), a fix to `src/auth.rs` staged; cursor on the top row (HEAD) | `j a y` = 3 | `a` shows `checking where your staged changes go…`, then `Preview: put your staged changes into <sha7> "Add OAuth callback"` with `<sha7>  Add OAuth callback  gains  src/auth.rs +1 −1`; after `y`: the fix is in "Add OAuth callback", nothing staged, "Handle expired tokens" replayed on top; `put into "Add OAuth callback" ✓ · u undoes`; the row reads `✎ changed` after its subject. `u`: every branch and the index as before (`fix_into_older`; captures `docs/shots/m7/amend-into-preview-187x50.txt`, `docs/shots/m7/amend-into-landed-120x40.txt`) |
+| absorb | same branch; line 5 of both files fixed and a line added to `README`, all staged; cursor on the top row | `k . j j j j j ⏎ y` = 9 (**the note allows 4**: absorb is the menu's last item; ticket 09 NOTES) | box `Preview: put staged changes into the commits they belong to`: two `→ <sha7>  <subject>` rows and `README  line 2  stays staged · no commit on your branch changed these lines`; after `y`: each fix in its commit, the README line still staged. `u`: all back (`absorb_staged`; capture `docs/shots/m7/absorb-preview-120x40.txt`) |
+| amend with a branch built on his | `feature-b` built on `feature-a`; a fix staged; in the changes pane | `a y` = 2 | not the editor: `checking what's built on feature-a…`, then the preview with `feature-b … built on yours · follows`; after `y`: HEAD amended, `feature-b` rebased onto it. `u`: all back (`amend_with_dependents`) |
+| amend with nothing built on his | only `feature-a` (or nothing built on it) | `a` | today's amend editor, unchanged (`update::amend_into::tests::a_on_head_without_dependents_is_todays_amend`) |
+
 ## M7: stashes in history (m7-power-tools/16)
 
 | Scenario | Right looks like |

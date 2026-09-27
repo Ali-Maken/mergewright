@@ -1356,6 +1356,15 @@ fn every_field_spelled_out() -> AppState {
         finish: None,
         finish_draft: None,
         conflict_editing: Some(std::path::PathBuf::from("notes.txt")),
+        amend_into: super::amend_into::AmendInto::default(),
+        row_tags: {
+            let mut tags = super::row_tags::RowTags::default();
+            tags.set(
+                graft_core::oid::Oid::from_sha1([7; 20]),
+                graft_ui::graph_screen::RowTag::Changed,
+            );
+            tags
+        },
     }
 }
 

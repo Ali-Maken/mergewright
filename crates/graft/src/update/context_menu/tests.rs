@@ -92,7 +92,8 @@ fn every_menu_lists_the_dropped_keys() {
     for menu in [
         ContextMenu::for_row(false, Vec::new(), 0, None),
         ContextMenu::for_row(true, Vec::new(), 0, None),
-        ContextMenu::for_working_tree(),
+        ContextMenu::for_working_tree(false),
+        ContextMenu::for_working_tree(true),
     ] {
         for action in [
             ContextAction::Fetch,
@@ -194,6 +195,34 @@ fn open_for_working_tree_lists_open_details_first() {
         "the working-tree row names no commit: {:?}",
         menu.items
     );
+}
+
+/// m7-power-tools/09: the absorb item is last, dim with nothing staged and
+/// live once something is — read from the working tree the screen holds.
+#[test]
+fn the_working_tree_menu_offers_absorb_when_something_is_staged() {
+    let absorb = |state: &mut AppState| {
+        open_for_working_tree(state);
+        let open = state.context_menu.take().expect("menu opened");
+        let last = open.menu.items.last().expect("items").clone();
+        assert_eq!(last.action, ContextAction::Absorb);
+        last.disabled.map(|why| why.as_str().to_owned())
+    };
+    let mut state = AppState::default();
+    assert_eq!(absorb(&mut state).as_deref(), Some("nothing staged"));
+    state.working_tree = Some(std::sync::Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![graft_git::status::StatusEntry {
+            path: "a.rs".into(),
+            original_path: None,
+            staged: Some(graft_git::status::Change::Modified),
+            unstaged: None,
+            untracked: false,
+            unmerged: false,
+            unmerged_how: None,
+            submodule: None,
+        }],
+    }));
+    assert_eq!(absorb(&mut state), None);
 }
 
 #[test]
@@ -763,7 +792,8 @@ fn explain_comes_after_the_slots_on_a_marked_row() {
 }
 
 /// The uncommitted-changes row: `Open details`, then the dropped keys —
-/// no slots, no dim item.
+/// no slots — in the order they had; absorb (m7-power-tools/09) is added
+/// after them, so none of them moves.
 #[test]
 fn the_uncommitted_row_menu_is_unchanged() {
     let mut state = on_the_feature_row();
@@ -776,6 +806,7 @@ fn the_uncommitted_row_menu_is_unchanged() {
             ContextAction::Pull,
             ContextAction::Push,
             ContextAction::Undo,
+            ContextAction::Absorb,
         ]
     );
 }

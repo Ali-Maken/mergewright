@@ -81,6 +81,7 @@ mod pool;
 mod preview;
 pub(crate) mod radar;
 pub(crate) mod remote;
+pub(crate) mod rewrite;
 mod runner;
 mod stash;
 mod stash_only;

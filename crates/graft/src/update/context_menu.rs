@@ -75,11 +75,17 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
     });
 }
 
-/// `.`/right-click on the uncommitted-changes row: `Open details` alone.
+/// `.`/right-click on the uncommitted-changes row: `Open details`, the
+/// dropped keys, and absorb — dim, reading `nothing staged`, when nothing
+/// is (m7-power-tools/09).
 pub(super) fn open_for_working_tree(next: &mut AppState) {
+    let staged = next
+        .working_tree
+        .as_deref()
+        .is_some_and(|tree| tree.staged().next().is_some());
     next.context_menu = Some(OpenMenu {
         row: WORKING_TREE_ROW,
-        menu: ContextMenu::for_working_tree(),
+        menu: ContextMenu::for_working_tree(staged),
         verbs: Vec::new(),
     });
 }
@@ -204,17 +210,11 @@ pub fn apply_context_action(
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     match action {
-        ContextAction::CopySha => {
-            let Some(oid) = commit_of(oid, "CopySha") else {
-                return Vec::new();
-            };
-            let sha = oid.to_string();
-            let short = sha.chars().take(7).collect();
-            if !matches!(state.status, Status::Failed(_) | Status::Sticky { .. }) {
-                state.status = Status::Copied { short };
-            }
-            vec![Command::CopyToClipboard(sha)]
-        }
+        // `None` is a routing bug `commit_of` asserts on: no command.
+        ContextAction::CopySha => match commit_of(oid, "CopySha") {
+            Some(oid) => copy_sha(state, oid),
+            None => Vec::new(),
+        },
         ContextAction::CompareWithThis => {
             let Some(oid) = commit_of(oid, "CompareWithThis") else {
                 return Vec::new();
@@ -260,6 +260,7 @@ pub fn apply_context_action(
             Vec::new()
         }
         ContextAction::Undo => super::undo::undo_key(state, false, next_id),
+        ContextAction::Absorb => super::amend_into::absorb_chosen(state, next_id),
         // A history verb: `Checkout`, `Merge`, `Rebase`, `Cherry-pick`,
         // `Revert`, `Reset`, a ref deletion or one of the Fix items. The
         // widget reported which row was chosen; `verbs` is the list that
@@ -278,6 +279,17 @@ pub fn apply_context_action(
         }
         ContextAction::Unavailable => unavailable(),
     }
+}
+
+/// `Copy SHA`: the full SHA to the clipboard, its first seven on the
+/// status line unless a failure is showing there.
+fn copy_sha(state: &mut AppState, oid: Oid) -> Vec<Command> {
+    let sha = oid.to_string();
+    let short = sha.chars().take(7).collect();
+    if !matches!(state.status, Status::Failed(_) | Status::Sticky { .. }) {
+        state.status = Status::Copied { short };
+    }
+    vec![Command::CopyToClipboard(sha)]
 }
 
 /// The dim slot is always drawn disabled: `Enter` and a click answer with
