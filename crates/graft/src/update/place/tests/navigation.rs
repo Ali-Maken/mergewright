@@ -59,6 +59,14 @@ fn came_from_a_line_after_a_hunk_shifts_by_it() {
     assert_eq!(came_from(&[hunk(10, 2, 10, 5)], 20), 17);
 }
 
+/// git writes a deletion of old 5–6 as `@@ -5,2 +4,0 @@`: a zero-count
+/// `new_start` is the line *before* it (review m7-20e-20g Minor 2).
+#[test]
+fn came_from_the_line_before_a_pure_deletion_is_unshifted() {
+    assert_eq!(came_from(&[hunk(5, 2, 4, 0)], 4), 4);
+    assert_eq!(came_from(&[hunk(5, 2, 4, 0)], 5), 7);
+}
+
 #[test]
 fn caret_at_the_root_says_nothing_before_it() {
     let mut state = blamed_at(22);

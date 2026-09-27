@@ -127,7 +127,14 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32 {
     let mut shift: i64 = 0;
     for hunk in hunks {
         let end = hunk.new_start.saturating_add(hunk.new_lines);
-        if new_line < hunk.new_start {
+        // A pure deletion (`+4,0`) names the line *before* it: that line is
+        // not yet past the hunk.
+        let before = if hunk.new_lines == 0 {
+            new_line <= hunk.new_start
+        } else {
+            new_line < hunk.new_start
+        };
+        if before {
             break;
         }
         if new_line < end {

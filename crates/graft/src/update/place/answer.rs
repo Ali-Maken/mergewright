@@ -9,7 +9,7 @@ use graft_git::blame::{Blame, BlameOptions, Rev};
 use graft_ui::blame::BlameRowView;
 
 use super::from::NoBlame;
-use super::{Place, keys, leave, no_blame_words, rows};
+use super::{Place, keys, leave, no_blame_words, rows, short};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
@@ -22,6 +22,8 @@ pub enum BlameLoad {
         job: JobId,
         /// The line the cursor goes to when it answers.
         want: Want,
+        /// `^`'s second read, kept so `w`/`i` before the answer ask it too.
+        came_from: Option<CameFromRequest>,
     },
     /// git failed; its words.
     Failed(String),
@@ -106,10 +108,18 @@ pub(crate) fn blame_arrived(
     }) else {
         return;
     };
+    let asked_line = index
+        .checked_sub(1)
+        .and_then(|newer| state.trail.places.get(newer))
+        .and_then(|Place::Blame(newer)| newer.cursor_line());
     let Place::Blame(blame) = &mut state.trail.places[index];
-    let BlameLoad::Reading { want, .. } = blame.body else {
+    let BlameLoad::Reading {
+        want, came_from, ..
+    } = &blame.body
+    else {
         return;
     };
+    let (want, came_from) = (*want, came_from.clone());
     match answer {
         Ok(answer) => {
             let rows: Arc<[BlameRowView]> = rows::blame_rows(&answer.blame).into();
@@ -121,7 +131,15 @@ pub(crate) fn blame_arrived(
                     .iter()
                     .position(|line| line.commit.is_none())
                     .unwrap_or(0),
-                Want::CameFrom => rows::row_of_line(&answer.blame, answer.line.unwrap_or(1)),
+                Want::CameFrom => {
+                    let Some(line) = answer.line else {
+                        // The job read the parent but not where the line
+                        // came from: say so, not a guess at line 1.
+                        blame.body = BlameLoad::Failed(cannot_tell(asked_line, came_from));
+                        return;
+                    };
+                    rows::row_of_line(&answer.blame, line)
+                }
             };
             blame.cursor = target;
             blame.top = 0;
@@ -140,6 +158,19 @@ pub(crate) fn blame_arrived(
             let why = NoBlame::Binary(blame.path.clone());
             refuse(state, commands, index, &why);
         }
+    }
+}
+
+/// `^` answered with no line: the words name the newer blame's line (the
+/// one `^` was pressed on) and the commit that last changed it.
+fn cannot_tell(line: Option<u32>, came_from: Option<CameFromRequest>) -> String {
+    let line = line.or_else(|| came_from.as_ref().map(|asked| asked.line));
+    match (line, came_from) {
+        (Some(line), Some(asked)) => format!(
+            "can't tell where line {line} came from in {} · esc back",
+            short(asked.commit)
+        ),
+        _ => "can't tell where the line came from · esc back".to_owned(),
     }
 }
 

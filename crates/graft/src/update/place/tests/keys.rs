@@ -145,6 +145,52 @@ fn w_toggles_whitespace() {
     ));
 }
 
+/// The answer the job gives `request`: `line` only when it was asked where
+/// the line came from (`jobs::detail::read_blame`).
+fn job_answer(request: &BlameRequest, line: u32) -> Result<BlameAnswer, BlameFailure> {
+    Ok(BlameAnswer {
+        blame: a_blame(false, false),
+        line: request.came_from.as_ref().map(|_| line),
+    })
+}
+
+#[test]
+fn caret_then_w_before_the_answer_keeps_the_came_from_line() {
+    let state = blamed_at(22);
+    let (reading, _) = press(&state, KeyCode::Char('^'));
+    let (again, commands) = press(&reading, KeyCode::Char('w'));
+    let (job, request) = blame_job(&commands);
+    assert!(request.came_from.is_some(), "`w` asks where it came from too");
+    let (read, _) = answer(&again, job, job_answer(&request, 9));
+    assert_eq!(cursor_line(&read), 9, "the came-from line, not line 1");
+}
+
+#[test]
+fn a_came_from_answer_without_a_line_says_so() {
+    let state = blamed_at(22);
+    let (reading, commands) = press(&state, KeyCode::Char('^'));
+    let (job, _) = blame_job(&commands);
+    let (read, _) = answer(
+        &reading,
+        job,
+        Ok(BlameAnswer {
+            blame: a_blame(false, false),
+            line: None,
+        }),
+    );
+    let top = read.trail.on_screen().expect("the older place");
+    assert_eq!(
+        top.body,
+        BlameLoad::Failed(format!(
+            "can't tell where line 22 came from in {} · esc back",
+            short(lina())
+        ))
+    );
+    let (back, _) = press(&read, KeyCode::Escape);
+    assert_eq!(back.trail.places.len(), 1, "back to the newer blame");
+    assert_eq!(cursor_line(&back), 22, "on the same line");
+}
+
 // ---- States ----
 
 #[test]

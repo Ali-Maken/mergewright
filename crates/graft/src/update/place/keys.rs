@@ -158,27 +158,40 @@ fn rerun(state: &mut AppState) -> Vec<Command> {
         return Vec::new();
     };
     let mut commands = Vec::new();
-    let want = match &blame.body {
-        BlameLoad::Reading { job, want } => {
+    // A read still running is asked again whole: `^`'s came-from read too,
+    // or its line is lost (review m7-20e-20g Minor 1).
+    let (want, came_from) = match &blame.body {
+        BlameLoad::Reading {
+            job,
+            want,
+            came_from,
+        } => {
             commands.push(Command::CancelJob(*job));
-            *want
+            (*want, came_from.clone())
         }
-        BlameLoad::Ready { blame: lines, .. } => Want::Line(
-            lines
-                .lines
-                .get(blame.cursor)
-                .map_or(1, |line| line.final_line),
+        BlameLoad::Ready { blame: lines, .. } => (
+            Want::Line(
+                lines
+                    .lines
+                    .get(blame.cursor)
+                    .map_or(1, |line| line.final_line),
+            ),
+            None,
         ),
-        BlameLoad::Failed(_) => Want::Line(1),
+        BlameLoad::Failed(_) => (Want::Line(1), None),
     };
-    blame.body = BlameLoad::Reading { job, want };
+    blame.body = BlameLoad::Reading {
+        job,
+        want,
+        came_from: came_from.clone(),
+    };
     commands.push(Command::ReadBlame(
         job,
         Box::new(super::BlameRequest {
             rev: blame.rev,
             path: blame.path.clone(),
             options: blame.options,
-            came_from: None,
+            came_from,
         }),
     ));
     commands

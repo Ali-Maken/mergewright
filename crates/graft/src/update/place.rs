@@ -322,7 +322,11 @@ fn open_place(
         rev,
         title,
         options,
-        body: BlameLoad::Reading { job, want },
+        body: BlameLoad::Reading {
+            job,
+            want,
+            came_from: came_from.clone(),
+        },
         cursor: 0,
         top: 0,
         find: None,

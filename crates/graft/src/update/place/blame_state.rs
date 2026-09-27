@@ -15,6 +15,15 @@ impl BlameState {
         }
     }
 
+    /// The final line under the cursor, once the blame is read.
+    #[must_use]
+    pub fn cursor_line(&self) -> Option<u32> {
+        let BlameLoad::Ready { blame, .. } = &self.body else {
+            return None;
+        };
+        blame.lines.get(self.cursor).map(|line| line.final_line)
+    }
+
     /// Rows whose text holds the find, case-folded as the graph search does.
     #[must_use]
     pub fn matches(&self) -> Vec<usize> {
