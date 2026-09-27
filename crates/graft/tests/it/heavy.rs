@@ -14,9 +14,9 @@
 
 use std::path::Path;
 use std::process::Command;
-use std::sync::mpsc;
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Mutex, PoisonError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use graft::history::{self, HistoryUpdate, Promote, RowRequest, View, Wanted};
 use graft::jobs::Delivery;
@@ -215,6 +215,10 @@ fn the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion(
             }),
         );
         assert!(!window.promoted, "request 2's first answer is provisional");
+        // `asks` stays alive through this wait although nothing is sent after
+        // it: the promoted window comes from an idle step, and the stream ends
+        // without one once every sender is gone (`history::serve`'s
+        // `SendersGone`). `wait_for`'s bound is what ends a wait that fails.
         let window = until_promoted_window_for(&told, 2);
         assert!(window.promoted, "the second answer is in the new order");
         let overflow_after = store.table().expect("table").overflow_len();
@@ -307,56 +311,130 @@ fn ask_and_lay_out(
 /// this request was answered — a request can be fully answered (every row
 /// it asked for laid out) while other commits the walk hasn't reached yet
 /// still leave `done` false.
-#[allow(
-    clippy::expect_used,
-    reason = "test-only helper in an integration test binary; a closed channel here is the walk thread having panicked, which should fail the test loudly"
-)]
+///
+/// Bounded by [`wait_for`]: [`DEADLINE`](crate::deadline::DEADLINE) for the
+/// whole wait. The caller holds the request sender, so the stream does not
+/// end on its own; a window that never comes fails here, naming the request.
 fn until_window_for(told: &mpsc::Receiver<HistoryUpdate>, request: u64) -> history::Window {
-    loop {
-        match told.recv().expect("the stream reports before it ends") {
-            HistoryUpdate::Window(window) if window.request == request => return window,
+    wait_for(
+        told,
+        crate::deadline::DEADLINE,
+        &format!("request {request}'s window"),
+        |update| match update {
+            HistoryUpdate::Window(window) if window.request == request => Some(window),
             HistoryUpdate::Window(_)
             | HistoryUpdate::Progress { .. }
             | HistoryUpdate::LaidOut { .. }
-            | HistoryUpdate::Started(_) => {}
-        }
-    }
+            | HistoryUpdate::Started(_) => None,
+        },
+    )
 }
 
 /// Reads updates until a [`Window`](history::Window) answering `request`
 /// with `promoted == true` arrives. Since 12c Part C a promotion's first
 /// answer is provisional; the promoted one comes from a later idle step.
 ///
-/// Bounded as [`until_window_for`] is: by the stream ending. A stream that
-/// ends first panics naming the request and the unpromoted windows seen.
-#[allow(
-    clippy::panic,
-    reason = "test-only helper in an integration test binary; the stream ending before the promoted window is a product bug that should fail the test loudly"
-)]
+/// Bounded by [`wait_for`] as [`until_window_for`] is: one
+/// [`DEADLINE`](crate::deadline::DEADLINE) for the whole wait, so
+/// unpromoted windows that keep coming still end it. The failure counts
+/// every update passed over, unpromoted windows among them.
 fn until_promoted_window_for(
     told: &mpsc::Receiver<HistoryUpdate>,
     request: u64,
 ) -> history::Window {
-    let mut unpromoted = 0_usize;
-    loop {
-        match told.recv() {
-            Ok(HistoryUpdate::Window(window)) if window.request == request => {
-                if window.promoted {
-                    return window;
-                }
-                unpromoted += 1;
+    wait_for(
+        told,
+        crate::deadline::DEADLINE,
+        &format!("request {request}'s promoted window"),
+        |update| match update {
+            HistoryUpdate::Window(window) if window.request == request && window.promoted => {
+                Some(window)
             }
-            Ok(
-                HistoryUpdate::Window(_)
-                | HistoryUpdate::Progress { .. }
-                | HistoryUpdate::LaidOut { .. }
-                | HistoryUpdate::Started(_),
-            ) => {}
-            Err(closed) => panic!(
-                "request {request}: the stream ended ({closed}) after {unpromoted} unpromoted window(s) and no promoted one"
+            HistoryUpdate::Window(_)
+            | HistoryUpdate::Progress { .. }
+            | HistoryUpdate::LaidOut { .. }
+            | HistoryUpdate::Started(_) => None,
+        },
+    )
+}
+
+/// Waits on `told` until `pick` returns `Some`, at most `bound` in total.
+/// Panics naming `what` and how many messages it passed over when the bound
+/// runs out or the stream ends first.
+#[allow(
+    clippy::panic,
+    reason = "test-only helper in an integration test binary; a wait that never ends must fail the test loudly"
+)]
+fn wait_for<T, R>(
+    told: &mpsc::Receiver<T>,
+    bound: Duration,
+    what: &str,
+    mut pick: impl FnMut(T) -> Option<R>,
+) -> R {
+    // One clock for the whole wait, not per message: messages that keep
+    // coming without the answer must still end it.
+    let deadline = Instant::now() + bound;
+    let mut passed = 0_usize;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        match told.recv_timeout(left) {
+            Ok(message) => {
+                if let Some(found) = pick(message) {
+                    return found;
+                }
+                passed += 1;
+            }
+            Err(RecvTimeoutError::Timeout) => panic!(
+                "waiting for {what}: nothing within {bound:?}; passed over {passed} message(s)"
+            ),
+            Err(RecvTimeoutError::Disconnected) => panic!(
+                "waiting for {what}: the stream ended first; passed over {passed} message(s)"
             ),
         }
     }
+}
+
+/// 20n D (gap M7/12f-hang): a wait whose answer never comes, on a stream
+/// that never ends (the sender is kept alive, as the heavy test keeps
+/// `asks`), fails within its bound instead of hanging the tier.
+#[test]
+fn a_wait_with_no_answer_fails_instead_of_hanging() {
+    let (send, told) = mpsc::channel::<u32>();
+    for message in [1, 2, 3] {
+        send.send(message).expect("the receiver is alive");
+    }
+    let (done, finished) = mpsc::channel();
+    let waiter = std::thread::spawn(move || {
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            wait_for(&told, Duration::from_secs(1), "the answer 99", |message| {
+                (message == 99).then_some(message)
+            })
+        }));
+        let words = match outcome {
+            Ok(found) => format!("found {found}"),
+            Err(panic) => panic
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| {
+                    panic
+                        .downcast_ref::<&str>()
+                        .map(|words| (*words).to_owned())
+                })
+                .unwrap_or_else(|| "a panic with no words".to_owned()),
+        };
+        done.send(words).expect("the test is waiting");
+    });
+    let words = finished
+        .recv_timeout(Duration::from_secs(30))
+        .unwrap_or_else(|why| panic!("hung: `wait_for` did not return within 30 s ({why})"));
+    waiter
+        .join()
+        .expect("the waiter reports rather than panics");
+    drop(send);
+    assert!(
+        words.contains("the answer 99") && words.contains("passed over 3"),
+        "the failure names the wait and the messages passed over: {words}"
+    );
 }
 
 /// Not a test of its own: the child side of [`budget_run::gated_in_child`]

@@ -44,14 +44,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // divider to drag: everywhere else the overlay draws its own footer
         // beside the pane (`graft::view::frame::split_for_detail`, which
         // draws a hint row only for `DetailLayout::Tab`).
-        HintContext::PaneOverOverlay { opens } => {
-            let mut list = Vec::new();
-            if *opens {
-                list.push(hint("⏎", "open"));
-            }
-            list.extend([hint("j/k", "move"), hint("u", "undo"), hint("/", "search")]);
-            list
-        }
+        HintContext::PaneOverOverlay { opens } => pane_over_overlay_list(*opens),
         // The drag is a mouse gesture: `release` is not a key, it is what
         // the user's hand has to do, and `esc` is the one key that answers
         // while a badge is in the air (`graft::update::drag::drag_cancel`).
@@ -154,6 +147,17 @@ fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
     if !lines {
         list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "n N"));
     }
+    list
+}
+
+/// [`HintContext::PaneOverOverlay`]'s list: `⏎ open` unless the diff has
+/// focus, then the pane's moves and the two verbs dispatched above it.
+fn pane_over_overlay_list(opens: bool) -> Vec<Hint> {
+    let mut list = Vec::new();
+    if opens {
+        list.push(hint("⏎", "open"));
+    }
+    list.extend([hint("j/k", "move"), hint("u", "undo"), hint("/", "search")]);
     list
 }
 
