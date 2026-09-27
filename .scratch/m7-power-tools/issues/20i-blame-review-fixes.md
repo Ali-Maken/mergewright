@@ -1,6 +1,6 @@
 # 20i blame-review-fixes — review m7-20e-20g: Majors 1–4, Minors 1, 2, 4–9
 
-Status: draft
+Status: partial (all boxes ticked but one: the `every_key_the_bar_draws_is_answered` reading-state row is blocked on graft-ui; see NOTES)
 Blocked by: 20f (building in graft now; same files: `update/place/tests.rs`, `tests/it/main.rs`, the pane-bar sweeps).
 Crates: graft (+ `docs/shots/m7/`, graft `MAP.md`, `ARCHITECTURE.md`, `docs/design/02-keymap.md` §2.1, `20-blame-place.md`'s
 Navigation tick). **No graft-ui.**
@@ -130,66 +130,66 @@ Existing types keep their names and fields otherwise. If `esc_goes_back` can't b
 inside `detail_key`), say why in NOTES and name the two places and the test that ties them.
 
 ## Acceptance (each box names its test at tick time; red first — state the red commit or the mutation)
-- [ ] **Split:** `wc -l crates/graft/src/update/place.rs crates/graft/src/update/place/*.rs crates/graft/src/update/place/tests/*.rs`
+- [x] **Split:** (a3c69c96 pure move, 60 place tests before = 60 after; root renamed `tests.rs` in b5602484; wc in NOTES; every `update::place::` test green) `wc -l crates/graft/src/update/place.rs crates/graft/src/update/place/*.rs crates/graft/src/update/place/tests/*.rs`
       → every file ≤ 400 (paste the output in NOTES). Place test count before = after the move commit (state both). Test:
       the counts, plus the whole `update::place::` suite green.
-- [ ] **Major 1, red first:** `esc_on_the_graph_with_the_pane_open_returns_to_blame` — the bar test's state
+- [x] **Major 1, red first:** `esc_on_the_graph_with_the_pane_open_returns_to_blame` (red: stub predicate `trail.hidden()`, failed at esc_back.rs:46; 28ba21b4) — the bar test's state
       (`graph_bar_leads_esc_back_to_blame_while_hidden`'s, with the pane **asserted** shown): bar's first hint
       `("esc", "back to blame")`; one `Esc` → place on screen, same line as before `⏎`. Red today (pane closes).
-- [ ] `tab_then_esc_after_enter_is_one_esc_back_to_blame` — `B ⏎ Tab Esc`: blame, same line; counts 1 `Esc`
+- [x] `tab_then_esc_after_enter_is_one_esc_back_to_blame` (green, esc_back.rs) — `B ⏎ Tab Esc`: blame, same line; counts 1 `Esc`
       (`commit-back-to-blame` = 1, note `:1250`).
-- [ ] `esc_on_the_graph_with_the_pane_open_closes_search_first` — trail hidden, pane open, graph search active: first
+- [x] `esc_on_the_graph_with_the_pane_open_closes_search_first` (green, esc_back.rs) — trail hidden, pane open, graph search active: first
       `Esc` clears search (trail still hidden, pane still shown), second shows blame.
-- [ ] `esc_on_the_graph_with_the_pane_open_and_no_trail_closes_the_pane` — regression guard, green before and after
+- [x] `esc_on_the_graph_with_the_pane_open_and_no_trail_closes_the_pane` (red by mutation: close arm always claimed → failed :92) — regression guard, green before and after
       (red by mutation: route `:126` through `esc_goes_back` unconditionally).
-- [ ] `the_bar_leads_esc_back_to_blame_exactly_where_esc_goes_back` — a table over: graph focused pane closed · graph
+- [x] `the_bar_leads_esc_back_to_blame_exactly_where_esc_goes_back` (8-row table, esc_back.rs; + `the_menu_over_a_hidden_trail_closes_first_and_the_bar_does_not_lead_back`) — a table over: graph focused pane closed · graph
       focused pane open · pane focused on the diff · pane focused on the files · graph search active · Focus mode ·
       Explain open · held failure. Each row asserts `bar leads "back to blame"` == `one Esc shows the place`. Menu, box
       and prompt states excluded (own bar/words; the `.` menu keeps the graph's bar by §2.1 `:117-120`) — say in NOTES
       what the bar leads with the `.` menu open over a hidden trail; file it as a question if it leads `back to blame`.
-- [ ] `esc_on_the_graph_closes_search_before_returning_to_blame` still green; its setup no longer needs to close the pane
+- [x] `esc_on_the_graph_closes_search_before_returning_to_blame` still green (navigation.rs; pane-close step dropped); its setup no longer needs to close the pane
       (drop that step, or say why not).
-- [ ] **Keymap:** §2.1 carries the amendment verbatim. Check: `grep -n "the pane clause 2026-09-27" docs/design/02-keymap.md`
+- [x] **Keymap:** (grep → 1 line, :85; diff one hunk @@ -82,2 +82,5) §2.1 carries the amendment verbatim. Check: `grep -n "the pane clause 2026-09-27" docs/design/02-keymap.md`
       → 1 line; `git diff docs/design/02-keymap.md` touches only `:80-83`'s bullet text.
-- [ ] **Major 2:** `u_on_the_graph_ends_a_hidden_trail_and_pins_the_base_again` — through `update` (a key event, not
+- [x] **Major 2:** `u_on_the_graph_ends_a_hidden_trail_and_pins_the_base_again` (pinned_base.rs; red by mutation: call deleted → failed pinned_base.rs:137; fa6fcf35) — through `update` (a key event, not
       `after_commands`): trail hidden, base set aside, `u` on the graph → no trail, base pinned. Red by mutation: delete
       the `place::after_commands(&mut next, &mut commands);` call (`update/mod.rs:140`) → red (state it).
-- [ ] **Major 3** (real git, fast tier; `tests/it` if the job path is reachable from there, else a `jobs::detail` test —
+- [x] **Major 3** (`jobs::detail::blame_tests`, a jobs unit test; red by mutation `old_path: None` → landed (1,"l1"); ae015817) (real git, fast tier; `tests/it` if the job path is reachable from there, else a `jobs::detail` test —
       say which): `caret_across_a_rename_lands_where_the_line_came_from` — a test-built repo (`graft_fixtures::git::run_at`):
       commit 1 `a.rs` = `l1`…`l10`; commit 2 `git mv a.rs b.rs`, two lines inserted after `l2`, `l6` → `L6`. Blame
       `b.rs` at commit 2, `^` on line 8 (`L6`) → place blames commit 1 at path `a.rs`, cursor line 6, text `l6`. Also
       assert git's own porcelain `previous` for that line names commit 1 and `a.rs` (the test runs `git blame
       --porcelain` itself).
-- [ ] `the_blame_job_refuses_a_binary_path` / `the_blame_job_refuses_an_untracked_path` — session fixture
+- [x] `the_blame_job_refuses_a_binary_path` / `the_blame_job_refuses_an_untracked_path` (jobs/detail/blame_tests.rs) — session fixture
       (`assets/pic.bin`, `src/new.rs`) through the job: `BlameFailure::Binary` / `Untracked`, and the words B1 `:1096`.
-- [ ] `blame_failure_maps_every_error` — unit, every `BlameError` arm (`Run`, `Parse`, `Binary`, `Untracked`, `Stopped`,
+- [x] `blame_failure_maps_every_error` (jobs/detail/blame_tests.rs) — unit, every `BlameError` arm (`Run`, `Parse`, `Binary`, `Untracked`, `Stopped`,
       `Shallow`) → its `BlameFailure`; `Shallow` → `Failed` with git's/the io error's first line.
-- [ ] **Minor 1, red first:** `caret_then_w_before_the_answer_keeps_the_came_from_line` (lands on the came-from line,
+- [x] **Minor 1, red first:** (red: keys.rs:163 no came_from; :182 body Ready line 1; 3c3e65a4) `caret_then_w_before_the_answer_keeps_the_came_from_line` (lands on the came-from line,
       not 1) · `a_came_from_answer_without_a_line_says_so` (the words above; `Esc` → newer blame, same line).
-- [ ] **Minor 2, red first:** `came_from_the_line_before_a_pure_deletion_is_unshifted` — `came_from(&[hunk(5,2,4,0)], 4)
+- [x] **Minor 2, red first:** (red: left 6, right 4; navigation.rs; 3c3e65a4) `came_from_the_line_before_a_pure_deletion_is_unshifted` — `came_from(&[hunk(5,2,4,0)], 4)
       == 4` and `came_from(&[hunk(5,2,4,0)], 5) == 7`.
-- [ ] **Minor 4:** `b_on_the_changes_panes_file_row_blames_the_working_tree` (files list focused; `Rev::WorkingTree`;
+- [x] **Minor 4:** `b_on_the_changes_panes_file_row_blames_the_working_tree` (open.rs; lands right today; red by mutation: cursor.rs:79 → last hunk's first change, failed open.rs:266) (files list focused; `Rev::WorkingTree`;
       cursor on the first changed line) — red first if the cursor lands elsewhere today, else red by mutation.
-- [ ] **Minor 5, red first:** `blame_failure_words_are_sanitised` — words holding `\u{202E}` and `\x1b[31m` reach the
+- [x] **Minor 5, red first:** `blame_failure_words_are_sanitised` (keys.rs; red at :256, raw `\u{202e}`/`\x1b` passed through) — words holding `\u{202E}` and `\x1b[31m` reach the
       view neutralised, as `sanitize_line` does.
-- [ ] **Minor 7:** `i_toggles_ignore_revs_and_the_line_says_which` asserts the line's words after the answer (both
+- [~] **Minor 7** (first two ✓: `i_toggles_ignore_revs_and_the_line_says_which` asserts both wordings through the frame; `the_ignore_line_and_i_stay_through_a_re_read` red at keys.rs:156, green after. Third ✗ BLOCKED: see NOTES) `i_toggles_ignore_revs_and_the_line_says_which` asserts the line's words after the answer (both
       toggles, B1 `:1103-1104`) · `the_ignore_line_and_i_stay_through_a_re_read` (red first: `keys.rs:405-408` hides them)
       · `every_key_the_bar_draws_is_answered` green with a reading-after-`i` state in its states.
-- [ ] **Minor 8:** `a_click_on_each_drawn_body_row_puts_the_cursor_there` — render the place at 120×40 and 80×24, with and
+- [x] **Minor 8:** `a_click_on_each_drawn_body_row_puts_the_cursor_there` (tests/mouse.rs; red by mutation: `header_rows` 1 → 2, failed mouse.rs row 2 left 1 right 2) — render the place at 120×40 and 80×24, with and
       without the ignore line; click every drawn body row; the `▸` is drawn on that row. Red by mutation: shift
       `place/keys.rs`'s body top by one (state it).
-- [ ] **Minor 6:** `20-blame-place.md` Navigation box: drop "; the rename half of `enter_lands_…` not covered" and replace
+- [x] **Minor 6:** (grep → 0 lines) `20-blame-place.md` Navigation box: drop "; the rename half of `enter_lands_…` not covered" and replace
       "(pane closed: with it open the pane's own `Esc` comes first)" with "(see 20i: with the pane open `Esc` also goes
       back)". Check: `grep -n "not covered\|pane's own .Esc. comes first" 20-blame-place.md` → 0 lines.
-- [ ] **Minor 9:** `ARCHITECTURE.md` "where to change what" (`:80-95`) gains one bullet: blame and places →
+- [x] **Minor 9:** (bullet added before the Map view bullet) `ARCHITECTURE.md` "where to change what" (`:80-95`) gains one bullet: blame and places →
       `ui::blame`, `app::update::place` (and its files), `app::view::frame::overlays::draw_place`, `app::jobs::detail`.
-- [ ] **Capture** `docs/shots/m7/esc-back-to-blame-from-the-graph-120x40.txt` (≤ 200 KB), two frames with "Right:"
+- [x] **Capture** `docs/shots/m7/esc-back-to-blame-from-the-graph-120x40.txt` (4.9 KB; `capture_esc_back_to_blame_from_the_graph`) (≤ 200 KB), two frames with "Right:"
       lines — (a) graph focused, pane open, trail hidden: bar leads `esc back to blame`; (b) after one `Esc`: blame, the
       same line under the cursor. Pinned by `graft::it` `…::capture_esc_back_to_blame_from_the_graph` (asserts both
       frames' words). By eye: the user's (rule 6).
-- [ ] graft `MAP.md` `## update::place`: file list and moved items updated; `esc_goes_back` added; `BlameLoad::Reading`
+- [x] graft `MAP.md` `## update::place` (updated in the docs commit): file list and moved items updated; `esc_goes_back` added; `BlameLoad::Reading`
       field.
-- [ ] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
+- [x] Gates workspace-wide (fmt ok · clippy ok · nextest 4111/4111 · doc ok): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
       `cargo test --doc`.
 
 ## Touches (check each, name how, in a **Touches:** line)
@@ -215,3 +215,29 @@ inside `detail_key`), say why in NOTES and name the two places and the test that
 ## Size
 ~75k. If it runs over, stop at a green seam after step 3 (split + Majors 1–2 + keymap) and report; the conductor splits
 Major 3 and the Minors into 20j with this spec unchanged.
+
+## NOTES (20i builder, 2026-09-27)
+- **Compacted mid-ticket** (after Major 3 and Minor 2's code). Remaining: only the blocked sweep row below.
+- **Blocked — needs graft-ui:** `every_key_the_bar_draws_is_answered` with a reading-after-`i` state fails: the place's bar
+  draws `⏎ that commit` and `^ before it` during any read, and neither answers (`update/place/keys.rs:219`, `:273` return on
+  a body that isn't `Ready`). This is older than 20i; no read state was swept before. `i` itself is fine now. Fix needs a
+  field on graft-ui `HintContext::Blame { finding, ignore_file, read: bool }` (drop `⏎`/`^` while `read`), plus
+  `view::rows::place_context` setting it. The sweep row was left out so the gates stay green. Next step: that seam, then add
+  `reading_after_i` to `update/tests.rs`'s `HintContext::Blame` states (~:4485).
+- **Deviation, Minor 7 carrier:** `BlameLoad::Reading` gained a second field, `ignore_listed: Option<usize>`. The count has to
+  outlive the read, and the ticket's signature names only `came_from`.
+- **Minor 1:** no git's-words variant. The job has no carrier for them: a failed diff read fails the whole job with
+  git's words. `<n>` = the newer place's cursor final line (new `BlameState::cursor_line`), falling back to `came_from.line`.
+- **Split:** the move commit a3c69c96 broke `update_cannot_reach_the_world` for one commit (`tests/mod.rs`). b5602484 fixed it
+  by renaming it to `tests.rs`. The refusal arm's two arms plus `refuse()` let the type express it, so there is no `unreachable!`. Extra files: `tests/esc_back.rs`, `tests/mouse.rs` (keys.rs hit 406).
+- **Esc decision:** walk rungs (a pending G jump, a seek, promoting, reading) are **not** in `esc_goes_back`. A seek left by
+  `⏎` must not block going back. Open question: `show_again` doesn't drop a pending landing or seek, so one could still land under
+  the shown place.
+- **`.` menu over a hidden trail:** the bar does **not** lead `back to blame`. The first `Esc` closes the menu, then the bar leads back
+  (`the_menu_over_a_hidden_trail_closes_first_and_the_bar_does_not_lead_back`). Not filed as a question.
+- **Moved lines:** detail/keys.rs `:67` → `:84`, `:126` → `:143`. 20f capture `blame-then-commit-120x40` is a pane-focused
+  state; its `Esc` behaviour is unchanged and its check_shot is green.
+- `jobs/detail.rs` was 874 lines before this ticket (over 400). Not split here.
+- wc -l after:
+  place.rs 382 · answer 191 · blame_state 100 · from 147 · keys 392 · rows 66 · tests.rs 244 · trail 141 · write 64 ·
+  tests/esc_back 169 · hints 63 · keys 329 · mouse 83 · navigation 307 · open 348 · pinned_base 264.

@@ -134,11 +134,11 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
       · `l_and_w_in_blame_never_reach_the_diff_pane` · `a_click_in_blame_never_reaches_the_graph` ·
       `esc_in_blame_never_cancels_a_running_write`.
 - [x] **Navigation** (20g: all green in `update/place/tests.rs`; 20g added `esc_on_the_graph_closes_search_before_returning_to_blame`
-      (pane closed: with it open the pane's own `Esc` comes first), `is_write_covers_every_operation_launch` (all 9 write
+      (see 20i: with the pane open `Esc` also goes back), `is_write_covers_every_operation_launch` (all 9 write
       variants), the rename half of `enter_lands_on_the_commit_with_the_diff_at_this_line`, and the `⏎`+`Esc Esc` half of
       `esc_from_blame_returns_where_b_was_pressed`, which was red — see NOTES 20g; `came_from` units:
       `came_from_a_line_mid_hunk_is_the_hunks_first_old_line`, `came_from_a_pure_add_at_line_1_is_line_1`,
-      `came_from_a_line_after_a_hunk_shifts_by_it`; the rename half of `enter_lands_…` not covered): `caret_opens_the_parent_and_esc_comes_back_to_the_same_line` · `caret_lands_where_the_line_came_from`
+      `came_from_a_line_after_a_hunk_shifts_by_it`): `caret_opens_the_parent_and_esc_comes_back_to_the_same_line` · `caret_lands_where_the_line_came_from`
       (+ `came_from` unit tests: mid-hunk, pure add at line 1) · `caret_at_the_root_says_nothing_before_it` ·
       `caret_on_an_uncommitted_line_says_so` · `enter_lands_on_the_commit_with_the_diff_at_this_line` (the commit's own
       path after a rename) · `enter_on_an_uncommitted_line_lands_in_the_changes_pane` ·

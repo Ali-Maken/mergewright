@@ -115,12 +115,12 @@ const SKIPPING: &str = "skipping 2 commits listed in .git-blame-ignore-revs · i
 const SHOWING: &str = "showing every commit · i skips the 2 in .git-blame-ignore-revs";
 
 /// The job's answer with the ignore list `applied` or not.
-fn ignore_answer(applied: bool) -> Result<BlameAnswer, BlameFailure> {
+fn ignore_answer(applied: bool) -> BlameAnswer {
     let mut blame = a_blame(true, false);
     if let Some(found) = blame.ignore_revs.as_mut() {
         found.applied = applied;
     }
-    Ok(BlameAnswer { blame, line: None })
+    BlameAnswer { blame, line: None }
 }
 
 /// The frame at 120×40, as text.
@@ -136,13 +136,13 @@ fn i_toggles_ignore_revs_and_the_line_says_which() {
     let (job, request) = blame_job(&commands);
     assert!(!request.options.ignore_revs);
     assert!(!next.trail.top().expect("the place").options.ignore_revs);
-    let (off, _) = answer(&next, job, ignore_answer(false));
+    let (off, _) = answer(&next, job, Ok(ignore_answer(false)));
     assert!(screen(&off).contains(SHOWING), "{}", screen(&off));
 
     let (again, commands) = press(&off, KeyCode::Char('i'));
     let (job, request) = blame_job(&commands);
     assert!(request.options.ignore_revs);
-    let (on, _) = answer(&again, job, ignore_answer(true));
+    let (on, _) = answer(&again, job, Ok(ignore_answer(true)));
     assert!(screen(&on).contains(SKIPPING), "{}", screen(&on));
 }
 
@@ -200,11 +200,11 @@ fn w_toggles_whitespace() {
 
 /// The answer the job gives `request`: `line` only when it was asked where
 /// the line came from (`jobs::detail::read_blame`).
-fn job_answer(request: &BlameRequest, line: u32) -> Result<BlameAnswer, BlameFailure> {
-    Ok(BlameAnswer {
+fn job_answer(request: &BlameRequest, line: u32) -> BlameAnswer {
+    BlameAnswer {
         blame: a_blame(false, false),
         line: request.came_from.as_ref().map(|_| line),
-    })
+    }
 }
 
 #[test]
@@ -213,8 +213,11 @@ fn caret_then_w_before_the_answer_keeps_the_came_from_line() {
     let (reading, _) = press(&state, KeyCode::Char('^'));
     let (again, commands) = press(&reading, KeyCode::Char('w'));
     let (job, request) = blame_job(&commands);
-    assert!(request.came_from.is_some(), "`w` asks where it came from too");
-    let (read, _) = answer(&again, job, job_answer(&request, 9));
+    assert!(
+        request.came_from.is_some(),
+        "`w` asks where it came from too"
+    );
+    let (read, _) = answer(&again, job, Ok(job_answer(&request, 9)));
     assert_eq!(cursor_line(&read), 9, "the came-from line, not line 1");
 }
 
