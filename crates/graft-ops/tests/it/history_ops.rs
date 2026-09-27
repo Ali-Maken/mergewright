@@ -2217,7 +2217,11 @@ fn a_forced_undo_still_refuses_when_the_ref_moved_under_it() {
 
     // Unforced: the rail stops it and names the drift.
     let asked = run_undo(&repo, NOW + 1, false).expect_err("drift must stop an undo");
-    assert!(matches!(asked, UndoError::Drift(_)), "{}", asked.explain());
+    assert!(
+        matches!(asked, UndoError::Drift { .. }),
+        "{}",
+        asked.explain()
+    );
     assert_eq!(
         id(&repo, "refs/heads/main"),
         moved_to,

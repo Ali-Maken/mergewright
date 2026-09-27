@@ -902,6 +902,7 @@ fn d_on_a_done_file_starts_it_over() {
                     how: UnmergedHow::BothModified,
                     binary: false,
                     on_disk: None,
+                    unreadable: None,
                     start_over: None,
                 },
             )))),

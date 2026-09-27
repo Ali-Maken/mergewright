@@ -340,7 +340,7 @@ fn check(scenario: &Scenario) {
 
     // The box: the unforced run stops at the rail and names them.
     let boxed = match reverse(&repo, scenario.redo, NOW + 2, false) {
-        Err(UndoError::Drift(drift)) => drift.replaced,
+        Err(UndoError::Drift { drift, .. }) => drift.replaced,
         Err(other) => panic!("{name}: the rail answered {}", other.explain()),
         Ok(_) => panic!("{name}: no drift box over an edit"),
     };

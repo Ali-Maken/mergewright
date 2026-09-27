@@ -1,6 +1,6 @@
 # 01b error-rows-app — 01's rows whose change reaches graft: `Drift` direction, one stop shape, `worktree_lines`
 
-Status: draft
+Status: done
 Build with: Sonnet. 01 calls these rows mechanical; the words and shapes are decided in 01 "Decided".
 Needs: none.
 Blocked by: **01a** (both hold graft-ops `restore.rs`). Wave: see `.scratch/m7-power-tools/parallel-plan.md`.
@@ -17,9 +17,9 @@ Scout: 01's scout, brief item 2 (the three stop shapes and every match site).
 01's rows, as 01 "Decided" words them: **:494, :495, :572**.
 
 ## Acceptance (tick 01's boxes in 01's file, each naming its test)
-- [ ] 01 Acceptance rows :572, :495, :494 (red first where 01 says so).
-- [ ] 01's last two boxes (NOTES row → test for all eight rows, 01a's included; MAP.md graft-ops and graft).
-- [ ] Gates workspace-wide.
+- [x] 01 Acceptance rows :572, :495, :494 (red first where 01 says so). 01 lines 62 (:572: `jobs::conflict::tests::a_permission_error_shows_in_the_card_not_empty`, `a_relative_path_reads_from_the_workdir`, `cross::an_unreadable_card_lands_its_words_as_the_notice`), 66 (:495: `undo_cancel::every_stop_is_one_shape` heavy + `every_stop_is_one_shape_sampled` fast, graft `jobs::undo::tests::a_stop_before_any_step_reads_as_cancelled`), 69 (:494: `undo::tests::drift_on_redo_says_capital_u`).
+- [x] 01's last two boxes (NOTES row → test for all eight rows, 01a's included; MAP.md graft-ops and graft). 01 lines 70–71: rows in 01a and 01b NOTES; MAP lines listed there (docs, no test).
+- [x] Gates workspace-wide (2026-09-27): fmt ok; clippy `--all-targets -D warnings` ok, and with `--features graft-ops/heavy-tests` ok (compiled, heavy tier not run); nextest 4262/4262; `test --doc` ok.
 
 ## Touches
 01 "Touches": `RestoreError` callers; the M6 resolver cards (m6 resolver captures byte-identical); undo/redo status
@@ -77,4 +77,50 @@ it lands in is wrong.
   the first step gives `Undone::Cancelled { clean: true, .. }`, and the status line is `Done`, not a failure.
 
 **Not in this ruling:** on `U`, `Cancelled`'s words say "undo cancelled" (`crates/graft-ops/MAP.md:223`). Whether a redo
-should say "redo cancelled" is the same class as :494. That's a **question** for the conductor, not a defect filed here.
+
+## NOTES (builder, 2026-09-27) — done: :494, :495 (per ruling), :572
+Scout used: `.scratch/m7-power-tools/scouts/01.md` (brief item 2). No compaction.
+
+- **:494** `undo::tests::drift_on_redo_says_capital_u`, red first, quoted: `the working tree changed — u again to go
+  ahead` (for a `Direction::Redo`). Fix (cause): `UndoError::Drift { drift, direction }`, new pub
+  `undo::Direction { Undo, Redo }`; `undo` passes `Undo`, `redo` passes `Redo`, each `revert_to` step `Undo`;
+  `explain` names `u`/`U`.
+- **:495, per the planner's ruling above.** `undo_cancel::every_stop_is_one_shape` (graft-ops it; every poll, stride
+  1, through `restore::execute` and through `undo::undo`), red first, quoted: `poll 1 (through undo: false) left as
+  another shape: Run(Stopped)`; after the pre-`begin` fix, `poll 3 … Snapshot(Stopped)` (a stop inside `begin`), then
+  `a stopped undo left as Facts(Stopped)` and `Facts(Snapshot(Stopped))` (the rails). graft
+  `jobs::undo::tests::a_stop_before_any_step_reads_as_cancelled`, red first against the pre-ruling branch, quoted:
+  `a stop before any step is a cancel, got Failed { error: "stopped", refresh: None }`. Fix (cause): `STOPPED` is
+  `pub(crate)`; a stop before `begin`, inside `begin` (`cancel_if_stopped`, and `From<PrepareError>` folds
+  `Snapshot(Stopped)`), or in `undo`'s rails (`facts_or_cancel`) is `Cancelled { rolled_back: 0 }`; `revert_to`'s
+  between-step stop too. No journal change: `begin` journals what it wrote; nothing new invented.
+  **Judgement to check:** `facts_or_cancel` also asks the stop (a rail failure while the stop is raised = cancel),
+  because stopped reads surface nested in several `FactsError` variants. A real read failure that coincides with
+  `Esc` reads as a clean cancel; nothing was written either way. **Question for review:** is that the right call?
+  The stride-1 sweep (~110 s) is heavy tier (`#[cfg(feature = "heavy-tests")]`); the fast tier runs
+  `every_stop_is_one_shape_sampled` (execute path polls 1, mid, last; undo path 1, last): 3.68 s in nextest. The old unit test is renamed
+  `undo::tests::inner_stops_fold_to_one_recogniser`.
+- **:572 done (granted).** `jobs::conflict::tests::a_permission_error_shows_in_the_card_not_empty`, red first, quoted:
+  `no words: OpenedFile { file: None, how: DeletedByThem, binary: false, on_disk: None, unreadable: None, … }`. Fix
+  (cause): `worktree_glimpse` returns `Result<Option<OnDisk>, String>`; `NotFound` → `Ok(None)`, any other error →
+  `can't read <path>: <reason>` in new `OpenedFile::unreadable`; `answers.rs` lands it as the notice, a problem, over
+  the landing words (`cross::an_unreadable_card_lands_its_words_as_the_notice`, written after the wiring: not red
+  first). `a_relative_path_reads_from_the_workdir` was green before: the join existed. Constructor sites edited:
+  `update/resolver/tests/{advance.rs:383, cross.rs:63, file_list.rs:904, take_all.rs:185}` (none in 16's or 13b's
+  lists); `update/tests.rs:5003`, `file_list.rs:199` and `view/resolver/tests.rs` build `WholeFileShape`, not
+  `OpenedFile`, so they were not touched. The new tests are in `jobs/conflict/tests.rs` (conflict.rs's own test
+  module) and `cross.rs`. Not seen in the app: no capture taken.
+
+Changed signatures: `UndoError::Drift` tuple → struct variant; new `undo::Direction`; `RestoreError::Stopped` removed (no pub
+replacement); new graft `OpenedFile::unreadable`.
+
+Touches:
+- `UndoError::Drift` match sites (grep `UndoError::Drift`): `graft/src/jobs/undo.rs:223,262,455`; graft-ops tests
+  `history_ops.rs:2217`, `ops_execution.rs:343`, `ops_execution_hard.rs:442,479,625`, `undo_replaced.rs:343`,
+  `undo_replaced_whole.rs:86` — pattern-only edits.
+- `RestoreError::Stopped` sites (grep): `restore.rs`, `restore/steps.rs`, `restore/rollback.rs`, `undo/execute.rs:108`;
+  none in graft.
+- The app's drift box draws its own keys from `Undone::Drift { redo }`, not `explain`; `explain`'s text reaches the app
+  via `operate.rs` / `error_line` only. No undo walk capture changed (no graft view code touched); m6 resolver captures
+  untouched (no resolver file changed). Workspace nextest 4257/4257.
+- MAP.md graft-ops: `RestoreError`, `MergeState`, `UndoError` lines. graft MAP: no public item changed.

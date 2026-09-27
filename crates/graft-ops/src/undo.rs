@@ -29,7 +29,7 @@ use graft_git::state::InProgress;
 
 use crate::journal::{in_force_all, is_operation, next_redo, next_undo, root_operation, undoable};
 
-pub use execute::{UndoError, redo, revert_to, undo};
+pub use execute::{Direction, UndoError, redo, revert_to, undo};
 
 /// The stash ref, whose reflog is the stash list; restored by
 /// [`Step::StashStore`]/[`Step::StashDrop`], never by [`Step::UpdateRef`].

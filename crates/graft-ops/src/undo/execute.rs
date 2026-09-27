@@ -19,6 +19,16 @@ use crate::undo::{
     replaced,
 };
 
+/// Which way a reversal runs: `u` takes an operation back, `U` puts an
+/// undo back. The drift line's "again" names the key that goes ahead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    /// `u`, and every step of the time machine.
+    Undo,
+    /// `U`.
+    Redo,
+}
+
 /// Why an undo or redo did not happen.
 #[derive(Debug, thiserror::Error)]
 pub enum UndoError {
@@ -30,8 +40,14 @@ pub enum UndoError {
     /// Boxed: with `Drift::replaced` (m6-conflicts/77) the drift is the
     /// largest thing any undo answer carries, and every `Result` in this
     /// module would pay its size on the happy path (`result_large_err`).
-    #[error("{}", .0.explain())]
-    Drift(Box<Drift>),
+    #[error("{}", .drift.explain())]
+    Drift {
+        /// What moved.
+        drift: Box<Drift>,
+        /// Whether a `u` or a `U` met it, so the words name the key that
+        /// goes ahead (`KNOWN_GAPS` :494).
+        direction: Direction,
+    },
     /// The restore itself failed.
     #[error("{0}")]
     Restore(RestoreError),
@@ -55,7 +71,13 @@ impl UndoError {
     /// One line for the status line.
     pub fn explain(&self) -> String {
         match self {
-            UndoError::Drift(drift) => format!("{} — u again to go ahead", drift.explain()),
+            UndoError::Drift { drift, direction } => {
+                let key = match direction {
+                    Direction::Undo => 'u',
+                    Direction::Redo => 'U',
+                };
+                format!("{} — {key} again to go ahead", drift.explain())
+            }
             other => other.to_string(),
         }
     }
@@ -63,12 +85,12 @@ impl UndoError {
 
 /// Take back the newest operation still in force.
 pub fn undo(ctx: &mut Context<'_>, force: bool) -> Result<Applied, UndoError> {
-    reverse(ctx, force, plan_undo)
+    reverse(ctx, force, Direction::Undo, plan_undo)
 }
 
 /// Put back the newest undo still in force.
 pub fn redo(ctx: &mut Context<'_>, force: bool) -> Result<Applied, UndoError> {
-    reverse(ctx, force, plan_redo)
+    reverse(ctx, force, Direction::Redo, plan_redo)
 }
 
 /// The time machine (§6.6): put the repository back to just before `target`,
@@ -105,10 +127,10 @@ pub fn revert_to(
         if ctx.stop.should_stop() {
             return Err(UndoError::PartWay {
                 done,
-                error: Box::new(UndoError::Restore(RestoreError::Stopped)),
+                error: Box::new(UndoError::Restore(RestoreError::CANCELLED_BEFORE_ANY_STEP)),
             });
         }
-        match run_plan(ctx, plan, force) {
+        match run_plan(ctx, plan, force, Direction::Undo) {
             Ok(applied) => done.push(applied),
             Err(error) => {
                 return Err(UndoError::PartWay {
@@ -124,16 +146,22 @@ pub fn revert_to(
 fn reverse(
     ctx: &mut Context<'_>,
     force: bool,
+    direction: Direction,
     plan_of: fn(&[JournalEntry]) -> Result<InversePlan, NotInvertible>,
 ) -> Result<Applied, UndoError> {
     let plan = plan_of(ctx.journal.entries()).map_err(UndoError::Nothing)?;
-    run_plan(ctx, &plan, force)
+    run_plan(ctx, &plan, force, direction)
 }
 
 /// §6.7's rail, then the restore: the entry the plan reverses is compared
 /// with the repository as it is now, and only the user's own `force` goes
 /// past a difference.
-fn run_plan(ctx: &mut Context<'_>, plan: &InversePlan, force: bool) -> Result<Applied, UndoError> {
+fn run_plan(
+    ctx: &mut Context<'_>,
+    plan: &InversePlan,
+    force: bool,
+    direction: Direction,
+) -> Result<Applied, UndoError> {
     let target = ctx
         .journal
         .entries()
@@ -157,7 +185,7 @@ fn run_plan(ctx: &mut Context<'_>, plan: &InversePlan, force: bool) -> Result<Ap
     // (m3/03 review, M5). The restore itself copes: its backup keeps the
     // working tree, conflict markers and all.
     let now = facts::read_state_now(ctx.repo, ctx.scratch(), &names, ctx.stop)
-        .map_err(UndoError::Facts)?;
+        .map_err(|why| facts_or_cancel(ctx.stop, why))?;
 
     // Before the rail: a live operation is not drift the user can force
     // past, it is a refusal. With it here, `drift`'s `MergeDrift::Begun`
@@ -172,9 +200,13 @@ fn run_plan(ctx: &mut Context<'_>, plan: &InversePlan, force: bool) -> Result<Ap
     // here and only here, so a clean undo pays nothing for it; asked again
     // on the forced run, because the tree may have moved since the box.
     let mut reads = Vec::new();
-    moved.replaced = replaced::replaced(ctx, plan, &now, &mut reads).map_err(UndoError::Facts)?;
+    moved.replaced = replaced::replaced(ctx, plan, &now, &mut reads)
+        .map_err(|why| facts_or_cancel(ctx.stop, why))?;
     if !force {
-        return Err(UndoError::Drift(Box::new(moved)));
+        return Err(UndoError::Drift {
+            drift: Box::new(moved),
+            direction,
+        });
     }
     restore::execute_over_drift(ctx, plan, reads, moved.replaced).map_err(UndoError::Restore)
 }
@@ -201,7 +233,7 @@ fn refuse_while_live(
     now: &RepoStateNow,
 ) -> Result<(), UndoError> {
     let live = graft_git::state::in_progress(ctx.repo)
-        .map_err(|error| UndoError::Facts(FactsError::from(error)))?;
+        .map_err(|error| facts_or_cancel(ctx.stop, FactsError::from(error)))?;
     let kind = match live {
         None | Some(InProgress::Bisect) => return Ok(()),
         Some(kind) => kind,
@@ -241,5 +273,22 @@ fn nothing_to_say(why: &NotInvertible) -> String {
         // The app words this through `update::undo::live_refusal`, and a
         // graft test pins the two texts equal (`operation_live_words_match_ops`).
         NotInvertible::OperationLive { kind } => super::operation_live_words(*kind),
+    }
+}
+
+/// A rail's read failure, a stop in it kept as what it is: the undo was
+/// cancelled before any step ran, so nothing changed (`KNOWN_GAPS` :495,
+/// planner ruling m7/01b). Nothing was journaled: the rails run before
+/// `begin`.
+///
+/// The stop is asked, not only the error's shape: a stopped read surfaces
+/// nested in many `FactsError` variants (`Snapshot(Stopped)`, a `RunError`
+/// inside `History`, …), and a failure while the user has asked to stop is
+/// the stop's doing — the stop latches, so asking again is exact.
+fn facts_or_cancel(stop: &dyn graft_git::run::Stop, why: FactsError) -> UndoError {
+    if matches!(why, FactsError::Stopped) || stop.should_stop() {
+        UndoError::Restore(RestoreError::CANCELLED_BEFORE_ANY_STEP)
+    } else {
+        UndoError::Facts(why)
     }
 }

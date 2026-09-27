@@ -439,7 +439,7 @@ fn a_branch_moved_behind_graft_stops_the_undo_and_then_refuses_it() {
     let tip = repo.git(&["rev-parse", "HEAD"]);
 
     match run_undo(&repo, NOW + 1, false) {
-        Err(UndoError::Drift(moved)) => {
+        Err(UndoError::Drift { drift: moved, .. }) => {
             assert!(
                 moved
                     .refs
@@ -476,7 +476,7 @@ fn an_edit_after_a_commit_stops_the_undo_and_forcing_it_keeps_a_backup() {
 
     repo.write("a.rs", b"an edit nobody journaled\n");
     match run_undo(&repo, NOW + 1, false) {
-        Err(UndoError::Drift(moved)) => assert!(moved.worktree, "{moved:?}"),
+        Err(UndoError::Drift { drift: moved, .. }) => assert!(moved.worktree, "{moved:?}"),
         other => panic!("the rail should have fired: {other:?}"),
     }
 
@@ -622,7 +622,7 @@ fn an_entry_with_no_after_state_restores_the_whole_tree_after_asking() {
 
     let stopped = run_undo(&repo, NOW + 1, false);
     match stopped {
-        Err(UndoError::Drift(moved)) => {
+        Err(UndoError::Drift { drift: moved, .. }) => {
             assert!(
                 moved.unknown.contains(&"the working tree"),
                 "the user is told first: {moved:?}"

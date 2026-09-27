@@ -59,16 +59,16 @@ The conductor decides.
 ```
 
 ## Acceptance (one test per row, red first where the row is **broken**)
-- [ ] :572 `a_permission_error_shows_in_the_card_not_empty` (graft, red first); `a_relative_path_reads_from_the_workdir`.
+- [x] :572 `a_permission_error_shows_in_the_card_not_empty` (graft, red first); `a_relative_path_reads_from_the_workdir`. Ticked by 01b: `jobs::conflict::tests::a_permission_error_shows_in_the_card_not_empty` (red first) + `jobs::conflict::tests::a_relative_path_reads_from_the_workdir` (green before: the join already existed) + `update::resolver::tests::cross::an_unreadable_card_lands_its_words_as_the_notice` (the notice wiring).
 - [x] :601 `a_failed_read_refs_in_seal_after_is_reported` (red first); `chain_states_maps_each_error_kind`. Ticked by 01a: `error_rows::a_failed_read_refs_in_seal_after_is_reported` (red first) + `error_rows::chain_states_maps_each_error_kind` (green before the fix: see 01a NOTES).
 - [x] :613 `a_facts_failure_is_not_reported_as_stopped` (red first). Ticked by 01a: test `error_rows::a_facts_failure_is_not_reported_as_stopped`. **Was green before the fix**, not red: see 01a NOTES.
 - [x] :640 `live_entry_stops_when_asked` (red first: a stop flagged before the `rev-list` returns `Stopped` promptly). Ticked by 01a: `error_rows::live_entry_stops_when_asked`, red first.
-- [ ] :495 `every_stop_is_one_shape`: a compile-level change; the test asserts the callers' single arm.
+- [x] :495 `every_stop_is_one_shape`: a compile-level change; the test asserts the callers' single arm. Ticked by 01b, per the planner's ruling (01b ticket): `undo_cancel::every_stop_is_one_shape` (graft-ops it, heavy tier, stride 1, red first) + `undo_cancel::every_stop_is_one_shape_sampled` (fast tier: polls first/middle/last, 3.68 s in nextest) + graft `jobs::undo::tests::a_stop_before_any_step_reads_as_cancelled` (red first).
 - [x] :496 `a_restore_that_fails_mid_way_rolls_back` (red first; a fault injected on the second write). Ticked by 01a: `error_rows::a_restore_that_fails_mid_way_rolls_back` + `error_rows::a_failed_roll_back_names_what_is_left`, both red first.
 - [x] :497 `a_bad_ref_name_is_refused_before_any_write` (red first). Ticked by 01a: `error_rows::a_bad_ref_name_is_refused_before_any_write`, red first.
-- [ ] :494 `drift_on_redo_says_capital_u` (red first).
-- [ ] NOTES: each row → its test. The conductor closes the KNOWN_GAPS rows from them.
-- [ ] MAP.md (graft-ops, graft).
+- [x] :494 `drift_on_redo_says_capital_u` (red first). Ticked by 01b: `undo::tests::drift_on_redo_says_capital_u`, red first.
+- [x] NOTES: each row → its test. The conductor closes the KNOWN_GAPS rows from them. Ticked by 01b: rows :494 :495 :572 in 01b NOTES, :496 :497 :601 :613 :640 in 01a NOTES, each naming its test.
+- [x] MAP.md (graft-ops, graft). Ticked by 01b: graft-ops `RestoreError`, `MergeState`, `UndoError` lines; graft `jobs::conflict` (`unreadable`) and `Undone::Cancelled` lines. Docs, no test.
 
 ## Touches (check each, report how)
 - **Every caller of `live_entry`, `restore::execute`, `RestoreError`:** grep; each listed in NOTES. Check: the workspace

@@ -183,6 +183,7 @@ fn block_and_every_dropped_by_a_changed_take() {
                 how: UnmergedHow::BothModified,
                 binary: false,
                 on_disk: None,
+                unreadable: None,
                 start_over: None,
             })))),
         ),

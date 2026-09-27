@@ -271,7 +271,7 @@ fn settled(ctx: &mut Context<'_>, step: &Step, before: &Before) -> Settled {
     // to record for it.
     let now = match facts::read_refs(ctx.repo, std::slice::from_ref(name)) {
         Ok(found) => found.get(name).copied().flatten(),
-        Err(why) => return Settled::Unknown(RestoreError::Facts(why)),
+        Err(why) => return Settled::Unknown(RestoreError::from_facts(why)),
     };
     // A name the entry's before-state does not record at all is the same
     // nothing-to-put-it-back-to that `reverse_of` calls `NoBefore`, and it

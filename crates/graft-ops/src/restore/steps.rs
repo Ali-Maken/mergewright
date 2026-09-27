@@ -37,9 +37,9 @@ pub(super) fn run_step(
             crate::merge_state::write_merge_state(ctx.repo, state.as_ref(), ctx.stop, commands)
                 .map_err(|why| match why {
                     // A stop stays a stop: the cancel path is chosen on
-                    // `RestoreError::Stopped` alone.
+                    // `RestoreError::STOPPED` alone.
                     crate::merge_state::MergeStateError::Run(RunError::Stopped) => {
-                        RestoreError::Stopped
+                        RestoreError::STOPPED
                     }
                     other => RestoreError::MergeState(other),
                 })
@@ -583,20 +583,18 @@ fn run(
 ///
 /// `RestoreError::Snapshot(Stopped)` would read as a git failure, and the
 /// cancel path (m5/06: a stop rolls back what already ran) is chosen on
-/// `RestoreError::Stopped` alone, so folding the two would leave a cancel
+/// `RestoreError::STOPPED` alone, so folding the two would leave a cancel
 /// half-applied.
 fn as_snapshot_error(why: snapshot::SnapshotError) -> RestoreError {
     match why {
-        snapshot::SnapshotError::Stopped => RestoreError::Stopped,
+        snapshot::SnapshotError::Stopped => RestoreError::STOPPED,
         other => RestoreError::Snapshot(other),
     }
 }
 
 fn as_restore_error(why: RunError) -> RestoreError {
-    match why {
-        RunError::Stopped => RestoreError::Stopped,
-        other => RestoreError::Run(other),
-    }
+    // A stop included: `Run(Stopped)` is the one stop shape (`KNOWN_GAPS` :495).
+    RestoreError::Run(why)
 }
 
 #[cfg(test)]

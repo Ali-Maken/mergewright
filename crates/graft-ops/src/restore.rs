@@ -40,6 +40,13 @@ use rollback::{Before, Cancelled, roll_back_after_failure, roll_back_after_stop}
 use steps::run_step;
 
 /// Why a restore could not be made, or could not finish.
+///
+/// A stop leaves a restore as **one shape** (`KNOWN_GAPS` :495, planner
+/// ruling m7/01b): [`RestoreError::Cancelled`] — `rolled_back: 0` when it
+/// came before any step ran — or [`RestoreError::CancelledPartway`]. Inside,
+/// every stop (git's, the backup's, a facts read's) is folded into the
+/// crate-private `STOPPED` where it enters, so the cancel path matches one
+/// arm; it never leaves this module as that.
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreError {
     /// A ref is not where the journal said it was, so the plan stopped
@@ -84,9 +91,6 @@ pub enum RestoreError {
         /// What could not be read or sealed.
         unread: Vec<AfterState>,
     },
-    /// The caller asked to stop.
-    #[error("stopped")]
-    Stopped,
     /// The caller asked to stop, and every step that had already run was put
     /// back: the repository stands exactly where it did before the restore
     /// began, and the entry is `Aborted` and not in force.
@@ -196,17 +200,37 @@ fn after_state(unread: &[AfterState]) -> String {
         .join("; ")
 }
 
+impl RestoreError {
+    /// The one shape a stop takes: git's own stop, as every `git` run
+    /// reports it.
+    pub(crate) const STOPPED: RestoreError = RestoreError::Run(RunError::Stopped);
+
+    /// A stop that came before any step ran: nothing changed.
+    pub(crate) const CANCELLED_BEFORE_ANY_STEP: RestoreError =
+        RestoreError::Cancelled { rolled_back: 0 };
+
+    /// A facts read's failure, the stop kept as [`Self::STOPPED`].
+    pub(crate) fn from_facts(why: FactsError) -> Self {
+        match why {
+            FactsError::Stopped => Self::STOPPED,
+            other => Self::Facts(other),
+        }
+    }
+}
+
 impl From<crate::apply::PrepareError> for RestoreError {
     fn from(why: crate::apply::PrepareError) -> Self {
         use crate::apply::PrepareError;
         match why {
-            PrepareError::Facts(why) => RestoreError::Facts(why),
+            PrepareError::Facts(why) => RestoreError::from_facts(why),
+            PrepareError::Snapshot(SnapshotError::Stopped) | PrepareError::Stopped => {
+                RestoreError::STOPPED
+            }
             PrepareError::Snapshot(why) => RestoreError::Snapshot(why),
             PrepareError::Journal(why) => RestoreError::Journal {
                 error: why,
                 after: None,
             },
-            PrepareError::Stopped => RestoreError::Stopped,
         }
     }
 }
@@ -263,7 +287,7 @@ pub(crate) fn execute_over_drift(
     replaced: Replaced,
 ) -> Result<Applied, RestoreError> {
     if ctx.stop.should_stop() {
-        return Err(RestoreError::Stopped);
+        return Err(RestoreError::CANCELLED_BEFORE_ANY_STEP);
     }
     // Before `begin`: a refused name leaves no entry and no backup.
     check_ref_names(plan)?;
@@ -275,7 +299,7 @@ pub(crate) fn execute_over_drift(
         reverses: Some(plan.reverses.clone()),
         put_back: None,
     };
-    let mut pending = begin(ctx, ctx.next_id(), opening)?;
+    let mut pending = begin(ctx, ctx.next_id(), opening).map_err(cancel_if_stopped)?;
 
     // The entry's own before-fields, read by `begin` before the first step
     // and backed by the backup ref it took at the same moment (§6.4). This,
@@ -331,6 +355,16 @@ pub(crate) fn execute_over_drift(
         // `Aborted` reason already; the plan's own failure — or the cancel —
         // is the headline.
         Some(why) => Err(why),
+    }
+}
+
+/// `begin`'s failure, a stop in it a cancel before any step: `begin`
+/// journals what it wrote itself, and nothing here invents an entry
+/// (`KNOWN_GAPS` :495, planner ruling m7/01b).
+fn cancel_if_stopped(why: crate::apply::PrepareError) -> RestoreError {
+    match RestoreError::from(why) {
+        RestoreError::Run(RunError::Stopped) => RestoreError::CANCELLED_BEFORE_ANY_STEP,
+        other => other,
     }
 }
 
@@ -431,7 +465,7 @@ fn run_plan(
             Ok(()) => applied.push(step),
             // The runner SIGTERMed git part-way through this step, so
             // whether it landed is not knowable from the error.
-            Err(RestoreError::Stopped) => {
+            Err(RestoreError::Run(RunError::Stopped)) => {
                 cancelled = true;
                 stopped_in = Some(step);
                 break;

@@ -663,3 +663,46 @@ fn replaced_unions_sorted_and_unique() {
     };
     assert!(!index_only.is_empty(), "a whole index is not nothing");
 }
+
+/// `KNOWN_GAPS` :494: the drift line names the key that goes ahead — `U`
+/// after a redo met the drift, `u` after an undo.
+#[test]
+fn drift_on_redo_says_capital_u() {
+    use super::{Direction, UndoError};
+    let moved = || {
+        Box::new(Drift {
+            worktree: true,
+            ..Drift::default()
+        })
+    };
+    let redo = UndoError::Drift {
+        drift: moved(),
+        direction: Direction::Redo,
+    }
+    .explain();
+    assert!(redo.ends_with("— U again to go ahead"), "{redo}");
+    let undo = UndoError::Drift {
+        drift: moved(),
+        direction: Direction::Undo,
+    }
+    .explain();
+    assert!(undo.ends_with("— u again to go ahead"), "{undo}");
+}
+
+/// `KNOWN_GAPS` :495: a stop reaches a restore's caller in one shape,
+/// `RestoreError::Run(RunError::Stopped)`, whichever read met it — so the
+/// cancel path's single arm catches every one.
+#[test]
+fn inner_stops_fold_to_one_recogniser() {
+    use crate::apply::PrepareError;
+    use crate::facts::FactsError;
+    use crate::restore::RestoreError;
+    use graft_git::run::RunError;
+    let is_the_stop = |why: RestoreError| matches!(why, RestoreError::Run(RunError::Stopped));
+    assert!(is_the_stop(RestoreError::STOPPED));
+    assert!(is_the_stop(RestoreError::from(PrepareError::Stopped)));
+    assert!(is_the_stop(RestoreError::from(PrepareError::Facts(
+        FactsError::Stopped
+    ))));
+    assert!(is_the_stop(RestoreError::from_facts(FactsError::Stopped)));
+}

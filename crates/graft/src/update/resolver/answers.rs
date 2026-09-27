@@ -84,7 +84,14 @@ pub(super) fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::confl
         open.cursor_block = None;
         open.top = 0;
         open.base_shown = false;
-        open.notice = landing_notice(open);
+        let landing = landing_notice(open);
+        // A file there but unreadable says so as a problem, over any
+        // landing words (`KNOWN_GAPS` :572).
+        open.notice = opened
+            .unreadable
+            .clone()
+            .map(|words| (words, true))
+            .or(landing);
         remember(open);
         return;
     };

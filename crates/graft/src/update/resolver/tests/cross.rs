@@ -61,6 +61,7 @@ fn crossed_read_lands(state: &AppState, commands: &[Command], file: ConflictFile
                 how: UnmergedHow::BothModified,
                 binary: false,
                 on_disk: None,
+                unreadable: None,
                 start_over: None,
             })))),
         ),
@@ -334,4 +335,39 @@ fn the_notice_lifetime_today() {
         Some("today's notice"),
         "the stage landed"
     );
+}
+
+/// `KNOWN_GAPS` :572: a whole-file card whose file could not be read lands
+/// with the job's words as its notice, not as an empty card.
+#[test]
+fn an_unreadable_card_lands_its_words_as_the_notice() {
+    let mut state = on("c", three(), &["a", "b", "c"], &["a", "c"]);
+    state.resolver.as_mut().expect("open").cursor_block = Some(2);
+    let (state, commands) = press(&state, KeyCode::Char('n'));
+    let id = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::OpenConflict(id, _) => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("no OpenConflict: {commands:?}"));
+    let words = "can't read a: Permission denied (os error 13)";
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            id,
+            Product::ConflictOpened(Ok(Opening::Unmerged(Arc::new(OpenedFile {
+                file: None,
+                how: UnmergedHow::DeletedByThem,
+                binary: false,
+                on_disk: None,
+                unreadable: Some(words.to_owned()),
+                start_over: Some(crate::jobs::conflict::StartOver::Cannot {
+                    why: "not asked".to_owned(),
+                }),
+            })))),
+        ),
+    );
+    let open = state.resolver.as_ref().expect("open");
+    assert_eq!(open.notice, Some((words.to_owned(), true)));
 }

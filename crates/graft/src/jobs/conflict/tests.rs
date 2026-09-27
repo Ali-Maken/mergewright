@@ -113,3 +113,89 @@ fn a_diff3_failure_is_a_problem() {
     assert!(problem, "git itself failed");
     assert!(words.contains("disk full"), "{words}");
 }
+
+/// A merge stopped on a modify/delete: `main` changed `gone.txt`, `side`
+/// deleted it, so it stays on disk under a whole-file card
+/// (`DeletedByThem`).
+fn modify_delete() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("a temp dir");
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .current_dir(dir.path())
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(
+            out.status.success() || args[0] == "merge",
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    };
+    git(&["init", "-q", "-b", "main"]);
+    std::fs::write(dir.path().join("gone.txt"), b"one\n").expect("write");
+    git(&["add", "gone.txt"]);
+    git(&["commit", "-q", "-m", "base"]);
+    git(&["checkout", "-q", "-b", "side"]);
+    git(&["rm", "-q", "gone.txt"]);
+    git(&["commit", "-q", "-m", "delete"]);
+    git(&["checkout", "-q", "main"]);
+    std::fs::write(dir.path().join("gone.txt"), b"two\n").expect("write");
+    git(&["commit", "-q", "-am", "change"]);
+    git(&["merge", "-q", "side"]);
+    dir
+}
+
+fn whole_file_card(dir: &std::path::Path) -> std::sync::Arc<super::OpenedFile> {
+    let store = crate::repos::RepoStore::new(dir.to_path_buf(), None);
+    match open(&store, std::path::Path::new("gone.txt"), &()).expect("it opens") {
+        Opening::Unmerged(opened) => opened,
+        Opening::Done(done, _) => panic!("still unmerged, got {done:?}"),
+    }
+}
+
+/// `KNOWN_GAPS` :572: a file that is there but cannot be read says so in the
+/// card's words, rather than drawing as an empty file.
+#[test]
+fn a_permission_error_shows_in_the_card_not_empty() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = modify_delete();
+    let file = dir.path().join("gone.txt");
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+    if std::fs::File::open(&file).is_ok() {
+        // Root reads a 000 file; the case this test is about cannot be made.
+        return;
+    }
+    let opened = whole_file_card(dir.path());
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).expect("chmod back");
+    assert_eq!(opened.on_disk, None);
+    let words = opened
+        .unreadable
+        .as_deref()
+        .unwrap_or_else(|| panic!("no words: {opened:?}"));
+    assert!(words.starts_with("can't read gone.txt: "), "{words}");
+}
+
+/// The card's glimpse is read from the workdir, not the process's cwd,
+/// and a file that is simply not there is no error.
+#[test]
+fn a_relative_path_reads_from_the_workdir() {
+    let dir = modify_delete();
+    let opened = whole_file_card(dir.path());
+    assert_eq!(opened.unreadable, None);
+    let on_disk = opened.on_disk.as_ref().expect("the file is read");
+    assert_eq!(&*on_disk.head, [b"two".to_vec()]);
+    std::fs::remove_file(dir.path().join("gone.txt")).expect("rm");
+    let opened = whole_file_card(dir.path());
+    assert_eq!(
+        (opened.on_disk.as_ref(), opened.unreadable.as_ref()),
+        (None, None)
+    );
+}

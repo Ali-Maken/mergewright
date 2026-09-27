@@ -381,6 +381,7 @@ fn a_changed_reread_keeps_the_dropped_count() {
                 how: UnmergedHow::BothModified,
                 binary: false,
                 on_disk: None,
+                unreadable: None,
                 start_over: None,
             })))),
         ),
