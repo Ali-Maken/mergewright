@@ -237,3 +237,5 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M7/33r-major2 | **Fast-tier pump deadline is 600 s** (`deadline.rs:13`), over PROMPT.md 7.1's 3-minute tier. Major 2 → 33b | closed 2026-09-27 (33b) | M7 |
 | M7/33r-m3 | **Three pump loops have no total deadline** (`idle_advance.rs:71`, `refresh_race.rs:69`, `credential_by_key.rs:164`). Minor 3 → 33b | closed 2026-09-27 (33b) | M7 |
 | M7/33r-m4 | **`PATIENCE`'s doc comment sits on `mod deadline`** (`budget_run.rs:34-37`). Minor 4 → 33b | closed 2026-09-27 (33b) | M7 |
+| M7/33r-m1 | **On a failed radar context, a found evil merge is hidden and the pane says "not checked"** (probe context-free `ops.rs:173-206`; view gates `view/radar.rs:77-79`, `:110-114`, `:179`). Planner to rule: show it, or don't probe. Minor 1 | closed 2026-09-27 (33c) | M7 |
+| M7/33r-m2 | **`job_failed` leaves `radar.context` (and `detail.evil`) `Pending` after a panicked/unstartable job** (`update/mod.rs:1013-1047`; `jobs/pool.rs:179,195`); no "not checked" line. Minor 2 | closed 2026-09-27 (33c) | M7 |
