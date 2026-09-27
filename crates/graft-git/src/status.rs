@@ -146,8 +146,25 @@ pub struct StatusEntry {
     /// Which conflict it is, for an unmerged record: the `u` record's `XY`
     /// pair (m6-conflicts/01). `Some` exactly when `unmerged` is true.
     pub unmerged_how: Option<UnmergedHow>,
-    /// The path is a submodule (the record's `sub` field starts with `S`).
-    pub submodule: bool,
+    /// What git says of a submodule at this path (the record's `sub`
+    /// field, `S<c><m><u>`); `None` for anything that is not a submodule
+    /// (`N...`, and every untracked record).
+    pub submodule: Option<SubmoduleStatus>,
+}
+
+/// Porcelain v2's `S<c><m><u>`: the three things git can say about a
+/// submodule's working tree (m7-power-tools/13). Each is measured against
+/// the **index**: a pointer move that is already staged reads `S...` with a
+/// staged change on the entry, not `pointer_moved` (measured, git 2.54).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SubmoduleStatus {
+    /// `C`: the submodule's checked-out commit is not the one the index
+    /// records.
+    pub pointer_moved: bool,
+    /// `M`: tracked changes inside the submodule.
+    pub changed_inside: bool,
+    /// `U`: untracked files inside the submodule.
+    pub untracked_inside: bool,
 }
 
 /// The seven shapes an unmerged path takes — porcelain v2's `XY` on a `u`
@@ -352,9 +369,31 @@ fn xy(field: &[u8]) -> Result<(u8, u8), StatusError> {
     }
 }
 
-/// A `sub` field starting with `S` marks a submodule.
-fn is_submodule(field: &[u8]) -> bool {
-    field.first() == Some(&b'S')
+/// The `sub` field: `N...` (not a submodule) or `S<c><m><u>`, where each
+/// letter is its flag or `.`. Anything else is not what git prints.
+fn submodule_status(field: &[u8]) -> Result<Option<SubmoduleStatus>, StatusError> {
+    let flag = |letter: u8, set: u8| match letter {
+        b'.' => Some(false),
+        l if l == set => Some(true),
+        _ => None,
+    };
+    let parsed = match field {
+        b"N..." => return Ok(None),
+        [b'S', c, m, u] => (|| {
+            Some(SubmoduleStatus {
+                pointer_moved: flag(*c, b'C')?,
+                changed_inside: flag(*m, b'M')?,
+                untracked_inside: flag(*u, b'U')?,
+            })
+        })(),
+        _ => None,
+    };
+    parsed.map(Some).ok_or_else(|| {
+        StatusError::Malformed(format!(
+            "a sub field must be N... or S<C|.><M|.><U|.>, not {:?}",
+            String::from_utf8_lossy(field)
+        ))
+    })
 }
 
 /// `1 XY sub mH mI mW hH hI path`
@@ -369,7 +408,7 @@ fn parse_ordinary(record: &[u8]) -> Result<StatusEntry, StatusError> {
         untracked: false,
         unmerged: false,
         unmerged_how: None,
-        submodule: is_submodule(f[2]),
+        submodule: submodule_status(f[2])?,
     })
 }
 
@@ -386,7 +425,7 @@ fn parse_rename(record: &[u8]) -> Result<StatusEntry, StatusError> {
         untracked: false,
         unmerged: false,
         unmerged_how: None,
-        submodule: is_submodule(f[2]),
+        submodule: submodule_status(f[2])?,
     })
 }
 
@@ -412,7 +451,7 @@ fn parse_unmerged(record: &[u8]) -> Result<StatusEntry, StatusError> {
         untracked: false,
         unmerged: true,
         unmerged_how: Some(how),
-        submodule: is_submodule(f[2]),
+        submodule: submodule_status(f[2])?,
     })
 }
 
@@ -427,7 +466,7 @@ fn parse_untracked(record: &[u8]) -> Result<StatusEntry, StatusError> {
         untracked: true,
         unmerged: false,
         unmerged_how: None,
-        submodule: false,
+        submodule: None,
     })
 }
 
@@ -491,4 +530,60 @@ fn status_from(output: &crate::run::GitOutput) -> Result<WorkingTreeStatus, Stat
         return Err(StatusError::TooLarge { bytes: OUTPUT_CAP });
     }
     parse_porcelain_v2(&output.stdout)
+}
+
+/// Every submodule that is **not set up**: a gitlink (mode `160000`) in the
+/// index whose directory has no `.git` — a clone that never ran `git
+/// submodule update --init`, or one `deinit`ed since (m7-power-tools/13).
+/// `git status` says nothing about these at all, so [`read`] cannot.
+///
+/// No `.gitmodules` in the worktree → no spawn and an empty list: the common
+/// repository pays nothing. Otherwise one `git ls-files --stage -z`.
+///
+/// # Errors
+/// [`StatusError::Run`] if git could not be run or exited non-zero;
+/// [`StatusError::TooLarge`] past [`OUTPUT_CAP`]; [`StatusError::Malformed`]
+/// for a line that is not `<mode> <oid> <stage>\t<path>`.
+pub fn submodules_not_set_up(
+    repo: &RepoHandle,
+    stop: &dyn Stop,
+) -> Result<Vec<PathBuf>, StatusError> {
+    let Some(workdir) = repo.workdir() else {
+        return Ok(Vec::new());
+    };
+    if !workdir.join(".gitmodules").exists() {
+        return Ok(Vec::new());
+    }
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("ls-files"),
+            GitArg::Flag("--stage"),
+            GitArg::Flag("-z"),
+        ])
+        .output_cap(OUTPUT_CAP)
+        .run(stop)?;
+    if output.truncated {
+        return Err(StatusError::TooLarge { bytes: OUTPUT_CAP });
+    }
+    let mut paths = Vec::new();
+    for record in output.stdout.split(|&b| b == 0) {
+        if record.is_empty() {
+            continue;
+        }
+        let tab = record.iter().position(|&b| b == b'\t').ok_or_else(|| {
+            StatusError::Malformed("an ls-files --stage record has no tab".to_owned())
+        })?;
+        let (info, path) = (&record[..tab], &record[tab + 1..]);
+        if !info.starts_with(b"160000 ") {
+            continue;
+        }
+        let path = bytes_to_pathbuf(path);
+        // A set-up submodule has a `.git` (a gitfile into the parent's
+        // `.git/modules`, or an old-style directory); either counts.
+        // An unmerged gitlink is listed once per stage, consecutively.
+        if paths.last() != Some(&path) && !workdir.join(&path).join(".git").exists() {
+            paths.push(path);
+        }
+    }
+    Ok(paths)
 }

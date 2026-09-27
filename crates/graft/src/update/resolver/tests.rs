@@ -84,7 +84,7 @@ fn a_card_says_no_more_this_way_and_its_bar_keeps_the_side_keys() {
             untracked: false,
             unmerged: true,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     let before = state.status.clone();
@@ -121,7 +121,7 @@ fn last_card_in_a_rebase() -> AppState {
             untracked: false,
             unmerged: true,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     state

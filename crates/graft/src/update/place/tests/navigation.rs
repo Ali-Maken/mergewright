@@ -139,7 +139,7 @@ fn enter_on_an_uncommitted_line_lands_in_the_changes_pane() {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     place_with(&mut state, a_blame(false, true), 2);

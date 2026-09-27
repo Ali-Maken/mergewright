@@ -213,7 +213,7 @@ mod tests {
                     untracked: false,
                     unmerged: false,
                     unmerged_how: None,
-                    submodule: false,
+                    submodule: None,
                 },
                 StatusEntry {
                     path: "unstaged.txt".into(),
@@ -223,7 +223,7 @@ mod tests {
                     untracked: false,
                     unmerged: false,
                     unmerged_how: None,
-                    submodule: false,
+                    submodule: None,
                 },
                 StatusEntry {
                     path: "untracked.txt".into(),
@@ -233,7 +233,7 @@ mod tests {
                     untracked: true,
                     unmerged: false,
                     unmerged_how: None,
-                    submodule: false,
+                    submodule: None,
                 },
             ],
         })

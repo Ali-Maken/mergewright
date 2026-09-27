@@ -1,6 +1,6 @@
 # submodule-truth — a submodule row says what git says: pointer moved, changed inside, untracked inside, not set up
 
-Status: ready
+Status: done (13a + 13b), except the fuzz corpus box (see 13b NOTES)
 Blocked by: none
 Crates: graft-git (`status` parse of porcelain v2's submodule field), graft-ops (`submodule_log`), graft-ui (the row and
 the diff pane rows), graft (mapping).
@@ -51,11 +51,15 @@ pub fn submodule_log(repo: &Repo, git: &Git, path: &Path, from: Oid, to: Oid, st
 ```
 
 ## Acceptance
-- [ ] **graft-git:**
-  - `parse_reads_each_submodule_flag` (the 8 combinations);
-  - `a_plain_file_has_no_submodule_status`;
-  - the fuzz corpus gains `S` records (`cargo fuzz` is not run in the fast tier; the file is added).
-- [ ] **Real repos** (graft-ops or graft tests, with fixtures):
+- [x] **graft-git:** — **13b**
+  - `parse_reads_each_submodule_flag` (the 8 combinations); — `graft-git/src/status/tests.rs`, loops `0..8`; plus
+    `a_malformed_submodule_field_is_an_error`, `a_gitlink_without_a_git_dir_is_not_set_up`,
+    `a_repository_without_submodules_has_none_not_set_up`, `untracked_inside_a_submodule_counts_as_unstaged`;
+  - `a_plain_file_has_no_submodule_status`; — same file.
+- [ ] the fuzz corpus gains `S` records — **not done, cannot be done as written**: `fuzz/corpus/` is gitignored
+  (exists only in the main checkout), so no file can be committed. The five `S` records to seed are in 13b NOTES;
+  the conductor decides (seed locally, or un-ignore a seed dir).
+- [x] **Real repos** (graft tests, real submodule fixture) — **13b**, all in `crates/graft/tests/it/submodule_truth.rs`:
   - `a_submodule_only_change_shows_pointer_moved` (Sublime #1084);
   - `a_moved_and_dirty_submodule_shows_both` (lazygit #3641);
   - `untracked_inside_is_its_own_fact`;
@@ -64,13 +68,19 @@ pub fn submodule_log(repo: &Repo, git: &Git, path: &Path, from: Oid, to: Oid, st
   - `submodule_log_lists_pulled_in_and_rewound`; — **13a: passes**, `graft-ops/tests/it/submodule_log.rs`, held to
     git's own `git diff --submodule=log` in the same test (the oracle);
   - `submodule_log_honours_stop`. — **13a: passes**, same file.
-  (Box stays open for 13b's five.)
-- [ ] **UI** snapshot tests: the row words at 187 and 80 columns; the diff pane rows.
-- [ ] **Captures** (colour unverified):
-  - `docs/shots/m7/submodule-row-120x40.txt`. **Right:** `▣ libs/parser  submodule · pointer moved 3b2a1f0 → 9c8d7e6 ·
-    changed inside`.
-  - `docs/shots/m7/submodule-diff-120x40.txt`. **Right:** `+ <sha> <subject>` rows.
-- [ ] MAP.md (4 crates). TESTING.md row.
+- [x] **UI** snapshot tests: the row words at 187 and 80 columns; the diff pane rows. — **13b**,
+  `graft-ui/src/detail_pane/tests.rs`: `a_submodule_row_says_its_facts_at_187_columns`,
+  `a_submodule_row_drops_its_ids_before_a_fact_at_80_columns`, `each_submodule_fact_is_its_own_word`,
+  `the_diff_pane_on_a_submodule_lists_its_commits`, `the_diff_pane_caps_a_submodules_commits_at_50`,
+  `the_diff_pane_says_when_a_submodules_commits_are_not_here`.
+- [x] **Captures** (colour unverified) — **13b**, through `check_shot`:
+  - `docs/shots/m7/submodule-row-120x40.txt` (`a_moved_and_dirty_submodule_shows_both`). **Right** as written
+    **cannot hold at 120**: the Below layout gives the file list 30 columns, so the row draws `▣ libs/parser
+    submodule ·…`, cut. The test asserts the drawn prefix and the full words from the row's own view. Finding in 13b
+    NOTES (needs a 187 capture or a shorter ladder).
+  - `docs/shots/m7/submodule-diff-120x40.txt` (`the_diff_pane_lists_the_commits_a_move_pulled_in`, held to git's own
+    `log --left-right`). Shows `+ efdd295 parser 3`, `+ 8512312 parser 2`, `− 5bdba05 side 1`.
+- [x] MAP.md (graft-git, graft-ui, graft; graft-ops by 13a). TESTING.md row "M7 submodule rows". — **13b**, docs.
 
 ## Touches (check each, report how)
 - **Every reader of `StatusEntry.submodule`** (a type change): grep; each listed; the workspace builds.

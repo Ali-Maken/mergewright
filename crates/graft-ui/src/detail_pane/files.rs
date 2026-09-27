@@ -3,7 +3,7 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use crate::detail::{DetailFocus, DetailView, FileRow, FileRowKind, FileStatusView};
+use crate::detail::{DetailFocus, DetailView, FileRow, FileRowKind, FileStatusView, SubmoduleView};
 use crate::paint::{color, foreground};
 use crate::theme::Theme;
 use crate::theme::Token;
@@ -23,6 +23,21 @@ pub(crate) fn status_letter(status: &FileStatusView) -> char {
         // letter.
         FileStatusView::Unmerged { .. } => 'U',
         FileStatusView::Untracked => '?',
+        // Never drawn either: `file_row_text` draws `▣` and the facts.
+        FileStatusView::Submodule(_) => '\u{25a3}',
+    }
+}
+
+/// A submodule's row: `▣ <path>  submodule · <facts>` (m7-power-tools/13).
+/// When the words do not fit `width`, the pointer's ids go first, so every
+/// fact still shows; past that the line is cut like any other.
+fn submodule_row_text(indent: &str, name: &str, view: &SubmoduleView, width: usize) -> String {
+    let row = |ids: bool| format!("{indent}\u{25a3} {name}  {}", view.row_words(ids));
+    let full = row(true);
+    if full.chars().count() <= width {
+        full
+    } else {
+        row(false)
     }
 }
 
@@ -51,7 +66,12 @@ fn file_row_text(row: &FileRow, width: usize) -> String {
             // no single "the diff" while both sides are still in the index
             // — so its row is the name, and `how` (`both modified`, …)
             // takes the trailing column instead of a letter and counts.
-            if let FileStatusView::Unmerged { how } = status {
+            if let FileStatusView::Submodule(view) = status {
+                (
+                    submodule_row_text(&indent, row.name.as_str(), view, width),
+                    String::new(),
+                )
+            } else if let FileStatusView::Unmerged { how } = status {
                 (format!("{indent}{}", row.name.as_str()), how.to_string())
             } else {
                 let letter = status_letter(status);

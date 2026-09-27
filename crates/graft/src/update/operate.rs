@@ -1416,7 +1416,7 @@ mod tests {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     }
 
@@ -1429,7 +1429,7 @@ mod tests {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     }
 
@@ -1442,7 +1442,7 @@ mod tests {
             untracked: true,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     }
 
@@ -1853,7 +1853,7 @@ mod tests {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         };
         let rows = vec![
             ("src/a.rs".to_string(), WorkingTreeSection::Staged),
@@ -2014,7 +2014,7 @@ mod tests {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     }
 
@@ -2027,7 +2027,7 @@ mod tests {
             untracked: false,
             unmerged: true,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     }
 
@@ -2151,7 +2151,7 @@ mod tests {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         };
         let mut state = state_on("src/a.rs", both, WorkingTreeSection::Unstaged);
         assert!(request_discard(&mut state));

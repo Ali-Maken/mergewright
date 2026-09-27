@@ -393,7 +393,7 @@ fn detail_tab_mid_rebase(banner_focus: bool) -> AppState {
                 untracked: false,
                 unmerged: true,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             }],
         })),
         detail: crate::update::detail::DetailState {

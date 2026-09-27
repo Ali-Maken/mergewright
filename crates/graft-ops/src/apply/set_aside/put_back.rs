@@ -283,7 +283,7 @@ mod tests {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     }
 

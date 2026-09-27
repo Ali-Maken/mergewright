@@ -233,7 +233,7 @@ fn show_line_working_tree_lands_on_the_uncommitted_row() {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     let commands = show_line(

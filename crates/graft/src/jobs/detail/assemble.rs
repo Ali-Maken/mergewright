@@ -1,11 +1,14 @@
 //! The pure commit-side assembly: git's file list and diff into the view
 //! models the pane draws. No git runs here.
 
+use std::collections::HashMap;
+
 use graft_git::diff::{BinaryNote, FileDiff, FileList, FileStatus, LineKind, pairs};
 use graft_git::status::UnmergedHow;
 use graft_term::sanitize::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::detail::{
     DiffView, FileListView, FileRow, FileRowKind, FileStatusView, HunkView, LineKindView, LineView,
+    SubmoduleView,
 };
 use graft_ui::diff_words::word_spans;
 use graft_ui::syntax::{highlight, language_for_first_line, language_for_path};
@@ -55,6 +58,9 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView {
         0,
         // A commit's files are never unmerged, so there is no shape to name.
         &UnmergedShapes::new(),
+        // A commit's gitlink rows keep their letter: the file list carries
+        // no modes to tell one (13b NOTES).
+        &HashMap::new(),
     );
     view
 }
@@ -69,9 +75,33 @@ pub(super) fn push_tree(
     indices: &[usize],
     base: u8,
     how: &UnmergedShapes,
+    submodules: &HashMap<Vec<u8>, SubmoduleView>,
 ) {
     let mut order: Vec<usize> = indices.to_vec();
     order.sort_by(|&a, &b| list.files[a].path.cmp(&list.files[b].path));
+    // A submodule is one thing, not a directory to open: its row names the
+    // whole path at the section's own depth, after the section's files
+    // (m7-power-tools/13).
+    let (modules, order): (Vec<usize>, Vec<usize>) = order
+        .into_iter()
+        .partition(|&index| submodules.contains_key(&list.files[index].path));
+    let push_modules = |view: &mut FileListView| {
+        for index in &modules {
+            let entry = &list.files[*index];
+            if let Some(submodule) = submodules.get(&entry.path) {
+                view.rows.push(FileRow {
+                    depth: base,
+                    name: sanitize_path_bytes(&entry.path),
+                    kind: FileRowKind::File {
+                        status: FileStatusView::Submodule(Box::new(submodule.clone())),
+                        added: None,
+                        removed: None,
+                    },
+                    entry: u32::try_from(*index).ok(),
+                });
+            }
+        }
+    };
 
     let mut open_dirs: Vec<String> = Vec::new();
     for index in order {
@@ -107,6 +137,7 @@ pub(super) fn push_tree(
             entry: u32::try_from(index).ok(),
         });
     }
+    push_modules(view);
 }
 
 fn depth(levels: usize) -> u8 {

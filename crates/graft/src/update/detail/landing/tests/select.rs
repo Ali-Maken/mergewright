@@ -44,7 +44,7 @@ fn show_line_section_gone_lands_on_the_first_row_first_change() {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     let commands = show_line(

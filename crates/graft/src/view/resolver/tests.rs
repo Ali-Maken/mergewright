@@ -74,7 +74,7 @@ fn open_on(bytes: &[u8], path: &str) -> AppState {
                 untracked: false,
                 unmerged: true,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             }],
         })),
         resolver: Some(ResolverState {
