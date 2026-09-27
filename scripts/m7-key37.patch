@@ -1,0 +1,189 @@
+diff --git a/crates/graft/tests/it/frames.rs b/crates/graft/tests/it/frames.rs
+index 080c19a3..15162fd6 100644
+--- a/crates/graft/tests/it/frames.rs
++++ b/crates/graft/tests/it/frames.rs
+@@ -23,6 +23,7 @@ use std::collections::HashMap;
+ use std::io::{self, Write};
+ use std::path::Path;
+ use std::sync::mpsc::{Receiver, RecvTimeoutError};
++use std::sync::atomic::{AtomicBool, Ordering};
+ use std::sync::{Arc, Mutex, PoisonError};
+ use std::time::{Duration, Instant};
+ 
+@@ -207,8 +208,26 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
+         asked: Mutex::default(),
+     };
+     let mut wakes = Paced::new(&events, script(), &watching, sink.clone());
+-    let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state)
+-        .map_err(|why| format!("the loop failed: {why}"))?;
++    // [m7-12g] ADR-0021's control: one unrelated thread spinning on another
++    // core for the whole scroll, when KEY37_SPIN=1.
++    let spinning = Arc::new(AtomicBool::new(std::env::var_os("KEY37_SPIN").is_some()));
++    let spinner = spinning.load(Ordering::Relaxed).then(|| {
++        let spinning = Arc::clone(&spinning);
++        std::thread::spawn(move || {
++            let mut n = 0u64;
++            while spinning.load(Ordering::Relaxed) {
++                n = std::hint::black_box(n.wrapping_add(1));
++            }
++        })
++    });
++    let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state);
++    spinning.store(false, Ordering::Relaxed);
++    if let Some(spinner) = spinner {
++        spinner
++            .join()
++            .map_err(|_| "the spinner thread panicked".to_owned())?;
++    }
++    let exit = exit.map_err(|why| format!("the loop failed: {why}"))?;
+     if !matches!(exit, Exit::Quit) {
+         return Err(format!(
+             "the loop ended with {exit:?}, not at the end of the script"
+@@ -218,6 +237,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
+         return Err(failure);
+     }
+     let latencies = wakes.latencies()?;
++    println!("{}", wakes.breakdown()?);
+     let by_trigger = wakes.written_by_trigger();
+ 
+     match jobs.shutdown(Duration::from_secs(10)) {
+@@ -531,6 +551,8 @@ enum Kind {
+ /// One wake handed to the loop.
+ struct Handed {
+     kind: Kind,
++    /// [m7-12g] When this wake was handed to the loop.
++    at: Instant,
+     /// `ShowRows` requests sent before this wake was handed over.
+     asked_before: usize,
+ }
+@@ -578,6 +600,7 @@ impl<'a, D> Paced<'a, D> {
+     fn hand(&mut self, kind: Kind, wake: Wake) -> Wake {
+         self.handed.push(Handed {
+             kind,
++            at: Instant::now(),
+             asked_before: self.watching.asked().len(),
+         });
+         wake
+@@ -652,6 +675,122 @@ impl<'a, D> Paced<'a, D> {
+     }
+ }
+ 
++/// [m7-12g] Microseconds from `from` to `to`, 0 when `to` is earlier.
++fn us(from: Instant, to: Instant) -> u128 {
++    to.saturating_duration_since(from).as_micros()
++}
++
++impl<D> Paced<'_, D> {
++    /// [m7-12g] Which wake shows `key`'s rows (as `latencies` decides).
++    fn shown(&self, index: usize) -> Result<usize, String> {
++        let asked = self.watching.asked();
++        let handed = &self.handed[index];
++        let asked_after = self
++            .handed
++            .get(index + 1)
++            .map_or(asked.len(), |next| next.asked_before);
++        match asked[handed.asked_before..asked_after].iter().max() {
++            None => Ok(index),
++            Some(&request) => self.handed[index + 1..]
++                .iter()
++                .position(|later| matches!(later.kind, Kind::Window(id) if id >= request))
++                .map(|offset| index + 1 + offset)
++                .ok_or_else(|| format!("request {request} was never answered")),
++        }
++    }
++
++    /// [m7-12g] One key's latency split into its parts, which add up to it
++    /// exactly: `late` (the loop still busy past the due tick), `oversleep`
++    /// (the harness's `recv_timeout` waking after the tick), then per wake
++    /// from the key to the frame showing its rows, `frame` (update + draw)
++    /// and the `wait` before each later wake (the worker's answer).
++    fn split(&self, index: usize) -> Result<String, String> {
++        let Kind::Key(key, due) = self.handed[index].kind else {
++            return Err(format!("wake {index} is not a key"));
++        };
++        let shown = self.shown(index)?;
++        let drawn = |wake: usize| {
++            self.drawn
++                .get(wake)
++                .copied()
++                .ok_or_else(|| format!("no frame {wake}"))
++        };
++        let before = drawn(index)?;
++        let at = self.handed[index].at;
++        let late = us(due, before);
++        let oversleep = us(due.max(before), at);
++        let mut frames = 0;
++        let mut waits = 0;
++        let mut detail = Vec::new();
++        for wake in index..=shown {
++            let handed = &self.handed[wake];
++            let wait = if wake == index { 0 } else { us(drawn(wake)?, handed.at) };
++            let frame = us(handed.at, drawn(wake + 1)?);
++            waits += wait;
++            frames += frame;
++            let kind = match handed.kind {
++                Kind::Key(..) => "key",
++                Kind::Window(_) => "rows",
++                Kind::Other => "other",
++            };
++            detail.push(format!("{kind}:wait={wait},frame={frame}"));
++        }
++        let latency = us(due, drawn(shown + 1)?);
++        let sum = late + oversleep + frames + waits;
++        Ok(format!(
++            "key={key} latency_us={latency} late_us={late} oversleep_us={oversleep} frames_us={frames} worker_wait_us={waits} wakes={} sum_us={sum} detail=[{}]",
++            shown - index + 1,
++            detail.join(" ")
++        ))
++    }
++
++    /// [m7-12g] `KEY37` for the first key that sends a row request, `NEAR`
++    /// for the three keys either side, `KEYS` for every key's parts.
++    fn breakdown(&self) -> Result<String, String> {
++        let keys: Vec<usize> = (0..self.handed.len())
++            .filter(|&i| matches!(self.handed[i].kind, Kind::Key(..)))
++            .collect();
++        let asks = |i: usize| {
++            let after = self
++                .handed
++                .get(i + 1)
++                .map_or(self.watching.asked().len(), |next| next.asked_before);
++            after > self.handed[i].asked_before
++        };
++        let first = keys
++            .iter()
++            .position(|&i| asks(i))
++            .ok_or_else(|| "no key sent a row request".to_owned())?;
++        let mut out = vec![format!("KEY37 {}", self.split(keys[first])?)];
++        for near in first.saturating_sub(3)..(first + 4).min(keys.len()) {
++            if near != first {
++                out.push(format!("NEAR {}", self.split(keys[near])?));
++            }
++        }
++        let mut split: Vec<(u128, u128, u128)> = Vec::new();
++        for &i in &keys {
++            let Kind::Key(_, due) = self.handed[i].kind else { continue };
++            let before = self.drawn.get(i).copied().ok_or("no frame")?;
++            let at = self.handed[i].at;
++            let after = self.drawn.get(i + 1).copied().ok_or("no frame")?;
++            split.push((us(due, before), us(due.max(before), at), us(at, after)));
++        }
++        let median = |pick: fn(&(u128, u128, u128)) -> u128| {
++            let mut all: Vec<u128> = split.iter().map(pick).collect();
++            all.sort_unstable();
++            (all[all.len() / 2], all[all.len() - 1])
++        };
++        let (late50, late_max) = median(|s| s.0);
++        let (over50, over_max) = median(|s| s.1);
++        let (frame50, frame_max) = median(|s| s.2);
++        out.push(format!(
++            "KEYS n={} late_us_p50={late50} late_us_max={late_max} oversleep_us_p50={over50} oversleep_us_max={over_max} own_frame_us_p50={frame50} own_frame_us_max={frame_max}",
++            split.len()
++        ));
++        Ok(out.join("\n"))
++    }
++}
++
+ impl<D> Wakes for Paced<'_, D> {
+     fn next_wake(&mut self) -> Option<Wake> {
+         self.drawn.push(Instant::now());
