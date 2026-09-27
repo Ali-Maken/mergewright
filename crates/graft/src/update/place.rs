@@ -17,6 +17,9 @@
 mod answer;
 mod blame_state;
 mod from;
+mod history;
+mod history_answer;
+mod history_keys;
 mod keys;
 mod rows;
 mod trail;
@@ -33,13 +36,17 @@ use graft_term::sanitize::sanitize_path;
 use graft_ui::blame::BlameRev;
 use graft_ui::detail::{DetailFocus, WorkingTreeSection};
 
-use super::detail::{CompareBase, DetailSpec, LineRef, Loading, diff_cursor};
+use super::detail::{CompareBase, DetailSpec, DiffCursor, LineRef, Loading, diff_cursor};
 use super::events::Command;
 use super::state::{AppState, Status};
 
 pub(crate) use answer::blame_arrived;
 pub use answer::{BlameAnswer, BlameFailure, BlameLoad, BlameRequest, CameFromRequest, Want};
 pub use from::{BlameFrom, NoBlame, blame_from, came_from};
+pub(crate) use history::f_key;
+pub use history::{FileLoad, HistoryFrom, HistoryState, TraceLoad, open_history};
+pub use history_answer::{FUNCTION_MAX, TRACE_CAP, TraceAnswer, TraceFailure, TraceRequest};
+pub(crate) use history_answer::{trace_arrived, whole_file_arrived};
 pub use keys::place_key;
 pub(crate) use keys::{live_global, place_mouse};
 pub use trail::trail_back;
@@ -50,11 +57,13 @@ pub use write::is_write;
 /// How many places the trail holds; a 17th drops the oldest.
 pub const TRAIL_MAX: usize = 16;
 
-/// One screen on the trail. History-place adds `History`.
+/// One screen on the trail.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Place {
     /// Who last changed each line of a file.
     Blame(Box<BlameState>),
+    /// The commits that changed some lines, or a file (`L`, `F`).
+    History(Box<HistoryState>),
 }
 
 /// The places he has opened since `B`, newest last (`AppState::trail`).
@@ -82,7 +91,7 @@ impl Trail {
         self.is_live() && !self.shown
     }
 
-    /// The place on screen, if one is.
+    /// The blame place on screen, if one is.
     #[must_use]
     pub fn on_screen(&self) -> Option<&BlameState> {
         if !self.shown {
@@ -91,18 +100,51 @@ impl Trail {
         self.top()
     }
 
-    /// The newest place.
+    /// The newest place, if it is a blame.
     #[must_use]
     pub fn top(&self) -> Option<&BlameState> {
         match self.places.last()? {
             Place::Blame(blame) => Some(blame),
+            Place::History(_) => None,
         }
     }
 
     fn top_mut(&mut self) -> Option<&mut BlameState> {
         match self.places.last_mut()? {
             Place::Blame(blame) => Some(blame),
+            Place::History(_) => None,
         }
+    }
+
+    /// The history place on screen, if one is.
+    #[must_use]
+    pub fn history_on_screen(&self) -> Option<&HistoryState> {
+        if !self.shown {
+            return None;
+        }
+        self.top_history()
+    }
+
+    /// The newest place, if it is a history.
+    #[must_use]
+    pub fn top_history(&self) -> Option<&HistoryState> {
+        match self.places.last()? {
+            Place::History(history) => Some(history),
+            Place::Blame(_) => None,
+        }
+    }
+
+    fn top_history_mut(&mut self) -> Option<&mut HistoryState> {
+        match self.places.last_mut()? {
+            Place::History(history) => Some(history),
+            Place::Blame(_) => None,
+        }
+    }
+
+    /// Some place — blame or history — is on screen.
+    #[must_use]
+    pub fn place_shown(&self) -> bool {
+        self.shown && self.is_live()
     }
 }
 
@@ -210,9 +252,21 @@ pub(crate) fn b_key(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
                 .to_owned(),
         );
     }
-    // `B` starts a new trail: whatever was on an old one is behind him now.
-    // A base still set aside by it stays set aside, for this trail to put
-    // back.
+    let base = begin_trail(next, commands, &cursor);
+    let opened = open_blame(next, from);
+    settle_trail(next, base);
+    commands.extend(opened);
+    true
+}
+
+/// `B` and `F` start a new trail: whatever was on an old one is behind him
+/// now. A base still set aside by it stays set aside, for this trail to put
+/// back. Answers the base set aside, for [`settle_trail`].
+fn begin_trail(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    cursor: &DiffCursor,
+) -> Option<CompareBase> {
     let old = std::mem::take(&mut next.trail);
     cancel_reading(&old, commands);
     let pinned = next.compare_base.take();
@@ -226,14 +280,15 @@ pub(crate) fn b_key(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
         base,
         spot: Spot::of(next),
     });
-    let opened = open_blame(next, from);
+    base
+}
+
+/// After opening: refused before any place opened, nothing is set aside.
+fn settle_trail(next: &mut AppState, base: Option<CompareBase>) {
     if !next.trail.is_live() {
-        // Refused before any place opened: nothing is set aside.
         next.trail = Trail::default();
         next.compare_base = base;
     }
-    commands.extend(opened);
-    true
 }
 
 /// The pane would take `B`: shown, focused, and not under the commit-graph
@@ -373,7 +428,7 @@ pub(crate) fn short(oid: Oid) -> String {
 /// While the place is on screen it owns the keys (keymap §2.1).
 #[must_use]
 pub(crate) fn owns_keys(state: &AppState) -> bool {
-    state.trail.on_screen().is_some()
+    state.trail.place_shown()
 }
 
 /// The place's `/` prompt is open: a text field.

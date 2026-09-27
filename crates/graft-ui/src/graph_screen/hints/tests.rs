@@ -1853,6 +1853,7 @@ mod blame_place {
                 "⏎ that commit",
                 "^ before it",
                 "/ find",
+                "L history of these lines",
                 "n N match",
                 "space ages",
                 "w whitespace",

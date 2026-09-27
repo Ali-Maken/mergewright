@@ -264,6 +264,29 @@ pub enum Command {
     /// Blame one file, under an id `update` chose (a blame place,
     /// m7-power-tools/20). Cancellable: `Esc` while it reads stops git.
     ReadBlame(JobId, Box<crate::update::place::BlameRequest>),
+    /// Trace the commits that changed some lines or a whole file, under an
+    /// id `update` chose (a history place, m7-power-tools/21). Cancellable:
+    /// `Esc` while it traces stops git. One answer per trace (21 ruling a).
+    TraceHistory {
+        /// The place's job.
+        id: JobId,
+        /// What to trace.
+        request: Box<crate::update::place::TraceRequest>,
+    },
+    /// Read one commit's change to a file as the whole file (the history
+    /// place's file pane, m7-power-tools/21). Cancellable.
+    ReadWholeFile {
+        /// The place's job.
+        id: JobId,
+        /// The commit.
+        commit: graft_core::oid::Oid,
+        /// The file's path in it.
+        path: std::path::PathBuf,
+        /// The path before, when the commit renamed it.
+        old_path: Option<std::path::PathBuf>,
+        /// Past this many lines the file is cut (`L` asks for all).
+        max_lines: usize,
+    },
 }
 
 /// One block's take, as the resolver asks for it.

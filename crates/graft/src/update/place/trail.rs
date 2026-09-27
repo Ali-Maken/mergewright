@@ -1,6 +1,6 @@
 //! The trail's life: going back along it, leaving it, and what ends it.
 
-use super::{BlameLoad, Place, Spot, Trail, is_write};
+use super::{BlameLoad, FileLoad, Place, Spot, TraceLoad, Trail, is_write};
 use crate::update::detail::{abandon, show_line};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
@@ -14,11 +14,7 @@ use crate::update::state::{AppState, Status};
 pub fn trail_back(state: &mut AppState) -> Option<Vec<Command>> {
     let popped = state.trail.places.pop()?;
     let mut commands = Vec::new();
-    if let Place::Blame(blame) = &popped
-        && let BlameLoad::Reading { job, .. } = blame.body
-    {
-        commands.push(Command::CancelJob(job));
-    }
+    cancel_place(&popped, &mut commands);
     if state.trail.is_live() {
         state.trail.shown = true;
     } else {
@@ -71,9 +67,26 @@ pub(super) fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: 
 /// Stop every job still reading on `trail`.
 pub(super) fn cancel_reading(trail: &Trail, commands: &mut Vec<Command>) {
     for place in &trail.places {
-        let Place::Blame(blame) = place;
-        if let BlameLoad::Reading { job, .. } = blame.body {
-            commands.push(Command::CancelJob(job));
+        cancel_place(place, commands);
+    }
+}
+
+/// Stop `place`'s jobs still running: a blame's read; a history's trace
+/// (`Esc` while tracing stops git, ruling a) and its whole-file read.
+fn cancel_place(place: &Place, commands: &mut Vec<Command>) {
+    match place {
+        Place::Blame(blame) => {
+            if let BlameLoad::Reading { job, .. } = blame.body {
+                commands.push(Command::CancelJob(job));
+            }
+        }
+        Place::History(history) => {
+            if let TraceLoad::Tracing { job } = history.trace {
+                commands.push(Command::CancelJob(job));
+            }
+            if let FileLoad::Reading { job, .. } = history.file {
+                commands.push(Command::CancelJob(job));
+            }
         }
     }
 }

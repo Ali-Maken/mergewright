@@ -4,6 +4,7 @@
 
 mod esc_back;
 mod hints;
+mod history;
 mod keys;
 mod mouse;
 mod navigation;

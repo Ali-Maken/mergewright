@@ -240,6 +240,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, Product::Blame(answer)) => {
             place::blame_arrived(next, commands, id, &answer);
         }
+        AppEvent::Produced(id, Product::Trace(answer)) => {
+            place::trace_arrived(next, commands, id, answer);
+        }
+        AppEvent::Produced(id, Product::WholeFile(answer)) => {
+            place::whole_file_arrived(next, id, answer);
+        }
         event @ AppEvent::Produced(
             _,
             Product::RadarContext(_) | Product::ForcePushProbe(..) | Product::DuplicatesProbe(_),
@@ -480,6 +486,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::ListFiles { .. }
         | Task::FileDiff { .. }
         | Task::Blame
+        | Task::Trace
+        | Task::WholeFile
         | Task::ContainedIn { .. }
         | Task::RadarContext { .. }
         | Task::EvilProbe { .. }
@@ -839,6 +847,8 @@ fn took_fact(
         | Product::Files(_)
         | Product::FileDiff(..)
         | Product::Blame(_)
+        | Product::Trace(_)
+        | Product::WholeFile(_)
         | Product::ContainedIn(..)
         | Product::RadarContext(_)
         | Product::EvilProbe(..)

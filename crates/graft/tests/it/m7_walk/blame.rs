@@ -84,6 +84,30 @@ pub fn on_line_22(repo: &Path, columns: u16, rows: u16) -> (App, AppState) {
 /// onto Priya's commit (`main~1`), `x`, `k` back to `main` — so the pane is
 /// the compare `main~1…main`, whose diff of [`FILE`] is `main`'s own.
 pub fn open_on_line_22(repo: &Path, columns: u16, rows: u16, pin_base: bool) -> (App, AppState) {
+    let (app, state) = open_on_the_file(repo, columns, rows, pin_base);
+    let state = app.key(&state, KeyCode::Enter);
+    assert_eq!(state.detail.focus, DetailFocus::Diff);
+    let state = app.key(&state, KeyCode::Char(']'));
+    let mut state = app.pump(state, "the wider diff", |state| {
+        matches!(state.detail.diff, Loading::Ready(_))
+    });
+    for _ in 0..40 {
+        let at = diff_cursor(&state).and_then(|cursor| cursor.at);
+        if at.is_some_and(|at| at.side == Side::New && at.line == LINE) {
+            return (app, state);
+        }
+        state = app.key(&state, KeyCode::Char('j'));
+    }
+    panic!(
+        "the diff cursor never reached new line {LINE}: {:?}",
+        diff_cursor(&state)
+    );
+}
+
+/// The pane open on `main`, the files cursor on [`FILE`]'s row and its diff
+/// read: `F`'s start (m7-power-tools/21, "the detail pane on the file's
+/// row"), and [`open_on_line_22`]'s first half.
+pub fn open_on_the_file(repo: &Path, columns: u16, rows: u16, pin_base: bool) -> (App, AppState) {
     let (app, state) = App::open_with_clock(
         repo,
         graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW),
@@ -118,23 +142,8 @@ pub fn open_on_line_22(repo: &Path, columns: u16, rows: u16, pin_base: bool) -> 
     let state = app.pump(state, "the file's diff", |state| {
         matches!(state.detail.diff, Loading::Ready(_))
     });
-    let state = app.key(&state, KeyCode::Enter);
-    assert_eq!(state.detail.focus, DetailFocus::Diff);
-    let state = app.key(&state, KeyCode::Char(']'));
-    let mut state = app.pump(state, "the wider diff", |state| {
-        matches!(state.detail.diff, Loading::Ready(_))
-    });
-    for _ in 0..40 {
-        let at = diff_cursor(&state).and_then(|cursor| cursor.at);
-        if at.is_some_and(|at| at.side == Side::New && at.line == LINE) {
-            return (app, state);
-        }
-        state = app.key(&state, KeyCode::Char('j'));
-    }
-    panic!(
-        "the diff cursor never reached new line {LINE}: {:?}",
-        diff_cursor(&state)
-    );
+    assert_eq!(state.detail.focus, DetailFocus::Files);
+    (app, state)
 }
 
 /// `j` until the file list's cursor is on the row for `path`.
@@ -228,13 +237,13 @@ pub fn graph_cursor(state: &AppState) -> Option<Oid> {
 /// (review m7-18e-20f Minor 6), so a key can't be sent uncounted. The same
 /// shape as `m5_walk`'s `Step::Press`, which drives a scenario runner this
 /// harness doesn't use.
-struct Route {
+pub struct Route {
     id: &'static str,
     keys: Vec<&'static str>,
 }
 
 impl Route {
-    fn new(id: &'static str) -> Route {
+    pub fn new(id: &'static str) -> Route {
         Route {
             id,
             keys: Vec::new(),
@@ -242,7 +251,7 @@ impl Route {
     }
 
     /// Send `code`, labelled `label`, and count it.
-    fn press(
+    pub fn press(
         &mut self,
         app: &App,
         state: &AppState,
@@ -254,7 +263,7 @@ impl Route {
     }
 
     /// The walk took its route; the note allows at most its count.
-    fn within_count(&self) {
+    pub fn within_count(&self) {
         let allowed = super::noted_keys(self.id);
         assert!(
             self.keys.len() <= allowed,

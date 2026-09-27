@@ -107,16 +107,23 @@ pub(crate) fn blame_arrived(
     answer: &Result<Arc<BlameAnswer>, BlameFailure>,
 ) {
     let Some(index) = state.trail.places.iter().position(|place| {
-        let Place::Blame(blame) = place;
-        matches!(blame.body, BlameLoad::Reading { job, .. } if job == id)
+        matches!(place, Place::Blame(blame)
+            if matches!(blame.body, BlameLoad::Reading { job, .. } if job == id))
     }) else {
         return;
     };
+    // `^`'s came-from line is the blame under this one's; a history place
+    // under it asked with a line (`B`), not a came-from.
     let asked_line = index
         .checked_sub(1)
         .and_then(|newer| state.trail.places.get(newer))
-        .and_then(|Place::Blame(newer)| newer.cursor_line());
-    let Place::Blame(blame) = &mut state.trail.places[index];
+        .and_then(|newer| match newer {
+            Place::Blame(newer) => newer.cursor_line(),
+            Place::History(_) => None,
+        });
+    let Place::Blame(blame) = &mut state.trail.places[index] else {
+        return;
+    };
     let BlameLoad::Reading {
         want, came_from, ..
     } = &blame.body

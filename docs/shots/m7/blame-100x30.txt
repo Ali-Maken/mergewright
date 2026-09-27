@@ -27,4 +27,4 @@
  └        │ 25              }
  ─ GF  60m│ 26              self.token = resp.token().map_err(Expired::from)?;
  ┌ TO 10mo│ 27              return self.record_refresh(&resp, "refreshed after the server answered 4
- ⏎ that commit  ^ before it  / find  space ages  w whitespace  i ignore list  esc back
+ ⏎ that commit  ^ before it  / find  L history of these lines  space ages  w whitespace  i  esc

@@ -28,10 +28,12 @@ use crate::update::detail::DiffKey;
 
 mod assemble;
 mod blame;
+mod history;
 mod working_tree;
 
 pub use assemble::{assemble_diff, assemble_files};
 pub(super) use blame::read_blame;
+pub(super) use history::{read_trace, read_whole_file};
 #[cfg(test)]
 pub use working_tree::assemble_working_tree;
 use working_tree::{SubmoduleRows, assemble_changes, pointer_of, shapes_of, short_id};

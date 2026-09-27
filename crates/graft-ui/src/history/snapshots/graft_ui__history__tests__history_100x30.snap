@@ -1,0 +1,24 @@
+---
+source: crates/graft-ui/src/history/tests.rs
+assertion_line: 395
+description: "Right: one pane, the file (focused): the header, ┃ on 18–29, removed rows unnumbered."
+expression: "snapshot(&view(&rows, &hunks, &theme, HistoryFocus::File), 100, 30)"
+---
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 4 changes
+a1b2c3d · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −1
+   16   impl Session {
+   17       /// Refresh the token when the server says it expired.
+┃  18       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+┃  19 +         let mut attempt = 0;
+┃  20           loop {
+┃  21               let resp = client.refresh(&self.token)?;
+┃     −             if resp.status() == 401 {
+┃  22 +             if resp.status() == 401 && attempt == 0 {
+┃  23 +                 attempt += 1;
+┃  24                   continue;
+┃  25               }
+┃  26               return Ok(());
+┃  27           }
+┃  28       }
+┃  29   }
+   30
