@@ -85,6 +85,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   for its view model, `app::update::detail` for state, keys and mouse hit
   areas. A diff itself is read and parsed in `git::diff`
   (m2-details-and-diffs).
+- **Changing blame or the places trail** → `ui::blame` for the widget,
+  `app::update::place` (with `place/{answer,blame_state,from,keys,rows,trail,write}.rs`)
+  for the trail, its keys, mouse and job answers,
+  `app::view::frame::overlays::draw_place` for drawing it over the graph,
+  `app::jobs::detail` for the blame job (m7-power-tools/20).
 - **Changing the Map view or the overview strip** → `ui::map_screen` /
   `ui::overview_strip` for the widgets, `app::map` for the per-branch bucket
   walk, `app::view::map` / `app::view::strip` for their view models,

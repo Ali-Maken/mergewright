@@ -14,31 +14,37 @@
 //! pinned-base ruling): moved into [`Origin::base`] when `B` opens a place,
 //! pinned again when the trail ends.
 
+mod answer;
+mod blame_state;
 mod from;
 mod keys;
 mod rows;
+mod trail;
 mod write;
 
 #[cfg(test)]
 pub(crate) mod tests;
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
-use graft_core::job::JobId;
 use graft_core::oid::Oid;
-use graft_git::blame::{Blame, BlameOptions, Rev};
+use graft_git::blame::{BlameOptions, Rev};
 use graft_term::sanitize::sanitize_path;
-use graft_ui::blame::{BlameRev, BlameRowView};
+use graft_ui::blame::BlameRev;
 use graft_ui::detail::DetailFocus;
 
-use super::detail::{CompareBase, DetailSpec, LineRef, Loading, diff_cursor, show_line};
+use super::detail::{CompareBase, DetailSpec, LineRef, Loading, diff_cursor};
 use super::events::Command;
 use super::state::{AppState, Status};
 
+pub(crate) use answer::blame_arrived;
+pub use answer::{BlameAnswer, BlameFailure, BlameLoad, BlameRequest, CameFromRequest, Want};
 pub use from::{BlameFrom, NoBlame, blame_from, came_from};
 pub use keys::place_key;
 pub(crate) use keys::{live_global, place_mouse};
+pub use trail::trail_back;
+pub(crate) use trail::{after_commands, end_for_compare, esc_goes_back, show_again};
+use trail::{cancel_reading, leave};
 pub use write::is_write;
 
 /// How many places the trail holds; a 17th drops the oldest.
@@ -173,85 +179,6 @@ pub struct BlameState {
     pub heatmap: bool,
     /// The last click's row and time (ms), for a double-click.
     pub last_click: Option<(usize, i64)>,
-}
-
-/// A blame place's body.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum BlameLoad {
-    /// The job is running.
-    Reading {
-        /// The job; `Esc` cancels it.
-        job: JobId,
-        /// The line the cursor goes to when it answers.
-        want: Want,
-    },
-    /// git failed; its words.
-    Failed(String),
-    /// The blame, and its rows as the picture draws them.
-    Ready {
-        /// What git said.
-        blame: Arc<Blame>,
-        /// One row per line.
-        rows: Arc<[BlameRowView]>,
-    },
-}
-
-/// Where the cursor goes when a blame arrives.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Want {
-    /// This final line (clamped).
-    Line(u32),
-    /// The first line not committed yet (the first line when none is).
-    FirstUncommitted,
-    /// Where the job's `came_from` says (`^`).
-    CameFrom,
-}
-
-/// What a blame job reads.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BlameRequest {
-    /// The version.
-    pub rev: Rev,
-    /// The file.
-    pub path: PathBuf,
-    /// `-w`, the ignore list.
-    pub options: BlameOptions,
-    /// For `^`: also read `commit`'s diff of the file, and answer where
-    /// `line` came from ([`came_from`]).
-    pub came_from: Option<CameFromRequest>,
-}
-
-/// `^`'s second read: the diff that made the line.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CameFromRequest {
-    /// The commit that last changed the line.
-    pub commit: Oid,
-    /// The file's path in it.
-    pub path: PathBuf,
-    /// The file's path in its parent.
-    pub old_path: PathBuf,
-    /// The line, counted in `commit`'s version.
-    pub line: u32,
-}
-
-/// A blame job's answer.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BlameAnswer {
-    /// The blame.
-    pub blame: Blame,
-    /// For `^`: the parent's line the cursor goes to.
-    pub line: Option<u32>,
-}
-
-/// Why a blame job gave no blame.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum BlameFailure {
-    /// Not in the version asked for.
-    Untracked,
-    /// A binary file.
-    Binary,
-    /// git's words.
-    Failed(String),
 }
 
 /// `B` in the detail pane: open blame at the line he is on, or say why not.
@@ -395,7 +322,12 @@ fn open_place(
         rev,
         title,
         options,
-        body: BlameLoad::Reading { job, want },
+        body: BlameLoad::Reading {
+            job,
+            want,
+            came_from: came_from.clone(),
+            ignore_listed: None,
+        },
         cursor: 0,
         top: 0,
         find: None,
@@ -432,156 +364,6 @@ pub(crate) fn short(oid: Oid) -> String {
     let mut hex = oid.to_string();
     hex.truncate(7);
     hex
-}
-
-/// `Esc` back along the trail: drop the newest place (stopping its job if
-/// it is still reading); popping the last one leaves the trail. `None` when
-/// there is no trail to go back along.
-///
-/// Not the spec's `-> bool`: leaving the trail lands the pane back where
-/// `B` was pressed, which is `show_line`'s commands.
-pub fn trail_back(state: &mut AppState) -> Option<Vec<Command>> {
-    let popped = state.trail.places.pop()?;
-    let mut commands = Vec::new();
-    if let Place::Blame(blame) = &popped
-        && let BlameLoad::Reading { job, .. } = blame.body
-    {
-        commands.push(Command::CancelJob(job));
-    }
-    if state.trail.is_live() {
-        state.trail.shown = true;
-    } else {
-        leave(state, &mut commands, true);
-    }
-    Some(commands)
-}
-
-/// End the trail: pin the set-aside base again and, with `restore`, put
-/// the graph and the pane back where `B` was pressed if anything moved.
-fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: bool) {
-    let trail = std::mem::take(&mut state.trail);
-    cancel_reading(&trail, commands);
-    let Some(origin) = trail.origin else {
-        return;
-    };
-    if let Some(base) = origin.base {
-        state.compare_base = Some(base);
-    }
-    if !restore {
-        return;
-    }
-    // A `⏎` landing still on its way (the walk seeking the commit) is the
-    // trail's; he has left it, so it must not land later.
-    state.line_landing = None;
-    if Spot::of(state) == origin.spot {
-        return;
-    }
-    commands.extend(show_line(state, origin.spec, &origin.path, origin.at));
-    match state.line_landing.as_mut() {
-        Some(landing) => landing.then_focus = Some(origin.focus),
-        None => state.detail.focus = origin.focus,
-    }
-}
-
-/// Stop every job still reading on `trail`.
-fn cancel_reading(trail: &Trail, commands: &mut Vec<Command>) {
-    for place in &trail.places {
-        let Place::Blame(blame) = place;
-        if let BlameLoad::Reading { job, .. } = blame.body {
-            commands.push(Command::CancelJob(job));
-        }
-    }
-}
-
-/// After every event: a write among `commands` ends the trail and pins the
-/// set-aside base again (20's pinned-base ruling). Nothing is restored: the
-/// write lands where it lands.
-pub(crate) fn after_commands(state: &mut AppState, commands: &mut Vec<Command>) {
-    if state.trail.is_live() && commands.iter().any(is_write) {
-        leave(state, commands, false);
-    }
-}
-
-/// `Esc` with the trail hidden under the graph or the pane: show it again.
-/// `false` with nothing hidden.
-pub(crate) fn show_again(state: &mut AppState) -> bool {
-    if !state.trail.hidden() {
-        return false;
-    }
-    state.trail.shown = true;
-    true
-}
-
-/// A new compare base pinned (`x`, `Shift`/`Ctrl`+click) while the trail
-/// is hidden: a new task, so the trail ends and the set-aside base is
-/// dropped (20's pinned-base ruling). Call before the pin; `true` when a
-/// trail ended, for the caller to say so once the pin is known.
-pub(crate) fn end_for_compare(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
-    if !state.trail.is_live() {
-        return false;
-    }
-    if let Some(origin) = state.trail.origin.as_mut() {
-        origin.base = None;
-    }
-    leave(state, commands, false);
-    true
-}
-
-/// A blame job answered. A stale id (the place was popped, or `w`/`i`
-/// asked again) is dropped.
-pub(crate) fn blame_arrived(
-    state: &mut AppState,
-    commands: &mut Vec<Command>,
-    id: JobId,
-    answer: &Result<Arc<BlameAnswer>, BlameFailure>,
-) {
-    let Some(index) = state.trail.places.iter().position(|place| {
-        let Place::Blame(blame) = place;
-        matches!(blame.body, BlameLoad::Reading { job, .. } if job == id)
-    }) else {
-        return;
-    };
-    let Place::Blame(blame) = &mut state.trail.places[index];
-    let BlameLoad::Reading { want, .. } = blame.body else {
-        return;
-    };
-    match answer {
-        Ok(answer) => {
-            let rows: Arc<[BlameRowView]> = rows::blame_rows(&answer.blame).into();
-            let target = match want {
-                Want::Line(line) => rows::row_of_line(&answer.blame, line),
-                Want::FirstUncommitted => answer
-                    .blame
-                    .lines
-                    .iter()
-                    .position(|line| line.commit.is_none())
-                    .unwrap_or(0),
-                Want::CameFrom => rows::row_of_line(&answer.blame, answer.line.unwrap_or(1)),
-            };
-            blame.cursor = target;
-            blame.top = 0;
-            blame.body = BlameLoad::Ready {
-                blame: Arc::new(answer.blame.clone()),
-                rows,
-            };
-            keys::keep_in_view(state);
-        }
-        Err(BlameFailure::Failed(words)) => blame.body = BlameLoad::Failed(words.clone()),
-        Err(refused @ (BlameFailure::Untracked | BlameFailure::Binary)) => {
-            let path = blame.path.clone();
-            let words = no_blame_words(&match refused {
-                BlameFailure::Binary => NoBlame::Binary(path),
-                BlameFailure::Untracked | BlameFailure::Failed(_) => NoBlame::Untracked(path),
-            });
-            state.trail.places.remove(index);
-            if state.trail.is_live() {
-                state.trail.shown = true;
-            } else {
-                leave(state, commands, true);
-            }
-            state.status = Status::sticky(words);
-        }
-    }
 }
 
 /// While the place is on screen it owns the keys (keymap §2.1).

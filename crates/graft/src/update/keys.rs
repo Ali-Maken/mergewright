@@ -551,6 +551,9 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         return;
     }
     // Last: a blame trail waiting under the graph comes back
-    // (m7-power-tools/20, `esc back to blame`).
+    // (m7-power-tools/20, `esc back to blame`), when `place::esc_goes_back`
+    // says so. With it true the pane's `Esc` (`detail::keys`) has already
+    // taken the key, before the walk's rungs above: going back is what he
+    // asked for (20i).
     super::place::show_again(next);
 }
