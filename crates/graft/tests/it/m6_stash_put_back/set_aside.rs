@@ -1223,6 +1223,102 @@ fn a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back() {
     }
 }
 
+/// K4, review m7-30c-to-10c Majors 1 and 2 (30f). At 160x50 with the detail
+/// pane open (`⏎`) the footer is the graph half's row, not the frame's: the
+/// notice is fitted to it and reads whole, `J to inspect` included. Then he
+/// drops the copy in the shell and presses `Ctrl+R`: the notice no longer
+/// names a stash that is gone.
+#[cfg(unix)]
+#[test]
+fn the_relaunch_notice_fits_the_pane_and_follows_the_stash_list() {
+    let (columns, rows) = (160u16, 50u16);
+    let scratch = staging_that_cannot_come_back();
+    let path = scratch.path();
+    killed_before_the_drop(path);
+
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, columns, rows);
+    let state = crate::conflict_interim::launched(&app, state);
+    let state = app.pump(state, "the refs the relaunch reads", |state: &AppState| {
+        state.refs.is_some()
+    });
+    let state = crate::captures::settled_frame(&app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    assert!(state.detail.shown, "⏎ opens the detail pane");
+    let state = crate::captures::settled_frame(&app, state);
+    let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n");
+    let bottom = drawn.lines().last().expect("a bottom row");
+    assert!(
+        bottom.contains("your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect"),
+        "the never-cut clause and J, whole, at {columns}x{rows} with the pane open:\n{drawn}"
+    );
+    assert!(!bottom.contains('\u{2026}'), "nothing cut:\n{drawn}");
+
+    git(path, &["stash", "drop"]);
+    let state = app.press(
+        &state,
+        graft_core::event::KeyPress {
+            code: KeyCode::Char('r'),
+            modifiers: graft_core::event::Modifiers::CONTROL,
+        },
+    );
+    let state = app.pump(state, "the stash list re-read", |state: &AppState| {
+        state
+            .refs
+            .as_deref()
+            .is_some_and(|refs| refs.stashes().is_empty())
+    });
+    let state = crate::captures::settled_frame(&app, state);
+    let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n");
+    let bottom = drawn.lines().last().expect("a bottom row");
+    assert!(
+        bottom.contains("your edits are back \u{b7} J to inspect"),
+        "{drawn}"
+    );
+    assert!(!drawn.contains("stash@"), "no stash that is gone:\n{drawn}");
+    drop(state);
+    app.close();
+}
+
+/// 30f: every width from 80 to 187, the detail pane shown and hidden, the
+/// relaunch notice's never-cut clause and `J to inspect` are whole on the
+/// bottom row — whichever row the footer is drawn in.
+#[cfg(unix)]
+#[test]
+fn the_relaunch_notice_is_whole_at_every_width_pane_or_not() {
+    const WHOLE: &str = "your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect";
+    let scratch = staging_that_cannot_come_back();
+    let path = scratch.path();
+    killed_before_the_drop(path);
+    let (app, state) = App::open(path);
+    let state = app.resize(&state, 120, 40);
+    let state = crate::conflict_interim::launched(&app, state);
+    let state = app.pump(state, "the refs the relaunch reads", |state: &AppState| {
+        state.refs.is_some()
+    });
+    let hidden = crate::captures::settled_frame(&app, state);
+    let shown = app.key(&hidden, KeyCode::Enter);
+    assert!(shown.detail.shown, "⏎ opens the detail pane");
+    let shown = crate::captures::settled_frame(&app, shown);
+    for (pane, state) in [("hidden", &hidden), ("shown", &shown)] {
+        for columns in 80u16..=187 {
+            let drawn = frame_at(state, columns, 50, Some(Clock::Fixed(FORK_NOW)));
+            // The footer is the graph area's last row: the frame's with
+            // the pane beside or hidden, above the pane when it is below.
+            let footer = drawn
+                .iter()
+                .find(|row| row.contains("interrupted"))
+                .unwrap_or_else(|| panic!("{columns}, pane {pane}: no notice\n{drawn:#?}"));
+            assert!(
+                footer.contains(WHOLE),
+                "{columns} columns, pane {pane}: {footer:?}"
+            );
+        }
+    }
+    drop((hidden, shown));
+    app.close();
+}
+
 #[cfg(unix)]
 const RELAUNCH_HEADER: &str = "\
 # m7/30c-relaunch-edits-back-<size>.txt: drawn by `view::view` from a real

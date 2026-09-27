@@ -128,6 +128,91 @@ fn the_notice_words_where_recovery_found_the_edits() {
     );
 }
 
+/// Review m7-30c-to-10c Major 1: recovery said `Back { copy: Some(0) }`,
+/// then he dropped the copy. The notice names no stash that is gone.
+#[test]
+fn the_notice_drops_a_stash_that_is_gone() {
+    let (entry, id) = set_aside_entry();
+    let state = with_edits(
+        &entry,
+        vec![(id.clone(), graft_ops::EditsAt::Back { copy: Some(0) })],
+        &[],
+    );
+    assert_eq!(
+        interrupted_notice(&state).as_deref(),
+        Some(
+            "an operation was interrupted: checkout other \u{b7} your edits are back \u{b7} J to inspect"
+        )
+    );
+    let popped = with_edits(&entry, vec![(id, graft_ops::EditsAt::Stash { n: 0 })], &[]);
+    let notice = interrupted_notice(&popped).expect("a notice");
+    assert!(!notice.contains("stash@"), "{notice}");
+}
+
+/// Review m7-30c-to-10c Major 1: `Stash { n: 0 }` at launch, then he stashed
+/// something else; the copy is now `stash@{1}` and the notice says so.
+#[test]
+fn the_stash_clause_follows_the_list() {
+    let (entry, id) = set_aside_entry();
+    let other = graft_core::oid::Oid::from_bytes(&[0x11; 20]).expect("20 bytes");
+    let stash = entry.put_back.as_ref().expect("set aside").stash;
+    let state = with_edits(
+        &entry,
+        vec![(id, graft_ops::EditsAt::Stash { n: 0 })],
+        &[(other, 0), (stash, 1)],
+    );
+    assert_eq!(
+        interrupted_notice(&state).as_deref(),
+        Some(
+            "an operation was interrupted: checkout other \u{b7} your edits are in stash@{1} \u{b7} S p puts them back \u{b7} J to inspect"
+        )
+    );
+}
+
+fn set_aside_entry() -> (JournalEntry, graft_core::journal::EntryId) {
+    let stash = graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes");
+    let mut entry = torn_entry(0, "checkout other");
+    entry.put_back = Some(graft_core::journal::PutBack {
+        stash,
+        why: graft_core::journal::PutBackWhy::SetAside,
+    });
+    let id = entry.id.clone();
+    (entry, id)
+}
+
+fn with_edits(
+    entry: &JournalEntry,
+    edits: Vec<(graft_core::journal::EntryId, graft_ops::EditsAt)>,
+    stashes: &[(graft_core::oid::Oid, usize)],
+) -> AppState {
+    let main =
+        graft_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
+    let tip = graft_core::oid::Oid::from_bytes(&[0x22; 20]).expect("20 bytes");
+    AppState {
+        journal: JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![entry.clone()],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+                interrupted_edits: Vec::new(),
+            })),
+            ..JournalState::default()
+        },
+        interrupted_edits: edits,
+        refs: Some(Arc::new(
+            crate::refs::badges(
+                &[(main.clone(), tip)],
+                &graft_git::repo::HeadState::Branch(main),
+                &std::collections::HashMap::new(),
+                stashes,
+                |_, _| Err("no upstreams in this fixture".to_owned()),
+            )
+            .expect("badges builds from plain data"),
+        )),
+        ..AppState::default()
+    }
+}
+
 /// Review m6-final-fixes-74 M4: `land_after_undo` replaces the done line's
 /// `keys` with the banner's continue words and leaves `also` alone — a fact
 /// is not a key, so the key-driven landing cannot drop it.
