@@ -999,3 +999,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r1621-m12 | `git_alone_stops_on_a_pick_of_an_ancestor` pins git's words in the fast tier (`cherry_pick.rs:281-294`); move to heavy or clear failure message | **broken** (test) | M7 |
 | M7/r1621-q1 | History title names HEAD's line range, bracket the selected commit's (17–28 vs 18–29): say on screen? | **unverified** (question) | M7 |
 | M7/r1621-q2 | 11a: a pick with unrelated edits does a stash round trip it didn't need ("N files set aside" for N untouched) | **unverified** (question) | M8 |
+| M7/03b-adr | ADR-0045 §4 amendment for Pull set-aside (text drafted in 03 NOTES -b); apply with 11a-adr | **broken** (doc stale) | M7 |
+| M7/03b-count | Pull journey has no row in the design note step-count fence; walk hardcodes 1 key (`m7_walk/pull.rs`) | **broken** (doc) | M7 |
