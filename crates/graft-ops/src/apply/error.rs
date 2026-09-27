@@ -225,6 +225,12 @@ pub enum AfterState {
     /// records none — which `u` reads as "not merging" (m6-conflicts/20).
     #[error("the merge in progress after the operation: {0}")]
     MergeState(crate::merge_state::MergeStateError),
+    /// A touched branch's `branch.<name>.*` config could not be read after
+    /// the operation, so the entry records none: `u` then puts back only the
+    /// keys that were there before, and cannot remove one the operation
+    /// added (review m7-16b..21b, Major 1).
+    #[error("the branch's config after the operation: {0}")]
+    BranchConfig(FactsError),
     /// A rewrite's saved plan (`<git dir>/graft/rewrite/<entry-id>/`) could
     /// not be removed when its entry closed (ADR-0047 §1). The entry is
     /// closed all the same; the files are Graft's, not the user's, and a

@@ -68,7 +68,7 @@ fn settled(state: &AppState) -> bool {
                 .last_rejected_push
                 .as_ref()
                 .and_then(|rejected| rejected.leaves.as_ref()),
-            Some((_, _, super::remote::LeavesRead::Reading))
+            Some((_, _, super::remote::LeavesRead::Reading(_)))
         )
         && state.journal.reading.is_none()
         && !matches!(state.stash.entries, Loading::Pending(_))

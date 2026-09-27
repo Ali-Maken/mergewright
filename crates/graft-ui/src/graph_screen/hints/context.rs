@@ -243,7 +243,7 @@ pub enum HintContext {
         /// bar is `esc back` alone, the only key that acts there.
         rows: bool,
         /// The file pane has the keys (`HistoryFocus::File`): `j/k scroll`,
-        /// `tab list`.
+        /// `⇥ list`.
         on_file: bool,
     },
     /// **A history place waits under the graph** (`⏎` landed on a commit):

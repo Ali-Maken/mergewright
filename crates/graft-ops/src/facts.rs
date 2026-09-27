@@ -104,6 +104,11 @@ pub enum FactsError {
     /// the diff between `HEAD` and the tracking tip (m7-power-tools/03b).
     #[error("reading what the pull brings: {0}")]
     Incoming(RunError),
+    /// A touched branch's `branch.<name>.*` config could not be read, so
+    /// the journal could not record what undo must put back (review
+    /// m7-16b..21b, Major 1).
+    #[error("the branch's config: {0}")]
+    BranchConfig(RunError),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,

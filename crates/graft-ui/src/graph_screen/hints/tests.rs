@@ -1925,7 +1925,7 @@ mod history_place {
             }),
             [
                 "j/k older·newer",
-                "tab file",
+                "⇥ file",
                 "n/N next change",
                 "B blame here",
                 "⏎ that commit",
@@ -1939,7 +1939,7 @@ mod history_place {
             }),
             [
                 "j/k scroll",
-                "tab list",
+                "⇥ list",
                 "n/N next change",
                 "B blame here",
                 "⏎ that commit",
@@ -1971,9 +1971,11 @@ mod history_place {
     }
 
     /// Conductor ruling 2026-09-27: `next change` gives way first, then
-    /// `older·newer`. Under the 30-cell floor the bar is empty, as every
-    /// modal's is (ADR-0039's bottom; `esc back` alone there would break
-    /// `no_hint_loses_ground_as_the_room_for_it_grows`).
+    /// `older·newer`. Under the floor the bar is empty, as every modal's is
+    /// (ADR-0039's bottom; `esc back` alone there would break
+    /// `no_hint_loses_ground_as_the_room_for_it_grows`). The floor is the
+    /// shortest form's width: 28 cells since `tab` became `⇥` (review
+    /// m7-16b..21b, Minor 4), 30 before.
     #[test]
     fn history_bar_narrows_by_its_ladder() {
         let list = HintContext::History {
@@ -1982,13 +1984,14 @@ mod history_place {
         };
         let at = |columns| hints_text(&hints_for(&list, Divider::Hidden, columns));
         assert!(
-            at(40).starts_with(" j/k older·newer  tab file  n/N next"),
+            at(40).starts_with(" j/k older·newer  ⇥ file  n/N next"),
             "{:?}",
             at(40)
         );
         assert!(!at(40).contains("next change"), "{:?}", at(40));
-        assert_eq!(at(30), " j/k older  tab file  n/N next");
-        assert_eq!(at(29), "");
+        assert_eq!(at(30), " j/k older  ⇥ file  n/N next");
+        assert_eq!(at(28), " j/k older  ⇥ file  n/N next");
+        assert_eq!(at(27), "");
     }
 
     #[test]

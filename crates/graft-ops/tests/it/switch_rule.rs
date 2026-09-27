@@ -17,7 +17,9 @@ use graft_ops::operation::{
 use graft_ops::preview::{self, ConflictForecast, PreviewPlan, WorktreeEffect};
 
 use crate::set_aside::{last_entry, porcelain, set_aside_of};
-use crate::support::{NOW, Never, TempRepo, git_version, run_undo, stash_list, state_of, try_run};
+use crate::support::{
+    NOW, Never, TempRepo, git_version, run_redo, run_undo, stash_list, state_of, try_run,
+};
 
 fn id(repo: &TempRepo, rev: &str) -> Oid {
     Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
@@ -227,9 +229,77 @@ fn track_creates_the_local_branch_tracking_the_remote() {
     assert_eq!(down.read("sara.txt"), b"sara\n");
 }
 
+/// `git config --local --get-all <key>`'s values, empty when unset.
+fn config_values(repo: &TempRepo, key: &str) -> Vec<String> {
+    match repo.try_git(&["config", "--local", "--get-all", key]) {
+        Ok(text) => text.lines().map(str::to_owned).collect(),
+        Err(_unset) => Vec::new(),
+    }
+}
+
+/// Review m7-16b..21b, Major 1 (git 2.54): `u` of a Track used to leave
+/// `branch.sara/x.remote/.merge`, and a later branch of that name silently
+/// tracked `origin/sara/x`. Undo removes what the Track wrote and nothing
+/// else; `U` writes it again.
+#[test]
+fn undo_of_a_track_switch_removes_the_upstream_it_wrote() {
+    let (_up, down) = remote_only();
+    down.git(&["config", "branch.main.remote", "origin"]);
+    down.git(&["config", "branch.main.merge", "refs/heads/main"]);
+    try_run(&down, &track(&down), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    run_undo(&down, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(
+        config_values(&down, "branch.sara/x.remote"),
+        Vec::<String>::new(),
+        "git {:?}",
+        git_version()
+    );
+    assert_eq!(
+        config_values(&down, "branch.sara/x.merge"),
+        Vec::<String>::new()
+    );
+    assert_eq!(config_values(&down, "branch.main.remote"), ["origin"]);
+    assert_eq!(
+        config_values(&down, "branch.main.merge"),
+        ["refs/heads/main"]
+    );
+    // The consequence the review measured: a later plain branch of the same
+    // name has no upstream.
+    down.git(&["branch", "sara/x", "HEAD"]);
+    assert!(
+        down.try_git(&["rev-parse", "--abbrev-ref", "sara/x@{upstream}"])
+            .is_err()
+    );
+    down.git(&["branch", "-D", "sara/x"]);
+
+    run_redo(&down, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    assert_eq!(config_values(&down, "branch.sara/x.remote"), ["origin"]);
+    assert_eq!(
+        config_values(&down, "branch.sara/x.merge"),
+        ["refs/heads/sara/x"]
+    );
+}
+
+/// Config that was there before the Track — a stale upstream left for the
+/// same name — is what undo puts back, not a blank.
+#[test]
+fn a_pre_existing_upstream_for_the_same_name_survives_undo() {
+    let (_up, down) = remote_only();
+    down.git(&["config", "branch.sara/x.remote", "upstream"]);
+    down.git(&["config", "branch.sara/x.merge", "refs/heads/elsewhere"]);
+    try_run(&down, &track(&down), NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(config_values(&down, "branch.sara/x.remote"), ["origin"]);
+    run_undo(&down, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(config_values(&down, "branch.sara/x.remote"), ["upstream"]);
+    assert_eq!(
+        config_values(&down, "branch.sara/x.merge"),
+        ["refs/heads/elsewhere"]
+    );
+}
+
 /// `u` deletes the branch it made and puts `HEAD` back on `main`; the
-/// remote-tracking ref is left alone. The `branch.sara/x.*` lines stay in
-/// the config (a gap the ticket names: harmless to git).
+/// remote-tracking ref is left alone. The `branch.sara/x.*` lines go too
+/// (`undo_of_a_track_switch_removes_the_upstream_it_wrote`).
 #[test]
 fn track_undo_deletes_the_branch_and_puts_head_back() {
     let (_up, down) = remote_only();

@@ -60,8 +60,10 @@ pub const LEAVES_SHOWN: usize = 3;
 /// The read of [`Leaves`] for one lease key.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LeavesRead {
-    /// Asked, not answered: `P` says `still reading`.
-    Reading,
+    /// Asked under this job, not answered: `P` says `still reading`. The id
+    /// is how a job that ends with no answer (failed, cancelled) finds its
+    /// read ([`leaves_job_ended`]).
+    Reading(JobId),
     /// The answer.
     Read(Leaves),
     /// Why it could not be read. The box says so and still offers the force:
@@ -100,12 +102,24 @@ pub(super) fn request_leaves(
         return;
     }
     let (sent, expected) = key;
-    rejected.leaves = Some((sent, expected, LeavesRead::Reading));
-    commands.push(Command::ReadLeaves {
-        id: next_id(),
-        sent,
-        expected,
-    });
+    let id = next_id();
+    rejected.leaves = Some((sent, expected, LeavesRead::Reading(id)));
+    commands.push(Command::ReadLeaves { id, sent, expected });
+}
+
+/// A job ended with no answer. When it is the leaves read in flight, the
+/// read failed, in `why`'s words: the box says so and still offers the
+/// force, instead of `still reading` until the tip moves (review
+/// m7-16b..21b, Minor 2). Any other job leaves the read alone.
+pub(super) fn leaves_job_ended(state: &mut AppState, id: JobId, why: &str) {
+    if let Some(RejectedPush {
+        leaves: Some((_, _, read)),
+        ..
+    }) = state.remote.last_rejected_push.as_mut()
+        && *read == LeavesRead::Reading(id)
+    {
+        *read = LeavesRead::Failed(why.to_owned());
+    }
 }
 
 /// The read of what leaves answered for `(sent, expected)`.

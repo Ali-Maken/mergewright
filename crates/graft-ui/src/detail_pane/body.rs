@@ -10,8 +10,8 @@ use unicode_width::UnicodeWidthStr;
 use graft_core::mistake_radar::Severity;
 
 use crate::detail::{
-    BodyView, DetailFocus, DetailView, DiffMode, ExplainView, FileRowKind, FileStatusView,
-    SubmoduleLogView, SubmoduleView,
+    BodyView, DetailFocus, DetailView, DiffMode, ExplainView, FileStatusView, SubmoduleLogView,
+    SubmoduleView,
 };
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
@@ -93,16 +93,9 @@ fn render_diff_body(
     muted: Style,
 ) {
     if let FileStatusView::Submodule(submodule) = &diff.status {
-        // The inside facts come from git's status, which the row carries;
-        // the diff job reads only the pointer's move. Line 2 explains the
-        // row's marks, so it takes them from the row under the cursor
-        // (m7-power-tools/30i).
-        let mut submodule = submodule.as_ref().clone();
-        if let Some(row) = cursor_submodule(view) {
-            submodule.changed_inside = row.changed_inside;
-            submodule.untracked_inside = row.untracked_inside;
-        }
-        render_submodule_diff(diff.path.as_str(), &submodule, area, theme, buf);
+        // The inside facts arrive in the diff, merged from the row's by path
+        // in `update::detail` (review m7-16b..21b, Minor 3).
+        render_submodule_diff(diff.path.as_str(), submodule, area, theme, buf);
         return;
     }
     // An untracked file is read as all added lines (m6-conflicts/81); only
@@ -233,18 +226,6 @@ fn pointer_ids(submodule: &SubmoduleView) -> String {
         (Some(from), None) => format!(" \u{b7} removed (was {})", from.as_str()),
         (Some(at), Some(_)) => format!(" \u{b7} {}", at.as_str()),
         (None, None) => String::new(),
-    }
-}
-
-/// The submodule facts of the file row under the cursor, if it is one.
-fn cursor_submodule(view: &DetailView) -> Option<&SubmoduleView> {
-    let files = view.files.as_ref()?;
-    match &files.rows.get(files.cursor)?.kind {
-        FileRowKind::File {
-            status: FileStatusView::Submodule(row),
-            ..
-        } => Some(row),
-        _ => None,
     }
 }
 

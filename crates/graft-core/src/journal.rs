@@ -310,6 +310,18 @@ pub struct JournalEntry {
     /// The merge git had in progress after it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merge_after: Option<MergeState>,
+    /// Every `branch.<name>.*` key in the repository's own config, for each
+    /// branch in `touches.refs`, before the operation: key → values (git's
+    /// canonical key spelling; a key with several values keeps them in
+    /// order). An absent key is simply not in the map. A tracking checkout
+    /// writes `branch.<b>.remote/.merge`, and the inverse puts back exactly
+    /// what differs from `config_after` (review m7-16b..21b, Major 1). Empty
+    /// on a line written before the field existed, and absent from its JSON.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub config_before: BTreeMap<String, Vec<String>>,
+    /// The same keys after the operation.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub config_after: BTreeMap<String, Vec<String>>,
     /// The stash this operation put back into the working tree, and why
     /// (ADR-0045 §1). Written on the `Pending` line by a pop or apply (the
     /// entry's own stash commit) and by a set-aside. `None` = no put-back, or

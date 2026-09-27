@@ -110,7 +110,7 @@ pub(crate) fn is_ready(state: &AppState) -> bool {
         // until it lands (m7-power-tools/16b).
         && !matches!(
             state.remote.last_rejected_push.as_ref().and_then(|rejected| rejected.leaves.as_ref()),
-            Some((_, _, graft::update::remote::LeavesRead::Reading))
+            Some((_, _, graft::update::remote::LeavesRead::Reading(_)))
         )
         && state
             .history

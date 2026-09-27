@@ -655,7 +655,7 @@ fn hint_bar_history_place() {
     let bar = footer(&state, 187, 50);
     assert_eq!(
         bar.trim_end(),
-        " j/k older\u{b7}newer  tab file  n/N next change  B blame here  \u{23ce} that commit  esc back"
+        " j/k older\u{b7}newer  ⇥ file  n/N next change  B blame here  \u{23ce} that commit  esc back"
     );
     app.close();
 }

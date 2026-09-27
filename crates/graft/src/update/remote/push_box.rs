@@ -140,7 +140,7 @@ fn lease(
     // since moved: say so — never a stale list, never a box without it.
     match &rejected.leaves {
         Some((sent, expected, answer))
-            if (*sent, *expected) == key && !matches!(answer, LeavesRead::Reading) => {}
+            if (*sent, *expected) == key && !matches!(answer, LeavesRead::Reading(_)) => {}
         _ => {
             return Err(format!(
                 "still reading what leaves {}/{} \u{2014} try again in a moment",
@@ -306,7 +306,7 @@ fn leaves_lines(remote_side: &str, leaves: &LeavesRead) -> Vec<SanitizedText> {
     let leaves = match leaves {
         // `lease` never offers the box on this answer; drawn honestly if
         // some other route does.
-        LeavesRead::Reading => {
+        LeavesRead::Reading(_) => {
             return vec![sanitize_line(&format!(
                 "still reading what leaves {remote_side}"
             ))];

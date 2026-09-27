@@ -1101,6 +1101,9 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     next.refs_read.answered(id, false);
     // A put-in's plan or tag read that will never answer (m7/09).
     amend_into::job_ended(next, id);
+    // A leaves read that will never answer is a failed one (review
+    // m7-16b..21b, Minor 2).
+    remote::leaves_job_ended(next, id, "the read was cancelled");
     let mut local_jobs = next.local_jobs;
     // The write `Esc` stopped: the answer the user asked for. Any other
     // cancelled write (shutdown) is cleared as before.
@@ -1149,6 +1152,7 @@ fn job_failed(
     next.detail.evil_job_failed(id, &failure.to_string());
     finish::job_ended(next, id, failure);
     amend_into::job_ended(next, id);
+    remote::leaves_job_ended(next, id, &failure.to_string());
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;
     commands.extend(operate::write_job_ended(next, id, &mut || {

@@ -15,6 +15,7 @@
 
 mod control;
 mod cursor;
+mod inside_facts;
 mod keys;
 mod landing;
 mod ops;

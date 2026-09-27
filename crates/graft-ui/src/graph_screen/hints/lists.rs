@@ -162,7 +162,7 @@ fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
 /// pass 1b "History", m7-power-tools/21b), in the note's order. `rows`: the
 /// trace answered with at least one row — without one (tracing, failed,
 /// zero rows) only `esc back` acts, so it is the whole bar. `on_file`: the
-/// file pane has the keys, so `j/k` scrolls and `tab` goes to the list.
+/// file pane has the keys, so `j/k` scrolls and `⇥` goes to the list.
 ///
 /// `v` (side by side) and `L` (the whole file) are answered but left to
 /// `?`, as the detail pane's bar leaves `v`.
@@ -172,9 +172,9 @@ pub fn history_place_list(rows: bool, on_file: bool) -> Vec<Hint> {
         return vec![hint("esc", "back")];
     }
     let (moves, tab) = if on_file {
-        (hint("j/k", "scroll"), hint("tab", "list"))
+        (hint("j/k", "scroll"), hint("⇥", "list"))
     } else {
-        (hint("j/k", "older·newer"), hint("tab", "file"))
+        (hint("j/k", "older·newer"), hint("⇥", "file"))
     };
     vec![
         moves,

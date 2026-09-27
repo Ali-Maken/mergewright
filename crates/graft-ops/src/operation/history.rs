@@ -862,7 +862,10 @@ pub(super) fn plan_checkout(params: &CheckoutParams) -> Vec<Invocation> {
         // whether it tracks; the start point is the remote-tracking ref by
         // full name, which `--track` needs to know what to track. Measured,
         // git 2.54 with `-c branch.autoSetupMerge=false`: `branch.<local>.
-        // remote origin`, `.merge refs/heads/<x>` (m7-power-tools/10b).
+        // remote origin`, `.merge refs/heads/<x>` (m7-power-tools/10b). The
+        // entry records `branch.<local>.*` before and after (its ref is in
+        // `touches_checkout`), so `u` removes those lines again
+        // (`crate::branch_config`, review m7-16b..21b Major 1).
         CheckoutTarget::Track { remote, local } => vec![Invocation::new(vec![
             GitArg::Flag("switch"),
             GitArg::Flag("--create"),

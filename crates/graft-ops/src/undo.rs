@@ -17,7 +17,7 @@ mod replaced;
 
 pub(crate) use replaced::tree_diff;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use graft_core::journal::{
@@ -97,6 +97,17 @@ pub enum Step {
     /// working tree, and checked afterwards with git's own `rev-parse -q
     /// --verify MERGE_HEAD`.
     SetMergeState(Option<MergeState>),
+    /// Make one `branch.<name>.*` key of the local config hold exactly `to`
+    /// (none: unset). Emitted for each key whose recorded before and after
+    /// differ, after the refs: `u` of a tracking checkout removes the
+    /// upstream it wrote and puts back one that was there before (review
+    /// m7-16b..21b, Major 1).
+    SetBranchConfig {
+        /// The key, as the config spells it: `branch.sara/x.remote`.
+        key: String,
+        /// Its values afterwards, in order.
+        to: Vec<String>,
+    },
 }
 
 /// Which paths a restore touches.
@@ -301,6 +312,7 @@ fn generic_steps(entry: &JournalEntry) -> Result<Vec<Step>, NotInvertible> {
             });
         }
     }
+    steps.extend(config_steps(entry)?);
     if entry.head_after.as_ref() != Some(&entry.head_before) {
         steps.push(Step::SetHead(entry.head_before.clone()));
     }
@@ -324,6 +336,36 @@ fn generic_steps(entry: &JournalEntry) -> Result<Vec<Step>, NotInvertible> {
             tree,
             paths: scope(entry.worktree_after, tree),
         });
+    }
+    Ok(steps)
+}
+
+/// One [`Step::SetBranchConfig`] per `branch.<name>.*` key whose recorded
+/// values differ before and after. A key missing from one side was not set
+/// on that side.
+fn config_steps(entry: &JournalEntry) -> Result<Vec<Step>, NotInvertible> {
+    let unset = Vec::new();
+    let keys: BTreeSet<&String> = entry
+        .config_before
+        .keys()
+        .chain(entry.config_after.keys())
+        .collect();
+    let mut steps = Vec::new();
+    for key in keys {
+        // Only a branch's key is ever recorded; anything else is a line
+        // edited by hand, and writing it back would reach past the branch.
+        if crate::branch_config::branch_of(key).is_none() {
+            return Err(NotInvertible::Incomplete {
+                field: "config_before",
+            });
+        }
+        let before = entry.config_before.get(key).unwrap_or(&unset);
+        if entry.config_after.get(key).unwrap_or(&unset) != before {
+            steps.push(Step::SetBranchConfig {
+                key: key.clone(),
+                to: before.clone(),
+            });
+        }
     }
     Ok(steps)
 }
@@ -466,6 +508,16 @@ fn touches_of(steps: &[Step]) -> Touches {
             // git's merge files are no ref, index or tree either; every
             // entry records them before and after, whatever it touches.
             Step::SetHead(_) | Step::SetMergeState(_) => {}
+            // The branch's ref is named so the new entry records this key's
+            // section before and after: that is what its own inverse (the
+            // redo) writes back from.
+            Step::SetBranchConfig { key, .. } => {
+                if let Some(branch) = crate::branch_config::branch_of(key)
+                    && !touches.refs.contains(&branch)
+                {
+                    touches.refs.push(branch);
+                }
+            }
             Step::RestoreIndex { .. } => touches.index = true,
             Step::RestoreWorktree { .. } => touches.worktree = true,
             Step::StashStore { .. } | Step::StashDrop { .. } => {
