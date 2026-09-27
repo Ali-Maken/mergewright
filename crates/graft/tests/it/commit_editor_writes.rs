@@ -22,10 +22,6 @@ use graft::repos::RepoStore;
 use graft::update::{AppEvent, AppState, Size, Status, update};
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
 
-/// Long enough that a slow machine never fails here, short enough that a
-/// hang is a named failure rather than a stuck suite.
-const PATIENCE: Duration = Duration::from_secs(120);
-
 const SIZE: Size = Size {
     columns: 120,
     rows: 40,
@@ -121,21 +117,16 @@ impl App {
     }
 
     /// Feeds job answers through `update` until `done` holds.
-    fn pump(&self, mut state: AppState, what: &str, done: impl Fn(&AppState) -> bool) -> AppState {
-        loop {
-            if done(&state) {
-                return state;
-            }
-            let event = self
-                .events
-                .recv_timeout(PATIENCE)
-                .unwrap_or_else(|why| panic!("waiting for {what}: {why}"));
-            let (next, commands) = update(&state, event);
-            state = next;
-            for command in commands {
-                self.jobs.dispatch(command);
-            }
-        }
+    fn pump(&self, state: AppState, what: &str, done: impl Fn(&AppState) -> bool) -> AppState {
+        crate::app_harness::pump_events(
+            |patience| self.events.recv_timeout(patience),
+            |command| self.jobs.dispatch(command),
+            state,
+            what,
+            done,
+            crate::app_harness::DEADLINE,
+        )
+        .unwrap_or_else(|why| panic!("{why}"))
     }
 
     /// The editor is open and the write has finished, whichever way it went.

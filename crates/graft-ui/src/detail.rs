@@ -118,6 +118,10 @@ pub enum RadarLine {
     EvilNotCheckable(SanitizedText),
     /// The force-push probe could not run, and why.
     ForcePushNotCheckable(SanitizedText),
+    /// The radar's default-branch context could not be read, and why: no
+    /// finding that needs it was checked. Only while the read has failed —
+    /// never while it is pending or ready.
+    NotChecked(SanitizedText),
 }
 
 /// A changed file's status, as the list shows it.

@@ -1,0 +1,40 @@
+ graft /code/api  4 commits
+◆ ▏  [◆ main] add notes                                                                                  GF 5m   2c59061
+●    Correct the note                                                                                    GF 1y   a82960b
+●    Add the first note                                                                                  GF 1y   fadcfb3
+◇    Add a readme                                                                                        GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  c commit  P push  <> resize  p pull  f fetch  b branch  t tag  . more  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+COMMIT 2c59061 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:01 +0000 · 5m · parents a82960b · diff vs firs…
+add notes · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again
+M notes.txt             +1 −1 ▎
+                                1     - one, corrected
+                                    1 + a
+
+
+
+
+
+
+
+
+
+
+

@@ -56,7 +56,7 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `Subject` (enum) — `None`, `Commit { sha }`, `Compare { base, head }`, `WorkingTree { staged, unstaged, untracked }`.
 - `DetailHeader` (struct) — subject, summary, author, dates, committer, co-authors, parents, against, contained, radar lines.
 - `ContainedIn` (enum) — `NotAsked`, `Checking`, `Known { branches, tags, more }`, `Failed`.
-- `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states, including `EvilResolved { files }` ("evil merge: clean (N files hand-resolved)").
+- `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states, including `EvilResolved { files }` ("evil merge: clean (N files hand-resolved)"), or `NotChecked(why)` ("radar: not checked — <why> · ctrl+r to try again"), drawn only while the radar context has failed (m7-power-tools/33).
 - `FileStatusView` (enum, no longer `Copy` — `Unmerged` carries a `SanitizedText`) — `Added`, `Deleted`, `Modified`, `Renamed`, `Copied`, `TypeChanged`, `Unmerged { how: SanitizedText }` (the porcelain pair as words, `"both modified"` etc. — no single "the diff" while both sides are still in the index, so `detail_pane::files::file_row_text` draws `how` in place of a letter and add/remove counts, m5-history-and-ghost-preview/04), `Untracked`.
 - `WorkingTreeSection` (enum) — gained `Unmerged` as its first variant (drawn first in the changes pane by caller row order); `title()` returns `"CONFLICTS"` for it (m5-history-and-ghost-preview/04).
 - `FileRowKind` (enum, no longer `Copy`, cascades from `FileStatusView`) — `Message { lines }`, `Dir { collapsed }`, `File { status, added, removed }`.
