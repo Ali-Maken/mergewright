@@ -1,3 +1,4 @@
+# Historical: drawn at M2, not regenerated. Since M7 (20b) a unified diff draws ▎ on its cursor row; today's drawing: docs/shots/m7/diff-cursor-commit-120x40.txt
 === 72x10 diff-widget: syntax, word tint, truncation, CRLF ===
 @@ -40,7 +40,15 @@ fn refresh()
  40  40   let token = self.cache;␍

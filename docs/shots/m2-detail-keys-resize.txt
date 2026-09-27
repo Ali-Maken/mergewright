@@ -1,3 +1,4 @@
+# Historical: drawn at M2, not regenerated. Since M7 (20b) a unified diff draws ▎ on its cursor row; today's drawing: docs/shots/m7/diff-cursor-commit-120x40.txt
 m2-details-and-diffs/10b: detail pane resized narrower with `<` (ADR-0028)
 
 Right layout, screen 160x20: default width is 42% of 160 = 67 columns;
