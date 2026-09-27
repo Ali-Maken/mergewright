@@ -12,9 +12,10 @@
 //! - anything else → [`PutBackRan::Failed`]. A second apply never runs over
 //!   a tree the first one changed: the edits would go in twice.
 //!
-//! Absorb's rebuilt stash ([`from_index_base`]) is one input to the same
+//! Absorb's rebuilt stash ([`from_index_base`](super::rebuild::from_index_base)) is one input to the same
 //! apply.
 
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use graft_core::oid::Oid;
@@ -146,59 +147,121 @@ fn judge(applied: Result<(), RunError>, status: &WorkingTreeStatus) -> Read {
     let Err(error) = applied else {
         return Read::Clean;
     };
-    let tracked_changed = status
-        .entries
-        .iter()
-        .any(|entry| entry.is_staged() || entry.is_unstaged());
-    if tracked_changed {
+    if tracked_changed(status) {
         Read::Wrote(error)
     } else {
         Read::WroteNothing(error)
     }
 }
 
-/// The staged paths a plain apply of `stash` loses: `diff-tree -r` from its
-/// base (`^1`) to its index (`^2`), less the paths added — a plain apply
-/// brings a staged new file back staged (m6-conflicts/83). No rename
-/// detection, so a staged rename names its old path (its deletion comes
-/// back unstaged), and there are no copies.
+/// Whether a tracked file differs from `HEAD`: an entry staged, unstaged or
+/// unmerged. Untracked files do not count (`S` holds none). The put-back's
+/// judge of "wrote nothing" ([`judge`] has returned on unmerged before it
+/// asks), and recovery's of whether a killed put-back had landed (30c).
+pub(crate) fn tracked_changed(status: &WorkingTreeStatus) -> bool {
+    status
+        .entries
+        .iter()
+        .any(|entry| entry.is_staged() || entry.is_unstaged() || entry.unmerged)
+}
+
+/// Staged paths a plain `stash apply` loses: every staged change in
+/// `S^1..S^2`, except an added path whose staged blob equals its
+/// working-tree blob (git re-adds that one from the tree, unchanged). An
+/// added path edited on (`AM`) or deleted since (`AD`) is lost: git re-adds
+/// it from the tree, or not at all (review m7-30-06d Major 1). No rename
+/// detection, so a staged rename names its old path (its deletion comes back
+/// unstaged), and there are no copies.
+///
+/// The second read (`S^2..S`, what moved on after staging) runs only when a
+/// path was added, so the usual fallback spawns nothing more. It takes no
+/// pathspec: the added paths are matched in memory, so there is no argv
+/// limit and no pathspec magic to escape.
 fn staging_lost(ctx: &Context<'_>, stash: Oid) -> Result<Vec<PathBuf>, RunError> {
+    let staged = name_status(&diff_tree(ctx, stash, "^1", "^2", "--name-status")?)?;
+    let moved_on = if staged.iter().any(|(status, _)| *status == b'A') {
+        name_only(&diff_tree(ctx, stash, "^2", "", "--name-only")?)
+    } else {
+        BTreeSet::new()
+    };
+    Ok(lost(&staged, &moved_on))
+}
+
+/// `git diff-tree -r --no-renames <how> -z <stash><from> <stash><to>`'s
+/// stdout. A read, so not on the Command Log.
+fn diff_tree(
+    ctx: &Context<'_>,
+    stash: Oid,
+    from: &str,
+    to: &str,
+    how: &'static str,
+) -> Result<Vec<u8>, RunError> {
     let output = GitInvocation::new(ctx.repo)
         .args([
             GitArg::Flag("diff-tree"),
             GitArg::Flag("-r"),
             GitArg::Flag("--no-renames"),
-            GitArg::Flag("--name-status"),
+            GitArg::Flag(how),
             GitArg::Flag("-z"),
-            GitArg::Word(format!("{stash}^1")),
-            GitArg::Word(format!("{stash}^2")),
+            GitArg::Word(format!("{stash}{from}")),
+            GitArg::Word(format!("{stash}{to}")),
         ])
         .run(&())?;
-    lost_from_name_status(&output.stdout)
+    Ok(output.stdout)
 }
 
-/// `--name-status -z` output (`<X>\0<path>\0` pairs) → every path whose
-/// status is not `A` (added) or `C` (copied).
-fn lost_from_name_status(printed: &[u8]) -> Result<Vec<PathBuf>, RunError> {
+/// The rule, pure. `staged`: `diff-tree --name-status S^1 S^2` as
+/// [`name_status`] holds it; `moved_on`: the paths of `diff-tree
+/// --name-only S^2 S`. Every status but `A` and `C` is named; an `A` only
+/// when it moved on. In path order with no duplicates, the order git prints.
+fn lost(staged: &[(u8, PathBuf)], moved_on: &BTreeSet<PathBuf>) -> Vec<PathBuf> {
+    staged
+        .iter()
+        .filter(|(status, path)| match status {
+            b'A' => moved_on.contains(path),
+            b'C' => false,
+            _ => true,
+        })
+        .map(|(_, path)| path.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+/// `--name-status -z` output (`<X>\0<path>\0` pairs) → `(X, path)`, `X` the
+/// status letter (a score after it, as in `C75`, is dropped).
+fn name_status(printed: &[u8]) -> Result<Vec<(u8, PathBuf)>, RunError> {
     let mut fields = printed.split(|byte| *byte == 0).filter(|f| !f.is_empty());
-    let mut lost = Vec::new();
+    let mut staged = Vec::new();
     while let Some(status) = fields.next() {
-        let path = fields.next().ok_or_else(|| {
-            RunError::Unparsable(format!(
+        let (Some(letter), Some(path)) = (status.first(), fields.next()) else {
+            return Err(RunError::Unparsable(format!(
                 "diff-tree printed a status with no path: {:?}",
                 String::from_utf8_lossy(status)
-            ))
-        })?;
-        if !matches!(status.first(), Some(b'A' | b'C')) {
-            lost.push(PathBuf::from(String::from_utf8_lossy(path).into_owned()));
-        }
+            )));
+        };
+        staged.push((
+            *letter,
+            PathBuf::from(String::from_utf8_lossy(path).into_owned()),
+        ));
     }
-    Ok(lost)
+    Ok(staged)
+}
+
+/// `--name-only -z` output → its paths.
+fn name_only(printed: &[u8]) -> BTreeSet<PathBuf> {
+    printed
+        .split(|byte| *byte == 0)
+        .filter(|f| !f.is_empty())
+        .map(|path| PathBuf::from(String::from_utf8_lossy(path).into_owned()))
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use std::collections::BTreeSet;
 
     use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
 
@@ -270,13 +333,42 @@ mod tests {
         assert!(matches!(judge(Err(refused()), &clash), Read::Clashed(_)));
     }
 
+    /// A4 (review m7-30-06d Major 1): `M`, `D`, `T` are always named; an
+    /// `A` only when its content moved on between the index and the tree.
     #[test]
-    fn staging_lost_leaves_out_added_and_copied() {
-        let printed = b"M\0a.txt\0A\0new.txt\0D\0gone.txt\0T\0link\0C75\0copy\0";
+    fn lost_names_an_added_path_only_when_its_content_moved_on() {
+        let printed =
+            b"M\0a.txt\0A\0edited.txt\0D\0gone.txt\0T\0link\0A\0same.txt\0A\0deleted.txt\0";
+        let staged = name_status(printed).unwrap();
+        let moved_on: BTreeSet<PathBuf> = ["edited.txt", "deleted.txt", "a.txt", "unstaged.txt"]
+            .map(PathBuf::from)
+            .into();
         assert_eq!(
-            lost_from_name_status(printed).unwrap(),
+            lost(&staged, &moved_on),
+            ["a.txt", "deleted.txt", "edited.txt", "gone.txt", "link"].map(PathBuf::from)
+        );
+        assert_eq!(
+            lost(&staged, &BTreeSet::new()),
             ["a.txt", "gone.txt", "link"].map(PathBuf::from)
         );
-        assert!(lost_from_name_status(b"M\0").is_err());
+        // Sorted and deduplicated whatever order the input came in.
+        let twice = [
+            (b'M', PathBuf::from("b")),
+            (b'D', PathBuf::from("a")),
+            (b'M', PathBuf::from("b")),
+        ];
+        assert_eq!(
+            lost(&twice, &BTreeSet::new()),
+            ["a", "b"].map(PathBuf::from)
+        );
+        assert!(name_status(b"M\0").is_err());
+    }
+
+    #[test]
+    fn name_only_reads_every_path() {
+        assert_eq!(
+            name_only(b"a.txt\0dir/b.txt\0"),
+            ["a.txt", "dir/b.txt"].map(PathBuf::from).into()
+        );
     }
 }

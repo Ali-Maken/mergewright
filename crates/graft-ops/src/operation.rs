@@ -291,18 +291,13 @@ impl Invocation {
 
 /// What a rebase or checkout sets aside around itself
 /// ([`Operation::sets_aside`], ADR-0045 §4): the tracked files changed.
-/// `staged` is always 0: every put-back keeps the index (ADR-0045 amendment
-/// 2026-09-26 b, m7-power-tools/30). When git cannot reinstate it, the
-/// after-state says so (`AfterState::StagingNotKept`); the preview does not
-/// forecast that.
+/// Every put-back keeps the index (ADR-0045 amendment 2026-09-26 b,
+/// m7-power-tools/30). When git cannot reinstate it, the after-state says so
+/// (`AfterState::StagingNotKept`); the preview does not forecast that.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SetAside {
     /// Tracked files with staged or unstaged changes.
     pub files: usize,
-    /// Staged entries whose staging the put-back loses: always 0 since
-    /// m7-power-tools/30, which put every put-back on `--index`. Kept so the
-    /// preview's clause reads it until the app drops that clause.
-    pub staged: usize,
 }
 
 /// Everything `check`, `plan` and `touches` may look at, read once by the
@@ -1277,8 +1272,7 @@ impl Operation {
             .iter()
             .filter(|entry| entry.is_staged() || entry.is_unstaged())
             .count();
-        // Every put-back keeps the index (ADR-0045 amendment 2026-09-26 b).
-        (files > 0).then_some(SetAside { files, staged: 0 })
+        (files > 0).then_some(SetAside { files })
     }
 
     /// `refs/stash`, when this operation sets edits aside.

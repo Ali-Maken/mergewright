@@ -148,6 +148,14 @@ fn staged_then_edited(repo: &TempRepo) {
     repo.write("f.txt", b"v3\n");
 }
 
+/// T2's whole fixture: [`forked`] on `main`, [`staged_then_edited`]. A
+/// switch to `feature` puts the split back whole with `--index`.
+pub(crate) fn staged_then_edited_forked() -> TempRepo {
+    let repo = forked();
+    staged_then_edited(&repo);
+    repo
+}
+
 fn assert_split_kept(repo: &TempRepo, what: &str) {
     assert_eq!(
         repo.git(&["show", ":f.txt"]),
@@ -274,7 +282,7 @@ fn twenty_lines() -> String {
 /// P3's fixture: a 20-line `f.txt`; `other` changes line 7; he stages an
 /// edit to line 5. The staged hunk's context covers line 7, so `stash apply
 /// --index` refuses on `other` and writes nothing; a plain apply lands.
-fn staged_near_their_change() -> TempRepo {
+pub(crate) fn staged_near_their_change() -> TempRepo {
     let repo = TempRepo::init();
     let lines = twenty_lines();
     repo.write("f.txt", lines.as_bytes());
@@ -329,6 +337,17 @@ fn put_back_falls_back_when_the_index_cannot_go_back() {
     );
     assert!(applied.entry.commands[4].contains("stash apply --index"));
     assert!(!applied.entry.commands[5].contains("--index"));
+    // No `A` path: the second read (`diff-tree S^2 S`, 30c) is not on the
+    // Log. Reads are never logged, so this guards that rule too.
+    assert!(
+        !applied
+            .entry
+            .commands
+            .iter()
+            .any(|line| line.contains("diff-tree")),
+        "{:?}",
+        applied.entry.commands
+    );
 }
 
 /// T5's words when more than one file loses its staging.
@@ -361,8 +380,121 @@ fn undo_after_a_fallback_restores_the_split() {
             if matches!(unread.as_slice(), [AfterState::StagingNotKept { .. }])),
         "{result:?}"
     );
+    let after = whole(&repo);
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
     assert_eq!(whole(&repo), before, "undo exact, the split included");
+    // Minor 6 (review m7-30-06d): redo puts back the post-fallback state.
+    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(whole(&repo), after, "redo exact");
+}
+
+/// B3 (review m7-30-06d Minor 1): the drop fails after the fallback. The
+/// failure line says where the edits are **and** that their staging went;
+/// the `u` it names puts back the state before, stash list included.
+#[cfg(unix)]
+#[test]
+fn a_drop_that_fails_after_the_fallback_names_the_staging() {
+    use crate::set_aside_kill::{Shim, run_child};
+    let repo = staged_near_their_change();
+    let before = whole(&repo);
+    let (killed, line) = run_child(&repo, "refs/heads/other", Shim::FailDrop);
+    assert!(!killed);
+    let line = line.expect("the child wrote its line");
+    eprintln!("B3 line: {line}");
+    assert!(line.contains("staging not kept: f.txt"), "{line}");
+    assert!(
+        line.contains("your edits are back · a copy stays in stash@{0}"),
+        "{line}"
+    );
+    assert!(line.contains("u restores the backup"), "{line}");
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(whole(&repo), before, "undo exact, stash list included");
+}
+
+// ── A1–A3: a staged new file on the fallback (review m7-30-06d Major 1) ──
+
+/// P3 through the fallback: the entry's unread staging, or a panic.
+fn fallback_paths(repo: &TempRepo) -> Vec<PathBuf> {
+    match try_run(repo, &checkout_to(repo, "refs/heads/other"), NOW) {
+        Err(ApplyError::AfterState { unread, .. }) => match unread.as_slice() {
+            [AfterState::StagingNotKept { paths }] => {
+                assert_eq!(
+                    unread[0].to_string(),
+                    format!(
+                        "your edits are back · staging not kept: {} · u undoes it, staging included",
+                        if paths.len() == 1 {
+                            "f.txt".to_owned()
+                        } else {
+                            format!("f.txt +{} more", paths.len() - 1)
+                        }
+                    )
+                );
+                paths.clone()
+            }
+            other => panic!("one unread, the staging: {other:?}"),
+        },
+        other => panic!("the staging should not be kept: {other:?}"),
+    }
+}
+
+/// A1. A staged new file edited on (`AM`): a plain apply re-adds it from
+/// the tree, so its staged v1 is gone, and the words name it. `u` brings
+/// v1 back in the index; redo puts the after-state back.
+#[test]
+fn put_back_names_a_staged_new_file_edited_on() {
+    let repo = staged_near_their_change();
+    repo.write("n.txt", b"v1\n");
+    repo.git(&["add", "n.txt"]);
+    repo.write("n.txt", b"v2\n");
+    assert_eq!(repo.git(&["status", "--porcelain"]), "M  f.txt\nAM n.txt");
+    let before = whole(&repo);
+    assert_eq!(fallback_paths(&repo), ["f.txt", "n.txt"].map(PathBuf::from));
+    // What git leaves: `n.txt` re-added from the tree, at v2.
+    assert_eq!(repo.git(&["status", "--porcelain"]), " M f.txt\nA  n.txt");
+    assert_eq!(repo.git(&["show", ":n.txt"]), "v2");
+    let after = whole(&repo);
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(repo.git(&["show", ":n.txt"]), "v1", "undo: v1 staged again");
+    assert_eq!(repo.read("n.txt"), b"v2\n");
+    assert_eq!(whole(&repo), before, "undo exact");
+    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(whole(&repo), after, "redo exact");
+}
+
+/// A2. A staged new file then deleted from the tree (`AD`). `git stash
+/// create` does not record that deletion: `S`'s tree holds `n.txt` at its
+/// staged blob, so `S^2:n.txt` = `S:n.txt` and the plain apply re-adds it
+/// staged at v1, **and back on disk**. Its staging came back, so it is not
+/// named (30c NOTES: the ticket expected it named; git's `S` says
+/// otherwise). The deletion is lost by the stash itself, not the fallback.
+/// `u` restores `AD` exactly.
+#[test]
+fn put_back_leaves_a_staged_new_file_deleted_since_unnamed() {
+    let repo = staged_near_their_change();
+    repo.write("n.txt", b"v1\n");
+    repo.git(&["add", "n.txt"]);
+    std::fs::remove_file(repo.path().join("n.txt")).expect("n.txt removes");
+    assert_eq!(repo.git(&["status", "--porcelain"]), "M  f.txt\nAD n.txt");
+    let before = whole(&repo);
+    assert_eq!(fallback_paths(&repo), [PathBuf::from("f.txt")]);
+    // What git leaves: `n.txt` staged at v1 and on disk again.
+    assert_eq!(repo.git(&["status", "--porcelain"]), " M f.txt\nA  n.txt");
+    assert_eq!(repo.git(&["show", ":n.txt"]), "v1");
+    assert_eq!(repo.read("n.txt"), b"v1\n");
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(whole(&repo), before, "undo exact: AD again");
+}
+
+/// A3. A staged new file unchanged since (`A `): git re-adds it exactly,
+/// so naming it would be false.
+#[test]
+fn put_back_leaves_an_unchanged_staged_new_file_unnamed() {
+    let repo = staged_near_their_change();
+    repo.write("n.txt", b"v1\n");
+    repo.git(&["add", "n.txt"]);
+    assert_eq!(fallback_paths(&repo), [PathBuf::from("f.txt")]);
+    assert_eq!(repo.git(&["status", "--porcelain"]), " M f.txt\nA  n.txt");
+    assert_eq!(repo.git(&["show", ":n.txt"]), "v1");
 }
 
 // ── T7: a clash under --index ───────────────────────────────────────────
@@ -503,24 +635,4 @@ fn undo_of_the_switch_keeps_the_rm_cached() {
         "D  .env\n!! .env"
     );
     assert_eq!(state_of(&repo), before);
-}
-
-// ── T11: nothing is forecast as coming back unstaged ─────────────────────
-
-/// `SetAside.staged` is 0 for every kind: the put-back keeps the index.
-#[test]
-fn set_aside_staged_is_zero_for_every_kind() {
-    for kind in Kind::ALL {
-        let repo = forked();
-        kind.start(&repo);
-        staged_then_edited(&repo);
-        repo.git(&["rm", "-q", "--cached", "o.txt"]);
-        let op = kind.op(&repo);
-        let handle = repo.open();
-        let facts =
-            read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
-        let aside = op.sets_aside(&facts).expect("dirty");
-        assert_eq!(aside.staged, 0, "{kind:?}");
-        assert_eq!(aside.files, 2, "{kind:?}");
-    }
 }

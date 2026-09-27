@@ -952,7 +952,7 @@ fn plan_lines(plan: &PreviewPlan, clipped: usize, columns: u16) -> Vec<Sanitized
     // The edits a rebase or checkout sets aside and puts back after
     // (ADR-0045 §4, m6-conflicts/74): under the tree line it qualifies.
     // No staging words: every put-back keeps the staging (ADR-0045
-    // amendment b), so `aside.staged` is never worded.
+    // amendment b), and `SetAside` carries only the file count (30c).
     if let Some(aside) = plan.set_aside {
         lines.push(graft_ui::preview_box::fitting_line(
             &graft_ui::preview_box::set_aside_row(aside.files),

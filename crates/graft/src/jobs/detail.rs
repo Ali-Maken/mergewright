@@ -193,9 +193,14 @@ fn blame_failure(error: &BlameError) -> BlameFailure {
             let first = words.split('\n').next().unwrap_or(&words);
             BlameFailure::Failed(first.to_owned())
         }
-        BlameError::Run(_) | BlameError::Parse(_) | BlameError::Stopped => {
-            BlameFailure::Failed(error.to_string())
-        }
+        // `TooLarge` and `Changed` (18e) carry their own one-line words.
+        // They were left unmatched when 18e and 20i merged (main at
+        // be0a7ca3 did not build); 30c added them here so the gates run.
+        BlameError::Run(_)
+        | BlameError::Parse(_)
+        | BlameError::Stopped
+        | BlameError::TooLarge { .. }
+        | BlameError::Changed { .. } => BlameFailure::Failed(error.to_string()),
     }
 }
 

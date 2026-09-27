@@ -10,8 +10,9 @@ use graft_git::run::RunError;
 use crate::clash::Clash;
 use crate::facts::FactsError;
 
+use super::returned::Kept;
 use super::{
-    AfterState, Applied, ApplyError, EditsAt, Refresh, naming, reason_for, staging_clause,
+    AfterState, Applied, ApplyError, EditsAt, Refresh, appended, naming, reason_for, staging_clause,
 };
 
 /// The entry's outcome status, from the put-back and the operation's own
@@ -71,15 +72,18 @@ pub(super) fn answer(
         Outcome::Kept {
             words,
             edits,
+            unstaged,
             error,
         } => Err(match (failure, error) {
             (Some(failed), _) | (None, Ok(failed)) => ApplyError::Git {
                 entry: Box::new(entry),
                 // Known place: git's own words, and `edits` for the caller
-                // to word. Unknown: the words ride on git's line, so every
-                // place that shows the error still says where they are.
+                // to word, with the staging clause when the fallback ran.
+                // Unknown: the words (clause included) ride on git's line,
+                // so every place that shows the error still says where they
+                // are.
                 error: match edits {
-                    Some(_) => failed,
+                    Some(_) => appended(failed, &staging_clause(&unstaged)),
                     None => naming(failed, &words),
                 },
                 recoverable,
@@ -99,11 +103,12 @@ pub(super) fn answer(
             }
         }),
         Outcome::Back { unstaged } => match failure {
-            // Put back clean and dropped: the edits are simply back (the
-            // entry's reason says when their staging did not come back).
+            // Put back clean and dropped: the edits are simply back. When
+            // their staging did not come back, git's line says so, as the
+            // entry's reason does (review m7-30-06d Minor 1).
             Some(error) => Err(ApplyError::Git {
                 entry: Box::new(entry),
-                error,
+                error: appended(error, &staging_clause(&unstaged)),
                 recoverable,
                 edits: None,
             }),
@@ -144,9 +149,25 @@ pub(super) enum Outcome {
         words: String,
         /// Where the edits are, when it is known.
         edits: Option<EditsAt>,
+        /// The staged paths whose staging did not come back, when the edits
+        /// are back through the fallback (already in `words`).
+        unstaged: Vec<PathBuf>,
         /// git's error, or the read that failed.
         error: Result<RunError, FactsError>,
     },
+}
+
+impl Outcome {
+    /// A kept `S`'s outcome, from `listed`, the one read of the stash list
+    /// [`super::close`] made.
+    pub(super) fn kept(kept: Kept, listed: &Result<Option<usize>, FactsError>, stash: Oid) -> Self {
+        Outcome::Kept {
+            words: kept.words(listed, stash),
+            edits: kept.edits(listed),
+            unstaged: kept.unstaged().to_vec(),
+            error: kept.into_error(),
+        }
+    }
 }
 
 /// A set-aside operation that went through: a rebase or checkout, so the
@@ -157,5 +178,70 @@ fn applied(entry: JournalEntry) -> Applied {
         refresh: Refresh::Everything,
         step_backup: None,
         replaced: crate::undo::Replaced::default(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use graft_core::journal::OperationKind;
+
+    use super::*;
+    use crate::journal::tests::committed;
+
+    fn exited(said: &str) -> RunError {
+        RunError::Exited {
+            status: 1,
+            stderr_first_line: said.to_owned(),
+            command: "git something".to_owned(),
+        }
+    }
+
+    fn stash() -> Oid {
+        Oid::from_hex("acf15d58a3b48e5878fe281a624fb5c688dcaee1").unwrap()
+    }
+
+    fn f_txt() -> Vec<PathBuf> {
+        vec![PathBuf::from("f.txt")]
+    }
+
+    /// B1 (review m7-30-06d Minor 1): the operation failed, the edits came
+    /// back through the fallback. The failure line says the staging went.
+    #[test]
+    fn a_failed_operation_after_the_fallback_names_the_staging() {
+        let entry = committed(1, OperationKind::Checkout, 1, 2);
+        let error = answer(
+            Outcome::Back { unstaged: f_txt() },
+            entry,
+            stash(),
+            Some(exited("error: your local changes would be overwritten")),
+            Vec::new(),
+        )
+        .expect_err("the operation failed");
+        assert!(matches!(error, ApplyError::Git { .. }), "{error:?}");
+        let line = error.explain();
+        assert!(line.contains("staging not kept: f.txt"), "{line}");
+        assert!(line.contains("would be overwritten"), "{line}");
+    }
+
+    /// B2: the drop failed after the fallback. The line says where the
+    /// edits are **and** that their staging went.
+    #[test]
+    fn a_failed_drop_after_the_fallback_names_the_staging() {
+        let entry = committed(1, OperationKind::Checkout, 1, 2);
+        let kept = Kept::Git {
+            error: exited("error: could not drop"),
+            back: true,
+            unstaged: f_txt(),
+        };
+        let outcome = Outcome::kept(kept, &Ok(Some(0)), stash());
+        let error = answer(outcome, entry, stash(), None, Vec::new()).expect_err("S kept");
+        let line = error.explain();
+        assert!(line.contains("staging not kept: f.txt"), "{line}");
+        assert!(
+            line.contains("your edits are back · a copy stays in stash@{0}"),
+            "{line}"
+        );
     }
 }
