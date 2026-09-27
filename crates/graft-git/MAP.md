@@ -174,7 +174,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
 - `first_parent_chain` (fn) — a tip's first-parent commits, root last, honouring `Stop` (m2-details-and-diffs/13, Mistake Radar's default-branch chain).
 - `previous_tips` (fn) — a ref's own reflog, old values newest-first, deduped and capped; `Ok(vec![])` when the ref has no reflog (m2-details-and-diffs/13).
-- `ReflogError` (enum) — why `previous_tips` could not read the reflog.
+- `ReflogError` (enum) — why `previous_tips`, `records` or `first_parent_distance` could not read: `Unreadable(String)` (gix), `Shallow(ShallowError)` (m7/32b; `<common_dir>/shallow` unreadable, Display is `ShallowError`'s).
 - `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
 - `AheadBehind::in_sync` (fn) — neither side has a commit the other lacks.
 - `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart.
@@ -182,7 +182,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 
 ## shallow (m7-power-tools/32)
 Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-list --parents`, `log --graph`). Every reader in the crate goes through this one list.
-- `ShallowList` (struct) — the listed ids. `read(&RepoHandle)`: no file = empty; unreadable file or a non-id line = `ShallowError`, never "not shallow". `is_empty`, `contains`.
+- `ShallowList` (struct) — the listed ids. `read(&RepoHandle)`: no file = empty; unreadable file or a non-id line = `ShallowError`, never "not shallow". `is_empty`, `contains`. No other reader (`read_in` folded into `read`, 32b).
 - `ShallowError` (struct) — `path`, `source: io::Error`; `couldn't read <path>: <source>`.
 
 ## history_reads
@@ -204,7 +204,7 @@ Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-l
 ## reflog (m7/22, ADR-0046)
 - `ReflogRecord` (struct) — `refname` (full: `HEAD`, `refs/heads/<b>`), `old`/`new: Option<Oid>` (`None` for git's all-zero id), `at` (unix seconds, committer time of the record), `subject` (git's message, as written).
 - `records(repo, cap) -> Result<Vec<ReflogRecord>, ReflogError>` (fn) — the newest `cap` records of **each** of `HEAD`'s and every local branch's logs, through gix (no spawn), merged newest first; a tie in time keeps each log's own order and puts `HEAD` first, then branches by name. A missing log is empty. Remote-tracking logs and `refs/stash` are not read.
-- `first_parent_distance(repo, from, to, limit) -> Result<Option<usize>, ReflogError>` (fn) — how many first-parent steps back from `from` `to` is, within `limit`; `None` past it, off the chain, or when a commit is gone (pruned).
+- `first_parent_distance(repo, from, to, limit) -> Result<Option<usize>, ReflogError>` (fn) — how many first-parent steps back from `from` `to` is, within `limit`; `None` past it, off the chain, or when a commit is gone (pruned). Stops at a shallow boundary (a listed commit has no parents; `None` if `to` is below it). Reads `ShallowList` once per call.
 
 ## mailmap
 - `Mailmap` (struct) — a repository's resolved `.mailmap`, wrapping gix's own snapshot.

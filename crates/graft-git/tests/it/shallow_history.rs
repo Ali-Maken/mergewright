@@ -9,11 +9,12 @@ use std::sync::Arc;
 
 use graft_core::oid::Oid;
 use graft_fixtures::Shape;
-use graft_git::commit_graph::{self, CommitGraphStatus};
+use graft_git::commit_graph::{self, CommitGraphError, CommitGraphStatus};
 use graft_git::history::{
-    CommitTable, Order, Walk, WalkError, ahead_behind, first_parent_chain, first_parent_merges,
-    read_commit,
+    CommitTable, Order, ReflogError, TableError, Walk, WalkError, ahead_behind, first_parent_chain,
+    first_parent_merges, read_commit,
 };
+use graft_git::reflog::first_parent_distance;
 use graft_git::repo::RepoHandle;
 
 use crate::session::{git_ok, open, rev};
@@ -354,4 +355,75 @@ fn an_unreadable_shallow_file_fails_the_walk() {
         read_commit(&repo, main),
         Err(WalkError::Shallow(_))
     ));
+    // 32b: every other reader of the list fails the same way, each through
+    // its own variant.
+    let opened = CommitTable::open(&repo);
+    assert!(
+        matches!(opened, Err(TableError::Shallow(_))),
+        "CommitTable::open: {:?}",
+        opened.err()
+    );
+    let status = commit_graph::status(&repo);
+    assert!(
+        matches!(status, Err(CommitGraphError::Shallow(_))),
+        "commit_graph::status: {status:?}"
+    );
+    let parent = rev(&dir, "main~1");
+    let divergence = ahead_behind(&repo, main, parent);
+    assert!(
+        matches!(divergence, Err(WalkError::Shallow(_))),
+        "ahead_behind: {:?}",
+        divergence.err()
+    );
+    let chain = first_parent_chain(
+        &repo,
+        &Arc::new(CommitTable::without_a_commit_graph(Oid::SHA1_BYTES)),
+        main,
+        &(),
+    );
+    assert!(
+        matches!(chain, Err(WalkError::Shallow(_))),
+        "first_parent_chain: {:?}",
+        chain.err()
+    );
+}
+
+#[test]
+fn first_parent_distance_fails_on_an_unreadable_shallow_file() {
+    let temp = crate::session::shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let shallow = dir.join(".git/shallow");
+    std::fs::remove_file(&shallow).unwrap_or_else(|why| panic!("{why}"));
+    std::fs::create_dir(&shallow).unwrap_or_else(|why| panic!("{why}"));
+    let repo = open(&dir);
+    let main = rev(&dir, "main");
+    let parent = rev(&dir, "main~1");
+
+    let distance = first_parent_distance(&repo, main, parent, 10);
+    assert!(
+        matches!(distance, Err(ReflogError::Shallow(_))),
+        "first_parent_distance: {distance:?}"
+    );
+}
+
+#[test]
+fn first_parent_distance_stops_at_a_shallow_boundary() {
+    let temp = clone(Shape::FeatureBranches, 1000, Branches::Main);
+    let dir = temp.path().join("clone");
+    let tip = rev(&dir, "main");
+    let below = rev(&dir, "main~4");
+
+    // Without the file the whole chain is there: non-vacuous.
+    assert_eq!(
+        first_parent_distance(&open(&dir), tip, below, 100).unwrap_or_else(|why| panic!("{why}")),
+        Some(4)
+    );
+
+    let cut = text(git_ok(&dir, &["rev-parse", "main~2"]));
+    std::fs::write(dir.join(".git/shallow"), cut).unwrap_or_else(|why| panic!("{why}"));
+    assert_eq!(
+        first_parent_distance(&open(&dir), tip, below, 100).unwrap_or_else(|why| panic!("{why}")),
+        None,
+        "main~2 is listed: it has no parents, so main~4 is out of reach"
+    );
 }

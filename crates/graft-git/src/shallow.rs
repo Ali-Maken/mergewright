@@ -8,7 +8,7 @@
 
 use std::collections::BTreeSet;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use graft_core::oid::Oid;
 
@@ -28,13 +28,7 @@ impl ShallowList {
     /// # Errors
     /// [`ShallowError`] naming the file and why it could not be read.
     pub fn read(repo: &RepoHandle) -> Result<ShallowList, ShallowError> {
-        ShallowList::read_in(repo.common_dir())
-    }
-
-    /// [`read`](Self::read) for a caller holding only the common directory
-    /// (a `gix::Repository`'s).
-    pub(crate) fn read_in(common_dir: &Path) -> Result<ShallowList, ShallowError> {
-        let path = common_dir.join("shallow");
+        let path = repo.common_dir().join("shallow");
         let text = match std::fs::read_to_string(&path) {
             Ok(text) => text,
             Err(error) if error.kind() == io::ErrorKind::NotFound => {

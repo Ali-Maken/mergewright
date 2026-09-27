@@ -1,6 +1,6 @@
 # 32b shallow-review-fixes — review m7-32-20i's graft-git Minors (1, 2, 4)
 
-Status: draft
+Status: done
 Blocked by: **18f** (building in graft-git now; its spec was fixed before these were found, so they are not appended
 there).
 Crates: graft-git only (`reflog.rs`, `shallow.rs`, `tests/it/shallow_history.rs`, graft-git `MAP.md`). Needing graft
@@ -37,16 +37,16 @@ pub enum ReflogError { /* existing variants unchanged */ Shallow(ShallowError) }
 `:205`). `ShallowList::read`: unchanged.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] **Red first** `first_parent_distance_stops_at_a_shallow_boundary`: full history, a hand-written `shallow` listing
+- [x] **Red first** (`shallow_history::first_parent_distance_stops_at_a_shallow_boundary`; red quoted in NOTES) `first_parent_distance_stops_at_a_shallow_boundary`: full history, a hand-written `shallow` listing
       a middle commit (as 32's graph test does), `to` below it → `None`. The same repo without the file → `Some(n)`
       (non-vacuous). Quote the red.
-- [ ] `first_parent_distance_fails_on_an_unreadable_shallow_file` → `Err(ReflogError::Shallow(_))`.
-- [ ] Minor 2: `an_unreadable_shallow_file_fails_the_walk` (or one test per entry, named in NOTES) covers all four;
+- [x] `shallow_history::first_parent_distance_fails_on_an_unreadable_shallow_file` → `Err(ReflogError::Shallow(_))`.
+- [x] Minor 2 (`shallow_history::an_unreadable_shallow_file_fails_the_walk`, extended; mutations in NOTES): `an_unreadable_shallow_file_fails_the_walk` (or one test per entry, named in NOTES) covers all four;
       each asserts its variant. **Mutation:** one `?` → `.unwrap_or_default()` per entry, each red; say which.
-- [ ] Minor 4: `grep -n 'read_in' crates/` in NOTES.
-- [ ] MAP.md (edited, read back): `first_parent_distance` "stops at a shallow boundary", `ReflogError::Shallow`,
+- [x] Minor 4 (grep in NOTES): `grep -n 'read_in' crates/` in NOTES.
+- [x] MAP.md (lines 177, 185, 207; read back by grep) (edited, read back): `first_parent_distance` "stops at a shallow boundary", `ReflogError::Shallow`,
       `ShallowList` (no `read_in`, or its doc corrected).
-- [ ] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
+- [x] Gates (nextest 4164/4164, 3 skipped; fmt, clippy, doc clean) workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
       `cargo test --doc`.
 
 ## Touches (check each; NOTES says how)
@@ -62,3 +62,18 @@ pub enum ReflogError { /* existing variants unchanged */ Shallow(ShallowError) }
 
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`.
+
+## NOTES (builder, 2026-09-27)
+- Scout: none (ticket says none; every site re-read directly).
+- Red: compile first (`no variant ... Shallow found for enum ReflogError`, shallow_history.rs:404); after adding the
+  variant: `first_parent_distance_stops_at_a_shallow_boundary` -> `left: Some(4) right: None`; unreadable test panicked at :403.
+- Fix: `reflog.rs` reads `ShallowList` once, breaks when `at` is listed. `ReflogError::Shallow(#[from] ShallowError)`
+  (transparent) in `history/read.rs`. Cause fix.
+- Fixture: `FeatureBranches` depth-1000 clone (full history), `.git/shallow` = `main~2`, `to` = `main~4`.
+- Mutations (`?` -> `.unwrap_or_default()`), each red at its own assert: table.rs:53 -> :361; commit_graph.rs:120 -> :367;
+  divergence.rs:63 -> :373; read.rs:139 -> :384; reflog.rs -> distance test :403.
+- Minor 4: `read_in` folded into `read` (no test called it). `grep -rn 'read_in' crates --include=*.rs` -> no hits
+  (only unrelated `read_info`/`inside`).
+- Touches: `ReflogError` outside graft-git: only `graft-ops/src/facts.rs:92` `#[from]` (no match) -> nothing.
+  `first_parent_distance` caller `graft-ops/src/journal_list.rs:197` (`?`) -> differs only in shallow repos. Perf not
+  re-run; no claim. UI/captures/keymap/journal/undo: none.

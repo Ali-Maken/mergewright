@@ -213,6 +213,10 @@ pub enum ReflogError {
     /// `gix` could not read the ref or its reflog.
     #[error("{0}")]
     Unreadable(String),
+    /// `<common_dir>/shallow` exists but could not be read (m7/32b): a
+    /// distance measured past a boundary git can't see would be wrong.
+    #[error(transparent)]
+    Shallow(#[from] ShallowError),
 }
 
 /// One side of git's author/committer pair, as plain bytes.
