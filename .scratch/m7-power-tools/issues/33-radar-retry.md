@@ -1,6 +1,6 @@
 # 33 radar-retry — a failed radar read is asked once, and says why
 
-Status: draft
+Status: done
 Blocked by: none by content. Crates graft + graft-ui: the conductor sequences it against whoever holds them.
 Crates: graft (`update/radar.rs`, `view/radar.rs`, `tests/it/app_harness.rs`, `tests/it/budget_run.rs`, their tests,
 `docs/shots/m7/`, MAP.md) + graft-ui (`detail.rs` `RadarLine`, `detail_pane/header.rs`, tests, MAP.md).
@@ -61,23 +61,23 @@ NotChecked(SanitizedText),
 ```
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] **Red first**, through `update` (not by calling `request_context` directly):
+- [x] (`update::radar::tests::a_failed_radar_context_is_not_asked_again`; red before the fix: `assertion left == right failed: [RadarContext(JobId(9223372036854775809), Oid(0101…), RefName("refs/heads/main"))] left: 1 right: 0`) **Red first**, through `update` (not by calling `request_context` directly):
       `a_failed_radar_context_is_not_asked_again` — land `Product::RadarContext(Err(..))` for the pending id; the
       commands from that update and from 5 following unrelated events (e.g. `j`) hold no `Command::RadarContext`.
       Red today.
-- [ ] `ctrl_r_after_a_failed_context_asks_once` — then `Ctrl+R`, the refs answer: exactly one `Command::RadarContext`.
-- [ ] `a_failed_context_says_radar_not_checked` (graft view) and graft-ui `radar_text` unit test: the exact words
+- [x] (`update::radar::tests::ctrl_r_after_a_failed_context_asks_once`; refs already known, so the ask lands in Ctrl+R's own `settle`, then 5 `j`: exactly 1) `ctrl_r_after_a_failed_context_asks_once` — then `Ctrl+R`, the refs answer: exactly one `Command::RadarContext`.
+- [x] (`view::radar::tests::a_failed_context_says_radar_not_checked`; graft-ui `detail_pane::tests::radar_text_covers_every_variant`) `a_failed_context_says_radar_not_checked` (graft view) and graft-ui `radar_text` unit test: the exact words
       above; absent for `Idle`, `Pending`, `Ready`.
-- [ ] The audit: one line per requester, with its line and verdict. Any fix has its own red-first test.
-- [ ] Harness: `pump_fails_on_a_stream_that_never_settles` — a stub that emits events forever makes `pump` fail within
+- [x] (NOTES Audit, by reading with lines; no second loop, so no second fix) The audit: one line per requester, with its line and verdict. Any fix has its own red-first test.
+- [x] (`app_harness::pump_fails_on_a_stream_that_never_settles`; old code: `app_harness.rs:204-220` only `recv_timeout(PATIENCE)` per event, no total) Harness: `pump_fails_on_a_stream_that_never_settles` — a stub that emits events forever makes `pump` fail within
       the deadline naming the wait. Show it red (hang → killed) is not required; show the old code has no deadline by
       reading, with the line.
-- [ ] Capture `docs/shots/m7/radar-not-checked-120x40.txt`, drawn by `view::view` via `frame_at` (as 20f's), state
+- [x] (`radar_not_checked::capture_radar_not_checked`, asserts the exact words; by eye: user) Capture `docs/shots/m7/radar-not-checked-120x40.txt`, drawn by `view::view` via `frame_at` (as 20f's), state
       with the context `Failed("commit b32274b is not in the repository")` and a commit selected. **Right:** the detail
       pane's radar block starts `radar: not checked — commit b32274b is not in the repository · ctrl+r to try again`;
       the graph's marker column shows no marker. Colour unverified (rule 5).
-- [ ] MAP.md: graft `request_context` (the rule), graft-ui `RadarLine::NotChecked`.
-- [ ] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
+- [x] (by reading: graft `request_context`, `radar_lines_for`; graft-ui `RadarLine`) MAP.md: graft `request_context` (the rule), graft-ui `RadarLine::NotChecked`.
+- [x] (fmt, clippy, nextest 4155/4155, test --doc: all pass) Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
 
 ## Touches (check each; NOTES says how)
 - **`RadarLine` matches** in graft and graft-ui: grep; each exhaustive one gains the arm. The existing radar
@@ -97,3 +97,24 @@ NotChecked(SanitizedText),
 
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`.
+
+## NOTES (builder, 2026-09-27)
+Scout: none — ticket named every site; re-read each. No compaction.
+
+Fix is the cause: `update/radar.rs` `request_context` asks only from `Idle`. Cost to him: after a failed read, radar checks stay off until `Ctrl+R`, and the pane says so.
+
+**Audit** (tail-of-update requesters in `settle`):
+- `request_force_push_probes` (`update/radar.rs`, gate `Ready`, skip on `force_push.contains_key`) — no: verdicts are never a `Result`; asked branches stay in the map.
+- `request_duplicates_probe` (`update/radar.rs`, `duplicates == Idle`) — no.
+- `journal::request` (`update/journal.rs:83`, `entries == Idle`; failure sets `Failed` `:129`) — no.
+- `remote::request_at_launch` (`update/remote.rs:264`, `remotes == Idle`; failure sets `Failed` `:297`) — no.
+- `detail::open_explain` (`update/detail/control.rs:118`, `explain_requested.take()`) — no: one-shot.
+- `probe_evil` (`update/detail/ops.rs:184-186`) — guard would re-probe on `Failed`, and it runs every update (`selection.rs:117` via `follow_selection` from `settle`). But `evil` is never set `Failed`: writes only at `ops.rs:194` Idle, `:200`/`:217` Ready, `:204` Pending; `Product::EvilProbe` has no `Result` (`events.rs:272`). No loop; the `Failed` arm is dead. Not changed.
+
+**Harness:** shared `tests/it/deadline.rs` (`DEADLINE` 600 s, `Deadline`), included by path from `app_harness` and `budget_run` (budget_run is also built into `examples/budgets.rs`, which lacks `app_harness`). `app_harness::pump_events` is the loop; `App::pump`, `commit_editor_writes.rs` and `changes_pane_writes.rs` pumps call it (their local `PATIENCE` went). `m4_walk/run.rs`, `m5_walk/run.rs` pumps and `budget_run::pump_until_from` call `Deadline::note`. 600 s not 60 s: budget_run's per-event `PATIENCE` is 300 s; 60 s total could fail a slow-but-settling budget run.
+
+**Spec vs code (question):** ticket says the evil-merge line "does not need the context, still shows". It does need it: `view/radar.rs` gates it on `context_ready`. Kept; on `Failed` only the NotChecked line shows (asserted in the view test).
+
+**Touches:** `RadarLine` matches: grep `RadarLine::` — only `radar_text` exhaustive (arm added). Existing captures byte-identical: full nextest green, `git status` shows no changed shot. Context consumers all gate on `Ready`, unchanged — suite green. Marker: `marker_for` None on Failed (asserted). Keymap/journal: none.
+
+**For the conductor (question):** a radar-context job failing as a *job* (panic) leaves `context` `Pending` forever: `job_failed` (`update/mod.rs:1013`) does not touch `radar.context`. No loop, no line. Not this ticket.

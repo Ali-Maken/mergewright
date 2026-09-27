@@ -60,6 +60,10 @@ pub(crate) fn radar_text(line: &RadarLine) -> String {
         RadarLine::ForcePushNotCheckable(reason) => {
             format!("force-pushed: not checkable \u{2014} {}", reason.as_str())
         }
+        RadarLine::NotChecked(why) => format!(
+            "radar: not checked \u{2014} {} \u{00b7} ctrl+r to try again",
+            why.as_str()
+        ),
     }
 }
 

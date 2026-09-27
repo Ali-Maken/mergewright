@@ -478,6 +478,7 @@ impl Walk<'_> {
         what: &str,
         done: impl Fn(&AppState) -> bool,
     ) -> Result<AppState, String> {
+        let mut deadline = crate::app_harness::Deadline::of(crate::app_harness::DEADLINE);
         loop {
             if done(&state) {
                 return Ok(state);
@@ -487,6 +488,7 @@ impl Walk<'_> {
                 .events
                 .recv_timeout(PATIENCE)
                 .map_err(|why| format!("waiting for {what}: {why}"))?;
+            deadline.note(what, &event)?;
             if std::env::var_os("GRAFT_TEST_TRACE").is_some() {
                 eprintln!("[{what}] {event:?} -> operating {:?}", state.operating);
             }

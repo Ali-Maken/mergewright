@@ -13,15 +13,51 @@ use std::process::Command as Shell;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
+#[cfg(test)]
+use std::time::Instant;
 
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::repos::RepoStore;
 use graft::update::{AppEvent, AppState, Command, Size, Status, update};
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 
+#[path = "deadline.rs"]
+mod deadline;
+pub use deadline::{DEADLINE, Deadline};
+
 /// Long enough that a slow machine never fails here, short enough that a
 /// hang is a named failure rather than a stuck suite.
 pub const PATIENCE: Duration = Duration::from_secs(120);
+
+/// Feeds events from `next` through `update`, dispatching each command, until
+/// `done` holds — or fails when one event takes longer than [`PATIENCE`] or
+/// the whole pump longer than `limit`. The loop `App::pump` runs, apart from
+/// its source so a stub stream can prove the deadline.
+pub fn pump_events<E: std::fmt::Display>(
+    mut next: impl FnMut(Duration) -> Result<AppEvent, E>,
+    mut dispatch: impl FnMut(Command),
+    mut state: AppState,
+    what: &str,
+    done: impl Fn(&AppState) -> bool,
+    limit: Duration,
+) -> Result<AppState, String> {
+    let mut deadline = Deadline::of(limit);
+    loop {
+        if done(&state) {
+            return Ok(state);
+        }
+        let event = next(PATIENCE).map_err(|why| format!("waiting for {what}: {why}"))?;
+        if std::env::var_os("GRAFT_TEST_TRACE").is_some() {
+            eprintln!("[{what}] {event:?} -> operating {:?}", state.operating);
+        }
+        deadline.note(what, &event)?;
+        let (next_state, commands) = update(&state, event);
+        state = next_state;
+        for command in commands {
+            dispatch(command);
+        }
+    }
+}
 
 pub const SIZE: Size = Size {
     columns: 120,
@@ -195,29 +231,16 @@ impl App {
     }
 
     /// Feeds job answers through `update` until `done` holds.
-    pub fn pump(
-        &self,
-        mut state: AppState,
-        what: &str,
-        done: impl Fn(&AppState) -> bool,
-    ) -> AppState {
-        loop {
-            if done(&state) {
-                return state;
-            }
-            let event = self
-                .events
-                .recv_timeout(PATIENCE)
-                .unwrap_or_else(|why| panic!("waiting for {what}: {why}"));
-            if std::env::var_os("GRAFT_TEST_TRACE").is_some() {
-                eprintln!("[{what}] {event:?} -> operating {:?}", state.operating);
-            }
-            let (next, commands) = update(&state, event);
-            state = next;
-            for command in commands {
-                self.jobs.dispatch(command);
-            }
-        }
+    pub fn pump(&self, state: AppState, what: &str, done: impl Fn(&AppState) -> bool) -> AppState {
+        pump_events(
+            |patience| self.events.recv_timeout(patience),
+            |command| self.jobs.dispatch(command),
+            state,
+            what,
+            done,
+            DEADLINE,
+        )
+        .unwrap_or_else(|why| panic!("{why}"))
     }
 
     /// Runs the pending write — a stage, a commit, an undo — to its answer,
@@ -307,4 +330,37 @@ pub fn cursor_to(app: &App, state: AppState, name: &str) -> AppState {
         let step = if at < want { 'j' } else { 'k' };
         state = app.key(&state, KeyCode::Char(step));
     }
+}
+
+/// A stream that never settles — a key, forever — makes the pump fail within
+/// its deadline, naming what it waited for and the events it saw.
+#[test]
+fn pump_fails_on_a_stream_that_never_settles() {
+    let started = Instant::now();
+    let result = pump_events(
+        |_| {
+            Ok::<_, String>(AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char(
+                'j',
+            )))))
+        },
+        |command| panic!("a plain `j` on an empty state asks for nothing: {command:?}"),
+        AppState::default(),
+        "a state that never comes",
+        |_| false,
+        Duration::from_millis(200),
+    );
+    let Err(why) = result else {
+        panic!("a stream that never settles must fail");
+    };
+    assert!(
+        started.elapsed() < Duration::from_secs(10),
+        "{:?}",
+        started.elapsed()
+    );
+    assert!(
+        why.contains("waiting for a state that never comes"),
+        "{why}"
+    );
+    assert!(why.contains("last 10 events"), "{why}");
+    assert!(why.contains("Char('j')"), "{why}");
 }

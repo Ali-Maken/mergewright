@@ -316,8 +316,12 @@ fn default_branch_tip(state: &AppState) -> Option<(RefName, Oid)> {
     Some((default_ref, tip))
 }
 
-/// Asks for the radar context once the default branch's tip is known and
-/// nothing is already waiting on it (or the last attempt failed). Called at
+/// Asks for the radar context once the default branch's tip is known and it
+/// has not been asked for yet (`Loading::Idle`). A failed read is an answer,
+/// not "not asked yet": it stays `Failed` — and the detail pane says the
+/// radar did not run — until `Ctrl+R` ([`reset_for_refresh`]) sets it back
+/// to `Idle`. Nothing is retried behind his back (m7-power-tools/33: asking
+/// again on `Failed` from every `update` was an unbounded loop). Called at
 /// the end of every `update`, which is what satisfies "at startup and at
 /// refresh" without a literal second call site: neither startup nor a
 /// refresh knows the default branch's tip until the refs job that
@@ -328,7 +332,7 @@ pub fn request_context(
     commands: &mut Vec<Command>,
     next_id: &mut dyn FnMut() -> JobId,
 ) {
-    if !matches!(state.radar.context, Loading::Idle | Loading::Failed(_)) {
+    if !matches!(state.radar.context, Loading::Idle) {
         return;
     }
     let Some((default_ref, default_tip)) = default_branch_tip(state) else {
@@ -572,6 +576,7 @@ mod tests {
 
     use super::*;
     use crate::history::{History, WalkFacts};
+    use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
 
     fn oid(n: u8) -> Oid {
         Oid::from_bytes(&[n; 20]).expect("20 bytes is a sha1")
@@ -654,6 +659,60 @@ mod tests {
             Ok(Arc::new(RadarContext::of_ids([oid(1)], Vec::new()))),
         );
         assert!(matches!(state.radar.context, Loading::Ready(_)));
+    }
+
+    fn context_asks(commands: &[Command]) -> usize {
+        commands
+            .iter()
+            .filter(|command| matches!(command, Command::RadarContext(..)))
+            .count()
+    }
+
+    fn press(code: KeyCode, modifiers: Modifiers) -> AppEvent {
+        AppEvent::Core(Event::Key(KeyPress { code, modifiers }))
+    }
+
+    /// A state whose context job failed, landed through `update`, then five
+    /// unrelated keys: the state after, and every command those updates asked for.
+    fn failed_through_update() -> (AppState, Vec<Command>) {
+        let mut state = state_with_default_branch(Some(oid(1)));
+        state.radar.context = Loading::Pending(JobId::new(5));
+        let (mut state, mut commands) = crate::update::update(
+            &state,
+            AppEvent::Produced(
+                JobId::new(5),
+                Product::RadarContext(Err("commit b32274b is not in the repository".into())),
+            ),
+        );
+        for _ in 0..5 {
+            let (next, more) =
+                crate::update::update(&state, press(KeyCode::Char('j'), Modifiers::NONE));
+            commands.extend(more);
+            state = next;
+        }
+        (state, commands)
+    }
+
+    #[test]
+    fn a_failed_radar_context_is_not_asked_again() {
+        let (state, commands) = failed_through_update();
+        assert_eq!(context_asks(&commands), 0, "{commands:?}");
+        assert!(matches!(state.radar.context, Loading::Failed(_)));
+    }
+
+    #[test]
+    fn ctrl_r_after_a_failed_context_asks_once() {
+        let (state, _) = failed_through_update();
+        let (mut state, commands) =
+            crate::update::update(&state, press(KeyCode::Char('r'), Modifiers::CONTROL));
+        let mut asks = context_asks(&commands);
+        for _ in 0..5 {
+            let (next, commands) =
+                crate::update::update(&state, press(KeyCode::Char('j'), Modifiers::NONE));
+            asks += context_asks(&commands);
+            state = next;
+        }
+        assert_eq!(asks, 1);
     }
 
     #[test]

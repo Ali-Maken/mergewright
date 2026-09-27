@@ -163,6 +163,12 @@ pub fn radar_lines_for(
             title: sanitize_line(&title_for(&finding)),
         })
         .collect();
+    // The context failed to read: every check that needs it did not run.
+    // Said first, so "no findings" never reads as "nothing wrong"
+    // (m7-power-tools/33). Only on `Failed` — `Idle`/`Pending` are not errors.
+    if let Loading::Failed(why) = &state.radar.context {
+        lines.insert(0, RadarLine::NotChecked(sanitize_line(why)));
+    }
     let context_ready = matches!(state.radar.context, Loading::Ready(_));
     if parents.len() >= 2
         && state
@@ -322,6 +328,37 @@ mod tests {
         let names = remote_names(&state);
         let facts = repo_facts(&state, context, &names);
         assert_eq!(facts.remotes, ["origin", "upstream"]);
+    }
+
+    /// A failed context says so, first, with its reason; no other context
+    /// state draws the line (a status must not read as an error when
+    /// nothing is wrong). The merge's evil line needs the context, so it
+    /// is absent while it has failed.
+    #[test]
+    fn a_failed_context_says_radar_not_checked() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        let not_checked = |state: &AppState| {
+            radar_lines_for(state, merge, &parents, "merge")
+                .into_iter()
+                .filter(|line| matches!(line, RadarLine::NotChecked(_)))
+                .count()
+        };
+        assert_eq!(not_checked(&state), 0, "Ready");
+        state.radar.context = Loading::Idle;
+        assert_eq!(not_checked(&state), 0, "Idle");
+        state.radar.context = Loading::Pending(graft_core::job::JobId::new(1));
+        assert_eq!(not_checked(&state), 0, "Pending");
+
+        state.radar.context = Loading::Failed("commit b32274b is not in the repository".to_owned());
+        assert_eq!(
+            radar_lines_for(&state, merge, &parents, "merge"),
+            vec![RadarLine::NotChecked(sanitize_line(
+                "commit b32274b is not in the repository"
+            ))]
+        );
+        assert_eq!(marker_for(&state, merge, &parents, "merge"), None);
     }
 
     /// The pane's evil line follows the probe: unchecked before it starts,

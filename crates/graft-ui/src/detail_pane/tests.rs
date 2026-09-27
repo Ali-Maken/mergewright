@@ -1087,6 +1087,12 @@ fn radar_text_covers_every_variant() {
         ))),
         "force-pushed: not checkable \u{2014} no remote-tracking reflog"
     );
+    assert_eq!(
+        radar_text(&RadarLine::NotChecked(sanitize_line(
+            "commit b32274b is not in the repository"
+        ))),
+        "radar: not checked \u{2014} commit b32274b is not in the repository \u{b7} ctrl+r to try again"
+    );
 }
 
 #[test]
