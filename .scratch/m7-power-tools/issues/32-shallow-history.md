@@ -1,6 +1,6 @@
 # 32 shallow-history — a shallow clone's boundary commits are parentless, in every walk
 
-Status: draft
+Status: done (worktree agent-acb4a04073e2b9803; not merged)
 Blocked by: **18e** (holds graft-git now, and edits `trace/log.rs`, `trace/mod.rs`, `blame.rs`, the files this ticket
 moves the shallow reader out of).
 Crates: graft-git only (`history/`, a new `shallow.rs`, `trace/shallow.rs`, `trace/log.rs` + `blame.rs` imports only,
@@ -93,33 +93,47 @@ say which and how you mapped it).
 
 ## Acceptance (name the verifying test at tick time)
 Tests in `crates/graft-git/tests/it/shallow_history.rs`; clones are `git clone --depth N file://<fixture>` (as 18c).
-- [ ] **Red first:** `a_depth_2_clone_walks` — `Walk::all_refs` on the session fixture at depth 2 succeeds (today:
-      `Missing`). Show it red before the fix.
-- [ ] **Oracle**, depth 1 and depth 2 of the session fixture, and depth 3 of a corpus shape with a merge whose second
+- [x] **Red first:** `a_depth_2_clone_walks` — `Walk::all_refs` on the session fixture at depth 2 succeeds (today:
+      `Missing`). Show it red before the fix. Red (before the seam): `walking a depth-2 clone: Some(Commit(Missing { id: Oid(b32274b37e6ce919315f41103f3f30078e9a3487) }))` — 20f's id. Green after.
+- [x] **Oracle**, depth 1 and depth 2 of the session fixture, and depth 3 of a corpus shape with a merge whose second
       parent is cut (name the shape): the set of `(id, parents)` from `next_links` to the end **equals**
       `git rev-list --parents --all`'s; same for `next_chunk`'s rows' `parents`; asserts ≥1 boundary row so it isn't
-      vacuous.
-- [ ] Oracle: `first_parent_chain(main)` = `git rev-list --first-parent main`; `first_parent_merges` =
+      vacuous. Tests: `walks_match_git_on_a_depth_1_session_clone`, `walks_match_git_on_a_depth_2_session_clone`,
+      `walks_match_git_on_a_depth_3_feature_branches_clone_with_a_cut_merge` (shape **feature-branches**, `main` only:
+      `Merge branch 'feature/one'`'s second parent `one: finish` is a boundary; the test asserts the cut). Each checks
+      `next_links` + `next_chunk` in CommitDate and Topological, plus `full_topological` links.
+- [x] Oracle: `first_parent_chain(main)` = `git rev-list --first-parent main`; `first_parent_merges` =
       `git rev-list --first-parent --merges --count`; `ahead_behind` on two branches = `git rev-list --left-right
-      --count a...b`; `read_commit(boundary).parents` is empty.
-- [ ] **The graph path:** a full clone with `git commit-graph write --reachable`, then a hand-written
+      --count a...b`; `read_commit(boundary).parents` is empty. Tests: `first_parent_reads_match_git_on_a_shallow_clone` (chain + merges,
+      merges > 0), `ahead_behind_matches_git_across_a_shallow_boundary` (every origin branch vs main, depth 2, all
+      branches), `read_commit_of_a_boundary_has_no_parents`.
+- [x] **The graph path:** a full clone with `git commit-graph write --reachable`, then a hand-written
       `.git/shallow` (`git rev-parse HEAD~2 > .git/shallow`, git's own test technique): `CommitTable::open` binds no
       graph, `commit_graph::status` is `Absent`, and the walk oracle above holds. NOTES: git's
-      `commit_graph_compatible` line, both versions.
-- [ ] `an_unreadable_shallow_file_fails_the_walk` (`shallow` is a directory) → `WalkError::Shallow`, never a walk that
-      ignores it.
-- [ ] A full clone's walk is unchanged: the existing history suites pass untouched; name the count.
-- [ ] Blame and trace unchanged through the move: `blame_marks_lines_from_the_shallow_boundary`,
+      `commit_graph_compatible` line, both versions. Test: `a_shallow_file_over_a_commit_graph_binds_no_graph` (also: a
+      table opened *before* the shallow file keeps its graph and its walk still cuts — mutation-checked: disabling the
+      graph-branch clear in `RepoNodes::node` turns it red).
+- [x] `an_unreadable_shallow_file_fails_the_walk` (`shallow` is a directory) → `WalkError::Shallow`, never a walk that
+      ignores it. Test: `an_unreadable_shallow_file_fails_the_walk` (`all_refs`, `first_parent_merges`, `read_commit`).
+- [x] A full clone's walk is unchanged: the existing history suites pass untouched; name the count. Workspace nextest 4119/4119 (1 skipped),
+      graft-git `it` 138/138; `src/history/tests.rs` not edited (diff stat).
+- [x] Blame and trace unchanged through the move: `blame_marks_lines_from_the_shallow_boundary`,
       `an_unreadable_shallow_file_fails_blame`, 18c's shallow trace tests, 18e's
-      `a_failed_log_with_an_unreadable_shallow_file_reports_gits_reason` — all green, not edited.
-- [ ] Perf: the per-node cost on a non-shallow repo. Run the walk's existing example/bench from a script (grep
+      `a_failed_log_with_an_unreadable_shallow_file_reports_gits_reason` — all green, not edited. Run by name: 3 blame + 7 trace shallow tests PASS; `tests/it/blame.rs`, `trace.rs`,
+      `src/trace/tests.rs` absent from the diff.
+- [ ] Perf (**not run**): the per-node cost on a non-shallow repo. Run the walk's existing example/bench from a script (grep
       `crates/graft-git/examples/`), before and after, to `docs/perf/32.txt`; read the summary line only. None fits →
-      say so; the milestone review's release run covers it.
-- [ ] `read.rs:111`'s doc now true; say so.
-- [ ] MAP.md: `shallow` module (`ShallowList`, `ShallowError`, the rule), `WalkError::Shallow`, `## history` "Reads"
+      say so; the milestone review's release run covers it. **None run.** Only `examples/lost_cost.rs` (c)
+      builds a `Walk`, and it is heavy-tier (`--features heavy-tests`, 100k-commit fixture, release); a before/after needs
+      two release builds of the workspace. Added cost on a complete repo, by reading: one `is_empty()` per node and per
+      hydrated row; one `open()` of the missing `shallow` file per walk / per `read_commit` call. Left to the milestone
+      review's release run.
+- [x] `read.rs:111`'s doc now true; say so. Rewritten: a root commit or a shallow boundary (parentless, git's rule)
+      ends the chain — true per `first_parent_reads_match_git_on_a_shallow_clone`.
+- [x] MAP.md: `shallow` module (`ShallowList`, `ShallowError`, the rule), `WalkError::Shallow`, `## history` "Reads"
       line gains the shallow rule, `commit_graph::status` and `CommitTable::open` gain "none in a shallow repo",
-      `trace`'s `shallow.rs` line points at the new home.
-- [ ] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
+      `trace`'s `shallow.rs` line points at the new home. Done, plus `CommitGraphError::Shallow`, `TableError::Shallow`.
+- [x] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`. All pass (fmt re-checked after the last test edit).
 
 ## Touches (check each; NOTES says how)
 - **Graph (graft, graft-ui):** the boundary draws as a root — its lane ends at its row. No drawing change; no fixture
@@ -143,3 +157,38 @@ rule, the oracles.
 
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`.
+
+## NOTES (builder, 2026-09-27)
+Scout: none — the ticket says the planner checked every site; each re-read before editing. No compaction.
+
+**Git's rule, pinned** (source fetched from github.com/git/git at the tags): `commit-graph.c` `commit_graph_compatible`
+returns 0 on `is_repository_shallow(r)` — **v2.38.5 line 220**, **v2.54.0 line 238**; `prepare_commit_graph` bails on
+it — v2.38.5 line 653, v2.54.0 line 768. Git agrees with the ruling.
+
+**Public shape changes** (ticket allowed; say which): `TableError` gains `Shallow(#[from] ShallowError)` (`CommitTable::open`
+reads the list); `CommitGraphError` gains `Shallow(ShallowError)` (`status` reads it; Display = the ShallowError's).
+graft matches neither exhaustively (`repos.rs:288,291` are `#[from]` only) — workspace build green. Crate-private:
+`CommitTable::open_with(repo, &ShallowList)` so `first_parent_merges`/`ahead_behind` read the file once;
+`node_from_object` gains `boundary: bool`; `hydrate` gains `&ShallowList`. `ShallowList::into_ids` (crate-private) keeps
+trace's `BTreeSet`, so `finish` and `trace/tests.rs` are unedited.
+
+**Touches:**
+- Graph (graft, graft-ui): boundary now emitted parentless → lane ends at its row. No fixture is shallow; workspace
+  nextest 4119/4119 incl. every capture test. Gap row for the conductor: *a shallow boundary looks like a root; git's
+  `log --decorate` says `grafted`* (unverified need).
+- Radar: `first_parent_chain` ends at the boundary (test above). The loop fix itself is 33's; not touched.
+- Blame boundary: via `ShallowList::read`; 3 blame tests green, unedited.
+- `branches.rs:249` `merges_on`: now counts real merges (it wraps `first_parent_merges`, covered by
+  `first_parent_reads_match_git_on_a_shallow_clone`, merges > 0). No separate `integration_branch_in_a_shallow_clone`.
+- `graft` `jobs/preview.rs:162`: boundary parent no longer read; arm stays for truly missing objects. Grep only.
+- `read_commit(` callers (grep): graft `map/walk.rs:68`, `history/source.rs:83,132`, `jobs/commit_message.rs:92`,
+  `jobs/detail.rs:76`, `jobs/preview.rs:139`; graft-ops `mistake_radar/probes.rs:110,612` (a boundary merge now reads
+  as not a merge, as git shows it); graft-ops tests `journal_list_oracle.rs:92`, `lost_work.rs:92`,
+  `mistake_radar.rs:103`; graft-graph test `streaming.rs:85,94,287`; graft-git `history/tests.rs:394,405`. All now see a
+  boundary as parentless. **Perf knock-on:** `graft/src/history/source.rs:132` calls `read_commit` per evicted row, so
+  each call now also opens `<common_dir>/shallow` (ENOENT on a full clone). Ticket-mandated ("once per call");
+  unmeasured.
+- Commit-graph offer (graft): `status` says `Absent` in a shallow clone, so the offer can show until 20j; and
+  `commit_graph::write` there would report "git wrote a commit-graph but it is not in use" (git writes none — same
+  `commit_graph_compatible`, v2.54.0 line 2584). Not touched.
+- Keymap, journal, undo, captures: none — the diff touches only `crates/graft-git` and this ticket.

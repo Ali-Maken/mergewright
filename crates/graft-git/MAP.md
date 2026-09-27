@@ -19,6 +19,7 @@ One line per public item. Update when a public item changes.
 - `stash` (mod) — the stash list, from `refs/stash`'s own reflog (m3/01).
 - `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
 - `switch_refs` (mod, `switch_refs.rs`) — every local and remote branch with tip, subject, author, date, upstream, and `@{-1}`: what the branch picker lists (m7-power-tools/10a).
+- `shallow` (mod, `shallow.rs`) — a shallow clone's cut: `<common_dir>/shallow` read once, the one reader walks, blame and trace share (m7-power-tools/32).
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
@@ -40,7 +41,7 @@ Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `
 - `blame_with` / `Knobs { cap, marks }` / `MarksFrom { Auto, HumanFormat }` (crate) — `blame` with the runner cap and the marks' source set by a test.
 
 ## trace
-Files: `shallow.rs` reads a shallow clone's boundary ids; `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
+Files: `shallow.rs` turns [`shallow::ShallowList`](#shallow) into trace's boundary set and error (the reader moved there in 32); `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
 - `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
 - `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
 - `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
@@ -65,7 +66,8 @@ Files: `shallow.rs` reads a shallow clone's boundary ids; `log.rs` runs both log
 
 ## commit_graph
 - `CommitGraphStatus` (enum) — `Present { commits }` or `Absent` (as the walk sees it: `core.commitGraph` respected).
-- `status` (fn) — read through gix; a corrupt file is `Err(Graph)`, never `Absent`.
+- `status` (fn) — read through gix; a corrupt file is `Err(Graph)`, never `Absent`. `Absent` in a shallow repository whatever is on disk (git's `commit_graph_compatible`); an unreadable `shallow` file is `Err(Shallow)` (32).
+- `CommitGraphError::Shallow` (variant) — `<common_dir>/shallow` unreadable, so graph use is unknown (32).
 - `Written` (struct) — `commits` in the new file, `elapsed`.
 - `write` (fn) — blocking; runs `git -C <common_dir> commit-graph write --reachable --no-progress` through `run` with `&()` (never kills it, m3/01), reads the file back.
 - `CommitGraphError` (enum) — `GitNotFound`, `Exited { status, stderr_first_line }` (raw), `Signalled`, `Io`, `Graph`; `Display` is the problem line.
@@ -147,7 +149,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `Order` (enum) — the order a walk emits rows in.
 - `Chunk` (struct) — one batch of rows a walk hands back, and whether more remain.
 - `LinkChunk` (struct) — one batch of `Link`s (commit + parents as handles, no commits read whole): `links`, `done`, `stopped`, as `Chunk`.
-- `Walk` (struct) — a rev-walk in progress; holds its position across chunks. Reads: with a commit-graph, parents/date/generation straight from the graph by position (no object read); a commit outside it, header-parsed from its object (generation infinity). Without a commit-graph, date walks parse each commit once; `full_topological` reads the whole range into dense per-handle arrays, then emits. State is per handle (bitsets, `u32` in-degree), never keyed by id.
+- `Walk` (struct) — a rev-walk in progress; holds its position across chunks. Reads: with a commit-graph, parents/date/generation straight from the graph by position (no object read); a commit outside it, header-parsed from its object (generation infinity). Shallow rule (32): a commit `<common_dir>/shallow` lists has no parents — applied in `RepoNodes::node` after either source and in row hydration, so links and rows agree; its cut parent is never interned. The list is read once per walk (constructor) or per call (`read_commit`, `first_parent_*`, `ahead_behind`), never held in `CommitTable`. Without a commit-graph, date walks parse each commit once; `full_topological` reads the whole range into dense per-handle arrays, then emits. State is per handle (bitsets, `u32` in-degree), never keyed by id.
 - `Walk::all_refs` (fn) — walk from every ref, in the given order; takes the repository's `Arc<CommitTable>`.
 - `Walk::from_tips` (fn) — walk from an explicit set of tip commits; takes the `Arc<CommitTable>`.
 - `Walk::full_topological` (fn) — walk every commit reachable from the given tips, topologically; takes the `Arc<CommitTable>`.
@@ -160,13 +162,13 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `Walk::next_chunk` (fn) — advance the walk and return its next `Chunk`.
 - `Walk::next_links` (fn) — advance the walk and return its next `LinkChunk`: same commits and limit/stop semantics as `next_chunk`, parents as walked, interned (promotion).
 - `CommitTable` (struct) — one repository's id table: commit-graph positions, then an overflow interner (ADR-0026); `Send + Sync`.
-- `CommitTable::open` (fn) — bind the commit-graph if the repository has one `gix` will use.
+- `CommitTable::open` (fn) — bind the commit-graph if the repository has one `gix` will use; none in a shallow repository (git's rule, 32).
 - `CommitTable::without_a_commit_graph` (fn) — a table with no graph behind it, for ids of the given hash length: for callers holding ids and no repository.
 - `CommitTable::has_commit_graph` / `graph_count` (fn) — whether a graph backs the low handles; how many.
 - `CommitTable::intern` / `handle_of` / `id_of` (fn) — handle for an id (appending once) / without appending / id for a handle (panics on a foreign one).
 - `CommitTable::len` / `is_empty` / `overflow_len` / `approximate_bytes` (fn) — entries; entries outside the graph; heap bytes (graph not counted).
-- `TableError` (enum) — why the table could not open: the commit-graph directory and gix's error.
-- `read_commit` (fn) — read one commit whole, by id.
+- `TableError` (enum) — why the table could not open: `CommitGraph` (the commit-graph directory and gix's error) or `Shallow(ShallowError)` (32).
+- `read_commit` (fn) — read one commit whole, by id; a shallow boundary's `parents` is empty (32).
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
 - `first_parent_chain` (fn) — a tip's first-parent commits, root last, honouring `Stop` (m2-details-and-diffs/13, Mistake Radar's default-branch chain).
 - `previous_tips` (fn) — a ref's own reflog, old values newest-first, deduped and capped; `Ok(vec![])` when the ref has no reflog (m2-details-and-diffs/13).
@@ -174,7 +176,12 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
 - `AheadBehind::in_sync` (fn) — neither side has a commit the other lacks.
 - `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart.
-- `WalkError` (enum) — why a rev-walk failed.
+- `WalkError` (enum) — why a rev-walk failed: `Tips`, `Commit(NodeError)`, `CommitGraph`, `Shallow(ShallowError)` (`<common_dir>/shallow` unreadable; never a walk that ignores it; 32).
+
+## shallow (m7-power-tools/32)
+Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-list --parents`, `log --graph`). Every reader in the crate goes through this one list.
+- `ShallowList` (struct) — the listed ids. `read(&RepoHandle)`: no file = empty; unreadable file or a non-id line = `ShallowError`, never "not shallow". `is_empty`, `contains`.
+- `ShallowError` (struct) — `path`, `source: io::Error`; `couldn't read <path>: <source>`.
 
 ## history_reads
 - `merge_base` (fn) — `git merge-base <a> <b>`; `None` on its exit 1 (no common ancestor), never an error.

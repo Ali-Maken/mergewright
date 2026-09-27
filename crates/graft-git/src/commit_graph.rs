@@ -28,6 +28,7 @@ use std::time::{Duration, Instant};
 
 use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, RunError};
+use crate::shallow::{ShallowError, ShallowList};
 
 /// Whether the repository has a commit-graph the walk will use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,8 +38,8 @@ pub enum CommitGraphStatus {
         /// Commits the file holds.
         commits: u32,
     },
-    /// No commit-graph file (or `core.commitGraph` is off, which makes it the
-    /// same thing to the walk).
+    /// No commit-graph file (or `core.commitGraph` is off, or the repository
+    /// is shallow, which each make it the same thing to the walk).
     Absent,
 }
 
@@ -71,6 +72,9 @@ pub enum CommitGraphError {
     /// gix could not read the commit-graph file (on `status`, or reading it
     /// back after a write). A corrupt file is this, never `Absent`.
     Graph(String),
+    /// `<common_dir>/shallow` could not be read, so whether the walk would
+    /// use a graph is unknown (m7/32).
+    Shallow(ShallowError),
 }
 
 impl fmt::Display for CommitGraphError {
@@ -94,6 +98,7 @@ impl fmt::Display for CommitGraphError {
             }
             CommitGraphError::Io(error) => write!(f, "commit-graph write failed: {error}"),
             CommitGraphError::Graph(message) => write!(f, "commit-graph unreadable: {message}"),
+            CommitGraphError::Shallow(error) => write!(f, "{error}"),
         }
     }
 }
@@ -104,11 +109,19 @@ impl std::error::Error for CommitGraphError {}
 ///
 /// Asks gix exactly as [`CommitTable::open`](crate::history::CommitTable::open)
 /// does (`core.commitGraph` respected), so "absent" here means the walk sorts
-/// without one.
+/// without one. A shallow repository has none in use, whatever is on disk:
+/// git's rule (`commit-graph.c` `commit_graph_compatible`), and the table's.
 ///
 /// # Errors
-/// [`CommitGraphError::Graph`] when a file is there but cannot be read.
+/// [`CommitGraphError::Graph`] when a file is there but cannot be read;
+/// [`CommitGraphError::Shallow`] when `<common_dir>/shallow` cannot be.
 pub fn status(repo: &RepoHandle) -> Result<CommitGraphStatus, CommitGraphError> {
+    if !ShallowList::read(repo)
+        .map_err(CommitGraphError::Shallow)?
+        .is_empty()
+    {
+        return Ok(CommitGraphStatus::Absent);
+    }
     match repo.gix().commit_graph_if_enabled() {
         Ok(Some(graph)) => Ok(CommitGraphStatus::Present {
             commits: graph.num_commits(),

@@ -11,6 +11,7 @@ mod diff_fixture;
 mod history_reads;
 mod run;
 mod session;
+mod shallow_history;
 mod switch_refs;
 mod trace;
 mod unreached;

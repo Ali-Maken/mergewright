@@ -16,6 +16,7 @@ use super::node::{self, NodeError, Nodes, RepoNodes};
 use super::table::CommitTable;
 use crate::repo::{RepoHandle, TipsError};
 use crate::run::Stop;
+use crate::shallow::{ShallowError, ShallowList};
 
 /// Reads one commit whole, by id.
 ///
@@ -27,7 +28,7 @@ use crate::run::Stop;
 /// # Errors
 /// [`WalkError`] if the commit cannot be read or decoded.
 pub fn read_commit(handle: &RepoHandle, id: Oid) -> Result<Commit, WalkError> {
-    hydrate(handle.gix(), id)
+    hydrate(handle.gix(), id, &ShallowList::read(handle)?)
 }
 
 /// The walk's tips as handles, each interned once.
@@ -41,8 +42,16 @@ pub(super) fn handles(nodes: &impl Nodes, tips: &[Oid]) -> Vec<CommitHandle> {
 /// come out of the commit-graph without touching the object database at all
 /// when there is one — so the cost of a walk is roughly the cost of what it
 /// shows, not of what it had to look at.
-pub(super) fn hydrate(repo: &gix::Repository, id: Oid) -> Result<Commit, WalkError> {
+///
+/// A commit `shallow` lists gets no parents, as its node does
+/// ([`RepoNodes`]), so a row's parents and its links agree.
+pub(super) fn hydrate(
+    repo: &gix::Repository,
+    id: Oid,
+    shallow: &ShallowList,
+) -> Result<Commit, WalkError> {
     let commit = node::find_commit(repo, id)?;
+    let boundary = !shallow.is_empty() && shallow.contains(&id);
     let unreadable = |source: gix::objs::decode::Error| NodeError::Unreadable {
         id,
         source: Box::new(source),
@@ -50,6 +59,7 @@ pub(super) fn hydrate(repo: &gix::Repository, id: Oid) -> Result<Commit, WalkErr
 
     let parents = commit
         .parent_ids()
+        .filter(|_| !boundary)
         .map(|parent| {
             Oid::from_bytes(parent.as_bytes()).map_err(|source| NodeError::Malformed { id, source })
         })
@@ -80,10 +90,12 @@ pub(super) fn hydrate(repo: &gix::Repository, id: Oid) -> Result<Commit, WalkErr
 /// # Errors
 /// [`WalkError`] if a commit on the chain cannot be read.
 pub fn first_parent_merges(handle: &RepoHandle, tip: Oid) -> Result<usize, WalkError> {
-    let table = CommitTable::open(handle).map_err(|source| WalkError::CommitGraph {
-        source: Box::new(source),
-    })?;
-    let nodes = RepoNodes::new(handle.gix(), Arc::new(table));
+    let shallow = Arc::new(ShallowList::read(handle)?);
+    let table =
+        CommitTable::open_with(handle, &shallow).map_err(|source| WalkError::CommitGraph {
+            source: Box::new(source),
+        })?;
+    let nodes = RepoNodes::new(handle.gix(), Arc::new(table), shallow);
 
     let mut merges = 0;
     let mut seen = HandleSet::new();
@@ -108,8 +120,9 @@ pub fn first_parent_merges(handle: &RepoHandle, tip: Oid) -> Result<usize, WalkE
 ///
 /// Reuses the per-handle node reads [`first_parent_merges`] walks with,
 /// rather than hydrating whole commits: the Mistake Radar only needs each
-/// commit's identity and parent, never its message or signature. A shallow
-/// or root commit with no parent simply ends the chain.
+/// commit's identity and parent, never its message or signature. A root
+/// commit, or a shallow clone's boundary (parentless, git's rule: see
+/// [`crate::shallow`]), ends the chain.
 ///
 /// `stop` is polled once per commit, the same plain flag check
 /// [`crate::run::GitInvocation::run`]'s process loop makes — no timer, since
@@ -123,7 +136,8 @@ pub fn first_parent_chain(
     tip: Oid,
     stop: &dyn Stop,
 ) -> Result<Vec<CommitHandle>, WalkError> {
-    let nodes = RepoNodes::new(repo.gix(), Arc::clone(table));
+    let shallow = Arc::new(ShallowList::read(repo)?);
+    let nodes = RepoNodes::new(repo.gix(), Arc::clone(table), shallow);
     let mut chain = Vec::new();
     let mut seen = HandleSet::new();
     let mut at = Some(nodes.handle(&tip));
@@ -233,4 +247,8 @@ pub enum WalkError {
         /// What `gix` said. Boxed to keep `WalkError` small.
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// `<common_dir>/shallow` exists but could not be read (m7/32): a walk
+    /// that ignored it would ask for commits a shallow clone never fetched.
+    #[error(transparent)]
+    Shallow(#[from] ShallowError),
 }

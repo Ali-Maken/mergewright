@@ -15,6 +15,7 @@ use super::sorted::Sorted;
 use super::table::CommitTable;
 use super::topological::Topological;
 use crate::repo::RepoHandle;
+use crate::shallow::ShallowList;
 
 /// How many commits a chunk holds.
 ///
@@ -84,6 +85,9 @@ pub struct Walk<'a> {
     commit_graph: bool,
     reads: u64,
     table: Arc<CommitTable>,
+    /// Read once when the walk is built, held for its life: rows hydrate
+    /// through it as nodes do.
+    shallow: Arc<ShallowList>,
 }
 
 /// The three orderings, behind one call.
@@ -128,7 +132,8 @@ impl<'a> Walk<'a> {
         table: Arc<CommitTable>,
     ) -> Result<Self, WalkError> {
         let repo = handle.gix();
-        let nodes = RepoNodes::new(repo, Arc::clone(&table));
+        let shallow = Arc::new(ShallowList::read(handle)?);
+        let nodes = RepoNodes::new(repo, Arc::clone(&table), Arc::clone(&shallow));
         let commit_graph = nodes.has_commit_graph();
         let tips = handles(&nodes, tips);
 
@@ -166,6 +171,7 @@ impl<'a> Walk<'a> {
             commit_graph,
             reads,
             table,
+            shallow,
         })
     }
 
@@ -189,7 +195,8 @@ impl<'a> Walk<'a> {
         table: Arc<CommitTable>,
     ) -> Result<Self, WalkError> {
         let repo = handle.gix();
-        let nodes = RepoNodes::new(repo, Arc::clone(&table));
+        let shallow = Arc::new(ShallowList::read(handle)?);
+        let nodes = RepoNodes::new(repo, Arc::clone(&table), Arc::clone(&shallow));
         let commit_graph = nodes.has_commit_graph();
         let tips = handles(&nodes, tips);
         let mut reads = 0;
@@ -210,6 +217,7 @@ impl<'a> Walk<'a> {
             commit_graph,
             reads,
             table,
+            shallow,
         })
     }
 
@@ -278,8 +286,9 @@ impl<'a> Walk<'a> {
     ) -> Result<Chunk, WalkError> {
         let mut commits = Vec::new();
         let table = Arc::clone(&self.table);
+        let shallow = Arc::clone(&self.shallow);
         let paused = self.advance(limit, stop, |repo, commit, _parents| {
-            commits.push(hydrate(repo, table.id_of(commit))?);
+            commits.push(hydrate(repo, table.id_of(commit), &shallow)?);
             Ok(())
         })?;
         Ok(Chunk {

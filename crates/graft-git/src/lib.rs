@@ -22,6 +22,7 @@ pub mod reflog;
 pub mod remote;
 pub mod repo;
 pub mod run;
+pub mod shallow;
 pub mod stash;
 pub mod state;
 pub mod status;
