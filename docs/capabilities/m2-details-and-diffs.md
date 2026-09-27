@@ -151,14 +151,14 @@ status: works
 ```
 
 - **How:** `x` on a history row to pin it as the compare base; `x` on a second row (or `Shift+click`/`Ctrl+click`) to open the comparison; `x` again on the same row clears the base.
-- **Behaviour:** `x` on an unmarked row sets `compare_base` and emits no command. `x` on a different row while a base is set opens `DetailSpec::Compare { base, head }` and keeps the base pinned. Moving the cursor with a base pinned opens a fresh `Compare` against the new row every time (not a plain `Commit` view). Landing on the working-tree row with a base pinned opens `WorkingTree` instead, still keeping the base; `x` on the working-tree row itself is a no-op. `Esc` clears the base and closes the pane in one press (ADR-0023's existing `Esc` order). The pane header reads `COMPARE <base> → <head>` with no `· N files +A −B` summary (that's a known gap, see below); the footer reads `compare base <sha> — move, x again clears`.
+- **Behaviour:** `x` on an unmarked row sets `compare_base` and opens the pane on `Compare { base, head: base }` (m7-14; was pin-only). `x` on a different row while a base is set opens `DetailSpec::Compare { base, head }` and keeps the base pinned. Moving the cursor with a base pinned opens a fresh `Compare` against the new row every time (not a plain `Commit` view). Landing on the working-tree row with a base pinned opens `WorkingTree` instead, still keeping the base; `x` on the working-tree row itself is a no-op. `Esc` clears the base and closes the pane in one press (ADR-0023's existing `Esc` order). Since m7-14 the diff is since the split (merge base..head) and the header says so in words: `changes on <head> since it left <base> · N commits · F files +a −d`; the footer reads `compare base <sha> — move, x again clears`.
 - **Proven by:**
-  `graft::update::detail::tests::toggle_compare_with_no_base_pins_one_and_emits_nothing`
+  `graft::update::detail::tests::the_first_x_opens_the_compare_on_the_base`
   `graft::update::detail::tests::toggle_compare_on_the_same_oid_clears_it_and_emits_nothing`
   `graft::update::detail::tests::toggle_compare_on_a_different_oid_opens_compare_and_keeps_the_base`
 - **Looks like:** `docs/shots/m2-compare.txt`
 - **Decided in:** M2 design note §02
-- **Status:** works. `compare_header` never shows file/line totals — deferred (M8 polish, see Deliberately not built).
+- **Status:** works. File/line totals shown since m7-14 (`docs/shots/m7/compare-since-split-187x50.txt`); `m2-compare.txt` is the M2 drawing, stale.
 
 ### M2-09. A right-click / `.` context menu on any row
 

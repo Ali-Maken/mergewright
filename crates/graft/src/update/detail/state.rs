@@ -118,7 +118,8 @@ pub struct CompareBase {
 }
 
 /// `x` on a graph row, or `Shift`/`Ctrl`+click on a second row
-/// (m2-details-and-diffs/11): no base yet pins one, no command; the same
+/// (m2-details-and-diffs/11): no base yet pins one and opens the pane on
+/// `Compare { base, head: base }` (m7-14); the same
 /// `oid` again clears it, no command; a different `oid` opens the compare
 /// and **keeps** the base, so the compare stays live as the cursor moves
 /// (`update::selection::follow_selection`).
@@ -135,8 +136,21 @@ pub fn toggle_compare(
     let left_blame = crate::update::place::end_for_compare(state, &mut commands);
     commands.extend(match state.compare_base {
         None => {
+            // m7-14: pinning opens the pane on the base itself, so the
+            // next motion is already a live compare.
+            // Focus stays where it was: the next `j`/`k` must move the
+            // graph's cursor, which is what makes the compare live.
             state.compare_base = Some(CompareBase { oid, row });
-            Vec::new()
+            let focus = state.detail.focus;
+            let opened = state.detail.open(
+                DetailSpec::Compare {
+                    base: oid,
+                    head: oid,
+                },
+                next_id,
+            );
+            state.detail.focus = focus;
+            opened
         }
         Some(base) if base.oid == oid => {
             state.compare_base = None;
@@ -243,6 +257,11 @@ impl<K: Eq, V> Bounded<K, V> {
 pub struct DetailState {
     /// What the pane is about, once opened.
     pub spec: Option<DetailSpec>,
+    /// The cursor's commit the last time a pinned compare followed it
+    /// (m7-14): the pane re-points only when the cursor has moved, so a
+    /// compare picked by click or `x` is not undone by the same event's
+    /// follow.
+    pub compare_followed: Option<Oid>,
     /// The pane is on screen.
     pub shown: bool,
     /// Which region has the keys.
@@ -353,6 +372,7 @@ impl Default for DetailState {
     fn default() -> Self {
         Self {
             spec: None,
+            compare_followed: None,
             shown: false,
             focus: DetailFocus::Graph,
             files: Loading::Idle,

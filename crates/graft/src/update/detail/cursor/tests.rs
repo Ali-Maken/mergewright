@@ -133,6 +133,7 @@ pub(crate) fn files_of(
         added: 1,
         removed: 1,
         message: Vec::new(),
+        compare: None,
     };
     (
         view,

@@ -25,13 +25,8 @@ pub enum Subject {
         /// Short SHA.
         sha: SanitizedText,
     },
-    /// Two commits compared (`x`).
-    Compare {
-        /// The older side.
-        base: SanitizedText,
-        /// The newer side.
-        head: SanitizedText,
-    },
+    /// Two commits compared (`x`), since they split (m7-14).
+    Compare(CompareHeader),
     /// The working tree against `HEAD`.
     WorkingTree {
         /// Files staged.
@@ -41,6 +36,68 @@ pub enum Subject {
         /// Files git does not track.
         untracked: u32,
     },
+}
+
+/// A compare's header (m7-14): the two sides by name and what the read
+/// found. Names are the row's first local branch, else its first remote,
+/// else its short sha — sanitised like every string here.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompareHeader {
+    /// The pinned side (`x`), `B` in the header's words.
+    pub base: SanitizedText,
+    /// The cursor's side, `C` in the header's words.
+    pub head: SanitizedText,
+    /// What is known so far.
+    pub state: CompareState,
+}
+
+/// Where a compare's read stands, and what it found.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CompareState {
+    /// The span or the file list is still coming.
+    Reading,
+    /// The cursor is on the base itself.
+    IsBase,
+    /// `head` has commits of its own since it left `base`.
+    Since {
+        /// Commits on `head` since the split.
+        commits: usize,
+        /// The file list's totals; `None` until it lands.
+        tally: Option<FileTally>,
+    },
+    /// `head` is already in `base`: nothing of its own.
+    AlreadyIn,
+    /// No common ancestor: the diff is plain two-dot.
+    NoSharedHistory,
+    /// The read failed, and why.
+    Failed(SanitizedText),
+}
+
+/// A compare's file totals: binary files count to `files` only.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FileTally {
+    /// Files changed.
+    pub files: usize,
+    /// Lines added.
+    pub added: usize,
+    /// Lines removed.
+    pub removed: usize,
+}
+
+/// What a compare's file-list read learnt about the two sides (m7-14):
+/// carried on [`FileListView::compare`] so the header can word it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompareSummary {
+    /// Listed from the split; `commits` on the head side since it.
+    Since {
+        /// Where the two split: the diff's old side, for anything that
+        /// reads it (a blame of an old-side line starts here).
+        split: graft_core::oid::Oid,
+        /// Commits reachable from head and not from the split.
+        commits: usize,
+    },
+    /// No shared history: listed two-dot, `base..head`.
+    NoSharedHistory,
 }
 
 /// The pane's header block (DESIGN.md §1.1).
@@ -246,6 +303,9 @@ pub struct FileListView {
     pub removed: u64,
     /// The commit body the `✉ message` row opens; empty without that row.
     pub message: Vec<SanitizedText>,
+    /// For a compare's list, how the two sides relate (m7-14); `None`
+    /// for every other list.
+    pub compare: Option<CompareSummary>,
 }
 
 impl FileListView {

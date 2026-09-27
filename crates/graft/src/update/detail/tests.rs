@@ -246,12 +246,22 @@ fn a_refresh_keeps_the_evil_cache() {
     assert_eq!(detail.evil_cache.get(&oid(1)), Some(&EvilVerdict::Clean));
 }
 
+/// m7-14: the first `x` pins the base **and** opens the pane on it, so
+/// journey `pr-contents` is `x`, motion from a closed pane.
 #[test]
-fn toggle_compare_with_no_base_pins_one_and_emits_nothing() {
+fn the_first_x_opens_the_compare_on_the_base() {
     let mut state = super::super::state::AppState::default();
     let mut ids = 0u64;
     let commands = toggle_compare(&mut state, 0, oid(1), &mut || next_id_from(&mut ids));
-    assert!(commands.is_empty());
+    assert!(!commands.is_empty(), "the compare on the base loads");
+    assert!(state.detail.shown);
+    assert_eq!(
+        state.detail.spec,
+        Some(DetailSpec::Compare {
+            base: oid(1),
+            head: oid(1)
+        })
+    );
     assert_eq!(
         state.compare_base,
         Some(CompareBase {
@@ -791,6 +801,7 @@ pub(super) fn changes_pane(sections: &[(WorkingTreeSection, &[&str])]) -> (FileL
         added: 1,
         removed: 0,
         message: Vec::new(),
+        compare: None,
     };
     (
         view,

@@ -2694,3 +2694,9 @@ ADR-0037 §4's "never hide every key" holds here too
 and `hint_bar::every_tab_context_draws_a_bar`.
 
 
+
+## M7 journey: pr-contents (m7-power-tools/14)
+
+| Journey | Start | Keys | Right looks like |
+|---|---|---|---|
+| `pr-contents` | cursor on `main`, pane closed, `feature-a`'s tip one row below | `x j` = 2 (note: 2) | pane opens on `x`; after `j` the header reads `changes on feature-a since it left main · 3 commits · 2 files +2 −0`; the file list holds only feature-a's files (`src/login.rs`, `src/token.rs`), never main's later `README.md`/`CHANGELOG.md`. Under 100 columns the pane is a tab: `Tab` shows it (not counted). Walk: `crates/graft/tests/it/m7_walk/pr_contents.rs::pr_contents`; captures `docs/shots/m7/compare-since-split-{187x50,80x24}.txt`. Colour unverified. `x base` badge not built yet (see ticket 14 NOTES). |

@@ -344,8 +344,8 @@ fn apply_compare_with_this_calls_toggle_compare() {
         &[],
         &mut || next_id_from(&mut ids),
     );
-    // `toggle_compare`'s first branch: pins the base, no command.
-    assert!(commands.is_empty());
+    // `toggle_compare`'s first branch: pins the base and opens it (m7-14).
+    assert!(!commands.is_empty());
     assert_eq!(state.compare_base.map(|base| base.oid), Some(oid(1)));
 }
 

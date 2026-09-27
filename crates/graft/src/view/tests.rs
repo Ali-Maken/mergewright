@@ -1128,7 +1128,7 @@ fn a_pinned_compare_base_marks_exactly_its_row_and_fills_the_footer() {
     assert!(screen.contains("compare base"), "{screen}");
 }
 
-/// An opened live compare draws its own header (`COMPARE base → head`), not
+/// An opened live compare draws its own header (`comparing head with base`), not
 /// the cursor's plain-commit header: `detail_view` (m2-details-and-diffs/11)
 /// must read the pane's own `DetailState::spec`, since `AppState::selected_spec`
 /// never names `Compare` and the two disagree once a base is pinned.
@@ -1157,7 +1157,8 @@ fn an_opened_compare_draws_its_own_header_not_the_cursor_commit() {
 
     let screen = draw(&opened, 140, 14);
     assert!(
-        screen.contains("COMPARE"),
+        // m7-14: the compare's words; its file list has not landed here.
+        screen.contains("comparing"),
         "the pane's own compare spec, not the cursor's commit: {screen}"
     );
     assert!(!screen.contains("COMMIT"), "{screen}");

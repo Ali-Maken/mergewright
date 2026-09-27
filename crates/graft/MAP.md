@@ -604,11 +604,12 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `LocalJobs` (struct) — `next_id`: hands out `LOCAL_JOB_BIT` ids.
 - `DetailSpec` (enum) — `Commit(Oid)`, `Compare { base, head }`, `WorkingTree`; `diff_spec` maps it to git's `DiffSpec`.
 - `CompareBase` (struct) — `oid`, `row`: a pinned compare base (`x`, m2-details-and-diffs/11); `AppState::compare_base` holds it.
-- `toggle_compare` (fn) — `x` on a row, or `Shift`/`Ctrl`+click on a second one: no base pins one (no command); the same `oid` again clears it (no command); a different `oid` opens `DetailSpec::Compare` and keeps the base pinned.
+- `toggle_compare` (fn) — `x` on a row, or `Shift`/`Ctrl`+click on a second one: no base pins one and opens the pane on `Compare { base, head: base }`, focus kept (m7-14); the same `oid` again clears it (no command); a different `oid` opens `DetailSpec::Compare` and keeps the base pinned.
 - `Loading<T>` (enum) — `Idle`, `Pending(JobId)`, `Ready(T)`, `Failed(String)`.
 - `DiffKey` (struct) — spec, entry, options, max_lines: one file's diff; the diff cache's key.
 - `Bounded<K, V>` (struct) — small map that evicts its oldest entry when full; `new`, `get`, `insert`, `clear`.
 - `DetailState` (struct) — spec, shown, focus, files (`Loading` of view + git list), diff, `diff_cache` (8), `contained` (64), options, mode, word_tint, max_lines (5,000), body_top, `pane_size` (`PaneSize`, per-orientation, ADR-0028).
+- `DetailState::compare_followed` (field) — `Option<Oid>`: the cursor's commit when a pinned compare last followed it (m7-14); an unmoved cursor leaves a picked compare alone. On the base row the pane follows to `Compare { base, head: base }`.
 - `DetailState::evil` (field) — `Loading<graft_ops::mistake_radar::probes::EvilVerdict>`: the evil-merge verdict for `evil_at`'s commit (m2-details-and-diffs/14).
 - `DetailState::evil_cache` (field) — `Bounded<Oid, EvilVerdict>` (16): verdicts already probed; never cleared by `refresh`, because a merge's tree cannot change.
 - `DetailState::evil_at` (field) — `Option<Oid>`: which commit `evil` is about; what `view::radar` matches a row against.

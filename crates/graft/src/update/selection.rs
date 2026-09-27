@@ -148,11 +148,34 @@ fn followed(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Co
     }
     if let Some(base) = state.compare_base {
         let spec = match state.selected_spec() {
-            Some(DetailSpec::Commit(oid)) if oid != base.oid => DetailSpec::Compare {
-                base: base.oid,
-                head: oid,
-            },
-            Some(spec @ DetailSpec::WorkingTree) => spec,
+            Some(DetailSpec::Commit(oid)) => {
+                // Unmoved, with a compare against this base on show: it was
+                // picked on purpose (a click, `x` on another row), not by
+                // the cursor, so it stays.
+                let picked = matches!(
+                    state.detail.spec,
+                    Some(DetailSpec::Compare { base: shown, .. }) if shown == base.oid
+                );
+                if picked && state.detail.compare_followed == Some(oid) {
+                    return Vec::new();
+                }
+                state.detail.compare_followed = Some(oid);
+                // A line landing (`show_line`) that opened the base as a
+                // plain commit keeps it: that was asked for by name.
+                if oid == base.oid && state.detail.spec == Some(DetailSpec::Commit(oid)) {
+                    return Vec::new();
+                }
+                // m7-14: on the base row itself this is `Compare { base,
+                // head: base }`, whose header says `x` clears it.
+                DetailSpec::Compare {
+                    base: base.oid,
+                    head: oid,
+                }
+            }
+            Some(spec @ DetailSpec::WorkingTree) => {
+                state.detail.compare_followed = None;
+                spec
+            }
             _ => return Vec::new(),
         };
         return state.detail.follow(spec, next_id);
@@ -509,10 +532,10 @@ mod tests {
         assert!(state.compare_base.is_some(), "the base stays set");
     }
 
-    /// Back onto the base's own row, there is nothing to compare it with:
-    /// no command, no spec change (m2-details-and-diffs/11).
+    /// Back onto the base's own row the pane opens `Compare { base, head:
+    /// base }`, whose header says `x` clears it (m7-14; was: no command).
     #[test]
-    fn follow_selection_back_onto_the_base_row_does_nothing() {
+    fn the_cursor_on_the_base_says_x_clears() {
         let mut state = state_with_rows();
         let mut ids = 0u64;
         let mut next_id = || {
@@ -536,12 +559,12 @@ mod tests {
 
         let commands = follow_selection(&mut state, &mut next_id);
 
-        assert!(commands.is_empty());
+        assert!(!commands.is_empty());
         assert_eq!(
             state.detail.spec,
             Some(DetailSpec::Compare {
                 base: base_oid,
-                head: head_oid,
+                head: base_oid,
             })
         );
     }

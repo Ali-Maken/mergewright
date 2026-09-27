@@ -458,6 +458,7 @@ fn conflicted_view() -> DetailView {
             added: 3,
             removed: 0,
             message: vec![],
+            compare: None,
         })),
         body: graft_ui::detail::BodyView::Empty(sanitize_line("")),
         body_top: 0,

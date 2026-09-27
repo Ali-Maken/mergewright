@@ -2249,3 +2249,14 @@ fn every_context_reaches_every_shape() {
          the sweeps that read it will never see"
     );
 }
+
+/// m7-14: the pinned compare base reads `x base`, in both icon sets.
+#[test]
+fn the_base_row_carries_x_base() {
+    let badge = Badge {
+        name: sanitize_line(""),
+        kind: BadgeKind::CompareBase,
+    };
+    assert_eq!(badge.text(Icons::Plain), "[x base]");
+    assert_eq!(badge.text(Icons::Nerd), "\u{f47f} x base");
+}

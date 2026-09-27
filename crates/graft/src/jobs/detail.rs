@@ -12,8 +12,10 @@ use graft_git::contained::{Contained, contained_in};
 use graft_git::diff::{
     DiffOptions, DiffSpec, FileDiff, FileEntry, FileList, file_diff, list_files,
 };
+use graft_git::history_reads::{CompareSpan, compare_span};
+use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
-use graft_ui::detail::{DiffView, FileListView};
+use graft_ui::detail::{CompareSummary, DiffView, FileListView};
 
 use super::Cancel;
 use crate::repos::RepoStore;
@@ -66,6 +68,15 @@ pub(super) fn read_files(
         let (view, list) = assemble_working_tree(&staged, &unstaged, &how);
         return Ok((Arc::new(view), Arc::new(list)));
     }
+    // A compare (`x`, the only `Range`) lists from where the two split
+    // (m7-14), and says how they relate for the header.
+    let (spec, compare) = match spec {
+        DiffSpec::Range { base, head } => {
+            let (range, summary) = compare_range(&handle, base, head, stop)?;
+            (range, Some(summary))
+        }
+        other => (other, None),
+    };
     let list = list_files(&handle, &spec, &options, stop).map_err(|e| e.to_string())?;
     let message = match spec {
         DiffSpec::Commit { commit: id, .. } => Some(
@@ -78,7 +89,8 @@ pub(super) fn read_files(
         | DiffSpec::Staged
         | DiffSpec::Unstaged => None,
     };
-    let view = assemble_files(&list, message.as_deref().map(body_of));
+    let mut view = assemble_files(&list, message.as_deref().map(body_of));
+    view.compare = compare;
     Ok((Arc::new(view), Arc::new(list)))
 }
 
@@ -93,23 +105,48 @@ pub(super) fn read_file_diff(
     stop: &Cancel,
 ) -> Result<(Arc<DiffView>, Arc<FileDiff>), String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
-    let spec = diff_spec_for(key.spec, key.section);
-    let diff = file_diff(
-        &repo.handle(),
-        &spec,
-        entry,
-        &key.options,
-        key.max_lines,
-        stop,
-    )
-    .map_err(|e| e.to_string())?;
+    let handle = repo.handle();
+    let spec = match diff_spec_for(key.spec, key.section) {
+        // The same split the file list used: the oids are fixed, so
+        // `merge-base` answers the same, at the cost of one more spawn per
+        // file (m7-14; the span is not carried beside the list).
+        DiffSpec::Range { base, head } => compare_range(&handle, base, head, stop)?.0,
+        other => other,
+    };
+    let diff = file_diff(&handle, &spec, entry, &key.options, key.max_lines, stop)
+        .map_err(|e| e.to_string())?;
     // Word spans are always worked out; whether they tint is the widget's call.
     let view = assemble_diff(&diff, true);
     Ok((Arc::new(view), Arc::new(diff)))
 }
 
+/// A compare's diff range (m7-14): `split..head` when the two share
+/// history, else plain `base..head`, said as such in the summary.
+fn compare_range(
+    handle: &RepoHandle,
+    base: Oid,
+    head: Oid,
+    stop: &Cancel,
+) -> Result<(DiffSpec, CompareSummary), String> {
+    match compare_span(handle, base, head, stop).map_err(|e| e.to_string())? {
+        CompareSpan::Since { split, ahead } => Ok((
+            DiffSpec::Range { base: split, head },
+            CompareSummary::Since {
+                split,
+                commits: ahead,
+            },
+        )),
+        CompareSpan::NoSharedHistory => Ok((
+            DiffSpec::Range { base, head },
+            CompareSummary::NoSharedHistory,
+        )),
+    }
+}
+
 #[cfg(test)]
 mod blame_tests;
+#[cfg(test)]
+mod compare_tests;
 
 /// Which refs contain a commit.
 pub(super) fn read_contained(

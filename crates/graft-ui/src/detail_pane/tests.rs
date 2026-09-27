@@ -7,7 +7,7 @@ use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 
-use super::header::{radar_lines_text, radar_text, title_style, title_text};
+use super::header::{compare_title, radar_lines_text, radar_text, title_style, title_text};
 use super::layout::percent;
 use super::unified::gutter_width;
 use super::*;
@@ -114,6 +114,7 @@ fn commit_view() -> DetailView {
             added: 15,
             removed: 4,
             message: vec![],
+            compare: None,
         })),
         body: BodyView::Diff(Arc::new(DiffView {
             path: sanitize_line("src/auth/token.rs"),
@@ -1192,6 +1193,7 @@ fn conflicted_working_tree_view() -> DetailView {
         added: 3,
         removed: 0,
         message: vec![],
+        compare: None,
     }));
     view
 }
@@ -1299,6 +1301,128 @@ fn an_empty_untracked_file_says_empty_file() {
     let screen = text(&draw(&view, DetailLayout::Right { columns: 80 }, 80, 30));
     assert!(
         screen.iter().any(|line| line.contains("empty file")),
+        "{screen:#?}"
+    );
+}
+
+// m7-14: a compare's first line, in words.
+
+fn compare(
+    head: &str,
+    base: &str,
+    state: crate::detail::CompareState,
+) -> crate::detail::CompareHeader {
+    crate::detail::CompareHeader {
+        base: sanitize_line(base),
+        head: sanitize_line(head),
+        state,
+    }
+}
+
+fn since(
+    commits: usize,
+    files: usize,
+    added: usize,
+    removed: usize,
+) -> crate::detail::CompareState {
+    crate::detail::CompareState::Since {
+        commits,
+        tally: Some(crate::detail::FileTally {
+            files,
+            added,
+            removed,
+        }),
+    }
+}
+
+#[test]
+fn the_header_says_changes_since_it_left() {
+    let header = compare("feature-a", "main", since(3, 2, 10, 4));
+    assert_eq!(
+        compare_title(&header, usize::MAX),
+        "changes on feature-a since it left main \u{b7} 3 commits \u{b7} 2 files +10 \u{2212}4"
+    );
+    let one = compare("feature-a", "main", since(1, 1, 1, 0));
+    assert_eq!(
+        compare_title(&one, usize::MAX),
+        "changes on feature-a since it left main \u{b7} 1 commit \u{b7} 1 file +1 \u{2212}0"
+    );
+    assert_eq!(
+        title_text(&Subject::Compare(header)),
+        "changes on feature-a since it left main \u{b7} 3 commits \u{b7} 2 files +10 \u{2212}4"
+    );
+}
+
+#[test]
+fn an_ancestor_says_nothing_of_its_own() {
+    let header = compare("old", "main", crate::detail::CompareState::AlreadyIn);
+    assert_eq!(
+        compare_title(&header, usize::MAX),
+        "old is already in main \u{b7} nothing of its own"
+    );
+    let base = compare("main", "main", crate::detail::CompareState::IsBase);
+    assert_eq!(
+        compare_title(&base, usize::MAX),
+        "this is the compare base \u{b7} x clears it"
+    );
+}
+
+#[test]
+fn no_shared_history_says_two_dot_in_words() {
+    let header = compare(
+        "orphan",
+        "main",
+        crate::detail::CompareState::NoSharedHistory,
+    );
+    assert_eq!(
+        compare_title(&header, usize::MAX),
+        "orphan and main share no history \u{b7} showing main..orphan"
+    );
+}
+
+#[test]
+fn a_failed_compare_says_why() {
+    let header = compare(
+        "x",
+        "main",
+        crate::detail::CompareState::Failed(sanitize_line("bad object")),
+    );
+    assert_eq!(
+        compare_title(&header, usize::MAX),
+        "couldn't compare: bad object"
+    );
+    let reading = compare("feature-a", "main", crate::detail::CompareState::Reading);
+    assert_eq!(
+        compare_title(&reading, usize::MAX),
+        "comparing feature-a with main \u{2026}"
+    );
+}
+
+#[test]
+fn the_header_drops_the_tally_first_when_narrow() {
+    let header = compare("feature-a", "main", since(3, 2, 10, 4));
+    let counted = "changes on feature-a since it left main \u{b7} 3 commits";
+    assert_eq!(compare_title(&header, 60), counted, "tally dropped first");
+    assert_eq!(
+        compare_title(&header, 45),
+        "changes on feature-a since it left main",
+        "then the count"
+    );
+    assert_eq!(
+        compare_title(&header, 36),
+        "changes on featu\u{2026} since it left main",
+        "then the head's name, cut"
+    );
+    // Drawn: at 40 columns the header shows the ladder's step, not the count.
+    let mut view = commit_view();
+    view.header.subject = Subject::Compare(header);
+    let screen = text(&draw(&view, DetailLayout::Right { columns: 40 }, 40, 12));
+    assert!(
+        screen.iter().any(|line| line.contains("changes on")),
+        "{screen:#?}"
+    );
+    assert!(
+        !screen.iter().any(|line| line.contains("3 commits")),
         "{screen:#?}"
     );
 }
