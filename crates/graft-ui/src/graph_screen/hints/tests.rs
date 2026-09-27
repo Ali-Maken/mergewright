@@ -1943,6 +1943,7 @@ mod history_place {
                 "n/N next change",
                 "B blame here",
                 "⏎ that commit",
+                "w whitespace",
                 "esc back",
             ]
         );

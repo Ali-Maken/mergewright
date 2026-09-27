@@ -118,6 +118,8 @@ pub enum FilePane<'a> {
         old: Option<u64>,
         /// Bytes after it.
         new: Option<u64>,
+        /// Why the sizes could not be read; drawn dim in their place.
+        sizes_failed: Option<&'a str>,
     },
     /// The whole file.
     Lines {
@@ -471,14 +473,11 @@ fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {
                 put(buf, below.x, below.y, below.width, "reading\u{2026}", dim());
             }
         }
-        FilePane::Binary { header, old, new } => {
+        FilePane::Binary { header, .. } => {
             put(buf, area.x, area.y, area.width, header, bold);
             if !below.is_empty() {
-                let words = match (old, new) {
-                    (None, None) => "binary \u{b7} sizes not read".to_owned(),
-                    _ => format!("binary \u{b7} {} \u{2192} {}", size(*old), size(*new)),
-                };
-                put(buf, below.x, below.y, below.width, &words, Style::default());
+                let (words, style) = binary_words(&view.file);
+                put(buf, below.x, below.y, below.width, &words, style);
             }
         }
         FilePane::Lines {
@@ -513,6 +512,27 @@ fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {
                 draw_unified(buf, below, hunks, *top, range.as_ref(), view.theme, style);
             }
         }
+    }
+}
+
+/// A binary file's line: `binary · <old> → <new>`, or, dim, why the sizes
+/// could not be read (21c).
+/// Empty for any other pane.
+fn binary_words(pane: &FilePane) -> (String, Style) {
+    match pane {
+        FilePane::Binary {
+            sizes_failed: Some(why),
+            ..
+        } => (format!("binary \u{b7} couldn't read sizes: {why}"), dim()),
+        FilePane::Binary { old, new, .. } => (
+            format!("binary \u{b7} {} \u{2192} {}", size(*old), size(*new)),
+            Style::default(),
+        ),
+        FilePane::Empty
+        | FilePane::NoChange
+        | FilePane::Reading { .. }
+        | FilePane::Failed(_)
+        | FilePane::Lines { .. } => (String::new(), Style::default()),
     }
 }
 

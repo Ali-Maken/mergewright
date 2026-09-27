@@ -368,6 +368,7 @@ fn a_binary_commit_shows_sizes() {
             header: HEADER,
             old: Some(12 * 1024),
             new: Some(14 * 1024),
+            sizes_failed: None,
         },
         ..view(&rows, &[], &theme, HistoryFocus::File)
     };
@@ -469,5 +470,45 @@ fn history_side_by_side_187x50() {
         "history_side_by_side_187x50",
         "the detail pane's side-by-side body in the file pane, no ┃; the title still names the range.",
         text
+    );
+}
+
+#[test]
+fn history_binary_140x40() {
+    let theme = theme();
+    let rows = mock_rows();
+    let v = HistoryView {
+        file: FilePane::Binary {
+            header: HEADER,
+            old: Some(700),
+            new: Some(1500),
+            sizes_failed: None,
+        },
+        ..view(&rows, &[], &theme, HistoryFocus::File)
+    };
+    snap!(
+        "history_binary_140x40",
+        "the file pane reads binary · 700 B → 2 KB under the header; no line rows.",
+        snapshot(&v, 140, 40)
+    );
+}
+
+#[test]
+fn history_binary_sizes_failed_140x40() {
+    let theme = theme();
+    let rows = mock_rows();
+    let v = HistoryView {
+        file: FilePane::Binary {
+            header: HEADER,
+            old: None,
+            new: None,
+            sizes_failed: Some("git was stopped"),
+        },
+        ..view(&rows, &[], &theme, HistoryFocus::File)
+    };
+    snap!(
+        "history_binary_sizes_failed_140x40",
+        "the file pane reads binary · couldn't read sizes: git was stopped (dim, colour unverified); no line rows.",
+        snapshot(&v, 140, 40)
     );
 }

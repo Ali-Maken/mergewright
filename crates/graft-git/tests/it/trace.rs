@@ -50,7 +50,7 @@ fn trace_file(dir: &Path, at: Oid, cap: usize) -> (Vec<TraceCommit>, TraceEnd) {
 
 /// A copy of the fixture with `path` (in a directory it already has)
 /// committed as `content`.
-fn with_file(path: &str, content: &str) -> (graft_fixtures::Scratch, Oid) {
+pub(crate) fn with_file(path: &str, content: &str) -> (graft_fixtures::Scratch, Oid) {
     let scratch = graft_fixtures::copy_into_temp(Shape::Session);
     let dir = scratch.path();
     std::fs::write(dir.join(path), content).unwrap_or_else(|why| panic!("writing {path}: {why}"));
@@ -336,8 +336,16 @@ fn stop_kills_git_and_keeps_the_rows() {
 fn whole_file_is_one_hunk_with_every_line() {
     let dir = graft_fixtures::borrow(Shape::Session);
     let ids = commits(&dir);
-    let diff = whole_file(&open(&dir), ids.you, Path::new(FILE), None, usize::MAX, &())
-        .expect("the whole file");
+    let diff = whole_file(
+        &open(&dir),
+        ids.you,
+        Path::new(FILE),
+        None,
+        usize::MAX,
+        false,
+        &(),
+    )
+    .expect("the whole file");
     assert_eq!(diff.hunks.len(), 1);
     let hunk = &diff.hunks[0];
     assert_eq!((hunk.new_start, hunk.new_lines), (1, 60));
@@ -365,6 +373,7 @@ fn whole_file_is_one_hunk_with_every_line() {
         Path::new(FILE),
         Some(Path::new(OLD_FILE)),
         usize::MAX,
+        false,
         &(),
     )
     .expect("the rename");
@@ -387,6 +396,7 @@ fn whole_file_of_a_root_commit_is_all_adds() {
         Path::new(OLD_FILE),
         None,
         usize::MAX,
+        false,
         &(),
     )
     .expect("the root commit");
@@ -420,8 +430,16 @@ fn whole_file_of_a_merge_diffs_its_first_parent() {
     git_ok(dir, &["merge", "-q", "--no-ff", "-m", "merge side", "side"]);
     let merge = rev(dir, "HEAD");
 
-    let diff =
-        whole_file(&open(dir), merge, Path::new(FILE), None, usize::MAX, &()).expect("the merge");
+    let diff = whole_file(
+        &open(dir),
+        merge,
+        Path::new(FILE),
+        None,
+        usize::MAX,
+        false,
+        &(),
+    )
+    .expect("the merge");
     let added: Vec<&[u8]> = diff.hunks[0]
         .lines
         .iter()
@@ -441,6 +459,7 @@ fn whole_file_of_a_merge_diffs_its_first_parent() {
         Path::new("tools/rotate.py"),
         None,
         usize::MAX,
+        false,
         &(),
     )
     .expect("unchanged");
@@ -457,7 +476,8 @@ fn whole_file_of_a_merge_diffs_its_first_parent() {
 fn whole_file_respects_max_lines() {
     let dir = graft_fixtures::borrow(Shape::Session);
     let ids = commits(&dir);
-    let diff = whole_file(&open(&dir), ids.you, Path::new(FILE), None, 10, &()).expect("cut");
+    let diff =
+        whole_file(&open(&dir), ids.you, Path::new(FILE), None, 10, false, &()).expect("cut");
     assert_eq!(diff.hunks[0].lines.len(), 10);
     let truncated = diff.truncated.expect("cut short");
     assert_eq!((truncated.shown_lines, truncated.total_lines), (10, 61));

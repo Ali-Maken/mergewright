@@ -9,12 +9,13 @@ use graft_core::event::KeyCode;
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::blame::Rev;
-use graft_git::trace::{LineRange, SHALLOW_END, TraceCommit, TraceEnd};
+use graft_git::trace::{BlobSizes, LineRange, SHALLOW_END, TraceCommit, TraceEnd};
 use graft_term::sanitize::sanitize_line;
 use graft_ui::detail::{DetailFocus, DiffView, FileStatusView, HunkView, LineKindView, LineView};
 use graft_ui::history::{FilePane, HistoryFocus, HistoryList, HistoryRow, HistoryView, columns};
 
 use crate::update::detail::Side;
+use crate::update::events::WholeFileAnswer;
 
 use super::super::history::next_change;
 use super::super::history_keys::NO_MORE_CHANGES;
@@ -131,10 +132,34 @@ pub(super) fn traced(
 }
 
 fn file_read(state: &AppState, job: JobId, view: DiffView) -> (AppState, Vec<Command>) {
+    file_read_sized(state, job, view, None)
+}
+
+/// A whole-file answer with its size read (binary only).
+fn file_read_sized(
+    state: &AppState,
+    job: JobId,
+    view: DiffView,
+    sizes: Option<Result<BlobSizes, String>>,
+) -> (AppState, Vec<Command>) {
+    let answer = WholeFileAnswer {
+        view: Arc::new(view),
+        sizes,
+    };
     update(
         state,
-        AppEvent::Produced(job, Product::WholeFile(Ok(Arc::new(view)))),
+        AppEvent::Produced(job, Product::WholeFile(Ok(answer))),
     )
+}
+
+/// The whole-file read `commands` asks for: whether it ignores whitespace.
+fn file_job_ignores_whitespace(commands: &[Command]) -> Option<bool> {
+    commands.iter().find_map(|command| match command {
+        Command::ReadWholeFile {
+            ignore_whitespace, ..
+        } => Some(*ignore_whitespace),
+        _ => None,
+    })
 }
 
 fn line(kind: LineKindView, old_no: Option<u32>, new_no: Option<u32>) -> LineView {
@@ -773,11 +798,8 @@ fn the_cap_row_says_how_many() {
     });
 }
 
-/// Sizes are not read: no reader gives them (graft-git, outside 21). The
-/// pane says so rather than invent them — unverified against a real binary
-/// commit, see the ticket's NOTES.
-#[test]
-fn a_binary_commit_shows_sizes() {
+/// A binary commit, its file read answered with `sizes`.
+fn binary_answered(sizes: Option<Result<BlobSizes, String>>) -> AppState {
     let (opened, commands) = press(&blame_on_22(), KeyCode::Char('L'));
     let (job, _) = trace_job(&commands);
     let (state, commands) = traced(
@@ -790,15 +812,23 @@ fn a_binary_commit_shows_sizes() {
         }),
     );
     let (read, _) = file_job(&commands).expect("a read");
-    let (state, _) = file_read(&state, read, whole(true));
-    // `graft_ui::history` draws `binary · sizes not read` for two `None`s.
+    file_read_sized(&state, read, whole(true), sizes).0
+}
+
+#[test]
+fn a_binary_commit_shows_sizes() {
+    let state = binary_answered(Some(Ok(BlobSizes {
+        old: Some(700),
+        new: Some(1500),
+    })));
     seen(&state, |view| {
         assert!(
             matches!(
                 view.file,
                 FilePane::Binary {
-                    old: None,
-                    new: None,
+                    old: Some(700),
+                    new: Some(1500),
+                    sizes_failed: None,
                     ..
                 }
             ),
@@ -806,6 +836,137 @@ fn a_binary_commit_shows_sizes() {
             view.file
         );
     });
+}
+
+#[test]
+fn a_size_read_failure_is_drawn() {
+    let state = binary_answered(Some(Err("git was stopped".to_owned())));
+    seen(&state, |view| {
+        assert!(
+            matches!(
+                view.file,
+                FilePane::Binary {
+                    old: None,
+                    new: None,
+                    sizes_failed: Some("git was stopped"),
+                    ..
+                }
+            ),
+            "{:?}",
+            view.file
+        );
+    });
+}
+
+/// The job always reads sizes for a binary diff; a binary answer without
+/// them is a wiring bug, and shows as one rather than `none → none`.
+#[test]
+fn a_binary_answer_without_sizes_says_so() {
+    let state = binary_answered(None);
+    seen(&state, |view| {
+        assert!(
+            matches!(
+                view.file,
+                FilePane::Binary {
+                    sizes_failed: Some("sizes not read"),
+                    ..
+                }
+            ),
+            "{:?}",
+            view.file
+        );
+    });
+}
+
+// ---- w: ignore whitespace (21c) --------------------------------------------
+
+#[test]
+fn w_rereads_ignoring_whitespace_from_either_focus() {
+    let state = lines_history(three_rows(), refresh_token());
+    assert!(!history(&state).ignore_whitespace, "off by default");
+    let (on, commands) = press(&state, KeyCode::Char('w'));
+    assert!(history(&on).ignore_whitespace);
+    assert_eq!(
+        file_job_ignores_whitespace(&commands),
+        Some(true),
+        "{commands:?}"
+    );
+    let (job, commit) = file_job(&commands).expect("a read");
+    assert_eq!(commit, lina(), "the same commit");
+    let (landed, _) = file_read(&on, job, whole(false));
+    let (tabbed, _) = press(&landed, KeyCode::Tab);
+    assert_eq!(history(&tabbed).focus, HistoryFocus::File);
+    let (off, commands) = press(&tabbed, KeyCode::Char('w'));
+    assert!(!history(&off).ignore_whitespace);
+    assert_eq!(
+        file_job_ignores_whitespace(&commands),
+        Some(false),
+        "{commands:?}"
+    );
+}
+
+#[test]
+fn w_cancels_a_read_in_flight() {
+    let state = lines_history(three_rows(), refresh_token());
+    let (reading, commands) = press(&state, KeyCode::Char('j'));
+    let (first, _) = file_job(&commands).expect("a read");
+    let (next, commands) = press(&reading, KeyCode::Char('w'));
+    assert!(
+        commands.contains(&Command::CancelJob(first)),
+        "{commands:?}"
+    );
+    let (second, commit) = file_job(&commands).expect("asked again");
+    assert_eq!(commit, adder());
+    assert_ne!(second, first);
+    // The stale read's answer lands on nothing.
+    let (after, _) = file_read(&next, first, whole(false));
+    assert!(matches!(history(&after).file, FileLoad::Reading { job, .. } if job == second));
+}
+
+#[test]
+fn w_holds_as_j_steps() {
+    let state = lines_history(three_rows(), refresh_token());
+    let (on, commands) = press(&state, KeyCode::Char('w'));
+    let (job, _) = file_job(&commands).expect("a read");
+    let (landed, _) = file_read(&on, job, whole(false));
+    let (stepped, commands) = press(&landed, KeyCode::Char('j'));
+    assert!(history(&stepped).ignore_whitespace, "still on");
+    assert_eq!(
+        file_job_ignores_whitespace(&commands),
+        Some(true),
+        "{commands:?}"
+    );
+}
+
+/// [`whole`] as `-w` would read it: only line 45 still changed.
+fn whole_ignoring_whitespace() -> DiffView {
+    let mut view = whole(false);
+    for hunk in &mut view.hunks {
+        hunk.lines.retain(|line| line.kind != LineKindView::Removed);
+        for line in &mut hunk.lines {
+            if line.new_no != Some(45) {
+                line.kind = LineKindView::Context;
+                line.old_no = line.new_no;
+            }
+        }
+    }
+    view
+}
+
+#[test]
+fn n_follows_the_changes_after_w() {
+    let state = lines_history(three_rows(), refresh_token());
+    let (on, commands) = press(&state, KeyCode::Char('w'));
+    let (job, _) = file_job(&commands).expect("a read");
+    let view = whole_ignoring_whitespace();
+    let at_45 = graft_ui::history::row_of_new_line(&view.hunks, 45).expect("line 45");
+    let (landed, _) = file_read(&on, job, view);
+    let (next, _) = press(&landed, KeyCode::Char('n'));
+    assert_eq!(
+        history(&next).change,
+        Some(at_45),
+        "19 and 22 are no longer changes"
+    );
 }
 
 #[test]
@@ -883,5 +1044,6 @@ fn history_is_a_read_not_a_write() {
         path: "a.rs".into(),
         old_path: None,
         max_lines: 10,
+        ignore_whitespace: false,
     }));
 }

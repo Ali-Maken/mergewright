@@ -12,6 +12,7 @@ mod follow;
 mod function;
 mod log;
 pub(crate) mod shallow;
+mod sizes;
 mod whole;
 
 use std::fmt;
@@ -25,6 +26,7 @@ use crate::run::RunError;
 pub use follow::parse_follow_log;
 pub use function::{enclosing_function, map_to_head};
 pub use log::{file_history, line_history, parse_line_log};
+pub use sizes::{BlobSizes, blob_sizes};
 pub use whole::whole_file;
 
 /// The end reason when a trace reaches a shallow clone's boundary: what

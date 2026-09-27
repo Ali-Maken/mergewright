@@ -38,6 +38,7 @@ pub fn whole_file(
     path: &Path,
     old_path: Option<&Path>,
     max_lines: usize,
+    ignore_whitespace: bool,
     stop: &dyn Stop,
 ) -> Result<FileDiff, DiffError> {
     let parent = first_parent(repo, commit, stop)?;
@@ -50,6 +51,10 @@ pub fn whole_file(
         GitArg::Flag("--no-ext-diff"),
         GitArg::Count("-U", EVERY_LINE),
     ]);
+    if ignore_whitespace {
+        // The detail pane's flag (diff/read.rs).
+        invocation = invocation.arg(GitArg::Flag("-w"));
+    }
     invocation = match parent {
         Some(parent) => invocation.args([GitArg::Oid(parent), GitArg::Oid(commit)]),
         None => invocation.args([GitArg::Flag("--root"), GitArg::Oid(commit)]),
@@ -72,6 +77,15 @@ pub fn whole_file(
         Some(diff) => diff,
         None => unchanged(repo, commit, path, stop)?,
     };
+    // Under `-w`, a whitespace-only change is a header with no hunk: the
+    // file is all context then, as a commit that did not touch it.
+    if ignore_whitespace
+        && diff.hunks.is_empty()
+        && diff.binary.is_none()
+        && !matches!(diff.entry.status, FileStatus::Deleted)
+    {
+        diff.hunks = unchanged(repo, commit, path, stop)?.hunks;
+    }
     cut(&mut diff, max_lines);
     Ok(diff)
 }

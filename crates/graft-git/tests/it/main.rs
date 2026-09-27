@@ -15,4 +15,5 @@ mod session;
 mod shallow_history;
 mod switch_refs;
 mod trace;
+mod trace_whole;
 mod unreached;

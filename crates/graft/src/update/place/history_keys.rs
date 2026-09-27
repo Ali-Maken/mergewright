@@ -45,6 +45,7 @@ pub(super) fn history_key(state: &mut AppState, key: KeyPress) -> Vec<Command> {
                 history.side_by_side = !history.side_by_side;
             }
         }
+        KeyCode::Char('w') => return whitespace(state),
         KeyCode::Char('L') => return load_all(state),
         KeyCode::Char('B') => return blame_here(state),
         KeyCode::Enter => return enter(state),
@@ -149,6 +150,25 @@ fn load_all(state: &mut AppState) -> Vec<Command> {
         return Vec::new();
     }
     history.max_lines = usize::MAX;
+    history.anchor = history.top_line().map(|line| LineRef {
+        side: Side::New,
+        line,
+    });
+    history.read_selected(job)
+}
+
+/// `w` (§2.5 via §2.17), from either focus as `v`: flip ignore-whitespace
+/// and read the selected commit's file again, stopping a read in flight.
+/// The file opens where its top was, as `L` does.
+fn whitespace(state: &mut AppState) -> Vec<Command> {
+    let job = state.local_jobs.next_id();
+    let Some(history) = top(state) else {
+        return Vec::new();
+    };
+    history.ignore_whitespace = !history.ignore_whitespace;
+    if history.selected.is_none() {
+        return Vec::new();
+    }
     history.anchor = history.top_line().map(|line| LineRef {
         side: Side::New,
         line,

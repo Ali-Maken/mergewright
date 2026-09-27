@@ -1,6 +1,6 @@
 # history-whitespace-and-sizes — `w` in the history place; a binary commit shows its sizes
 
-Status: ready
+Status: done
 Remainder of: `21-history-place.md` (gaps in its NOTES: "binary sizes not read (no reader)"; "`w` `[` `]` on the file
 pane not built (`whole_file` takes no whitespace option)"). 21's Signatures and Rulings stand.
 Amended 2026-09-27 (planner, spec-only pass) against scout `.scratch/m7-power-tools/scouts/21c.md` at `f47ce67d`:
@@ -98,20 +98,20 @@ View mapping: `Some(Ok(s))` → `old: s.old, new: s.new, sizes_failed: None`; `S
 Some("sizes not read")` rather than `none → none`, so a wiring bug shows.
 
 ## Acceptance (name the verifying test at tick time; red first where marked)
-- [ ] **graft-git** (real throwaway repos): `whole_file_ignoring_whitespace_marks_a_reindent_unchanged` (**red first**:
+- [x] **graft-git** (ticked: all six green in `crates/graft-git/tests/it/trace_whole.rs`; the reindent test observed red before `-w` was wired; plus `whole_file_ignoring_whitespace_of_a_whitespace_only_change_is_all_context`) (real throwaway repos): `whole_file_ignoring_whitespace_marks_a_reindent_unchanged` (**red first**:
   rows marked changed without the flag); `blob_sizes_reads_both_sides`; `blob_sizes_of_an_added_file_has_no_old`;
   `blob_sizes_of_a_deleted_file_has_no_new`; `blob_sizes_follows_a_rename`; `blob_sizes_on_a_root_commit`.
-- [ ] **graft:** `w_rereads_ignoring_whitespace_from_either_focus` (**red first**: no command sent; asserts the
+- [x] **graft:** (ticked: the six place tests in `update/place/tests/history.rs` + `a_text_commit_reads_no_sizes` in `tests/it/history_place.rs`, plus `a_binary_answer_without_sizes_says_so`. Red observed: compile-red on the old payload for the binary tests; `n_follows_the_changes_after_w` observed failing before the `w` key existed; the other `w` tests were not run red on their own) `w_rereads_ignoring_whitespace_from_either_focus` (**red first**: no command sent; asserts the
   `ReadWholeFile` carries `ignore_whitespace: true`, both focuses); `w_cancels_a_read_in_flight`; `w_holds_as_j_steps`;
   `n_follows_the_changes_after_w`; `a_binary_commit_shows_sizes` (**flipped** from 21's `None/None`; red first: fails
   on today's payload); `a_size_read_failure_is_drawn`; `a_text_commit_reads_no_sizes`.
-- [ ] **graft-ui:** snapshots `history_binary_140x40`, `history_binary_sizes_failed_140x40`; `history_bar_words_in_order`
+- [x] **graft-ui:** (ticked: snapshots `history_binary_140x40`, `history_binary_sizes_failed_140x40` accepted; `history_bar_words_in_order` green; full graft-ui suite green) snapshots `history_binary_140x40`, `history_binary_sizes_failed_140x40`; `history_bar_words_in_order`
   updated (`w whitespace` placed per Decided); floor test green. Colour unverified.
-- [ ] **Capture:** `docs/shots/m7/history-binary-140x40.txt` (producer `tests/it/history_place.rs`). Fixture: a binary
+- [x] **Capture:** (ticked: `capture_history_binary_140x40`; fixture 600 → 1 500 bytes, pane reads `binary · 600 B → 2 KB`) `docs/shots/m7/history-binary-140x40.txt` (producer `tests/it/history_place.rs`). Fixture: a binary
   file going from under 1 024 bytes to over, so both forms show. **Right:** file pane reads
   `binary · <n> B → <m> KB` with the exact string `size()` gives for the fixture's real byte counts, both counts
   named in the TESTING.md row; no line rows.
-- [ ] Keymap §2.17 row reads without `[` `]`; MAP.md (all three); TESTING.md row.
+- [x] Keymap §2.17 row reads without `[` `]`; MAP.md (all three); TESTING.md row. (ticked: doc edits, no test; checked by reading the diff)
 
 ## Touches (check each, report how)
 - **`whole_file`'s one caller** (history.rs:143): passes the flag. Check: build + 21's history tests green.
@@ -132,3 +132,14 @@ Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.m
 
 ## Size
 ~45k. One context.
+
+## NOTES (builder, 2026-09-28)
+- Scout used: `scouts/21c.md`; its lines held (runner's `ReadWholeFile` arm now :341-360 after 30j).
+- No compaction.
+- Cause vs symptom: feature work, no fix. Under `-w`, a whitespace-only change gives a header with no hunk; `whole_file` then falls back to the file as all context (git emits no rows, so this is the only way to show the file).
+- Gap for the conductor to file: **diff panes don't show ignore-whitespace is on (detail/blame/history)**.
+- Unify candidate: graft `view/resolver/whole_file.rs` `size_words` vs `graft_ui::history::size()`.
+- `blob_sizes`: a path holding a newline cannot be asked through `--batch-check`; the answer is then `missing` or an Err. Not tested.
+- The bar shows `w whitespace` only in the `on_file` form (no form offers `v`), though `w` works from either focus, per Decided.
+- Touches: `whole_file`'s caller (jobs/detail/history.rs): builds, history tests green. `ReadWholeFile` sites: place/history.rs builds it with the flag; write.rs `is_write` still false (`history_is_a_read_not_a_write`); the runner passes it through. `Product::WholeFile` sites: update/mod.rs:250 (the type follows), :861 and label.rs `(_)` patterns unchanged. **Outside the file list:** the `update/mod.rs` re-export gained `WholeFileAnswer` (jobs must name it); `update/place/tests/hints.rs` `history_rows_in_the_place_bar_table` gained the `w whitespace` row (it pins the bar). Detail `w` and blame `w` untouched; full suite green. 21b captures: none shows the `on_file` form (all four use the list form) and all are green unchanged.
+- Colour unverified (the dim failure line).
