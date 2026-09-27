@@ -1,6 +1,6 @@
 # 11a pick-refusals — 11's graft-ops part: `check_pick` refuses what it can't take; set-aside for a pick
 
-Status: partial — blocked: needs `crates/graft-ops/src/preview/kinds.rs` and `crates/graft-ops/src/apply.rs` (see NOTES)
+Status: done (2026-09-27; `preview/kinds.rs` and `apply.rs` granted by the conductor for the two calls)
 Build with: Opus. Two refusals plus an ADR-0045 extension (a new set-aside kind: undo must hold).
 Needs: none.
 Blocked by: none. Wave: see `.scratch/m7-power-tools/parallel-plan.md` (after 10b and 05: all three hold
@@ -20,14 +20,15 @@ Scout: 11's scout (ADR-0035), brief items 1 and 4. Item 1 answers KNOWN_GAPS :80
 11 names stand. 11 "Signatures", graft-ops block.
 
 ## Acceptance (tick 11's graft-ops box in 11's file, each test named)
-- [ ] The five graft-ops tests of 11 "Acceptance" (the set-aside one only if approved). **Not ticked:** all five exist
-      and pass, but the three refusal tests prove `check_commit`, not that the preview/apply refuse (blocked wiring).
-      11's box stays unticked.
-- [x] All set-aside tests green — `test(/pick|set_aside|put_back/)` 164/164, incl.
-      `picking_over_touched_unsaved_edits_sets_them_aside`, `a_pick_put_back_that_clashes_stops_as_a_clash`.
+- [x] The five graft-ops tests of 11 "Acceptance", ticked in 11's file. Preview shut and `apply` refused (no journal
+      line, repo and stash list unchanged) on each refusal: `picking_head_is_refused_in_the_preview_and_in_apply`,
+      `picking_an_ancestor_is_refused_in_the_preview_and_in_apply`,
+      `picking_a_merge_is_refused_in_the_preview_and_in_apply` (all three red first: the preview drew a plan).
+      Set-aside: `picking_over_touched_unsaved_edits_sets_them_aside`, `a_pick_put_back_that_clashes_stops_as_a_clash`.
+- [x] All set-aside tests green — `test(/pick|set_aside|put_back/)` 164/164 (before the wiring); full run below.
 - [x] NOTES: KNOWN_GAPS :806 answered with its line (below). ADR-0045 amendment rows owed (the conductor). MAP.md
       (graft-ops) updated.
-- [x] Gates workspace-wide: fmt, clippy `-D warnings`, nextest 4457/4457, `cargo test --doc`.
+- [x] Gates workspace-wide: fmt, clippy `-D warnings`, nextest 4462/4462, `cargo test --doc`.
 
 ## Size
 ~35k.
@@ -38,7 +39,28 @@ Scout: 11's scout (ADR-0035), brief items 1 and 4. Item 1 answers KNOWN_GAPS :80
 `sets_aside` `operation.rs:1261`, pick preview `preview/kinds.rs:295`, `put_back::forecast` `preview/put_back.rs:53`.
 Scout: `.scratch/m7-power-tools/scouts/11.md` used (items 1 and 4); its line numbers were pre-10b, re-read above.
 
-**Why blocked.** `check` reads no object (`history.rs` `RevertParams::parents` doc: "`check` reads no object"), so
+**Round 2 (after the grant).** Wired: `preview/kinds.rs` `cherry_pick` asks `check_commit` from the
+`commits_between` read it already made (the `"is already here"` plan is gone — it refuses now); `apply.rs`
+`guard_pick`, after `guard_repush`, before `guard_in_the_way` and the set-aside, same read, same words
+(`ApplyError::Refused`; a read failure is `FactsError::Ancestry`, as the re-push). So the round-1 gotcha below is
+closed: a pick of `HEAD`/an ancestor over edits refuses before anything is set aside
+(`picking_head_is_refused_in_the_preview_and_in_apply` runs with an unsaved edit).
+
+**Pick of an ancestor, git alone — verified** (`git_alone_stops_on_a_pick_of_an_ancestor`, git 2.54.0 Apple
+Git-157): `cherry-pick --no-edit <ancestor>` exits non-zero, says "…empty…", makes no commit, and leaves
+`CHERRY_PICK_HEAD` (a cherry-pick in progress). That is what the refusal now spares him. Other git versions: not run.
+
+**"Every changed tracked file set aside" — what he sees.** The preview's set-aside line counts every changed tracked
+file (`SetAside { files }`, `operation.rs` `sets_aside`), not only the ones the pick changes; untracked files are not
+counted and never move. After `y`: every edit is back in its own file, staged part still staged — the pick's
+files merged with the picked change, the others byte for byte. The line that restores them all:
+`apply/set_aside/put_back.rs:66` `apply(ctx, stash, true, …)` = `git stash apply --index S`, where `S` is
+`git stash create` of the whole tree (`apply/set_aside.rs:80-84`) — one stash of every tracked change, applied back
+whole. A clash is only possible on a file the pick changed (the others differ from nothing). Tested:
+`edits_the_pick_leaves_alone_are_set_aside_and_come_back_as_they_were` (staged + unstaged edit to a file the pick
+doesn't touch: bytes, index diff and status as before; `u` exact).
+
+**Round 1 — why it was blocked.** `check` reads no object (`history.rs` `RevertParams::parents` doc: "`check` reads no object"), so
 `check_pick` cannot see "HEAD or an ancestor" or "a merge". The codebase's pattern for a refusal needing a read is the
 re-push: `preview/kinds.rs:637` refuses in the preview, `apply.rs:438` `guard_repush` asks again before the `Pending`
 line. Adding fields to `PickParams` would break graft's struct literals (`update/drag.rs:286`,
@@ -77,8 +99,7 @@ all; `plan_pick` (`history.rs:774`) never passes `-m`, so git's own refusal woul
   `merge_tree_step`, then `commit-tree`; a pick that may stop ⇒ `NotChecked`). `forecast` split (`landing_of`) for
   clippy's line cap.
 - **Deviation:** the pick wraps any changed tracked file (as rebase does), not only "the paths the pick touches":
-  `sets_aside` reads no commit. An edit to a file the pick leaves alone is **not tested for the pick**; the wrap is
-  the shared one rebase's round-trips (`set_aside.rs`) cover.
+  `sets_aside` reads no commit. What he sees, and the test: "Round 2" above.
 
 **Tests (named):**
 - `picking_head_is_refused_already_on_branch`, `picking_an_ancestor_is_refused_already_on_branch`,

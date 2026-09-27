@@ -49,12 +49,14 @@ isn't approved: unsaved edits the pick touches refuse with `c commit  S stash` w
 ```
 
 ## Acceptance
-- [ ] **graft-ops:**
-  - `picking_head_is_refused_already_on_branch` (red first);
-  - `picking_an_ancestor_is_refused_already_on_branch`;
-  - `picking_a_merge_is_refused` (red first);
-  - `picking_over_touched_unsaved_edits_sets_them_aside` (if approved);
-  - `a_pick_put_back_that_clashes_stops_as_a_clash`.
+- [x] **graft-ops:** (11a, 2026-09-27; words at `check_commit` in `operation/history/tests.rs`, preview shut and
+  `apply` refused with nothing written in `tests/it/cherry_pick.rs`)
+  - `picking_head_is_refused_already_on_branch` (red first) + `picking_head_is_refused_in_the_preview_and_in_apply`;
+  - `picking_an_ancestor_is_refused_already_on_branch` +
+    `picking_an_ancestor_is_refused_in_the_preview_and_in_apply`;
+  - `picking_a_merge_is_refused` (red first) + `picking_a_merge_is_refused_in_the_preview_and_in_apply`;
+  - `picking_over_touched_unsaved_edits_sets_them_aside` (approved; `u`/`U` exact);
+  - `a_pick_put_back_that_clashes_stops_as_a_clash` (`u` exact).
 - [ ] **App:**
   - `o_opens_the_take_preview` (red first);
   - `o_on_the_uncommitted_row_is_refused_in_words`;
