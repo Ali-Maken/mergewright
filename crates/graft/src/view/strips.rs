@@ -363,6 +363,12 @@ impl Painter<'_> {
                 .filter_map(|&column| self.fold.drawn(column))
                 .collect()
         });
+        // A commit only a stash reaches is dimmed as its text row is
+        // (`view::rows::mark_stash_only`, m7-power-tools/16). The `□` shape
+        // is the text tiers' alone: no new ring.
+        if self.state.stash_only.entry(row.commit.id).is_some() {
+            emphasis = Emphasis::Dimmed;
+        }
         let drawn = self.fold.view(row);
         PaintedRow {
             stubs: stubs_of(&drawn),

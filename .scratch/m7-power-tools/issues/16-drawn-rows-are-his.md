@@ -1,6 +1,6 @@
 # drawn-rows-are-his — stash internals leave the graph, a commit only a stash reaches is marked as such, and stash commits lose `evil merge: unchecked`
 
-Status: partial — everything but the pixel tier's mark (blocked: needs `crates/graft/src/view/strips.rs`) and the release perf box (conductor runs it)
+Status: done except the release perf box (the conductor's)
 Blocked by: 16a (`Inclusion::with_stashes`), 14a (`only_in_stash`)
 Crates: graft (the history view's inclusion, a new read job, the row view, `view::radar`), graft-ui
 (`graph_column::NodeKind`, `graph_screen::badges`). **Not** graft-ops, not graft-graph (16a holds it).
@@ -28,7 +28,7 @@ Needs: `graft_graph::Inclusion::with_stashes` (16a); `graft_git::history_reads::
   the graph (16a's rule).
 - **Only in a stash:** after each refs read with ≥ 1 stash, a job runs `only_in_stash(repo, stashes, cap, stop)`
   (newest first, `cap` = 500). While its answer is current, a drawn row whose commit is in it:
-  - node `◇` (new `NodeKind::StashOnly`), row paint `RowPaint::Dimmed`;
+  - node `□` (new `NodeKind::StashOnly`), row paint `RowPaint::Dimmed`; **glyph changed from `◇` to `□`, accepted by the conductor 2026-09-27**: `◇` is `NodeKind::Root` (`graft-ui/src/graph_column/mod.rs:123`), and `□` is the hollow form of the stash's `■`;
   - badge `only in stash@{n}` (new `BadgeKind::OnlyInStash(n)`), last in its badge list.
   - Pixel tier: the row's node draws with `Emphasis::Dimmed`; the `◇` shape is the text tiers' only (no new ring).
   - ASCII tier: `*` as every node; the badge words carry it.
@@ -105,22 +105,31 @@ Medium (~50k).
 
 Scout: 16's own (no second, as the ticket says). No compaction.
 
-**`◇` → `□` (spec deviation, needs the conductor's OK).** `◇` is `NodeKind::Root`'s glyph
+**`◇` → `□` — accepted by the conductor 2026-09-27.** `◇` is `NodeKind::Root`'s glyph
 (`crates/graft-ui/src/graph_column/mod.rs:123`, drawn in dozens of captures, e.g. `docs/shots/38-list.txt:35`);
 the ticket's grep covered DESIGN, `docs/design/` and the MAPs, not the code. With `◇` the existing
 `graph_column::tests::special_commits_differ_in_shape` fails (`left: 6, right: 7` — two kinds, one shape). Used
 `□` (U+25A1, unused anywhere in `crates/`, DESIGN, `docs/design/`): the stash's `■` emptied. One line to change
 (`graph_column/mod.rs`, `NodeKind::glyph`) plus the test name and captures if another glyph is wanted.
 
-**Pixel tier — not built, blocked: needs `crates/graft/src/view/strips.rs`** (not in 16's `Files:`). The pixel rows
-are painted by `view::strips::Painter::row` (`strips.rs:340-374`), which reads neither `stash_only` nor the text
-rows; a stash-only commit draws as an ordinary commit there. What it needs: in `Painter::row`, `emphasis =
-Emphasis::Dimmed` when `state.stash_only.entry(row.commit.id).is_some()`. Strip cache: `layout_hash`
-(`graft-graph/src/raster/cache.rs:295-298`) hashes the row's `emphasis` when no thread is in play, so a mark landing
-later changes the hash and the strip re-rasterises — no flush needed. Under a thread (any selection) the rasteriser
-draws per-column alpha and ignores row emphasis (same lines), so the dimming would not show there at all: the
-ticket's "pixel tier draws `Emphasis::Dimmed`" is invisible whenever a row is selected. Question for the design:
-is that enough? Untested either way.
+**Pixel tier — built** (strips.rs granted by the conductor 2026-09-27). `view::strips::Painter::row` sets
+`Emphasis::Dimmed` for a row in `AppState::stash_only`; test `crates/graft/src/view/strips/tests.rs::a_stash_only_commit_is_dimmed_in_its_strip`,
+red first: `left: Normal, right: Dimmed` (strips/tests.rs:281). Strip cache: `layout_hash` hashes the row's
+`emphasis` when no thread is in play (`graft-graph/src/raster/cache.rs:295-298`), so a mark landing after a strip was
+rasterised changes the hash and the strip re-rasterises. No flush needed. The test checks the painted row, not pixels.
+
+**Question: row dimming never shows under a selection. This is pre-existing, not something 16 changed.**
+`graft-graph/src/raster.rs:130-136` `RasterRow::alpha_at`: with a thread, a column is `1.0` on the thread or
+`OFF_THREAD_ALPHA`, and `self.emphasis` is read only when `thread` is `None`. The same is true of the rail
+(`raster/pen.rs:254-257`) and of Focus mode's `Dimmed`, which `Painter::row` sets only *inside* a thread
+(`strips.rs:355-358`). So at the pixel tier, with a selection, a stash-only row reads as dim only when its lane is off
+the cursor's thread (which is usual, since a stash's base is rarely on it). graft-graph is outside 16's set. Is that
+enough, or should `alpha_at` take the lower of the two alphas? That is a graft-graph design question.
+
+**Question: are older stash entries meant to be rows?** `which_stash_entries_are_drawn` shows `stash@{1}` is not a
+row. 16's spec does not require it: "`which_stash_entries_are_drawn` — two stashes; record in NOTES whether
+`stash@{1}` is a row. Everything below holds either way: marks only apply to rows that are drawn." (ticket, Decided).
+So no box here. Whether older entries should be drawn is a question for the design.
 
 **What the build does.**
 - Inclusion: `update::keys::view_change::with_stash_entries` (next to `H`) gives the view

@@ -103,7 +103,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 
 ## graph_column
 - `CELLS_PER_LANE` (const) — cells per lane: its own, then a gap.
-- `NodeKind` (enum) — node shape: commit, merge, root, HEAD, stash, uncommitted, `StashOnly` (`□`, a commit only a stash reaches — the stash's `■` emptied; not `◇`, which is the root's; m7-power-tools/16), `Absent`.
+- `NodeKind` (enum) — node shape: commit, merge, root, HEAD, stash, uncommitted, `StashOnly` (`□`, a commit only a stash reaches — the hollow form of the stash's `■`; not `◇`, which is the root's; accepted by the conductor 2026-09-27, m7-power-tools/16), `Absent`.
 - `NodeKind::Absent` (variant) — a blank where the node goes, for a drawn row that is not a commit (the Ghost Preview's `after rebase` label). Real lanes passing through it keep their glyph; nothing on the row claims to be a commit.
 - `NodeKind::of` (fn) — commit/merge/root from a row's parents.
 - `NodeKind::glyph` (fn) — the node's character.
