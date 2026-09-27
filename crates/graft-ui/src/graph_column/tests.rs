@@ -129,11 +129,31 @@ fn special_commits_differ_in_shape() {
         NodeKind::Head,
         NodeKind::Stash,
         NodeKind::Uncommitted,
+        NodeKind::StashOnly,
     ];
     let mut glyphs: Vec<char> = kinds.iter().map(|kind| kind.glyph()).collect();
     glyphs.sort_unstable();
     glyphs.dedup();
     assert_eq!(glyphs.len(), kinds.len());
+}
+
+/// m7-power-tools/16: a commit only a stash reaches draws a hollow square —
+/// the stash's `■`, emptied: kin to the stash, not a commit any branch has.
+/// Not the ticket's `◇`, which is the root's (`NodeKind::Root`; see
+/// `special_commits_differ_in_shape`). At the ASCII tier it is `*`, as every
+/// node is: the row's `only in stash@{n}` badge carries it there.
+#[test]
+fn stash_only_node_draws_a_hollow_square() {
+    let rows = reuse_rows();
+    let line = GraphLine {
+        node: NodeKind::StashOnly,
+        ..GraphLine::plain(&rows[1])
+    };
+    let theme = dark(ColorDepth::TrueColor);
+    let buf = render(std::slice::from_ref(&line), &theme, 4);
+    assert_eq!(text(&buf, 0), "│ □ ");
+    let buf = render_ascii(&[line], &theme, 4);
+    assert_eq!(text(&buf, 0), "| * ");
 }
 
 #[test]

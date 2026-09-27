@@ -16,15 +16,15 @@
 #  - Nowhere `edits in stash@{0}` alone, which would say the edits are
 #    only in the stash.
 
- graft /code/api  7 commits
-◌          Uncommitted changes (1 unstaged)
-  ■─╮   ▏  [stash@{0}] On main: graft: your edits, set aside for c… 3m   b284137
-  │ ●      index on main: 330fea5 add f                             3m   35a5e27
-  │ │ ◆  ⓘ [◆ fix] fix changes line 7                               4m   f2e2ada
-●─┴─┴─╯    [main] add f                                             5m   330fea5
-●          Correct the note                                         1y   a82960b
-●          Add the first note                                       1y   fadcfb3
-◇          Add a readme                                             1y   64ded19
+ graft /code/api  6 commits
+◌        Uncommitted changes (1 unstaged)
+  ■   ▏  [stash@{0}] On main: graft: your edits, set aside for che… 3m   b284137
+  │ ◆  ⓘ [◆ fix] fix changes line 7                                 4m   f2e2ada
+●─┴─╯    [main] add f                                               5m   330fea5
+●        Correct the note                                           1y   a82960b
+●        Add the first note                                         1y   fadcfb3
+◇        Add a readme                                               1y   64ded19
+
 
 
 

@@ -62,6 +62,22 @@ impl ViewChange {
     }
 }
 
+/// `view` knowing `stashes` as the stash entries' own commits
+/// (`Inclusion::with_stashes`, m7-power-tools/16), or `None` when it already
+/// does. Each entry then keeps only its first parent, so its index and
+/// untracked commits leave the graph. Set beside `H`'s `hidden_stashes`
+/// because both are "which stash is drawn how"; called whenever the refs
+/// (and so the stash list) are read, and when a walk starts.
+pub(in crate::update) fn with_stash_entries(view: &View, stashes: &[Oid]) -> Option<View> {
+    let entries: std::collections::BTreeSet<Oid> = stashes.iter().copied().collect();
+    if view.inclusion.stashes() == &entries {
+        return None;
+    }
+    let mut changed = view.clone();
+    changed.inclusion = changed.inclusion.with_stashes(entries);
+    Some(changed)
+}
+
 /// The view change a key asks for, if it is one.
 pub(super) fn view_change(key: KeyPress) -> Option<ViewChange> {
     if key.modifiers.control || key.modifiers.alt {

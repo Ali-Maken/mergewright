@@ -5,9 +5,9 @@ use graft_graph::Ancestry;
 use graft_graph::fold::Keep;
 use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path};
-use graft_ui::graph_column::RowPaint;
+use graft_ui::graph_column::{NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, OrderNotice,
+    Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, LiveC, OrderNotice,
     ProblemLine, SHA_WIDTH, SearchLine, TabWord, WalkView, short_sha,
 };
 use std::collections::BTreeSet;
@@ -55,7 +55,8 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 
     let walk = walk_view(state, history);
     let thread = thread(history);
-    let live = visible_rows(state, history, thread.as_ref(), now_seconds);
+    let mut live = visible_rows(state, history, thread.as_ref(), now_seconds);
+    mark_stash_only(state, &mut live);
     let compaction = compaction(state, history, thread.as_ref(), &live);
     let banner_op = crate::update::banner::banner_view(state);
     let (rows, reveal) = rows_for_frame(state, history, live, now_seconds);
@@ -114,6 +115,32 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
                 graft_ops::mistake_radar::probes::EvilVerdict::Evil { .. }
             )
         )) && state.radar_column_seen.get(),
+    }
+}
+
+/// Marks each drawn row only a stash reaches (m7-power-tools/16, note
+/// "Pass 2a" R7): node `□`, the row dimmed, `only in stash@{n}` last among
+/// its badges — last, so `update::geometry::badge_at`, which counts refs
+/// from the front, never takes it for one. The cursor's highlight and a
+/// drag's paint win over the dimming: the row is still one the cursor can
+/// stand on. The pixel tier reads none of this (`view::strips` paints its
+/// own rows); see the ticket's NOTES.
+fn mark_stash_only(state: &AppState, rows: &mut [GraphEntry<'_>]) {
+    if state.stash_only.commits.is_empty() {
+        return;
+    }
+    for entry in rows {
+        let Some(n) = state.stash_only.entry(entry.line.row.commit.id) else {
+            continue;
+        };
+        entry.line.node = NodeKind::StashOnly;
+        if entry.line.paint == RowPaint::Normal {
+            entry.line.paint = RowPaint::Dimmed;
+        }
+        entry.badges.push(Badge {
+            name: sanitize_line(""),
+            kind: BadgeKind::OnlyInStash(n),
+        });
     }
 }
 

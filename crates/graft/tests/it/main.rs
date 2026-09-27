@@ -59,6 +59,7 @@ mod resolver;
 mod seam_rule;
 mod stash_by_key;
 mod stash_clash;
+mod stash_in_history;
 mod status_under_a_box;
 mod stop_ladder_readers;
 mod two_boxes_over_content;

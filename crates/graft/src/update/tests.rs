@@ -328,6 +328,102 @@ fn capital_h_hides_the_stash_and_shows_it_again() {
     assert_eq!(shown.history.map(|h| h.view), Some(View::default()));
 }
 
+/// Refs listing one stash entry (`stash@{0}` at `stash`), `HEAD` detached
+/// on it — enough for `refs.stashes()`.
+fn refs_with_a_stash(stash: Oid) -> crate::refs::RefBadges {
+    let name = graft_core::ref_name::RefName::new("refs/stash").expect("valid");
+    crate::refs::badges(
+        &[(name, stash)],
+        &graft_git::repo::HeadState::Detached(stash),
+        &std::collections::HashMap::new(),
+        &[(stash, 0)],
+        |_, _| Err("no upstreams here".to_owned()),
+    )
+    .expect("badges")
+}
+
+/// m7-power-tools/16: a refs read with no stash asks nothing new — not the
+/// stash-only read, not a view change — and drops any marks held.
+#[test]
+fn a_refs_read_with_no_stash_queues_nothing_new() {
+    let mut state = AppState::default();
+    state.stash_only.commits =
+        Arc::new([(Oid::from_bytes(&[4; Oid::SHA1_BYTES]).expect("an oid"), 0)].into());
+    let (next, commands) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(3),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadStashOnly(..) | Command::ShowRows(..))),
+        "{commands:?}"
+    );
+    assert_eq!(next.stash_only, crate::update::StashOnlyMarks::default());
+}
+
+/// m7-power-tools/16: a refs read listing a stash asks which commits only
+/// it reaches, under a fresh id; the view learns the entry.
+#[test]
+fn a_refs_read_with_a_stash_asks_the_stash_only_read_and_tells_the_view() {
+    let id = JobId::new(7);
+    let (state, _) = merge_on_screen(id, 0);
+    let stash = Oid::from_bytes(&[9; Oid::SHA1_BYTES]).expect("an oid");
+    let (next, commands) = update(
+        &state,
+        AppEvent::Produced(JobId::new(3), Product::Refs(Ok(refs_with_a_stash(stash)))),
+    );
+    let asked: Vec<_> = commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::ReadStashOnly(job, stashes) => Some((*job, stashes.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(asked.len(), 1, "{commands:?}");
+    assert_eq!(asked[0].1, vec![stash]);
+    assert_eq!(next.stash_only.job, Some(asked[0].0));
+    assert_eq!(asked_view(&commands).inclusion.stashes(), &[stash].into());
+}
+
+/// m7-power-tools/16: the stash-only read failing unmarks every row and
+/// says so on the problem line (rule 3); an answer to an older read is
+/// dropped, whatever it says.
+#[test]
+fn a_failed_stash_only_read_says_so() {
+    let marked = Oid::from_bytes(&[4; Oid::SHA1_BYTES]).expect("an oid");
+    let mut state = AppState::default();
+    state.stash_only.job = Some(JobId::new(12));
+    state.stash_only.commits = Arc::new([(marked, 0)].into());
+
+    let (older_answer, _) = update(
+        &state,
+        AppEvent::Produced(JobId::new(11), Product::StashOnly(Err("old".to_owned()))),
+    );
+    assert_eq!(
+        older_answer.stash_only, state.stash_only,
+        "an older read's answer is dropped"
+    );
+    assert_eq!(older_answer.status, state.status);
+
+    let (failed, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(12),
+            Product::StashOnly(Err("git died".to_owned())),
+        ),
+    );
+    assert!(failed.stash_only.commits.is_empty(), "no row stays marked");
+    assert_eq!(failed.stash_only.job, None);
+    assert_eq!(
+        failed.status,
+        Status::Failed("couldn't read which commits only a stash holds: git died".to_owned())
+    );
+}
+
 #[test]
 fn plus_expands_and_collapses_the_lanes_without_touching_the_walk() {
     let id = JobId::new(3);
@@ -1210,6 +1306,7 @@ fn every_field_spelled_out() -> AppState {
         search: None,
         on_working_tree: false,
         compare_base: None,
+        stash_only: crate::update::StashOnlyMarks::default(),
         context_menu: None,
         radar: crate::update::radar::RadarState::default(),
         radar_column_seen: std::cell::Cell::new(false),

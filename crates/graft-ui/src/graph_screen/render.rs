@@ -344,7 +344,8 @@ impl GraphScreen<'_> {
             BadgeKind::Remote { identity } => Style::new().fg(color(self.theme.branch(*identity))),
             BadgeKind::Tag => foreground(self.theme, Token::Warning),
             BadgeKind::Head => foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
-            BadgeKind::Stash => foreground(self.theme, Token::Info),
+            // What only a stash holds reads in the stash's colour.
+            BadgeKind::Stash | BadgeKind::OnlyInStash(_) => foreground(self.theme, Token::Info),
             BadgeKind::CompareBase => foreground(self.theme, Token::Accent),
         }
     }

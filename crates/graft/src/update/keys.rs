@@ -24,7 +24,7 @@ mod refresh;
 mod tab_words_tests;
 #[cfg(test)]
 mod tests;
-mod view_change;
+pub(in crate::update) mod view_change;
 
 pub(in crate::update) use acknowledge::acknowledge;
 use acknowledge::dismiss_unseen;

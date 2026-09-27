@@ -60,7 +60,7 @@ pub(crate) use history::walk_is_reading;
 pub use relaunch::LiveOrigin;
 pub use state::{
     AppState, Banner, CHROME_ROWS, ClashState, GraphOverlay, Harness, HeadLanding, Quit, RefsRead,
-    Screen, Size, Status, Stop,
+    Screen, Size, StashOnlyMarks, Status, Stop,
 };
 
 use graft_core::event::{Event, KeyPress};
@@ -244,6 +244,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             _,
             Product::RadarContext(_) | Product::ForcePushProbe(..) | Product::DuplicatesProbe(_),
         ) => radar::radar_event(next, event),
+        AppEvent::Produced(id, Product::StashOnly(answer)) => {
+            stash_only_answered(next, id, answer);
+        }
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
         }
@@ -482,6 +485,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::EvilProbe { .. }
         | Task::ForcePushProbe { .. }
         | Task::DuplicatesProbe { .. }
+        | Task::StashOnly
         | Task::Map
         | Task::Operate
         | Task::Undo
@@ -628,6 +632,11 @@ fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_c
         history.view = previous.view.clone();
         history.reanchor = previous.selected().map(|row| row.commit.id);
     }
+    // The refs may have landed before this walk: its first request already
+    // knows the stash entries, so their internals are never drawn at all.
+    if let Some(view) = keys::view_change::with_stash_entries(&history.view, &stash_entries(next)) {
+        history.view = view;
+    }
     if let Some(request) = history.show(next.graph_rows()) {
         commands.push(Command::ShowRows(id, request));
     }
@@ -725,6 +734,63 @@ fn working_tree_answered(
     }
 }
 
+/// Every stash entry's own commit, `stash@{0}` first, as the refs last
+/// read list them; empty before they are read.
+fn stash_entries(state: &AppState) -> Vec<graft_core::oid::Oid> {
+    state.refs.as_deref().map_or_else(Vec::new, |refs| {
+        refs.stashes().iter().map(|&(commit, _)| commit).collect()
+    })
+}
+
+/// The refs were read (m7-power-tools/16): the history view learns the stash
+/// entries, so each keeps only its first parent, and — with at least one —
+/// a read asks which commits only a stash reaches. With none, the marks go
+/// at once and nothing is asked.
+fn stash_entries_read(next: &mut AppState, commands: &mut Vec<Command>) {
+    let stashes = stash_entries(next);
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut()
+        && let Some(view) = keys::view_change::with_stash_entries(&history.view, &stashes)
+        && let Some(request) = history.change_view(view, height)
+        && let Some(walk) = next.awaiting
+    {
+        commands.push(Command::ShowRows(walk, request));
+    }
+    if stashes.is_empty() {
+        next.stash_only = StashOnlyMarks::default();
+        return;
+    }
+    let id = next.local_jobs.next_id();
+    next.stash_only.job = Some(id);
+    commands.push(Command::ReadStashOnly(id, stashes));
+}
+
+/// Which commits only a stash reaches came back. An answer to any read but
+/// the newest is dropped: the refs moved since it was asked. A failure
+/// unmarks every row and says why on the problem line (rule 3); `capped` is
+/// used as far as it goes.
+fn stash_only_answered(
+    next: &mut AppState,
+    id: graft_core::job::JobId,
+    answer: Result<std::sync::Arc<graft_git::history_reads::StashOnly>, String>,
+) {
+    if next.stash_only.job != Some(id) {
+        return;
+    }
+    next.stash_only.job = None;
+    match answer {
+        Ok(found) => {
+            next.stash_only.commits = std::sync::Arc::new(found.commits.iter().copied().collect());
+        }
+        Err(why) => {
+            next.stash_only.commits = std::sync::Arc::default();
+            next.status = Status::Failed(format!(
+                "couldn't read which commits only a stash holds: {why}"
+            ));
+        }
+    }
+}
+
 /// A fact about the repository beside the graph arrived: the system git
 /// check, the refs, or the working tree counts. `answer` routes only those.
 fn took_fact(
@@ -747,6 +813,7 @@ fn took_fact(
             let mut local_jobs = next.local_jobs;
             clash::refresh_and_land(next, commands, &mut || local_jobs.next_id());
             next.local_jobs = local_jobs;
+            stash_entries_read(next, commands);
         }
         Product::Refs(Err(failure)) => {
             // The graph still draws without badges; the reason goes on the
@@ -777,6 +844,7 @@ fn took_fact(
         | Product::EvilProbe(..)
         | Product::ForcePushProbe(..)
         | Product::DuplicatesProbe(_)
+        | Product::StashOnly(_)
         | Product::Map(_)
         | Product::Operated(_)
         | Product::Undone(_)

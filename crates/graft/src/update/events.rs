@@ -157,6 +157,9 @@ pub enum Task {
         /// How many commits back the probe looked.
         window: u32,
     },
+    /// Which commits only a stash reaches (`jobs::stash_only`,
+    /// m7-power-tools/16).
+    StashOnly,
     /// The Map view's per-branch bucket counts (`crate::map`, `M`).
     Map,
     /// One working-tree write (stage, unstage, discard, …), under an id
@@ -284,6 +287,10 @@ pub enum Product {
     ),
     /// The duplicate-commit probe's groups, or why it could not run.
     DuplicatesProbe(Result<std::sync::Arc<graft_ops::mistake_radar::probes::Duplicates>, String>),
+    /// The commits only a stash reaches, each with the newest entry `n`
+    /// (`stash@{n}`) reaching it, or why they could not be read
+    /// (m7-power-tools/16).
+    StashOnly(Result<std::sync::Arc<graft_git::history_reads::StashOnly>, String>),
     /// The Map view's per-branch bucket counts, or why it could not be built
     /// (`crate::map`). A `Stop` firing mid-walk is one more line here, the
     /// same as any other failure — not folded into a silent cancellation.

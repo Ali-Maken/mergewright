@@ -175,7 +175,13 @@ pub fn radar_lines_for(
         lines.insert(0, RadarLine::NotChecked(sanitize_line(why)));
     }
     let context_ready = matches!(state.radar.context, Loading::Ready(_));
+    // A stash commit is a merge by construction, and the probe never runs
+    // on one (`update::selection`): no evil-merge line, not even
+    // "unchecked" (m7-power-tools/16). `is_stash` knows the entries up to
+    // `graft_git::stash::MAX_ENTRIES`; one past that still gets the line.
+    let is_stash = state.refs.as_deref().is_some_and(|refs| refs.is_stash(id));
     if parents.len() >= 2
+        && !is_stash
         && state
             .radar
             .policy
@@ -535,6 +541,43 @@ mod tests {
             line,
             RadarLine::Finding { title, .. } if title.as_ref() == "evil merge"
         )));
+    }
+
+    /// m7-power-tools/16: a stash commit is a merge whose tree differs from
+    /// its parents by construction; the probe never runs on one
+    /// (`update::selection`), so "evil merge: unchecked" would be a line
+    /// that can never be answered. Every entry, not just the newest.
+    #[test]
+    fn a_stash_commit_has_no_evil_merge_line() {
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        let (newest, older) = (oid(8), oid(9));
+        let stash = graft_core::ref_name::RefName::new("refs/stash").expect("valid");
+        let refs = crate::refs::badges(
+            &[(ref_name("main"), oid(1)), (stash, newest)],
+            &HeadState::Branch(ref_name("main")),
+            &HashMap::new(),
+            &[(newest, 0), (older, 1)],
+            |_, _| unreachable!("no upstream configured, nothing to count"),
+        )
+        .expect("plain data with no upstream to count always builds");
+        state.refs = Some(std::sync::Arc::new(refs));
+        for entry in [newest, older] {
+            let lines = radar_lines_for(&state, entry, &[oid(1), oid(2)], "WIP on main");
+            assert!(
+                lines.iter().all(|line| !matches!(
+                    line,
+                    RadarLine::EvilUnchecked
+                        | RadarLine::EvilChecking
+                        | RadarLine::EvilClean
+                        | RadarLine::EvilNotCheckable(_)
+                        | RadarLine::EvilResolved { .. }
+                )),
+                "{lines:?}"
+            );
+        }
+        // A merge that is no stash still says it was not checked.
+        let lines = radar_lines_for(&state, oid(7), &[oid(1), oid(2)], "merge");
+        assert!(matches!(lines.last(), Some(RadarLine::EvilUnchecked)));
     }
 
     /// The verdict belongs to the commit the pane is open on, and to no
