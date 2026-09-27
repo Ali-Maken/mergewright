@@ -102,10 +102,18 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         // for any row it built with a marker, so reading it here also
         // covers this frame's own findings, not just earlier ones
         // (`AppState::radar_column_seen`, m2-details-and-diffs/13b).
-        marker_column: matches!(
+        // Before the context is `Ready` the only marker a row can carry is
+        // a found evil merge — its probe reads no context — so that one
+        // opens the column too (m7-power-tools/33c).
+        marker_column: (matches!(
             state.radar.context,
             crate::update::detail::Loading::Ready(_)
-        ) && state.radar_column_seen.get(),
+        ) || matches!(
+            state.detail.evil,
+            crate::update::detail::Loading::Ready(
+                graft_ops::mistake_radar::probes::EvilVerdict::Evil { .. }
+            )
+        )) && state.radar_column_seen.get(),
     }
 }
 

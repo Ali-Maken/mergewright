@@ -65,17 +65,28 @@ pub fn remote_names(state: &AppState) -> Vec<&str> {
 }
 
 /// Every finding at `id`: `classify_commit`'s answer for this commit, plus
-/// any `classify_refs` finding that lands on it. Empty until
-/// `state.radar.context` is `Ready` — no marker before the context that
-/// makes a foxtrot or a backward merge tellable from an ordinary one has
-/// landed.
+/// any `classify_refs` finding that lands on it. Only the evil-merge
+/// verdict ignores the context — its probe reads none, so a found evil
+/// merge shows on `Idle`/`Pending`/`Failed` too (m7-power-tools/33c).
+/// Everything else waits for `state.radar.context` to be `Ready` — no
+/// marker before the context that makes a foxtrot or a backward merge
+/// tellable from an ordinary one has landed.
 ///
 /// **Extension point**: `radar-probe-evil-merge`, `-force-push` and
 /// `-duplicates` each add one more source here.
 #[must_use]
 pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -> Vec<Finding> {
+    // The evil-merge probe (`m2-details-and-diffs/14`) answers for the open
+    // commit only, so its verdict counts only when `id` is that commit. It
+    // needs no context, so it is read before the context gate below.
+    let mut evil = Vec::new();
+    if let Loading::Ready(verdict @ EvilVerdict::Evil { .. }) = &state.detail.evil
+        && state.detail.evil_at == Some(id)
+    {
+        evil.extend(finding_from_evil(id, verdict, &state.radar.policy));
+    }
     let Loading::Ready(context) = &state.radar.context else {
-        return Vec::new();
+        return evil;
     };
     let remotes = remote_names(state);
     let repo = repo_facts(state, context, &remotes);
@@ -105,13 +116,7 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
             .flatten()
             .cloned(),
     );
-    // The evil-merge probe (`m2-details-and-diffs/14`) answers for the open
-    // commit only, so its verdict counts only when `id` is that commit.
-    if let Loading::Ready(verdict @ EvilVerdict::Evil { .. }) = &state.detail.evil
-        && state.detail.evil_at == Some(id)
-    {
-        findings.extend(finding_from_evil(id, verdict, &state.radar.policy));
-    }
+    findings.extend(evil);
     // A force-push verdict belongs to a branch and shows at the tip that
     // branch stands on; matching a verdict to a tip is another walk over the
     // refs, so it happens in the same rebuild.
@@ -144,10 +149,10 @@ pub fn marker_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -> 
 }
 
 /// The detail pane's radar lines for this commit: one per finding, plus an
-/// `EvilUnchecked` line when this is a merge, the evil-merge kind is on, and
-/// the context is ready — the seam `radar-probe-evil-merge` looks at its own
-/// `Loading<EvilVerdict>` first and only falls back to this line when that
-/// is `Idle`.
+/// `EvilUnchecked` line when this is a merge and the evil-merge kind is on,
+/// whatever the context (the probe reads none, m7-power-tools/33c) — the
+/// seam `radar-probe-evil-merge` looks at its own `Loading<EvilVerdict>`
+/// first and only falls back to this line when that is `Idle`.
 // Called by `view::detail::commit_header` (`m2-details-and-diffs/13c`).
 #[must_use]
 pub fn radar_lines_for(
@@ -176,7 +181,6 @@ pub fn radar_lines_for(
             .policy
             .severity(MistakeRadarKind::EvilMerge)
             .is_some()
-        && context_ready
     {
         let verdict = if state.detail.evil_at == Some(id) {
             Some(&state.detail.evil)
@@ -189,12 +193,14 @@ pub fn radar_lines_for(
             Some(Loading::Ready(EvilVerdict::Resolved { files })) => {
                 lines.push(RadarLine::EvilResolved { files: files.len() });
             }
-            Some(Loading::Ready(EvilVerdict::NotCheckable(reason))) => {
+            // A probe that crashed (`update::job_failed`) could not check
+            // either: same line, the failure as its reason.
+            Some(Loading::Ready(EvilVerdict::NotCheckable(reason)) | Loading::Failed(reason)) => {
                 lines.push(RadarLine::EvilNotCheckable(sanitize_line(reason)));
             }
             // Already a finding line, from `findings_for`.
             Some(Loading::Ready(EvilVerdict::Evil { .. })) => {}
-            Some(Loading::Idle | Loading::Failed(_)) | None => {
+            Some(Loading::Idle) | None => {
                 lines.push(RadarLine::EvilUnchecked);
             }
         }
@@ -352,13 +358,119 @@ mod tests {
         assert_eq!(not_checked(&state), 0, "Pending");
 
         state.radar.context = Loading::Failed("commit b32274b is not in the repository".to_owned());
+        // The evil probe needs no context, so its line still shows after the
+        // NotChecked line (m7-power-tools/33c m1); unasked, it says unchecked.
         assert_eq!(
             radar_lines_for(&state, merge, &parents, "merge"),
-            vec![RadarLine::NotChecked(sanitize_line(
-                "commit b32274b is not in the repository"
-            ))]
+            vec![
+                RadarLine::NotChecked(sanitize_line("commit b32274b is not in the repository")),
+                RadarLine::EvilUnchecked,
+            ]
         );
         assert_eq!(marker_for(&state, merge, &parents, "merge"), None);
+    }
+
+    /// The evil probe needs no context: a found evil merge shows while the
+    /// context has failed, after the `NotChecked` line (m7-power-tools/33c m1).
+    #[test]
+    fn an_evil_merge_shows_while_the_context_failed() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.detail.evil_at = Some(merge);
+        state.detail.evil = Loading::Ready(EvilVerdict::Evil {
+            files: vec![b"evil.txt".to_vec()],
+        });
+        state.radar.context = Loading::Failed("commit b32274b is not in the repository".to_owned());
+
+        let findings = findings_for(&state, merge, &parents, "merge");
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| finding.kind)
+                .collect::<Vec<_>>(),
+            vec![MistakeRadarKind::EvilMerge]
+        );
+        let lines = radar_lines_for(&state, merge, &parents, "merge");
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        assert!(matches!(lines[0], RadarLine::NotChecked(_)), "{lines:?}");
+        assert!(
+            matches!(&lines[1], RadarLine::Finding { title, .. }
+                if title.as_ref() == title_for(&findings[0])),
+            "{lines:?}"
+        );
+    }
+
+    /// On `Idle` and `Pending` contexts the evil line shows too, and no
+    /// `NotChecked` line (m7-power-tools/33c m1).
+    #[test]
+    fn the_evil_line_shows_on_an_idle_or_pending_context() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.detail.evil_at = Some(merge);
+        for context in [
+            Loading::Idle,
+            Loading::Pending(graft_core::job::JobId::new(1)),
+        ] {
+            state.radar.context = context;
+            state.detail.evil = Loading::Ready(EvilVerdict::Clean);
+            assert_eq!(
+                radar_lines_for(&state, merge, &parents, "merge"),
+                vec![RadarLine::EvilClean]
+            );
+            state.detail.evil = Loading::Ready(EvilVerdict::Evil {
+                files: vec![b"evil.txt".to_vec()],
+            });
+            let lines = radar_lines_for(&state, merge, &parents, "merge");
+            assert!(
+                matches!(lines.as_slice(), [RadarLine::Finding { .. }]),
+                "{lines:?}"
+            );
+        }
+    }
+
+    /// On a failed context the marker column is empty for a plain commit and
+    /// shows the evil marker on an evil merge (m7-power-tools/33c m1).
+    #[test]
+    fn a_failed_context_marks_only_the_evil_merge() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.radar.context = Loading::Failed("gone".to_owned());
+        assert_eq!(
+            marker_for(&state, oid(5), &[oid(1)], "plain"),
+            None,
+            "plain commit"
+        );
+        state.detail.evil_at = Some(merge);
+        state.detail.evil = Loading::Ready(EvilVerdict::Evil {
+            files: vec![b"evil.txt".to_vec()],
+        });
+        let expected = Policy::default()
+            .severity(MistakeRadarKind::EvilMerge)
+            .map(|severity| MarkerView { severity });
+        assert!(expected.is_some());
+        assert_eq!(
+            marker_for(&state, merge, &parents, "merge"),
+            expected,
+            "evil merge"
+        );
+    }
+
+    /// A crashed probe (`Failed`) reads as not checkable, with its reason
+    /// (m7-power-tools/33c m2).
+    #[test]
+    fn a_failed_evil_probe_reads_as_not_checkable() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.detail.evil_at = Some(merge);
+        state.detail.evil = Loading::Failed("job panicked".to_owned());
+        assert_eq!(
+            radar_lines_for(&state, merge, &parents, "merge"),
+            vec![RadarLine::EvilNotCheckable(sanitize_line("job panicked"))]
+        );
     }
 
     /// The pane's evil line follows the probe: unchecked before it starts,
