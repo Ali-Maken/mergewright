@@ -51,7 +51,7 @@ mod exec;
 const POLL: Duration = Duration::from_millis(50);
 
 /// The default output cap: 64 MiB.
-const DEFAULT_CAP: usize = 64 * 1024 * 1024;
+pub(crate) const DEFAULT_CAP: usize = 64 * 1024 * 1024;
 
 /// One argument to git, typed by what it is.
 #[derive(Clone, Debug, PartialEq, Eq)]

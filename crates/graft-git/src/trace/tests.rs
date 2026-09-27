@@ -7,12 +7,15 @@
 
 use std::path::PathBuf;
 
-use super::function::{blob_content, marked_diff};
+use graft_core::oid::Oid;
+
+use super::function::{blob_content, enclosing_function_with, marked_diff};
 use super::log::{NO_ADD, finish, parse_line_records};
-use super::{TraceEnd, map_to_head};
+use super::{TraceEnd, TraceError, map_to_head};
 use super::{parse_follow_log, parse_line_log};
 use crate::diff::parse_unified;
-use crate::run::{GitOutput, RawOutput, RunError};
+use crate::repo::RepoHandle;
+use crate::run::{DEFAULT_CAP, GitOutput, RawOutput};
 
 const LINE_LOG_2_54: &[u8] = include_bytes!("../testdata/git-2.54/line-log.txt");
 const FOLLOW_LOG_2_54: &[u8] = include_bytes!("../testdata/git-2.54/follow-log.txt");
@@ -218,8 +221,8 @@ fn enclosing_function_refuses_output_cut_at_the_cap() {
         stderr: Vec::new(),
         truncated: true,
     };
-    match blob_content(cut.clone()) {
-        Err(RunError::Unparsable(why)) => assert!(why.contains("cap"), "{why}"),
+    match blob_content(cut.clone(), 9) {
+        Err(TraceError::TooLarge { cap }) => assert_eq!(cap, 9),
         other => panic!("a cut blob must be refused: {other:?}"),
     }
     // The runner reports its own kill at the cap as `code: None`.
@@ -227,8 +230,95 @@ fn enclosing_function_refuses_output_cut_at_the_cap() {
         output: cut,
         code: None,
     };
-    match marked_diff(capped) {
-        Err(RunError::Unparsable(why)) => assert!(why.contains("cap"), "{why}"),
+    match marked_diff(capped, 9) {
+        Err(TraceError::TooLarge { cap }) => assert_eq!(cap, 9),
         other => panic!("a capped diff is too large, not stopped: {other:?}"),
     }
+}
+
+/// A one-commit repository holding `a.rs` with `content`; its `HEAD`.
+fn one_file_repo(content: &str) -> (tempfile::TempDir, Oid) {
+    let temp = tempfile::tempdir().expect("a temp dir");
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .args(args)
+            .current_dir(temp.path())
+            .env("GIT_AUTHOR_NAME", "Graft Test")
+            .env("GIT_AUTHOR_EMAIL", "test@example.invalid")
+            .env("GIT_COMMITTER_NAME", "Graft Test")
+            .env("GIT_COMMITTER_EMAIL", "test@example.invalid")
+            .output()
+            .expect("git runs");
+        assert!(output.status.success(), "git {args:?}");
+        output.stdout
+    };
+    git(&["init", "-q"]);
+    std::fs::write(temp.path().join("a.rs"), content).expect("writes");
+    git(&["add", "a.rs"]);
+    git(&["commit", "-q", "-m", "add"]);
+    let head =
+        Oid::from_hex(String::from_utf8_lossy(&git(&["rev-parse", "HEAD"])).trim()).expect("an id");
+    (temp, head)
+}
+
+fn function_capped(content: &str, cap: usize) -> Result<Option<super::LineRange>, TraceError> {
+    let (temp, head) = one_file_repo(content);
+    let repo = RepoHandle::open(temp.path()).expect("opens");
+    enclosing_function_with(&repo, head, std::path::Path::new("a.rs"), 1, &(), cap)
+}
+
+/// Review 18bcd Minor 3: each cap guard is reached through the real spawns.
+/// A file of one long line: the blob passes the cap, the marked diff (one
+/// short hunk) would not. Replacing the `blob_content(…)` call in
+/// `enclosing_function_with` by the run's bare `.stdout` turns this red.
+#[test]
+fn enclosing_function_refuses_a_blob_over_the_cap() {
+    let long_line = format!("fn a() {{ {} }}\n", "x".repeat(5000));
+    match function_capped(&long_line, 1000) {
+        Err(TraceError::TooLarge { cap }) => assert_eq!(cap, 1000),
+        other => panic!("a capped blob must not read as a function: {other:?}"),
+    }
+}
+
+/// Many short lines: the blob fits, the marked diff (a hunk per line) does
+/// not. Replacing `marked_diff(raw, cap)?` in `headers_by_line` by the raw
+/// stdout turns this red.
+#[test]
+fn enclosing_function_refuses_a_marked_diff_over_the_cap() {
+    let short_lines = "x\n".repeat(200);
+    match function_capped(&short_lines, 1000) {
+        Err(TraceError::TooLarge { cap }) => assert_eq!(cap, 1000),
+        other => panic!("a capped diff must not read as headers: {other:?}"),
+    }
+}
+
+/// Review 18bcd Minor 2: a log cut at the runner's cap is too large, in its
+/// own words, not a parse failure.
+#[test]
+fn a_log_cut_at_the_cap_is_too_large() {
+    let raw = RawOutput {
+        output: GitOutput {
+            stdout: LINE_LOG_2_54[..100].to_vec(),
+            stderr: Vec::new(),
+            truncated: true,
+        },
+        code: None,
+    };
+    let error = finish(
+        Ok(raw),
+        1000,
+        &mut |_| {},
+        parse_line_records,
+        "none",
+        &|| Ok(std::collections::BTreeSet::new()),
+    )
+    .expect_err("refused");
+    assert!(
+        matches!(error, TraceError::TooLarge { cap } if cap == DEFAULT_CAP),
+        "{error:?}"
+    );
+    assert_eq!(
+        error.to_string(),
+        "too large to trace: git's output is over 64 MiB"
+    );
 }

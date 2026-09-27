@@ -1,0 +1,48 @@
+6393164403945a213b6243945025f6cff2dd8689 1 1 2
+author Ana
+author-mail <ana@example.invalid>
+author-time 1541721600
+author-tz +0000
+committer Ana
+committer-mail <ana@example.invalid>
+committer-time 1541721600
+committer-tz +0000
+summary Add é file
+boundary
+filename "src/\303\251.rs"
+	fn one() {}
+6393164403945a213b6243945025f6cff2dd8689 2 2
+	fn two() {
+6393164403945a213b6243945025f6cff2dd8689 3 3 1
+ignored
+	    a(1);
+544c71e0bff76203152b2a8997d2b3f3ea38ee01 4 4 1
+author Tom
+author-mail <tom@example.invalid>
+author-time 1552089600
+author-tz +0000
+committer Ana
+committer-mail <ana@example.invalid>
+committer-time 1552089600
+committer-tz +0000
+summary Reformat
+previous 6393164403945a213b6243945025f6cff2dd8689 "src/\303\251.rs"
+filename "src/\303\251.rs"
+unblamable
+ignored
+	    brand_new_line(2);
+6393164403945a213b6243945025f6cff2dd8689 4 5 1
+	}
+0000000000000000000000000000000000000000 6 6 1
+author Not Committed Yet
+author-mail <not.committed.yet>
+author-time 1790494228
+author-tz +0500
+committer Not Committed Yet
+committer-mail <not.committed.yet>
+committer-time 1790494228
+committer-tz +0500
+summary Version of src/é.rs from src/é.rs
+previous c6626939251efd17a6d8d0ac100d3d152e343c03 "src/\303\251.rs"
+filename "src/\303\251.rs"
+	let fresh = 1;

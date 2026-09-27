@@ -124,7 +124,14 @@ fn read_header(
         b"summary" => headers.summary = Some(lossy(value)),
         b"filename" => headers.path = Some(bytes_path(&unquote(value))),
         b"boundary" => headers.boundary = true,
-        b"ignored" => *mark = LineMark::Skipped,
+        // Both on one line (passed on by one ignored commit, stopped at
+        // another) is unblamable, whichever git writes first: the line
+        // stays on an ignored commit. `parse_marks` maps `*?` the same way.
+        b"ignored" => {
+            if *mark != LineMark::Unblamable {
+                *mark = LineMark::Skipped;
+            }
+        }
         b"unblamable" => *mark = LineMark::Unblamable,
         b"previous" => {
             let space = value.iter().position(|&b| b == b' ').ok_or(ParseError {

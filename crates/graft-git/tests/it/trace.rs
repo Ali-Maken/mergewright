@@ -634,17 +634,38 @@ fn a_linked_worktree_of_a_shallow_clone_sees_the_boundary() {
     assert_eq!(end, shallow_end());
 }
 
+/// git itself fails on a log that reaches the boundary when `shallow` is
+/// unreadable (it looks for the boundary's parents), and then git's reason
+/// wins (18e, below). A `--follow` log capped before the boundary exits 0,
+/// so the unreadable file is this reader's error.
 #[test]
 fn an_unreadable_shallow_file_is_an_error() {
-    let temp = shallow_clone(2);
+    let temp = shallow_clone(4);
     let dir = temp.path().join("clone");
     let head = rev(&dir, "HEAD");
     let shallow = dir.join(".git").join("shallow");
     std::fs::remove_file(&shallow).expect("removing shallow");
     std::fs::create_dir(&shallow).expect("shallow as a directory");
+    let result = file_history(&open(&dir), head, Path::new(FILE), 1, &mut |_| {}, &());
+    match result {
+        Err(TraceError::Shallow { path, .. }) => assert_eq!(path, shallow),
+        other => panic!("expected Err(Shallow), got {other:?}"),
+    }
+}
+
+/// Review 18bcd Minor 5: when git itself failed, its reason is the answer;
+/// an unreadable `shallow` file read afterwards does not replace it.
+#[test]
+fn a_failed_log_with_an_unreadable_shallow_file_reports_gits_reason() {
+    let temp = shallow_clone(2);
+    let dir = temp.path().join("clone");
+    let shallow = dir.join(".git").join("shallow");
+    std::fs::remove_file(&shallow).expect("removing shallow");
+    std::fs::create_dir(&shallow).expect("shallow as a directory");
+    let missing = Oid::from_hex("1111111111111111111111111111111111111111").expect("an id");
     let result = line_history(
         &open(&dir),
-        head,
+        missing,
         Path::new(FILE),
         &block(),
         1000,
@@ -652,7 +673,10 @@ fn an_unreadable_shallow_file_is_an_error() {
         &(),
     );
     match result {
-        Err(TraceError::Shallow { path, .. }) => assert_eq!(path, shallow),
-        other => panic!("expected Err(Shallow), got {other:?}"),
+        Ok(TraceEnd::GitStops(reason)) => {
+            assert!(!reason.is_empty(), "git's reason");
+            assert!(!reason.contains("couldn't read"), "not ours: {reason}");
+        }
+        other => panic!("expected git's own reason, got {other:?}"),
     }
 }

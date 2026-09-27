@@ -126,6 +126,12 @@ pub enum TraceError {
         /// Why.
         source: std::io::Error,
     },
+    /// git's output passed the runner's cap; refused rather than read short
+    /// (18e).
+    TooLarge {
+        /// The cap, in bytes.
+        cap: usize,
+    },
 }
 
 impl fmt::Display for TraceError {
@@ -140,6 +146,11 @@ impl fmt::Display for TraceError {
             TraceError::Shallow { path, source } => {
                 write!(f, "couldn't read {}: {source}", path.display())
             }
+            TraceError::TooLarge { cap } => write!(
+                f,
+                "too large to trace: git's output is over {} MiB",
+                cap / (1024 * 1024)
+            ),
         }
     }
 }

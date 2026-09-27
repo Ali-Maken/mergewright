@@ -1,6 +1,6 @@
 # 18e blame-floor-git — skipped and unblamable marks on git 2.38; the reader-side Minors of review 18bcd
 
-Status: draft
+Status: done
 Blocked by: none.
 Crates: graft-git only (`blame.rs`, `blame/porcelain.rs`, a new `blame/marks.rs`, `version.rs`, `trace/log.rs`,
 `trace/function.rs`, `trace/mod.rs`, `switch_refs.rs`, their tests, `examples/`, graft-git `MAP.md`). No graft, no
@@ -112,28 +112,28 @@ pub fn enclosing_function(repo: &RepoHandle, at: Oid, path: &Path, line: u32, st
 fuzzing is the milestone review's). If that target lives outside graft-git's directory, say so and skip it.
 
 ## Acceptance (name the verifying test at tick time; "on both" = run with 2.38.5 first on `PATH`, then 2.54)
-- [ ] `blame::a_skipped_line_is_marked_skipped` (`tests/it/blame.rs:220`, assertion unchanged) passes **on both**.
-      Red first on 2.38.5 (the review saw `left: Plain`).
-- [ ] New, on both: `an_unblamable_line_is_marked_unblamable`: a test-local repo where an ignored commit added lines.
-      Red first on 2.38.5, or say why not.
-- [ ] Oracle on 2.54: `the_human_format_marks_match_the_porcelain_marks`: `MarksFrom::HumanFormat` vs git's porcelain
+- [x] `blame::a_skipped_line_is_marked_skipped` (`tests/it/blame.rs:220`, assertion unchanged) passes **on both**.
+      Red first on 2.38.5 (the review saw `left: Plain`). **Red seen** at base on 2.38.5: `tests/it/blame.rs:220` left `Plain`, right `Skipped`. Green on 2.38.5 and 2.54 (filtered suite, below).
+- [x] New, on both: `an_unblamable_line_is_marked_unblamable` (`tests/it/blame.rs`): a test-local repo where an ignored commit added lines.
+      Red first on 2.38.5, or say why not. **Red seen** on 2.38.5 with the pass disabled (temporary mutation, reverted): left `[Plain, Plain, Plain]`, right `[Plain, Unblamable, Plain]`. `*` on 2.38.5 is now observed.
+- [x] Oracle on 2.54 (`blame::tests::the_human_format_marks_match_the_porcelain_marks`; on git < 2.50 it prints a note and checks the count only): `the_human_format_marks_match_the_porcelain_marks`: `MarksFrom::HumanFormat` vs git's porcelain
       marks, line for line on the session fixture with the list; asserts ≥1 `Skipped` so it isn't vacuous.
-- [ ] Unit: `PORCELAIN_2_38` re-captured (all `Plain` on the skipped line); `HUMAN_2_38`/`HUMAN_2_54` parse to the
+- [x] Unit (`the_2_38_porcelain_leaves_the_skipped_lines_plain`, `the_human_samples_mark_the_skipped_lines_on_both_gits`, `parse_marks_reads_the_leading_run_only`, `marks_merge_by_position_and_a_count_mismatch_is_changed`, `parse_marks_refuses_garbage_without_panicking`, plus `the_2_38_edges_read_quoted_paths_and_uncommitted_lines`, `the_2_54_edges_read_both_marks_on_one_line_as_unblamable`): `PORCELAIN_2_38` re-captured (all `Plain` on the skipped line); `HUMAN_2_38`/`HUMAN_2_54` parse to the
       skipped line; `^?`, `^*`, `*?` prefixes; a last line with no newline (count holds); a line count mismatch →
       `Changed`; garbage → `Err`, never a panic.
-- [ ] `needs_marks_pass` table: each of conditions 1–4 alone flips it; `None` version → true.
-- [ ] No list in effect → one blame spawn on 2.38.5 (test through `blame_with`, or say how it's observed).
-- [ ] Minor 2: tests for `BlameError::TooLarge` and `TraceError::TooLarge` through the readers (small cap); the
+- [x] `needs_marks_pass_holds_only_when_all_four_do`: each of conditions 1–4 alone flips it; `None` version → true.
+- [x] `no_list_in_effect_is_one_blame_spawn` (a test-only thread-local count of second passes, through `blame_with`; plus `a_list_in_effect_takes_the_pass_only_on_a_git_without_porcelain_marks`, `a_configured_list_alone_is_a_list_in_effect`). No list in effect → one blame spawn on 2.38.5 (test through `blame_with`, or say how it's observed).
+- [x] Minor 2 (`a_blame_cut_at_the_output_cap_is_too_large_not_a_short_file`, `a_porcelain_cut_at_the_output_cap_is_too_large`, `enclosing_function_refuses_a_blob_over_the_cap`, `enclosing_function_refuses_a_marked_diff_over_the_cap`, `enclosing_function_refuses_output_cut_at_the_cap`, `a_log_cut_at_the_cap_is_too_large`, `the_new_errors_say_one_line_each`): tests for `BlameError::TooLarge` and `TraceError::TooLarge` through the readers (small cap); the
       `Display`s above, one line each.
-- [ ] Minor 3: the call-site tests; how the bypass was shown red.
-- [ ] Minor 4: the `@{-1}` tests on both; docs and MAP.md agree.
-- [ ] Minor 5: `a_failed_log_with_an_unreadable_shallow_file_reports_gits_reason` (shallow is a directory, bad rev).
-- [ ] `docs/perf/18e.txt`: p95 on 2.38.5 with a list, against 3 000 ms; sequential or concurrent, and why.
-- [ ] graft-git suites filtered as the review ran them (`-E 'test(/blame|trace|switch_refs|unreached/)'`) **on
-      2.38.5**: all pass; give the count.
-- [ ] MAP.md: `blame` (both commands, the predicate), `version` (the const), `BlameError`/`TraceError` variants,
+- [x] Minor 3: the call-site tests; how the bypass was shown red. `a_blame_cut_at_the_output_cap_is_too_large_not_a_short_file` (through `blame_with`, real spawn, cap 1000): red with `read_porcelain` replaced by `parse_porcelain`, applied and reverted. `enclosing_function_refuses_a_blob_over_the_cap` / `..._a_marked_diff_over_the_cap` (through `enclosing_function_with`): red with both guards bypassed, applied and reverted together; each alone red on reading.
+- [x] Minor 4: the `@{-1}` tests on both; docs and MAP.md agree. `switch_refs` tests in the filtered suite, green on 2.38.5 and 2.54. Doc `:9`, `:101` and MAP.md `:111` all say `rev-parse --verify --quiet @{-1}`; `:74` keeps why `--symbolic-full-name` can't name the branch.
+- [x] Minor 5 (red with `boundaries()?` restored before the code check: `Err(Shallow{... IsADirectory})`; applied and reverted): `a_failed_log_with_an_unreadable_shallow_file_reports_gits_reason` (shallow is a directory, bad rev).
+- [x] `docs/perf/18e.txt` (`scripts/m7-perf-blame-list.sh`, `examples/blame_longfile.rs --with-list`): 2.38.5 with list p95 **2224.2 ms**, 100 lines skipped; sequential kept (under 3 000). 2.54 with list 1511.5; 2.54 no list 1314.7 (18b recorded 1481). p95 on 2.38.5 with a list, against 3 000 ms; sequential or concurrent, and why.
+- [x] graft-git suites filtered as the review ran them (`-E 'test(/blame|trace|switch_refs|unreached/)'`) **on
+      2.38.5**: all pass; give the count. **104/104 on 2.38.5, 104/104 on 2.54** (the review had 85/86).
+- [x] MAP.md (edited and read back): `blame` (both commands, the predicate), `version` (the const), `BlameError`/`TraceError` variants,
       `enclosing_function`'s error, `switch_refs`' command.
-- [ ] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
+- [x] Gates workspace-wide (2.54 on PATH): fmt clean, clippy clean, nextest 4098/4098 (1 skipped), `test --doc` ok: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
 
 ## Touches (check each; NOTES says how)
 - **`BlameError`/`TraceError` new variants:** grep both outside graft-git. An exhaustive `match` → `blocked: needs
@@ -154,3 +154,16 @@ fuzzing is the milestone review's). If that target lives outside graft-git's dir
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`. The 2.38.5 binary stays under
 `$TMPDIR`; never install it.
+
+## NOTES (builder, 2026-09-27)
+- **Context compacted once**, after all code, tests, perf and gates were done; only MAP.md, this ticket and the commit remained. Nothing left over.
+- **Scout:** none (ticket says so; the review names every site).
+- **`BLAME_PORCELAIN_MARKS` = 2.50.0.** Source: `builtin/blame.c` at tag v2.50.0 lines 362-364 (`emit_porcelain_per_line_details` writes `ignored`/`unblamable`), fetched raw from github.com/git/git per tag; absent at v2.49.0, v2.49.1 and 2.38.5 (whose porcelain writer, lines 339-376, writes no marks).
+- **Pinned configs** (2.38.5 `builtin/blame.c`): `blame.markIgnoredLines`/`markUnblamableLines` turn the `?`/`*` on (emit_other 471-487); `blame.blankBoundary=false` keeps `^` instead of blanking the id (472); `blame.coloring=none`, `color.ui=never` keep escape codes out (449-469, 735-740, 1181). Nothing else is printed before the marks.
+- **Both marks on one line** (`*?`, seen in the edges repo on both gits; 2.54 porcelain writes `unblamable` then `ignored`) -> `Unblamable` in both readers: blame.c:1760 leaves the line on the ignored commit.
+- **Order:** sequential; 2.38.5 p95 2224.2 ms < 3 000.
+- **Config read:** `git config --get blame.ignoreRevsFile` via `run_raw` (exit 0 set, 1 unset, other = error), only after conditions 1-2 hold and no root file was passed. An unreadable `system_git` version takes the pass (commented as the safe side).
+- **Minor 5 finding (question for the conductor):** with `shallow` a directory, git's own `log -L` fails ("error: Could not read <id>"), so the old `an_unreadable_shallow_file_is_an_error` no longer reached `Shallow`. Rewritten to `file_history` with cap 1 on `shallow_clone(4)` (git exits 0 there; `Shallow` still reached). In the natural path he now sees git's "Could not read <id>", less actionable than "couldn't read .../shallow". Followed the ticket.
+- **Fuzz target for `parse_marks` skipped:** the fuzz crate is `/fuzz` at the repo root, outside graft-git.
+- **Testdata** captured from the real binaries: `src/testdata/git-2.38/blame-{porcelain,human,edges-porcelain,edges-human}.txt`, `src/testdata/git-2.54/blame-{human,edges-porcelain,edges-human}.txt`; builder script `src/testdata/blame-edges.sh`. The existing 2.54 `blame-porcelain.txt` is byte-identical to a fresh capture.
+- **Touches:** `BlameError` matched outside graft-git only at `crates/graft/src/jobs/detail.rs:157-159` (catch-all: `TooLarge`/`Changed` Displays shown verbatim in the blame place). `TraceError`: no exhaustive match outside graft-git (grep). `enclosing_function`: no callers outside graft-git (grep; only `tests/it/trace.rs`). No test or capture asserts "did not parse as expected" for blame/trace (grep). `blame(` callers (`examples/trace_perf.rs`, `examples/blame_longfile.rs`, `tests/it/blame.rs`, the blame place): signature unchanged. `LineMark` drawn at `crates/graft/src/update/place/rows.rs:52-55`, already handles `Skipped`/`Unblamable`. Captures, keymap, journal, undo: none. ADR-0050 not edited.
