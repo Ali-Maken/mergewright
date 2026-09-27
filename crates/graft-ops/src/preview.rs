@@ -15,23 +15,30 @@
 //! - **`commands` is never written by hand.** It is `op.plan(&facts)`'s own
 //!   lines, so the box and the `Command Log` cannot drift from what runs
 //!   (`KNOWN_GAPS` row 229).
-//! - **A forecast says "may", never "will".** `merge-tree` answers about one
-//!   pair of commits; a rebase replays several, each onto the result of the
-//!   last, and that chain cannot be forecast without writing objects (hard
-//!   choice 5). Every forecast here is per commit against its own
-//!   predecessor, capped at [`FORECAST_CAP`], and [`ConflictForecast`]'s
-//!   wording is `Likely`, not `Certain`.
+//! - **A forecast says "may", never "will".** A rebase or rewrite replays
+//!   several commits, each onto the result of the last; the forecast follows
+//!   that chain (m7/05, `chain`): each clean step's tree becomes an
+//!   unreferenced scratch commit, the next step's "ours", so no ref, index
+//!   or file is written. The first conflict is [`ConflictForecast::StopsAt`]
+//!   and nothing past it is checked. Capped at [`FORECAST_CAP`]; git older
+//!   than 2.40 leaves it `NotChecked`, never a clean bill.
 
+mod chain;
+mod drops;
 mod kinds;
 mod put_back;
 mod recover;
+mod rewrite;
 mod stash;
+
+pub use drops::{AlreadyIn, DROP_CHECK_CAP, DropSuggestion, suggest_drops};
 
 use std::path::PathBuf;
 
 use graft_core::commit::{Identity, Timestamp};
 use graft_core::journal::{EntryId, HeadRef, JournalEntry};
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::history_reads::{self, Forecast};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
@@ -166,6 +173,21 @@ pub enum ConflictForecast {
     /// No forecast was made, and why: an old git, or more commits than
     /// [`FORECAST_CAP`].
     NotChecked(String),
+    /// A rebase or rewrite, replayed step by step with each result fed into
+    /// the next (m7/05, `KNOWN_GAPS` :548): the first step that conflicts.
+    /// `step` of `of` is git's own count (every todo row with a commit,
+    /// drops included, as `rewrite::progress` counts). Nothing past it is
+    /// checked.
+    StopsAt {
+        /// 1-based.
+        step: usize,
+        /// Every row git counts.
+        of: usize,
+        /// The commit replayed at that step.
+        commit: Oid,
+        /// The conflicting paths, in the order git named them.
+        paths: Vec<PathBuf>,
+    },
 }
 
 /// Whether `u` takes this operation back.
@@ -213,6 +235,16 @@ pub struct PreviewPlan {
     /// A put-back's `your files:` line (`Operation::Recover`, m7/23);
     /// `None` for every other operation.
     pub files: Option<FilesEffect>,
+    /// A rebase's squash-merge check of its bottom branch (m7/05): `Some`
+    /// when the bottom branch matched a commit on `onto`, or when the check
+    /// was not made; `None` when nothing matched, and for every other kind.
+    pub already_in: Option<DropSuggestion>,
+    /// Branches of the line whose upstream holds a commit this rewrites:
+    /// the next push of each needs force (m7/05).
+    pub published: Vec<RefName>,
+    /// Each resulting commit whose message Graft writes (a reword, or the
+    /// kept row of a squash group), keyed by its ghost (m7/05).
+    pub messages: Vec<(Target, String)>,
 }
 
 /// Why a preview could not be drawn.
@@ -392,6 +424,7 @@ pub fn plan(
         }
         Operation::Merge(params) => kinds::merge(repo, git, params, stop)?,
         Operation::Rebase(params) => kinds::rebase(repo, git, params, stop)?,
+        Operation::Rewrite(params) => rewrite::rewrite(repo, git, params, stop)?,
         Operation::CherryPick(params) => kinds::cherry_pick(repo, git, params, stop)?,
         Operation::Revert(params) => kinds::revert(repo, git, params, stop)?,
         Operation::Reset(params) => kinds::reset(repo, params, facts)?,
@@ -465,6 +498,9 @@ fn blank() -> PreviewPlan {
         set_aside: None,
         put_back: None,
         files: None,
+        already_in: None,
+        published: Vec::new(),
+        messages: Vec::new(),
     }
 }
 
@@ -611,6 +647,10 @@ fn fold(sofar: ConflictForecast, next: ConflictForecast) -> ConflictForecast {
         (ConflictForecast::NotChecked(why), _) | (_, ConflictForecast::NotChecked(why)) => {
             ConflictForecast::NotChecked(why)
         }
+        // Only a chained replay stops at a step, and it is never folded; if
+        // one ever is, the first stop is the one git reaches.
+        (stop @ ConflictForecast::StopsAt { .. }, _)
+        | (_, stop @ ConflictForecast::StopsAt { .. }) => stop,
         (ConflictForecast::Likely { mut paths }, ConflictForecast::Likely { paths: more }) => {
             for path in more {
                 if !paths.contains(&path) {

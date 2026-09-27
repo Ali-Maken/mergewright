@@ -407,6 +407,86 @@ pub fn forecast_merge(
     }
 }
 
+/// One step of a chained replay: what `merge-tree` made of it.
+///
+/// [`Forecast`] without the tree is what put-back and stash need; a chained
+/// rebase forecast (m7/05) needs the clean result's tree too, to make the
+/// next step's `ours` from it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MergeStep {
+    /// No conflicting paths; `tree` is the merged result.
+    Clean {
+        /// The tree `merge-tree --write-tree` wrote.
+        tree: Oid,
+    },
+    /// These paths would conflict (raw bytes, as in [`Forecast::Conflicts`]).
+    Conflicts {
+        /// The conflicting paths.
+        paths: Vec<PathBuf>,
+    },
+    /// Not checkable: an old git, or an answer this reader does not
+    /// recognise. Never a clean bill.
+    NotCheckable(String),
+}
+
+/// Replays `theirs` onto `ours` from `base` (the replayed commit's own
+/// parent), the way one rebase step does, and returns the result tree.
+///
+/// `git merge-tree --write-tree --name-only --no-messages -z
+/// --merge-base=<base> <ours> <theirs>` — the read [`forecast_merge`] runs,
+/// with the tree id kept on a clean exit. `ours` may be a commit with no
+/// ref (a `commit-tree` of the previous step's tree): git answers as for
+/// the real commit (`forecast_merge_accepts_a_commit_tree_result_as_ours`).
+/// git 2.40+ (`--merge-base`); older → [`MergeStep::NotCheckable`].
+///
+/// # Errors
+/// [`RunError`] from the runner: git missing or stopped.
+pub fn merge_tree_step(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    base: Oid,
+    ours: Oid,
+    theirs: Oid,
+    stop: &dyn Stop,
+) -> Result<MergeStep, RunError> {
+    if *git < MERGE_TREE_BASE_MIN {
+        return Ok(MergeStep::NotCheckable(
+            "git 2.40+ needed for a rebase forecast".to_owned(),
+        ));
+    }
+    let raw = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("merge-tree"),
+            GitArg::Flag("--write-tree"),
+            GitArg::Flag("--name-only"),
+            GitArg::Flag("--no-messages"),
+            GitArg::Flag("-z"),
+            GitArg::Word(format!("--merge-base={base}")),
+            GitArg::Oid(ours),
+            GitArg::Oid(theirs),
+        ])
+        .run_raw(stop)?;
+    let first_stderr_line = crate::commit_graph::first_line(&raw.output.stderr);
+    let mut fields = raw.output.stdout.split(|&b| b == 0);
+    let tree = fields.next().filter(|field| !field.is_empty());
+    match (raw.code, tree) {
+        (Some(0), Some(tree)) => match Oid::from_hex(String::from_utf8_lossy(tree).trim()) {
+            Ok(tree) => Ok(MergeStep::Clean { tree }),
+            Err(_) => Ok(MergeStep::NotCheckable(format!(
+                "merge-tree printed {:?}, not a tree id",
+                String::from_utf8_lossy(tree)
+            ))),
+        },
+        (Some(1), Some(_)) => Ok(MergeStep::Conflicts {
+            paths: fields
+                .filter(|field| !field.is_empty())
+                .map(bytes_to_pathbuf)
+                .collect(),
+        }),
+        _ => Ok(MergeStep::NotCheckable(first_stderr_line)),
+    }
+}
+
 /// The paths `from` and `to` differ on, capped at `cap`.
 ///
 /// `git diff-tree -r --name-only -z <from> <to>`.

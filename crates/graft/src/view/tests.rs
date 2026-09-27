@@ -3535,6 +3535,9 @@ fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan
         against: Vec::new(),
         set_aside: None,
         put_back: None,
+        already_in: None,
+        published: Vec::new(),
+        messages: Vec::new(),
     }
 }
 

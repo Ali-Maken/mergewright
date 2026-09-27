@@ -52,6 +52,7 @@ mod published_repo;
 mod pull_over_edits;
 mod radar_bookkeeping;
 mod radar_not_checked;
+mod rebase_stop_forecast;
 mod refresh_race;
 mod remote_by_key;
 mod repo_truth;

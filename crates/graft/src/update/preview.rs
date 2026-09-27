@@ -22,6 +22,7 @@
 //! 229), which is what keeps the box and the Command Log from describing
 //! one operation two ways.
 
+mod line_rows;
 pub mod slice;
 
 use std::collections::{HashMap, HashSet};
@@ -838,7 +839,12 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
             } else if let Some((index, pop)) = stash_put_back(&preview.subject) {
                 stash_box(&planned.plan, index, pop)
             } else {
-                ready_box(&planned.plan, preview.clipped, state.size.columns)
+                ready_box(
+                    &planned.plan,
+                    preview.subject.operation(),
+                    preview.clipped,
+                    state.size.columns,
+                )
             }
         }
     };
@@ -856,15 +862,22 @@ fn closing_box(line: &str, subject: &PreviewSubject) -> PreviewBox {
     view
 }
 
-/// The box for a plan that landed, for a frame `columns` wide.
-fn ready_box(plan: &PreviewPlan, clipped: usize, columns: u16) -> PreviewBox {
+/// The box for a plan that landed, for a frame `columns` wide. `op` is the
+/// operation it was planned for, when it is one: a rebase or rewrite draws
+/// its line (m7/05).
+fn ready_box(
+    plan: &PreviewPlan,
+    op: Option<&Operation>,
+    clipped: usize,
+    columns: u16,
+) -> PreviewBox {
     let title = sanitize_line(&format!("Preview: {}", plan.description));
     let mut view = if nothing_to_do(plan) {
         PreviewBox::new(title).with_choices(vec![sanitize_line("Close")])
     } else {
         PreviewBox::new(title)
     };
-    view.lines = plan_lines(plan, clipped, columns);
+    view.lines = plan_lines(plan, op, clipped, columns);
     view.commands = plan
         .commands
         .iter()
@@ -943,10 +956,25 @@ fn planning_title(subject: &PreviewSubject) -> String {
 /// set aside around it, the forecast, the undo note, and the slice's own
 /// edge. `columns` picks the set-aside row's wording; every other row is
 /// one wording, cut by the box.
-fn plan_lines(plan: &PreviewPlan, clipped: usize, columns: u16) -> Vec<SanitizedText> {
+///
+/// A rebase or rewrite moving a line of branches draws them under a
+/// `branches:` label, the squash-merge suggestion under them, `on origin:`
+/// above the forecast, and a stop forecast by its own cut ladder
+/// (`line_rows`, m7/05). A plain one-branch rebase draws as before.
+fn plan_lines(
+    plan: &PreviewPlan,
+    op: Option<&Operation>,
+    clipped: usize,
+    columns: u16,
+) -> Vec<SanitizedText> {
     let mut lines: Vec<String> = Vec::new();
     lines.extend(ghost_line(&plan.ghosts));
-    lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
+    if line_rows::is_line(plan, op) {
+        lines.extend(line_rows::ref_rows(plan));
+    } else {
+        lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
+    }
+    lines.extend(line_rows::already_in_row(plan, op));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));
     // The edits a rebase or checkout sets aside and puts back after
@@ -959,7 +987,19 @@ fn plan_lines(plan: &PreviewPlan, clipped: usize, columns: u16) -> Vec<Sanitized
             columns,
         ));
     }
-    lines.push(conflict_line(&plan.conflicts, plan.put_back.as_ref()));
+    lines.extend(line_rows::published_row(plan));
+    // A stop forecast cuts its paths, then its subject, then `· not
+    // checked past it`, never the step (note R3).
+    lines.push(match line_rows::forecast_rungs(plan) {
+        Some(wordings) => {
+            let wordings: Vec<String> = wordings
+                .into_iter()
+                .map(|wording| with_put_back(wording, plan.put_back.as_ref()))
+                .collect();
+            graft_ui::preview_box::fitting_line(&wordings, columns)
+        }
+        None => conflict_line(&plan.conflicts, plan.put_back.as_ref()),
+    });
     // A plan that changes nothing has nothing to take back, and offering
     // `u` over it teaches the box says things it does not mean
     // (review 08 Minor 7).
@@ -1133,7 +1173,12 @@ fn conflict_line(forecast: &ConflictForecast, put_back: Option<&ConflictForecast
         (ConflictForecast::Clean, None | Some(ConflictForecast::Clean)) => {
             "no conflicts expected".to_owned()
         }
-        (ConflictForecast::Clean, Some(ConflictForecast::Likely { paths })) => {
+        // A put-back is one merge, never a chain: it is never `StopsAt`,
+        // and would read as its paths if it were.
+        (
+            ConflictForecast::Clean,
+            Some(ConflictForecast::Likely { paths } | ConflictForecast::StopsAt { paths, .. }),
+        ) => {
             format!("your edits may clash when put back: {}", list(paths, 3))
         }
         (ConflictForecast::Clean, Some(ConflictForecast::NotChecked(why))) => {
@@ -1145,6 +1190,25 @@ fn conflict_line(forecast: &ConflictForecast, put_back: Option<&ConflictForecast
         (ConflictForecast::NotChecked(why), put_back) => {
             with_put_back(format!("conflicts: not checked ({why})"), put_back)
         }
+        // `plan_lines` draws a stop by `line_rows::forecast_rungs`, which
+        // knows the ghost's subject; this is the bare wording for any other
+        // caller.
+        (
+            ConflictForecast::StopsAt {
+                step,
+                of,
+                commit,
+                paths,
+            },
+            put_back,
+        ) => with_put_back(
+            format!(
+                "may stop at step {step} of {of} ({}): {} · not checked past it",
+                short(*commit),
+                list(paths, 3)
+            ),
+            put_back,
+        ),
     }
 }
 

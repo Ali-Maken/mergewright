@@ -1567,15 +1567,18 @@ fn forecast_names_the_conflicting_path() {
     .expect_err("the merge conflicts");
     assert!(matches!(error, ApplyError::Conflicted { .. }));
 
-    // A rebase whose replay conflicts is forecast the same way.
+    // A rebase whose replay conflicts names the step it stops at, and the
+    // path (m7/05: chained, `rewrite_preview` proves the step against git).
     let rebasing = conflicting();
     rebasing.git(&["switch", "-q", "feature"]);
     let plan = preview_of(&rebasing, &rebase_op(&rebasing, "refs/heads/main"));
-    assert_eq!(
-        plan.conflicts,
-        ConflictForecast::Likely {
-            paths: vec!["shared.txt".into()]
-        }
+    assert!(
+        matches!(
+            &plan.conflicts,
+            ConflictForecast::StopsAt { step: 1, paths, .. } if *paths == [std::path::PathBuf::from("shared.txt")]
+        ),
+        "{:?}",
+        plan.conflicts
     );
 }
 

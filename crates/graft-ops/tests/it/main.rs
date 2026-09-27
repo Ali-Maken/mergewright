@@ -32,6 +32,7 @@ mod restart_gate;
 mod restart_whole_file;
 mod rewrite_oracle;
 mod rewrite_plan;
+mod rewrite_preview;
 mod rewrite_run;
 mod set_aside;
 #[cfg(unix)]
