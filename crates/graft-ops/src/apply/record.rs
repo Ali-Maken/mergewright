@@ -255,12 +255,19 @@ fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Optio
     // operation's folded steps chain commits onto it
     // ([`snapshot::chain_backup`]), and parenting the pre-operation commit
     // would leave every one of them unreachable the moment the ref moved
-    // here. Falling back to `before` keeps the old behaviour when the ref
-    // cannot be read, which is the case the `Unsealed` arm below reports.
-    let tip = facts::read_refs(ctx.repo, std::slice::from_ref(&name))
-        .ok()
-        .and_then(|refs| refs.get(&name).copied().flatten())
-        .unwrap_or(before);
+    // here.
+    //
+    // A ref that cannot be read is reported and nothing is sealed: parenting
+    // `before` on a guess would drop those folded steps (m7-power-tools/01a,
+    // gap :601). An **absent** ref is not a failed read: there is no chain
+    // to keep, and `before` — which `begin` wrote — is the whole backup.
+    let tip = match facts::read_refs(ctx.repo, std::slice::from_ref(&name)) {
+        Ok(refs) => refs.get(&name).copied().flatten().unwrap_or(before),
+        Err(why) => {
+            drop_after_trees(entry);
+            return Some(AfterState::Refs(why));
+        }
+    };
     let parents = with_anchors(
         vec![tip],
         entry.head_after.as_ref(),
@@ -281,14 +288,21 @@ fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Optio
     match sealed {
         Ok(()) => None,
         Err(why) => {
-            if entry.touches.index {
-                entry.index_after = None;
-            }
-            if entry.touches.worktree {
-                entry.worktree_after = None;
-            }
+            drop_after_trees(entry);
             Some(AfterState::Unsealed(why))
         }
+    }
+}
+
+/// Forget the after-trees of an entry whose after-state was not sealed: a
+/// tree nothing reaches is one `git gc` prunes, and an entry naming it is a
+/// promise that expires. The before-fields stay; the ref still holds them.
+fn drop_after_trees(entry: &mut JournalEntry) {
+    if entry.touches.index {
+        entry.index_after = None;
+    }
+    if entry.touches.worktree {
+        entry.worktree_after = None;
     }
 }
 

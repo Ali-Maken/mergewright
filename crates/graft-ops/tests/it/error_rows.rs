@@ -252,3 +252,109 @@ fn a_bad_ref_name_is_refused_before_any_write() {
         assert_eq!(entry_count(&repo), entries, "{bad}: no entry written");
     }
 }
+
+// ── :601 the errors seal_after and chain_states used to drop ────────────
+
+/// `chain_states` (under `stage_source`, for a path `⏎` already staged in a
+/// live merge) passes each kind of `live_entry` failure through as itself:
+/// the stop as `Stopped`, a failed read as that read's error.
+#[test]
+fn chain_states_maps_each_error_kind() {
+    use graft_ops::apply::stage_source;
+
+    let repo = two_file_conflict();
+    assert!(
+        repo.try_git(&["merge", "feature"]).is_err(),
+        "the merge stops"
+    );
+    repo.write("a.txt", b"1\nboth\n3\n");
+    repo.git(&["add", "a.txt"]);
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let path = std::path::Path::new("a.txt");
+
+    // The stop: `live_entry`'s first poll.
+    {
+        let mut journal = journal_for(&handle);
+        let stop = StopAtPoll {
+            at: 1,
+            seen: AtomicUsize::new(0),
+        };
+        let ctx = context(&handle, &mut journal, NOW, &stop);
+        match stage_source(&ctx, &facts, path) {
+            Err(FactsError::Stopped) => {}
+            other => panic!("expected Stopped, got {other:?}"),
+        }
+    }
+
+    // A failed read: `main` no longer resolves.
+    repo.git(&["pack-refs", "--all", "--prune"]);
+    repo.write(".git/refs/heads/main", b"not an object id\n");
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let ctx = context(&handle, &mut journal, NOW, &never);
+    match stage_source(&ctx, &facts, path) {
+        Err(FactsError::Stopped) => panic!("a failed read reported as a stop"),
+        Err(_) => {}
+        Ok(found) => panic!("expected a facts failure, got {found:?}"),
+    }
+}
+
+/// Breaks every loose ref under `refs/graft/` the moment the commit lands:
+/// after `begin` made the backup ref, before `finish` seals onto it.
+const BREAK_BACKUP_REFS: &str = "#!/bin/sh
+for f in $(find \"$(git rev-parse --git-dir)/refs/graft\" -type f); do
+  echo 'not an object id' > \"$f\"
+done
+";
+
+/// A `post-commit` hook breaks the commit's backup ref between `begin` and
+/// `finish`, so `seal_after` cannot read the tip it chains onto. That read's
+/// own failure reaches the caller — not a silent fall-back to the
+/// pre-operation commit, sealed on a guessed parent.
+#[cfg(unix)]
+#[test]
+fn a_failed_read_refs_in_seal_after_is_reported() {
+    use std::os::unix::fs::PermissionsExt;
+
+    use graft_ops::apply::AfterState;
+    use graft_ops::operation::CommitParams;
+
+    let repo = TempRepo::init();
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.write("base.txt", b"changed\n");
+    repo.git(&["add", "base.txt"]);
+    let hooks = repo.path().join("breaking-hooks");
+    std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
+    let hook = hooks.join("post-commit");
+    std::fs::write(&hook, BREAK_BACKUP_REFS).expect("the hook is written");
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
+        .expect("the hook is executable");
+    repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);
+
+    let op = Operation::Commit(CommitParams {
+        message: "a change\n".to_owned(),
+        sign_off: false,
+        no_verify: false,
+        allow_empty: false,
+    });
+    match crate::support::try_run(&repo, &op, NOW) {
+        Err(ApplyError::AfterState { unread, .. }) => {
+            let words: Vec<String> = unread.iter().map(ToString::to_string).collect();
+            assert!(
+                unread.iter().any(|why| matches!(why, AfterState::Refs(_))),
+                "the backup ref's read failure is reported: {words:?}"
+            );
+            assert!(
+                !unread
+                    .iter()
+                    .any(|why| matches!(why, AfterState::Unsealed(_))),
+                "nothing was sealed on a guessed parent: {words:?}"
+            );
+        }
+        Err(other) => panic!("expected AfterState, got {}", other.explain()),
+        Ok(_) => panic!("expected AfterState: the backup ref was broken"),
+    }
+}

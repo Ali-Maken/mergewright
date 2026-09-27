@@ -1,13 +1,13 @@
 # 01a error-rows-ops — 01's graft-ops rows that change no signature graft calls
 
-Status: partial — :601 blocked (needs apply/record.rs, apply/restart.rs); see NOTES
+Status: done (2026-09-27)
 Build with: Opus. :496's roll-back must be designed against the recording protocol (01 "Build with").
 Needs: none.
 Blocked by: none. Wave: see `.scratch/m7-power-tools/parallel-plan.md`.
 Split by: planner, 2026-09-27, from `01-error-rows-resume-restore.md` (ADR-0051 §1: the graft-ops part stands alone).
 No new decision; 01's "Decided" binds.
 Crates: graft-ops only.
-Files: crates/graft-ops/src/{apply.rs, apply/resume.rs, apply/resume/shell.rs, apply/resume/rewrite.rs,
+Files: crates/graft-ops/src/{apply.rs, apply/record.rs, apply/restart.rs (both granted by the conductor 2026-09-27), apply/resume.rs, apply/resume/shell.rs, apply/resume/rewrite.rs,
 conflict/set.rs, restore.rs, restore/rollback.rs, restore/steps.rs}; crates/graft-ops/tests/it/error_rows.rs (new,
 pre-registered by the conductor's seam commit); MAP.md (graft-ops). A file outside this list → stop, report
 `blocked: needs <file>` (ADR-0051 §3).
@@ -20,9 +20,9 @@ Scout: 01's scout (ADR-0035), brief items 1, 3, 4 of 01 "Scout brief". One scout
 - Out, to 01b: :494 (`Drift` direction), :495 (`RestoreError::Stopped` collapse), :572 (`worktree_lines`).
 
 ## Acceptance (tick 01's boxes in 01's file, each naming its test)
-- [ ] 01 Acceptance rows :601, :613, :640, :496, :497 (red first where 01 says so). :613 :640 :496 :497 ticked in 01 with their tests; **:601 open (blocked)**.
+- [x] 01 Acceptance rows :601, :613, :640, :496, :497 (red first where 01 says so). All five ticked in 01, each naming its `error_rows::` test.
 - [x] NOTES: each row → its test (NOTES below). MAP.md (graft-ops): `Resume` line, `RestoreError`, `execute` failure line.
-- [x] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`. fmt ok; clippy ok; nextest 4242/4242; `test --doc` ok (2026-09-27).
+- [x] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`. fmt ok; clippy ok; nextest 4244/4244 (after :601); `test --doc` ok (2026-09-27).
 
 ## Touches
 01 "Touches", first bullet: every caller of `live_entry` and `restore::execute` (grep, listed in NOTES); undo and resume
@@ -31,7 +31,7 @@ tests green, graft's included.
 ## Size
 ~35k.
 
-## NOTES (builder, 2026-09-27) — partial: :601 blocked
+## NOTES (builder, 2026-09-27) — :601 was blocked, then granted and done; see ":601 done" below
 Scout used: `.scratch/m7-power-tools/scouts/01.md` (01's). No compaction.
 
 **Blocked: needs `crates/graft-ops/src/apply/record.rs` and `crates/graft-ops/src/apply/restart.rs`.** This ticket's
@@ -81,3 +81,23 @@ Touches:
   `jobs/undo.rs:266–281` matches `Cancelled`/`CancelledPartway`/`AfterState`; `FailedPartway` goes to its general
   arm and shows `explain()`. Not seen in the app: no capture taken (not a visual ticket; 01b holds graft).
 - Keymap / captures: none changed.
+
+### :601 done (after the grant of record.rs and restart.rs)
+- `a_failed_read_refs_in_seal_after_is_reported`, red first, quoted: `the backup ref's read failure is reported: ["the
+  after-state could not be kept reachable: \`git update-ref refs/graft/backup/main/01HF7YAT… 599d8e8…\` failed (128):
+  … unable to resolve reference … reference broken"]`. The read failure was dropped, and the seal went ahead on the
+  guessed parent `before`, whose failure only showed up later as `Unsealed`. Fault: a `post-commit` hook breaks the
+  loose refs under `refs/graft` between `begin` and `finish`. Fix (cause): `seal_after` reports
+  `AfterState::Refs(<the read error>)`, drops the after-trees (the same `drop_after_trees` the `Unsealed` arm now
+  shares), and seals nothing. An **absent** backup ref still falls back to `before`, because there is no chain to lose.
+  Question for the conductor: should that be reported too? Not changed here.
+- Used existing `AfterState::Refs(FactsError)`, not a new variant: a new variant needs `apply/error.rs`, which was not
+  granted. Its words read "the refs after the operation: <error>", and the error names the backup ref. A
+  `BackupUnread { name, error }` variant would say it more precisely. That needs error.rs, and is proposed, not done.
+- `chain_states_maps_each_error_kind`: **green before the fix**, like :613, because the old `_ =>` arm only ever caught
+  the stop and already mapped it to `FactsError::Stopped`. The fix removes the arm by type: `chain_states` calls
+  `resume::live_entry_facts(..)?`. The test covers both kinds through `stage_source`: the stop comes back as
+  `Stopped`, and a broken `main` comes back as a non-stop facts error.
+- Touches: `seal_after` is called only by `record::finish` (grep). `finish` serves every operation, restore included.
+  graft reads `AfterState` through `explain`/`to_string`, and `jobs/operate.rs:352` matches only `StagingNotKept`.
+  `chain_states` is called only by `find_source`. Workspace nextest 4244/4244.
