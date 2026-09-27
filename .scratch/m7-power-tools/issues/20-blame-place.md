@@ -168,16 +168,30 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
       `capture_blame_then_commit_with_base_120x40`; drawn via `frame_at`, not a pty; fixture differences from these
       words — `2f48ca3` for `a1b2c3d`, the 140 trailer sheds its sha, find uses `/refresh` (8 of 8), the landing line is
       21 — in 20f NOTES. **The shallow capture is not built: blocked, Graft can't open a shallow clone, 20f NOTES.**)
-      (pty, `GRAFT_UPDATE_SHOTS=1` as ticket 08's `check_shot`, ≤ 200 KB, "Right:" line in each test
-      comment):
+      (`check_shot` as ticket 08's, `GRAFT_UPDATE_SHOTS=1`; drawn by `view::view` via `frame_at`, not a pty; ≤ 200 KB,
+      "Right:" line in each test comment):
   - `docs/shots/m7/blame-187x50.txt`: line 22 selected; `▸`, and `◂ Lina · 7 months ago · Retry refresh once on 401 ·
-    a1b2c3d` on that row only.
-  - `blame-140x40.txt`: gutter 22, no subject in the gutter, the trailer whole.
-  - `blame-100x30.txt`: gutter 10, the trailer as far as it fits.
+    2f48ca3` on that row only.
+  - `blame-140x40.txt`: gutter 22, no subject in the gutter; the trailer sheds its sha first (m7 note `:137`) and ends
+    `on 401`: the row is 134 wide, and ` · 2f48ca3` (10 more) would make 144 > 140.
+  - `blame-100x30.txt`: gutter 10, the trailer as far as it fits: `◂ Lina · 7 months ago` (the subject's step needs
+    103 > 100).
   - `blame-long-line-187x50.txt`: cursor on line 27; no trailer, the name in the gutter.
-  - `blame-then-commit-120x40.txt`: after `B ⏎`, the graph on Lina's commit, the diff's cursor carrier on line 22 in
-    its hunk, the bar leading `esc back to blame`.
-  - `blame-find-187x50.txt`: after `/retry⏎ n`, the title ending `· find "retry" 2 of N`.
+  - `blame-then-commit-120x40.txt`: after `B ⏎`, the graph on Lina's commit `2f48ca3`, the diff's cursor carrier `▎`
+    on her line **21** in its hunk (`LineRef{New, orig_line}`, `:63`; main's final line 22), the bar leading
+    `esc back to blame`.
+  - `blame-then-commit-with-base-120x40.txt` (the Capture bullet of the pinned-base ruling, below): the pane header is
+    the commit's own, not `COMPARE`; the status row carries the set-aside words, so this frame has no `esc back to
+    blame` (question M7/18e20f-q2, open); `▏` once, on the graph's cursor row (Lina's; graft-ui `render.rs:461` draws
+    it for the cursor row too), none on the base's (Priya's) row, no `x base`.
+  - `blame-find-187x50.txt`: after `/refresh⏎ n`, `▸` on line 47, the title ending `· find "refresh" 8 of 8` (matches
+    on lines 8, 14, 15, 17, 18, 21, 27, 47).
+  - **Corrected (planner, 2026-09-27; review `docs/reviews/m7-18e-20f.md` §Verified, "The spec, not the build, is
+    wrong"; gap M7/18e20f-spec).** The first bullets were spec errors, not build defects: the 140 "trailer whole" was
+    wrong arithmetic (the mock-up's line 22, note `:129`, is the fixture's text); `/retry` matches once in the fixture
+    (`graft-fixtures/src/shapes/trace.rs:51`), so "2 of N" can't be drawn; "line 22" contradicted `:63`'s own
+    `orig_line` rule; `a1b2c3d` is the mock-ups' sha; "pty" was never the mechanism (20f NOTES). The bullets now say
+    what 20f built and the review measured. The pinned-base ruling's "no `▏`" means no base mark, as above.
 - [ ] (20e: MAP.md done in graft `## update::place` and graft-ui `HintContext::Blame`/`RowMark::Shallow`; checked
       by grep of the pub items; NOTES key table done below; re-shot captures not done) graft MAP.md: `Place`, `Trail`, `BlameFrom`, `NoBlame`, `blame_from`, `open_blame`, `place_key`, `trail_back`,
       `is_write`, `came_from`, `GraphOverlay::Place`, the key-chain rung. NOTES: the key table as built; the re-shot
