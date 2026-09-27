@@ -52,6 +52,7 @@ fn facts() -> RepoFacts {
         refs: std::collections::BTreeMap::new(),
         markers: vec![],
         incoming: None,
+        edit_stop: None,
     }
 }
 

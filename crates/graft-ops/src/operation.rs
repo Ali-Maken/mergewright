@@ -36,6 +36,8 @@ use graft_git::state::InProgress;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
+use crate::rewrite::EditStop;
+
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
 pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};
@@ -336,6 +338,10 @@ pub struct RepoFacts {
     /// pull, only once `apply` has run its fetch, and only when tracked
     /// files are changed; `read_facts` never fills it.
     pub incoming: Option<Incoming>,
+    /// The rebase in progress stopped on an `edit` row (m7-power-tools/07a,
+    /// [`crate::rewrite::edit_stop`]). `None` outside a rebase and at a
+    /// conflict stop. P14's one exception keys on it (`check`).
+    pub edit_stop: Option<EditStop>,
 }
 
 /// What a pull's fetch brought: the tracking ref's tip after it, whether
@@ -351,6 +357,16 @@ pub struct Incoming {
     pub fast_forward: bool,
     /// Every path the fast-forward changes.
     pub paths: Vec<PathBuf>,
+}
+
+/// P14's one exception (m7-power-tools/07a, note R4): an amend inside a
+/// rebase stopped on an `edit` row, while `HEAD` is the commit git stopped
+/// on or an amend of it. A commit on top of it, a conflict stop, and every
+/// other operation in progress still wait.
+fn amends_at_edit_stop(op: &Operation, facts: &RepoFacts) -> bool {
+    matches!(op, Operation::Amend(_))
+        && facts.in_progress == Some(InProgress::Rebase)
+        && facts.edit_stop.as_ref().is_some_and(|stop| stop.head_on_it)
 }
 
 /// The key that asked for a rewrite, so a refusal names what *that* key does
@@ -1477,7 +1493,8 @@ impl Operation {
     /// (m5/07), and the two conflict operations *are* the resolution, so
     /// their own `check` is the one that refuses. A stage of a path that
     /// still carries markers is `MarkersRemain`. Everything else waits for
-    /// the operation in progress to finish.
+    /// the operation in progress to finish — except an amend at a rebase's
+    /// `edit` stop, on the stopped commit (P14's exception, 07a).
     fn check_conflict_state(&self, facts: &RepoFacts) -> Result<(), Refusal> {
         let unmerged: Vec<PathBuf> = facts
             .status
@@ -1515,7 +1532,10 @@ impl Operation {
                 | Self::FinishMerge(_)
                 | Self::AbortMerge(_)
         );
-        match facts.in_progress.filter(|_| waits) {
+        match facts
+            .in_progress
+            .filter(|_| waits && !amends_at_edit_stop(self, facts))
+        {
             Some(kind) => Err(Refusal::InProgress(kind)),
             None => Ok(()),
         }
@@ -1529,7 +1549,8 @@ impl Operation {
     /// paths (a stage or unstage of exactly those paths is exempt — that is
     /// "mark resolved", m5/07 — and a stage of one that still has conflict
     /// markers is `MarkersRemain`), an operation in progress (stage and
-    /// unstage are allowed mid-rebase, everything else waits), then the
+    /// unstage are allowed mid-rebase, and an amend at an `edit` stop on the
+    /// stopped commit; everything else waits), then the
     /// kind's own rules. A fetch skips the first three: it changes no
     /// branch, index or file, so it runs in a bare repository and in the
     /// middle of a rebase.

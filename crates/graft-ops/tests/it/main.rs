@@ -15,6 +15,7 @@ mod cherry_pick;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;
+mod edit_stop;
 mod error_rows;
 mod finish;
 mod finish_merge;
