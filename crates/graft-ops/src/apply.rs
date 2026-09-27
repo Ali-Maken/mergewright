@@ -47,8 +47,8 @@ pub use error::{AfterState, ApplyError, EditsAt};
 pub use recover::{Recovered, recover_interrupted};
 pub use remote::RemoteHooks;
 pub use restart::{RestartPlan, RestartReadError, StageSource, restart_gate, stage_source};
-pub(crate) use resume::live_entry;
 pub use resume::{Resume, resume};
+pub(crate) use resume::{live_entry, live_entry_facts};
 
 pub(crate) use error::{as_apply_error, reason_for};
 pub(crate) use record::{Opening, Pending, PrepareError, begin, finish, kind_name};

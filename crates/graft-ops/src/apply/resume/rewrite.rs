@@ -9,6 +9,7 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation};
 use graft_git::state::InProgress;
 
+use crate::facts::FactsError;
 use crate::rewrite::saved::{self, CLEANUP};
 
 use super::super::engine::plan_of;
@@ -22,11 +23,11 @@ pub(super) fn started_on_its_line(
     repo: &RepoHandle,
     entry: &JournalEntry,
     started_on: &HeadRef,
-) -> Result<bool, ApplyError> {
+) -> Result<bool, FactsError> {
     let HeadRef::Branch(git_started_on) = started_on else {
         return Ok(false);
     };
-    Ok(match plan_of(repo, &entry.id).map_err(ApplyError::Facts)? {
+    Ok(match plan_of(repo, &entry.id)? {
         Some((_, plan)) => {
             plan.top() == git_started_on && entry.head_before == HeadRef::Branch(plan.home)
         }
