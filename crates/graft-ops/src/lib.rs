@@ -25,6 +25,7 @@ pub mod restore;
 pub mod rewrite;
 pub mod snapshot;
 pub mod submodule;
+pub mod switch_list;
 pub mod undo;
 
 pub use apply::EditsAt;

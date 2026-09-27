@@ -42,6 +42,7 @@ mod stash_pop_redo;
 mod stash_preview;
 mod submodule_log;
 mod support;
+mod switch_list;
 mod undo_cancel;
 mod undo_gate;
 mod undo_replaced;

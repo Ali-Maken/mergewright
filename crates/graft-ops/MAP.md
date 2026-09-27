@@ -336,5 +336,11 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `SubmoduleLog` (struct) — `pulled_in`, `rewound`: `Vec<(Oid, String)>` (id, subject), newest first, git's order; every commit (the 50 cap is the diff pane's).
 - `submodule_log(repo, path, from, to, stop) -> Result<SubmoduleLog, FactsError>` (fn) — `git diff --submodule=log`'s walk (`from...to`, left-right, first parent), run as `git --git-dir=<path>/.git log`, so the ids are taken directly and a submodule not set up is never read as the superproject. Not set up and a commit not held are both `History(Exited { status: 128, .. })`, measured.
 
+## switch_list (m7/10c)
+- `SwitchKind` (enum) — `Local`, `RemoteOnly { remote, local }`. `Relation` (enum) — `Tracks(ref)` (upstream under `refs/remotes/`), `BuiltOn(ref)` (under `refs/heads/`), `None`.
+- `SwitchRow` (struct) — `name, kind, tip, subject, author, when, relation, current`. `SwitchList` (struct) — `previous: Option<SwitchRow>` (`↩ before`, not repeated in `rows`), `rows`.
+- `switch_list(repo, stop) -> Result<SwitchList, FactsError>` (fn) — `graft_git::switch_refs` + `head` + `remote::list`. Rows: previous (`@{-1}`, when not HEAD's branch) apart; then local newest tip first; then remote-only newest first; HEAD's branch (`current`) last. A remote ref is left out when a local branch's upstream is it, when a local branch has its local name, or **when no listed remote prefixes it**. Local name = ref less `refs/remotes/<remote>/`, `<remote>` the **longest** listed remote name prefixing it. Stopped → `FactsError::Stopped`.
+- `filter_switch_rows(list, query) -> Vec<&SwitchRow>` (fn, pure) — empty query: previous then `rows`. Else case-insensitive over the short name; a match at the start or after `/`/`-` ranks above another substring; ties newest tip first; previous ranks like any row.
+
 ## bin (test-only)
 - `askpass_test_helper` (bin) — stands in for Graft's askpass mode (M4 05b) in `tests/it/remote_ops.rs`: reads `GRAFT_ASKPASS_SOCKET`, calls `graft_git::run::askpass::respond` with `argv[1]`. Nothing ships it (m4/04).
