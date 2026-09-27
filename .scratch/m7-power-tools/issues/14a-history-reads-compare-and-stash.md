@@ -1,6 +1,6 @@
 # history-reads-compare-and-stash — three reads in `graft_git::history_reads`: where two commits split, how many commits lie between, and which commits only a stash reaches
 
-Status: draft
+Status: done
 Blocked by: none
 Crates: **graft-git only** (`history_reads`). Disjoint from graft: runs beside the serial graft chain.
 Source: respec of 14 and 16 after scouts `.scratch/m7-power-tools/scouts/14.md` §4 and `16.md` §4, "Contradictions":
@@ -62,23 +62,23 @@ pub fn only_in_stash(repo: &Repo, stashes: &[Oid], cap: usize, stop: &dyn Stop) 
 - Out: every caller (14, 16, 16b). `Range`, `commits_between`, `merge_base` unchanged.
 
 ## Acceptance (each box names its test at tick time)
-- [ ] `compare_span_counts_commits_since_the_split` — main + feature-a 3 commits off it → `Since { split, ahead: 3 }`.
-- [ ] `an_ancestor_has_nothing_ahead` — tip is an ancestor of base → `split == tip`, `ahead == 0`.
-- [ ] `unrelated_histories_have_no_split` — two roots → `NoSharedHistory`, not an error.
-- [ ] `compare_span_honours_stop`, `count_between_honours_stop`, `only_in_stash_honours_stop` — a raised `Stop` →
+- [x] `compare_span_counts_commits_since_the_split` — main + feature-a 3 commits off it → `Since { split, ahead: 3 }`.
+- [x] `an_ancestor_has_nothing_ahead` — tip is an ancestor of base → `split == tip`, `ahead == 0`.
+- [x] `unrelated_histories_have_no_split` — two roots → `NoSharedHistory`, not an error.
+- [x] `compare_span_honours_stop`, `count_between_honours_stop`, `only_in_stash_honours_stop` — a raised `Stop` →
       `Err(Stopped)` (whatever `RunError`'s stopped variant is named), never a partial answer.
-- [ ] `count_between_counts_what_leaves` — `count_between(new, old)` on a rewritten branch = the commits only `old`
+- [x] `count_between_counts_what_leaves` — `count_between(new, old)` on a rewritten branch = the commits only `old`
       has.
-- [ ] `only_in_stash_finds_the_rebased_away_base` — stash on `main@A`, then `main` rebased so `A` is off every
+- [x] `only_in_stash_finds_the_rebased_away_base` — stash on `main@A`, then `main` rebased so `A` is off every
       branch → `A` paired with `0`.
-- [ ] `only_in_stash_never_names_index_or_untracked_commits` — `stash -u` → neither extra parent appears.
-- [ ] `a_commit_two_stashes_reach_gets_the_newest` — two entries reaching `A` → `(A, 0)`.
-- [ ] `a_stash_on_a_live_branch_has_nothing_only_in_it` — the stash's base still on `main` → empty.
-- [ ] `only_in_stash_is_capped` — `cap` reached → `capped == true`, `commits.len() == cap`.
-- [ ] Perf: `scripts/m7-stash-only-cost.sh` → `docs/perf/stash-only-cost.txt` on the fixture `lost-commit-cost`
+- [x] `only_in_stash_never_names_index_or_untracked_commits` — `stash -u` → neither extra parent appears.
+- [x] `a_commit_two_stashes_reach_gets_the_newest` — two entries reaching `A` → `(A, 0)`.
+- [x] `a_stash_on_a_live_branch_has_nothing_only_in_it` — the stash's base still on `main` → empty.
+- [x] `only_in_stash_is_capped` — `cap` reached → `capped == true`, `commits.len() == cap`.
+- [x] Perf: `scripts/m7-stash-only-cost.sh` → `docs/perf/stash-only-cost.txt` on the fixture `lost-commit-cost`
       built (100k commits / 50k refs, no commit-graph): 1 entry and 10 entries, p95 line. The builder reads the
       summary lines only.
-- [ ] `crates/graft-git/MAP.md` `history_reads`: the three fns, one line each.
+- [x] `crates/graft-git/MAP.md` `history_reads`: the three fns, one line each.
 
 ## Touches (check each, report how)
 - **`merge_base`, `commits_between`, `replayed_commits`, `unreached`:** unchanged. Check: their tests green,
@@ -92,3 +92,13 @@ As rewrite-engine. Workspace-wide gates.
 
 ## Size
 Small-medium (~30k).
+
+## NOTES (builder, 2026-09-27)
+Every tick above is its named test in `crates/graft-git/tests/it/compare_and_stash.rs` (13 green; the stop box = all three `*_honours_stop`). Extra: `only_in_stash_skips_an_entry_git_no_longer_has`.
+- Red first: `unresolved imports graft_git::history_reads::{CompareSpan, compare_span, count_between, only_in_stash}`.
+- Code: `crates/graft-git/src/history_reads/compare.rs`. `compare_span` runs `merge-base` itself with the caller's stop (`merge_base` takes none; unchanged).
+- **Perf: method changed per the bound.** One `rev-list` per entry measured first: 1 entry p95 356.2 ms, 10 entries 2580.9 ms. Folded into one `rev-list --parents --stdin` + in-process claim by newest entry: 1 entry **219.3 ms**, 10 entries **194.5 ms** (`docs/perf/stash-only-cost.txt`). 1-entry case still over 190: the fixed cost of two spawns (`cat-file --batch-check` for `^1`, then the walk against 50 652 refs), as `unreached` pays. Conductor's call whether that holds.
+- Cap applies to the answer, not inside git (attribution needs the whole walk); a walk past the runner's output cap is `Unparsable`, as `unreached`.
+- Perf fixture stashes are `commit-tree` stash-shaped commits (lost commit as parents 1 and 2), not `refs/stash`; the reader takes ids.
+- No new fuzz target: `--count` parsed by `str::parse` → `RunError::Unparsable`.
+- Touches: `merge_base`/`commits_between`/`replayed_commits`/`unreached` bodies unchanged (`git diff` of history_reads.rs: 2 added lines); their tests green in full nextest 4189/4189. No callers yet. No compaction.

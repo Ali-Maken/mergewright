@@ -97,6 +97,12 @@ required-features = ["heavy-tests"]
 name = "lost_cost"
 required-features = ["heavy-tests"]
 
+# m7-power-tools/14a: `scripts/m7-stash-only-cost.sh` — `only_in_stash`'s
+# cost on the same fixture.
+[[example]]
+name = "stash_only_cost"
+required-features = ["heavy-tests"]
+
 [dev-dependencies]
 # The named fixture corpus (m1-the-graph/01). A dev-dependency only, so it is
 # not an internal dependency edge (ADR-0006). Optional so that the
