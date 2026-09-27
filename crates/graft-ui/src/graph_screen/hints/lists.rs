@@ -176,14 +176,20 @@ pub fn history_place_list(rows: bool, on_file: bool) -> Vec<Hint> {
     } else {
         (hint("j/k", "older·newer"), hint("⇥", "file"))
     };
-    vec![
+    let mut list = vec![
         moves,
         tab,
         hint("n/N", "next change"),
         hint("B", "blame here"),
         hint("⏎", "that commit"),
-        hint("esc", "back"),
-    ]
+    ];
+    // No form offers `v`, so `w` sits in the file's form, before the way
+    // back (21c); it answers from either focus.
+    if on_file {
+        list.push(hint("w", "whitespace"));
+    }
+    list.push(hint("esc", "back"));
+    list
 }
 
 /// [`HintContext::PaneOverOverlay`]'s list: `⏎ open` unless the diff has

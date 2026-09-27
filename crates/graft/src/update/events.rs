@@ -275,7 +275,7 @@ pub enum Product {
     /// A history place's trace, or why none (m7-power-tools/21).
     Trace(Result<std::sync::Arc<super::place::TraceAnswer>, super::place::TraceFailure>),
     /// A history place's whole file at one commit, or git's words.
-    WholeFile(Result<std::sync::Arc<graft_ui::detail::DiffView>, String>),
+    WholeFile(Result<WholeFileAnswer, String>),
     /// The refs containing a commit, or why not.
     ContainedIn(
         graft_core::oid::Oid,
@@ -443,6 +443,15 @@ pub enum Product {
         /// The answer.
         result: Result<crate::update::remote::Leaves, String>,
     },
+}
+
+/// A history place's whole file at one commit (m7-power-tools/21c).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WholeFileAnswer {
+    /// The file, assembled as the detail pane assembles a diff.
+    pub view: std::sync::Arc<graft_ui::detail::DiffView>,
+    /// `Some` only when the diff is binary. `Err`: the size read's `Display`.
+    pub sizes: Option<Result<graft_git::trace::BlobSizes, String>>,
 }
 
 /// What running `git --version` found.

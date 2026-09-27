@@ -58,7 +58,7 @@ The history place's picture (m7-power-tools/21); pure draw, no state. Uses `deta
 - `HistoryFocus` (enum) — `List` / `File`.
 - `HistoryRow<'a>` (struct) — `sha7`, `subject`, `who`, `when`, `added`, `removed`, `was` (a rename's `↳ was <path>` row).
 - `HistoryList<'a>` (enum) — `Rows { rows, selected, top, end }` / `Failed(&str)` (drawn across the whole width).
-- `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading { header }` / `Failed(&str)` / `Binary { header, old, new }` / `Lines { header, hunks, top, range, side_by_side, word_tint }`.
+- `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading { header }` / `Failed(&str)` / `Binary { header, old, new, sizes_failed }` (`binary · <old> → <new>`, or dim `binary · couldn't read sizes: <why>`; 21c) / `Lines { header, hunks, top, range, side_by_side, word_tint }`.
 - `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`.
 - `Columns` (struct), `columns(width, focus)` (fn) — where the list and the file pane sit; shared with the app's mouse hit-test.
 - `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the whole file's rows from its one hunk, which are changed, and the row of a line.

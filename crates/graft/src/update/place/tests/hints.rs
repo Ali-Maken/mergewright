@@ -105,6 +105,7 @@ fn history_rows_in_the_place_bar_table() {
         ("n/N", "next change"),
         ("B", "blame here"),
         ("⏎", "that commit"),
+        ("w", "whitespace"),
         ("esc", "back"),
     ];
     let back = [("esc", "back")];

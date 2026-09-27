@@ -43,7 +43,7 @@ Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `
 - `blame_with` / `Knobs::real()` (crate) — `blame` with its inputs set by a test; `blame` passes `Knobs::real()`. `Knobs` fields: `cap` (porcelain pass output cap), `marks_cap` (second pass output cap), `marks: MarksFrom { Auto, HumanFormat }`, `git: GitFrom { System, Given(GitVersion) }` (the version condition 4 sees), `porcelain_marks: PorcelainMarks { Read, Dropped }` (`Dropped`: every porcelain mark read `Plain`, as git < 2.50 leaves them). `Given(MINIMUM)` + `Dropped` runs the whole git < 2.50 path on any git (18f).
 
 ## trace
-Files: `shallow.rs` turns [`shallow::ShallowList`](#shallow) into trace's boundary set and error (the reader moved there in 32); `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
+Files: `shallow.rs` turns [`shallow::ShallowList`](#shallow) into trace's boundary set and error (the reader moved there in 32); `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`; `sizes.rs` `blob_sizes`.
 - `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
 - `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
 - `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
@@ -54,7 +54,8 @@ Files: `shallow.rs` turns [`shallow::ShallowList`](#shallow) into trace's bounda
 - `line_history` (fn) — `git log -L<s>,<e>:<path>`, capped, rows to a sink in one batch at exit (the runner does not stream stdout).
 - `file_history` (fn) — `git log --follow --raw --numstat -z`, capped, the same way.
 - `parse_line_log` / `parse_follow_log` (fn) — the pure readers behind them; fuzz targets `line_log`, `follow_log`.
-- `whole_file` (fn) — one commit's change to a file as a single hunk over every line (first parent for a merge, all adds for a root, all context if unchanged), cut at `max_lines` with `truncated` set.
+- `whole_file` (fn) — one commit's change to a file as a single hunk over every line (first parent for a merge, all adds for a root, all context if unchanged), cut at `max_lines` with `truncated` set; `ignore_whitespace` adds git's `-w` (a whitespace-only change is then all context; 21c).
+- `BlobSizes` (struct) / `blob_sizes` (fn, `sizes.rs`) — a file's byte size at `commit^1` (old path for a rename) and at `commit`, `None` for an absent side; one `cat-file --batch-check` (21c).
 
 ## branches
 - `Chosen` (enum) — how the default branch was chosen (ADR-0001's fallback chain).

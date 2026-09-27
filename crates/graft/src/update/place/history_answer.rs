@@ -7,11 +7,10 @@ use std::sync::Arc;
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::trace::{LineRange, TraceCommit, TraceEnd};
-use graft_ui::detail::DiffView;
 
 use super::history::{FileLoad, HistoryState, TraceLoad, file_height, list_height};
 use super::{Place, leave};
-use crate::update::events::Command;
+use crate::update::events::{Command, WholeFileAnswer};
 use crate::update::state::{AppState, Status};
 
 /// What a trace job reads (m7-power-tools/21). One answer per trace
@@ -134,7 +133,7 @@ pub(super) fn uncommitted_words(line: u32) -> String {
 pub(crate) fn whole_file_arrived(
     state: &mut AppState,
     id: JobId,
-    answer: Result<Arc<DiffView>, String>,
+    answer: Result<WholeFileAnswer, String>,
 ) {
     let height = file_height(state);
     let Some(history) = waiting_for(state, id) else {
@@ -144,7 +143,11 @@ pub(crate) fn whole_file_arrived(
         return;
     };
     history.file = match answer {
-        Ok(view) => FileLoad::Ready { commit, view },
+        Ok(WholeFileAnswer { view, sizes }) => FileLoad::Ready {
+            commit,
+            view,
+            sizes,
+        },
         Err(words) => FileLoad::Failed { commit, words },
     };
     history.place_file_pane();

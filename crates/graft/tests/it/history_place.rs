@@ -211,3 +211,112 @@ fn a_trace_error_is_drawn_as_a_failure() {
     assert!(back.trail.on_screen().is_some(), "Esc: blame again");
     app.close();
 }
+
+/// 21c: a text commit's whole file comes with no size read.
+#[test]
+fn a_text_commit_reads_no_sizes() {
+    let (_scratch, app, state) = lines_history(140, 40);
+    match &history(&state).file {
+        FileLoad::Ready { view, sizes, .. } => {
+            assert!(view.binary.is_none(), "a text file");
+            assert_eq!(sizes, &None, "no second read");
+        }
+        other => panic!("not read: {other:?}"),
+    }
+    app.close();
+}
+
+/// Bytes of `logo.bin` before and after the fixture's growing commit.
+const LOGO_BEFORE: usize = 600;
+const LOGO_AFTER: usize = 1500;
+
+/// The session fixture with `logo.bin` added at [`LOGO_BEFORE`] bytes, then
+/// grown to [`LOGO_AFTER`] on `main`: binary (it holds NULs).
+fn with_a_binary() -> graft_fixtures::Scratch {
+    let scratch = session();
+    let repo = scratch.path();
+    for (bytes, subject) in [(LOGO_BEFORE, "Add logo"), (LOGO_AFTER, "Grow logo")] {
+        let content: Vec<u8> = b"\0\x01\x02\x03\x04\x05\x06"
+            .iter()
+            .copied()
+            .cycle()
+            .take(bytes)
+            .collect();
+        std::fs::write(repo.join("logo.bin"), content)
+            .unwrap_or_else(|why| panic!("writing logo.bin: {why}"));
+        crate::app_harness::git(repo, &["add", "logo.bin"]);
+        // Both dates fixed, so the shas (and the capture) do not drift.
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(["commit", "-q", "-m", subject])
+            .env("GIT_AUTHOR_NAME", "Graft Test")
+            .env("GIT_AUTHOR_EMAIL", "test@example.invalid")
+            .env("GIT_COMMITTER_NAME", "Graft Test")
+            .env("GIT_COMMITTER_EMAIL", "test@example.invalid")
+            .env("GIT_AUTHOR_DATE", "@1578000000 +0000")
+            .env("GIT_COMMITTER_DATE", "@1578000000 +0000")
+            .output()
+            .unwrap_or_else(|why| panic!("git commit: {why}"));
+        assert!(
+            out.status.success(),
+            "git commit: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    crate::app_harness::git(repo, &["commit-graph", "write", "--reachable"]);
+    scratch
+}
+
+/// `docs/shots/m7/history-binary-140x40.txt`. Right: `F` on `logo.bin` in
+/// `main`'s commit — the file pane reads `binary · 600 B → 2 KB` (600 and
+/// 1 500 bytes, `size()`'s words), no line rows.
+#[test]
+fn capture_history_binary_140x40() {
+    use graft::update::detail::{DetailSpec, Loading};
+    let scratch = with_a_binary();
+    let (app, state) = graft_open(scratch.path());
+    let state = app.resize(&state, 140, 40);
+    let state = crate::preview::opened(&app, state);
+    let state = app.pump(state, "the repository's facts", |state| {
+        state.repository.is_some() && state.system_git.is_some()
+    });
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "main's file list and diff", |state| {
+        matches!(state.detail.spec, Some(DetailSpec::Commit(_)))
+            && matches!(state.detail.files, Loading::Ready(_))
+            && matches!(state.detail.diff, Loading::Ready(_))
+    });
+    let state = app.key(&state, KeyCode::Char('F'));
+    let state = traced(&app, state);
+    let place = history(&state);
+    match &place.file {
+        FileLoad::Ready { view, sizes, .. } => {
+            assert!(view.binary.is_some(), "binary");
+            assert_eq!(
+                sizes,
+                &Some(Ok(graft_git::trace::BlobSizes {
+                    old: u64::try_from(LOGO_BEFORE).ok(),
+                    new: u64::try_from(LOGO_AFTER).ok(),
+                }))
+            );
+        }
+        other => panic!("not read: {other:?}"),
+    }
+    let state = crate::captures::settled_frame(&app, state);
+    let frame = shoot(&state, 140, 40, "history-binary-140x40.txt");
+    let all = frame.join("\n");
+    assert!(
+        all.contains("binary \u{b7} 600 B \u{2192} 2 KB"),
+        "the sizes:\n{all}"
+    );
+    app.close();
+}
+
+/// The app on `repo`, its clock the corpus's.
+fn graft_open(repo: &std::path::Path) -> (App, AppState) {
+    App::open_with_clock(
+        repo,
+        graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW),
+    )
+}

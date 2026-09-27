@@ -311,6 +311,8 @@ pub enum Command {
         old_path: Option<std::path::PathBuf>,
         /// Past this many lines the file is cut (`L` asks for all).
         max_lines: usize,
+        /// `w`: read with git's `-w`, whitespace-only changes unmarked.
+        ignore_whitespace: bool,
     },
 }
 

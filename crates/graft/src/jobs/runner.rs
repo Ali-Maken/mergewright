@@ -344,6 +344,7 @@ impl<S: JobEvents> JobRunner<S> {
                 path,
                 old_path,
                 max_lines,
+                ignore_whitespace,
             } => {
                 self.detail_job(id, Task::WholeFile, move |cancel| {
                     let read = super::detail::read_whole_file(
@@ -352,6 +353,7 @@ impl<S: JobEvents> JobRunner<S> {
                         &path,
                         old_path.as_deref(),
                         max_lines,
+                        ignore_whitespace,
                         cancel,
                     );
                     Product::WholeFile(read)

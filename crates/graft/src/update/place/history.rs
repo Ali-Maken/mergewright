@@ -13,7 +13,7 @@ use std::sync::Arc;
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::blame::Rev;
-use graft_git::trace::{LineRange, TraceCommit, TraceEnd};
+use graft_git::trace::{BlobSizes, LineRange, TraceCommit, TraceEnd};
 use graft_term::sanitize::{sanitize_line, sanitize_path};
 use graft_ui::detail::{DiffView, LineKindView, WorkingTreeSection};
 use graft_ui::graph_screen::relative_date_long;
@@ -107,8 +107,14 @@ pub enum FileLoad {
         commit: Oid,
         /// The file, assembled as the detail pane assembles a diff.
         view: Arc<DiffView>,
+        /// A binary file's sizes before and after, or why not; `None` for
+        /// text (21c).
+        sizes: Option<Result<BlobSizes, String>>,
     },
 }
+
+/// A binary answer that came without its size read: a wiring bug, shown.
+const SIZES_NOT_READ: &str = "sizes not read";
 
 /// One history place.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -142,6 +148,9 @@ pub struct HistoryState {
     pub focus: HistoryFocus,
     /// `v`: side by side.
     pub side_by_side: bool,
+    /// `w`: whole-file reads ignore whitespace (git's `-w`). Held as `j`/`k`
+    /// step commits (21c).
+    pub ignore_whitespace: bool,
     /// Lines read per file before cutting short (`L` loads them all).
     pub max_lines: usize,
     /// Where the next file to land opens (`F`: the line he was on; `j`/`k`:
@@ -200,6 +209,7 @@ impl HistoryState {
             path,
             old_path,
             max_lines: self.max_lines,
+            ignore_whitespace: self.ignore_whitespace,
         });
         commands
     }
@@ -324,7 +334,8 @@ impl HistoryState {
         };
         let header = self.header(now);
         let file_failed = self.file_failed_words();
-        let file = self.file_pane(&header, file_failed.as_deref());
+        let sizes_failed = self.sizes_failed_words();
+        let file = self.file_pane(&header, file_failed.as_deref(), sizes_failed.as_deref());
         let view = HistoryView {
             title: &title,
             tracing: matches!(self.trace, TraceLoad::Tracing { .. }),
@@ -350,8 +361,30 @@ impl HistoryState {
         }
     }
 
+    /// A binary file's size read, when it failed: its words, sanitised. A
+    /// binary answer with no size read at all is a wiring bug (the job always
+    /// reads them) and says so rather than draw `none → none`.
+    fn sizes_failed_words(&self) -> Option<String> {
+        match &self.file {
+            FileLoad::Ready { view, sizes, .. } if view.binary.is_some() => match sizes {
+                Some(Ok(_)) => None,
+                Some(Err(words)) => Some(sanitize_line(words).as_str().to_owned()),
+                None => Some(SIZES_NOT_READ.to_owned()),
+            },
+            FileLoad::Idle
+            | FileLoad::Reading { .. }
+            | FileLoad::Failed { .. }
+            | FileLoad::Ready { .. } => None,
+        }
+    }
+
     /// The file pane's view: what the trace and the file's read allow.
-    fn file_pane<'a>(&'a self, header: &'a str, failed: Option<&'a str>) -> FilePane<'a> {
+    fn file_pane<'a>(
+        &'a self,
+        header: &'a str,
+        failed: Option<&'a str>,
+        sizes_failed: Option<&'a str>,
+    ) -> FilePane<'a> {
         match (&self.trace, &self.file) {
             (TraceLoad::Tracing { .. } | TraceLoad::Failed(_), _) => FilePane::Empty,
             (TraceLoad::Ready { .. }, FileLoad::Idle) => FilePane::NoChange,
@@ -359,11 +392,18 @@ impl HistoryState {
             (TraceLoad::Ready { .. }, FileLoad::Failed { .. }) => {
                 FilePane::Failed(failed.unwrap_or_default())
             }
-            (TraceLoad::Ready { .. }, FileLoad::Ready { view, .. }) if view.binary.is_some() => {
+            (TraceLoad::Ready { .. }, FileLoad::Ready { view, sizes, .. })
+                if view.binary.is_some() =>
+            {
+                let (old, new) = match sizes {
+                    Some(Ok(sizes)) => (sizes.old, sizes.new),
+                    Some(Err(_)) | None => (None, None),
+                };
                 FilePane::Binary {
                     header,
-                    old: None,
-                    new: None,
+                    old,
+                    new,
+                    sizes_failed,
                 }
             }
             (TraceLoad::Ready { .. }, FileLoad::Ready { view, .. }) => FilePane::Lines {
@@ -579,6 +619,7 @@ pub fn open_history(state: &mut AppState, from: HistoryFrom) -> Vec<Command> {
         change: None,
         focus: HistoryFocus::List,
         side_by_side: false,
+        ignore_whitespace: false,
         max_lines: MAX_LINES,
         anchor,
         last_click: None,

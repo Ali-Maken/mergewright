@@ -2631,6 +2631,11 @@ unverified (the heatmap's oldest bucket on the boundary rows).
   (`capture_esc_back_to_history_from_the_graph`): (a) `⏎` on a version, then
   `Tab` to the graph — the graph's bar begins `esc back to history`, never
   `back to blame`; (b) one `esc` — the history place again, same commit `▸`.
+- `docs/shots/m7/history-binary-140x40.txt` (`capture_history_binary_140x40`,
+  m7-power-tools/21c): `F` on `logo.bin`, a binary file grown from 600 to
+  1 500 bytes. Right: row 1 `HISTORY · logo.bin · 2 changes`; the file pane's
+  second row reads exactly `binary · 600 B → 2 KB` (`size()`: 600 → `600 B`,
+  1 500 → `2 KB`, whole KB rounded up); no line rows under it.
 
 Colour unverified (the `┃` bar, the `+`/`−` rows).
 

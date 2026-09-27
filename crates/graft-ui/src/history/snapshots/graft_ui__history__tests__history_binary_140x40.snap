@@ -1,0 +1,45 @@
+---
+source: crates/graft-ui/src/history/tests.rs
+description: "Right: the file pane reads binary · 700 B → 2 KB under the header; no line rows."
+expression: "snapshot(&v, 140, 40)"
+---
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 4 changes
+   7f6e5d4 Handle expire… YO  now +1 −1 │ a1b2c3d · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −1
+   c4d5e6f Move session … PR  4mo +1 −1 │ binary · 700 B → 2 KB
+   ↳ was src/session.rs                 │
+ ▸ a1b2c3d Retry refresh… LI  7mo +3 −1 │
+   5e6f7a8 Add token ref… TO 10mo +12   │
+   the file starts here (5e6f7a8 added  │
+   it)                                  │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │

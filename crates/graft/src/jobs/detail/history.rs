@@ -9,13 +9,14 @@ use graft_git::diff::{DiffOptions, DiffSpec, FileEntry, FileStatus, file_diff};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::trace::{
-    LineRange, TraceCommit, enclosing_function, file_history, line_history, map_to_head, whole_file,
+    LineRange, TraceCommit, blob_sizes, enclosing_function, file_history, line_history,
+    map_to_head, whole_file,
 };
-use graft_ui::detail::DiffView;
 
 use super::super::Cancel;
 use super::assemble_diff;
 use crate::repos::RepoStore;
+use crate::update::WholeFileAnswer;
 use crate::update::place::{FUNCTION_MAX, TRACE_CAP, TraceAnswer, TraceFailure, TraceRequest};
 
 /// A trace job: for `L`, the function around the line (else the blame
@@ -129,20 +130,37 @@ fn on_head(
 }
 
 /// The whole file at `commit`, its change against the first parent marked,
-/// assembled as the detail pane assembles a diff.
+/// assembled as the detail pane assembles a diff. `ignore_whitespace`: git's
+/// `-w`. A binary file also reads its sizes before and after (21c); a failed
+/// size read is carried as its words, the diff standing.
 pub(in crate::jobs) fn read_whole_file(
     repos: &RepoStore,
     commit: Oid,
     path: &Path,
     old_path: Option<&Path>,
     max_lines: usize,
+    ignore_whitespace: bool,
     stop: &Cancel,
-) -> Result<Arc<DiffView>, String> {
+) -> Result<WholeFileAnswer, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    let diff = whole_file(&handle, commit, path, old_path, max_lines, stop)
-        .map_err(|error| error.to_string())?;
-    Ok(Arc::new(assemble_diff(&diff, true)))
+    let diff = whole_file(
+        &handle,
+        commit,
+        path,
+        old_path,
+        max_lines,
+        ignore_whitespace,
+        stop,
+    )
+    .map_err(|error| error.to_string())?;
+    let sizes = diff.binary.is_some().then(|| {
+        blob_sizes(&handle, commit, path, old_path, stop).map_err(|error| error.to_string())
+    });
+    Ok(WholeFileAnswer {
+        view: Arc::new(assemble_diff(&diff, true)),
+        sizes,
+    })
 }
 
 /// `path` as git spells it.

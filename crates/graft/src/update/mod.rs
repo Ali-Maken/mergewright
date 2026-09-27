@@ -57,6 +57,7 @@ pub mod undo;
 
 pub use events::{
     AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, TakeAt, TakeRequest, Task,
+    WholeFileAnswer,
 };
 pub(crate) use geometry::context_menu_area;
 pub(crate) use history::walk_is_reading;

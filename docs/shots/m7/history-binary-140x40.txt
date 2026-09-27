@@ -1,0 +1,40 @@
+ HISTORY · logo.bin · 2 changes
+ ▸ 5b58e92 Grow logo      GT   3h       │ 5b58e92 · Graft Test · 3 hours ago · Grow logo · this file +0 −0
+   55d55bc Add logo       GT   3h       │ binary · 600 B → 2 KB
+   the file starts here (55d55bc added  │
+   it)                                  │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+ j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back

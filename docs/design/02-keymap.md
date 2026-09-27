@@ -474,7 +474,7 @@ width. `Esc` goes back. Added 2026-09-26 (M7 pass 2b; ADR-0048).
 | `n` / `N` | Next / previous change in the file pane, from either focus (as the resolver's blocks) |
 | `B` | Blame the file as of the selected commit, at the file pane's line |
 | `Enter` | The selected commit in the graph, its diff on this file; `Esc` comes back |
-| `w` `v` `[` `]` `L` | §2.5, on the file pane |
+| `w` `v` `L` | §2.5, on the file pane (no `[` `]`: a whole file has no context to widen; m7-power-tools/21c) |
 
 ### 2.12 Command palette
 
