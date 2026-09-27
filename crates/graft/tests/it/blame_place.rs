@@ -254,3 +254,55 @@ fn capture_blame_then_commit_with_base_120x40() {
     assert_no_offer(&state);
     app.close();
 }
+
+/// `docs/shots/m7/esc-back-to-blame-from-the-graph-120x40.txt` (20i, keymap
+/// §2.1's pane clause). Two frames. (a) After `B ⏎` and `Tab` to the graph:
+/// the pane is still open on Lina's commit, and the bar leads `esc back to
+/// blame`. (b) After one `Esc`: blame of `src/auth/session.rs` again, the
+/// `▸` on line 22 (`if resp.status() == 401 && attempt == 0 {`).
+#[test]
+fn capture_esc_back_to_blame_from_the_graph() {
+    use graft_ui::detail::DetailFocus;
+    let scratch = session();
+    let (app, mut state) = then_commit(scratch.path(), false);
+    for _ in 0..3 {
+        if state.detail.focus == DetailFocus::Graph {
+            break;
+        }
+        state = app.key(&state, KeyCode::Tab);
+    }
+    assert_eq!(state.detail.focus, DetailFocus::Graph, "`Tab` to the graph");
+    assert!(state.detail.shown, "the pane `⏎` opened is still open");
+    assert!(state.trail.hidden(), "the trail waits");
+    let graph = drawn(&state, 120, 40);
+    let lead = graph
+        .iter()
+        .find(|row| row.contains(" esc "))
+        .unwrap_or_else(|| panic!("a bar:\n{}", graph.join("\n")));
+    assert!(
+        lead.trim_start().starts_with("esc back to blame"),
+        "(a) the bar leads esc back to blame: {lead}"
+    );
+
+    let state = app.key(&state, KeyCode::Escape);
+    assert!(state.trail.on_screen().is_some(), "one `Esc` is blame");
+    assert_eq!(cursor_line(&state).final_line, LINE, "the same line");
+    let back = drawn(&state, 120, 40);
+    assert!(
+        cursor_row(&back).contains("attempt == 0"),
+        "(b) the `▸` on line 22: {}",
+        cursor_row(&back)
+    );
+
+    let body = format!(
+        "Right: (a) `B ⏎` then `Tab` to the graph — the pane still open on \
+         Lina's commit, the bar leads `esc back to blame`.\n{}\n\nRight: (b) \
+         one `Esc` — blame again, `▸` on line 22 `if resp.status() == 401 && \
+         attempt == 0 {{`.\n{}\n",
+        graph.join("\n"),
+        back.join("\n")
+    );
+    crate::captures::check_shot("m7/esc-back-to-blame-from-the-graph-120x40.txt", &body);
+    assert_no_offer(&state);
+    app.close();
+}

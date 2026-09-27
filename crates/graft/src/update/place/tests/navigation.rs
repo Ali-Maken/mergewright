@@ -223,12 +223,11 @@ fn assert_graph_cursor(state: &AppState, before: &AppState) {
 #[test]
 fn esc_on_the_graph_closes_search_before_returning_to_blame() {
     // Landed and settled: no seek still walking (its `Esc` rung comes
-    // before the search's), the trail waiting under the graph. The pane is
-    // closed: with it open, the pane's own `Esc` (close it) comes first.
+    // before the search's), the trail waiting under the graph, the pane
+    // open: it is not closed first (20i).
     let mut landed = pane_at(22);
     hide_a_trail(&mut landed);
     landed.detail.focus = DetailFocus::Graph;
-    landed.detail.shown = false;
     let query = crate::search::Query::parse("retry").expect("a non-empty query");
     let mut search = crate::search::Search::new(query, 0, (0, 0));
     search.state = crate::search::SearchState::Done { hits: 0 };

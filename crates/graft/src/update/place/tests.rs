@@ -2,6 +2,7 @@
 //! the event loop delivers keys and job answers. One file per box of 20's
 //! acceptance; the builders every box shares live here.
 
+mod esc_back;
 mod hints;
 mod keys;
 mod navigation;

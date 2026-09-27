@@ -506,12 +506,14 @@ pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
     back_to_blame(state, hint_context(state, &[]))
 }
 
-/// `context` led by `esc back to blame` while the trail waits under the
-/// graph or the pane (m7-power-tools/20): the bars whose `Esc` reaches
-/// `update::place::show_again` — a graph row's or a focused pane's. An
-/// overlay, a drag or a box takes `Esc` first, so it is left alone.
+/// `context` led by `esc back to blame` exactly when the next `Esc` goes
+/// back to the hidden trail (m7-power-tools/20, 20i): the same predicate
+/// the key asks (`update::place::esc_goes_back`), so a search, Focus,
+/// Explain or a held failure — whose `Esc` comes first — keeps its own bar.
+/// Only a graph row's or a pane's bar is wrapped; an overlay, a drag or a
+/// box has its own.
 fn back_to_blame(state: &AppState, context: HintContext) -> HintContext {
-    if !state.trail.hidden() {
+    if !crate::update::place::esc_goes_back(state) {
         return context;
     }
     match context {

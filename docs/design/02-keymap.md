@@ -79,8 +79,11 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     opened by `B`/`L`/`F`; each answers its own keys and the §2.2 globals,
     and none of the graph's verbs is live in them. `Esc` goes back one
     place; after `⏎` to the graph, `Esc` there returns to the place (once
-    the graph's own menu, box, prompt, search, Focus or Explain is closed).
-    Amended 2026-09-26 (M7 pass 2b; ADR-0048).
+    the graph's own menu, box, prompt, search, Focus or Explain is closed),
+    with the graph or the detail pane focused; an open detail pane is not
+    closed first, and `Esc` closes it again only once the trail has ended.
+    Amended 2026-09-26 (M7 pass 2b; ADR-0048); the pane clause 2026-09-27
+    (m7-power-tools/20i).
   - The **interactive rebase editor** (§2.7) binds `p r e s f d` to
     pick/reword/edit/squash/fixup/drop — git's own convention for
     `rebase -i` todo lines, which every Git user already knows. `r` here is

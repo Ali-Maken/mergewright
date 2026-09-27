@@ -43,7 +43,7 @@ pub use from::{BlameFrom, NoBlame, blame_from, came_from};
 pub use keys::place_key;
 pub(crate) use keys::{live_global, place_mouse};
 pub use trail::trail_back;
-pub(crate) use trail::{after_commands, end_for_compare, show_again};
+pub(crate) use trail::{after_commands, end_for_compare, esc_goes_back, show_again};
 use trail::{cancel_reading, leave};
 pub use write::is_write;
 

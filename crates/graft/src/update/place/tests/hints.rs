@@ -3,7 +3,7 @@
 use super::*;
 
 /// The keys the footer draws for `state`, at 200 columns.
-fn bar(state: &AppState) -> Vec<(&'static str, &'static str)> {
+pub(super) fn bar(state: &AppState) -> Vec<(&'static str, &'static str)> {
     use graft_ui::graph_screen::{Divider, hints_for};
     let banner = crate::update::banner::banner_view(state);
     let context = crate::view::rows::footer_context(state, &[], banner.as_ref());

@@ -74,14 +74,14 @@ pub(crate) fn space_folds(detail: &DetailState) -> bool {
 }
 
 /// The pane's two blame rungs (m7-power-tools/20). `Esc` with a trail
-/// hidden under the focused pane (`⏎` landed here) goes back to it before
-/// it closes the pane. `B` blames at the line he is on — unless the
-/// commit-graph offer can be acted on, whose `B` it is (keymap §2.1;
-/// `place::b_key` asks).
+/// hidden (`⏎` landed on the graph and this pane) goes back to it before it
+/// closes the pane — graph or pane focused, once the graph's own open things
+/// are closed (`place::esc_goes_back` decides; keymap §2.1, 20i). `B`
+/// blames at the line he is on — unless the commit-graph offer can be acted
+/// on, whose `B` it is (keymap §2.1; `place::b_key` asks).
 fn place_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
-    let pane_focused = next.detail.shown && next.detail.focus != DetailFocus::Graph;
     match key.code {
-        KeyCode::Escape if pane_focused => crate::update::place::show_again(next),
+        KeyCode::Escape => crate::update::place::show_again(next),
         KeyCode::Char('B') if !key.modifiers.control && !key.modifiers.alt => {
             crate::update::place::b_key(next, commands)
         }
@@ -115,6 +115,7 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
     // view, so it needs the region's height; read it before `next` is split
     // up below.
     let body_rows = super::super::geometry::diff_body_rows(next);
+    let trail_hidden = next.trail.hidden();
     let AppState {
         detail, local_jobs, ..
     } = next;
@@ -140,7 +141,11 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             commands.extend(detail.open(spec, &mut || local_jobs.next_id()));
             true
         }
-        KeyCode::Escape if detail.shown => {
+        // Not while a trail is hidden: this pane is where `⏎` landed, and
+        // `Esc` goes back to blame first (`place_key` above), or closes the
+        // graph's search or Focus first (`update::keys::escape_key`). It
+        // closes again once the trail has ended (keymap §2.1, 20i).
+        KeyCode::Escape if detail.shown && !trail_hidden => {
             detail.close();
             true
         }
