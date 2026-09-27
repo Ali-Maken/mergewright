@@ -1,0 +1,47 @@
+# 30g: flaky ghost-time test, and submodule facts at 120 columns
+
+Status: ready
+Build with: Sonnet. Both fixes are spelled out in the review; no new decisions.
+Needs: nothing new.
+Blocked by: nothing (files disjoint from 16b, 10b, 21 running).
+Scout: none. The review names every line (`docs/reviews/m7-01a-to-20o.md` Major 1, Major 2).
+
+Files: `crates/graft-ops/tests/it/rewrite_preview.rs` (and its fixture helper, if the env is set there — name it in
+NOTES); `crates/graft-ops/src/preview/kinds.rs` **only** to read how `identity_now` gets the time (edit only if the
+fixture cannot pin it — then say why in NOTES); `crates/graft-ui/src/detail_pane/files.rs` (+ its tests);
+`docs/shots/m7/submodule-row-120x40.txt`, `submodule-diff-120x40.txt` (re-taken by their fast-tier tests, never
+hand-edited); `crates/graft-ui/MAP.md`; `TESTING.md` row for 13b if its words change.
+
+## Problem
+
+- **Major 1** (`rewrite_preview.rs:750`): `plan_as_run_leaves_every_other_kind_alone` compares two plans whose merge/
+  revert/pick ghosts take `identity_now` (`preview/kinds.rs:81`, `:367`). Built one second apart, `when.seconds`
+  differs → the gate fails at random.
+- **Major 2** (13b captures at 120x40): the submodule row is cut to `▣ libs/parser  submodule ·…`; pointer and state,
+  the point of 13b, are lost at the user's usual width. Gap row `M7/13b-120` (broken).
+
+## Decided (from the review's Fix lines)
+
+1. Cause, not retry: pin `GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE` in the fixture if `identity_now` reads them (via
+   `git var` or the env). Otherwise compare with `author.when` normalised, and say in NOTES why pinning can't work.
+2. A width ladder in `detail_pane/files.rs`: drop the word `submodule` before the facts (the `▣` glyph already says
+   it). Facts (pointer, state) are the never-cut part.
+
+## Acceptance
+
+- [ ] Red first: a test that builds the two plans across a forced second boundary (or with the clock pinned apart)
+      and fails today. Name it. Then `plan_as_run_leaves_every_other_kind_alone` passes with the fix, 20 runs in a row
+      (`cargo nextest run -E 'test(plan_as_run)' --retries 0` looped; say the count in NOTES).
+- [ ] Red first: at 120 columns the submodule row shows the pointer and state whole. Name the test.
+- [ ] Sweep: every width 80–187, the row's facts are whole or the row degrades by the ladder only. Name the test.
+- [ ] Captures `submodule-row-120x40.txt`, `submodule-diff-120x40.txt` re-taken by their tests; ≤200 KB; colour
+      unverified. Gap row `M7/13b-120` → closed (conductor moves it).
+- [ ] MAP.md (graft-ui). Gates workspace-wide.
+
+## Touches (check each, say how)
+
+Other rows in the file list at the same widths (plain files, renames): unchanged — say how checked. Every other
+capture showing the file list. The 13b walk. Other tests calling `identity_now` through a preview (grep; any that
+compare two plans have the same flake — list them, fix the same way).
+
+## NOTES (builder)
