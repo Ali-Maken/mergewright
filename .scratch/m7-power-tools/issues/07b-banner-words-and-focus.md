@@ -63,3 +63,7 @@ As rewrite-engine. Workspace-wide gates. Each part commits at its seam.
 
 ## Conductor note (2026-09-27, from 07a)
 07a probe: an Amend at an edit stop folds into the rewrite span (`graft-ops/src/apply/fold.rs:40`) and gets no journal entry of its own; `fold.rs:63` doc is stale. The Touches line here expects an ordinary Amend entry. **07b decides** (verify first, rule 7): keep the fold (then the amend undoes with the rewrite; say so in the banner/words) or journal it apart. Say which in NOTES with the line.
+
+## Conductor note (2026-09-28, review m7-09-to-21c Major 1)
+
+An edit-stop amend in a rebase begun in the shell is admitted (`graft-ops/src/operation.rs:1537`) but unrecorded: `apply/fold.rs:55` finds no span, so there is no backup and no journal entry, and `u` can't take it back. 07a's Touches line missed it. This is the same fold path as the earlier note; 07b fixes it: record it, or refuse it with words. Verify first; red test first.
