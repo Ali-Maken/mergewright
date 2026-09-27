@@ -7,10 +7,11 @@ use std::sync::Arc;
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_fixtures::git::{FIXED_DATE, run_at};
-use graft_git::blame::Rev;
+use graft_git::blame::{BlameError, Rev};
 
+use super::blame::blame_failure;
 use super::*;
-use crate::update::place::{BlameFrom, BlameLoad, open_blame};
+use crate::update::place::{BlameAnswer, BlameFailure, BlameFrom, BlameLoad, open_blame};
 use crate::update::{AppEvent, AppState, Command, Product, Status, update};
 
 fn git(repo: &Path, args: &[&str]) -> String {
