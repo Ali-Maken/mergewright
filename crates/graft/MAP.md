@@ -659,7 +659,7 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `RepositoryFacts::head` (field) — where `HEAD` points.
 - `RepositoryFacts::mailmap` (field) — the repository's resolved `.mailmap`, for the author chip.
 - `RepositoryFacts::commit_graph` (field) — `CommitGraphFact` (m1-the-graph/54).
-- `CommitGraphFact` (enum) — `Present { commits }`, `Absent { declined }`, `Unreadable(msg)` (shown as a problem, no offer).
+- `CommitGraphFact` (enum) — `Present { commits }`, `Absent { declined }`, `Shallow` (a non-empty `ShallowList`: git reads no commit-graph there, so the offer is `NotNeeded` and `B`/`X` are not taken; m7/20j), `Unreadable(msg)` (shown as a problem, no offer; also an unreadable shallow file).
 - `Head` (enum) — where `HEAD` points, one step before the sanitiser.
 - `facts` (fn) — read facts about an open repository.
 

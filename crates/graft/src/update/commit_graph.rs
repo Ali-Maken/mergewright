@@ -22,9 +22,9 @@ pub(super) fn decide_commit_graph_offer(next: &mut AppState) {
         return;
     };
     next.commit_graph = match &facts.commit_graph {
-        CommitGraphFact::Present { .. } | CommitGraphFact::Absent { declined: true } => {
-            CommitGraphOffer::NotNeeded
-        }
+        CommitGraphFact::Present { .. }
+        | CommitGraphFact::Shallow
+        | CommitGraphFact::Absent { declined: true } => CommitGraphOffer::NotNeeded,
         CommitGraphFact::Unreadable(why) => {
             next.status = Status::Failed(why.clone());
             CommitGraphOffer::NotNeeded

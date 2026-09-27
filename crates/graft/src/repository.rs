@@ -12,6 +12,7 @@ use graft_core::oid::Oid;
 use graft_git::commit_graph::{self, CommitGraphStatus, Offer};
 use graft_git::mailmap::Mailmap;
 use graft_git::repo::{HeadState, RepoHandle};
+use graft_git::shallow::ShallowList;
 
 /// What one open repository told Graft.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,6 +46,9 @@ pub enum CommitGraphFact {
         /// The decline file is there.
         declined: bool,
     },
+    /// A shallow clone: git and Graft read no commit-graph here, so none is
+    /// offered (m7-power-tools/20j; git's `commit_graph_compatible`).
+    Shallow,
     /// The file, or the decline file, could not be read, and this is why.
     /// Shown as a problem; nothing is offered.
     Unreadable(String),
@@ -105,8 +109,14 @@ pub fn facts(repository: &RepoHandle) -> Result<RepositoryFacts, String> {
 }
 
 /// What the commit-graph offer needs: the file's status, and the decline
-/// only when there is no file to speak of.
+/// only when there is no file to speak of. A shallow clone is its own fact:
+/// a commit-graph written there would never be read.
 fn commit_graph_fact(repository: &RepoHandle) -> CommitGraphFact {
+    match ShallowList::read(repository) {
+        Ok(list) if !list.is_empty() => return CommitGraphFact::Shallow,
+        Ok(_) => {}
+        Err(error) => return CommitGraphFact::Unreadable(error.to_string()),
+    }
     match commit_graph::status(repository) {
         Ok(CommitGraphStatus::Present { commits }) => CommitGraphFact::Present { commits },
         Ok(CommitGraphStatus::Absent) => match commit_graph::offer_state(repository) {

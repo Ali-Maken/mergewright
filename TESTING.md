@@ -2602,6 +2602,16 @@ the resolver, the graph focused, at 80x24 — no banner, no resolver; the
 bottom row begins ` stash@{0} clashed · 1 file conflicted · ` then the keys
 that fit; nothing cut mid-word. Colour unverified.
 
+### M7 blame in a shallow clone
+
+`docs/shots/m7/blame-shallow-187x50.txt` (m7-power-tools/20j,
+`blame_place::blame_shallow_capture`): a `git clone --depth 2` of the session
+fixture, cut at Priya's `0a27627`; blame of `src/auth/session.rs`, cursor on
+line 18. Right: row 18 reads `▸ ^0a2762 shallow clone · can't say who`, its
+trailer `◂ can't say who · this clone starts at 0a27627`; the block's other
+rows are brackets, no name; `Priya` nowhere; no commit-graph offer. Colour
+unverified (the heatmap's oldest bucket on the boundary rows).
+
 ## Hint bar
 
 `hint-bar-redesign` (ADR-0037 §4): the footer shows the three most relevant
