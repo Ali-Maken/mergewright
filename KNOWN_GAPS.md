@@ -974,3 +974,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r30c10c-m5 | 30c recovery reads pass `&()` not `ctx.stop` (`graft-ops/src/apply/recover.rs:150,153`) | **broken** (stop not honoured) | M7 |
 | M7/r30c10c-m6 | 13a: no fuzz/proptest for `submodule::parse` (`graft-ops/src/submodule.rs`) | **unverified** | M8 |
 | M7/r30c10c-q1 | 03-a: a pull that changes nothing still moves the cursor to HEAD (`operate.rs:959,980`; `operation.rs:1223`). Wanted? → user at stop | **unverified** (question) | M7 |
+| M7/13b-fuzz | 13's "fuzz corpus gains `S` records" box open: `fuzz/corpus/` is gitignored, nothing committable; 5 seed records in 13b NOTES. Decide: seed locally, or un-ignore a seed dir | **unverified** (not done) | M7 |
+| M7/13b-120 | Submodule row cut at 120 cols (Below layout gives the file list 30 cols): `▣ libs/parser submodule ·…`, facts lost (`docs/shots/m7/submodule-row-120x40.txt`). Needs a width ladder or a 187 capture | **broken** (visual) | M7 |
+| M7/13b-rest | 13b NOTES: `d` on a submodule path untested; commit-list gitlinks still read `M`; words "new at" / "removed (was)" invented (user judges by eye) | **unverified** | M7 |
