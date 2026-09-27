@@ -17,7 +17,7 @@
 //!    2026-09-26 b amendment, [`put_back`]); then `S` dropped by id when
 //!    nothing is unmerged; the entry's outcome decided from both. Absorb,
 //!    gone through, applies `S` rebuilt on its base (06b,
-//!    `put_back::from_index_base`).
+//!    `rebuild::from_index_base`).
 //!
 //! A rebase that stops at 5 leaves the entry `Pending` with `S` in the list;
 //! `resume` runs step 6 when git is done with it, whichever way.
@@ -28,7 +28,6 @@ use graft_core::journal::{EntryStatus, JournalEntry, PutBack, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::{GitArg, GitInvocation, RunError};
 
-use crate::clash::Clash;
 use crate::facts::FactsError;
 use crate::operation::{Operation, RepoFacts};
 use crate::snapshot::SnapshotError;
@@ -38,9 +37,13 @@ use super::{
     AfterState, Applied, ApplyError, Context, EditsAt, Pending, Refresh, finish, reason_for,
 };
 
+mod answer;
 mod put_back;
+mod rebuild;
+mod returned;
 
-use put_back::PutBackRan;
+use answer::{Outcome, answer, status_for};
+use returned::{Returned, put_back};
 
 /// The message `S` is created and listed under (ADR-0045 §4 step 3).
 pub(super) fn words(description: &str) -> String {
@@ -285,244 +288,6 @@ pub(super) fn close(
     answer(outcome, pending.entry, stash, ended.failure, unread)
 }
 
-/// The entry's outcome status, from the put-back and the operation's own
-/// failure (see [`close`]).
-fn status_for(outcome: &Outcome, failure: Option<&RunError>, done: EntryStatus) -> EntryStatus {
-    let failed = failure.map(reason_for);
-    match (outcome, failed) {
-        (Outcome::Kept { words, .. }, Some(failed)) => EntryStatus::Aborted {
-            reason: format!("{failed}; {words}"),
-        },
-        (Outcome::Kept { words, .. }, None) => EntryStatus::Aborted {
-            reason: words.clone(),
-        },
-        // The operation failed and the edits came back onto the unchanged
-        // tip; the reason also says when their staging did not.
-        (Outcome::Back { unstaged }, Some(failed)) => EntryStatus::Aborted {
-            reason: format!("{failed}{}", staging_clause(unstaged)),
-        },
-        (Outcome::Clashed(_), Some(failed)) => EntryStatus::Aborted { reason: failed },
-        (Outcome::Back { .. } | Outcome::Clashed(_), None) => done,
-    }
-}
-
-/// What [`close`] answers, once the outcome line is written.
-fn answer(
-    outcome: Outcome,
-    entry: JournalEntry,
-    stash: Oid,
-    failure: Option<RunError>,
-    unread: Vec<AfterState>,
-) -> Result<Applied, ApplyError> {
-    let recoverable = entry.worktree_before.is_some();
-    match outcome {
-        Outcome::Clashed(paths) => {
-            let clash = Clash {
-                stash,
-                why: PutBackWhy::SetAside,
-                paths,
-            };
-            if unread.is_empty() {
-                return Err(ApplyError::Clashed {
-                    entry: Box::new(entry),
-                    clash,
-                });
-            }
-            // The clash is re-found from the journal by `live_clash`; what
-            // could not be read must not be lost behind it.
-            Err(ApplyError::AfterState {
-                applied: Box::new(applied(entry)),
-                unread,
-            })
-        }
-        Outcome::Kept {
-            words,
-            edits,
-            error,
-        } => Err(match (failure, error) {
-            (Some(failed), _) | (None, Ok(failed)) => ApplyError::Git {
-                entry: Box::new(entry),
-                // Known place: git's own words, and `edits` for the caller
-                // to word. Unknown: the words ride on git's line, so every
-                // place that shows the error still says where they are.
-                error: match edits {
-                    Some(_) => failed,
-                    None => naming(failed, &words),
-                },
-                recoverable,
-                edits,
-            },
-            // No git error to carry the words: a read failed after the
-            // operation went through. The entry is journaled, so it is an
-            // after-state failure carrying the words (73 review, m2), which
-            // the caller refreshes after.
-            (None, Err(error)) => {
-                let mut unread = unread;
-                unread.insert(0, AfterState::SetAsideKept { error, words });
-                ApplyError::AfterState {
-                    applied: Box::new(applied(entry)),
-                    unread,
-                }
-            }
-        }),
-        Outcome::Back { unstaged } => match failure {
-            // Put back clean and dropped: the edits are simply back (the
-            // entry's reason says when their staging did not come back).
-            Some(error) => Err(ApplyError::Git {
-                entry: Box::new(entry),
-                error,
-                recoverable,
-                edits: None,
-            }),
-            None => back(entry, unstaged, unread),
-        },
-    }
-}
-
-/// The operation went through and the edits are back, `S` dropped. Back
-/// without its staging is a completed write the caller words as
-/// incomplete: [`AfterState::StagingNotKept`], first among what it reports.
-fn back(
-    entry: JournalEntry,
-    unstaged: Vec<PathBuf>,
-    mut unread: Vec<AfterState>,
-) -> Result<Applied, ApplyError> {
-    if !unstaged.is_empty() {
-        unread.insert(0, AfterState::StagingNotKept { paths: unstaged });
-    }
-    if unread.is_empty() {
-        return Ok(applied(entry));
-    }
-    Err(ApplyError::AfterState {
-        applied: Box::new(applied(entry)),
-        unread,
-    })
-}
-
-/// Step 6's answer, with the words already read for a kept `S`.
-enum Outcome {
-    /// As [`Returned::Back`].
-    Back {
-        unstaged: Vec<PathBuf>,
-    },
-    Clashed(Vec<PathBuf>),
-    Kept {
-        /// What went wrong and where the edits are.
-        words: String,
-        /// Where the edits are, when it is known.
-        edits: Option<EditsAt>,
-        /// git's error, or the read that failed.
-        error: Result<RunError, FactsError>,
-    },
-}
-
-/// A set-aside operation that went through: a rebase or checkout, so the
-/// graph is re-read.
-fn applied(entry: JournalEntry) -> Applied {
-    Applied {
-        entry,
-        refresh: Refresh::Everything,
-        step_backup: None,
-        replaced: crate::undo::Replaced::default(),
-    }
-}
-
-/// What step 6 came to.
-enum Returned {
-    /// Put back with nothing unmerged, and `S` dropped. `unstaged`: the
-    /// staged paths whose staging did not come back (git could not reinstate
-    /// the index, [`PutBackRan::Unstaged`]); empty when the index came back.
-    Back { unstaged: Vec<PathBuf> },
-    /// Put back with these paths unmerged; `S` kept.
-    Clashed(Vec<PathBuf>),
-    /// `S` kept for another reason.
-    Kept(Kept),
-}
-
-/// Why `S` is still in the list after step 6.
-enum Kept {
-    /// git failed: the apply (nothing came back), or the drop after a clean
-    /// apply (`back`: the edits are in the tree **and** in the list;
-    /// `unstaged` as [`Returned::Back`]'s).
-    Git {
-        error: RunError,
-        back: bool,
-        unstaged: Vec<PathBuf>,
-    },
-    /// The status could not be read after the apply, so whether it clashed
-    /// is unknown; `S` is not dropped on a guess.
-    Unread(FactsError),
-    /// The apply was clean, but the stash list could not be read to find
-    /// `S`'s position to drop it: the edits are back **and** `S` is still
-    /// listed (73 review, m3).
-    Unlisted {
-        why: FactsError,
-        unstaged: Vec<PathBuf>,
-    },
-}
-
-impl Kept {
-    fn into_error(self) -> Result<RunError, FactsError> {
-        match self {
-            Kept::Git { error, .. } => Ok(error),
-            Kept::Unread(why) | Kept::Unlisted { why, .. } => Err(why),
-        }
-    }
-
-    /// Where the edits are, when it is known (ADR-0045 §5 amended), from
-    /// `listed`, the one read of the stash list [`close`] made.
-    fn edits(&self, listed: &Result<Option<usize>, FactsError>) -> Option<EditsAt> {
-        let at = listed.as_ref().ok().copied().flatten();
-        match self {
-            // Not back: the copy in the list is the only place they are. An
-            // unfound or unreadable copy has no position to name.
-            Kept::Git { back: false, .. } => at.map(|n| EditsAt::Stash { n }),
-            Kept::Git { back: true, .. } => Some(EditsAt::Back { copy: at }),
-            // Whether the put-back clashed is unknown: no place is claimed.
-            Kept::Unread(_) => None,
-            Kept::Unlisted { .. } => Some(EditsAt::Back { copy: None }),
-        }
-    }
-
-    /// The entry's reason: what went wrong, then where the edits are — and,
-    /// when they are back without their staging, ` · staging not kept:
-    /// <paths>` (ADR-0045 amendment 2026-09-26 b).
-    fn words(&self, listed: &Result<Option<usize>, FactsError>, stash: Oid) -> String {
-        match self {
-            Kept::Git {
-                error, back: false, ..
-            } => {
-                format!("{} · {}", reason_for(error), where_listed(listed, stash))
-            }
-            Kept::Git {
-                error,
-                back: true,
-                unstaged,
-            } => format!(
-                "your edits are back, and the set-aside copy could not be dropped: {} · {}{}",
-                reason_for(error),
-                match listed {
-                    Ok(Some(at)) => format!("a copy stays in stash@{{{at}}}"),
-                    _ => where_listed(listed, stash),
-                },
-                staging_clause(unstaged)
-            ),
-            Kept::Unread(why) => format!(
-                "the status after putting your edits back could not be read: {why} · {}",
-                where_listed(listed, stash)
-            ),
-            // The list is what could not be read, so the copy is named by
-            // its commit rather than by a second read of the same list.
-            Kept::Unlisted { why, unstaged } => format!(
-                "your edits are back; the set-aside copy could not be found to drop ({why}) · \
-                 it is stash commit {}{}",
-                short(stash),
-                staging_clause(unstaged)
-            ),
-        }
-    }
-}
-
 /// ` · staging not kept: <first>[ +N more]`, or nothing when the index came
 /// back.
 fn staging_clause(unstaged: &[PathBuf]) -> String {
@@ -548,82 +313,6 @@ fn where_listed(listed: &Result<Option<usize>, FactsError>, stash: Oid) -> Strin
             short(stash)
         ),
     }
-}
-
-/// Step 6 itself: the apply ([`put_back::run_put_back`]) and the drop.
-///
-/// With `index_base` — absorb, gone through — and `HEAD`'s tree the one the
-/// plan said it would land on, the input is `S` rebuilt on the base
-/// ([`put_back::from_index_base`]); otherwise `S` itself. Either goes back
-/// with `--index`, falling back to a plain apply when git cannot reinstate
-/// the index (ADR-0045 §4 step 6, amended 2026-09-26 b). `S` is the listed
-/// copy either way, and the one dropped.
-fn put_back(
-    ctx: &Context<'_>,
-    stash: Oid,
-    index_base: Option<Oid>,
-    commands: &mut Vec<String>,
-) -> Returned {
-    let input = match index_base {
-        Some(base) => match put_back::from_index_base(ctx, stash, base, commands) {
-            Ok(rebuilt) => rebuilt.unwrap_or(stash),
-            // Nothing is applied yet: `S` is listed and untouched.
-            Err(error) => {
-                return Returned::Kept(Kept::Git {
-                    error,
-                    back: false,
-                    unstaged: Vec::new(),
-                });
-            }
-        },
-        None => stash,
-    };
-    let unstaged = match put_back::run_put_back(ctx, input, commands) {
-        Ok(PutBackRan::Whole) => Vec::new(),
-        Ok(PutBackRan::Unstaged { paths }) => paths,
-        Ok(PutBackRan::Clashed { paths }) => return Returned::Clashed(paths),
-        Ok(PutBackRan::Failed { error }) => {
-            return Returned::Kept(Kept::Git {
-                error,
-                back: false,
-                unstaged: Vec::new(),
-            });
-        }
-        Err(why) => return Returned::Kept(Kept::Unread(why)),
-    };
-    match drop_by_id(ctx, stash, commands) {
-        Ok(()) => Returned::Back { unstaged },
-        Err(Dropped::Git(error)) => Returned::Kept(Kept::Git {
-            error,
-            back: true,
-            unstaged,
-        }),
-        Err(Dropped::Unlisted(why)) => Returned::Kept(Kept::Unlisted { why, unstaged }),
-    }
-}
-
-/// Why the drop did not happen.
-enum Dropped {
-    Git(RunError),
-    /// The stash list could not be read to find `S`'s position.
-    Unlisted(FactsError),
-}
-
-/// `stash drop stash@{n}`, `n` looked up by `S`'s commit id now — git will
-/// not drop by a bare commit id (72's `git_refuses_a_stash_drop_by_bare_commit_id`).
-/// `S` not listed at all means something else already took it out: there
-/// is nothing left to drop.
-fn drop_by_id(ctx: &Context<'_>, stash: Oid, commands: &mut Vec<String>) -> Result<(), Dropped> {
-    let Some(at) = listed_at(ctx, stash).map_err(Dropped::Unlisted)? else {
-        return Ok(());
-    };
-    let drop = GitInvocation::new(ctx.repo).args([
-        GitArg::Flag("stash"),
-        GitArg::Flag("drop"),
-        GitArg::Word(format!("stash@{{{at}}}")),
-    ]);
-    commands.push(drop.command_line());
-    drop.run(&()).map(|_output| ()).map_err(Dropped::Git)
 }
 
 /// Where `S` is in the stash list now, read by commit id — never assumed.

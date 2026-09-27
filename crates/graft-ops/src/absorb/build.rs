@@ -6,9 +6,10 @@ use std::path::Path;
 use graft_core::oid::Oid;
 use graft_git::diff::{DiffLine, FileDiff, Hunk, LineKind, PatchDirection, Selection, hunk_patch};
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, Stop};
+use graft_git::run::{GitArg, Stop};
 
 use crate::facts::FactsError;
+use crate::objects;
 use crate::snapshot::TempIndex;
 
 use super::read::FileAtHead;
@@ -27,19 +28,10 @@ pub(crate) fn commit_pieces(
     stop: &dyn Stop,
 ) -> Result<Oid, FactsError> {
     let tree = tree_with(repo, head, pieces, stop)?;
-    let commit = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("commit-tree"),
-            GitArg::Oid(tree),
-            GitArg::Flag("-p"),
-            GitArg::Oid(head),
-            GitArg::Flag("-F"),
-            GitArg::Flag("-"),
-        ])
-        .stdin(format!("{subject}\n").into_bytes())
+    let commit = objects::commit_tree(repo, tree, &[head], subject)
         .run(stop)
         .map_err(FactsError::of_history)?;
-    parse_oid(String::from_utf8_lossy(&commit.stdout).trim())
+    objects::printed_oid(&commit.stdout, "commit-tree").map_err(FactsError::History)
 }
 
 /// `target` plus `pieces` is `parent`'s tree: melded in, they would leave
@@ -59,15 +51,7 @@ pub(crate) fn empties(
 
 /// `commit`'s tree id.
 fn tree_of(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<Oid, FactsError> {
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("rev-parse"),
-            GitArg::Flag("--verify"),
-            GitArg::Word(format!("{commit}^{{tree}}")),
-        ])
-        .run(stop)
-        .map_err(FactsError::of_history)?;
-    parse_oid(String::from_utf8_lossy(&output.stdout).trim())
+    objects::resolve(repo, &format!("{commit}^{{tree}}"), stop).map_err(FactsError::of_history)
 }
 
 /// `commit`'s tree plus `pieces`, written as a tree from a temporary index.
