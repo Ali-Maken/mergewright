@@ -214,6 +214,8 @@ fn the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion(
                 height: 40,
             }),
         );
+        assert!(!window.promoted, "request 2's first answer is provisional");
+        let window = until_promoted_window_for(&told, 2);
         assert!(window.promoted, "the second answer is in the new order");
         let overflow_after = store.table().expect("table").overflow_len();
         assert_eq!(
@@ -317,6 +319,42 @@ fn until_window_for(told: &mpsc::Receiver<HistoryUpdate>, request: u64) -> histo
             | HistoryUpdate::Progress { .. }
             | HistoryUpdate::LaidOut { .. }
             | HistoryUpdate::Started(_) => {}
+        }
+    }
+}
+
+/// Reads updates until a [`Window`](history::Window) answering `request`
+/// with `promoted == true` arrives. Since 12c Part C a promotion's first
+/// answer is provisional; the promoted one comes from a later idle step.
+///
+/// Bounded as [`until_window_for`] is: by the stream ending. A stream that
+/// ends first panics naming the request and the unpromoted windows seen.
+#[allow(
+    clippy::panic,
+    reason = "test-only helper in an integration test binary; the stream ending before the promoted window is a product bug that should fail the test loudly"
+)]
+fn until_promoted_window_for(
+    told: &mpsc::Receiver<HistoryUpdate>,
+    request: u64,
+) -> history::Window {
+    let mut unpromoted = 0_usize;
+    loop {
+        match told.recv() {
+            Ok(HistoryUpdate::Window(window)) if window.request == request => {
+                if window.promoted {
+                    return window;
+                }
+                unpromoted += 1;
+            }
+            Ok(
+                HistoryUpdate::Window(_)
+                | HistoryUpdate::Progress { .. }
+                | HistoryUpdate::LaidOut { .. }
+                | HistoryUpdate::Started(_),
+            ) => {}
+            Err(closed) => panic!(
+                "request {request}: the stream ended ({closed}) after {unpromoted} unpromoted window(s) and no promoted one"
+            ),
         }
     }
 }

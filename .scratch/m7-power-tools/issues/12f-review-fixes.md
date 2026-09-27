@@ -1,6 +1,6 @@
 # 12f review-fixes — review m7-12 Majors 1 and 3 (+ Minor 1, same MAP lines)
 
-Status: ready
+Status: done
 Blocked by: the graft crate being free (20k holds it at filing). 12c merged (`c7cad495`). Runs **before 12e** — 12e's
 perf rev and heavy peak memory need a green heavy tier and the final file layout.
 Crates: graft only — `crates/graft/src/history/views.rs` (→ `history/views/`), `crates/graft/tests/it/heavy.rs`,
@@ -70,19 +70,33 @@ None change. Every item keeps its path, signature and visibility as seen from ou
   (`rg -l 'history::views' crates/ --glob '!crates/graft/**'` empty).
 
 ## Acceptance (each tick names its verifying test or command, inline, at tick time)
-- [ ] Red first: `heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion` fails at
-      `heavy.rs:217` before the change — name the command and the panic line.
-- [ ] Same test green, run alone and twice:
-      `cargo test --features heavy-tests --test it -- heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion`
-      — name it, and the new assertion that request 2's first window is unpromoted.
-- [ ] The whole `heavy::` module in `it` passes, or each failure is one of the known load ones (fixture
-      `update-ref --stdin` timeout, M7/borrow4) — name each failing test and its message; don't rerun into green.
-- [ ] `wc -l`: `views/mod.rs` ≤ 400, `views/promotion.rs` ≤ 400; no moved function over ~60 lines — give the numbers.
-- [ ] Move-only: `git diff --color-moved=dimmed-zebra -M` shows the promotion items as moved, not rewritten; no
-      visibility widened except `Pending` — say which check showed it.
-- [ ] Unchanged tests still pass, unedited: `history::promotion_tests::*`, `history::idle_tests::*`,
-      `a_promotion_before_the_first_window_ends_as_the_normal_path_does` — name them.
-- [ ] MAP.md: `LaidOut` in `HistoryUpdate`, stale `serve` line gone, `views/promotion.rs` named — cite the lines.
+- [x] Red first: `cargo test --features heavy-tests --test it -- heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion`
+      panicked at `crates/graft/tests/it/heavy.rs:217:9` (`assert!(window.promoted, ..)`) before the change.
+- [x] Same test green, run alone twice (1 passed; 25.6 s, 25.2 s). New assertion `heavy.rs:217`
+      `assert!(!window.promoted, "request 2's first answer is provisional")`, then `until_promoted_window_for(&told, 2)`.
+- [x] `cargo test --features heavy-tests --test it -- heavy::`: 11 passed, 0 failed (no load failures this run).
+- [x] `wc -l`: `views/mod.rs` 229, `views/promotion.rs` 250; longest moved fn `begin_promotion` 37 lines.
+- [x] Move-only: line-multiset comparison of old `views.rs` against `mod.rs`+`promotion.rs` (scratch python script;
+      `--color-moved` output was not parseable in this shell): differing lines are only `use` lines, the module doc,
+      `impl` header, `Pending` → `pub(super)`, and the visibility respellings in NOTES (none widened in effect).
+- [x] Unchanged, unedited, all pass in `cargo nextest run --workspace` (4176/4176): `history::promotion_tests::*`,
+      `history::idle_tests::*`, `a_promotion_before_the_first_window_ends_as_the_normal_path_does`.
+- [x] MAP.md: `:893` `HistoryUpdate` lists `LaidOut { rows }`; stale `serve` line (was `:923`) deleted; `:48` and
+      `:890` name `history/views/promotion.rs`.
+
+## NOTES (12f builder)
+- No scout: ticket says none. `git diff 93d9285e` on the named files: only MAP.md changed since; items re-found by name.
+- Cause fix: the test predated 12c Part C. `until_window_for` has no timeout (blocking `recv`), so the new helper is
+  bounded the same way, by the stream ending; it panics naming the request and the unpromoted-window count.
+- Visibility respelled, not widened: method/fn visibility is relative to the defining module, so moved
+  `answered_provisionally`, `abandon_promotion`, `reach`, `aim` went `pub(super)` → `pub(in crate::history)` (same
+  reach as before); `promotion_step` private → `pub(super)` (views only). `reach`/`aim` re-exported from `views`, so
+  `serve.rs` is untouched.
+- Dropped an extra `laid_out` assert on the promoted window to stay under clippy `too_many_lines` (60).
+- **Pre-existing gate failure, not fixed (outside ticket files):** `cargo clippy --all-targets --features heavy-tests
+  -- -D warnings` fails on `clippy::duplicate_mod`: `tests/it/deadline.rs` is `mod`-declared in both
+  `budget_run.rs:37` and `app_harness.rs:25` (introduced `acf45986`). Default-feature clippy clean. heavy-1m clippy not
+  run (same test binary, same error expected — unverified).
 
 ## Gates
 Workspace-wide: `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`; the same with
