@@ -357,12 +357,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
 fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Marked(_) => {
-            // Not `opens` with `blamable` (the file list focused on a file):
-            // there the bar draws `space fold`, and `graft`'s `files_key`
-            // takes `space` to fold a directory and does nothing on a file
-            // — a dead hint older than `B` (m7-power-tools/20e NOTES), so
-            // the form cannot be swept until that is settled.
-            [(true, false), (false, true), (false, false)]
+            [(true, true), (true, false), (false, true), (false, false)]
                 .into_iter()
                 .map(|(opens, blamable)| HintContext::PaneFocused {
                     row: Box::new(context.clone()),
