@@ -119,6 +119,25 @@ fn a_write_with_a_base_aside_pins_it_again() {
     assert_eq!(state.compare_base, Some(base));
 }
 
+/// Through `update`, not `after_commands` (review m7-20e-20g Major 2): the
+/// hook `update` calls after every event is what ends the trail.
+#[test]
+fn u_on_the_graph_ends_a_hidden_trail_and_pins_the_base_again() {
+    let (state, base) = blamed_with_a_base(a_blame(false, false));
+    let (mut hidden, _) = press(&state, KeyCode::Enter);
+    hidden.detail.focus = DetailFocus::Graph;
+    assert!(hidden.trail.hidden(), "the trail waits under the graph");
+    assert_eq!(hidden.compare_base, None, "the base is set aside");
+
+    let (after, commands) = press(&hidden, KeyCode::Char('u'));
+    assert!(
+        commands.iter().any(is_write),
+        "`u` asked for a write: {commands:?}"
+    );
+    assert!(!after.trail.is_live(), "the write ended the trail");
+    assert_eq!(after.compare_base, Some(base), "the base is pinned again");
+}
+
 #[test]
 fn x_while_blame_is_hidden_ends_the_trail_and_says_so() {
     let (state, base) = blamed_with_a_base(a_blame(false, false));
