@@ -8,11 +8,11 @@
 # switch to `fix` killed after the edits came back (unstaged) and before
 # the stash was dropped; Graft launched again.
 #  - HEAD on `fix`.
-#  - The bottom row reads `an operation was interrupted: checkout fix ·
-#    your edits are back · a copy stays in stash@{0} · J to inspect`.
-#    At 80 columns it is cut after `a copy stay…`: `stash@{0}` and
-#    `J to inspect` are lost (a known gap, 30c NOTES; not what right
-#    looks like).
+#  - At 120 the bottom row reads `an operation was interrupted: checkout
+#    fix · your edits are back · a copy stays in stash@{0} · J to inspect`.
+#    At 80 it reads, whole, `interrupted · your edits are back · a copy
+#    stays in stash@{0} · J to inspect` (30d's ladder: the framing and
+#    the description go, the clause and `J` stay).
 #  - Nowhere `edits in stash@{0}` alone, which would say the edits are
 #    only in the stash.
 
@@ -39,4 +39,4 @@
 
 
  no commit-graph file · B build one · X never here
- an operation was interrupted: checkout fix · your edits are back · a copy stay…
+ interrupted · your edits are back · a copy stays in stash@{0} · J to inspect

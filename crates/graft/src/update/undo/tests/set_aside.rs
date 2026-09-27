@@ -144,3 +144,143 @@ fn the_landing_keeps_also_when_the_banner_takes_the_keys() {
         "undo: finish merge of feature \u{2713} \u{b7} your edits are back \u{b7} c finishes the merge"
     );
 }
+
+/// Display cells, the footer cut's own measure (`graft_ui::fit::fit`).
+fn cells_of(text: &str) -> usize {
+    text.chars()
+        .filter_map(unicode_width::UnicodeWidthChar::width)
+        .sum()
+}
+
+const BACK: &str = "your edits are back \u{b7} a copy stays in stash@{0}";
+const IN_STASH: &str = "your edits are in stash@{0} \u{b7} S p puts them back";
+const OLDER: &str = "edits in stash@{0}";
+const LONG: &str = "rebase feature/payments-retry onto origin/main";
+
+fn rung1(d: &str, c: Option<&str>) -> String {
+    match c {
+        Some(c) => format!("an operation was interrupted: {d} \u{b7} {c} \u{b7} J to inspect"),
+        None => format!("an operation was interrupted: {d} \u{b7} J to inspect"),
+    }
+}
+
+fn rung2(d: &str, c: &str) -> String {
+    format!("interrupted: {d} \u{b7} {c} \u{b7} J to inspect")
+}
+
+fn rung4(c: &str) -> String {
+    format!("interrupted \u{b7} {c} \u{b7} J to inspect")
+}
+
+/// 30d L1: the ladder keeps the clause and `J to inspect` whole, dropping
+/// Graft's framing first and his description last.
+#[test]
+fn the_notice_ladder_keeps_the_clause_and_key() {
+    let d = "checkout fix";
+    ladder_rows_of_the_table(d);
+    whole_from_the_last_rung_up(d);
+}
+
+/// L1's sweep: at or above rung 4's width, every result fits and keeps the
+/// clause and `J to inspect` whole.
+fn whole_from_the_last_rung_up(d: &str) {
+    for clause in [BACK, IN_STASH, OLDER] {
+        for description in [d, LONG] {
+            for cells in 78..=120 {
+                let line = notice_line(description, Some(clause), cells);
+                assert!(cells_of(&line) <= cells, "{line:?} at {cells}");
+                assert!(line.contains(clause), "{line:?}");
+                assert!(line.ends_with(" \u{b7} J to inspect"), "{line:?}");
+            }
+        }
+    }
+}
+
+/// L1's table rows (30d "Widths, worked"), each at its rung widths and 79.
+fn ladder_rows_of_the_table(d: &str) {
+    for (clause, w1, w2, w4) in [(BACK, 107, 90, 76), (IN_STASH, 108, 91, 77)] {
+        assert_eq!(cells_of(&rung1(d, Some(clause))), w1);
+        assert_eq!(cells_of(&rung2(d, clause)), w2);
+        assert_eq!(cells_of(&rung4(clause)), w4);
+        assert_eq!(notice_line(d, Some(clause), w1), rung1(d, Some(clause)));
+        assert_eq!(notice_line(d, Some(clause), w1 - 1), rung2(d, clause));
+        assert_eq!(notice_line(d, Some(clause), w2), rung2(d, clause));
+        assert_eq!(notice_line(d, Some(clause), 79), rung4(clause));
+    }
+    ladder_rows_without_a_new_clause(d);
+}
+
+/// L1's last three table rows: the older clause, no clause, and the long
+/// description whose rung 3 is the cut.
+fn ladder_rows_without_a_new_clause(d: &str) {
+    assert_eq!(
+        notice_line(d, Some(OLDER), 79),
+        "an operation was interrupted: checkout fix \u{b7} edits in stash@{0} \u{b7} J to inspect"
+    );
+    assert_eq!(cells_of(&rung1(d, Some(OLDER))), 78);
+    assert_eq!(cells_of(&rung1(d, None)), 57);
+    assert_eq!(notice_line(d, None, 57), rung1(d, None));
+    assert_eq!(cells_of(&rung1(LONG, Some(OLDER))), 112);
+    assert_eq!(cells_of(&rung2(LONG, OLDER)), 95);
+    assert_eq!(
+        notice_line(LONG, Some(OLDER), 112),
+        rung1(LONG, Some(OLDER))
+    );
+    assert_eq!(notice_line(LONG, Some(OLDER), 95), rung2(LONG, OLDER));
+    let rung3 = notice_line(LONG, Some(OLDER), 79);
+    assert_eq!(
+        rung3,
+        "interrupted: rebase feature/payments-retry\u{2026} \u{b7} edits in stash@{0} \u{b7} J to inspect"
+    );
+    assert_eq!(cells_of(&rung3), 79);
+}
+
+/// 30d L2: narrower than the last rung, the last rung (the footer cuts it).
+#[test]
+fn the_notice_below_its_last_rung_is_the_last_rung() {
+    assert_eq!(notice_line("checkout fix", Some(BACK), 60), rung4(BACK));
+}
+
+/// 30d L3: the rung is picked at draw time, so a resize re-picks.
+#[test]
+fn the_notice_repicks_on_resize() {
+    let mut entry = torn_entry(0, "checkout fix");
+    entry.put_back = Some(graft_core::journal::PutBack {
+        stash: graft_core::oid::Oid::from_bytes(&[0x5a; 20]).expect("20 bytes"),
+        why: graft_core::journal::PutBackWhy::SetAside,
+    });
+    let id = entry.id.clone();
+    let state = AppState {
+        journal: JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: vec![entry],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+                interrupted_edits: Vec::new(),
+            })),
+            ..JournalState::default()
+        },
+        interrupted_edits: vec![(id, graft_ops::EditsAt::Back { copy: Some(0) })],
+        ..AppState::default()
+    };
+    let wide = rung1("checkout fix", Some(BACK));
+    let narrow = rung4(BACK);
+    assert_eq!(interrupted_notice_in(&state, 120), Some(wide.clone()));
+    assert_eq!(interrupted_notice_in(&state, 79), Some(narrow));
+    assert_eq!(interrupted_notice_in(&state, 120), Some(wide.clone()));
+    assert_eq!(interrupted_notice(&state), Some(wide));
+}
+
+/// 30d L4: his description is sanitized before it is measured, so the
+/// cells counted are the cells drawn.
+#[test]
+fn a_hostile_description_is_measured_as_drawn() {
+    let hostile =
+        "rebase \u{1b}[31m\u{7}fix\u{5b57}\u{5b57}\u{5b57} onto feature/payments-retry-longer";
+    for cells in 60..=130 {
+        let line = notice_line(hostile, Some(OLDER), cells);
+        let drawn = graft_term::sanitize_line(&line);
+        assert_eq!(cells_of(&line), cells_of(drawn.as_str()), "{line:?}");
+        assert!(cells_of(&line) <= cells, "{line:?} at {cells}");
+    }
+}

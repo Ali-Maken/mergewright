@@ -1,6 +1,6 @@
 # 30d relaunch-notice-ladder — the relaunch notice keeps the stash ref and `J` at 80 columns
 
-Status: draft
+Status: done
 Build with: **Sonnet**. One pure fitting function with every word and width decided below, one call site, tests with
 their exact strings given. No state, no journal, no git.
 Needs: none. 30c's `operate::edits_clause` and `AppState::interrupted_edits` are on main (a69322cd).
@@ -117,15 +117,40 @@ pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<St
   changes, that is the ladder showing: quote old and new in NOTES.
 
 ## Acceptance (each tick names its test inline)
-- [ ] Ladder: L1, L2, L3, L4 green; L1 red first against the current single-string line.
-- [ ] K4 at 80x24 green on the whole rung-4 line (red run quoted).
-- [ ] The four regression tests above green, named.
-- [ ] Capture `docs/shots/m7/30c-relaunch-edits-back-80x24.txt` regenerated (`GRAFT_UPDATE_SHOTS=1`, then a green
+- [x] Ladder: L1, L2, L3, L4 green — `update::undo::tests::set_aside::{the_notice_ladder_keeps_the_clause_and_key,
+      the_notice_below_its_last_rung_is_the_last_rung, the_notice_repicks_on_resize,
+      a_hostile_description_is_measured_as_drawn}`; red first (compile red, NOTES).
+- [x] K4 at 80x24 green on the whole rung-4 line (red run quoted) —
+      `m6_stash_put_back::set_aside::a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back`.
+- [x] The four regression tests above green, named — `update::undo::tests::set_aside::relaunch_after_a_kill_names_the_stash_the_edits_are_in`,
+      `…::the_notice_words_where_recovery_found_the_edits`, `m6_stash_put_back::kill::edits_survive_a_kill_at_every_step`,
+      `conflict_interim::the_footer_does_not_call_a_live_merge_interrupted` (all unchanged, full nextest run).
+- [x] Capture (K4 test above writes it; both 30c headers rewritten; 1.8 KB / 2.2 KB) `docs/shots/m7/30c-relaunch-edits-back-80x24.txt` regenerated (`GRAFT_UPDATE_SHOTS=1`, then a green
       re-run without it). Its "What right looks like" rewritten: at 80 the bottom row is the rung-4 line, whole. The
       "known gap … cut after `a copy stay…`" lines removed from both 30c captures' headers. Under 200 KB. Colour
       unverified (rule 5).
-- [ ] Gates, workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
-      `cargo test --doc`.
+- [x] Gates, workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`
+      (4232/4232), `cargo test --doc`.
+
+## NOTES (builder, 2026-09-27)
+- **Red, L1–L4:** before `notice_line`/`interrupted_notice_in` existed: `error[E0425]: cannot find function
+  notice_line` (12), `interrupted_notice_in` (3). Compile red, not assertion red.
+- **Red, K4** (footer call reverted to unfitted, capture refreshed): `left: " an operation was interrupted: checkout fix
+  · your edits are back · a copy stay…"` / `right: " interrupted · your edits are back · a copy stays in stash@{0} · J
+  to inspect"`.
+- **Table:** every width recounted in the tests (107/90/76, 108/91/77, 78, 57, 112/95, rung 3 = 79). All agree.
+- **Decided 5, words:** no plural lead exists. Several entries: `(and n more)` follows the first entry's clause today,
+  so with a clause it (and the unreadable warning `its state could not be read, so u restores the whole tree`) are
+  part of the never-cut clause; with no clause, `(and n more)` joins the description (cut by rung 3), the warning is
+  the clause. Rung 1 is byte-identical to the old line in every case.
+- **Measure:** `unicode_width` char sum, as `graft_ui::fit::fit`. `unicode-width` moved from graft's dev-deps to deps
+  (same version, already in the lock). graft-ui exposes no public cell-measure fn; not touched (not my crate).
+- **Width source:** `footer_notice` gained `columns: u16`. Graph screen passes the frame `area.width`; the stand-in
+  footers (`draw_status_or_hints`) pass their row `width`. With the detail pane shown beside the graph, the graph's
+  footer may be narrower than `area.width`: the footer's existing `fit` still cuts. Unverified at that layout.
+- Below 47–78 cells (rung 4's width): rung 4, cut by the footer. Not laid out further (Decided 2).
+- No scout: the ticket named every site; read directly.
+- Not compacted.
 
 ## Touches (check each, say how)
 - `interrupted_notice` callers: `grep -rn "interrupted_notice" crates/graft` — the footer moves to

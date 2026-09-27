@@ -175,7 +175,7 @@ pub fn view_with_graphics(
                 screen.ascii = tier == RenderingTier::Ascii;
                 // Only below the terminal's own tier: `F3` clears the override
                 // when it cycles back to the top (m1-the-graph/33).
-                screen.notice = footer_notice(state, tier);
+                screen.notice = footer_notice(state, tier, area.width);
                 screen.pixel = pixels;
                 screen.graphics = pixels.then(|| graphics.clone());
 
