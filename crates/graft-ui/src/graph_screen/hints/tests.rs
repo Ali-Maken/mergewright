@@ -1873,6 +1873,26 @@ mod blame_place {
         assert!(!words(&blame_place_list(true, false)).contains(&"i ignore list".to_owned()));
         assert!(words(&blame_place_list(false, true)).contains(&"i ignore list".to_owned()));
     }
+
+    /// m7-power-tools/20k: while a read is in flight the line keys go.
+    #[test]
+    fn a_read_in_flight_draws_no_line_keys() {
+        let reading = HintContext::Blame {
+            finding: true,
+            ignore_file: true,
+            read: true,
+        };
+        assert_eq!(
+            words(&lists::context_list(&reading)),
+            [
+                "/ find",
+                "space ages",
+                "w whitespace",
+                "i ignore list",
+                "esc back"
+            ]
+        );
+    }
 }
 
 /// m7-power-tools/20h: `space` on a focused pane's bar is the pane's own

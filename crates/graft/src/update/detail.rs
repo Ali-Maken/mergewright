@@ -29,7 +29,7 @@ pub use control::{LocalJobs, close_explain, effective_layout, open_explain, tab_
 pub use cursor::{DiffCursor, LineRef, Side, diff_cursor};
 pub(crate) use keys::{detail_key, enter_opens, space_folds};
 pub use landing::{LandingStage, LineLanding, show_line};
-pub(crate) use landing::{LandingWatch, advance};
+pub(crate) use landing::{LandingWatch, abandon, advance};
 /// How many diff lines a read carries before it is cut short; the finish
 /// summary's diff reads use the same budget (m6-conflicts/19).
 pub(crate) use state::MAX_LINES;

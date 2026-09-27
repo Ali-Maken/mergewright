@@ -2019,7 +2019,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 81;
+const COVERAGE_SLOTS: usize = 85;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2055,11 +2055,16 @@ fn coverage_slot(context: &HintContext) -> usize {
         // 15, 16, 73, 79, 80.
         HintContext::PaneFocused { .. } => pane_focused_slot(context),
         // m7-power-tools/20: the blame place's four flag pairs (74–77), the
-        // way back to it (78).
+        // way back to it (78); the same four while a read is in flight
+        // (81–84, m7-power-tools/20k).
         HintContext::Blame {
             finding,
             ignore_file,
-        } => 74 + 2 * usize::from(*finding) + usize::from(*ignore_file),
+            read,
+        } => {
+            let pair = 2 * usize::from(*finding) + usize::from(*ignore_file);
+            if *read { 81 + pair } else { 74 + pair }
+        }
         HintContext::BackToBlame(_) => 78,
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,

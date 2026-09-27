@@ -1,7 +1,7 @@
 //! The trail's life: going back along it, leaving it, and what ends it.
 
 use super::{BlameLoad, Place, Spot, Trail, is_write};
-use crate::update::detail::show_line;
+use crate::update::detail::{abandon, show_line};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
@@ -42,8 +42,9 @@ pub(super) fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: 
         return;
     }
     // A `⏎` landing still on its way (the walk seeking the commit) is the
-    // trail's; he has left it, so it must not land later.
-    state.line_landing = None;
+    // trail's; he has left it, so it must not land later, nor its seek
+    // move the graph.
+    abandon(state, commands);
     if Spot::of(state) == origin.spot {
         return;
     }
@@ -78,11 +79,17 @@ pub(crate) fn after_commands(state: &mut AppState, commands: &mut Vec<Command>) 
 /// [`esc_goes_back`] says this `Esc` is the one that goes back. Called from
 /// the pane's `Esc` (`detail::keys`) and the graph's last `Esc` rung
 /// (`update::keys::escape_key`).
-pub(crate) fn show_again(state: &mut AppState) -> bool {
+///
+/// Going back abandons a `⏎` landing still on its way, as leaving does
+/// (`leave`): one rule for both ways off the landing (32i-q1). Its seek is
+/// withdrawn with it (`detail::abandon`), or the walk's answer would still
+/// move the graph and the pane under blame.
+pub(crate) fn show_again(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
     if !esc_goes_back(state) {
         return false;
     }
     state.trail.shown = true;
+    abandon(state, commands);
     true
 }
 

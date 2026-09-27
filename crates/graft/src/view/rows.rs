@@ -588,12 +588,14 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
 
 /// The blame place's bar (m7-power-tools/20): `n N` only while a find is
 /// active, `i` only while the repository lists revisions to ignore — the
-/// conditions `update::place::place_key` answers on.
+/// conditions `update::place::place_key` answers on; while a read is in
+/// flight no `⏎`, `^` or `n N`, which need the lines (20k).
 pub(crate) fn place_context(state: &AppState) -> Option<HintContext> {
     let blame = state.trail.on_screen()?;
     Some(HintContext::Blame {
         finding: blame.find.is_some(),
         ignore_file: blame.ignore_line().is_some(),
+        read: matches!(blame.body, crate::update::place::BlameLoad::Reading { .. }),
     })
 }
 
