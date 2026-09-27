@@ -997,3 +997,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30j-int | Interrupted Track (`mark_interrupted`) reads no `config_after`, so its undo keeps the upstream; config restore is not compare-and-swap (an outside edit between op and undo is overwritten) (30j NOTES) | **broken** (narrow) | M8 |
 | M7/30j-subdispatch | `jobs/runner.rs` catch-alls remain at `:328` (dispatch_detail) and `:361` (dispatch_history) sub-dispatch | **broken** (fragile) | M8 |
 | M7/30j-size | Over 400 lines, pre-existing: `update/detail/ops.rs` 705, `update/remote.rs` 531, `jobs/runner.rs` ~1200 → 30h scope or M8 | **broken** (readability) | M8 |
+| M7/09b-ver | Four other jobs spawn `git --version` on every run (09b found the one in `jobs/rewrite.rs:88`, cost ~30 ms); read once per process | **broken** (perf) | M7 |
+| M7/09b-perf | `a` dependents check 6.8 ms vs 16.7 budget measured at load ~7 (`docs/perf/09b.txt`); quiet re-run owed | **unverified** (perf) | M7 |
+| M7/09b-q3 | Put-in landing says unstaged edits are back from "existed at plan", not `done_status`'s fact (`landed` can't see it) — deviation from 09b ruling | **unverified** (question) | M7 |
