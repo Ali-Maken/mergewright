@@ -985,3 +985,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/10b-q | Should a switching create (`n` new branch) land with `on nb ✓` like every other switch? (10b question; Done pattern `update/state.rs:1021-1041`) | **unverified** (question) | M7 |
 | M7/30i-ascii | Submodule row `▣` and marks `→ ± ?` have no ASCII-tier fallback (literal in graft-ui `detail_pane/files.rs`) | **unverified** | M8 |
 | M7/30i-facts | Diff job never fills `SubmoduleView`'s inside facts (`graft/src/jobs/detail.rs:298-304`); 30i's `body.rs` copies them from the file row under the cursor (symptom-side). Cause fix: fill them in the diff job | **broken** (workaround in place) | M7 |
+| M7/11a-adr | ADR-0045 needs amendment rows for the cherry-pick set-aside kind (11a; every changed tracked file set aside, put back by `apply/set_aside/put_back.rs:66`). Doc owed (researcher) | **broken** (doc stale) | M7 |
+| M7/11a-gitver | Pick of an ancestor verified only on git 2.54.0 (`git_alone_stops_on_a_pick_of_an_ancestor`); other versions not run | **unverified** | M8 |
