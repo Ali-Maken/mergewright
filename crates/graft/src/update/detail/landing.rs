@@ -14,13 +14,14 @@
 use std::path::{Path, PathBuf};
 
 use graft_core::oid::Oid;
+use graft_git::diff::{FileDiff, FileList, LineKind};
 use graft_term::sanitize::sanitize_path_bytes;
-use graft_ui::detail::DetailFocus;
+use graft_ui::detail::{DetailFocus, FileListView, FileRowKind, WorkingTreeSection};
 
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
-use super::cursor::{LineRef, heading_row, line_row};
+use super::cursor::{LineRef, Side, heading_row, line_row};
 use super::state::{DetailSpec, Loading};
 
 /// A `show_line` still waiting on a read.
@@ -32,6 +33,11 @@ pub struct LineLanding {
     pub path: PathBuf,
     /// The line to put the cursor on; `None` means the file's first change.
     pub at: Option<LineRef>,
+    /// `WorkingTree` only: the changes-pane section `at` counts in. `None`
+    /// is the file on disk, placed by where the line lives (20m): a path
+    /// with both a Staged and an Unstaged row is placed on the Unstaged
+    /// diff, or — a line unchanged since the index — on the Staged one.
+    pub section: Option<WorkingTreeSection>,
     /// How far it has got.
     pub stage: LandingStage,
     /// The focus to leave the pane in once landed; `None` is the diff.
@@ -59,12 +65,25 @@ pub enum LandingStage {
 ///
 /// `Commit(c)` seeks `c`; `Compare { head, .. }` seeks `head`, a pinned base
 /// staying pinned; `WorkingTree` selects the uncommitted-changes row.
+///
+/// `section` is for `WorkingTree` only (`None` for the others): which file
+/// `at` counts in. `Some(s)` is the path's row in section `s`, `at` in that
+/// row's own numbering (no such row any more → the path's first row, its
+/// first change). `None` is the file on disk: a path with one row takes it
+/// as given; a partly staged one is placed where the line lives — an
+/// unstaged line on the Unstaged row, a line unchanged since the index on
+/// the Staged row at its index number ([`disk_line_in`]).
 pub fn show_line(
     state: &mut AppState,
     spec: DetailSpec,
     path: &Path,
     at: Option<LineRef>,
+    section: Option<WorkingTreeSection>,
 ) -> Vec<Command> {
+    debug_assert!(
+        section.is_none() || spec == DetailSpec::WorkingTree,
+        "a section is the changes pane's"
+    );
     let mut commands = Vec::new();
     state.line_landing = None;
     // A pinned base turns the pane into a compare the moment the cursor
@@ -104,6 +123,7 @@ pub fn show_line(
         spec,
         path: path.to_path_buf(),
         at,
+        section,
         stage: first,
         then_focus: None,
     });
@@ -167,6 +187,16 @@ pub(crate) fn advance(state: &mut AppState, commands: &mut Vec<Command>) {
             LandingStage::Opening => Some(open(state, commands, landing.spec)),
             LandingStage::Selecting => select(state, commands, &landing),
             LandingStage::Placing => {
+                if let Some(staged) = index_line(state, &landing) {
+                    // A disk line unchanged since the index: on to the
+                    // Staged row, at its index number.
+                    if let Some(pending) = state.line_landing.as_mut() {
+                        pending.section = Some(WorkingTreeSection::Staged);
+                        pending.at = Some(staged);
+                        pending.stage = LandingStage::Selecting;
+                    }
+                    continue;
+                }
                 place(state, landing.spec, landing.at);
                 if state.line_landing.is_none()
                     && let Some(focus) = landing.then_focus
@@ -213,8 +243,10 @@ fn open(state: &mut AppState, commands: &mut Vec<Command>, spec: DetailSpec) -> 
     LandingStage::Selecting
 }
 
-/// `Selecting`: once the list is in, the cursor on `path`'s row; a path the
-/// spec does not touch leaves the pane as it opened and says so.
+/// `Selecting`: once the list is in, the cursor on `path`'s row — unfolding
+/// any folded directory it is inside (20m B) — and, on the changes pane, on
+/// the row [`LineLanding::section`] names. A path the spec does not touch
+/// leaves the pane as it opened and says so.
 fn select(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -231,28 +263,186 @@ fn select(
     };
     let list = detail.list.as_ref()?;
     let wanted = path_bytes(&landing.path);
-    let row = files.visible().find_map(|(row, view)| {
-        let entry = usize::try_from(view.entry?).ok()?;
-        (list.files.get(entry)?.path == wanted).then_some(row)
+    // Every row, folded or not, with the changes-pane section it is in.
+    let rows: Vec<(usize, Option<WorkingTreeSection>)> = (0..files.rows.len())
+        .filter(|&row| row_is(files, list, row, &wanted))
+        .map(|row| (row, files.section_at(row)))
+        .collect();
+    let in_section = |wanted: WorkingTreeSection| {
+        rows.iter()
+            .find_map(|&(row, section)| (section == Some(wanted)).then_some(row))
+    };
+    let row = rows.first().map(|&(first, _)| match landing.section {
+        Some(section) => in_section(section).ok_or(first),
+        // On disk: a partly staged path is read on its Unstaged row first
+        // (`index_line` moves it on to the Staged row when the line is not
+        // an unstaged one). An Unmerged row, or a path with one row, is
+        // its first.
+        None => match (
+            in_section(WorkingTreeSection::Unmerged),
+            in_section(WorkingTreeSection::Staged),
+            in_section(WorkingTreeSection::Unstaged),
+        ) {
+            (None, Some(_), Some(unstaged)) => Ok(unstaged),
+            _ => Ok(first),
+        },
     });
-    let Some(row) = row else {
-        let words = match landing.spec {
-            DetailSpec::Commit(commit) => format!("{}'s files", short(commit)),
-            DetailSpec::Compare { base, head } => {
-                format!("the files of {}..{}", short(base), short(head))
+    let row = match row {
+        Some(Ok(row)) => row,
+        Some(Err(first)) => {
+            // No row in the section asked for: the tree changed from
+            // outside since. The path's first row, at its first change.
+            if let Some(pending) = state.line_landing.as_mut() {
+                pending.at = None;
             }
-            DetailSpec::WorkingTree => "the uncommitted changes".to_owned(),
-        };
-        // A path is the repository's bytes: sanitised before it is words.
-        let path = sanitize_path_bytes(&wanted);
-        state.status = Status::sticky(format!("{} isn't among {words}", path.as_str()));
-        return None;
+            first
+        }
+        None => {
+            say_missing(state, landing.spec, &wanted);
+            return None;
+        }
     };
     let AppState {
         detail, local_jobs, ..
     } = state;
+    if let Loading::Ready(files) = &mut detail.files {
+        unfold_to(std::sync::Arc::make_mut(files), row);
+    }
     commands.extend(detail.select_file_row(row, &mut || local_jobs.next_id()));
     Some(LandingStage::Placing)
+}
+
+/// Row `row` of `files` is the file `wanted`.
+fn row_is(files: &FileListView, list: &FileList, row: usize, wanted: &[u8]) -> bool {
+    files
+        .rows
+        .get(row)
+        .and_then(|found| found.entry)
+        .and_then(|entry| usize::try_from(entry).ok())
+        .and_then(|entry| list.files.get(entry))
+        .is_some_and(|file| file.path == wanted)
+}
+
+/// Unfold every folded directory `row` sits inside, with the pane's own
+/// unfold (`FileListView::toggle_dir`), so `row` is visible.
+fn unfold_to(files: &mut FileListView, row: usize) {
+    let Some(mut depth) = files.rows.get(row).map(|found| found.depth) else {
+        return;
+    };
+    for above in (0..row).rev() {
+        let Some(found) = files.rows.get(above) else {
+            continue;
+        };
+        if found.depth >= depth {
+            continue;
+        }
+        depth = found.depth;
+        if matches!(found.kind, FileRowKind::Dir { collapsed: true }) {
+            files.toggle_dir(above);
+        }
+    }
+}
+
+/// On a disk landing (`WorkingTree`, no section) with the Unstaged row of a
+/// partly staged path selected and its diff in: the line's number on the
+/// Staged diff when it is not an unstaged line. `None` otherwise — the
+/// landing places as it stands.
+fn index_line(state: &AppState, landing: &LineLanding) -> Option<LineRef> {
+    let detail = &state.detail;
+    if landing.spec != DetailSpec::WorkingTree
+        || landing.section.is_some()
+        || detail.spec != Some(DetailSpec::WorkingTree)
+        || detail.selected_section() != Some(WorkingTreeSection::Unstaged)
+        || !matches!(detail.diff, Loading::Ready(_))
+    {
+        return None;
+    }
+    let at = landing.at.filter(|at| at.side == Side::New)?;
+    let (Loading::Ready(files), Some(list)) = (&detail.files, detail.list.as_ref()) else {
+        return None;
+    };
+    let wanted = path_bytes(&landing.path);
+    let staged_too = (0..files.rows.len()).any(|row| {
+        files.section_at(row) == Some(WorkingTreeSection::Staged)
+            && row_is(files, list, row, &wanted)
+    });
+    if !staged_too {
+        return None;
+    }
+    match disk_line_in(detail.diff_raw.as_ref()?, at.line) {
+        DiskLine::Unstaged(_) => None,
+        DiskLine::Index(line) => Some(LineRef {
+            side: Side::New,
+            line,
+        }),
+    }
+}
+
+/// Where a line of the file on disk lives, read off the Unstaged diff
+/// (index → disk) of a partly staged file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DiskLine {
+    /// An uncommitted, unstaged line: this `New` number on the Unstaged diff.
+    Unstaged(u32),
+    /// Unchanged since the index: this `New` number on the Staged diff.
+    Index(u32),
+}
+
+/// Disk line `disk_line` against `unstaged`, the file's index → disk diff:
+/// an added line is `Unstaged` at its own number; a context line is `Index`
+/// at its old number; a line outside every hunk is `Index`, shifted back by
+/// what the hunks above it added or took away. A diff cut short, the line
+/// below what it shows, is taken as `Unstaged` — it cannot be told — and
+/// the landing puts the cursor on the nearest row, as `line_row` does.
+pub(crate) fn disk_line_in(unstaged: &FileDiff, disk_line: u32) -> DiskLine {
+    let mut shown_to = 0;
+    for line in unstaged.hunks.iter().flat_map(|hunk| &hunk.lines) {
+        let Some(new_no) = line.new_no else {
+            continue;
+        };
+        shown_to = shown_to.max(new_no);
+        if new_no == disk_line {
+            return match (line.kind, line.old_no) {
+                (LineKind::Context, Some(old_no)) => DiskLine::Index(old_no),
+                _ => DiskLine::Unstaged(disk_line),
+            };
+        }
+    }
+    if unstaged.truncated.is_some() && disk_line > shown_to {
+        return DiskLine::Unstaged(disk_line);
+    }
+    // The hunks wholly above the line. git writes a hunk with no new lines
+    // (a pure deletion) at the line *before* it, so that line is its end.
+    let shift: i64 = unstaged
+        .hunks
+        .iter()
+        .filter(|hunk| {
+            let end = if hunk.new_lines == 0 {
+                hunk.new_start
+            } else {
+                hunk.new_start + hunk.new_lines - 1
+            };
+            end < disk_line
+        })
+        .map(|hunk| i64::from(hunk.new_lines) - i64::from(hunk.old_lines))
+        .sum();
+    let line = i64::from(disk_line) - shift;
+    // Positive for any diff git writes: the shift counts only hunks above.
+    DiskLine::Index(u32::try_from(line).unwrap_or(1))
+}
+
+/// Say `wanted` is not among `spec`'s files; the pane stays as it opened.
+fn say_missing(state: &mut AppState, spec: DetailSpec, wanted: &[u8]) {
+    let words = match spec {
+        DetailSpec::Commit(commit) => format!("{}'s files", short(commit)),
+        DetailSpec::Compare { base, head } => {
+            format!("the files of {}..{}", short(base), short(head))
+        }
+        DetailSpec::WorkingTree => "the uncommitted changes".to_owned(),
+    };
+    // A path is the repository's bytes: sanitised before it is words.
+    let path = sanitize_path_bytes(wanted);
+    state.status = Status::sticky(format!("{} isn't among {words}", path.as_str()));
 }
 
 /// `Placing`: once the diff is in, the cursor on `at` with the diff focused

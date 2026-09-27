@@ -1,3 +1,4 @@
+# Historical: drawn at M2, not regenerated. Since M7 (20b) a unified diff draws ▎ on its cursor row; today's drawing: docs/shots/m7/diff-cursor-commit-120x40.txt
 === 160x40 Right (commit, diff focus) ===
 COMMIT a1b2c3d                                                                                                                                                  
 Rui Mehdi · 2026-09-13 14:02 +0500 · 2 min ago                                                                                                                 

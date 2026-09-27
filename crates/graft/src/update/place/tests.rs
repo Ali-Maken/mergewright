@@ -120,6 +120,7 @@ fn trail_over(state: &mut AppState, place: BlameState, shown: bool) {
             spec: state.detail.spec.unwrap_or(DetailSpec::WorkingTree),
             path: "a.rs".into(),
             at: None,
+            section: None,
             focus: state.detail.focus,
             base: None,
             spot: Spot::of(state),
