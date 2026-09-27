@@ -416,6 +416,12 @@ pub struct AppState {
     /// [`Self::choices`] (m6-conflicts/19 scope 3). The resolver's own `e`
     /// needs none — its open path is the one.
     pub conflict_editing: Option<std::path::PathBuf>,
+    /// `a` into an older commit and absorb: the plan in flight, and the
+    /// put-in its preview is of (m7-power-tools/09).
+    pub amend_into: super::amend_into::AmendInto,
+    /// Tags rows carry after their subject until the next write starts —
+    /// `✎ changed` after a put-in (m7-power-tools/09).
+    pub row_tags: super::row_tags::RowTags,
 }
 
 /// The screens Graft can show.

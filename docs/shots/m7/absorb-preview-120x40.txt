@@ -1,0 +1,40 @@
+ graft /code/api  3 commits
+  ●   ▏  Handle expired tokens                                                                           GF 2d   29033ed
+  ●      Add OAuth callback                                                                              GF 2d   67fda4a
+  │      the result
+  │ ○    [◆ feature-a] Handle expired tokens                                                             GF —    —
+  │ ○    Add OAuth callback                                                                              GF —    —
+◇─┴─╯    [main] m1                                                                                       GF 2d   f1c72d6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: put staged changes into the commits they belong to ─────────────────────────────────────────────────────────╮
+│ src/auth.rs    line 5  → 67fda4a  Add OAuth callback                                                                 │
+│ src/tokens.rs  line 5  → 29033ed  Handle expired tokens                                                              │
+│ README         line 2  stays staged · no commit on your branch changed these lines                                   │
+│ 2 commits replayed                                                                                                   │
+│ feature-a 29033ed → 2 new commits                                                                                    │
+│ HEAD → feature-a                                                                                                     │
+│ working tree: 2 files updated                                                                                        │
+│ your edits: 3 files set aside, put back after                                                                        │
+│ your edits' put-back: not checked (nothing is put back after this)                                                   │
+│ undo: u takes this back                                                                                              │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y put them in  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────╯
+

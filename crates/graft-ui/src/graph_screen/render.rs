@@ -11,7 +11,10 @@ use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
 use super::layout::{Columns, graph_width};
-use super::{Badge, BadgeKind, GraphEntry, GraphScreen, Icons, RULE_WIDTH, SUBJECT_GAP, badges};
+use super::{
+    Badge, BadgeKind, GraphEntry, GraphScreen, Icons, RULE_WIDTH, SUBJECT_GAP, TAG_GAP,
+    TAG_MIN_SUBJECT, badges,
+};
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
@@ -131,13 +134,13 @@ impl GraphScreen<'_> {
 
         self.draw_marker_slot(entry, y, columns, style, buf);
         let taken = self.draw_badges(entry, y, columns, style, buf);
-        draw_cell(
-            buf,
-            columns.subject_x + taken,
+        self.draw_subject(
+            entry,
             y,
+            columns.subject_x + taken,
             columns.subject_width - taken,
-            entry.subject.as_str(),
             style,
+            buf,
         );
         let author_style = trailing_style.fg(color(self.theme.branch(entry.author.identity)));
         draw_cell(
@@ -164,6 +167,44 @@ impl GraphScreen<'_> {
             &entry.sha,
             trailing_style,
         );
+    }
+
+    /// The subject in `width` cells from `x`, and the row's tag after it
+    /// (m7-power-tools/09): two cells after the subject's last character,
+    /// in the accent token. The subject yields — cut with `…` — before the
+    /// tag is; with fewer than [`TAG_MIN_SUBJECT`] cells left for the
+    /// subject the tag is not drawn at all, and the row is today's.
+    fn draw_subject(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        x: u16,
+        width: u16,
+        style: Style,
+        buf: &mut Buffer,
+    ) {
+        let subject = entry.subject.as_str();
+        let tag = entry.tag.as_ref().map(|tag| tag.words(self.view.ascii));
+        let Some(tag) = tag.filter(|tag| {
+            let tag = u16::try_from(tag.width()).unwrap_or(u16::MAX);
+            width.saturating_sub(tag.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT
+        }) else {
+            draw_cell(buf, x, y, width, subject, style);
+            return;
+        };
+        let tag_width = u16::try_from(tag.width()).unwrap_or(u16::MAX);
+        let room = width - tag_width - TAG_GAP;
+        let used = u16::try_from(super::layout::text_width(subject))
+            .unwrap_or(u16::MAX)
+            .min(room);
+        draw_cell(buf, x, y, used, subject, style);
+        // The gap and whatever the subject left carry the row's own
+        // emphasis, as every other blank cell of the row does.
+        draw_cell(buf, x + used, y, TAG_GAP, "", style);
+        let tag_style = style.patch(foreground(self.theme, Token::Accent));
+        draw_cell(buf, x + used + TAG_GAP, y, tag_width, tag, tag_style);
+        let after = x + used + TAG_GAP + tag_width;
+        draw_cell(buf, after, y, (x + width).saturating_sub(after), "", style);
     }
 
     /// The marker slot, which holds two marks that **do not queue** and the

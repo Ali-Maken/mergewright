@@ -246,6 +246,12 @@ fn head_message_arriving_mid_operation_does_not_open() {
     let pane = pane_focused(&app, state);
     let asked = with_the_operation_hidden(&app, pane, |app, state| {
         let state = app.key(&state, KeyCode::Char('a'));
+        // The repo has another branch (`feature`), so `a` first asks
+        // whether anything is built on his (m7-power-tools/09); nothing
+        // is, and only then does it read HEAD's message.
+        let state = app.pump(state, "what's built on the branch", |state| {
+            !state.amend_into.checking()
+        });
         assert!(state.head_message.is_some(), "`a` asked for HEAD's message");
         state
     });

@@ -1,6 +1,6 @@
 # amend-into-and-absorb-keys — `a` on an older commit puts the staged changes into it; absorb from the `.` menu; the row tag
 
-Status: ready (respecced after scout 09, planner, 2026-09-27; filed by conductor: 24 confirmed unmerged — `git log --merges` has only m6-conflicts 24). Order: after 10b and 16b merge.
+Status: partial — built; 2 boxes open (perf over budget; absorb step count vs the note). See NOTES. (Was: ready, respecced after scout 09, planner, 2026-09-27; filed by conductor: 24 confirmed unmerged — `git log --merges` has only m6-conflicts 24). Order: after 10b and 16b merge.
 Blocked by: 05-rewrite-preview (partial merged), 05b-rebase-moves-the-line, 06-absorb-map, 06e (new refusal and stay
 variants). **Not beside 10b** (shared files, below). Beside 11a: yes (disjoint). If 16b is still building: wait (the
 JOBS files).
@@ -172,7 +172,7 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
 ```
 
 ## Acceptance
-- [ ] **App** (`update/amend_into/tests.rs` unless named):
+- [x] **App** (`update/amend_into/tests.rs` unless named) — every name below is a test of that name, green; `absorb_item_is_dim_with_nothing_staged` in graft-ui `context_menu.rs:536`; the StaysWhy words in `jobs/rewrite/tests.rs:192-248` (`stays_no_commit_changed_it`, `stays_two_commits_changed_it`, `stays_new_file`, `stays_before_your_branch`, `stays_renamed`, `stays_submodule`, `stays_outside_your_commits`, `stays_already_pushed`). Red first quoted in NOTES:
   - `a_on_an_older_commit_opens_the_put_it_in_preview` (red first: `ReadHeadMessage`, ruling 1; quote the red);
   - `a_on_head_without_dependents_is_todays_amend` (no job; `ReadHeadMessage` as before);
   - `a_on_head_with_a_dependent_previews`;
@@ -188,29 +188,29 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
   - `landing_words_are_done_line_shaped`;
   - `an_r_editor_rewrite_does_not_take_amend_into_words`;
   - one test per `StaysWhy` word in the absorb preview (06c/06e carries, `AlreadyPushed` included).
-- [ ] **Row tags:**
+- [x] **Row tags:** (each a test of that name, green; graft-ui ones in `graph_screen/tests.rs:2281,2306,2333`)
   - `the_target_row_is_tagged_changed_after_landing`;
   - `absorb_tags_every_target`;
   - `the_tags_clear_when_the_next_write_is_claimed` (undo included);
   - `a_failed_tag_read_says_so_in_the_status`;
   - graft-ui: `the_tag_draws_after_the_subject_and_the_subject_yields`, `the_tag_drops_below_8_subject_cells`,
     `ascii_tier_draws_tilde_changed`.
-- [ ] **Walks** (`m7_walk/amend_into.rs`):
+- [~] **Walks** (`m7_walk/amend_into.rs`): `fix_into_older` 3 keys (`j a y`) ≤ 3 ✓; `amend_with_dependents` 2 ✓; `u` restores refs and index in all three ✓. **`absorb_staged` is 9 keys (`k . j j j j j ⏎ y`), not ≤ 4** — asserted exactly at 9, not held to the note (NOTES, question 1). Not ticked:
   - `fix_into_older` = motion `a y` ≤ `noted_keys("fix-into-older")`: the target's diff now contains the fix, and
     nothing is staged. The target must be **unpushed** (06e carry): say the fixture's target in NOTES;
   - `absorb_staged` = `.` motion `⏎ y` ≤ `noted_keys("absorb-staged")`: 2 hunks placed, 1 still staged;
   - `amend_with_dependents` = `a y` ≤ `noted_keys("amend-with-dependents")`: feature-b is rebased onto the amended
     feature-a;
   - `u` after each restores refs and index (a walk step).
-- [ ] **Captures** (colour unverified):
+- [x] **Captures** (colour unverified) — written by `capture_amend_into` / `capture_absorb`, which assert the Right lines except where NOTES says (undo line wording):
   - `docs/shots/m7/amend-into-preview-187x50.txt`. **Right:** title `Preview: put your staged changes into 3b2a1f0
     "Add OAuth callback"`; the `gains` row; `feature-b … built on yours · follows`; `u undoes all of it`.
   - `docs/shots/m7/absorb-preview-120x40.txt`. **Right:** two `→ <sha>` rows; one `stays staged · no commit on your
     branch changed these lines`.
   - `docs/shots/m7/amend-into-landed-120x40.txt`. **Right:** the cursor on the new HEAD; `✎ changed` after the
     target's subject, on the target's row only; status `put into "Add OAuth callback" ✓ · u undoes`.
-- [ ] Perf: the dependents check, `docs/perf/09.txt`, summary line quoted, under 1 frame.
-- [ ] Hint-bar tests green. MAP.md (graft, graft-ui). TESTING.md rows, captions, contact sheet.
+- [ ] **OVER BUDGET** — `scripts/m7-09-perf.sh` → `docs/perf/09.txt`: `m7-09 summary: a to the amend editor, median of 7: 39.7 ms through the dependents check, 0.5 ms today's amend; the check adds 39.2 ms (budget 16.7 ms)`. Perf: the dependents check, `docs/perf/09.txt`, summary line quoted, under 1 frame.
+- [x] Hint-bar tests green (workspace `cargo nextest run`, NOTES). MAP.md (graft, graft-ui). TESTING.md rows, captions, contact sheet.
 
 ## Touches (check each, report how)
 - **Today's amend** (commit editor, `--amend`): unchanged on the fast case. Check:
@@ -252,3 +252,17 @@ Every new `StaysWhy` needs words; test each one.
 - `a` on a pushed older commit of a tracked feature branch is now refused `AlreadyPushed` (before 06e it planned). The
   `fix_into_older` fixture's target must be unpushed; say which in NOTES. Test:
   `a_on_a_pushed_older_commit_is_refused_in_words`.
+
+## NOTES (builder, 2026-09-27)
+- **Compacted twice** mid-ticket. Nothing left undone but the two open boxes below; no 09b split.
+- Scout used: `scouts/09.md`; its named lines re-checked against main after 10b/16b merged.
+- Red first (`a_on_an_older_commit_opens_the_put_it_in_preview`, `keys/commit.rs` at HEAD): `not today's amend: [ReadHeadMessage(JobId(9223372036854775812))]`.
+- fix_into_older fixture target: "Add OAuth callback" on `feature-a`, no remote → unpushed.
+- **Open, question 1 (absorb step count):** the ticket puts Absorb last in `for_working_tree` (after the 5 old items, order kept); the menu has no wrap, so `k . j×5 ⏎ y` = 9 against the note's 4. Needs a ruling: item position, menu wrap/`k`-from-top, or the note's count.
+- **Open, question 2 (perf):** the check adds 39.2 ms vs 16.7 ms. Suspected (unverified, stages not profiled separately): git spawns inside `graft_ops::rewrite::dependents` (for-each-ref --contains, rev-list) — graft-ops, out of my set. It runs off-thread with a `checking…` status, so no frame blocks; the budget is still missed. Not worked around (rule 2).
+- **Question 3 (status words):** `landed` replaces `done_status`'s `also` wholesale: its `your edits are back` was drawn for a put-in whose staged edits went into the commit (`update/amend_into.rs:290-298`). Cost: unstaged edits set aside and put back are no longer mentioned on that line.
+- **Question 4 (preview words, pre-existing, not mine):** the put-in preview shows both `your edits: 1 file set aside, put back after` and `your edits' put-back: not checked (nothing is put back after this)` (capture `amend-into-preview-187x50.txt`); undo line reads `undo: u takes this back`, not the spec's `u undoes all of it`.
+- Deviations: `RowTag::words(ascii)` takes the ascii flag; `Task` variants are unit variants; waiting words `checking where your staged changes go…` / `checking what's built on <branch>…`; absorb dim item on `⏎` shows sticky `nothing staged`, menu stays open (existing mechanism); footer `y put it in ←→ choose ⏎ act esc cancel`; done status follows `done_line` order. Gap: `subject_truncated` ignores the tag's room.
+- Files outside the list / held by others: `update/state.rs` (2 fields; 21b holds it — merge seam); `update/place/write.rs` (listed forced arm, but 21b holds `update/place/*`); `tests/it/m7_walk.rs` (`pub mod amend_into;`, conductor's usual seam); **`tests/it/resolver/editor_words.rs`** (not listed): `head_message_arriving_mid_operation_does_not_open` broke because the fixture has a `feature` branch, so `a` now plans first — test now pumps until the plan answers, then asserts the head-message read as before. Assertions unchanged. `commit_editor.rs` unchanged (existing `pub` fns sufficed).
+- Touches: today's amend — commit_editor tests, `commit_editor_writes`, m3 walk green in workspace nextest; `docs/shots/m3-amend.txt` byte-identical (`git diff --stat HEAD` empty). P14 — `a_during_an_operation_keeps_p14` + existing refusal tests green. `.` menu — `the_uncommitted_row_menu_is_unchanged` extended (Absorb last), commit-row menu tests green. `GraphEntry` literals: 6 before (`git grep HEAD`), 6 after, all literal-only. Graph draw: no file under `docs/shots/` modified except the captions tsv (`git status`). Journal/undo: `u` steps in the three walks. 24: `RowTag`/`RowTags::set` as specced. Keymap: no edit.
+- Cause vs symptom: the `your edits are back` fix is at the cause (words chosen per operation). The editor_words test edit follows the specified behaviour change, not a symptom patch.

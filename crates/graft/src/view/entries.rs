@@ -198,8 +198,10 @@ fn uncommitted_entry<'a>(head_row: Option<&Row>, status: &WorkingTreeStatus) -> 
         // comes from `History::selected`/`row_at`); the working-tree row can
         // never be marked.
         compare_marked: false,
-        // Uncommitted changes have no commit id for `view::radar` to key on.
+        // Uncommitted changes have no commit id for `view::radar` to key on,
+        // nor for a row tag.
         marker: None,
+        tag: None,
     }
 }
 
@@ -342,6 +344,8 @@ fn row_entry<'a>(
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
         compare_marked,
         marker,
+        // A commit a put-in just changed (m7-power-tools/09).
+        tag: state.row_tags.on(row.commit.id).cloned(),
     }
 }
 

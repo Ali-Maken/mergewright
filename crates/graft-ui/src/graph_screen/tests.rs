@@ -79,6 +79,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
                     sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
                     compare_marked: false,
                     marker: None,
+                    tag: None,
                 }
             })
             .collect(),
@@ -2271,4 +2272,70 @@ fn only_in_stash_badge_reads_its_entry() {
     };
     assert_eq!(badge.text(Icons::Plain), "[only in stash@{2}]");
     assert_eq!(badge.text(Icons::Nerd), "\u{f01c} only in stash@{2}");
+}
+
+/// m7-power-tools/09: `✎ changed` two cells after the subject, on the
+/// tagged row only; a subject too long for both is cut with `…` first and
+/// the tag stays whole.
+#[test]
+fn the_tag_draws_after_the_subject_and_the_subject_yields() {
+    let rows = linear(2);
+    let plain = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    let mut tagged = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    tagged.rows[0].tag = Some(RowTag::Changed);
+    let before = text(&draw(&plain, 120, 5));
+    let after = text(&draw(&tagged, 120, 5));
+    assert!(
+        after[1].contains("Commit 2  \u{270e} changed "),
+        "{after:#?}"
+    );
+    assert_eq!(after[2], before[2], "an untagged row draws as before");
+
+    let long = linear_with_subject(2, LONG_SUBJECT);
+    let mut tagged = view(&long, WalkView::Complete { rows: 2 }, 1);
+    tagged.rows[0].tag = Some(RowTag::Changed);
+    let after = text(&draw(&tagged, 80, 5));
+    assert!(
+        after[1].contains("\u{2026}  \u{270e} changed"),
+        "{after:#?}"
+    );
+}
+
+/// Below 8 subject cells the tag is left off and the row is today's.
+#[test]
+fn the_tag_drops_below_8_subject_cells() {
+    let long = linear_with_subject(2, LONG_SUBJECT);
+    let plain = view(&long, WalkView::Complete { rows: 2 }, 1);
+    let mut tagged = view(&long, WalkView::Complete { rows: 2 }, 1);
+    tagged.rows[0].tag = Some(RowTag::Changed);
+    let drawn = |width| {
+        (
+            text(&draw(&tagged, width, 5))[1].clone(),
+            text(&draw(&plain, width, 5))[1].clone(),
+        )
+    };
+    let first = (20u16..80)
+        .find(|width| drawn(*width).0.contains("changed"))
+        .expect("the tag draws somewhere below 80 columns");
+    let (with_tag, _) = drawn(first);
+    // At the narrowest width that draws it, the subject has exactly 8
+    // cells: 7 characters and its `…`.
+    let subject = with_tag
+        .split("\u{2026}  \u{270e} changed")
+        .next()
+        .expect("the cut subject before the tag");
+    assert!(subject.ends_with("A very "), "{with_tag}");
+    let (narrower, untagged) = drawn(first - 1);
+    assert_eq!(narrower, untagged, "one column less: no tag, today's row");
+}
+
+#[test]
+fn ascii_tier_draws_tilde_changed() {
+    let rows = linear(2);
+    let mut tagged = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    tagged.ascii = true;
+    tagged.rows[0].tag = Some(RowTag::Changed);
+    let lines = text(&draw(&tagged, 120, 5));
+    assert!(lines[1].contains("Commit 2  ~ changed"), "{lines:#?}");
+    assert!(!lines[1].contains('\u{270e}'), "{lines:#?}");
 }

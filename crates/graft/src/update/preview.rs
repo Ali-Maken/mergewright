@@ -800,6 +800,8 @@ pub fn close_preview(state: &mut AppState, commands: &mut Vec<Command>) {
     let Some(preview) = state.preview.take() else {
         return;
     };
+    // A put-in's words go with its picture (m7-power-tools/09).
+    super::amend_into::forget(state);
     if preview.planning() {
         commands.push(Command::CancelJob(preview.job));
     }
@@ -861,7 +863,34 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
             }
         }
     };
-    Some(with_cursor(footer_keys(view, preview), preview.cursor))
+    let view = put_in_words(footer_keys(view, preview), state, preview);
+    Some(with_cursor(view, preview.cursor))
+}
+
+/// A put-in's own words over the rewrite's box (m7-power-tools/09, note
+/// R2): the title names what goes where, the rows above the plan's say
+/// what each commit gains, and the footer names the confirm by its verb
+/// (`y put it in`), as a stash put-back's does. Only for the operation the
+/// put-in planned — an `R`-editor rewrite keeps the rewrite's words.
+fn put_in_words(mut view: PreviewBox, state: &AppState, preview: &PreviewState) -> PreviewBox {
+    let Some(shown) = preview
+        .subject
+        .operation()
+        .and_then(|op| state.amend_into.shown_for(op))
+    else {
+        return view;
+    };
+    view.title = sanitize_line(&format!("Preview: {}", shown.title));
+    if preview.planned().is_some() && preview.undrawable.is_none() {
+        let mut lines: Vec<_> = shown.rows.iter().map(|row| sanitize_line(row)).collect();
+        lines.append(&mut view.lines);
+        view.lines = lines;
+    }
+    if preview.acts() || preview.planning() {
+        view.confirm_key = false;
+        view.again = Some((sanitize_line("y"), sanitize_line(shown.confirm)));
+    }
+    view
 }
 
 /// A box with nothing to confirm: one line saying why, and `Close`.

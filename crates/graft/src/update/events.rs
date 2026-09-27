@@ -106,6 +106,12 @@ pub enum Task {
     /// Read `HEAD`'s commit message, to prefill an amend
     /// (m3-working-tree-undo-and-stash/05).
     ReadHeadMessage,
+    /// Plan `a` into an older commit, or absorb: the rewrite, its preview's
+    /// words and its landing's (m7-power-tools/09).
+    PlanRewrite,
+    /// After a put-in landed: the commits it changed on the new line, for
+    /// their row tags (m7-power-tools/09).
+    ResolveRowTags,
     /// Work out the strict topological order a provisional walk promotes to.
     PromoteHistory,
     /// Search history for a query (`/`).
@@ -312,6 +318,13 @@ pub enum Product {
     /// be read — an unborn `HEAD` among the reasons
     /// (m3-working-tree-undo-and-stash/05).
     HeadMessage(Result<String, String>),
+    /// A put-in planned: the rewrite to preview, `plan`'s refusal, or —
+    /// on the `HEAD` path — nothing built on his branch (today's amend); or
+    /// why it could not be read (m7-power-tools/09).
+    RewritePlanned(Result<crate::jobs::rewrite::RewritePlanned, String>),
+    /// The commits a landed put-in changed, one per planned offset, or why
+    /// they could not be read (m7-power-tools/09).
+    RowTagsResolved(Result<Vec<graft_core::oid::Oid>, String>),
     /// What `$EDITOR` left in the message file, or why Graft could not use
     /// it: the editor would not start, exited non-zero, or the file could
     /// not be read back (m3-working-tree-undo-and-stash/05).

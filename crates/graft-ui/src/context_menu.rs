@@ -35,6 +35,9 @@ pub enum ContextAction {
     Push,
     /// Undo the last operation, the same as `u`.
     Undo,
+    /// Put each staged hunk into the commit on his branch that last changed
+    /// its lines — absorb (m7/09). Only on the uncommitted row's menu.
+    Absorb,
     /// One of the history verbs the app offered on this row — checkout,
     /// merge, rebase, cherry-pick, revert, reset, a ref deletion or one of
     /// the Mistake Radar's Fix items — named by its position in the list
@@ -116,6 +119,9 @@ fn item(action: ContextAction, label: &str) -> MenuItem {
     }
 }
 
+/// The uncommitted row's absorb item (keymap §2.1, `02-keymap.md:167`).
+const ABSORB_LABEL: &str = "Put staged changes into their commits (absorb)";
+
 /// What a disabled row's reason is written after: ` — check out main first`.
 const REASON_SEPARATOR: &str = " — ";
 
@@ -186,11 +192,18 @@ impl ContextMenu {
 
     /// The uncommitted-changes row's menu: `Open details` (design note,
     /// "Working tree row selected": `.` "lists `Open details` only"), then
-    /// the same dropped keys every menu carries.
+    /// the same dropped keys every menu carries, then absorb (m7/09) — last,
+    /// so the items before it keep their places. With nothing `staged` the
+    /// absorb item is drawn dim, reading `nothing staged`.
     #[must_use]
-    pub fn for_working_tree() -> ContextMenu {
+    pub fn for_working_tree(staged: bool) -> ContextMenu {
         let mut items = vec![item(ContextAction::OpenDetails, "Open details (⏎)")];
         items.extend(always_items());
+        let mut absorb = item(ContextAction::Absorb, ABSORB_LABEL);
+        if !staged {
+            absorb.disabled = Some(sanitize_line("nothing staged"));
+        }
+        items.push(absorb);
         ContextMenu {
             title: None,
             items,
@@ -493,7 +506,7 @@ mod tests {
 
     #[test]
     fn for_working_tree_lists_open_details_then_the_dropped_keys() {
-        let menu = ContextMenu::for_working_tree();
+        let menu = ContextMenu::for_working_tree(true);
         assert_eq!(menu.items[0].action, ContextAction::OpenDetails);
         assert_eq!(
             menu.items[1..]
@@ -505,7 +518,34 @@ mod tests {
                 ContextAction::Pull,
                 ContextAction::Push,
                 ContextAction::Undo,
+                // m7/09: after today's items, so their order doesn't change.
+                ContextAction::Absorb,
             ]
+        );
+        let absorb = menu.items.last().expect("the absorb item");
+        assert_eq!(
+            absorb.label.as_str(),
+            "Put staged changes into their commits (absorb)"
+        );
+        assert_eq!(absorb.disabled, None, "something is staged: it acts");
+    }
+
+    /// m7/09: with nothing staged the absorb item stays in its place, dim,
+    /// reading `nothing staged` — `Enter` answers with that reason.
+    #[test]
+    fn absorb_item_is_dim_with_nothing_staged() {
+        let menu = ContextMenu::for_working_tree(false);
+        let absorb = menu.items.last().expect("the absorb item");
+        assert_eq!(absorb.action, ContextAction::Absorb);
+        assert_eq!(
+            absorb.disabled.as_ref().map(SanitizedText::as_str),
+            Some("nothing staged")
+        );
+        let mut menu = menu;
+        menu.cursor = menu.items.len() - 1;
+        assert_eq!(
+            menu.selected_refusal().map(SanitizedText::as_str),
+            Some("nothing staged")
         );
     }
 
@@ -611,9 +651,11 @@ mod tests {
 
     #[test]
     fn for_working_tree_width_is_its_own_longest_label_plus_four() {
-        let menu = ContextMenu::for_working_tree();
-        // "Open details (⏎)" is 16 characters.
-        assert_eq!(menu.width(), 16 + 4);
+        let menu = ContextMenu::for_working_tree(true);
+        // "Put staged changes into their commits (absorb)" is 46 characters.
+        assert_eq!(menu.width(), 46 + 4);
+        // Dim, it carries its reason: ` — nothing staged` is 17 more.
+        assert_eq!(ContextMenu::for_working_tree(false).width(), 46 + 17 + 4);
     }
 
     /// m6-conflicts/71: the dim slot, then the leading verbs, then

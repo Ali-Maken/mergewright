@@ -18,6 +18,7 @@
 //! M8 — both used to live in this file). This file keeps only the
 //! dispatcher: `update`, `answer` and `core_event`.
 
+pub mod amend_into;
 pub mod banner;
 pub(crate) mod clash;
 pub mod commit_editor;
@@ -44,6 +45,7 @@ pub mod radar;
 mod relaunch;
 pub mod remote;
 pub mod resolver;
+pub(crate) mod row_tags;
 mod search;
 mod selection;
 pub mod stash;
@@ -254,6 +256,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         ) => radar::radar_event(next, event),
         AppEvent::Produced(id, Product::StashOnly(answer)) => {
             stash_only_answered(next, id, answer);
+        }
+        AppEvent::Produced(
+            id,
+            product @ (Product::RewritePlanned(_) | Product::RowTagsResolved(_)),
+        ) => {
+            amend_into::answer(next, commands, id, product);
         }
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
@@ -521,6 +529,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::ReadFinishDiff
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
+        | Task::PlanRewrite
+        | Task::ResolveRowTags
         | Task::WriteCommitGraph
         | Task::DeclineCommitGraph => {}
     }
@@ -833,19 +843,7 @@ fn took_fact(
             next.local_jobs = local_jobs;
             stash_entries_read(next, commands);
         }
-        Product::Refs(Err(failure)) => {
-            // The graph still draws without badges; the reason goes on the
-            // status line rather than leaving them silently missing.
-            next.status = Status::Failed(failure);
-            next.refs_read.answered(id, false);
-            // The read a finished `--continue` waited on has no `HEAD` to
-            // give: the landing is dropped (the failure is on screen)
-            // rather than spent on the stale refs still held.
-            if next.head_landing.refs == Some(id) {
-                next.land_on_head = false;
-                next.head_landing = state::HeadLanding::default();
-            }
-        }
+        Product::Refs(Err(failure)) => refs_failed(next, id, failure),
         Product::WorkingTree(answer) => working_tree_answered(next, commands, id, answer),
         // Not a fact: `answer`'s pattern keeps these from arriving.
         Product::Repository(_)
@@ -877,6 +875,8 @@ fn took_fact(
         | Product::Leaves { .. }
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
+        | Product::RewritePlanned(_)
+        | Product::RowTagsResolved(_)
         | Product::ExternalEditor(_)
         | Product::HandedOver(_)
         | Product::ConflictOpened(_)
@@ -885,6 +885,20 @@ fn took_fact(
         | Product::ConflictSet(_)
         | Product::FinishSummary(_)
         | Product::FinishDiff(_) => {}
+    }
+}
+
+/// The refs read failed. The graph still draws without badges; the reason
+/// goes on the status line rather than leaving them silently missing.
+fn refs_failed(next: &mut AppState, id: graft_core::job::JobId, failure: String) {
+    next.status = Status::Failed(failure);
+    next.refs_read.answered(id, false);
+    // The read a finished `--continue` waited on has no `HEAD` to give:
+    // the landing is dropped (the failure is on screen) rather than spent
+    // on the stale refs still held.
+    if next.head_landing.refs == Some(id) {
+        next.land_on_head = false;
+        next.head_landing = state::HeadLanding::default();
     }
 }
 
@@ -1085,6 +1099,8 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     // A refs read that will never answer: the refs are `Unknown`, not
     // still being read (review 47-49, M2).
     next.refs_read.answered(id, false);
+    // A put-in's plan or tag read that will never answer (m7/09).
+    amend_into::job_ended(next, id);
     let mut local_jobs = next.local_jobs;
     // The write `Esc` stopped: the answer the user asked for. Any other
     // cancelled write (shutdown) is cleared as before.
@@ -1132,6 +1148,7 @@ fn job_failed(
     radar::job_failed(next, id, &failure.to_string());
     next.detail.evil_job_failed(id, &failure.to_string());
     finish::job_ended(next, id, failure);
+    amend_into::job_ended(next, id);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;
     commands.extend(operate::write_job_ended(next, id, &mut || {

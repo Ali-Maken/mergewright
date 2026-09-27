@@ -188,6 +188,20 @@ pub enum Command {
     /// Read `HEAD`'s commit message to prefill an amend, under an id
     /// `update` chose (m3-working-tree-undo-and-stash/05).
     ReadHeadMessage(JobId),
+    /// Plan `a` into an older commit, or absorb (m7-power-tools/09). `head`
+    /// is `Some` on the `HEAD` path: the job asks `rewrite::dependents` for
+    /// it first, and answers "nothing built on it" before planning.
+    PlanRewrite {
+        /// The job's id.
+        id: JobId,
+        /// What to plan.
+        request: graft_ops::rewrite::RewriteRequest,
+        /// His branch and its tip, on the `HEAD` path only.
+        head: Option<graft_ops::operation::Tip>,
+    },
+    /// After a put-in landed: the commit `offset` first-parent steps below
+    /// `HEAD`, for each offset (m7-power-tools/09).
+    ResolveRowTags(JobId, Vec<u32>),
     /// Hand the terminal to `$EDITOR` on this path, at this line, and take
     /// it back when the editor exits (m3-working-tree-undo-and-stash/05).
     ///

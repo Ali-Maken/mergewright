@@ -376,7 +376,40 @@ pub struct GraphEntry<'a> {
     /// column (`view::radar::marker_for`, m2-details-and-diffs/13). `None`
     /// on almost every row.
     pub marker: Option<MarkerView>,
+    /// A short tag drawn after the subject — `✎ changed` on a commit a
+    /// rewrite just changed (m7-power-tools/09). `None` on almost every row.
+    pub tag: Option<RowTag>,
 }
+
+/// A tag a row carries after its subject until the next write starts
+/// (m7-power-tools/09). The subject yields to it — cut with `…` first — and
+/// it is left off when fewer than [`TAG_MIN_SUBJECT`] subject cells would be
+/// left; the status line says the same thing in words.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RowTag {
+    /// `✎ changed` (ASCII `~ changed`): a commit a rewrite just changed.
+    /// Journal-screen (24) adds `PutBack` and `WasHere { branch }`.
+    Changed,
+}
+
+impl RowTag {
+    /// The words drawn after the subject, in the tier the graph column
+    /// draws in: `ascii` is `GraphView::ascii`, the switch the marker glyph
+    /// mirrors too (badges' `Icons` has no ASCII form).
+    #[must_use]
+    pub fn words(&self, ascii: bool) -> &'static str {
+        match (self, ascii) {
+            (RowTag::Changed, false) => "\u{270e} changed",
+            (RowTag::Changed, true) => "~ changed",
+        }
+    }
+}
+
+/// The fewest subject cells a tag leaves; below it the tag is not drawn.
+pub const TAG_MIN_SUBJECT: u16 = 8;
+
+/// Cells between the subject and its tag.
+pub(crate) const TAG_GAP: u16 = 2;
 
 /// An author's chip: two initials, coloured by the author's identity.
 ///
