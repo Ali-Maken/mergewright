@@ -676,8 +676,8 @@ fn facts_over(entries: Vec<StatusEntry>) -> RepoFacts {
     f
 }
 
-/// ADR-0045 §4: `sets_aside` is `Some` for a rebase or checkout exactly when
-/// tracked files are changed, counting them; `staged` is 0 since every
+/// ADR-0045 §4: `sets_aside` is `Some` for a rebase, a checkout or (m7/11a,
+/// "Where I'd differ" 4) a cherry-pick exactly when tracked files are changed, counting them; `staged` is 0 since every
 /// put-back keeps the index (amendment 2026-09-26 b, m7-power-tools/30).
 /// Untracked files never count; every other kind is `None`, dirty or not.
 #[test]
@@ -693,7 +693,7 @@ fn sets_aside_table() {
         ..entry("junk")
     }]);
 
-    for op in [rebase(), checkout()] {
+    for op in [rebase(), checkout(), pick()] {
         let what = op.describe();
         assert_eq!(op.sets_aside(&clean), None, "{what}: clean");
         assert_eq!(
@@ -715,7 +715,7 @@ fn sets_aside_table() {
             "{what}: untracked only"
         );
     }
-    for op in [merge(), pick(), revert(), reset(ResetMode::Hard)] {
+    for op in [merge(), revert(), reset(ResetMode::Hard)] {
         for f in [&clean, &tracked_only, &staged_and_unstaged, &untracked_only] {
             assert_eq!(op.sets_aside(f), None, "{}", op.describe());
         }
@@ -1160,5 +1160,101 @@ fn track_refuse_refuses_a_dirty_tree_and_set_aside_touches_the_stash() {
     assert_eq!(
         aside.touches(&dirty).refs,
         ["refs/heads/rf".to_owned(), "refs/stash".to_owned()]
+    );
+}
+
+// ── what a pick cannot take (m7-power-tools/11a) ─────────────────────────
+
+/// The pick of `0x0c` onto `main` at `0x0a`, as `pick()` builds it.
+fn pick_params() -> PickParams {
+    let Operation::CherryPick(params) = pick() else {
+        unreachable!("pick() is a cherry-pick")
+    };
+    params
+}
+
+/// The first seven hex digits, as the refusal words name a commit.
+fn sha7(byte: u8) -> String {
+    hex(byte)[..7].to_owned()
+}
+
+/// `HEAD`'s own commit is on `HEAD`: refused in words before git runs
+/// (`KNOWN_GAPS` :806).
+#[test]
+fn picking_head_is_refused_already_on_branch() {
+    let refused = pick_params().check_commit(oid(0x0a), true, 1);
+    assert_eq!(
+        refused,
+        Err(Refusal::AlreadyOnBranch {
+            commit: oid(0x0a),
+            branch: "main".to_owned(),
+        })
+    );
+    assert_eq!(
+        refused.map_err(|why| why.explain()),
+        Err(format!("{} is already on main", sha7(0x0a)))
+    );
+}
+
+/// An ancestor of `HEAD` is refused the same way; a detached `HEAD` names
+/// itself.
+#[test]
+fn picking_an_ancestor_is_refused_already_on_branch() {
+    assert_eq!(
+        pick_params().check_commit(oid(0x01), true, 1),
+        Err(Refusal::AlreadyOnBranch {
+            commit: oid(0x01),
+            branch: "main".to_owned(),
+        })
+    );
+    let detached = PickParams {
+        head: tip("HEAD", 0x0a),
+        ..pick_params()
+    };
+    assert_eq!(
+        detached
+            .check_commit(oid(0x01), true, 1)
+            .map_err(|why| why.explain()),
+        Err(format!("{} is already on HEAD", sha7(0x01)))
+    );
+}
+
+/// A merge commit `HEAD` lacks is refused: taking one needs a mainline,
+/// which Graft does not offer yet. A merge `HEAD` already has reads
+/// "already on" — the truer of the two. One parent, or none (a root), takes.
+#[test]
+fn picking_a_merge_is_refused() {
+    let params = pick_params();
+    let refused = params.check_commit(oid(0x0c), false, 2);
+    assert_eq!(refused, Err(Refusal::PickMerge { commit: oid(0x0c) }));
+    assert_eq!(
+        refused.map_err(|why| why.explain()),
+        Err(format!(
+            "{} is a merge · taking a merge isn't in Graft yet",
+            sha7(0x0c)
+        ))
+    );
+    assert!(matches!(
+        params.check_commit(oid(0x0c), true, 2),
+        Err(Refusal::AlreadyOnBranch { .. })
+    ));
+    assert_eq!(params.check_commit(oid(0x0c), false, 1), Ok(()));
+    assert_eq!(params.check_commit(oid(0x0c), false, 0), Ok(()));
+}
+
+/// A pick that sets edits aside records `refs/stash` beside its branch, as
+/// a rebase does: undo's stash step reads its before and after (ADR-0045
+/// §6). Clean, only the branch.
+#[test]
+fn a_pick_that_sets_aside_touches_the_stash() {
+    assert_eq!(pick().touches(&facts()).refs, [MAIN.to_owned()]);
+    let dirty = facts_over(vec![StatusEntry {
+        unstaged: Some(Change::Modified),
+        ..entry("a.rs")
+    }]);
+    assert_eq!(pick().check(&dirty), Ok(()), "no clean-tree rule");
+    assert_eq!(
+        pick().touches(&dirty).refs,
+        [MAIN.to_owned(), "refs/stash".to_owned()]
     );
 }

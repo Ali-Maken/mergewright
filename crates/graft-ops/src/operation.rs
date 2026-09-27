@@ -523,6 +523,21 @@ pub enum Refusal {
     MergeNeedsMainline,
     /// A cherry-pick with no commits.
     NoCommits,
+    /// A cherry-pick of a commit the branch already has: `HEAD` itself or
+    /// one of its ancestors (m7-power-tools/11a, `KNOWN_GAPS` :806). Asked
+    /// by [`PickParams::check_commit`], not `check`: it needs a read.
+    AlreadyOnBranch {
+        /// The commit asked for.
+        commit: Oid,
+        /// The branch, short name; `HEAD` when detached.
+        branch: String,
+    },
+    /// A cherry-pick of a merge commit: git needs `-m <parent>`, and Graft
+    /// offers no mainline choice for a pick yet (m7-power-tools/11a).
+    PickMerge {
+        /// The merge commit asked for.
+        commit: Oid,
+    },
     /// A ref the operation names does not exist.
     NoSuchRef {
         /// Full name.
@@ -896,6 +911,13 @@ impl Refusal {
                 "reverting a merge needs a mainline: Fix… offers -m 1".to_owned()
             }
             Self::NoCommits => "nothing to cherry-pick".to_owned(),
+            Self::AlreadyOnBranch { commit, branch } => {
+                format!("{} is already on {branch}", history::short(*commit))
+            }
+            Self::PickMerge { commit } => format!(
+                "{} is a merge · taking a merge isn't in Graft yet",
+                history::short(*commit)
+            ),
             Self::NoSuchRef { name } => format!("{} does not exist", history::short_ref(name)),
             Self::CheckedOut { branch } => {
                 format!("{branch} is checked out; switch away before deleting it")
@@ -1251,16 +1273,21 @@ impl Operation {
         }
     }
 
-    /// What a rebase, rewrite, previewed switch or switching create away
-    /// from `HEAD` would set aside before it runs and put back after
-    /// (ADR-0045 §4): `Some` when tracked files are changed,
+    /// What a rebase, rewrite, cherry-pick, previewed switch or switching
+    /// create away from `HEAD` would set aside before it runs and put back
+    /// after (ADR-0045 §4): `Some` when tracked files are changed,
     /// staged or not; `None` on a clean tree, over untracked files only
     /// (they stay where they are), and for every other kind. Pure over the
     /// facts — the preview and `apply` ask the same question.
+    ///
+    /// A cherry-pick (m7-power-tools/11a) wraps any changed tracked file,
+    /// as a rebase does, not only the paths the pick touches: those need a
+    /// read of the commit, and `sets_aside` reads none. A file the pick
+    /// leaves alone goes back as it was.
     #[must_use]
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
         let wraps = match self {
-            Self::Rebase(_) | Self::Rewrite(_) => true,
+            Self::Rebase(_) | Self::Rewrite(_) | Self::CherryPick(_) => true,
             // A switch sets aside only when it was previewed (the switch
             // rule, m7-power-tools/10b); a new branch at `HEAD`'s own commit
             // leaves the edits where they are.
@@ -1629,7 +1656,6 @@ impl Operation {
             // be a merge nobody began.
             Self::Pull(_)
             | Self::Merge(_)
-            | Self::CherryPick(_)
             | Self::Revert(_)
             | Self::FinishMerge(_)
             | Self::AbortMerge(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
@@ -1638,8 +1664,9 @@ impl Operation {
             // inverse's stash step reads (ADR-0045 §4 step 2, §6).
             //
             // A rebase's branches built on his join these in `apply`, which
-            // finds them when it runs (`apply::engine`).
-            Self::Rebase(_) => {
+            // finds them when it runs (`apply::engine`). A cherry-pick sets
+            // aside as a rebase does (m7-power-tools/11a).
+            Self::Rebase(_) | Self::CherryPick(_) => {
                 let mut refs = vec![commit::head_ref_name(&facts.head)];
                 refs.extend(self.stash_ref_if_set_aside(facts));
                 (refs, true, true)
