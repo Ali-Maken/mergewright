@@ -308,11 +308,13 @@ Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-l
 - `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
 - `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed`/`TooLarge` added m3/01).
 - `Change` (enum) — one side's per-file state: `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged` (m3/01).
-- `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `unmerged_how` (`Some` exactly when `unmerged`; m6-conflicts/01), `submodule`; `is_staged`/`is_unstaged` (m3/01).
+- `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `unmerged_how` (`Some` exactly when `unmerged`; m6-conflicts/01), `submodule: Option<SubmoduleStatus>` (`None` for `N...` and untracked records; was a `bool`, m7-power-tools/13); `is_staged`/`is_unstaged` (m3/01).
+- `SubmoduleStatus` (struct) — porcelain v2 `S<c><m><u>`: `pointer_moved` (C), `changed_inside` (M), `untracked_inside` (U); each against the index, so a staged pointer move reads `M. S...` (measured, git 2.54). Any other `sub` field is `Malformed` (m7-power-tools/13).
 - `UnmergedHow` (enum) — a porcelain v2 `u` record's XY pair: `BothModified` (UU), `BothAdded` (AA), `BothDeleted` (DD), `AddedByUs` (AU), `AddedByThem` (UA), `DeletedByUs` (DU), `DeletedByThem` (UD); any other pair on a `u` record is `StatusError::Malformed`. `words()` — git's own phrase (`both modified`, …); `has_markers()` — UU or AA, the shapes with a working-tree file to parse (m6-conflicts/01).
 - `WorkingTreeStatus` (struct) — `entries: Vec<StatusEntry>`; `staged`/`unstaged`/`untracked` (iterators), `is_clean`, `counts` (→ `WorkingTreeCounts`), `entry(path)` (m3/01).
 - `parse_porcelain_v2` (fn) — pure parser for `git status --porcelain=v2 -z` output; a `cargo-fuzz` target (m3/01).
 - `read` (fn) — one `git -c core.quotepath=off status --porcelain=v2 -z --untracked-files=all --renames` spawn through `run` (`GIT_OPTIONAL_LOCKS=0` from the runner itself); bare repos report empty (m3/01).
+- `submodules_not_set_up(repo, stop) -> Result<Vec<PathBuf>, StatusError>` (fn) — gitlinks (`160000`) in the index whose directory has no `.git`; `git status` is silent about them. No `.gitmodules` → no spawn; else one `ls-files --stage -z` (m7-power-tools/13).
 
 ## version
 - `GitVersion` (struct) — a parsed `major.minor.patch` git version.

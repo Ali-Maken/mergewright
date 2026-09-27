@@ -1,10 +1,13 @@
 //! The changes pane's list: four sections over two diffs, and which git
 //! diff each row reads.
 
-use graft_git::diff::{DiffSpec, FileEntry, FileList, FileStatus};
+use std::collections::HashMap;
+
+use graft_core::oid::Oid;
+use graft_git::diff::{DiffSpec, FileDiff, FileEntry, FileList, FileStatus, LineKind};
 use graft_git::status::UnmergedHow;
-use graft_term::sanitize::sanitize_line;
-use graft_ui::detail::{FileListView, FileRow, FileRowKind, WorkingTreeSection};
+use graft_term::sanitize::{SanitizedText, sanitize_line};
+use graft_ui::detail::{FileListView, FileRow, FileRowKind, SubmoduleView, WorkingTreeSection};
 
 use super::assemble::push_tree;
 use crate::update::detail::DetailSpec;
@@ -38,6 +41,55 @@ pub fn diff_spec_for(spec: DetailSpec, section: Option<WorkingTreeSection>) -> D
 
 /// Each unmerged path's shape, by path, from one working-tree status.
 pub type UnmergedShapes = std::collections::HashMap<Vec<u8>, UnmergedHow>;
+
+/// What each submodule row says, by path (the raw bytes the diff carries),
+/// for the section it is drawn in (m7-power-tools/13). A path here draws
+/// `▣` and its facts instead of a letter and counts.
+#[derive(Clone, Debug, Default)]
+pub struct SubmoduleRows {
+    /// `STAGED`: a pointer move already in the index.
+    pub staged: HashMap<Vec<u8>, SubmoduleView>,
+    /// `UNSTAGED`: what git's status says of the submodule's worktree, or
+    /// that it is not set up.
+    pub unstaged: HashMap<Vec<u8>, SubmoduleView>,
+}
+
+impl SubmoduleRows {
+    fn of(&self, section: WorkingTreeSection) -> Option<&HashMap<Vec<u8>, SubmoduleView>> {
+        match section {
+            WorkingTreeSection::Staged => Some(&self.staged),
+            WorkingTreeSection::Unstaged => Some(&self.unstaged),
+            WorkingTreeSection::Unmerged | WorkingTreeSection::Untracked => None,
+        }
+    }
+}
+
+/// The pointer a gitlink's patch moves, `(from, to)`: git prints a
+/// gitlink's change as `-Subproject commit <old>` / `+Subproject commit
+/// <new>` (with `-dirty` on a worktree that has changes inside). `None`
+/// when `diff` is not a gitlink's — any other line in it, or no such line.
+#[must_use]
+pub fn pointer_of(diff: &FileDiff) -> Option<(Option<Oid>, Option<Oid>)> {
+    let (mut from, mut to) = (None, None);
+    for line in diff.hunks.iter().flat_map(|hunk| &hunk.lines) {
+        let text = std::str::from_utf8(&line.text).ok()?;
+        let id = text.strip_prefix("Subproject commit ")?;
+        let id = Oid::from_hex(id.strip_suffix("-dirty").unwrap_or(id)).ok()?;
+        match line.kind {
+            LineKind::Removed => from = Some(id),
+            LineKind::Added => to = Some(id),
+            LineKind::Context => return None,
+        }
+    }
+    (from.is_some() || to.is_some()).then_some((from, to))
+}
+
+/// An id as the rows show it: seven hex digits.
+#[must_use]
+pub fn short_id(id: Oid) -> SanitizedText {
+    let hex = id.to_string();
+    sanitize_line(hex.get(..7).unwrap_or(&hex))
+}
 
 /// [`UnmergedShapes`] from a status read: every entry git called unmerged
 /// and told us the shape of, keyed by the same raw bytes the diff carries.
@@ -119,12 +171,27 @@ fn sections_of(
 ///
 /// An empty tree gets no section rows at all, just the `nothing to commit`
 /// message, so the pane does not print three empty headings.
+#[cfg(test)]
 #[must_use]
 pub fn assemble_working_tree(
     staged: &FileList,
     unstaged: &FileList,
     how: &UnmergedShapes,
 ) -> (FileListView, FileList) {
+    assemble_changes(staged, unstaged, how, &SubmoduleRows::default())
+}
+
+/// [`assemble_working_tree`], with each path in `submodules` drawn as a
+/// submodule row in its section (m7-power-tools/13). Which submodules have
+/// a row at all is the caller's to decide — it is in the lists or not.
+#[must_use]
+pub fn assemble_changes(
+    staged: &FileList,
+    unstaged: &FileList,
+    how: &UnmergedShapes,
+    submodules: &SubmoduleRows,
+) -> (FileListView, FileList) {
+    let no_submodules = HashMap::new();
     let by_section = sections_of(staged, unstaged);
 
     let mut merged = FileList {
@@ -158,7 +225,8 @@ pub fn assemble_working_tree(
             },
             entry: None,
         });
-        push_tree(&mut view, &merged, indices, 1, how);
+        let rows = submodules.of(*section).unwrap_or(&no_submodules);
+        push_tree(&mut view, &merged, indices, 1, how, rows);
     }
     // The cursor starts on the first file, not on a heading: opening the
     // pane should show a diff, and `Space` on a heading means "all of it".

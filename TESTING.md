@@ -2612,6 +2612,24 @@ trailer `◂ can't say who · this clone starts at 0a27627`; the block's other
 rows are brackets, no name; `Priya` nowhere; no commit-graph offer. Colour
 unverified (the heatmap's oldest bucket on the boundary rows).
 
+### M7 submodule rows
+
+`cargo nextest run -E 'test(submodule_truth)'` (m7-power-tools/13b). A real
+submodule at `libs/parser` in a scratch superproject.
+
+`docs/shots/m7/submodule-row-120x40.txt` (`a_moved_and_dirty_submodule_shows_both`):
+pointer moved and a file changed inside. Right: under `UNSTAGED`, a row
+starting `▣ libs/parser  submodule ·` — at 120 columns the file list is 30
+wide, so the facts are cut; at 187 the row reads `▣ libs/parser  submodule ·
+pointer moved <old7> → <new7> · changed inside`. No `M` letter, no counts.
+
+`docs/shots/m7/submodule-diff-120x40.txt` (`the_diff_pane_lists_the_commits_a_move_pulled_in`):
+the pointer moved sideways. Right: the diff pane's first line `libs/parser ·
+submodule · 5bdba05 → efdd295`, then `+ efdd295 parser 3`, `+ 8512312 parser 2`,
+`− 5bdba05 side 1` — pulled in first, rewound after, same order as
+`git log --left-right`. No hunks, no content diff. Colour unverified (`+` rows
+added colour, `−` rows removed colour).
+
 ## Hint bar
 
 `hint-bar-redesign` (ADR-0037 §4): the footer shows the three most relevant

@@ -9,7 +9,10 @@ use unicode_width::UnicodeWidthStr;
 
 use graft_core::mistake_radar::Severity;
 
-use crate::detail::{BodyView, DetailFocus, DetailView, DiffMode, ExplainView};
+use crate::detail::{
+    BodyView, DetailFocus, DetailView, DiffMode, ExplainView, FileStatusView, SubmoduleLogView,
+    SubmoduleView,
+};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -89,6 +92,10 @@ fn render_diff_body(
     buf: &mut Buffer,
     muted: Style,
 ) {
+    if let FileStatusView::Submodule(submodule) = &diff.status {
+        render_submodule_diff(diff.path.as_str(), submodule, area, theme, buf);
+        return;
+    }
     // An untracked file is read as all added lines (m6-conflicts/81); only
     // one with no bytes has nothing to draw. Binary goes to the line below.
     if diff.untracked && diff.hunks.is_empty() && diff.binary.is_none() {
@@ -130,6 +137,81 @@ fn render_diff_body(
             focus.word_tint,
         ),
     };
+}
+
+/// The most commits the diff pane lists for one submodule move; the rest
+/// are counted in a `+N more` line (m7-power-tools/13).
+pub(crate) const SUBMODULE_COMMITS_MAX: usize = 50;
+
+/// The diff pane on a submodule path (m7-power-tools/13): the header
+/// `<path> · submodule · <old7> → <new7>`, then one row per commit — `+`
+/// pulled in, `−` rewound — capped at [`SUBMODULE_COMMITS_MAX`], or the one
+/// line saying the commits cannot be listed. Never a content diff.
+fn render_submodule_diff(
+    path: &str,
+    submodule: &SubmoduleView,
+    area: Rect,
+    theme: &Theme,
+    buf: &mut Buffer,
+) {
+    let text = foreground(theme, Token::Text);
+    let muted = foreground(theme, Token::TextMuted);
+    let ids = match (&submodule.from, &submodule.to) {
+        (Some(from), Some(to)) if from != to => {
+            format!(" \u{b7} {} \u{2192} {}", from.as_str(), to.as_str())
+        }
+        (None, Some(to)) => format!(" \u{b7} new at {}", to.as_str()),
+        (Some(from), None) => format!(" \u{b7} removed (was {})", from.as_str()),
+        (Some(at), Some(_)) => format!(" \u{b7} {}", at.as_str()),
+        (None, None) => String::new(),
+    };
+    draw_line(
+        buf,
+        area,
+        0,
+        &format!("{path} \u{b7} submodule{ids}"),
+        foreground(theme, Token::Accent),
+    );
+    match &submodule.log {
+        Some(SubmoduleLogView::NotHere) => draw_line(
+            buf,
+            area,
+            1,
+            "the submodule's commits aren't here \u{b7} not set up",
+            muted,
+        ),
+        Some(SubmoduleLogView::Commits(commits)) if commits.is_empty() => {
+            let why = if submodule.move_words(false).is_some() {
+                "no commits to list"
+            } else {
+                "the pointer did not move"
+            };
+            draw_line(buf, area, 1, why, muted);
+        }
+        Some(SubmoduleLogView::Commits(commits)) => {
+            let mut offset: u16 = 1;
+            for commit in commits.iter().take(SUBMODULE_COMMITS_MAX) {
+                let (sign, token) = if commit.pulled_in {
+                    ('+', Token::Added)
+                } else {
+                    ('\u{2212}', Token::Removed)
+                };
+                draw_line(
+                    buf,
+                    area,
+                    offset,
+                    &format!("{sign} {} {}", commit.id.as_str(), commit.subject.as_str()),
+                    foreground(theme, token),
+                );
+                offset = offset.saturating_add(1);
+            }
+            let more = commits.len().saturating_sub(SUBMODULE_COMMITS_MAX);
+            if more > 0 {
+                draw_line(buf, area, offset, &format!("+{more} more"), muted);
+            }
+        }
+        None => draw_line(buf, area, 1, "reading\u{2026}", text),
+    }
 }
 
 /// The Explain panel: title (severity glyph + `title`, severity colour),

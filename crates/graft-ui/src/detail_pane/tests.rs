@@ -14,7 +14,7 @@ use super::*;
 use crate::detail::{
     BodyView, ContainedIn, DetailFocus, DetailHeader, DetailView, DiffMode, DiffOptionsView,
     DiffView, FileListView, FileRow, FileRowKind, FileStatusView, HunkView, LineKindView, LineView,
-    RadarLine, Subject,
+    RadarLine, Subject, SubmoduleCommitView, SubmoduleLogView, SubmoduleView,
 };
 use crate::paint::foreground;
 use crate::test_support::terminal;
@@ -1423,6 +1423,196 @@ fn the_header_drops_the_tally_first_when_narrow() {
     );
     assert!(
         !screen.iter().any(|line| line.contains("3 commits")),
+        "{screen:#?}"
+    );
+}
+
+/// A submodule's facts, ids as the capture shows them (m7-power-tools/13).
+fn submodule(moved: bool, changed: bool, untracked: bool) -> SubmoduleView {
+    SubmoduleView {
+        from: Some(sanitize_line("3b2a1f0")),
+        to: Some(sanitize_line(if moved { "9c8d7e6" } else { "3b2a1f0" })),
+        changed_inside: changed,
+        untracked_inside: untracked,
+        not_set_up: false,
+        log: None,
+    }
+}
+
+/// The changes pane with one `UNSTAGED` section holding `libs/parser`.
+fn submodule_row_view(view: SubmoduleView) -> DetailView {
+    let mut detail = working_tree_view(0, 1, 0);
+    detail.files = Some(Arc::new(FileListView {
+        rows: vec![
+            FileRow {
+                depth: 0,
+                name: sanitize_line("UNSTAGED"),
+                kind: FileRowKind::Section {
+                    section: crate::detail::WorkingTreeSection::Unstaged,
+                    count: 1,
+                },
+                entry: None,
+            },
+            FileRow {
+                depth: 1,
+                name: sanitize_line("libs/parser"),
+                kind: FileRowKind::File {
+                    status: FileStatusView::Submodule(Box::new(view)),
+                    added: None,
+                    removed: None,
+                },
+                entry: Some(0),
+            },
+        ],
+        cursor: 1,
+        files: 1,
+        ..FileListView::default()
+    }));
+    detail.body = BodyView::Empty(sanitize_line(""));
+    detail
+}
+
+/// Draws the pane as the frame places it at `columns` x 40.
+fn at_width(view: &DetailView, columns: u16) -> Vec<String> {
+    let layout = DetailLayout::compute(columns, 40, DetailFocus::Files, None);
+    let width = match layout {
+        DetailLayout::Right { columns } => columns,
+        DetailLayout::Below { .. } | DetailLayout::Tab { .. } => columns,
+    };
+    text(&draw(view, layout, width, 40))
+}
+
+/// The row at 187 columns (the pane is 78 wide): `▣`, the whole path, the
+/// word `submodule`, then each true fact — never a letter or counts.
+#[test]
+fn a_submodule_row_says_its_facts_at_187_columns() {
+    let screen = at_width(&submodule_row_view(submodule(true, true, false)), 187);
+    let want = "\u{25a3} libs/parser  submodule \u{b7} pointer moved 3b2a1f0 \u{2192} 9c8d7e6 \u{b7} changed inside";
+    assert!(screen.iter().any(|line| line.contains(want)), "{screen:#?}");
+    assert!(
+        !screen.iter().any(|line| line.contains("untracked inside")),
+        "a false fact is not drawn: {screen:#?}"
+    );
+}
+
+/// At 80 columns every fact still shows: the ids go first.
+#[test]
+fn a_submodule_row_drops_its_ids_before_a_fact_at_80_columns() {
+    let screen = at_width(&submodule_row_view(submodule(true, true, true)), 80);
+    let want = "\u{25a3} libs/parser  submodule \u{b7} pointer moved \u{b7} changed inside \u{b7} untracked inside";
+    assert!(screen.iter().any(|line| line.contains(want)), "{screen:#?}");
+}
+
+/// Each fact alone, and not set up.
+#[test]
+fn each_submodule_fact_is_its_own_word() {
+    assert_eq!(
+        submodule(false, false, true).row_words(true),
+        "submodule \u{b7} untracked inside"
+    );
+    assert_eq!(
+        submodule(false, true, false).row_words(true),
+        "submodule \u{b7} changed inside"
+    );
+    let not_set_up = SubmoduleView {
+        not_set_up: true,
+        ..SubmoduleView::default()
+    };
+    assert_eq!(not_set_up.row_words(true), "submodule \u{b7} not set up");
+    let screen = at_width(&submodule_row_view(not_set_up), 187);
+    assert!(
+        screen
+            .iter()
+            .any(|line| line.contains("\u{25a3} libs/parser  submodule \u{b7} not set up")),
+        "{screen:#?}"
+    );
+}
+
+fn commit(pulled_in: bool, id: &str, subject: &str) -> SubmoduleCommitView {
+    SubmoduleCommitView {
+        pulled_in,
+        id: sanitize_line(id),
+        subject: sanitize_line(subject),
+    }
+}
+
+/// The diff pane on a submodule path, `log` set.
+fn submodule_diff_view(log: SubmoduleLogView) -> DetailView {
+    let mut detail = submodule_row_view(submodule(true, false, false));
+    let mut sub = submodule(true, false, false);
+    sub.log = Some(log);
+    detail.body = BodyView::Diff(Arc::new(DiffView {
+        path: sanitize_line("libs/parser"),
+        old_path: None,
+        status: FileStatusView::Submodule(Box::new(sub)),
+        hunks: vec![],
+        binary: None,
+        truncated: None,
+        untracked: false,
+    }));
+    detail.focus = DetailFocus::Diff;
+    detail
+}
+
+/// The header, then one row per commit: `+` pulled in, `−` rewound.
+#[test]
+fn the_diff_pane_on_a_submodule_lists_its_commits() {
+    let screen = at_width(
+        &submodule_diff_view(SubmoduleLogView::Commits(vec![
+            commit(true, "9c8d7e6", "parse the new header"),
+            commit(true, "5e4d3c2", "lexer: keep spans"),
+            commit(false, "1a2b3c4", "an experiment"),
+        ])),
+        187,
+    );
+    for want in [
+        "libs/parser \u{b7} submodule \u{b7} 3b2a1f0 \u{2192} 9c8d7e6",
+        "+ 9c8d7e6 parse the new header",
+        "+ 5e4d3c2 lexer: keep spans",
+        "\u{2212} 1a2b3c4 an experiment",
+    ] {
+        assert!(
+            screen.iter().any(|line| line.contains(want)),
+            "{want}: {screen:#?}"
+        );
+    }
+}
+
+/// Past 50 commits: 50 rows, then `+N more`.
+#[test]
+fn the_diff_pane_caps_a_submodules_commits_at_50() {
+    let commits = (0..53)
+        .map(|n| commit(true, &format!("{n:07}"), &format!("commit {n}")))
+        .collect();
+    let view = submodule_diff_view(SubmoduleLogView::Commits(commits));
+    let layout = DetailLayout::Tab { shown: true };
+    let screen = text(&draw(&view, layout, 80, 90));
+    assert!(
+        screen
+            .iter()
+            .any(|line| line.contains("+ 0000049 commit 49")),
+        "{screen:#?}"
+    );
+    assert!(
+        !screen.iter().any(|line| line.contains("commit 50")),
+        "{screen:#?}"
+    );
+    assert!(
+        screen
+            .iter()
+            .any(|line| line.trim_end().ends_with("+3 more")),
+        "{screen:#?}"
+    );
+}
+
+/// Not set up, or the commits missing: one line says so.
+#[test]
+fn the_diff_pane_says_when_a_submodules_commits_are_not_here() {
+    let screen = at_width(&submodule_diff_view(SubmoduleLogView::NotHere), 187);
+    assert!(
+        screen
+            .iter()
+            .any(|line| line.contains("the submodule's commits aren't here \u{b7} not set up")),
         "{screen:#?}"
     );
 }
