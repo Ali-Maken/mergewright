@@ -11,6 +11,7 @@ mod absorb_staged;
 mod absorb_unpushed;
 mod chained_backup;
 mod checkout_hook_fails;
+mod cherry_pick;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;

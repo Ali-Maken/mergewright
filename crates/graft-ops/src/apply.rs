@@ -221,6 +221,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         return Ok(folded);
     }
     guard_repush(ctx, op, &facts)?;
+    guard_pick(ctx, op)?;
     guard_in_the_way(ctx, op, &facts)?;
     let description = ending_a_shell_merge(ctx, op)?.unwrap_or_else(|| op.describe_in(&facts));
     // A rebase or rewrite: read the line of branches and write the todo
@@ -462,6 +463,39 @@ fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<
         commit: source,
         branch: crate::operation::short_ref(&params.branch).to_owned(),
     }))
+}
+
+/// A cherry-pick's two refusals that need a read (m7-power-tools/11a): a
+/// commit the branch already has, and a merge. The preview asks them
+/// (`preview::kinds::cherry_pick`); `apply` asks again, in the same terms,
+/// before the set-aside and the `Pending` line, as [`guard_repush`] does —
+/// so a pick reaching `apply` without a picture refuses the same way, and
+/// nothing is written.
+fn guard_pick(ctx: &Context<'_>, op: &Operation) -> Result<(), ApplyError> {
+    let Operation::CherryPick(params) = op else {
+        return Ok(());
+    };
+    for commit in &params.commits {
+        // `<commit> ^<head>` capped at one: the commit and its parents, or
+        // nothing when `head` already has it.
+        let range = graft_git::history_reads::commits_between(
+            ctx.repo,
+            params.head.oid,
+            *commit,
+            1,
+            ctx.stop,
+        )
+        .map_err(|error| match error {
+            RunError::Stopped => ApplyError::Stopped,
+            other => ApplyError::Facts(FactsError::Ancestry(other)),
+        })?;
+        let found = range.commits.last();
+        let parents = found.map_or(0, |summary| summary.parents.len());
+        params
+            .check_commit(*commit, found.is_none(), parents)
+            .map_err(ApplyError::Refused)?;
+    }
+    Ok(())
 }
 
 /// His files git doesn't keep, where the write puts its own (ADR-0049):

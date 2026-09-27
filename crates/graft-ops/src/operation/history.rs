@@ -132,6 +132,34 @@ pub struct PickParams {
     pub head: Tip,
 }
 
+impl PickParams {
+    /// Whether `commit` can be taken onto `head`, given two facts only a
+    /// read of history holds (m7-power-tools/11a, `KNOWN_GAPS` :806):
+    /// `on_head` — `commit` is `HEAD` or one of its ancestors
+    /// (`merge-base --is-ancestor`) — and its parent count.
+    ///
+    /// `check` reads no object, so it cannot ask these; whoever holds the
+    /// answers asks this — the preview and `apply` from git, the app from
+    /// its graph — and every one refuses in the same words. Already on the
+    /// branch wins over a merge: that is the truer reason, and nothing is
+    /// taken either way.
+    ///
+    /// # Errors
+    /// [`Refusal::AlreadyOnBranch`], [`Refusal::PickMerge`].
+    pub fn check_commit(&self, commit: Oid, on_head: bool, parents: usize) -> Result<(), Refusal> {
+        if on_head {
+            return Err(Refusal::AlreadyOnBranch {
+                commit,
+                branch: short_ref(&self.head.name).to_owned(),
+            });
+        }
+        if parents >= 2 {
+            return Err(Refusal::PickMerge { commit });
+        }
+        Ok(())
+    }
+}
+
 /// `git revert`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RevertParams {

@@ -302,15 +302,19 @@ pub(super) fn cherry_pick(
     let mut conflicts = ConflictForecast::Clean;
     let mut replays: Vec<Replay> = Vec::new();
     for commit in &params.commits {
-        // The picked commit is by definition not on `head`, so one
-        // `rev-list <commit> ^<head>` capped at one gives the commit itself
-        // — subject, author and parents in a single spawn.
+        // One `rev-list <commit> ^<head>` capped at one gives the commit
+        // itself — subject, author and parents in a single spawn — or
+        // nothing when `head` already has it. Both answer
+        // `check_commit` (m7-power-tools/11a): already on the branch, or a
+        // merge, refuses, and the preview never opens.
         let range = history_reads::commits_between(repo, head, *commit, 1, stop)?;
-        let Some(summary) = range.commits.last() else {
-            // Already on this branch: git would make an empty commit or
-            // refuse, and either way there is nothing to draw.
-            plan.undo = UndoNote::NotUndoable(format!("{} is already here", short(*commit)));
-            return Ok(plan);
+        let found = range.commits.last();
+        let parents = found.map_or(0, |summary| summary.parents.len());
+        params
+            .check_commit(*commit, found.is_none(), parents)
+            .map_err(PreviewError::Refused)?;
+        let Some(summary) = found else {
+            unreachable!("check_commit refuses a commit `head` already has");
         };
         let index = plan.ghosts.len();
         let parent = match index {

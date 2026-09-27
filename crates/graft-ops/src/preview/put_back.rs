@@ -7,7 +7,9 @@
 //!    rebase the chained forecast's result after his last row (drops
 //!    skipped, 05b); where the chain did not reach it, one
 //!    `merge-tree HEAD <upstream>` made a commit stands in — for the
-//!    replayed branch, which is never built (m5 hard choice 5);
+//!    replayed branch, which is never built (m5 hard choice 5); for a
+//!    cherry-pick, each picked commit replayed from its own parent
+//!    (m7-power-tools/11a);
 //! 3. `git merge-tree --merge-base=HEAD <landed> <S'>`: the three-way merge
 //!    `stash apply` does, whose base is `S'^1`, which is `HEAD`.
 //!
@@ -20,6 +22,7 @@
 //! `NotChecked(<why>)`, a hole the box names. Only a stop is an error.
 
 use graft_core::oid::Oid;
+use graft_git::history_reads::{self, MergeStep};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
@@ -41,6 +44,10 @@ const MERGE_BASE_MIN: GitVersion = GitVersion {
 /// Why a rebase's put-back is not forecast: the replay itself may stop, and
 /// the tree the edits would go back onto is then nobody's guess.
 const MAY_STOP: &str = "the rebase may stop first";
+
+/// The same hole for a cherry-pick: a pick that stops, or one whose commit
+/// could not be replayed here, leaves no tree to put the edits back onto.
+const PICK_MAY_STOP: &str = "the cherry-pick may stop first";
 
 /// Forecast step 6 of `op`, whose own forecast is `replay`.
 ///
@@ -65,41 +72,9 @@ pub(super) fn forecast(
     if *git < MERGE_BASE_MIN {
         return Ok(not_checked("git 2.40+ needed to forecast the put-back"));
     }
-    let (head, landing) = match op {
-        Operation::Checkout(params) => {
-            let target = match &params.to {
-                CheckoutTarget::Branch(name) => facts.refs.get(name).copied().flatten(),
-                CheckoutTarget::Detached(oid) => Some(*oid),
-                CheckoutTarget::Track { remote, .. } => Some(remote.oid),
-            };
-            match (kinds::head_tip(facts), target) {
-                (Some(head), Some(target)) => (head, Landing::At(target)),
-                _ => return Ok(not_checked("where HEAD lands could not be read")),
-            }
-        }
-        Operation::Rebase(params) => {
-            if *replay != ConflictForecast::Clean {
-                return Ok(not_checked(MAY_STOP));
-            }
-            match rebase_landed {
-                Some(landed) => (params.branch.oid, Landing::At(landed)),
-                None => (params.branch.oid, Landing::Replayed(params.onto_tip)),
-            }
-        }
-        // A new branch switched to at `at`: `HEAD` lands there, as a
-        // checkout's does (m7-power-tools/10b).
-        Operation::BranchCreate(params) => match kinds::head_tip(facts) {
-            Some(head) => (head, Landing::At(params.at)),
-            None => return Ok(not_checked("where HEAD lands could not be read")),
-        },
-        // A branch put back while checked out: a `reset --hard` to `to`.
-        Operation::Recover(RecoverParams {
-            target: RecoverTarget::MoveRef { to, expected, .. },
-            ..
-        }) => (*expected, Landing::At(*to)),
-        // `sets_aside` is `Some` for a rebase, a rewrite, a checkout, a
-        // switching create away from `HEAD` or a checked-out put-back only.
-        _ => return Ok(not_checked("nothing is put back after this")),
+    let (head, landing) = match landing_of(op, facts, replay, rebase_landed) {
+        Ok(found) => found,
+        Err(hole) => return Ok(hole),
     };
     stopped(stop)?;
     // The index copy lives in the git dir for the moment it takes, beside
@@ -118,6 +93,10 @@ pub(super) fn forecast(
             Ok(landed) => landed,
             Err(hole) => return Ok(hole),
         },
+        Landing::Picked(commits) => match picked(repo, git, head, &commits, stop)? {
+            Ok(landed) => landed,
+            Err(hole) => return Ok(hole),
+        },
     };
     stopped(stop)?;
     match forecast_one(repo, git, Some(head), landed, edits, stop) {
@@ -127,12 +106,117 @@ pub(super) fn forecast(
     }
 }
 
+/// `HEAD` before `op`, and where it lands before the put-back runs; `Err`
+/// is the hole to answer with.
+fn landing_of(
+    op: &Operation,
+    facts: &RepoFacts,
+    replay: &ConflictForecast,
+    rebase_landed: Option<Oid>,
+) -> Result<(Oid, Landing), ConflictForecast> {
+    match op {
+        Operation::Checkout(params) => {
+            let target = match &params.to {
+                CheckoutTarget::Branch(name) => facts.refs.get(name).copied().flatten(),
+                CheckoutTarget::Detached(oid) => Some(*oid),
+                CheckoutTarget::Track { remote, .. } => Some(remote.oid),
+            };
+            match (kinds::head_tip(facts), target) {
+                (Some(head), Some(target)) => Ok((head, Landing::At(target))),
+                _ => Err(not_checked("where HEAD lands could not be read")),
+            }
+        }
+        Operation::Rebase(params) => {
+            if *replay != ConflictForecast::Clean {
+                return Err(not_checked(MAY_STOP));
+            }
+            match rebase_landed {
+                Some(landed) => Ok((params.branch.oid, Landing::At(landed))),
+                None => Ok((params.branch.oid, Landing::Replayed(params.onto_tip))),
+            }
+        }
+        // A new branch switched to at `at`: `HEAD` lands there, as a
+        // checkout's does (m7-power-tools/10b).
+        Operation::BranchCreate(params) => match kinds::head_tip(facts) {
+            Some(head) => Ok((head, Landing::At(params.at))),
+            None => Err(not_checked("where HEAD lands could not be read")),
+        },
+        // A branch put back while checked out: a `reset --hard` to `to`.
+        Operation::Recover(RecoverParams {
+            target: RecoverTarget::MoveRef { to, expected, .. },
+            ..
+        }) => Ok((*expected, Landing::At(*to))),
+        // A cherry-pick (m7-power-tools/11a): `HEAD` lands on the picked
+        // commits replayed onto it, each from its own first parent.
+        Operation::CherryPick(params) => {
+            if *replay != ConflictForecast::Clean {
+                return Err(not_checked(PICK_MAY_STOP));
+            }
+            Ok((params.head.oid, Landing::Picked(params.commits.clone())))
+        }
+        // `sets_aside` is `Some` for a rebase, a rewrite, a cherry-pick, a
+        // checkout, a switching create away from `HEAD` or a checked-out
+        // put-back only.
+        _ => Err(not_checked("nothing is put back after this")),
+    }
+}
+
 /// Where `HEAD` ends before the put-back runs.
 enum Landing {
     /// A checkout: this commit.
     At(Oid),
     /// A rebase onto this commit: approximated by one merge (step 2).
     Replayed(Oid),
+    /// A cherry-pick of these commits, in order: each replayed exactly,
+    /// from its own first parent, as git does.
+    Picked(Vec<Oid>),
+}
+
+/// The pick's landed commit: each commit's own change replayed onto the
+/// result so far (`merge-tree --merge-base=<its parent>`, the chained
+/// rebase forecast's step), each tree made a commit. `Ok(Err(_))` is the
+/// hole to answer with.
+fn picked(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    head: Oid,
+    commits: &[Oid],
+    stop: &dyn Stop,
+) -> Result<Result<Oid, ConflictForecast>, PreviewError> {
+    let mut landed = head;
+    for commit in commits {
+        stopped(stop)?;
+        // `<commit> ^<landed>` capped at one is the commit itself, with its
+        // parents; empty when the result already holds it.
+        let range = match history_reads::commits_between(repo, landed, *commit, 1, stop) {
+            Ok(range) => range,
+            Err(RunError::Stopped) => return Err(PreviewError::Stopped),
+            Err(why) => return Ok(Err(not_checked(&why.to_string()))),
+        };
+        let Some(base) = range
+            .commits
+            .last()
+            .and_then(|it| it.parents.first().copied())
+        else {
+            return Ok(Err(not_checked(PICK_MAY_STOP)));
+        };
+        let merged = match history_reads::merge_tree_step(repo, git, base, landed, *commit, stop) {
+            Ok(merged) => merged,
+            Err(RunError::Stopped) => return Err(PreviewError::Stopped),
+            Err(why) => return Ok(Err(not_checked(&why.to_string()))),
+        };
+        let tree = match merged {
+            MergeStep::Clean { tree } => tree,
+            MergeStep::Conflicts { .. } => return Ok(Err(not_checked(PICK_MAY_STOP))),
+            MergeStep::NotCheckable(why) => return Ok(Err(not_checked(&why))),
+        };
+        landed = match snapshot::scratch_commit(repo, tree, &[landed], stop) {
+            Ok(landed) => landed,
+            Err(SnapshotError::Stopped) => return Err(PreviewError::Stopped),
+            Err(why) => return Ok(Err(not_checked(&why.to_string()))),
+        };
+    }
+    Ok(Ok(landed))
 }
 
 /// The rebase's landed commit: `merge-tree --write-tree <head> <onto>`, its
