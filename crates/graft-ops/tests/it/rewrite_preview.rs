@@ -747,8 +747,50 @@ fn plan_as_run_leaves_every_other_kind_alone() {
     for op in ops {
         let (back, drawn) = completed(&repo, op.clone());
         assert_eq!(back, op);
-        assert_eq!(drawn, plan_of(&repo, &op));
+        assert_eq!(clock_free(drawn), clock_free(plan_of(&repo, &op)));
     }
+}
+
+/// A plan with every ghost's author time zeroed. A merge, revert or pick
+/// ghost is stamped from `git var GIT_AUTHOR_IDENT` — the wall clock — so
+/// two plans of one operation built a second apart differ only there. The
+/// fixture cannot pin the clock: the preview's git inherits the test
+/// process's environment, which a threaded test binary may not mutate.
+fn clock_free(mut plan: PreviewPlan) -> PreviewPlan {
+    for ghost in &mut plan.ghosts {
+        ghost.author.when.seconds = 0;
+    }
+    plan
+}
+
+#[test]
+fn two_plans_a_second_apart_compare_equal_but_for_the_clock() {
+    let repo = line();
+    let op = Operation::Merge(MergeParams {
+        source: Source::Branch("refs/heads/main".to_owned()),
+        into: tip(&repo, "feature-a"),
+        source_tip: id(&repo, "main"),
+        ff: FastForward::Default,
+    });
+    let earlier = plan_of(&repo, &op);
+    let mut later = earlier.clone();
+    for ghost in &mut later.ghosts {
+        ghost.author.when.seconds += 1;
+    }
+    assert!(!later.ghosts.is_empty(), "a merge draws its ghost");
+    assert_ne!(
+        earlier, later,
+        "the clock is in the plan: raw equality flakes"
+    );
+    assert_eq!(clock_free(earlier.clone()), clock_free(later));
+
+    let mut renamed = earlier.clone();
+    renamed.ghosts[0].subject.push('!');
+    assert_ne!(
+        clock_free(renamed),
+        clock_free(earlier),
+        "only the clock is let go"
+    );
 }
 
 #[test]

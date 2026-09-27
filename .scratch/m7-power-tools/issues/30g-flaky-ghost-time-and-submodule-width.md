@@ -45,3 +45,30 @@ capture showing the file list. The 13b walk. Other tests calling `identity_now` 
 compare two plans have the same flake — list them, fix the same way).
 
 ## NOTES (builder)
+
+Status: **partial** (Major 1 done; Major 2 blocked on a design decision).
+
+Scout: none — the review named every line; confirmed by reading `preview.rs:775` and `files.rs:31-42`.
+
+### Major 1 — done (cause)
+- `identity_now` (`crates/graft-ops/src/preview.rs:775`) runs `git var GIT_AUTHOR_IDENT` through `GitInvocation`, which
+  inherits the process environment (`graft-git/src/run.rs:380`, fixed vars only). Pinning `GIT_AUTHOR_DATE` would mean
+  `std::env::set_var` in a threaded test binary (unsound, races every other test) or a production-code env hook —
+  so: plans compared with ghost `author.when.seconds` zeroed, `clock_free()` in `rewrite_preview.rs`. Cause of the
+  flake (comparing wall-clock stamps) removed; `kinds.rs` untouched.
+- [x] Red first: `two_plans_a_second_apart_compare_equal_but_for_the_clock` — raw `assert_ne!(earlier, later)` shows
+      plans a second apart differ (the old comparison's failure); `clock_free` equal; a subject change still differs.
+      `plan_as_run_leaves_every_other_kind_alone` now compares `clock_free(..)`: 20/20 runs, `--retries 0`, looped.
+- Touches: grep `assert_eq!(<plan>, <plan>)` over `crates/*/tests`, `crates/*/src` — the only two-plan comparison
+  is `rewrite_preview.rs:750`. No other test affected.
+
+### Major 2 — blocked, not built
+- The review's fix cannot hold. At 120x40 the file list is 30 columns (`submodule_truth.rs:233`). The 120 scenario
+  is moved + dirty. Without the word and without ids the row is `  ▣ libs/parser  pointer moved · changed inside`
+  = 47 chars > 30. Dropping `submodule` saves 12; the facts alone still don't fit. Even `moved · changed` gives 31.
+- Needs a decision (conductor/planner): (a) a second, continuation line for the facts (touches row model, cursor,
+  `visible()`); (b) the facts in the diff header only at narrow width (it already shows `ca07ea9 → efdd295`);
+  (c) wider file list at 120; (d) shorter fact glyphs.
+- Also: the 120 capture test `crates/graft/tests/it/submodule_truth.rs:236` asserts `submodule ·` in the shot, so
+  any ladder needs that file too — not in this ticket's list.
+- Acceptance boxes 2–4 unticked. Captures not re-taken. MAP.md unchanged (no public item changed).
