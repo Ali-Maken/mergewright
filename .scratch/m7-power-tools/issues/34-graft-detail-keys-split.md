@@ -1,16 +1,17 @@
 # 34 graft-detail-keys-split — `jobs/detail.rs` and `update/keys.rs` under 400 lines; `escape_key`'s dead rung
 
 Status: draft
-Blocked by: **20l** (the last queued graft ticket that points into `update/keys.rs` by line, `:263`). Place after 20l,
-before 03b. **Must land before 21** (history place adds a job beside blame's and an `Esc` rung). 30c, 33, 20k, 03b, 20j
-edit neither file (their Crates lines, checked 2026-09-27); 33's `update/keys.rs:479` is a note for the conductor only.
+Blocked by: **20l** (the last queued graft ticket that points into `update/keys.rs` by line, `:263`) and **20m** (cites
+`jobs/detail.rs:380-393` by line; added 2026-09-27, planner). Place after 20m, before 03b. **Must land before 21**
+(history place adds a job beside blame's and an `Esc` rung). 30c, 33, 20k, 20m, 03b, 20j edit neither file (their
+Crates lines, checked 2026-09-27); 33's `update/keys.rs:479` is a note for the conductor only.
 Crates: graft only (`jobs/detail.rs`, `jobs/detail/*.rs` new, `update/keys.rs`, `update/keys/*.rs` new, their tests,
 graft `MAP.md`). No graft-ui, no graft-git. Needing another crate → commit at the seam, report `blocked: needs <crate>`,
 stop.
 Build with: **Sonnet**. Pure moves along seams named below; the one non-move (Minor 3) is decided. No seam needs
 judgement: each follows a line MAP.md already draws.
 Scout: none. MAP.md names every item moved; the review names the lines (`docs/reviews/m7-32-20i.md`, at `cb065156`).
-Line numbers move with 30c–20l: re-read each site before editing.
+Line numbers move with 30c–20m: re-read each site before editing.
 Needs: none.
 Split by: planner, 2026-09-27, from review m7-32-20i Major 1 (gap M7/32i-major1) and Minor 3 (M7/32i-m3).
 
