@@ -963,3 +963,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/18f-m6 | **Review m7-18e-20f `:128` is wrong**: the oracle doesn't catch `wanted && false` on 2.54. Erratum owed. Minor 6 | **broken** (docs) | M7 |
 | M7/18f-q | Question: the process-wide git version cache (`marks_pass.rs:84`) survives a git downgrade while Graft runs; say so in MAP or accept. | **unverified** | M7 |
 | M7/perf-idle | Release first paint (realistic, no commit-graph) 168.5 ms > 150 cold at load ~9; rerun 30.8 ms. Unjudged on an idle machine (review m7-18f-32b-06f-33). | **unverified** | M7 |
+| M7/14a-perf | **`only_in_stash` p95 219 ms for one entry vs `unreached`'s 190 ms** (`docs/perf/stash-only-cost.txt`; median ~170 ms; slowest 2 of 10 runs over, while another builder compiled). The bound was the trigger to fold into one `--stdin` walk, which 14a did. Re-run on an idle machine with 12g. | **unverified** | M7 |
