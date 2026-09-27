@@ -544,6 +544,7 @@ pub(crate) fn viewed() -> impl Strategy<Value = (History, Follow, Inclusion)> {
             let inclusion = Inclusion {
                 folded: pick(&folds, true),
                 hidden_stashes: pick(&stashes, false),
+                ..Inclusion::default()
             };
             let follow = if first_parent {
                 Follow::FirstParent

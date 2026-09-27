@@ -1,6 +1,6 @@
 # stash-keeps-its-first-parent — in the laid-out history a stash commit follows only its first parent, so its index and untracked commits are never drawn
 
-Status: draft
+Status: done
 Blocked by: none
 Crates: **graft-graph only** (`inclusion`). Disjoint from graft: runs beside the serial graft chain. graft must
 compile **unchanged** against it (16 wires it in).
@@ -44,16 +44,16 @@ impl Inclusion {
 `Inclusion::default()` has an empty set: no behaviour change until graft calls `with_stashes` (16).
 
 ## Acceptance (each box names its test at tick time)
-- [ ] `a_stash_keeps_only_its_first_parent` (red first) — `stash` with staged changes: the index commit is not
+- [x] `a_stash_keeps_only_its_first_parent` (red first; red: shown `[9,1,8,2]`, wanted `[9,1,2]`) — `stash` with staged changes: the index commit is not
       shown; the stash and its first parent are.
-- [ ] `a_stash_with_untracked_drops_both_extra_parents` (red first) — `stash -u`: neither the index nor the untracked
+- [x] `a_stash_with_untracked_drops_both_extra_parents` (red first; red: shown `[9,1,8,7,2]`; green asserts rows == layout of the stash with its base only) — `stash -u`: neither the index nor the untracked
       root is shown, and no lane is left open for them (the row after the stash has no dangling lane).
-- [ ] `a_rebased_away_base_is_still_shown` — the stash's first parent off every branch stays a row.
-- [ ] `hiding_a_stash_still_hides_its_first_parent_line` — `hidden_stashes` + `with_stashes` together = today's `H`.
-- [ ] `changing_the_stash_set_reincludes_from_the_first_changed_row` — `reinclude`'s `Invalidated.from_row` is the
+- [x] `a_rebased_away_base_is_still_shown` (red: `8` shown too) — the stash's first parent off every branch stays a row.
+- [x] `hiding_a_stash_still_hides_its_first_parent_line` — `hidden_stashes` + `with_stashes` together = today's `H`.
+- [x] `changing_the_stash_set_reincludes_from_the_first_changed_row` (from_row 10 = stash row; rows == slice layout; clearing restores; plus proptest `marking_stashes_then_clearing_returns_the_original_rows`) — `reinclude`'s `Invalidated.from_row` is the
       stash's row, not 0.
-- [ ] `an_empty_stash_set_changes_nothing` — the existing inclusion and layout tests green, untouched.
-- [ ] `crates/graft-graph/MAP.md` `inclusion`: the two fns and the rule, one line each.
+- [x] `an_empty_stash_set_changes_nothing` + existing inclusion/layout tests untouched, green (workspace nextest 4183/4183) — the existing inclusion and layout tests green, untouched.
+- [x] `crates/graft-graph/MAP.md` `inclusion` (checked by reading; no test): the two fns and the rule, one line each.
 
 ## Touches (check each, report how)
 - **Layout fingerprints / chunk rebuilds:** shapes change only on stash rows and below where lanes closed. Check:
@@ -70,3 +70,19 @@ As rewrite-engine.
 
 ## Size
 Small-medium (~30k).
+
+## NOTES (builder, 2026-09-27)
+- **Deviation: `stashes` is a pub field**, plus the specified `with_stashes`/`stashes`. A private field breaks graft's
+  `Inclusion { folded: .., ..Inclusion::default() }` (verified: E0451 at `crates/graft/src/history/tests.rs:622`,
+  `crates/graft/src/history/idle_tests.rs:306`) — "graft compiles unchanged" wins over "no pub field". Doc says
+  set it through the setter. In-crate full literal in `layout/tests/properties.rs:544` got `..Inclusion::default()`.
+- **Lookup by `Oid` per link**, as `hidden_stashes`/`folded` already are (`inclusion.rs` `first_parent_only`,
+  `Frontier::decide`) — followed that shape, not converted to handles. Same cost class as today.
+- Rule sits in one fn `first_parent_only` shared by `kept_parents` and `drawn_link`, so walk, replay and `links`
+  agree.
+- Touches: `Inclusion` users outside graft-graph: `graft/src/history/state.rs:70` (`View.inclusion`),
+  `graft/src/history/views/mod.rs:165,218` (`reinclude`/`Included::new` — where 16 calls `with_stashes`),
+  `graft/src/history/tests.rs:620`, `idle_tests.rs:304` (FRU, compile unchanged). `update/preview.rs:646` calls
+  `graft_graph::layout` with no `Inclusion` — unaffected. Stream tests incl. `a_rebuild_after_truncate_is_checked`
+  green. Perf: not measured (one extra set lookup per shown link); release run is 16's.
+- No scout of my own: scout 16 given; source read directly (inclusion.rs, included.rs, tests.rs — ~830 lines).

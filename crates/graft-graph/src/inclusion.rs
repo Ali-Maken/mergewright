@@ -15,7 +15,8 @@
 //! nothing points at it at all (a fresh tip), unless it is a hidden stash.
 //! Folding merge `M` drops `M`'s edges to its second and later parents, so
 //! the merged branch's own commits are hidden until they reach a commit a
-//! shown lane is still waiting for: the fork point, where they rejoin.
+//! shown lane is still waiting for: the fork point, where they rejoin. A
+//! stash entry drops its index and untracked parents the same way.
 //!
 //! Changing the inclusion ([`Included::reinclude`]) alters decisions only
 //! from the first commit the change names, so [`reinclude`] keeps every row
@@ -58,16 +59,41 @@ pub struct Inclusion {
     /// Merges drawn folded: their second and later parents' branches are
     /// collapsed into them.
     pub folded: BTreeSet<Oid>,
+    /// Every stash entry's own commit; see [`Inclusion::with_stashes`].
+    /// Public only because a private field would break every
+    /// `Inclusion { .., ..Inclusion::default() }` built outside this crate
+    /// (E0451); set it through the setter.
+    pub stashes: BTreeSet<Oid>,
 }
 
 impl Inclusion {
+    /// Every stash entry's own commit (`stash@{0..}`). Each keeps only its
+    /// first parent in the laid-out history, so its index and untracked
+    /// commits are not drawn unless something else points at them.
+    #[must_use]
+    pub fn with_stashes(mut self, stashes: BTreeSet<Oid>) -> Self {
+        self.stashes = stashes;
+        self
+    }
+
+    /// The stash entries' own commits, as set by [`Inclusion::with_stashes`].
+    #[must_use]
+    pub fn stashes(&self) -> &BTreeSet<Oid> {
+        &self.stashes
+    }
+
     /// The commits whose drawing differs between the two inclusions.
     fn changed_from(&self, other: &Inclusion) -> BTreeSet<Oid> {
         let stashes = self
             .hidden_stashes
             .symmetric_difference(&other.hidden_stashes);
         let folds = self.folded.symmetric_difference(&other.folded);
-        stashes.chain(folds).copied().collect()
+        let first_parent_only = self.stashes.symmetric_difference(&other.stashes);
+        stashes
+            .chain(folds)
+            .chain(first_parent_only)
+            .copied()
+            .collect()
     }
 }
 
@@ -171,12 +197,22 @@ impl Frontier {
     }
 }
 
+/// Whether a shown commit keeps only its first parent: in first-parent
+/// view, when folded, or when it is a stash entry (its index and untracked
+/// parents are not history). Looked up by id, as `hidden_stashes` and
+/// `folded` are.
+fn first_parent_only(id: Oid, follow: Follow, inclusion: &Inclusion) -> bool {
+    follow == Follow::FirstParent
+        || inclusion.folded.contains(&id)
+        || inclusion.stashes.contains(&id)
+}
+
 /// Which of a commit's parents survive when it is drawn: first parent only
-/// in first-parent view or when folded, every parent otherwise. A pure
+/// where [`first_parent_only`] says so, every parent otherwise. A pure
 /// function of the id and its parents, so a re-read draws it the same as the
 /// walk did.
 fn kept_parents(id: Oid, parents: &[Oid], follow: Follow, inclusion: &Inclusion) -> Vec<Oid> {
-    if follow == Follow::FirstParent || inclusion.folded.contains(&id) {
+    if first_parent_only(id, follow, inclusion) {
         parents.first().copied().into_iter().collect()
     } else {
         parents.to_vec()
@@ -186,7 +222,7 @@ fn kept_parents(id: Oid, parents: &[Oid], follow: Follow, inclusion: &Inclusion)
 /// A shown commit's link as the view draws it: [`kept_parents`], on
 /// handles. `id` is the link's commit id.
 fn drawn_link(mut link: Link, id: Oid, follow: Follow, inclusion: &Inclusion) -> Link {
-    if follow == Follow::FirstParent || inclusion.folded.contains(&id) {
+    if first_parent_only(id, follow, inclusion) {
         link.parents = link.parents.first().into_iter().collect();
     }
     link
