@@ -982,3 +982,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r0120-m10 | Run loop: grandchild holding a pipe past the poll → a landed write still reads `Stopped` (`graft-git/src/run.rs:489-493`, `after_exit` ≈`:537`; narrower since 27b, commented). Minor 10 | **broken** (narrow residual) | M8 |
 | M7/r0120-q1 | Can the `x base` badge row (`CompareBase.row`, `update/geometry.rs` `badge_at`) go stale after a refresh re-lays the graph? No re-anchor found; not every path traced. Question | **unverified** (question) | M7 |
 | M7/r0120-q2 | 01b: a real rail-read failure racing Esc is folded into "cancelled" (`undo/execute.rs:288-294`); no test covers it. Better: fold only `FactsError::Stopped`, keep failure words. Question | **unverified** (question) | M7 |
+| M7/10b-adr | ADR-0045 §4 must be amended for 10b's switch rule (clean tree → instant, no preview). Doc owed (researcher) | **broken** (doc stale) | M7 |
+| M7/10b-track | Undo of a `Track` switch leaves the new branch's upstream config behind (10b NOTES) | **broken** | M7 |
+| M7/10b-q | Should a switching create (`n` new branch) land with `on nb ✓` like every other switch? (10b question; Done pattern `update/state.rs:1021-1041`) | **unverified** (question) | M7 |
+| M7/10b-count | Design note `menu-checkout` journey count could drop 3→2 (10b walk asserts 2 keys) | **broken** (doc stale) | M7 |
