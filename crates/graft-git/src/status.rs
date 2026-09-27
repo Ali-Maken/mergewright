@@ -15,8 +15,15 @@
 //! honestly (m5/21), and a second walk that disagreed with the first is a
 //! worse answer than one walk.
 
+mod parse;
+mod submodule;
 #[cfg(test)]
 mod tests;
+
+pub use parse::parse_porcelain_v2;
+pub use submodule::submodules_not_set_up;
+
+use submodule::submodule_status;
 
 use std::path::{Path, PathBuf};
 
@@ -290,186 +297,6 @@ impl WorkingTreeStatus {
     }
 }
 
-/// Parses `git status --porcelain=v2 -z`'s output. Pure: no `git` spawn, a
-/// `cargo-fuzz` target (`fuzz/fuzz_targets/parse_porcelain_v2.rs`) — malformed
-/// input is an `Err`, never a panic.
-///
-/// Handles the four record kinds `-z --untracked-files=all --renames`
-/// produces: `1` (ordinary), `2` (rename/copy — its NUL-terminated original
-/// path is the *next* record in the stream), `u` (unmerged) and `?`
-/// (untracked). A `!` (ignored) record is skipped rather than rejected,
-/// since a caller could in principle pass `--ignored` even though `read`
-/// itself never does. Branch-header `#` records are rejected: `read` never
-/// asks for `--branch`, so one appearing means the input is not what this
-/// parser was built for.
-///
-/// # Errors
-/// [`StatusError::Malformed`] for anything the format above does not cover.
-pub fn parse_porcelain_v2(bytes: &[u8]) -> Result<WorkingTreeStatus, StatusError> {
-    let mut entries = Vec::new();
-    let mut records = bytes.split(|&b| b == 0);
-    while let Some(record) = records.next() {
-        if record.is_empty() {
-            continue;
-        }
-        match record[0] {
-            b'1' => entries.push(parse_ordinary(record)?),
-            b'2' => {
-                let mut entry = parse_rename(record)?;
-                // An empty next piece reads the same as a missing one: a
-                // real path is never empty, so this also catches a rename
-                // that is the very last record with no origin following it
-                // — the buffer's own trailing NUL would otherwise look like
-                // one (a capped or truncated output ends exactly this way).
-                let original = records
-                    .next()
-                    .filter(|piece| !piece.is_empty())
-                    .ok_or_else(|| {
-                        StatusError::Malformed(
-                            "a rename record's original path is missing".to_owned(),
-                        )
-                    })?;
-                entry.original_path = Some(bytes_to_pathbuf(original));
-                entries.push(entry);
-            }
-            b'u' => entries.push(parse_unmerged(record)?),
-            b'?' => entries.push(parse_untracked(record)?),
-            b'!' => {}
-            other => {
-                return Err(StatusError::Malformed(format!(
-                    "unrecognised porcelain v2 record kind {:?}",
-                    other as char
-                )));
-            }
-        }
-    }
-    Ok(WorkingTreeStatus { entries })
-}
-
-/// Splits one record into exactly `count` space-separated fields, the last
-/// of which is everything remaining (a path may itself hold spaces).
-fn fields(record: &[u8], count: usize) -> Result<Vec<&[u8]>, StatusError> {
-    let parts: Vec<&[u8]> = record.splitn(count, |&b| b == b' ').collect();
-    if parts.len() != count {
-        return Err(StatusError::Malformed(format!(
-            "expected {count} fields, found {}",
-            parts.len()
-        )));
-    }
-    Ok(parts)
-}
-
-/// `XY` is always two ASCII letters.
-fn xy(field: &[u8]) -> Result<(u8, u8), StatusError> {
-    match field {
-        [x, y] => Ok((*x, *y)),
-        _ => Err(StatusError::Malformed(
-            "an XY field must be two characters".to_owned(),
-        )),
-    }
-}
-
-/// The `sub` field: `N...` (not a submodule) or `S<c><m><u>`, where each
-/// letter is its flag or `.`. Anything else is not what git prints.
-fn submodule_status(field: &[u8]) -> Result<Option<SubmoduleStatus>, StatusError> {
-    let flag = |letter: u8, set: u8| match letter {
-        b'.' => Some(false),
-        l if l == set => Some(true),
-        _ => None,
-    };
-    let parsed = match field {
-        b"N..." => return Ok(None),
-        [b'S', c, m, u] => (|| {
-            Some(SubmoduleStatus {
-                pointer_moved: flag(*c, b'C')?,
-                changed_inside: flag(*m, b'M')?,
-                untracked_inside: flag(*u, b'U')?,
-            })
-        })(),
-        _ => None,
-    };
-    parsed.map(Some).ok_or_else(|| {
-        StatusError::Malformed(format!(
-            "a sub field must be N... or S<C|.><M|.><U|.>, not {:?}",
-            String::from_utf8_lossy(field)
-        ))
-    })
-}
-
-/// `1 XY sub mH mI mW hH hI path`
-fn parse_ordinary(record: &[u8]) -> Result<StatusEntry, StatusError> {
-    let f = fields(record, 9)?;
-    let (x, y) = xy(f[1])?;
-    Ok(StatusEntry {
-        path: bytes_to_pathbuf(f[8]),
-        original_path: None,
-        staged: side_change(x)?,
-        unstaged: side_change(y)?,
-        untracked: false,
-        unmerged: false,
-        unmerged_how: None,
-        submodule: submodule_status(f[2])?,
-    })
-}
-
-/// `2 XY sub mH mI mW hH hI X<score> path` (original path is the next
-/// record; the caller fills it in).
-fn parse_rename(record: &[u8]) -> Result<StatusEntry, StatusError> {
-    let f = fields(record, 10)?;
-    let (x, y) = xy(f[1])?;
-    Ok(StatusEntry {
-        path: bytes_to_pathbuf(f[9]),
-        original_path: None,
-        staged: side_change(x)?,
-        unstaged: side_change(y)?,
-        untracked: false,
-        unmerged: false,
-        unmerged_how: None,
-        submodule: submodule_status(f[2])?,
-    })
-}
-
-/// `u XY sub m1 m2 m3 mW h1 h2 h3 path`
-fn parse_unmerged(record: &[u8]) -> Result<StatusEntry, StatusError> {
-    let f = fields(record, 11)?;
-    // `XY` here is a conflict pairing (`UU`, `AA`, `DD`, `AU`, `UA`, `UD`,
-    // `DU`), not a `Change`: a `U` would not parse as one. It is kept as
-    // `UnmergedHow`, which the resolver reads to choose between a marker
-    // file and a whole-file choice (m6-conflicts/01).
-    let (x, y) = xy(f[1])?;
-    let how = UnmergedHow::from_xy(x, y).ok_or_else(|| {
-        StatusError::Malformed(format!(
-            "an unmerged record's XY must be one of UU, AA, DD, AU, UA, DU, UD, not {:?}",
-            String::from_utf8_lossy(f[1])
-        ))
-    })?;
-    Ok(StatusEntry {
-        path: bytes_to_pathbuf(f[10]),
-        original_path: None,
-        staged: None,
-        unstaged: None,
-        untracked: false,
-        unmerged: true,
-        unmerged_how: Some(how),
-        submodule: submodule_status(f[2])?,
-    })
-}
-
-/// `? path`
-fn parse_untracked(record: &[u8]) -> Result<StatusEntry, StatusError> {
-    let f = fields(record, 2)?;
-    Ok(StatusEntry {
-        path: bytes_to_pathbuf(f[1]),
-        original_path: None,
-        staged: None,
-        unstaged: None,
-        untracked: true,
-        unmerged: false,
-        unmerged_how: None,
-        submodule: None,
-    })
-}
-
 #[cfg(unix)]
 fn bytes_to_pathbuf(bytes: &[u8]) -> PathBuf {
     use std::os::unix::ffi::OsStrExt;
@@ -530,60 +357,4 @@ fn status_from(output: &crate::run::GitOutput) -> Result<WorkingTreeStatus, Stat
         return Err(StatusError::TooLarge { bytes: OUTPUT_CAP });
     }
     parse_porcelain_v2(&output.stdout)
-}
-
-/// Every submodule that is **not set up**: a gitlink (mode `160000`) in the
-/// index whose directory has no `.git` — a clone that never ran `git
-/// submodule update --init`, or one `deinit`ed since (m7-power-tools/13).
-/// `git status` says nothing about these at all, so [`read`] cannot.
-///
-/// No `.gitmodules` in the worktree → no spawn and an empty list: the common
-/// repository pays nothing. Otherwise one `git ls-files --stage -z`.
-///
-/// # Errors
-/// [`StatusError::Run`] if git could not be run or exited non-zero;
-/// [`StatusError::TooLarge`] past [`OUTPUT_CAP`]; [`StatusError::Malformed`]
-/// for a line that is not `<mode> <oid> <stage>\t<path>`.
-pub fn submodules_not_set_up(
-    repo: &RepoHandle,
-    stop: &dyn Stop,
-) -> Result<Vec<PathBuf>, StatusError> {
-    let Some(workdir) = repo.workdir() else {
-        return Ok(Vec::new());
-    };
-    if !workdir.join(".gitmodules").exists() {
-        return Ok(Vec::new());
-    }
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("ls-files"),
-            GitArg::Flag("--stage"),
-            GitArg::Flag("-z"),
-        ])
-        .output_cap(OUTPUT_CAP)
-        .run(stop)?;
-    if output.truncated {
-        return Err(StatusError::TooLarge { bytes: OUTPUT_CAP });
-    }
-    let mut paths = Vec::new();
-    for record in output.stdout.split(|&b| b == 0) {
-        if record.is_empty() {
-            continue;
-        }
-        let tab = record.iter().position(|&b| b == b'\t').ok_or_else(|| {
-            StatusError::Malformed("an ls-files --stage record has no tab".to_owned())
-        })?;
-        let (info, path) = (&record[..tab], &record[tab + 1..]);
-        if !info.starts_with(b"160000 ") {
-            continue;
-        }
-        let path = bytes_to_pathbuf(path);
-        // A set-up submodule has a `.git` (a gitfile into the parent's
-        // `.git/modules`, or an old-style directory); either counts.
-        // An unmerged gitlink is listed once per stage, consecutively.
-        if paths.last() != Some(&path) && !workdir.join(&path).join(".git").exists() {
-            paths.push(path);
-        }
-    }
-    Ok(paths)
 }

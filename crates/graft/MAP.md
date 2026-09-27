@@ -993,3 +993,7 @@ The put-in's reads (m7-power-tools/09).
 
 ## working_tree
 - `read` (fn) — read working-tree status counts off the repository store (a job's work).
+
+## File layout (m7-power-tools/30h: pure moves, public paths unchanged)
+
+- `update/place/history.rs` → children `history/open.rs` (`open_history`, `f_key`, the opening rules) and `history/view.rs` (`HistoryState::view`/`title`/header and the row words); `open_history` and `f_key` re-exported at `place::history::`.
