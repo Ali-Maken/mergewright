@@ -72,6 +72,12 @@ impl DetailState {
     pub fn refresh(&mut self, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
         self.diff_cache.clear();
         self.contained.clear();
+        // A crashed evil probe is an answer until the user asks again; a
+        // refresh is that ask, so `probe_evil`'s guard lets one retry through
+        // (m7-power-tools/20o).
+        if matches!(self.evil, Loading::Failed(_)) {
+            self.evil = Loading::Idle;
+        }
         match self.spec {
             Some(spec) if self.shown => {
                 // Where the user was, so the list that arrives can put them

@@ -5801,3 +5801,29 @@ fn a_failed_evil_probe_is_not_asked_again_for_the_same_commit() {
     assert_eq!(evil_probes(&commands), 1, "{commands:?}");
     assert_eq!(back.detail.evil_at, Some(merge));
 }
+
+/// m7-power-tools/20o (review m1): `Ctrl+R` is the user's "try again". After
+/// a crashed evil probe it asks the probe once more; further events that
+/// leave the selection on the merge still ask nothing (no loop).
+#[test]
+fn ctrl_r_retries_a_crashed_evil_probe_once() {
+    let (state, merge) = evil_probe_crashed();
+    let (mut state, commands) = update(
+        &state,
+        core(Event::Key(KeyPress::control(KeyCode::Char('r')))),
+    );
+    let asked: Vec<_> = commands
+        .iter()
+        .filter(|c| matches!(c, Command::EvilProbe(_, oid) if *oid == merge))
+        .collect();
+    assert_eq!(asked.len(), 1, "{commands:?}");
+    assert_eq!(state.detail.evil_at, Some(merge));
+
+    let mut more = Vec::new();
+    for n in 0..5 {
+        let (next, cmds) = update(&state, core(Event::JobFinished(JobId::new(950 + n))));
+        more.extend(cmds);
+        state = next;
+    }
+    assert_eq!(evil_probes(&more), 0, "{more:?}");
+}
