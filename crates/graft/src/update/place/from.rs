@@ -60,6 +60,7 @@ pub fn blame_from(
     cursor: &DiffCursor,
     head: Option<Oid>,
     staged_and_unstaged: bool,
+    split: Option<Oid>,
 ) -> Result<BlameFrom, NoBlame> {
     let path = cursor.path.clone();
     let old_path = cursor.old_path.clone().unwrap_or_else(|| path.clone());
@@ -83,8 +84,10 @@ pub fn blame_from(
             path,
             line,
         },
+        // The old side is where the two split (m7-14), or the base itself
+        // when they share no history.
         (DetailSpec::Compare { base, .. }, Side::Old) => BlameFrom::Commit {
-            commit: base,
+            commit: split.unwrap_or(base),
             path: old_path,
             line,
         },
@@ -144,4 +147,63 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32 {
     }
     let old = (i64::from(new_line) + shift).max(1);
     u32::try_from(old).unwrap_or(u32::MAX)
+}
+
+/// Where a shown compare's two sides split: the old side of its diff
+/// (m7-14), read off the landed file list. `None` for anything else, or
+/// with no shared history (then the old side is the base itself).
+pub(super) fn compare_split(state: &crate::update::AppState) -> Option<Oid> {
+    match &state.detail.files {
+        crate::update::detail::Loading::Ready(files) => match files.compare {
+            Some(graft_ui::detail::CompareSummary::Since { split, .. }) => Some(split),
+            Some(graft_ui::detail::CompareSummary::NoSharedHistory) | None => None,
+        },
+        crate::update::detail::Loading::Idle
+        | crate::update::detail::Loading::Pending(_)
+        | crate::update::detail::Loading::Failed(_) => None,
+    }
+}
+
+#[cfg(test)]
+mod compare_tests {
+    use super::*;
+    use crate::update::detail::LineRef;
+
+    fn oid(byte: u8) -> Oid {
+        Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid")
+    }
+
+    fn on(side: Side) -> DiffCursor {
+        DiffCursor {
+            spec: DetailSpec::Compare {
+                base: oid(1),
+                head: oid(2),
+            },
+            section: None,
+            path: PathBuf::from("a.rs"),
+            old_path: None,
+            binary: false,
+            at: Some(LineRef { side, line: 7 }),
+        }
+    }
+
+    /// m7-14: a compare's old side is the split, not the base, so `B` on
+    /// an old-side line blames the file at the split.
+    #[test]
+    fn an_old_side_line_of_a_compare_blames_the_split() {
+        let from = blame_from(&on(Side::Old), None, false, Some(oid(9)));
+        assert_eq!(
+            from,
+            Ok(BlameFrom::Commit {
+                commit: oid(9),
+                path: PathBuf::from("a.rs"),
+                line: 7,
+            })
+        );
+        let no_shared = blame_from(&on(Side::Old), None, false, None);
+        assert!(
+            matches!(no_shared, Ok(BlameFrom::Commit { commit, .. }) if commit == oid(1)),
+            "two-dot: the base is the old side"
+        );
+    }
 }

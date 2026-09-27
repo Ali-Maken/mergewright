@@ -18,7 +18,8 @@ use std::sync::Arc;
 use graft_core::oid::Oid;
 use graft_term::sanitize_line;
 use graft_ui::detail::{
-    BodyView, ContainedIn, DetailHeader, DetailView, DiffOptionsView, FileRowKind, Subject,
+    BodyView, CompareHeader, CompareState, CompareSummary, ContainedIn, DetailHeader, DetailView,
+    DiffOptionsView, FileRowKind, FileTally, Subject,
 };
 use graft_ui::graph_screen::{SHA_WIDTH, relative_date, short_sha};
 
@@ -41,7 +42,7 @@ pub fn detail_view(state: &AppState) -> DetailView {
             working_tree_header(state, state.refs.as_ref().and_then(|refs| refs.head()))
         }
         Some(DetailSpec::Commit(oid)) => commit_header(state, oid),
-        Some(DetailSpec::Compare { base, head }) => compare_header(base, head),
+        Some(DetailSpec::Compare { base, head }) => compare_header(state, base, head),
         None => empty_header(),
     };
     let files = match &state.detail.files {
@@ -151,17 +152,64 @@ fn co_authors_from(message: &[u8]) -> Vec<graft_term::sanitize::SanitizedText> {
         .collect()
 }
 
-/// The header for a `base x head` comparison: header-only per this ticket's
-/// scope (`compare-mode` fills in the rest).
-fn compare_header(base: Oid, head: Oid) -> DetailHeader {
-    let base_sha = short_sha(&base.to_string(), usize::from(SHA_WIDTH));
-    let head_sha = short_sha(&head.to_string(), usize::from(SHA_WIDTH));
+/// The header for a `base x head` comparison (m7-14): both sides by name
+/// and what the read found, worded by `graft_ui::detail_pane`.
+fn compare_header(state: &AppState, base: Oid, head: Oid) -> DetailHeader {
     DetailHeader {
-        subject: Subject::Compare {
-            base: sanitize_line(&base_sha),
-            head: sanitize_line(&head_sha),
-        },
+        subject: Subject::Compare(CompareHeader {
+            base: side_name(state, base),
+            head: side_name(state, head),
+            state: compare_state(&state.detail, base, head),
+        }),
         ..empty_header()
+    }
+}
+
+/// A compare side's name: the row's first local branch, else its first
+/// remote, else its short sha.
+fn side_name(state: &AppState, oid: Oid) -> graft_term::sanitize::SanitizedText {
+    use crate::refs::RefLabel;
+    let name = state.refs.as_deref().and_then(|refs| {
+        let labels = refs.on(oid);
+        labels
+            .iter()
+            .find_map(|label| match label {
+                RefLabel::Branch { name, .. } => Some(name),
+                _ => None,
+            })
+            .or_else(|| {
+                labels.iter().find_map(|label| match label {
+                    RefLabel::Remote(name) => Some(name),
+                    _ => None,
+                })
+            })
+            .map(|name| String::from_utf8_lossy(name).into_owned())
+    });
+    sanitize_line(&name.unwrap_or_else(|| short_sha(&oid.to_string(), usize::from(SHA_WIDTH))))
+}
+
+/// Where a compare's read stands. The span and the file list land in one
+/// job, so a landed list always carries its summary.
+fn compare_state(detail: &DetailState, base: Oid, head: Oid) -> CompareState {
+    if base == head {
+        return CompareState::IsBase;
+    }
+    match &detail.files {
+        Loading::Failed(why) => CompareState::Failed(sanitize_line(why)),
+        Loading::Ready(files) => match files.compare {
+            Some(CompareSummary::Since { commits: 0, .. }) => CompareState::AlreadyIn,
+            Some(CompareSummary::Since { commits, .. }) => CompareState::Since {
+                commits,
+                tally: Some(FileTally {
+                    files: files.files as usize,
+                    added: usize::try_from(files.added).unwrap_or(usize::MAX),
+                    removed: usize::try_from(files.removed).unwrap_or(usize::MAX),
+                }),
+            },
+            Some(CompareSummary::NoSharedHistory) => CompareState::NoSharedHistory,
+            None => CompareState::Reading,
+        },
+        Loading::Idle | Loading::Pending(_) => CompareState::Reading,
     }
 }
 

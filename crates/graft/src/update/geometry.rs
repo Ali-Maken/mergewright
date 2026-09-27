@@ -438,11 +438,23 @@ pub(super) fn context_menu_bounds(
 /// [`graph_row_at`], the same one every other click goes through.
 pub(super) fn badge_at(state: &AppState, column: u16, row: u16) -> Option<super::drag::DragSource> {
     let index = crate::view::badge_index_at(state, column, row, state.harness.clock.now_seconds())?;
+    let history_row = graph_row_at(state, row)?;
     let at = state
         .history
         .as_ref()?
-        .row_at(graph_row_at(state, row)?)
+        .row_at(history_row)
         .map(|history_row| history_row.commit.id)?;
+    // The base row draws `x base` first (`view::entries::row_entry`, m7-14):
+    // it is no ref, and every ref after it sits one place further along.
+    // Same test the drawing makes (`view::entries`: `base.row == index`).
+    let index = if state
+        .compare_base
+        .is_some_and(|base| base.row == history_row)
+    {
+        index.checked_sub(1)?
+    } else {
+        index
+    };
     match state.refs.as_deref()?.on(at).get(index)? {
         crate::refs::RefLabel::Branch { name, current, .. } => {
             let short = String::from_utf8_lossy(name).into_owned();

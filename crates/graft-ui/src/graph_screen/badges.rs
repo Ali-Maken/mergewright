@@ -52,6 +52,9 @@ pub enum BadgeKind {
     Head,
     /// The newest stash entry.
     Stash,
+    /// The pinned compare base (`x`, m7-14): not a ref, but read like one,
+    /// first on its row. Reads `x base` whatever its `name`.
+    CompareBase,
 }
 
 /// Where a local branch stands against its upstream.
@@ -108,6 +111,7 @@ impl Badge {
                 Icons::Nerd => name.to_owned(),
             },
             BadgeKind::Remote { .. } | BadgeKind::Head | BadgeKind::Stash => name.to_owned(),
+            BadgeKind::CompareBase => "x base".to_owned(),
         };
         match icons {
             Icons::Plain => format!("[{body}]"),
@@ -129,6 +133,8 @@ impl Badge {
             BadgeKind::Head => '\u{f417}',
             // nf-fa-inbox
             BadgeKind::Stash => '\u{f01c}',
+            // nf-oct-git_compare
+            BadgeKind::CompareBase => '\u{f47f}',
         }
     }
 }

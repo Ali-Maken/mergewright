@@ -418,8 +418,8 @@ fn details() -> Vec<Entry> {
             PANE,
             vec![ch('x'), ch('j'), ch('j'), ch('x')],
             shape("feature-branches"),
-            "pane header COMPARE 0683985 → e30e870 (no counts yet); ▏ on the base row",
-            "no COMMIT header: two rows compared; the base stays marked as j moves",
+            "header: changes on <head> since it left <base> · N commits; ▏ on base",
+            "no COMMIT header: x opened the pane, j j followed, x re-named it",
         ),
         stop(
             "foxtrot-merge",

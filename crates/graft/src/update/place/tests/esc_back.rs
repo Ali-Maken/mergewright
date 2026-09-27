@@ -287,8 +287,17 @@ fn a_way_off_the_trail_drops_a_landing_still_seeking(key: KeyCode) {
             Some(lina()),
             "{key:?}, {case}: the graph does not land on the commit"
         );
+        // A pin (`x`) opens the pane on the base it pinned (m7-14), never
+        // on the landing's commit; a write leaves the pane as it was.
+        let expected = match off.compare_base {
+            Some(base) => Some(DetailSpec::Compare {
+                base: base.oid,
+                head: base.oid,
+            }),
+            None => before.detail.spec,
+        };
         assert_eq!(
-            after.detail.spec, before.detail.spec,
+            after.detail.spec, expected,
             "{key:?}, {case}: the pane is not opened on it"
         );
         assert!(

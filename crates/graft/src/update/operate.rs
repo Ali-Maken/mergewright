@@ -1352,6 +1352,7 @@ mod tests {
             added: 1,
             removed: 0,
             message: Vec::new(),
+            compare: None,
         };
         let mut state = AppState {
             working_tree: Some(Arc::new(WorkingTreeStatus { entries })),

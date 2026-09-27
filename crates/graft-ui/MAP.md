@@ -53,7 +53,11 @@ The blame place's picture (m7-power-tools/20c); pure draw, no state.
 
 ## detail
 View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every string is `SanitizedText`.
-- `Subject` (enum) — `None`, `Commit { sha }`, `Compare { base, head }`, `WorkingTree { staged, unstaged, untracked }`.
+- `Subject` (enum) — `None`, `Commit { sha }`, `Compare(CompareHeader)` (m7-14), `WorkingTree { staged, unstaged, untracked }`.
+- `CompareHeader` (struct) — `base`, `head` (names: first local branch, else remote, else sha7), `state: CompareState` (m7-14).
+- `CompareState` (enum) — `Reading`, `IsBase`, `Since { commits, tally: Option<FileTally> }`, `AlreadyIn`, `NoSharedHistory`, `Failed(SanitizedText)`; worded by `detail_pane::header::compare_title` with a narrow ladder (tally, then count, then the head's name cut).
+- `FileTally` (struct) — a compare's `files`, `added`, `removed`.
+- `CompareSummary` (enum) — `Since { split, commits }` or `NoSharedHistory`: what a compare's file-list read learnt (m7-14).
 - `DetailHeader` (struct) — subject, summary, author, dates, committer, co-authors, parents, against, contained, radar lines.
 - `ContainedIn` (enum) — `NotAsked`, `Checking`, `Known { branches, tags, more }`, `Failed`.
 - `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states, including `EvilResolved { files }` ("evil merge: clean (N files hand-resolved)"), or `NotChecked(why)` ("radar: not checked — <why> · ctrl+r to try again"), drawn only while the radar context has failed (m7-power-tools/33).
@@ -61,7 +65,7 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `WorkingTreeSection` (enum) — gained `Unmerged` as its first variant (drawn first in the changes pane by caller row order); `title()` returns `"CONFLICTS"` for it (m5-history-and-ghost-preview/04).
 - `FileRowKind` (enum, no longer `Copy`, cascades from `FileStatusView`) — `Message { lines }`, `Dir { collapsed }`, `File { status, added, removed }`.
 - `FileRow` (struct) — depth, name, kind, `entry` (index into the git list; `None` for message/dir).
-- `FileListView` (struct) — rows, cursor, top, totals, `message` (the `✉` row's body lines).
+- `FileListView` (struct) — rows, cursor, top, totals, `message` (the `✉` row's body lines), `compare: Option<CompareSummary>` (m7-14; `None` but for a compare).
 - `FileListView::visible` (fn) — rows not under a collapsed dir, with their indices.
 - `FileListView::toggle_dir` (fn) — collapse or expand a dir row.
 - `FileListView::move_cursor` (fn) — move among visible rows, clamped.
@@ -188,7 +192,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `Icons` (enum) — `Plain` (default, bracketed) or `Nerd` (icon-prefixed).
 - `Badge` (struct) — one ref on a commit: sanitised `name` and `kind`.
 - `Badge::text` (fn) — the badge as it reads on screen in an icon set.
-- `BadgeKind` (enum) — branch (identity, current, tracking), remote, tag, detached HEAD, stash.
+- `BadgeKind` (enum) — branch (identity, current, tracking), remote, tag, detached HEAD, stash, `CompareBase` (reads `x base`, m7-14).
 - `Tracking` (enum) — untracked, in sync with a remote, or apart by ahead/behind counts.
 - `separator` (fn) — what goes between two badges in an icon set.
 

@@ -197,7 +197,7 @@ pub(crate) fn b_key(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
     };
     let head = next.refs.as_ref().and_then(|refs| refs.head());
     let both = cursor.spec == DetailSpec::WorkingTree && staged_and_unstaged(next, &cursor.path);
-    let from = match blame_from(&cursor, head, both) {
+    let from = match blame_from(&cursor, head, both, from::compare_split(next)) {
         Ok(from) => from,
         Err(why) => {
             next.status = Status::sticky(no_blame_words(&why));

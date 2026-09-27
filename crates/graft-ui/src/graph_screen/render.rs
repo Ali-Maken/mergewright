@@ -345,6 +345,7 @@ impl GraphScreen<'_> {
             BadgeKind::Tag => foreground(self.theme, Token::Warning),
             BadgeKind::Head => foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
             BadgeKind::Stash => foreground(self.theme, Token::Info),
+            BadgeKind::CompareBase => foreground(self.theme, Token::Accent),
         }
     }
 }

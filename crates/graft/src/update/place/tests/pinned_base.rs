@@ -72,6 +72,13 @@ fn esc_from_blame_restores_the_compare_base() {
     assert_eq!(back.detail.selected_entry(), before.detail.selected_entry());
     assert_eq!(back.detail.body_cursor, before.detail.body_cursor);
     assert_eq!(back.detail.focus, before.detail.focus);
+    // m7-14: re-pinning restores, it does not press `x` — the header is the
+    // same compare's words, not the base's `x clears it`.
+    assert_eq!(
+        crate::view::detail_view(&back).header.subject,
+        crate::view::detail_view(&before).header.subject,
+        "the same compare header"
+    );
 
     // Via an uncommitted row: `⏎` went to the changes pane, and leaving
     // still puts the base back and lands on the compare.

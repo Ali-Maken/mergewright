@@ -5,10 +5,14 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 
-use crate::detail::{ContainedIn, DetailFocus, DetailHeader, DetailView, RadarLine, Subject};
+use crate::detail::{
+    CompareHeader, CompareState, ContainedIn, DetailFocus, DetailHeader, DetailView, RadarLine,
+    Subject,
+};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 use graft_term::sanitize::SanitizedText;
+use unicode_width::UnicodeWidthStr;
 
 use super::layout::DetailLayout;
 use super::line_render::draw_line;
@@ -17,9 +21,7 @@ pub(crate) fn title_text(subject: &Subject) -> String {
     match subject {
         Subject::None => String::new(),
         Subject::Commit { sha } => format!("COMMIT {}", sha.as_str()),
-        Subject::Compare { base, head } => {
-            format!("COMPARE {} \u{2192} {}", base.as_str(), head.as_str())
-        }
+        Subject::Compare(compare) => compare_title(compare, usize::MAX),
         Subject::WorkingTree {
             staged,
             unstaged,
@@ -42,6 +44,69 @@ pub(crate) fn title_text(subject: &Subject) -> String {
             }
         }
     }
+}
+
+/// A compare's first line in words (m7-14), fitted to `width` cells by a
+/// ladder: drop `· F files +a −d`, then `· N commits`, then cut the head's
+/// name with `…`. A number is never cut.
+pub(crate) fn compare_title(compare: &CompareHeader, width: usize) -> String {
+    let base = compare.base.as_str();
+    let head = compare.head.as_str();
+    let fits = |text: &String| text.width() <= width;
+    match &compare.state {
+        CompareState::IsBase => "this is the compare base \u{b7} x clears it".to_string(),
+        CompareState::Reading => fit_head(width, head, |c| {
+            format!("comparing {c} with {base} \u{2026}")
+        }),
+        CompareState::AlreadyIn => fit_head(width, head, |c| {
+            format!("{c} is already in {base} \u{b7} nothing of its own")
+        }),
+        CompareState::NoSharedHistory => fit_head(width, head, |c| {
+            format!("{c} and {base} share no history \u{b7} showing {base}..{c}")
+        }),
+        CompareState::Failed(why) => format!("couldn't compare: {}", why.as_str()),
+        CompareState::Since { commits, tally } => {
+            let lead = |c: &str| format!("changes on {c} since it left {base}");
+            let plural = if *commits == 1 { "" } else { "s" };
+            let count = format!(" \u{b7} {commits} commit{plural}");
+            if let Some(tally) = tally {
+                let files = if tally.files == 1 { "file" } else { "files" };
+                let full = format!(
+                    "{}{count} \u{b7} {} {files} +{} \u{2212}{}",
+                    lead(head),
+                    tally.files,
+                    tally.added,
+                    tally.removed
+                );
+                if fits(&full) {
+                    return full;
+                }
+            }
+            let counted = format!("{}{count}", lead(head));
+            if fits(&counted) {
+                return counted;
+            }
+            fit_head(width, head, lead)
+        }
+    }
+}
+
+/// `words(head)` if it fits `width`; else `words` with `head` cut to fit,
+/// ending in `…`. Only the name is cut.
+fn fit_head(width: usize, head: &str, words: impl Fn(&str) -> String) -> String {
+    let whole = words(head);
+    if whole.width() <= width {
+        return whole;
+    }
+    let chars: Vec<char> = head.chars().collect();
+    for keep in (0..chars.len()).rev() {
+        let cut: String = chars[..keep].iter().chain(['\u{2026}'].iter()).collect();
+        let line = words(&cut);
+        if line.width() <= width {
+            return line;
+        }
+    }
+    words("\u{2026}")
 }
 
 pub(crate) fn radar_text(line: &RadarLine) -> String {
@@ -175,7 +240,10 @@ pub(crate) fn render_header(
     if area.width == 0 || area.height == 0 {
         return;
     }
-    let lines = header_lines(view);
+    let mut lines = header_lines(view);
+    if let Subject::Compare(compare) = &view.header.subject {
+        lines[0] = compare_title(compare, usize::from(area.width));
+    }
     let is_working_tree = matches!(view.header.subject, Subject::WorkingTree { .. });
     let meta = [&lines[1], &lines[2], &lines[3]]
         .into_iter()
