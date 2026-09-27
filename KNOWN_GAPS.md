@@ -965,3 +965,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r3334-m3 | 14b's stop sweep catches an unchecked second spawn only when the first makes ≤8 stop checks (`graft-git/src/run.rs:504`, `:508`). Document in `CHECKS_PER_RUN` | **unverified** (weak guard) | M7 |
 | M7/r3334-m4 | 23 `super::super::` paths in 34's new files (`update/keys/{escape,refresh,commit,acknowledge}.rs`, `jobs/detail/{blame.rs,assemble/tests.rs}`); use `crate::` | **broken** (readability) | M7 |
 | M7/20j-graph | 20's ruling "the graph pane's last row is the boundary commit" not asserted: at 187×50 blame fills the screen, no graph pane drawn (20j NOTES). Spec clause may not apply to the blame view — question for review | **unverified** | M7 |
+| M7/01a-q1 | Absent backup ref in `seal_after` still falls back to `before` silently (01a NOTES). Should it be reported like an unreadable one? Question | **unverified** (question) | M7 |
+| M7/01a-m1 | Unreadable backup ref reported as `AfterState::Refs`; a `BackupUnread` variant (needs `apply/error.rs`) would word it better. Proposed by 01a | **broken** (wording, minor) | M8 |
