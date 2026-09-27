@@ -139,10 +139,18 @@ pub(crate) fn place_on_screen(mut state: AppState, finding: bool, ignore_file: b
     state
 }
 
-/// `update::tests`' sweep: [`place_on_screen`]'s place re-reading — after
-/// `w`, and (with the ignore file) after `i` (20k). With neither flag, also
-/// the first read, `B` just pressed on `state`'s pane.
-pub(crate) fn place_reading(state: AppState, finding: bool, ignore_file: bool) -> Vec<AppState> {
+/// `update::tests`' sweep: [`place_on_screen`]'s place with no lines for
+/// `⏎`, `^` or `n N` (20k, 20n). Re-reading: after `w`, and (with the
+/// ignore file) after `i`. With neither flag, also the first read (`B` just
+/// pressed on `state`'s pane) and a failed place: `^` on a line whose
+/// came-from answer has no line (`answer::blame_arrived`'s `Want::CameFrom`
+/// arm). With the find and no ignore file, a `w` re-read that was refused
+/// (the find stays; a failed place lists no ignore file).
+pub(crate) fn place_without_lines(
+    state: AppState,
+    finding: bool,
+    ignore_file: bool,
+) -> Vec<AppState> {
     let mut first = Vec::new();
     if !finding && !ignore_file {
         let mut pane = state.clone();
@@ -153,6 +161,7 @@ pub(crate) fn place_reading(state: AppState, finding: bool, ignore_file: bool) -
         first.push(press(&pane, KeyCode::Char('B')).0);
     }
     let ready = place_on_screen(state, finding, ignore_file);
+    let failed = failed_places(&ready, finding, ignore_file);
     let mut keys = vec![KeyCode::Char('w')];
     if ignore_file {
         keys.push(KeyCode::Char('i'));
@@ -169,7 +178,38 @@ pub(crate) fn place_reading(state: AppState, finding: bool, ignore_file: bool) -
                 place.body
             );
         })
+        .chain(failed)
         .collect()
+}
+
+/// [`place_without_lines`]' failed places, each made through the real
+/// answer path from `ready`.
+fn failed_places(ready: &AppState, finding: bool, ignore_file: bool) -> Vec<AppState> {
+    let (code, refusal) = match (finding, ignore_file) {
+        (false, false) => (
+            KeyCode::Char('^'),
+            Ok(BlameAnswer {
+                blame: a_blame(false, false),
+                line: None,
+            }),
+        ),
+        (true, false) => (
+            KeyCode::Char('w'),
+            Err(BlameFailure::Failed("fatal: bad revision".to_owned())),
+        ),
+        // A failed place lists no ignore file (`BlameState::ignore_line`).
+        (_, true) => return Vec::new(),
+    };
+    let (reading, commands) = press(ready, code);
+    let (job, _) = blame_job(&commands);
+    let (failed, _) = answer(&reading, job, refusal);
+    let place = failed.trail.on_screen().expect("a place on screen");
+    assert!(
+        matches!(place.body, BlameLoad::Failed(_)),
+        "failed: {:?}",
+        place.body
+    );
+    vec![failed]
 }
 
 /// `update::tests`' sweep: a trail waiting under `state`.

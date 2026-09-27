@@ -259,3 +259,35 @@ fn esc_back_drops_a_landing_still_seeking() {
         );
     }
 }
+
+/// Review Minor 1 (20n C): leaving the trail where `B` was pressed — so
+/// `leave` restores nothing (its `Spot::of(state) == origin.spot` return) —
+/// with a `⏎` landing still seeking. `leave`'s `abandon` withdraws the seek
+/// too, so the walk's answer does not move the graph cursor.
+///
+/// No key path reaches it: `⏎` hides the trail, and every way back to it
+/// (`show_again`) abandons the landing first. Built instead: the landing
+/// `⏎` started, the place shown again by hand, the origin set to where the
+/// screen now stands.
+#[test]
+fn leaving_where_blame_started_drops_a_landing_still_seeking() {
+    let state = blamed_at(22);
+    let (mut landed, commands) = press(&state, KeyCode::Enter);
+    assert!(
+        landed.line_landing.is_some(),
+        "Lina's commit is off the rows on hand: the landing seeks it"
+    );
+    landed.trail.shown = true;
+    let here = Spot::of(&landed);
+    landed.trail.origin.as_mut().expect("an origin").spot = here;
+    let cursor = |state: &AppState| state.history.as_ref().map(|history| history.cursor);
+    let before = cursor(&landed);
+
+    let (left, _) = press(&landed, KeyCode::Escape);
+    assert!(!left.trail.is_live(), "the last place popped: left");
+    assert_eq!(left.line_landing, None, "the landing is gone");
+
+    let after = find_answered(&left, &commands, lina());
+    assert_eq!(cursor(&after), before, "the graph cursor does not move");
+    assert_eq!(after.line_landing, None, "no landing came back");
+}

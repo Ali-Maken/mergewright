@@ -223,10 +223,11 @@ pub enum HintContext {
         finding: bool,
         /// The repo has `.git-blame-ignore-revs`: `i ignore list`.
         ignore_file: bool,
-        /// A read is in flight (the first, or a re-read after `w`/`i`): no
-        /// lines to act on, so `⏎`, `^` and `n N` are left out — the place
-        /// does not answer them until the lines are in (m7-power-tools/20k).
-        read: bool,
+        /// The place has lines to act on (its blame is read). `false` while
+        /// a read is in flight (the first, or a re-read after `w`/`i`) and
+        /// when the read failed: `⏎`, `^` and `n N` are left out, the place
+        /// does not answer them without lines (m7-power-tools/20k, 20n).
+        lines: bool,
     },
     /// **A blame trail waits under the graph** (`⏎` landed on a commit):
     /// the inner context's own bar, led by `esc back to blame` so the way

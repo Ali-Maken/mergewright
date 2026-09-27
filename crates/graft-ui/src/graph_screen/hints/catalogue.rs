@@ -80,14 +80,14 @@ pub fn every_context() -> Vec<HintContext> {
 fn blame_forms() -> Vec<HintContext> {
     let mut forms: Vec<HintContext> = [false, true]
         .into_iter()
-        .flat_map(|read| {
+        .flat_map(|lines| {
             [false, true].into_iter().flat_map(move |finding| {
                 [false, true]
                     .into_iter()
                     .map(move |ignore_file| HintContext::Blame {
                         finding,
                         ignore_file,
-                        read,
+                        lines,
                     })
             })
         })
