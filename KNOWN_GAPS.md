@@ -1001,3 +1001,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/09b-perf | `a` dependents check 6.8 ms vs 16.7 budget measured at load ~7 (`docs/perf/09b.txt`); quiet re-run owed | **unverified** (perf) | M7 |
 | M7/09b-q3 | Put-in landing says unstaged edits are back from "existed at plan", not `done_status`'s fact (`landed` can't see it) — deviation from 09b ruling | **unverified** (question) | M7 |
 | M7/21c-ws-mark | Detail, blame and history panes don't show that ignore-whitespace is on | **broken** (visibility) | M8 |
+| M7/10-bar | Picker bar order deviates from ticket 10 (esc 3rd; ⇥ 3rd drew nothing at 40 cols); needs ruling on `switch`/`show` short forms to restore order | **unverified** (question) | M7 |
+| M7/10-cp-walk | `cherry-pick-other-branch` walk (`C <type> ⇥ motion o y` = 6) not built; lands with ticket 11 | **unverified** | M7 |
