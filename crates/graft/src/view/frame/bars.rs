@@ -45,7 +45,7 @@ pub(super) fn draw_status_or_hints(
             ),
             Token::Warning,
         ),
-        None => match footer_notice(state, tier) {
+        None => match footer_notice(state, tier, width) {
             Some(notice) => (format!(" {}", notice.as_str()), Token::TextMuted),
             None => (hints(), Token::TextMuted),
         },
@@ -269,7 +269,14 @@ pub(super) fn draw_tab_strip(
 /// (`AppState::modal_owns_bottom_row`, m6-conflicts/69). Reads
 /// `AppState::shown_status`: an unseen failure stands in for the status
 /// under it, and is the `problem` line, so no notice (m6-conflicts/78).
-pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
+///
+/// `columns` is the footer row's width; the interrupted notice is fitted to
+/// its text width (`columns − 1`, the row indents one cell; 30d).
+pub(super) fn footer_notice(
+    state: &AppState,
+    tier: RenderingTier,
+    columns: u16,
+) -> Option<SanitizedText> {
     if state.modal_owns_bottom_row() {
         return None;
     }
@@ -304,7 +311,10 @@ pub(super) fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<San
     // line and quieter than a failure — nothing is broken, but there is a
     // backup waiting and the user should know before they press `u`
     // (m3-working-tree-undo-and-stash/06).
-    if let Some(notice) = crate::update::undo::interrupted_notice(state) {
+    // Picked every draw from the row's width, so a resize re-picks (30d).
+    if let Some(notice) =
+        crate::update::undo::interrupted_notice_in(state, usize::from(columns).saturating_sub(1))
+    {
         return Some(sanitize_line(&notice));
     }
     // Only below the terminal's own tier: `F3` clears the override when it
@@ -341,7 +351,7 @@ mod tests {
             status: Status::Waiting(words.to_owned()),
             ..AppState::default()
         };
-        let notice = footer_notice(&state, RenderingTier::Unicode).expect("a notice");
+        let notice = footer_notice(&state, RenderingTier::Unicode, 120).expect("a notice");
         assert_eq!(notice.as_str(), words);
     }
 }

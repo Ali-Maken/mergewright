@@ -593,6 +593,13 @@ fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> P
 /// An entry a later entry has taken back is not announced.
 #[must_use]
 pub fn interrupted_notice(state: &AppState) -> Option<String> {
+    interrupted_notice_in(state, usize::MAX)
+}
+
+/// [`interrupted_notice`] fitted to the footer row's `cells` display cells
+/// (30d). The footer's only caller (`view::frame::bars`); the rung is
+/// picked from the frame's width every draw, so a resize re-picks.
+pub(crate) fn interrupted_notice_in(state: &AppState, cells: usize) -> Option<String> {
     if state.journal.notice_seen {
         return None;
     }
@@ -622,26 +629,89 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
                 && !state.live_entries.contains(&entry.id)
         })
         .map(|entry| interrupted_words(state, entry));
-    let first = interrupted.next()?;
+    let (description, clause) = interrupted.next()?;
     let more = interrupted.count();
     let rest = if more == 0 {
         String::new()
     } else {
         format!(" (and {more} more)")
     };
-    let widest = if state.journal.unreadable.is_empty() {
-        String::new()
-    } else {
-        " \u{b7} its state could not be read, so u restores the whole tree".to_owned()
+    let widest = (!state.journal.unreadable.is_empty())
+        .then_some("its state could not be read, so u restores the whole tree");
+    // The parts `notice_line` fits (30d Decided 5): the description is the
+    // first entry's own words, plus `(and n more)` when no clause follows
+    // them; everything after the first ` · ` (the clause, the count, the
+    // unreadable warning) is the never-cut clause. Rung 1 reads as before.
+    let (description, clause) = match clause {
+        Some(clause) => (
+            description,
+            Some(match widest {
+                Some(widest) => format!("{clause}{rest} \u{b7} {widest}"),
+                None => format!("{clause}{rest}"),
+            }),
+        ),
+        None => (format!("{description}{rest}"), widest.map(str::to_owned)),
     };
-    Some(format!(
-        "an operation was interrupted: {first}{rest}{widest} \u{b7} J to inspect"
-    ))
+    Some(notice_line(&description, clause.as_deref(), cells))
 }
 
-/// One interrupted entry as the notice words it: its description, then
+/// Display cells, the measure the footer's own cut uses (`graft_ui::fit`).
+fn cells_of(text: &str) -> usize {
+    text.chars()
+        .filter_map(unicode_width::UnicodeWidthChar::width)
+        .sum()
+}
+
+/// The relaunch notice fitted to `cells` display cells: the first rung of
+/// 30d's ladder that fits, else the last (the footer's cut then ends it with
+/// `…`). `clause` is never cut or reworded; `description` is his text, so it
+/// is sanitized before it is measured.
+///
+/// 1. `an operation was interrupted: <description> · <clause> · J to inspect`
+/// 2. `interrupted: <description> · <clause> · J to inspect`
+/// 3. rung 2 with the description cut to fill, when 10 cells of it remain
+/// 4. `interrupted · <clause> · J to inspect`
+pub(crate) fn notice_line(description: &str, clause: Option<&str>, cells: usize) -> String {
+    const KEY: &str = " \u{b7} J to inspect";
+    const SHORT: &str = "interrupted: ";
+    let description = graft_term::sanitize_line(description);
+    let description = description.as_str();
+    let tail = match clause {
+        Some(clause) => format!(" \u{b7} {clause}{KEY}"),
+        None => KEY.to_owned(),
+    };
+    let full = format!("an operation was interrupted: {description}{tail}");
+    if cells_of(&full) <= cells {
+        return full;
+    }
+    let short = format!("{SHORT}{description}{tail}");
+    if cells_of(&short) <= cells {
+        return short;
+    }
+    // Rung 3: the cells left for the description, `…` included.
+    let room = cells.saturating_sub(cells_of(SHORT) + cells_of(&tail));
+    if room >= 10 {
+        let mut cut = String::new();
+        let mut used = 0;
+        for character in description.chars() {
+            let width = unicode_width::UnicodeWidthChar::width(character).unwrap_or(0);
+            if used + width > room - 1 {
+                break;
+            }
+            cut.push(character);
+            used += width;
+        }
+        return format!("{SHORT}{}\u{2026}{tail}", cut.trim_end());
+    }
+    format!("interrupted{tail}")
+}
+
+/// One interrupted entry as the notice words it: its description, and
 /// where edits it set aside are, when that is known.
-fn interrupted_words(state: &AppState, entry: &graft_core::journal::JournalEntry) -> String {
+fn interrupted_words(
+    state: &AppState,
+    entry: &graft_core::journal::JournalEntry,
+) -> (String, Option<String>) {
     // Where recovery found the edits, when this launch closed the entry
     // (30c): the status line's own words, no list read to guess (ADR-0045
     // §5).
@@ -650,10 +720,9 @@ fn interrupted_words(state: &AppState, entry: &graft_core::journal::JournalEntry
         .iter()
         .find(|(id, _)| *id == entry.id)
     {
-        return format!(
-            "{} \u{b7} {}",
-            entry.description,
-            super::operate::edits_clause(*at)
+        return (
+            entry.description.clone(),
+            Some(super::operate::edits_clause(*at)),
         );
     }
     // Closed by an earlier launch: edits set aside around it wait in the
@@ -671,14 +740,13 @@ fn interrupted_words(state: &AppState, entry: &graft_core::journal::JournalEntry
                 .stashes()
                 .iter()
                 .find_map(|(commit, at)| {
-                    (*commit == put_back.stash).then(|| format!(" \u{b7} edits in stash@{{{at}}}"))
+                    (*commit == put_back.stash).then(|| format!("edits in stash@{{{at}}}"))
                 })
-        })
-        // No clause when nothing was set aside, the refs are not read yet,
-        // or the stash is no longer listed: none of those is a failure, and
-        // the line is true without it.
-        .unwrap_or_default();
-    format!("{}{aside}", entry.description)
+        });
+    // No clause when nothing was set aside, the refs are not read yet, or
+    // the stash is no longer listed: none of those is a failure, and the
+    // line is true without it.
+    (entry.description.clone(), aside)
 }
 
 /// Re-read what the restore changed — `update::operate`'s own two scopes,

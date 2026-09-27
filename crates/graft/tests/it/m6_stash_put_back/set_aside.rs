@@ -1187,15 +1187,15 @@ fn a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back() {
         // The row marks (`ⓘ`) are the radar's own job's: wait for it too.
         let state = crate::captures::radar_answered(&app, state);
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n");
-        // At 80 the line is cut after `a copy stay…`: the notice has no
-        // ladder, so `stash@{0}` and `J to inspect` go (30c NOTES, a gap for
-        // the conductor). What fits is asserted; the cut is not endorsed.
-        let clause = if columns >= 120 {
-            "your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect"
+        // 30d: the footer row is the ladder's rung for the width, whole —
+        // rung 1 at 120, rung 4 at 80 (the row indents one cell).
+        let footer = if columns >= 120 {
+            " an operation was interrupted: checkout fix \u{b7} your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect"
         } else {
-            "checkout fix \u{b7} your edits are back"
+            " interrupted \u{b7} your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect"
         };
-        assert!(drawn.contains(clause), "{columns}x{rows}:\n{drawn}");
+        let bottom = drawn.lines().last().expect("a bottom row");
+        assert_eq!(bottom.trim_end(), footer, "{columns}x{rows}:\n{drawn}");
         assert!(
             !drawn.contains("edits in stash"),
             "{columns}x{rows}:\n{drawn}"
@@ -1235,11 +1235,11 @@ const RELAUNCH_HEADER: &str = "\
 # switch to `fix` killed after the edits came back (unstaged) and before
 # the stash was dropped; Graft launched again.
 #  - HEAD on `fix`.
-#  - The bottom row reads `an operation was interrupted: checkout fix ·
-#    your edits are back · a copy stays in stash@{0} · J to inspect`.
-#    At 80 columns it is cut after `a copy stay…`: `stash@{0}` and
-#    `J to inspect` are lost (a known gap, 30c NOTES; not what right
-#    looks like).
+#  - At 120 the bottom row reads `an operation was interrupted: checkout
+#    fix · your edits are back · a copy stays in stash@{0} · J to inspect`.
+#    At 80 it reads, whole, `interrupted · your edits are back · a copy
+#    stays in stash@{0} · J to inspect` (30d's ladder: the framing and
+#    the description go, the clause and `J` stay).
 #  - Nowhere `edits in stash@{0}` alone, which would say the edits are
 #    only in the stash.
 ";
