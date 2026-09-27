@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use graft_fixtures::Shape;
 
 use super::{
-    Change, StatusEntry, StatusError, WorkingTreeCounts, WorkingTreeStatus, parse_porcelain_v2,
-    read, status_from,
+    Change, StatusEntry, StatusError, SubmoduleStatus, WorkingTreeCounts, WorkingTreeStatus,
+    parse_porcelain_v2, read, status_from, submodules_not_set_up,
 };
 use crate::fixture::Fixture;
 use crate::repo::RepoHandle;
@@ -48,7 +48,7 @@ fn parse_porcelain_v2_reads_a_modified_and_an_untracked_record() {
                 untracked: false,
                 unmerged: false,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             },
             StatusEntry {
                 path: PathBuf::from("new.txt"),
@@ -58,7 +58,7 @@ fn parse_porcelain_v2_reads_a_modified_and_an_untracked_record() {
                 untracked: true,
                 unmerged: false,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             },
         ]
     );
@@ -552,4 +552,148 @@ fn stopped_shape_unmerged_how_matches_git(shape: Shape) {
         .map(|(path, how)| (path.clone(), xy_of(*how).to_owned()))
         .collect();
     assert_eq!(ours, gits_own_xy(&dir), "{shape}: XY as git printed it");
+}
+
+/// Porcelain v2's `sub` field is `S<c><m><u>` for a submodule: each of the
+/// three letters is its flag or `.` (m7-power-tools/13). All eight
+/// combinations, each read into its own fact.
+#[test]
+fn parse_reads_each_submodule_flag() {
+    for bits in 0_u8..8 {
+        let (c, m, u) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0);
+        let sub = format!(
+            "S{}{}{}",
+            if c { 'C' } else { '.' },
+            if m { 'M' } else { '.' },
+            if u { 'U' } else { '.' }
+        );
+        let record = format!("1 .M {sub} 160000 160000 160000 aaaa aaaa libs/parser\0");
+
+        let status = parse_porcelain_v2(record.as_bytes()).expect("a submodule record parses");
+
+        assert_eq!(
+            status.entries[0].submodule,
+            Some(SubmoduleStatus {
+                pointer_moved: c,
+                changed_inside: m,
+                untracked_inside: u,
+            }),
+            "{sub}"
+        );
+    }
+}
+
+/// `N...` is "not a submodule": no submodule status at all, on every record
+/// kind that carries the field.
+#[test]
+fn a_plain_file_has_no_submodule_status() {
+    let bytes = b"1 M. N... 100644 100644 100644 aaaa bbbb a.txt\0\
+2 R. N... 100644 100644 100644 aaaa bbbb R100 new.txt\0old.txt\0\
+u UU N... 100644 100644 100644 100644 aaaa bbbb cccc c.txt\0? d.txt\0";
+
+    let status = parse_porcelain_v2(bytes).expect("well-formed input parses");
+
+    assert_eq!(status.entries.len(), 4);
+    for entry in &status.entries {
+        assert_eq!(entry.submodule, None, "{}", entry.path.display());
+    }
+}
+
+/// A `sub` field that is neither `N...` nor `S` and three flag letters is
+/// not what git prints: an error, never a guess.
+#[test]
+fn a_malformed_submodule_field_is_an_error() {
+    for sub in ["S..", "S....", "SX..", "N..U", "X...", "S.CM"] {
+        let record = format!("1 .M {sub} 160000 160000 160000 aaaa aaaa libs/parser\0");
+        let result = parse_porcelain_v2(record.as_bytes());
+        assert!(result.is_err(), "{sub}: {result:?}");
+    }
+}
+
+/// A superproject with one submodule at `libs/parser`, built from a local
+/// path (no network). The submodule has two commits.
+fn with_a_submodule() -> (Fixture, Fixture) {
+    let inner = Fixture::with_two_commits();
+    let outer = Fixture::with_two_commits();
+    outer.git(&[
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "add",
+        &inner.root().to_string_lossy(),
+        "libs/parser",
+    ]);
+    outer.git(&["commit", "-m", "add parser"]);
+    (inner, outer)
+}
+
+/// A submodule with only untracked files inside: git reports `.M S..U`, so
+/// it is one **unstaged** entry and the tree is not clean. That is today's
+/// answer and 13 keeps it (13 "Touches": the clean check).
+#[test]
+fn untracked_inside_a_submodule_counts_as_unstaged() {
+    let (_inner, outer) = with_a_submodule();
+    fs::write(outer.root().join("libs/parser/scratch.txt"), "x").expect("writable");
+
+    let status = read(&open(&outer), &()).expect("status reads");
+
+    let entry = status
+        .entry(Path::new("libs/parser"))
+        .expect("the submodule is reported");
+    assert_eq!(
+        entry.submodule,
+        Some(SubmoduleStatus {
+            pointer_moved: false,
+            changed_inside: false,
+            untracked_inside: true,
+        })
+    );
+    assert!(!status.is_clean());
+    assert_eq!(
+        status.counts(),
+        WorkingTreeCounts {
+            staged: 0,
+            unstaged: 1,
+            untracked: 0,
+        }
+    );
+}
+
+/// A gitlink in the index whose directory has no `.git` — a clone without
+/// `submodule update --init` — is "not set up". git's status says nothing
+/// about it at all, so this is its own read.
+#[test]
+fn a_gitlink_without_a_git_dir_is_not_set_up() {
+    let (_inner, outer) = with_a_submodule();
+    let clone = tempfile::tempdir().expect("a temp dir");
+    let target = clone.path().join("clone");
+    outer.git(&[
+        "clone",
+        "-q",
+        &outer.root().to_string_lossy(),
+        &target.to_string_lossy(),
+    ]);
+    let repo = RepoHandle::open(&target).expect("the clone opens");
+
+    assert_eq!(
+        submodules_not_set_up(&repo, &()).expect("reads"),
+        vec![PathBuf::from("libs/parser")]
+    );
+    assert!(read(&repo, &()).expect("status reads").is_clean());
+
+    // Set up, it is no longer listed.
+    assert_eq!(
+        submodules_not_set_up(&open(&outer), &()).expect("reads"),
+        Vec::<PathBuf>::new()
+    );
+}
+
+/// No `.gitmodules`, no submodules: nothing to list, and no spawn.
+#[test]
+fn a_repository_without_submodules_has_none_not_set_up() {
+    let fixture = Fixture::with_two_commits();
+    assert_eq!(
+        submodules_not_set_up(&open(&fixture), &()).expect("reads"),
+        Vec::<PathBuf>::new()
+    );
 }

@@ -534,7 +534,7 @@ pub(crate) fn counts_with_unmerged(
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         });
     }
     for i in 0..unstaged {
@@ -546,7 +546,7 @@ pub(crate) fn counts_with_unmerged(
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         });
     }
     for i in 0..untracked {
@@ -558,7 +558,7 @@ pub(crate) fn counts_with_unmerged(
             untracked: true,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         });
     }
     for i in 0..unmerged {
@@ -570,7 +570,7 @@ pub(crate) fn counts_with_unmerged(
             untracked: false,
             unmerged: true,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         });
     }
     std::sync::Arc::new(WorkingTreeStatus { entries })
@@ -2166,7 +2166,7 @@ fn scripted_status() -> graft_git::status::WorkingTreeStatus {
             untracked,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }
     };
     WorkingTreeStatus {

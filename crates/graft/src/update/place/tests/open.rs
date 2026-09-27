@@ -288,7 +288,7 @@ fn b_with_staged_and_unstaged_edits_says_the_lines_moved() {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     let (opened, commands) = press(&state, KeyCode::Char('B'));

@@ -75,7 +75,7 @@ fn entry(path: &str, unmerged: bool) -> StatusEntry {
         untracked: false,
         unmerged,
         unmerged_how: None,
-        submodule: false,
+        submodule: None,
     }
 }
 

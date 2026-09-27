@@ -2751,7 +2751,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
                 untracked: false,
                 unmerged: false,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             },
             graft_git::status::StatusEntry {
                 path: "unstaged.txt".into(),
@@ -2761,7 +2761,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
                 untracked: false,
                 unmerged: false,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             },
             graft_git::status::StatusEntry {
                 path: "untracked.txt".into(),
@@ -2771,7 +2771,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
                 untracked: true,
                 unmerged: false,
                 unmerged_how: None,
-                submodule: false,
+                submodule: None,
             },
         ],
     }));
@@ -4965,7 +4965,7 @@ fn status_entry(path: &str, unmerged: bool) -> graft_git::status::StatusEntry {
         untracked: false,
         unmerged,
         unmerged_how: None,
-        submodule: false,
+        submodule: None,
     }
 }
 

@@ -92,7 +92,7 @@ fn esc_from_blame_restores_the_compare_base() {
             untracked: false,
             unmerged: false,
             unmerged_how: None,
-            submodule: false,
+            submodule: None,
         }],
     }));
     if let Some(blame) = state.trail.top_mut() {

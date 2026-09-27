@@ -28,7 +28,7 @@ fn entry(path: &str, unmerged: bool) -> StatusEntry {
         untracked: false,
         unmerged,
         unmerged_how: unmerged.then_some(UnmergedHow::BothModified),
-        submodule: false,
+        submodule: None,
     }
 }
 
