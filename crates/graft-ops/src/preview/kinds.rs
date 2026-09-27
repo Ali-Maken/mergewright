@@ -22,6 +22,10 @@ use crate::operation::{
     short, short_ref, tag_ref,
 };
 
+use crate::rewrite::BranchLine;
+
+use super::chain::{self, Step};
+use super::rewrite;
 use super::{
     ConflictForecast, FORECAST_CAP, GhostCommit, HeadMove, Landing, PreviewError, PreviewPlan,
     RefMove, Replay, Target, UndoNote, WorktreeEffect, blank, dirty_tracked, fold, forecast_one,
@@ -163,29 +167,39 @@ pub(super) fn rebase(
             theirs: onto,
         },
     )?;
-    plan.conflicts = if range.capped {
-        ConflictForecast::NotChecked(format!("more than {FORECAST_CAP} commits"))
-    } else {
-        replay_forecast(repo, git, onto, &range.commits, stop)?
+    plan.conflicts = replay_forecast(repo, git, onto, &range, stop)?;
+    let rewritten: Vec<Oid> = range.commits.iter().map(|commit| commit.id).collect();
+    let line = BranchLine {
+        branches: vec![params.branch.clone()],
     };
+    plan.published = rewrite::published(repo, &line, &rewritten, onto, stop)?;
     Ok(plan)
 }
 
-/// Each replayed commit against its own first parent, onto `onto`. Per
-/// commit, never chained (hard choice 5): the answer is "may conflict".
+/// Chained (m7/05): each commit replayed onto the result of the one before,
+/// as git will; the first that conflicts is where it stops.
 fn replay_forecast(
     repo: &RepoHandle,
     git: &GitVersion,
     onto: Oid,
-    commits: &[history_reads::CommitSummary],
+    range: &history_reads::Range,
     stop: &dyn Stop,
 ) -> Result<ConflictForecast, PreviewError> {
-    let mut sofar = ConflictForecast::Clean;
-    for commit in commits {
-        let base = commit.parents.first().copied();
-        sofar = fold(sofar, forecast_one(repo, git, base, onto, commit.id, stop)?);
+    if range.capped {
+        return Ok(ConflictForecast::NotChecked(format!(
+            "more than {FORECAST_CAP} commits"
+        )));
     }
-    Ok(sofar)
+    let steps: Vec<Step> = range
+        .commits
+        .iter()
+        .map(|commit| Step {
+            commit: commit.id,
+            parent: commit.parents.first().copied(),
+            replays: true,
+        })
+        .collect();
+    Ok(chain::chain(repo, git, onto, &steps, stop)?.forecast)
 }
 
 // ── cherry-pick ─────────────────────────────────────────────────────────

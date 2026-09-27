@@ -1,0 +1,24 @@
+ graft /code/api  10 commits
+  ●      finish the feature                                         now  880147c
+  ●      grow the feature                                           2m   51de037
+  ●      feature edits shared                                       3m   198f490
+  ●      more of the feature                                        4m   1f76547
+  ●      start the feature                                          5m   4ad1e44
+  │      after rebase
+  │ ○    [◆ feature] finish the feature                             —    —
+  │ ○    grow the feature                                           —    —
+  │ ○    feature edits shared                                       —    —
+  │ ○    more of the feature                                        —    —
+  │ ○    start the feature                                          —    —
+●─│─╯ ▏  [main] main edits shared                                   6m   36c271e
+●─╯      add shared                                                 7m   982c1d3
+╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
+│ 5 commits replayed                                                           │
+│ feature 880147c → 5 new commits                                              │
+│ working tree: 1 file updated                                                 │
+│ may stop at step 3 of 5 (pick 198f490) · not checked past it                 │
+│ undo: u takes this back                                                      │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop main              │
+│ ▸[ Cancel ]   [ Confirm ]                                                    │
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────╯
+

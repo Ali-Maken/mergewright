@@ -8,7 +8,8 @@ use std::process::{Command, Output};
 use graft_core::oid::Oid;
 use graft_fixtures::Scratch;
 use graft_git::history_reads::{
-    Forecast, changed_paths, commits_between, forecast_merge, merge_base, replayed_commits,
+    Forecast, MergeStep, changed_paths, commits_between, forecast_merge, merge_base,
+    merge_tree_step, replayed_commits,
 };
 use graft_git::repo::RepoHandle;
 use graft_git::version;
@@ -381,4 +382,89 @@ fn changed_paths_matches_diff_tree_name_only_and_caps() {
     let (paths, capped) = changed_paths(&repo, from, to, 1).expect("diff-tree runs");
     assert!(capped);
     assert_eq!(paths, vec![std::path::PathBuf::from("b.txt")]);
+}
+
+/// Two branches off `main`'s one commit: `ours` and `theirs` change
+/// `shared.txt` (a conflict), `clean` adds a file of its own. Returns the
+/// base and the three tips.
+fn three_way(dir: &Path) -> (Oid, Oid, Oid, Oid) {
+    init(dir);
+    write_and_commit(dir, "shared.txt", "base\n", "base");
+    let base = rev_parse(dir, "HEAD");
+    git_ok(dir, &["checkout", "-q", "-b", "ours"]);
+    write_and_commit(dir, "shared.txt", "ours\n", "ours change");
+    let ours = rev_parse(dir, "HEAD");
+    git_ok(dir, &["checkout", "-q", "-b", "theirs", "main"]);
+    write_and_commit(dir, "shared.txt", "theirs\n", "theirs change");
+    let theirs = rev_parse(dir, "HEAD");
+    git_ok(dir, &["checkout", "-q", "-b", "clean", "main"]);
+    write_and_commit(dir, "clean.txt", "clean\n", "clean change");
+    let clean = rev_parse(dir, "HEAD");
+    (base, ours, theirs, clean)
+}
+
+/// m7/05: the chained rebase forecast feeds each step's result back in as
+/// `ours`, a commit made by `commit-tree` with no ref. It must answer as
+/// the equivalent real commit does.
+#[test]
+fn forecast_merge_accepts_a_commit_tree_result_as_ours() {
+    let scratch = scratch();
+    let dir = scratch.path();
+    let (base, ours, theirs, clean) = three_way(dir);
+    let tree = format!("{ours}^{{tree}}");
+    let made = git(
+        dir,
+        &["commit-tree", &tree, "-p", &base.to_string(), "-m", "made"],
+    );
+    assert!(made.status.success(), "commit-tree");
+    let made = Oid::from_hex(String::from_utf8_lossy(&made.stdout).trim()).expect("an id");
+    assert_ne!(made, ours, "a different commit, the same tree");
+
+    let repo = open(dir);
+    let git_version = version::system_git().expect("system git").version();
+    for theirs in [theirs, clean] {
+        let real = forecast_merge(&repo, &git_version, Some(base), ours, theirs, &())
+            .expect("never an error");
+        let from_made = forecast_merge(&repo, &git_version, Some(base), made, theirs, &())
+            .expect("never an error");
+        assert_eq!(from_made, real, "against {theirs}");
+    }
+}
+
+/// m7/05: a clean step's result tree is what the next step merges onto, so
+/// the chaining read returns it — and it is the tree git writes for the
+/// same real merge.
+#[test]
+fn a_clean_merge_tree_returns_its_tree() {
+    let scratch = scratch();
+    let dir = scratch.path();
+    let (base, ours, theirs, clean) = three_way(dir);
+
+    let repo = open(dir);
+    let git_version = version::system_git().expect("system git").version();
+    let step =
+        merge_tree_step(&repo, &git_version, base, ours, clean, &()).expect("never an error");
+
+    git_ok(dir, &["checkout", "-q", "ours"]);
+    git_ok(dir, &["merge", "-q", "--no-edit", "clean"]);
+    let written = rev_parse(dir, "HEAD^{tree}");
+    assert_eq!(step, MergeStep::Clean { tree: written });
+
+    let conflict =
+        merge_tree_step(&repo, &git_version, base, ours, theirs, &()).expect("never an error");
+    assert_eq!(
+        conflict,
+        MergeStep::Conflicts {
+            paths: vec![std::path::PathBuf::from("shared.txt")]
+        }
+    );
+    let old = version::GitVersion {
+        major: 2,
+        minor: 39,
+        patch: 9,
+    };
+    assert!(matches!(
+        merge_tree_step(&repo, &old, base, ours, clean, &()).expect("never an error"),
+        MergeStep::NotCheckable(_)
+    ));
 }

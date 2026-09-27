@@ -171,6 +171,9 @@ fn planned_with(
         against: Vec::new(),
         set_aside: None,
         put_back: None,
+        already_in: None,
+        published: Vec::new(),
+        messages: Vec::new(),
     };
     super::super::preview::preview_produced(
         state,

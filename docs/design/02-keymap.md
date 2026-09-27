@@ -242,6 +242,7 @@ and any redo prompt should lead with.
 |---|---|
 | `m` / `r` | Confirm, when the preview was opened by that same key and its plan has landed (`m m`, `r r`). The cursor still rests on Cancel (ADR-0038 §1); a preview opened any other way gains only `y` — `.` still closes what `.` opened (P1, approved 2026-09-23) |
 | `y` | Confirm, in any merge/rebase/operation preview (opened by `m`, `r`, `.` (Checkout only with unsaved edits or a detached target, §2.1), `a` on an older commit or with a branch built on HEAD, `o`, the picker's `⏎` with unsaved edits, the name prompt (its `⇥` switch only with unsaved edits), or the stash list's `Enter`/`p` — amended 2026-09-26, ticket 86; Amended 2026-09-26 (M7, user "all yes")); the rewrite editor's `y` starts it (§2.7) once its plan has landed. The cursor still rests on Cancel (ADR-0038 §1). Not in a journal revert preview (user ruling 2026-09-23, `docs/field-notes.md`). The same `y` confirms every confirm box with one acting choice (§2.3c) and the finish summary's file list (§2.6b) — one confirm key (P12, P15, approved 2026-09-24; ADR-0044 §3) |
+| `R` | In a rebase preview showing `already in main: … · dropped`: open the rewrite editor (§2.7) on that rebase, those commits pre-marked `d`; `p` keeps one, `y` starts, `Esc` back to the graph. Same meaning as §2.3 `R` (opens the rewrite editor, §2.1 UPPERCASE opens a place). Not offered in any other preview (planner, 2026-09-27, scout 05) |
 | `Enter` | The choice under the cursor (ADR-0038 §1) |
 | `Esc` | Cancel |
 

@@ -1,6 +1,6 @@
 # rewrite-preview — one preview names every branch that moves, the chained forecast, and a squash-merged branch's drop
 
-Status: ready
+Status: partial (blocked: needs apply/engine.rs, rewrite.rs, rewrite/dependents.rs, operation.rs)
 Blocked by: 02-rewrite-engine, 02b-rewrite-engine-b
 Crates:
 - graft-ops (`preview`, `operation/history` for `RebaseParams`);
@@ -89,9 +89,10 @@ pub fn suggest_drops(repo: &Repo, git: &Git, line: &BranchLine, onto: Oid, stop:
 ```
 
 ## Acceptance
-- [ ] graft-git first (red, then settled): `forecast_merge_accepts_a_commit_tree_result_as_ours`,
-      `a_clean_merge_tree_returns_its_tree`. NOTES says which way it settled.
-- [ ] graft-ops (`tests/it/rewrite_preview.rs`):
+- [x] graft-git first (red, then settled): `forecast_merge_accepts_a_commit_tree_result_as_ours` (passed first run —
+      not red), `a_clean_merge_tree_returns_its_tree` (red: unresolved `MergeStep`/`merge_tree_step`). NOTES says which way.
+- [x] graft-ops (`tests/it/rewrite_preview.rs`), all 12 named below pass; red was a compile red (no `StopsAt`, no
+      `published`/`messages`, no `suggest_drops`):
   - `a_three_branch_line_moves_three_refs`;
   - `the_forecast_chains_through_earlier_picks` (red first: a conflict that exists only after step 2 is applied);
   - `the_forecast_stops_at_the_first_conflict`;
@@ -104,22 +105,21 @@ pub fn suggest_drops(repo: &Repo, git: &Git, line: &BranchLine, onto: Oid, stop:
     --no-optional-locks`; objects may be written, KNOWN_GAPS :505);
   - `the_preview_honours_stop`;
   - `an_old_git_leaves_it_not_checked`.
-- [ ] **Oracle** `the_chained_forecast_agrees_with_git`, on four rows: clean, a stop at step 1, a stop at step 3, and a
+- [x] **Oracle** `the_chained_forecast_agrees_with_git`, on four rows: clean, a stop at step 1, a stop at step 3, and a
       stop that exists only chained. `plan`, then the real rewrite in a copy: `StopsAt{step}` ⇔ git stops at that
-      step with those paths.
-- [ ] graft (`update/preview/tests.rs`, where `plan_lines` is tested):
-  - `the_box_draws_one_row_per_branch`;
+      step with those paths. (Test: `rewrite_preview::the_chained_forecast_agrees_with_git`.)
+- [x] graft (`update/preview/tests.rs`, where `plan_lines` is tested) — **written after the code, not red first**
+      (compaction fell between); each passes over a scripted plan:
+  - `the_box_draws_one_row_per_branch`; (+ `a_one_branch_rebase_draws_as_before`)
   - `already_in_row_says_dropped` (and asserts no `R` in the row);
   - `a_stop_forecast_names_the_step`;
   - `cut_order_never_cuts_a_branch_name` (80 columns).
 - [ ] **Captures** (rule 6; colour **unverified**, rule 5), through `check_shot`:
-  - `docs/shots/m7/rebase-line-preview-187x50.txt`. **Right:** a `branches:` label and three rows under it,
-    `feature-b` with `built on yours · follows`; `no conflicts expected`; `y` on the bar.
-  - `docs/shots/m7/rebase-squash-merged-preview-120x40.txt`. **Right:** `already in main: feature-a's 3 commits match
-    <sha> "<subject>" · dropped`, nothing after `dropped`.
-  - `docs/shots/m7/rebase-stop-forecast-80x24.txt`. **Right:** `may stop at step 3 of 5`, with the branch name whole.
-- [ ] MAP.md for graft-ops and graft (graft-git and graft-ui only if touched). KNOWN_GAPS :548 closed by the conductor
-      (NOTES names the test).
+  - [ ] `docs/shots/m7/rebase-line-preview-187x50.txt` — **not taken**: `r` still moves his branch alone (blocked, NOTES).
+  - [ ] `docs/shots/m7/rebase-squash-merged-preview-120x40.txt` — **not taken**: `already_in` is never filled (blocked).
+  - [x] `docs/shots/m7/rebase-stop-forecast-80x24.txt` (test `rebase_stop_forecast::capture_rebase_stop_forecast`).
+- [x] MAP.md for graft-ops, graft, graft-git (graft-ui untouched). KNOWN_GAPS :548 test:
+      `rewrite_preview::the_chained_forecast_agrees_with_git`.
 
 ## Touches (check each, report how)
 - **Every other preview kind:** unchanged. Check: all existing preview tests + captures byte-identical (`check_shot`),
@@ -138,6 +138,54 @@ pub fn suggest_drops(repo: &Repo, git: &Git, line: &BranchLine, onto: Oid, stop:
 
 ## Keymap row (conductor applies to `docs/design/02-keymap.md` §2.3b before `rebase-preview-keeps-drops` builds)
 | `R` | In a rebase preview showing `already in main: … · dropped`: open the rewrite editor (§2.7) on that rebase, those commits pre-marked `d`; `p` keeps one, `y` starts, `Esc` back to the graph. Same meaning as §2.3 `R` (opens the rewrite editor, §2.1 UPPERCASE opens a place). Not offered in any other preview (planner, 2026-09-27, scout 05) |
+
+## NOTES (builder, 2026-09-27) — partial, blocked; **compacted once mid-ticket**
+Scout 05 used.
+
+**Done:**
+- graft-git settled with **a new read**: `forecast_merge` already accepted a commit-tree commit as ours
+  (`forecast_merge_accepts_a_commit_tree_result_as_ours` passed first run), but it returns no tree on `Clean`. So
+  `MergeStep` + `merge_tree_step` were added beside it (`a_clean_merge_tree_returns_its_tree`, red then green).
+  `forecast_merge`, `Forecast` unchanged. No graft-git `commit_tree`: graft-ops' `snapshot::scratch_commit` does it.
+- graft-ops: `preview/chain.rs` (chained forecast, used by both `kinds::rebase` and the new `Operation::Rewrite` arm in
+  `preview/rewrite.rs`), `preview/drops.rs` (`suggest_drops`), `published`. `replay_forecast` (per commit) is gone.
+- Evidence the chain matters (the rename fixture in `rewrite_preview.rs`): the old per-commit forecast named `f` at step
+  2; the real rebase stops with `UU g`. Chained names `g`. The created-then-edited fixture: per-commit said `Likely{h}`,
+  chained says `Clean`, git agrees.
+- graft: `update/preview/line_rows.rs` (branches rows, already-in row, stop ladder `forecast_rungs`, `on origin:` row);
+  `ready_box`/`plan_lines` take the op. `fitting_line` expresses the cut order: **graft-ui untouched**.
+- Keymap §2.3b `R` row pasted verbatim.
+
+**Deviations:**
+- `suggest_drops` returns `Option<DropSuggestion>` (`Drop(AlreadyIn)` | `NotChecked(why)`), and `PreviewPlan::already_in`
+  is `Option<DropSuggestion>`: past the cap the box must say `not checked`, which `Option<AlreadyIn>` cannot carry.
+- Stop capture has step 3 of 5 with path and subject cut at 80 columns (`may stop at step 3 of 5 (pick <sha7>) · not
+  checked past it`).
+- The one-branch rebase preview: its forecast is now chained, so a one-branch rebase that would stop now reads
+  `may stop at step i of n …` where it read `may conflict: <paths>`. m5 rebase captures are byte-identical (their
+  fixture is clean). Two graft-ops tests changed their expectation from `Likely` to `StopsAt`:
+  `history_ops::forecast_names_the_conflicting_path`, `put_back_forecast::a_rebase_that_may_stop_leaves_the_put_back_not_checked`.
+- New files not named in the plan line: `graft-ops/src/preview/{chain,drops,rewrite}.rs`,
+  `graft/src/update/preview/line_rows.rs`, `graft/tests/it/rebase_stop_forecast.rs` (the capture's test), and
+  `docs/shots/m7/m7-contact-sheet-captions.tsv` (started, one row).
+- `on origin:` assumes the remote is called `origin`; a branch whose upstream is on another remote still says
+  `origin`. Gap.
+
+**Blocked — needs files outside the plan line** (`blocked: needs apply/engine.rs, rewrite.rs, rewrite/dependents.rs,
+operation.rs`):
+- For `r` to move the line and drop matched commits, `RebaseParams` gains `line: BranchLine` and `drops: Vec<Oid>`
+  (my files), but the engine must use them: `graft-ops/src/apply/engine.rs:158` (`SWITCH POINT — ticket 05`, runs `r`
+  on his branch alone), `rewrite.rs` + `rewrite/dependents.rs` (`line_of` is `pub(super)`; the preview needs it
+  `pub(crate)`), `operation.rs:1290` (`tips()` for Rebase must pin every branch of the line).
+- Until then: the rebase preview shows his branch alone (drawing the dependents would claim moves the engine does not
+  make), and `already_in` is never filled (`· dropped` would be false). `line_rows` draws both correctly when the plan
+  carries them (unit tests), and `Operation::Rewrite` previews do draw the line (`a_three_branch_line_moves_three_refs`).
+- **Exact next step:** add `line`/`drops` to `RebaseParams` (+ every literal in the plan line), fill them from
+  `line_of` + `suggest_drops` where `r` builds the op, switch the engine at :158 to `params.line` with `params.drops`
+  rows `Drop`, `tips()` from the line; then `kinds::rebase` draws one `RefMove` per branch and sets `already_in`; then
+  the two missing captures.
+- **Open question for the conductor:** `r` with a fork of dependents — refuse per ADR-0047 §4 (as `R` does) or move his
+  branch alone? Today `r_with_two_branches_on_top_is_not_refused_after_y` pins "not refused".
 
 ## Rules / Gates
 As rewrite-engine. Worktree only; `CARGO_TARGET_DIR` in the worktree; the four gates workspace-wide.

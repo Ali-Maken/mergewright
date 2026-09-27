@@ -9,7 +9,8 @@ use graft_core::ref_name::RefName;
 use graft_git::repo::HeadState;
 use graft_ops::operation::{FastForward, MergeParams, RebaseParams};
 use graft_ops::preview::{
-    ConflictForecast, GhostCommit, HeadMove, RefMove, UndoNote, WorktreeEffect, ghost_oid,
+    AlreadyIn, ConflictForecast, DropSuggestion, GhostCommit, HeadMove, RefMove, UndoNote,
+    WorktreeEffect, ghost_oid,
 };
 
 use super::*;
@@ -122,6 +123,9 @@ pub(in crate::update) fn a_plan() -> PreviewPlan {
         }],
         set_aside: None,
         put_back: None,
+        already_in: None,
+        published: Vec::new(),
+        messages: Vec::new(),
     }
 }
 
@@ -140,6 +144,9 @@ fn an_empty_plan() -> PreviewPlan {
         against: Vec::new(),
         set_aside: None,
         put_back: None,
+        already_in: None,
+        published: Vec::new(),
+        messages: Vec::new(),
     }
 }
 
@@ -1282,4 +1289,125 @@ fn the_conflict_line_folds_the_put_back() {
     );
     // Nothing set aside: the operation's line as before.
     assert_eq!(conflict_line(&clash(), None), "may conflict: base.txt");
+}
+
+// ── the chain rows (m7/05) ──────────────────────────────────────────────
+
+/// `a_plan` with `topic` built on `feature`: two ghosts, two branches.
+fn a_line_plan() -> PreviewPlan {
+    let mut plan = a_plan();
+    plan.ghosts.push(GhostCommit {
+        oid: ghost_oid("topic work", 1),
+        parents: vec![Target::Ghost(0)],
+        subject: "topic work".to_owned(),
+        author: who(),
+        replays: Some(oid(4)),
+    });
+    plan.ref_moves.push(RefMove {
+        name: "refs/heads/topic".to_owned(),
+        from: Some(oid(4)),
+        to: Some(Target::Ghost(1)),
+    });
+    plan
+}
+
+fn drawn(plan: &PreviewPlan, op: &Operation, columns: u16) -> Vec<String> {
+    plan_lines(plan, Some(op), 0, columns)
+        .iter()
+        .map(|line| line.as_str().to_owned())
+        .collect()
+}
+
+#[test]
+fn the_box_draws_one_row_per_branch() {
+    let lines = drawn(&a_line_plan(), &a_rebase(), 187);
+    let feature = lines
+        .iter()
+        .position(|line| line.starts_with("branches: ") && line.contains("feature"))
+        .unwrap_or_else(|| panic!("a branches: row for feature in {lines:#?}"));
+    let topic = &lines[feature + 1];
+    assert!(
+        topic.starts_with("          ") && topic.contains("topic"),
+        "{lines:#?}"
+    );
+    assert!(topic.ends_with("built on yours \u{b7} follows"), "{topic}");
+}
+
+#[test]
+fn a_one_branch_rebase_draws_as_before() {
+    let lines = drawn(&a_plan(), &a_rebase(), 187);
+    assert!(
+        lines.iter().all(|line| !line.starts_with("branches: ")),
+        "{lines:#?}"
+    );
+}
+
+#[test]
+fn already_in_row_says_dropped() {
+    let mut plan = a_line_plan();
+    plan.already_in = Some(DropSuggestion::Drop(AlreadyIn {
+        branch: RefName::new("refs/heads/feature").expect("a ref name"),
+        commits: vec![oid(3), oid(5), oid(6)],
+        matches: oid(9),
+        subject: "Add OAuth (#42)".to_owned(),
+    }));
+    let lines = drawn(&plan, &a_rebase(), 187);
+    let row = lines
+        .iter()
+        .find(|line| line.starts_with("already in main: "))
+        .unwrap_or_else(|| panic!("an already-in row in {lines:#?}"));
+    assert_eq!(
+        row,
+        &format!(
+            "already in main: feature's 3 commits match {} \"Add OAuth (#42)\" \u{b7} dropped",
+            short(oid(9))
+        )
+    );
+    // `R` to keep them is bound by a later ticket; a row naming an unbound
+    // key would be false.
+    assert!(!row.contains(" R "), "{row}");
+}
+
+fn a_stop(plan: &mut PreviewPlan) {
+    plan.conflicts = ConflictForecast::StopsAt {
+        step: 2,
+        of: 4,
+        commit: oid(4),
+        paths: vec![std::path::PathBuf::from("src/auth/session.rs")],
+    };
+}
+
+#[test]
+fn a_stop_forecast_names_the_step() {
+    let mut plan = a_line_plan();
+    a_stop(&mut plan);
+    let lines = drawn(&plan, &a_rebase(), 187);
+    let want = format!(
+        "may stop at step 2 of 4 (pick {} topic work): src/auth/session.rs \u{b7} not checked past it",
+        short(oid(4))
+    );
+    assert!(lines.contains(&want), "{want} in {lines:#?}");
+}
+
+/// At 80 columns the stop row loses its paths first; the step and the
+/// branch names are never cut.
+#[test]
+fn cut_order_never_cuts_a_branch_name() {
+    let mut plan = a_line_plan();
+    a_stop(&mut plan);
+    plan.published = vec![RefName::new("refs/heads/feature").expect("a ref name")];
+    let lines = drawn(&plan, &a_rebase(), 80);
+    let stop = lines
+        .iter()
+        .find(|line| line.starts_with("may stop at step 2 of 4"))
+        .unwrap_or_else(|| panic!("a stop row in {lines:#?}"));
+    assert!(!stop.contains("session.rs"), "paths cut first: {stop}");
+    assert!(lines.iter().any(|line| line.contains("feature")));
+    assert!(lines.iter().any(|line| line.contains("topic")));
+    assert!(
+        lines
+            .iter()
+            .any(|line| line == "on origin: feature \u{b7} P will need force after"),
+        "{lines:#?}"
+    );
 }

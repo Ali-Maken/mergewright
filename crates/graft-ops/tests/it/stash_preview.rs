@@ -550,6 +550,8 @@ fn the_stash_forecast_agrees_with_git() {
                     seen.push("likely");
                 }
                 ConflictForecast::NotChecked(why) => panic!("{row}: not checked ({why})"),
+                // Only a rebase or rewrite's chained replay stops at a step.
+                stop @ ConflictForecast::StopsAt { .. } => panic!("{row}: {stop:?}"),
             },
             Err(PreviewError::Refused(Refusal::StashInTheWay { .. })) => {
                 assert!(!did.ok, "{row}: refused as in the way, git exited 0");

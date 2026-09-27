@@ -175,7 +175,7 @@ fn a_rebase_that_may_stop_leaves_the_put_back_not_checked() {
     repo.write("other.txt", b"my edit\n");
     let op = rebase_onto(&repo, "refs/heads/main");
     let plan = plan_of(&repo, &op);
-    assert!(matches!(plan.conflicts, ConflictForecast::Likely { .. }));
+    assert!(matches!(plan.conflicts, ConflictForecast::StopsAt { .. }));
     assert_eq!(
         plan.put_back,
         Some(ConflictForecast::NotChecked(
