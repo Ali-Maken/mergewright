@@ -15,7 +15,8 @@ use graft_core::oid::Oid;
 use graft_git::state::InProgress;
 use graft_ops::apply::{Applied, ApplyError, Resume, recover_interrupted, resume};
 use graft_ops::facts::read_facts;
-use graft_ops::operation::{FactsScope, Operation, RebaseParams, Source, Tip};
+use graft_ops::operation::{FactsScope, Operation, RebaseParams, Refusal, Source, Tip};
+use graft_ops::preview::plan_as_run;
 use graft_ops::rewrite::{RewriteRequest, TodoAction, plan};
 
 use crate::support::{
@@ -64,19 +65,19 @@ const LINE: [&str; 3] = [
     "refs/heads/feature-c",
 ];
 
-/// `r` of `feature-a` onto `main`.
+/// `r` of `feature-a` onto `main`, as a key builds it: his branch alone,
+/// until its preview completes it ([`r_onto_main`]).
 fn rebase_onto_main(repo: &TempRepo) -> Operation {
-    Operation::Rebase(RebaseParams {
-        branch: tip(repo, "feature-a"),
-        onto: Source::Branch("refs/heads/main".to_owned()),
-        onto_tip: id(repo, "main"),
-    })
+    Operation::Rebase(RebaseParams::new(
+        tip(repo, "feature-a"),
+        Source::Branch("refs/heads/main".to_owned()),
+        id(repo, "main"),
+    ))
 }
 
 /// The whole line of `feature-a` replayed onto `main`: `R`'s plan (which
-/// carries the line) with its base moved to `main`'s tip — what `r` will run
-/// once ticket 05 draws the line in its preview. Until then `r` moves his
-/// branch alone (review 02, Major 1), so the line's run half is proven here.
+/// carries the line) with its base moved to `main`'s tip. `r`'s own line
+/// runs are proven with [`r_onto_main`].
 fn line_onto_main(repo: &TempRepo) -> Operation {
     let handle = repo.open();
     let facts =
@@ -103,16 +104,6 @@ fn line_onto_main(repo: &TempRepo) -> Operation {
     Operation::Rewrite(params)
 }
 
-/// A fork above his branch: `feature-b` and `experiment` both on
-/// `feature-a`.
-fn forked() -> TempRepo {
-    let repo = line();
-    repo.git(&["switch", "-q", "-c", "experiment", "feature-a"]);
-    commit(&repo, "e1");
-    repo.git(&["switch", "-q", "feature-a"]);
-    repo
-}
-
 fn head(repo: &TempRepo) -> String {
     repo.try_git(&["symbolic-ref", "-q", "HEAD"])
         .unwrap_or_else(|_| "detached".to_owned())
@@ -122,44 +113,202 @@ fn parent(repo: &TempRepo, rev: &str) -> Oid {
     id(repo, &format!("{rev}^"))
 }
 
-// ── `r` until ticket 05 ─────────────────────────────────────────────────
+// ── `r`: the line its preview drew (05b) ────────────────────────────────
+
+/// `op` as its preview completed it (`plan_as_run`): what `y` runs.
+fn completed(repo: &TempRepo, op: Operation) -> Operation {
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+    plan_as_run(&handle, &git_version(), op, &facts, &Never)
+        .unwrap_or_else(|why| panic!("it plans: {why:?}"))
+        .0
+}
+
+/// `r` of `feature-a` onto `main`, as its preview completed it.
+fn r_onto_main(repo: &TempRepo) -> Operation {
+    completed(repo, rebase_onto_main(repo))
+}
 
 #[test]
-fn r_moves_his_branch_alone_until_the_preview_draws_the_line() {
-    // Review 02, Major 1: the preview `y` confirms names his branch only,
-    // so `r` moves only his branch (until ticket 05 draws the line).
+fn r_moves_every_branch_of_its_line() {
     let repo = line();
-    let b = id(&repo, "feature-b");
-    let c = id(&repo, "feature-c");
+    let was: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
 
-    let entry = run(&repo, &rebase_onto_main(&repo), NOW);
+    let entry = run(&repo, &r_onto_main(&repo), NOW);
 
-    assert_eq!(id(&repo, "feature-b"), b, "feature-b, built on his, stays");
-    assert_eq!(id(&repo, "feature-c"), c, "feature-c stays");
+    for (name, was) in LINE.iter().zip(&was) {
+        assert_ne!(id(&repo, name), *was, "{name} moved");
+    }
     assert_eq!(parent(&repo, "feature-a~1"), id(&repo, "main"));
-    assert_eq!(head(&repo), "refs/heads/feature-a");
-    assert!(
-        !entry.refs_before.contains_key("refs/heads/feature-b")
-            && !entry.refs_before.contains_key("refs/heads/feature-c"),
-        "no branch the preview did not name is recorded: {:?}",
-        entry.refs_before
-    );
+    assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(entry.kind, OperationKind::Rebase);
     assert_eq!(entry.status, EntryStatus::Committed);
 }
 
 #[test]
-fn r_with_two_branches_on_top_is_not_refused_after_y() {
-    let repo = forked();
-    let b = id(&repo, "feature-b");
-    let e = id(&repo, "experiment");
+fn r_records_and_undoes_every_branch_of_its_line() {
+    let repo = line();
+    let before = state_of(&repo);
+    let was: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
 
-    let applied = try_run(&repo, &rebase_onto_main(&repo), NOW)
-        .unwrap_or_else(|why| panic!("r is not refused: {}", why.explain()));
+    let entry = run(&repo, &r_onto_main(&repo), NOW);
+    for (name, was) in LINE.iter().zip(&was) {
+        assert_eq!(
+            entry.refs_before.get(*name),
+            Some(&Some(*was)),
+            "{name} recorded before: {:?}",
+            entry.refs_before
+        );
+        assert_eq!(
+            entry.refs_after.get(*name),
+            Some(&Some(id(&repo, name))),
+            "{name} recorded after"
+        );
+    }
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{why:?}"));
+    assert_eq!(state_of(&repo), before, "u puts each branch back");
+}
+
+#[test]
+fn an_r_line_that_stops_continues_home() {
+    let repo = conflicted_line();
+    let was: Vec<Oid> = LINE.iter().map(|name| id(&repo, name)).collect();
+    let (entry, paths) = stopped(&repo, &r_onto_main(&repo));
+    assert_eq!(paths, [PathBuf::from("shared.txt")]);
+    assert_eq!(entry.status, EntryStatus::Pending);
+    assert_eq!(head(&repo), "detached", "stopped inside the line");
+    resolve(&repo);
+
+    let applied =
+        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
 
     assert_eq!(applied.entry.status, EntryStatus::Committed);
-    assert_eq!(parent(&repo, "feature-a~1"), id(&repo, "main"));
-    assert_eq!(id(&repo, "feature-b"), b);
-    assert_eq!(id(&repo, "experiment"), e);
+    for (name, was) in LINE.iter().zip(&was) {
+        assert_ne!(id(&repo, name), *was, "{name} moved");
+    }
+    assert_eq!(parent(&repo, "feature-b"), id(&repo, "feature-a"));
+    assert_eq!(parent(&repo, "feature-c"), id(&repo, "feature-b"));
+    assert_eq!(head(&repo), "refs/heads/feature-a", "HEAD came home");
+    assert_eq!(plans_left(&repo), Vec::<PathBuf>::new());
+}
+
+#[test]
+fn a_branch_built_on_his_after_the_preview_is_refused_moved() {
+    let repo = line();
+    let op = r_onto_main(&repo);
+    // After the preview: feature-d built on feature-c.
+    repo.git(&["switch", "-q", "-c", "feature-d", "feature-c"]);
+    commit(&repo, "d1");
+    repo.git(&["switch", "-q", "feature-a"]);
+    let before = state_of(&repo);
+
+    match try_run(&repo, &op, NOW) {
+        Err(ApplyError::Refused(Refusal::Moved { name })) => {
+            assert_eq!(name, "refs/heads/feature-d");
+        }
+        Err(other) => panic!("expected Moved, got {}", other.explain()),
+        Ok(applied) => panic!("it ran: {:?}", applied.entry.status),
+    }
+    assert_eq!(state_of(&repo), before, "no ref moved");
+}
+
+/// `feature-a`'s three commits squash-merged into `main` as one commit,
+/// then `main` moves on; `feature-b` built on it.
+fn squash_merged() -> TempRepo {
+    let repo = TempRepo::init();
+    commit(&repo, "m1");
+    repo.git(&["switch", "-q", "-c", "feature-a"]);
+    commit(&repo, "a1");
+    commit(&repo, "a2");
+    commit(&repo, "a3");
+    repo.git(&["switch", "-q", "-c", "feature-b"]);
+    commit(&repo, "b1");
+    repo.git(&["switch", "-q", "main"]);
+    commit(&repo, "m2");
+    repo.git(&["merge", "-q", "--squash", "feature-a"]);
+    repo.git(&["commit", "-q", "-m", "Add OAuth (#42)"]);
+    commit(&repo, "m3");
+    repo.git(&["switch", "-q", "feature-a"]);
+    repo
+}
+
+#[test]
+fn a_drop_not_among_the_rows_is_refused_moved() {
+    let repo = squash_merged();
+    let mut op = r_onto_main(&repo);
+    let Operation::Rebase(params) = &mut op else {
+        panic!("a rebase");
+    };
+    assert_eq!(params.drops.len(), 3, "the preview filled the drops");
+    params.drops.push(id(&repo, "main"));
+    let before = state_of(&repo);
+
+    match try_run(&repo, &op, NOW) {
+        Err(ApplyError::Refused(Refusal::Moved { name })) => {
+            assert_eq!(name, "refs/heads/feature-a");
+        }
+        Err(other) => panic!("expected Moved, got {}", other.explain()),
+        Ok(applied) => panic!("it ran: {:?}", applied.entry.status),
+    }
+    assert_eq!(state_of(&repo), before, "no ref moved");
+}
+
+#[test]
+fn r_drops_the_squash_merged_commits() {
+    // feature-b's commit and main's last both change `shared.txt`, so git
+    // stops on b1 with the rows it ran in `rebase-merge/done`.
+    let repo = squash_merged();
+    repo.git(&["switch", "-q", "feature-b"]);
+    repo.write("shared.txt", b"b\n");
+    repo.commit_all("b2");
+    repo.git(&["switch", "-q", "main"]);
+    repo.write("shared.txt", b"m\n");
+    repo.commit_all("m4");
+    repo.git(&["switch", "-q", "feature-a"]);
+    let dropped: Vec<Oid> = ["feature-a~2", "feature-a~1", "feature-a"]
+        .iter()
+        .map(|rev| id(&repo, rev))
+        .collect();
+
+    stopped(&repo, &r_onto_main(&repo));
+    let done = std::fs::read_to_string(repo.path().join(".git/rebase-merge/done"))
+        .expect("git's done file reads");
+    let ran: Vec<(&str, &str)> = done
+        .lines()
+        .filter_map(|line| {
+            let mut words = line.split_whitespace();
+            Some((words.next()?, words.next()?))
+        })
+        .collect();
+    for commit in &dropped {
+        let hex = commit.to_string();
+        assert!(
+            ran.iter()
+                .any(|(word, id)| *word == "drop" && hex.starts_with(id)),
+            "{hex} dropped: {done}"
+        );
+    }
+
+    repo.write("shared.txt", b"m\nb\n");
+    repo.git(&["add", "shared.txt"]);
+    let applied =
+        resume_with(&repo, Resume::Continue).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert_eq!(
+        id(&repo, "feature-a"),
+        id(&repo, "main"),
+        "all of it in main"
+    );
+    assert_eq!(
+        repo.git(&["log", "--format=%s", "main..feature-b"]),
+        "b2\nb1",
+        "the rest land on it"
+    );
+    assert_eq!(head(&repo), "refs/heads/feature-a");
 }
 
 // ── Record and undo ─────────────────────────────────────────────────────
@@ -415,7 +564,7 @@ fn a_relaunch_that_closes_a_rewrite_removes_its_plan() {
 fn the_plan_dir_is_removed_when_the_entry_closes() {
     // Done.
     let repo = line();
-    run(&repo, &rebase_onto_main(&repo), NOW);
+    run(&repo, &r_onto_main(&repo), NOW);
     assert_eq!(plans_left(&repo), Vec::<PathBuf>::new(), "done");
 
     // Failed: a pre-rebase hook refuses before git moves anything.
@@ -431,7 +580,7 @@ fn the_plan_dir_is_removed_when_the_entry_closes() {
         hooks.to_str().expect("a utf-8 path"),
     ]);
     let before = state_of(&repo);
-    let failed = try_run(&repo, &rebase_onto_main(&repo), NOW);
+    let failed = try_run(&repo, &r_onto_main(&repo), NOW);
     assert!(
         matches!(failed, Err(ApplyError::Git { .. })),
         "the hook refused: {:?}",

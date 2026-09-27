@@ -1,0 +1,40 @@
+ graft /code/api  7 commits
+  ●      b1                                                                                              GF 2d   f41bc43
+  │      after rebase
+  │ ○    [feature-b] b1                                                                                  GF —    —
+◆─│─╯ ▏  [main] [◆ feature-a] Add OAuth (#42)                                                            GF 2d   51f3dc8
+│ ●      a3                                                                                              GF 2d   1dc69fb
+│ ●      a2                                                                                              GF 2d   5c80d6b
+│ ●      a1                                                                                              GF 2d   53e9958
+● │      m2                                                                                              GF 2d   808546f
+◇─╯      m1                                                                                              GF 2d   256d42c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase feature-a onto main ─────────────────────────────────────────────────────────────────────────────────╮
+│ 1 commit replayed                                                                                                    │
+│ branches: feature-a 1dc69fb → 51f3dc8                                                                                │
+│           feature-b f41bc43 → 1 new commit · built on yours · follows                                                │
+│ already in main: feature-a's 3 commits match 51f3dc8 "Add OAuth (#42)" · dropped                                     │
+│ working tree: 4 files updated                                                                                        │
+│ no conflicts expected                                                                                                │
+│ undo: u takes this back                                                                                              │
+│ git rebase -i --no-update-refs --no-autostash --empty=drop main feature-b                                            │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  r rebase  ←→ choose  ⏎ act  esc cancel ───────────────────────────────────────────────────────────────────╯
+

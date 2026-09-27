@@ -3,6 +3,7 @@
 
 pub mod blame;
 pub mod pr_contents;
+pub mod rebase_line;
 
 use std::path::Path;
 

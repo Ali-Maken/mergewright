@@ -3595,14 +3595,14 @@ fn scrolled_preview_with_cursor(
             &mut state,
             &mut commands,
             PreviewSubject::Operation {
-                op: Box::new(Operation::Rebase(RebaseParams {
-                    branch: Tip {
+                op: Box::new(Operation::Rebase(RebaseParams::new(
+                    Tip {
                         name: "refs/heads/feature".to_owned(),
                         oid: oid(id_at(cursor_row)),
                     },
-                    onto: Source::Branch("main".to_owned()),
-                    onto_tip: anchor,
-                })),
+                    Source::Branch("main".to_owned()),
+                    anchor,
+                ))),
                 opened_by: "r",
             },
             false,
@@ -3620,6 +3620,7 @@ fn scrolled_preview_with_cursor(
         Ok(std::sync::Arc::new(Planned {
             plan,
             anchors: Vec::new(),
+            runs: None,
         })),
     );
     (state, top, height)

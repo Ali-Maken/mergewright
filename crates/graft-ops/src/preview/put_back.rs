@@ -4,8 +4,10 @@
 //! Three steps, mirroring what `apply` will do at step 6:
 //! 1. `git stash create` of the tree now → `S'` (on a copy of the index);
 //! 2. `landed`, the commit `HEAD` ends on: a checkout's target, or for a
-//!    rebase one `merge-tree HEAD <upstream>` made a commit — standing for
-//!    the replayed branch, which is never built (m5 hard choice 5);
+//!    rebase the chained forecast's result after his last row (drops
+//!    skipped, 05b); where the chain did not reach it, one
+//!    `merge-tree HEAD <upstream>` made a commit stands in — for the
+//!    replayed branch, which is never built (m5 hard choice 5);
 //! 3. `git merge-tree --merge-base=HEAD <landed> <S'>`: the three-way merge
 //!    `stash apply` does, whose base is `S'^1`, which is `HEAD`.
 //!
@@ -42,6 +44,12 @@ const MAY_STOP: &str = "the rebase may stop first";
 
 /// Forecast step 6 of `op`, whose own forecast is `replay`.
 ///
+/// `rebase_landed` is a rebase's landed commit from its own chained
+/// forecast (`kinds::rebase`): his rows replayed one by one, the dropped
+/// ones skipped (05b). When it is there it is `landed`, exactly; the one
+/// `merge-tree HEAD <upstream>` of step 2 stands in only when the chain
+/// did not reach it.
+///
 /// # Errors
 /// [`PreviewError::Stopped`] only. Every other failure is a
 /// [`ConflictForecast::NotChecked`] naming it.
@@ -51,6 +59,7 @@ pub(super) fn forecast(
     op: &Operation,
     facts: &RepoFacts,
     replay: &ConflictForecast,
+    rebase_landed: Option<Oid>,
     stop: &dyn Stop,
 ) -> Result<ConflictForecast, PreviewError> {
     if *git < MERGE_BASE_MIN {
@@ -71,7 +80,10 @@ pub(super) fn forecast(
             if *replay != ConflictForecast::Clean {
                 return Ok(not_checked(MAY_STOP));
             }
-            (params.branch.oid, Landing::Replayed(params.onto_tip))
+            match rebase_landed {
+                Some(landed) => (params.branch.oid, Landing::At(landed)),
+                None => (params.branch.oid, Landing::Replayed(params.onto_tip)),
+            }
         }
         // A branch put back while checked out: a `reset --hard` to `to`.
         Operation::Recover(RecoverParams {

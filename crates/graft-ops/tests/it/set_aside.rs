@@ -61,11 +61,11 @@ fn head_tip(repo: &TempRepo) -> Tip {
 
 /// Rebase the current branch onto `onto`.
 fn rebase_onto(repo: &TempRepo, onto: &str) -> Operation {
-    Operation::Rebase(RebaseParams {
-        branch: head_tip(repo),
-        onto: Source::Branch(onto.to_owned()),
-        onto_tip: id(repo, onto),
-    })
+    Operation::Rebase(RebaseParams::new(
+        head_tip(repo),
+        Source::Branch(onto.to_owned()),
+        id(repo, onto),
+    ))
 }
 
 /// Check out `to` from the current branch.

@@ -108,11 +108,11 @@ pub fn graft_merge_stops(repo: &TempRepo) {
 /// Graft's rebase of `feature` onto `main`, which stops on both files.
 pub fn graft_rebase_stops(repo: &TempRepo) {
     repo.git(&["switch", "-q", "feature"]);
-    let op = Operation::Rebase(RebaseParams {
-        branch: head_tip(repo),
-        onto: Source::Branch("main".to_owned()),
-        onto_tip: id(repo, "main"),
-    });
+    let op = Operation::Rebase(RebaseParams::new(
+        head_tip(repo),
+        Source::Branch("main".to_owned()),
+        id(repo, "main"),
+    ));
     let stopped = try_run(repo, &op, NOW);
     assert!(
         matches!(stopped, Err(ApplyError::Conflicted { .. })),

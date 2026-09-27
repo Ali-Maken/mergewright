@@ -267,13 +267,13 @@ fn drop_verbs(
     verbs.push((
         verb(
             &format!("Rebase {} onto {onto_text}", source.short),
-            Operation::Rebase(RebaseParams {
-                branch: source_tip.clone(),
-                onto: onto_branch.map_or(Source::Commit(oid), |(name, _)| {
+            Operation::Rebase(RebaseParams::new(
+                source_tip.clone(),
+                onto_branch.map_or(Source::Commit(oid), |(name, _)| {
                     Source::Branch(name.clone())
                 }),
-                onto_tip: oid,
-            }),
+                oid,
+            )),
         ),
         needs_source(),
     ));

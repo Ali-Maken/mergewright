@@ -398,21 +398,13 @@ pub fn plan(
     if stop.should_stop() {
         return Err(PreviewError::Stopped);
     }
-    // The same gate `apply` runs before it writes: a picture of a write
-    // that would be refused is not a preview (m6-conflicts/67).
-    op.check(facts).map_err(|refused| match (op, refused) {
-        // A stash put-back refused over changed files says which of them
-        // git itself would refuse over, in the stash preview's words
-        // (m6-conflicts/86). Refused either way; only the words differ.
-        (
-            Operation::StashApply { commit, .. } | Operation::StashPop { commit, .. },
-            Refusal::TouchesChangedFiles { paths },
-        ) => PreviewError::Refused(stash::in_the_way(*commit, facts, paths)),
-        (_, refused) => PreviewError::Refused(refused),
-    })?;
+    checked(op, facts)?;
     // ADR-0049: a file git doesn't keep, where the write puts one of its
     // own, is refused before any forecast — and again by `apply` at `y`.
     refuse_in_the_way(repo, op, facts, stop)?;
+    // A rebase's landed commit, from its own chained forecast: what the
+    // put-back is measured against (05b: drops skipped, the line replayed).
+    let mut landed = None;
     let mut drawn = match op {
         Operation::StashApply { index, commit } | Operation::StashPop { index, commit } => {
             let (worktree, conflicts) = stash::forecast_stash(repo, git, *index, *commit, stop)?;
@@ -423,7 +415,11 @@ pub fn plan(
             }
         }
         Operation::Merge(params) => kinds::merge(repo, git, params, stop)?,
-        Operation::Rebase(params) => kinds::rebase(repo, git, params, stop)?,
+        Operation::Rebase(params) => {
+            let (drawn, his) = kinds::rebase(repo, git, params, stop)?;
+            landed = his;
+            drawn
+        }
         Operation::Rewrite(params) => rewrite::rewrite(repo, git, params, stop)?,
         Operation::CherryPick(params) => kinds::cherry_pick(repo, git, params, stop)?,
         Operation::Revert(params) => kinds::revert(repo, git, params, stop)?,
@@ -453,11 +449,111 @@ pub fn plan(
             op,
             facts,
             &drawn.conflicts,
+            landed,
             stop,
         )?),
         None => None,
     };
     Ok(drawn)
+}
+
+/// The operation as `y` will run it, and its picture: the preview job's one
+/// entry point for an [`Operation`] (05b).
+///
+/// A rebase (`r`) is completed here, once, and never again at `y`:
+/// 1. its line of branches ([`crate::rewrite::line_of`], `R`'s own read):
+///    a fork, a branch of it checked out in another worktree, or git older
+///    than 2.38 with branches following is [`PreviewError::Refused`], in
+///    `R`'s words and order;
+/// 2. [`suggest_drops`] over that line;
+/// 3. `line` written, and `drops` = the suggestion's commits git would
+///    replay (one git already leaves out as "already upstream" has no row
+///    to mark, so it is not written);
+/// 4. [`plan`] over the completed operation, with `already_in` from step 2.
+///
+/// Every other operation comes back unchanged, with [`plan`]'s picture.
+///
+/// The default branch is git's guess (`None`), as `apply::Context::open`
+/// passes today (02b's open seam).
+///
+/// # Errors
+/// As [`plan`]; for a rebase also the line's refusals above.
+pub fn plan_as_run(
+    repo: &RepoHandle,
+    git: &GitVersion,
+    op: Operation,
+    facts: &RepoFacts,
+    stop: &dyn Stop,
+) -> Result<(Operation, PreviewPlan), PreviewError> {
+    if !matches!(op, Operation::Rebase(_)) {
+        let drawn = plan(repo, git, &op, facts, stop)?;
+        return Ok((op, drawn));
+    }
+    if stop.should_stop() {
+        return Err(PreviewError::Stopped);
+    }
+    // `plan`'s own gate first, so a branch switched or moved since the key
+    // says so before the line is read.
+    checked(&op, facts)?;
+    let Operation::Rebase(mut params) = op else {
+        // Matched above: only a rebase reaches here.
+        return Err(PreviewError::Refused(Refusal::NotPreviewable(op.kind())));
+    };
+    let line =
+        crate::rewrite::line_of(repo, git, &params.branch, None, stop).map_err(
+            |why| match why {
+                crate::rewrite::RewriteError::Refused(refusal) => PreviewError::Refused(refusal),
+                crate::rewrite::RewriteError::Facts(error) => PreviewError::Facts(error),
+                crate::rewrite::RewriteError::Stopped => PreviewError::Stopped,
+            },
+        )?;
+    let suggestion = suggest_drops(repo, git, &line, params.onto_tip, stop).map_err(facts_error)?;
+    params.drops = match &suggestion {
+        Some(DropSuggestion::Drop(already_in)) => {
+            let rows = crate::rewrite::rebase_rows(repo, params.onto_tip, params.branch.oid, stop)
+                .map_err(facts_error)?;
+            already_in
+                .commits
+                .iter()
+                .copied()
+                .filter(|commit| rows.iter().any(|row| row.commit == *commit))
+                .collect()
+        }
+        Some(DropSuggestion::NotChecked(_)) | None => Vec::new(),
+    };
+    // The facts `check` holds the completed rebase to: the tips of the line
+    // just read, which is what the picture is drawn against.
+    let mut facts = facts.clone();
+    for tip in line.dependents() {
+        facts.refs.insert(tip.name.clone(), Some(tip.oid));
+    }
+    params.line = line;
+    let op = Operation::Rebase(params);
+    let mut drawn = plan(repo, git, &op, &facts, stop)?;
+    drawn.already_in = suggestion;
+    Ok((op, drawn))
+}
+
+/// The same gate `apply` runs before it writes: a picture of a write that
+/// would be refused is not a preview (m6-conflicts/67).
+fn checked(op: &Operation, facts: &RepoFacts) -> Result<(), PreviewError> {
+    op.check(facts).map_err(|refused| match (op, refused) {
+        // A stash put-back refused over changed files says which of them
+        // git itself would refuse over, in the stash preview's words
+        // (m6-conflicts/86). Refused either way; only the words differ.
+        (
+            Operation::StashApply { commit, .. } | Operation::StashPop { commit, .. },
+            Refusal::TouchesChangedFiles { paths },
+        ) => PreviewError::Refused(stash::in_the_way(*commit, facts, paths)),
+        (_, refused) => PreviewError::Refused(refused),
+    })
+}
+
+fn facts_error(error: FactsError) -> PreviewError {
+    match error {
+        FactsError::Stopped => PreviewError::Stopped,
+        other => PreviewError::Facts(other),
+    }
 }
 
 /// [`crate::in_the_way::blocking`], the read `apply` repeats at `y`, as the

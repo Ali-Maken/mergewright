@@ -164,11 +164,7 @@ pub(super) fn merge_and_rebase_verbs(
     ));
     verbs.push(verb(
         &format!("Rebase {cur} onto {named} (r)"),
-        Operation::Rebase(RebaseParams {
-            branch: current.clone(),
-            onto: source,
-            onto_tip: id,
-        }),
+        Operation::Rebase(RebaseParams::new(current.clone(), source, id)),
     ));
 }
 
@@ -336,11 +332,11 @@ pub(super) fn fix_verbs(
     if refs.head() == Some(id) {
         verbs.push(verb(
             "Fix: rebase instead",
-            Operation::Rebase(RebaseParams {
-                branch: head.clone(),
-                onto: Source::Commit(real_tip),
-                onto_tip: real_tip,
-            }),
+            Operation::Rebase(RebaseParams::new(
+                head.clone(),
+                Source::Commit(real_tip),
+                real_tip,
+            )),
         ));
     }
 }

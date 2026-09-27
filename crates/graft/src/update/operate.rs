@@ -2242,14 +2242,14 @@ mod tests {
     /// the launch. `DirtyTree` names `S` and how many files it would take.
     #[test]
     fn a_refused_history_operation_says_which_key_answers_it() {
-        let rebase = Operation::Rebase(graft_ops::operation::RebaseParams {
-            branch: graft_ops::operation::Tip {
+        let rebase = Operation::Rebase(graft_ops::operation::RebaseParams::new(
+            graft_ops::operation::Tip {
                 name: "refs/heads/feature".to_owned(),
                 oid: graft_core::oid::Oid::from_bytes(&[1; 20]).expect("20 bytes"),
             },
-            onto: graft_ops::operation::Source::Branch("main".to_owned()),
-            onto_tip: graft_core::oid::Oid::from_bytes(&[2; 20]).expect("20 bytes"),
-        });
+            graft_ops::operation::Source::Branch("main".to_owned()),
+            graft_core::oid::Oid::from_bytes(&[2; 20]).expect("20 bytes"),
+        ));
         let cases = [
             (
                 Refusal::Moved {

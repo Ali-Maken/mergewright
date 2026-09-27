@@ -1,8 +1,8 @@
 //! Running a rewrite (ADR-0047): every [`Operation::Rewrite`] and every
 //! [`Operation::Rebase`] is git's `rebase -i` on a todo Graft wrote, with the
-//! branches built on his following on one line — for a rebase (`r`), only
-//! once ticket 05 draws that line in its preview; until then its line is his
-//! branch alone (see [`prepare`]).
+//! branches built on his following on one line — for a rebase (`r`), the
+//! line and the dropped commits its preview found and drew
+//! (`preview::plan_as_run`, 05b).
 //!
 //! [`apply`](super::apply) drives it in three beats, each where the recording
 //! protocol needs it:
@@ -26,12 +26,13 @@ use graft_git::state::{self, InProgress};
 
 use crate::facts::{self, FactsError};
 use crate::operation::{
-    Invocation, Operation, RepoFacts, Tip, rebase_invocation, short_ref, source_arg,
+    Invocation, Operation, RebaseParams, Refusal, RepoFacts, Tip, rebase_invocation, short_ref,
+    source_arg,
 };
 use crate::rewrite::saved::{self, CLEANUP, SavedPlan};
 use crate::rewrite::{
-    BranchLine, GitTodo, TodoAction, TodoLine, git_todo, line_picks, messages_of, rebase_rows,
-    squash_groups,
+    BranchLine, GitTodo, RewriteError, TodoAction, TodoLine, git_todo, line_of, line_picks,
+    messages_of, rebase_rows, squash_groups,
 };
 
 use super::run::PlanRun;
@@ -138,10 +139,13 @@ impl Engine {
 /// `Some` for the two operations the engine runs, with everything read that
 /// running them needs; `None` for every other operation.
 ///
-/// A rebase (`r`) runs a one-branch line until ticket 05 (see the switch
-/// point below); a rewrite runs the line its plan found and refused over.
+/// A rebase (`r`) runs `params.line`, its rows `params.drops` marked
+/// `drop`, once [`line_holds`]; a rewrite runs the line its plan found and
+/// refused over.
 ///
 /// # Errors
+/// [`ApplyError::Refused`] (`Moved`) when the line read now is not the one
+/// drawn, or a drop is not among the rows; the line's own refusals;
 /// [`ApplyError::Facts`] when a read fails; [`ApplyError::Stopped`].
 pub(super) fn prepare(
     ctx: &Context<'_>,
@@ -151,19 +155,23 @@ pub(super) fn prepare(
     let repo = ctx.repo;
     let (head, onto, line, rows, messages, invocation, index_base) = match op {
         Operation::Rebase(params) => {
-            // `r` moves his branch alone: the preview `y` confirms names
-            // only his branch, so running the line would move (or refuse
-            // over) branches it never showed (review 02, Major 1).
-            //
-            // SWITCH POINT — ticket 05: once `RebaseParams` carries the line
-            // and the preview draws a `branches:` row for each, take the
-            // line from the params here (found by `rewrite::line_of`, which
-            // `R`/`a` already use). Everything below already runs a line.
-            let line = BranchLine {
-                branches: vec![params.branch.clone()],
-            };
-            let rows = rebase_rows(repo, params.onto_tip, params.branch.oid, ctx.stop)
+            // `r` runs the line its preview drew (`preview::plan_as_run`),
+            // never one found afresh: the picture and the act are one act
+            // (hard choice 3). A line that changed since is refused.
+            line_holds(ctx, params)?;
+            let mut rows = rebase_rows(repo, params.onto_tip, params.branch.oid, ctx.stop)
                 .map_err(facts_error)?;
+            for dropped in &params.drops {
+                let Some(row) = rows.iter_mut().find(|row| row.commit == *dropped) else {
+                    // A drop with no row: the branch is not what the preview
+                    // measured.
+                    return Err(ApplyError::Refused(Refusal::Moved {
+                        name: params.branch.name.clone(),
+                    }));
+                };
+                row.action = TodoAction::Drop;
+            }
+            let line = params.line.clone();
             let top = top_of(&line).map(|top| short_ref(&top.name).to_owned());
             let invocation = rebase_invocation(source_arg(&params.onto), top.as_deref(), ctx.git);
             (
@@ -208,6 +216,37 @@ pub(super) fn prepare(
         invocation,
         line,
     }))
+}
+
+/// The line of branches built on his, read again at `y`, is the one the
+/// preview drew: the same names, in the same order. A branch built on his
+/// since is refused `Moved` naming the first branch that differs, never
+/// left behind; a fork, a worktree or an old git since is refused in `R`'s
+/// words. The tips themselves are `check`'s (`Operation::tips`).
+///
+/// # Errors
+/// [`ApplyError::Refused`]; [`ApplyError::Facts`] when a read fails;
+/// [`ApplyError::Stopped`].
+fn line_holds(ctx: &Context<'_>, params: &RebaseParams) -> Result<(), ApplyError> {
+    let now =
+        line_of(ctx.repo, &ctx.git, &params.branch, None, ctx.stop).map_err(|why| match why {
+            RewriteError::Refused(refusal) => ApplyError::Refused(refusal),
+            RewriteError::Facts(error) => facts_error(error),
+            RewriteError::Stopped => ApplyError::Stopped,
+        })?;
+    let drawn = &params.line.branches;
+    let differs = (0..drawn.len().max(now.branches.len())).find_map(|at| {
+        match (drawn.get(at), now.branches.get(at)) {
+            (Some(was), Some(is)) if was.name == is.name => None,
+            (_, Some(is)) => Some(is.name.clone()),
+            (Some(was), None) => Some(was.name.clone()),
+            (None, None) => None,
+        }
+    });
+    match differs {
+        Some(name) => Err(ApplyError::Refused(Refusal::Moved { name })),
+        None => Ok(()),
+    }
 }
 
 /// The top of the line, when branches follow his.

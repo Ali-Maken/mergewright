@@ -181,6 +181,7 @@ fn planned_with(
         Ok(Arc::new(super::super::preview::Planned {
             plan,
             anchors: Vec::new(),
+            runs: None,
         })),
     );
 }

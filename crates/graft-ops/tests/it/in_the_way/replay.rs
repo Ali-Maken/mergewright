@@ -26,11 +26,11 @@ fn tip_of(repo: &TempRepo, branch: &str) -> Tip {
 
 /// `r` of the checked-out `feature` onto `main`.
 fn rebase_onto_main(repo: &TempRepo) -> Operation {
-    Operation::Rebase(RebaseParams {
-        branch: tip_of(repo, "feature"),
-        onto: Source::Branch("refs/heads/main".to_owned()),
-        onto_tip: id(repo, "main"),
-    })
+    Operation::Rebase(RebaseParams::new(
+        tip_of(repo, "feature"),
+        Source::Branch("refs/heads/main".to_owned()),
+        id(repo, "main"),
+    ))
 }
 
 /// `main` has `a.txt`; `feature` (checked out) adds `f.txt` from there, and

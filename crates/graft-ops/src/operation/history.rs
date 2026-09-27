@@ -36,6 +36,8 @@ use graft_core::ref_name::RefName;
 use graft_git::run::GitArg;
 use graft_git::version::GitVersion;
 
+use crate::rewrite::BranchLine;
+
 use super::{Invocation, Refusal, RepoFacts, stash};
 
 /// A ref as the preview saw it: the name and the commit it pointed at.
@@ -81,7 +83,8 @@ pub struct MergeParams {
     pub ff: FastForward,
 }
 
-/// `git rebase`.
+/// `git rebase` (`r`), run by the rewrite engine (ADR-0047 §6): his branch
+/// and every branch built on it, replayed onto `onto`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RebaseParams {
     /// The branch replayed: `HEAD`'s branch as the preview saw it.
@@ -90,6 +93,32 @@ pub struct RebaseParams {
     pub onto: Source,
     /// `onto`'s commit as the preview saw it.
     pub onto_tip: Oid,
+    /// His branch first, then each branch built on it, bottom up: every
+    /// branch `y` moves. Filled once, by [`crate::preview::plan_as_run`];
+    /// [`RebaseParams::new`] gives his branch alone.
+    pub line: BranchLine,
+    /// His commits the todo marks `drop`: a squash-merged bottom branch
+    /// whose change `onto` already has ([`crate::preview::suggest_drops`]).
+    /// Filled with `line`; empty from [`RebaseParams::new`].
+    pub drops: Vec<Oid>,
+}
+
+impl RebaseParams {
+    /// `branch` replayed onto `onto`, its line his branch alone and nothing
+    /// dropped: what every key builds. The preview job completes it
+    /// ([`crate::preview::plan_as_run`]) before `y` can run it.
+    #[must_use]
+    pub fn new(branch: Tip, onto: Source, onto_tip: Oid) -> Self {
+        Self {
+            line: BranchLine {
+                branches: vec![branch.clone()],
+            },
+            branch,
+            onto,
+            onto_tip,
+            drops: Vec::new(),
+        }
+    }
 }
 
 /// `git cherry-pick`. One commit in M5; the `Vec` is M7's.
@@ -342,10 +371,30 @@ pub(super) fn refs_of_merge(params: &MergeParams) -> Vec<String> {
     refs
 }
 
+/// His branch, `onto`'s, then each branch that follows his: the tips
+/// `check` holds the rebase to.
 pub(super) fn refs_of_rebase(params: &RebaseParams) -> Vec<String> {
     let mut refs = vec![params.branch.name.clone()];
     refs.extend(source_ref(&params.onto));
+    refs.extend(followers(params).map(|tip| tip.name.clone()));
     refs
+}
+
+/// Every tip a rebase is pinned to: his branch, then each branch of the
+/// line that follows it (05b).
+pub(super) fn tips_of_rebase(params: &RebaseParams) -> Vec<Tip> {
+    let mut tips = vec![params.branch.clone()];
+    tips.extend(followers(params).cloned());
+    tips
+}
+
+/// The branches of the line built on his: every one but his own.
+fn followers(params: &RebaseParams) -> impl Iterator<Item = &Tip> {
+    params
+        .line
+        .branches
+        .iter()
+        .filter(move |tip| tip.name != params.branch.name)
 }
 
 pub(super) fn refs_of_reset(params: &ResetParams) -> Vec<String> {
@@ -464,7 +513,9 @@ pub(super) fn check_merge(params: &MergeParams, facts: &RepoFacts) -> Result<(),
 /// rebase and put back after it (ADR-0045 §4, `apply::set_aside`).
 pub(super) fn check_rebase(params: &RebaseParams, facts: &RepoFacts) -> Result<(), Refusal> {
     head_is(&params.branch, facts)?;
-    source_holds(&params.onto, params.onto_tip, facts)
+    source_holds(&params.onto, params.onto_tip, facts)?;
+    // Every branch that follows his is still where the preview drew it.
+    followers(params).try_for_each(|tip| tip_holds(tip, facts))
 }
 
 pub(super) fn check_pick(params: &PickParams, facts: &RepoFacts) -> Result<(), Refusal> {
@@ -603,11 +654,15 @@ pub(super) fn plan_merge(params: &MergeParams) -> Vec<Invocation> {
 }
 
 /// `r` runs through the rewrite engine (ADR-0047 §6): git's `rebase -i` on a
-/// todo of `pick`s Graft wrote, which `apply::engine` hands git. The line of
-/// branches built on his is found when it runs, so the top of the line — the
-/// branch git is started on when there is one — is `apply`'s to add.
+/// todo of `pick`s Graft wrote, which `apply::engine` hands git. With
+/// branches following his, git is started on the top of the line, by short
+/// name (02b's `<top>` rule); his branch alone is `… <onto>`, as before.
 pub(super) fn plan_rebase(params: &RebaseParams, git: GitVersion) -> Vec<Invocation> {
-    vec![rebase_invocation(source_arg(&params.onto), None, git)]
+    let top = match params.line.branches.as_slice() {
+        [_, .., top] => Some(short_ref(&top.name)),
+        _ => None,
+    };
+    vec![rebase_invocation(source_arg(&params.onto), top, git)]
 }
 
 /// Every rebase and rewrite Graft runs: `git rebase -i [--no-update-refs

@@ -52,33 +52,41 @@ pub(super) fn run_preview(
         .map_err(|error| PreviewFailure::Failed(error.to_string()))?
         .version();
 
-    let plan = match &request.subject {
+    let (runs, plan) = match &request.subject {
         PreviewSubject::Operation { op, .. } => {
             let scope = op.facts_scope();
             let facts = graft_ops::facts::read_facts(&handle, git, cancel, &scope)
                 .map_err(|why| PreviewFailure::Failed(why.to_string()))?;
-            graft_ops::preview::plan(&handle, &git, op, &facts, cancel).map_err(
-                |why| match why {
-                    // The write would refuse this too: routed to the status
-                    // line, not the `preview failed:` box (m6-conflicts/67).
-                    graft_ops::preview::PreviewError::Refused(refusal) => {
-                        PreviewFailure::Refused(refusal)
-                    }
-                    other => PreviewFailure::Failed(other.explain()),
-                },
-            )?
+            // The op as `y` will run it (a rebase's line and drops, found
+            // here once, 05b), and its picture.
+            let (runs, plan) =
+                graft_ops::preview::plan_as_run(&handle, &git, op.as_ref().clone(), &facts, cancel)
+                    .map_err(|why| match why {
+                        // The write would refuse this too: routed to the status
+                        // line, not the `preview failed:` box (m6-conflicts/67).
+                        graft_ops::preview::PreviewError::Refused(refusal) => {
+                            PreviewFailure::Refused(refusal)
+                        }
+                        other => PreviewFailure::Failed(other.explain()),
+                    })?;
+            (Some(Box::new(runs)), plan)
         }
         PreviewSubject::RevertTo(entry) => {
             let entries = super::undo::journal_entries(repos, clock, cancel)
                 .map_err(PreviewFailure::Failed)?;
-            graft_ops::preview::plan_revert_to(&entries, entry)
-                .map_err(|why| PreviewFailure::Failed(why.explain()))?
+            let plan = graft_ops::preview::plan_revert_to(&entries, entry)
+                .map_err(|why| PreviewFailure::Failed(why.explain()))?;
+            (None, plan)
         }
     };
 
     let anchors =
         read_anchors(&handle, &plan, &request.resident, cancel).map_err(PreviewFailure::Failed)?;
-    Ok(Arc::new(Planned { plan, anchors }))
+    Ok(Arc::new(Planned {
+        plan,
+        anchors,
+        runs,
+    }))
 }
 
 /// Every real commit the picture points at, in the order it was found.
