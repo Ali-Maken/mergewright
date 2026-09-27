@@ -1,0 +1,30 @@
+# m7-power-tools/14a stash-only cost — 2026-09-27T10:19:08Z
+# HEAD db7c7e0a +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, 10 warm runs per case; p95 is nearest-rank (with 10 runs, the slowest)
+# synthetic synthetic-100000-refs50000-no-commit-graph (100000 commits), 50652 refs, 10 stash-shaped entries on lost bases
+entries=1 run 1: 179.4 ms, 1 commits
+entries=1 run 2: 166.3 ms, 1 commits
+entries=1 run 3: 178.1 ms, 1 commits
+entries=1 run 4: 168.2 ms, 1 commits
+entries=1 run 5: 159.4 ms, 1 commits
+entries=1 run 6: 176.0 ms, 1 commits
+entries=1 run 7: 164.5 ms, 1 commits
+entries=1 run 8: 163.4 ms, 1 commits
+entries=1 run 9: 219.3 ms, 1 commits
+entries=1 run 10: 198.0 ms, 1 commits
+stash-only-cost: entries=1 p95=219.3 per-entry=219.3 refs=50652 · bound 190 ms per entry · missed
+entries=10 run 1: 175.9 ms, 10 commits
+entries=10 run 2: 194.5 ms, 10 commits
+entries=10 run 3: 171.9 ms, 10 commits
+entries=10 run 4: 166.2 ms, 10 commits
+entries=10 run 5: 154.7 ms, 10 commits
+entries=10 run 6: 164.3 ms, 10 commits
+entries=10 run 7: 167.0 ms, 10 commits
+entries=10 run 8: 174.4 ms, 10 commits
+entries=10 run 9: 177.9 ms, 10 commits
+entries=10 run 10: 167.5 ms, 10 commits
+stash-only-cost: entries=10 p95=194.5 per-entry=19.5 refs=50652 · bound 190 ms per entry · held
+# earlier method (one rev-list per entry), same fixture, replaced by the one --stdin walk above:
+#   stash-only-cost: entries=1 p95=356.2 per-entry=356.2 refs=50652 · missed
+#   stash-only-cost: entries=10 p95=2580.9 per-entry=258.1 refs=50652 · missed

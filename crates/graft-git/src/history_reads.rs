@@ -20,8 +20,10 @@ use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, RunError, Stop};
 use crate::version::GitVersion;
 
+mod compare;
 mod unreached;
 
+pub use compare::{CompareSpan, StashOnly, compare_span, count_between, only_in_stash};
 pub use unreached::{LostRun, Unreached, unreached};
 
 /// The oldest git that can run `merge-tree --write-tree` at all.
