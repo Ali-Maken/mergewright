@@ -2618,10 +2618,14 @@ unverified (the heatmap's oldest bucket on the boundary rows).
 submodule at `libs/parser` in a scratch superproject.
 
 `docs/shots/m7/submodule-row-120x40.txt` (`a_moved_and_dirty_submodule_shows_both`):
-pointer moved and a file changed inside. Right: under `UNSTAGED`, a row
-starting `▣ libs/parser  submodule ·` — at 120 columns the file list is 30
-wide, so the facts are cut; at 187 the row reads `▣ libs/parser  submodule ·
-pointer moved <old7> → <new7> · changed inside`. No `M` letter, no counts.
+pointer moved and a file changed inside. Right: under `UNSTAGED`, the row
+`▣ libs/parser` ending `→ ±` right-aligned at the file list's last column
+(where a file's `+3 −2` sits; m7-power-tools/30i); the diff pane's second
+line, beside it, reads `changed inside`. No `M` letter, no counts, no `…`.
+
+`docs/shots/m7/submodule-row-187x40.txt` (same test, 187 columns): the row
+reads `▣ libs/parser  submodule · pointer moved <old7> → <new7> · changed
+inside` in full. Colour unverified.
 
 `docs/shots/m7/submodule-diff-120x40.txt` (`the_diff_pane_lists_the_commits_a_move_pulled_in`):
 the pointer moved sideways. Right: the diff pane's first line `libs/parser ·

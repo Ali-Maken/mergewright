@@ -2,8 +2,10 @@
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
+use unicode_width::UnicodeWidthStr;
 
 use crate::detail::{DetailFocus, DetailView, FileRow, FileRowKind, FileStatusView, SubmoduleView};
+use crate::fit::fit;
 use crate::paint::{color, foreground};
 use crate::theme::Theme;
 use crate::theme::Token;
@@ -28,17 +30,83 @@ pub(crate) fn status_letter(status: &FileStatusView) -> char {
     }
 }
 
-/// A submodule's row: `▣ <path>  submodule · <facts>` (m7-power-tools/13).
-/// When the words do not fit `width`, the pointer's ids go first, so every
-/// fact still shows; past that the line is cut like any other.
-fn submodule_row_text(indent: &str, name: &str, view: &SubmoduleView, width: usize) -> String {
-    let row = |ids: bool| format!("{indent}\u{25a3} {name}  {}", view.row_words(ids));
-    let full = row(true);
-    if full.chars().count() <= width {
-        full
-    } else {
-        row(false)
+/// What a submodule row draws after its path: words two spaces after it,
+/// or marks right-aligned where a file's `+3 −2` sits (m7-power-tools/30i).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum SubmoduleTail {
+    Words(String),
+    Marks(String),
+}
+
+/// A submodule row's ladder, fullest first; the row draws the first rung
+/// that fits whole. The last rung is always `Marks`: one per true fact —
+/// `→` pointer moved (`new` / `removed` in its slot), `±` changed inside,
+/// `?` untracked inside — or `not set up`. Every mark's words are in the
+/// diff pane's first two lines (`body::submodule_inside_words`).
+pub(crate) fn submodule_tails(view: &SubmoduleView) -> Vec<SubmoduleTail> {
+    if view.not_set_up {
+        return vec![
+            SubmoduleTail::Words(view.row_words(true)),
+            SubmoduleTail::Marks("not set up".to_owned()),
+        ];
     }
+    let full = view.row_words(true);
+    let bare = view.row_words(false);
+    let mut tails = vec![SubmoduleTail::Words(full.clone())];
+    if bare != full {
+        tails.push(SubmoduleTail::Words(bare.clone()));
+    }
+    // The `▣` already says submodule; the diff pane keeps the word.
+    if let Some(facts) = bare.strip_prefix("submodule \u{b7} ") {
+        tails.push(SubmoduleTail::Words(facts.to_owned()));
+    }
+    let mut marks = Vec::new();
+    match (&view.from, &view.to) {
+        (Some(from), Some(to)) if from != to => marks.push("\u{2192}"),
+        (None, Some(_)) => marks.push("new"),
+        (Some(_), None) => marks.push("removed"),
+        _ => {}
+    }
+    if view.changed_inside {
+        marks.push("\u{b1}");
+    }
+    if view.untracked_inside {
+        marks.push("?");
+    }
+    tails.push(SubmoduleTail::Marks(marks.join(" ")));
+    tails
+}
+
+/// A submodule's row: the first rung of [`submodule_tails`] that fits
+/// `width`. On the marks rung only, a path too long for the row is cut by
+/// [`fit`] — the cutter `draw_line` uses on every other row — so the marks
+/// are never the part cut.
+fn submodule_row_text(indent: &str, name: &str, view: &SubmoduleView, width: usize) -> String {
+    let lead = format!("{indent}\u{25a3} ");
+    for tail in submodule_tails(view) {
+        match tail {
+            SubmoduleTail::Words(words) => {
+                let row = format!("{lead}{name}  {words}");
+                if row.width() <= width {
+                    return row;
+                }
+            }
+            SubmoduleTail::Marks(marks) => {
+                // Two cells between path and marks, as between path and words.
+                let room = width.saturating_sub(lead.width() + 2 + marks.width());
+                let name = if name.width() > room {
+                    fit(name, room)
+                } else {
+                    name.to_owned()
+                };
+                let left = format!("{lead}{name}");
+                let gap = width.saturating_sub(left.width() + marks.width()).max(2);
+                return format!("{left}{}{marks}", " ".repeat(gap));
+            }
+        }
+    }
+    // `submodule_tails` always ends with a `Marks` rung, which returns.
+    unreachable!("the ladder ends with marks")
 }
 
 fn file_row_text(row: &FileRow, width: usize) -> String {

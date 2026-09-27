@@ -1,6 +1,6 @@
 # 30i: submodule facts at 120 columns — marks in the row, words in the diff pane
 
-Status: draft
+Status: done
 Build with: Sonnet. Every decision is made below; one crate (graft-ui) plus one test file; the sweep test and the
 captures judge it.
 Needs: none (uses `SubmoduleView`'s existing fields and `row_words`; **does not edit `detail.rs`**).
@@ -68,25 +68,25 @@ new `docs/shots/m7/submodule-row-187x40.txt`; `crates/graft-ui/MAP.md` (the Subm
 "M7 submodule rows".
 
 ## Acceptance (each tick names its test)
-- [ ] Red first, `a_submodule_row_keeps_every_fact_at_120_columns` (graft-ui `detail_pane/tests.rs`): Below at 120x40,
+- [x] Red first, `a_submodule_row_keeps_every_fact_at_120_columns` (graft-ui `detail_pane/tests.rs`): Below at 120x40,
       moved + changed + untracked `libs/parser` → the row reads `▣ libs/parser` … `→ ± ?`, right-aligned at the list's
       last drawn column. Fails on today's code (draws `submodule ·…`); say so in NOTES with the failing line.
-- [ ] Red first, `the_diff_pane_says_what_changed_inside_a_submodule`: line 2 `changed inside · untracked inside`;
+- [x] Red first, `the_diff_pane_says_what_changed_inside_a_submodule`: line 2 `changed inside · untracked inside`;
       moved-only → no line 2 and no blank line (commit rows start on line 2).
-- [ ] Sweep, `a_submodule_row_degrades_by_its_ladder_only_80_to_187`: every width 80..=187, four views (all three
+- [x] Sweep, `a_submodule_row_degrades_by_its_ladder_only_80_to_187`: every width 80..=187, four views (all three
       facts `libs/parser`; changed-only; not set up; moved + untracked `vendor/third_party/zlib-ng`): the drawn tail
       equals the **first** rung of `submodule_tails` that fits; no fact word or mark is cut; the path is cut only on
       the last rung. Also asserts line 2 whole at every width.
-- [ ] Existing held unchanged (not re-aimed): `a_submodule_row_says_its_facts_at_187_columns`,
+- [x] Existing held unchanged (not re-aimed): `a_submodule_row_says_its_facts_at_187_columns`,
       `a_submodule_row_drops_its_ids_before_a_fact_at_80_columns`, `each_submodule_fact_is_its_own_word`, and every
       plain file-row test in `detail_pane/tests.rs` (name them).
-- [ ] Real repo (`submodule_truth.rs`): `a_moved_and_dirty_submodule_shows_both` asserts at 120x40 the row's `→ ±` and
+- [x] Real repo (`submodule_truth.rs`): `a_moved_and_dirty_submodule_shows_both` asserts at 120x40 the row's `→ ±` and
       line 2 `changed inside` (replacing `:236`); `untracked_inside_is_its_own_fact` asserts `?` alone at 120x40.
-- [ ] Captures via `check_shot`, ≤200 KB, colour unverified: `submodule-row-120x40.txt`, `submodule-diff-120x40.txt`
+- [x] Captures via `check_shot`, ≤200 KB, colour unverified: `submodule-row-120x40.txt`, `submodule-diff-120x40.txt`
       (re-taken), `submodule-row-187x40.txt` (new; full-words rung). TESTING.md "M7 submodule rows" says concretely:
       at 120 the row ends `→ ±` right-aligned, the diff pane's second line reads `changed inside`; at 187 the row reads
       `submodule · pointer moved <a> → <b> · changed inside`.
-- [ ] graft-ui MAP.md Submodules bullet. Gates workspace-wide (fmt, clippy `-D warnings`, nextest, `test --doc`).
+- [x] graft-ui MAP.md Submodules bullet. Gates workspace-wide (fmt, clippy `-D warnings`, nextest, `test --doc`).
 - [ ] Gap row `M7/13b-120` → conductor closes, citing the sweep test.
 
 ## Touches (check each; report how)
@@ -104,3 +104,32 @@ new `docs/shots/m7/submodule-row-187x40.txt`; `crates/graft-ui/MAP.md` (the Subm
 ~25k.
 
 ## NOTES (builder)
+- **Ticks → tests.** 120 row: `a_submodule_row_keeps_every_fact_at_120_columns`. Line 2:
+  `the_diff_pane_says_what_changed_inside_a_submodule`. Sweep: `a_submodule_row_degrades_by_its_ladder_only_80_to_187`
+  (also asserts ≥3 distinct rungs drawn across the sweep). Held unchanged: `a_submodule_row_says_its_facts_at_187_columns`,
+  `a_submodule_row_drops_its_ids_before_a_fact_at_80_columns`, `each_submodule_fact_is_its_own_word`; plain rows
+  `files::tests::{an_unmerged_row_shows_how_as_words_not_a_letter_and_counts, the_conflicts_heading_word_and_row_order,
+  an_untracked_file_reads_new_not_bin, a_binary_file_still_reads_bin}` and all `detail_pane::tests`. Real repo:
+  `a_moved_and_dirty_submodule_shows_both` (`→ ±`, `changed inside`, writes the 120 and new 187 captures),
+  `untracked_inside_is_its_own_fact` (`?` alone). Captures 0.9 / 1.1 / 1.6 KB. Colour unverified.
+- **Red first: not observed as a separate run.** Tests and code landed in one pass (new tests call new functions, so
+  they can't compile on the old code). The old behaviour is on record: the committed 120 capture drew
+  `▣ libs/parser  submodule ·…`, which the old `submodule_truth.rs:236` asserted.
+- **Deviation (cause-level): line 2's facts come from the cursor row.** The ticket assumed the diff's `SubmoduleView`
+  carries the inside facts; it doesn't — `crates/graft/src/jobs/detail.rs:298-304` (`submodule_diff`) sets only
+  from/to/not_set_up/log. The first real-repo run drew no line 2. Fix in my files: `body.rs` `cursor_submodule` copies
+  `changed_inside`/`untracked_inside` from the files row under the cursor (git status — the same facts the marks
+  show). Alternative: fill them in the diff job (`graft/src/jobs/detail.rs`, outside my set). Conductor's call.
+- **Path cutter:** plain rows have no name cutter; the whole line is cut by `fit` (`crates/graft-ui/src/fit.rs:29`)
+  inside `draw_line` (`line_render.rs:352`). The marks rung calls that same `fit` on the name only.
+- **Tier:** `▣` has no ASCII fallback (literal in `files.rs` `status_letter`/row), so marks `→ ± ?` have none either.
+  Gap row for conductor: "M7/30i-ascii (unverified): submodule row `▣` and marks `→ ±` have no ASCII-tier fallback."
+- Styles: marks share the row's one style (as the words did); line 2 `Token::Text`. Unverified.
+- Scout: none — ticket names files and the MAP bullet; files.rs/body.rs read directly (<300 lines each).
+- **Touches:** plain rows — full nextest 4374/4374 runs `check_shot` over the 542 `docs/shots` txt files; only the three
+  listed shots changed (`git status docs/shots`). One line per row — the sweep finds one screen line per row at every
+  width; `FileListView`/`detail_areas`/mouse code not in the diff. Diff pane shift — `the_diff_pane_caps_a_submodules_commits_at_50`,
+  `the_diff_pane_on_a_submodule_lists_its_commits` pass. `row_words` callers (grep): `files.rs` ladder, tests,
+  `submodule_truth.rs:165` — semantics unchanged. `graft-ui/src/detail.rs` not edited (`git diff --stat`).
+  Keymap/journal/undo: none. Design note R6 amended.
+- Cause vs symptom: cause — the row has a narrow-width form instead of being cut by the line cutter.

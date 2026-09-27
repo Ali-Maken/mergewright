@@ -756,6 +756,12 @@ Ask at the end, one line: in which of the three did two different things still l
   - The diff pane on it: `libs/parser · submodule · 3b2a1f0 → 9c8d7e6`, then one row per commit from
     `--submodule=log`: `+ 9c8d7e6 Fix parser on empty input` (pulled in) or `− 3b2a1f0 …` (rewound).
   - Distinctions: `▣` + the word `submodule` vs a file; `+`/`−` per commit.
+  - **Narrow widths (amended, m7-power-tools/30i).** Where the words don't fit (the 30-column list at 100–159),
+    the row steps down a ladder, fullest first: all words with ids → without ids → without `submodule · ` →
+    **marks** right-aligned where a file's `+3 −2` sits: `→` pointer moved (`new`/`removed` in its slot), `±`
+    changed inside, `?` untracked inside (`not set up` stays words). Only the marks rung cuts a long path; a fact
+    is never cut. The diff pane gains line 2, only when true: `changed inside · untracked inside`, so each mark's
+    words sit one glance right. One row stays one line.
 
 ### R7. Daily rows — G-daily (no new screen)
 
