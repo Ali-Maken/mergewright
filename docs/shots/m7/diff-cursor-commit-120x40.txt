@@ -21,7 +21,7 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- c commit  P push  <> resize  p pull  f fetch  b branch  t tag  . more  u  /  q  F2  F3  x  +  j/k  space  1  F  H  y
+ c commit  P push  <> resize  p pull  f fetch  b branch  t tag  u undo  . more  /  q  F2  F3  x  +  j/k  1  F  H  y
 COMMIT 6944d27 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 4m · parents 9d5dd9b · diff vs firs…
 edit notes
 M notes.txt             +2 −1

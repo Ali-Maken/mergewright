@@ -617,7 +617,7 @@ fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
 
     let bar = hint_bar(&diff, 80, 24).expect("the Detail tab draws a bar");
     assert_eq!(
-        bar, " c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1",
+        bar, " c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H",
         "the bar after the filter, quoted so the change is legible in review"
     );
     assert!(
