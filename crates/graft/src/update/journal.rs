@@ -116,6 +116,13 @@ pub(super) fn journal_event(
                 state.journal.unreadable.push(line.clone());
             }
         }
+        // Merged too: only the read that closed an entry knows where its
+        // edits were (`AppState::interrupted_edits`).
+        for edits in &read.interrupted_edits {
+            if !state.interrupted_edits.iter().any(|(id, _)| *id == edits.0) {
+                state.interrupted_edits.push(edits.clone());
+            }
+        }
     }
     state.journal.entries = match result {
         Ok(read) => Loading::Ready(std::sync::Arc::clone(read)),
@@ -366,6 +373,7 @@ mod tests {
             ],
             unreadable: Vec::new(),
             live: Vec::new(),
+            interrupted_edits: Vec::new(),
         }));
         state
     }
@@ -541,6 +549,7 @@ mod tests {
             ],
             unreadable: Vec::new(),
             live: Vec::new(),
+            interrupted_edits: Vec::new(),
         }));
         state.journal.shown = true;
         // Newest first: [C, undo(B), B, A].
@@ -581,6 +590,7 @@ mod tests {
             ],
             unreadable: Vec::new(),
             live: Vec::new(),
+            interrupted_edits: Vec::new(),
         }));
         state.journal.shown = true;
         state.journal.selected = 0;

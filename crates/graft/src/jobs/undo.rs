@@ -192,6 +192,11 @@ pub struct JournalRead {
     /// at read time, against git's own state. So nothing is migrated, and a
     /// journal written by an older Graft reads correctly.
     pub live: Vec<EntryId>,
+    /// Where each interrupted set-aside's edits were when **this** read
+    /// closed it (`graft_ops::apply::Recovered::set_aside`, 30c). Only the
+    /// read that closed the entry knows; every later read finds nothing, so
+    /// the app keeps what the first one said (`AppState::interrupted_edits`).
+    pub interrupted_edits: Vec<(EntryId, graft_ops::EditsAt)>,
 }
 
 /// What a failed restore leaves stale on screen.
@@ -581,6 +586,7 @@ pub(super) fn read_journal(
                 // about git's state *now*, which every read re-establishes,
                 // so it cannot go stale the way "what this read closed" did.
                 live: recovered.live.clone(),
+                interrupted_edits: recovered.set_aside.clone(),
                 entries: entries.to_vec(),
             }))
         },

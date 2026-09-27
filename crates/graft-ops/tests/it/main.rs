@@ -33,6 +33,8 @@ mod rewrite_oracle;
 mod rewrite_plan;
 mod rewrite_run;
 mod set_aside;
+#[cfg(unix)]
+mod set_aside_kill;
 mod shell_begun_merge;
 mod stash_clash;
 mod stash_pop_redo;

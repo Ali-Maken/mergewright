@@ -2492,13 +2492,7 @@ fn a_rebase_preview_on_a_dirty_tree_says_what_is_set_aside() {
     assert_eq!(clean.set_aside, None, "a clean tree sets nothing aside");
     dirty(&repo);
     let plan = preview_of(&repo, &rebase_op(&repo, "refs/heads/main"));
-    assert_eq!(
-        plan.set_aside,
-        Some(SetAside {
-            files: 1,
-            staged: 0
-        })
-    );
+    assert_eq!(plan.set_aside, Some(SetAside { files: 1 }));
 }
 
 /// The same for a checkout (flipped by m6-conflicts/73).
@@ -2511,13 +2505,7 @@ fn a_checkout_preview_on_a_dirty_tree_says_what_is_set_aside() {
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
     });
     let plan = preview_of(&repo, &op);
-    assert_eq!(
-        plan.set_aside,
-        Some(SetAside {
-            files: 1,
-            staged: 0
-        })
-    );
+    assert_eq!(plan.set_aside, Some(SetAside { files: 1 }));
 }
 
 /// Control: `check` does not refuse a merge on a dirty tree (git refuses

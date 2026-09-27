@@ -278,6 +278,7 @@ mod tests {
             entries,
             unreadable: Vec::new(),
             live: Vec::new(),
+            interrupted_edits: Vec::new(),
         }));
         state
     }

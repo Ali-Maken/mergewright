@@ -13,7 +13,7 @@ use crate::undo::RepoStateNow;
 
 use super::record::anchors;
 use super::resume::live_entry;
-use super::{ApplyError, Context};
+use super::{ApplyError, Context, EditsAt, set_aside};
 
 /// Close every entry left `Pending` by a previous run as `interrupted`,
 /// recording the repository as it stands now (DESIGN.md §6.2 step 3).
@@ -40,24 +40,30 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
             .map(|entry| entry.id.clone()),
         None => None,
     };
-    let open: Vec<(EntryId, Vec<String>, Option<String>)> = ctx
+    let open: Vec<Open> = ctx
         .journal
         .unresolved()
         .into_iter()
         .filter(|entry| Some(&entry.id) != live_id.as_ref())
-        .map(|entry| {
-            (
-                entry.id.clone(),
-                entry.refs_before.keys().cloned().collect(),
-                entry.backup_ref.clone(),
-            )
+        .map(|entry| Open {
+            id: entry.id.clone(),
+            refs: entry.refs_before.keys().cloned().collect(),
+            backup_ref: entry.backup_ref.clone(),
+            set_aside: set_aside::stash_of(entry),
         })
         .collect();
     let mut recovered = Recovered {
         live: live_id.into_iter().collect(),
+        set_aside: edits_left(ctx, &open),
         ..Recovered::default()
     };
-    for (id, refs, backup_ref) in open {
+    for Open {
+        id,
+        refs,
+        backup_ref,
+        ..
+    } in open
+    {
         let read = facts::read_state_now(ctx.repo, ctx.scratch(), &refs, ctx.stop);
         // The repository being unreadable must not leave the entry `Pending`
         // for ever, which blocks `u` outright. `None` is the honest record
@@ -113,6 +119,70 @@ pub struct Recovered {
     /// Closed entries whose rewrite plan (`graft/rewrite/<id>/` under the
     /// git dir) could not be removed, and why (rewrite-engine-b).
     pub plans_left: Vec<(EntryId, std::io::Error)>,
+    /// Interrupted set-aside entries whose stash is still listed, and where
+    /// their edits were when recovery read the repository (ADR-0045 §5;
+    /// 30c). Only this launch knows it: the entries are closed by then, so
+    /// a later launch finds nothing here.
+    pub set_aside: Vec<(EntryId, EditsAt)>,
+}
+
+/// An entry recovery closes, as it reads it from the journal.
+struct Open {
+    id: EntryId,
+    refs: Vec<String>,
+    backup_ref: Option<String>,
+    /// `S`, when the entry set edits aside.
+    set_aside: Option<Oid>,
+}
+
+/// Where each interrupted set-aside's edits are, read once for all of them:
+/// the stash list, and the status judged as the put-back judges it (every
+/// tracked file equal to `HEAD`, or not).
+///
+/// A read that fails leaves the list empty, on purpose: the relaunch notice
+/// then keeps its older words (` · edits in stash@{n}`, from the refs it
+/// reads), which are true in both states. Refusing the launch over a read
+/// that only sharpens a notice would cost more than it tells.
+fn edits_left(ctx: &Context<'_>, open: &[Open]) -> Vec<(EntryId, EditsAt)> {
+    if open.iter().all(|entry| entry.set_aside.is_none()) {
+        return Vec::new();
+    }
+    let Ok(stashes) = graft_git::stash::commits(ctx.repo, &()) else {
+        return Vec::new();
+    };
+    let Ok(status) = graft_git::status::read(ctx.repo, &()) else {
+        return Vec::new();
+    };
+    let changed = set_aside::tracked_changed(&status);
+    open.iter()
+        .filter_map(|entry| {
+            let at = left_at(entry.set_aside?, &stashes, changed)?;
+            Some((entry.id.clone(), at))
+        })
+        .collect()
+}
+
+/// Where an interrupted set-aside's edits are. `tracked_changed`: the
+/// put-back's own judge, false when every tracked file equals `HEAD`.
+/// `None` when `stash` is not listed: nothing to say.
+///
+/// Listed with the tree at `HEAD`: the put-back never landed (the reset ran,
+/// nothing came back), so the stash is the only place they are. Listed with
+/// the tree changed: the put-back landed and the drop never ran, so the
+/// stash is a copy.
+pub(crate) fn left_at(
+    stash: Oid,
+    stashes: &[(Oid, usize)],
+    tracked_changed: bool,
+) -> Option<EditsAt> {
+    let n = stashes
+        .iter()
+        .find_map(|(commit, at)| (*commit == stash).then_some(*at))?;
+    Some(if tracked_changed {
+        EditsAt::Back { copy: Some(n) }
+    } else {
+        EditsAt::Stash { n }
+    })
 }
 
 /// Hang a recovered entry's after-trees off its backup ref before they are
@@ -156,4 +226,34 @@ fn seal_recovered(
     )?;
     snapshot::move_backup_ref(ctx.repo, name, commit, &())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    fn oid(byte: u8) -> Oid {
+        Oid::from_hex(&format!("{byte:02x}").repeat(20)).unwrap()
+    }
+
+    /// K3 (30c): where the edits are is read from the tree, not guessed
+    /// from the list.
+    #[test]
+    fn left_at_reads_the_tree_not_the_list() {
+        let listed = [(oid(1), 0), (oid(2), 1)];
+        assert_eq!(left_at(oid(3), &listed, false), None, "not listed");
+        assert_eq!(left_at(oid(3), &listed, true), None, "not listed");
+        assert_eq!(
+            left_at(oid(2), &listed, false),
+            Some(EditsAt::Stash { n: 1 }),
+            "listed, tree at HEAD"
+        );
+        assert_eq!(
+            left_at(oid(2), &listed, true),
+            Some(EditsAt::Back { copy: Some(1) }),
+            "listed, tree changed"
+        );
+    }
 }

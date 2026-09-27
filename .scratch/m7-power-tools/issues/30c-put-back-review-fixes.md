@@ -1,6 +1,6 @@
 # 30c put-back-review-fixes — review m7-30-06d: Major 1, Minor 1, Question 1, Minors 2, 3, 6, 7
 
-Status: draft
+Status: partial — all built and green; two checks open (K4 at 80 columns, the Minor 3 doc check), see NOTES
 Build with: Opus. This is the set-aside protocol (ADR-0045): undo must hold at every kill point, and one of the
 fixes is a git rule (which staged paths a plain `stash apply` loses) that has to be probed before it is built on.
 Needs: none. 30, 30b and 06d are on main.
@@ -198,27 +198,45 @@ worktree v3).
   (`index_after` recorded after the plain apply). Expected green first. Red → stop and report (the redo protocol).
 
 ## Acceptance (each tick names its test inline; a box with no test is not ticked)
-- [ ] Scout report `.scratch/m7-power-tools/scouts/30c.md` answers (a)–(d).
-- [ ] Major 1: A1, A2, A4 red then green, red runs quoted; A3 and T5's Log assert green. `M7/30-am` closable.
-- [ ] Minor 1: B1, B2, B3 red then green; the B3 line quoted in NOTES.
-- [ ] Question 1: K1, K2, K2b, K3 red then green on `Recovered.set_aside`; K4 red then green; captures written and
-      re-checked green by K4. Colour unverified (rule 5).
-- [ ] Minor 2: `SetAside.staged` gone. Name the deleted T11 test and each construction site changed (the scout's
-      list). `operation::history::tests::sets_aside_table` and
-      `update::preview::tests::the_set_aside_row_sits_under_the_working_tree_line` green. No behaviour change, so
-      not red first.
-- [ ] Minor 3: `put_back.rs:15`'s link resolved. Check:
-      `RUSTDOCFLAGS="-D rustdoc::broken-intra-doc-links" cargo doc --no-deps -p graft-ops` passes; quote the line.
-      This is a check, not a gate. ADR-0045:227 names `apply/set_aside/rebuild.rs`. `objects.rs:1-3` and graft-ops
-      MAP :280 say absorb uses `resolve` only.
-- [ ] Minor 6: M6 green.
-- [ ] Minor 7: the arm folded. `update::banner::tests::resume_words::a_resume_whose_put_back_lost_staging_is_done_and_says_so`
+- [ ] Scout report `.scratch/m7-power-tools/scouts/30c.md` answers (a)–(d). **Not ticked:** it answers (a) only
+      (PATH, `graft-git/src/run.rs:374`) and could not find the drop (it is `returned.rs` `drop_by_id`). (b)–(d) I
+      found by grep while building (NOTES "Construction sites"). No test names a scout; nothing to tick against.
+- [x] Major 1: A1 `put_back_index::put_back_names_a_staged_new_file_edited_on`, A4
+      `put_back::tests::lost_names_an_added_path_only_when_its_content_moved_on` red then green (quoted in NOTES);
+      A2 red on a wrong expectation, rewritten on the measured behaviour as
+      `put_back_index::put_back_leaves_a_staged_new_file_deleted_since_unnamed` (NOTES "A2"); A3
+      `put_back_index::put_back_leaves_an_unchanged_staged_new_file_unnamed` and T5's no-`diff-tree` Log assert in
+      `put_back_index::put_back_falls_back_when_the_index_cannot_go_back` green first. `M7/30-am` closable for `AM`.
+- [x] Minor 1: B1 `answer::tests::a_failed_operation_after_the_fallback_names_the_staging`, B2
+      `answer::tests::a_failed_drop_after_the_fallback_names_the_staging`, B3
+      `put_back_index::a_drop_that_fails_after_the_fallback_names_the_staging` red then green; B3 line in NOTES.
+- [ ] Question 1: K1 `set_aside_kill::killed_between_the_two_applies_loses_nothing`, K2
+      `set_aside_kill::killed_before_the_drop_loses_nothing`, K2b
+      `set_aside_kill::killed_before_the_drop_after_the_fallback_loses_nothing`, K3
+      `recover::tests::left_at_reads_the_tree_not_the_list` red then green; K4
+      `m6_stash_put_back::set_aside::a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back` red then green,
+      captures written and re-checked green. **Not ticked: at 80x24 the footer is cut after `a copy stay…`**, so
+      `stash@{0}` and `J to inspect` are lost (NOTES "80 columns"); K4 asserts the whole clause at 120x40 only.
+      Colour unverified (rule 5).
+- [x] Minor 2: `SetAside.staged` gone; T11 `set_aside_staged_is_zero_for_every_kind` deleted; sites in NOTES.
+      `operation::history::tests::sets_aside_table` and
+      `update::preview::tests::the_set_aside_row_sits_under_the_working_tree_line` green.
+- [ ] Minor 3: `put_back.rs`'s link resolved (now `[from_index_base](super::rebuild::from_index_base)`); ADR-0045:227
+      names `apply/set_aside/rebuild.rs`; `objects.rs:1-4` and graft-ops MAP say absorb uses `resolve` only.
+      **Not ticked: the check does not pass crate-wide.** `put_back.rs` is no longer in its output; 5 other
+      unresolved links, all older than 30c, fail it (NOTES "Minor 3").
+- [x] Minor 6: M6 `put_back_index::undo_after_a_fallback_restores_the_split` (redo added) green first.
+- [x] Minor 7: the arm folded. `update::banner::tests::resume_words::a_resume_whose_put_back_lost_staging_is_done_and_says_so`
       green; clippy clean.
-- [ ] Every set-aside test in both crates green:
-      `cargo nextest run --workspace -E 'test(/set_aside|put_back|stash|absorb|recover|interrupt/)'`, count quoted.
-- [ ] Docs under Touches done, each named.
-- [ ] Gates, workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
-      `cargo nextest run`, `cargo test --doc`, with counts.
+- [x] Every set-aside test in both crates green:
+      `cargo nextest run --workspace -E 'test(/set_aside|put_back|stash|absorb|recover|interrupt/)'`: 408/408.
+- [x] Docs under Touches done: ADR-0045 (:227 path, both dated lines, the absorb item 6 T11 reference), graft-ops
+      MAP (`SetAside`, `StagingNotKept` + the A rule, `Recovered.set_aside`, `left_at`, `EditsAt` derives,
+      `objects.rs`), graft MAP (`interrupted_notice`, `AppState::interrupted_edits`,
+      `JournalRead::interrupted_edits`, `edits_clause`; banner MAP names nothing of the folded arm), TESTING.md
+      (the `AM` row, the `relaunch-after-kill` row).
+- [x] Gates, workspace-wide: `cargo fmt --check` ok; `cargo clippy --all-targets -- -D warnings` ok;
+      `cargo nextest run` 4141/4141 (3 skipped); `cargo test --doc` 3/3.
 
 ## Touches (check each, say how)
 - `staging_lost` callers: `run_put_back` only (grep). The resume path (`close_resume`) goes through it too:
@@ -271,3 +289,76 @@ About 60k: scout read 3k; Major 1 and its tests 12k; Minor 1 and B1–B3 (the sh
 the notice and captures 10k; Minors 2, 3, 6, 7 6k; docs 4k. Over budget → hand off after the graft-ops-only part
 (A, B, K1–K3, Minors 3, 6), leaving K4, the notice, Minor 7 and all of Minor 2 (a field removal can't be split
 across crates without breaking the build).
+
+## NOTES (builder, 2026-09-27)
+**COMPACTED once**, after K1–K3, the notice and its unit test. What remained then: K4 + captures, docs, the
+Minor 3 check, gates, this ticket. All of it done in this session after the compaction.
+
+**Red runs.**
+- A4: left `["a.txt","gone.txt","link"]`, right `[…,"deleted.txt","edited.txt",…]` (old rule dropped every `A`).
+- A1: left `["f.txt"]`, right `["f.txt","n.txt"]`.
+- B1: `Checkout at 1: error: your local changes would be overwritten · u restores the backup` (no staging clause).
+- B2: `Checkout at 1: error: could not drop · your edits are back · a copy stays in stash@{0} · u restores the backup`.
+- B3 red: `checkout other: error: the test shim refuses this drop · your edits are back · a copy stays in stash@{0} · u restores the backup`.
+  **B3 green:** `checkout other: error: the test shim refuses this drop · staging not kept: f.txt · your edits are back · a copy stays in stash@{0} · u restores the backup`.
+  It names `u`; `u` gives the whole state = before and the stash list = before (asserted).
+- K1/K2/K2b: left `[]`, right `[(id, Stash { n: 0 })]` / `[(id, Back { copy: Some(0) })]`. Their loss and undo asserts
+  were green first (undo restores the stash list too): ADR-0045 §6 holds at both kill points.
+- K3: left `None`, right `Some(Stash { n: 1 })`.
+- Notice unit test (`update::undo::tests::set_aside::the_notice_words_where_recovery_found_the_edits`): red
+  `…checkout other · edits in stash@{0} · J to inspect`. The pattern test
+  `update::undo::tests::set_aside::relaunch_after_a_kill_names_the_stash_the_edits_are_in` stays green unchanged.
+- K4: red (new branch disabled) `an operation was interrupted: checkout fix · edits in stash@{0} · J to inspect`.
+- M6, A3, T5's Log assert: green first.
+
+**A2 (finding, measured).** The ticket expected `AD` (staged new, then deleted) to be named. It isn't, and naming it
+would be false: `git stash create` stores the **staged** blob in `S`'s tree for a path deleted from disk, so
+`S^2:n.txt == S:n.txt` and the plain apply re-adds it. Git after: ` M f.txt`, `A  n.txt`, `:n.txt` = v1, `n.txt` on
+disk = v1. Staging kept; the **deletion** is lost, by the stash itself (the `--index` path has the same `S`; not
+probed there: unverified). `u` exact. Test renamed `put_back_leaves_a_staged_new_file_deleted_since_unnamed`.
+ADR-0045's dated line records it. Gap for the conductor: a set-aside brings back a staged-new file he deleted from
+disk (unverified on the `--index` path; `u` restores).
+
+**80 columns (open, needs a decision).** The relaunch notice has no ladder. At 80x24 it is drawn
+`an operation was interrupted: checkout fix · your edits are back · a copy stay…`: `stash@{0}` and `J to inspect`
+are cut (`docs/shots/m7/30c-relaunch-edits-back-80x24.txt`, last row). The old line (77 chars) fit. The notice is one
+string in `crates/graft/src/view/frame/bars.rs:307-308` → `sanitize_line`, cut at the width; the fallback line uses
+rungs (`update/operate.rs` `staging_not_kept_rungs`). A ladder for the notice is a design choice (which part goes
+first), not mine: filed here. K4 asserts `checkout fix · your edits are back` at 80 and the whole clause at 120.
+
+**Minor 3 check.** `RUSTDOCFLAGS="-D rustdoc::broken-intra-doc-links" cargo doc --no-deps -p graft-ops` fails with 5
+errors, none in `put_back.rs`: `apply/error.rs:95` and `:120` (`resume`, 2026-09-23), `apply.rs:80`
+(`inside_live_operation`), `apply.rs:93` (`snapshot::chain_backup`), `rewrite/dependents.rs:66` (`plan`). Not fixed:
+out of this ticket's files.
+
+**Construction sites (Minor 2; scout (d) was missing, found by grep).** `SetAside { staged }` removed at:
+graft-ops `operation.rs` `sets_aside`, `operation/history/tests.rs`, `tests/it/history_ops.rs` (2),
+`tests/it/absorb_staged.rs`, `tests/it/set_aside.rs` (round trip; now asserts `staging_lost == 0`); graft
+`update/preview/tests.rs` (2, the "on purpose" comment gone), `update/preview.rs` comment. `JournalRead` gained
+`interrupted_edits`: every literal given `Vec::new()` (≈17, graft src and tests), `update/tests.rs`
+`every_field_spelled_out` given a value.
+
+**Other decisions.**
+- Recovery's reads for `edits_left` failing → no row, commented: recovery must still close the entry, and the notice
+  falls back to its older, still-true words. Not an error swallowed silently: the choice is written at the site.
+- K4 lives in `m6_stash_put_back/set_aside.rs` as named (the fixture is there); its child is
+  `child_switches_until_the_drop` (`#[ignore]`d). One shim script, shared: graft includes
+  `crates/graft-ops/tests/it/git_shim.sh` by `include_str!`.
+- K4 waits for the radar (`captures::radar_answered`) before drawing: under a full run the `ⓘ` on `fix` was missing
+  once (the radar is its own job). Cause, not a retry.
+- `interrupted_notice` split (`interrupted_words`) to stay under clippy's line limit; no behaviour change.
+
+**Outside the crate set's tickets, but in the crates.** Base `be0a7ca3` did not compile: `graft/src/jobs/detail.rs`
+matched `BlameError` without `TooLarge`/`Changed` (the 18e × 20i merge). I added both to the `Failed` arm so the
+gates could run. Main's `6ed55d2f` changes the same file (`jobs/detail.rs`, per its stat): expect a conflict on
+merge there; take main's (not compared line by line).
+
+**Touches.** `staging_lost` callers: `run_put_back` only (grep); `absorb_stopped_then_continued_elsewhere_says_the_staging_went`
+green, paths unchanged. Command Log: T8 `both_applies_refused_keeps_the_stash` green; `grep -rln diff-tree
+crates/*/tests docs/shots` hits only unrelated reads and `put_back_index.rs`. `ApplyError::Git` words reach graft
+through `explain()`; `grep -rln "a copy stays" crates/graft` exact asserts all green. `EditsAt`/`Recovered`: no
+`Serialize` (grep). Journal browser `J` row and the graph's `interrupted` `RowMark`: no code path touched (they don't
+read `interrupted_edits`; grep). `live_entries` beats the notice:
+`conflict_interim::the_footer_does_not_call_a_live_merge_interrupted` green. `m6_stash_put_back::kill::edits_survive_a_kill_at_every_step`
+now asserts the new clause, green. Keymap: no key. Captures: `grep -rln "edits in stash" docs/shots` → only the two
+new 30c files' headers; `docs/shots/m7/30b-staging-not-kept-*` unchanged (green).

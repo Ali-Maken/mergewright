@@ -203,7 +203,8 @@ fn edit_in_the_list(path: &Path) -> Option<usize> {
 
 /// ADR-0045 §5, §7 at the app: killed before each of steps 1–6 and launched
 /// again, the edit is in the tree or in the stash list, and the relaunch
-/// line names `stash@{n}` whenever it is in the list.
+/// line names `stash@{n}` whenever it is in the list, saying whether the
+/// edits are back or only there (30c).
 #[test]
 fn edits_survive_a_kill_at_every_step() {
     for step in 1..=STEPS.len() {
@@ -228,7 +229,13 @@ fn edits_survive_a_kill_at_every_step() {
         );
         let notice = graft::update::undo::interrupted_notice(&state);
         if let Some(at) = listed {
-            let clause = format!("edits in stash@{{{at}}}");
+            // This launch closed the entry, so recovery read where the edits
+            // are (30c): back with a copy listed, or only in the list.
+            let clause = if in_tree {
+                format!("your edits are back \u{b7} a copy stays in stash@{{{at}}}")
+            } else {
+                format!("your edits are in stash@{{{at}}} \u{b7} S p puts them back")
+            };
             assert!(
                 notice
                     .as_deref()

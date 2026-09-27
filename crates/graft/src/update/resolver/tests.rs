@@ -842,6 +842,7 @@ fn clash_over(
                 entries: vec![entry],
                 unreadable: Vec::new(),
                 live: Vec::new(),
+                interrupted_edits: Vec::new(),
             })),
             ..plain.journal.clone()
         },

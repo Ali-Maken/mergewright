@@ -178,8 +178,9 @@ fn a_stay_stays_staged() {
     );
 }
 
-/// The preview's set-aside line: absorb loses no staging, so none is
-/// counted as coming back unstaged.
+/// The preview's set-aside line: absorb sets aside both staged files. It
+/// once also checked `SetAside::staged` was 0; 30c removed that field
+/// (every put-back keeps the index), so only the count is left to check.
 #[test]
 fn absorb_sets_aside_with_no_staging_lost() {
     let repo = branch();
@@ -193,7 +194,7 @@ fn absorb_sets_aside_with_no_staging_lost() {
         .sets_aside(&facts)
         .expect("two staged files are set aside");
 
-    assert_eq!((aside.files, aside.staged), (2, 0));
+    assert_eq!(aside.files, 2);
 }
 
 fn map_stays(repo: &TempRepo) -> Vec<StaysWhy> {

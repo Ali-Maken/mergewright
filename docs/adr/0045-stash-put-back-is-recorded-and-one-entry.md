@@ -155,6 +155,8 @@ whether the put-back ran. So every `ApplyError` a set-aside ends in, other than 
 The operation's own failure (the error's Display) is the line's reason and comes first; the clause is the part kept
 whole at narrow widths (`fit_status_line`'s keys). `S p` is named only when the edits are not in the tree.
 
+(2026-09-27, 30c) Recovery says where an interrupted set-aside's edits are (Recovered.set_aside); the relaunch notice words it. A later launch keeps "edits in stash@{n}".
+
 ### §3 amended — a set-aside close names what it dropped
 The set-aside close reads as the pop's does: `every file done · set-aside copy dropped ✓ · u brings it back`.
 Ticket 74's `every file done · your edits are back ✓` is withdrawn: after `o branch` in every block his edits are not
@@ -224,7 +226,7 @@ round trips by `rebase_round_trips_an_rm_cached`, `checkout_round_trips_an_rm_ca
 2. **Mechanism, as built.** `index_base` = old `HEAD` + every placed hunk, a commit with no ref. It is pinned by the
    entry (`record.rs`) and saved in `plan.json` (`SavedPlan::index_base`, `#[serde(default)]`: a plan saved before
    06b reads as `None`). At step 6, `S` is rebuilt (objects only): working tree `S^{tree}`, parents `base` and a
-   commit of `S^2^{tree}` on `base` (`apply/set_aside/put_back.rs`, `from_index_base`). Then `stash apply --index` of
+   commit of `S^2^{tree}` on `base` (`apply/set_aside/rebuild.rs`, `from_index_base`). Then `stash apply --index` of
    the rebuilt stash. `S` stays the listed copy and is dropped by id.
 3. **The guarantee.** Index == the old index, byte for byte. The working tree is exact, including an edit made on past
    a placed hunk. It cannot clash, because ours is the merge base.
@@ -237,8 +239,8 @@ round trips by `rebase_round_trips_an_rm_cached`, `checkout_round_trips_an_rm_ca
    apply runs and `StagingNotKept` names the files; `u` restores the split
    (`absorb_stopped_then_continued_elsewhere_says_the_staging_went`). `r` and `R`, which pass `index_base: None`,
    are the same rule (`every_set_aside_kind_keeps_the_index`).
-6. **The preview.** `SetAside.staged` is 0 for every kind (`set_aside_staged_is_zero_for_every_kind`), so it is no
-   longer true only on absorb's went-through path.
+6. **The preview.** `SetAside.staged` was 0 for every kind, so it was no longer true only on absorb's went-through
+   path. (30c removed the field, and its test with it.)
 7. **§7 proof rows, absorb.** An index-only line (`an_index_only_stay_survives_absorb`), an index-only mode
    (`an_index_only_mode_change_survives_absorb`), a rename (`a_staged_rename_stays_whole`), edited on
    (`absorb_after_editing_on_leaves_no_markers`), stopped then `c` (`absorb_stopped_then_continued_as_planned_keeps_the_stay`,
@@ -248,3 +250,8 @@ round trips by `rebase_round_trips_an_rm_cached`, `checkout_round_trips_an_rm_ca
 
 ADR-0049 is unchanged: its guard refuses a write over bytes nothing else holds, and §5 above shows a set-aside's
 bytes always have a holder.
+
+(2026-09-27, 30c) An added path is named when its staged content differs from the tree's (AM, AD). SetAside.staged removed.
+AD caveat, measured: `git stash create` keeps a staged-then-deleted file's staged blob in `S`'s tree, so the plain
+apply re-adds it `A ` and it is not named (`put_back_leaves_a_staged_new_file_deleted_since_unnamed`); the deletion
+is what the stash itself does not keep.

@@ -22,8 +22,6 @@
 //! A rebase that stops at 5 leaves the entry `Pending` with `S` in the list;
 //! `resume` runs step 6 when git is done with it, whichever way.
 
-use std::path::PathBuf;
-
 use graft_core::journal::{EntryStatus, JournalEntry, PutBack, PutBackWhy};
 use graft_core::oid::Oid;
 use graft_git::run::{GitArg, GitInvocation, RunError};
@@ -32,7 +30,7 @@ use crate::facts::FactsError;
 use crate::operation::{Operation, RepoFacts};
 use crate::snapshot::SnapshotError;
 
-use super::error::staging_named;
+use super::error::staging_clause;
 use super::{
     AfterState, Applied, ApplyError, Context, EditsAt, Pending, Refresh, finish, reason_for,
 };
@@ -44,6 +42,8 @@ mod returned;
 
 use answer::{Outcome, answer, status_for};
 use returned::{Returned, put_back};
+
+pub(super) use put_back::tracked_changed;
 
 /// The message `S` is created and listed under (ADR-0045 §4 step 3).
 pub(super) fn words(description: &str) -> String {
@@ -249,12 +249,7 @@ pub(super) fn close(
         Returned::Clashed(paths) => Outcome::Clashed(paths),
         Returned::Kept(kept) => {
             // One read of the list serves the words and where the edits are.
-            let listed = listed_at(ctx, stash);
-            Outcome::Kept {
-                words: kept.words(&listed, stash),
-                edits: kept.edits(&listed),
-                error: kept.into_error(),
-            }
+            Outcome::kept(kept, &listed_at(ctx, stash), stash)
         }
     };
     let status = status_for(&outcome, ended.failure.as_ref(), ended.done);
@@ -286,16 +281,6 @@ pub(super) fn close(
     };
     unread.extend(ended.unread);
     answer(outcome, pending.entry, stash, ended.failure, unread)
-}
-
-/// ` · staging not kept: <first>[ +N more]`, or nothing when the index came
-/// back.
-fn staging_clause(unstaged: &[PathBuf]) -> String {
-    if unstaged.is_empty() {
-        String::new()
-    } else {
-        format!(" · staging not kept: {}", staging_named(unstaged))
-    }
 }
 
 /// Where `S` is, for words: `stash@{n}` when listed, else its commit.
@@ -338,6 +323,16 @@ fn short(stash: Oid) -> String {
 /// git missing) is returned as it is, and the entry's reason carries the
 /// words.
 fn naming(error: RunError, words: &str) -> RunError {
+    appended(error, &format!(" · {words}"))
+}
+
+/// git's error with `tail` added to its first line, as [`naming`] adds the
+/// stash words: how the staging clause rides on a failure line
+/// (review m7-30-06d Minor 1). An empty `tail` leaves it as it is.
+fn appended(error: RunError, tail: &str) -> RunError {
+    if tail.is_empty() {
+        return error;
+    }
     match error {
         RunError::Exited {
             status,
@@ -351,7 +346,7 @@ fn naming(error: RunError, words: &str) -> RunError {
             };
             RunError::Exited {
                 status,
-                stderr_first_line: format!("{said} · {words}"),
+                stderr_first_line: format!("{said}{tail}"),
                 command,
             }
         }

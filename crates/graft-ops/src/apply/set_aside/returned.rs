@@ -55,6 +55,15 @@ impl Kept {
         }
     }
 
+    /// The staged paths whose staging did not come back: empty unless the
+    /// edits are back through the fallback.
+    pub(super) fn unstaged(&self) -> &[PathBuf] {
+        match self {
+            Kept::Git { unstaged, .. } | Kept::Unlisted { unstaged, .. } => unstaged,
+            Kept::Unread(_) => &[],
+        }
+    }
+
     /// Where the edits are, when it is known (ADR-0045 §5 amended), from
     /// `listed`, the one read of the stash list [`close`] made.
     pub(super) fn edits(&self, listed: &Result<Option<usize>, FactsError>) -> Option<EditsAt> {

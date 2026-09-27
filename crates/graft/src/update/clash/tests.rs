@@ -99,6 +99,7 @@ fn facts(unmerged: bool) -> AppState {
         entries: vec![pop_entry()],
         unreadable: Vec::new(),
         live: Vec::new(),
+        interrupted_edits: Vec::new(),
     }));
     state.working_tree = Some(Arc::new(WorkingTreeStatus {
         entries: vec![entry("notes.md", unmerged)],
@@ -216,6 +217,7 @@ fn the_index_is_read_only_while_a_candidate_exists() {
             entries,
             unreadable: Vec::new(),
             live: Vec::new(),
+            interrupted_edits: Vec::new(),
         });
     }
     let commands = tree_read_lands(&mut no_put_back, vec![entry("notes.md", true)], &mut next);

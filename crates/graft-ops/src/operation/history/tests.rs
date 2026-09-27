@@ -636,21 +636,15 @@ fn sets_aside_table() {
         assert_eq!(op.sets_aside(&clean), None, "{what}: clean");
         assert_eq!(
             op.sets_aside(&tracked_only),
-            Some(SetAside {
-                files: 1,
-                staged: 0
-            }),
+            Some(SetAside { files: 1 }),
             "{what}: tracked only"
         );
         assert_eq!(
             op.sets_aside(&staged_and_unstaged),
             // Every put-back keeps the index (ADR-0045 amendment
-            // 2026-09-26 b): no staging is forecast lost. Before it, c.rs,
-            // d.rs and e.rs's old path counted 3.
-            Some(SetAside {
-                files: 5,
-                staged: 0
-            }),
+            // 2026-09-26 b): no staging is forecast lost, so only the file
+            // count is set aside (30c removed the always-0 `staged`).
+            Some(SetAside { files: 5 }),
             "{what}: staged and unstaged"
         );
         assert_eq!(

@@ -276,14 +276,25 @@ pub enum AfterState {
 /// staging included`.
 fn staging_not_kept_words(paths: &[PathBuf]) -> String {
     format!(
-        "your edits are back · staging not kept: {} · u undoes it, staging included",
-        staging_named(paths)
+        "your edits are back{} · u undoes it, staging included",
+        staging_clause(paths)
     )
 }
 
-/// `<first>[ +N more]`: the paths whose staging did not come back, as the
-/// words name them (also on a kept set-aside's reason).
-pub(super) fn staging_named(paths: &[PathBuf]) -> String {
+/// ` · staging not kept: <first>[ +N more]`, or nothing when the index came
+/// back. The one formatter for the clause: [`AfterState::StagingNotKept`],
+/// a kept set-aside's reason and words, and git's failure line when the
+/// fallback ran (review m7-30-06d Minor 1).
+pub(super) fn staging_clause(unstaged: &[PathBuf]) -> String {
+    if unstaged.is_empty() {
+        String::new()
+    } else {
+        format!(" · staging not kept: {}", staging_named(unstaged))
+    }
+}
+
+/// `<first>[ +N more]`: the paths whose staging did not come back.
+fn staging_named(paths: &[PathBuf]) -> String {
     let first = paths
         .first()
         .map_or_else(String::new, |path| path.display().to_string());

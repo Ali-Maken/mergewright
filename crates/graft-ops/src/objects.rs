@@ -1,6 +1,7 @@
-//! Crate-private object plumbing shared by absorb and the set-aside
-//! put-back: resolving a revision to an id, and writing a commit object with
-//! no ref (m7/06d). Objects only; no ref, index or file is written.
+//! Crate-private object plumbing: resolving a revision to an id (absorb and
+//! the set-aside rebuild), and writing a commit object with no ref (the
+//! rebuild only; absorb writes its commits with `-F -`) (m7/06d). Objects
+//! only; no ref, index or file is written.
 
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;

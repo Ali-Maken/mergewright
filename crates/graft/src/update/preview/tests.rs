@@ -1082,10 +1082,7 @@ fn answered_with(subject: PreviewSubject, failure: PreviewFailure) -> (AppState,
 #[test]
 fn r_on_a_dirty_tree_opens_the_preview() {
     let plan = PreviewPlan {
-        set_aside: Some(graft_ops::operation::SetAside {
-            files: 1,
-            staged: 0,
-        }),
+        set_aside: Some(graft_ops::operation::SetAside { files: 1 }),
         ..a_plan()
     };
     let (state, _) = opened_over(opened_by("r"), plan);
@@ -1104,13 +1101,8 @@ fn r_on_a_dirty_tree_opens_the_preview() {
 /// sets nothing aside draws no such row.
 #[test]
 fn the_set_aside_row_sits_under_the_working_tree_line() {
-    // `staged: 1` on purpose: graft never words `staged` (ADR-0045
-    // amendment b, 30b), so a stray count must not reach the row.
     let plan = PreviewPlan {
-        set_aside: Some(graft_ops::operation::SetAside {
-            files: 3,
-            staged: 1,
-        }),
+        set_aside: Some(graft_ops::operation::SetAside { files: 3 }),
         ..a_plan()
     };
     let (mut state, _) = opened_over(opened_by("r"), plan);

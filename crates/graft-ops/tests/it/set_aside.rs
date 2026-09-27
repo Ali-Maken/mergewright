@@ -281,9 +281,9 @@ fn split(repo: &TempRepo) -> (String, String) {
 /// - after the put-back, before any undo: every edited file's bytes are
 ///   back, the staged split is as before (`git status`, and [`split`]'s
 ///   diffs — every put-back keeps the index, the 2026-09-26 b amendment),
-///   `SetAside::staged` from the facts read before is 0 and equals the
-///   staging git lost ([`staging_lost`], 83 M1), and the stash list is as
-///   before;
+///   the staging git lost is none ([`staging_lost`], 83 M1; the always-0
+///   `SetAside::staged` it was once checked against went in 30c), and the
+///   stash list is as before;
 /// - undo leaves refs, `HEAD`, index, files and stash list exactly as
 ///   before; redo exactly as after.
 fn round_trip(kind: Kind, tree: Tree) {
@@ -297,8 +297,7 @@ fn round_trip(kind: Kind, tree: Tree) {
     let handle = repo.open();
     let facts =
         read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
-    let promised = op.sets_aside(&facts).expect("the tree is dirty").staged;
-    assert_eq!(promised, 0, "{what}: no staging is forecast lost");
+    assert!(op.sets_aside(&facts).is_some(), "{what}: the tree is dirty");
     let split_before = split(&repo);
 
     let applied =
@@ -323,8 +322,8 @@ fn round_trip(kind: Kind, tree: Tree) {
     );
     assert_eq!(
         staging_lost(&status_before, &status_after),
-        promised,
-        "{what}: sets_aside().staged is the staging git lost ({status_before:?} → {status_after:?})"
+        0,
+        "{what}: no staging lost ({status_before:?} → {status_after:?})"
     );
 
     run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{what}: undo: {}", why.explain()));

@@ -926,6 +926,7 @@ fn after_a_push() -> AppState {
         ],
         unreadable: Vec::new(),
         live: Vec::new(),
+        interrupted_edits: Vec::new(),
     }));
     state
 }
@@ -1123,6 +1124,7 @@ fn repush_after_a_two_commit_push_sends_the_first_commit() {
         ],
         unreadable: Vec::new(),
         live: Vec::new(),
+        interrupted_edits: Vec::new(),
     }));
 
     let (asked, _) = press(&state, plain('u'));
@@ -1234,6 +1236,7 @@ fn an_entry_the_push_did_not_send_is_not_explained() {
         entries,
         unreadable: Vec::new(),
         live: Vec::new(),
+        interrupted_edits: Vec::new(),
     }));
     let (next, commands) = press(&state, plain('u'));
     assert!(next.confirm.is_none(), "nothing to explain");
@@ -1267,6 +1270,7 @@ fn with_journal(state: &AppState, entries: Vec<JournalEntry>) -> AppState {
         entries,
         unreadable: Vec::new(),
         live: Vec::new(),
+        interrupted_edits: Vec::new(),
     }));
     next
 }
