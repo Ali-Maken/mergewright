@@ -15,6 +15,7 @@ use graft_core::oid::Oid;
 
 use crate::history::ReflogError;
 use crate::repo::RepoHandle;
+use crate::shallow::ShallowList;
 
 /// One line of a reflog.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,23 +76,26 @@ pub fn records(repo: &RepoHandle, cap: usize) -> Result<Vec<ReflogRecord>, Reflo
 /// What a `reset: moving to …` record's "N commits back" is measured by
 /// (`to` = the new value, `from` = the old), and a fast-forward's "N
 /// commits" the other way round. Reads commit headers through `gix`, at most
-/// `limit` of them.
+/// `limit` of them. Stops at a shallow boundary: a commit listed in
+/// `<common_dir>/shallow` has no parents (git's rule, m7/32b).
 ///
 /// # Errors
-/// [`ReflogError`] if a commit on the way cannot be read.
+/// [`ReflogError::Shallow`] if the shallow list cannot be read;
+/// [`ReflogError::Unreadable`] if a commit on the way cannot be.
 pub fn first_parent_distance(
     repo: &RepoHandle,
     from: Oid,
     to: Oid,
     limit: usize,
 ) -> Result<Option<usize>, ReflogError> {
+    let shallow = ShallowList::read(repo)?;
     let gix_repo = repo.gix();
     let mut at = from;
     for distance in 0..=limit {
         if at == to {
             return Ok(Some(distance));
         }
-        if distance == limit {
+        if distance == limit || shallow.contains(&at) {
             break;
         }
         let id = gix::hash::oid::try_from_bytes(at.as_bytes())
