@@ -3,13 +3,13 @@
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use graft_core::oid::Oid;
 use graft_fixtures::Scratch;
 use graft_git::history_reads::{CompareSpan, compare_span, count_between, only_in_stash};
 use graft_git::repo::RepoHandle;
-use graft_git::run::RunError;
+use graft_git::run::{RunError, Stop};
 
 fn open(path: &Path) -> RepoHandle {
     RepoHandle::open(path).unwrap_or_else(|why| panic!("opening {}: {why}", path.display()))
@@ -282,4 +282,124 @@ fn only_in_stash_honours_stop() {
 
     let got = only_in_stash(&open(&dir), &[entry], 10, &AtomicBool::new(true));
     assert!(matches!(got, Err(RunError::Stopped)), "{got:?}");
+}
+
+#[test]
+fn only_in_stash_on_an_unborn_head() {
+    let scratch = scratch();
+    let dir = repo_in(&scratch);
+    let (a, entry) = stash_on_a_rebased_away_base(&dir, &[]);
+    git_ok(&dir, &["checkout", "-q", "--orphan", "fresh"]);
+
+    let got = only_in_stash(&open(&dir), &[entry], 10, &()).expect("reads");
+    assert_eq!(got.commits, vec![(a, 0)]);
+    assert_eq!(got.skipped, 0);
+    assert!(!got.capped);
+}
+
+/// Two entries on two bases on separate lines off the root: neither base
+/// reaches the other, so each entry keeps its own.
+#[test]
+fn two_stashes_on_two_rebased_away_bases_each_keep_their_own() {
+    let scratch = scratch();
+    let dir = repo_in(&scratch);
+    let a = commit(&dir, "A");
+    stash(&dir, "wip on A", &[]);
+    git_ok(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+    let b = commit(&dir, "B");
+    stash(&dir, "wip on B", &[]);
+    git_ok(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+    commit(&dir, "main moves on");
+    let entries = [rev_parse(&dir, "stash@{0}"), rev_parse(&dir, "stash@{1}")];
+
+    let got = only_in_stash(&open(&dir), &entries, 10, &()).expect("reads");
+    assert_eq!(got.commits, vec![(b, 0), (a, 1)]);
+    assert_eq!(got.skipped, 0);
+    assert!(!got.capped);
+}
+
+/// The fewest stop checks one `GitInvocation::run` makes: one before the
+/// spawn, then one at the top of each `wait` loop turn — a turn per pipe
+/// (stdout, stderr) and one more to reap the child. `wait` also polls on a
+/// timer, so the real count varies run to run; a sweep can only lean on
+/// this floor, and a spawn that ignores `stop` shows as a count under it.
+const CHECKS_PER_RUN: usize = 4;
+
+/// Answers `false` for the first `allowed` checks and `true` after.
+struct StopAfter {
+    checks: AtomicUsize,
+    allowed: usize,
+}
+
+impl StopAfter {
+    fn new(allowed: usize) -> Self {
+        Self {
+            checks: AtomicUsize::new(0),
+            allowed,
+        }
+    }
+
+    fn made(&self) -> usize {
+        self.checks.load(Ordering::SeqCst)
+    }
+}
+
+impl Stop for StopAfter {
+    fn should_stop(&self) -> bool {
+        self.checks.fetch_add(1, Ordering::SeqCst) >= self.allowed
+    }
+}
+
+#[test]
+fn only_in_stash_stopped_at_any_check_is_never_partial() {
+    let scratch = scratch();
+    let dir = repo_in(&scratch);
+    let (a, entry) = stash_on_a_rebased_away_base(&dir, &[]);
+    let repo = open(&dir);
+
+    let counter = StopAfter::new(usize::MAX);
+    let full = only_in_stash(&repo, &[entry], 10, &counter).expect("reads");
+    assert_eq!(full.commits, vec![(a, 0)]);
+    let n = counter.made();
+    // Its own check, then two spawns of at least CHECKS_PER_RUN each.
+    assert!(n > 2 * CHECKS_PER_RUN, "made {n}");
+
+    for k in 0..=n {
+        let stop = StopAfter::new(k);
+        match only_in_stash(&repo, &[entry], 10, &stop) {
+            Err(RunError::Stopped) => assert!(stop.made() > k, "k={k}: stopped unasked"),
+            Ok(got) => {
+                assert!(stop.made() <= k, "k={k} of N={n}: Ok after a stop");
+                assert_eq!(got.commits, full.commits, "k={k}: partial");
+            }
+            Err(other) => panic!("k={k}: {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn compare_span_stopped_at_any_check_is_never_partial() {
+    let scratch = scratch();
+    let dir = repo_in(&scratch);
+    let base = rev_parse(&dir, "main");
+    let tip = commit(&dir, "next");
+    let repo = open(&dir);
+
+    let counter = StopAfter::new(usize::MAX);
+    let full = compare_span(&repo, base, tip, &counter).expect("reads");
+    let n = counter.made();
+    // Two spawns of at least CHECKS_PER_RUN each.
+    assert!(n >= 2 * CHECKS_PER_RUN, "made {n}");
+
+    for k in 0..=n {
+        let stop = StopAfter::new(k);
+        match compare_span(&repo, base, tip, &stop) {
+            Err(RunError::Stopped) => assert!(stop.made() > k, "k={k}: stopped unasked"),
+            Ok(got) => {
+                assert!(stop.made() <= k, "k={k} of N={n}: Ok after a stop");
+                assert_eq!(got, full, "k={k}: partial");
+            }
+            Err(other) => panic!("k={k}: {other:?}"),
+        }
+    }
 }

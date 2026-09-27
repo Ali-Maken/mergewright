@@ -362,3 +362,21 @@ fn a_candidate_git_no_longer_has_is_not_reported() {
     );
     assert_eq!(got.checked, 2);
 }
+
+#[test]
+fn unreached_on_an_unborn_head() {
+    let scratch = scratch();
+    let dir = repo_in(&scratch);
+    let lost = commit(&dir, "lost");
+    git_ok(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+    git_ok(&dir, &["checkout", "-q", "--orphan", "fresh"]);
+
+    let got = unreached(&open(&dir), &[lost], 10, &()).expect("unreached reads");
+    assert_eq!(
+        got.lost,
+        vec![LostRun {
+            tip: lost,
+            under: 0
+        }]
+    );
+}

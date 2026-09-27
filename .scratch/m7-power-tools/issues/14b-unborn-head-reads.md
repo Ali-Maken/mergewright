@@ -1,6 +1,6 @@
 # 14b unborn-head-reads — `only_in_stash` (and maybe `unreached`) on an unborn `HEAD`; two bases; a stop between spawns
 
-Status: ready
+Status: done
 Milestone: M7 (m7-power-tools)
 Source: review `docs/reviews/m7-20k-to-20l.md` (at `3e05dd3e`) Minor 5 (gap M7/14a-unborn), Minor 6. Planner,
 2026-09-27.
@@ -47,22 +47,22 @@ impl Stop for StopAfter { fn should_stop(&self) -> bool; } // true once more tha
 ```
 
 ## Acceptance (each box names its test at tick time; red means seen red and quoted in NOTES)
-- [ ] A red first: `only_in_stash_on_an_unborn_head` — the rebased-away-base fixture of
+- [x] (`only_in_stash_on_an_unborn_head`) A red first: `only_in_stash_on_an_unborn_head` — the rebased-away-base fixture of
       `only_in_stash_finds_the_rebased_away_base`, then `git checkout --orphan fresh`: expect `[(A, 0)]`. Quote the red
       (`bad revision '^HEAD'`). Green after the flag.
-- [ ] A: `unreached_on_an_unborn_head` — a lost commit, then `checkout --orphan fresh`: the commit comes back lost.
+- [x] (`unreached_on_an_unborn_head`, green on arrival) A: `unreached_on_an_unborn_head` — a lost commit, then `checkout --orphan fresh`: the commit comes back lost.
       Red → same fix, quoted; green before → the `--ignore-missing` line quoted, `unreached.rs` untouched
       (`git diff --stat`).
-- [ ] B: `two_stashes_on_two_rebased_away_bases_each_keep_their_own` → `[(B, 0), (A, 1)]`. Green on arrival
+- [x] (`two_stashes_on_two_rebased_away_bases_each_keep_their_own`, red by skip-entry-1 mutant; see NOTES) B: `two_stashes_on_two_rebased_away_bases_each_keep_their_own` → `[(B, 0), (A, 1)]`. Green on arrival
       (it guards existing code), so **red by mutant**: make `claim`'s `continue` a `break` (or skip entry 1), see it
       red, quote, revert, `git status` clean.
-- [ ] B: `only_in_stash_stopped_at_any_check_is_never_partial` and `compare_span_stopped_at_any_check_is_never_partial`.
+- [x] (`only_in_stash_stopped_at_any_check_is_never_partial`, `compare_span_stopped_at_any_check_is_never_partial`; assertion reshaped, see NOTES) B: `only_in_stash_stopped_at_any_check_is_never_partial` and `compare_span_stopped_at_any_check_is_never_partial`.
       Red by mutant: remove the stop check between the two spawns (or pass `&()` to the second), see red, quote,
       revert, `git status` clean. Name `N` for each in NOTES. If a `k < N` returns a full `Ok` (a check after the last
       spawn), report it; don't loosen the assertion.
-- [ ] The 13 existing `compare_and_stash` tests and every `unreached` test green (name the filter and count).
-- [ ] MAP.md graft-git `:204` (and `:201` if changed): "an unborn `HEAD` holds nothing (`--ignore-missing`)". Read back.
-- [ ] Gates workspace-wide: `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`; `cargo nextest run`;
+- [x] (nextest `binary(it) & (test(compare_and_stash::) | test(unreached::))`: 28/28, 3 runs) The 13 existing `compare_and_stash` tests and every `unreached` test green (name the filter and count).
+- [x] (read back: `only_in_stash` line; `unreached` line unchanged) MAP.md graft-git `:204` (and `:201` if changed): "an unborn `HEAD` holds nothing (`--ignore-missing`)". Read back.
+- [x] (fmt ok; clippy clean; nextest 4212/4212; test --doc ok) Gates workspace-wide: `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`; `cargo nextest run`;
       `cargo test --doc`.
 
 ## Touches (check each; the report's **Touches:** line says how)
@@ -80,3 +80,11 @@ impl Stop for StopAfter { fn should_stop(&self) -> bool; } // true once more tha
 
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`.
+
+## NOTES (builder, 2026-09-27)
+- Scout: none, per ticket (sites named; re-found by name).
+- A red, quoted: `Exited { status: 128, stderr_first_line: "fatal: bad revision '^HEAD'", command: "git rev-list --parents --stdin --not --branches --tags --remotes" }`. Fix: `--ignore-missing` on `walk_unheld`'s spawn (compare.rs). Cause, not symptom.
+- `unreached_on_an_unborn_head` green before any change: `unreached.rs:109` `GitArg::Flag("--ignore-missing"),` already on the `--stdin` spawn. `unreached.rs` untouched (`git diff --stat` on src shows compare.rs only).
+- B two-bases: `continue`->`break` mutant stays green (A and B share no printed commit, so that branch never fires for this fixture). Skip-entry-1 mutant (`live.iter().take(1)`) red: `left: [(534bf74..., 0)] right: [(534bf74..., 0), (15fbcf5..., 1)]`. Reverted.
+- B stop sweep: **deviation from spec, flagged.** N is not fixed: `run.rs` `wait` polls `stop` on a `recv_timeout(POLL)` timer, so check counts vary run to run; a strict "every k<N is Err" would be flaky, and a fixed-N sweep cannot see a spawn given `&()` (N just shrinks with it). Assertion used, per k in `0..=N`: `Err(Stopped)` iff some check answered true; any `Ok` equals the full answer (never partial); plus a floor `CHECKS_PER_RUN = 4` per spawn (pre-spawn + 3 loop tops), so N >= 8 (compare_span), >= 9 (only_in_stash). Mutant (second spawn given `&()`) red: `made 4` / `made 5`. Reverted. Exact N for correct code not pinned (timer-dependent).
+- No partial `Ok` seen at any k.
