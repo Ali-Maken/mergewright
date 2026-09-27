@@ -138,3 +138,5 @@ As rewrite-engine.
 Large (~75k). Split if needed:
 - **-a:** app state, keys, the parser extension, the unit tests;
 - **-b:** graft-ui draw, walks, captures, bar.
+
+Needs (conductor, from parallel-plan 2026-09-27): `Command::PlanRewrite`, `RewriteRequest` declared by 09 — build 08 after 09 merges.
