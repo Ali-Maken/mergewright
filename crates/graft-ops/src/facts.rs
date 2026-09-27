@@ -20,6 +20,7 @@ use graft_git::remote::RemoteError;
 use graft_git::repo::{HeadError, HeadState, RefTarget, RefsError, RepoHandle};
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::stash::StashError;
+use graft_git::state::InProgress;
 use graft_git::status::{StatusError, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
@@ -144,7 +145,8 @@ impl FactsError {
 /// commit or a stash (m4/04 review, M2). The named refs are read by name,
 /// never by a pass over the store; `HEAD` resolves through the branch it is
 /// on. Marker lines are looked for only in unmerged paths, so a clean
-/// status opens no file (m5/07).
+/// status opens no file (m5/07). The edit-stop fact is read only mid-rebase
+/// (m7-power-tools/07a).
 pub fn read_facts(
     repo: &RepoHandle,
     git: GitVersion,
@@ -184,6 +186,11 @@ pub fn read_facts(
         refs.insert(name.clone(), target);
     }
     let markers = markers_in(repo, &status)?;
+    // Only a rebase can stop on an `edit` row; outside one, no read at all.
+    let edit_stop = match in_progress {
+        Some(InProgress::Rebase) => crate::rewrite::edit_stop(repo, stop)?,
+        _ => None,
+    };
     Ok(RepoFacts {
         bare,
         head,
@@ -196,6 +203,7 @@ pub fn read_facts(
         refs,
         markers,
         incoming: None,
+        edit_stop,
     })
 }
 

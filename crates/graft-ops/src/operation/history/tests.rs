@@ -86,6 +86,7 @@ fn facts() -> RepoFacts {
         ]),
         markers: vec![],
         incoming: None,
+        edit_stop: None,
     }
 }
 

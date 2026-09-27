@@ -33,6 +33,7 @@ fn facts(branches: &[(&str, u8)]) -> RepoFacts {
         refs,
         markers: vec![],
         incoming: None,
+        edit_stop: None,
     }
 }
 
