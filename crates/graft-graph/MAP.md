@@ -61,7 +61,9 @@ One line per public item. Update when a public item changes.
 
 ## inclusion
 - `Follow` (enum) — `AllParents` or `FirstParent`; fixed per layout (it changes the seeds).
-- `Inclusion` (struct) — `hidden_stashes`, `folded` merges; can change while a layout lives.
+- `Inclusion` (struct) — `hidden_stashes`, `folded` merges, `stashes`; can change while a layout lives.
+- `Inclusion::with_stashes` / `stashes` (fn) — set/read every stash entry's own commit (`stash@{0..}`).
+- Rule: a shown stash entry keeps its **first parent only**; index/untracked parents go to the hidden frontier, so commits reachable only through them are not drawn. A change in the set re-includes from the stash's row.
 - `seeds_for` (fn) — the seeds a view lays out from (first-parent drops integration lanes).
 - `apply` (fn) — slice form: the commits a view shows, parents trimmed, and its seeds.
 - `Included` (struct) — `CommitSource` wrapper letting through only what a view shows; remembers walked handles (ADR-0026: `HandleSet`, not an id list) so a change re-reads, never re-walks.
