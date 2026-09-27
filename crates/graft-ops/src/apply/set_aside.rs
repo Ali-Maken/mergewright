@@ -135,6 +135,14 @@ pub(super) fn put_aside(
         commands.push(git.command_line());
         git.run(ctx.stop)?;
     }
+    // And once more after the reset, before the operation (step 5): a stop
+    // the reset's own run saw only after git had exited is reported as the
+    // finished reset it is (m7-power-tools/27b), so this boundary is where
+    // that stop lands — the operation never starts, `S` is listed, the tree
+    // clean (ADR-0045 §5, "stopped at 5").
+    if ctx.stop.should_stop() {
+        return Err(RunError::Stopped);
+    }
     Ok(())
 }
 
