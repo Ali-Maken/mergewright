@@ -4,9 +4,8 @@
 
 use super::lists::{TAIL, context_list};
 use super::{
-    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, Hint, HintContext, LiveC,
-    MORE, RESIZE, TabWord,
-    WAY_BACK,
+    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, Hint, HintContext,
+    LiveC, MORE, RESIZE, TabWord, WAY_BACK,
 };
 use crate::conflict_resolver::SideRoles;
 

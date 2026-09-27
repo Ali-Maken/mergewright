@@ -12,7 +12,7 @@ use graft_core::event::KeyCode;
 use graft_git::trace::LineRange;
 
 use super::blame::{
-    FILE, LINE, Route, blame_ready, cursor_line, oid, on_line_22, open_on_the_file, session,
+    FILE, LINE, Route, blame_ready, cursor_line, drawn, oid, on_line_22, open_on_the_file, session,
 };
 use crate::app_harness::App;
 
@@ -35,6 +35,17 @@ pub fn traced(app: &App, state: AppState) -> AppState {
     })
 }
 
+/// The journey ends on the history place in the real frame, not only in
+/// state (m7-power-tools/21b): its title on row 0.
+fn assert_drawn(state: &AppState, columns: u16, rows: u16) {
+    let frame = drawn(state, columns, rows);
+    assert!(
+        frame[0].trim_start().starts_with("HISTORY \u{b7} "),
+        "the history place is drawn:\n{}",
+        frame.join("\n")
+    );
+}
+
 /// `function-history`: `B L` from the diff cursor on line 22 — the
 /// commits that changed the function around it, the cursor on Lina's (the
 /// commit blame showed), her whole file on the right with the range marked.
@@ -52,6 +63,7 @@ fn function_history() {
     let state = route.press(&app, &state, "L", KeyCode::Char('L'));
     let state = traced(&app, state);
     route.within_count();
+    assert_drawn(&state, 187, 50);
 
     let place = history(&state);
     let range = place.range.clone().expect("a range");
@@ -87,6 +99,7 @@ fn file_history() {
     let state = route.press(&app, &state, "F", KeyCode::Char('F'));
     let state = traced(&app, state);
     route.within_count();
+    assert_drawn(&state, 140, 40);
 
     assert!(!state.focus, "not Focus mode");
     let place = history(&state);

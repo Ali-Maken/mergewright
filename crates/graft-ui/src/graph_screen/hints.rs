@@ -39,8 +39,8 @@ pub use catalogue::{every_context, every_hint};
 pub use context::{ConfirmYes, HintContext, LiveC, TabWord};
 use fitting::fit_list;
 pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys};
-pub use lists::{blame_place_list, history_place_list};
 use lists::{TAIL, context_list};
+pub use lists::{blame_place_list, history_place_list};
 
 /// Whether the key a hint names actually does the verb it names, today.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,6 +203,11 @@ fn short_form(verb: &str) -> Option<&'static str> {
         // Blame's `L`, third in its bar (m7-power-tools/21b): the floor's
         // three fit 48 cells only with this prefix.
         "history of these lines" => "history",
+        // The history place's bar (conductor ruling 2026-09-27, 21b): its
+        // floor at full words is 43 cells; with these two it is 30, so a
+        // 40-column terminal still draws it. `next` gives way first.
+        "next change" => "next",
+        "older·newer" => "older",
         _ => return None,
     })
 }

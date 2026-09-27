@@ -2069,7 +2069,10 @@ fn coverage_slot(context: &HintContext) -> usize {
         // m7-power-tools/21b: the history place's three reachable forms
         // (85–87; `rows: false` draws one bar whatever the focus) and the way
         // back to it (88).
-        HintContext::History { rows: true, on_file } => 85 + usize::from(*on_file),
+        HintContext::History {
+            rows: true,
+            on_file,
+        } => 85 + usize::from(*on_file),
         HintContext::History { rows: false, .. } => 87,
         HintContext::BackToHistory(_) => 88,
         HintContext::Map => 17,

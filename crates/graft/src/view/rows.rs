@@ -442,7 +442,7 @@ pub(crate) fn footer_context(
         // The finish summary likewise, over the resolver too (m6-conflicts/19).
         _ if state.resolver.is_some() || state.finish.is_some() => hint_context(state, rows),
         Some(banner) if banner.focused => banner_context(state, banner),
-        _ => back_to_blame(state, live_wrapped(state, hint_context(state, rows))),
+        _ => back_to_place(state, live_wrapped(state, hint_context(state, rows))),
     }
 }
 
@@ -538,16 +538,18 @@ fn tab_word(state: &AppState) -> TabWord {
 /// not — are out of reach here and the base is `PlainRow`. The graph's own
 /// path passes `GraphView::hint_context` instead, which does have them.
 pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
-    back_to_blame(state, hint_context(state, &[]))
+    back_to_place(state, hint_context(state, &[]))
 }
 
-/// `context` led by `esc back to blame` exactly when the next `Esc` goes
-/// back to the hidden trail (m7-power-tools/20, 20i): the same predicate
+/// `context` led by `esc back to blame` — or `esc back to history`, when
+/// the trail's newest place is a history (m7-power-tools/21b) — exactly
+/// when the next `Esc` goes back to the hidden trail
+/// (m7-power-tools/20, 20i): the same predicate
 /// the key asks (`update::place::esc_goes_back`), so a search, Focus,
 /// Explain or a held failure — whose `Esc` comes first — keeps its own bar.
 /// Only a graph row's or a pane's bar is wrapped; an overlay, a drag or a
 /// box has its own.
-fn back_to_blame(state: &AppState, context: HintContext) -> HintContext {
+pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintContext {
     if !crate::update::place::esc_goes_back(state) {
         return context;
     }
@@ -558,7 +560,13 @@ fn back_to_blame(state: &AppState, context: HintContext) -> HintContext {
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
         | HintContext::ChangesPane { .. }
-        | HintContext::OperationLive { .. } => HintContext::BackToBlame(Box::new(context)),
+        | HintContext::OperationLive { .. } => {
+            if state.trail.top_history().is_some() {
+                HintContext::BackToHistory(Box::new(context))
+            } else {
+                HintContext::BackToBlame(Box::new(context))
+            }
+        }
         other => other,
     }
 }
@@ -627,9 +635,16 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
 /// in flight, or a failed one) no `⏎`, `^` or `n N`, which need them (20k,
 /// 20n).
 ///
-/// A history place has no context yet: `HintContext::History` lives in
-/// graft-ui's `hints/context.rs`, outside m7-power-tools/21's files.
+/// The history place's bar (m7-power-tools/21b): its keys only once the
+/// trace answered with a row — tracing, failed or empty, `esc back` alone —
+/// and `j/k`, `tab` said for whichever pane has the keys.
 pub(crate) fn place_context(state: &AppState) -> Option<HintContext> {
+    if let Some(history) = state.trail.history_on_screen() {
+        return Some(HintContext::History {
+            rows: !history.rows().is_empty(),
+            on_file: history.focus == graft_ui::history::HistoryFocus::File,
+        });
+    }
     let blame = state.trail.on_screen()?;
     Some(HintContext::Blame {
         finding: blame.find.is_some(),

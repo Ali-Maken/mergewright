@@ -26,7 +26,7 @@ fn priya() -> Oid {
 }
 
 /// The commit that added the file.
-fn adder() -> Oid {
+pub(super) fn adder() -> Oid {
     Oid::from_bytes(&[0xe5; Oid::SHA1_BYTES]).expect("an oid")
 }
 
@@ -45,7 +45,7 @@ fn row(id: Oid, author: &str, range_at: Option<(u32, u32)>) -> TraceCommit {
 }
 
 /// Priya's, Lina's, the adder's: newest first.
-fn three_rows() -> Vec<TraceCommit> {
+pub(super) fn three_rows() -> Vec<TraceCommit> {
     vec![
         row(priya(), "Priya", Some((20, 31))),
         row(lina(), "Lina", Some((18, 29))),
@@ -53,7 +53,7 @@ fn three_rows() -> Vec<TraceCommit> {
     ]
 }
 
-fn refresh_token() -> LineRange {
+pub(super) fn refresh_token() -> LineRange {
     LineRange::Function {
         name: "    pub fn refresh_token(&mut self) -> Result<()> {".to_owned(),
         start: 18,
@@ -62,7 +62,7 @@ fn refresh_token() -> LineRange {
 }
 
 /// The blame place over `pane_at(22)`, cursor on line 22 (Lina's).
-fn blame_on_22() -> AppState {
+pub(super) fn blame_on_22() -> AppState {
     let mut state = pane_at(22);
     place_with(&mut state, a_blame(false, false), 21);
     state
@@ -101,7 +101,7 @@ fn changes_on_a_file() -> AppState {
 }
 
 /// The trace job `commands` asks for.
-fn trace_job(commands: &[Command]) -> (JobId, TraceRequest) {
+pub(super) fn trace_job(commands: &[Command]) -> (JobId, TraceRequest) {
     commands
         .iter()
         .find_map(|command| match command {
@@ -119,7 +119,7 @@ fn file_job(commands: &[Command]) -> Option<(JobId, Oid)> {
     })
 }
 
-fn traced(
+pub(super) fn traced(
     state: &AppState,
     job: JobId,
     answer: Result<TraceAnswer, TraceFailure>,
@@ -181,7 +181,7 @@ fn whole(binary: bool) -> DiffView {
     }
 }
 
-fn history(state: &AppState) -> &HistoryState {
+pub(super) fn history(state: &AppState) -> &HistoryState {
     state
         .trail
         .history_on_screen()
@@ -190,7 +190,7 @@ fn history(state: &AppState) -> &HistoryState {
 
 /// `L` on line 22, the trace answered with `rows` and `range`, and (with
 /// rows) the selected commit's file read.
-fn lines_history(rows: Vec<TraceCommit>, range: LineRange) -> AppState {
+pub(super) fn lines_history(rows: Vec<TraceCommit>, range: LineRange) -> AppState {
     let (opened, commands) = press(&blame_on_22(), KeyCode::Char('L'));
     let (job, _) = trace_job(&commands);
     let answer = TraceAnswer {
@@ -572,6 +572,25 @@ fn b_in_history_blames_that_commit_at_that_line() {
     );
 }
 
+/// m7-power-tools/21b: the frame draws the place for a history too
+/// (`AppState::graph_overlay`, `view::frame::draw_screen`), tracing or read.
+#[test]
+fn graph_overlay_is_place_while_history_is_shown() {
+    use crate::update::state::GraphOverlay;
+    let (tracing, _) = press(&blame_on_22(), KeyCode::Char('L'));
+    assert!(tracing.trail.history_on_screen().is_some());
+    assert_eq!(
+        tracing.graph_overlay(),
+        Some(GraphOverlay::Place),
+        "tracing"
+    );
+    let read = lines_history(three_rows(), refresh_token());
+    assert_eq!(read.graph_overlay(), Some(GraphOverlay::Place), "read");
+    let (shown, _) = press(&read, KeyCode::Enter);
+    assert!(shown.trail.hidden());
+    assert_ne!(shown.graph_overlay(), Some(GraphOverlay::Place), "hidden");
+}
+
 #[test]
 fn esc_comes_back_to_history() {
     let state = lines_history(three_rows(), refresh_token());
@@ -602,6 +621,13 @@ fn esc_on_the_graph_with_the_pane_open_returns_to_history() {
     graph.detail.focus = DetailFocus::Graph;
     assert!(graph.detail.shown, "the pane stays open");
     assert!(esc_goes_back(&graph), "the predicate is place-generic");
+    // The bar half (21b): the way back leads, named for history.
+    let drawn = super::hints::bar(&graph);
+    assert_eq!(
+        drawn.first(),
+        Some(&("esc", "back to history")),
+        "{drawn:?}"
+    );
     let (back, _) = press(&graph, KeyCode::Escape);
     let place = history(&back);
     assert_eq!(place.selected, Some(1), "the same row");

@@ -484,6 +484,9 @@ fn every_short_rung_is_the_users_own_word() {
         // m7-power-tools/21b: blame's `L`, third in its bar, fits the
         // 48-cell floor only at this prefix.
         ("history of these lines", "history"),
+        // Conductor ruling 2026-09-27 (21b): the history bar at 40 columns.
+        ("next change", "next"),
+        ("older·newer", "older"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
@@ -1963,11 +1966,29 @@ mod history_place {
     #[test]
     fn back_to_history_leads_the_inner_bar() {
         let led = words(&HintContext::BackToHistory(Box::new(HintContext::PlainRow)));
-        assert_eq!(
-            led.first().map(String::as_str),
-            Some("esc back to history")
-        );
+        assert_eq!(led.first().map(String::as_str), Some("esc back to history"));
         assert_eq!(led[1..], words(&HintContext::PlainRow)[..]);
+    }
+
+    /// Conductor ruling 2026-09-27: `next change` gives way first, then
+    /// `older·newer`. Under the 30-cell floor the bar is empty, as every
+    /// modal's is (ADR-0039's bottom; `esc back` alone there would break
+    /// `no_hint_loses_ground_as_the_room_for_it_grows`).
+    #[test]
+    fn history_bar_narrows_by_its_ladder() {
+        let list = HintContext::History {
+            rows: true,
+            on_file: false,
+        };
+        let at = |columns| hints_text(&hints_for(&list, Divider::Hidden, columns));
+        assert!(
+            at(40).starts_with(" j/k older·newer  tab file  n/N next"),
+            "{:?}",
+            at(40)
+        );
+        assert!(!at(40).contains("next change"), "{:?}", at(40));
+        assert_eq!(at(30), " j/k older  tab file  n/N next");
+        assert_eq!(at(29), "");
     }
 
     #[test]

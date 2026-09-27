@@ -636,3 +636,49 @@ fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
     );
     app.close();
 }
+
+/// `B L` on the session fixture at 187×50: the history place, traced.
+fn history_place() -> (graft_fixtures::Scratch, App, AppState) {
+    let scratch = crate::m7_walk::blame::session();
+    let (app, state) = crate::m7_walk::blame::on_line_22(scratch.path(), 187, 50);
+    let state = crate::m7_walk::blame::blame(&app, &state);
+    let state = app.key(&state, KeyCode::Char('L'));
+    let state = crate::m7_walk::history::traced(&app, state);
+    (scratch, app, state)
+}
+
+/// The history place (m7-power-tools/21b): the drawn frame's last row is
+/// the place's own bar — the list form's keys, no `. more`, no `<> resize`.
+#[test]
+fn hint_bar_history_place() {
+    let (_scratch, app, state) = history_place();
+    let bar = footer(&state, 187, 50);
+    assert_eq!(
+        bar.trim_end(),
+        " j/k older\u{b7}newer  tab file  n/N next change  B blame here  \u{23ce} that commit  esc back"
+    );
+    app.close();
+}
+
+/// A history place `⏎` left under the graph (m7-power-tools/21b): with the
+/// graph focused, the drawn bar leads `esc back to history`.
+#[test]
+fn hint_bar_back_to_history() {
+    use graft_ui::detail::DetailFocus;
+    let (_scratch, app, state) = history_place();
+    let state = app.key(&state, KeyCode::Enter);
+    let mut state = crate::captures::settled_frame(&app, state);
+    for _ in 0..3 {
+        if state.detail.focus == DetailFocus::Graph {
+            break;
+        }
+        state = app.key(&state, KeyCode::Tab);
+    }
+    assert!(state.trail.hidden(), "history waits under the graph");
+    let bar = hint_bar(&state, 187, 50).expect("a graph bar with its doorway");
+    assert!(
+        bar.trim_start().starts_with("esc back to history"),
+        "{bar:?}"
+    );
+    app.close();
+}

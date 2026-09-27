@@ -1,0 +1,40 @@
+ HISTORY · src/auth/session.rs · 6 changes
+ ▸ 74f9a9e Handle expire… GF  60m +2 −1 │ 74f9a9e · Graft Fixture · 60 minutes ago · Handle expired tokens · this file +2 −1
+   0a27627 Move session … PR  4mo +6 −6 │     1   use std::time::{Duration, Instant};
+   ↳ was src/session.rs                 │     2   use crate::config::Config;
+   b32274b rustfmt        RU  5mo +6 −2 │     3 + use crate::error::Expired;
+   2f48ca3 Retry refresh… LI  7mo +3 −2 │     4   use crate::http::{Client, Result};
+   47593a5 Add token ref… TO 10mo +12   │     5
+   3f6c311 Add session    AN   1y +42   │     6   pub struct Session {
+   the file starts here (3f6c311 added  │     7       token: String,
+   it)                                  │     8       refresh: String,
+                                        │     9       issued: Instant,
+                                        │    10       ttl: Duration,
+                                        │    11   }
+                                        │    12
+                                        │    13   impl Session {
+                                        │    14       pub fn new(token: String, refresh: String, config: &Config) -> Self {
+                                        │    15           Session { token, refresh, issued: Instant::now(), ttl: config.session_ttl }
+                                        │    16       }
+                                        │    17       /// Refresh the token when the server says it expired.
+                                        │    18       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+                                        │    19           let mut attempt = 0;
+                                        │    20           loop {
+                                        │    21               let resp = client.refresh(&self.token)?;
+                                        │    22               if resp.status() == 401 && attempt == 0 {
+                                        │    23                   attempt += 1;
+                                        │    24                   continue;
+                                        │    25               }
+                                        │       −             self.token = resp.token()?;
+                                        │    26 +             self.token = resp.token().map_err(Expired::from)?;
+                                        │    27               return self.record_refresh(&resp, "refreshed after the server answered 401 on…
+                                        │    28           }
+                                        │    29       }
+                                        │    30
+                                        │    31       pub fn token(&self) -> &str {
+                                        │    32           &self.token
+                                        │    33       }
+                                        │    34
+                                        │    35       pub fn age(&self) -> Duration {
+                                        │    36           self.issued.elapsed()
+ j/k older·newer  tab file  n/N next change  B blame here  ⏎ that commit  esc back
