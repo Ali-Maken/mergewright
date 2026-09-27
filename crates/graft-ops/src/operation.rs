@@ -41,11 +41,12 @@ pub(crate) use conflict::{check_restart, shape_of_stages};
 pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};
 pub use history::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
-    MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
-    RevertParams, Source, TagCreateParams, Tip,
+    MergeParams, OnEdits, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams,
+    ResetTarget, RevertParams, Source, TagCreateParams, Tip,
 };
 pub(crate) use history::{
-    branch_ref, merge_subject, rebase_invocation, short, short_ref, source_arg, tag_ref,
+    branch_ref, creates_at_head, merge_subject, rebase_invocation, short, short_ref, source_arg,
+    tag_ref,
 };
 pub(crate) use recover::pins as recover_pins;
 pub use recover::{FilesEffect, NoPutBack, RecoverParams, RecoverTarget};
@@ -1250,15 +1251,25 @@ impl Operation {
         }
     }
 
-    /// What a rebase, rewrite or checkout would set aside before it runs and
-    /// put back after (ADR-0045 §4): `Some` when tracked files are changed,
+    /// What a rebase, rewrite, previewed switch or switching create away
+    /// from `HEAD` would set aside before it runs and put back after
+    /// (ADR-0045 §4): `Some` when tracked files are changed,
     /// staged or not; `None` on a clean tree, over untracked files only
     /// (they stay where they are), and for every other kind. Pure over the
     /// facts — the preview and `apply` ask the same question.
     #[must_use]
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
         let wraps = match self {
-            Self::Rebase(_) | Self::Rewrite(_) | Self::Checkout(_) => true,
+            Self::Rebase(_) | Self::Rewrite(_) => true,
+            // A switch sets aside only when it was previewed (the switch
+            // rule, m7-power-tools/10b); a new branch at `HEAD`'s own commit
+            // leaves the edits where they are.
+            Self::Checkout(params) => params.on_edits == OnEdits::SetAside,
+            Self::BranchCreate(params) => {
+                params.checkout
+                    && params.on_edits == OnEdits::SetAside
+                    && !history::creates_at_head(params, facts)
+            }
             // A branch put back while checked out is a `reset --hard`.
             Self::Recover(params) => recover::moves_checked_out(params, facts),
             _ => false,
@@ -1278,6 +1289,13 @@ impl Operation {
     /// `refs/stash`, when this operation sets edits aside.
     fn stash_ref_if_set_aside(&self, facts: &RepoFacts) -> Option<String> {
         self.sets_aside(facts).map(|_| stash::STASH_REF.to_owned())
+    }
+
+    /// `touches`, with `refs/stash` added when this operation sets edits
+    /// aside (a switch's).
+    fn and_stash_if_set_aside(&self, mut touches: Touches, facts: &RepoFacts) -> Touches {
+        touches.refs.extend(self.stash_ref_if_set_aside(facts));
+        touches
     }
 
     /// Every [`Tip`] this operation is pinned to: what the Ghost Preview was
@@ -1636,12 +1654,12 @@ impl Operation {
                 (refs, true, true)
             }
             Self::Reset(params) => return history::touches_reset(params),
-            Self::Checkout(_) => {
-                let mut touches = history::touches_checkout();
-                touches.refs.extend(self.stash_ref_if_set_aside(facts));
-                return touches;
+            Self::Checkout(params) => {
+                return self.and_stash_if_set_aside(history::touches_checkout(params), facts);
             }
-            Self::BranchCreate(params) => return history::touches_branch_create(params),
+            Self::BranchCreate(params) => {
+                return self.and_stash_if_set_aside(history::touches_branch_create(params), facts);
+            }
             Self::BranchDelete(params) | Self::TagDelete(params) => {
                 (vec![params.name.clone()], false, false)
             }

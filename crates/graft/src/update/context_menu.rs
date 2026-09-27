@@ -274,7 +274,7 @@ pub fn apply_context_action(
                 );
                 return Vec::new();
             };
-            preview_history_verb(state, chosen, next_id)
+            run_history_verb(state, chosen, next_id)
         }
         ContextAction::Unavailable => unavailable(),
     }
@@ -299,11 +299,26 @@ fn commit_of(oid: Option<Oid>, action: &str) -> Option<Oid> {
     oid
 }
 
-/// A chosen history verb: open the Ghost Preview of the very operation its
-/// label named.
+/// A chosen history verb. Checkout follows the switch rule — at once on a
+/// clean tree, the preview with edits or a detached target (10b); every
+/// other verb ends in its preview.
+fn run_history_verb(
+    state: &mut AppState,
+    chosen: &HistoryVerb,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    match super::switch::target_of(&chosen.op) {
+        Some(target) => super::switch::switch_to(state, target, ".", next_id),
+        None => preview_history_verb(state, chosen, next_id),
+    }
+}
+
+/// A chosen history verb other than Checkout: open the Ghost Preview of the
+/// very operation its label named.
 ///
-/// `.` ends in a picture, never in a write — only `Confirm` in that picture
-/// runs anything (PROMPT.md §1.7).
+/// These end in a picture, never in a write — only `Confirm` in that
+/// picture runs anything (PROMPT.md §1.7). Checkout on a clean tree is the
+/// one `.` item that writes at once (the switch rule, keymap §2.1).
 fn preview_history_verb(
     state: &mut AppState,
     chosen: &HistoryVerb,

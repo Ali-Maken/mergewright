@@ -572,6 +572,7 @@ fn a_checkout() -> Operation {
     Operation::Checkout(graft_ops::operation::CheckoutParams {
         to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/fix".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     })
 }
 
@@ -622,6 +623,32 @@ fn a_put_back_clash_lands_on_the_resolver_with_set_aside_names() {
     assert_eq!(
         notice_words(Some(0), 2, None),
         "stash@{0} clashed in 2 files \u{b7} esc, u puts it all back"
+    );
+}
+
+/// m7-power-tools/10b: a new branch switched to over edits sets them aside
+/// like a checkout does, and its clash says `u` undoes the switch, not a
+/// rebase.
+#[test]
+fn a_switching_create_clash_is_labelled_switch() {
+    let mut state = AppState {
+        refs: Some(Arc::new(refs_with_stash())),
+        ..AppState::default()
+    };
+    let create = Operation::BranchCreate(graft_ops::operation::BranchCreateParams {
+        name: "nb".to_owned(),
+        at: oid(3),
+        checkout: true,
+        on_edits: graft_ops::operation::OnEdits::SetAside,
+    });
+    set_aside_clash(&mut state, Some(&create), 1);
+    assert_eq!(
+        state
+            .resolver
+            .as_ref()
+            .and_then(|open| open.notice.as_ref())
+            .map(|(words, _)| words.as_str()),
+        Some("your edits clashed in 1 file \u{b7} esc, u undoes the switch too")
     );
 }
 

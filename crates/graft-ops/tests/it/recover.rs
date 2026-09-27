@@ -127,6 +127,7 @@ fn checkout_other() -> Operation {
     Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/other".to_owned()),
         head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     })
 }
 
@@ -710,6 +711,7 @@ fn recover_preview_says_unchanged_when_not_checked_out() {
     let checkout = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     assert_eq!(preview_of(&repo, &checkout).files, None);
 }

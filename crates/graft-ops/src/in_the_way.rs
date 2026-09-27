@@ -132,6 +132,7 @@ pub fn doing(op: &Operation) -> Option<String> {
         Operation::Checkout(params) => match &params.to {
             CheckoutTarget::Branch(name) => format!("switching to {}", short_ref(name)),
             CheckoutTarget::Detached(oid) => format!("switching to {}", short(*oid)),
+            CheckoutTarget::Track { local, .. } => format!("switching to {local}"),
         },
         Operation::BranchCreate(params) if params.checkout => {
             format!("switching to {}", params.name)

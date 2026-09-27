@@ -236,19 +236,18 @@ fn checkout_branch_via_menu() -> Scenario {
             vec![
                 Step::WaitFor(Wait::Ready),
                 Step::CursorTo("feature"),
+                // A clean tree: `. ⏎` switches at once, no preview
+                // (m7-power-tools/10b, the switch rule).
                 Step::MenuPick("Checkout feature"),
+                Step::Write("the checkout"),
+                Step::WaitFor(Wait::Ready),
             ],
-            claim_and_confirm("the checkout"),
             vec![Step::Mark("switched")],
             undo(),
             vec![Step::Mark("undone")],
         ]),
         expect: |fixture, marks| {
             let switched = marks.get("switched")?;
-            let claim = marks.claim()?;
-            check(claim.plan.plan.ref_moves.is_empty(), || {
-                "a checkout moved a ref".to_owned()
-            })?;
             check(
                 switched.head_symbolic.as_deref() == Some("refs/heads/feature"),
                 || format!("HEAD is {:?}", switched.head_symbolic),

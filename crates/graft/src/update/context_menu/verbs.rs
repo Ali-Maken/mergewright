@@ -24,8 +24,8 @@ use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
 use graft_ops::mistake_radar::{Evidence, Finding};
 use graft_ops::operation::{
-    CheckoutParams, CheckoutTarget, FastForward, MergeParams, Operation, PickParams, RebaseParams,
-    RefDeleteParams, ResetMode, ResetParams, ResetTarget, RevertParams, Source, Tip,
+    CheckoutParams, CheckoutTarget, FastForward, MergeParams, OnEdits, Operation, PickParams,
+    RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget, RevertParams, Source, Tip,
 };
 use graft_term::{SanitizedText, sanitize_line};
 
@@ -97,6 +97,9 @@ pub(super) fn checkout_verbs(
             Operation::Checkout(CheckoutParams {
                 to: CheckoutTarget::Branch(format!("refs/heads/{short}")),
                 head_before: head_before.clone(),
+                // The previewed form; the switch rule (`update::switch`)
+                // launches it with `Refuse` on a clean tree.
+                on_edits: OnEdits::SetAside,
             }),
         ));
     }
@@ -106,6 +109,7 @@ pub(super) fn checkout_verbs(
             Operation::Checkout(CheckoutParams {
                 to: CheckoutTarget::Detached(id),
                 head_before,
+                on_edits: OnEdits::SetAside,
             }),
         ));
     }
@@ -355,7 +359,7 @@ pub(super) fn head_tip(refs: &RefBadges) -> Option<Tip> {
 
 /// `HEAD` as `graft_ops` reads it from the repository, so `check_checkout`
 /// can compare the two and refuse when it moved.
-fn head_ref(refs: &RefBadges) -> Option<HeadRef> {
+pub(in crate::update) fn head_ref(refs: &RefBadges) -> Option<HeadRef> {
     let head = refs.head()?;
     Some(current_branch(refs).map_or(HeadRef::Detached(head), |tip| HeadRef::Branch(tip.name)))
 }

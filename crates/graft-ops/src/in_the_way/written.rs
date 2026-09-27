@@ -98,6 +98,9 @@ fn landed(to: &CheckoutTarget, facts: &RepoFacts) -> GitArg {
             .flatten()
             .map_or_else(|| GitArg::Ref(name.clone().into_bytes()), GitArg::Oid),
         CheckoutTarget::Detached(oid) => GitArg::Oid(*oid),
+        // The new branch starts where the list saw the remote's tip; `check`
+        // refused already if it moved.
+        CheckoutTarget::Track { remote, .. } => GitArg::Oid(remote.oid),
     }
 }
 

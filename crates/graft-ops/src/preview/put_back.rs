@@ -70,6 +70,7 @@ pub(super) fn forecast(
             let target = match &params.to {
                 CheckoutTarget::Branch(name) => facts.refs.get(name).copied().flatten(),
                 CheckoutTarget::Detached(oid) => Some(*oid),
+                CheckoutTarget::Track { remote, .. } => Some(remote.oid),
             };
             match (kinds::head_tip(facts), target) {
                 (Some(head), Some(target)) => (head, Landing::At(target)),
@@ -85,13 +86,19 @@ pub(super) fn forecast(
                 None => (params.branch.oid, Landing::Replayed(params.onto_tip)),
             }
         }
+        // A new branch switched to at `at`: `HEAD` lands there, as a
+        // checkout's does (m7-power-tools/10b).
+        Operation::BranchCreate(params) => match kinds::head_tip(facts) {
+            Some(head) => (head, Landing::At(params.at)),
+            None => return Ok(not_checked("where HEAD lands could not be read")),
+        },
         // A branch put back while checked out: a `reset --hard` to `to`.
         Operation::Recover(RecoverParams {
             target: RecoverTarget::MoveRef { to, expected, .. },
             ..
         }) => (*expected, Landing::At(*to)),
-        // `sets_aside` is `Some` for a rebase, a rewrite, a checkout or a
-        // checked-out put-back only.
+        // `sets_aside` is `Some` for a rebase, a rewrite, a checkout, a
+        // switching create away from `HEAD` or a checked-out put-back only.
         _ => return Ok(not_checked("nothing is put back after this")),
     };
     stopped(stop)?;

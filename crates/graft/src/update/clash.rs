@@ -234,10 +234,11 @@ pub(super) fn clashed(
         return commands;
     };
     // A set-aside's `u` takes back the operation it was set aside around:
-    // a checkout's switch, else a rebase — the one kind that also reaches
-    // here with nothing launched, from the `c` that finished it.
+    // a checkout's or a new branch's switch, else a rebase — the one kind
+    // that also reaches here with nothing launched, from the `c` that
+    // finished it.
     let what = match launched {
-        Some(Operation::Checkout(_)) => "switch",
+        Some(Operation::Checkout(_) | Operation::BranchCreate(_)) => "switch",
         _ => "rebase",
     };
     let undoes = (clash.why == PutBackWhy::SetAside).then_some(what);
@@ -300,16 +301,22 @@ fn undo_clause_words(undoes: Option<&str>) -> String {
 
 /// [`undo_clause_words`] for the clash standing, or `None` with no clash.
 /// A set-aside's operation is read off the journal entry that put the edits
-/// back — a checkout's switch, else a rebase, as [`clashed`] words it at the
-/// landing.
+/// back — a checkout's or a new branch's switch, else a rebase, as
+/// [`clashed`] words it at the landing.
 #[must_use]
 pub(crate) fn undo_clause(state: &AppState) -> Option<String> {
     let clash = state.clash.as_ref()?;
     let undoes = (clash.clash.why == PutBackWhy::SetAside).then(|| {
+        // Only a switching create sets edits aside, so a `BranchCreate`
+        // entry here is a switch (10b).
         let checkout = matches!(&state.journal.entries, Loading::Ready(read)
         if read.entries.iter().any(|entry| {
             entry.id == clash.clash.entry
-                && entry.kind == graft_core::journal::OperationKind::Checkout
+                && matches!(
+                    entry.kind,
+                    graft_core::journal::OperationKind::Checkout
+                        | graft_core::journal::OperationKind::BranchCreate
+                )
         }));
         if checkout { "switch" } else { "rebase" }
     });

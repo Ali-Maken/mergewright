@@ -46,6 +46,7 @@ fn octopus_in_progress() -> TempRepo {
         name: "topic".to_owned(),
         at,
         checkout: false,
+        on_edits: graft_ops::operation::OnEdits::Refuse,
     });
     try_run(&repo, &create, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
     for branch in ["a", "b"] {

@@ -50,6 +50,7 @@ pub mod stash;
 mod state;
 mod status_read;
 mod strip;
+pub mod switch;
 pub mod undo;
 
 pub use events::{

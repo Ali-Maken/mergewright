@@ -55,6 +55,7 @@ fn checkout_to(repo: &TempRepo, to: &str) -> Operation {
     Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch(to.to_owned()),
         head_before: HeadRef::Branch(repo.git(&["symbolic-ref", "HEAD"])),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     })
 }
 

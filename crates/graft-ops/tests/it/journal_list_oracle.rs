@@ -416,6 +416,7 @@ fn a_graft_switch_is_one_graft_row() {
     let op = Operation::Checkout(graft_ops::operation::CheckoutParams {
         to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/spike".to_owned()),
         head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let switch = run(&repo, &op, now_ms());
     assert_eq!(switch.kind, OperationKind::Checkout);

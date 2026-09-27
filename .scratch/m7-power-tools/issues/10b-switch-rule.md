@@ -1,6 +1,6 @@
 # switch-rule — one rule for every switch: instant on a clean tree, preview (`y`) with unsaved edits or a detached target
 
-Status: ready
+Status: done
 Blocked by: 03-land-on-result (the landing on the new HEAD; 03 also holds graft-ops `sets_aside`)
 Crates: graft-ops (`CheckoutParams`, `CheckoutTarget`, `BranchCreateParams`, `check`/`plan`/`touches`/`sets_aside`,
 `preview::plan` for a switching branch-create); graft (`update/switch.rs` new; `context_menu` Checkout route;
@@ -41,9 +41,11 @@ Needs: `land_on_result` (03). Exposes `switch_to` and `CheckoutTarget::Track` fo
   - `u` leaves `branch.<local>.remote/merge` in config. Harmless to git; **file it in NOTES as a gap** (the conductor
     rows it in KNOWN_GAPS). Redo re-creates the ref and tracking comes back.
 - **Words on landing** (status line, the cursor lands via `land_on_result`):
-  - `✓ on <b> · u goes back`
-  - `✓ on <b> (new, tracks <origin/b>) · u goes back`
-  - with a set-aside: `✓ on <b> · your edits are back · u goes back` — the existing `clash::edits_back` clause,
+  - `on <b> ✓ · u goes back`
+  - `on <b> (new, tracks <origin/b>) ✓ · u goes back`
+  - with a set-aside: `on <b> ✓ · your edits are back · u goes back`
+  - (Word order amended 2026-09-27, conductor ruling: every `Done` draws `<what> ✓ · …`,
+    `update/state.rs:1021-1041`; consistency, ux-principles.) — the existing `clash::edits_back` clause,
     **not** the note's `your N edited files put back`: the same words the rebase uses (UX consistency; one wording).
   - A detached checkout keeps today's words. A put-back clash lands on the resolver (ADR-0045), label `switch` for
     Checkout and for a switching create.
@@ -90,37 +92,30 @@ pub(crate) fn instant_refused(state: &mut AppState, op: &Operation, refusal: &Re
 (`next_id`: whatever id source `open_preview` takes today — match it; the scout names it.)
 
 ## Acceptance
-- [ ] **graft-ops:**
-  - `checkout_refuse_refuses_a_dirty_tree` (red first);
-  - `checkout_set_aside_is_unchanged` (the m6 set-aside round trips green, named);
-  - `switching_create_at_head_over_edits_sets_nothing_aside` (index and files byte-equal after; red first — flips
-    today's `DirtyTree` test, named in NOTES);
-  - `switching_create_elsewhere_over_edits_sets_them_aside_and_u_restores`;
-  - `switching_create_elsewhere_refuse_refuses_dirty`;
-  - `switching_create_previews_with_the_put_back_forecast`;
-  - `track_creates_the_local_branch_tracking_the_remote` (upstream read back from config);
-  - `track_refuses_when_the_local_name_exists`; `track_refuses_when_the_remote_moved`;
-  - `track_undo_deletes_the_branch_and_puts_head_back`.
-- [ ] **App:**
-  - `dot_checkout_on_a_clean_tree_switches_at_once` (red first);
+- [x] **graft-ops** (`crates/graft-ops/src/operation/history/tests.rs` unit, `tests/it/switch_rule.rs` against git):
+  - `checkout_refuse_refuses_a_dirty_tree` (red first: `left: Ok(()) right: Err(DirtyTree { count: 1 })`);
+  - `checkout_set_aside_is_unchanged` → the m6 round trips, green unchanged: `tests/it/set_aside.rs::checkout_round_trips_{an_rm_cached, index_only_content, a_staged_mode_only_change, staged_unstaged_untracked, a_staged_new_file, a_deletion, a_rename}` (their checkouts now carry `OnEdits::SetAside`);
+  - `switch_rule::switching_create_at_head_over_edits_sets_nothing_aside` (red first: worktree `Updated { paths: [], .. }` vs `EditsStay`; unit flip below);
+  - `switch_rule::switching_create_elsewhere_over_edits_sets_them_aside_and_u_restores`;
+  - `history::tests::switching_create_elsewhere_refuse_refuses_dirty`;
+  - `switch_rule::switching_create_previews_with_the_put_back_forecast`;
+  - `switch_rule::track_creates_the_local_branch_tracking_the_remote` (config `remote`/`merge` and `@{upstream}` read back, `branch.autoSetupMerge=false`);
+  - `history::tests::track_refuses_when_the_local_name_exists`; `history::tests::track_refuses_when_the_remote_moved` (+ `NoSuchRef` when gone);
+  - `switch_rule::track_undo_deletes_the_branch_and_puts_head_back`.
+  - also: `history::tests::switching_create_at_head_sets_nothing_aside_and_never_refuses`, `track_plans_an_explicit_tracking_create_and_names_its_branch`, `track_refuse_refuses_a_dirty_tree_and_set_aside_touches_the_stash`.
+- [x] **App** (`crates/graft/src/update/switch/tests.rs` unless named):
+  - `dot_checkout_on_a_clean_tree_switches_at_once` (red first, rule forced to always-preview: panicked at `switch/tests.rs:160` "no preview");
   - `dot_checkout_with_edits_opens_the_set_aside_preview`;
   - `dot_checkout_detached_still_previews`;
-  - `b_tab_with_edits_opens_the_preview` (red first);
+  - `b_tab_with_edits_opens_the_preview` (red first, rule without the edits branch: `nothing ran: [Operate(.., BranchCreate { .., on_edits: Refuse })]`);
   - `b_tab_on_a_clean_tree_is_unchanged`;
-  - `an_instant_switch_refused_for_edits_lands_on_the_preview`;
-  - `switch_words_on_landing` (the three lines above);
-  - `a_switching_create_clash_is_labelled_switch`.
-- [ ] **Walks:** m5 `checkout_branch_via_menu` (`pick_revert_reset.rs:228`) and `journey_menu_checkout`
-      (`every_scenario.rs:143`) now `. ⏎`, no `y`; HEAD on the target, `u` back. `checkout_detached_via_menu`
-      unchanged. New in `m7_walk`: `switch_with_edits_via_menu` = `. ⏎ y`; `new_branch_with_edits` = `b <name> ⇥ ⏎ y`
-      — edits back after each, then `u`.
-- [ ] **Captures** (colour unverified): `docs/shots/m7/switch-menu-clean-landed-120x40.txt`. **Right:** `▸` on the new
-      HEAD's row; status `✓ on feature-b · u goes back`; no preview box.
-      `docs/shots/m7/new-branch-with-edits-preview-120x40.txt`. **Right:** `Preview:` box naming the new branch, the
-      line `your edits stay as they are` (at HEAD), `y` on the box edge.
-      Every changed m5/m6 capture re-taken (`GRAFT_UPDATE_SHOTS=1`, then a pass without, all `settled`); NOTES lists
-      each with what changed.
-- [ ] MAP.md (graft-ops, graft). TESTING.md rows for the new walks and captures.
+  - `an_instant_switch_refused_for_edits_lands_on_the_preview` (+ `an_instant_switch_refused_otherwise_keeps_the_refusal`);
+  - `switch_words_on_landing` (the three lines, plus detached = the entry's description);
+  - `clash::tests::a_switching_create_clash_is_labelled_switch` (red first with the old label: `… u undoes the rebase too`).
+  - also `dot_checkout_over_untracked_files_only_switches_at_once`.
+- [x] **Walks:** m5 `checkout_branch_via_menu` (`pick_revert_reset.rs`) now `. ⏎`, no `y`, HEAD on the target, `u` back (`m5_walk::every_scenario::checkout_branch_via_menu`). `journey_menu_checkout` (`m5_walk/stash_journeys.rs` `menu_checkout`): `. ⏎`, a `See` that no preview opened, on `fix` (`m5_walk::every_scenario::journey_menu_checkout`). `checkout_detached_via_menu` unchanged, green. New `m7_walk::switch::{switch_clean_via_menu_is_two_keys, switch_with_edits_via_menu, new_branch_with_edits, new_branch_at_head_with_edits_previews_edits_stay}`: edits back and `u` in each.
+- [x] **Captures** (colour unverified): `docs/shots/m7/switch-menu-clean-landed-120x40.txt` (`switch_clean_via_menu_is_two_keys`): no box, cursor on `feature-b` (asserted from state; the row draws `◆ ▏`, there is no `▸` glyph on a graph row — the spec's `▸` is wrong), `on feature-b ✓ · u goes back`. `docs/shots/m7/new-branch-with-edits-preview-120x40.txt` (`new_branch_at_head_with_edits_previews_edits_stay`): `Preview: branch feature-c at 37926a7`, `your edits stay as they are`, `y confirm` on the edge. Re-taken: `docs/shots/m7/30b-staging-not-kept-{80x24,187x50}.txt` (`checkout fix ✓` → `on fix ✓`, header and line). Caption rows added for the two new ones (the tsv had no 30b rows). m5/m6 captures: `m6/fix-undo-drift-way-back-*` and `box-owns-the-bar` checked after the helper change (`undo_over_drift::capture_fix_undo_drift_way_back`, `box_owns_the_bar::capture_fix_box_owns_the_bar`); they match unchanged, so nothing was re-taken.
+- [x] MAP.md (graft-ops: `OnEdits`, `CheckoutTarget::Track` + measured git form, `BranchCreateParams.on_edits`, `sets_aside`, `WorktreeEffect::EditsStay`; graft: `update::switch` section, context menu, name prompt). TESTING.md: "M7: one switch rule" table; 30b row's words.
 
 ## Touches (check each, report how)
 - **`.` Checkout's callers:** `verbs.rs:73-112` (built), `context_menu.rs:307-329` (`preview_history_verb` → now
@@ -148,3 +143,26 @@ Workspace-wide gates. Throwaway repos only.
 ## Size
 Large (~65k). Split if needed: **-a** graft-ops (OnEdits, Track, create set-aside, preview plan); **-b** graft (the
 rule, routes, words, walks, captures).
+
+## NOTES (builder, 2026-09-27)
+- **Compacted once mid-ticket.** Remaining after this report: only the blocked list below.
+- Scouts used: `scouts/10.md`, `scouts/10b.md`.
+- **Conductor ruling recorded:** landing words `on <b> ✓ · u goes back` (tick after `what`, as every `Done`); acceptance amended above.
+- **Unlisted files, granted by the coordinator 2026-09-27 for these fixes only:**
+  1. `src/update/context_menu/tests.rs`: `every_history_verb_the_menu_lists_opens_a_preview` and `enter_on_each_enabled_slot_runs_its_own_verb`. For a branch Checkout they now assert no preview plus exactly one `Operate` of that verb's op with `on_edits: Refuse` (`switched_at_once`). Every other verb is asserted as before.
+  2. `tests/it/undo_over_drift.rs` `checkout_through_menu`: `. ⏎`, asserting no preview, then `settle_write`. The 8 undo_over_drift tests and `box_owns_the_bar` are green with every assertion kept.
+  3. `tests/it/m6_stash_put_back.rs` `menu_checkout_is_three_keys`: `. ⏎`, asserting no preview. It keeps `<= 3` and adds `== 2`. The note's `menu-checkout` row (3) is still an upper bound and could drop to 2 (conductor's call).
+  4. `tests/it/m5_walk/stash_journeys.rs` `menu_checkout`: `PreviewReady` + `y` are replaced by a `See` that no preview opened. The shell checks are unchanged.
+- Literal-only `on_edits` additions outside the Files line: `crates/graft-ops/tests/it/rewrite_preview.rs` (one `CheckoutParams` literal). Compiler-forced arm: `crates/graft/tests/it/m5_walk/claim.rs:187` (`WorktreeEffect::EditsStay` with `Untouched | IndexOnly`: the tree must not change).
+- New file under my new module: `crates/graft/src/update/switch/tests.rs`.
+- Flipped graft-ops test: `a_dirty_tracked_tree_refuses_a_new_branch_switch_but_not_rebase_or_checkout` → `a_dirty_tracked_tree_refuses_a_stash_branch_but_not_rebase_checkout_or_create_at_head` (`branch_create(true)` at HEAD over edits: was `Err(DirtyTree{count:2})`, now `Ok`). `b ⇥` refusal tests named in the spec (`m5_walk/refs_and_names.rs:72`, `name_and_drag.rs:90`) are clean-tree creates: unchanged, green.
+- Done-word grep (before changing): `describe_checkout` unchanged except `Track`, so undo/redo/interrupted words (`undo/tests/set_aside.rs:264-351`, `operate/tests/staging_not_kept.rs`, `jobs/operate/tests.rs:59,165`, `undo_over_drift` `undo: checkout fix ✓`, `set_aside.rs:1194` relaunch notice) keep `checkout fix`. Changed on screen: the Done line after a branch checkout and the 30b staging-not-kept line (`m6_stash_put_back/set_aside.rs` `a_dirty_switch_is_three_keys`, `a_switch_whose_staging_cannot_come_back_says_so`, both updated, captures re-taken).
+- **Gap (for KNOWN_GAPS):** `u` after a `Track` checkout deletes the branch but leaves `branch.<local>.remote/.merge` in config. Harmless to git; redo re-creates the ref and tracking comes back (`switch_rule::track_undo_deletes_the_branch_and_puts_head_back` docs it).
+- **ADR-0045 §4 amendment owed** (conductor): the set-aside kinds gain the switching create away from HEAD.
+- **Question:** a switching create's landing keeps today's words (`branch nb at <sha7> ✓`, + `your edits are back`), not `on nb ✓ · u goes back`. The spec names words for checkouts only; `landed_words` could take `BranchCreate { checkout: true }` in one arm if wanted.
+- `instant_refused`'s `opened_by` falls back to `.` (checkout) / `b` (create) when the launch recorded none; a checkout launch records it (`launch_unstoppable(.., Some(opened_by))`), a create's `launch` does not, so `b` is the fallback in practice.
+- `REFS_PENDING` wording duplicated in `switch.rs` (the push box's constant is private to `remote/push_box.rs`, 16b's file).
+- Walk fixtures wait for the first status read before pressing keys, so they take the edits branch; the stale-clean path (instant launch refused `DirtyTree` → preview) is covered by the unit test, not a walk.
+- Refactors for clippy's 60-line limit (behaviour unchanged): `operate::stopped` (the `Conflicted` arm, moved out of `operated`); `operation_failed` now takes the launched op and does the `instant_refused` check first; `context_menu::run_history_verb`; `name_prompt::switch_to_new`; `Operation::and_stash_if_set_aside`.
+- Proposed change (not decided) stands as written above.
+- `rewrite_preview::plan_as_run_leaves_every_other_kind_alone` failed once under load. Per the coordinator, that cause is fixed on main by 30g (plans compared with ghost times zeroed); I did not chase it.

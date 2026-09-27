@@ -1,6 +1,7 @@
 //! m6-conflicts/71: the `.` menu on a commit row opens with Checkout, then
 //! Cherry-pick, always — walked against a real repository, keys counted
-//! against the design note's journeys (`menu-checkout` 3, `menu-cherry-pick`
+//! against the design note's journeys (`menu-checkout` 3, walked in 2 since
+//! m7-power-tools/10b; `menu-cherry-pick`
 //! 4; `docs/design-notes/m6-stash-put-back.md` "Journeys").
 //!
 //! m6-conflicts/72b: a stash pop or apply from `S` that clashes — `S p y o ⏎`
@@ -130,7 +131,8 @@ fn labels(state: &AppState) -> Vec<String> {
         .collect()
 }
 
-/// `menu-checkout`: cursor on `fix`'s row, `. ⏎ y` — on `fix`, 3 keys.
+/// `menu-checkout`: cursor on `fix`'s row, `. ⏎` — on `fix`, 2 keys (the
+/// note allows 3; a clean tree switches at once since m7-power-tools/10b).
 #[test]
 fn menu_checkout_is_three_keys() {
     let scratch = main_and_fix();
@@ -146,8 +148,7 @@ fn menu_checkout_is_three_keys() {
     let state = keys.press(&state, KeyCode::Char('.'));
     assert_eq!(labels(&state)[0], "Checkout fix", "{:?}", labels(&state));
     let state = keys.press(&state, KeyCode::Enter);
-    let state = planned(&app, state);
-    let state = keys.press(&state, KeyCode::Char('y'));
+    assert!(state.preview.is_none(), "a clean checkout previews nothing");
     let state = app.settle_write(state, "the checkout");
 
     assert_eq!(
@@ -155,6 +156,7 @@ fn menu_checkout_is_three_keys() {
         "refs/heads/fix"
     );
     assert!(keys.count <= 3, "{} keys", keys.count);
+    assert_eq!(keys.count, 2, "`. ⏎`");
     drop(state);
     app.close();
 }

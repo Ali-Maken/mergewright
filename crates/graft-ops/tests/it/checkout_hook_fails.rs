@@ -36,6 +36,7 @@ fn a_checkout_whose_post_checkout_hook_fails_has_moved_head() {
     let checkout = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let Err(ApplyError::Git { entry, .. }) = try_run(&repo, &checkout, NOW) else {
         panic!("the failing hook fails the checkout");

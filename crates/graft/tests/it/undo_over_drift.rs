@@ -53,13 +53,13 @@ fn cursor_onto(app: &App, mut state: AppState, target: &str) -> AppState {
     panic!("the cursor never reached {target}");
 }
 
-/// `. ⏎ y` on `commit`'s row: a checkout through the menu, settled.
+/// `. ⏎` on `commit`'s row: a checkout through the menu, settled. The tree
+/// is clean, so it switches at once, no preview (m7-power-tools/10b).
 fn checkout_through_menu(app: &App, state: AppState, commit: &str) -> AppState {
     let state = cursor_onto(app, state, commit);
     let state = app.key(&state, KeyCode::Char('.'));
     let state = app.key(&state, KeyCode::Enter);
-    let state = planned(app, state);
-    let state = app.key(&state, KeyCode::Char('y'));
+    assert!(state.preview.is_none(), "a clean checkout previews nothing");
     app.settle_write(state, "the checkout")
 }
 

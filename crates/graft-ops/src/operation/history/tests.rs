@@ -18,8 +18,8 @@ use graft_git::version::GitVersion;
 use super::super::{FactsScope, Operation, Refusal, RepoFacts, SetAside, Target};
 use super::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
-    MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
-    RevertParams, Source, TagCreateParams, Tip,
+    MergeParams, OnEdits, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams,
+    ResetTarget, RevertParams, Source, TagCreateParams, Tip,
 };
 
 const MAIN: &str = "refs/heads/main";
@@ -148,19 +148,55 @@ fn move_branch() -> Operation {
     })
 }
 
+/// A previewed checkout of `feat`: edits are set aside (ADR-0045 §4).
 fn checkout() -> Operation {
+    checkout_with(OnEdits::SetAside)
+}
+
+fn checkout_with(on_edits: OnEdits) -> Operation {
     Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch(FEAT.to_owned()),
         head_before: HeadRef::Branch(MAIN.to_owned()),
+        on_edits,
     })
 }
 
+/// `nb` at `HEAD`'s own commit (`0x0a`), launched as `b ⇥` on a clean tree
+/// launches it: `OnEdits::Refuse`.
 fn branch_create(checkout: bool) -> Operation {
+    branch_create_at(checkout, 0x0a, OnEdits::Refuse)
+}
+
+fn branch_create_at(checkout: bool, at: u8, on_edits: OnEdits) -> Operation {
     Operation::BranchCreate(BranchCreateParams {
         name: "nb".to_owned(),
-        at: oid(0x0a),
+        at: oid(at),
         checkout,
+        on_edits,
     })
+}
+
+/// `origin/feat` at `0x0f` as the list saw it, switched to as a new `rf`.
+fn track() -> Operation {
+    Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Track {
+            remote: tip(ORIGIN_FEAT, 0x0f),
+            local: "rf".to_owned(),
+        },
+        head_before: HeadRef::Branch(MAIN.to_owned()),
+        on_edits: OnEdits::Refuse,
+    })
+}
+
+const ORIGIN_FEAT: &str = "refs/remotes/origin/feat";
+
+/// `facts()` with `origin/feat` at `0x0f` and no `rf` yet: what `track()`
+/// reads.
+fn track_facts() -> RepoFacts {
+    let mut f = facts();
+    f.refs.insert(ORIGIN_FEAT.to_owned(), Some(oid(0x0f)));
+    f.refs.insert("refs/heads/rf".to_owned(), None);
+    f
 }
 
 fn branch_delete() -> Operation {
@@ -230,6 +266,7 @@ fn describe_reads_like_the_browser_line() {
     let detached = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Detached(oid(0x0c)),
         head_before: HeadRef::Branch(MAIN.to_owned()),
+        on_edits: OnEdits::SetAside,
     });
     assert_eq!(detached.describe(), "checkout 0c0c0c0 (detached)");
     let many = Operation::CherryPick(PickParams {
@@ -400,6 +437,7 @@ fn plan_switch_branch_tag_and_stash_branch() {
     let detached = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Detached(oid(0x0c)),
         head_before: HeadRef::Branch(MAIN.to_owned()),
+        on_edits: OnEdits::SetAside,
     });
     assert_eq!(
         lines(&detached, &f),
@@ -592,10 +630,13 @@ fn head_on_another_branch_refuses_branch_changed() {
 }
 
 /// Flipped by m6-conflicts/73 (ADR-0045 §4): a rebase or checkout over
-/// changed tracked files sets them aside instead of refusing. A switch to a
-/// new branch and a branch from a stash still refuse.
+/// changed tracked files sets them aside instead of refusing. A branch from
+/// a stash still refuses. Flipped again by m7-power-tools/10b: a new branch
+/// switched to at `HEAD`'s own commit leaves the edits as they are, so it
+/// no longer refuses (`switching_create_elsewhere_refuse_refuses_dirty` has
+/// the case that still does).
 #[test]
-fn a_dirty_tracked_tree_refuses_a_new_branch_switch_but_not_rebase_or_checkout() {
+fn a_dirty_tracked_tree_refuses_a_stash_branch_but_not_rebase_checkout_or_create_at_head() {
     let mut f = facts();
     f.status.entries.push(StatusEntry {
         unstaged: Some(Change::Modified),
@@ -610,9 +651,9 @@ fn a_dirty_tracked_tree_refuses_a_new_branch_switch_but_not_rebase_or_checkout()
         ..entry("junk")
     });
     let dirty = Err(Refusal::DirtyTree { count: 2 });
-    assert_eq!(branch_create(true).check(&f), dirty);
     assert_eq!(branch_from_stash().check(&f), dirty);
     for op in [
+        branch_create(true),
         rebase(),
         checkout(),
         merge(),
@@ -745,6 +786,7 @@ fn new_names_must_be_valid_and_free() {
         name: "a..b".to_owned(),
         at: oid(0x0a),
         checkout: false,
+        on_edits: OnEdits::Refuse,
     });
     assert_eq!(
         bad.check(&f),
@@ -757,6 +799,7 @@ fn new_names_must_be_valid_and_free() {
         name: "feat".to_owned(),
         at: oid(0x0a),
         checkout: false,
+        on_edits: OnEdits::Refuse,
     });
     let mut with_feat = facts();
     with_feat
@@ -965,5 +1008,157 @@ fn every_history_refusal_explains_itself_in_one_line() {
         }
         .explain(),
         "feat moved since the preview was drawn — press the key again"
+    );
+}
+
+// ── the switch rule (m7-power-tools/10b) ────────────────────────────────
+
+/// One unstaged edit to a tracked file, and an untracked file.
+fn one_edit(mut f: RepoFacts) -> RepoFacts {
+    f.status.entries = vec![
+        StatusEntry {
+            unstaged: Some(Change::Modified),
+            ..entry("a.rs")
+        },
+        StatusEntry {
+            untracked: true,
+            ..entry("junk")
+        },
+    ];
+    f
+}
+
+/// The instant path's stale "clean": a checkout launched with `Refuse`
+/// over a tree that has an edit is refused, never set aside unseen.
+#[test]
+fn checkout_refuse_refuses_a_dirty_tree() {
+    let dirty = one_edit(facts());
+    let instant = checkout_with(OnEdits::Refuse);
+    assert_eq!(instant.check(&dirty), Err(Refusal::DirtyTree { count: 1 }));
+    assert_eq!(instant.sets_aside(&dirty), None);
+    // Clean, or untracked only: it runs.
+    assert_eq!(instant.check(&facts()), Ok(()));
+    let untracked = facts_over(vec![StatusEntry {
+        untracked: true,
+        ..entry("junk")
+    }]);
+    assert_eq!(instant.check(&untracked), Ok(()));
+    // The previewed one sets the edit aside, as before.
+    assert_eq!(checkout().check(&dirty), Ok(()));
+    assert_eq!(checkout().sets_aside(&dirty), Some(SetAside { files: 1 }));
+}
+
+/// `b ⇥` at `HEAD`'s commit over edits: nothing is set aside either way,
+/// and `Refuse` does not refuse (`switch -c` leaves index and files).
+#[test]
+fn switching_create_at_head_sets_nothing_aside_and_never_refuses() {
+    let dirty = one_edit(facts());
+    for on_edits in [OnEdits::Refuse, OnEdits::SetAside] {
+        let op = branch_create_at(true, 0x0a, on_edits);
+        assert_eq!(op.check(&dirty), Ok(()), "{on_edits:?}");
+        assert_eq!(op.sets_aside(&dirty), None, "{on_edits:?}");
+        assert!(
+            !op.touches(&dirty).refs.contains(&"refs/stash".to_owned()),
+            "{on_edits:?}"
+        );
+    }
+}
+
+/// `b ⇥` at another commit: `Refuse` refuses the edits; `SetAside` never
+/// refuses them and sets them aside, `refs/stash` touched.
+#[test]
+fn switching_create_elsewhere_refuse_refuses_dirty() {
+    let dirty = one_edit(facts());
+    let refuse = branch_create_at(true, 0x0b, OnEdits::Refuse);
+    assert_eq!(refuse.check(&dirty), Err(Refusal::DirtyTree { count: 1 }));
+    assert_eq!(refuse.check(&facts()), Ok(()));
+    let aside = branch_create_at(true, 0x0b, OnEdits::SetAside);
+    assert_eq!(aside.check(&dirty), Ok(()));
+    assert_eq!(aside.sets_aside(&dirty), Some(SetAside { files: 1 }));
+    assert_eq!(aside.sets_aside(&facts()), None, "clean");
+    assert_eq!(
+        aside.touches(&dirty).refs,
+        ["refs/heads/nb".to_owned(), "refs/stash".to_owned()]
+    );
+    // A create that does not switch never sets anything aside.
+    let quiet = branch_create_at(false, 0x0b, OnEdits::SetAside);
+    assert_eq!(quiet.sets_aside(&dirty), None);
+}
+
+#[test]
+fn track_plans_an_explicit_tracking_create_and_names_its_branch() {
+    let f = track_facts();
+    assert_eq!(track().check(&f), Ok(()));
+    assert_eq!(
+        track().facts_scope(),
+        FactsScope {
+            remotes: false,
+            refs: ["HEAD", ORIGIN_FEAT, "refs/heads/rf"]
+                .iter()
+                .map(|r| (*r).to_owned())
+                .collect(),
+        }
+    );
+    assert_eq!(
+        lines(&track(), &f),
+        ["git switch --create rf --track refs/remotes/origin/feat"]
+    );
+    assert_eq!(
+        track().touches(&f),
+        Touches {
+            refs: vec!["refs/heads/rf".to_owned()],
+            index: true,
+            worktree: true,
+        }
+    );
+    assert_eq!(track().describe(), "checkout rf (new, tracks origin/feat)");
+    assert!(track().moves_head());
+}
+
+#[test]
+fn track_refuses_when_the_local_name_exists() {
+    let mut f = track_facts();
+    f.refs.insert("refs/heads/rf".to_owned(), Some(oid(0x0f)));
+    assert_eq!(
+        track().check(&f),
+        Err(Refusal::RefExists {
+            name: "rf".to_owned()
+        })
+    );
+}
+
+#[test]
+fn track_refuses_when_the_remote_moved() {
+    let mut f = track_facts();
+    f.refs.insert(ORIGIN_FEAT.to_owned(), Some(oid(0x0e)));
+    assert_eq!(
+        track().check(&f),
+        Err(Refusal::Moved {
+            name: ORIGIN_FEAT.to_owned()
+        })
+    );
+    f.refs.insert(ORIGIN_FEAT.to_owned(), None);
+    assert_eq!(
+        track().check(&f),
+        Err(Refusal::NoSuchRef {
+            name: ORIGIN_FEAT.to_owned()
+        })
+    );
+}
+
+/// A tracking checkout follows the same edits rule as any other.
+#[test]
+fn track_refuse_refuses_a_dirty_tree_and_set_aside_touches_the_stash() {
+    let dirty = one_edit(track_facts());
+    assert_eq!(track().check(&dirty), Err(Refusal::DirtyTree { count: 1 }));
+    let Operation::Checkout(mut params) = track() else {
+        unreachable!("track() is a checkout")
+    };
+    params.on_edits = OnEdits::SetAside;
+    let aside = Operation::Checkout(params);
+    assert_eq!(aside.check(&dirty), Ok(()));
+    assert_eq!(
+        aside.touches(&dirty).refs,
+        ["refs/heads/rf".to_owned(), "refs/stash".to_owned()]
     );
 }
