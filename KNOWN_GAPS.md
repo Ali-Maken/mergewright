@@ -981,10 +981,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r0120-m10 | Run loop: grandchild holding a pipe past the poll → a landed write still reads `Stopped` (`graft-git/src/run.rs:489-493`, `after_exit` ≈`:537`; narrower since 27b, commented). Minor 10 | **broken** (narrow residual) | M8 |
 | M7/r0120-q1 | Can the `x base` badge row (`CompareBase.row`, `update/geometry.rs` `badge_at`) go stale after a refresh re-lays the graph? No re-anchor found; not every path traced. Question | **unverified** (question) | M7 |
 | M7/r0120-q2 | 01b: a real rail-read failure racing Esc is folded into "cancelled" (`undo/execute.rs:288-294`); no test covers it. Better: fold only `FactsError::Stopped`, keep failure words. Question | **unverified** (question) | M7 |
-| M7/10b-track | Undo of a `Track` switch leaves the new branch's upstream config behind (10b NOTES) | **broken** | M7 |
-| M7/10b-q | Should a switching create (`n` new branch) land with `on nb ✓` like every other switch? (10b question; Done pattern `update/state.rs:1021-1041`) | **unverified** (question) | M7 |
 | M7/30i-ascii | Submodule row `▣` and marks `→ ± ?` have no ASCII-tier fallback (literal in graft-ui `detail_pane/files.rs`) | **unverified** | M8 |
-| M7/30i-facts | Diff job never fills `SubmoduleView`'s inside facts (`graft/src/jobs/detail.rs:298-304`); 30i's `body.rs` copies them from the file row under the cursor (symptom-side). Cause fix: fill them in the diff job | **broken** (workaround in place) | M7 |
 | M7/11a-gitver | Pick of an ancestor verified only on git 2.54.0 (`git_alone_stops_on_a_pick_of_an_ancestor`); other versions not run | **unverified** | M8 |
 | M7/21b-narrow | History bar empty below 30 columns: conductor ladder step 3 (`esc back` alone) broke two invariant tests (21b NOTES); `esc` still works, unseen | **broken** (below 30 cols only) | M8 |
 | M7/21b-shots | History captures: fixture has 3 changes, not 4 as the mock; `┃` on rows 17–28 vs title 18–29; `tab` vs `⇥` word. Judge by eye; m5/m2 detail capture producers unconfirmed | **unverified** | M7 |
@@ -996,3 +993,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r1621-q1 | History title names HEAD's line range, bracket the selected commit's (17–28 vs 18–29): say on screen? | **unverified** (question) | M7 |
 | M7/r1621-q2 | 11a: a pick with unrelated edits does a stash round trip it didn't need ("N files set aside" for N untouched) | **unverified** (question) | M8 |
 | M7/03b-count | Pull journey has no row in the design note step-count fence; walk hardcodes 1 key (`m7_walk/pull.rs`) | **broken** (doc) | M7 |
+
+| M7/30j-int | Interrupted Track (`mark_interrupted`) reads no `config_after`, so its undo keeps the upstream; config restore is not compare-and-swap (an outside edit between op and undo is overwritten) (30j NOTES) | **broken** (narrow) | M8 |
+| M7/30j-subdispatch | `jobs/runner.rs` catch-alls remain at `:328` (dispatch_detail) and `:361` (dispatch_history) sub-dispatch | **broken** (fragile) | M8 |
+| M7/30j-size | Over 400 lines, pre-existing: `update/detail/ops.rs` 705, `update/remote.rs` 531, `jobs/runner.rs` ~1200 → 30h scope or M8 | **broken** (readability) | M8 |
