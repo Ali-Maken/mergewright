@@ -480,6 +480,25 @@ fn force_push_candidates(state: &AppState) -> Vec<(String, Oid)> {
     wanted
 }
 
+/// Job `id` failed as a job (a panic, a runner that could not start it):
+/// whichever radar read waited on it is answered `Failed`, never left
+/// `Pending` (m7-power-tools/33c). Every requester asks only from `Idle`
+/// (context, duplicates) or for a branch not yet in the map (force-push), so
+/// a `Failed` here is not asked again until `Ctrl+R` resets the radar.
+pub fn job_failed(state: &mut AppState, id: JobId, failure: &str) {
+    if state.radar.context == Loading::Pending(id) {
+        state.radar.context = Loading::Failed(failure.to_owned());
+    }
+    if state.radar.duplicates == Loading::Pending(id) {
+        state.radar.duplicates = Loading::Failed(failure.to_owned());
+    }
+    for probe in state.radar.force_push.values_mut() {
+        if *probe == Loading::Pending(id) {
+            *probe = Loading::Failed(failure.to_owned());
+        }
+    }
+}
+
 /// One branch's force-push probe answered, about the branch at `tip`.
 ///
 /// Kept whatever its id: unlike the detail pane's jobs these are not tied to
@@ -713,6 +732,103 @@ mod tests {
             state = next;
         }
         assert_eq!(asks, 1);
+    }
+
+    /// m7-power-tools/33c m2: a context job that panicked is an answer, like
+    /// a failed read — `Failed` with the failure's words, not `Pending`
+    /// forever. It is not asked again on its own; `Ctrl+R` asks once.
+    #[test]
+    fn a_crashed_radar_context_job_reads_as_failed() {
+        let mut state = state_with_default_branch(Some(oid(1)));
+        state.radar.context = Loading::Pending(JobId::new(5));
+        let failure = graft_core::job::JobFailure::Panicked {
+            message: "lane 3 vanished".to_owned(),
+            report: None,
+        };
+        let (mut state, mut commands) = crate::update::update(
+            &state,
+            AppEvent::Core(graft_core::event::Event::JobFailed(JobId::new(5), failure)),
+        );
+        assert!(
+            matches!(&state.radar.context, Loading::Failed(why) if why.contains("lane 3 vanished")),
+            "{:?}",
+            state.radar.context
+        );
+        // Five events that leave the selection where it is: `j` on an empty
+        // history moves nothing.
+        for _ in 0..5 {
+            let (next, more) =
+                crate::update::update(&state, press(KeyCode::Char('j'), Modifiers::NONE));
+            commands.extend(more);
+            state = next;
+        }
+        assert_eq!(context_asks(&commands), 0, "{commands:?}");
+        let (_, commands) =
+            crate::update::update(&state, press(KeyCode::Char('r'), Modifiers::CONTROL));
+        assert_eq!(context_asks(&commands), 1, "{commands:?}");
+    }
+
+    /// m7-power-tools/33c audit: a duplicates probe that panicked is `Failed`,
+    /// and `request_duplicates_probe` asks only from `Idle`, so it is not
+    /// asked again on every update.
+    #[test]
+    fn a_crashed_duplicates_probe_reads_as_failed() {
+        let mut state = state_with_default_branch(Some(oid(1)));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext::of_ids([oid(1)], Vec::new())));
+        state.radar.duplicates = Loading::Pending(JobId::new(6));
+        let failure = graft_core::job::JobFailure::Failed("boom".to_owned());
+        let (mut state, mut commands) = crate::update::update(
+            &state,
+            AppEvent::Core(graft_core::event::Event::JobFailed(JobId::new(6), failure)),
+        );
+        assert!(matches!(state.radar.duplicates, Loading::Failed(_)));
+        for _ in 0..5 {
+            let (next, more) =
+                crate::update::update(&state, press(KeyCode::Char('j'), Modifiers::NONE));
+            commands.extend(more);
+            state = next;
+        }
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::DuplicatesProbe(..))),
+            "{commands:?}"
+        );
+    }
+
+    /// m7-power-tools/33c audit: a force-push probe that crashed is
+    /// `Failed` for its branch, and the branch is not probed again on every
+    /// update (`force_push_candidates` skips branches already in the map).
+    #[test]
+    fn a_crashed_force_push_probe_reads_as_failed() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext::of_ids([oid(1)], Vec::new())));
+        state
+            .radar
+            .force_push
+            .insert("main".to_owned(), Loading::Pending(JobId::new(7)));
+        let failure = graft_core::job::JobFailure::Failed("boom".to_owned());
+        let (mut state, mut commands) = crate::update::update(
+            &state,
+            AppEvent::Core(graft_core::event::Event::JobFailed(JobId::new(7), failure)),
+        );
+        assert!(
+            matches!(state.radar.force_push.get("main"), Some(Loading::Failed(_))),
+            "{:?}",
+            state.radar.force_push
+        );
+        for _ in 0..5 {
+            let (next, more) =
+                crate::update::update(&state, press(KeyCode::Char('j'), Modifiers::NONE));
+            commands.extend(more);
+            state = next;
+        }
+        assert!(
+            !commands.iter().any(
+                |command| matches!(command, Command::ForcePushProbe(_, branch, _) if branch == "main")
+            ),
+            "{commands:?}"
+        );
     }
 
     #[test]

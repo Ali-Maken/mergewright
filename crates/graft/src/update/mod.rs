@@ -1037,6 +1037,11 @@ fn job_failed(
     // A refs read that failed as a job (a panic, a stopped runner) is one
     // that failed: the refs are `Unknown` (review 47-49, M2).
     next.refs_read.answered(id, false);
+    // A crashed radar read or evil probe is an answer, like a failed one:
+    // `Failed`, so the pane says the check did not run instead of
+    // "checking" forever (m7-power-tools/33c).
+    radar::job_failed(next, id, &failure.to_string());
+    next.detail.evil_job_failed(id, &failure.to_string());
     finish::job_ended(next, id, failure);
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;

@@ -1,6 +1,6 @@
 # 33c radar-failed-context — a failed radar read hides nothing it did find, and a crashed read says so
 
-Status: ready
+Status: done
 Milestone: M7 (m7-power-tools)
 Source: review `docs/reviews/m7-18f-32b-06f-33.md` Minors 1–2 (gap rows M7/33r-m1, M7/33r-m2). Spec by planner, 2026-09-27.
 Blocked by: none by content (33, 33b merged). Crate graft: the conductor sequences it against whoever holds it.
@@ -63,38 +63,44 @@ hide it by not looking. 33's ruling stands unamended.
 No public signature changes. `job_failed`, `probe_evil`, `findings_for` keep theirs; only their bodies change.
 
 ## Acceptance (name the verifying test at tick time; each new test shown red before the fix, with its failure quoted)
-- [ ] **m1 view, red first:** `view::radar::tests::an_evil_merge_shows_while_the_context_failed` — context
-      `Failed("…")`, selected merge's evil verdict `Evil`: the radar lines are exactly `[NotChecked(..), <evil line>]`
-      in that order, and `findings_for` includes the `Evil` finding. Red today (evil absent).
-- [ ] **m1 view, the other states:** same, context `Idle` and `Pending`: evil line present, no NotChecked. `Ready`
-      unchanged (existing tests green).
-- [ ] **m1 marker:** the test that asserts `marker_for` is None on `Failed` (33's) is updated to: None for a plain
-      commit, the evil marker for an evil merge. Name both assertions. Red first for the evil half.
-- [ ] **m1, existing test:** `view::radar::tests::a_failed_context_says_radar_not_checked` — if it asserts no evil line
-      on `Failed`, it is changed to the ruling above; say which assertion changed and why.
-- [ ] **m2 context, red first, through `update`:** `update::tests::a_crashed_radar_context_job_reads_as_failed` —
-      context `Pending(id)`, feed `Event::JobFailed(id, Panicked)`: context is `Failed(_)` carrying the failure words;
-      then 5 events that don't move the selection (name them): no `Command::RadarContext`. Then `Ctrl+R`: exactly one.
-- [ ] **m2 evil, red first, through `update`:** `update::tests::a_crashed_evil_probe_reads_as_not_checkable` —
-      `detail.evil` `Pending(id)`, `JobFailed(id, Panicked)`: evil is `Failed(_)`; the view draws
-      `evil merge: not checkable — <why>`, not "checking".
-- [ ] **m2 no loop, red first:** `update::tests::a_failed_evil_probe_is_not_asked_again_for_the_same_commit` — after
-      the above, 5 events that don't move the selection: no `Command::EvilProbe`. Moving to another merge and back:
-      one probe each way. Red is expected only once `job_failed` sets `Failed` (the loop is live then); show it red
-      with the `job_failed` arm in and the `probe_evil` guard out.
-- [ ] **m2 audit:** NOTES, one line per `Pending` holder with lines and verdict; each fix it makes has its own
-      red-first test named here.
-- [ ] **Capture** `docs/shots/m7/radar-not-checked-evil-120x40.txt`, drawn by `view::view` via `frame_at` (as 33's),
-      context `Failed("commit b32274b is not in the repository")`, an evil merge selected, verdict `Evil`, asserted by
-      a named test. **Right:** the detail pane's radar block's first line is
-      `radar: not checked — commit b32274b is not in the repository · ctrl+r to try again`; the next line is the
-      evil-merge line (quote its exact words in NOTES); the graph's marker column shows the evil marker on that merge's
-      row and on no other row. Colour unverified (rule 5). By eye: user.
-- [ ] `docs/shots/m7/radar-not-checked-120x40.txt` (33's, plain commit) is byte-identical; show by `git diff --stat`.
-- [ ] graft MAP.md: `job_failed` (what a crashed job leaves: `Failed`, never `Pending`), `probe_evil` (asks from `Idle`
-      or another commit only), `findings_for` (evil ignores the context). Checked by reading; say so.
-- [ ] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`,
-      `cargo test --doc`.
+- [x] **m1 view, red first:** `view::radar::tests::an_evil_merge_shows_while_the_context_failed`. Red: panicked at
+      `view/radar.rs:381` (findings empty on `Failed`).
+- [x] **m1 view, the other states:** `view::radar::tests::the_evil_line_shows_on_an_idle_or_pending_context` (Idle and
+      Pending: `[EvilClean]`, then `[Finding]` for Evil; no NotChecked). Red at `:406`. Ready: existing
+      `the_evil_line_follows_the_probe_through_each_loading_state`, `an_evil_verdict_is_one_finding_and_no_separate_evil_line` green.
+- [x] **m1 marker:** 33's test kept its plain-merge-no-verdict `marker_for == None`; the new
+      `view::radar::tests::a_failed_context_marks_only_the_evil_merge` asserts `"plain commit"` None and `"evil merge"`
+      = evil severity marker. Red on the evil half only (`:438`); the plain half passed.
+- [x] **m1, existing test:** `view::radar::tests::a_failed_context_says_radar_not_checked` — the `Failed` assertion
+      changed from `[NotChecked]` to `[NotChecked, EvilUnchecked]`: the merge is unprobed there, and the evil line now
+      shows on every context (ruling m1). Red before the fix at `:357`.
+- [x] **m2 context, red first:** `update::radar::tests::a_crashed_radar_context_job_reads_as_failed` (in
+      `update::radar`, not `update::tests`: it reuses that module's `state_with_default_branch`/`press`/`context_asks`).
+      `JobFailed(5, Panicked)` → `Failed(..lane 3 vanished..)`; 5× `j` on an empty history (no selection to move): 0
+      `RadarContext`; `Ctrl+R`: 1. Red with the radar arm out: `Pending(JobId(5))` at `radar.rs:752`.
+- [x] **m2 evil, red first:** `update::tests::a_crashed_evil_probe_reads_as_not_checkable` — `Failed(..)`, view draws
+      `EvilNotCheckable("…tree walk broke")`, no `EvilChecking`; view half also
+      `view::radar::tests::a_failed_evil_probe_reads_as_not_checkable` (red: `right: [EvilNotCheckable("job panicked")]`).
+- [x] **m2 no loop, red first:** `update::tests::a_failed_evil_probe_is_not_asked_again_for_the_same_commit` — 5×
+      `JobFinished(900..904)` (unrelated ids): 0 `EvilProbe`; `k` (to the plain row): 0; `j` back: 1. Red with the arm
+      in, guard out: `assertion failed: matches!(state.detail.evil, EvilLoading::Failed(_))` at `tests.rs:5652`, and the
+      sibling showed `Pending(JobId(9223372036854775810))` — the re-probe loop live.
+- [x] **m2 audit:** NOTES below. Fixes: `update::radar::tests::a_crashed_duplicates_probe_reads_as_failed` (red:
+      `matches!(state.radar.duplicates, Loading::Failed(_))` at `radar.rs:784`),
+      `update::radar::tests::a_crashed_force_push_probe_reads_as_failed` (red: `{"main": Pending(JobId(7))}` at `:815`).
+- [x] **Capture** `docs/shots/m7/radar-not-checked-evil-120x40.txt`, asserted by
+      `radar_not_checked::capture_radar_not_checked_with_an_evil_merge` (real `git`, `Shape::EvilMerge`, real probe
+      verdict, context then set `Failed`). The pane joins radar lines with ` · ` on one row, so "next line" reads as
+      next item: row 26 is exactly
+      `Merge branch 'alpha' · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again · evil merge`.
+      Evil words: `evil merge`. Marker: `⚠` on the `Merge branch 'alpha'` row only (asserted: exactly one row with ⚠).
+      Before the `view/rows.rs` fix the frame had no ⚠ at all (observed in the failing run). Colour unverified (rule 5).
+      By eye: user.
+- [x] `docs/shots/m7/radar-not-checked-120x40.txt` byte-identical: `git diff --stat -- docs/shots/` empty (only the new
+      untracked file); `capture_radar_not_checked` green.
+- [x] graft MAP.md: `update::radar::job_failed` (new row), `DetailState::probe_evil` guard, `DetailState::evil_job_failed`
+      (new row), `findings_for`. Checked by reading.
+- [x] Gates workspace-wide: fmt ok, clippy ok, `cargo nextest run --workspace` 4207/4207 (3 skipped), `cargo test --doc` ok.
 
 ## Touches (check each; NOTES says how)
 - **Consumers of `findings_for`** (the evil finding now appears on non-`Ready` contexts): the marker column
@@ -113,3 +119,31 @@ No public signature changes. `job_failed`, `probe_evil`, `findings_for` keep the
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`. Report says whether cause or
 symptom, what it costs him, and the Touches line.
+
+## NOTES (builder, 2026-09-27)
+- Scout: none (ticket says so). Sites re-read on this branch: `findings_for` gate at `view/radar.rs:77`, evil gate
+  `:179`, `probe_evil` guard `ops.rs:184-186`, `job_failed` `mod.rs:1013` — none moved.
+- **Extra site the ticket did not name:** `view/rows.rs:105` gated the whole marker column on context `Ready`, so the
+  evil `⚠` was computed but never drawn on `Failed`. Now `Ready || detail.evil == Ready(Evil)` (and seen). The
+  no-history frame (`:189`) unchanged (no rows, no evil).
+- Cause fixes, both. Cost to him: on a failed context he now sees an evil merge he found; a crashed probe says why
+  instead of "checking" forever. Retrying a crashed evil probe needs moving off the merge and back (Ctrl+R does not
+  reset `detail.evil`; `reset_for_refresh` touches radar only) — as ruled.
+- Audit of `Pending(id)` holders vs `job_failed`:
+  - `radar.context` (`radar.rs:342`): id yes, was stranded → fixed; requester asks from `Idle` only (`:335`).
+  - `radar.duplicates` (`:527`): yes, stranded → fixed; asks from `Idle` only (`:524`).
+  - `radar.force_push[branch]` (`:431`): yes, stranded → fixed; candidates skip branches in the map (`:456`).
+  - `detail.evil` (`ops.rs`): yes → fixed + guard.
+  - **Question to the conductor (not fixed, each its own arm+guard, outside radar):** also stranded by `job_failed`
+    — `detail.files`/`detail.diff` (`prelude.rs:54-55` shows them gating "quiet"), `stash.entries` (`stash.rs:58`),
+    `stash.preview` (`:288`), `journal.entries` (`journal.rs:56`), `remotes` (`remote.rs:250`), `map.data`
+    (`map.rs:57`), `preview.plan` (`preview.rs:342`), finish `summary` (`finish.rs:158`; `finish::job_ended` at
+    `mod.rs` may already cover it — not verified). None is touched by `job_failed` (read `mod.rs:1013-1047`).
+    `refs_read` is handled (`answered(id,false)`).
+- `findings_for` consumers on `Failed` + evil merge (by reading): marker column (`view/entries.rs:314`, capture
+  shows ⚠), map strip (`view/strip.rs:55`, now marks the evil merge too), `.` menu `marked`
+  (`update/context_menu.rs:61`, now true on that merge → explain offered), `open_explain` (`detail/control.rs:137`,
+  finds the evil finding). All consistent with "the evil finding shows".
+- `probe_evil` other callers: only `selection.rs:117`; first probe of a new merge covered by
+  `an_evil_merge_on_a_branch_is_still_marked` and the away/back half of the no-loop test.
+- graft-ui: no change; `RadarLine::` matches in graft-ui unchanged (no new variant).

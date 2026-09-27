@@ -181,10 +181,10 @@ impl DetailState {
             _ => None,
         };
         // Already running or answered for this very commit: nothing to do.
-        if self.evil_at == wanted
-            && !matches!(self.evil, Loading::Idle | Loading::Failed(_))
-            && wanted.is_some()
-        {
+        // A crash (`Failed`, from `evil_job_failed`) is an answer too — this
+        // runs on every update, so re-asking on it would loop
+        // (m7-power-tools/33c). Moving the selection away and back asks again.
+        if self.evil_at == wanted && !matches!(self.evil, Loading::Idle) && wanted.is_some() {
             return Vec::new();
         }
         let mut commands = Vec::new();
@@ -204,6 +204,16 @@ impl DetailState {
         self.evil = Loading::Pending(id);
         commands.push(Command::EvilProbe(id, oid));
         commands
+    }
+
+    /// The evil probe `id` failed as a job (a panic, a runner that could not
+    /// start it): `Failed`, drawn as "not checkable" with the failure's words
+    /// (m7-power-tools/33c). Not cached: a crash is not a fact about the
+    /// merge, so moving away and back probes again.
+    pub fn evil_job_failed(&mut self, id: JobId, failure: &str) {
+        if self.evil == Loading::Pending(id) {
+            self.evil = Loading::Failed(failure.to_owned());
+        }
     }
 
     /// An evil-merge verdict arrived; one for a probe already superseded is

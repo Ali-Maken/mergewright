@@ -1,0 +1,40 @@
+ graft /code/api  4 commits
+◆─╮ ▏⚠ [◆ main] Merge branch 'alpha'                                                                     GF 1y   cc1103b
+● │    Advance main                                                                                      GF 1y   0631550
+│ ●    [alpha] alpha: work                                                                               GF 1y   bd20b78
+◇─╯    Add the base                                                                                      GF 1y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ . explain  ⏎ open  c commit  P push  <> resize  p pull  f fetch  b branch  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
+COMMIT cc1103b · Graft Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 1y · parents 0631550, bd20b78 · dif…
+Merge branch 'alpha' · radar: not checked — commit b32274b is not in the repository · ctrl+r to try again · evil merge
+A alpha.txt             +1 −0 ▎
+A evil.txt              +1 −0       1 + a
+
+
+
+
+
+
+
+
+
+
+
+
