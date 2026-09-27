@@ -975,3 +975,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/05b-count | Rebase preview follower rows say "3 new commits" for a branch with 1 own commit (`crates/graft/src/update/preview.rs:1085`, 05b NOTES) | **broken** (wording/number, unconfirmed by review) | M7 |
 | M7/21-sbs | History place: side-by-side (`v`) shows no `┃` range marker (21 ruling c: history draws its own body, `diff_body` untouched). Scoped limit | **broken** (scoped limit) | M8 |
 | M7/21-note | Design note landing row :1267 must be amended per 21 ruling (a): while tracing, `Esc` stops git and goes straight back (no rows to keep). Doc change owed (researcher) | **broken** (doc stale) | M7 |
+| M7/07-keymap | `docs/design/02-keymap.md:317` says more about stop focus than the code does (07 respec). Doc question: amend keymap or build it | **unverified** (question) | M7 |
