@@ -969,3 +969,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/13b-fuzz | 13's "fuzz corpus gains `S` records" box open: `fuzz/corpus/` is gitignored, nothing committable; 5 seed records in 13b NOTES. Decide: seed locally, or un-ignore a seed dir | **unverified** (not done) | M7 |
 | M7/13b-120 | Submodule row cut at 120 cols (Below layout gives the file list 30 cols): `▣ libs/parser submodule ·…`, facts lost (`docs/shots/m7/submodule-row-120x40.txt`). Needs a width ladder or a 187 capture | **broken** (visual) | M7 |
 | M7/13b-rest | 13b NOTES: `d` on a submodule path untested; commit-list gitlinks still read `M`; words "new at" / "removed (was)" invented (user judges by eye) | **unverified** | M7 |
+| M7/16-perf | 16's release perf box open — conductor runs `REV_NOTE='16' scripts/m7-perf-key.sh docs/perf/drawn-rows-are-his.txt` in a quiet window; the stash-push line has no scenario yet | **unverified** | M7 |
+| M7/16-q | Questions from 16: row dimming never shows under a selection (`graft-graph/src/raster.rs:130-136`, pre-existing); `stash@{1}` not drawn (spec leaves it open). `□` for stash-only commits (◇ is Root) — user judges by eye | **unverified** (question) | M7 |
+| M7/16-stale | 15 captures stale after 16, no test writes them (listed in 16 NOTES) | **broken** (stale capture) | M7 |
