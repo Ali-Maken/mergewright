@@ -964,3 +964,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r3334-m1 | **Ctrl+R doesn't retry a crashed evil probe, though 33c's ruling says it does** (`update/detail/ops.rs:72` never resets `evil`; guard `:187` holds `Failed`). → ticket 20o | **broken** | M7 |
 | M7/r3334-m3 | 14b's stop sweep catches an unchecked second spawn only when the first makes ≤8 stop checks (`graft-git/src/run.rs:504`, `:508`). Document in `CHECKS_PER_RUN` | **unverified** (weak guard) | M7 |
 | M7/r3334-m4 | 23 `super::super::` paths in 34's new files (`update/keys/{escape,refresh,commit,acknowledge}.rs`, `jobs/detail/{blame.rs,assemble/tests.rs}`); use `crate::` | **broken** (readability) | M7 |
+| M7/20j-graph | 20's ruling "the graph pane's last row is the boundary commit" not asserted: at 187×50 blame fills the screen, no graph pane drawn (20j NOTES). Spec clause may not apply to the blame view — question for review | **unverified** | M7 |

@@ -139,3 +139,5 @@ Workspace-wide gates. Throwaway repos only.
 
 ## Size
 Large (~65k). Split if needed: **-a** `switch_list` + filter + overlay + keys; **-b** the ui draw, walks, captures.
+
+Conductor note (2026-09-27, from 10c): the read landed as `graft_ops::switch_list(repo: &RepoHandle, stop: &dyn Stop)` — no `git` argument, matching `rewrite::progress`. Filter matches the short ref name, so a remote-only row matches as `origin/x`.
