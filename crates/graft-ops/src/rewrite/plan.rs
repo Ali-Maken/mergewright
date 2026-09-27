@@ -17,7 +17,7 @@ use crate::operation::{Refusal, RepoFacts, RewriteKey, Tip};
 use super::dependents::line_of;
 use super::reads::{RangeCommit, ancestor, base_of, commit_index, parents_of, read_range};
 use super::todo::autosquash;
-use super::unpushed::{RangeStop, YourCommits, your_commits};
+use super::unpushed::{RangeStop, your_commits};
 use super::{
     RewriteError, RewriteParams, RewriteRequest, TodoAction, TodoLine, default_message,
     squash_groups,
@@ -43,11 +43,11 @@ use super::{
 /// ([`crate::absorb`]), one commit object per target, each a fixup right
 /// after its target; none placed is [`Refusal::NothingToAbsorb`].
 ///
-/// On a branch with no base of its own — the base comes out as `HEAD`, or
-/// there is none (the default or only branch, no upstream) — absorb and
-/// `AmendInto` both reach his unpushed commits only, at most the last
-/// [`super::ABSORB_FALLBACK_DEPTH`], above any merge and the first commit
-/// (06c ruling).
+/// Absorb and `AmendInto` reach one range, on every base (06e ruling): his
+/// first-parent commits down to the first a remote-tracking ref holds, the
+/// base, a merge or the first commit — and, on the default or only branch
+/// with no base below `HEAD`, at most the last
+/// [`super::ABSORB_FALLBACK_DEPTH`]. `AmendInto` on `HEAD` skips it.
 ///
 /// `default_branch` is the user's `graph.default_branch` when set: it wins
 /// over git's guess (ADR-0001 rule 1), for the base of the range and for
@@ -56,8 +56,8 @@ use super::{
 /// # Errors
 /// [`RewriteError::Refused`], checked in this order: not on a branch;
 /// nothing staged (`AmendInto`); the commit not on his branch, or past his
-/// unpushed commits on a branch with no base of its own; every commit
-/// pushed there (`Absorb`); the first
+/// commits (already pushed, past the cap, below a merge); every commit
+/// pushed, or none of its own (`Absorb`); the first
 /// commit (`AmendInto`); a merge in the range; the branches built on his
 /// forking, or one checked out in another worktree; git older than 2.38 with
 /// branches to follow; `AmendInto` on `HEAD` with none. [`RewriteError::Facts`]
@@ -231,10 +231,11 @@ fn amend_into(
     })
 }
 
-/// On a branch with no base of its own, `a` reaches exactly the commits
-/// absorb could put a hunk into ([`your_commits`]); a target past them is
-/// refused by what ended the walk (06c ruling). With a base of its own,
-/// nothing here refuses.
+/// `a` reaches exactly the commits absorb could put a hunk into
+/// ([`your_commits`]); a target past them — an ancestor of `HEAD`, checked
+/// before — is refused by what ended the walk (06e ruling table). `HEAD`
+/// itself is amend, whatever a remote holds or what is built on it: no
+/// range check (06e ruling 5).
 fn refuse_out_of_reach(
     repo: &RepoHandle,
     head: &Tip,
@@ -242,22 +243,37 @@ fn refuse_out_of_reach(
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<(), RewriteError> {
-    let YourCommits::Unpushed(range) = your_commits(repo, head, default_branch, stop)? else {
+    if target == head.oid {
         return Ok(());
-    };
+    }
+    let range = your_commits(repo, head, default_branch, stop)?;
     if range.commits.contains(&target) {
         return Ok(());
     }
     let refusal = match range.stop {
-        RangeStop::Pushed => Refusal::AlreadyPushed {
+        // Every commit not taken is an ancestor of the one the walk stopped
+        // at, so a pushed stop means the target is pushed.
+        RangeStop::Pushed => Refusal::AlreadyPushed { commit: target },
+        RangeStop::Base | RangeStop::NotItsOwn => Refusal::NotOnYourBranch {
             commit: target,
             by: RewriteKey::AmendInto,
         },
-        RangeStop::Cap => Refusal::BeyondReach { commit: target },
         RangeStop::Merge(merge) => Refusal::MergeInRange { merge },
         RangeStop::Root => Refusal::RootCommit { commit: target },
+        RangeStop::Cap => Refusal::BeyondReach {
+            commit: target,
+            branch: short_name(head),
+        },
     };
     Err(RewriteError::Refused(refusal))
+}
+
+/// The branch's short name (`main`), for the words.
+pub(super) fn short_name(head: &Tip) -> String {
+    head.name
+        .strip_prefix("refs/heads/")
+        .unwrap_or(&head.name)
+        .to_owned()
 }
 
 /// The first merge in the range refuses the rewrite: `--rebase-merges` is

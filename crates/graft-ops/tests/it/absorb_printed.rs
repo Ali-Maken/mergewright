@@ -64,12 +64,13 @@ pub(crate) fn is(hunk: &PrintedHunk, staged: &StagedHunk) -> bool {
 
 // ── The independent target: `git log -L`, not the code's blame ──────────
 
-/// The commit in `main..feature` that last changed `line` of `path` at
-/// `HEAD`, by `git log -L` — git's line-log, a different walk from the
-/// blame the code under test reads. `None`: no commit on the branch did.
-fn last_to_change_line(repo: &TempRepo, path: &str, line: u32) -> Option<Oid> {
-    let range = format!("{line},{line}:{path}");
-    let shown = repo.git(&["log", "-1", "--format=%H", "-L", &range, "main..feature"]);
+/// The commit in `range` (`main..feature`, or the fallback's `HEAD~10..HEAD`)
+/// that last changed `line` of `path` at `HEAD`, by `git log -L` — git's
+/// line-log, a different walk from the blame the code under test reads.
+/// `None`: no commit in the range did.
+fn last_to_change_line(repo: &TempRepo, range: &str, path: &str, line: u32) -> Option<Oid> {
+    let lines = format!("{line},{line}:{path}");
+    let shown = repo.git(&["log", "-1", "--format=%H", "-L", &lines, range]);
     shown
         .lines()
         .next()
@@ -80,7 +81,7 @@ fn last_to_change_line(repo: &TempRepo, path: &str, line: u32) -> Option<Oid> {
 /// Where the ticket's rule puts `hunk`, computed from `git log -L` alone:
 /// its old lines (an insertion: the line above and the line below) all last
 /// changed by one commit on the branch → that commit; else nowhere.
-fn expected_target(repo: &TempRepo, hunk: &PrintedHunk) -> Option<Oid> {
+fn expected_target(repo: &TempRepo, range: &str, hunk: &PrintedHunk) -> Option<Oid> {
     let exists = repo
         .try_git(&["cat-file", "-e", &format!("HEAD:{}", hunk.path)])
         .is_ok();
@@ -103,7 +104,7 @@ fn expected_target(repo: &TempRepo, hunk: &PrintedHunk) -> Option<Oid> {
     }
     let mut commits = lines
         .iter()
-        .map(|&line| last_to_change_line(repo, &hunk.path, line));
+        .map(|&line| last_to_change_line(repo, range, &hunk.path, line));
     let first = commits.next().flatten()?;
     commits.all(|other| other == Some(first)).then_some(first)
 }
@@ -113,11 +114,12 @@ fn expected_target(repo: &TempRepo, hunk: &PrintedHunk) -> Option<Oid> {
 /// keeps must have failed the commutation check (`TwoCommitsChangedIt`).
 pub(crate) fn each_target_last_changed_its_lines(
     repo: &TempRepo,
+    range: &str,
     printed: &[PrintedHunk],
     map: &AbsorbMap,
 ) {
     for printed in printed {
-        let expected = expected_target(repo, printed);
+        let expected = expected_target(repo, range, printed);
         let placed = map
             .placed
             .iter()
@@ -135,4 +137,22 @@ pub(crate) fn each_target_last_changed_its_lines(
             (None, None) => {}
         }
     }
+}
+
+// ── Minor 5: one oracle row on the fallback range ───────────────────────
+
+#[test]
+fn the_oracle_agrees_on_the_fallback_range() {
+    // `main`, 12 commits, no remote: the last 10 are his. c12 is HEAD, c3
+    // is 10 back, c2 is 11 back — outside, so `git log -L` over
+    // `HEAD~10..HEAD` names no commit for it and it must stay.
+    let repo = crate::absorb_unpushed::on_main(12);
+    for name in ["c12", "c5", "c3", "c2"] {
+        crate::absorb_unpushed::stage_line_of(&repo, name);
+    }
+    let printed = staged_hunks(&repo);
+    let map = crate::absorb_unpushed::absorb_map_of(&repo).expect("it maps");
+
+    each_target_last_changed_its_lines(&repo, "HEAD~10..HEAD", &printed, &map);
+    assert_eq!(map.placed.len(), 3, "c12, c5, c3 placed; c2 stays");
 }

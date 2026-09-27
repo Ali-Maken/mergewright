@@ -113,3 +113,38 @@ fn apply_whitespace_fix_does_not_change_what_is_absorbed() {
 fn apply_whitespace_error_does_not_fail_the_map() {
     whitespace_is_absorbed_as_staged("error");
 }
+
+// ── 06e M3: apply.whitespace in the put-back ────────────────────────────
+
+/// A b.txt hunk is placed; `old.txt` staged as `o2   ` (trailing spaces)
+/// stays, older than the branch. After the absorb it is still staged,
+/// spaces and all: the put-back's `stash apply --index` must not read his
+/// `apply.whitespace` (review 06c M3, probe p5).
+fn a_stay_with_trailing_spaces_stays_staged(setting: &str) {
+    let repo = branch();
+    repo.git(&["config", "apply.whitespace", setting]);
+    stage(&repo, "b.txt", b"b1\nb2\nB3\nb4\nb5\n");
+    stage(&repo, "old.txt", b"o1\no2   \no3\no4\no5\n");
+    let staged_old = repo.git(&["rev-parse", ":old.txt"]);
+
+    let params = planned(&repo).unwrap_or_else(|why| panic!("it plans: {why}"));
+    try_run(&repo, &Operation::Rewrite(params), NOW)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(
+        repo.git(&["rev-parse", ":old.txt"]),
+        staged_old,
+        "the stay is staged as it was"
+    );
+    assert_eq!(repo.read("old.txt"), b"o1\no2   \no3\no4\no5\n".to_vec());
+}
+
+#[test]
+fn a_stay_with_trailing_spaces_stays_staged_under_apply_whitespace_fix() {
+    a_stay_with_trailing_spaces_stays_staged("fix");
+}
+
+#[test]
+fn a_stay_with_trailing_spaces_stays_staged_under_apply_whitespace_error() {
+    a_stay_with_trailing_spaces_stays_staged("error");
+}

@@ -132,7 +132,7 @@ impl Before {
 fn absorb_agrees_with_the_trees(repo: &TempRepo, unsaved: &[(&str, &[u8])]) -> AbsorbMap {
     let before = Before::read(repo);
     let map = map(repo);
-    each_target_last_changed_its_lines(repo, &before.printed, &map);
+    each_target_last_changed_its_lines(repo, "main..feature", &before.printed, &map);
     for (path, bytes) in unsaved {
         repo.write(path, bytes);
     }

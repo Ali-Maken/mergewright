@@ -25,6 +25,17 @@ use crate::facts::FactsError;
 
 use super::Context;
 
+/// `apply.whitespace=nowarn` for the put-back, through `GIT_CONFIG_COUNT`
+/// (git ≥ 2.31): `stash apply --index` re-applies the index with a child
+/// `git apply --cached`, which reads his `apply.whitespace`. His edits come
+/// back as he left them — `fix` would strip a staged line's trailing
+/// spaces, `error` would fail the put-back (review 06c M3).
+const AS_THEY_WERE: [(&str, &str); 3] = [
+    ("GIT_CONFIG_COUNT", "1"),
+    ("GIT_CONFIG_KEY_0", "apply.whitespace"),
+    ("GIT_CONFIG_VALUE_0", "nowarn"),
+];
+
 /// How a put-back ran: read from the status, never from git's exit code or
 /// message.
 #[derive(Debug)]
@@ -88,7 +99,10 @@ fn apply(
         args.push(GitArg::Flag("--index"));
     }
     args.push(GitArg::Oid(stash));
-    let git = GitInvocation::new(ctx.repo).args(args);
+    let mut git = GitInvocation::new(ctx.repo).args(args);
+    for (key, value) in AS_THEY_WERE {
+        git = git.env(key, value);
+    }
     commands.push(git.command_line());
     git.run(&()).map(|_output| ())
 }

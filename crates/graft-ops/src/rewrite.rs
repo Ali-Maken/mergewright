@@ -12,8 +12,9 @@
 //!   autosquash marking, and the todo text git is handed.
 //! - `plan` — what a request plans to: the range and the refusals.
 //! - `absorb` — absorb's base, map over it, and rows.
-//! - `unpushed` — "your commits" on a branch with no base of its own: the
-//!   unpushed ones, at most 10, shared by absorb and `a`.
+//! - `unpushed` — "your commits", shared by absorb and `a`: down to the
+//!   first pushed commit, the base, a merge or the root (at most 10 on the
+//!   default or only branch with no base below `HEAD`).
 //! - `dependents` — the line of branches built on his ([`dependents`]) and
 //!   the refusals over it.
 //! - `reads` — the raw history reads both plan from (reads only).

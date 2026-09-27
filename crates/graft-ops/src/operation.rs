@@ -693,33 +693,43 @@ pub enum Refusal {
     BadTodo(crate::rewrite::TodoProblem),
     /// Absorb placed none of the staged hunks: every one stays staged.
     NothingToAbsorb,
-    /// Absorb on a branch with no base of its own (the default branch, or
-    /// the only one, with no upstream), and every commit on it is on a
-    /// remote-tracking ref: there is no unpushed commit to put lines into
-    /// (planner ruling, 06c Question 2). Words:
+    /// Absorb, and the commit at `HEAD` is on a remote-tracking ref: every
+    /// commit below it is too, so there is no unpushed commit to put lines
+    /// into (06c Question 2; on every base since the 06e ruling). Words:
     /// `every commit on <branch> is already pushed · absorb only changes
     /// unpushed commits · c commits them`.
     AllPushed {
         /// The branch, short name (`main`).
         branch: String,
     },
-    /// `a` on a branch with no base of its own, into a commit a
-    /// remote-tracking ref holds: a teammate may have it (06c ruling).
-    /// Words: `<short> is already pushed · a only changes commits you
+    /// Absorb on a branch with no base below `HEAD` that is neither the
+    /// default branch nor the only one — a new branch at `main`'s tip:
+    /// nothing on it is its own (06e ruling, Q1). Words: `<branch> has no
+    /// commits of its own yet · c commits them`.
+    NoCommitsOfItsOwn {
+        /// The branch, short name (`fix`).
+        branch: String,
+    },
+    /// `a` into a commit older than `HEAD` that a remote-tracking ref holds:
+    /// a teammate may have it (06c ruling; on every base since 06e). Only
+    /// `a` gives it — absorb refuses with [`Refusal::AllPushed`] — and never
+    /// for `HEAD`, which `a` amends whatever a remote holds (06e ruling 5).
+    /// Words: `<short> is already pushed · a only changes older commits you
     /// haven't pushed`.
     AlreadyPushed {
         /// The commit.
         commit: Oid,
-        /// Which key asked.
-        by: RewriteKey,
     },
-    /// `a` on a branch with no base of its own, into an unpushed commit
-    /// more than [`crate::rewrite::ABSORB_FALLBACK_DEPTH`] back (06c
-    /// ruling). Words: `<short> is more than 10 commits back · a reaches
-    /// your last 10 unpushed commits`.
+    /// `a` on the default or only branch with no base below `HEAD`, into an
+    /// unpushed commit more than [`crate::rewrite::ABSORB_FALLBACK_DEPTH`]
+    /// back (06c ruling; 06e names the branch, the only place it fires).
+    /// Words: `<short> is more than 10 commits back · on <branch> a reaches
+    /// the last 10 unpushed commits`.
     BeyondReach {
         /// The commit.
         commit: Oid,
+        /// The branch, short name (`main`).
+        branch: String,
     },
     // ── The journal list's put-backs (ADR-0046 §3; m7-power-tools/22) ──
     /// A put-back's branch is no longer where the list saw it: it moved on
@@ -987,13 +997,16 @@ impl Refusal {
                 "every commit on {branch} is already pushed · absorb only changes unpushed \
                  commits · c commits them"
             ),
-            Self::AlreadyPushed { commit, by } => format!(
-                "{} is already pushed · {} only changes commits you haven't pushed",
-                short(*commit),
-                by.key()
+            Self::NoCommitsOfItsOwn { branch } => {
+                format!("{branch} has no commits of its own yet · c commits them")
+            }
+            Self::AlreadyPushed { commit } => format!(
+                "{} is already pushed · a only changes older commits you haven't pushed",
+                short(*commit)
             ),
-            Self::BeyondReach { commit } => format!(
-                "{} is more than {} commits back · a reaches your last {} unpushed commits",
+            Self::BeyondReach { commit, branch } => format!(
+                "{} is more than {} commits back · on {branch} a reaches the last {} unpushed \
+                 commits",
                 short(*commit),
                 crate::rewrite::ABSORB_FALLBACK_DEPTH,
                 crate::rewrite::ABSORB_FALLBACK_DEPTH
