@@ -21,21 +21,24 @@
 //! both skipped and unblamable, an uncommitted line.
 
 use super::*;
-use crate::version::GitVersion;
+use crate::run::DEFAULT_CAP;
 
-const PORCELAIN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-porcelain.txt");
-const PORCELAIN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-porcelain.txt");
-const HUMAN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-human.txt");
-const HUMAN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-human.txt");
+pub(super) const PORCELAIN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-porcelain.txt");
+pub(super) const PORCELAIN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-porcelain.txt");
+pub(super) const HUMAN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-human.txt");
+pub(super) const HUMAN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-human.txt");
 const EDGES_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-edges-porcelain.txt");
-const EDGES_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-edges-porcelain.txt");
-const EDGES_HUMAN_2_38: &[u8] = include_bytes!("../testdata/git-2.38/blame-edges-human.txt");
-const EDGES_HUMAN_2_54: &[u8] = include_bytes!("../testdata/git-2.54/blame-edges-human.txt");
+pub(super) const EDGES_2_54: &[u8] =
+    include_bytes!("../testdata/git-2.54/blame-edges-porcelain.txt");
+pub(super) const EDGES_HUMAN_2_38: &[u8] =
+    include_bytes!("../testdata/git-2.38/blame-edges-human.txt");
+pub(super) const EDGES_HUMAN_2_54: &[u8] =
+    include_bytes!("../testdata/git-2.54/blame-edges-human.txt");
 
 /// The session fixture's lines git skipped under its list: rustfmt's.
-const SKIPPED: [u32; 6] = [31, 32, 33, 35, 36, 37];
+pub(super) const SKIPPED: [u32; 6] = [31, 32, 33, 35, 36, 37];
 
-fn id(hex: &str) -> Oid {
+pub(super) fn id(hex: &str) -> Oid {
     Oid::from_hex(hex).expect("a test id")
 }
 
@@ -139,106 +142,6 @@ fn the_2_38_edges_read_quoted_paths_and_uncommitted_lines() {
     assert_eq!(commits[&id(ANA)].summary, "Add \u{e9} file");
 }
 
-/// 2.54 writes `unblamable` then `ignored` for line 4; the reader keeps it
-/// unblamable, as `parse_marks` does for `*?`.
-#[test]
-fn the_2_54_edges_read_both_marks_on_one_line_as_unblamable() {
-    use LineMark::{Plain, Skipped, Unblamable};
-    let (lines, _) = parse_porcelain(EDGES_2_54).expect("git 2.54's porcelain parses");
-    let marks: Vec<LineMark> = lines.iter().map(|line| line.mark).collect();
-    assert_eq!(marks, [Plain, Plain, Skipped, Unblamable, Plain, Plain]);
-    let human = parse_marks(EDGES_HUMAN_2_54).expect("the human format parses");
-    assert_eq!(human, marks, "both readers agree");
-    let human = parse_marks(EDGES_HUMAN_2_38).expect("the human format parses");
-    assert_eq!(human, marks, "2.38.5's human format too");
-}
-
-#[test]
-fn the_human_samples_mark_the_skipped_lines_on_both_gits() {
-    for (git, sample) in [("2.38.5", HUMAN_2_38), ("2.54", HUMAN_2_54)] {
-        let marks = parse_marks(sample).expect("the human format parses");
-        assert_eq!(marks.len(), 60, "{git}: one mark per line");
-        let skipped: Vec<u32> = (1..)
-            .zip(&marks)
-            .filter(|(_, mark)| **mark == LineMark::Skipped)
-            .map(|(line, _)| line)
-            .collect();
-        assert_eq!(skipped, SKIPPED, "{git}");
-        assert!(!marks.contains(&LineMark::Unblamable), "{git}");
-    }
-}
-
-#[test]
-fn parse_marks_reads_the_leading_run_only() {
-    use LineMark::{Plain, Skipped, Unblamable};
-    let id = "3f6c311a1b7f837c73d3b5eb4fa5180e047495";
-    let bytes =
-        format!("^?{id} 1) a ?* not a mark\n^*{id} 2) b\n*?{id} 3) c\n{id}00 4) ?\n^{id}0 5) *");
-    assert_eq!(
-        parse_marks(bytes.as_bytes()).expect("parses"),
-        [Skipped, Unblamable, Unblamable, Plain, Plain],
-        "a last line with no newline still counts"
-    );
-    assert_eq!(parse_marks(b"").expect("empty"), []);
-}
-
-#[test]
-fn parse_marks_refuses_garbage_without_panicking() {
-    for garbage in [
-        &b"not a blame\n"[..],
-        b"^?\n",
-        b"??",
-        b"\n\n",
-        b" 1) x\n",
-        b"\xff\xfe",
-    ] {
-        let error = parse_marks(garbage).expect_err("refused");
-        assert_eq!(error.line, 1, "{garbage:?}");
-    }
-    let error = parse_marks(b"abc 1) x\nzz 2) y\n").expect_err("second line");
-    assert_eq!(error.line, 2);
-}
-
-#[test]
-fn needs_marks_pass_holds_only_when_all_four_do() {
-    let old = GitVersion {
-        major: 2,
-        minor: 38,
-        patch: 5,
-    };
-    let just_before = GitVersion {
-        major: 2,
-        minor: 49,
-        patch: 1,
-    };
-    let new = GitVersion::BLAME_PORCELAIN_MARKS;
-    assert!(
-        needs_marks_pass(true, false, true, Some(&old)),
-        "all four hold"
-    );
-    assert!(needs_marks_pass(true, false, true, Some(&just_before)));
-    assert!(
-        needs_marks_pass(true, false, true, None),
-        "unknown version: take the pass"
-    );
-    assert!(
-        !needs_marks_pass(false, false, true, Some(&old)),
-        "1 flips it"
-    );
-    assert!(
-        !needs_marks_pass(true, true, true, Some(&old)),
-        "2 flips it"
-    );
-    assert!(
-        !needs_marks_pass(true, false, false, Some(&old)),
-        "3 flips it"
-    );
-    assert!(
-        !needs_marks_pass(true, false, true, Some(&new)),
-        "4 flips it"
-    );
-}
-
 #[test]
 fn the_new_errors_say_one_line_each() {
     let too_large = BlameError::TooLarge { cap: DEFAULT_CAP }.to_string();
@@ -254,34 +157,6 @@ fn the_new_errors_say_one_line_each() {
     assert_eq!(
         changed,
         "the file changed while blame read it; open blame again"
-    );
-}
-
-/// The merge on 2.38.5's own two outputs: marks land by position; a line
-/// count that differs (the working-tree file changed between the two
-/// reads) is `Changed`, never a partial merge.
-#[test]
-fn marks_merge_by_position_and_a_count_mismatch_is_changed() {
-    let (mut lines, _) = parse_porcelain(PORCELAIN_2_38).expect("parses");
-    let marks = parse_marks(HUMAN_2_38).expect("parses");
-    merge_marks(&mut lines, marks.clone()).expect("same count");
-    let skipped: Vec<u32> = lines
-        .iter()
-        .filter(|line| line.mark == LineMark::Skipped)
-        .map(|line| line.final_line)
-        .collect();
-    assert_eq!(skipped, SKIPPED);
-
-    let (mut lines, _) = parse_porcelain(PORCELAIN_2_38).expect("parses");
-    let mut longer = marks;
-    longer.push(LineMark::Plain);
-    match merge_marks(&mut lines, longer) {
-        Err(BlameError::Changed { first, second }) => assert_eq!((first, second), (60, 61)),
-        other => panic!("a count mismatch is Changed: {other:?}"),
-    }
-    assert!(
-        lines.iter().all(|line| line.mark == LineMark::Plain),
-        "nothing merged on a mismatch"
     );
 }
 
@@ -383,10 +258,10 @@ fn a_blame_cut_at_the_output_cap_is_too_large_not_a_short_file() {
     }
 }
 
-const SESSION_FILE: &str = "src/auth/session.rs";
+pub(super) const SESSION_FILE: &str = "src/auth/session.rs";
 
 /// The session fixture's file, blamed at `HEAD` through `blame_with`.
-fn session_blame(dir: &Path, marks: MarksFrom) -> Blame {
+pub(super) fn session_blame(dir: &Path, marks: MarksFrom) -> Blame {
     let repo = RepoHandle::open(dir).expect("the fixture opens");
     blame_with(
         &repo,
@@ -402,7 +277,7 @@ fn session_blame(dir: &Path, marks: MarksFrom) -> Blame {
     .unwrap_or_else(|why| panic!("blames: {why}"))
 }
 
-fn head(dir: &Path) -> Oid {
+pub(super) fn head(dir: &Path) -> Oid {
     let output = std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(dir)
@@ -412,99 +287,6 @@ fn head(dir: &Path) -> Oid {
     id(String::from_utf8_lossy(&output.stdout).trim())
 }
 
-fn passes() -> usize {
-    MARKS_PASSES.with(std::cell::Cell::get)
-}
-
-fn marks_of(blame: &Blame) -> Vec<LineMark> {
+pub(super) fn marks_of(blame: &Blame) -> Vec<LineMark> {
     blame.lines.iter().map(|line| line.mark).collect()
-}
-
-/// The oracle on a git whose porcelain writes marks (2.50+): the forced
-/// human-format pass gives git's own porcelain marks, line for line. An
-/// older git's porcelain has none to compare against: there the human pass
-/// is checked against the fixture's known lines only, and the test says so.
-#[test]
-fn the_human_format_marks_match_the_porcelain_marks() {
-    let dir = graft_fixtures::borrow(graft_fixtures::Shape::Session);
-    let human = marks_of(&session_blame(&dir, MarksFrom::HumanFormat));
-    let skipped = human
-        .iter()
-        .filter(|mark| **mark == LineMark::Skipped)
-        .count();
-    assert!(skipped >= 1, "not vacuous: the list skips lines");
-    let git = system_git().expect("git's version reads").version();
-    if git < GitVersion::BLAME_PORCELAIN_MARKS {
-        eprintln!("git {git} writes no porcelain marks: the oracle needs git >= 2.50");
-        assert_eq!(skipped, SKIPPED.len());
-        return;
-    }
-    let repo = RepoHandle::open(&dir).expect("opens");
-    let output = blame_invocation(
-        &repo,
-        &Rev::Commit(head(&dir)),
-        Path::new(SESSION_FILE),
-        BlameOptions::default(),
-        find_ignore_revs(&repo).as_ref(),
-        Format::Porcelain,
-    )
-    .run(&())
-    .expect("git's porcelain");
-    let (porcelain, _) = parse_porcelain(&output.stdout).expect("parses");
-    let porcelain: Vec<LineMark> = porcelain.iter().map(|line| line.mark).collect();
-    assert_eq!(human, porcelain, "git {git}: line for line");
-}
-
-/// Condition 3: a repository with no list pays one blame spawn, on any git.
-#[test]
-fn no_list_in_effect_is_one_blame_spawn() {
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Session);
-    let dir = scratch.path();
-    std::fs::remove_file(dir.join(IGNORE_REVS_FILE)).expect("removes the list");
-    let before = passes();
-    let blamed = session_blame(dir, MarksFrom::Auto);
-    assert_eq!(passes(), before, "no human-format pass");
-    assert!(blamed.lines.iter().all(|line| line.mark == LineMark::Plain));
-}
-
-/// With a list, the pass runs exactly when the porcelain had no marks: on
-/// git before 2.50 once, on 2.50+ never. Either way the marks are right.
-#[test]
-fn a_list_in_effect_takes_the_pass_only_on_a_git_without_porcelain_marks() {
-    let dir = graft_fixtures::borrow(graft_fixtures::Shape::Session);
-    let before = passes();
-    let blamed = session_blame(&dir, MarksFrom::Auto);
-    let git = system_git().expect("git's version reads").version();
-    let expected = usize::from(git < GitVersion::BLAME_PORCELAIN_MARKS);
-    assert_eq!(passes() - before, expected, "git {git}");
-    let skipped: Vec<u32> = blamed
-        .lines
-        .iter()
-        .filter(|line| line.mark == LineMark::Skipped)
-        .map(|line| line.final_line)
-        .collect();
-    assert_eq!(skipped, SKIPPED, "git {git}");
-}
-
-/// Condition 3's other half: no root file, a configured list. On a git
-/// without porcelain marks the pass still runs.
-#[test]
-fn a_configured_list_alone_is_a_list_in_effect() {
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Session);
-    let dir = scratch.path();
-    std::fs::rename(dir.join(IGNORE_REVS_FILE), dir.join("elsewhere-revs")).expect("moves");
-    let status = std::process::Command::new("git")
-        .args(["config", "blame.ignoreRevsFile", "elsewhere-revs"])
-        .current_dir(dir)
-        .status()
-        .expect("git runs");
-    assert!(status.success());
-    let blamed = session_blame(dir, MarksFrom::Auto);
-    let skipped: Vec<u32> = blamed
-        .lines
-        .iter()
-        .filter(|line| line.mark == LineMark::Skipped)
-        .map(|line| line.final_line)
-        .collect();
-    assert_eq!(skipped, SKIPPED);
 }

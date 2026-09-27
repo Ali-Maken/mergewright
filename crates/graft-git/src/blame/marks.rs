@@ -1,7 +1,7 @@
 //! The marks a blame's lines carry, read from git's **human** format when
 //! the porcelain has none (m7-power-tools/18e).
 //!
-//! git before [`GitVersion::BLAME_PORCELAIN_MARKS`] skips and gives up on
+//! git before [`crate::version::GitVersion::BLAME_PORCELAIN_MARKS`] skips and gives up on
 //! lines under an ignore-revs list exactly as later git does, but writes the
 //! `ignored`/`unblamable` lines only in the human format: `?` and `*` before
 //! the commit id (2.38.5 `builtin/blame.c` `emit_other`, lines 471-487; the
@@ -12,7 +12,6 @@
 
 use super::LineMark;
 use crate::diff::ParseError;
-use crate::version::GitVersion;
 
 /// Marks from `git blame -l -s` (human format), one per output line, in
 /// final-line order.
@@ -57,24 +56,5 @@ pub fn parse_marks(bytes: &[u8]) -> Result<Vec<LineMark>, ParseError> {
     Ok(marks)
 }
 
-/// Whether blame must read its marks from a second, human-format pass.
-///
-/// All four must hold:
-/// 1. `ignore_revs`: with `false`, blame passes `--no-ignore-revs-file` and
-///    git marks nothing;
-/// 2. `!porcelain_has_marks`: a git that wrote them has answered;
-/// 3. `list_in_effect`: the root's list was passed, or `blame.ignoreRevsFile`
-///    is set (no list, nothing to mark);
-/// 4. `git` is older than [`GitVersion::BLAME_PORCELAIN_MARKS`], or its
-///    version is unknown (`None`): the pass is then slower, never wrong.
-pub(crate) fn needs_marks_pass(
-    ignore_revs: bool,
-    porcelain_has_marks: bool,
-    list_in_effect: bool,
-    git: Option<&GitVersion>,
-) -> bool {
-    ignore_revs
-        && !porcelain_has_marks
-        && list_in_effect
-        && git.is_none_or(|version| *version < GitVersion::BLAME_PORCELAIN_MARKS)
-}
+#[cfg(test)]
+mod tests;
