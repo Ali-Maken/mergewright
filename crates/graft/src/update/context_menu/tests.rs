@@ -176,17 +176,18 @@ fn open_for_history_row_omits_explain_without_a_ready_radar_context() {
     );
 }
 
-/// The working-tree row's own action is `Open details` and nothing
-/// else — `Copy SHA` and `Compare with this` have no commit to act on.
-/// The dropped keys follow it (`every_menu_lists_the_dropped_keys`).
+/// The working-tree row's own actions are absorb (first, 09b) and `Open
+/// details` — `Copy SHA` and `Compare with this` have no commit to act on.
+/// The dropped keys follow (`every_menu_lists_the_dropped_keys`).
 #[test]
-fn open_for_working_tree_lists_open_details_first() {
+fn open_for_working_tree_lists_absorb_then_open_details() {
     let mut state = AppState::default();
     open_for_working_tree(&mut state);
     let open = state.context_menu.expect("menu opened");
     let menu = &open.menu;
     assert_eq!(open.row, WORKING_TREE_ROW);
-    assert_eq!(menu.items[0].action, ContextAction::OpenDetails);
+    assert_eq!(menu.items[0].action, ContextAction::Absorb);
+    assert_eq!(menu.items[1].action, ContextAction::OpenDetails);
     assert!(
         !menu.items.iter().any(|item| matches!(
             item.action,
@@ -197,16 +198,17 @@ fn open_for_working_tree_lists_open_details_first() {
     );
 }
 
-/// m7-power-tools/09: the absorb item is last, dim with nothing staged and
-/// live once something is — read from the working tree the screen holds.
+/// m7-power-tools/09: the absorb item (first since 09b) is dim with nothing
+/// staged and live once something is — read from the working tree the
+/// screen holds.
 #[test]
 fn the_working_tree_menu_offers_absorb_when_something_is_staged() {
     let absorb = |state: &mut AppState| {
         open_for_working_tree(state);
         let open = state.context_menu.take().expect("menu opened");
-        let last = open.menu.items.last().expect("items").clone();
-        assert_eq!(last.action, ContextAction::Absorb);
-        last.disabled.map(|why| why.as_str().to_owned())
+        let first = open.menu.items.first().expect("items").clone();
+        assert_eq!(first.action, ContextAction::Absorb);
+        first.disabled.map(|why| why.as_str().to_owned())
     };
     let mut state = AppState::default();
     assert_eq!(absorb(&mut state).as_deref(), Some("nothing staged"));
@@ -791,24 +793,72 @@ fn explain_comes_after_the_slots_on_a_marked_row() {
     );
 }
 
-/// The uncommitted-changes row: `Open details`, then the dropped keys —
-/// no slots — in the order they had; absorb (m7-power-tools/09) is added
-/// after them, so none of them moves.
+/// The uncommitted-changes row: absorb first (09b ruling B, keymap §2.1),
+/// then `Open details` and the dropped keys — no slots — in the order they
+/// had, one place down. Staged or not, the order is the same.
 #[test]
-fn the_uncommitted_row_menu_is_unchanged() {
+fn the_uncommitted_row_menu_keeps_its_old_order_below_absorb() {
+    let mut state = on_the_feature_row();
+    for staged in [false, true] {
+        if staged {
+            state.working_tree = Some(staged_tree());
+        }
+        open_for_working_tree(&mut state);
+        assert_eq!(
+            actions(&state),
+            vec![
+                ContextAction::Absorb,
+                ContextAction::OpenDetails,
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
+            ]
+        );
+        state.context_menu = None;
+    }
+}
+
+/// 09b: the uncommitted row's menu opens on its first item, dim or not —
+/// the commit row's rule (`enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why`
+/// pins its cursor at 0 on the dim Checkout). So `. ⏎` is absorb.
+#[test]
+fn the_uncommitted_row_menu_opens_on_absorb() {
     let mut state = on_the_feature_row();
     open_for_working_tree(&mut state);
+    let open = state.context_menu.as_ref().expect("menu opened");
+    assert_eq!(open.menu.cursor, 0);
+    assert_eq!(open.menu.selected(), ContextAction::Absorb);
     assert_eq!(
-        actions(&state),
-        vec![
-            ContextAction::OpenDetails,
-            ContextAction::Fetch,
-            ContextAction::Pull,
-            ContextAction::Push,
-            ContextAction::Undo,
-            ContextAction::Absorb,
-        ]
+        open.menu
+            .selected_refusal()
+            .map(graft_term::SanitizedText::as_str),
+        Some("nothing staged"),
+        "dim in place with nothing staged"
     );
+    state.context_menu = None;
+    state.working_tree = Some(staged_tree());
+    open_for_working_tree(&mut state);
+    let open = state.context_menu.as_ref().expect("menu opened");
+    assert_eq!(open.menu.cursor, 0);
+    assert_eq!(open.menu.selected(), ContextAction::Absorb);
+    assert_eq!(open.menu.selected_refusal(), None);
+}
+
+/// One staged file.
+fn staged_tree() -> std::sync::Arc<graft_git::status::WorkingTreeStatus> {
+    std::sync::Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![graft_git::status::StatusEntry {
+            path: "a.rs".into(),
+            original_path: None,
+            staged: Some(graft_git::status::Change::Modified),
+            unstaged: None,
+            untracked: false,
+            unmerged: false,
+            unmerged_how: None,
+            submodule: None,
+        }],
+    })
 }
 
 /// A stash row keeps the order it had: the row's own actions first, then

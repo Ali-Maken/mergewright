@@ -1,6 +1,6 @@
 # 09b amend-into-budget-and-absorb-steps — 09's two open boxes and its two questions
 
-Status: ready (filed by conductor 2026-09-27; keymap §2.1 clause applied)
+Status: done (builder 2026-09-28; perf number provisional under load)
 Build with: Opus. Why: a measurement, then a fix picked from a fixed decision tree; a menu reorder; words. Every
 part is judged by a named test, an oracle or the perf script. No new signature → not Fable.
 Needs: none new. Calls what 09 merged (`update/amend_into.rs`, `jobs/rewrite.rs`, graft-ui
@@ -126,23 +126,37 @@ None new. Unchanged and asserted by compile: `for_working_tree(staged: bool) -> 
 `amend_into::{a_key, absorb_chosen, planned, landed, tags_resolved}` (09). A2(b)'s oracle is `#[cfg(test)]` only.
 
 ## Acceptance (each tick names its test; red quoted in NOTES)
-- [ ] **A. Perf** — `scripts/m7-09-perf.sh` → `docs/perf/09b.txt`, phase table present; summary line
+- [x] **A. Perf** — `scripts/m7-09-perf.sh` → `docs/perf/09b.txt`, phase table present; summary line
   `m7-09b summary: a to the amend editor, median of 3×7: <x> ms through the dependents check (rounds <a>/<b>/<c>),
   <y> ms today's amend; the check adds <z> ms (budget 16.7 ms); load <before>/<after>` with **z ≤ 16.7**, quoted in
   the tick. Cause named in NOTES with its phase and ms, and which branch of A2. 300-branch line recorded.
-- [ ] A2(a) only: `a_on_head_with_nothing_built_on_it_writes_no_object` (red first). A2(b) only:
-  `dependents_match_the_git_answer_on_every_fixture`; `dependents` tests unedited, green.
-- [ ] **B.** graft-ui: `absorb_is_the_first_item_on_the_uncommitted_row` (red first: index 5),
+  **Tick (test `m7_walk::amend_into::perf_dependents_check` + `perf_dependents_spawns`, via the script):**
+  `m7-09b summary: a to the amend editor, median of 3×7: 6.9 ms through the dependents check (rounds 10.4/6.9/5.9),
+  0.1 ms today's amend; the check adds 6.8 ms (budget 16.7 ms); load { 7.06 15.04 23.15 }/{ 6.78 14.06 22.46 }`.
+  Provisional (machine loaded; conductor re-runs quiet). 300-branch line: 12.3 ms median.
+- [x] A2(a)-shaped, not (a)'s candidate: `a_on_head_with_nothing_built_on_it_writes_no_object` — **green on arrival,
+  not red**: it refutes the candidate (see NOTES). The real fix's test: `jobs::rewrite::tests::the_git_version_is_read_at_most_once_per_process`
+  (red: `cannot find function git_version`). A2(b) not taken; `dependents` untouched.
+- [x] **B.** graft-ui: `absorb_is_the_first_item_on_the_uncommitted_row` (red first: index 5),
   `absorb_dims_in_first_place_with_nothing_staged`, `the_uncommitted_row_menu_keeps_its_old_order_below_absorb`
   (09's `the_uncommitted_row_menu_is_unchanged`, renamed and extended, not rewritten). graft: the cursor-on-open
   test named. Walk `absorb_staged` = `k . ⏎ y`, `len(keys) <= noted_keys("absorb-staged")` (red first: the
   landing assertion under today's order; 09's "exactly 9" dropped); 2 hunks placed, 1 still staged; `u` restores
   refs and index.
-- [ ] **C.** `a_put_in_over_unstaged_edits_says_they_are_back`, `absorb_over_unstaged_edits_says_they_are_back`
+  **Tick:** graft-ui `context_menu::tests::{absorb_is_the_first_item_on_the_uncommitted_row,
+  absorb_dims_in_first_place_with_nothing_staged, for_working_tree_keeps_its_old_order_below_absorb}`; graft
+  `update::context_menu::tests::the_uncommitted_row_menu_keeps_its_old_order_below_absorb` (renamed, extended to
+  staged/unstaged), cursor-on-open `update::context_menu::tests::the_uncommitted_row_menu_opens_on_absorb`; walk
+  `m7_walk::amend_into::absorb_staged` asserts route `["k", ".", "⏎", "y"]` and `within("absorb-staged")`, 2 hunks
+  placed, README still staged, `u` refs+index. Walk was **not** red first (edited after the menu moved; see NOTES).
+- [x] **C.** `a_put_in_over_unstaged_edits_says_they_are_back`, `absorb_over_unstaged_edits_says_they_are_back`
   (both red first), `a_put_in_with_nothing_unstaged_says_nothing_about_edits`, `a_put_in_puts_the_unstaged_file_back`,
   `the_edits_rows_agree_in_the_put_in_preview`, `the_edits_rows_agree_in_the_absorb_preview` (red first: the lines
-  quoted above).
-- [ ] **Captures** (colour unverified):
+  quoted above). **Tick:** the first three in `update::amend_into::tests`, the last three in
+  `m7_walk::amend_into`; reds quoted in NOTES.
+- [x] **Captures** (colour unverified) — `m7_walk::amend_into::{capture_absorb, capture_amend_into}` re-rendered
+  and assert the Right lines; captions tsv updated. No m7 contact sheet exists yet to reassemble (only the
+  captions file) — left for the acceptance ticket:
   - `docs/shots/m7/absorb-menu-120x40.txt` (new). **Right:** the cursor on `Put staged changes into their commits
     (absorb)`, first; the five old items below it in their old order.
   - `amend-into-preview-187x50.txt`, `absorb-preview-120x40.txt` re-rendered. **Right:** one statement about his
@@ -150,7 +164,8 @@ None new. Unchanged and asserted by compile: `for_working_tree(staged: bool) -> 
   - `amend-into-landed-120x40.txt` (fixture with one unstaged file). **Right:** status
     `put into "Add OAuth callback" ✓ · your unstaged edits are back · u undoes`.
   - Contact sheet reassembled.
-- [ ] Gates workspace-wide.
+- [x] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings`,
+  `cargo nextest run --workspace` (4545 passed, 5 skipped), `cargo test --workspace --doc` — all pass.
 
 ## Touches (check each, report how)
 - **The uncommitted row's `.` menu:** mouse `item_at` clicks, `the_menu_runs_what_the_dropped_keys_run`,
@@ -170,3 +185,61 @@ None new. Unchanged and asserted by compile: `for_working_tree(staged: bool) -> 
 ~70k. Split line if over or if A2(b) is the cause: **09c** = A2's fix (the in-process `dependents` + oracle).
 09b keeps A1 (profile + named cause), B and C. If the conductor wants A and B before 03b merges: A+B as 09b, C as
 09c after 03b.
+
+## NOTES (builder, 2026-09-28)
+- **Did not compact.** Stalled once on the stream watchdog mid-ticket; resumed from `git status`, nothing lost.
+- **Scout:** none new, per the ticket; 09's `scouts/09.md` and 09's NOTES used. A1's profile was A's scout.
+- **A — cause (phase table, loaded run, load ~24–32):** `a` on HEAD made two git spawns before answering:
+  `system_git()` at `jobs/rewrite.rs:88` (`git --version`, phase 2: 14.5 ms wall, 2.0 ms git's own clock) and
+  `rewrite::dependents`'s `for-each-ref --contains` (`dependents.rs` `local_branches`, phase 2: 17.4 ms wall, 5.3 ms
+  git's clock). Sum ≈ the 30.2 ms the check added. The rest is spawn overhead on a loaded macOS, not git's work.
+- **Which branch of A2:** (a)'s candidate is **refuted**: `jobs/rewrite.rs:95-103` asks `dependents` first and returns
+  `NothingBuiltOnHead` before `planned` → `rewrite::plan` is never reached; pinned by
+  `a_on_head_with_nothing_built_on_it_writes_no_object` (green on arrival). The real extra work before the answer was
+  the version spawn, fixed in `jobs/rewrite.rs` (in Files): `git_version()`, read once per process into a `OnceLock`,
+  as graft-git blame's `SYSTEM_VERSION` already does (`blame/marks_pass.rs:84`). **Cause fix**, cost: the first plan
+  of a session still pays one `git --version`; a git upgraded under a running Graft is not noticed until restart
+  (same as blame). After it: one spawn per `a` (phase 3: only `for-each-ref`), check adds 20.8 ms loaded /
+  **6.8 ms at load ~7** — under budget, provisional. A2(b) (the `for-each-ref` spawn) not needed at this load; if the
+  quiet re-run is over, that spawn is the remaining cause → 09c.
+- **Broader (for the conductor, not done):** `jobs/preview.rs:51`, `operate.rs:313`, `undo.rs:339`, `conflict.rs:288/380`
+  each spawn `git --version` per job (≈5–15 ms each). A shared cached `system_git` in graft-git would serve all; out of
+  my Files.
+- **Pre-filter:** none skips on `main` alone: `update/amend_into.rs:146` counts any non-current branch, `main`
+  included; the default branch is excluded only inside `dependents` (`dependents.rs:85-89`). So `main` + `feature-a`
+  already ran the check.
+- **300 branches:** 12.3 ms median (54.5 ms loaded) — under 100 ms; no gap.
+- **B:** fifth old item = `Open details (⏎)` (the other four are the ambient `always_items()`); its label carries `⏎`.
+  Cursor on open: `for_row` opens at 0 even on a dim Checkout (`graft-ui context_menu.rs` `for_row` `cursor: 0`,
+  pinned by `enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why`); `for_working_tree` matches (cursor 0), pinned
+  by `the_uncommitted_row_menu_opens_on_absorb`. Red (graft-ui): `left: OpenDetails right: Absorb` (first item),
+  `left: [Fetch, Pull, Push, Undo, Absorb] right: [OpenDetails, …]`. Walk `absorb_staged` **not red first**: I edited it
+  after the menu moved.
+- **Q4 — source, rule 7:** `your edits: N files set aside` is true (`Operation::sets_aside` wraps a Rewrite,
+  `operation.rs:1315`; `apply.rs:370-383` sets aside and puts back around it; `a_put_in_puts_the_unstaged_file_back`
+  proves the write). The false row: `graft-ops/src/preview/put_back.rs:157-160` (before the fix) — `landing_of` had no
+  `Operation::Rewrite` arm, so a rewrite fell to `_ => "nothing is put back after this"`. Fixed at that source: a
+  Rewrite arm lands on `made[0]` (`a`: the commit written from the index, parent HEAD) or `index_base` (absorb: HEAD +
+  placed hunks) when the replay forecast is clean; `the rewrite may stop first` when not; an `R`-editor rewrite (neither)
+  says `the rewritten line is not built before y`. `operation.rs` **not edited**. Red: `the rows disagree: ["your
+  edits: 1 file set aside, put back after", "your edits' put-back: not checked (nothing is put back after this)"]`
+  (absorb: `3 files`). Now the box reads `no conflicts expected` (m6 table row 1). Approximation stated: the landed tip
+  is taken as HEAD + what went in, exact when the replay is clean.
+- **Q3 — deviation to flag:** ruling said "from the same fact `done_status` reads". That fact
+  (`entry.put_back.why == SetAside`, `clash.rs:427`) is always true for a put-in (it always has staged files), and
+  `landed`'s unchanged signature (`operate.rs:1076` passes only the op) cannot see it. The fact that decides the
+  words is whether *unstaged* tracked edits were set aside: recorded in `Asked` when the plan answers
+  (`amend_into.rs` `has_unstaged`), the same tree the preview's set-aside row counts. No string matching. Edits made
+  between the preview and `y` are not counted (words omit, never claim). Reds: `left: "put into \"commit 2\" ✓ · u
+  undoes" right: "… · your unstaged edits are back · u undoes"`; absorb `left: "… ✓ · 1 stays staged · u undoes"`.
+- **Touches:** uncommitted-row menu — graft lib tests (mouse `item_at`, `the_menu_runs_what_the_dropped_keys_run`,
+  `every_verb_the_menu_advertises_is_live_while_it_is_open`) green unedited; walks grep'd (`on_working_tree` in
+  m3_walk/hint_bar/conflict_interim) green; only m7 `absorb_staged`/`capture_absorb` did `. j…`. Captures showing a
+  `.` menu under `docs/shots` (m5 verbs, m6 fixed-slots, fix-radar) are all commit-row menus (contain `Copy SHA`) —
+  unmodified (`git status`). Put-back row: the fix adds a Rewrite arm only; stash/rebase/checkout/cherry-pick captures
+  unmodified (`git status` shows only the three m7 shots + the new menu shot). `dependents` callers: untouched.
+  Landing words: TESTING.md rows updated; 24's spec has no `put into`/`edits are back` (grep). Journal/undo: no write
+  added or removed (A2(a) had nothing to remove); `u` asserted in `fix_into_older`, `absorb_staged`,
+  `amend_with_dependents`. Keymap: not edited. Note: :77, :542-543, :822 edited as ruled; counts unchanged.
+- **Perf script:** measurement lines redact the fixture's temp path as `<repo>` (`published_repo` test flagged it).
+- **Out:** `subject_truncated` stays a gap.

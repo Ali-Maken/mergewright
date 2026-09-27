@@ -7,6 +7,7 @@
 //! ordinary `Operation::Rewrite` the preview confirms.
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
@@ -85,7 +86,7 @@ pub(super) fn plan(
 ) -> Result<RewritePlanned, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    let git = system_git().map_err(|error| error.to_string())?.version();
+    let git = git_version()?;
     let default = repos
         .branches()
         .map_err(|error| error.to_string())?
@@ -102,6 +103,34 @@ pub(super) fn plan(
         }
     }
     planned(&handle, &git, request, default.as_ref(), stop)
+}
+
+/// The system git's version, kept from the first successful read in this
+/// process. `git --version` was a spawn on every `a`, ahead of the
+/// dependents check (09b: 14.5 ms of the check's 30.2 ms on a loaded
+/// machine); the version does not change under a running Graft, as blame's
+/// `SYSTEM_VERSION` already assumes (graft-git `blame/marks_pass.rs`).
+static SYSTEM_VERSION: OnceLock<GitVersion> = OnceLock::new();
+
+#[cfg(test)]
+thread_local! {
+    /// How many times [`git_version`] spawned `git --version` on this thread.
+    static VERSION_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// [`SYSTEM_VERSION`], read on first use. A failed read is said and not
+/// kept: the next plan asks again.
+fn git_version() -> Result<GitVersion, String> {
+    if let Some(version) = SYSTEM_VERSION.get() {
+        return Ok(*version);
+    }
+    #[cfg(test)]
+    VERSION_READS.with(|reads| reads.set(reads.get() + 1));
+    let version = system_git().map_err(|error| error.to_string())?.version();
+    // `Err` means another plan stored first; it read the same `git
+    // --version` in the same process, so nothing is lost by dropping ours.
+    let _stored_first_elsewhere = SYSTEM_VERSION.set(version);
+    Ok(version)
 }
 
 /// `rewrite::plan`, then the words.

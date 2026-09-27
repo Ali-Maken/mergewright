@@ -1,4 +1,5 @@
  graft /code/api  4 commits
+◌      Uncommitted changes (1 unstaged)
   ●    [feature-b] Show the login page                                                                   GF futu…#######
   ◆ ▏  [◆ feature-a] Handle expired tokens                                                               GF futu…#######
   ●    Add OAuth callback  ✎ changed                                                                     GF futu…#######
@@ -36,5 +37,4 @@
 
 
 
-
- put into "Add OAuth callback" ✓ · u undoes
+ put into "Add OAuth callback" ✓ · your unstaged edits are back · u undoes

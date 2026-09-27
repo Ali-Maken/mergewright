@@ -41,8 +41,8 @@
 │           feature-b 04fbed6 → 3 new commits · built on yours · follows                                                                                                                  │
 │ HEAD → feature-a                                                                                                                                                                        │
 │ working tree: 1 file updated                                                                                                                                                            │
-│ your edits: 1 file set aside, put back after                                                                                                                                            │
-│ your edits' put-back: not checked (nothing is put back after this)                                                                                                                      │
+│ your edits: 2 files set aside, put back after                                                                                                                                           │
+│ no conflicts expected                                                                                                                                                                   │
 │ undo: u takes this back                                                                                                                                                                 │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15 feature-b                                                                           │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                                               │

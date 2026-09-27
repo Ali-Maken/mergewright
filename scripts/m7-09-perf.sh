@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # What the dependents check costs `a` on HEAD when another local branch
-# exists (m7-power-tools/09, "Decided": under one frame on the fixture).
-# Runs the ignored measurement walk in graft, release build, and writes its
-# lines to docs/perf/09.txt; a reader takes the `summary` line.
+# exists (m7-power-tools/09, "Decided": under one frame on the fixture;
+# 09b A1: the phases). Runs the ignored measurement walks in graft, release
+# build, and writes their lines to docs/perf/09b.txt; a reader takes the
+# `summary` line.
 #
 # Never run inside a helper's context.
 #
@@ -10,19 +11,34 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/docs/perf/09.txt"
+OUT="$ROOT/docs/perf/09b.txt"
+TRACE="$(mktemp -d)"
+trap 'rm -rf "$TRACE"' EXIT
 
-LINES=$(cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft \
-  --test it -- --ignored --nocapture --test-threads=1 \
-  m7_walk::amend_into::perf_dependents_check 2>/dev/null | grep '^m7-09')
+run() {
+  cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft \
+    --test it -- --ignored --nocapture --test-threads=1 --exact "$1" 2>/dev/null | grep '^m7-09b'
+}
+
+LOAD_BEFORE=$(sysctl -n vm.loadavg)
+# Build first, so the build's load is not in the numbers.
+cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --test it --no-run 2>/dev/null
+LINES=$(run m7_walk::amend_into::perf_dependents_check)
+SPAWNS=$(GIT_TRACE2_PERF="$TRACE" run m7_walk::amend_into::perf_dependents_spawns)
+LOAD_AFTER=$(sysctl -n vm.loadavg)
 
 {
   echo "# a on HEAD through the dependents check — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "# $(git --version), $(uname -sm), release build"
-  echo "# fixture: m7_walk::amend_into's oauth repo (main, feature-a of 2 commits), one file staged"
+  echo "# $(git --version), $(uname -sm), $(sysctl -n hw.model 2>/dev/null || true), release build"
+  echo "# load before: $LOAD_BEFORE   after: $LOAD_AFTER"
+  echo "# fixture: m7_walk::amend_into's oauth repo (main, feature-a of 2 commits, HEAD), plus spike (off main, own commit); one file staged"
   echo "# measured: a pressed to the amend editor open — the check, then HEAD's message read"
   echo "# budget: one frame, 16.7 ms"
   echo
-  echo "$LINES"
+  echo "$LINES" | grep -v summary
+  echo
+  echo "$SPAWNS"
+  echo
+  echo "$LINES" | grep summary | sed "s|\$|; load $LOAD_BEFORE/$LOAD_AFTER|"
 } > "$OUT"
 grep 'summary' "$OUT"

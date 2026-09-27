@@ -46,6 +46,9 @@ struct Asked {
     offsets: Vec<u32>,
     words: DoneWords,
     shown: BoxWords,
+    /// Tracked files had unstaged edits when the plan answered — the tree
+    /// the preview's `your edits: N files set aside` row counts too.
+    unstaged: bool,
 }
 
 impl AmendInto {
@@ -66,6 +69,10 @@ impl AmendInto {
 fn is_put_in(op: &Operation, params: &RewriteParams) -> bool {
     matches!(op, Operation::Rewrite(launched) if launched == params)
 }
+
+/// The landing's put-back clause for a put-in: the staged edits went into
+/// commits, so only the unstaged ones are "back" (09b Q3).
+const UNSTAGED_BACK: &str = "your unstaged edits are back";
 
 const FINDING_HOMES: &str = "checking where your staged changes go\u{2026}";
 
@@ -234,11 +241,13 @@ pub(crate) fn planned(
                 state.status = Status::Ready;
             }
             let op = Operation::Rewrite(params.clone());
+            let unstaged = has_unstaged(state);
             state.amend_into.asked = Some(Asked {
                 params,
                 offsets,
                 words,
                 shown,
+                unstaged,
             });
             let opened = open_preview(
                 state,
@@ -287,13 +296,20 @@ pub(crate) fn landed(
     else {
         return;
     };
-    // The note's words replace `done_status`'s whole. Its `your edits are
-    // back` is said for any entry that set edits aside, and the walk's
-    // put-in (nothing but staged changes, all put in) drew it — claiming
-    // back edits that are now in a commit (ticket 09 NOTES).
+    // The note's words, composed with the put-back's (09b Q3). A put-in
+    // always sets edits aside — it has staged ones (`Operation::sets_aside`)
+    // — so `done_status`'s plain `your edits are back` would claim back the
+    // staged edits that are now in commits. What came back is his unstaged
+    // edits, when the planned tree had any. A `Done` means the put-back went
+    // through clean; a clash lands elsewhere.
+    let unstaged_back = asked.unstaged;
+    let also = join(
+        asked.words.also.as_deref(),
+        unstaged_back.then_some(UNSTAGED_BACK),
+    );
     state.status = Status::Done {
         what: asked.words.what.clone(),
-        also: asked.words.also.clone(),
+        also: (!also.is_empty()).then_some(also),
         keys: Some("u undoes".to_owned()),
     };
     if asked.offsets.is_empty() {
@@ -302,6 +318,16 @@ pub(crate) fn landed(
     let id = next_id();
     state.amend_into.tagging = Some(id);
     commands.push(Command::ResolveRowTags(id, asked.offsets));
+}
+
+/// Any tracked file with edits not staged (untracked files are never set
+/// aside: they stay where they are).
+fn has_unstaged(state: &AppState) -> bool {
+    state.working_tree.as_deref().is_some_and(|tree| {
+        tree.entries
+            .iter()
+            .any(|entry| entry.unstaged.is_some() && !entry.untracked)
+    })
 }
 
 fn join(first: Option<&str>, second: Option<&str>) -> String {

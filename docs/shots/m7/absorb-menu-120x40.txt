@@ -1,0 +1,40 @@
+ graft /code/api  3 commits
+  ◌ ▏  Uncommitted changes (3 staged)
+ Put staged changes into their commits (absorb)
+ Open details (⏎)
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  . more  /  j/k  q  F2  F3  +  1  F  H  M  O
