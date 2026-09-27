@@ -146,11 +146,11 @@ fn merge_op(repo: &TempRepo, source: &str, ff: FastForward) -> Operation {
 }
 
 fn rebase_op(repo: &TempRepo, onto: &str) -> Operation {
-    Operation::Rebase(RebaseParams {
-        branch: head_tip(repo),
-        onto: Source::Branch(onto.to_owned()),
-        onto_tip: id(repo, onto),
-    })
+    Operation::Rebase(RebaseParams::new(
+        head_tip(repo),
+        Source::Branch(onto.to_owned()),
+        id(repo, onto),
+    ))
 }
 
 fn pick_op(repo: &TempRepo, rev: &str) -> Operation {

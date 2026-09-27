@@ -105,11 +105,11 @@ fn merge() -> Operation {
 }
 
 fn rebase() -> Operation {
-    Operation::Rebase(RebaseParams {
-        branch: tip(MAIN, 0x0a),
-        onto: Source::Branch(FEAT.to_owned()),
-        onto_tip: oid(0x0b),
-    })
+    Operation::Rebase(RebaseParams::new(
+        tip(MAIN, 0x0a),
+        Source::Branch(FEAT.to_owned()),
+        oid(0x0b),
+    ))
 }
 
 fn pick() -> Operation {
@@ -314,6 +314,27 @@ fn plan_merge_supplies_gits_own_subject_and_never_an_editor() {
         }
     });
     assert!(lines(&no_ff, &f)[0].contains(" --no-ff "));
+}
+
+/// 02b's `<top>` rule (05b): a line of 2+ branches starts git on its top,
+/// by short name; a one-branch line is today's string, byte for byte.
+#[test]
+fn a_line_rebase_names_its_top() {
+    let f = facts();
+    let one = format!("git rebase -i --no-update-refs --no-autostash --empty=drop {FEAT}");
+    assert_eq!(lines(&rebase(), &f), [one]);
+
+    let mut line = rebase();
+    if let Operation::Rebase(params) = &mut line {
+        params.line.branches.push(tip("refs/heads/feature-b", 0x0c));
+        params.line.branches.push(tip("refs/heads/feature-c", 0x0d));
+    }
+    assert_eq!(
+        lines(&line, &f),
+        [format!(
+            "git rebase -i --no-update-refs --no-autostash --empty=drop {FEAT} feature-c"
+        )]
+    );
 }
 
 #[test]

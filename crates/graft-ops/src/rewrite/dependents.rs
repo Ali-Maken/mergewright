@@ -25,7 +25,7 @@ pub(super) const UPDATE_REF_GIT: GitVersion = GitVersion {
 
 /// His branch and the branches built on it, or the refusal that stops the
 /// rewrite: a fork, one checked out in another worktree, or an old git.
-pub(super) fn line_of(
+pub(crate) fn line_of(
     repo: &RepoHandle,
     git: &GitVersion,
     head: &Tip,

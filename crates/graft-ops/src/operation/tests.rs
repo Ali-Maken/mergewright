@@ -1271,11 +1271,11 @@ fn history_cases() -> Vec<(Operation, bool)> {
             true,
         ),
         (
-            Operation::Rebase(RebaseParams {
-                branch: main(),
-                onto: Source::Branch("refs/heads/feat".to_owned()),
-                onto_tip: oid(0x0b),
-            }),
+            Operation::Rebase(RebaseParams::new(
+                main(),
+                Source::Branch("refs/heads/feat".to_owned()),
+                oid(0x0b),
+            )),
             true,
         ),
         (
@@ -1538,19 +1538,19 @@ fn in_the_way_words() {
             Some(format!("putting main back to {}", sha(6))),
         ),
         (
-            Operation::Rebase(RebaseParams {
-                branch: tip("refs/heads/main"),
-                onto: Source::Branch("refs/heads/feat".to_owned()),
-                onto_tip: oid(0x0b),
-            }),
+            Operation::Rebase(RebaseParams::new(
+                tip("refs/heads/main"),
+                Source::Branch("refs/heads/feat".to_owned()),
+                oid(0x0b),
+            )),
             Some("rebasing onto feat".to_owned()),
         ),
         (
-            Operation::Rebase(RebaseParams {
-                branch: tip("refs/heads/main"),
-                onto: Source::Commit(oid(0x0b)),
-                onto_tip: oid(0x0b),
-            }),
+            Operation::Rebase(RebaseParams::new(
+                tip("refs/heads/main"),
+                Source::Commit(oid(0x0b)),
+                oid(0x0b),
+            )),
             Some(format!("rebasing onto {}", sha(0x0b))),
         ),
         (
@@ -1644,4 +1644,40 @@ fn stash_in_the_way_words_name_an_ignored_file() {
     for (seen, wanted) in cases {
         assert_eq!(seen, wanted);
     }
+}
+
+/// 05b: `r` is pinned to every branch of its line, so a branch that moved
+/// between the preview and `y` is refused `Moved`, and the facts read them.
+#[test]
+fn rebase_tips_pin_every_branch_of_the_line() {
+    let main = tip("refs/heads/main", 0x0a);
+    let b = tip("refs/heads/feature-b", 0x0c);
+    let c = tip("refs/heads/feature-c", 0x0d);
+    let mut params = super::RebaseParams::new(
+        main.clone(),
+        super::Source::Branch("refs/heads/feat".to_owned()),
+        oid(0x0b),
+    );
+    params.line.branches.extend([b.clone(), c.clone()]);
+    let op = Operation::Rebase(params);
+
+    assert_eq!(op.tips(), [main, b, c]);
+    let scope = op.facts_scope().refs;
+    for name in ["refs/heads/feature-b", "refs/heads/feature-c"] {
+        assert!(scope.iter().any(|it| it == name), "{name} read: {scope:?}");
+    }
+
+    let mut f = facts();
+    f.refs.insert("refs/heads/main".to_owned(), Some(oid(0x0a)));
+    f.refs.insert("refs/heads/feat".to_owned(), Some(oid(0x0b)));
+    f.refs
+        .insert("refs/heads/feature-b".to_owned(), Some(oid(0x0c)));
+    f.refs
+        .insert("refs/heads/feature-c".to_owned(), Some(oid(0x0e)));
+    assert_eq!(
+        op.check(&f),
+        Err(Refusal::Moved {
+            name: "refs/heads/feature-c".to_owned()
+        })
+    );
 }

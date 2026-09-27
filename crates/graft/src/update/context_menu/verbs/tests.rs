@@ -106,11 +106,11 @@ fn menu_verbs_build_expected_operations() {
     );
     assert_eq!(
         op_of(&verbs, "Rebase main onto feature (r)"),
-        &Operation::Rebase(RebaseParams {
-            branch: main_tip(),
-            onto: Source::Branch("feature".to_owned()),
-            onto_tip: oid(3),
-        })
+        &Operation::Rebase(RebaseParams::new(
+            main_tip(),
+            Source::Branch("feature".to_owned()),
+            oid(3)
+        ))
     );
     assert_eq!(
         op_of(&verbs, "Cherry-pick 0300000"),
@@ -187,11 +187,7 @@ fn the_merge_and_rebase_verbs_are_the_ones_m_and_r_build() {
     );
     assert_eq!(
         op_of(&verbs, "Rebase main onto feature (r)"),
-        &Operation::Rebase(RebaseParams {
-            branch: current,
-            onto: source,
-            onto_tip: oid(3),
-        })
+        &Operation::Rebase(RebaseParams::new(current, source, oid(3)))
     );
 }
 
@@ -360,11 +356,7 @@ fn a_foxtrot_merge_head_is_on_offers_all_three_fixes() {
     // branch onto the topic, which is the mistake turned around.
     assert_eq!(
         op_of(&verbs, "Fix: rebase instead"),
-        &Operation::Rebase(RebaseParams {
-            branch: head,
-            onto: Source::Commit(oid(5)),
-            onto_tip: oid(5),
-        })
+        &Operation::Rebase(RebaseParams::new(head, Source::Commit(oid(5)), oid(5)))
     );
 }
 

@@ -154,6 +154,11 @@ pub struct Planned {
     pub plan: PreviewPlan,
     /// Commits read to anchor the picture, at most [`PREVIEW_ANCHOR_CAP`].
     pub anchors: Vec<Commit>,
+    /// The operation as `y` will run it (`graft_ops::preview::plan_as_run`):
+    /// a rebase completed with its line and drops, anything else as asked.
+    /// `preview_produced` moves it into the subject, so the op `y` confirms
+    /// is the one the picture was drawn from. `None` for the time machine.
+    pub runs: Option<Box<Operation>>,
 }
 
 /// One open Ghost Preview.
@@ -634,6 +639,14 @@ pub fn preview_produced(
             return;
         }
     };
+    // The op the job completed (05b: a rebase's line and drops) becomes the
+    // one `y` runs — `confirm_preview` moves the subject's op across. A
+    // copy out of the shared answer; the key's own op is let go.
+    if let (Some(runs), PreviewSubject::Operation { op, .. }) =
+        (&planned.runs, &mut preview.subject)
+    {
+        op.clone_from(runs);
+    }
     match build_slice(&preview.resident, &planned.anchors, &planned.plan) {
         Ok(slice) => {
             preview.ghost_index = slice
@@ -1467,11 +1480,9 @@ fn build(which: HistoryKey, current: Tip, source: Source, tip: Oid) -> Operation
             source_tip: tip,
             ff: graft_ops::operation::FastForward::Default,
         }),
-        HistoryKey::Rebase => Operation::Rebase(graft_ops::operation::RebaseParams {
-            branch: current,
-            onto: source,
-            onto_tip: tip,
-        }),
+        HistoryKey::Rebase => Operation::Rebase(graft_ops::operation::RebaseParams::new(
+            current, source, tip,
+        )),
     }
 }
 

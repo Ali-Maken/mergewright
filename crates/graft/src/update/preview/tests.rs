@@ -151,14 +151,14 @@ fn an_empty_plan() -> PreviewPlan {
 }
 
 fn a_rebase() -> Operation {
-    Operation::Rebase(RebaseParams {
-        branch: Tip {
+    Operation::Rebase(RebaseParams::new(
+        Tip {
             name: "refs/heads/feature".to_owned(),
             oid: oid(3),
         },
-        onto: Source::Branch("main".to_owned()),
-        onto_tip: oid(2),
-    })
+        Source::Branch("main".to_owned()),
+        oid(2),
+    ))
 }
 
 fn subject() -> PreviewSubject {
@@ -191,6 +191,7 @@ fn opened_over(subject: PreviewSubject, plan: PreviewPlan) -> (AppState, Vec<Com
         Ok(Arc::new(Planned {
             plan,
             anchors: Vec::new(),
+            runs: None,
         })),
     );
     (state, commands)
@@ -504,6 +505,65 @@ fn confirm_runs_the_very_operation_the_picture_was_drawn_from() {
     assert!(state.operating.is_some(), "and it is a write in flight");
 }
 
+/// 05b: the key builds `r` with his branch alone; the job completes it (the
+/// line, the drops) and answers it in `runs`. `y` runs **that** op — the
+/// one the picture was drawn from — never the key's.
+#[test]
+fn the_confirmed_rebase_is_the_one_the_job_completed() {
+    let mut state = on_screen();
+    let mut commands = Vec::new();
+    assert!(open_preview(
+        &mut state,
+        &mut commands,
+        subject(),
+        false,
+        &mut ids()
+    ));
+    let mut completed = a_rebase();
+    if let Operation::Rebase(params) = &mut completed {
+        params.line.branches.extend([
+            Tip {
+                name: "refs/heads/feature-b".to_owned(),
+                oid: oid(4),
+            },
+            Tip {
+                name: "refs/heads/feature-c".to_owned(),
+                oid: oid(5),
+            },
+        ]);
+    }
+    let id = state.preview.as_ref().expect("a preview is open").job;
+    preview_produced(
+        &mut state,
+        id,
+        Ok(Arc::new(Planned {
+            plan: a_plan(),
+            anchors: Vec::new(),
+            runs: Some(Box::new(completed.clone())),
+        })),
+    );
+
+    let mut next = ids();
+    preview_key(
+        &mut state,
+        &mut commands,
+        press(KeyCode::Char('y')),
+        &mut next,
+    );
+    let operated = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::Operate(_, op) => Some(op.as_ref()),
+            _ => None,
+        })
+        .expect("y runs the operation");
+    let Operation::Rebase(params) = operated else {
+        panic!("a rebase: {operated:?}");
+    };
+    assert_eq!(params.line.branches.len(), 3, "the line the job completed");
+    assert_eq!(operated, &completed);
+}
+
 /// A history operation cannot be stopped part-way, so the footer must not
 /// offer `Esc` as a way out of one.
 #[test]
@@ -770,14 +830,14 @@ fn r_builds_a_rebase_of_the_current_branch_onto_the_selection() {
     let (_, op) = history_key_over_two_branches(HistoryKey::Rebase);
     assert_eq!(
         op,
-        Operation::Rebase(RebaseParams {
-            branch: Tip {
+        Operation::Rebase(RebaseParams::new(
+            Tip {
                 name: "refs/heads/main".to_owned(),
                 oid: oid(2),
             },
-            onto: Source::Branch("feature".to_owned()),
-            onto_tip: oid(3),
-        })
+            Source::Branch("feature".to_owned()),
+            oid(3),
+        ))
     );
 }
 
@@ -1402,8 +1462,19 @@ fn cut_order_never_cuts_a_branch_name() {
         .find(|line| line.starts_with("may stop at step 2 of 4"))
         .unwrap_or_else(|| panic!("a stop row in {lines:#?}"));
     assert!(!stop.contains("session.rs"), "paths cut first: {stop}");
-    assert!(lines.iter().any(|line| line.contains("feature")));
-    assert!(lines.iter().any(|line| line.contains("topic")));
+    // The branch rows themselves, not any row: the stop row's subject
+    // "topic work" would otherwise stand in for a missing topic row.
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.starts_with("branches: feature ")),
+        "{lines:#?}"
+    );
+    assert!(
+        lines.iter().any(|line| line.starts_with("          topic ")
+            && line.ends_with("built on yours \u{b7} follows")),
+        "{lines:#?}"
+    );
     assert!(
         lines
             .iter()

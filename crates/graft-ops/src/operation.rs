@@ -1287,7 +1287,7 @@ impl Operation {
     pub fn tips(&self) -> Vec<Tip> {
         match self {
             Self::Merge(params) => vec![params.into.clone()],
-            Self::Rebase(params) => vec![params.branch.clone()],
+            Self::Rebase(params) => history::tips_of_rebase(params),
             Self::Rewrite(params) => rewrite::tips(params),
             Self::CherryPick(params) => vec![params.head.clone()],
             Self::Revert(params) => vec![params.head.clone()],

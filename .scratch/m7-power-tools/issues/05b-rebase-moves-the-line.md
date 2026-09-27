@@ -1,6 +1,6 @@
 # 05b rebase-moves-the-line — `r` moves his whole line and drops what main already has, as its preview says
 
-Status: draft
+Status: done (builder, 2026-09-27; compacted once, see NOTES)
 Blocked by: 05-rewrite-preview (its partial, worktree commit b1f1c26b, merges first)
 Split from: 05 (spec-only pass, planner, 2026-09-27). 05 keeps everything ticked in its Acceptance; this ticket is 05's
 three open items, the engine switch they were blocked on, and the fork question.
@@ -146,7 +146,7 @@ pub struct Planned { pub plan: PreviewPlan, pub anchors: Vec<Commit>,
 `graft::jobs::preview::run_preview` calls `plan_as_run` where it called `plan`. It calls nothing else new.
 
 ## Acceptance (each box names its test at tick time; red quoted in NOTES for every new test)
-- [ ] graft-ops, `tests/it/rewrite_preview.rs`, red first:
+- [x] graft-ops, `tests/it/rewrite_preview.rs`, red first — each test below by name, all in that file:
   - `r_plans_every_branch_of_its_line`: `plan_as_run` on `RebaseParams::new` with two dependents returns `line` of 3,
     three `RefMove`s bottom first, ghosts for all picks.
   - `r_over_a_fork_is_refused_before_y`: `Refused(ForkedDependents{a, b})`, both named. This replaces
@@ -157,10 +157,10 @@ pub struct Planned { pub plan: PreviewPlan, pub anchors: Vec<Commit>,
   - `plan_as_run_leaves_every_other_kind_alone`: merge, pick and checkout ops come back `==`, and the plan is equal to
     `plan`'s.
   - `a_line_whose_every_row_is_dropped`: whichever of the two outcomes git decided.
-- [ ] **Oracle** `the_chained_forecast_agrees_with_git` gains two rows, both driven through `plan_as_run` + a real `y`
+- [x] (`rewrite_preview::the_chained_forecast_agrees_with_git` → `line_rows_agree_with_git`: `conflicted_line` StopsAt 3 of 4 on b1 ⇔ git stops there, same paths; `squash_merged` clean, `lands_as_drawn` ref by ref) **Oracle** `the_chained_forecast_agrees_with_git` gains two rows, both driven through `plan_as_run` + a real `y`
       in a copy: a stop inside a dependent's commits (`StopsAt{step}` ⇔ git stops there, same paths), and a clean line
       with drops (every branch lands where the ghosts said: ref-by-ref equal).
-- [ ] graft-ops, `tests/it/rewrite_run.rs`, red first:
+- [x] graft-ops, `tests/it/rewrite_run.rs`, red first — each test below by name, all in that file:
   - `r_moves_every_branch_of_its_line`. It replaces `r_moves_his_branch_alone_until_the_preview_draws_the_line`
     (deleted, reason in NOTES).
   - `r_records_and_undoes_every_branch_of_its_line` (`refs_before` holds the line; `u` puts each back).
@@ -168,22 +168,22 @@ pub struct Planned { pub plan: PreviewPlan, pub anchors: Vec<Commit>,
   - `a_branch_built_on_his_after_the_preview_is_refused_moved`.
   - `a_drop_not_among_the_rows_is_refused_moved`.
   - `r_drops_the_squash_merged_commits` (the todo git ran holds `drop` for each; the rest land).
-- [ ] graft-ops: `operation/history/tests.rs` `a_line_rebase_names_its_top` (`… <onto> <top>`; a one-branch line is
+- [x] graft-ops: `operation/history/tests.rs` `a_line_rebase_names_its_top` (`… <onto> <top>`; a one-branch line is
       byte-identical to today's string). `operation/tests.rs` `rebase_tips_pin_every_branch_of_the_line`.
-- [ ] graft, `update/preview/tests.rs`, red first: `the_confirmed_rebase_is_the_one_the_job_completed` (a scripted
+- [x] graft, `update/preview/tests.rs`, red first: `the_confirmed_rebase_is_the_one_the_job_completed` (a scripted
       `Planned { runs: Some(line of 3) }`, then `y` → the launched op's `line` has 3).
-- [ ] **Mutation proofs for 05's four graft tests**, written after the code (05 NOTES). For each: revert the one line it
+- [x] (the five tests named below, `update/preview/tests.rs`; reds in NOTES; `cut_order_never_cuts_a_branch_name` rewritten) **Mutation proofs for 05's four graft tests**, written after the code (05 NOTES). For each: revert the one line it
       guards, run it, quote the red in NOTES with the file:line reverted, then restore. A test that stays green is
       rewritten until it goes red, and NOTES says so. Tests: `the_box_draws_one_row_per_branch` (draw only the first
       `RefMove`), `a_one_branch_rebase_draws_as_before` (show the `branches:` label for one branch),
       `already_in_row_says_dropped` (drop the `· dropped` words), `a_stop_forecast_names_the_step` (draw `StopsAt` with
       `Likely`'s words), `cut_order_never_cuts_a_branch_name` (put the branch name first in the cut ladder).
-- [ ] graft walk, `tests/it/m7_walk/rebase_line.rs`:
+- [x] graft walk, `tests/it/m7_walk/rebase_line.rs` — the three tests below by name (routes: `j r y`, 3 each):
   - `r_y_moves_the_line`: keys `r`, `y` from a cursor on `main`; every branch's ref read after equals the ghost it was
     drawn as. Steps ≤ the note's `rebase-line-onto-main` count, 3.
   - `r_y_drops_the_squash_merged_branch` (≤ `squash-merged-bottom`, 3).
   - `r_over_a_fork_lands_on_the_graph_with_the_words` (box closed, status line holds both names, no ref moved).
-- [ ] **Captures** (rule 6: the user judges by eye; colour **unverified**, rule 5), through `check_shot`, from
+- [x] (`m7_walk::rebase_line::capture_rebase_line`; 4.7 KB, 2.8 KB, 0.8 KB; captions appended) **Captures** (rule 6: the user judges by eye; colour **unverified**, rule 5), through `check_shot`, from
       `m7_walk/rebase_line.rs`:
   - `docs/shots/m7/rebase-line-preview-187x50.txt`: `branches:` label, 3 rows bottom first, the two above his marked
     `built on yours · follows`.
@@ -191,10 +191,10 @@ pub struct Planned { pub plan: PreviewPlan, pub anchors: Vec<Commit>,
     "<subject>" · dropped` row, **no `R`**, and no ghost for a dropped commit.
   - `docs/shots/m7/rebase-refused-fork-120x40.txt`: the graph, the status line naming both branches.
   - Three rows appended to the captions TSV, each saying what right looks like.
-- [ ] Regression: `m5-01-preview-rebase-{80x24,160x48}` and `m5-ui-preview-rebase-{80x24,160x48}` byte-identical
+- [x] (full workspace nextest 4327/4327 incl. `m5_walk::preview`, `it::preview`, every `put_back_forecast`/`set_aside`; `git status docs/shots` shows only the three new files and the TSV) Regression: `m5-01-preview-rebase-{80x24,160x48}` and `m5-ui-preview-rebase-{80x24,160x48}` byte-identical
       (`m5_walk/preview.rs:80`, `tests/it/preview.rs:261,295`). The m5/m6 rebase walks and every
       `put_back_forecast`/`set_aside` test green, or NOTES lists each changed assertion and why.
-- [ ] MAP.md: graft-ops `apply::engine` (delete "his branch alone … until ticket 05" and "`r` refuses nothing over
+- [x] (doc; no test) MAP.md: graft-ops `apply::engine` (delete "his branch alone … until ticket 05" and "`r` refuses nothing over
       dependents"), `RebaseParams`, `preview::plan_as_run`; graft `Planned::runs`, `jobs::preview`.
 
 ## Touches (check each; the report's Touches line says how)
@@ -225,3 +225,61 @@ run by `sh` (02's gotcha: inline git in temp dirs is refused in an isolated work
 Medium (~55k). It can't split across crates: `RebaseParams`'s new fields break graft's build. If compacted, split after
 the graft-ops boxes, with graft on `RebaseParams::new` already. The remainder is the graft job, `Planned::runs`, the
 mutation proofs, the walk and the captures.
+
+## NOTES (builder, 2026-09-27)
+**Compacted once**, after the graft `Planned::runs` work and the first mutation. Nothing remains: every box is
+ticked above. Scout: none new (05's reused, as the ticket says).
+
+**Reds quoted (test-first):**
+- graft-ops integration tests (every new `rewrite_preview`/`rewrite_run` test): compile red, "unresolved import
+  `graft_ops::preview::plan_as_run`".
+- `a_line_rebase_names_its_top`: left `…--empty=drop refs/heads/feat`, right `… feat feature-c`.
+- `rebase_tips_pin_every_branch_of_the_line`: tips `[main]` against `[main, feature-b, feature-c]`.
+- `the_confirmed_rebase_is_the_one_the_job_completed`: compile red, "struct `Planned` has no field named `runs`";
+  then with the `clone_from` in `preview_produced` removed, "the line the job completed left: 1 right: 3".
+- `put_back_forecast::a_rebase_with_drops_measures_the_put_back_from_where_it_lands`: forcing `Landing::Replayed`
+  gives left `Some(NotChecked("the rebase may stop first"))`, right `Likely{x.txt}`.
+
+**Mutation proofs (05's graft tests; each file restored after, `git diff` of `line_rows.rs` empty):**
+- `the_box_draws_one_row_per_branch` — `update/preview/line_rows.rs:34` `.iter()` → `.iter().take(1)`: red,
+  panic at `update/preview/tests.rs:1389`; lines hold only `branches: feature 0000000 → 1 new commit`.
+- `a_one_branch_rebase_draws_as_before` — `line_rows.rs:24` `> 1` → `>= 1`: red at `tests.rs:1399`.
+- `already_in_row_says_dropped` — `line_rows.rs:62` ` \u{b7} dropped` removed: red at `tests.rs:1419`.
+- `a_stop_forecast_names_the_step` — `line_rows.rs:97` head → `may conflict: {step} {of}` (Likely's words): red at
+  `tests.rs:1449`.
+- `cut_order_never_cuts_a_branch_name` — **stayed green** under the `take(1)` mutation: its `contains("topic")` was
+  satisfied by the stop row's subject `topic work`. **Rewritten** to assert the branch rows themselves (a row starting
+  `branches: feature `, and one starting with the 10-space indent + `topic ` ending `built on yours · follows`). Now red
+  under `take(1)` at `tests.rs:1473`, green restored. The ticket's literal mutation ("put the branch name first in the
+  cut ladder") has no line to revert: `plan_lines` ladders only the stop row (`forecast_rungs`) and the set-aside row;
+  branch rows are never laddered, so a cut can't reach them. `take(1)` (a branch row missing) is the failure the test
+  guards.
+
+**git, all-drop todo** (script in the scratchpad, git 2.54): a todo of `drop` rows only → "Successfully rebased and
+updated refs/heads/feature-a.", exit 0; feature-a == main, HEAD stays `refs/heads/feature-a`. So it **runs**; no
+`EverythingDropped` refusal (`a_line_whose_every_row_is_dropped` plans and runs it).
+
+**Deviations / decisions to know:**
+- `drops` = the suggestion's commits **that `rebase_rows` has a row for**. `rebase_rows`/`replayed_commits` use
+  `--cherry-pick --right-only --no-merges`, so a commit git already leaves out (e.g. a one-commit squash, patch-identical)
+  has no row; writing it would make the engine refuse `Moved` on every such rebase. `already_in` still names all of them.
+- `plan_as_run` runs `op.check` (the shared `checked` gate) before `line_of`, so a branch switched/moved since the key
+  refuses first; then clones the facts and inserts the dependents' tips, so `check`/`tips()` pin the line drawn.
+- `preview/put_back.rs` **touched**: it replayed the rebase itself (one `merge-tree HEAD <onto>`, which also counted
+  dropped commits). Now `kinds::rebase` returns his landed commit from the chain (drops skipped) and the put-back
+  uses it; the merge-tree stand-in remains only when the chain didn't reach it. One new row (above).
+- Deleted `rewrite_run::r_moves_his_branch_alone_until_the_preview_draws_the_line` and
+  `…::r_with_two_branches_on_top_is_not_refused_after_y` (+ its `forked()` fixture): both pinned 02's stopgap (review
+  02 Major 1), superseded by `r_moves_every_branch_of_its_line` and `r_over_a_fork_is_refused_before_y`.
+- `rewrite_run::the_plan_dir_is_removed_when_the_entry_closes` now uses a completed op (`r_onto_main`): an uncompleted
+  `RebaseParams::new` over a line is refused `Moved` at `y` — the intended new behaviour.
+- clippy `too_many_lines`: `kinds::rebase` split into `line_ghosts` + `todo_steps`; `preview::plan`'s check moved to
+  `checked` (shared with `plan_as_run`). No behaviour change (full suite green).
+- The walk file and its `mod` line were created by the builder (no seam commit), as the dispatch said.
+- No `RebaseParams` literal was found in 16's or 01b's files.
+
+**Question (rule 7, not a defect claim):** in `rebase-line-preview-187x50.txt` the follower rows read
+`feature-b … → 3 new commits`, `feature-c … → 4 new commits` — the count is every ghost under that branch's tip
+(`crates/graft/src/update/preview.rs:1085`, `new_commits_at`: "the ghost it lands on and every ghost below it"), not the branch's own commits (1 each). Is that the wording wanted?
+
+**Captures:** colour unverified (rule 5); the user judges by eye (rule 6).

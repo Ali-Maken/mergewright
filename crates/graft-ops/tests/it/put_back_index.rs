@@ -60,14 +60,14 @@ fn checkout_to(repo: &TempRepo, to: &str) -> Operation {
 
 fn rebase_onto_main(repo: &TempRepo) -> Operation {
     let name = repo.git(&["symbolic-ref", "HEAD"]);
-    Operation::Rebase(RebaseParams {
-        branch: graft_ops::operation::Tip {
+    Operation::Rebase(RebaseParams::new(
+        graft_ops::operation::Tip {
             oid: id(repo, &name),
             name,
         },
-        onto: Source::Branch("refs/heads/main".to_owned()),
-        onto_tip: id(repo, "main"),
-    })
+        Source::Branch("refs/heads/main".to_owned()),
+        id(repo, "main"),
+    ))
 }
 
 fn rewrite_planned(repo: &TempRepo, request: &RewriteRequest) -> RewriteParams {

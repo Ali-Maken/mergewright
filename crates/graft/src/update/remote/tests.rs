@@ -720,14 +720,14 @@ fn diverged_pull_sets_m_r_source() {
     };
     assert_eq!(
         **op,
-        Operation::Rebase(graft_ops::operation::RebaseParams {
-            branch: graft_ops::operation::Tip {
+        Operation::Rebase(graft_ops::operation::RebaseParams::new(
+            graft_ops::operation::Tip {
                 name: "refs/heads/main".to_owned(),
                 oid: oid(OURS),
             },
-            onto: graft_ops::operation::Source::Branch("origin/main".to_owned()),
-            onto_tip: oid(THEIRS),
-        })
+            graft_ops::operation::Source::Branch("origin/main".to_owned()),
+            oid(THEIRS),
+        ))
     );
 }
 

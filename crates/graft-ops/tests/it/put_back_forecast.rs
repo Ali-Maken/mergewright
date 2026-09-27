@@ -32,14 +32,14 @@ fn checkout_to(repo: &TempRepo, to: &str) -> Operation {
 
 fn rebase_onto(repo: &TempRepo, onto: &str) -> Operation {
     let name = repo.git(&["symbolic-ref", "HEAD"]);
-    Operation::Rebase(RebaseParams {
-        branch: Tip {
+    Operation::Rebase(RebaseParams::new(
+        Tip {
             oid: id(repo, &name),
             name,
         },
-        onto: Source::Branch(onto.to_owned()),
-        onto_tip: id(repo, onto),
-    })
+        Source::Branch(onto.to_owned()),
+        id(repo, onto),
+    ))
 }
 
 fn plan_with(
@@ -286,4 +286,47 @@ fn an_old_git_leaves_the_put_back_not_checked() {
         Some(ConflictForecast::NotChecked(why)) => assert!(why.contains("2.40"), "{why}"),
         other => panic!("not checked on git 2.39: {other:?}"),
     }
+}
+
+/// 05b: `feature`'s two commits (`x.txt`, `y.txt`) are squash-merged into
+/// `main`, which then rewrites `x.txt`; the user has an edit to `x.txt`.
+/// The completed rebase drops both commits, so `feature` lands on `main`
+/// itself, and the edit goes back onto main's `x.txt`: a clash on `x.txt`.
+/// Measured by one merge of `HEAD` and `main` instead (dropped commits
+/// included), the landing would conflict on `x.txt` itself and the
+/// put-back would read "the rebase may stop first".
+#[test]
+fn a_rebase_with_drops_measures_the_put_back_from_where_it_lands() {
+    let repo = TempRepo::init();
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["switch", "-q", "-c", "feature"]);
+    repo.write("x.txt", b"feature\n");
+    repo.commit_all("x");
+    repo.write("y.txt", b"y\n");
+    repo.commit_all("y");
+    repo.git(&["switch", "-q", "main"]);
+    repo.git(&["merge", "-q", "--squash", "feature"]);
+    repo.git(&["commit", "-q", "-m", "feature (#7)"]);
+    repo.write("x.txt", b"main later\n");
+    repo.commit_all("main rewrites x");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("x.txt", b"my edit\n");
+
+    let handle = repo.open();
+    let op = rebase_onto(&repo, "refs/heads/main");
+    let facts = read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("facts");
+    let (op, plan) = preview::plan_as_run(&handle, &git_version(), op, &facts, &Never)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    let Operation::Rebase(params) = &op else {
+        panic!("a rebase");
+    };
+    assert_eq!(params.drops.len(), 2, "both commits dropped");
+    assert_eq!(plan.conflicts, ConflictForecast::Clean, "the replay itself");
+    assert_eq!(
+        plan.put_back,
+        Some(ConflictForecast::Likely {
+            paths: vec![PathBuf::from("x.txt")]
+        })
+    );
 }
