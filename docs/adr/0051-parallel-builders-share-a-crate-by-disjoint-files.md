@@ -16,7 +16,8 @@ each builder already has its own worktree and `CARGO_TARGET_DIR`. The crate rule
    **file lists** share no file. The planner writes each ticket's file list; the conductor pairs tickets by it.
    Shared registries (`mod.rs` lists, the hint catalogue, `docs/design/02-keymap.md`, captures) count as files.
    **MAP.md does not** (user, 2026-09-27): its clashes are line-level index entries the conductor resolves at merge
-   by keeping both.
+   by keeping both. Same for `TESTING.md` rows, the captions TSV, `mod` lines, and append-only additions to the
+   jobs registry (new variants and match arms) (conductor, 2026-09-27, same reasoning): no seam commits needed.
 3. A builder that finds it must edit a file outside its list stops and reports `blocked: needs <file>`, as with a crate.
 4. The conductor merges one branch at a time and runs the gates after each. A conflict it can't resolve from the two
    specs goes back to the owning builder.
