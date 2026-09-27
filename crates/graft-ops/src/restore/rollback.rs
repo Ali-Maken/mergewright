@@ -122,6 +122,38 @@ pub(super) fn roll_back_after_stop<'p>(
     })
 }
 
+/// Put back what the plan had already done when a step **failed** (gap
+/// :496, m7-power-tools/01a): the same all-or-nothing rule as a cancel, so a
+/// failure never leaves half a restore behind in silence.
+///
+/// The failed step itself is reversed too, except a ref's. `git update-ref`
+/// is atomic — a non-zero exit wrote nothing — and its reversal is a
+/// compare-and-swap against the value it would have written, which would
+/// refuse and read as drift that is not there. Every other step may have
+/// written part of itself (a working-tree restore is several commands), and
+/// its reversal is idempotent by construction (see [`settled`]), so putting
+/// it back costs nothing when it wrote nothing.
+///
+/// Not cancellable, for the reason [`roll_back_after_stop`] gives.
+pub(super) fn roll_back_after_failure<'p>(
+    ctx: &mut Context<'_>,
+    before: &Before,
+    applied: &mut Vec<&'p Step>,
+    failed: &'p Step,
+    commands: &mut Vec<String>,
+) -> Cancelled {
+    if !matches!(failed, Step::UpdateRef { .. }) {
+        applied.push(failed);
+    }
+    uncancellable(ctx, |ctx| match roll_back(ctx, before, applied, commands) {
+        RolledBack::All(count) => Cancelled::Clean(count),
+        RolledBack::Partway { still, why } => Cancelled::Partway {
+            applied: still,
+            why,
+        },
+    })
+}
+
 /// Run `work` against a context that cannot be stopped, and give the caller's
 /// stop back whatever `work` does.
 ///

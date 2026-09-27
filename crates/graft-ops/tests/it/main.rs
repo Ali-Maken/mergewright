@@ -14,6 +14,7 @@ mod checkout_hook_fails;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;
+mod error_rows;
 mod finish;
 mod finish_merge;
 mod history_ops;

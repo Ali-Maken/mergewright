@@ -27,6 +27,7 @@ use std::path::Path;
 
 use graft_core::journal::{EntryStatus, HeadRef, IndexState};
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::run::RunError;
 
 use crate::apply::{AfterState, Applied, Context, Opening, Refresh, begin, finish, reason_for};
@@ -35,7 +36,7 @@ use crate::journal::JournalError;
 use crate::snapshot::SnapshotError;
 use crate::undo::{InversePlan, Replaced, Step};
 
-use rollback::{Before, Cancelled, roll_back_after_stop};
+use rollback::{Before, Cancelled, roll_back_after_failure, roll_back_after_stop};
 use steps::run_step;
 
 /// Why a restore could not be made, or could not finish.
@@ -122,6 +123,34 @@ pub enum RestoreError {
     NoBefore {
         /// Which field: a ref name, `HEAD`, `the index`, `the working tree`.
         field: String,
+    },
+    /// A step failed, and the roll-back of what had already run could not
+    /// finish. What `applied` names is still in force; the entry's own backup
+    /// ref holds the state the restore started from, so `U` gets it back
+    /// (`U`, not `u`, for the reason [`RestoreError::CancelledPartway`]
+    /// gives).
+    #[error(
+        "{failure} · rolled back part-way · {} still changed: {} · U restores the backup",
+        .applied.join(", "),
+        rollback_what(.rollback)
+    )]
+    FailedPartway {
+        /// The step's own failure: the reason the restore did not finish.
+        failure: Box<RestoreError>,
+        /// What the roll-back could not put back, newest first.
+        applied: Vec<String>,
+        /// Why the roll-back stopped.
+        rollback: Box<RestoreError>,
+    },
+    /// A ref name in the plan is not one git's `check-ref-format` rules
+    /// accept, or is not a full name under `refs/`. Checked before the
+    /// restore writes anything — its journal entry and backup included.
+    #[error("refused: \"{name}\" is not a ref name git accepts ({reason}) · nothing was changed")]
+    BadRefName {
+        /// The name, escaped for display.
+        name: String,
+        /// Which rule it broke, in words.
+        reason: String,
     },
     /// git's merge files could not be put back, or git does not see the
     /// merge they describe afterwards ([`Step::SetMergeState`],
@@ -236,6 +265,8 @@ pub(crate) fn execute_over_drift(
     if ctx.stop.should_stop() {
         return Err(RestoreError::Stopped);
     }
+    // Before `begin`: a refused name leaves no entry and no backup.
+    check_ref_names(plan)?;
     let opening = Opening {
         kind: plan.kind,
         description: plan.description.clone(),
@@ -303,6 +334,47 @@ pub(crate) fn execute_over_drift(
     }
 }
 
+/// Every ref name the plan writes, checked before anything is written (gap
+/// :497): git's `check-ref-format` rules, through the one checker Graft has
+/// ([`RefName::new`]), and a full name under `refs/`. The second rule is the
+/// restore path's own: every name here is a full ref a step moves, and one
+/// that is not — `-d`, say — would reach git's command line as an option,
+/// not a ref.
+fn check_ref_names(plan: &InversePlan) -> Result<(), RestoreError> {
+    for step in &plan.steps {
+        let name = match step {
+            Step::UpdateRef { name, .. }
+            | Step::SetHead(HeadRef::Branch(name) | HeadRef::Unborn(name)) => name,
+            Step::SetHead(HeadRef::Detached(_))
+            | Step::RestoreIndex { .. }
+            | Step::RestoreWorktree { .. }
+            | Step::StashStore { .. }
+            | Step::StashDrop { .. }
+            | Step::SetMergeState(_) => continue,
+        };
+        check_ref_name(name)?;
+    }
+    Ok(())
+}
+
+fn check_ref_name(name: &str) -> Result<(), RestoreError> {
+    match RefName::new(name) {
+        Err(graft_core::error::Error::RefName { name, reason }) => Err(RestoreError::BadRefName {
+            name,
+            reason: reason.to_string(),
+        }),
+        Err(other) => Err(RestoreError::BadRefName {
+            name: name.escape_debug().to_string(),
+            reason: other.to_string(),
+        }),
+        Ok(_) if !name.starts_with("refs/") => Err(RestoreError::BadRefName {
+            name: name.escape_debug().to_string(),
+            reason: "it is not a full name under refs/".to_owned(),
+        }),
+        Ok(_) => Ok(()),
+    }
+}
+
 /// What the caller re-reads after a restore ran: the graph as well whenever a
 /// ref moved **or `HEAD` did** (m6-conflicts/79).
 ///
@@ -330,14 +402,15 @@ fn refresh_after(
 enum Ran {
     /// Every step ran.
     Done,
-    /// A step failed, and nothing after it ran.
-    Failed(RestoreError),
+    /// A step failed, nothing after it ran, and the roll-back of what had
+    /// already run has too (gap :496). The error is the step's own.
+    Failed(RestoreError, Cancelled),
     /// The caller asked to stop, and the roll-back has already run.
     Cancelled(Cancelled),
 }
 
-/// Run the plan's steps, stopping at the first failure — or, on a stop,
-/// putting back what already ran before returning.
+/// Run the plan's steps, stopping at the first failure or stop, and putting
+/// back what already ran before returning.
 fn run_plan(
     ctx: &mut Context<'_>,
     plan: &InversePlan,
@@ -363,7 +436,10 @@ fn run_plan(
                 stopped_in = Some(step);
                 break;
             }
-            Err(why) => return Ran::Failed(why),
+            Err(why) => {
+                let rolled = roll_back_after_failure(ctx, before, &mut applied, step, commands);
+                return Ran::Failed(why, rolled);
+            }
         }
     }
     if cancelled {
@@ -383,11 +459,36 @@ fn run_plan(
 fn outcome_of(ran: Ran) -> (EntryStatus, Option<RestoreError>) {
     match ran {
         Ran::Done => (EntryStatus::Committed, None),
-        Ran::Failed(why) => (
+        // Put back whole: the after-state `finish` reads equals the
+        // before-state, so the entry is not in force, and the step's own
+        // failure is the whole story.
+        Ran::Failed(why, Cancelled::Clean(_)) => (
             EntryStatus::Aborted {
                 reason: aborted_reason(&why),
             },
             Some(why),
+        ),
+        // Half a restore is in force. Never silent: the entry and the error
+        // both name what is left, and the backup ref keeps everything.
+        Ran::Failed(
+            why,
+            Cancelled::Partway {
+                applied,
+                why: rollback,
+            },
+        ) => (
+            EntryStatus::Aborted {
+                reason: format!(
+                    "{} — rollback failed: {}",
+                    aborted_reason(&why),
+                    rollback_what(&rollback)
+                ),
+            },
+            Some(RestoreError::FailedPartway {
+                failure: Box::new(why),
+                applied,
+                rollback: Box::new(rollback),
+            }),
         ),
         // The repository is back where the restore found it, so the entry's
         // after-state — read fresh by `finish` — equals its before-state and

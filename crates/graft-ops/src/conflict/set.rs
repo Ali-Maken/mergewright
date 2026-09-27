@@ -14,7 +14,7 @@ use graft_git::run::RunError;
 use graft_git::state::InProgress;
 use graft_git::status::WorkingTreeStatus;
 
-use crate::apply::{ApplyError, live_entry};
+use crate::apply::live_entry_facts;
 use crate::facts::FactsError;
 use crate::journal::{self, JournalError};
 use crate::operation::RepoFacts;
@@ -140,12 +140,10 @@ fn chained_conflicts(
     kind: InProgress,
 ) -> Result<Vec<PathBuf>, ConflictSetError> {
     let entries = journal_entries(repo)?;
-    let live = live_entry(repo, &entries, kind, &()).map_err(|why| match why {
-        ApplyError::Facts(error) => ConflictSetError::Facts(error),
-        // `live_entry`'s only other failure is the stop it checks first,
-        // and `&()` never stops.
-        _ => ConflictSetError::Facts(FactsError::Stopped),
-    })?;
+    // `live_entry_facts`, not `live_entry`: its error is only ever a read of
+    // the repository, so it goes through whole, with no arm guessing what
+    // an `ApplyError` was (m7-power-tools/01a, gap :613).
+    let live = live_entry_facts(repo, &entries, kind, &()).map_err(ConflictSetError::Facts)?;
     let Some(name) = live.and_then(|entry| entry.backup_ref.as_deref()) else {
         return Ok(Vec::new());
     };

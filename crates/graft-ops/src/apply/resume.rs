@@ -93,12 +93,37 @@ pub(crate) fn live_entry<'a>(
     kind: InProgress,
     stop: &dyn Stop,
 ) -> Result<Option<&'a JournalEntry>, ApplyError> {
+    live_entry_facts(repo, entries, kind, stop).map_err(|why| match why {
+        // A stop stays a stop: the callers choose their cancel path on
+        // `ApplyError::Stopped` alone.
+        FactsError::Stopped => ApplyError::Stopped,
+        other => ApplyError::Facts(other),
+    })
+}
+
+/// [`live_entry`] in the error type it actually has: every failure is a read
+/// of the repository, and the stop is [`FactsError::Stopped`]. For a caller
+/// whose own error speaks `FactsError` (m7-power-tools/01a: no catch-all arm
+/// guessing which `ApplyError` it was).
+pub(crate) fn live_entry_facts<'a>(
+    repo: &RepoHandle,
+    entries: &'a [JournalEntry],
+    kind: InProgress,
+    stop: &dyn Stop,
+) -> Result<Option<&'a JournalEntry>, FactsError> {
     if stop.should_stop() {
-        return Err(ApplyError::Stopped);
+        return Err(FactsError::Stopped);
     }
-    let detail = state::in_progress_detail(repo).map_err(|error| match error {
-        state::StateError::Io(io) => ApplyError::Facts(FactsError::State(io)),
+    let detail = state::in_progress_detail_with_stop(repo, stop).map_err(|error| match error {
+        state::StateError::Io(io) => FactsError::State(io),
     })?;
+    // The one git run in that read (the incoming commit's `rev-list`) carries
+    // a stop on `detail.theirs`, where it reads as any failure to name the
+    // commit — and nothing here uses `theirs`. Asking again is what makes a
+    // stop raised during the read a stop (m7-power-tools/01a, gap :640).
+    if stop.should_stop() {
+        return Err(FactsError::Stopped);
+    }
     let started_on = match kind {
         InProgress::Rebase => match detail.as_ref().and_then(|found| found.head_name.as_deref()) {
             Some(name) => HeadRef::Branch(name.to_owned()),
@@ -106,14 +131,13 @@ pub(crate) fn live_entry<'a>(
             // nothing here can be shown to be Graft's.
             None => return Ok(None),
         },
-        _ => facts::head_ref(repo).map_err(ApplyError::Facts)?,
+        _ => facts::head_ref(repo)?,
     };
     let tip_now = match (&started_on, kind) {
         (
             HeadRef::Branch(name),
             InProgress::Merge | InProgress::CherryPick | InProgress::Revert,
-        ) => facts::read_refs(repo, std::slice::from_ref(name))
-            .map_err(ApplyError::Facts)?
+        ) => facts::read_refs(repo, std::slice::from_ref(name))?
             .get(name)
             .copied()
             .flatten()

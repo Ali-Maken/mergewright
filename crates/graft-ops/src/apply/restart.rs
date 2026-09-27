@@ -258,11 +258,9 @@ fn chain_states(
     live: InProgress,
     stop: &dyn Stop,
 ) -> Result<Vec<IndexState>, FactsError> {
-    let span = resume::live_entry(repo, entries, live, stop).map_err(|why| match why {
-        ApplyError::Facts(error) => error,
-        // `live_entry`'s only other failure is the stop it checks first.
-        _ => FactsError::Stopped,
-    })?;
+    // Already a `FactsError`, the stop included: no arm guessing what an
+    // `ApplyError` was (m7-power-tools/01a, gap :601).
+    let span = resume::live_entry_facts(repo, entries, live, stop)?;
     let Some(name) = span.and_then(|entry| entry.backup_ref.as_deref()) else {
         return Ok(Vec::new());
     };
