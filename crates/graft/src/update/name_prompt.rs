@@ -17,7 +17,9 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
-use graft_ops::operation::{BranchCreateParams, BranchFromStashParams, Operation, TagCreateParams};
+use graft_ops::operation::{
+    BranchCreateParams, BranchFromStashParams, OnEdits, Operation, TagCreateParams,
+};
 use graft_ui::text_input::TextField;
 
 use super::events::Command;
@@ -100,6 +102,19 @@ pub enum PromptRefusal {
 pub(crate) fn not_now(state: &AppState, kind: &NameKind) -> Option<String> {
     match kind {
         NameKind::BranchFromStash { .. } => super::preview::preview_refusal(state),
+        // A switching create over edits opens the preview (the switch rule,
+        // 10b): the preview's refusals are its.
+        NameKind::Branch { at, checkout: true }
+            if super::switch::previews(
+                state,
+                &super::switch::SwitchTarget::NewBranch {
+                    name: String::new(),
+                    at: *at,
+                },
+            ) =>
+        {
+            super::preview::preview_refusal(state)
+        }
         NameKind::Branch { .. } | NameKind::Tag { .. } => {
             super::operate::in_flight(state).map(|busy| busy.words())
         }
@@ -311,13 +326,27 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
     let reopen = prompt.clone();
     state.name_prompt = None;
     let launched = match kind {
-        // A create moves no history: no ref moves, nothing is replayed and
-        // the working tree is untouched, so there is no result to preview.
-        // It is journaled like every other write, and `u` deletes it.
-        NameKind::Branch { at, checkout } => super::operate::launch(
+        // `⇥` switches to it: the switch rule (10b).
+        NameKind::Branch { at, checkout: true } => {
+            switch_to_new(state, commands, name, at, reopen, next_id);
+            return;
+        }
+        // A create alone moves no history: no ref moves, nothing is
+        // replayed and the working tree is untouched, so there is no result
+        // to preview. It is journaled like every other write, and `u`
+        // deletes it.
+        NameKind::Branch {
+            at,
+            checkout: false,
+        } => super::operate::launch(
             state,
             commands,
-            Operation::BranchCreate(BranchCreateParams { name, at, checkout }),
+            Operation::BranchCreate(BranchCreateParams {
+                name,
+                at,
+                checkout: false,
+                on_edits: OnEdits::Refuse,
+            }),
             next_id,
         ),
         NameKind::Tag { at } => super::operate::launch(
@@ -342,6 +371,26 @@ fn create(state: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl 
     // name and all, with the same refusal — `status` and `operating` are
     // the running write's, not this one's.
     if launched.is_err() {
+        state.name_prompt = Some(NamePrompt {
+            refusal: Some(PromptRefusal::NotNow),
+            ..reopen
+        });
+    }
+}
+
+/// `b <name> ⇥ ⏎`: the switch rule (10b) — at once on a clean tree, the
+/// preview (`y`) with unsaved edits. A refusal wrote its own line; the
+/// prompt comes back with the name, as [`create`]'s own refusal does.
+fn switch_to_new(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    name: String,
+    at: Oid,
+    reopen: NamePrompt,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let target = super::switch::SwitchTarget::NewBranch { name, at };
+    if !super::switch::switch_into(state, commands, target, "b", next_id) {
         state.name_prompt = Some(NamePrompt {
             refusal: Some(PromptRefusal::NotNow),
             ..reopen

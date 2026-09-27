@@ -33,6 +33,7 @@ fn switch_detached_over_an_ignored_file_is_refused() {
     let op = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Detached(other),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     assert_refused(
         &repo,
@@ -52,6 +53,7 @@ fn new_branch_switch_over_an_ignored_file_is_refused() {
         name: "fresh".to_owned(),
         at: id(&repo, "other"),
         checkout: true,
+        on_edits: graft_ops::operation::OnEdits::Refuse,
     });
     assert_refused(
         &repo,

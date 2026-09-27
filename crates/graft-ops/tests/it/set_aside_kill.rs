@@ -124,6 +124,7 @@ fn child_runs_the_switch() {
     let op = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch(to),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let line = match apply(&mut ctx, &op) {
         Ok(_) => "ok".to_owned(),

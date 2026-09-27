@@ -853,17 +853,26 @@ fn incomplete(
 }
 
 /// The line a clean write leaves: a clash's drop words the end of the clash;
-/// a remote op its own words; else the entry's description — then, after the
-/// tick, `· your edits are back` when the write set edits aside and they came
-/// back clean (m6-conflicts/74).
+/// a remote op its own words; a switch to a branch `on <b> ✓ · u goes back`
+/// (10b); else the entry's description — then, after the tick, `· your
+/// edits are back` when the write set edits aside and they came back clean
+/// (m6-conflicts/74).
 fn done_status(
     state: &mut AppState,
     remote_op: Option<&Operation>,
+    launched_op: Option<&Operation>,
     clash_drop: Option<(Option<usize>, graft_core::journal::PutBackWhy)>,
     applied: &graft_ops::apply::Applied,
 ) -> Status {
     if let Some((index, why)) = clash_drop {
         return super::clash::dropped_status(index, why);
+    }
+    if let Some(on) = launched_op.and_then(super::switch::landed_words) {
+        return Status::Done {
+            what: on,
+            also: super::clash::edits_back(&applied.entry).map(str::to_owned),
+            keys: Some(super::switch::GOES_BACK.to_owned()),
+        };
     }
     Status::Done {
         what: done_what(state, remote_op, applied),
@@ -962,6 +971,58 @@ fn landed(
     commands
 }
 
+/// `operated`'s `Conflicted` answer: git stopped and its state is still
+/// there — the stop recorded, the banner focused, everything re-read, and
+/// the resolver opened on the first conflicted file when there is one.
+fn stopped(
+    state: &mut AppState,
+    description: &str,
+    kind: InProgress,
+    paths: &[PathBuf],
+    stalled: Option<&str>,
+    entry: graft_core::journal::EntryId,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    // The answer names the live entry; the journal re-read the
+    // refresh asks for will say the same (gap row 505).
+    state.live_entries = vec![entry];
+    // A state, not a `Status` (m6-conflicts/12): git stopped and its
+    // state is still there, so the stop has to outlive the refresh
+    // it triggers, every line a later key puts on the status slot,
+    // and an `Esc` that dismisses one of them. The footer words it
+    // each frame (`banner::stop_reason`) beside the banner's keys —
+    // never `esc dismiss`, which read as the way on and dropped the
+    // banner's focus (`.scratch/m6-conflicts/scout-stuck-after-merge.md`).
+    state.stopped = Some(super::state::Stop {
+        origin: super::relaunch::LiveOrigin::ThisRun,
+        again: false,
+        kind,
+        paths_at_stop: paths.len(),
+    });
+    // `Ready` also clears the launch's `Busy`, as the old line did.
+    // Why git would not continue (`stalled`) is a real problem, not
+    // the stop's state: it stays on the status line, dismissable.
+    state.status = match stalled {
+        Some(said) => Status::sticky(stalled_line(description, kind, said)),
+        None => Status::Ready,
+    };
+    // …and the banner takes the keyboard, so `c`/`s`/`a` are under
+    // the user's fingers rather than something to go looking for
+    // (m5-history-and-ghost-preview/09).
+    state.banner_focus = super::banner::banner_focusable(kind);
+    // The editor and its draft are left alone, as on a failure: no
+    // commit was made, so clearing a message the user typed would be
+    // throwing away their words over someone else's conflict.
+    // Refs moved and the working tree moved. `Everything` is also
+    // the only scope that re-reads `AppState::in_progress`, which is
+    // what the commit editor's refusal names.
+    let mut commands = refresh_scope(state, Refresh::Everything, next_id);
+    // …and, with anything unmerged, lands in the resolver on the
+    // first conflicted file (m6-conflicts/18).
+    super::banner::land_in_resolver(state, &mut commands, paths, next_id);
+    commands
+}
+
 /// An operate job answered. Stale answers (a job that is not the one
 /// `AppState::operating` is waiting for) are dropped. `Operated::Incomplete`
 /// still refreshes — the write happened even though part of its after-state
@@ -996,13 +1057,22 @@ pub fn operated(
         .map(|(_, index, why)| (index, why));
     match outcome {
         Operated::Done(applied) => {
-            state.status = done_status(state, remote_op.as_ref(), clash_drop, &applied);
+            state.status = done_status(
+                state,
+                remote_op.as_ref(),
+                launched_op.as_ref(),
+                clash_drop,
+                &applied,
+            );
             landed(state, &applied, lands_on_head, next_id)
         }
         // It ran and was read back; only the staging did not come back
         // (30b). Everything a `Done` does, with its own sticky line.
         Operated::StagingNotKept { applied, paths } => {
-            let what = done_what(state, remote_op.as_ref(), &applied);
+            let what = launched_op
+                .as_ref()
+                .and_then(super::switch::landed_words)
+                .unwrap_or_else(|| done_what(state, remote_op.as_ref(), &applied));
             state.status = staging_not_kept_status(&what, &paths, state.size.columns);
             landed(state, &applied, lands_on_head, next_id)
         }
@@ -1013,53 +1083,22 @@ pub fn operated(
             paths,
             stalled,
             entry,
-        } => {
-            // The answer names the live entry; the journal re-read the
-            // refresh asks for will say the same (gap row 505).
-            state.live_entries = vec![entry];
-            // A state, not a `Status` (m6-conflicts/12): git stopped and its
-            // state is still there, so the stop has to outlive the refresh
-            // it triggers, every line a later key puts on the status slot,
-            // and an `Esc` that dismisses one of them. The footer words it
-            // each frame (`banner::stop_reason`) beside the banner's keys —
-            // never `esc dismiss`, which read as the way on and dropped the
-            // banner's focus (`.scratch/m6-conflicts/scout-stuck-after-merge.md`).
-            state.stopped = Some(super::state::Stop {
-                origin: super::relaunch::LiveOrigin::ThisRun,
-                again: false,
-                kind,
-                paths_at_stop: paths.len(),
-            });
-            // `Ready` also clears the launch's `Busy`, as the old line did.
-            // Why git would not continue (`stalled`) is a real problem, not
-            // the stop's state: it stays on the status line, dismissable.
-            state.status = match stalled.as_deref() {
-                Some(said) => Status::sticky(stalled_line(&description, kind, said)),
-                None => Status::Ready,
-            };
-            // …and the banner takes the keyboard, so `c`/`s`/`a` are under
-            // the user's fingers rather than something to go looking for
-            // (m5-history-and-ghost-preview/09).
-            state.banner_focus = super::banner::banner_focusable(kind);
-            // The editor and its draft are left alone, as on a failure: no
-            // commit was made, so clearing a message the user typed would be
-            // throwing away their words over someone else's conflict.
-            // Refs moved and the working tree moved. `Everything` is also
-            // the only scope that re-reads `AppState::in_progress`, which is
-            // what the commit editor's refusal names.
-            let mut commands = refresh_scope(state, Refresh::Everything, next_id);
-            // …and, with anything unmerged, lands in the resolver on the
-            // first conflicted file (m6-conflicts/18).
-            super::banner::land_in_resolver(state, &mut commands, &paths, next_id);
-            commands
-        }
+        } => stopped(
+            state,
+            &description,
+            kind,
+            &paths,
+            stalled.as_deref(),
+            entry,
+            next_id,
+        ),
         // A stash put back clashed: the resolver on the first clashed file,
         // no banner (m6-conflicts/72b).
         Operated::Clashed { entry, clash } => {
             super::clash::clashed(state, launched_op.as_ref(), entry, &clash, next_id)
         }
         failed @ Operated::Failed { .. } => {
-            operation_failed(state, remote_op.as_ref(), failed, next_id)
+            operation_failed(state, launched_op.as_ref(), failed, next_id)
         }
     }
 }
@@ -1072,7 +1111,7 @@ pub fn operated(
 /// [`Operated::Failed`]'s own `refresh` field).
 fn operation_failed(
     state: &mut AppState,
-    remote_op: Option<&Operation>,
+    launched_op: Option<&Operation>,
     failed: Operated,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
@@ -1088,6 +1127,14 @@ fn operation_failed(
         // match above is what guarantees it.
         return Vec::new();
     };
+    // An instant switch refused for edits made since the last status read
+    // lands on its preview, not on a refusal (the switch rule, 10b).
+    if let (Some(op), Some(refusal)) = (launched_op, refused.as_ref())
+        && let Some(commands) = super::switch::instant_refused(state, op, refusal, next_id)
+    {
+        return commands;
+    }
+    let remote_op = launched_op.filter(|op| op.is_remote());
     state.status = match edits {
         Some(at) => edits_status(&error, at),
         None => failure_line(state, remote_op, remote.as_ref(), refused.as_ref(), error),

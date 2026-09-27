@@ -68,6 +68,7 @@ fn blocking_for_a_switch_on_big_repositories() {
     let back = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Detached(far),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let history = time_blocking(&long, &back);
     println!(

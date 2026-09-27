@@ -18,8 +18,8 @@ use graft_git::version::GitVersion;
 use crate::operation::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
     MergeParams, PickParams, PushParams, RebaseParams, RefDeleteParams, Refusal, RepoFacts,
-    ResetMode, ResetParams, ResetTarget, RevertParams, TagCreateParams, branch_ref, merge_subject,
-    short, short_ref, tag_ref,
+    ResetMode, ResetParams, ResetTarget, RevertParams, TagCreateParams, branch_ref,
+    creates_at_head, merge_subject, short, short_ref, tag_ref,
 };
 
 use crate::facts::FactsError;
@@ -465,6 +465,17 @@ pub(super) fn checkout(
             plan.head = Some(HeadMove::Detached(Target::Real(*oid)));
             Some(*oid)
         }
+        // A new local branch at the remote's tip, then `HEAD` on it.
+        CheckoutTarget::Track { remote, local } => {
+            let name = branch_ref(local);
+            plan.ref_moves = vec![RefMove {
+                name: name.clone(),
+                from: None,
+                to: Some(Target::Real(remote.oid)),
+            }];
+            plan.head = Some(HeadMove::ToBranch(name));
+            Some(remote.oid)
+        }
     };
     plan.worktree = match (from, to) {
         (Some(from), Some(to)) => worktree(repo, &Landing::At { from, to })?,
@@ -506,7 +517,12 @@ pub(super) fn branch_create(
     }];
     if params.checkout {
         plan.head = Some(HeadMove::ToBranch(branch_ref(&params.name)));
-        if let Some(from) = head_tip(facts) {
+        // At `HEAD`'s own commit `switch -c` carries his edits as they are,
+        // and nothing is set aside: the box says so, rather than the empty
+        // diff's "nothing changes" (m7-power-tools/10b).
+        if creates_at_head(params, facts) && !dirty_tracked(facts).is_empty() {
+            plan.worktree = WorktreeEffect::EditsStay;
+        } else if let Some(from) = head_tip(facts) {
             plan.worktree = worktree(
                 repo,
                 &Landing::At {

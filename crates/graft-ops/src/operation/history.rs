@@ -193,6 +193,21 @@ pub enum ResetMode {
     Hard,
 }
 
+/// What a switch does with changed tracked files (the switch rule,
+/// m7-power-tools/10b; ADR-0045 §4).
+///
+/// The app launches a switch it did not preview with `Refuse`, so a tree
+/// that turned dirty since its last status read is refused
+/// ([`Refusal::DirtyTree`]) rather than set aside unseen; it answers that
+/// refusal with the preview, whose `y` runs `SetAside`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OnEdits {
+    /// Changed tracked files refuse the switch.
+    Refuse,
+    /// Changed tracked files are set aside and put back (ADR-0045 §4).
+    SetAside,
+}
+
 /// `git switch`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckoutParams {
@@ -200,6 +215,8 @@ pub struct CheckoutParams {
     pub to: CheckoutTarget,
     /// `HEAD` as the preview saw it; `check` refuses when it moved.
     pub head_before: HeadRef,
+    /// Refuse changed tracked files, or set them aside.
+    pub on_edits: OnEdits,
 }
 
 /// Where a checkout puts `HEAD`.
@@ -209,6 +226,15 @@ pub enum CheckoutTarget {
     Branch(String),
     /// A commit, detached.
     Detached(Oid),
+    /// A remote-only branch: a new local branch `local` (short name) made at
+    /// `remote` (full `refs/remotes/…` name and the tip the list saw), set to
+    /// track it, and switched to.
+    Track {
+        /// The remote-tracking ref and the commit the list saw it at.
+        remote: Tip,
+        /// The new local branch's short name.
+        local: String,
+    },
 }
 
 /// `git branch <name> <at>`, optionally switched to.
@@ -220,6 +246,10 @@ pub struct BranchCreateParams {
     pub at: Oid,
     /// `switch` to it afterwards.
     pub checkout: bool,
+    /// With `checkout`: refuse changed tracked files, or set them aside.
+    /// At `HEAD`'s own commit nothing is set aside either way: `switch -c`
+    /// leaves the index and files as they are.
+    pub on_edits: OnEdits,
 }
 
 /// A branch or tag deleted by compare-and-swap.
@@ -327,7 +357,18 @@ pub(super) fn describe_checkout(params: &CheckoutParams) -> String {
     match &params.to {
         CheckoutTarget::Branch(name) => format!("checkout {}", short_ref(name)),
         CheckoutTarget::Detached(oid) => format!("checkout {} (detached)", short(*oid)),
+        CheckoutTarget::Track { remote, local } => {
+            format!(
+                "checkout {local} (new, tracks {})",
+                remote_short(&remote.name)
+            )
+        }
     }
+}
+
+/// `refs/remotes/origin/x` → `origin/x`; anything else as it stands.
+pub(crate) fn remote_short(full: &str) -> &str {
+    full.strip_prefix("refs/remotes/").unwrap_or(full)
 }
 
 pub(super) fn describe_branch_create(params: &BranchCreateParams) -> String {
@@ -405,8 +446,13 @@ pub(super) fn refs_of_reset(params: &ResetParams) -> Vec<String> {
 
 pub(super) fn refs_of_checkout(params: &CheckoutParams) -> Vec<String> {
     let mut refs = vec!["HEAD".to_owned()];
-    if let CheckoutTarget::Branch(name) = &params.to {
-        refs.push(name.clone());
+    match &params.to {
+        CheckoutTarget::Branch(name) => refs.push(name.clone()),
+        CheckoutTarget::Detached(_) => {}
+        CheckoutTarget::Track { remote, local } => {
+            refs.push(remote.name.clone());
+            refs.push(branch_ref(local));
+        }
     }
     refs
 }
@@ -543,28 +589,52 @@ pub(super) fn check_reset(params: &ResetParams, facts: &RepoFacts) -> Result<(),
     }
 }
 
+/// `SetAside`: no clean-tree rule, as for a rebase (ADR-0045 §4). `Refuse`
+/// (a switch launched without a preview): changed tracked files refuse it,
+/// so nothing is ever set aside unseen (m7-power-tools/10b).
 pub(super) fn check_checkout(params: &CheckoutParams, facts: &RepoFacts) -> Result<(), Refusal> {
     if facts.head != params.head_before {
         return Err(Refusal::BranchChanged);
     }
-    if let CheckoutTarget::Branch(name) = &params.to
-        && facts.refs.get(name).copied().flatten().is_none()
-    {
-        return Err(Refusal::NoSuchRef { name: name.clone() });
+    match &params.to {
+        CheckoutTarget::Branch(name) if facts.refs.get(name).copied().flatten().is_none() => {
+            return Err(Refusal::NoSuchRef { name: name.clone() });
+        }
+        CheckoutTarget::Branch(_) | CheckoutTarget::Detached(_) => {}
+        CheckoutTarget::Track { remote, local } => {
+            new_ref(&branch_ref(local), local, facts)?;
+            if facts.refs.get(&remote.name).copied().flatten().is_none() {
+                return Err(Refusal::NoSuchRef {
+                    name: remote.name.clone(),
+                });
+            }
+            tip_holds(remote, facts)?;
+        }
     }
-    // No clean-tree rule, as for a rebase (ADR-0045 §4).
-    Ok(())
+    match params.on_edits {
+        OnEdits::Refuse => clean_tree(facts),
+        OnEdits::SetAside => Ok(()),
+    }
 }
 
+/// A switching create at `HEAD`'s own commit never refuses changed files:
+/// `switch -c` leaves the index and files untouched. Elsewhere, `Refuse`
+/// refuses them and `SetAside` sets them aside (m7-power-tools/10b).
 pub(super) fn check_branch_create(
     params: &BranchCreateParams,
     facts: &RepoFacts,
 ) -> Result<(), Refusal> {
     new_ref(&branch_ref(&params.name), &params.name, facts)?;
-    if params.checkout {
+    if params.checkout && params.on_edits == OnEdits::Refuse && !creates_at_head(params, facts) {
         clean_tree(facts)?;
     }
     Ok(())
+}
+
+/// Whether a new branch starts at the commit `HEAD` is on, as the facts
+/// read it (`refs_of_branch_create` asks for `HEAD` when it switches).
+pub(crate) fn creates_at_head(params: &BranchCreateParams, facts: &RepoFacts) -> bool {
+    facts.refs.get("HEAD").copied().flatten() == Some(params.at)
 }
 
 pub(super) fn check_branch_delete(
@@ -760,6 +830,18 @@ pub(super) fn plan_checkout(params: &CheckoutParams) -> Vec<Invocation> {
             GitArg::Flag("--detach"),
             GitArg::Oid(*oid),
         ])],
+        // `--track` spelled out, so `branch.autoSetupMerge` cannot change
+        // whether it tracks; the start point is the remote-tracking ref by
+        // full name, which `--track` needs to know what to track. Measured,
+        // git 2.54 with `-c branch.autoSetupMerge=false`: `branch.<local>.
+        // remote origin`, `.merge refs/heads/<x>` (m7-power-tools/10b).
+        CheckoutTarget::Track { remote, local } => vec![Invocation::new(vec![
+            GitArg::Flag("switch"),
+            GitArg::Flag("--create"),
+            GitArg::Ref(local.clone().into_bytes()),
+            GitArg::Flag("--track"),
+            GitArg::Ref(remote.name.clone().into_bytes()),
+        ])],
     }
 }
 
@@ -839,9 +921,15 @@ pub(super) fn touches_reset(params: &ResetParams) -> Touches {
 /// `UpdateRef` on `HEAD` while it is symbolic would move the branch it
 /// points at instead (verified: `update-ref HEAD <old> <new>` on `main`
 /// moves `main`).
-pub(super) fn touches_checkout() -> Touches {
+///
+/// A tracking checkout names the local branch it creates, so `u` deletes it.
+pub(super) fn touches_checkout(params: &CheckoutParams) -> Touches {
+    let refs = match &params.to {
+        CheckoutTarget::Track { local, .. } => vec![branch_ref(local)],
+        CheckoutTarget::Branch(_) | CheckoutTarget::Detached(_) => vec![],
+    };
     Touches {
-        refs: vec![],
+        refs,
         index: true,
         worktree: true,
     }

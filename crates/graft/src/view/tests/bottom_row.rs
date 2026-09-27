@@ -234,6 +234,7 @@ fn modals(columns: u16, rows: u16) -> Vec<(&'static str, AppState)> {
                     name: "topic".to_owned(),
                     at: oid(2),
                     checkout: true,
+                    on_edits: graft_ops::operation::OnEdits::Refuse,
                 },
             )),
             opened_by: "b",

@@ -8,7 +8,7 @@
 # edited and staged, `fix` changed line 7. git could not put the staging
 # back on `fix`'s tree, so the edits came back unstaged.
 #  - The cursor on `fix`, now HEAD.
-#  - The bottom row: `checkout fix ✓ · your edits are back · staging not
+#  - The bottom row: `on fix ✓ · your edits are back · staging not
 #    kept: f.txt · u undoes it, staging included` at 187; at 80 `your
 #    edits are back` goes first, the file and `u` stay whole.
 #  - Nowhere `could not confirm`.
@@ -62,4 +62,4 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- checkout fix ✓ · your edits are back · staging not kept: f.txt · u undoes it, staging included
+ on fix ✓ · your edits are back · staging not kept: f.txt · u undoes it, staging included

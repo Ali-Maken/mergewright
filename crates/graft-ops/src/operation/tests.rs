@@ -1252,6 +1252,7 @@ fn history_cases() -> Vec<(Operation, bool)> {
             name: "nb".to_owned(),
             at: oid(0x0a),
             checkout,
+            on_edits: crate::operation::OnEdits::Refuse,
         })
     };
     let reset = |target| {
@@ -1327,6 +1328,7 @@ fn history_cases() -> Vec<(Operation, bool)> {
             Operation::Checkout(CheckoutParams {
                 to: CheckoutTarget::Branch("refs/heads/feat".to_owned()),
                 head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+                on_edits: crate::operation::OnEdits::SetAside,
             }),
             true,
         ),
@@ -1442,6 +1444,7 @@ fn in_the_way_words() {
             Operation::Checkout(CheckoutParams {
                 to: CheckoutTarget::Branch("refs/heads/other".to_owned()),
                 head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+                on_edits: crate::operation::OnEdits::SetAside,
             }),
             Some("switching to other".to_owned()),
         ),
@@ -1449,6 +1452,7 @@ fn in_the_way_words() {
             Operation::Checkout(CheckoutParams {
                 to: CheckoutTarget::Detached(oid(0x0a)),
                 head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+                on_edits: crate::operation::OnEdits::SetAside,
             }),
             Some(format!("switching to {}", sha(0x0a))),
         ),
@@ -1457,6 +1461,7 @@ fn in_the_way_words() {
                 name: "fresh".to_owned(),
                 at: oid(2),
                 checkout: true,
+                on_edits: crate::operation::OnEdits::Refuse,
             }),
             Some("switching to fresh".to_owned()),
         ),
@@ -1465,6 +1470,7 @@ fn in_the_way_words() {
                 name: "fresh".to_owned(),
                 at: oid(2),
                 checkout: false,
+                on_edits: crate::operation::OnEdits::Refuse,
             }),
             None,
         ),

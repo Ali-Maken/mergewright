@@ -742,6 +742,7 @@ fn plan_as_run_leaves_every_other_kind_alone() {
         Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Branch("refs/heads/main".to_owned()),
             head_before: HeadRef::Branch("refs/heads/feature-a".to_owned()),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         }),
     ];
     for op in ops {

@@ -1,0 +1,48 @@
+# m7/switch-menu-clean-landed-120x40.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m7_walk/switch.rs,
+# switch_clean_via_menu_is_two_keys, asserted). Not a pty capture: a
+# character grid with no colour (CLAUDE.md rule 5, colour unverified).
+#
+# Right: `. ⏎` on feature-b's row, the tree clean — no preview box; the
+# cursor on the new HEAD's row (feature-b, `◆`); the status line
+# `on feature-b ✓ · u goes back`.
+ graft /code/api  6 commits
+  ◆ ▏ⓘ [◆ feature-b] fix the bug                                                                         GF 3m   fbb2394
+● │    [main] main moves on                                                                              GF 4m   37926a7
+●─╯    add the base                                                                                      GF 5m   ed332bc
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ on feature-b ✓ · u goes back

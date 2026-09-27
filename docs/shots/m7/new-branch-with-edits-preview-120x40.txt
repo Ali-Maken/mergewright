@@ -1,0 +1,50 @@
+# m7/new-branch-with-edits-preview-120x40.txt: drawn by `view::view` from a
+# real AppState (crates/graft/tests/it/m7_walk/switch.rs,
+# new_branch_at_head_with_edits_previews_edits_stay, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `b feature-c ⇥ ⏎` on HEAD's own row over staged and unstaged
+# edits — a `Preview:` box naming the new branch, the line
+# `your edits stay as they are` (nothing is set aside at HEAD), `y` on the
+# box edge.
+ graft /code/api  6 commits
+  ●    [feature-b] fix the bug                                                                           GF 3m   fbb2394
+◆ │ ▏  [◆ main] [feature-c] main moves on                                                                GF 4m   37926a7
+●─╯    add the base                                                                                      GF 5m   ed332bc
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: branch feature-c at 37926a7 ────────────────────────────────────────────────────────────────────────────────╮
+│ feature-c (new) → 37926a7                                                                                            │
+│ HEAD → feature-c                                                                                                     │
+│ your edits stay as they are                                                                                          │
+│ no conflicts expected                                                                                                │
+│ undo: u takes this back                                                                                              │
+│ git branch feature-c 37926a7c0b3c7e1cfbcb23494d10a90449c88b64                                                        │
+│ git switch feature-c                                                                                                 │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+

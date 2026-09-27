@@ -231,7 +231,7 @@ fn a_dirty_switch_is_three_keys() {
     assert_eq!(read(path, &other), EDIT);
     assert!(stash_list(path).is_empty(), "no stash left behind");
     assert!(
-        matches!(&state.status, Status::Done { also: Some(clause), keys: None, .. } if clause == "your edits are back"),
+        matches!(&state.status, Status::Done { what, also: Some(clause), keys: Some(keys) } if what == "on fix" && clause == "your edits are back" && keys == "u goes back"),
         "{:?}",
         state.status
     );
@@ -1014,8 +1014,8 @@ fn switched_over_the_fallback(
 fn fallback_line_shot(state: &AppState, columns: u16, rows: u16) -> String {
     let line = staging_line(state, columns, rows);
     let rungs = [
-        "checkout fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
-        "checkout fix \u{2713} \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
+        "on fix \u{2713} \u{b7} your edits are back \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
+        "on fix \u{2713} \u{b7} staging not kept: f.txt \u{b7} u undoes it, staging included",
         "staging not kept: f.txt \u{b7} u undoes it, staging included",
     ];
     if columns >= 187 {
@@ -1058,7 +1058,7 @@ const STAGING_NOT_KEPT_HEADER: &str = "\
 # edited and staged, `fix` changed line 7. git could not put the staging
 # back on `fix`'s tree, so the edits came back unstaged.
 #  - The cursor on `fix`, now HEAD.
-#  - The bottom row: `checkout fix ✓ · your edits are back · staging not
+#  - The bottom row: `on fix ✓ · your edits are back · staging not
 #    kept: f.txt · u undoes it, staging included` at 187; at 80 `your
 #    edits are back` goes first, the file and `u` stay whole.
 #  - Nowhere `could not confirm`.
@@ -1101,6 +1101,7 @@ fn child_switches_until_the_drop() {
     let op = graft_ops::operation::Operation::Checkout(graft_ops::operation::CheckoutParams {
         to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/fix".to_owned()),
         head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let ran = graft_ops::apply::apply(&mut ctx, &op);
     panic!("the shim should have killed this process: {ran:?}");

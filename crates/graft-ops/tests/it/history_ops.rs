@@ -250,6 +250,7 @@ fn checkout_applies_undoes_redoes() {
     let op = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     round_trip(&repo, &op);
     run(&repo, &op, NOW + 10);
@@ -274,6 +275,7 @@ fn an_undo_or_redo_that_moves_head_rereads_the_graph() {
         let op = Operation::Checkout(CheckoutParams {
             to,
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         });
         let forward = try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
         assert_eq!(forward.refresh, Refresh::Everything, "the checkout itself");
@@ -319,6 +321,7 @@ fn branch_create_applies_undoes_redoes() {
         name: "release/1.0".to_owned(),
         at: id(&repo, "HEAD"),
         checkout: false,
+        on_edits: graft_ops::operation::OnEdits::Refuse,
     });
     round_trip(&repo, &op);
     run(&repo, &op, NOW + 10);
@@ -1043,11 +1046,13 @@ fn local_kinds(repo: &TempRepo) -> Vec<Operation> {
         Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         }),
         Operation::BranchCreate(BranchCreateParams {
             name: "new".to_owned(),
             at: id(repo, "HEAD"),
             checkout: false,
+            on_edits: graft_ops::operation::OnEdits::Refuse,
         }),
         Operation::BranchDelete(RefDeleteParams {
             name: "refs/heads/feature".to_owned(),
@@ -1621,6 +1626,7 @@ fn time_machine_reverts_in_order() {
             name: "second".to_owned(),
             at: id(&repo, "HEAD"),
             checkout: false,
+            on_edits: graft_ops::operation::OnEdits::Refuse,
         }),
         NOW + 1,
     );
@@ -1689,6 +1695,7 @@ fn the_time_machine_does_not_redo_what_was_undone() {
             name: "second".to_owned(),
             at: id(&repo, "HEAD"),
             checkout: false,
+            on_edits: graft_ops::operation::OnEdits::Refuse,
         }),
         NOW + 1,
     );
@@ -1954,6 +1961,7 @@ fn a_checkout_moves_head_and_names_the_files_it_rewrites() {
     let op = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let plan = preview_of(&repo, &op);
     assert_eq!(
@@ -2510,6 +2518,7 @@ fn a_checkout_preview_on_a_dirty_tree_says_what_is_set_aside() {
     let op = Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     });
     let plan = preview_of(&repo, &op);
     assert_eq!(plan.set_aside, Some(SetAside { files: 1 }));
@@ -2552,6 +2561,7 @@ fn refusal_cases() -> Vec<(TempRepo, Operation)> {
             name: "switched".to_owned(),
             at: id(&fresh, "HEAD"),
             checkout: true,
+            on_edits: graft_ops::operation::OnEdits::Refuse,
         }));
         let op = ops.swap_remove(at);
         cases.push((fresh, op));

@@ -40,6 +40,7 @@ fn checkout_feature() -> Operation {
     Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     })
 }
 

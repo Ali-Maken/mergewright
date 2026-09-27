@@ -1159,6 +1159,9 @@ fn worktree_line(effect: &WorktreeEffect) -> String {
         WorktreeEffect::RestoredFromBackup => {
             "index and working tree restored from backup".to_owned()
         }
+        // A new branch switched to where `HEAD` is: nothing set aside,
+        // nothing rewritten (10b).
+        WorktreeEffect::EditsStay => "your edits stay as they are".to_owned(),
         // Not `Untouched` and not an empty `Updated`: both read as "nothing
         // happens to your files", which is the one thing this does not mean.
         WorktreeEffect::NotShown { why } => format!("working tree: changes not listed ({why})"),

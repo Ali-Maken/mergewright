@@ -70,6 +70,7 @@ fn switch_to(name: &str) -> Operation {
     Operation::Checkout(CheckoutParams {
         to: CheckoutTarget::Branch(format!("refs/heads/{name}")),
         head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        on_edits: graft_ops::operation::OnEdits::SetAside,
     })
 }
 

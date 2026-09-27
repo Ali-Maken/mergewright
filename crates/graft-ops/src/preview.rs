@@ -143,6 +143,11 @@ pub enum WorktreeEffect {
     /// The whole tree comes back from the journal's backup (the time
     /// machine): no path list, because it is not a diff.
     RestoredFromBackup,
+    /// Nothing on disk or in the index changes, and his changed tracked
+    /// files stay exactly as they are: a new branch switched to at `HEAD`'s
+    /// own commit (`switch -c`), nothing set aside (m7-power-tools/10b).
+    /// Not `Untouched`, which does not tell him his edits come along.
+    EditsStay,
     /// Files on disk **will** change, and which ones could not be worked
     /// out: the read the preview needed was not there.
     ///

@@ -100,6 +100,7 @@ fn a_graft_branch(repo: &TempRepo, at: i64) {
             name: "topic".to_owned(),
             at: at_commit,
             checkout: false,
+            on_edits: graft_ops::operation::OnEdits::Refuse,
         }),
         at,
     );

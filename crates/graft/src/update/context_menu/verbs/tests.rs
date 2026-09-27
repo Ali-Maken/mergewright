@@ -93,6 +93,7 @@ fn menu_verbs_build_expected_operations() {
         &Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         })
     );
     assert_eq!(
@@ -201,6 +202,7 @@ fn a_row_with_no_branch_offers_a_detached_checkout() {
         &Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Detached(oid(9)),
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         })
     );
     assert!(
@@ -285,6 +287,7 @@ fn a_detached_head_keeps_the_verbs_that_do_not_need_a_branch() {
         &Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
             head_before: HeadRef::Detached(oid(2)),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         })
     );
 }
@@ -453,6 +456,7 @@ fn an_invisible_character_in_a_ref_name_is_cleaned_out_of_the_label() {
         Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Branch(format!("refs/heads/{EVIL}")),
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            on_edits: graft_ops::operation::OnEdits::SetAside,
         }),
         "the operation keeps the name git will be given"
     );
