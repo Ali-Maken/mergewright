@@ -23,6 +23,6 @@ MAP.md (graft-ops). Every user of the moved helpers (grep).
 
 ## NOTES (builder, 2026-09-27)
 - Split differs from the ticket's single `rebuild.rs`: after 30, `from_index_base` lived in put_back.rs, so set_aside.rs needed ~270 lines out. Moved: `rebuild.rs` (from_index_base), `returned.rs` (step 6 `put_back`, `Returned`, `Kept`, drop), `answer.rs` (`Outcome`, `status_for`, `answer`, `back`). Code moved verbatim; visibility only.
-- Shared helpers: `crate::objects` (`resolve`, `commit_tree`, `printed_oid`), used by set_aside/rebuild.rs and absorb/build.rs. Absorb's commit now `commit-tree -m <subject>` instead of `-F -` with `<subject>\n` on stdin: same message bytes; absorb records no command line. `rewrite/reads.rs:272` commit-tree and `rewrite/progress.rs:148` rev-parse not moved (outside the ticket's "set_aside and absorb").
+- Shared helpers: `crate::objects` (`resolve`, `commit_tree`, `printed_oid`), used by set_aside/rebuild.rs; absorb/build.rs uses `resolve` only. Absorb's commit keeps its verbatim `commit-tree -F -` (stdin) path — reverted from `-m` on conductor review (option a): no message-bytes change. `rewrite/reads.rs:272` commit-tree and `rewrite/progress.rs:148` rev-parse not moved (outside scope).
 - absorb_staged.rs over 400 before and after; a test file — split left for the conductor.
 - No compaction.

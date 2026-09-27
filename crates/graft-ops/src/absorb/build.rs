@@ -6,7 +6,7 @@ use std::path::Path;
 use graft_core::oid::Oid;
 use graft_git::diff::{DiffLine, FileDiff, Hunk, LineKind, PatchDirection, Selection, hunk_patch};
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, Stop};
+use graft_git::run::{GitArg, GitInvocation, Stop};
 
 use crate::facts::FactsError;
 use crate::objects;
@@ -28,10 +28,21 @@ pub(crate) fn commit_pieces(
     stop: &dyn Stop,
 ) -> Result<Oid, FactsError> {
     let tree = tree_with(repo, head, pieces, stop)?;
-    let commit = objects::commit_tree(repo, tree, &[head], subject)
+    // `-F -` from stdin, not `objects::commit_tree`'s `-m`: the message
+    // goes in verbatim (06d review).
+    let commit = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("commit-tree"),
+            GitArg::Oid(tree),
+            GitArg::Flag("-p"),
+            GitArg::Oid(head),
+            GitArg::Flag("-F"),
+            GitArg::Flag("-"),
+        ])
+        .stdin(format!("{subject}\n").into_bytes())
         .run(stop)
         .map_err(FactsError::of_history)?;
-    objects::printed_oid(&commit.stdout, "commit-tree").map_err(FactsError::History)
+    parse_oid(String::from_utf8_lossy(&commit.stdout).trim())
 }
 
 /// `target` plus `pieces` is `parent`'s tree: melded in, they would leave
