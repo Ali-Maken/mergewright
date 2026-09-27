@@ -710,12 +710,9 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
         return boxed;
     }
     // The branch picker (m7-power-tools/10) is a text field over the graph:
-    // no graph key is live under it, so the bar offers none. Its own bar
-    // (`type to find ⏎ switch to it …`) needs a `HintContext` arm in
-    // `graft_ui::graph_screen::hints::lists`, which ticket 30j holds; until
-    // it lands the bar is empty rather than wrong (ticket 10 NOTES).
+    // no graph key is live under it, so the bar offers its keys only.
     if crate::update::picker::shown(state) {
-        return HintContext::Preview;
+        return HintContext::Picker;
     }
     // A badge in the air first: while the gesture is running, the keys the
     // cursor's row would offer are not the ones that end it. First here

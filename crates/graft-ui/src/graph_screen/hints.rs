@@ -352,6 +352,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
+        | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
@@ -490,8 +491,8 @@ const ENTER: &str = "⏎";
 /// *where the graph stands*, and each is guarded on the graph having the
 /// keyboard, so each does nothing while the detail pane has it
 /// (`graft::update::state::AppState::graph_has_focus`, the one function all
-/// four handlers read).
-const GRAPH_ONLY: [&str; 4] = ["S", "J", "M", "O"];
+/// five handlers read).
+const GRAPH_ONLY: [&str; 5] = ["S", "J", "M", "O", "C"];
 
 /// The keys that need a commit under the cursor, and so do nothing on the
 /// uncommitted-changes row: `y` copies a sha there is none of and `x` marks
@@ -529,6 +530,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Journal
                 | HintContext::Stash
                 | HintContext::Map
+                | HintContext::Picker
                 | HintContext::PaneOverOverlay { .. }
                 | HintContext::Resolver { .. }
                 | HintContext::Finish { .. }

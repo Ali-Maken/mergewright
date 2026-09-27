@@ -44,6 +44,7 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::Journal,
         HintContext::Stash,
         HintContext::Map,
+        HintContext::Picker,
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,
@@ -268,6 +269,7 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
+        | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -356,6 +358,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
+        | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }
@@ -420,6 +423,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
+        | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
         | HintContext::ConfirmBox { .. }

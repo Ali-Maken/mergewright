@@ -892,6 +892,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
+        | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }

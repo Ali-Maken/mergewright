@@ -99,17 +99,19 @@ pub(super) fn draw_over_graph(
 }
 
 /// The branch picker's box (`C`, m7-power-tools/10) over the lower part of
-/// the graph pane: the header row above and the footer row below are left
-/// alone, so the graph's top rows and the bar stay in view.
+/// the graph's own rows: the header above and the footer's notice and hint
+/// rows below are left alone (`update::picker::picker_box_in`).
 fn draw_picker(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) -> Option<Rect> {
     let view = crate::view::picker::picker_view(state)?;
     let pane = super::layout::primary_pane_area(state, area)?;
-    let graph = Rect {
-        y: pane.y + 1,
-        height: pane.height.saturating_sub(crate::update::CHROME_ROWS),
-        ..pane
+    let (x, y, width, height) =
+        crate::update::picker::picker_box_in(state, (pane.x, pane.y, pane.width, pane.height));
+    let rect = Rect {
+        x,
+        y,
+        width,
+        height,
     };
-    let rect = graft_ui::picker::picker_area(graph);
     if rect.is_empty() {
         return None;
     }

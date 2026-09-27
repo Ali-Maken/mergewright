@@ -344,6 +344,21 @@ pub(super) fn context_menu_graph_bounds(state: &AppState) -> Option<Bounds> {
     }
 }
 
+/// The branch picker's box (m7-power-tools/10): the graph pane, then
+/// `update::picker::picker_box_in` — the one placement the drawing
+/// (`view::frame::boxes::draw_picker`) reads too.
+pub(super) fn picker_bounds(state: &AppState) -> Option<Bounds> {
+    let pane = context_menu_graph_bounds(state)?;
+    let (x, y, width, height) =
+        super::picker::picker_box_in(state, (pane.x, pane.y, pane.width, pane.height));
+    Some(Bounds {
+        x,
+        y,
+        width,
+        height,
+    })
+}
+
 /// The overview strip's own one-column rectangle, while it is shown
 /// (`overview-strip`, m2-details-and-diffs/20): the graph bounds' last
 /// column, mirroring `view::frame::render_graph_screen`'s carve-out. `None`

@@ -52,6 +52,11 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     if resolver {
         return;
     }
+    // The branch picker (m7-power-tools/10) is modal: a click picks a row,
+    // a double-click switches, and nothing reaches the graph behind it.
+    if super::picker::picker_mouse(next, commands, mouse) {
+        return;
+    }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: any
     // button down either dispatches (inside it) or closes it (outside), and
     // nothing else this click would have done happens in the same press.

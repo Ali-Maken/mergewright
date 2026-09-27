@@ -39,4 +39,4 @@
 ●    Commit 002                                                                                          GF 2d   ace211d
 ◇ ▏  Commit 001                                                                                          GF 2d   a9a0c8e
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C

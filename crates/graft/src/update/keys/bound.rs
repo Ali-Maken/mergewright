@@ -125,7 +125,13 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("p", "pop"),     // the same, popping
     ("d", "drop"),    // `stash::stash_key`
     ("b", "branch"),  // `stash::shown_key` → `name_prompt::open_name_prompt`
-    ("esc", "close"), // either overlay's own `Esc`
+    ("esc", "close"), // either overlay's own `Esc`, and the branch picker's
+    // The branch picker (`picker::shown_key`, m7-power-tools/10): a text
+    // field, so every letter types.
+    ("type", "to find"),           // `shown_key`'s `Char` arm: filters
+    ("⏎", "switch to it"),         // `picker::enter` → `switch::switch_into`
+    ("⇥", "show it on the graph"), // `picker::show_on_graph` → `map::seek_to`
+    ("↑↓", "row"),                 // `shown_key`'s `Up`/`Down` arms
     // Dragging a branch badge (`drag::drag_mouse`, `drag::drag_key`).
     // `release` is the mouse button, named as a key so the hint bar can
     // offer it: the gesture ends with the button, not with `⏎`.

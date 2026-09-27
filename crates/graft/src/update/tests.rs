@@ -4219,6 +4219,7 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
+        | HintContext::Picker
         | HintContext::PaneOverOverlay { .. }
         | HintContext::WorkingTreeRow
         | HintContext::PlainRow
@@ -4370,6 +4371,10 @@ fn presses_for(name: &str) -> Vec<Press> {
         "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
         "←/→" => vec![plain(KeyCode::Left), plain(KeyCode::Right)],
         "n N" | "n/N" => vec![plain(KeyCode::Char('n')), plain(KeyCode::Char('N'))],
+        "↑↓" => vec![plain(KeyCode::Up), plain(KeyCode::Down)],
+        // The branch picker's `type to find` (m7-power-tools/10): any letter
+        // is typing there, so one letter stands for them all.
+        "type" => vec![plain(KeyCode::Char('m'))],
         one => {
             let mut letters = one.chars();
             match (letters.next(), letters.next()) {
@@ -4591,6 +4596,7 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
             Shown::Stash,
         )],
         HintContext::Map => vec![overlay_over(merge_on_screen(walk, MERGE_ROW).0, Shown::Map)],
+        HintContext::Picker => vec![picker_over(merge_on_screen(walk, MERGE_ROW).0)],
         // **The state ticket 31's sweep could not reach** (m5/42): the pane
         // has the keyboard and an overlay, not the graph, stands behind it.
         // One per overlay, because the three swallow different keys.
@@ -4883,6 +4889,35 @@ enum Shown {
     Map,
     Journal,
     Stash,
+}
+
+/// `state` with the branch picker up over it (m7-power-tools/10), its list
+/// landed with two rows — so `↑↓` has somewhere to move and `⏎`/`⇥` a row
+/// to act on — and the cursor's own branch as the second.
+fn picker_over(mut state: AppState) -> AppState {
+    use graft_ops::switch_list::{Relation, SwitchKind, SwitchList, SwitchRow};
+    let row = |full: &str, byte: u8, current: bool| SwitchRow {
+        name: graft_core::ref_name::RefName::new(full.as_bytes().to_vec())
+            .expect("a valid ref name"),
+        kind: SwitchKind::Local,
+        tip: Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
+        subject: format!("subject of {full}"),
+        author: "Sara Lee".to_owned(),
+        when: 0,
+        relation: Relation::None,
+        current,
+    };
+    state.picker = Some(super::picker::PickerState {
+        list: Loading::Ready(Arc::new(SwitchList {
+            previous: None,
+            rows: vec![
+                row("refs/heads/login-page", 3, false),
+                row("refs/heads/main", 2, true),
+            ],
+        })),
+        ..super::picker::PickerState::default()
+    });
+    state
 }
 
 /// Every overlay a bar can be drawn behind.
@@ -5448,14 +5483,6 @@ const NEVER_HINTED: &[(&str, &str, &str)] = &[
          pane and §2.1 says the bar always shows what is active, but no hint table has \
          ever listed it — the bar draws `c commit` alone. Filed in ticket 33; here so \
          the walk below is honest rather than blocked",
-    ),
-    (
-        "C",
-        "switch",
-        "**not a decision, a seam** (m7-power-tools/10): keymap §2.3 binds `C` and ticket \
-         10 wants it on the graph bar's `more` list, but the tail lives in \
-         `graft_ui::graph_screen::hints::lists`, which ticket 30j held while 10 was built. \
-         Remove this row when `C switch` lands there",
     ),
 ];
 

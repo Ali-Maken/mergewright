@@ -22,7 +22,7 @@ use crate::preview::{FORK_NOW, opened};
 use crate::stash_clash::{quiet, stash_list};
 
 /// What every walk writes over the tracked files.
-const EDIT: &str = "my edit\n";
+pub(super) const EDIT: &str = "my edit\n";
 
 /// `main_and_fix` with `fix` renamed `feature-b`: on `main`, clean.
 fn main_and_feature_b() -> graft_fixtures::Scratch {
@@ -31,37 +31,42 @@ fn main_and_feature_b() -> graft_fixtures::Scratch {
     scratch
 }
 
-/// A file `main` and `feature-b` both hold with the same contents, other
-/// than `base.txt`: one of the Trivial shape's own.
-fn shared_file(path: &Path) -> String {
-    let on_b = git(path, &["ls-tree", "--name-only", "feature-b"]);
+/// A file `main` and `branch` both hold with the same contents, other than
+/// `base.txt`: one of the Trivial shape's own.
+fn shared_file(path: &Path, branch: &str) -> String {
+    let on_branch = git(path, &["ls-tree", "--name-only", branch]);
     git(path, &["ls-tree", "--name-only", "main"])
         .lines()
-        .find(|name| *name != "base.txt" && on_b.lines().any(|other| other == *name))
-        .unwrap_or_else(|| panic!("main and feature-b share only base.txt"))
+        .find(|name| *name != "base.txt" && on_branch.lines().any(|other| other == *name))
+        .unwrap_or_else(|| panic!("main and {branch} share only base.txt"))
         .to_owned()
 }
 
 /// `base.txt` edited and staged, a shared file edited unstaged: the staged
 /// split is part of what must come back. Returns the shared file's name.
-fn edited(path: &Path) -> String {
-    let other = shared_file(path);
+pub(super) fn edited(path: &Path) -> String {
+    edited_against(path, "feature-b")
+}
+
+/// [`edited`], the shared file one `main` and `branch` both hold.
+pub(super) fn edited_against(path: &Path, branch: &str) -> String {
+    let other = shared_file(path, branch);
     std::fs::write(path.join("base.txt"), EDIT).expect("the scratch repo is writable");
     git(path, &["add", "--", "base.txt"]);
     std::fs::write(path.join(&other), EDIT).expect("the scratch repo is writable");
     other
 }
 
-fn read(path: &Path, name: &str) -> String {
+pub(super) fn read(path: &Path, name: &str) -> String {
     std::fs::read_to_string(path.join(name)).unwrap_or_else(|why| panic!("{name}: {why}"))
 }
 
-fn head(path: &Path) -> String {
+pub(super) fn head(path: &Path) -> String {
     git(path, &["symbolic-ref", "HEAD"]).trim().to_owned()
 }
 
 /// The staged and the unstaged names, and the stash list.
-fn split(path: &Path) -> (String, String, Vec<String>) {
+pub(super) fn split(path: &Path) -> (String, String, Vec<String>) {
     (
         git(path, &["diff", "--cached", "--name-only"]),
         git(path, &["diff", "--name-only"]),

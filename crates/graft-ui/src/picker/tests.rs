@@ -215,3 +215,20 @@ fn the_query_is_drawn_after_the_prompt() {
     let text = drawn(&view, 120, 40).join("\n");
     assert!(text.contains("> log\u{258f}"), "{text}");
 }
+
+/// A click finds the row drawn on its line, scrolled or not, and nothing on
+/// the chrome: the border, the query, the bottom line.
+#[test]
+fn a_click_finds_the_row_drawn_on_its_line() {
+    // 10 rows tall: 6 list rows, lines 2..=7.
+    assert_eq!(row_at(10, 20, 0, 0), None, "the top border");
+    assert_eq!(row_at(10, 20, 0, 1), None, "the query");
+    assert_eq!(row_at(10, 20, 0, 2), Some(0));
+    assert_eq!(row_at(10, 20, 0, 7), Some(5));
+    assert_eq!(row_at(10, 20, 0, 8), None, "the bottom line");
+    assert_eq!(row_at(10, 3, 0, 5), None, "below the last row");
+    // Cursor on row 9: rows 4..=9 are drawn.
+    assert_eq!(first_drawn(10, 9), 4);
+    assert_eq!(row_at(10, 20, 9, 2), Some(4));
+    assert_eq!(row_at(10, 20, 9, 7), Some(9));
+}

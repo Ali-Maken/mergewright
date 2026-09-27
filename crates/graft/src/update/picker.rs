@@ -15,7 +15,7 @@
 
 use std::sync::Arc;
 
-use graft_core::event::{KeyCode, KeyPress};
+use graft_core::event::{KeyCode, KeyPress, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_ops::operation::Tip;
 use graft_ops::switch_list::{SwitchKind, SwitchList, SwitchRow, filter_switch_rows};
@@ -43,6 +43,9 @@ pub struct PickerState {
     /// Why the last `⏎` did nothing, drawn on the box's bottom line until
     /// the next key.
     pub note: Option<String>,
+    /// The last click's row and time (ms), for a double-click (blame's
+    /// rule, `place::keys`).
+    pub last_click: Option<(usize, i64)>,
 }
 
 impl PickerState {
@@ -238,6 +241,72 @@ fn show_on_graph(state: &mut AppState, commands: &mut Vec<Command>) {
     };
     close(state, commands);
     super::map::seek_to(state, commands, tip);
+}
+
+/// Where the box goes in the graph `pane` (`(x, y, width, height)`, the
+/// header row included): over the rows the graph itself draws, so neither
+/// the header, a banner above nor the footer's notice and hint rows below
+/// are covered, then `graft_ui::picker::picker_box`. The one placement both
+/// the drawing (`view::frame::boxes`) and the mouse
+/// ([`super::geometry::picker_bounds`]) read, so a click lands on the row
+/// the eye sees.
+#[must_use]
+pub fn picker_box_in(state: &AppState, pane: (u16, u16, u16, u16)) -> (u16, u16, u16, u16) {
+    let (x, y, width, height) = pane;
+    let above = super::geometry::rows_above_graph(state);
+    // The footer's rows (`CHROME_ROWS` less the header) and the
+    // commit-graph offer's line above them, when it shows.
+    let below = (super::CHROME_ROWS - super::geometry::HEADER_ROWS)
+        + u16::from(state.commit_graph_line().is_some());
+    graft_ui::picker::picker_box((x, y + above, width, height.saturating_sub(above + below)))
+}
+
+/// Two clicks on one row this close together are a double-click (blame's).
+const DOUBLE_CLICK_MS: i64 = 500;
+
+/// The mouse while the picker is shown: a click on a row selects it, a
+/// second on the same row within [`DOUBLE_CLICK_MS`] switches to it — `⏎`'s
+/// own path. The picker is modal (keymap §2.16), so it claims every mouse
+/// event: nothing reaches the graph behind it. `true` when it claimed one.
+pub(super) fn picker_mouse(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    mouse: MouseInput,
+) -> bool {
+    if !shown(state) {
+        return false;
+    }
+    if mouse.kind != MouseKind::Down(MouseButton::Left) {
+        return true;
+    }
+    let Some(area) = super::geometry::picker_bounds(state) else {
+        return true;
+    };
+    if !area.contains(mouse.column, mouse.row) {
+        return true;
+    }
+    let now = state.harness.clock.now_millis();
+    let Some(picker) = state.picker.as_mut() else {
+        return true;
+    };
+    let count = picker.rows().len();
+    let Some(row) =
+        graft_ui::picker::row_at(area.height, count, picker.selected, mouse.row - area.y)
+    else {
+        return true;
+    };
+    let double = picker
+        .last_click
+        .is_some_and(|(at, when)| at == row && now - when <= DOUBLE_CLICK_MS);
+    picker.selected = row;
+    picker.note = None;
+    if double {
+        picker.last_click = None;
+        enter(state, commands);
+    } else {
+        picker.last_click = Some((row, now));
+    }
+    true
 }
 
 /// The list landed, or failed. A stale id (the picker closed, or opened

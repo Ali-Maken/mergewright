@@ -1,6 +1,6 @@
 # branch-picker — `C` opens a picker of his branches and the remote's; type, `⏎` switches; `C ⏎` goes back
 
-Status: partial (10-a built 2026-09-27; blocked: needs `crates/graft/src/jobs/runner.rs`, held by 30j — see NOTES) — respecified 2026-09-26 against scout 10. The switch rule is **approved** (field notes :79), no longer
+Status: done 2026-09-28 except the `cherry-pick-other-branch` walk, which waits on ticket 11 (see NOTES) — respecified 2026-09-26 against scout 10. The switch rule is **approved** (field notes :79), no longer
 awaited; it is built in `10b-switch-rule`, and the picker calls it.
 Blocked by: 03-land-on-result, 10a-switch-refs-read, 10b-switch-rule
 Crates: graft-ops (`switch_list`, shaping 10a's read); graft (`update/picker.rs` new, `GraphOverlay::Picker`,
@@ -101,7 +101,7 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);
       (a remote named `a/b`); `an_upstream_under_heads_reads_built_on`; `here_is_last`;
       `filter_ranks_segment_prefix_above_substring`; `switch_list_honours_stop`.
 - [x] **App:** (all in `crates/graft/src/update/picker/tests.rs` unless named; scripted state through `update::update`,
-      so the real key routing; the list injected as `Product::SwitchList` because the runner arm is missing)
+      so the real key routing; the list injected as `Product::SwitchList`; the real runner arm is walked below)
       `c_opens_the_picker`; `typing_filters_segment_prefix_first`; `enter_on_a_clean_tree_switches_at_once`;
       `enter_with_edits_opens_the_set_aside_preview`; `esc_on_that_preview_returns_to_the_picker_with_the_query`;
       `enter_on_here_writes_nothing`; `enter_while_a_write_runs_refuses_in_the_box`;
@@ -113,19 +113,29 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);
       dropping it from `text_field_open` fails this and `c_opens_the_picker`). Extra: `enter_on_before_goes_back`,
       `y_on_that_preview_closes_the_picker`, `c_needs_the_graph_focused_and_nothing_over_it`,
       `c_in_the_commit_editor_is_typed_there`, `a_stale_list_is_dropped`, `ctrl_c_still_quits`.
-      **Not built:** mouse (click selects, double-click switches) — not in the Acceptance list, in the Decided list.
-- [ ] **Walks** (`m7_walk`, counted against the note's `noted_keys`): `switch_named_branch` = `C login ⏎` (3);
+      Mouse (Decided list): `a_click_on_a_row_selects_it_and_writes_nothing`, `a_double_click_on_a_row_switches_to_it`,
+      `two_slow_clicks_are_two_selections`, `a_click_outside_the_box_reaches_nothing_behind_it` (clicks aimed at the row
+      found in the drawn frame; a mutation shifting `row_at` by one fails the first two), graft-ui
+      `picker::tests::a_click_finds_the_row_drawn_on_its_line`.
+- [x] **Walks** (`crates/graft/tests/it/m7_walk/picker.rs`: `switch_named_branch`, `switch_back`, `switch_with_edits`,
+      each asserting keys ≤ `noted_keys`, HEAD, cursor row, and `u` back; plus `switch_to_a_remote_only_branch_makes_its_local_copy`.
+      **`cherry-pick-other-branch` not walked: 11 has not landed** — NOTES) (`m7_walk`, counted against the note's `noted_keys`): `switch_named_branch` = `C login ⏎` (3);
       `switch_back` = `C ⏎` (2); `switch_with_edits` = `C login ⏎ y` (4); `cherry-pick-other-branch` = `C <type> Tab
       motion o y` (6, if `11-cherry-pick-key` has landed; else NOTES says it waits). After each: HEAD on the target,
       cursor on its row; after `switch_with_edits` the edits are back; then `u` goes back.
-- [ ] **Captures** (colour unverified):
+- [x] **Captures** (colour unverified; `picker-empty-query` ← `switch_back`, `picker-filtered` and `switch-landed` ←
+  `switch_named_branch`, `picker-remote-landed` ← `switch_to_a_remote_only_branch_makes_its_local_copy`):
   - `docs/shots/m7/picker-empty-query-187x50.txt`. **Right:** `↩ before  feature-a` first; `● local` / `◌ remote` /
     `· here` in their own column; `tracks …`, `built on …`, `no copy of yours yet` on the right; the bar as above.
   - `docs/shots/m7/picker-filtered-100x30.txt`. **Right:** glyph, name, age only; the segment-prefix match on top.
   - `docs/shots/m7/switch-landed-120x40.txt`. **Right:** `▸` on the new HEAD; `✓ on login-page · u goes back`.
   - `docs/shots/m7/picker-remote-landed-120x40.txt`. **Right:** `✓ on sara/login-page (new, tracks
     origin/sara/login-page) · u goes back`.
-- [ ] Hint-bar tests green: `C` on the graph bar (at least its `more` list, §2.1 ranking;
+- [x] Hint-bar tests green (`C switch` in `TAIL`; `HintContext::Picker`;
+      `update::tests::every_bound_action_is_hinted_live_or_is_named_here` with the `NEVER_HINTED` `C` row removed,
+      `every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`, graft-ui
+      `no_context_hides_every_key`, `every_context_reaches_every_shape`). MAP.md graft + graft-ui updated (graft-ops
+      unchanged this round). TESTING.md "Switching" added; **no M7 contact sheet exists yet** to add rows to. Original: `C` on the graph bar (at least its `more` list, §2.1 ranking;
       `every_bound_action_is_hinted_live_or_is_named_here`). MAP.md for the three crates. TESTING.md section
       "Switching" + captions + contact sheet rows.
 
@@ -196,3 +206,32 @@ arm, walks, captures, bar, TESTING.md) blocked.
 - Workspace gates: see report. One flake seen once in a full run: `graft-fixtures
   remote::tests::http_remote_drop_ends_a_wedged_backend` (crate untouched; passes alone).
 - No compaction.
+
+## NOTES (builder, 2026-09-28, second session — **compacted mid-ticket**)
+
+**Compacted once** during this session (context summary resumed at the hint-bar step). Remaining after this commit:
+the `cherry-pick-other-branch` walk (waits on ticket 11's `o`), and M7 contact-sheet rows once a sheet exists.
+
+- **Unblocked:** main (30j) merged; `jobs/runner.rs` `Command::ReadSwitchList` arm + `read_switch_list` added (cleared
+  by the conductor); `#[expect(dead_code)]` dropped. The real read is now walked end to end.
+- **Bar:** `HintContext::Picker` (context.rs, lists.rs, catalogue.rs; hints.rs's exclusion matches and `GRAPH_ONLY`
+  too — the same module, needed to compile), `C switch` in `TAIL`, `C` in `GRAPH_ONLY`; `view::rows::hint_context`
+  answers `Picker`; the `NEVER_HINTED` stopgap removed; `bound.rs` gains the picker's five `(key, verb)`s.
+  **Deviation, named:** bar order is `type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row`, not the
+  ticket's (esc last). The floor (first three, ADR-0037 §4) with `⇥` third is 52 cells and a 40-column bar would draw
+  nothing (`no_context_hides_every_key` failed); none of the verbs has a short rung and the short-form table is the
+  user's (`every_short_rung_is_the_users_own_word`), so I did not add one. Alternative for the conductor: rule
+  `switch to it → switch`, `show it on the graph → show` and restore the ticket order.
+- **Found and fixed (cause):** the box's bottom border covered the commit-graph notice row (placement subtracted
+  `CHROME_ROWS` only). Now one placement, `update::picker::picker_box_in`, read by the drawing and the mouse: below
+  `rows_above_graph`, above the footer and the commit-graph line. Guarded in `switch_back` (notice row whole).
+- **Mouse:** click selects, double-click (same row, ≤500 ms, blame's rule) switches via `⏎`'s path; the picker claims
+  every mouse event while shown (modal). Wheel does nothing in the box.
+- **Touches:** every hint-bar capture/snapshot gains a bare `C` at the tail; at a few fixed widths the last raised
+  hint drops a rung to make room (`/ search`→`/`, `q quit`→`q`, `F2 status`→`F2 stat`, `space fold`→`space`,
+  `j/k move`→`j/k`): 19 files under `docs/shots/` + 4 insta snapshots, regenerated and read line by line — every diff
+  is the tail. `switch.rs` walk helpers made `pub(super)`; `edited` generalized to `edited_against(path, branch)`
+  (10b's walks unchanged, green). `mouse::mouse_event` routes to `picker_mouse` before the context menu (the two
+  cannot be up together). Sweep: `update::tests::screen_for` gains a picker screen; `presses_for` learns `↑↓`, `type`.
+- **Cause vs symptom:** new feature; the notice overlap fixed at its cause (one shared placement).
+- **Not verified:** colour (rule 5); a real terminal by eye (captures only).

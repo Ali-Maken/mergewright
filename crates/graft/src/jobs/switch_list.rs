@@ -14,10 +14,6 @@ use crate::repos::RepoStore;
 /// # Errors
 /// The failure text, ready to show: the repository could not be opened, or
 /// a ref, `HEAD` or the remotes could not be read.
-#[expect(
-    dead_code,
-    reason = "dispatched from `jobs::runner`, which 30j holds; the arm is ticket 10's seam (its NOTES)"
-)]
 pub(super) fn read_switch_list(
     repos: &RepoStore,
     cancel: &Cancel,

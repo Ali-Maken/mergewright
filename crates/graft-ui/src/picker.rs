@@ -127,17 +127,50 @@ pub struct PickerView {
 /// view.
 #[must_use]
 pub fn picker_area(graph: Rect) -> Rect {
-    let width = graph.width.saturating_sub(4).min(MAX_WIDTH);
-    let height = u16::try_from(u32::from(graph.height) * 3 / 5)
-        .unwrap_or(graph.height)
-        .max(CHROME_ROWS + 1)
-        .min(graph.height);
+    let (x, y, width, height) = picker_box((graph.x, graph.y, graph.width, graph.height));
     Rect {
-        x: graph.x + graph.width.saturating_sub(width) / 2,
-        y: graph.bottom().saturating_sub(height),
+        x,
+        y,
         width,
         height,
     }
+}
+
+/// [`picker_area`] in plain numbers, `(x, y, width, height)`, for a caller
+/// that must not name the rendering library (`graft::update::geometry`
+/// mirrors the frame so a click can find the row it landed on).
+#[must_use]
+pub fn picker_box(graph: (u16, u16, u16, u16)) -> (u16, u16, u16, u16) {
+    let (x, y, graph_width, graph_height) = graph;
+    let width = graph_width.saturating_sub(4).min(MAX_WIDTH);
+    let height = u16::try_from(u32::from(graph_height) * 3 / 5)
+        .unwrap_or(graph_height)
+        .max(CHROME_ROWS + 1)
+        .min(graph_height);
+    (
+        x + graph_width.saturating_sub(width) / 2,
+        (y + graph_height).saturating_sub(height),
+        width,
+        height,
+    )
+}
+
+/// The first row drawn in a box `height` rows tall with `selected` under
+/// the cursor: the list scrolls only as far as keeps the cursor in view.
+#[must_use]
+pub fn first_drawn(height: u16, selected: usize) -> usize {
+    (selected + 1).saturating_sub(usize::from(height.saturating_sub(CHROME_ROWS)))
+}
+
+/// The row a click `line` rows below the box's top border landed on, in a
+/// box `height` rows tall showing `count` rows with `selected` under the
+/// cursor. `None` on the border, the query, the bottom line, or below the
+/// last row.
+#[must_use]
+pub fn row_at(height: u16, count: usize, selected: usize, line: u16) -> Option<usize> {
+    let visible = height.saturating_sub(CHROME_ROWS);
+    let offset = line.checked_sub(2).filter(|&offset| offset < visible)?;
+    Some(first_drawn(height, selected) + usize::from(offset)).filter(|&row| row < count)
 }
 
 /// Draws `view` into `area` (from [`picker_area`]), clearing it first.
@@ -198,7 +231,7 @@ fn draw_body(buf: &mut Buffer, area: Rect, view: &PickerView, theme: &Theme) {
         PickerBody::Rows { rows, selected } => {
             let columns = Columns::of(rows, inner, view.wide);
             let visible = usize::from(list_rows);
-            let top = (selected + 1).saturating_sub(visible);
+            let top = first_drawn(area.height, *selected);
             for (offset, (at, row)) in rows.iter().enumerate().skip(top).take(visible).enumerate() {
                 let y = area.y + 2 + u16::try_from(offset).unwrap_or(0);
                 let chosen = at == *selected;

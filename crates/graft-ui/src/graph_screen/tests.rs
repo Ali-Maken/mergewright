@@ -2020,7 +2020,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 89;
+const COVERAGE_SLOTS: usize = 90;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2076,6 +2076,8 @@ fn coverage_slot(context: &HintContext) -> usize {
         } => 85 + usize::from(*on_file),
         HintContext::History { rows: false, .. } => 87,
         HintContext::BackToHistory(_) => 88,
+        // m7-power-tools/10: the branch picker's one bar.
+        HintContext::Picker => 89,
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,

@@ -61,7 +61,7 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  . more  1  F  H  y  M  O
+ ⏎ open  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  . more  space  1  F  H  y  M  O  C
 --- frame 2 ---
  graft /code/api    MERGING                                                                                  UNCOMMITTED · 2 staged
 ◌   ▏  Uncommitted changes (2 staged)                                                                        diff vs HEAD ddeed32
@@ -112,4 +112,4 @@
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- ⏎ changes  c finish  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O
+ ⏎ changes  c finish  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
