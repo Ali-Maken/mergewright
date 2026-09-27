@@ -32,6 +32,7 @@ fn facts(branches: &[(&str, u8)]) -> RepoFacts {
         upstream: None,
         refs,
         markers: vec![],
+        incoming: None,
     }
 }
 

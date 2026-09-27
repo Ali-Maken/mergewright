@@ -303,8 +303,13 @@ fn pull_diverged_is_refused_after_fetching() {
     );
 }
 
+/// Was `pull_dirty_file_refused_bytes_unchanged`: before m7-power-tools/03b
+/// git refused this pull over his edit. Now the edit is set aside, the pull
+/// fast-forwards, and his edit — on the line the pull changed — clashes on
+/// the way back: a clash, his bytes kept in the set-aside stash, which the
+/// resolver starts from. The full set-aside behaviour is `pull_set_aside`.
 #[test]
-fn pull_dirty_file_refused_bytes_unchanged() {
+fn pull_dirty_file_sets_it_aside_bytes_kept() {
     let remote = local();
     // The work clone commits a change to a tracked file, pushes it, and steps
     // back: origin is one commit ahead, and that commit changes `path`.
@@ -321,19 +326,30 @@ fn pull_dirty_file_refused_bytes_unchanged() {
         &["commit", "-q", "-am", "change upstream"],
     );
     git(&remote, remote.work(), &["push", "-q", "origin", "HEAD"]);
+    let upstream = git(&remote, remote.work(), &["rev-parse", "HEAD"]);
     git(&remote, remote.work(), &["reset", "-q", "--hard", "HEAD~1"]);
-    let before = git(&remote, remote.work(), &["rev-parse", "HEAD"]);
     std::fs::write(&file, b"my uncommitted edit\n").unwrap();
 
-    let Err(ApplyError::Remote { failure, entry, .. }) = run_in(remote.work(), &pull(&remote), NOW)
+    let Err(ApplyError::Clashed { entry, clash }) = run_in(remote.work(), &pull(&remote), NOW)
     else {
-        panic!("a pull over a dirty file fails as a remote failure");
+        panic!("a pull over an edit to the line it changes clashes on the put-back");
     };
 
-    assert_eq!(failure, RemoteFailure::WouldOverwrite { paths: vec![path] });
-    assert!(matches!(entry.status, EntryStatus::Aborted { .. }));
-    assert_eq!(std::fs::read(&file).unwrap(), b"my uncommitted edit\n");
-    assert_eq!(git(&remote, remote.work(), &["rev-parse", "HEAD"]), before);
+    assert_eq!(clash.paths, vec![PathBuf::from(&path)]);
+    assert_eq!(entry.status, EntryStatus::Committed);
+    assert_eq!(
+        git(&remote, remote.work(), &["rev-parse", "HEAD"]),
+        upstream
+    );
+    assert_eq!(
+        git(
+            &remote,
+            remote.work(),
+            &["show", &format!("{}:{path}", clash.stash)]
+        ),
+        "my uncommitted edit",
+        "his bytes kept in the set-aside stash"
+    );
 }
 
 #[test]

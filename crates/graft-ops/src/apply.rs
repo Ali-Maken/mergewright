@@ -20,6 +20,7 @@ mod engine;
 mod error;
 mod finish_merge;
 mod fold;
+mod pull;
 mod record;
 mod recover;
 mod remote;
@@ -56,9 +57,10 @@ pub(crate) use restart::{RestartPrep, prepare_restart, run_restart_prep};
 
 use engine::Engine;
 use finish_merge::ending_a_shell_merge;
+use pull::Ahead;
 use record::{pins_for, put_back_for};
 use restart::abandon_pending;
-use run::{PlanRun, run_plan, with_cleanup};
+use run::{PlanRun, with_cleanup};
 
 /// What the caller has to re-read after an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -210,7 +212,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     if ctx.stop.should_stop() {
         return Err(ApplyError::Stopped);
     }
-    let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, &op.facts_scope())
+    let mut facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, &op.facts_scope())
         .map_err(ApplyError::Facts)?;
     op.check(&facts).map_err(ApplyError::Refused)?;
     // `check` could not see whether a restart's stages still exist, so this
@@ -227,12 +229,23 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     // A rebase or rewrite: read the line of branches and write the todo
     // before `touches`, which records every branch of the line (ADR-0047).
     let engine = engine::prepare(ctx, op, &facts)?;
-    let touches = touches_of(op, &facts, engine.as_ref());
     let plan = op.plan(&facts);
+    // A pull's fetch runs here, before `touches` and the set-aside, which
+    // read what it brought (m7-power-tools/03b).
+    let ahead = pull::fetch_first(ctx, op, &mut facts, &plan)?;
+    let touches = touches_of(op, &facts, engine.as_ref());
 
     // ADR-0045 §4, step 1: a rebase or checkout over changed tracked files
     // makes `S` before the entry opens, so the Pending line can name it.
     let mut commands = Vec::new();
+    // The fetch has run: its line goes first, as it ran first.
+    let to_run = match &ahead {
+        Ahead::Fetched(_) => {
+            commands.extend(plan.first().map(Invocation::command_line));
+            plan.get(1..).unwrap_or_default()
+        }
+        Ahead::Nothing | Ahead::Failed(_) => &plan[..],
+    };
     let aside_words = set_aside::words(&description);
     let aside = set_aside::create(ctx, op, &facts, &aside_words, &mut commands)?;
     let mut pins = pins_for(op);
@@ -249,7 +262,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         })),
     };
     // Step 2.
-    let mut pending = open_entry(ctx, opening, engine.as_ref())?;
+    let mut pending = pull::open_after(ctx, &ahead, opening, engine.as_ref())?;
     // Steps 3 and 4.
     if let Some(stash) = aside
         && let Err(error) = set_aside::put_aside(ctx, stash, &aside_words, &mut commands)
@@ -270,8 +283,8 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         commands.push(engine.command_line());
         engine.run(ctx, &mut commands)?
     } else {
-        commands.extend(plan.iter().map(Invocation::command_line));
-        run_plan(ctx, &plan, op.remote_names().as_ref())
+        commands.extend(to_run.iter().map(Invocation::command_line));
+        pull::run_rest(ctx, op, ahead, to_run)
     };
     closed(ctx, op, pending, commands, run)
 }

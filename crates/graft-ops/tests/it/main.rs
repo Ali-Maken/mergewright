@@ -26,6 +26,8 @@ mod mistake_radar;
 mod octopus_merge;
 mod ops_execution;
 mod ops_execution_hard;
+#[cfg(unix)]
+mod pull_set_aside;
 mod put_back_forecast;
 mod put_back_index;
 mod recover;

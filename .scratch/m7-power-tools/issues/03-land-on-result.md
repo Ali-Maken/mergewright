@@ -1,6 +1,6 @@
 # land-on-result — every write that moves HEAD lands the cursor on the new HEAD; a fast-forward pull sets edits aside
 
-Status: partial — **-a done** (landing), **-b open** (ff-pull set-aside). See NOTES / Handoff at the end.
+Status: done — -a (landing) and -b (ff-pull set-aside, via 03b). See NOTES at the end.
 (respecified 2026-09-26 against `scouts/03.md`, HEAD ed624165)
 Blocked by: none
 Crates: graft (`update/operate.rs` `launch`/`operated`, `update/banner/stop.rs`, `update/remote/in_flight.rs`, the test
@@ -106,18 +106,21 @@ If `AppState::operating` cannot carry the flag to the arm that handles Pull's Do
 carry it the same way the arm gets the operation's words; say how in NOTES. Never land by guessing the kind.
 
 ## Acceptance (each tick names its test)
-- [ ] **graft-ops:**
+- [x] **graft-ops:**
   - [x] `moves_head_covers_every_operation` — `crates/graft-ops/src/operation/tests.rs` (30 variants counted by
         discriminant, both Reset targets, BranchCreate both ways);
-  - [ ] -b: `a_pull_journals_as_today`, `a_pull_whose_fetch_fails_journals_as_today` (written first, green before and after);
-  - [ ] -b: `a_ff_pull_over_overlapping_edits_sets_them_aside` (red first, :805);
-  - [ ] -b: `a_ff_pull_whose_put_back_clashes_stops_as_a_clash`;
-  - [ ] -b: `a_ff_pull_over_unrelated_edits_is_unchanged` (no stash created, index byte-equal: staging kept);
-  - [ ] -b: `a_diverged_pull_over_edits_sets_nothing_aside` (today's refusal words);
-  - [ ] -b: `the_ff_pull_entry_is_one_entry_and_u_restores_edits` (staged split back via the backup);
-  - [ ] -b: `the_ff_pull_set_aside_round_trips` on ADR-0045 §7's tree table, and a stop before each step 1–6 leaves the
-    edits in the tree or the stash list (reads both).
-- [ ] **App:**
+  - [x] -b: `a_pull_journals_as_today`, `a_pull_whose_fetch_fails_journals_as_today` — all in
+        `crates/graft-ops/tests/it/pull_set_aside.rs` (written first, green before and after);
+  - [x] -b: `a_ff_pull_over_overlapping_edits_sets_them_aside` (red run: see NOTES -b);
+  - [x] -b: `a_ff_pull_whose_put_back_clashes_stops_as_a_clash`;
+  - [x] -b: `a_ff_pull_over_unrelated_edits_is_unchanged` (no stash created, index byte-equal: staging kept);
+  - [x] -b: `a_diverged_pull_over_edits_sets_nothing_aside` (today's refusal words);
+  - [x] -b: `the_ff_pull_entry_is_one_entry_and_u_restores_edits` (staged split back via the backup);
+  - [x] -b: `the_ff_pull_set_aside_round_trips` on ADR-0045 §7's tree table (`set_aside::Tree::ALL`), and
+    `a_ff_pull_stopped_before_each_step_loses_nothing` (stop before each step 1–6; reads tree and stash list).
+  - extra -b: unit `a_ff_pull_over_an_edit_it_brings_sets_every_edit_aside`, `a_pull_sets_nothing_aside_otherwise`
+    (`operation/remote/tests.rs`); `remote_ops::pull_dirty_file_sets_it_aside_bytes_kept` (rewritten).
+- [x] **App:**
   - [x] `after_m_m_the_cursor_is_on_the_merge` — `crates/graft/tests/it/land_on_result.rs` (red first: seen red with
         the Done arm's landing disabled, 9 failed (8 of these app tests, 1 unit); green with it);
   - [x] `after_a_commit_the_cursor_is_on_it`, `after_a_cherry_pick_the_cursor_is_on_the_new_commit`,
@@ -127,22 +130,27 @@ carry it the same way the arm gets the operation's words; say how in NOTES. Neve
   - [x] `landing_waits_for_an_unlaid_row`, `the_detail_pane_follows_the_landing`, `undo_keeps_its_own_landing` —
         `land_on_result.rs` (the unlaid-row test holds the walk's rows back until the landing is spent, so the
         `ShowRows` path runs every time);
-  - [ ] -b: `a_ff_pull_clash_lands_on_the_resolver`; `a_ff_pull_over_edits_says_they_are_back` (both clauses, 80 cols);
+  - [x] -b: `a_ff_pull_clash_lands_on_the_resolver`; `a_ff_pull_over_edits_says_they_are_back` (both clauses, 80
+        cols) — `crates/graft/tests/it/pull_over_edits.rs`; plus `a_ff_pull_over_overlapping_edits_takes_one_key`
+        (rewritten from `…_names_keys_that_work`, cursor by `History::selected`);
   - [x] `settled_waits_for_an_owed_landing` (harness) — `crates/graft/src/update/tests.rs`.
   - extra: `a_done_write_that_moves_head_owes_the_landing_on_its_refresh`, `a_stage_leaves_the_cursor`,
     `a_write_that_died_owes_no_landing`, `only_done_lands` — `operate/tests/lands_on_head.rs`.
-- [ ] -b: **Walk** `pull_ff_over_edits` (m7 harness): `p` (asserts **1 key**); edits back byte-equal (unstaged), HEAD
-      fast-forwarded, cursor on the new HEAD, the status line above.
-- [ ] **Captures:**
+- [x] -b: **Walk** `pull_ff_over_edits` (m7 harness): `p` (asserts **1 key**); edits back byte-equal (unstaged), HEAD
+      fast-forwarded, cursor on the new HEAD, the status line above — `crates/graft/tests/it/m7_walk/pull.rs`.
+- [x] **Captures:**
   - [x] new `docs/shots/m7/landed-after-merge-120x40.txt` — `land_on_result::capture_landed_after_merge` (asserts the
         cursor row carries `Merge`, the detail pane's spec is the merge). Right: the graph cursor `▏` (not `▸`: `▸` is
         not the graph's cursor glyph) on the merge row, detail pane on it, `merge main into feature ✓`. Merge id
         zeroed, its date redacted `YYYY-MM-DD hh:mm +zzzz` (made at run time).
-  - [ ] -b: new `docs/shots/m7/pull-over-edits-120x40.txt`.
+  - [x] -b: new `docs/shots/m7/pull-over-edits-120x40.txt` — written by `m7_walk::pull::pull_ff_over_edits`
+        (stable over 3 runs). Right: last row `pulled origin/main ✓ · your edits are back`, cursor `▏` on
+        `their change`. By eye: the user's.
   - [x] Changed ones re-taken — 4 moved, classified in `.scratch/m7-power-tools/03-shots.txt`.
-- [ ] MAP.md: [x] graft, graft-ops (`moves_head`, `lands_on_head`, `operated`/`launch` lines). [ ] -b: TESTING.md rows
-      for the walk and both captures (TESTING.md has no per-capture rows today; -b adds the walk's and says where).
-      [ ] -b: ADR-0045 amendment text in NOTES.
+- [x] MAP.md: [x] graft, graft-ops (`moves_head`, `lands_on_head`, `operated`/`launch` lines; -b: `Incoming`,
+      `RepoFacts.incoming`, `read_incoming`, `sets_aside` Pull, apply's fetch-first). [x] -b: TESTING.md rows —
+      section "M7: a pull over his edits (m7-power-tools/03b)" (walk + capture); m4 scenario 5 and m6 85 D rewritten.
+      [x] -b: ADR-0045 amendment text in NOTES -b.
 
 ## Touches (check each; report how)
 - **Captures with `▸` (212 files, scout Q5):** only a capture taken after a finished `moves_head` write with the
@@ -211,3 +219,70 @@ As rewrite-engine. Workspace-wide gates. Captures ≤ 200 KB.
   asserts today's refusal (`pull refused: your edits to shared.txt would be overwritten`, 7 keys). -b changes that
   journey to 1 key: that test must be rewritten, not deleted. The related "Times I left" row is TESTING.md:115 (pull and push with edits in the tree).
 - Gotcha: `landing` now owes after Pull's `Done`, and `settled` waits for it — -b's walk gets that for free.
+
+## NOTES (builder, 2026-09-27, part -b, ticket 03b)
+- **Compacted once** mid-build (after the tests and walk were green, before the gates). Nothing left undone by it.
+- **Scout:** used `scouts/03.md`; no second one.
+- **Journal choice (Decided asked "say which"):** today's entry opened **before** the fetch (both lines recorded,
+  `Aborted` with git's reason when the fetch failed). Kept identical: the fetch now runs ahead of the entry
+  (`apply/pull.rs::fetch_first`); a failed or stopped fetch returns `Ahead::Failed(run)` and the entry then opens
+  and closes on that run exactly as before — both command lines, same reason, nothing set aside
+  (`a_pull_whose_fetch_fails_journals_as_today`, green before and after). A fetch that went through records its line
+  first, then the set-aside steps, then the merge (`a_ff_pull_over_overlapping_edits_sets_them_aside` asserts
+  `commands[0]` fetch, `commands[4]` merge).
+- **New failure path, said:** if the fetch succeeds but reading what it brought (`read_incoming`) fails or is
+  stopped, `apply` returns `Facts`/`Stopped` with **no entry** — the fetch moved only the tracking ref, which a
+  pull never records (same as a plain fetch). Doc'd in `apply/pull.rs` and MAP.
+- **Red runs (Pull arm of `sets_aside` forced false, 2026-09-27, then restored):**
+  `a_ff_pull_over_overlapping_edits_sets_them_aside` panicked at `pull_set_aside.rs:201`: `pull refused: your edits
+  to shared.txt would be overwritten`; T3 `every_set_aside_kind_keeps_the_index` panicked at
+  `put_back_index.rs:264`: `Pull: pull refused: your edits to p.txt would be overwritten`.
+- **Knock-ons the workspace gate caught (first full run: 4474/4476):**
+  - `m4_walk::hung_remote_pull_esc_cancels` failed `the journal is empty`. Cause: `record::begin` (`record.rs:70`)
+    refuses to open an entry once the stop is set; with the fetch moved ahead of the entry, `Esc` during a hung
+    fetch left no entry. Fixed at the cause: `apply/pull.rs::open_after` opens the entry for a failed/stopped fetch
+    with the already-answered stop set aside (`ctx.stop = &()` for `begin` only, then restored) — the record is
+    again `cancelled`, as before 03b. Green after.
+  - `m4_walk::pull_dirty_file_refused` expected today's refusal. Behaviour changed on purpose: rewritten as
+    `pull_dirty_file_sets_it_aside` (both rewrote one line → put-back clashes → resolver open, `HEAD` moved, the
+    file holds his line and theirs). TESTING.md m4 scenario 5 rewritten to match.
+- **`check` still reads the pre-fetch facts:** re-checking after the fetch would refuse `UpstreamChanged` (the
+  tracking tip moves by design). Only `incoming` is added after the fetch.
+- **Overlap rule:** fast-forward only, and an incoming path ∩ a changed tracked path (a rename's old path counts).
+  Then **every** changed tracked file is set aside (ADR-0045 §4 is all-or-nothing); untracked never. Diverged or
+  apart: nothing set aside, git's own refusal/words (`a_diverged_pull_over_edits_sets_nothing_aside`,
+  unit `a_pull_sets_nothing_aside_otherwise`).
+- **Banner words:** none in 09's or 21b's files. They come free from the generic `done_status` + `clash::edits_back`
+  (`pulled origin/main ✓ · your edits are back`); a clash goes through the generic Clashed arm to the resolver. No
+  change in `operate.rs` or `in_flight.rs`.
+- **Tests rewritten, not deleted (behaviour changed on purpose):**
+  `graft/tests/it/pull_over_edits.rs::a_ff_pull_over_overlapping_edits_names_keys_that_work` →
+  `a_ff_pull_over_overlapping_edits_takes_one_key` (cursor by `History::selected`);
+  `graft-ops/tests/it/remote_ops.rs::pull_dirty_file_refused_bytes_unchanged` →
+  `pull_dirty_file_sets_it_aside_bytes_kept` (his conflicting bytes now kept in `clash.stash`, HEAD at upstream).
+  TESTING.md's m6 85 D paragraph marked superseded.
+- **Walk key count:** the M7 note's `journey-counts` fence has no pull row; the walk's `NOTED_KEYS = 1` is taken
+  from 03 "User decisions". Conductor may add the fence row (I don't hold the design note).
+- **Touches, how checked:**
+  - `in_flight` Esc/cancel during the fetch: the fetch still runs in `run_plan` under the same stop; a stop before
+    step 1 is `Ahead::Failed` (no set-aside) — `a_ff_pull_stopped_before_each_step_loses_nothing`; m4/m6 pull and
+    remote tests green in the workspace run.
+  - Set-aside kinds Rebase/Checkout/Recover/Rewrite/CherryPick: unchanged code paths; every `set_aside`,
+    `put_back_index`, `stash_clash`, `live_clash` test green in the workspace run.
+  - Journal/undo: Pull's `touches` adds `refs/stash` only when set aside (unit
+    `a_ff_pull_over_an_edit_it_brings_sets_every_edit_aside`, `a_pull_sets_nothing_aside_otherwise`); `u` restores
+    HEAD + staged split + files (`the_ff_pull_entry_is_one_entry_and_u_restores_edits`; T3 undo/redo row). Journal
+    fields unchanged — no new field for the journal screen. No-op-pull `undoable` rule untouched (grep: no edit in
+    `undoable`).
+  - Captures: one new (`docs/shots/m7/pull-over-edits-120x40.txt`); workspace run with captures compared: no other
+    moved (`git status docs/shots` shows only the new file).
+  - Keymap: none. `operate.rs`, `in_flight.rs`, 09's and 21b's files: untouched (`git diff --stat` main..HEAD).
+  - Test-literal knock-on: `RepoFacts` gained `incoming`; four literal sites set `None`.
+- **Cause, not symptom:** the refusal came from `sets_aside` returning `None` for Pull and the fetch running inside
+  the plan after the decision; fixed at that decision point. Cost to the user: none beyond one extra `git diff
+  --name-only` after the fetch when the tree has tracked edits.
+- **Proposed ADR-0045 amendment (conductor to apply):** "§4 extends to a **fast-forward pull** whose incoming
+  changes touch a changed tracked path. The pull's fetch runs **before** the set-aside decision (its result is a
+  fact: `RepoFacts.incoming`); the entry opens after it, recording the fetch line first. A failed fetch opens and
+  closes the entry as before, nothing set aside. A diverged pull or one that touches none of his files sets
+  nothing aside."

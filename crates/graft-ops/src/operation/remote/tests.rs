@@ -1,14 +1,16 @@
 //! Fetch, pull and push: every refusal one fact away from a passing
 //! baseline, the exact command lines, `touches`, and `preview == plan`.
 
+use std::path::PathBuf;
+
 use graft_core::journal::{HeadRef, OperationKind, Touches};
 use graft_core::oid::Oid;
 use graft_git::remote::{Remote, TrackedUpstream};
 use graft_git::state::InProgress;
-use graft_git::status::WorkingTreeStatus;
+use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-use super::super::{Invocation, Operation, Refusal, RepoFacts};
+use super::super::{Incoming, Invocation, Operation, Refusal, RepoFacts, SetAside};
 use super::{FetchParams, Lease, PullParams, PushParams};
 
 fn oid(byte: u8) -> Oid {
@@ -49,6 +51,7 @@ fn facts() -> RepoFacts {
         upstream: Some(upstream()),
         refs: std::collections::BTreeMap::new(),
         markers: vec![],
+        incoming: None,
     }
 }
 
@@ -425,5 +428,111 @@ fn refusal_text_is_the_design_notes() {
         .explain(),
         "force-push refused: origin/main is not where the box said \
          (fetched since, or never fetched) · f to fetch, then look"
+    );
+}
+
+// ── a pull's set-aside rule (m7-power-tools/03b) ────────────────────────
+
+fn status_entry(path: &str) -> StatusEntry {
+    StatusEntry {
+        path: PathBuf::from(path),
+        original_path: None,
+        staged: None,
+        unstaged: None,
+        untracked: false,
+        unmerged: false,
+        unmerged_how: None,
+        submodule: None,
+    }
+}
+
+fn edited(path: &str) -> StatusEntry {
+    StatusEntry {
+        unstaged: Some(Change::Modified),
+        ..status_entry(path)
+    }
+}
+
+fn with(entries: Vec<StatusEntry>, incoming: Option<Incoming>) -> RepoFacts {
+    RepoFacts {
+        status: WorkingTreeStatus { entries },
+        incoming,
+        ..facts()
+    }
+}
+
+/// A fast-forward whose fetch brought `paths`.
+fn incoming(paths: &[&str]) -> Incoming {
+    Incoming {
+        tip: oid(8),
+        fast_forward: true,
+        paths: paths.iter().map(PathBuf::from).collect(),
+    }
+}
+
+/// Overlap: every changed tracked file is set aside, the other one too, and
+/// `refs/stash` recorded; a staged rename away from a path the pull changes
+/// counts by its old path.
+#[test]
+fn a_ff_pull_over_an_edit_it_brings_sets_every_edit_aside() {
+    let staged = StatusEntry {
+        staged: Some(Change::Modified),
+        ..status_entry("other.txt")
+    };
+    let over = with(
+        vec![edited("shared.txt"), staged],
+        Some(incoming(&["shared.txt"])),
+    );
+    assert_eq!(pull().sets_aside(&over), Some(SetAside { files: 2 }));
+    assert_eq!(
+        pull().touches(&over).refs,
+        vec!["refs/heads/main".to_owned(), "refs/stash".to_owned()]
+    );
+    let renamed = StatusEntry {
+        original_path: Some(PathBuf::from("shared.txt")),
+        staged: Some(Change::Renamed),
+        ..status_entry("moved.txt")
+    };
+    assert!(
+        pull()
+            .sets_aside(&with(vec![renamed], Some(incoming(&["shared.txt"]))))
+            .is_some()
+    );
+}
+
+/// Not fetched yet, no overlap, diverged, or only an untracked file where
+/// the pull brings one: nothing set aside, git's own words.
+#[test]
+fn a_pull_sets_nothing_aside_otherwise() {
+    // Not fetched yet: nothing.
+    assert_eq!(
+        pull().sets_aside(&with(vec![edited("shared.txt")], None)),
+        None
+    );
+    // No overlap: nothing, and no `refs/stash` recorded.
+    let apart = with(vec![edited("other.txt")], Some(incoming(&["shared.txt"])));
+    assert_eq!(pull().sets_aside(&apart), None);
+    assert_eq!(
+        pull().touches(&apart).refs,
+        vec!["refs/heads/main".to_owned()]
+    );
+    // Diverged: nothing.
+    let diverged = Incoming {
+        fast_forward: false,
+        ..incoming(&["shared.txt"])
+    };
+    assert_eq!(
+        pull().sets_aside(&with(vec![edited("shared.txt")], Some(diverged))),
+        None
+    );
+    // Only an untracked file where the pull brings one: git's refusal
+    // stands (ADR-0045 §4: untracked files are never set aside).
+    let untracked = StatusEntry {
+        untracked: true,
+        ..status_entry("shared.txt")
+    };
+    assert_eq!(
+        pull().sets_aside(&with(vec![untracked], Some(incoming(&["shared.txt"])))),
+        None
     );
 }
