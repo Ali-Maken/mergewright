@@ -384,6 +384,7 @@ fn merge_read(live: Vec<graft_core::journal::EntryId>, branch: Option<&str>) -> 
                     entries: Vec::new(),
                     unreadable: Vec::new(),
                     live,
+                    interrupted_edits: Vec::new(),
                 },
             )),
             ..crate::update::journal::JournalState::default()
@@ -1651,6 +1652,7 @@ fn a_stop_with_edits_aside_says_so_and_drops_it_first() {
                 entries: vec![entry],
                 unreadable: Vec::new(),
                 live: Vec::new(),
+                interrupted_edits: Vec::new(),
             },
         ));
         state

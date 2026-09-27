@@ -12,8 +12,9 @@
 //! - anything else → [`PutBackRan::Failed`]. A second apply never runs over
 //!   a tree the first one changed: the edits would go in twice.
 //!
-//! Absorb's rebuilt stash ([`from_index_base`](super::rebuild::from_index_base)) is one input to the same
-//! apply.
+//! Absorb's rebuilt stash
+//! ([`from_index_base`](super::rebuild::from_index_base)) is one input to
+//! the same apply.
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -168,10 +169,12 @@ pub(crate) fn tracked_changed(status: &WorkingTreeStatus) -> bool {
 /// Staged paths a plain `stash apply` loses: every staged change in
 /// `S^1..S^2`, except an added path whose staged blob equals its
 /// working-tree blob (git re-adds that one from the tree, unchanged). An
-/// added path edited on (`AM`) or deleted since (`AD`) is lost: git re-adds
-/// it from the tree, or not at all (review m7-30-06d Major 1). No rename
-/// detection, so a staged rename names its old path (its deletion comes back
-/// unstaged), and there are no copies.
+/// added path edited on (`AM`) is lost: git re-adds it from the tree (review
+/// m7-30-06d Major 1). One deleted since (`AD`) is not: `git stash create`
+/// keeps its staged blob in `S`'s tree, so it comes back staged as it was
+/// (and on disk again; 30c's A2). No rename detection, so a staged rename
+/// names its old path (its deletion comes back unstaged), and there are no
+/// copies.
 ///
 /// The second read (`S^2..S`, what moved on after staging) runs only when a
 /// path was added, so the usual fallback spawns nothing more. It takes no

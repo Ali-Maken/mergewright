@@ -267,6 +267,12 @@ pub struct AppState {
     /// apart. An entry named here is **not** announced as interrupted and is
     /// not drawn as one — it is the banner's, and `c`/`a` end it.
     pub live_entries: Vec<graft_core::journal::EntryId>,
+    /// From the launch's `Recovered::set_aside`
+    /// ([`crate::jobs::undo::JournalRead::interrupted_edits`]): where each
+    /// interrupted set-aside's edits were at recovery (30c). Lives as long
+    /// as the notice (until `J`); empty after any later launch, when the
+    /// notice keeps ` · edits in stash@{n}`.
+    pub interrupted_edits: Vec<(graft_core::journal::EntryId, graft_ops::EditsAt)>,
     /// **The live operation stopped, and why** (m6-conflicts/12). A state,
     /// not a [`Status`]: `Status` is one slot, and during a live operation a
     /// refused `c`, a failed resume, `Busy` and `Done` all take it — a stop

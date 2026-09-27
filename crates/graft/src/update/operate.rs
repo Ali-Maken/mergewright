@@ -1105,8 +1105,19 @@ fn operation_failed(
 /// kept whole (`fit_status_line`). `S p` is named only when the edits are
 /// not in the tree.
 pub(crate) fn edits_status(failure: &str, at: graft_ops::EditsAt) -> Status {
+    Status::Sticky {
+        reason: failure.to_owned(),
+        keys: Some(edits_clause(at)),
+    }
+}
+
+/// Where a set-aside's edits are, in the app's words (keys included): the
+/// clause of [`edits_status`], and of the relaunch notice when recovery
+/// read where they were (`update::undo::interrupted_notice`, 30c). Same
+/// state, same words.
+pub(crate) fn edits_clause(at: graft_ops::EditsAt) -> String {
     use graft_ops::EditsAt;
-    let clause = match at {
+    match at {
         EditsAt::Stash { n } => format!("your edits are in stash@{{{n}}} · S p puts them back"),
         EditsAt::Back { copy: Some(n) } => {
             format!("your edits are back · a copy stays in stash@{{{n}}}")
@@ -1116,10 +1127,6 @@ pub(crate) fn edits_status(failure: &str, at: graft_ops::EditsAt) -> Status {
             format!("u restores the backup · a copy is in stash@{{{n}}}")
         }
         EditsAt::Backup { copy: None } => "u restores the backup".to_owned(),
-    };
-    Status::Sticky {
-        reason: failure.to_owned(),
-        keys: Some(clause),
     }
 }
 

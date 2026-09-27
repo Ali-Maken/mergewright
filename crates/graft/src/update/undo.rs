@@ -621,31 +621,7 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
                 && !undone.contains(&entry.id)
                 && !state.live_entries.contains(&entry.id)
         })
-        .map(|entry| {
-            // Edits set aside around it wait in the stash list (ADR-0045
-            // §5, m6-conflicts/74): named by where they are now, while
-            // they are still listed.
-            let aside = entry
-                .put_back
-                .as_ref()
-                .filter(|put_back| put_back.why == graft_core::journal::PutBackWhy::SetAside)
-                .and_then(|put_back| {
-                    state
-                        .refs
-                        .as_deref()?
-                        .stashes()
-                        .iter()
-                        .find_map(|(commit, at)| {
-                            (*commit == put_back.stash)
-                                .then(|| format!(" \u{b7} edits in stash@{{{at}}}"))
-                        })
-                })
-                // No clause when nothing was set aside, the refs are not
-                // read yet, or the stash is no longer listed: none of those
-                // is a failure, and the line is true without it.
-                .unwrap_or_default();
-            format!("{}{aside}", entry.description)
-        });
+        .map(|entry| interrupted_words(state, entry));
     let first = interrupted.next()?;
     let more = interrupted.count();
     let rest = if more == 0 {
@@ -661,6 +637,48 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
     Some(format!(
         "an operation was interrupted: {first}{rest}{widest} \u{b7} J to inspect"
     ))
+}
+
+/// One interrupted entry as the notice words it: its description, then
+/// where edits it set aside are, when that is known.
+fn interrupted_words(state: &AppState, entry: &graft_core::journal::JournalEntry) -> String {
+    // Where recovery found the edits, when this launch closed the entry
+    // (30c): the status line's own words, no list read to guess (ADR-0045
+    // §5).
+    if let Some((_, at)) = state
+        .interrupted_edits
+        .iter()
+        .find(|(id, _)| *id == entry.id)
+    {
+        return format!(
+            "{} \u{b7} {}",
+            entry.description,
+            super::operate::edits_clause(*at)
+        );
+    }
+    // Closed by an earlier launch: edits set aside around it wait in the
+    // stash list (ADR-0045 §5, m6-conflicts/74), named by where they are
+    // now, while they are still listed. True whether or not the put-back had
+    // landed: a copy is in the list.
+    let aside = entry
+        .put_back
+        .as_ref()
+        .filter(|put_back| put_back.why == graft_core::journal::PutBackWhy::SetAside)
+        .and_then(|put_back| {
+            state
+                .refs
+                .as_deref()?
+                .stashes()
+                .iter()
+                .find_map(|(commit, at)| {
+                    (*commit == put_back.stash).then(|| format!(" \u{b7} edits in stash@{{{at}}}"))
+                })
+        })
+        // No clause when nothing was set aside, the refs are not read yet,
+        // or the stash is no longer listed: none of those is a failure, and
+        // the line is true without it.
+        .unwrap_or_default();
+    format!("{}{aside}", entry.description)
 }
 
 /// Re-read what the restore changed — `update::operate`'s own two scopes,
@@ -848,6 +866,7 @@ mod tests {
                     entries: Vec::new(),
                     unreadable: Vec::new(),
                     live: live.clone(),
+                    interrupted_edits: Vec::new(),
                 })),
                 live,
             ),
@@ -1254,6 +1273,7 @@ mod tests {
                 entries,
                 unreadable: Vec::new(),
                 live: Vec::new(),
+                interrupted_edits: Vec::new(),
             })),
             unreadable: unreadable.iter().map(|&s| s.to_owned()).collect(),
             ..JournalState::default()

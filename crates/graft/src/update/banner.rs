@@ -903,14 +903,9 @@ fn resumed_staging_not_kept(
         Status::Done { what, .. } => {
             super::operate::staging_not_kept_status(what, paths, state.size.columns)
         }
-        // `Unfinished` has no tick to put the news after: its reason, then
-        // the shortest rung (the files and the key). Not reached today: a
-        // put-back runs only on a close that finished.
-        Status::Sticky { reason, .. } => {
-            let rungs = super::operate::staging_not_kept_rungs("", paths);
-            let news = rungs.last().map_or("", String::as_str);
-            Status::sticky(format!("{reason} \u{b7} {news}"))
-        }
+        // Anything but `Done` (an `Unfinished` sticky) is left as it is: a
+        // put-back runs only on a close that finished, so no such line
+        // carries staging news (review m7-30-06d Minor 7).
         other => other.clone(),
     };
     commands

@@ -1063,3 +1063,183 @@ const STAGING_NOT_KEPT_HEADER: &str = "\
 #    edits are back` goes first, the file and `u` stay whole.
 #  - Nowhere `could not confirm`.
 ";
+
+/// The kill seam, the same script graft-ops' `set_aside_kill` runs: a `git`
+/// first on a child's `PATH` that SIGKILLs the child on `stash drop`.
+#[cfg(unix)]
+const SHIM: &str = include_str!("../../../../graft-ops/tests/it/git_shim.sh");
+
+#[cfg(unix)]
+const KILL_CHILD_REPO: &str = "GRAFT_K4_CHILD_REPO";
+
+/// K4's child: `git switch fix` from `main` over the staged edit, run the
+/// way the app's job runs it (`jobs/operate.rs` `in_context`), under the
+/// shim, which kills this process on `stash drop` — after the plain apply
+/// brought the edits back unstaged. Does nothing when run on its own.
+#[cfg(unix)]
+#[test]
+#[ignore = "the child of K4; runs only under killed_before_the_drop"]
+fn child_switches_until_the_drop() {
+    let Some(repo) = std::env::var_os(KILL_CHILD_REPO) else {
+        return;
+    };
+    let handle = graft_git::repo::RepoHandle::open(Path::new(&repo)).expect("the repo opens");
+    let journal_file = graft_ops::journal::journal_path(&handle).expect("the journal path");
+    let mut journal = graft_ops::journal::Journal::open(&journal_file).expect("the journal opens");
+    let git_version = graft_git::version::system_git()
+        .expect("git is on PATH")
+        .version();
+    let mut ctx = graft_ops::apply::Context::open(
+        &handle,
+        git_version,
+        &mut journal,
+        FORK_NOW * 1000,
+        [7; 10],
+        &(),
+    )
+    .expect("the context opens");
+    let op = graft_ops::operation::Operation::Checkout(graft_ops::operation::CheckoutParams {
+        to: graft_ops::operation::CheckoutTarget::Branch("refs/heads/fix".to_owned()),
+        head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+    });
+    let ran = graft_ops::apply::apply(&mut ctx, &op);
+    panic!("the shim should have killed this process: {ran:?}");
+}
+
+/// `staging_that_cannot_come_back`, switched to `fix` in a child that is
+/// killed on `stash drop`: the edits back unstaged, `S` still listed, the
+/// entry interrupted (graft-ops K2b's state).
+#[cfg(unix)]
+fn killed_before_the_drop(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::process::ExitStatusExt;
+
+    let bin = path.join(".git/shim-bin");
+    std::fs::create_dir_all(&bin).expect("the shim dir is made");
+    let script = bin.join("git");
+    std::fs::write(&script, SHIM).expect("the shim writes");
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+        .expect("the shim is executable");
+    let inherited = std::env::var_os("PATH").expect("PATH is set");
+    let real_git = std::env::split_paths(&inherited)
+        .map(|dir| dir.join("git"))
+        .find(|candidate| candidate.is_file())
+        .expect("git is on PATH");
+    let child_path =
+        std::env::join_paths(std::iter::once(bin).chain(std::env::split_paths(&inherited)))
+            .expect("PATH joins");
+    // The stash's dates are fixed so the capture's rows hold still.
+    let when = format!("@{} +0000", crate::preview::FORK_EPOCH + 3 * 60);
+    let status = std::process::Command::new(std::env::current_exe().expect("the test binary"))
+        .args([
+            "--exact",
+            "m6_stash_put_back::set_aside::child_switches_until_the_drop",
+            "--ignored",
+            "--test-threads=1",
+        ])
+        .env("PATH", child_path)
+        .env("GRAFT_SHIM_REAL_GIT", real_git)
+        .env("GRAFT_SHIM_ON", "drop")
+        .env("GRAFT_SHIM_DO", "kill")
+        .env("GIT_AUTHOR_DATE", &when)
+        .env("GIT_COMMITTER_DATE", &when)
+        .env(KILL_CHILD_REPO, path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("the child runs");
+    assert_eq!(
+        status.signal(),
+        Some(9),
+        "the shim killed the child: {status:?}"
+    );
+    std::fs::remove_dir_all(path.join(".git/shim-bin")).expect("the shim goes");
+}
+
+/// K4 (30c, review m7-30-06d Question 1): killed after the fallback put the
+/// edits back unstaged and before the drop. The relaunch recovers the entry
+/// and its line says where the edits are — back, with a copy listed — in
+/// the status line's words, not ` · edits in stash@{0}` (which reads as
+/// "they are only there"). `u`, one key, puts the switch, the split and the
+/// stash list back. Walked at 120x40 and 80x24, each writing its capture.
+#[cfg(unix)]
+#[test]
+fn a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back() {
+    for (columns, rows) in [(120u16, 40u16), (80, 24)] {
+        let scratch = staging_that_cannot_come_back();
+        let path = scratch.path();
+        let before = SplitState::of(path);
+        killed_before_the_drop(path);
+        assert_eq!(
+            git(path, &["symbolic-ref", "HEAD"]).trim(),
+            "refs/heads/fix"
+        );
+        assert_eq!(git(path, &["status", "--porcelain"]), " M f.txt\n");
+        assert_eq!(stash_list(path).len(), 1, "S still listed");
+
+        let (app, state) = App::open(path);
+        let state = app.resize(&state, columns, rows);
+        let state = crate::conflict_interim::launched(&app, state);
+        let state = app.pump(state, "the refs the relaunch reads", |state: &AppState| {
+            state.refs.is_some()
+        });
+        let state = crate::captures::settled_frame(&app, state);
+        // The row marks (`ⓘ`) are the radar's own job's: wait for it too.
+        let state = crate::captures::radar_answered(&app, state);
+        let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW))).join("\n");
+        // At 80 the line is cut after `a copy stay…`: the notice has no
+        // ladder, so `stash@{0}` and `J to inspect` go (30c NOTES, a gap for
+        // the conductor). What fits is asserted; the cut is not endorsed.
+        let clause = if columns >= 120 {
+            "your edits are back \u{b7} a copy stays in stash@{0} \u{b7} J to inspect"
+        } else {
+            "checkout fix \u{b7} your edits are back"
+        };
+        assert!(drawn.contains(clause), "{columns}x{rows}:\n{drawn}");
+        assert!(
+            !drawn.contains("edits in stash"),
+            "{columns}x{rows}:\n{drawn}"
+        );
+        check_shot(
+            &format!("m7/30c-relaunch-edits-back-{columns}x{rows}.txt"),
+            &format!(
+                "{}\n{drawn}\n",
+                RELAUNCH_HEADER.replace("<size>", &format!("{columns}x{rows}"))
+            ),
+        );
+
+        let mut keys = counted(&app);
+        let state = keys.press(&state, KeyCode::Char('u'));
+        let state = quiet(&app, app.settle_write(state, "the undo"));
+        assert_eq!(keys.count, UNDO_KEYS);
+        assert_eq!(
+            git(path, &["symbolic-ref", "HEAD"]).trim(),
+            "refs/heads/main"
+        );
+        assert_eq!(SplitState::of(path), before, "index and tree as before");
+        assert!(stash_list(path).is_empty(), "the stash list as before");
+        drop(state);
+        app.close();
+    }
+}
+
+#[cfg(unix)]
+const RELAUNCH_HEADER: &str = "\
+# m7/30c-relaunch-edits-back-<size>.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# a_relaunch_after_a_kill_before_the_drop_says_the_edits_are_back,
+# asserted). Not a pty capture: a character grid with no colour (CLAUDE.md
+# rule 5, colour unverified).
+#
+# What right looks like: `f.txt` line 5 edited and staged on `main`, a
+# switch to `fix` killed after the edits came back (unstaged) and before
+# the stash was dropped; Graft launched again.
+#  - HEAD on `fix`.
+#  - The bottom row reads `an operation was interrupted: checkout fix ·
+#    your edits are back · a copy stays in stash@{0} · J to inspect`.
+#    At 80 columns it is cut after `a copy stay…`: `stash@{0}` and
+#    `J to inspect` are lost (a known gap, 30c NOTES; not what right
+#    looks like).
+#  - Nowhere `edits in stash@{0}` alone, which would say the edits are
+#    only in the stash.
+";

@@ -1190,6 +1190,10 @@ fn every_field_spelled_out() -> AppState {
         banner_focus: false,
         ended_by_answer: false,
         live_entries: Vec::new(),
+        interrupted_edits: vec![(
+            graft_core::journal::EntryId::new(2, [0; 10]),
+            graft_ops::EditsAt::Back { copy: Some(0) },
+        )],
         stopped: None,
         clash: None,
         clash_facts_seen: false,
@@ -4640,6 +4644,7 @@ fn overlay_over(mut state: AppState, overlay: Shown) -> AppState {
                 entries: vec![journal_entry()],
                 unreadable: Vec::new(),
                 live: Vec::new(),
+                interrupted_edits: Vec::new(),
             }));
         }
         Shown::Stash => {

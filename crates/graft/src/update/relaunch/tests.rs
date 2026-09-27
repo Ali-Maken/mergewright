@@ -74,6 +74,7 @@ fn journal_read(state: &mut AppState, live: bool) -> AppEvent {
             } else {
                 Vec::new()
             },
+            interrupted_edits: Vec::new(),
         }))),
     )
 }
