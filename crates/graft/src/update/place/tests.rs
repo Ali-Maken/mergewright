@@ -138,6 +138,39 @@ pub(crate) fn place_on_screen(mut state: AppState, finding: bool, ignore_file: b
     state
 }
 
+/// `update::tests`' sweep: [`place_on_screen`]'s place re-reading — after
+/// `w`, and (with the ignore file) after `i` (20k). With neither flag, also
+/// the first read, `B` just pressed on `state`'s pane.
+pub(crate) fn place_reading(state: AppState, finding: bool, ignore_file: bool) -> Vec<AppState> {
+    let mut first = Vec::new();
+    if !finding && !ignore_file {
+        let mut pane = state.clone();
+        on_a_file(&mut pane);
+        let at = pane_at(22);
+        pane.size = at.size;
+        pane.detail.body_cursor = at.detail.body_cursor;
+        first.push(press(&pane, KeyCode::Char('B')).0);
+    }
+    let ready = place_on_screen(state, finding, ignore_file);
+    let mut keys = vec![KeyCode::Char('w')];
+    if ignore_file {
+        keys.push(KeyCode::Char('i'));
+    }
+    let rereads = keys.into_iter().map(|code| press(&ready, code).0);
+    first
+        .into_iter()
+        .chain(rereads)
+        .inspect(|reading| {
+            let place = reading.trail.on_screen().expect("a place on screen");
+            assert!(
+                matches!(place.body, BlameLoad::Reading { .. }),
+                "reading: {:?}",
+                place.body
+            );
+        })
+        .collect()
+}
+
 /// `update::tests`' sweep: a trail waiting under `state`.
 pub(crate) fn hide_a_trail(state: &mut AppState) {
     trail_over(state, ready_place(a_blame(false, false)), false);

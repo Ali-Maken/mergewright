@@ -167,3 +167,95 @@ fn the_menu_over_a_hidden_trail_closes_first_and_the_bar_does_not_lead_back() {
     assert!(closed.trail.hidden(), "blame still waits");
     assert!(leads_back(&closed), "{:?}", bar(&closed));
 }
+
+/// The walk's answer to the `⏎` landing's find: rows 0..3, the merge
+/// screen's two commits, then `third` on row 2.
+fn find_answered(state: &AppState, commands: &[Command], third: Oid) -> AppState {
+    use crate::history::HistoryUpdate;
+    use crate::update::events::Progress;
+    let (walk, request) = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ShowRows(walk, request) => Some((*walk, request.id)),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("`⏎` asks the walk to find the commit: {commands:?}"));
+    let AppEvent::Progress(id, Progress::History(HistoryUpdate::Window(mut window))) =
+        crate::update::tests::rows_for(walk, request, 0..3, 3)
+    else {
+        unreachable!("`rows_for` answers with a window");
+    };
+    let mut rows = window.rows.to_vec();
+    for (row, byte) in rows.iter_mut().zip([1u8, 2]) {
+        row.commit.id = Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("an oid");
+    }
+    rows[2].commit.id = third;
+    window.rows = rows.into();
+    update(
+        state,
+        AppEvent::Progress(id, Progress::History(HistoryUpdate::Window(window))),
+    )
+    .0
+}
+
+fn selected(state: &AppState) -> Option<Oid> {
+    state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)
+        .map(|row| row.commit.id)
+}
+
+/// Q1 (gap M7/32i-q1): `B ⏎ Esc` onto a commit the walk has not reached,
+/// then the walk answers. Going back to blame abandons that `⏎`: the landing
+/// neither selects the commit, nor opens the pane on it, nor says it missed.
+#[test]
+fn esc_back_drops_a_landing_still_seeking() {
+    let before = pane_at(22);
+    let state = blamed_at(22);
+    let (landed, commands) = press(&state, KeyCode::Enter);
+    assert!(
+        landed.line_landing.is_some(),
+        "Lina's commit is off the rows on hand: the landing seeks it"
+    );
+    let (back, _) = press(&landed, KeyCode::Escape);
+    assert!(back.trail.on_screen().is_some(), "blame is shown again");
+
+    for (third, case) in [(lina(), "reached"), (mo(), "missed")] {
+        let after = find_answered(&back, &commands, third);
+        assert_eq!(
+            selected(&after),
+            selected(&before),
+            "{case}: graph selection"
+        );
+        assert_eq!(
+            after.detail.shown, before.detail.shown,
+            "{case}: pane shown"
+        );
+        assert_eq!(after.detail.spec, before.detail.spec, "{case}: pane spec");
+        assert!(
+            !format!("{:?}", after.status).contains("not in this view"),
+            "{case}: no miss said under blame: {:?}",
+            after.status
+        );
+        assert!(
+            after.trail.on_screen().is_some(),
+            "{case}: blame still shown"
+        );
+        assert_eq!(after.line_landing, None, "{case}: the landing is gone");
+
+        // Leaving blame now: the origin is where `B` was pressed.
+        let (left, _) = press(&after, KeyCode::Escape);
+        assert!(!left.trail.is_live(), "{case}: left");
+        assert_eq!(
+            selected(&left),
+            selected(&before),
+            "{case}: origin selection"
+        );
+        assert_eq!(left.detail.spec, before.detail.spec, "{case}: origin spec");
+        assert_eq!(
+            left.detail.focus, before.detail.focus,
+            "{case}: origin focus"
+        );
+    }
+}

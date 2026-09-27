@@ -555,5 +555,5 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
     // says so. With it true the pane's `Esc` (`detail::keys`) has already
     // taken the key, before the walk's rungs above: going back is what he
     // asked for (20i).
-    super::place::show_again(next);
+    super::place::show_again(next, commands);
 }

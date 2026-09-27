@@ -136,6 +136,28 @@ fn seek(
     Err("the history walk has stopped")
 }
 
+/// Drop the pending landing, and with it the graph's seek it started: the
+/// walk's answer would otherwise still put the cursor on the commit
+/// (`History::seek` moves it itself), and the pane would follow. The
+/// withdrawn find is replaced by a request for the rows where the viewport
+/// is, as `Esc`'s `G` rung does (`update::keys::escape_key`).
+pub(crate) fn abandon(state: &mut AppState, commands: &mut Vec<Command>) {
+    let Some(landing) = state.line_landing.take() else {
+        return;
+    };
+    let LandingStage::Seeking(commit) = landing.stage else {
+        return;
+    };
+    let height = state.graph_rows();
+    if let Some(walk) = state.awaiting
+        && let Some(history) = state.history.as_mut()
+        && history.seeking == Some(commit)
+        && let Some(request) = history.withdraw_jump(height)
+    {
+        commands.push(Command::ShowRows(walk, request));
+    }
+}
+
 /// Move the pending landing on as far as the state now allows. Called after
 /// every event (`update::settle`) and by [`show_line`] itself.
 pub(crate) fn advance(state: &mut AppState, commands: &mut Vec<Command>) {

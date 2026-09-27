@@ -4484,14 +4484,21 @@ fn blame_screens(walk: JobId, context: &HintContext) -> Vec<AppState> {
         }
         // A place open from the pane on a commit, its blame read: a line
         // with a parent for `^`, a find for `n N`, the ignore file for `i`.
+        // While `read`, that place re-reading after `w` and after `i` (20k).
         HintContext::Blame {
             finding,
             ignore_file,
+            read: false,
         } => vec![super::place::tests::place_on_screen(
             commit_pane(walk, false),
             *finding,
             *ignore_file,
         )],
+        HintContext::Blame {
+            finding,
+            ignore_file,
+            read: true,
+        } => super::place::tests::place_reading(commit_pane(walk, false), *finding, *ignore_file),
         // The inner screen with a trail waiting under it.
         HintContext::BackToBlame(inner) => screen_for(inner)
             .into_iter()

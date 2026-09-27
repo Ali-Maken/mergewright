@@ -81,7 +81,7 @@ pub(crate) fn space_folds(detail: &DetailState) -> bool {
 /// on, whose `B` it is (keymap §2.1; `place::b_key` asks).
 fn place_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     match key.code {
-        KeyCode::Escape => crate::update::place::show_again(next),
+        KeyCode::Escape => crate::update::place::show_again(next, commands),
         KeyCode::Char('B') if !key.modifiers.control && !key.modifiers.alt => {
             crate::update::place::b_key(next, commands)
         }

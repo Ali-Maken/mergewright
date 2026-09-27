@@ -28,10 +28,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         } => changes_pane_list(*unmerged, *live, *tab),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
-        HintContext::Blame {
-            finding,
-            ignore_file,
-        } => blame_place_list(*finding, *ignore_file),
+        HintContext::Blame { .. } => blame_bar(context),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         HintContext::Stash => stash_list(),
@@ -141,6 +138,27 @@ pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
         list.push(hint("i", "ignore list"));
     }
     list.push(hint("esc", "back"));
+    list
+}
+
+/// [`blame_place_list`] as the bar draws it: while a read is in flight
+/// (`read`) the keys that act on a line — `⏎`, `^`, `n N` — are left out,
+/// because the place has no lines for them yet (m7-power-tools/20k).
+fn blame_bar(context: &HintContext) -> Vec<Hint> {
+    let HintContext::Blame {
+        finding,
+        ignore_file,
+        read,
+    } = *context
+    else {
+        // Only `context_list`'s `Blame` arm calls this (it takes the whole
+        // context to keep that match short); no other context has this bar.
+        return Vec::new();
+    };
+    let mut list = blame_place_list(finding, ignore_file);
+    if read {
+        list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "n N"));
+    }
     list
 }
 

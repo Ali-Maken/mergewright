@@ -73,20 +73,23 @@ pub fn every_context() -> Vec<HintContext> {
     all
 }
 
-/// The blame place's four flag pairs, and the way back to it led on one
+/// The blame place's eight flag triples, and the way back to it led on one
 /// bar of each kind the graph or the pane draws while the trail waits
 /// (m7-power-tools/20). One of each is enough: `BackToBlame` adds a lead
 /// and takes nothing away, and every inner bar is swept on its own.
 fn blame_forms() -> Vec<HintContext> {
     let mut forms: Vec<HintContext> = [false, true]
         .into_iter()
-        .flat_map(|finding| {
-            [false, true]
-                .into_iter()
-                .map(move |ignore_file| HintContext::Blame {
-                    finding,
-                    ignore_file,
-                })
+        .flat_map(|read| {
+            [false, true].into_iter().flat_map(move |finding| {
+                [false, true]
+                    .into_iter()
+                    .map(move |ignore_file| HintContext::Blame {
+                        finding,
+                        ignore_file,
+                        read,
+                    })
+            })
         })
         .collect();
     let under = [
