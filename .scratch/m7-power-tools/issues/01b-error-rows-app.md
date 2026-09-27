@@ -17,9 +17,9 @@ Scout: 01's scout, brief item 2 (the three stop shapes and every match site).
 01's rows, as 01 "Decided" words them: **:494, :495, :572**.
 
 ## Acceptance (tick 01's boxes in 01's file, each naming its test)
-- [ ] 01 Acceptance rows :572, :495, :494 (red first where 01 says so).
-- [ ] 01's last two boxes (NOTES row → test for all eight rows, 01a's included; MAP.md graft-ops and graft).
-- [ ] Gates workspace-wide.
+- [x] 01 Acceptance rows :572, :495, :494 (red first where 01 says so). 01 lines 62 (:572: `jobs::conflict::tests::a_permission_error_shows_in_the_card_not_empty`, `a_relative_path_reads_from_the_workdir`, `cross::an_unreadable_card_lands_its_words_as_the_notice`), 66 (:495: `undo_cancel::every_stop_is_one_shape` heavy + `every_stop_is_one_shape_sampled` fast, graft `jobs::undo::tests::a_stop_before_any_step_reads_as_cancelled`), 69 (:494: `undo::tests::drift_on_redo_says_capital_u`).
+- [x] 01's last two boxes (NOTES row → test for all eight rows, 01a's included; MAP.md graft-ops and graft). 01 lines 70–71: rows in 01a and 01b NOTES; MAP lines listed there (docs, no test).
+- [x] Gates workspace-wide (2026-09-27): fmt ok; clippy `--all-targets -D warnings` ok, and with `--features graft-ops/heavy-tests` ok (compiled, heavy tier not run); nextest 4262/4262; `test --doc` ok.
 
 ## Touches
 01 "Touches": `RestoreError` callers; the M6 resolver cards (m6 resolver captures byte-identical); undo/redo status
@@ -96,8 +96,9 @@ Scout used: `.scratch/m7-power-tools/scouts/01.md` (brief item 2). No compaction
   between-step stop too. No journal change: `begin` journals what it wrote; nothing new invented.
   **Judgement to check:** `facts_or_cancel` also asks the stop (a rail failure while the stop is raised = cancel),
   because stopped reads surface nested in several `FactsError` variants. A real read failure that coincides with
-  `Esc` reads as a clean cancel; nothing was written either way. Cost: the sweep takes ~110 s alone (stride 1, two
-  paths); nextest runs it in parallel (workspace 393 s). The old unit test is renamed
+  `Esc` reads as a clean cancel; nothing was written either way. **Question for review:** is that the right call?
+  The stride-1 sweep (~110 s) is heavy tier (`#[cfg(feature = "heavy-tests")]`); the fast tier runs
+  `every_stop_is_one_shape_sampled` (execute path polls 1, mid, last; undo path 1, last): 3.68 s in nextest. The old unit test is renamed
   `undo::tests::inner_stops_fold_to_one_recogniser`.
 - **:572 done (granted).** `jobs::conflict::tests::a_permission_error_shows_in_the_card_not_empty`, red first, quoted:
   `no words: OpenedFile { file: None, how: DeletedByThem, binary: false, on_disk: None, unreadable: None, … }`. Fix
