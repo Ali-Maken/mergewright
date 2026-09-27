@@ -24,3 +24,18 @@ the existing file-diff read (`jobs/detail.rs`); a new job kind is outside this t
 
 ## Size
 ~45k.
+
+## NOTES (builder, 2026-09-27) — blocked before any code
+- **Readers of `StatusEntry.submodule`:** none read it (grep `\.submodule\b`: 0 reads). The type change
+  `bool → Option<SubmoduleStatus>` (13 "Decided", binding) breaks every struct literal instead: 40 `submodule: false`
+  sites in 25 files (grep `submodule: (false|true)` over `crates`, `fuzz`). graft-git `status.rs`, `status/tests.rs`;
+  graft-ops `apply/set_aside/put_back.rs`, `operation/tests.rs`, `operation/history/tests.rs`; graft
+  `update/operate.rs` (7), `update/selection.rs` (3), `update/tests.rs` (4: lines 2754, 2764, 2774, 4968), and 17 test
+  files under `update/**` and `view/**`. Each becomes `submodule: None`.
+- **Blocked: needs `crates/graft/src/update/tests.rs`** — held by 16 (parallel-plan wave 2). No design keeps those
+  4 literals compiling: any new field or type on `StatusEntry` breaks them (literals, no `..Default`), and a side
+  channel off `StatusEntry` contradicts 13 "Decided". 01b's files: no overlap (checked its `Files:` line).
+- **Next step:** after 16 merges (or on the conductor's grant of those 4 lines, `false → None` only), start at
+  graft-git `status.rs` `is_submodule` (:356) → `submodule_status(field) -> Result<Option<SubmoduleStatus>, _>`
+  (`N...` → None, `S<c><m><u>` → flags), red test `parse_reads_each_submodule_flag` first.
+- Scout used: `scouts/13.md` items 1–2. No compaction.
