@@ -1000,3 +1000,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/09b-ver | Four other jobs spawn `git --version` on every run (09b found the one in `jobs/rewrite.rs:88`, cost ~30 ms); read once per process | **broken** (perf) | M7 |
 | M7/09b-perf | `a` dependents check 6.8 ms vs 16.7 budget measured at load ~7 (`docs/perf/09b.txt`); quiet re-run owed | **unverified** (perf) | M7 |
 | M7/09b-q3 | Put-in landing says unstaged edits are back from "existed at plan", not `done_status`'s fact (`landed` can't see it) — deviation from 09b ruling | **unverified** (question) | M7 |
+| M7/21c-ws-mark | Detail, blame and history panes don't show that ignore-whitespace is on | **broken** (visibility) | M8 |
