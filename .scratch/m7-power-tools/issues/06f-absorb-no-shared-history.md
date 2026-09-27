@@ -1,6 +1,6 @@
 # 06f absorb-no-shared-history — an orphan branch's commits are its own; review m7-06e-20h Major 1 and Minor 3
 
-Status: draft
+Status: done
 Blocked by: none by content (graft-ops; the conductor sequences it against whoever holds it).
 Crates: graft-ops only (+ `docs/design/02-keymap.md` §2.3 `a` row: one verbatim replacement, below).
 Build with: **Sonnet**. It changes one arm of a walk that is already written and tested, and every decision is made below. The pushed stop already runs first on every path, so the change can't reach a pushed commit. Tests judge it.
@@ -81,14 +81,20 @@ In `docs/design/02-keymap.md` §2.3, replace the whole `a` row (`:199`) with:
 Nothing else in §2.3 changes. Check `:221` is untouched.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Premise confirmed, citing the line (`reads.rs`, `unpushed.rs`), or the ticket stopped as `blocked: ruling premise`.
-- [ ] Tests 1–3 seen red before the fix, green after, each named.
-- [ ] Test 4 named, or dropped with its line.
-- [ ] Tests 5–6 named. Every test in 7 is green and named.
-- [ ] Minor 3: the assertion is added, with the mutant shown red and reverted (`git diff` of the mutated file is empty afterwards).
-- [ ] Keymap row replaced verbatim. `git diff docs/design/02-keymap.md` shows one line changed.
-- [ ] MAP.md (graft-ops) is updated. `:264`: `NoCommitsOfItsOwn` fires when "the base is `HEAD`, not the default or only branch". `:273`: the fallback runs on "the default or only branch, or a branch with no base". `:274`: the walk's entry order (1–4 above).
-- [ ] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `cargo test --doc --workspace`.
+- [x] Premise confirmed: `base_of` returns `history_reads::merge_base(HEAD, against)` (`rewrite/reads.rs:67`), which is `Some(HEAD)` for a branch at/behind `main`'s tip; the fold into none was only at `unpushed.rs:95` (`.filter(|base| *base != head.oid)`). Test: `absorb_orphan::a_branch_behind_mains_tip_has_no_commits_of_its_own` stays green after the fold is removed, which it could not if `base_of` returned none there.
+- [x] Tests 1–3 red before, green after: `absorb_orphan::an_orphan_branch_falls_back` (red: `absorb_orphan.rs:49` absorb map errored), `absorb_orphan::an_orphan_branch_past_ten_is_beyond_reach` (red: left `"a puts staged changes into a commit on your branch · 60cbc59 isn't on it"`), `absorb_orphan::a_pushed_orphan_branch_stops_at_the_remote` (red: left `NotOnYourBranch {…}`, right `AlreadyPushed {…}`).
+- [x] Test 4 dropped: every repo with a local branch resolves a default — `most_merged_into` takes the first branch when none is best yet (`graft-git/src/branches.rs:230-235`, `None => true`), reached from `pick` (`:174`).
+- [x] Tests 5–6: `absorb_orphan::a_branch_behind_mains_tip_has_no_commits_of_its_own` (green from the start, as expected), `absorb_orphan::absorb_and_a_agree_on_an_orphan_branch` (red before: left 0 right 1). Test 7, all green in the full run: `absorb_pushed::a_new_branch_at_mains_tip_has_no_commits_of_its_own`, `absorb_pushed::a_tracked_branch_pushed_to_its_tip_is_all_pushed`, `absorb_pushed::a_detached_head_never_reaches_the_fallback`, `absorb_unpushed::absorb_on_the_only_branch_places_into_its_commit`, `rewrite_plan::open_runs_from_head_down_to_where_the_branch_left_main`.
+- [x] Minor 3: `absorb_pushed::a_into_a_pushed_head_plans_like_amend` asserts `carries_the_dependent` in both halves. Mutant (`plan.rs:227` line cut to `take(1)`) → red at `absorb_pushed.rs:347` "the dependent follows"; reverted by `git checkout`, `git diff --stat plan.rs` empty.
+- [x] Keymap row replaced verbatim (it sat at `:202`, not `:199`, on this base; §2.3 confirmed). `git diff --stat` → 1 insertion, 1 deletion.
+- [x] MAP.md (graft-ops) updated: `NoCommitsOfItsOwn` line, `ABSORB_FALLBACK_DEPTH`, `your_commits` entry order 1–4, `absorb_orphan.rs` listed.
+- [x] Gates workspace-wide: fmt --check ok, clippy -D warnings ok, nextest 4155/4155 passed, doctests ok.
+
+## NOTES (builder, 2026-09-27)
+- No scout: the ticket named lines; re-read each.
+- Fix is the cause: the entry in `your_commits` (`unpushed.rs:98-115`) now tells `Some(HEAD)` from `None`; `None` goes straight to the fallback (skips the `falls_back` read).
+- Touches: `your_commits` callers `absorb.rs:39`, `plan.rs:249` — unedited, covered by tests 1–3, 6. `reads.rs`/`plan.rs` `git diff` empty. `dependents` in test 1: line = `[refs/heads/docs]` alone (asserted). `crates/graft` grep `NoCommitsOfItsOwn|BeyondReach` → 0. Cost: orphan branch runs the fallback, the same reads as the default branch (one read fewer than before: no `falls_back`). Journal/undo: none.
+- Not compacted.
 
 ## Touches (check each; NOTES says how)
 - **`your_commits` callers:** `rewrite/absorb.rs:39` (`absorb_base`) and `rewrite/plan.rs` `refuse_out_of_reach` (from `amend_into` only). Re-grep; both follow the new arm without edits.
