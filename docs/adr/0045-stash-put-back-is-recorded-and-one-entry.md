@@ -265,3 +265,28 @@ launches with `OnEdits::SetAside` (10b :19–20). A detached target also preview
 (10b :21). Untracked files alone are not unsaved edits; §4 leaves them, and git's own refusal words stand if one is in
 the way (10b :22–23). Verified by `m7_walk::switch::switch_clean_via_menu_is_two_keys`
 (`crates/graft/tests/it/m7_walk/switch.rs:126`) and `switch_with_edits_via_menu`.
+
+## Amended 2026-09-27 (11a) — a cherry-pick sets aside
+
+The header's "for rebase and checkout" now includes **cherry-pick**; §4's kinds list gains `CherryPick`
+(`.scratch/m7-power-tools/issues/11a-pick-refusals.md` NOTES, "ADR-0045 amendment rows owed"). As built: a pick over
+unsaved edits sets aside **every changed tracked file**, as rebase does — not only the paths the pick touches, because
+`sets_aside` reads no commit (11a NOTES, "Deviation"). Untracked files are not counted and never move. After `y`, every
+edit is back, staged part still staged: `crates/graft-ops/src/apply/set_aside/put_back.rs:66` `apply(ctx, stash, true, …)`
+= `git stash apply --index S`, `S` being `git stash create` of the whole tree (`apply/set_aside.rs:80-84`). A clash is
+only possible on a file the pick changed. `touches` adds `refs/stash` (without it `u` failed). A pick of `HEAD`, an
+ancestor or a merge is refused before anything is set aside (`guard_pick`). Verified by
+`picking_over_touched_unsaved_edits_sets_them_aside`, `a_pick_put_back_that_clashes_stops_as_a_clash`,
+`edits_the_pick_leaves_alone_are_set_aside_and_come_back_as_they_were`,
+`picking_head_is_refused_in_the_preview_and_in_apply` (`crates/graft-ops/tests/it/cherry_pick.rs`), per 11a NOTES.
+
+## Amended 2026-09-27 (03b) — a fast-forward pull sets aside
+
+Text from `.scratch/m7-power-tools/issues/03-land-on-result.md` NOTES -b ("Proposed ADR-0045 amendment"): §4 extends
+to a **fast-forward pull** whose incoming changes touch a changed tracked path (a rename's old path counts). The pull's
+fetch runs **before** the set-aside decision (its result is a fact: `RepoFacts.incoming`); the entry opens after it,
+recording the fetch line first. A failed fetch opens and closes the entry as before, nothing set aside. A diverged pull
+or one that touches none of his files sets nothing aside. When it does set aside, **every** changed tracked file goes
+(§4 is all-or-nothing); untracked never. Verified by `a_ff_pull_over_overlapping_edits_sets_them_aside`,
+`a_diverged_pull_over_edits_sets_nothing_aside`, `a_pull_whose_fetch_fails_journals_as_today`,
+`the_ff_pull_entry_is_one_entry_and_u_restores_edits` (`crates/graft-ops/tests/it/pull_set_aside.rs`), per 03 NOTES -b.

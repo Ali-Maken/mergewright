@@ -233,15 +233,22 @@ pub(crate) fn instant_refused(
 }
 
 /// What a switch's clean landing says before its tick: `on <b>`, or `on <b>
-/// (new, tracks <origin/b>)`. `None` for a detached checkout (today's words)
-/// and every other kind. Drawn `on <b> ✓ · u goes back` — the tick where
+/// (new, tracks <origin/b>)`; `on <nb>` for a create that switches (`b <name>
+/// ⇥`). `None` for a detached checkout (today's words) and every other kind. Drawn `on <b> ✓ · u goes back` — the tick where
 /// every `Done` draws it (`view::status::done_line`; conductor ruling,
 /// m7-power-tools/10b), with `your edits are back` between when edits were
 /// set aside.
 #[must_use]
 pub(crate) fn landed_words(op: &Operation) -> Option<String> {
-    let Operation::Checkout(params) = op else {
-        return None;
+    let params = match op {
+        Operation::Checkout(params) => params,
+        // `b <name> ⇥` is a switch too: the same words for the same outcome
+        // (H4; review m7-16b..21b, Minor 1). A create that stays put keeps
+        // the entry's `branch <name> at <sha7>`.
+        Operation::BranchCreate(create) if create.checkout => {
+            return Some(format!("on {}", create.name));
+        }
+        _ => return None,
     };
     match &params.to {
         CheckoutTarget::Branch(name) => Some(format!(

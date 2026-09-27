@@ -108,7 +108,7 @@ pub(super) fn pulling() -> Vec<Scenario> {
     vec![
         pull_fast_forward(),
         pull_diverged_refused(),
-        pull_dirty_file_refused(),
+        pull_dirty_file_sets_it_aside(),
         pull_no_upstream_refused(),
     ]
 }
@@ -218,9 +218,15 @@ fn pull_diverged_refused() -> Scenario {
     }
 }
 
-fn pull_dirty_file_refused() -> Scenario {
+/// Was `pull-dirty-file-refused` (m6-conflicts/85 D). Since
+/// m7-power-tools/03b a fast-forward pull over his edit to a file it brings
+/// sets the edit aside and puts it back (ADR-0045 §4): here both sides
+/// rewrote the one line, so the put-back clashes and he lands on the
+/// resolver with `HEAD` at the teammate's commit and his bytes kept in the
+/// file's clash.
+fn pull_dirty_file_sets_it_aside() -> Scenario {
     Scenario {
-        name: "pull-dirty-file-refused",
+        name: "pull-dirty-file-sets-it-aside",
         shape: Shape::Linear,
         remote: RemoteKind::Local,
         setup: |fixture| {
@@ -233,37 +239,31 @@ fn pull_dirty_file_refused() -> Scenario {
         steps: vec![
             Step::WaitFor(Wait::Ready),
             key(ch('p')),
-            Step::Settle("the refused pull"),
-            Step::See("the line names the file", |state| {
-                sticky_containing(
-                    state,
-                    &[
-                        // m6-conflicts/85 D: the file in his words, and
-                        // keys that work from where he is.
-                        "pull refused: your edits to",
-                        "would be overwritten",
-                        "S s stashes them first",
-                    ],
-                )
+            Step::Settle("the pull over his edit"),
+            Step::See("the resolver is open", |state| {
+                check(state.resolver.is_some(), || {
+                    format!("no resolver; status: {}", status_text(state))
+                })
             }),
-            Step::Mark("refused"),
+            Step::Mark("clashed"),
         ],
         expect: |fixture, marks| {
-            let refused = marks.get("refused")?;
+            let clashed = marks.get("clashed")?;
             let file = fixture.a_tracked_file()?;
-            check(
-                refused.work.files.get(Path::new(&file)).map(Vec::as_slice)
-                    == Some(b"mine, uncommitted\n".as_slice()),
-                || format!("{file} is not byte for byte the uncommitted edit"),
-            )?;
-            check(refused.work.files == marks.before.work.files, || {
-                format!(
-                    "a file changed: {:?}",
-                    diff_work(&marks.before.work, &refused.work)
-                )
+            let bytes = clashed
+                .work
+                .files
+                .get(Path::new(&file))
+                .map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+                .ok_or_else(|| format!("{file} is gone from the tree"))?;
+            check(bytes.contains("mine, uncommitted"), || {
+                format!("{file} lost his edit: {bytes:?}")
             })?;
-            check(head(refused)? == head(&marks.before)?, || {
-                "main moved".to_owned()
+            check(bytes.contains("theirs"), || {
+                format!("{file} lacks the teammate's line: {bytes:?}")
+            })?;
+            check(head(clashed)? != head(&marks.before)?, || {
+                "main did not move: the pull did not go through".to_owned()
             })
         },
         capture: None,

@@ -733,6 +733,8 @@ mod tests {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            config_before: std::collections::BTreeMap::new(),
+            config_after: std::collections::BTreeMap::new(),
             put_back: None,
         }
     }

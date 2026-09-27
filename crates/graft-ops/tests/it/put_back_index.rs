@@ -120,14 +120,30 @@ enum Kind {
     Rewrite,
     /// The time machine putting a checked-out branch back.
     MoveRef,
+    /// `p`, fast-forward, over an unsaved edit to a file it brings
+    /// (m7-power-tools/03b).
+    Pull,
 }
 
 impl Kind {
-    const ALL: [Kind; 4] = [Kind::Checkout, Kind::Rebase, Kind::Rewrite, Kind::MoveRef];
+    const ALL: [Kind; 5] = [
+        Kind::Checkout,
+        Kind::Rebase,
+        Kind::Rewrite,
+        Kind::MoveRef,
+        Kind::Pull,
+    ];
 
-    fn start(self, repo: &TempRepo) {
-        if let Kind::Rebase | Kind::Rewrite = self {
-            repo.git(&["switch", "-q", "feature"]);
+    /// Ready the repository for this kind. A pull's remote comes back, to
+    /// live as long as the test.
+    fn start(self, repo: &TempRepo) -> Option<TempRepo> {
+        match self {
+            Kind::Rebase | Kind::Rewrite => {
+                repo.git(&["switch", "-q", "feature"]);
+                None
+            }
+            Kind::Pull => Some(origin_ahead_of(repo)),
+            Kind::Checkout | Kind::MoveRef => None,
         }
     }
 
@@ -137,8 +153,26 @@ impl Kind {
             Kind::Rebase => rebase_onto_main(repo),
             Kind::Rewrite => rewrite_dropping(repo),
             Kind::MoveRef => move_main_back(repo),
+            Kind::Pull => crate::pull_set_aside::pull(repo),
         }
     }
+}
+
+/// A pull's side of T3: `p.txt` committed on `main`, then `origin` (a copy)
+/// one commit ahead changing its first line, already fetched — a pull's
+/// undo never moves the tracking ref back, so "undo exact" needs it there
+/// before — and his unsaved edit to its last line, which makes the pull set
+/// aside. T2's `f.txt` split is then made over it as for every kind.
+fn origin_ahead_of(repo: &TempRepo) -> TempRepo {
+    repo.write("p.txt", b"1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n");
+    repo.commit_all("p");
+    let origin = repo.copy();
+    crate::pull_set_aside::track(repo, &origin);
+    origin.write("p.txt", b"one\n2\n3\n4\n5\n6\n7\n8\n9\n10\n");
+    origin.commit_all("their change");
+    repo.git(&["fetch", "-q", "origin"]);
+    repo.write("p.txt", b"1\n2\n3\n4\n5\n6\n7\n8\n9\nten\n");
+    origin
 }
 
 /// T2's shape: `f.txt` staged at v2, then edited on to v3. v2 is only in the
@@ -222,7 +256,7 @@ fn switch_keeps_index_only_content() {
 fn every_set_aside_kind_keeps_the_index() {
     for kind in Kind::ALL {
         let repo = forked();
-        kind.start(&repo);
+        let _origin = kind.start(&repo);
         staged_then_edited(&repo);
         let what = format!("{kind:?}");
         let before = whole(&repo);

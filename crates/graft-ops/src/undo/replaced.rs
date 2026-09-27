@@ -87,7 +87,8 @@ pub(super) fn replaced(
             | Step::SetHead(_)
             | Step::StashStore { .. }
             | Step::StashDrop { .. }
-            | Step::SetMergeState(_) => {}
+            | Step::SetMergeState(_)
+            | Step::SetBranchConfig { .. } => {}
         }
     }
     Ok(Replaced {

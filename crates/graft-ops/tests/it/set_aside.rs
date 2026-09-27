@@ -105,7 +105,7 @@ impl Kind {
 
 /// One shape of uncommitted work, as the round-trip table names it.
 #[derive(Clone, Copy, Debug)]
-enum Tree {
+pub(crate) enum Tree {
     /// `base.txt` staged one way and edited further unstaged, plus an
     /// untracked file.
     StagedUnstagedUntracked,
@@ -126,7 +126,18 @@ enum Tree {
 }
 
 impl Tree {
-    fn make(self, repo: &TempRepo) {
+    /// Every shape, in the table's order.
+    pub(crate) const ALL: [Tree; 7] = [
+        Tree::StagedUnstagedUntracked,
+        Tree::StagedNewFile,
+        Tree::Deletion,
+        Tree::Rename,
+        Tree::RmCached,
+        Tree::IndexOnly,
+        Tree::ModeOnly,
+    ];
+
+    pub(crate) fn make(self, repo: &TempRepo) {
         match self {
             Tree::StagedUnstagedUntracked => {
                 repo.write("base.txt", b"staged\n");
@@ -237,7 +248,7 @@ pub(crate) fn porcelain(repo: &TempRepo) -> Vec<String> {
 /// How many staged entries lost their staging, read from git alone: of the
 /// paths staged `before` (a rename's old and new path both), those that
 /// `after` lists changed in the working tree with nothing staged.
-fn staging_lost(before: &[String], after: &[String]) -> usize {
+pub(crate) fn staging_lost(before: &[String], after: &[String]) -> usize {
     let staged_before: Vec<&str> = before
         .iter()
         .filter(|line| !line.starts_with(' ') && !line.starts_with('?'))
@@ -253,7 +264,7 @@ fn staging_lost(before: &[String], after: &[String]) -> usize {
 impl Tree {
     /// Each edited file as the put-back must leave it: `Some(bytes)` on
     /// disk, `None` gone.
-    fn edits(self) -> &'static [(&'static str, Option<&'static [u8]>)] {
+    pub(crate) fn edits(self) -> &'static [(&'static str, Option<&'static [u8]>)] {
         match self {
             Tree::StagedUnstagedUntracked => &[
                 ("base.txt", Some(b"staged\nand unstaged\n")),

@@ -981,21 +981,19 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r0120-m10 | Run loop: grandchild holding a pipe past the poll → a landed write still reads `Stopped` (`graft-git/src/run.rs:489-493`, `after_exit` ≈`:537`; narrower since 27b, commented). Minor 10 | **broken** (narrow residual) | M8 |
 | M7/r0120-q1 | Can the `x base` badge row (`CompareBase.row`, `update/geometry.rs` `badge_at`) go stale after a refresh re-lays the graph? No re-anchor found; not every path traced. Question | **unverified** (question) | M7 |
 | M7/r0120-q2 | 01b: a real rail-read failure racing Esc is folded into "cancelled" (`undo/execute.rs:288-294`); no test covers it. Better: fold only `FactsError::Stopped`, keep failure words. Question | **unverified** (question) | M7 |
-| M7/10b-track | Undo of a `Track` switch leaves the new branch's upstream config behind (10b NOTES) | **broken** | M7 |
-| M7/10b-q | Should a switching create (`n` new branch) land with `on nb ✓` like every other switch? (10b question; Done pattern `update/state.rs:1021-1041`) | **unverified** (question) | M7 |
 | M7/30i-ascii | Submodule row `▣` and marks `→ ± ?` have no ASCII-tier fallback (literal in graft-ui `detail_pane/files.rs`) | **unverified** | M8 |
-| M7/30i-facts | Diff job never fills `SubmoduleView`'s inside facts (`graft/src/jobs/detail.rs:298-304`); 30i's `body.rs` copies them from the file row under the cursor (symptom-side). Cause fix: fill them in the diff job | **broken** (workaround in place) | M7 |
-| M7/11a-adr | ADR-0045 needs amendment rows for the cherry-pick set-aside kind (11a; every changed tracked file set aside, put back by `apply/set_aside/put_back.rs:66`). Doc owed (researcher) | **broken** (doc stale) | M7 |
 | M7/11a-gitver | Pick of an ancestor verified only on git 2.54.0 (`git_alone_stops_on_a_pick_of_an_ancestor`); other versions not run | **unverified** | M8 |
 | M7/21b-narrow | History bar empty below 30 columns: conductor ladder step 3 (`esc back` alone) broke two invariant tests (21b NOTES); `esc` still works, unseen | **broken** (below 30 cols only) | M8 |
 | M7/21b-shots | History captures: fixture has 3 changes, not 4 as the mock; `┃` on rows 17–28 vs title 18–29; `tab` vs `⇥` word. Judge by eye; m5/m2 detail capture producers unconfirmed | **unverified** | M7 |
 | M7/21c-ws | Whitespace-ignored mode (`w`) shows on no screen: detail, blame and history draw no words for it; only the bar says `w whitespace` (21c spec, planner) | **broken** (state invisible) | M8 |
 | M7/r1621-m5 | Submodule marks run into the diff pane's line 2 at 120 (`submodule-row-120x40.txt` row 5: marks end col 28, text starts 30). Judge by eye | **unverified** (visual) | M7 |
-| M7/r1621-m6 | ARCHITECTURE.md:88-92 stale: no `place/history*`, trace/whole-file jobs, `graft-ui::history`, `update::switch` | **broken** (doc stale) | M7 |
 | M7/r1621-m7 | `unreachable!` leaning on another fn's invariant: `detail_pane/files.rs:109`, `preview/kinds.rs:316`, `jobs/runner.rs:361`. Make unrepresentable (review Minor 7) | **broken** (fragile) | M8 |
-| M7/r1621-m9 | Note `m7-power-tools.md:714` says only touched edits set aside; 11a sets aside every changed tracked file | **broken** (doc stale) | M7 |
-| M7/r1621-m10 | Contact-sheet captions TSV lacks rows for history-{lines-187x50,file-140x40,100x30}, esc-back-to-history-120x40, force-box-leaves-{120x40,80x24}, submodule-row-187x40 | **broken** (sheet) | M7 |
 | M7/r1621-m11 | Unbounded working-tree diff read on `L` from a working-tree blame (`jobs/detail/history.rs:100-108`, `usize::MAX`) | **broken** (perf unmeasured) | M7 |
 | M7/r1621-m12 | `git_alone_stops_on_a_pick_of_an_ancestor` pins git's words in the fast tier (`cherry_pick.rs:281-294`); move to heavy or clear failure message | **broken** (test) | M7 |
 | M7/r1621-q1 | History title names HEAD's line range, bracket the selected commit's (17–28 vs 18–29): say on screen? | **unverified** (question) | M7 |
 | M7/r1621-q2 | 11a: a pick with unrelated edits does a stash round trip it didn't need ("N files set aside" for N untouched) | **unverified** (question) | M8 |
+| M7/03b-count | Pull journey has no row in the design note step-count fence; walk hardcodes 1 key (`m7_walk/pull.rs`) | **broken** (doc) | M7 |
+
+| M7/30j-int | Interrupted Track (`mark_interrupted`) reads no `config_after`, so its undo keeps the upstream; config restore is not compare-and-swap (an outside edit between op and undo is overwritten) (30j NOTES) | **broken** (narrow) | M8 |
+| M7/30j-subdispatch | `jobs/runner.rs` catch-alls remain at `:328` (dispatch_detail) and `:361` (dispatch_history) sub-dispatch | **broken** (fragile) | M8 |
+| M7/30j-size | Over 400 lines, pre-existing: `update/detail/ops.rs` 705, `update/remote.rs` 531, `jobs/runner.rs` ~1200 → 30h scope or M8 | **broken** (readability) | M8 |

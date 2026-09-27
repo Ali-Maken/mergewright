@@ -34,6 +34,9 @@ pub(super) struct Before {
     /// git's merge state when the restore began. `None` is a recorded state
     /// here ("not merging"), not a gap, so it never reads as `NoBefore`.
     pub(super) merge: Option<MergeState>,
+    /// `branch.<name>.*` of every branch the restore touches, when it began.
+    /// A key not in the map was not set: a recorded state, not a gap.
+    pub(super) config: BTreeMap<String, Vec<String>>,
 }
 
 /// What a cancelled restore left behind.
@@ -250,6 +253,12 @@ fn reverse_of(step: &Step, before: &Before) -> Result<Step, RestoreError> {
         // Idempotent like the restores: writing the state the restore found
         // is right whether or not the forward step landed.
         Step::SetMergeState(_) => Step::SetMergeState(before.merge.clone()),
+        // The same: the values the restore found. A key the entry's
+        // before-read did not find was unset, so the reverse unsets it.
+        Step::SetBranchConfig { key, .. } => Step::SetBranchConfig {
+            key: key.clone(),
+            to: before.config.get(key).cloned().unwrap_or_default(),
+        },
     })
 }
 
@@ -304,6 +313,7 @@ fn step_name(step: &Step) -> String {
         Step::RestoreWorktree { .. } => "the working tree".to_owned(),
         Step::StashStore { .. } | Step::StashDrop { .. } => "the stash".to_owned(),
         Step::SetMergeState(_) => "the merge in progress".to_owned(),
+        Step::SetBranchConfig { key, .. } => key.clone(),
     }
 }
 

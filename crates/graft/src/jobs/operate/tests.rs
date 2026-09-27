@@ -33,6 +33,8 @@ fn a_resume_git_fails_answers_failed() {
         reverses: None,
         merge_before: None,
         merge_after: None,
+        config_before: std::collections::BTreeMap::new(),
+        config_after: std::collections::BTreeMap::new(),
         put_back: None,
     };
     let answered = answer(Err(ApplyError::Git {
@@ -79,6 +81,8 @@ fn failed_checkout(head_after: Option<HeadRef>) -> ApplyError {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            config_before: std::collections::BTreeMap::new(),
+            config_after: std::collections::BTreeMap::new(),
             put_back: None,
         }),
         error: RunError::GitNotFound,

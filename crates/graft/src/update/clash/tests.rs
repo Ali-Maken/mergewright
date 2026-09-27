@@ -59,6 +59,8 @@ pub(crate) fn pop_entry() -> JournalEntry {
         reverses: None,
         merge_before: None,
         merge_after: None,
+        config_before: std::collections::BTreeMap::new(),
+        config_after: std::collections::BTreeMap::new(),
         put_back: Some(PutBack {
             stash: oid(STASH),
             why: PutBackWhy::Pop,

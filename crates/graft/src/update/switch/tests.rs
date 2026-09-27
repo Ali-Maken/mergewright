@@ -369,6 +369,8 @@ fn applied(kind: OperationKind, set_aside: bool) -> Applied {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            config_before: std::collections::BTreeMap::new(),
+            config_after: std::collections::BTreeMap::new(),
             put_back: set_aside.then(|| PutBack {
                 stash: oid(9),
                 why: PutBackWhy::SetAside,
@@ -444,4 +446,43 @@ fn switch_words_on_landing() {
         &mut next,
     );
     assert_eq!(state.status, Status::done("the entry's own words"));
+}
+
+/// Review m7-16b..21b, Minor 1 (gap M7/10b-q, answered yes): `b <name> ⇥`
+/// lands on the new branch in the switch's words, not the entry's
+/// `branch nb at <sha7>`; a plain `b <name>` (no switch) keeps them.
+#[test]
+fn a_switching_create_lands_on_the_new_branch() {
+    let landed = |checkout: bool| {
+        let mut state = fixture();
+        let mut next = ids();
+        let _ = crate::update::operate::launch(
+            &mut state,
+            &mut Vec::new(),
+            Operation::BranchCreate(BranchCreateParams {
+                name: "nb".to_owned(),
+                at: oid(3),
+                checkout,
+                on_edits: OnEdits::Refuse,
+            }),
+            &mut next,
+        );
+        let id = state.operating.expect("running");
+        let _ = crate::update::operate::operated(
+            &mut state,
+            id,
+            Operated::Done(applied(OperationKind::BranchCreate, false)),
+            &mut next,
+        );
+        state.status
+    };
+    assert_eq!(
+        landed(true),
+        Status::Done {
+            what: "on nb".to_owned(),
+            also: None,
+            keys: Some("u goes back".to_owned()),
+        }
+    );
+    assert_eq!(landed(false), Status::done("the entry's own words"));
 }

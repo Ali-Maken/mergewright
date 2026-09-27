@@ -46,7 +46,7 @@ mod unpushed;
 pub use absorb::absorb_plan_map;
 pub use dependents::dependents;
 pub use plan::plan;
-pub use progress::progress;
+pub use progress::{edit_stop, progress};
 pub use todo::{default_message, squash_groups, validate};
 pub use unpushed::ABSORB_FALLBACK_DEPTH;
 
@@ -288,6 +288,20 @@ pub struct RewriteProgress {
     /// A plan of Graft's is saved for this rebase. `false` for one begun in
     /// the shell.
     pub begun_in_graft: bool,
+}
+
+/// A rebase stopped on an `edit` row (m7-power-tools/07a): git handed him
+/// the commit to change. Read by [`edit_stop`] from `rebase-merge/amend`,
+/// which git writes at an edit stop only (checked against git 2.54.0 by
+/// `git_writes_rebase_merge_amend_at_an_edit_stop`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EditStop {
+    /// The rewritten commit git stopped on (`rebase-merge/amend`).
+    pub stopped: Oid,
+    /// `HEAD` is that commit or an amend of it: its first parent is the
+    /// stopped commit's. `false` once he commits on top of it. P14's
+    /// exception (`Operation::check`) allows an amend only while this holds.
+    pub head_on_it: bool,
 }
 
 #[cfg(test)]

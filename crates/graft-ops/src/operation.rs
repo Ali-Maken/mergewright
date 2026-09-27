@@ -36,6 +36,8 @@ use graft_git::state::InProgress;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
+use crate::rewrite::EditStop;
+
 pub use conflict::{OneSided, ResolveWholeParams, RestartKind, RestartParams, Side};
 pub(crate) use conflict::{check_restart, shape_of_stages};
 pub use finish_merge::{AbortMergeParams, FinishMergeParams, MergeEnd};
@@ -332,6 +334,39 @@ pub struct RepoFacts {
     /// when the status lists unmerged paths, so it costs nothing otherwise
     /// (m5/07).
     pub markers: Vec<PathBuf>,
+    /// What a pull's fetch brought (m7-power-tools/03b). `Some` only for a
+    /// pull, only once `apply` has run its fetch, and only when tracked
+    /// files are changed; `read_facts` never fills it.
+    pub incoming: Option<Incoming>,
+    /// The rebase in progress stopped on an `edit` row (m7-power-tools/07a,
+    /// [`crate::rewrite::edit_stop`]). `None` outside a rebase and at a
+    /// conflict stop. P14's one exception keys on it (`check`).
+    pub edit_stop: Option<EditStop>,
+}
+
+/// What a pull's fetch brought: the tracking ref's tip after it, whether
+/// `HEAD` fast-forwards to it, and the paths that differ between the two
+/// (`diff --name-only --no-renames`, so a rename is both of its paths).
+/// Read only for a fast-forward: `paths` is empty when `fast_forward` is
+/// false.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Incoming {
+    /// The tracking ref's tip after the fetch.
+    pub tip: Oid,
+    /// `HEAD` is an ancestor of `tip`.
+    pub fast_forward: bool,
+    /// Every path the fast-forward changes.
+    pub paths: Vec<PathBuf>,
+}
+
+/// P14's one exception (m7-power-tools/07a, note R4): an amend inside a
+/// rebase stopped on an `edit` row, while `HEAD` is the commit git stopped
+/// on or an amend of it. A commit on top of it, a conflict stop, and every
+/// other operation in progress still wait.
+fn amends_at_edit_stop(op: &Operation, facts: &RepoFacts) -> bool {
+    matches!(op, Operation::Amend(_))
+        && facts.in_progress == Some(InProgress::Rebase)
+        && facts.edit_stop.as_ref().is_some_and(|stop| stop.head_on_it)
 }
 
 /// The key that asked for a rewrite, so a refusal names what *that* key does
@@ -1284,10 +1319,17 @@ impl Operation {
     /// as a rebase does, not only the paths the pick touches: those need a
     /// read of the commit, and `sets_aside` reads none. A file the pick
     /// leaves alone goes back as it was.
+    ///
+    /// A pull (m7-power-tools/03b) wraps only a fast-forward whose incoming
+    /// paths meet a changed tracked file (a rename's original path counts),
+    /// read from [`RepoFacts::incoming`] after its fetch; then it sets aside
+    /// every changed tracked file, as a rebase does. Diverged, up to date,
+    /// no overlap, or not fetched yet: `None`, and git's own words.
     #[must_use]
     pub fn sets_aside(&self, facts: &RepoFacts) -> Option<SetAside> {
         let wraps = match self {
             Self::Rebase(_) | Self::Rewrite(_) | Self::CherryPick(_) => true,
+            Self::Pull(_) => remote::pull_overlaps(facts),
             // A switch sets aside only when it was previewed (the switch
             // rule, m7-power-tools/10b); a new branch at `HEAD`'s own commit
             // leaves the edits where they are.
@@ -1314,6 +1356,9 @@ impl Operation {
     }
 
     /// `refs/stash`, when this operation sets edits aside.
+    ///
+    /// Also a pull's (m7-power-tools/03b): its `touches` add it once the
+    /// fetch has filled [`RepoFacts::incoming`].
     fn stash_ref_if_set_aside(&self, facts: &RepoFacts) -> Option<String> {
         self.sets_aside(facts).map(|_| stash::STASH_REF.to_owned())
     }
@@ -1448,7 +1493,8 @@ impl Operation {
     /// (m5/07), and the two conflict operations *are* the resolution, so
     /// their own `check` is the one that refuses. A stage of a path that
     /// still carries markers is `MarkersRemain`. Everything else waits for
-    /// the operation in progress to finish.
+    /// the operation in progress to finish — except an amend at a rebase's
+    /// `edit` stop, on the stopped commit (P14's exception, 07a).
     fn check_conflict_state(&self, facts: &RepoFacts) -> Result<(), Refusal> {
         let unmerged: Vec<PathBuf> = facts
             .status
@@ -1486,7 +1532,10 @@ impl Operation {
                 | Self::FinishMerge(_)
                 | Self::AbortMerge(_)
         );
-        match facts.in_progress.filter(|_| waits) {
+        match facts
+            .in_progress
+            .filter(|_| waits && !amends_at_edit_stop(self, facts))
+        {
             Some(kind) => Err(Refusal::InProgress(kind)),
             None => Ok(()),
         }
@@ -1500,7 +1549,8 @@ impl Operation {
     /// paths (a stage or unstage of exactly those paths is exempt — that is
     /// "mark resolved", m5/07 — and a stage of one that still has conflict
     /// markers is `MarkersRemain`), an operation in progress (stage and
-    /// unstage are allowed mid-rebase, everything else waits), then the
+    /// unstage are allowed mid-rebase, and an amend at an `edit` stop on the
+    /// stopped commit; everything else waits), then the
     /// kind's own rules. A fetch skips the first three: it changes no
     /// branch, index or file, so it runs in a bare repository and in the
     /// middle of a rebase.
@@ -1647,26 +1697,25 @@ impl Operation {
             // For the browser's `origin/main a1b2c3d → 9f8e7d6`, not for undo.
             Self::Push(params) => (remote::push_tracking_ref(params, facts), false, false),
             // The branch (or a detached `HEAD`), the index and the tree.
-            // A pull never records the tracking ref: undo must not move it
-            // back, since the remote still has those commits. Finishing a
-            // shell-begun merge commits the resolved index, so `u` has the
+            // Finishing a shell-begun merge commits the resolved index, so `u` has the
             // resolved tree to put back. Aborting one moves no ref, but the
             // branch is recorded all the same: a commit made on it since is
             // drift, and putting the merge back onto another `HEAD` would
             // be a merge nobody began.
-            Self::Pull(_)
-            | Self::Merge(_)
-            | Self::Revert(_)
-            | Self::FinishMerge(_)
-            | Self::AbortMerge(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
+            Self::Merge(_) | Self::Revert(_) | Self::FinishMerge(_) | Self::AbortMerge(_) => {
+                (vec![commit::head_ref_name(&facts.head)], true, true)
+            }
             // A set-aside records `refs/stash` too: its before and after
             // say whether `S` was left in the list, which is what the
             // inverse's stash step reads (ADR-0045 §4 step 2, §6).
             //
             // A rebase's branches built on his join these in `apply`, which
             // finds them when it runs (`apply::engine`). A cherry-pick sets
-            // aside as a rebase does (m7-power-tools/11a).
-            Self::Rebase(_) | Self::CherryPick(_) => {
+            // aside as a rebase does (m7-power-tools/11a), and so does a pull
+            // (m7-power-tools/03b). A pull never records the tracking ref:
+            // undo must not move it back, since the remote still has those
+            // commits.
+            Self::Rebase(_) | Self::CherryPick(_) | Self::Pull(_) => {
                 let mut refs = vec![commit::head_ref_name(&facts.head)];
                 refs.extend(self.stash_ref_if_set_aside(facts));
                 (refs, true, true)

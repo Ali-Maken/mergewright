@@ -255,6 +255,8 @@ fn applied(description: &str) -> graft_ops::apply::Applied {
             reverses: None,
             merge_before: None,
             merge_after: None,
+            config_before: std::collections::BTreeMap::new(),
+            config_after: std::collections::BTreeMap::new(),
             put_back: None,
         },
         refresh: Refresh::Everything,

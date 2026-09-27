@@ -1,142 +1,355 @@
 # rewrite-editor — `R` opens the rewrite editor on the cursor's row; the result and the message show before `y`
 
-Status: ready
-Blocked by: 02-rewrite-engine, 02b-rewrite-engine-b, 05-rewrite-preview
-Crates:
-- graft (`update/rewrite_editor.rs` new, `GraphOverlay`, `text_field_open`/`modal_owns_keys`, the key route, the walks,
-  the `journeys` parser);
-- graft-ui (`rewrite_editor.rs` new).
-
-The docs it owns: `docs/shots/m7`, `TESTING.md`, the captions TSV.
-Source: note "Pass 2a" R1; journeys 1 and 3; the keymap diff (§2.3 `R`, §2.7); Decision 5; field notes :69.
-Build with: Opus. A new overlay on the established `GraphOverlay` pattern; the look is fixed in the note; walks and
-captures judge it.
-Scout: `scout` first (ADR-0035).
-Needs: rewrite-engine (`plan`, `RewriteParams`, `squash_groups`, `default_message`, `validate`), rewrite-preview (the
-AFTER block data, `messages`, `StopsAt`). Doc rows: the conductor applies the keymap diff (§2.3 `R`, §2.7) before the
-build.
-
-## Decided (note R1; not open)
-- `R` on a graph row → `Command::PlanRewrite(RewriteRequest::Open{from})`, run as a job.
-  - A refusal → the status line with the note's words, and no overlay.
-  - Success → `GraphOverlay::Rewrite`, the cursor on the `from` row (HEAD's row from the uncommitted row).
-- **Rows:** newest first (the todo reversed), plus the `─ main` base row (not selectable for actions: `p s f d e r`
-  there say `the base stays · it isn't yours to rewrite`).
-- **Keys:**
-  - `p s f d e`: set the action and move one row older.
-  - `r`: the message field (a text field).
-  - `Alt+↑/↓`: move the row, and the row shows `↕ moved`.
-  - `⏎`: show / hide the row's changes on the right.
-  - `j/k`.
-  - `Tab` (<120 columns): swap rows ↔ AFTER.
-  - `y`: start, once the plan has landed. Any edit re-plans the preview through `preview::run_preview`, stoppable; the
-    last edit wins.
-  - `Esc`: close, nothing written. In the field, `Esc` drops the field's edit only.
-  - Mouse: a click selects the row; a drag moves it.
-- **The message block:** `default_message` per squash group, shown under the rows (≥180) or under AFTER (<180), `┊`
-  gutter, `MESSAGE of the squashed commit · r on "<kept subject>" changes it`.
-  - `r` on the kept row edits its subject line; `Ctrl+E` hands the whole message to `$EDITOR` (the existing `Handover`).
-  - The edited message goes in `RewriteParams::messages`.
-- **Glyphs and words:** exactly the note's R1 distinctions table: `↓` squash/fixup, `✎` reword, `⏸` edit, `✗` drop
-  (subject muted), bold action word when not pick, `│` rule, `○ new`/`● new`, `built on yours · follows`,
-  `marked by its name`.
-- **Refusals in the editor:** `✗ nothing below to meld into` on the row + `y` refuses; `every commit dropped · the
-  branch would be main again`; `feature-a moved since this opened · esc, then R again` (CAS at apply).
-- **`y`** → `operate::launch(Operation::Rewrite(params))`. It lands as `land-on-result` defines. Until that ticket
-  lands, today's `Done` landing; the walk asserts the cursor only after it.
-- **Hint bar:** `y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓ move  esc cancel`.
-- **The graph's bar gains `R rewrite`** on a commit row of his branch (field notes :69: found only after the keys were
-  listed).
+Status: ready (respecced by planner 2026-09-27 after scout `scouts/08.md`; scope unchanged)
+Build with: Opus. A new modal overlay on the `Place`/`finish` precedents, every seam fixed below; walks and captures
+judge it. Not Fable: the one shared type (`RewriteEditorView`) is consumed only inside this ticket.
+Scout: done (`scouts/08.md`, at b90a49e4). No second scout; re-check its named lines against main before editing.
+Needs: `graft_ops::rewrite::{plan, squash_groups, default_message, validate, TodoAction, TodoLine, RewriteParams,
+RewriteRequest::Open, RewriteError}` (graft-ops MAP :263-284); `update::preview::{preview_refusal, PreviewRequest,
+PreviewSubject, Planned, PreviewFailure}` and `Command::PlanPreview` (graft MAP :442-460, :875);
+`operate::launch`; the `$EDITOR` handover `Command::EditCommitMessage` (MAP :165, :213).
+Blocked by (all **merged**; the conductor checks `git log` before dispatch):
+- **09b** — `jobs/rewrite.rs` neighbours, `update/preview.rs` (its Q4 may change the preview rows this reads), the
+  preview captures.
+- **07b** — `view/rows.rs`, `update/events.rs`, `jobs/runner.rs`, `update/commit_editor.rs`, `update/operate.rs`.
+- **30j** — `jobs/runner.rs` (`not_a_job` made exhaustive: the new `Command` must be listed there), `update/mod.rs`,
+  graft-ui `graph_screen/hints/lists.rs`.
+- Not beside **21c** (`jobs/runner.rs`). Not beside **10 / 10c** if unmerged (`GraphOverlay`, `update/state.rs`,
+  `view/frame.rs`, `view/rows.rs::overlay_context`, `HintContext`).
+Crates: graft, graft-ui. graft-ops **read-only**: a missing read or refusal word → stop, `blocked: needs <signature>`.
+Source: note "Pass 2a" R1 (:436-533); journeys 1, 3; fence :815-840; keymap §2.3 `R` (:203), §2.3b (:245), §2.7
+(:378-393, already applied, no doc edit); field notes :69.
 
 ## Read first
-- Note "Pass 2a" R1 (whole), "Journey counts", "Keymap: proposed diff" §2.1 / §2.3 / §2.7.
-- `docs/design/02-keymap.md` §2.1 (modal panes, the hint bar rule), §2.3, §2.3b, §2.6b (`⏎` shows a diff), §2.7, §2.10.
+- `scouts/08.md` (all).
+- Note `docs/design-notes/m7-power-tools.md` :436-533 (R1 whole), :815-840, :912-930.
+- `docs/design/02-keymap.md` §2.1 (modal panes, the bar rule), §2.3, §2.3b, §2.6b, §2.7, §2.10.
 - `docs/shots/m7-proto-1-rewrite.txt` (rev 1, what he saw).
-- `crates/graft/MAP.md`: `GraphOverlay`, `text_field_open`, `modal_owns_keys`, `update::preview`, `update::operate`,
-  `update::commit_editor` (the field and `Handover`), `jobs`. `crates/graft-ui/MAP.md`: the preview box, the commit
-  editor (layout precedents).
+- `crates/graft/MAP.md` :163-171 (`commit_editor`, `external_editor`, `graph_overlay`, `GraphOverlay`), :207-208
+  (`text_field_open`, `modal_owns_keys`), :428-429 (`finish_key`/`finish_mouse`: the modal-chain shape copied here),
+  :442-460 (`update::preview`), :625 (`Place`: an overlay that draws the whole frame, bar on the last row), :875
+  (`jobs::preview`), :914-920 (`jobs::rewrite`).
+- `crates/graft-ops/MAP.md` :263-284. `crates/graft-ui/MAP.md`: `HintContext`, the hint lists, the finish summary's
+  hit test (precedent for `rewrite_row_at`).
 
-## Scout brief (≤ 1 page)
-1. How a `GraphOverlay` variant is opened, keyed, drawn and closed (take `Journal` or `Stash`). Every match on
-   `GraphOverlay`.
-2. `text_field_open` / `modal_owns_keys`: where each is consulted, and what a new text field must register.
-3. How the preview job is started and how a newer request supersedes a running one (`preview::run_preview`, `stop`).
-4. What `R`, `Alt+↑/↓` and `Tab` do on the graph today (grep the key route). Keymap: `R` unclaimed in the doc.
-5. `m5_walk::journeys::parse_counts` / `noted_keys`: which note it reads, and how an id without a scenario is treated.
-6. The hint-bar tests (`every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`,
-   `every_bound_action_is_hinted_live_or_is_named_here`): what a new overlay must add.
+## Rulings (scout 08)
+1. **`GraphOverlay` stays a fieldless `Copy` enum derived from state** (`state.rs:653`, `graph_overlay()`
+   `:614-645`, the one enumeration). Add a fieldless `GraphOverlay::Rewrite`, derived from
+   `state.rewrite.editor.is_some()`, placed **after `Resolver`, before `CommitEditor`**. The editor lives in
+   `AppState::rewrite: RewriteState`. Test: `the_overlay_is_rewrite_while_the_editor_is_up`.
+2. **The open read is its own command**, not `PlanRewrite`. `Command::PlanRewrite` is 09's struct variant
+   (`command.rs:194`), and its answer `RewritePlanned` (`events.rs:324`) has no editor shape. A new variant would force
+   an arm into 09b's `amend_into::planned`. So:
+   - `Command::OpenRewrite { id, from }` → `Task::OpenRewrite` → `Product::RewriteOpened`.
+   - `jobs/rewrite.rs:152` (`Open` → `Err("R is not a put-in")`) stays as it is.
+3. **Modal.** §2.7 says the editor claims every key but `Ctrl+C`:
+   - `modal_owns_keys()` is true while `rewrite.editor` is `Some`.
+   - `text_field_open()` is true while its `r` field is open.
+   - Consumers: `modal_owns_keys` at `mod.rs:980`, `relaunch.rs:75,129`, `undo.rs:221`, `clash.rs:174`,
+     `place/trail.rs:166`, `banner/stop.rs:398,430`; `text_field_open` at `keys.rs:193,213`, `clash.rs:185`,
+     `drag.rs:151`, `remote/in_flight.rs:21`. They now see the editor; see Touches.
+   - `rewrite_key` joins `keys::key_event`'s **modal chain after the boxes**, as `finish_key` does. Not
+     `pane_and_overlay_key` (that chain is for Journal/Stash, which leave `/` live).
+4. **The AFTER plan and "the last edit wins"** (scout Q3 could not confirm a supersede path; none is assumed).
+   - The editor owns its plan job. Every edit that changes the params does three things:
+     - if the current `after` is `Pending(old)`, push `Command::CancelJob(old)` (as `close_preview` does for
+       `planning()`);
+     - mint a new id and push `Command::PlanPreview` with
+       `PreviewSubject::Operation { op: Box::new(Operation::Rewrite(params)), opened_by: "R" }`, `resident` = the
+       set `open_preview` snapshots;
+     - set `after = Pending(new)`.
+   - The answer is routed **by id, before `preview_produced`**:
+     - `rewrite_editor::owns(state, id)` true → `after_planned`;
+     - an answer for any other old editor id is dropped;
+     - `state.preview` is never set by the editor.
+   - Two things to verify, not assume (rule 7). Name each line in NOTES **before** writing the routing:
+     - what `JobRunner::cancel` / `runner.rs:1171` do for an id whose job already finished (the race `close_preview`
+       already has);
+     - that `preview_produced` drops an id it doesn't hold with `state.preview == None`.
+     - If either misbehaves → stop, `blocked: needs <file>`, with the line.
+   - Tests: `an_edit_replans_and_the_last_wins`, `a_superseded_after_answer_is_dropped`.
+5. **Todo validity before planning.** When `validate(&todo)` is `Err`, nothing is planned:
+   - the AFTER side and `y` both give the problem's words;
+   - the row gets `✗ nothing below to meld into`, or the notice reads `every commit dropped · the branch would be main
+     again`.
+6. **`y` runs the planned op.** `y` launches `Operation::Rewrite(p)` through `operate::launch`. `p` is `Planned::runs`
+   if `Some`, else the params that plan was asked for (hard choice 3: the op run is the op pictured). `y` is inert
+   while `after` is `Pending`, `Failed`, `Refused`, or the todo is invalid.
+   - The editor moves to `rewrite.launched`.
+   - `operate::operated` calls `rewrite_editor::write_answered` first:
+     - a refusal restores the editor, words on its notice row (R1 "Refused at apply: stays in the editor");
+     - any other answer drops it (Done, Conflicted, stop → 07's world, Failed).
+   - A moved branch: the AFTER plan's `check` refuses first. Words: `operate::refusal_status`'s, one wording (H4). If
+     they don't read `feature-a moved since this opened · esc, then R again`, say so in NOTES as a question. Don't
+     add a second wording.
+7. **Opening.**
+   - `R` → `rewrite.opening = Some(id)` and `Status::Waiting("reading <branch>…")`. No overlay yet.
+   - A second `R` starts nothing. `Esc` cancels the read (`CancelJob`) and clears the line.
+   - While a write runs or git is part-way through → `preview_refusal(state)`'s words (one wording, H4).
+   - Answers:
+     - `Refused(r)` → the status line with `r`'s words, no overlay;
+     - `Editor(o)` → the overlay, cursor on the `from` row (HEAD's from the uncommitted row);
+     - `Err(words)` → `Status::Failed`, no overlay (rule 3).
+   - `JobFailed` / `JobCancelled` for any id `owns` answers are handled in `job_failed`'s chain (`update/mod.rs`
+     ~:980, next to 30j's leaves arm).
+8. **Messages** are kept per commit (`Oid`), because moves change todo indices. `params()` rebuilds `messages`
+   (keyed by todo index) on every call:
+   - each squash group → his edit of the kept row, else `default_message(group, whole_of, &todo)`;
+   - each `Reword` row → his edit.
+   - `r` on a row:
+     - a pick row, or the kept row of a group → opens the field, prefilled with the subject line;
+     - on a pick row, `⏎` keeps the text and sets `Reword`;
+     - on the kept row, `⏎` edits the squash message and the action stays;
+     - a melded row → notice `this row melds into "<kept>" · r there changes the message`.
+   - `Ctrl+E` hands the whole message to the existing handover under the editor's own id. The answer is routed by
+     `owns` before `commit_editor`'s handler; `AppState::external_editor` stays the commit editor's.
+9. **`⏎`** toggles the right side (below 120: the card) between AFTER and the row's changes: its file list with
+   `+a −b`, read by `Command::ListFiles` under an editor id (routed by `owns`). No inline diff here.
+10. **`R rewrite` on the graph bar** needs "a commit row of his branch". The app has no membership fact at key time,
+    so, from what is in state:
+    - drawn on a commit row when HEAD is on a branch, no operation is live, and `RadarContext::on_default_chain(row)`
+      is false (MAP :870);
+    - when HEAD *is* the default branch, or the context isn't `Ready`, drawn on every commit row;
+    - elsewhere `R` refuses in `plan`'s words (`R rewrites your branch · <sha> isn't on it`).
+11. **Parser: no change.** `parse_counts` already reads every fence and errs on a duplicate (`journeys.rs:51-70`), and
+    `m7_walk.rs:19-26` reads this note. The walks call `noted_keys` as 09's do.
+
+## Decided (note R1; not open)
+- Rows newest first (todo reversed), then the `─ <base>` row: not editable; `p s f d e r` and a move onto it give
+  `the base stays · it isn't yours to rewrite`. Base label: the upstream's (else the default branch's) short name when
+  `onto` is the merge-base, else `onto`'s short sha.
+- Keys (§2.7):
+  - `p s f d e`: set the action and move one older; `p` on a marked row un-marks it.
+  - `r`: the field (ruling 8).
+  - `Alt+↑/↓`: move the row; it shows `↕ moved`.
+  - `⏎` (ruling 9). `j/k`.
+  - `Tab`: <120 only, swaps rows ↔ AFTER (bar `tab after`); ≥120 it is swallowed.
+  - `y` (ruling 6). `Esc`: close, nothing written; in the field it drops the field's edit only.
+  - Mouse: a click selects; a drag moves.
+- Autosquash rows arrive pre-marked and moved by `plan` (graft-ops MAP :271). Any row not `Pick` at open carries
+  `marked by its name`.
+- Message block: under the rows (≥180 and <120), under AFTER (120–179). `┊` gutter, label
+  `MESSAGE of the squashed commit · r on "<kept subject>" changes it`. At 24 rows: 4 lines + `…`.
+- Glyphs and words: exactly R1's distinctions table (`↓ ✎ ⏸ ✗`, bold action word when not pick, `│`, `○ new` /
+  `● new`, `built on yours · follows`, `marked by its name`, `3 in one`, `fixup melded in`).
+- AFTER rows are the plan's ghosts grouped per branch of `params.line`, drawn top-down, base `unchanged`. Below them:
+  `built on yours: …`, `on origin: <b> · P will need force after` (`published`), `no conflicts expected` or
+  `! may stop here · <paths>` / `not checked past here` (`StopsAt`). The header reads `checking…` while `Pending`.
+- Hint bar (`HintContext`, the Place precedent):
+  `y rewrite  ⏎ changes  p pick  r reword  e edit  s squash  f fixup  d drop  alt+↑↓ move  esc cancel`
+  (+ `tab after` <120). `y rewrite` shows while planning or ready, never on a refused, failed or invalid plan
+  (MAP :460's rule). Field open: `⏎ keep  ctrl+e editor  esc drop the edit`.
+- Lands: today's `Done` landing through `operate`. The walk asserts the cursor on the new HEAD only if `land_on_head`
+  covers `Operation::Rewrite` (name the line); if not, NOTES, and the conductor files it.
 
 ## Signatures
 ```rust
-// graft
-pub fn open_rewrite(state: &mut AppState, from: Oid) -> Vec<Command>;
-pub fn rewrite_key(state: &mut AppState, key: KeyEvent) -> Vec<Command>;
-// GraphOverlay::Rewrite(Box<RewriteEditor>); Command::PlanRewrite(RewriteRequest);
-// Msg::RewritePlanned(Result<RewriteParams, RewriteError>)
-// graft-ui
+// graft — update/rewrite_editor.rs (new; children allowed: keys, after, words)
+#[derive(Default)]
+pub(crate) struct RewriteState {
+    pub(crate) opening: Option<JobId>,               // the open read in flight
+    pub(crate) editor: Option<Box<RewriteEditor>>,   // Some ⇔ GraphOverlay::Rewrite
+    pub(crate) launched: Option<Box<RewriteEditor>>, // after `y`, until the write answers (ruling 6)
+}
+pub(crate) struct RewriteEditor { /* private: opened, todo, moved, edits by Oid, cursor, field, after, right, … */ }
+impl RewriteEditor {
+    /// What `y` runs and the AFTER plan is asked for; `messages` rebuilt per ruling 8.
+    pub(crate) fn params(&self) -> Result<RewriteParams, TodoProblem>;
+}
+// `next_id`, `KeyPress`, the mouse event: exactly the types `finish_key` / `finish_mouse` take (MAP :428-429).
+pub(crate) fn open_rewrite(state: &mut AppState, commands: &mut Vec<Command>, from: Oid, next_id: /* finish_key's */);
+pub(crate) fn opened(state: &mut AppState, commands: &mut Vec<Command>, id: JobId,
+                     answer: Result<RewriteOpened, String>, next_id: /* … */);
+pub(crate) fn rewrite_key(state: &mut AppState, commands: &mut Vec<Command>, key: KeyPress, next_id: /* … */) -> bool;
+pub(crate) fn rewrite_mouse(state: &mut AppState, commands: &mut Vec<Command>, mouse: /* finish_mouse's */,
+                            next_id: /* … */) -> bool;
+/// Is `id` the open read, the AFTER plan, the `⏎` file list or the `$EDITOR` handover of the live editor?
+pub(crate) fn owns(state: &AppState, id: JobId) -> bool;
+pub(crate) fn after_planned(state: &mut AppState, id: JobId, answer: Result<Arc<Planned>, PreviewFailure>);
+pub(crate) fn files_listed(state: &mut AppState, id: JobId, answer: /* ListFiles' product payload */);
+pub(crate) fn message_returned(state: &mut AppState, commands: &mut Vec<Command>, id: JobId,
+                               answer: /* the handover answer payload */, next_id: /* … */);
+pub(crate) fn job_ended(state: &mut AppState, id: JobId, why: /* job_failed's words */);
+pub(crate) fn write_answered(state: &mut AppState, answer: &Operated);  // first line of operate::operated
+
+// graft — update/state.rs
+// AppState::rewrite: RewriteState;  GraphOverlay::Rewrite (fieldless; after Resolver, before CommitEditor)
+
+// graft — jobs/rewrite_open.rs (new)
+pub(crate) enum RewriteOpened { Editor(Box<OpenedRewrite>), Refused(graft_ops::operation::Refusal) }
+pub(crate) struct OpenedRewrite {
+    pub params: RewriteParams,        // plan(Open { from }) as returned
+    pub whole: HashMap<Oid, String>,  // every row's whole message (default_message's message_of);
+                                      // read as the detail pane reads a commit message: name it in NOTES
+    pub base: BaseRow,
+}
+pub(crate) struct BaseRow { pub oid: Oid, pub subject: String, pub label: String }
+pub(crate) fn open_rewrite(repos: /* run_preview's repos type */, from: Oid, default_branch: Option<&RefName>,
+                           stop: /* run_preview's cancel type */) -> Result<RewriteOpened, String>;
+// RewriteError::Refused → Refused; Facts → Err(explain()); Stopped → as jobs/rewrite.rs maps it (name the line).
+// Command::OpenRewrite { id: JobId, from: Oid } → Task::OpenRewrite { from } → Product::RewriteOpened(Result<RewriteOpened, String>)
+// (declared beside PlanRewrite / RewritePlanned: command.rs:194, events.rs:324)
+
+// graft — view/rewrite_editor.rs (new): builds the view; view/frame/overlays.rs: draw_rewrite
+
+// graft-ui — src/rewrite_editor.rs (new; no graft-ops types)
+pub struct RewriteEditorView {
+    pub title: String,                  // `REWRITE feature-a · 5 commits since it left main · newest first · nothing written until y`
+    pub rows: Vec<EditorRow>,           // newest first; base last
+    pub cursor: usize,
+    pub field: Option<FieldView>,
+    pub message: Option<MessageBlock>,
+    pub right: RightSide,
+    pub narrow_shows_right: bool,       // <120: Tab's side
+    pub notice: Option<String>,         // a refusal in words, on the row above the bar
+    pub ascii: bool,
+}
+pub enum RowMark { Pick, Reword, Edit, Squash, Fixup, Drop, Base }
+pub struct EditorRow { pub mark: RowMark, pub short: String, pub subject: String, pub note: Option<String>, pub moved: bool }
+pub struct FieldView { pub row: usize, pub text: String, pub caret: usize }
+pub struct MessageBlock { pub label: String, pub lines: Vec<String> }
+pub enum RightSide { After(AfterView), Changes { short: String, files: ChangesView } }
+pub enum AfterView { Checking, Failed(String), Refused(String), Ready { rows: Vec<AfterRow>, facts: Vec<String> } }
+pub struct AfterRow { pub branch: Option<String>, pub mark: AfterMark, pub subject: String, pub note: Option<String> }
+pub enum AfterMark { NewTip, New, Unchanged { short: String } }
+pub enum ChangesView { Reading, Failed(String), Files(Vec<(String, u32, u32)>) }
 pub fn draw_rewrite_editor(frame: &mut Frame, area: Rect, view: &RewriteEditorView);
+pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u16) -> Option<usize>;
+// HintContext gains RewriteEditor { narrow: bool, can_start: bool } and RewriteMessage (hints/context.rs:10)
 ```
 
-## Acceptance
-- [ ] **App** `update::rewrite_editor::tests`:
-  - `r_opens_on_the_cursor_row` (red first);
-  - `s_marks_and_moves_one_older`;
-  - `a_bottom_squash_is_refused_in_words`;
-  - `alt_up_moves_the_row_and_marks_it`;
-  - `r_opens_a_field_that_owns_every_key`;
-  - `esc_in_the_field_drops_only_the_edit`;
-  - `esc_writes_nothing`;
-  - `y_before_the_plan_lands_does_nothing`;
-  - `y_launches_the_rewrite`;
-  - `an_edit_replans_and_the_last_wins`;
-  - `a_refused_open_shows_the_words_and_no_overlay`;
-  - `the_base_row_refuses_actions`.
-- [ ] **UI** `graft_ui::rewrite_editor` snapshots at 187×50, 140×40 and 100×30. Each asserts the non-colour carriers:
-      `↓ ✎ ⏸ ✗`, `│`, `○ new`, the `┊` message gutter, and `built on yours · follows`.
-- [ ] **Walks** (`crates/graft/tests/it/m7_walk/`):
-  - `squash_last_three` = `R s s y` ≤ `noted_keys("squash-last-three")`: after it, one commit where there were three,
-    its message = the note's order, and feature-b moved;
-  - `swap_adjacent` = `R Alt+↑ y` ≤ `noted_keys("swap-adjacent")`;
-  - `rewrite_look_and_leave_writes_nothing` = `R s esc`: refs, index and files unchanged.
+## Files (ADR-0051: outside this list → stop, `blocked: needs <file>`)
+- graft src:
+  - New: `update/rewrite_editor.rs` (+ children, `rewrite_editor/tests.rs`), `jobs/rewrite_open.rs` (+ tests),
+    `view/rewrite_editor.rs`.
+  - `update/state.rs`: the field, the variant, `graph_overlay`, `text_field_open`, `modal_owns_keys`.
+  - `update/keys.rs`: `R` beside the graph-row keys (`graph_has_focus`, no overlay); `rewrite_key` in the modal
+    chain; `Esc` while opening. Also `keys/predicates.rs` if `R`'s predicate lives there.
+  - Mouse: the file routing `finish_mouse` (name it).
+  - The job: `update/events.rs`, `update/events/command.rs`, `update/mod.rs` (`Product` arms, routing by `owns`,
+    `job_failed` arm, `mod` line), `jobs/mod.rs`, `jobs/kinds.rs`, `jobs/runner.rs` (dispatch + `not_a_job` list),
+    `event_loop/label.rs`.
+  - Every other forced arm, literal-only: grep, list in NOTES.
+  - `update/operate.rs`: one call (ruling 6).
+  - `GraphOverlay` match sites: `view/frame.rs:131-155`, `view/frame/boxes.rs:290`, `update/undo.rs:1669`.
+    `view/frame/overlays.rs`.
+  - `view/rows.rs`: `overlay_context`, the graph bar's `R rewrite`.
+- graft tests: `update/tests.rs` (sweep `:3696`; the hint-bar tests `:3880`, `:5376`, `:5462` run, extended only
+  in their lists), `update/search/tests.rs` (the slash sweep), `tests/it/m7_walk/rewrite_editor.rs` (new; the
+  conductor adds its `mod` line at the seam).
+- graft-ui: `src/rewrite_editor.rs` (new) + tests, `src/lib.rs` (mod/use), `graph_screen/hints/context.rs`,
+  `graph_screen/hints/lists.rs`.
+- Docs: MAP.md (graft, graft-ui), TESTING.md, `docs/shots/m7/`, the captions TSV, the contact sheet.
 
-  `parse_counts` extended to read this note's `journey-counts` fence, failing on a duplicate id: test
-  `m7_ids_are_parsed_and_unique`.
-- [ ] **Captures** (rule 6; colour **unverified**), through `check_shot`:
+## Acceptance (each tick names its test; red quoted in NOTES)
+- [ ] **App** `update::rewrite_editor::tests`:
+  - Opening:
+    - `capital_r_opens_on_the_cursor_row` (**red first**: today `R` is unbound, `keys/predicates.rs`; quote it);
+    - `capital_r_on_the_uncommitted_row_opens_on_head`;
+    - `a_second_capital_r_while_reading_starts_nothing`;
+    - `esc_while_reading_cancels_the_open`;
+    - `capital_r_during_an_operation_is_refused_in_words`;
+    - `a_refused_open_shows_the_words_and_no_overlay`;
+    - `a_failed_open_read_says_so`.
+  - Rows:
+    - `s_marks_and_moves_one_older`;
+    - `p_on_a_marked_row_unmarks_it`;
+    - `autosquash_rows_open_marked_by_their_name`;
+    - `a_bottom_squash_is_refused_in_words`;
+    - `every_commit_dropped_is_refused_in_words`;
+    - `the_base_row_refuses_actions`;
+    - `alt_up_moves_the_row_and_marks_it`.
+  - The field and messages:
+    - `r_opens_a_field_that_owns_every_key` (`text_field_open`; `u`, `/`, `q`, `y` typed);
+    - `esc_in_the_field_drops_only_the_edit`;
+    - `enter_in_the_field_rewords_and_replans`;
+    - `the_squash_message_is_default_message_until_edited`;
+    - `ctrl_e_hands_the_message_over_and_back`;
+    - `a_commit_editor_handover_answer_is_not_the_editors`.
+  - Right side: `enter_shows_the_rows_changes`, `tab_swaps_sides_below_120_only`.
+  - `esc_writes_nothing`.
+  - Planning and `y`:
+    - `y_before_the_plan_lands_does_nothing`;
+    - `y_launches_the_planned_rewrite`;
+    - `an_edit_replans_and_the_last_wins`;
+    - `a_superseded_after_answer_is_dropped`;
+    - `a_failed_after_plan_says_so_and_y_refuses`;
+    - `a_refused_write_restores_the_editor_with_the_words`;
+    - `a_moved_branch_refuses_y_in_words`.
+  - Modality: `the_overlay_is_rewrite_while_the_editor_is_up`; `u_while_the_editor_is_up_does_nothing`.
+  - Mouse: `a_click_selects_the_row`, `a_drag_moves_the_row`.
+  - Graph bar:
+    - `the_bar_offers_capital_r_on_his_commit_rows`;
+    - `the_bar_hides_capital_r_on_default_branch_rows`;
+    - `capital_r_on_another_branch_is_refused_in_words`.
+- [ ] Sweeps extended, green: `update/tests.rs:3696` (the field), `search::tests::slash_belongs_to_every_modal_that_is_up`
+  (the editor).
+- [ ] **Job** `jobs::rewrite_open::tests` (real git): `open_reads_every_rows_whole_message`,
+  `open_refuses_forked_dependents_in_words`.
+- [ ] **UI** `graft_ui::rewrite_editor` snapshots at 187×50, 140×40, 100×30. Each asserts the non-colour carriers:
+  `↓ ✎ ⏸ ✗`, `│` (187 only), `○ new`, the `┊` gutter, `built on yours · follows`, `↕ moved`.
+  `rewrite_row_at_matches_the_drawn_rows`.
+- [ ] **Walks** `tests/it/m7_walk/rewrite_editor.rs` (fixture: R1's mock, feature-a 5 since main incl. a `fixup!`,
+  feature-b built on it):
+  - `squash_last_three` = `R s s y` (start: cursor on HEAD), `len(keys) <= noted_keys("squash-last-three")`.
+    After it:
+    - one commit where there were three;
+    - its message = the `default_message` the editor showed (git's whitespace cleanup);
+    - feature-b rebased onto it;
+    - `u` restores all refs.
+  - `swap_adjacent` = `R Alt+↑ y` (start: cursor on HEAD's parent, placed uncounted),
+    `len(keys) <= noted_keys("swap-adjacent")`. The two commits' order is swapped, and `u` restores.
+  - `rewrite_look_and_leave_writes_nothing` = `R s esc`: refs, index, files and journal unchanged.
+  - `journey_counts_match_the_note` green (unchanged).
+- [ ] **Captures** (rule 6; colour **unverified**), written by the walk's capture tests through `check_shot`:
   - `docs/shots/m7/rewrite-editor-187x50.txt`. **Right:**
-    - `REWRITE feature-a · 5 commits since it left main · newest first`;
+    - the title starts `REWRITE feature-a · 5 commits since it left main · newest first`;
     - two `squash ↓` rows over `pick 5d4c3b2`;
-    - the `│` rule;
-    - `AFTER y · not written yet`;
+    - the `│` rule and `AFTER y · not written yet`;
     - `3 in one`;
-    - `MESSAGE of the squashed commit`, with `wip: tests` first, then `Handle expired tokens`, then `wip`;
+    - `MESSAGE of the squashed commit` with `wip: tests` first, then `Handle expired tokens`, then `wip`;
     - the bar starts `y rewrite`.
-  - `docs/shots/m7/rewrite-editor-140x40.txt`. **Right:** the AFTER block below the rows, labelled.
-  - `docs/shots/m7/rewrite-editor-100x30.txt`. **Right:** the rows only; `tab after` on the bar.
-  - `docs/shots/m7/rewrite-refused-fork-120x40.txt`. **Right:** the status line `feature-b and feature-c are both built
-    on yours · Graft moves one line`; no overlay.
-- [ ] The three hint-bar tests green. `R` is on the graph's bar for a commit row of his branch.
-- [ ] MAP.md for graft and graft-ui. TESTING.md: a section "The rewrite editor" with the four capture rows, the journey
-      rows, and what the walk does not prove (colour). Contact-sheet rows + captions.
+  - `docs/shots/m7/rewrite-editor-140x40.txt`. **Right:** AFTER below the rows, labelled; the message below it.
+  - `docs/shots/m7/rewrite-editor-100x30.txt`. **Right:** rows only; `tab after` on the bar.
+  - `docs/shots/m7/rewrite-refused-fork-120x40.txt`. **Right:** status `feature-b and feature-c are both built on
+    yours · Graft moves one line`; no overlay.
+- [ ] Hint-bar tests green; `R rewrite` on the graph bar for his commit rows (ruling 10).
+- [ ] MAP.md (graft, graft-ui). TESTING.md section "The rewrite editor": the four capture rows, the journey rows, what
+  the walk does not prove (colour). Captions + contact sheet.
 
 ## Touches (check each, report how)
-- **Graph keys `R`, `Alt+↑/↓`, `Tab`:** scout Q4. The keymap doc gives `R`. Check: grep + the hint-bar tests.
-- **Other overlays:** a new `GraphOverlay` variant. Check: every match site compiles; the Journal/Stash/Map overlay
-  tests green.
-- **The preview job:** shared with every preview. Check: the existing preview tests + captures byte-identical.
-- **The commit editor's `Handover` for `Ctrl+E`:** reused, not changed. Check: the commit-editor tests green.
-- **The `.` menu:** unchanged here.
-- **Journal/undo:** through the engine. Check: `u` after `squash_last_three` restores 3 commits (walk step).
-- **Captures of the graph bar:** adding `R rewrite` to the bar changes every capture that shows a commit row's bar.
-  Check: run `check_shot` over all shots and list every changed capture. The conductor re-takes them, or this ticket
-  does with `GRAFT_UPDATE_SHOTS=1`, then a second pass without it.
-- **The journeys parser:** now reads two notes. Check: `journey_counts_match_the_note` green for M6's ids.
+- **`modal_owns_keys` / `text_field_open` consumers** (ruling 3 lists). While the editor is up, `/`, `u`, relaunch,
+  clash, trail and the banner's stop keys stand down. Check: `u_while_the_editor_is_up_does_nothing`, the two sweeps,
+  and each consumer's existing tests green.
+- **`GraphOverlay` users:**
+  - match sites: every site compiles with an arm;
+  - `is_some()` readers (`banner.rs:118`, `undo.rs:222`, `place/trail.rs:168`) hide the banner, refuse undo and keep
+    the trail while it is up;
+  - check: their tests, plus the Journal/Stash/Map/Place overlay tests, green.
+- **The preview job and `preview_produced`:** shared with every preview. Routing by `owns` is added before it, and
+  `update/preview.rs` is not edited. Check: preview tests green, preview captures byte-identical (`check_shot`).
+- **`CancelJob`, `JobFailed` / `JobCancelled` routing:** the other owners (preview, map, detail, 30j's leaves) are
+  unchanged. Check: their tests.
+- **The `$EDITOR` handover:** reused, not changed. Check: the commit-editor tests green;
+  `a_commit_editor_handover_answer_is_not_the_editors`.
+- **`operate::operated`:** one call added. Check: 09's `an_r_editor_rewrite_does_not_take_amend_into_words`, 07b's
+  stop tests, 10b's refused-arm tests green.
+- **Graph keys `R`, `Alt+↑/↓`, `Tab`:** only `R` is new on the graph; `Alt`/`Tab` live inside the modal only. Check:
+  a grep for `'R'` and `Modifiers::ALT` in `update/` in NOTES; the hint-bar tests.
+- **Graph bar captures:** `R rewrite` changes every capture showing a commit row's bar. Place it by the hint lists'
+  existing order rule. Run `check_shot` over all shots, list each changed file and why, re-take with
+  `GRAFT_UPDATE_SHOTS=1`, then a second pass without it.
+- **Journal/undo:** through the engine, one entry. Check: the `u` steps in both walks.
+- **The `.` menu, `a`, absorb:** unchanged. Check: context-menu and amend-into tests green.
+- **Keymap:** §2.3/§2.7 already applied; no doc edit.
 
 ## Rules / Gates
-As rewrite-engine.
+As rewrite-engine. Gates workspace-wide. Commit at each seam.
 
 ## Size
-Large (~75k). Split if needed:
-- **-a:** app state, keys, the parser extension, the unit tests;
-- **-b:** graft-ui draw, walks, captures, bar.
+Large (~120k), over one context → **build as two, in sequence**:
+- **08-a:** state, job, keys, routing, operate call, unit + job tests, the sweeps.
+- **08-b:** graft-ui draw + snapshots, `view/`, `HintContext`, graph bar, walks, captures, docs.
 
-Needs (conductor, from parallel-plan 2026-09-27): `Command::PlanRewrite`, `RewriteRequest` declared by 09 — build 08 after 09 merges.
+08-b needs 08-a's `RewriteEditor` accessors: 08-a exposes a `pub(crate) fn view_facts(&self)`, whose shape it names
+in NOTES.

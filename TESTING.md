@@ -112,7 +112,7 @@ stays visible.
 | 2026-09-23 · walk | A file with a custom `conflict-marker-size` | Still the shell — the parser reads git's default seven-character markers and refuses others in words (`graft-git/src/conflict.rs:345`). Expires M7 | open (M7) |
 | 2026-09-23 · test | Get back a hand edit after a whole-file take (`t`/`d`) in a merge **begun in the shell** | M6: **0** — `u` on the banner undoes the whole-file take (`crates/graft/tests/it/resolver/shell_begun.rs::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge`), and `a y` aborts the merge with `u` to put it back (`shell_begun.rs::a_on_the_banner_aborts_a_shell_merge`). Was: `git merge --abort`, then `Ctrl+R`, `u` — both keys refused while the merge was open. Source: ticket 08 `## Review fixes, part 2`. | closed (m6-conflicts/57, shell_begun::a_on_the_banner_aborts_a_shell_merge, shell_begun::u_on_the_banner_restores_a_whole_file_take_in_a_shell_merge) |
 | 2026-09-24 · review N3 | Finish a stash pop that clashed | Until the put-back pass: the clashing pop read as a git error and sent him to the shell — **11 keys** (review N3, `docs/design-notes/m6-stash-put-back.md` :15). Now **5**: `S p y o ⏎` (`y` confirms the pop preview since m6-conflicts/86), the resolver opens on the clash and the last file done drops the stash (`m5_walk::every_scenario::journey_stash_pop_clash_to_done`, `m6_stash_put_back::a_stash_pop_that_clashes_is_five_keys`) | closed (m6-conflicts/72b, 75, 86; `stash-pop-clash-to-done`) |
-| 2026-09-24 · review N4 | Pull and push with edits in the tree | Until the put-back pass: the dirty rebase was refused after confirm — **16 keys** walked (review N4, `m6-stash-put-back.md` :16). Now **5**: `p r r P y`, the edits set aside and put back (`m5_walk::every_scenario::journey_rejected_push_dirty_to_pushed`, `m6_stash_put_back::set_aside::a_rejected_push_with_edits_is_five_keys`) | closed (m6-conflicts/73, 74, 75; `rejected-push-dirty-to-pushed`) |
+| 2026-09-24 · review N4 | Pull and push with edits in the tree | Until the put-back pass: the dirty rebase was refused after confirm — **16 keys** walked (review N4, `m6-stash-put-back.md` :16). Now **5**: `p r r P y`, the edits set aside and put back (`m5_walk::every_scenario::journey_rejected_push_dirty_to_pushed`, `m6_stash_put_back::set_aside::a_rejected_push_with_edits_is_five_keys`). A fast-forward pull over edits to files it brings: was refused (m6-conflicts/85 D, 7 keys through a stash); now **1**, `p` (m7-power-tools/03b, `m7_walk::pull::pull_ff_over_edits`) | closed (m6-conflicts/73, 74, 75; `rejected-push-dirty-to-pushed`) |
 
 _Rows marked `walk` are what the M6 acceptance walk says a reach used to be
 and is now; they are not daily use. Rows marked `review N…` are the M6
@@ -1520,11 +1520,12 @@ at the next refresh.
    sticky `pull stopped: … diverged … m merge it · r rebase onto it`;
    `HEAD` unchanged, `origin/main` advanced to the bare's tip (the fetch half
    happened), the bare unchanged.
-5. **pull-dirty-file-refused** — the teammate edits a tracked file and
-   pushes; the same file is edited in the clone; `p`: sticky `pull refused:
-   your edits to … would be overwritten · S s stashes them first`
-   (m6-conflicts/85 D; `S` works from the graph and the changes pane); the file's
-   bytes are identical before and after, `HEAD` unchanged.
+5. **pull-dirty-file-sets-it-aside** (was pull-dirty-file-refused, before
+   m7-power-tools/03b) — the teammate rewrites a tracked file's one line and
+   pushes; the same line is edited in the clone; `p`: the edit is set aside,
+   the pull fast-forwards, the put-back clashes and the resolver opens on
+   the file; `HEAD` at the teammate's commit, the file holds both his line
+   and theirs.
 6. **pull-no-upstream-refused** — `branch --unset-upstream`; `p`: the line
    contains `has no upstream`, nothing was queued (`operating` empty), no
    ref moved on either side.
@@ -2521,14 +2522,11 @@ the last row is blank (m6-conflicts/87, `no_list_bar`).
 `no conflicts expected`, popped, within the note's `stash-pop-clean` row (87).
 Colour unverified.
 
-**A pull over his edits names keys that work** (m6-conflicts/85 D):
-`pull_over_edits::a_ff_pull_over_overlapping_edits_names_keys_that_work` —
-origin one ahead on `shared.txt`, an unsaved edit to it: `p` → sticky
-`pull refused: your edits to shared.txt would be overwritten`, keys
-`S s stashes them first`, HEAD and the tree unchanged; `⏎` into the changes
-pane, then `S s ⏎` from there and `esc p` → HEAD at origin's tip, one stash
-listed. 7 keys (`p`, `⏎`, `S s ⏎`, `esc p`); no note row (the pull still
-does not set edits aside, M7). No capture.
+**A pull over his edits** (m6-conflicts/85 D, superseded by
+m7-power-tools/03b): was a refusal and 7 keys (`p`, `⏎`, `S s ⏎`, `esc p`).
+Since 03b the pull sets the edits aside itself: 1 key, see "M7: a pull over
+his edits" below. The test was rewritten, not deleted:
+`pull_over_edits::a_ff_pull_over_overlapping_edits_takes_one_key`.
 
 ### Captures
 
@@ -2621,14 +2619,14 @@ unverified (the heatmap's oldest bucket on the boundary rows).
   Right: row 1 begins `HISTORY · src/auth/session.rs · fn refresh_token`; the
   version list on the left, `▸` on a row, `the file starts here` last; the
   file pane on the right with `┃` down the traced lines; the bottom row is
-  `j/k older·newer  tab file  n/N next change  B blame here  ⏎ that commit  esc back`.
+  `j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back`.
   No graph behind it.
 - `docs/shots/m7/history-file-140x40.txt` (`capture_history_file_140x40`):
   `F` on the file, whole-file history. Right: row 1 `HISTORY ·
   src/auth/session.rs · 6 changes`; a `was src/session.rs` row; no `┃`; the
   bottom row the same list bar as above.
 - `docs/shots/m7/history-100x30.txt` (`capture_history_100x30`): list only, no
-  file pane; the bottom row whole, no word cut, `tab file` in it.
+  file pane; the bottom row whole, no word cut, `⇥ file` in it.
 - `docs/shots/m7/esc-back-to-history-from-the-graph-120x40.txt`
   (`capture_esc_back_to_history_from_the_graph`): (a) `⏎` on a version, then
   `Tab` to the graph — the graph's bar begins `esc back to history`, never
@@ -2779,6 +2777,17 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 | absorb | same branch; line 5 of both files fixed and a line added to `README`, all staged; cursor on the top row | `k . j j j j j ⏎ y` = 9 (**the note allows 4**: absorb is the menu's last item; ticket 09 NOTES) | box `Preview: put staged changes into the commits they belong to`: two `→ <sha7>  <subject>` rows and `README  line 2  stays staged · no commit on your branch changed these lines`; after `y`: each fix in its commit, the README line still staged. `u`: all back (`absorb_staged`; capture `docs/shots/m7/absorb-preview-120x40.txt`) |
 | amend with a branch built on his | `feature-b` built on `feature-a`; a fix staged; in the changes pane | `a y` = 2 | not the editor: `checking what's built on feature-a…`, then the preview with `feature-b … built on yours · follows`; after `y`: HEAD amended, `feature-b` rebased onto it. `u`: all back (`amend_with_dependents`) |
 | amend with nothing built on his | only `feature-a` (or nothing built on it) | `a` | today's amend editor, unchanged (`update::amend_into::tests::a_on_head_without_dependents_is_todays_amend`) |
+
+## M7: a pull over his edits (m7-power-tools/03b)
+
+A fast-forward pull whose fetch brings a file he has edited (staged or not) sets every changed tracked file aside, fast-forwards, and puts them back, in one journal entry (ADR-0045 §4 extended to Pull). The fetch runs first; what it brought decides. Diverged, up to date, or no overlap: nothing set aside, today's words. Colour unverified (rule 5).
+
+| Journey | Start | Keys | What right looks like |
+|---|---|---|---|
+| `pull_ff_over_edits` | the graph on `main`, origin one ahead changing line 1 of `shared.txt`, his unsaved edit to line 10 | `p` = 1 (03 "Decided"; the note's fence has no row; no best-tool count — the prior-art study has no pull row) | HEAD at origin's tip; `shared.txt` holds both changes, his diff lines byte-equal and still unstaged; no stash left; the cursor (`▏`) on the new HEAD's row; the line `pulled origin/main ✓ · your edits are back`. Walk: `crates/graft/tests/it/m7_walk/pull.rs::pull_ff_over_edits`; capture `docs/shots/m7/pull-over-edits-120x40.txt` (taken by the walk). At 80 columns both clauses whole: `pull_over_edits::a_ff_pull_over_edits_says_they_are_back`. |
+| pull clash | same, his edit on line 1 | `p` = 1 | the pull is done; the put-back clashes; he lands on the resolver on `shared.txt`, the clash is a set-aside's, his edit kept in the stash until the last file is done (`pull_over_edits::a_ff_pull_clash_lands_on_the_resolver`). No capture: the resolver's own captures cover the screen. |
+
+graft-ops, against real repositories (`crates/graft-ops/tests/it/pull_set_aside.rs`): the journal record of a clean pull and of a failed fetch is as before 03b; `u` puts back HEAD, the staged split and every file; ADR-0045 §7's tree table round-trips; a stop before each of steps 1–6 leaves his edits in the tree or the stash list.
 
 ## M7: stashes in history (m7-power-tools/16)
 

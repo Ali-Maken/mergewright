@@ -312,6 +312,7 @@ pub(crate) fn execute_over_drift(
         index: pending.entry.index_before,
         worktree: pending.entry.worktree_before,
         merge: pending.entry.merge_before.clone(),
+        config: pending.entry.config_before.clone(),
     };
 
     let mut commands = reads;
@@ -385,6 +386,16 @@ fn check_ref_names(plan: &InversePlan) -> Result<(), RestoreError> {
             | Step::StashStore { .. }
             | Step::StashDrop { .. }
             | Step::SetMergeState(_) => continue,
+            // The key's branch, by the same rules: a key reaches a step only
+            // through `undo::config_steps`, which refuses one that is not
+            // `branch.<name>.<var>`, so it cannot read as an option either.
+            Step::SetBranchConfig { key, .. } => match crate::branch_config::branch_of(key) {
+                Some(branch) => {
+                    check_ref_name(&branch)?;
+                    continue;
+                }
+                None => key,
+            },
         };
         check_ref_name(name)?;
     }

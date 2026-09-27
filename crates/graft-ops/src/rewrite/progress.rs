@@ -16,7 +16,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::facts::FactsError;
 
-use super::{RewriteProgress, TodoAction, TodoLine, saved};
+use super::{EditStop, RewriteProgress, TodoAction, TodoLine, saved};
 
 /// One line of a todo file git is running.
 enum Row {
@@ -80,6 +80,102 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         branch,
         begun_in_graft: plan.is_some(),
     }))
+}
+
+/// Whether the rebase in progress stopped on an `edit` row, and on which
+/// commit. `Some` iff git's `rebase-merge/amend` exists **and** the last
+/// commit row of `rebase-merge/done` is `edit` — the second rules out any
+/// other writer of the file. A conflict stop (even on an `edit` row, whose
+/// pick conflicted) has no `amend` file and reads `None`; so does no rebase.
+///
+/// Costs two file reads outside an edit stop, one `rev-list` spawn at one.
+///
+/// # Errors
+/// [`FactsError::State`] when git's files cannot be read,
+/// [`FactsError::History`] when the commits' parents cannot;
+/// [`FactsError::Stopped`].
+pub fn edit_stop(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<EditStop>, FactsError> {
+    if stop.should_stop() {
+        return Err(FactsError::Stopped);
+    }
+    let merge = repo.git_dir().join("rebase-merge");
+    let amend = read_or_empty(&merge.join("amend"))?;
+    let amend = amend.trim();
+    if amend.is_empty() {
+        return Ok(None);
+    }
+    let done = rows(repo, &read_or_empty(&merge.join("done"))?, stop)?;
+    let on_edit = commits(&done)
+        .last()
+        .is_some_and(|line| line.action == TodoAction::Edit);
+    if !on_edit {
+        return Ok(None);
+    }
+    let stopped = Oid::from_hex(amend).map_err(|_| {
+        FactsError::History(RunError::Unparsable(format!(
+            "rebase-merge/amend holds {amend:?}, not a commit id"
+        )))
+    })?;
+    let parents = first_parents(repo, stopped, stop)?;
+    let head_on_it = parents.head == parents.stopped;
+    Ok(Some(EditStop {
+        stopped,
+        head_on_it,
+    }))
+}
+
+/// `HEAD`'s first parent and the stopped commit's; `None` for a root.
+struct FirstParents {
+    head: Option<Oid>,
+    stopped: Option<Oid>,
+}
+
+/// One `rev-list --no-walk=unsorted --parents HEAD <stopped>`: each line is
+/// a commit and its parents. When `HEAD` *is* the stopped commit git prints
+/// it once, so lines are matched by commit, not position.
+fn first_parents(
+    repo: &RepoHandle,
+    stopped: Oid,
+    stop: &dyn Stop,
+) -> Result<FirstParents, FactsError> {
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("rev-list"),
+            GitArg::Flag("--no-walk=unsorted"),
+            GitArg::Flag("--parents"),
+            GitArg::Flag("HEAD"),
+            GitArg::Word(stopped.to_string()),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut lines = Vec::new();
+    for line in text.lines() {
+        let mut ids = line.split(' ').map(|id| {
+            Oid::from_hex(id).map_err(|_| {
+                FactsError::History(RunError::Unparsable(format!(
+                    "rev-list --parents printed {line:?}"
+                )))
+            })
+        });
+        let Some(commit) = ids.next() else { continue };
+        lines.push((commit?, ids.next().transpose()?));
+    }
+    let missing = |what: &str| {
+        FactsError::History(RunError::Unparsable(format!(
+            "rev-list --parents printed no line for {what}"
+        )))
+    };
+    // `HEAD`'s line is the first git prints: the order asked for.
+    let head = lines.first().map(|(_, parent)| *parent);
+    let stopped_parent = lines
+        .iter()
+        .find(|(id, _)| *id == stopped)
+        .map(|(_, parent)| *parent);
+    Ok(FirstParents {
+        head: head.ok_or_else(|| missing("HEAD"))?,
+        stopped: stopped_parent.ok_or_else(|| missing("the stopped commit"))?,
+    })
 }
 
 /// The rows that carry a commit, in file order.

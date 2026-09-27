@@ -87,6 +87,8 @@ fn facts() -> RepoFacts {
         upstream: None,
         refs: BTreeMap::new(),
         markers: vec![],
+        incoming: None,
+        edit_stop: None,
     }
 }
 
@@ -364,6 +366,74 @@ fn mid_rebase_stage_and_unstage_are_allowed_and_the_rest_wait() {
     let explained = Refusal::InProgress(InProgress::Rebase).explain();
     assert!(
         explained.contains("git rebase --continue") && explained.contains("git rebase --abort")
+    );
+}
+
+/// P14's one exception (m7-power-tools/07a). The facts are what
+/// `read_facts` reads in each case; that it reads them so from a real
+/// repository is `tests/it/edit_stop.rs`.
+#[test]
+fn amend_is_allowed_only_at_an_edit_stop_on_the_stopped_commit() {
+    let edit = |head_on_it| {
+        Some(crate::rewrite::EditStop {
+            stopped: oid(0x42),
+            head_on_it,
+        })
+    };
+    let amend = Operation::Amend(commit("fix"));
+    let cases = [
+        // HEAD is the stopped commit, or an amend of it (same first parent).
+        (
+            "edit stop, HEAD on it",
+            Some(InProgress::Rebase),
+            edit(true),
+            true,
+        ),
+        // A new commit on top of it.
+        (
+            "edit stop, a commit on top",
+            Some(InProgress::Rebase),
+            edit(false),
+            false,
+        ),
+        ("conflict stop", Some(InProgress::Rebase), None, false),
+        ("merge", Some(InProgress::Merge), None, false),
+        ("cherry-pick", Some(InProgress::CherryPick), None, false),
+        ("revert", Some(InProgress::Revert), None, false),
+        // Never the case in a real repository; the exception keys on a rebase too.
+        (
+            "merge with an edit fact",
+            Some(InProgress::Merge),
+            edit(true),
+            false,
+        ),
+    ];
+    for (name, in_progress, edit_stop, allowed) in cases {
+        let f = RepoFacts {
+            in_progress,
+            edit_stop,
+            ..facts()
+        };
+        let verdict = amend.check(&f);
+        if allowed {
+            assert_eq!(verdict, Ok(()), "{name}");
+        } else {
+            assert_eq!(
+                verdict,
+                Err(Refusal::InProgress(in_progress.unwrap())),
+                "{name}"
+            );
+        }
+    }
+    // Only the amend: a commit at the same edit stop still waits.
+    let at_edit = RepoFacts {
+        in_progress: Some(InProgress::Rebase),
+        edit_stop: edit(true),
+        ..facts()
+    };
+    assert_eq!(
+        Operation::Commit(commit("new")).check(&at_edit),
+        Err(Refusal::InProgress(InProgress::Rebase))
     );
 }
 

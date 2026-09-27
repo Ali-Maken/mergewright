@@ -10,7 +10,9 @@ use graft_core::journal::{
     Touches,
 };
 use graft_core::oid::Oid;
+use graft_git::run::RunError;
 
+use crate::branch_config;
 use crate::facts::{self, FactsError};
 use crate::journal::JournalError;
 use crate::merge_state::read_merge_state;
@@ -84,6 +86,7 @@ pub(crate) fn begin(
     // inverse puts back where they changed (m6-conflicts/20).
     let merge_before = read_merge_state(ctx.repo)
         .map_err(|why| PrepareError::Facts(FactsError::MergeState(why)))?;
+    let config_before = config_before(ctx, &touches.refs)?;
 
     let backup = if snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty() {
         // The snapshot's parents are the pins **and** every commit the
@@ -126,6 +129,8 @@ pub(crate) fn begin(
         reverses,
         merge_before,
         merge_after: None,
+        config_before,
+        config_after: BTreeMap::default(),
         put_back,
     };
     ctx.journal
@@ -134,6 +139,19 @@ pub(crate) fn begin(
     Ok(Pending {
         entry,
         before_commit: backup.map(|taken| taken.commit),
+    })
+}
+
+/// The config of each branch the entry touches, so the inverse can put back
+/// what the operation writes there — a tracking checkout's upstream
+/// (review m7-16b..21b, Major 1).
+fn config_before(
+    ctx: &Context<'_>,
+    refs: &[String],
+) -> Result<BTreeMap<String, Vec<String>>, PrepareError> {
+    branch_config::read(ctx.repo, refs, ctx.stop).map_err(|why| match why {
+        RunError::Stopped => PrepareError::Stopped,
+        other => PrepareError::Facts(FactsError::BranchConfig(other)),
     })
 }
 
@@ -237,6 +255,10 @@ fn read_after(ctx: &Context<'_>, entry: &mut JournalEntry) -> Vec<AfterState> {
     match read_merge_state(ctx.repo) {
         Ok(merge) => entry.merge_after = merge,
         Err(why) => unread.push(AfterState::MergeState(why)),
+    }
+    match branch_config::read(ctx.repo, &entry.touches.refs, never) {
+        Ok(config) => entry.config_after = config,
+        Err(why) => unread.push(AfterState::BranchConfig(FactsError::BranchConfig(why))),
     }
     unread
 }

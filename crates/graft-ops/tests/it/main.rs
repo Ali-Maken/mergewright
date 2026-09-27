@@ -15,6 +15,7 @@ mod cherry_pick;
 mod conflict_fixtures;
 mod conflict_ops;
 mod conflict_set;
+mod edit_stop;
 mod error_rows;
 mod finish;
 mod finish_merge;
@@ -26,6 +27,8 @@ mod mistake_radar;
 mod octopus_merge;
 mod ops_execution;
 mod ops_execution_hard;
+#[cfg(unix)]
+mod pull_set_aside;
 mod put_back_forecast;
 mod put_back_index;
 mod recover;

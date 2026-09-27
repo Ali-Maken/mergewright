@@ -197,6 +197,27 @@ pub(super) fn check_fetch(params: &FetchParams, facts: &RepoFacts) -> Result<(),
     }
 }
 
+/// Whether a pull sets edits aside (m7-power-tools/03b): its fetch brought
+/// a fast-forward, and a path it changes is a changed tracked file here —
+/// staged or not, a rename's original path included. `false` before the
+/// fetch ([`RepoFacts::incoming`] unread) and over untracked files alone.
+pub(super) fn pull_overlaps(facts: &RepoFacts) -> bool {
+    let Some(incoming) = facts
+        .incoming
+        .as_ref()
+        .filter(|incoming| incoming.fast_forward)
+    else {
+        return false;
+    };
+    let brings = |path: &std::path::PathBuf| incoming.paths.contains(path);
+    facts
+        .status
+        .entries
+        .iter()
+        .filter(|entry| entry.is_staged() || entry.is_unstaged())
+        .any(|entry| brings(&entry.path) || entry.original_path.as_ref().is_some_and(brings))
+}
+
 pub(super) fn check_pull(params: &PullParams, facts: &RepoFacts) -> Result<(), Refusal> {
     let branch = head_branch(facts)?;
     let Some(upstream) = &facts.upstream else {

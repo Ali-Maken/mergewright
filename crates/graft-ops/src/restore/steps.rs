@@ -44,7 +44,27 @@ pub(super) fn run_step(
                     other => RestoreError::MergeState(other),
                 })
         }
+        Step::SetBranchConfig { key, to } => set_branch_config(ctx, key, to, commands),
     }
+}
+
+/// Make `key` hold exactly `to` in the local config: `--replace-all` and
+/// `--add`, or `--unset-all` for none.
+fn set_branch_config(
+    ctx: &mut Context<'_>,
+    key: &str,
+    to: &[String],
+    commands: &mut Vec<String>,
+) -> Result<(), RestoreError> {
+    for args in crate::branch_config::writes(key, to) {
+        match run(ctx, args.clone(), None, commands) {
+            Ok(_) => {}
+            // An unset of a key that is not set leaves it as asked.
+            Err(RestoreError::Run(why)) if crate::branch_config::already_so(&args, &why) => {}
+            Err(other) => return Err(other),
+        }
+    }
+    Ok(())
 }
 
 /// Compare-and-swap a ref back.
