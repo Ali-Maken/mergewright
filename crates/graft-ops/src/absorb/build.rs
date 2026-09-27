@@ -9,6 +9,7 @@ use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, Stop};
 
 use crate::facts::FactsError;
+use crate::objects;
 use crate::snapshot::TempIndex;
 
 use super::read::FileAtHead;
@@ -27,6 +28,8 @@ pub(crate) fn commit_pieces(
     stop: &dyn Stop,
 ) -> Result<Oid, FactsError> {
     let tree = tree_with(repo, head, pieces, stop)?;
+    // `-F -` from stdin, not `objects::commit_tree`'s `-m`: the message
+    // goes in verbatim (06d review).
     let commit = GitInvocation::new(repo)
         .args([
             GitArg::Flag("commit-tree"),
@@ -59,15 +62,7 @@ pub(crate) fn empties(
 
 /// `commit`'s tree id.
 fn tree_of(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<Oid, FactsError> {
-    let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("rev-parse"),
-            GitArg::Flag("--verify"),
-            GitArg::Word(format!("{commit}^{{tree}}")),
-        ])
-        .run(stop)
-        .map_err(FactsError::of_history)?;
-    parse_oid(String::from_utf8_lossy(&output.stdout).trim())
+    objects::resolve(repo, &format!("{commit}^{{tree}}"), stop).map_err(FactsError::of_history)
 }
 
 /// `commit`'s tree plus `pieces`, written as a tree from a temporary index.

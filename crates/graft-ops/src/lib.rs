@@ -18,6 +18,7 @@ pub mod journal;
 pub mod journal_list;
 pub mod merge_state;
 pub mod mistake_radar;
+mod objects;
 pub mod operation;
 pub mod preview;
 pub mod restore;

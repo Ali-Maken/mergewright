@@ -1,6 +1,6 @@
 # 06d set-aside-split — review 06b's M2 and Minors 2, 4, 5
 
-Status: ready
+Status: done
 Blocked by: 30 (same files).
 Crates: graft-ops only.
 Build with: Sonnet (move code, no behaviour change; small tests).
@@ -14,9 +14,15 @@ Split by: conductor, 2026-09-26. No new decision.
 - **Minor 5:** a test for a rename with an edit and the tree edited on (probe p6).
 
 ## Acceptance
-- [ ] `wc -l` for every touched file, all ≤ 400; every set-aside test green (name the filter and count).
-- [ ] Minor 2, 4, 5: each change named with its test.
-- [ ] Gates workspace-wide.
+- [x] `wc -l`: set_aside.rs 360, set_aside/{answer 161, put_back 268, rebuild 63, returned 186}.rs, objects.rs 45, absorb/build.rs 187, absorb/mod.rs 238. Exception: tests/it/absorb_staged.rs was 553 before, ~590 now (test file, not split — see NOTES). Filter `nextest -p graft-ops -E 'test(/absorb|set_aside|put_back|rename|fixup/)'`: 133/133 pass.
+- [x] Minor 2: `Copied` arm dropped (absorb/mod.rs), `StaysWhy::Renamed` doc + MAP line fixed — covered by `a_staged_rename_stays_whole` (still green). Minor 4: `a_fixup_that_empties_its_target_drops_it` asserts f3's id unchanged. Minor 5: `a_staged_rename_with_an_edit_and_the_tree_edited_on_stays_whole` (RM, index byte-equal, tree as left).
+- [x] Gates workspace-wide: fmt, clippy -D warnings, nextest 4052/4052, test --doc ok.
 
 ## Touches
 MAP.md (graft-ops). Every user of the moved helpers (grep).
+
+## NOTES (builder, 2026-09-27)
+- Split differs from the ticket's single `rebuild.rs`: after 30, `from_index_base` lived in put_back.rs, so set_aside.rs needed ~270 lines out. Moved: `rebuild.rs` (from_index_base), `returned.rs` (step 6 `put_back`, `Returned`, `Kept`, drop), `answer.rs` (`Outcome`, `status_for`, `answer`, `back`). Code moved verbatim; visibility only.
+- Shared helpers: `crate::objects` (`resolve`, `commit_tree`, `printed_oid`), used by set_aside/rebuild.rs; absorb/build.rs uses `resolve` only. Absorb's commit keeps its verbatim `commit-tree -F -` (stdin) path — reverted from `-m` on conductor review (option a): no message-bytes change. `rewrite/reads.rs:272` commit-tree and `rewrite/progress.rs:148` rev-parse not moved (outside scope).
+- absorb_staged.rs over 400 before and after; a test file — split left for the conductor.
+- No compaction.

@@ -264,6 +264,34 @@ fn a_staged_rename_stays_whole() {
     );
 }
 
+/// Review 06b Minor 5 (probe p6): a rename with an edit staged, and the
+/// working tree edited on past it. Both sides stay; the index comes back
+/// byte for byte and the tree as he left it (`RM`).
+#[test]
+fn a_staged_rename_with_an_edit_and_the_tree_edited_on_stays_whole() {
+    let repo = branch();
+    repo.git(&["mv", "b.txt", "moved.txt"]);
+    stage(&repo, "moved.txt", b"b1\nB2\nb3\nb4\nb5\n");
+    stage(&repo, "a.txt", b"a1\nA2\na3\na4\na5 changed\n");
+    repo.write("moved.txt", b"b1\nB2\nb3\nb4\nB5\n");
+    assert_eq!(
+        repo.git(&["status", "--porcelain=v1", "--", "b.txt", "moved.txt"]),
+        "RM b.txt -> moved.txt",
+        "the setup is a rename with an edit, edited on"
+    );
+    let index_before = repo.git(&["write-tree"]);
+
+    absorb(&repo);
+
+    assert_eq!(repo.git(&["write-tree"]), index_before, "still staged");
+    assert_eq!(repo.read("moved.txt"), b"b1\nB2\nb3\nb4\nB5\n");
+    assert_eq!(
+        repo.git(&["status", "--porcelain=v1"]),
+        "RM b.txt -> moved.txt"
+    );
+    assert_eq!(stash_list(&repo), "", "the set-aside copy was dropped");
+}
+
 #[test]
 fn undo_after_absorb_with_a_staged_rename() {
     let repo = branch();
@@ -289,9 +317,13 @@ fn a_fixup_that_empties_its_target_drops_it() {
     let repo = branch();
     debug_line_taken_out(&repo);
     let f4 = oid(&repo, "feature");
+    let f3 = oid(&repo, "feature~1");
 
     let params = absorb(&repo);
 
+    // Review 06b Minor 4: the pick below the dropped commit is kept as it
+    // is (`rewrite/plan.rs`'s claim), not rewritten to an equal copy.
+    assert_eq!(oid(&repo, "feature"), f3, "f3 keeps its id");
     assert!(
         params
             .todo

@@ -79,8 +79,9 @@ pub enum StaysWhy {
     NewFile,
     /// The lines are older than his branch.
     BeforeYourBranch,
-    /// A staged rename: both sides stay, so no commit loses the old path
-    /// while the new one waits in the index (review m7-06 M2).
+    /// A staged rename (`-M`; copies are never detected, so never this):
+    /// both sides stay, so no commit loses the old path while the new one
+    /// waits in the index (review m7-06 M2).
     Renamed,
     /// A submodule's commit changed (a gitlink, mode `160000`): absorb
     /// moves lines, and a submodule bump has none (review m7-06 M4).
@@ -172,7 +173,9 @@ pub(crate) fn mapped(
     let submodules = gitlinks(repo, head, stop)?;
     for diff in staged(repo, head, stop)? {
         let path = path_of(diff.entry.path.clone());
-        if let FileStatus::Renamed { .. } | FileStatus::Copied { .. } = diff.entry.status {
+        // No copy arm: `diff-index -M` reports renames only (`-C` would be
+        // needed for copies, and plumbing ignores `diff.renames`).
+        if let FileStatus::Renamed { .. } = diff.entry.status {
             // Both sides stay: placing the old side's deletion would take
             // the file out of history while the new one waits in the index.
             if let Some(old) = &diff.entry.old_path {
