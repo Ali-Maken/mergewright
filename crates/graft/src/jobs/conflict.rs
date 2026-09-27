@@ -40,6 +40,10 @@ pub struct OpenedFile {
     /// (`BothDeleted`, or a side that removed it) and always `None` when
     /// `file` is `Some` (m6-conflicts/05).
     pub on_disk: Option<OnDisk>,
+    /// The file is there but could not be read: `can't read <path>:
+    /// <reason>`, for the card's notice. `None` when it read, or when it
+    /// is simply not there (KNOWN_GAPS :572).
+    pub unreadable: Option<String>,
     /// Whether `d` can start a whole-file shape (`file: None`) over — ops'
     /// own answer, asked when it opened (ticket 30: no app mirror of ops'
     /// rule). `None` for a document, whose `d` is not gated here.
@@ -181,40 +185,52 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, 
             done: None,
         }
     })?;
-    let (on_disk, start_over) = if opened.file.is_none() {
-        (
-            worktree_glimpse(&handle, path, opened.binary),
-            Some(start_over(&handle, path, stop)),
-        )
+    let (on_disk, unreadable, start_over) = if opened.file.is_none() {
+        let (on_disk, unreadable) = match worktree_glimpse(&handle, path, opened.binary) {
+            Ok(on_disk) => (on_disk, None),
+            Err(words) => (None, Some(words)),
+        };
+        (on_disk, unreadable, Some(start_over(&handle, path, stop)))
     } else {
-        (None, None)
+        (None, None, None)
     };
     Ok(Opening::Unmerged(Arc::new(OpenedFile {
         file: opened.file,
         how: opened.how,
         binary: opened.binary,
         on_disk,
+        unreadable,
         start_over,
     })))
 }
 
 /// A whole-file shape's card shows the file as it stands on disk, when
 /// there is one there (`DeletedByThem` keeps it, `BothDeleted` never has
-/// one, …) — read directly rather than through `graft_git::conflict::read`,
-/// which parses markers this shape does not have. A path that is not there,
-/// or not readable, draws nothing rather than fail the whole open: the
-/// card's `how`/`keys` line is what matters, and nothing is a fine answer
-/// for a file that is gone.
-fn worktree_glimpse(handle: &RepoHandle, path: &Path, binary: bool) -> Option<OnDisk> {
+/// one — read directly rather than through `graft_git::conflict::read`,
+/// which parses markers this shape does not have. A path that is not there
+/// draws nothing (`Ok(None)`): nothing is the right answer for a file that
+/// is gone. Any other failure is `Err` with the card notice's words,
+/// `can't read <path>: <reason>` (KNOWN_GAPS :572) — never an empty file.
+/// Neither fails the whole open: the card's `how`/`keys` line still stands.
+fn worktree_glimpse(
+    handle: &RepoHandle,
+    path: &Path,
+    binary: bool,
+) -> Result<Option<OnDisk>, String> {
     let full = match handle.workdir() {
         Some(workdir) => workdir.join(path),
         None => path.to_path_buf(),
     };
-    // Every failure here is the "not there, or not readable" of the doc
-    // comment above: the card draws no glimpse and still offers `o`/`t`.
-    let file = std::fs::File::open(&full).ok()?;
-    let size = file.metadata().ok()?.len();
-    glimpse(file, size, binary).ok()
+    let words = |why: &std::io::Error| format!("can't read {}: {why}", path.display());
+    let file = match std::fs::File::open(&full) {
+        Ok(file) => file,
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(why) => return Err(words(&why)),
+    };
+    let size = file.metadata().map_err(|why| words(&why))?.len();
+    glimpse(file, size, binary)
+        .map(Some)
+        .map_err(|why| words(&why))
 }
 
 /// The first lines of `file` (whose whole size is `size`), as a card holds
