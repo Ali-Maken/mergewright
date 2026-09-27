@@ -19,6 +19,7 @@ use graft_core::oid::Oid;
 use super::node::{Node, NodeError, Nodes, RepoNodes};
 use super::{CommitTable, WalkError};
 use crate::repo::RepoHandle;
+use crate::shallow::ShallowList;
 
 /// How many commits a branch has that its upstream does not, and the other
 /// way round.
@@ -59,10 +60,12 @@ pub fn ahead_behind(
     if local == upstream {
         return Ok(AheadBehind::default());
     }
-    let table = CommitTable::open(handle).map_err(|source| WalkError::CommitGraph {
-        source: Box::new(source),
-    })?;
-    let nodes = RepoNodes::new(handle.gix(), Arc::new(table));
+    let shallow = Arc::new(ShallowList::read(handle)?);
+    let table =
+        CommitTable::open_with(handle, &shallow).map_err(|source| WalkError::CommitGraph {
+            source: Box::new(source),
+        })?;
+    let nodes = RepoNodes::new(handle.gix(), Arc::new(table), shallow);
     Ok(count(&nodes, local, upstream)?)
 }
 

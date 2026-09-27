@@ -23,6 +23,7 @@ use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 
 use crate::repo::RepoHandle;
+use crate::shallow::{ShallowError, ShallowList};
 
 /// The id table one open repository shares between its walk, its views and
 /// its search. `Send + Sync`; hold it as `Arc<CommitTable>`.
@@ -40,20 +41,31 @@ impl CommitTable {
     /// The table for `repo`, bound to its commit-graph file if it has one.
     ///
     /// Uses the commit-graph exactly when the walk does (`core.commitGraph`
-    /// respected), so a handle means the same thing to both.
+    /// respected), so a handle means the same thing to both. None in a
+    /// shallow repository, git's own rule (`commit-graph.c`
+    /// `commit_graph_compatible`): the file records parents the clone cut.
     ///
     /// # Errors
-    /// [`TableError::CommitGraph`] if the file is there but cannot be opened.
-    /// A missing file is not an error: the table is all overflow.
+    /// [`TableError::CommitGraph`] if the file is there but cannot be opened;
+    /// [`TableError::Shallow`] if `<common_dir>/shallow` cannot be read. A
+    /// missing file is not an error: the table is all overflow.
     pub fn open(repo: &RepoHandle) -> Result<Self, TableError> {
+        CommitTable::open_with(repo, &ShallowList::read(repo)?)
+    }
+
+    /// [`open`](Self::open) for a caller that has read the shallow list.
+    pub(crate) fn open_with(repo: &RepoHandle, shallow: &ShallowList) -> Result<Self, TableError> {
         let gix = repo.gix();
+        let hash_len = gix.object_hash().len_in_bytes();
+        if !shallow.is_empty() {
+            return Ok(CommitTable::with_graph(None, hash_len));
+        }
         let graph = gix
             .commit_graph_if_enabled()
             .map_err(|source| TableError::CommitGraph {
                 path: gix.common_dir().join("objects").join("info"),
                 source: Box::new(source),
             })?;
-        let hash_len = gix.object_hash().len_in_bytes();
         Ok(CommitTable::with_graph(graph, hash_len))
     }
 
@@ -348,6 +360,10 @@ pub enum TableError {
         /// What `gix` said. Boxed to keep `TableError` small.
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// `<common_dir>/shallow` exists but could not be read, so whether the
+    /// graph may be used is unknown (m7/32).
+    #[error(transparent)]
+    Shallow(#[from] ShallowError),
 }
 
 #[cfg(test)]

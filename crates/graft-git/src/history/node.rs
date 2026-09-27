@@ -17,6 +17,7 @@ use graft_core::commit_handle::{CommitHandle, Parents};
 use graft_core::oid::Oid;
 
 use super::table::CommitTable;
+use crate::shallow::ShallowList;
 
 /// A commit reduced to the three things an ordering depends on, besides its
 /// id: which commit it is travels as a [`CommitHandle`] beside it.
@@ -197,14 +198,33 @@ impl Nodes for MapNodes {
 
 /// The repository's own nodes: the commit-graph file for every commit it
 /// covers, the object database only for the ones it does not.
+///
+/// A commit `shallow` lists has no parents, whichever source it came from:
+/// git's rule for a shallow clone's boundary (m7-power-tools/32). Its
+/// parent was never fetched, so it is never interned either.
 pub(crate) struct RepoNodes<'a> {
     repo: &'a gix::Repository,
     table: Arc<CommitTable>,
+    shallow: Arc<ShallowList>,
 }
 
 impl<'a> RepoNodes<'a> {
-    pub(crate) fn new(repo: &'a gix::Repository, table: Arc<CommitTable>) -> Self {
-        RepoNodes { repo, table }
+    pub(crate) fn new(
+        repo: &'a gix::Repository,
+        table: Arc<CommitTable>,
+        shallow: Arc<ShallowList>,
+    ) -> Self {
+        RepoNodes {
+            repo,
+            table,
+            shallow,
+        }
+    }
+
+    /// Whether `handle` is a shallow boundary. One `is_empty` branch on a
+    /// complete repository; the id is only looked up in a shallow one.
+    fn is_boundary(&self, handle: CommitHandle) -> bool {
+        !self.shallow.is_empty() && self.shallow.contains(&self.id(handle))
     }
 
     /// Whether a commit-graph file is backing these reads.
@@ -229,10 +249,18 @@ impl Nodes for RepoNodes<'_> {
     }
 
     fn node(&self, handle: CommitHandle) -> Result<Node, NodeError> {
+        let boundary = self.is_boundary(handle);
         if let Some((graph, position)) = self.position(handle) {
-            return node_from_graph(graph, gix::commitgraph::Position(position));
+            let mut node = node_from_graph(graph, gix::commitgraph::Position(position))?;
+            // `CommitTable::open` binds no graph in a shallow repository, as
+            // git does; a table opened before the clone became shallow still
+            // must not hand out a parent that was cut.
+            if boundary {
+                node.parents = Parents::None;
+            }
+            return Ok(node);
         }
-        node_from_object(self.repo, &self.id(handle), &self.table)
+        node_from_object(self.repo, &self.id(handle), &self.table, boundary)
     }
 
     fn rereadable(&self, handle: CommitHandle) -> bool {
@@ -284,7 +312,8 @@ fn graph_id(graph: &gix::commitgraph::Graph, pos: gix::commitgraph::Position) ->
 
 /// A commit outside the commit-graph, header-parsed from the object
 /// database: parents interned through `table`, generation unknown (explored
-/// first, git's rule).
+/// first, git's rule). A `boundary` (listed in `shallow`) has none: its
+/// object still names parents the clone never fetched.
 ///
 /// # Errors
 /// [`NodeError`] if the object is missing, unreadable or malformed.
@@ -292,11 +321,12 @@ pub(crate) fn node_from_object(
     repo: &gix::Repository,
     id: &Oid,
     table: &CommitTable,
+    boundary: bool,
 ) -> Result<Node, NodeError> {
     let id = *id;
     let commit = find_commit(repo, id)?;
     let mut parents = Vec::with_capacity(1);
-    for parent in commit.parent_ids() {
+    for parent in commit.parent_ids().filter(|_| !boundary) {
         let parent = Oid::from_bytes(parent.as_bytes())
             .map_err(|source| NodeError::Malformed { id, source })?;
         parents.push(table.intern(&parent));

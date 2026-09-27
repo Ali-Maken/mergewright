@@ -29,7 +29,7 @@ use graft_core::oid::Oid;
 use crate::diff::ParseError;
 use crate::repo::RepoHandle;
 use crate::run::{DEFAULT_CAP, GitArg, GitInvocation, GitOutput, RunError, Stop};
-use crate::trace::shallow::read_shallow;
+use crate::shallow::ShallowList;
 use crate::version::system_git;
 
 mod ignore_revs;
@@ -335,8 +335,10 @@ pub(crate) fn blame_with(
             parse_marks(&output.stdout).map_err(BlameError::Parse)?,
         )?;
     }
-    let shallow =
-        read_shallow(repo).map_err(|(path, source)| BlameError::Shallow { path, source })?;
+    let shallow = ShallowList::read(repo).map_err(|error| BlameError::Shallow {
+        path: error.path,
+        source: error.source,
+    })?;
     for commit in commits.values_mut() {
         commit.shallow = shallow.contains(&commit.id);
     }
