@@ -30,7 +30,7 @@ Graft; and *you cannot lose work* (M3): edits set aside are in the tree or in th
 | Exit code | git exits 0 on a clashing autostash (A1.5; VS Code #325762, SM #1199) | read the index after every put-back | **T** |
 | Set aside around rebase/switch | lazygit: stash, switch, pop behind one prompt (+1); JetBrains Smart Checkout (A3; CC §1) | always, no prompt; the preview says so (the preview *is* the prompt) | **T** lazygit/JetBrains, **R** their extra prompt: `y` in the preview already confirms |
 | Mechanism | `git rebase --autostash` (A1.5) | Graft's own `stash create` → store → op → `stash apply <id>` | **R** `--autostash`: hidden `autostash` entry, no switch equivalent (A1.6, A4) |
-| Staged split on put-back | git's autostash applies without `--index` (sequencer; `(?)`, the builder verifies) | without `--index`; preview says `N staged come back unstaged` | **T** git. **R** `--index`: refuses on a clash (A1.2, Magit #4993) |
+| Staged split on put-back | git's autostash applies without `--index` (sequencer; `(?)`, the builder verifies) | without `--index`; preview says `N staged come back unstaged` | **T** git. **R** `--index`: refuses on a clash (A1.2, Magit #4993) (superseded 2026-09-26: ADR-0045 amendment b, tickets 30/30b) |
 | Menu order | JetBrains, Sublime Merge: cherry-pick a top-level item, 2 (CC §2) | Checkout 1st, Cherry-pick 2nd, fixed; Checkout dims on the current branch, Cherry-pick never dims (71's amendment) | **T** (interim). Own keys + picker: M7, prototyped |
 
 ## Journeys (keys; UX 1.3; start: graph, cursor on the named row)
@@ -115,7 +115,7 @@ and Cherry-pick hold the first two places); `Refusal::DirtyTree` doc; KNOWN_GAPS
   `yours · main` | `set aside · your edits`; bar `o yours  t set aside`. Notice row words above. First look: the notice.
   `[A]` set-aside: `branch · main` | `yours · edits set aside`; bar `o branch  t yours` (ADR-0043 §4 amended).
 - **Preview, rebase or checkout on a dirty tree:** one row under `working tree:`,
-  `your edits: 3 files set aside, put back after` + ` · 1 staged comes back unstaged` when any. Cut from the right.
+  `your edits: 3 files set aside, put back after` + ` · 1 staged comes back unstaged` when any. Cut from the right. (superseded 2026-09-26: ADR-0045 amendment b, tickets 30/30b)
   `[A]` and the conflict line forecasts the put-back too (below).
 - **Stop line** while a clash is open and the resolver is shut: `stash@{0} clashed · 1 file conflicted`; shorter
   wordings drop the count, then the name (ladder as `stop_wordings`).

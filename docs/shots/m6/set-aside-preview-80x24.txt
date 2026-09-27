@@ -7,8 +7,8 @@
 # edited and one of them staged.
 #  - The rebase preview box, `[ Confirm ]` offered.
 #  - Under `working tree:` the row `your edits: 3 files set aside, put back
-#    after · 1 staged comes back unstaged`. At 80 columns the staged clause
-#    may be cut; the file count may not.
+#    after`, with no staging words: the staging comes back as he left it.
+#    At narrow widths `put back after` may be cut; the file count may not.
 
  graft /code/api  152 rows so far
   ●    [origin/main] theirs                                         6m   7be74b5
@@ -26,7 +26,7 @@
 │ 1 commit replayed                                                            │
 │ main 9d3d925 → 1 new commit                                                  │
 │ working tree: 1 file updated                                                 │
-│ your edits: 3 files set aside, put back after · 1 staged comes back unstaged │
+│ your edits: 3 files set aside, put back after                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ 1 lane continue outside this view                                            │

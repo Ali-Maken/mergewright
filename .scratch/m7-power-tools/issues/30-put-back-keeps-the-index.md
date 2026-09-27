@@ -154,17 +154,20 @@ fn staging_lost(ctx: &Context, stash: Oid) -> Result<Vec<PathBuf>, ApplyError>;
 - [x] T1-T11, each named, red run quoted where red first. NOTES "Tests"; all in
   `crates/graft-ops/tests/it/put_back_index.rs`, `set_aside.rs`, `absorb_staged.rs`, and
   `apply/set_aside/put_back.rs` unit tests.
-- [ ] Every set-aside test in both crates green: **graft-ops side green; 3 `crates/graft` tests red** (they assert
-  the old `· 1 staged comes back unstaged` clause) — `blocked: needs graft`, NOTES "Blocked". Filter run: 404 run,
-  401 passed, 3 failed (all `graft::it`).
+- [x] Every set-aside test in both crates green (closed in 30b): `cargo nextest run --workspace -E
+  'test(/set_aside|put_back|stash|absorb|recover|pull/)'` → 407 run, 407 passed. The 3 (5) graft tests now green by
+  30b's words: `m6_stash_put_back::set_aside::a_dirty_pull_rebase_is_three_keys`,
+  `m5_walk::every_scenario::journey_pull_rebase_dirty`, `…_pull_rebase_dirty_preview`,
+  `…_rejected_push_dirty_to_pushed`, `…_journey_switch_dirty`.
 - [x] ADR-0045 amendment appended verbatim (below), with test names filled in. Plus the review 06b M3 seven points
   (carry). `docs/adr/0045-…` "Amendment 2026-09-26 (b)".
 - [x] MAP.md graft-ops updated: `SetAside` (:32), `apply` set-aside (:200), new `AfterState::StagingNotKept` row.
-- [ ] Gates, workspace-wide: `cargo fmt --check` pass, `cargo clippy --all-targets -- -D warnings` pass,
-  `cargo test --doc` pass; `cargo nextest run` **fails on 5 `crates/graft` tests** (NOTES "Blocked"). graft-ops
-  749/749.
-- [ ] Carry, absorb C1 test `a_staged_file_deletion_drops_the_commit_that_made_it`: **open, ticket 31 has not
-  landed** (no 31 commit on this branch's history at 3cfb8fe6).
+- [x] Gates, workspace-wide (closed in 30b): `cargo fmt --check` pass, `cargo clippy --all-targets -- -D warnings`
+  pass, `cargo nextest run` 4051/4051 passed (1 skipped), `cargo test --doc` pass.
+- [x] Carry, absorb C1 test (closed in 30b): `absorb_staged::a_staged_file_deletion_drops_the_commit_that_made_it`
+  in `crates/graft-ops/tests/it/absorb_staged.rs`; 31's `write_git_headers` is on this branch (merge 06e25b47). Red
+  with 31's creation/deletion header reverted for one uncommitted run: `f2 is planned as a drop: [Pick f2, Fixup
+  "fixup! f2", Pick f3]` (q8's todo); green with it.
 
 ## Touches (check each, say how)
 - Put-back callers, found with `grep set_aside::close`:

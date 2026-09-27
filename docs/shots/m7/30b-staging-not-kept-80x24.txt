@@ -1,0 +1,39 @@
+# m7/30b-staging-not-kept-80x24.txt: drawn by `view::view` from a real
+# AppState (crates/graft/tests/it/m6_stash_put_back/set_aside.rs,
+# a_switch_whose_staging_cannot_come_back_says_so, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# What right looks like: `. ⏎ y` on `fix` from `main`, `f.txt` line 5
+# edited and staged, `fix` changed line 7. git could not put the staging
+# back on `fix`'s tree, so the edits came back unstaged.
+#  - The cursor on `fix`, now HEAD.
+#  - The bottom row: `checkout fix ✓ · your edits are back · staging not
+#    kept: f.txt · u undoes it, staging included` at 187; at 80 `your
+#    edits are back` goes first, the file and `u` stay whole.
+#  - Nowhere `could not confirm`.
+
+ graft /code/api  5 commits  date order, sorting…
+  ◌    Uncommitted changes (1 unstaged)
+  ◆ ▏  [◆ fix] fix changes line 7                                   4m   f2e2ada
+●─╯    [main] add f                                                 5m   330fea5
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ checkout fix ✓ · staging not kept: f.txt · u undoes it, staging included

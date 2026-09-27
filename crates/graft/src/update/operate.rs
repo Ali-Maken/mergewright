@@ -865,12 +865,101 @@ fn done_status(
     if let Some((index, why)) = clash_drop {
         return super::clash::dropped_status(index, why);
     }
-    let done = remote_op.and_then(|op| super::remote::remote_done(state, op));
     Status::Done {
-        what: done.unwrap_or_else(|| applied.entry.description.clone()),
+        what: done_what(state, remote_op, applied),
         also: super::clash::edits_back(&applied.entry).map(str::to_owned),
         keys: None,
     }
+}
+
+/// What a `Done` puts before its tick: a remote op's own words, else the
+/// entry's description.
+fn done_what(
+    state: &mut AppState,
+    remote_op: Option<&Operation>,
+    applied: &graft_ops::apply::Applied,
+) -> String {
+    remote_op
+        .and_then(|op| super::remote::remote_done(state, op))
+        .unwrap_or_else(|| applied.entry.description.clone())
+}
+
+/// The key half of every [`staging_not_kept_rungs`] wording.
+const STAGING_UNDO: &str = "u undoes it, staging included";
+
+/// The fallback's status wordings, longest first (planner 30b, Decided 3).
+/// `what` is what `Done` would put before its tick:
+/// 1. `<what> ✓ · your edits are back · staging not kept: <paths> · u undoes it, staging included`
+/// 2. `<what> ✓ · staging not kept: <paths> · u undoes it, staging included`
+/// 3. `staging not kept: <paths> · u undoes it, staging included`
+///
+/// The cut drops `your edits are back` first: the files and the key are
+/// what he must read. `<paths>` is `<first>[ +N more]`, as graft-ops'
+/// `AfterState::StagingNotKept` words it (pinned by
+/// `staging_not_kept_words_match_graft_ops`).
+pub(crate) fn staging_not_kept_rungs(what: &str, paths: &[PathBuf]) -> Vec<String> {
+    let first = paths
+        .first()
+        .map_or_else(String::new, |path| path.display().to_string());
+    let named = match paths.len() {
+        0 | 1 => first,
+        n => format!("{first} +{} more", n - 1),
+    };
+    let lost = format!("staging not kept: {named}");
+    let done_line = crate::view::status::done_line;
+    vec![
+        done_line(
+            what,
+            Some(&format!("your edits are back \u{b7} {lost}")),
+            Some(STAGING_UNDO),
+        ),
+        done_line(what, Some(&lost), Some(STAGING_UNDO)),
+        format!("{lost} \u{b7} {STAGING_UNDO}"),
+    ]
+}
+
+/// The fallback's line for a status row `columns` wide: the longest rung
+/// that fits the row's text (the row indents one cell), else the last —
+/// `graft_ui::preview_box::fitting_line`'s rule, since the status line has
+/// no ladder of its own (30b). **Sticky**, not `Done`: `Done` clears on the
+/// next key, and this line is the only place that says the staging went.
+/// The key half rides `keys`, so the footer's own fit keeps it whole.
+pub(crate) fn staging_not_kept_status(what: &str, paths: &[PathBuf], columns: u16) -> Status {
+    // `fitting_line` measures a box `width` wide whose text is 4 cells
+    // narrower; the status row's text is `columns - 1` (it indents one
+    // cell), so the same rule is asked with the box 3 cells wider.
+    let rungs = staging_not_kept_rungs(what, paths);
+    let picked = graft_ui::preview_box::fitting_line(&rungs, columns.saturating_add(3));
+    let picked = picked.as_str();
+    let suffix = format!(" \u{b7} {STAGING_UNDO}");
+    Status::Sticky {
+        reason: picked.strip_suffix(&suffix).unwrap_or(picked).to_owned(),
+        keys: Some(STAGING_UNDO.to_owned()),
+    }
+}
+
+/// What a write that ran leaves behind whatever its line says: the editor
+/// closed, the scope re-read, and the cursor on the new `HEAD` when the
+/// launch asked for it.
+fn landed(
+    state: &mut AppState,
+    applied: &graft_ops::apply::Applied,
+    lands_on_head: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    // The write the editor was open for landed, so the editor and
+    // the draft behind it are about a commit that now exists
+    // (m3-working-tree-undo-and-stash/05). A failure leaves both
+    // alone: the message is what the user has to fix.
+    super::commit_editor::committed(state);
+    let commands = refresh_scope(state, applied.refresh, next_id);
+    // A write that moved `HEAD` lands the cursor on its new row once
+    // this refresh's refs and walk are in, exactly as a `--continue`
+    // does (UX §3.1, m7-power-tools/03).
+    if lands_on_head {
+        super::banner::finished_lands_on_head(state, &commands);
+    }
+    commands
 }
 
 /// An operate job answered. Stale answers (a job that is not the one
@@ -908,19 +997,14 @@ pub fn operated(
     match outcome {
         Operated::Done(applied) => {
             state.status = done_status(state, remote_op.as_ref(), clash_drop, &applied);
-            // The write the editor was open for landed, so the editor and
-            // the draft behind it are about a commit that now exists
-            // (m3-working-tree-undo-and-stash/05). A failure leaves both
-            // alone: the message is what the user has to fix.
-            super::commit_editor::committed(state);
-            let commands = refresh_scope(state, applied.refresh, next_id);
-            // A write that moved `HEAD` lands the cursor on its new row once
-            // this refresh's refs and walk are in, exactly as a `--continue`
-            // does (UX §3.1, m7-power-tools/03).
-            if lands_on_head {
-                super::banner::finished_lands_on_head(state, &commands);
-            }
-            commands
+            landed(state, &applied, lands_on_head, next_id)
+        }
+        // It ran and was read back; only the staging did not come back
+        // (30b). Everything a `Done` does, with its own sticky line.
+        Operated::StagingNotKept { applied, paths } => {
+            let what = done_what(state, remote_op.as_ref(), &applied);
+            state.status = staging_not_kept_status(&what, &paths, state.size.columns);
+            landed(state, &applied, lands_on_head, next_id)
         }
         Operated::Incomplete { applied, error } => incomplete(state, &applied, &error, next_id),
         Operated::Conflicted {
@@ -2663,4 +2747,5 @@ mod tests {
     mod edits_words;
     mod lands_on_head;
     mod one_write;
+    mod staging_not_kept;
 }

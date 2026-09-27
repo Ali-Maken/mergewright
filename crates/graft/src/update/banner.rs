@@ -36,6 +36,8 @@ use graft_ops::apply::Resume;
 use graft_term::sanitize_line;
 use graft_ui::graph_screen::BannerView;
 
+use crate::jobs::operate::Operated;
+
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
 use super::finish::ReturnTo;
@@ -696,7 +698,7 @@ pub fn cursor_conflict(state: &AppState) -> Option<PathBuf> {
 pub fn resumed(
     state: &mut AppState,
     id: JobId,
-    outcome: crate::jobs::operate::Operated,
+    outcome: Operated,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     // One guard: the answer is the job `operating` waits for **and** the
@@ -716,16 +718,17 @@ pub fn resumed(
         return kept_open(state, outcome, next_id);
     }
     match outcome {
-        crate::jobs::operate::Operated::Done(applied) => {
-            resumed_done(state, &how, &applied, finish, next_id)
+        Operated::Done(applied) => resumed_done(state, &how, &applied, finish, next_id),
+        Operated::StagingNotKept { applied, paths } => {
+            resumed_staging_not_kept(state, &how, &applied, &paths, finish, next_id)
         }
-        crate::jobs::operate::Operated::Incomplete { applied, error } => {
+        Operated::Incomplete { applied, error } => {
             resumed_incomplete(state, &how, &applied, &error, next_id)
         }
         // A rebase stopping on the *next* commit is the same entry and the
         // same banner: it stays focused, and the line says this is a second
         // stop rather than the first one all over again.
-        crate::jobs::operate::Operated::Conflicted {
+        Operated::Conflicted {
             kind,
             paths,
             stalled,
@@ -740,17 +743,14 @@ pub fn resumed(
             commands
         }
         // Over, but its set-aside clashed putting back (ADR-0045 §4, m6-conflicts/74).
-        crate::jobs::operate::Operated::Clashed { entry, clash } => {
-            super::undo::operation_ended(state);
-            super::clash::clashed(state, None, entry, &clash, next_id)
-        }
-        crate::jobs::operate::Operated::Failed {
+        Operated::Clashed { entry, clash } => ended_in_clash(state, entry, &clash, next_id),
+        Operated::Failed {
             error,
             edits: Some(at),
             refresh,
             ..
         } => edits_left_aside(state, &error, at, refresh, next_id),
-        crate::jobs::operate::Operated::Failed {
+        Operated::Failed {
             error,
             refresh,
             refused,
@@ -875,6 +875,47 @@ fn resumed_incomplete(
     super::operate::refresh_scope(state, applied.refresh, next_id)
 }
 
+/// `resumed`'s `Clashed`: the operation is over, and its put-back clashed.
+fn ended_in_clash(
+    state: &mut AppState,
+    entry: graft_core::journal::EntryId,
+    clash: &graft_ops::clash::Clash,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    super::undo::operation_ended(state);
+    super::clash::clashed(state, None, entry, clash, next_id)
+}
+
+/// `resumed`'s `StagingNotKept`: closed as `Done` closes (banner, scope,
+/// landing), and the line is the fallback's sticky ladder, led by what
+/// `resumed_done` would put before its tick. A close that did not finish
+/// keeps its own reason, with the staging news after it.
+fn resumed_staging_not_kept(
+    state: &mut AppState,
+    how: &Resume,
+    applied: &graft_ops::apply::Applied,
+    paths: &[PathBuf],
+    finish: Option<super::finish::FinishAnswer>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    let commands = resumed_done(state, how, applied, finish, next_id);
+    state.status = match &state.status {
+        Status::Done { what, .. } => {
+            super::operate::staging_not_kept_status(what, paths, state.size.columns)
+        }
+        // `Unfinished` has no tick to put the news after: its reason, then
+        // the shortest rung (the files and the key). Not reached today: a
+        // put-back runs only on a close that finished.
+        Status::Sticky { reason, .. } => {
+            let rungs = super::operate::staging_not_kept_rungs("", paths);
+            let news = rungs.last().map_or("", String::as_str);
+            Status::sticky(format!("{reason} \u{b7} {news}"))
+        }
+        other => other.clone(),
+    };
+    commands
+}
+
 fn resumed_done(
     state: &mut AppState,
     how: &Resume,
@@ -898,16 +939,16 @@ fn resumed_done(
 /// have been written is re-read all the same.
 fn kept_open(
     state: &mut AppState,
-    outcome: crate::jobs::operate::Operated,
+    outcome: Operated,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     state.status = Status::Ready;
     match outcome {
-        crate::jobs::operate::Operated::Conflicted { entry, .. } => {
+        Operated::Conflicted { entry, .. } => {
             state.live_entries = vec![entry];
             super::operate::refresh_scope(state, graft_ops::apply::Refresh::Everything, next_id)
         }
-        crate::jobs::operate::Operated::Failed {
+        Operated::Failed {
             refresh: Some(what),
             ..
         } => super::operate::refresh_scope(state, what, next_id),
@@ -918,12 +959,13 @@ fn kept_open(
         // summary finishes a merge, and a set-aside never wraps a merge
         // (review m6-final-fixes-74 m8). Were it reached: the put-back wrote
         // refs and files before it clashed, so everything is stale.
-        crate::jobs::operate::Operated::Clashed { .. } => {
+        Operated::Clashed { .. } => {
             super::operate::refresh_scope(state, graft_ops::apply::Refresh::Everything, next_id)
         }
-        crate::jobs::operate::Operated::Failed { refresh: None, .. }
-        | crate::jobs::operate::Operated::Done(_)
-        | crate::jobs::operate::Operated::Incomplete { .. } => Vec::new(),
+        Operated::Failed { refresh: None, .. }
+        | Operated::Done(_)
+        | Operated::StagingNotKept { .. }
+        | Operated::Incomplete { .. } => Vec::new(),
     }
 }
 

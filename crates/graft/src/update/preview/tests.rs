@@ -1099,11 +1099,13 @@ fn r_on_a_dirty_tree_opens_the_preview() {
 }
 
 /// m6-conflicts/74: a plan that sets edits aside draws one row right under
-/// `working tree:`, worded from its counts — whole at 120 columns, the
-/// staged clause gone at 60, the file count kept at both. A plan that sets
-/// nothing aside draws no such row.
+/// `working tree:`, worded from its file count — whole at 120 columns,
+/// `put back after` gone at 40, the file count kept at both. A plan that
+/// sets nothing aside draws no such row.
 #[test]
 fn the_set_aside_row_sits_under_the_working_tree_line() {
+    // `staged: 1` on purpose: graft never words `staged` (ADR-0045
+    // amendment b, 30b), so a stray count must not reach the row.
     let plan = PreviewPlan {
         set_aside: Some(graft_ops::operation::SetAside {
             files: 3,
@@ -1113,11 +1115,8 @@ fn the_set_aside_row_sits_under_the_working_tree_line() {
     };
     let (mut state, _) = opened_over(opened_by("r"), plan);
     for (columns, want) in [
-        (
-            120,
-            "your edits: 3 files set aside, put back after \u{b7} 1 staged comes back unstaged",
-        ),
-        (60, "your edits: 3 files set aside, put back after"),
+        (120, "your edits: 3 files set aside, put back after"),
+        (40, "your edits: 3 files set aside"),
     ] {
         state.size = Size { columns, rows: 40 };
         let view = preview_box(&state).expect("a box");

@@ -11,7 +11,7 @@ use graft_git::remote::{RemoteFailure, RemoteProgress};
 use graft_git::run::askpass::AskPass;
 use graft_git::state::InProgress;
 use graft_git::version::system_git;
-use graft_ops::apply::{self, Applied, ApplyError, Context, Refresh, RemoteHooks};
+use graft_ops::apply::{self, AfterState, Applied, ApplyError, Context, Refresh, RemoteHooks};
 use graft_ops::journal::{Journal, journal_path};
 use graft_ops::operation::Operation;
 
@@ -40,6 +40,20 @@ pub enum Operated {
         applied: Applied,
         /// What could not be read, as one line.
         error: String,
+    },
+    /// The write ran and was read back, and the edits it set aside are back,
+    /// but git could not reinstate the staging of `paths` (graft-ops
+    /// `AfterState::StagingNotKept`, ADR-0045 amendment b). Everything a
+    /// `Done` does (refresh, commit editor, landing), plus a sticky line
+    /// naming the files (ticket 30b).
+    ///
+    /// Not `Incomplete`: nothing is unconfirmed, so "could not confirm"
+    /// would misread a write that was read back in full.
+    StagingNotKept {
+        /// What ran.
+        applied: Applied,
+        /// The staged paths whose staging did not come back.
+        paths: Vec<PathBuf>,
     },
     /// Git stopped part-way through a history operation and left its own
     /// state live — `MERGE_HEAD`, `rebase-merge/`, `CHERRY_PICK_HEAD`,
@@ -330,13 +344,23 @@ fn in_context(
 fn answer(result: Result<Applied, ApplyError>) -> Operated {
     match result {
         Ok(applied) => Operated::Done(applied),
-        Err(ApplyError::AfterState { applied, unread }) => Operated::Incomplete {
-            applied: *applied,
-            error: unread
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join("; "),
+        Err(ApplyError::AfterState { applied, unread }) => match unread.as_slice() {
+            // Only the fallback alone is its own outcome (30b, Decided 4):
+            // with anything else unread (a drop that failed after the
+            // fallback, whose words end `· staging not kept: …`) the write
+            // really is unconfirmed.
+            [AfterState::StagingNotKept { paths }] => Operated::StagingNotKept {
+                applied: *applied,
+                paths: paths.clone(),
+            },
+            _ => Operated::Incomplete {
+                applied: *applied,
+                error: unread
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join("; "),
+            },
         },
         // git stopped and left its state live. Not a failure: see
         // [`Operated::Conflicted`].

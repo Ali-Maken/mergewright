@@ -342,6 +342,53 @@ fn undo_after_absorb_that_drops_its_target() {
     undo_restores(&repo, &before);
 }
 
+// ── Review 06b C1 (carried by 30/30b): a staged whole-file deletion ─────
+
+/// Review 06b probe q8: `f2` made all of `b.txt`; he stages `git rm b.txt`
+/// and absorbs. Before 31's `deleted file mode` header, the piece's patch
+/// wrote an empty `dev/null` into history and `f2` survived as its adder.
+/// Now the deletion empties `f2`, so M3's drop fires: `f2` is gone, no
+/// `dev/null` anywhere, `f3` untouched, and `u` puts it all back.
+#[test]
+fn a_staged_file_deletion_drops_the_commit_that_made_it() {
+    let repo = branch();
+    repo.git(&["rm", "-q", "--", "b.txt"]);
+    assert_eq!(repo.git(&["status", "--porcelain=v1"]), "D  b.txt");
+    let f2 = oid(&repo, "feature~1");
+    let before = state_of(&repo);
+
+    let params = planned(&repo);
+    let applied = try_run(&repo, &Operation::Rewrite(params.clone()), NOW)
+        .unwrap_or_else(|why| panic!("absorb goes through: {}", why.explain()));
+
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert!(
+        params
+            .todo
+            .iter()
+            .any(|line| line.commit == f2 && line.action == TodoAction::Drop),
+        "f2 is planned as a drop: {:?}",
+        params.todo
+    );
+    assert_eq!(subjects(&repo), vec!["f3", "f1"], "f2 dropped, f3 kept");
+    let tree = repo.git(&["ls-tree", "-r", "--name-only", "HEAD"]);
+    assert!(
+        !tree
+            .lines()
+            .any(|name| name == "b.txt" || name == "dev/null"),
+        "{tree}"
+    );
+    assert_eq!(
+        repo.git(&["show", "HEAD:a.txt"]),
+        "a1\na2\na3\na4\na5 changed",
+        "f3's change is still there"
+    );
+    // The placed deletion was the only thing staged; nothing else moved.
+    assert_eq!(repo.git(&["status", "--porcelain=v1"]), "");
+
+    undo_restores(&repo, &before);
+}
+
 // ── M6: `add -p`, keep editing, absorb ──────────────────────────────────
 
 /// `B3` staged, and the working tree edited on past it.

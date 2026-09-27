@@ -170,6 +170,7 @@ pub(super) fn refusal(outcome: &Operated) -> Option<String> {
             ..
         } if paths.is_empty() => Some(words.clone()),
         Operated::Done(_)
+        | Operated::StagingNotKept { .. }
         | Operated::Incomplete { .. }
         | Operated::Conflicted { .. }
         | Operated::Clashed { .. } => None,

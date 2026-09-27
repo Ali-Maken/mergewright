@@ -1,7 +1,7 @@
 m6 walk capture: m6-24-set-aside-done — scenario pull-rebase-dirty, keys p r r, unicode tier, 187x50
 
- graft <scratch________________________________________________________________>  192 rows so far
-◌    Uncommitted changes (3 unstaged)
+ graft <scratch________________________________________________________________>  202 commits
+◌    Uncommitted changes (1 staged, 2 unstaged)
 ◆ ▏ⓘ [◆ main ↑1] ours                                                                                                                                                       GF 6y   047f22c
 ●    [origin/main] the teammate's commit                                                                                                                                    GF 6y   0657dff
 ●    Commit 200                                                                                                                                                             GF 7y   d5ae5fd
