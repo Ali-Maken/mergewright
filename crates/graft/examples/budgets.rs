@@ -14,8 +14,15 @@
 //! and nothing else; the other measurements below lay history out again
 //! (m1-the-graph/56).
 
+// `budget_run` reaches `crate::deadline`, as it does in `tests/it`.
 #[path = "../tests/it/budget_run.rs"]
 mod budget_run;
+#[path = "../tests/it/deadline.rs"]
+#[expect(
+    dead_code,
+    reason = "`DEADLINE` is the fast tier's; `budget_run` uses its own `TOTAL`"
+)]
+mod deadline;
 #[path = "budgets/no_cg.rs"]
 mod no_cg;
 #[path = "budgets/phases.rs"]

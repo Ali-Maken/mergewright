@@ -161,6 +161,7 @@ fn drive(
     seen: &mut Recorded,
     done: impl Fn(&AppState) -> bool,
 ) -> AppState {
+    let mut deadline = crate::deadline::Deadline::of(crate::deadline::DEADLINE);
     loop {
         if done(&state) {
             return state;
@@ -181,6 +182,9 @@ fn drive(
             .events
             .recv_timeout(PATIENCE)
             .unwrap_or_else(|why| panic!("waiting for {what}: {why}"));
+        if let Err(why) = deadline.note(what, &event) {
+            panic!("{why}");
+        }
         seen.events.push(format!("{event:?}"));
         let (next, commands) = update(&state, event);
         state = next;

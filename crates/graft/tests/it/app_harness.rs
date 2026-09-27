@@ -21,9 +21,7 @@ use graft::repos::RepoStore;
 use graft::update::{AppEvent, AppState, Command, Size, Status, update};
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 
-#[path = "deadline.rs"]
-mod deadline;
-pub use deadline::{DEADLINE, Deadline};
+pub use crate::deadline::{DEADLINE, Deadline};
 
 /// Long enough that a slow machine never fails here, short enough that a
 /// hang is a named failure rather than a stuck suite.
@@ -330,6 +328,16 @@ pub fn cursor_to(app: &App, state: AppState, name: &str) -> AppState {
         let step = if at < want { 'j' } else { 'k' };
         state = app.key(&state, KeyCode::Char(step));
     }
+}
+
+/// The fast tier's total deadline fits inside the tier (PROMPT.md 7.1: the
+/// whole fast tier runs in under 3 minutes) and never trips a pump that is
+/// merely waiting out its per-event [`PATIENCE`] (review m7-18f-32b-06f-33
+/// Major 2).
+#[test]
+fn deadline_fits_inside_the_fast_tier() {
+    assert!(DEADLINE <= Duration::from_secs(180), "{DEADLINE:?}");
+    assert!(DEADLINE >= PATIENCE, "{DEADLINE:?} < {PATIENCE:?}");
 }
 
 /// A stream that never settles — a key, forever — makes the pump fail within

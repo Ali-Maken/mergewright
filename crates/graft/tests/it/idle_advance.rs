@@ -68,11 +68,15 @@ fn from_the_walk(state: &AppState, event: &AppEvent) -> Option<HistoryUpdate> {
 /// order**: a `LaidOut` sent before the promotion is of a layout the
 /// promotion replaces, and a `G` after it would lay out again.
 fn laid_out_to_the_end(app: &App, mut state: AppState) -> AppState {
+    let mut deadline = crate::deadline::Deadline::of(crate::deadline::DEADLINE);
     loop {
         let event = app
             .events
             .recv_timeout(PATIENCE)
             .unwrap_or_else(|why| panic!("waiting for `LaidOut`: {why}; state: {state:?}"));
+        if let Err(why) = deadline.note("`LaidOut`", &event) {
+            panic!("{why}");
+        }
         let laid_out = matches!(
             from_the_walk(&state, &event),
             Some(HistoryUpdate::LaidOut { .. })
