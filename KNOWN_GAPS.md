@@ -967,3 +967,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/20j-graph | 20's ruling "the graph pane's last row is the boundary commit" not asserted: at 187×50 blame fills the screen, no graph pane drawn (20j NOTES). Spec clause may not apply to the blame view — question for review | **unverified** | M7 |
 | M7/01a-q1 | Absent backup ref in `seal_after` still falls back to `before` silently (01a NOTES). Should it be reported like an unreadable one? Question | **unverified** (question) | M7 |
 | M7/01a-m1 | Unreadable backup ref reported as `AfterState::Refs`; a `BackupUnread` variant (needs `apply/error.rs`) would word it better. Proposed by 01a | **broken** (wording, minor) | M8 |
+| M7/14-stale | Captures no test writes, stale after 14 (compare is now since the split, `x base` badge): `docs/shots/m2-compare.txt`, `docs/shots/m2-05-…-x-j-j-x-{160x40,80x24}-unicode.txt` | **broken** (stale capture) | M7 |
