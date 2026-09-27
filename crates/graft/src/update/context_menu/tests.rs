@@ -5,6 +5,7 @@
 //! [`ref_badges`] from this module so the two agree on what a row's refs are.
 
 use graft_core::event::Modifiers;
+use graft_ops::operation::Operation;
 
 use super::*;
 
@@ -554,8 +555,43 @@ fn a_history_verb_previews_the_operation_its_label_named_and_runs_nothing() {
     );
 }
 
-/// Every verb the menu offers really opens a preview — none of them is a
-/// label with nothing behind it.
+/// A branch checkout on a clean tree switches at once (the switch rule,
+/// m7-power-tools/10b): the verb's own switch, launched `Refuse`, no preview.
+fn is_instant_checkout(op: &Operation) -> bool {
+    matches!(
+        op,
+        Operation::Checkout(params) if matches!(params.to, graft_ops::operation::CheckoutTarget::Branch(_))
+    )
+}
+
+/// The one `Operate` in `commands` is `op`'s switch, run `Refuse`, and
+/// nothing is previewed.
+fn switched_at_once(state: &AppState, commands: &[Command], op: &Operation, what: &str) {
+    assert!(
+        state.preview.is_none(),
+        "{what}: a clean checkout previews nothing"
+    );
+    let expected = match op {
+        Operation::Checkout(params) => Operation::Checkout(graft_ops::operation::CheckoutParams {
+            on_edits: graft_ops::operation::OnEdits::Refuse,
+            ..params.clone()
+        }),
+        other => panic!("{what}: not a checkout: {other:?}"),
+    };
+    let launched: Vec<&Operation> = commands
+        .iter()
+        .filter_map(|command| match command {
+            Command::Operate(_, op) => Some(op.as_ref()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(launched, [&expected], "{what}");
+}
+
+/// Every verb the menu offers really does something — none of them is a
+/// label with nothing behind it. Each opens its preview and runs nothing,
+/// except a branch checkout on this clean tree, which switches at once
+/// (m7-power-tools/10b).
 #[test]
 fn every_history_verb_the_menu_lists_opens_a_preview() {
     let mut probe = on_the_feature_row();
@@ -573,7 +609,17 @@ fn every_history_verb_the_menu_lists_opens_a_preview() {
     for label in labels {
         let mut state = on_the_feature_row();
         open_for_history_row(&mut state, 0);
+        let op = state
+            .context_menu
+            .as_ref()
+            .and_then(|open| open.verbs.iter().find(|verb| verb.label.as_str() == label))
+            .map(|verb| verb.op.clone())
+            .expect("the verb behind the label");
         let commands = choose(&mut state, &label);
+        if is_instant_checkout(&op) {
+            switched_at_once(&state, &commands, &op, &label);
+            continue;
+        }
         assert!(
             state.preview.is_some(),
             "{label} opened no preview: {:?}",
@@ -825,7 +871,8 @@ fn enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why() {
 }
 
 /// Every enabled slot runs its own verb: `Enter` on the item at slot `n`
-/// previews the operation of the verb that item names.
+/// previews the operation of the verb that item names — or, for a branch
+/// checkout on this clean tree, runs that very switch at once (10b).
 #[test]
 fn enter_on_each_enabled_slot_runs_its_own_verb() {
     for row in [0, 1] {
@@ -860,6 +907,15 @@ fn enter_on_each_enabled_slot_runs_its_own_verb() {
                 &mut commands,
                 key(KeyCode::Enter)
             ));
+            if is_instant_checkout(&expected) {
+                switched_at_once(
+                    &state,
+                    &commands,
+                    &expected,
+                    &format!("row {row}, item {at}"),
+                );
+                continue;
+            }
             let preview = state.preview.as_ref().expect("a preview opened");
             assert_eq!(
                 preview.subject,

@@ -856,7 +856,8 @@ fn switch_dirty_clash() -> Scenario {
 
 // ───────────────────────────── the menu's fixed slots (pick 17) ─────────────────────────────
 
-/// `menu-checkout`: `. ⏎ y` on `fix`'s row, the tree clean — on `fix`.
+/// `menu-checkout`: `. ⏎` on `fix`'s row, the tree clean — on `fix`, at
+/// once, no preview (m7-power-tools/10b).
 /// The capture m6-25 is the menu open.
 fn menu_checkout() -> Scenario {
     journey(
@@ -881,8 +882,9 @@ fn menu_checkout() -> Scenario {
                 &[Sees::Above("Checkout fix", "Cherry-pick ")],
             ),
             key(KeyCode::Enter),
-            Step::WaitFor(Wait::PreviewReady),
-            key(ch('y')),
+            Step::See("no preview: a clean checkout switches at once", |state| {
+                check(state.preview.is_none(), || "a preview opened".to_owned())
+            }),
             Step::Write("the checkout"),
             Step::WaitFor(Wait::Ready),
             end(),
