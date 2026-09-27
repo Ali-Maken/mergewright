@@ -14,7 +14,7 @@ each builder already has its own worktree and `CARGO_TARGET_DIR`. The crate rule
    the `graft` queue under the old rule.
 2. **Within one crate, disjoint files.** Up to **three** builders may hold the same crate at once when their specs'
    **file lists** share no file. The planner writes each ticket's file list; the conductor pairs tickets by it.
-   Shared registries (`mod.rs` lists, the hint catalogue, `docs/design/02-keymap.md`, captures) count as files.
+   Shared registries (the hint catalogue, `docs/design/02-keymap.md`, captures) count as files.
    **MAP.md does not** (user, 2026-09-27): its clashes are line-level index entries the conductor resolves at merge
    by keeping both. Same for `TESTING.md` rows, the captions TSV, `mod` lines, and append-only additions to the
    jobs registry (new variants and match arms) (conductor, 2026-09-27, same reasoning): no seam commits needed.
