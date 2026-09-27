@@ -487,6 +487,11 @@ impl GitInvocation {
         let mut output = GitOutput::default();
         loop {
             if stop.should_stop() {
+                // A git that has already exited was not stopped: it ran to
+                // the end, and a write it made stands (m7-power-tools/27).
+                if let Some(status) = child.try_wait().map_err(RunError::Spawn)? {
+                    return Self::after_exit(child, status, received, output, open);
+                }
                 kill(child)?;
                 return Err(RunError::Stopped);
             }
@@ -521,6 +526,43 @@ impl GitInvocation {
                 }
             }
         }
+    }
+
+    /// A stop found git already exited (and `try_wait` reaped it): its exit
+    /// is the answer, provided its output is all in. Pipes git's own exit
+    /// closed report within a poll; one still open past that is held by
+    /// something git started and left running, and waiting on it is exactly
+    /// what the caller's stop asked not to do — without that pipe's bytes
+    /// there is no whole result, so the run is `Stopped` after all.
+    fn after_exit(
+        child: &mut Child,
+        status: ExitStatus,
+        received: &Receiver<Event>,
+        mut output: GitOutput,
+        mut open: usize,
+    ) -> Result<Ending, RunError> {
+        while open > 0 {
+            match received.recv_timeout(POLL) {
+                Ok(event) => {
+                    open -= 1;
+                    apply(event, &mut output)?;
+                }
+                Err(RecvTimeoutError::Timeout) => {
+                    // Reaping an exited child is all `kill` does here.
+                    kill(child)?;
+                    return Err(RunError::Stopped);
+                }
+                Err(RecvTimeoutError::Disconnected) => {
+                    return Err(RunError::Spawn(io::Error::other(
+                        "a git output reader panicked",
+                    )));
+                }
+            }
+        }
+        if output.truncated {
+            return Ok(Ending::Capped(output));
+        }
+        Ok(Ending::Exited(status, output))
     }
 
     fn judge(&self, status: ExitStatus, output: GitOutput) -> Result<GitOutput, RunError> {

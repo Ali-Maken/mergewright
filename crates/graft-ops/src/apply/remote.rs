@@ -7,13 +7,14 @@
 //! it always has.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use graft_core::journal::{JournalEntry, OperationKind};
 use graft_git::remote::{RemoteFailure, RemoteProgress, classify_failure, parse_progress};
-use graft_git::run::askpass::{AskPass, AskPassServer};
+use graft_git::run::askpass::{AskPass, AskPassServer, Secret};
 use graft_git::run::{GitInvocation, RunError};
 
 use super::{AfterState, Context};
@@ -86,9 +87,11 @@ pub(crate) fn run(
     git = git.on_stderr_line(sink(Arc::clone(&segments), hooks.map(|_| sender.clone())));
     drop(sender);
 
-    let server = match hooks {
-        Some(hooks) => {
-            match AskPassServer::spawn(hooks.helper.clone(), Arc::clone(&hooks.askpass)) {
+    let asks = hooks.map(|hooks| Arc::new(Refusals::new(Arc::clone(&hooks.askpass))));
+    let server = match hooks.zip(asks.as_ref()) {
+        Some((hooks, asks)) => {
+            let handler: Arc<dyn AskPass> = asks.clone();
+            match AskPassServer::spawn(hooks.helper.clone(), handler) {
                 Ok(server) => {
                     git = git.askpass(&server);
                     Some(server)
@@ -127,13 +130,71 @@ pub(crate) fn run(
         cleanup.push(AfterState::AskPass(error));
     }
 
+    let refused = asks.is_some_and(|asks| asks.refused());
     result.map(|_| ()).map_err(|error| Failed {
-        error,
+        error: cancelled_at_the_prompt(error, refused, || ctx.stop.should_stop()),
         // A poisoned lock means a sink call panicked on the drain thread; the
         // segments it had already pushed are still whole, and they are all
         // the failure has to go on.
         segments: std::mem::take(&mut *segments.lock().unwrap_or_else(PoisonError::into_inner)),
     })
+}
+
+/// The app's [`AskPass`], remembering whether it ever gave git no answer.
+///
+/// `None` from an ask is the user cancelling the prompt (the trait's
+/// contract). git, refused, gives up on its own and exits — often before the
+/// runner polls the stop that the same cancel asked for, so the runner
+/// truthfully reports an exit, not a stop (m7-power-tools/27b). This is the
+/// structural record that the exit was the user's cancel, read by
+/// [`cancelled_at_the_prompt`].
+struct Refusals {
+    inner: Arc<dyn AskPass>,
+    refused: AtomicBool,
+}
+
+impl Refusals {
+    fn new(inner: Arc<dyn AskPass>) -> Self {
+        Refusals {
+            inner,
+            refused: AtomicBool::new(false),
+        }
+    }
+
+    fn refused(&self) -> bool {
+        self.refused.load(Ordering::SeqCst)
+    }
+}
+
+impl AskPass for Refusals {
+    fn ask(&self, prompt: &str) -> Option<Secret> {
+        let answer = self.inner.ask(prompt);
+        if answer.is_none() {
+            self.refused.store(true, Ordering::SeqCst);
+        }
+        answer
+    }
+}
+
+/// git's failed exit, or the user's cancel it stands for.
+///
+/// A non-zero exit after an ask went unanswered, with the stop asked, is the
+/// cancel at the prompt: git failed *because* the user pressed `Esc`, and
+/// its words ("authentication failed") would blame a password nobody typed.
+/// It reads as the stop it is. Anything else is git's own: a refusal with no
+/// stop asked stays git's failure, and a stop with no refusal is judged by
+/// the runner alone (a git that exited on its own before the stop is its
+/// exit). `stop_asked` is only polled when the other two hold, so a counting
+/// test stop sees no extra poll.
+fn cancelled_at_the_prompt(
+    error: RunError,
+    refused: bool,
+    stop_asked: impl FnOnce() -> bool,
+) -> RunError {
+    match error {
+        RunError::Exited { .. } if refused && stop_asked() => RunError::Stopped,
+        other => other,
+    }
 }
 
 /// The stderr sink: keep every segment, and when there is somewhere to send

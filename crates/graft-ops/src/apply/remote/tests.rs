@@ -5,7 +5,9 @@ use graft_core::journal::{JournalEntry, OperationKind};
 use graft_git::remote::{RemoteFailure, TrackedUpstream};
 use graft_git::run::askpass::{AskPass, Secret};
 
-use super::{RemoteHooks, explain, remote_invocation, short};
+use graft_git::run::RunError;
+
+use super::{Refusals, RemoteHooks, cancelled_at_the_prompt, explain, remote_invocation, short};
 use crate::apply::ApplyError;
 use crate::journal::tests::committed;
 use crate::operation::{FetchParams, Invocation, Operation, PullParams, PushParams, RemoteNames};
@@ -254,4 +256,64 @@ fn only_a_remote_invocation_with_hooks_gets_them() {
     assert!(!remote_invocation(&invocation(false), Some(&hooks)));
     assert!(!remote_invocation(&invocation(true), None));
     assert!(!remote_invocation(&invocation(false), None));
+}
+
+/// Refuses every ask, as `Esc` on the prompt does.
+struct Refuses;
+impl AskPass for Refuses {
+    fn ask(&self, _prompt: &str) -> Option<Secret> {
+        None
+    }
+}
+
+/// Answers every ask.
+struct Answers;
+impl AskPass for Answers {
+    fn ask(&self, _prompt: &str) -> Option<Secret> {
+        Some(Secret::new(b"pw".to_vec()))
+    }
+}
+
+fn exited() -> RunError {
+    RunError::Exited {
+        status: 128,
+        stderr_first_line: "fatal: could not read Password".to_owned(),
+        command: "git push".to_owned(),
+    }
+}
+
+/// The wrapper records a refusal, and only a refusal.
+#[test]
+fn refusals_remember_an_unanswered_ask() {
+    let refusing = Refusals::new(Arc::new(Refuses));
+    assert!(!refusing.refused(), "nothing asked yet");
+    assert!(refusing.ask("Password for 'http://h':").is_none());
+    assert!(refusing.refused());
+
+    let answered = Refusals::new(Arc::new(Answers));
+    assert!(answered.ask("Password for 'http://h':").is_some());
+    assert!(!answered.refused(), "an answered ask is no refusal");
+}
+
+/// m7-power-tools/27b: git exiting on a refused ask, with the stop asked, is
+/// the user's cancel; either half alone leaves git's exit as it is, and a
+/// stop the runner already saw stays a stop.
+#[test]
+fn an_exit_after_a_refused_ask_with_the_stop_asked_is_the_cancel() {
+    assert!(matches!(
+        cancelled_at_the_prompt(exited(), true, || true),
+        RunError::Stopped
+    ));
+    assert!(matches!(
+        cancelled_at_the_prompt(exited(), true, || false),
+        RunError::Exited { .. }
+    ));
+    assert!(matches!(
+        cancelled_at_the_prompt(exited(), false, || panic!("not polled without a refusal")),
+        RunError::Exited { .. }
+    ));
+    assert!(matches!(
+        cancelled_at_the_prompt(RunError::Stopped, false, || true),
+        RunError::Stopped
+    ));
 }

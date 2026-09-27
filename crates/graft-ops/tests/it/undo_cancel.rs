@@ -1,6 +1,6 @@
 //! Cancelling an undo: `Esc` between steps puts back what already ran.
 //!
-//! No sleeps and no hooks: the stops here are a **counting** one —
+//! No sleeps, and one hook: the stops here are a **counting** one —
 //! `should_stop` true from its n-th poll — for sweeping the places a cancel
 //! can land (see `SWEEP_STRIDE`: a sample in the fast tier, all of them in the
 //! heavy one), and a **state-keyed** one for aiming at a single step boundary.
@@ -10,6 +10,13 @@
 //! to the plan's own effect — "once the ref step has landed" — means the same
 //! place every time.
 //!
+//! A stop the runner polls after git has exited is not a stop: the step ran
+//! to the end and is reported done (m7-power-tools/27b). So "once the ref
+//! step has landed" cuts the plan at the *next* boundary, and the one test
+//! that needs a step genuinely killed inside it holds git in its
+//! `reference-transaction` hook until the runner kills it
+//! ([`hold_main_update_until_killed`]) — the same device `set_aside.rs` uses.
+//!
 //! What every test asserts is the invariant, read back out of the repository
 //! with `git` and not from a returned value: **a cancelled undo either
 //! finished or changed nothing.** Whether the cancel landed between two steps
@@ -17,6 +24,7 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -131,8 +139,11 @@ enum Trigger {
     /// A ref stands where the plan's ref step puts it: that step has landed.
     RefIs { name: String, at: String },
     /// A path the plan's working-tree step writes is on disk: every step
-    /// before that one has landed.
+    /// before that one has landed. Also a marker a test's hook writes.
     PathExists(PathBuf),
+    /// A path the plan's index step stages is in the index: that step has
+    /// landed, and the working-tree step has not started.
+    InIndex(PathBuf),
 }
 
 /// A `Stop` that fires once the plan itself has done something, and latches
@@ -195,6 +206,11 @@ impl StopOnce {
                     == Some(at.as_str())
             }
             Trigger::PathExists(path) => self.repo.join(path).exists(),
+            Trigger::InIndex(path) => {
+                let path = path.to_str().expect("utf-8");
+                self.git(&["ls-files", "--", path])
+                    .is_some_and(|listed| !listed.is_empty())
+            }
         }
     }
 }
@@ -245,6 +261,37 @@ fn first_ref_step_target(repo: &TempRepo) -> String {
         }) if name == "refs/heads/main" => to.to_string(),
         other => panic!("the plan's first step is not the branch ref: {other:?}"),
     }
+}
+
+/// Hold the next transaction that updates `refs/heads/main` in its
+/// `reference-transaction` hook at `state` — `prepared`: the ref locked, not
+/// yet written; `committed`: written — until the runner's stop kills git
+/// (its parent pid gone). The
+/// hook first writes a marker under `.git`, returned here relative to the
+/// repository root, for a [`Trigger::PathExists`] stop to key on. So the stop
+/// always lands while git is still running, never racing it to the finish.
+/// Bounded at ten seconds, so a stop that never fires fails the test instead
+/// of hanging it; removes itself when it fires.
+fn hold_main_update_until_killed(repo: &TempRepo, state: &str) -> PathBuf {
+    let marker = PathBuf::from(".git/held-in-transaction");
+    let hooks = repo.path().join(".git/test-hooks");
+    std::fs::create_dir_all(&hooks).expect("the hooks dir is made");
+    let hook = hooks.join("reference-transaction");
+    let script = format!(
+        "#!/bin/sh\n\
+         [ \"$1\" = {state} ] || exit 0\n\
+         case \"$(cat)\" in *\" refs/heads/main\"*) ;; *) exit 0 ;; esac\n\
+         rm -f \"$0\"\n\
+         : > '{marker}'\n\
+         p=$PPID; n=0\n\
+         while kill -0 \"$p\" 2>/dev/null && [ \"$n\" -lt 1000 ]; do sleep 0.01; n=$((n + 1)); done\n",
+        marker = repo.path().join(&marker).display(),
+    );
+    std::fs::write(&hook, script).expect("the hook is written");
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
+        .expect("the hook is executable");
+    repo.git(&["config", "core.hooksPath", hooks.to_str().expect("utf-8")]);
+    marker
 }
 
 fn undo_plan(repo: &TempRepo) -> InversePlan {
@@ -446,10 +493,16 @@ fn state_after_undo() -> RepoState {
 
 /// One part-way cancel, set up the same way for both tests below.
 ///
-/// The stop fires once the plan's *last* step has started writing files, so
-/// the ref step is long finished and certainly in the roll-back's list, and
-/// moves `main` away in the same breath: the roll-back's own compare-and-swap
-/// then meets a ref something else has moved.
+/// The stop fires once the index step has landed, so the ref step and the
+/// index step are both in the roll-back's list and the working-tree step
+/// never starts, and moves `main` away in the same breath: the roll-back's
+/// own compare-and-swap then meets a ref something else has moved.
+///
+/// Until 27b this keyed on the working-tree step writing `a.txt`, and relied
+/// on the runner calling that step `Stopped` once git had written it and
+/// exited. That step is the plan's last: a stop seen after it finished is a
+/// finished undo (`Applied`), not a part-way one — so the part-way cancel
+/// has to land at a boundary with a step still to come.
 struct PartWay {
     repo: TempRepo,
     /// Where the undo found the repository — what a recovery has to reach.
@@ -472,7 +525,7 @@ fn cancel_part_way() -> PartWay {
     assert_ne!(elsewhere, undone, "the test moves main somewhere new");
     assert_ne!(elsewhere, found_at, "the test moves main somewhere new");
 
-    let stop = StopOnce::new(repo.path(), Trigger::PathExists(PathBuf::from("a.txt")))
+    let stop = StopOnce::new(repo.path(), Trigger::InIndex(PathBuf::from("a.txt")))
         .then_move("refs/heads/main", &elsewhere);
     let why = execute_under(&repo, NOW + 1, &stop).expect_err("the undo is cancelled");
     assert!(stop.fired(), "the test's own write ran");
@@ -503,14 +556,19 @@ fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
     assert_eq!(
         applied,
         &vec!["refs/heads/main".to_owned()],
-        "only the ref is still in force — the index and working-tree steps \
-         were reversed before the roll-back reached it"
+        "only the ref is still in force — the index step was reversed before \
+         the roll-back reached it"
     );
-    // And it reversed what it could: the files the working-tree step had
-    // written are gone again.
+    // And it reversed what it could: the paths the index step had staged are
+    // gone from the index again, and the working-tree step never ran.
+    assert_eq!(
+        repo.git(&["ls-files", "--", "a.txt", "b.txt"]),
+        "",
+        "the index step was reversed even though the ref step could not be"
+    );
     assert!(
-        !repo.exists("b.txt"),
-        "the working-tree step was reversed even though the ref step could not be"
+        !repo.exists("a.txt") && !repo.exists("b.txt"),
+        "the working-tree step never started"
     );
 
     // The outcome line says so too, naming the ref, and the entry keeps its
@@ -617,21 +675,25 @@ fn after_a_part_way_cancel_the_named_key_restores_everything() {
 fn a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed() {
     // The one test that observes the *read* rather than the compare-and-swap.
     //
-    // The stop fires the moment the ref step's own `update-ref` has written —
-    // which is inside that step, because the runner polls this stop again
-    // after every pipe event before it can return — so the step comes back
-    // `Stopped` and whether it landed is not knowable from the error. In the
-    // same breath the stop puts `main` back where the restore found it. The
-    // repository now says, truthfully as far as anyone can tell, "that step
-    // did not land": there is nothing to reverse, nothing is written, and the
-    // user is told the undo was cancelled and nothing changed.
+    // The ref step's `update-ref` is held inside its transaction — `main`
+    // locked, not yet written — until the stop kills it, so the step comes
+    // back `Stopped` and whether it landed is not knowable from the error.
+    // The repository says, truthfully, "that step did not land": there is
+    // nothing to reverse, nothing is written, and the user is told the undo
+    // was cancelled and nothing changed.
     //
     // A guess ("a killed step is an applied step") gets this wrong in a way
     // the compare-and-swap cannot hide: it would swap `main` against the value
-    // the step wrote, git would refuse, and the user would be told a ref moved
-    // when nothing had. So `settled` returning `Applied` unconditionally fails
-    // this test — which is what makes it evidence for "read the repository,
-    // never guess" and not merely for the compare-and-swap.
+    // the step would have written, git would refuse, and the user would be
+    // told a ref moved when nothing had. So `settled` returning `Applied`
+    // unconditionally fails this test — which is what makes it evidence for
+    // "read the repository, never guess" and not merely for the
+    // compare-and-swap.
+    //
+    // Until 27b the stop keyed on `main` having been written, and the step
+    // still came back `Stopped` because the runner answered a stop polled
+    // after git's exit with `Stopped`. It no longer does — that step
+    // finished — so the kill has to land while git is still running.
     let repo = reset_repo();
     let before = reset_and_state(&repo);
     // Where the restore finds `main`, i.e. the entry's own `refs_before`.
@@ -639,16 +701,10 @@ fn a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed() {
     let undone = first_ref_step_target(&repo);
     assert_ne!(found_at, undone, "the ref step has somewhere to move main");
 
-    let stop = StopOnce::new(
-        repo.path(),
-        Trigger::RefIs {
-            name: "refs/heads/main".to_owned(),
-            at: undone,
-        },
-    )
-    .then_move("refs/heads/main", &found_at);
+    let held = hold_main_update_until_killed(&repo, "prepared");
+    let stop = StopOnce::new(repo.path(), Trigger::PathExists(held));
     let why = execute_under(&repo, NOW + 1, &stop).expect_err("the undo is cancelled");
-    assert!(stop.fired(), "the stop fired on the ref step's own effect");
+    assert!(stop.fired(), "the stop fired inside the ref step");
 
     match &why {
         RestoreError::Cancelled { rolled_back } => assert_eq!(
@@ -680,8 +736,10 @@ fn a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed() {
 #[test]
 fn a_ref_moved_under_a_killed_step_is_reported_not_overwritten() {
     // The other half of the moved-ref story: the stop fires the moment the
-    // ref step's own `update-ref` has written, which is inside that step, so
-    // the runner SIGTERMs git and the step comes back `Stopped`. Whether it
+    // ref step's own `update-ref` has written, while git is held inside that
+    // step, so the runner SIGTERMs git and the step comes back `Stopped`
+    // (until 27b the "inside" was the runner calling a stop polled after
+    // git's exit `Stopped`; it now reports that step done). Whether it
     // landed is then not knowable from the error — and the ref has been moved
     // away as well, so reading it says neither "landed" nor "did not". That
     // is reported, never overwritten.
@@ -695,14 +753,9 @@ fn a_ref_moved_under_a_killed_step_is_reported_not_overwritten() {
     let undone = first_ref_step_target(&repo);
     assert_ne!(elsewhere, undone, "the test moves main somewhere new");
 
-    let stop = StopOnce::new(
-        repo.path(),
-        Trigger::RefIs {
-            name: "refs/heads/main".to_owned(),
-            at: undone,
-        },
-    )
-    .then_move("refs/heads/main", &elsewhere);
+    let held = hold_main_update_until_killed(&repo, "committed");
+    let stop = StopOnce::new(repo.path(), Trigger::PathExists(held))
+        .then_move("refs/heads/main", &elsewhere);
     let why = execute_under(&repo, NOW + 1, &stop).expect_err("the undo is cancelled");
     assert!(stop.fired(), "the test's own write ran");
 
