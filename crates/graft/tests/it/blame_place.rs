@@ -14,7 +14,7 @@ use graft_core::event::KeyCode;
 use crate::app_harness::App;
 use crate::m7_walk::blame::{
     CURSOR_ROW, LINE, TRAILER, assert_no_offer, blame, cursor_line, drawn, graph_cursor, landed,
-    oid, on_line_22, open_on_line_22, session,
+    oid, on_line_22, open_on_line_22, session, shallow_session,
 };
 
 /// The diff's line cursor glyph (`▎`).
@@ -78,7 +78,9 @@ fn capture_blame_187x50() {
 /// name, age, no subject — and the cursor row's trailer reads `◂ Lina · 7
 /// months ago · Retry refresh once on 401`: the fixture's line 22 is 57
 /// columns, so the trailer's ` · 2f48ca3` (10 more) would pass 140 and is
-/// shed. The spec's "the trailer whole" assumed the mock-up's shorter line.
+/// shed. The spec's "the trailer whole" was an arithmetic slip: the
+/// mock-up's line 22 is the same text, the design sheds the sha first, and
+/// 134 + ` · 2f48ca3` (10) = 144 > 140.
 #[test]
 fn capture_blame_140x40() {
     let (_scratch, app, state) = blame_on_22(140, 40);
@@ -112,7 +114,7 @@ fn capture_blame_100x30() {
 }
 
 /// `docs/shots/m7/blame-long-line-187x50.txt`. Right: the cursor on line 27
-/// (the 150-character line, Tom's); no trailer anywhere — the line leaves no
+/// (the 137-character line, Tom's); no trailer anywhere — the line leaves no
 /// room — and Tom's name is in the cursor row's gutter.
 #[test]
 fn capture_blame_long_line_187x50() {
@@ -165,6 +167,109 @@ fn capture_blame_find_187x50() {
         String::from_utf8_lossy(&line.text).contains("refresh"),
         "the cursor is on a match"
     );
+    assert_no_offer(&state);
+    app.close();
+}
+
+/// Open `repo` and pump until its facts are in.
+fn facts_in(repo: &Path) -> (App, AppState) {
+    let (app, state) = App::open_with_clock(
+        repo,
+        graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW),
+    );
+    let state = crate::preview::opened(&app, state);
+    let state = app.pump(state, "the repository's facts", |state| {
+        state.repository.is_some() && state.system_git.is_some()
+    });
+    (app, state)
+}
+
+/// 20j's ruling: git reads no commit-graph in a shallow repository
+/// (`commit_graph_compatible`, 32's NOTES), so none is offered, and `B`
+/// answers blame.
+#[test]
+fn a_shallow_clone_offers_no_commit_graph() {
+    let (_source, dir) = shallow_session();
+    let clone = dir.path().join("clone");
+    let (app, state) = facts_in(&clone);
+    assert_eq!(
+        state.commit_graph_line(),
+        None,
+        "a shallow clone must not offer a commit-graph"
+    );
+    app.close();
+    let (app, state) = on_line_22(&clone, 187, 50);
+    let state = blame(&app, &state);
+    assert_eq!(cursor_line(&state).final_line, LINE, "`B` is blame");
+    assert_no_offer(&state);
+    app.close();
+}
+
+/// A full clone with no commit-graph is offered one, as before 20j.
+#[test]
+fn a_full_clone_without_a_graph_still_offers_one() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Session);
+    let (app, state) = facts_in(scratch.path());
+    assert_eq!(
+        state.commit_graph_line(),
+        Some(graft_ui::graph_screen::CommitGraphLine::Offered)
+    );
+    app.close();
+}
+
+/// `docs/shots/m7/blame-shallow-187x50.txt` (20's "Ruling (planner): shallow
+/// boundary"). A `--depth 2` clone, cut at Priya's `0a27627`; blame from line
+/// 22, `k`×4 to line 18, a boundary line. Right: row 18 reads `▸ ^0a2762
+/// shallow clone · can't say who`; its trailer `◂ can't say who · this clone
+/// starts at 0a27627`; the boundary block's other rows carry brackets and no
+/// name; `Priya` appears nowhere. (The ticket's "graph pane's last row" is not
+/// on this screen: blame fills it at 187×50, so no graph pane is drawn.)
+#[test]
+fn blame_shallow_capture() {
+    let (_source, dir) = shallow_session();
+    let clone = dir.path().join("clone");
+    let boundary = oid(&clone, "main~1");
+    let short = &boundary.to_string()[..7];
+    assert_eq!(short, "0a27627", "the fixture's boundary");
+    let (app, state) = on_line_22(&clone, 187, 50);
+    let mut state = blame(&app, &state);
+    for _ in 0..4 {
+        state = app.key(&state, KeyCode::Char('k'));
+    }
+    assert_eq!(cursor_line(&state).final_line, 18);
+    assert_eq!(
+        cursor_line(&state).commit,
+        Some(boundary),
+        "line 18 is a boundary line"
+    );
+    let frame = shoot(&state, 187, 50, "blame-shallow-187x50.txt");
+    let all = frame.join("\n");
+    let row = cursor_row(&frame);
+    assert!(
+        gutter(row).contains("\u{25b8} ^0a2762 shallow clone \u{b7} can't say who"),
+        "row 18's gutter: {row}"
+    );
+    assert!(
+        row.ends_with("\u{25c2} can't say who \u{b7} this clone starts at 0a27627"),
+        "row 18's trailer: {row}"
+    );
+    assert!(!all.contains("Priya"), "no Priya anywhere:\n{all}");
+    // The cursor's boundary block runs 4..=25: its rows below the cursor
+    // are brackets, no name.
+    for line in 19..=25 {
+        let rule = format!("\u{2502} {line:>2}  ");
+        let row = frame
+            .iter()
+            .find(|row| row.contains(&rule))
+            .unwrap_or_else(|| panic!("line {line}:\n{all}"));
+        // The gutter is what comes before the rule and line number; the
+        // bracket itself is a `│`, so `gutter()` would stop at it.
+        let mark = row.split(&rule).next().unwrap_or(row).trim();
+        assert!(
+            mark == "\u{2502}" || mark == "\u{2514}",
+            "line {line}'s gutter is a bracket only: {row}"
+        );
+    }
     assert_no_offer(&state);
     app.close();
 }

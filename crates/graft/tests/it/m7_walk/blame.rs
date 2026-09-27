@@ -39,6 +39,20 @@ pub fn session() -> graft_fixtures::Scratch {
     scratch
 }
 
+/// A `git clone --depth 2` of the session fixture (20f's setup, 20j): its
+/// history is cut at `main~1`, Priya's `0a27627`, and it has no
+/// commit-graph. The clone is `<dir>/clone`; the source is kept alive too.
+pub fn shallow_session() -> (graft_fixtures::Scratch, tempfile::TempDir) {
+    let source = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Session);
+    let clone = tempfile::tempdir().unwrap_or_else(|why| panic!("a temporary directory: {why}"));
+    let url = format!("file://{}", source.path().display());
+    crate::app_harness::git(
+        clone.path(),
+        &["clone", "--quiet", "--depth", "2", &url, "clone"],
+    );
+    (source, clone)
+}
+
 /// The commit-graph offer is not on screen and does not hold `B`.
 pub fn assert_no_offer(state: &AppState) {
     assert_eq!(
@@ -210,14 +224,46 @@ pub fn graph_cursor(state: &AppState) -> Option<Oid> {
     Some(row.commit.id)
 }
 
-/// Walk `id` took `route`; the note allows at most its count.
-fn within_count(id: &str, route: &[&str]) {
-    let allowed = super::noted_keys(id);
-    assert!(
-        route.len() <= allowed,
-        "{id} took {} inputs {route:?}, the note allows {allowed}",
-        route.len()
-    );
+/// A walk's counted route: the only way a walk body sends a key after setup
+/// (review m7-18e-20f Minor 6), so a key can't be sent uncounted. The same
+/// shape as `m5_walk`'s `Step::Press`, which drives a scenario runner this
+/// harness doesn't use.
+struct Route {
+    id: &'static str,
+    keys: Vec<&'static str>,
+}
+
+impl Route {
+    fn new(id: &'static str) -> Route {
+        Route {
+            id,
+            keys: Vec::new(),
+        }
+    }
+
+    /// Send `code`, labelled `label`, and count it.
+    fn press(
+        &mut self,
+        app: &App,
+        state: &AppState,
+        label: &'static str,
+        code: KeyCode,
+    ) -> AppState {
+        self.keys.push(label);
+        app.key(state, code)
+    }
+
+    /// The walk took its route; the note allows at most its count.
+    fn within_count(&self) {
+        let allowed = super::noted_keys(self.id);
+        assert!(
+            self.keys.len() <= allowed,
+            "{} took {} inputs {:?}, the note allows {allowed}",
+            self.id,
+            self.keys.len(),
+            self.keys
+        );
+    }
 }
 
 /// `blame-line-to-commit` (`B ⏎` = 2): from the diff cursor on line 22, the
@@ -232,14 +278,14 @@ fn blame_line_to_commit() {
     let lina = oid(repo, "main~3");
     let (app, state) = on_line_22(repo, 120, 40);
 
-    let mut route = vec!["B"];
-    let state = blame(&app, &state);
+    let mut route = Route::new("blame-line-to-commit");
+    let state = route.press(&app, &state, "B", KeyCode::Char('B'));
+    let state = blame_ready(&app, state);
     assert_eq!(cursor_line(&state).final_line, LINE);
     assert_eq!(cursor_author(&state), "Lina");
-    route.push("⏎");
-    let state = app.key(&state, KeyCode::Enter);
+    let state = route.press(&app, &state, "⏎", KeyCode::Enter);
     let state = landed(&app, state, lina, "src/session.rs", 21);
-    within_count("blame-line-to-commit", &route);
+    route.within_count();
 
     assert!(state.trail.hidden(), "the trail waits under the graph");
     assert_eq!(state.detail.focus, DetailFocus::Diff);
@@ -287,9 +333,9 @@ fn back_to_blame(pin_base: bool) {
         "focus in the diff body"
     );
 
-    let route = ["Esc"];
-    let state = app.key(&state, KeyCode::Escape);
-    within_count("commit-back-to-blame", &route);
+    let mut route = Route::new("commit-back-to-blame");
+    let state = route.press(&app, &state, "Esc", KeyCode::Escape);
+    route.within_count();
 
     assert_eq!(
         shown(&state).path,
@@ -326,9 +372,9 @@ fn blame_who_at_line() {
     let state = app.key(&state, KeyCode::Char('k'));
     assert_eq!(cursor_author(&state), "Tom");
 
-    let route = ["j"];
-    let state = app.key(&state, KeyCode::Char('j'));
-    within_count("blame-who-at-line", &route);
+    let mut route = Route::new("blame-who-at-line");
+    let state = route.press(&app, &state, "j", KeyCode::Char('j'));
+    route.within_count();
 
     assert_eq!(cursor_line(&state).final_line, LINE);
     let frame = drawn(&state, 187, 50);
@@ -359,12 +405,12 @@ fn blame_line_before() {
     let lina = oid(repo, "main~3");
     let (app, state) = on_line_22(repo, 187, 50);
 
-    let mut route = vec!["B"];
-    let state = blame(&app, &state);
-    route.push("^");
-    let state = app.key(&state, KeyCode::Char('^'));
+    let mut route = Route::new("blame-line-before");
+    let state = route.press(&app, &state, "B", KeyCode::Char('B'));
     let state = blame_ready(&app, state);
-    within_count("blame-line-before", &route);
+    let state = route.press(&app, &state, "^", KeyCode::Char('^'));
+    let state = blame_ready(&app, state);
+    route.within_count();
 
     assert_eq!(state.trail.places.len(), 2, "pushed, not replaced");
     let came_from = cursor_line(&state);

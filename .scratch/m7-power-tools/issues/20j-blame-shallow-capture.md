@@ -56,22 +56,44 @@ Shallow,
 ```
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] **Red first:** `a_shallow_clone_offers_no_commit_graph` — open the depth-2 clone; `commit_graph_line()` is
-      `None` and `B` answers blame, not the offer. Red before the rule.
-- [ ] `a_full_clone_without_a_graph_still_offers_one` — unchanged behaviour, green.
-- [ ] `blame_shallow_capture` writes `docs/shots/m7/blame-shallow-187x50.txt` (≤ 200 KB). **Right** (20's ruling,
+- [x] **Red first:** `a_shallow_clone_offers_no_commit_graph` — open the depth-2 clone; `commit_graph_line()` is
+      `None` and `B` answers blame, not the offer. Red before the rule. (Red: `a shallow clone must not offer a
+      commit-graph` left `Some(Offered)` right `None`; green after.)
+- [x] `a_full_clone_without_a_graph_still_offers_one` — unchanged behaviour, green.
+- [~] `blame_shallow_capture` (all asserted **except** the graph-pane clause — see NOTES) writes `docs/shots/m7/blame-shallow-187x50.txt` (≤ 200 KB). **Right** (20's ruling,
       words exact): row 18 reads `▸ ^0a2762 shallow clone · can't say who`; its trailer `◂ can't say who · this clone
       starts at 0a27627`; the boundary block's other rows carry brackets and no name; `Priya` appears nowhere on the
       screen; the graph pane's last row is the boundary commit, no lane below it. The test asserts each; the sha is
       the clone's boundary id (the fixture's `0a27627`, or say what it is).
-- [ ] 20f's walks and captures still green; `commit_graph_line() == None` asserts unchanged.
-- [ ] Minor 6: the five walks in `m7_walk/blame.rs` send every counted key through the route helper; NOTES has the
-      grep showing no other key send after setup. Red by mutation: one extra key through the helper in
-      `blame_line_before` → "took 3 inputs … the note allows 2" (applied and reverted).
-- [ ] Minor 7: both captions corrected; the capture files are byte-unchanged (`git diff --stat docs/shots/m7/` shows
-      only the new shallow capture).
-- [ ] MAP.md: `CommitGraphFact::Shallow`, the offer rule.
-- [ ] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest, `test --doc`.
+- [x] 20f's walks and captures still green; `commit_graph_line() == None` asserts unchanged (full nextest run,
+      `blame_place::capture_*` and `m7_walk::blame::*` green; `assert_no_offer` untouched).
+- [x] Minor 6: the five walks in `m7_walk/blame.rs` send every counted key through `Route::press`. Red by mutation:
+      `blame-line-before took 3 inputs ["B", "^", "MUT"], the note allows 2` (applied, reverted). Grep in NOTES.
+- [x] Minor 7: both captions corrected (`blame_place.rs` `capture_blame_140x40`, `capture_blame_long_line_187x50`
+      docs); `git status docs/shots/` shows only the new untracked shallow capture.
+- [x] MAP.md: `CommitGraphFact::Shallow`, the offer rule (graft MAP.md `CommitGraphFact` line).
+- [x] Gates workspace-wide: fmt, clippy `--all-targets -D warnings`, nextest (4235 passed, 3 skipped), `test --doc`.
+
+Status: done (graph-pane clause not assertable, below).
+
+## NOTES (builder 20j, 2026-09-27)
+- Scout: none (ticket says none; 20f/32 NOTES name setup).
+- Rule: `repository.rs` `commit_graph_fact` reads `ShallowList` first; non-empty → `Shallow`; read error →
+  `Unreadable(msg)`. `update/commit_graph.rs` maps `Shallow` → `NotNeeded`.
+- **Graph-pane clause not asserted:** at 187×50 blame fills the screen; no graph pane is drawn in the capture, so
+  "the graph pane's last row is the boundary commit" can't be seen here. Reported, not fixed (drawing out of scope).
+- Boundary sha: `0a27627` (asserted, `main~1` of the clone). Line 18 is a boundary line (asserted).
+- Block heads at lines 1, 4, 27 also read `^0a2762 shallow clone · can't say who` (the ruling's "block's first row"),
+  and line 3/26 are `74f9a9e Graf…` — as 20d's NOTES said.
+- Route helper: local `Route { id, keys }` with `press`/`within_count`; `m5_walk`'s driver is a scenario runner
+  (`Step::Press`) not taking this harness. Grep `app.key` in `m7_walk/blame.rs` after the edit: lines 98–146 are
+  `open_on_line_22`/`file_row` setup, 163 `blame()` (setup-only helper), 253 is `Route::press`, 328 is setup in
+  `back_to_blame` (`⏎` before the counted `Esc`), 372 setup `k` in `blame_who_at_line`. No uncounted key after setup.
+- Touches: `CommitGraphFact` matches grepped — `repository.rs`, `update/commit_graph.rs` (arm added); tests/journal/
+  radar/view literals construct other variants only; `commit_graph_line` matches `CommitGraphOffer`, unaffected;
+  `repos.rs:237` reads `commit_graph::status` directly (32 makes it `Absent` in a shallow repo), unaffected. `B`/`X`:
+  `a_shallow_clone_offers_no_commit_graph`. Captures: only the new file. TESTING.md: `### M7 blame in a shallow clone`.
+- Colour unverified (rule 5): heatmap on the boundary rows.
 
 ## Touches (check each; NOTES says how)
 - **`CommitGraphFact` / `CommitGraphOffer` matches** in graft (`repository.rs`, the offer's `update`, `commit_graph_line`,

@@ -167,7 +167,8 @@ pub fn came_from(hunks: &[Hunk], new_line: u32) -> u32;                      // 
       `capture_blame_long_line_187x50` · `capture_blame_find_187x50` · `capture_blame_then_commit_120x40` ·
       `capture_blame_then_commit_with_base_120x40`; drawn via `frame_at`, not a pty; fixture differences from these
       words — `2f48ca3` for `a1b2c3d`, the 140 trailer sheds its sha, find uses `/refresh` (8 of 8), the landing line is
-      21 — in 20f NOTES. **The shallow capture is not built: blocked, Graft can't open a shallow clone, 20f NOTES.**)
+      21 — in 20f NOTES. ~~The shallow capture is not built~~ — built by 20j: `blame_place::blame_shallow_capture` →
+      `docs/shots/m7/blame-shallow-187x50.txt`, drawn via `frame_at`, not a pty.)
       (`check_shot` as ticket 08's, `GRAFT_UPDATE_SHOTS=1`; drawn by `view::view` via `frame_at`, not a pty; ≤ 200 KB,
       "Right:" line in each test comment):
   - `docs/shots/m7/blame-187x50.txt`: line 22 selected; `▸`, and `◂ Lina · 7 months ago · Retry refresh once on 401 ·
