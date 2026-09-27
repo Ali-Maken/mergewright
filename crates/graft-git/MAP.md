@@ -328,3 +328,8 @@ Rule: a commit listed in `<common_dir>/shallow` has no parents — git's (`rev-l
 - `SystemGit::version` (fn) — the version found.
 - `system_git` (fn) — run `git --version` through `run` (its own deadline `Stop`, since `run` has no built-in timeout) and classify what it printed (m3/01).
 - `VersionError` (enum) — why finding the system git failed.
+
+## File layout (m7-power-tools/30h: pure moves, public paths unchanged)
+
+- `status.rs` → children `status/parse.rs` (`parse_porcelain_v2` and its record parsers) and `status/submodule.rs` (`submodule_status`, `submodules_not_set_up`); both public fns re-exported at `status::`.
+- `history_reads.rs` → child `history_reads/forecast.rs` (`Forecast`, `forecast_merge`, `MergeStep`, `merge_tree_step`, the merge-tree version floors); re-exported at `history_reads::`.

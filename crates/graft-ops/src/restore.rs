@@ -20,6 +20,8 @@
 //! holds everything. That half is the `rollback` module; the
 //! `git` each step actually runs is the `steps` module.
 
+mod outcome;
+mod ref_names;
 mod rollback;
 mod steps;
 
@@ -38,6 +40,9 @@ use crate::undo::{InversePlan, Replaced, Step};
 
 use rollback::{Before, Cancelled, roll_back_after_failure, roll_back_after_stop};
 use steps::run_step;
+
+use outcome::{after_state, journal_failed, outcome_of, rollback_what, run_plan};
+use ref_names::check_ref_names;
 
 /// Why a restore could not be made, or could not finish.
 ///
@@ -168,36 +173,6 @@ impl RestoreError {
     pub fn explain(&self) -> String {
         self.to_string()
     }
-}
-
-/// A roll-back failure in the words of a roll-back.
-///
-/// [`RestoreError::RefMoved`]'s own message ends "nothing was changed", which
-/// is true of a plan that stopped at its first compare-and-swap and false
-/// here: by the time a roll-back refuses, the steps it could not reverse are
-/// in force.
-fn rollback_what(why: &RestoreError) -> String {
-    match why {
-        RestoreError::RefMoved { name } => format!("{name} is not where the undo left it"),
-        other => other.to_string(),
-    }
-}
-
-/// The journal failing, with the plan's own failure when there was one.
-fn journal_failed(error: &JournalError, after: Option<&RestoreError>) -> String {
-    match after {
-        Some(why) => format!("{error} (the restore had already failed: {why})"),
-        None => error.to_string(),
-    }
-}
-
-/// Every after-state failure on one line.
-fn after_state(unread: &[AfterState]) -> String {
-    unread
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<_>>()
-        .join("; ")
 }
 
 impl RestoreError {
@@ -369,57 +344,6 @@ fn cancel_if_stopped(why: crate::apply::PrepareError) -> RestoreError {
     }
 }
 
-/// Every ref name the plan writes, checked before anything is written (gap
-/// :497): git's `check-ref-format` rules, through the one checker Graft has
-/// ([`RefName::new`]), and a full name under `refs/`. The second rule is the
-/// restore path's own: every name here is a full ref a step moves, and one
-/// that is not — `-d`, say — would reach git's command line as an option,
-/// not a ref.
-fn check_ref_names(plan: &InversePlan) -> Result<(), RestoreError> {
-    for step in &plan.steps {
-        let name = match step {
-            Step::UpdateRef { name, .. }
-            | Step::SetHead(HeadRef::Branch(name) | HeadRef::Unborn(name)) => name,
-            Step::SetHead(HeadRef::Detached(_))
-            | Step::RestoreIndex { .. }
-            | Step::RestoreWorktree { .. }
-            | Step::StashStore { .. }
-            | Step::StashDrop { .. }
-            | Step::SetMergeState(_) => continue,
-            // The key's branch, by the same rules: a key reaches a step only
-            // through `undo::config_steps`, which refuses one that is not
-            // `branch.<name>.<var>`, so it cannot read as an option either.
-            Step::SetBranchConfig { key, .. } => match crate::branch_config::branch_of(key) {
-                Some(branch) => {
-                    check_ref_name(&branch)?;
-                    continue;
-                }
-                None => key,
-            },
-        };
-        check_ref_name(name)?;
-    }
-    Ok(())
-}
-
-fn check_ref_name(name: &str) -> Result<(), RestoreError> {
-    match RefName::new(name) {
-        Err(graft_core::error::Error::RefName { name, reason }) => Err(RestoreError::BadRefName {
-            name,
-            reason: reason.to_string(),
-        }),
-        Err(other) => Err(RestoreError::BadRefName {
-            name: name.escape_debug().to_string(),
-            reason: other.to_string(),
-        }),
-        Ok(_) if !name.starts_with("refs/") => Err(RestoreError::BadRefName {
-            name: name.escape_debug().to_string(),
-            reason: "it is not a full name under refs/".to_owned(),
-        }),
-        Ok(_) => Ok(()),
-    }
-}
-
 /// What the caller re-reads after a restore ran: the graph as well whenever a
 /// ref moved **or `HEAD` did** (m6-conflicts/79).
 ///
@@ -443,177 +367,5 @@ fn refresh_after(
     }
 }
 
-/// How a plan's steps ended.
-enum Ran {
-    /// Every step ran.
-    Done,
-    /// A step failed, nothing after it ran, and the roll-back of what had
-    /// already run has too (gap :496). The error is the step's own.
-    Failed(RestoreError, Cancelled),
-    /// The caller asked to stop, and the roll-back has already run.
-    Cancelled(Cancelled),
-}
-
-/// Run the plan's steps, stopping at the first failure or stop, and putting
-/// back what already ran before returning.
-fn run_plan(
-    ctx: &mut Context<'_>,
-    plan: &InversePlan,
-    before: &Before,
-    commands: &mut Vec<String>,
-) -> Ran {
-    let mut cancelled = false;
-    let mut stopped_in = None;
-    let mut applied: Vec<&Step> = Vec::new();
-    for step in &plan.steps {
-        // Before every step, not only the first: between two steps is the
-        // one place a plan can be stopped and still be put back exactly.
-        if ctx.stop.should_stop() {
-            cancelled = true;
-            break;
-        }
-        match run_step(ctx, step, commands) {
-            Ok(()) => applied.push(step),
-            // The runner SIGTERMed git part-way through this step, so
-            // whether it landed is not knowable from the error.
-            Err(RestoreError::Run(RunError::Stopped)) => {
-                cancelled = true;
-                stopped_in = Some(step);
-                break;
-            }
-            Err(why) => {
-                let rolled = roll_back_after_failure(ctx, before, &mut applied, step, commands);
-                return Ran::Failed(why, rolled);
-            }
-        }
-    }
-    if cancelled {
-        Ran::Cancelled(roll_back_after_stop(
-            ctx,
-            before,
-            &mut applied,
-            stopped_in,
-            commands,
-        ))
-    } else {
-        Ran::Done
-    }
-}
-
-/// The entry's outcome line, and the error the caller gets.
-fn outcome_of(ran: Ran) -> (EntryStatus, Option<RestoreError>) {
-    match ran {
-        Ran::Done => (EntryStatus::Committed, None),
-        // Put back whole: the after-state `finish` reads equals the
-        // before-state, so the entry is not in force, and the step's own
-        // failure is the whole story.
-        Ran::Failed(why, Cancelled::Clean(_)) => (
-            EntryStatus::Aborted {
-                reason: aborted_reason(&why),
-            },
-            Some(why),
-        ),
-        // Half a restore is in force. Never silent: the entry and the error
-        // both name what is left, and the backup ref keeps everything.
-        Ran::Failed(
-            why,
-            Cancelled::Partway {
-                applied,
-                why: rollback,
-            },
-        ) => (
-            EntryStatus::Aborted {
-                reason: format!(
-                    "{} — rollback failed: {}",
-                    aborted_reason(&why),
-                    rollback_what(&rollback)
-                ),
-            },
-            Some(RestoreError::FailedPartway {
-                failure: Box::new(why),
-                applied,
-                rollback: Box::new(rollback),
-            }),
-        ),
-        // The repository is back where the restore found it, so the entry's
-        // after-state — read fresh by `finish` — equals its before-state and
-        // `journal::in_force` says this entry is not in force: it shadows
-        // nothing, and `next_undo` still points at the entry `u` was about
-        // to reverse.
-        Ran::Cancelled(Cancelled::Clean(rolled_back)) => (
-            EntryStatus::Aborted {
-                reason: "cancelled".to_owned(),
-            },
-            Some(RestoreError::Cancelled { rolled_back }),
-        ),
-        // The after-state here is real and possibly half-way, which is the
-        // point: `in_force` says so, `drift` explains it, and the backup ref
-        // keeps everything.
-        Ran::Cancelled(Cancelled::Partway { applied, why }) => (
-            EntryStatus::Aborted {
-                reason: format!("cancelled — rollback failed: {}", rollback_what(&why)),
-            },
-            Some(RestoreError::CancelledPartway {
-                applied,
-                rollback: Box::new(why),
-            }),
-        ),
-    }
-}
-
-fn aborted_reason(why: &RestoreError) -> String {
-    match why {
-        RestoreError::Run(run) => reason_for(run),
-        other => other.to_string(),
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use graft_core::journal::HeadRef;
-
-    use super::refresh_after;
-    use crate::apply::Refresh;
-
-    fn branch(name: &str) -> HeadRef {
-        HeadRef::Branch(format!("refs/heads/{name}"))
-    }
-
-    /// The scope rule as a table (m6-conflicts/79): any ref, a `SetHead`
-    /// step, a recorded `HEAD` move, or an unread `HEAD` re-reads the graph;
-    /// only a restore that provably left refs and `HEAD` alone does not.
-    #[test]
-    fn refresh_covers_head_whenever_the_restore_moves_it() {
-        let main = branch("main");
-        let feature = branch("feature");
-        let rows: [(bool, bool, Option<&HeadRef>, Refresh, &str); 6] = [
-            (
-                false,
-                false,
-                Some(&main),
-                Refresh::WorkingTree,
-                "nothing moved",
-            ),
-            (true, false, Some(&main), Refresh::Everything, "a ref moved"),
-            (
-                false,
-                true,
-                Some(&main),
-                Refresh::Everything,
-                "the plan sets HEAD",
-            ),
-            (
-                false,
-                false,
-                Some(&feature),
-                Refresh::Everything,
-                "HEAD recorded moved",
-            ),
-            (false, false, None, Refresh::Everything, "HEAD after unread"),
-            (true, true, Some(&feature), Refresh::Everything, "all of it"),
-        ];
-        for (refs, sets_head, after, want, why) in rows {
-            assert_eq!(refresh_after(refs, sets_head, &main, after), want, "{why}");
-        }
-    }
-}
+mod tests;
