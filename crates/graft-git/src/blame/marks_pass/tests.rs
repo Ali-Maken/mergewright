@@ -1,12 +1,12 @@
-//! The second pass: the predicate, the merge, and `blame_with` through the
-//! real spawn (samples and fixture helpers in `blame/tests.rs`).
+//! The second pass: the predicate, `configured_list`, and `blame_with`
+//! through the real spawn (fixture helpers in `blame/tests.rs`; the merge's
+//! tests are in `blame/marks/tests.rs`, beside the samples' reader).
 
 use std::path::Path;
 
 use super::*;
 use crate::blame::tests::{
-    HUMAN_2_38, PORCELAIN_2_38, SESSION_FILE, SKIPPED, head, marks_of, session_blame,
-    session_blame_with,
+    SESSION_FILE, SKIPPED, head, marks_of, session_blame, session_blame_with,
 };
 use crate::blame::{
     Blame, IGNORE_REVS_FILE, Knobs, LineMark, MarksFrom, PorcelainMarks, blame_with,
@@ -50,37 +50,6 @@ fn needs_marks_pass_holds_only_when_all_four_do() {
     assert!(
         !needs_marks_pass(true, false, true, Some(&new)),
         "4 flips it"
-    );
-}
-
-/// The merge on 2.38.5's own two outputs: marks land by position; a line
-/// count that differs (the working-tree file changed between the two
-/// reads) is `Changed`, never a partial merge.
-#[test]
-fn marks_merge_by_position_and_a_count_mismatch_is_changed() {
-    let (mut lines, _) = parse_porcelain(PORCELAIN_2_38).expect("parses");
-    let marks = parse_marks(HUMAN_2_38).expect("parses");
-    merge_marks(&mut lines, marks.clone()).expect("same count");
-    let skipped: Vec<u32> = lines
-        .iter()
-        .filter(|line| line.mark == LineMark::Skipped)
-        .map(|line| line.final_line)
-        .collect();
-    assert_eq!(skipped, SKIPPED);
-
-    let (mut lines, _) = parse_porcelain(PORCELAIN_2_38).expect("parses");
-    let mut longer = marks;
-    longer.push(MarkedLine {
-        mark: LineMark::Plain,
-        id_prefix: "0".repeat(40),
-    });
-    match merge_marks(&mut lines, longer) {
-        Err(BlameError::Changed { first, second }) => assert_eq!((first, second), (60, 61)),
-        other => panic!("a count mismatch is Changed: {other:?}"),
-    }
-    assert!(
-        lines.iter().all(|line| line.mark == LineMark::Plain),
-        "nothing merged on a mismatch"
     );
 }
 

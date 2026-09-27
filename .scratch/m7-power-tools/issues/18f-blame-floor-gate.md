@@ -1,6 +1,6 @@
 # 18f blame-floor-gate — blame's git < 2.50 path tested on every run; `blame.rs` split; review 18e-20f's cheap Minors
 
-Status: draft
+Status: done
 Blocked by: none.
 Crates: graft-git only (`blame.rs`, `blame/*.rs` new and moved, their tests, graft-git `MAP.md`). No graft, no graft-ui:
 `blame`'s public signature and every public path are unchanged; no word the app writes changes. Needing another crate →
@@ -111,33 +111,33 @@ literals become `Knobs { <field>: …, ..Knobs::real() }`.
 Tests in `blame/marks_pass/tests.rs` unless said. Each "as old git" test uses `GitFrom::Given(GitVersion::MINIMUM)` +
 `PorcelainMarks::Dropped` and asserts **both** the marks **and** the second-pass count (18e's test-only counter), so a
 seam that stops dropping can't pass. Green on first run is expected (the code exists); red is shown by the mutations.
-- [ ] `as_old_git_a_configured_list_alone_takes_the_pass`: `blame.ignoreRevsFile` set, no root file → pass count 1,
+- [x] `as_old_git_a_configured_list_alone_takes_the_pass` (green 2.54 and 2.38.5; red on 2.54 with `Some(0) => Ok(false)`: left 0 right 1): `blame.ignoreRevsFile` set, no root file → pass count 1,
       the skipped line `Skipped`. **Red on 2.54** with `configured_list`'s `Some(0) => Ok(false)` (review mutation, `:414`).
-- [ ] `as_old_git_the_root_file_takes_the_pass`: root `.git-blame-ignore-revs` → count 1, `Skipped`.
-- [ ] `as_old_git_an_unblamable_line_is_unblamable`: 18e's unblamable repo → `[Plain, Unblamable, Plain]`, count 1.
-- [ ] `as_old_git_no_list_is_no_pass`: count 0, all `Plain`.
-- [ ] `as_old_git_ignore_revs_off_is_no_pass`: `ignore_revs: false` with a list → count 0.
-- [ ] `at_the_marks_version_no_pass`: `Given(GitVersion::BLAME_PORCELAIN_MARKS)`, `Dropped`, a list → count 0.
-- [ ] **Mutations, each applied and reverted, on 2.54** (say which tests went red): `if wanted && false` at the pass
+- [x] `as_old_git_the_root_file_takes_the_pass`: root `.git-blame-ignore-revs` → count 1, `Skipped`.
+- [x] `as_old_git_an_unblamable_line_is_unblamable` (repo rebuilt in the unit test; `tests/it` can't reach `blame_with`): 18e's unblamable repo → `[Plain, Unblamable, Plain]`, count 1.
+- [x] `as_old_git_no_list_is_no_pass`: count 0, all `Plain`.
+- [x] `as_old_git_ignore_revs_off_is_no_pass`: `ignore_revs: false` with a list → count 0.
+- [x] `at_the_marks_version_no_pass`: `Given(GitVersion::BLAME_PORCELAIN_MARKS)`, `Dropped`, a list → count 0.
+- [x] **Mutations, each applied and reverted, on 2.54** (reds per mutation in NOTES; tests named there) (say which tests went red): `if wanted && false` at the pass
       (`:324`); `Dropped` ignored; `<` → `<=` in `needs_marks_pass`'s version test; `Some(0) => Ok(false)`.
-- [ ] `configured_list_reads_set_unset_and_refuses_a_broken_config` (unit): set → `true`, unset (exit 1) → `false`, a
+- [x] `configured_list_reads_set_unset_and_refuses_a_broken_config` (unit): set → `true`, unset (exit 1) → `false`, a
       broken `.git/config` → `Err`. Record git's exit code for the broken file in NOTES (the review says 3; observe).
-- [ ] Minor 1: `merge_marks_refuses_a_line_whose_commit_differs` (same count, one prefix from another commit →
+- [x] Minor 1 (in `blame/marks/tests.rs`; red with the prefix check removed: `merge_marks_refuses_a_line_whose_commit_differs`, `merge_marks_matches_zero_ids_to_uncommitted_lines`; `parse_marks_reads_the_leading_run_only` now asserts the prefixes): `merge_marks_refuses_a_line_whose_commit_differs` (same count, one prefix from another commit →
       `Changed`) · `merge_marks_matches_zero_ids_to_uncommitted_lines` · `merge_marks_accepts_a_boundary_prefix`
       (`^`-shortened). Unit, in `blame/marks/tests.rs` or beside `merge_marks`. Red: the prefix check removed.
       `parse_marks` units updated for `MarkedLine`; `parse_marks_refuses_garbage_without_panicking` still green.
-- [ ] Minor 2: `the_system_version_is_read_once_per_process`: `GitFrom::System`, `Dropped`, a list; two `blame_with`
+- [x] Minor 2 (red with the cache removed): `the_system_version_is_read_once_per_process`: `GitFrom::System`, `Dropped`, a list; two `blame_with`
       calls, one version read (test-only counter). Red: the cache removed. (nextest runs each test in its own process.)
-- [ ] Minor 4: `a_second_pass_cut_at_its_cap_is_too_large`: `MarksFrom::HumanFormat`, `cap` default, `marks_cap` small
+- [x] Minor 4 (red with `if output.truncated && false` in `read_marks`): `a_second_pass_cut_at_its_cap_is_too_large`: `MarksFrom::HumanFormat`, `cap` default, `marks_cap` small
       → `Err(TooLarge { cap: marks_cap })`. Red: the second pass's cap refusal bypassed.
-- [ ] Major 2: `wc -l` in NOTES for `blame.rs` and every file created or moved: each ≤ 400. `grep -n 'needs_marks_pass('`
+- [x] Major 2 (counts and grep in NOTES; `needs_marks_pass_holds_only_when_all_four_do` is the table test): `wc -l` in NOTES for `blame.rs` and every file created or moved: each ≤ 400. `grep -n 'needs_marks_pass('`
       in `src/`: one production call, no literal argument, plus the table test.
-- [ ] Existing blame tests all green, moved tests unchanged in body (`git diff -M` shows moves).
-- [ ] Filtered suite `cargo nextest run --workspace -E 'test(/blame|trace|switch_refs|unreached/)'` **on 2.38.5**
+- [x] Existing blame tests all green (filtered suite 196/196 on 2.54, incl. `a_list_in_effect_takes_the_pass_only_on_a_git_without_porcelain_marks`; `git diff -M` shows the moves), moved tests unchanged in body (`git diff -M` shows moves).
+- [x] Filtered suite (**196/196 on 2.38.5, 196/196 on 2.54**) `cargo nextest run --workspace -E 'test(/blame|trace|switch_refs|unreached/)'` **on 2.38.5**
       (`$TMPDIR/oldg238/inst/bin` first on `PATH`; rebuild per 18b NOTES if gone) and on 2.54: counts for both.
-- [ ] MAP.md (edited and read back): `blame` file list (new files), `parse_marks`/`MarkedLine`, `Knobs` and its
+- [x] MAP.md (edited and read back, `crates/graft-git/MAP.md:26-43`): `blame` file list (new files), `parse_marks`/`MarkedLine`, `Knobs` and its
       fields, Minor 3's wording, the version cache, `Changed`'s equal-count case.
-- [ ] Gates workspace-wide (2.54 on `PATH`): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+- [x] Gates workspace-wide (fmt clean, clippy clean, nextest 4150/4150 (1 skipped), `test --doc` ok) (2.54 on `PATH`): `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
       `cargo nextest run`, `cargo test --doc`.
 
 ## Touches (check each; NOTES says how)
@@ -162,3 +162,30 @@ split: **18f-a** the split, `:379`, knobs and the Major 1 tests; **18f-b** Minor
 ## Rules
 Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.md`. The 2.38.5 binary stays under
 `$TMPDIR`; never install it.
+
+## NOTES (builder, 2026-09-27)
+- **Scout:** none (ticket says so; the review names every site). No compaction.
+- **Commits:** `f29c5549` the split + `:379` (pure moves; gates green then: nextest 4138/4138, doc ok); `18a4b260` knobs, prefix merge, version cache; last commit: tests re-homed, MAP, this ticket.
+- **Signatures:** as specified. `configured_list(repo, stop)` and `merge_marks(lines, marks)` keep today's order. New crate-private `read_marks` in `marks_pass.rs` is the human-format spawn (with its cap refusal and 18e's pass counter). `needs_marks_pass` is no longer re-exported from `blame` (only `marks_pass` and its tests call it).
+- **Mutation reds on git 2.54** (each applied with `sed`, filtered suite run `--no-fail-fast`, reverted with `git checkout`):
+  - `Some(0) => Ok(false)` (`configured_list`): red `as_old_git_a_configured_list_alone_takes_the_pass` (left 0, right 1), `configured_list_reads_set_unset_and_refuses_a_broken_config`.
+  - `if wanted && false` (`blame_with`): red `as_old_git_the_root_file_takes_the_pass`, `as_old_git_a_configured_list_alone_takes_the_pass`, `as_old_git_an_unblamable_line_is_unblamable`, `a_second_pass_cut_at_its_cap_is_too_large`. The oracle `the_human_format_marks_match_the_porcelain_marks` stayed **green** under this mutation (with the pass skipped, its "human" marks are 2.54's porcelain marks). The review says the oracle catches it; I did not observe that.
+  - `Dropped` ignored (`if false && knobs.porcelain_marks == Dropped`): red `as_old_git_the_root_file_takes_the_pass`, `as_old_git_a_configured_list_alone_takes_the_pass`, `as_old_git_an_unblamable_line_is_unblamable`, `at_the_marks_version_no_pass`, `the_system_version_is_read_once_per_process`.
+  - `<` → `<=` in `needs_marks_pass`: red `needs_marks_pass_holds_only_when_all_four_do`, `at_the_marks_version_no_pass`.
+  - Prefix check removed (`true ||`): red `merge_marks_refuses_a_line_whose_commit_differs`, `merge_marks_matches_zero_ids_to_uncommitted_lines`.
+  - Cache removed (`.get().filter(|_| false)`): red `the_system_version_is_read_once_per_process`.
+  - Second-pass cap check bypassed: red `a_second_pass_cut_at_its_cap_is_too_large`.
+- **Broken `.git/config`:** `git config --get blame.ignoreRevsFile` exits **128** on both 2.38.5 and 2.54 (observed; the test prints it), not 3 as the review said. The test asserts `Exited { status > 1 }`.
+- **Zero id:** both edges samples print the all-zero id unshortened (40 digits, no marks) for the uncommitted line; `^` lines have 39 digits, `^?`/`*?` 38.
+- **Version cache under `cargo test`:** the counter is per thread, the `OnceLock` per process; the test asserts ≤ 1 read on the first blame and 0 on the second, and that the cache is filled, so it holds under both runners.
+- **2.38.5 runs:** `$TMPDIR/oldg238/inst/bin` first on `PATH` (the oracle test printed "git 2.38.5 writes no porcelain marks", confirming which git ran): 196/196. 2.54: 196/196.
+- **`wc -l`:** `blame.rs` 363; `blame/marks_pass.rs` 205; `blame/invocation.rs` 79; `blame/knobs.rs` 73; `blame/refusal.rs` 85; `blame/marks.rs` 77; `blame/tests.rs` 302; `blame/marks_pass/tests.rs` 374; `blame/marks/tests.rs` 175. All ≤ 400.
+- **`grep -n 'needs_marks_pass(' src/`:** `blame/marks_pass.rs:37` (definition), `:73` (the one production call: `opts.ignore_revs, porcelain_has_marks, list_in_effect, git.as_ref()`), and the table test in `blame/marks_pass/tests.rs`.
+- **Moved tests:** bodies unchanged except where `parse_marks` now returns `MarkedLine` (`marks_only(..)` wraps it; the count test pushes a `MarkedLine`) and `Knobs` literals gained `..Knobs::real()`. `marks_merge_by_position_and_a_count_mismatch_is_changed` lives in `blame/marks/tests.rs` beside the other merge tests, to keep `marks_pass/tests.rs` ≤ 400.
+- **Touches:**
+  - `parse_marks` callers: `grep -rn parse_marks crates fuzz` → graft-git `blame` only; no fuzz target.
+  - `Knobs {` literals: graft-git `src/blame/tests.rs` (2) and `src/blame/marks_pass/tests.rs`; each uses `..Knobs::real()`. None in `tests/it` or `examples/` (grep).
+  - `BlameError::Changed`: graft `jobs/detail.rs:200`, `jobs/detail/blame_tests.rs:213`; shape unchanged; workspace clippy and nextest green.
+  - `blame(` callers: signature unchanged; examples and `tests/it/blame.rs` compile (clippy `--all-targets`).
+  - Perf: `docs/perf/18e.txt` not re-run; no speed claim.
+  - graft, graft-ui, captures, keymap, journal, undo: not touched (diff is graft-git `src/blame*`, `MAP.md`, this ticket).

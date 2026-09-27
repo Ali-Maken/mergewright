@@ -82,6 +82,37 @@ fn parse_marks_refuses_garbage_without_panicking() {
     assert_eq!(error.line, 2);
 }
 
+/// The merge on 2.38.5's own two outputs: marks land by position; a line
+/// count that differs (the working-tree file changed between the two
+/// reads) is `Changed`, never a partial merge.
+#[test]
+fn marks_merge_by_position_and_a_count_mismatch_is_changed() {
+    let (mut lines, _) = parse_porcelain(PORCELAIN_2_38).expect("parses");
+    let marks = parse_marks(HUMAN_2_38).expect("parses");
+    merge_marks(&mut lines, marks.clone()).expect("same count");
+    let skipped: Vec<u32> = lines
+        .iter()
+        .filter(|line| line.mark == LineMark::Skipped)
+        .map(|line| line.final_line)
+        .collect();
+    assert_eq!(skipped, SKIPPED);
+
+    let (mut lines, _) = parse_porcelain(PORCELAIN_2_38).expect("parses");
+    let mut longer = marks;
+    longer.push(MarkedLine {
+        mark: LineMark::Plain,
+        id_prefix: "0".repeat(40),
+    });
+    match merge_marks(&mut lines, longer) {
+        Err(BlameError::Changed { first, second }) => assert_eq!((first, second), (60, 61)),
+        other => panic!("a count mismatch is Changed: {other:?}"),
+    }
+    assert!(
+        lines.iter().all(|line| line.mark == LineMark::Plain),
+        "nothing merged on a mismatch"
+    );
+}
+
 /// Review 18e-20f Minor 1: the same line count is not the same lines. One
 /// line's id prefix swapped for another commit's: `Changed`, counts equal,
 /// nothing merged. Red with the prefix check in `merge_marks` removed.
