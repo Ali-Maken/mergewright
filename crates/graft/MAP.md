@@ -45,7 +45,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `History::seek` (fn) — select a commit: at once if on hand, else a `Find` request (a jump, so Esc withdraws it).
 - `History::restore` (fn) — put cursor/top back (search cancelled) and ask for that window.
 - `walk_is_reading` (fn, `pub(crate)`, `update`, m6-conflicts/85 A) — `(&AppState) -> bool`: `awaiting` and (no history yet, or `History::is_reading`). The one reading of "the walk is reading": `update::keys::escape_key`'s last arm cancels the walk only when it is true (a parked or complete walk: `Esc` does nothing, no command, no status), and the header's `WalkView` draws reading/jumping exactly then.
-- `serve` (fn) — the history worker's loop: answers each `RowRequest`; between requests, `Views::idle_step` a chunk at a time to the end of history (every `stop` check also takes a waiting request, so a request or cancel ends a step within one pull), then parks in `recv` — no wake, no CPU (m7-power-tools/12 Part B). Lives in `history/serve.rs` (moved out of `views.rs`, 12c). A request carrying `promote` starts `Views::begin_promotion` and, until the swap, is answered from the provisional layout with `promote` cleared (12 Part C).
+- `serve` (fn) — the history worker's loop: answers each `RowRequest`; between requests, `Views::idle_step` a chunk at a time to the end of history (every `stop` check also takes a waiting request, so a request or cancel ends a step within one pull), then parks in `recv` — no wake, no CPU (m7-power-tools/12 Part B). Lives in `history/serve.rs` (moved out of `views.rs`, 12c); `Views` in `history/views/mod.rs`, its promotion state machine (`begin_promotion`, `promote`, the pending layout, swap, `reach`, `aim`) in `history/views/promotion.rs` (12f). A request carrying `promote` starts `Views::begin_promotion` and, until the swap, is answered from the provisional layout with `promote` cleared (12 Part C).
 - `Views::idle_step` (fn, `pub(crate)`) — one bounded step nobody asked for: while a promotion is pending, one chunk of the promoted layout (swapping and re-answering the last request once ready); otherwise ≤ one `advance(chunk_rows, stop)` of the view last asked for, `HistoryUpdate::LaidOut` once per layout at the end (again after a fold or promotion). Returns `IdleWork`.
 - `Views::begin_promotion` (fn, `pub(crate)`) — `(view, &Promote) -> Result<bool, StreamError>`: `true` if that order is already in force; else keeps (or opens) the pending promoted layout, re-aims its anchor, and swaps at once if ready. Ready = the layout is done, or has ≥ one chunk laid out and a row for the anchor (12c: a swap before the first chunk left the race short of `Complete`).
 - `IdleWork` (enum, `pub(crate)`) — `Advanced { rows }`, `Promoting { rows }` (a pending promotion took the step), `Caught` (end reached or nothing asked: park), `NobodyListening`.
@@ -887,10 +887,10 @@ command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
 - `Promote` (struct) — a topological `order` (`Arc<[CommitHandle]>`) to swap to, the selection's `anchor` and the viewport `height`; the worker lays the new layout out to the anchor before swapping (ADR-0008).
 - `Promotion` (enum) — where promoting to topological order is: `Sorting`, `Swapping { order, anchor }`, `Kept` (stopped or failed; order stays provisional).
 - `topological_order` (fn) — the whole range in strict topological order, as handles sharing the store's `CommitTable` (a job's work); `Ok(None)` when stopped.
-- `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes), `Views::promote` (synchronous: lay a promoted order out to the anchor, then swap; idempotent; kept for `examples/budgets`), `Views::begin_promotion` (the worker's non-blocking form, see above).
+- `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes), `Views::promote` (synchronous: lay a promoted order out to the anchor, then swap; idempotent; kept for `examples/budgets`), `Views::begin_promotion` (the worker's non-blocking form, see above). `history/views/mod.rs`; promotion methods in `history/views/promotion.rs`.
 - `Open` (type) — boxed closure opening a fresh source over the same walk, or over a promoted order when given one.
 - `Window` (struct) — rows answering one request: `request`, `first`, `rows`, `laid_out`, `done`, `promoted` (the first answer in a promoted order); `end()`.
-- `HistoryUpdate` (enum) — what a walk tells the screen: `Started(facts)`, `Progress { request, laid_out }`, `Window(window)`.
+- `HistoryUpdate` (enum) — what a walk tells the screen: `Started(facts)`, `Progress { request, laid_out }`, `Window(window)`, `LaidOut { rows }` (see above).
 - `Phase` (enum) — where a walk is.
 - `History` (struct) — history on screen: one bounded window, never all rows.
 - `History::walk` (field) — the walk's facts, once it has said.
@@ -920,7 +920,6 @@ command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
 - `Motion` (enum, re-export from scroll) — `Down(n)`, `Up(n)`, `PageDown`, `PageUp`, `Top`, `Bottom`.
 - `Ended` (enum) — how `stream`/`serve` ended when not failing: `Cancelled`, `NobodyListening`.
 - `stream` (fn) — open the walk and serve row requests from a channel until it closes.
-- `serve` (fn) — answer `RowRequest`s through `Views`, each in the view it names, until the channel has no sender.
 
 ## history::source
 - `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread; `pull` yields links (`Walk::next_links`), `read` hydrates by handle through `read_commit`.
