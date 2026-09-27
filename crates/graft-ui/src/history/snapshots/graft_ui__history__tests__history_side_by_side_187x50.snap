@@ -1,0 +1,56 @@
+---
+source: crates/graft-ui/src/history/tests.rs
+assertion_line: 437
+description: "Right: the detail pane's side-by-side body in the file pane, no ┃; the title still names the range."
+expression: text
+---
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 4 changes
+   7f6e5d4 Handle expired tokens      you     now +1 −1 │ a1b2c3d · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −1
+   c4d5e6f Move session TTL to config Priya…  4mo +1 −1 │
+   ↳ was src/session.rs                                 │  16   impl Session {                                            │ 16   impl Session {
+ ▸ a1b2c3d Retry refresh once on 401  Lina    7mo +3 −1 │  17       /// Refresh the token when the server says it expired.│ 17       /// Refresh the token when the server says it expired.
+   5e6f7a8 Add token refresh          Tom    10mo +12   │  18       pub fn refresh_token(&mut self, client: &Client) -> R…│ 18       pub fn refresh_token(&mut self, client: &Client) -> R…
+   the file starts here (5e6f7a8 added it)              │                                                                 │ 19 +         let mut attempt = 0;
+                                                        │  19           loop {                                            │ 20           loop {
+                                                        │  20               let resp = client.refresh(&self.token)?;      │ 21               let resp = client.refresh(&self.token)?;
+                                                        │  21 -             if resp.status() == 401 {                     │
+                                                        │                                                                 │ 22 +             if resp.status() == 401 && attempt == 0 {
+                                                        │                                                                 │ 23 +                 attempt += 1;
+                                                        │  22                   continue;                                 │ 24                   continue;
+                                                        │  23               }                                             │ 25               }
+                                                        │  24               return Ok(());                                │ 26               return Ok(());
+                                                        │  25           }                                                 │ 27           }
+                                                        │  26       }                                                     │ 28       }
+                                                        │  27   }                                                         │ 29   }
+                                                        │  28                                                             │ 30
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │

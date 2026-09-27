@@ -1,0 +1,56 @@
+---
+source: crates/graft-ui/src/history/tests.rs
+assertion_line: 371
+description: "Right: list 56 wide, ▸ on Lina's row, ↳ was under Priya's; the file pane: ┃ on 18–29, 19 +, the old 22 − with no number, signs in one column."
+expression: "snapshot(&view(&rows, &hunks, &theme, HistoryFocus::List), 187, 50)"
+---
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 4 changes
+   7f6e5d4 Handle expired tokens      you     now +1 −1 │ a1b2c3d · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −1
+   c4d5e6f Move session TTL to config Priya…  4mo +1 −1 │    16   impl Session {
+   ↳ was src/session.rs                                 │    17       /// Refresh the token when the server says it expired.
+ ▸ a1b2c3d Retry refresh once on 401  Lina    7mo +3 −1 │ ┃  18       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+   5e6f7a8 Add token refresh          Tom    10mo +12   │ ┃  19 +         let mut attempt = 0;
+   the file starts here (5e6f7a8 added it)              │ ┃  20           loop {
+                                                        │ ┃  21               let resp = client.refresh(&self.token)?;
+                                                        │ ┃     −             if resp.status() == 401 {
+                                                        │ ┃  22 +             if resp.status() == 401 && attempt == 0 {
+                                                        │ ┃  23 +                 attempt += 1;
+                                                        │ ┃  24                   continue;
+                                                        │ ┃  25               }
+                                                        │ ┃  26               return Ok(());
+                                                        │ ┃  27           }
+                                                        │ ┃  28       }
+                                                        │ ┃  29   }
+                                                        │    30
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │
+                                                        │

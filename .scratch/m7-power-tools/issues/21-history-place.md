@@ -1,6 +1,6 @@
 # history-place — `L` in blame and `F` on a file: the commits that changed it, the whole file with each one's adds and removes
 
-Status: ready
+Status: partial (blocked: frame hook + history bar outside the Files line; see NOTES)
 Blocked by: 18-trace-readers, 20-blame-place (both landed)
 Crates: graft, graft-ui.
 Source: `docs/design-notes/m7-power-tools.md`: pass 1b "History — the whole file, each change marked"; "Pass 2b" F2,
@@ -210,54 +210,78 @@ pub fn draw_history(frame: &mut Frame, area: Rect, view: &HistoryView);
 Fields may be added (say so in NOTES and MAP.md); none of these may be removed or retyped without the conductor.
 
 ## Acceptance (name the verifying test at tick time; red first where it says so)
-- [ ] **Open:**
-  - `l_in_blame_opens_history_of_the_function` (red first).
-  - `l_with_no_function_uses_the_block_and_says_so`.
-  - `l_when_the_function_lookup_fails_draws_the_failure` (an `Err`, not the block).
-  - `l_on_an_uncommitted_line_says_so_and_opens_nothing`.
-  - `the_list_cursor_starts_on_the_commit_blame_showed`.
-  - `f_on_a_file_row_opens_file_history` (red first).
-  - `f_on_a_diff_line_scrolls_the_file_pane_to_that_line`.
-  - `f_in_the_changes_pane_opens_history_of_that_file`.
-  - `f_with_the_graph_focused_is_still_focus_mode`, and `update/tests.rs:448` stays green.
-- [ ] **Keys:**
-  - `j_steps_older_and_the_file_pane_follows`.
-  - `the_range_stays_in_view_as_it_moves`.
-  - `n_goes_to_the_next_change_from_either_focus`; `n_past_the_last_change_says_so_and_stays`.
-  - `next_change_matches_next_blocks_contract` (unit: `None` from, past the end, both directions, an all-`false` slice).
-  - `b_in_history_blames_that_commit_at_that_line`, and `esc_comes_back_to_history`.
-  - `enter_shows_the_commit_and_esc_comes_back`.
-  - `esc_during_trace_stops_git_and_goes_back` (red first: the trace job's cancel is in the commands, the place is
-    popped, he is on the line he pressed `L`/`F` on). Replaces `esc_during_trace_stops_and_keeps_rows`.
-  - `a_trace_answer_after_esc_is_dropped`.
-  - `esc_from_history_returns_to_blame_same_line`.
-  - `esc_on_the_graph_with_the_pane_open_returns_to_history` (red first; 20i). After `⏎` from history, `Tab` to the
-    graph with the pane still shown: the bar leads `esc back to history`, and one `Esc` shows history with the same
-    row selected and the file pane at the same line.
-  - History's rows in 20i's `the_bar_leads_esc_back_to_blame_exactly_where_esc_goes_back` table, with the trail's top a
-    history place; the bar reads `back to history`.
-  - `tab_swaps_below_120`.
+- [x] **Open:** (all in `update/place/tests/history.rs`)
+  - [x] `l_in_blame_opens_history_of_the_function` (red first: "expected a trace job, got [EvilProbe(..)]" with the arm off).
+  - [x] `l_with_no_function_uses_the_block_and_says_so`.
+  - [x] `l_when_the_function_lookup_fails_draws_the_failure` (an `Err`, not the block).
+  - [x] `l_on_an_uncommitted_line_says_so_and_opens_nothing`.
+  - [x] `the_list_cursor_starts_on_the_commit_blame_showed`.
+  - [x] `f_on_a_file_row_opens_file_history` (red first, same message).
+  - [x] `f_on_a_diff_line_scrolls_the_file_pane_to_that_line`.
+  - [x] `f_in_the_changes_pane_opens_history_of_that_file`.
+  - [x] `f_with_the_graph_focused_is_still_focus_mode`; `update/tests.rs` green in the workspace nextest run.
+- [ ] **Keys:** all but the bar items.
+  - [x] `j_steps_older_and_the_file_pane_follows`.
+  - [x] `the_range_stays_in_view_as_it_moves`.
+  - [x] `n_goes_to_the_next_change_from_either_focus`; `n_past_the_last_change_says_so_and_stays`.
+  - [x] `next_change_matches_next_blocks_contract`.
+  - [x] `b_in_history_blames_that_commit_at_that_line`, `esc_comes_back_to_history`.
+  - [x] `enter_shows_the_commit_and_esc_comes_back`.
+  - [x] `esc_during_trace_stops_git_and_goes_back` (red first: `[]` commands with the cancel removed); also
+    `esc_during_an_f_trace_lands_where_f_was_pressed`.
+  - [x] `a_trace_answer_after_esc_is_dropped`.
+  - [x] `esc_from_history_returns_to_blame_same_line`.
+  - [ ] `esc_on_the_graph_with_the_pane_open_returns_to_history` — **the Esc half only** (same row, same file line):
+    the test exists and passes; the `esc back to history` bar lead is **not built** (blocked, NOTES).
+  - [ ] History's rows in 20i's bar table — **not built** (needs `HintContext::BackToHistory`, blocked).
+  - [x] `tab_swaps_below_120`.
 - [ ] **Rows:**
-  - `a_rename_row_says_was`.
-  - `the_last_row_says_the_file_starts_here`.
-  - `the_cap_row_says_how_many`.
-  - `a_binary_commit_shows_sizes`.
-  - `a_depth_one_clone_shows_the_end_row_alone` (red first: a `--depth 1` clone. No panic, nothing selected, the end
-    row's words, the bar without `j`/`k`/`B`/`⏎`).
-  - `a_trace_error_is_drawn_as_a_failure` (a `shallow` that is a directory → `Shallow`; the list shows its `Display`;
-    `Esc` goes back).
-- [ ] **UI snapshots** (`graft-ui/src/history/snapshots/`) at 187×50, 140×40, 100×30: removed rows have no number, the
-      `┃` sits on the range, `+`/`−` sit in their column. Plus `history_tracing_140x40` (title only, blank panes) and
-      `history_side_by_side_187x50` (no `┃`, title names the range).
-- [ ] **Walks** (`m7_walk`): `function-history` `B L` = 2 (start: the diff pane on line 22); `file-history` `F` = 1
-      (start: the detail pane on the file's row). `len(keys) <= noted_keys(id)`.
-- [ ] **Captures**, each ≤ 200 KB, with a Right line:
+  - [x] `a_rename_row_says_was`.
+  - [x] `the_last_row_says_the_file_starts_here`.
+  - [x] `the_cap_row_says_how_many`.
+  - [ ] `a_binary_commit_shows_sizes` — the test passes but asserts `old: None, new: None` (drawn `binary · sizes not
+    read`): **sizes are not read**, no graft-git reader. Gap.
+  - [x] `a_depth_one_clone_shows_the_end_row_alone` (`tests/it/history_place.rs`, real `git clone --depth 1`: zero rows,
+    `GitStops(SHALLOW_END)`, nothing selected, Esc back). The bar half (without `j`/`k`/`B`/`⏎`) is not built.
+  - [x] `a_trace_error_is_drawn_as_a_failure` (`tests/it/history_place.rs`) + unit `a_trace_failure_is_the_lists_words`.
+- [x] **UI snapshots** — `graft-ui/src/history/tests.rs`: `history_187x50`, `history_140x40`, `history_100x30`,
+      `history_tracing_140x40`, `history_side_by_side_187x50`; plus `removed_rows_have_no_number_and_the_bracket_sits_on_the_range`.
+      Colour unverified.
+- [x] **Walks** — `tests/it/m7_walk/history.rs`: `function_history` (`B L`, `route.within_count()`), `file_history` (`F`).
+- [ ] **Captures** — **not shot**: a history place never reaches the real frame (`state.rs:623`, blocked, NOTES).
   - `docs/shots/m7/history-lines-187x50.txt`: 4 rows, Lina's selected; the file pane at line 18 with `┃` on 18–29; line
     19 `+`, the old line 22 `−` with no number.
   - `history-file-140x40.txt`: after `F`; a `↳ was src/session.rs` row; list 40 wide.
   - `history-100x30.txt`: one pane; the bar shows `tab file`.
-- [ ] MAP.md (graft, graft-ui) entries. NOTES: the `F` lines (`detail/keys.rs:93`, `update/keys.rs:292`); the files
-      holding `Command`/`Product`; the Focus-mode tests kept green; the `line_render.rs` helpers widened.
+- [x] MAP.md (graft `update::place`, graft-ui `history`) entries. NOTES below.
+
+## NOTES (builder, 2026-09-27)
+- **Compacted twice.** Scout `.scratch/m7-power-tools/scouts/21.md` used.
+- **Blocked — needs files outside the Files line:**
+  - `graft/src/update/state.rs:623` `graph_overlay`: asks `trail.on_screen()` (blame only). Needs `trail.place_shown()`.
+    Until then a history place is never drawn in the real frame: `draw_place` has the history branch
+    (`view/frame/overlays.rs::draw_history_place`) but is never reached. So no `docs/shots/m7/history-*.txt`.
+  - graft-ui `graph_screen/hints.rs`: `short_form` "history of these lines" → "history"; `pane_focused_bar`
+    `F history`; `hints_for` arms. `hints/context.rs`, `hints/catalogue.rs`, `graph_screen/tests.rs:2068`:
+    `HintContext::History` and `BackToHistory` (history's bar; `esc back to history`). `graft/src/update/tests.rs` sweeps.
+    Until then the history bar shows a problem/notice and no keys.
+- **Blame's bar:** `L history of these lines` sits after `/ find` (third place broke ADR-0037's 48-cell floor at full
+  words); the note's order needs the `short_form` above. `blame_bar` drops `L` with no lines. `blame_bar_words_in_order`
+  updated.
+- **Gaps:** binary sizes not read (no reader); `w` `[` `]` on the file pane not built (`whole_file` takes no whitespace
+  option); rows arrive in one batch (ruling a).
+- **`F` lines:** `update/detail/keys.rs` `F` arm → `update::place::f_key` (guard = `blamable`, so under the
+  commit-graph offer `F` falls through to Focus); Focus is `update/keys.rs:292`. Focus tests green.
+- `Command`/`Product`: `update/events/command.rs`, `update/events.rs`; runner `jobs/runner.rs` (`dispatch_history`,
+  `is_detail`, `not_a_job` — the last two extracted for clippy's line limit, no behaviour change); routing `update/mod.rs`.
+- Fields added: `HistoryState::change` (so `n` moves near the file's end), `HistoryView::theme`.
+  `detail_pane::line_render` widened to `pub(crate)`.
+- **Captures re-shot** (bar line only), producer `tests/it/blame_place.rs` capture tests with `GRAFT_UPDATE_SHOTS=1`:
+  `docs/shots/m7/blame-{100x30,140x40,187x50,find-187x50,long-line-187x50,shallow-187x50}.txt`,
+  `esc-back-to-blame-from-the-graph-120x40.txt`. Colour unverified.
+- **Focus captures unchanged:** `git status` shows no change to `docs/shots/16-criss-cross-focus*` or
+  `21-redetect-resize-and-focus.txt`. Could not confirm their producer.
+- `SHALLOW_END`: history uses `graft_git::trace::SHALLOW_END` (asserted in `a_depth_one_clone_shows_the_end_row_alone`).
 
 ## Touches (check each, report how)
 - **Focus mode (`F`):** M1's key. Check: `update/tests.rs:448` green. The four Focus captures (ruling above) unchanged,

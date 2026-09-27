@@ -33,6 +33,7 @@ mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 mod hint_bar;
+mod history_place;
 mod idle_advance;
 mod land_on_result;
 mod lane_cap;

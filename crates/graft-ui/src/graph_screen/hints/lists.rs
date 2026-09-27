@@ -117,8 +117,15 @@ pub(super) const TAIL: [Hint; 20] = [
 
 /// The blame place's bar (design note pass 2b B1; m7-power-tools/20c), in
 /// the note's order. `n N match` only while a find is active (2b proposal
-/// 7); `i ignore list` only when the repo has `.git-blame-ignore-revs`. No
-/// `L`: history-place adds `L history of these lines` after `^`.
+/// 7); `i ignore list` only when the repo has `.git-blame-ignore-revs`.
+///
+/// `L history of these lines` (m7-power-tools/21) comes after `/ find`, not
+/// after `^` as the note's mock-up (`:132`) draws it: third, it would be in
+/// ADR-0037 §4's floor of three full hints, and `⏎ that commit  ^ before
+/// it  L history of these lines` is 52 cells, over the 48-cell bar the
+/// floor must fit (`the_floor_fits_at_forty_eight_cells_of_bar`). The
+/// note's order needs a short form (`history`, a prefix) in the hint
+/// table (`hints.rs` `short_form`, outside 21's files).
 /// [`HintContext::Blame`]'s list (m7-power-tools/20).
 #[must_use]
 pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
@@ -126,6 +133,7 @@ pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
         hint("⏎", "that commit"),
         hint("^", "before it"),
         hint("/", "find"),
+        hint("L", "history of these lines"),
     ];
     if finding {
         list.push(hint("n N", "match"));
@@ -139,13 +147,13 @@ pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
 }
 
 /// [`blame_place_list`] as the bar draws it: without `lines` (a read in
-/// flight, or a failed one) the keys that act on a line — `⏎`, `^`, `n N`
-/// — are left out, because the place has no lines for them
-/// (m7-power-tools/20k, 20n).
+/// flight, or a failed one) the keys that act on a line — `⏎`, `^`, `L`,
+/// `n N` — are left out, because the place has no lines for them
+/// (m7-power-tools/20k, 20n, 21).
 fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
     let mut list = blame_place_list(finding, ignore_file);
     if !lines {
-        list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "n N"));
+        list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "L" | "n N"));
     }
     list
 }

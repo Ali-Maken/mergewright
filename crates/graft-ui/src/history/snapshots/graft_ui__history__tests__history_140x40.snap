@@ -1,0 +1,46 @@
+---
+source: crates/graft-ui/src/history/tests.rs
+assertion_line: 383
+description: "Right: list 40 wide, authors as initials (PR for Priya Raman); the file pane as at 187."
+expression: "snapshot(&view(&rows, &hunks, &theme, HistoryFocus::List), 140, 40)"
+---
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 4 changes
+   7f6e5d4 Handle expire… YO  now +1 −1 │ a1b2c3d · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −1
+   c4d5e6f Move session … PR  4mo +1 −1 │    16   impl Session {
+   ↳ was src/session.rs                 │    17       /// Refresh the token when the server says it expired.
+ ▸ a1b2c3d Retry refresh… LI  7mo +3 −1 │ ┃  18       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+   5e6f7a8 Add token ref… TO 10mo +12   │ ┃  19 +         let mut attempt = 0;
+   the file starts here (5e6f7a8 added  │ ┃  20           loop {
+   it)                                  │ ┃  21               let resp = client.refresh(&self.token)?;
+                                        │ ┃     −             if resp.status() == 401 {
+                                        │ ┃  22 +             if resp.status() == 401 && attempt == 0 {
+                                        │ ┃  23 +                 attempt += 1;
+                                        │ ┃  24                   continue;
+                                        │ ┃  25               }
+                                        │ ┃  26               return Ok(());
+                                        │ ┃  27           }
+                                        │ ┃  28       }
+                                        │ ┃  29   }
+                                        │    30
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │
+                                        │

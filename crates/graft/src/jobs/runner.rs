@@ -281,6 +281,9 @@ impl<S: JobEvents> JobRunner<S> {
                 });
             }
             Command::ReadBlame(id, request) => self.blame_job(id, *request),
+            command @ (Command::TraceHistory { .. } | Command::ReadWholeFile { .. }) => {
+                self.dispatch_history(command);
+            }
             Command::ContainedIn(id, oid) => {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::ContainedIn { oid }, move |cancel| {
@@ -323,6 +326,39 @@ impl<S: JobEvents> JobRunner<S> {
             // `dispatch` routes only the ones above here; anything else is a
             // routing bug, not a runtime condition.
             other => unreachable!("not a detail command: {other:?}"),
+        }
+    }
+
+    /// The history place's reads: the trace, and one commit's whole file.
+    fn dispatch_history(&self, command: Command) {
+        let repos = Arc::clone(&self.repos);
+        match command {
+            Command::TraceHistory { id, request } => {
+                self.detail_job(id, Task::Trace, move |cancel| {
+                    Product::Trace(super::detail::read_trace(&repos, &request, cancel))
+                });
+            }
+            Command::ReadWholeFile {
+                id,
+                commit,
+                path,
+                old_path,
+                max_lines,
+            } => {
+                self.detail_job(id, Task::WholeFile, move |cancel| {
+                    let read = super::detail::read_whole_file(
+                        &repos,
+                        commit,
+                        &path,
+                        old_path.as_deref(),
+                        max_lines,
+                        cancel,
+                    );
+                    Product::WholeFile(read)
+                });
+            }
+            // `dispatch_detail` routes only the two above here.
+            other => unreachable!("not a history command: {other:?}"),
         }
     }
 
@@ -1037,6 +1073,23 @@ impl<S: JobEvents> JobRunner<S> {
     }
 }
 
+/// The detail pane's reads, which `dispatch` hands to `dispatch_detail`.
+fn is_detail(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::ListFiles(..)
+            | Command::ReadFileDiff(..)
+            | Command::ReadBlame(..)
+            | Command::TraceHistory { .. }
+            | Command::ReadWholeFile { .. }
+            | Command::ContainedIn(..)
+            | Command::RadarContext(..)
+            | Command::EvilProbe(..)
+            | Command::ForcePushProbe(..)
+            | Command::DuplicatesProbe(..)
+    )
+}
+
 impl<S: JobEvents> Dispatch for JobRunner<S> {
     fn dispatch(&self, command: Command) {
         match command {
@@ -1052,16 +1105,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadHistory(id, order) => self.read_history(id, order),
             Command::ShowRows(id, request) => self.show_rows(id, request),
             Command::Search(query) => self.start_search(query),
-            command @ (Command::ListFiles(..)
-            | Command::ReadFileDiff(..)
-            | Command::ReadBlame(..)
-            | Command::ContainedIn(..)
-            | Command::RadarContext(..)
-            | Command::EvilProbe(..)
-            | Command::ForcePushProbe(..)
-            | Command::DuplicatesProbe(..)) => {
-                self.dispatch_detail(command);
-            }
+            command if is_detail(&command) => self.dispatch_detail(command),
             Command::ReadStashOnly(id, stashes) => self.read_stash_only(id, stashes),
             Command::BuildMap(id, req) => self.build_map(id, req),
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
@@ -1086,23 +1130,34 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
             Command::CancelCredential(id) => self.credential(id, None),
-            // The loop writes these itself — the clipboard to the terminal
-            // (`event_loop`), the layout to disk (`event_loop::running`);
-            // reaching here is a routing bug, not a runtime condition.
-            Command::CopyToClipboard(_) | Command::SaveLayout(_) => {
-                unreachable!("{command:?} is written by the loop, never a job")
-            }
-            // Handing the terminal over and taking it back is the loop's
-            // own business (`event_loop::outside`): a worker thread has no
-            // claim on the modes the loop drew through. Reaching here is a
-            // routing bug (m3-working-tree-undo-and-stash/05).
-            Command::OpenExternalEditor { .. }
-            | Command::OpenMergetool { .. }
-            | Command::OpenConflictEditor { .. }
-            | Command::EditCommitMessage { .. }
-            | Command::Suspend => {
-                unreachable!("the terminal is handed over by the loop, never by a job")
-            }
+            other => not_a_job(&other),
         }
+    }
+}
+
+/// The commands the loop carries out itself; one reaching the runner is a
+/// routing bug, not a runtime condition. The detail pane's reads go by
+/// `is_detail`'s guard, so they cannot land here.
+fn not_a_job(command: &Command) -> ! {
+    match command {
+        // The loop writes this to the terminal itself (`event_loop`).
+        Command::CopyToClipboard(_) => {
+            unreachable!("CopyToClipboard is terminal output, never a job")
+        }
+        // The loop writes this to disk itself (`event_loop::running`).
+        Command::SaveLayout(_) => {
+            unreachable!("SaveLayout is written by the loop, never a job")
+        }
+        // Handing the terminal over and taking it back is the loop's own
+        // business (`event_loop::outside`): a worker thread has no claim on
+        // the modes the loop drew through (m3-working-tree-undo-and-stash/05).
+        Command::OpenExternalEditor { .. }
+        | Command::OpenMergetool { .. }
+        | Command::OpenConflictEditor { .. }
+        | Command::EditCommitMessage { .. }
+        | Command::Suspend => {
+            unreachable!("the terminal is handed over by the loop, never by a job")
+        }
+        other => unreachable!("not routed: {other:?}"),
     }
 }

@@ -205,6 +205,10 @@ pub enum Task {
     ReadFinishDiff,
     /// Blame one file for a blame place (m7-power-tools/20).
     Blame,
+    /// Trace a history place's commits (m7-power-tools/21).
+    Trace,
+    /// Read a history place's whole file at one commit (m7-power-tools/21).
+    WholeFile,
 }
 
 /// What a job brought back.
@@ -262,6 +266,10 @@ pub enum Product {
     ),
     /// A blame place's blame, or why none (m7-power-tools/20).
     Blame(Result<std::sync::Arc<super::place::BlameAnswer>, super::place::BlameFailure>),
+    /// A history place's trace, or why none (m7-power-tools/21).
+    Trace(Result<std::sync::Arc<super::place::TraceAnswer>, super::place::TraceFailure>),
+    /// A history place's whole file at one commit, or git's words.
+    WholeFile(Result<std::sync::Arc<graft_ui::detail::DiffView>, String>),
     /// The refs containing a commit, or why not.
     ContainedIn(
         graft_core::oid::Oid,

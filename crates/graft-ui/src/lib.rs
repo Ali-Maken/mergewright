@@ -20,6 +20,7 @@ pub mod fit;
 mod frame_box;
 pub mod graph_column;
 pub mod graph_screen;
+pub mod history;
 pub mod journal_screen;
 pub mod map_screen;
 pub mod name_prompt;

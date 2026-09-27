@@ -51,6 +51,20 @@ The blame place's picture (m7-power-tools/20c); pure draw, no state.
 - `draw_blame(frame, area, view)` (fn) — title, ignore line, body: gutter (46/22/10 cells at ≥180/120–179/<120) · `│` · number · code; `▸` and a trailer `◂ Name · age · subject · sha7` (shed sha, cut subject, drop) on the cursor row only. Heatmap colours the gutter only (unverified).
 - `blame_row_at(area, view, y) -> Option<usize>` (fn) — mouse hit-test: index into rows, `None` on title/ignore line/past the end.
 
+## history
+The history place's picture (m7-power-tools/21); pure draw, no state. Uses `detail_pane::line_render` (now `pub(crate)`) for the file pane's lines.
+- `LIST_WIDE` 56 / `LIST_MIDDLE` 40 / `ONE_PANE_BELOW` 120 (consts) — the list's width by frame width; below 120 one pane shows, the focused one.
+- `RANGE_MARK` `┃`, `SELECTED` `▸` (consts).
+- `HistoryFocus` (enum) — `List` / `File`.
+- `HistoryRow<'a>` (struct) — `sha7`, `subject`, `who`, `when`, `added`, `removed`, `was` (a rename's `↳ was <path>` row).
+- `HistoryList<'a>` (enum) — `Rows { rows, selected, top, end }` / `Failed(&str)` (drawn across the whole width).
+- `FilePane<'a>` (enum) — `Empty` / `NoChange` / `Reading { header }` / `Failed(&str)` / `Binary { header, old, new }` / `Lines { header, hunks, top, range, side_by_side, word_tint }`.
+- `HistoryView<'a>` (struct) — `title`, `tracing`, `list`, `file`, `focus`, `now`, `theme`.
+- `Columns` (struct), `columns(width, focus)` (fn) — where the list and the file pane sit; shared with the app's mouse hit-test.
+- `file_rows`, `changed_rows`, `row_of_new_line`, `row_of_old_line` (fns) — the whole file's rows from its one hunk, which are changed, and the row of a line.
+- `list_index_at`, `rows_through` (fns) — list hit-test and height, counting a rename's `↳ was` row.
+- `draw_history(frame, area, view)` (fn) — title `HISTORY · <path> · <range>`, list | file pane. Colour unverified.
+
 ## detail
 View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every string is `SanitizedText`.
 - `Subject` (enum) — `None`, `Commit { sha }`, `Compare(CompareHeader)` (m7-14), `WorkingTree { staged, unstaged, untracked }`.

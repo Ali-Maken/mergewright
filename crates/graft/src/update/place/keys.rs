@@ -31,6 +31,9 @@ pub(crate) fn live_global(key: KeyPress) -> bool {
 /// A key while a place is on screen (not a live global: the caller passes
 /// those on).
 pub fn place_key(state: &mut AppState, key: KeyPress) -> Vec<Command> {
+    if state.trail.top_history().is_some() {
+        return super::history_keys::history_key(state, key);
+    }
     let Some(blame) = state.trail.top_mut() else {
         return Vec::new();
     };
@@ -70,6 +73,7 @@ pub fn place_key(state: &mut AppState, key: KeyPress) -> Vec<Command> {
         }
         KeyCode::Enter => return enter(state),
         KeyCode::Char('^') => return caret(state),
+        KeyCode::Char('L') => return history_of_lines(state),
         KeyCode::Escape => return escape(state),
         _ => {}
     }
@@ -313,6 +317,49 @@ fn caret(state: &mut AppState) -> Vec<Command> {
     )
 }
 
+/// `L`: the history of the lines around the cursor — the function around
+/// it, else its blame block (the trace job decides, it is I/O). Pushed on
+/// the trail over blame. An uncommitted line opens nothing (H1).
+fn history_of_lines(state: &mut AppState) -> Vec<Command> {
+    let Some(blame) = state.trail.top() else {
+        return Vec::new();
+    };
+    let BlameLoad::Ready { blame: lines, .. } = &blame.body else {
+        return Vec::new();
+    };
+    let Some(line) = lines.lines.get(blame.cursor) else {
+        return Vec::new();
+    };
+    let Some(blamed) = line.commit else {
+        state.status = Status::sticky(super::history_answer::uncommitted_words(line.final_line));
+        return Vec::new();
+    };
+    // The cursor's blame block: the run of lines around it blamed on the
+    // same commit, in the blamed version's numbering.
+    let same = |other: &&graft_git::blame::BlameLine| other.commit == Some(blamed);
+    let first = lines.lines[..blame.cursor]
+        .iter()
+        .rev()
+        .take_while(same)
+        .count();
+    let last = lines.lines[blame.cursor + 1..]
+        .iter()
+        .take_while(same)
+        .count();
+    let block = (
+        lines.lines[blame.cursor - first].final_line,
+        lines.lines[blame.cursor + last].final_line,
+    );
+    let from = super::HistoryFrom::Lines {
+        at: blame.rev,
+        path: blame.path.clone(),
+        line: line.final_line,
+        blamed: Some(blamed),
+        block,
+    };
+    super::open_history(state, from)
+}
+
 /// Rows the place draws in: the whole frame but the bar under it
 /// (`view::frame::draw_place`, which splits the frame the same way).
 fn place_height(state: &AppState) -> u16 {
@@ -357,6 +404,9 @@ pub(crate) fn keep_in_view(state: &mut AppState) {
 /// click selects a row, a second click on it straight after is `⏎`, the
 /// wheel scrolls.
 pub(crate) fn place_mouse(state: &mut AppState, mouse: MouseInput) -> Vec<Command> {
+    if state.trail.top_history().is_some() {
+        return super::history_keys::history_mouse(state, mouse);
+    }
     let header = usize::from(header_rows(state));
     let now = state.harness.clock.now_millis();
     let rows = body_rows(state);

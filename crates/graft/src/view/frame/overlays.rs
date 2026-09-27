@@ -68,6 +68,45 @@ pub(super) fn draw_stash(
     None
 }
 
+/// The history place (m7-power-tools/21) in `body`, and its bar on the
+/// frame's bottom row.
+fn draw_history_place(
+    session: &Session,
+    state: &AppState,
+    history: &crate::update::place::HistoryState,
+    frame: &mut Frame,
+    area: Rect,
+    body: Rect,
+) {
+    history.view(state.harness.clock.now_seconds(), &session.theme, |view| {
+        graft_ui::history::draw_history(frame, body, view);
+    });
+    if area.height == 0 {
+        return;
+    }
+    let bar = (area.x, area.bottom() - 1, area.width);
+    // Its keys need `HintContext::History` (graft-ui `hints/context.rs`,
+    // outside 21's files: blocked). Until then the bar carries a problem
+    // or a notice and no keys.
+    let context = crate::view::rows::place_context(state);
+    draw_status_or_hints(
+        frame,
+        state,
+        tier_in_force(session, state),
+        bar,
+        &session.theme,
+        || {
+            context.map_or_else(String::new, |context| {
+                graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+                    &context,
+                    graft_ui::graph_screen::Divider::Hidden,
+                    area.width,
+                ))
+            })
+        },
+    );
+}
+
 /// The blame place over the whole frame (m7-power-tools/20; keymap §2.1:
 /// a modal pane), and its bar on the bottom row: the `/` prompt while it is
 /// open, else a problem or a notice, else the place's keys
@@ -80,13 +119,17 @@ pub(super) fn draw_place(
     frame: &mut Frame,
     area: Rect,
 ) -> Option<Rect> {
-    let blame = state.trail.on_screen()?;
     // The frame less its bottom row, the bar: `update::place::keys`
     // counts rows from the same split for a click.
     let body = Rect {
         height: area.height.saturating_sub(1),
         ..area
     };
+    if let Some(history) = state.trail.history_on_screen() {
+        draw_history_place(session, state, history, frame, area, body);
+        return None;
+    }
+    let blame = state.trail.on_screen()?;
     let path = graft_term::sanitize::sanitize_path(&blame.path);
     blame.view(path.as_str(), state.harness.clock.now_seconds(), |view| {
         graft_ui::blame::draw_blame(frame, body, view);

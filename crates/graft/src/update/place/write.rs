@@ -61,6 +61,8 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ReadConflictSet(..)
         | Command::ReadFinishSummary(..)
         | Command::ReadFinishDiff(..)
-        | Command::ReadBlame(..) => false,
+        | Command::ReadBlame(..)
+        | Command::TraceHistory { .. }
+        | Command::ReadWholeFile { .. } => false,
     }
 }

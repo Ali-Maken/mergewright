@@ -85,6 +85,12 @@ fn place_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
         KeyCode::Char('B') if !key.modifiers.control && !key.modifiers.alt => {
             crate::update::place::b_key(next, commands)
         }
+        // `F` on a file — its row or any line of its diff — is its history
+        // (m7-power-tools/21); anywhere else it falls through to Focus mode
+        // (`update::keys::graph_key`), unchanged.
+        KeyCode::Char('F') if !key.modifiers.control && !key.modifiers.alt => {
+            crate::update::place::f_key(next, commands)
+        }
         _ => false,
     }
 }

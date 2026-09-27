@@ -29,7 +29,7 @@ mod body;
 mod files;
 mod header;
 mod layout;
-mod line_render;
+pub(crate) mod line_render;
 mod side_by_side;
 mod unified;
 

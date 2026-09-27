@@ -2,6 +2,7 @@
 //! `journey-counts` fence (`docs/design-notes/m7-power-tools.md`).
 
 pub mod blame;
+pub mod history;
 pub mod pr_contents;
 pub mod rebase_line;
 

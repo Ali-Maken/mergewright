@@ -626,6 +626,9 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
 /// conditions `update::place::place_key` answers on; without lines (a read
 /// in flight, or a failed one) no `⏎`, `^` or `n N`, which need them (20k,
 /// 20n).
+///
+/// A history place has no context yet: `HintContext::History` lives in
+/// graft-ui's `hints/context.rs`, outside m7-power-tools/21's files.
 pub(crate) fn place_context(state: &AppState) -> Option<HintContext> {
     let blame = state.trail.on_screen()?;
     Some(HintContext::Blame {
