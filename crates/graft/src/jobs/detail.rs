@@ -193,9 +193,11 @@ fn blame_failure(error: &BlameError) -> BlameFailure {
             let first = words.split('\n').next().unwrap_or(&words);
             BlameFailure::Failed(first.to_owned())
         }
-        BlameError::Run(_) | BlameError::Parse(_) | BlameError::Stopped => {
-            BlameFailure::Failed(error.to_string())
-        }
+        BlameError::Run(_)
+        | BlameError::Parse(_)
+        | BlameError::Stopped
+        | BlameError::TooLarge { .. }
+        | BlameError::Changed { .. } => BlameFailure::Failed(error.to_string()),
     }
 }
 

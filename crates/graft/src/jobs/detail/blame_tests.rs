@@ -203,4 +203,17 @@ fn blame_failure_maps_every_error() {
         blame_failure(&shallow),
         BlameFailure::Failed("couldn't read .git/shallow: permission denied".to_owned())
     );
+    assert_eq!(
+        blame_failure(&BlameError::TooLarge {
+            cap: 64 * 1024 * 1024
+        }),
+        BlameFailure::Failed("this file's blame is over 64 MiB, too large to show".to_owned())
+    );
+    assert_eq!(
+        blame_failure(&BlameError::Changed {
+            first: 3,
+            second: 4
+        }),
+        BlameFailure::Failed("the file changed while blame read it; open blame again".to_owned())
+    );
 }
