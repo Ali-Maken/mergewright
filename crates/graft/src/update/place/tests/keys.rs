@@ -110,13 +110,66 @@ fn esc_clears_the_find_before_popping() {
     );
 }
 
+/// B1 `:1103-1104`'s two wordings of the ignore line, at the list's 2.
+const SKIPPING: &str = "skipping 2 commits listed in .git-blame-ignore-revs · i shows them";
+const SHOWING: &str = "showing every commit · i skips the 2 in .git-blame-ignore-revs";
+
+/// The job's answer with the ignore list `applied` or not.
+fn ignore_answer(applied: bool) -> Result<BlameAnswer, BlameFailure> {
+    let mut blame = a_blame(true, false);
+    if let Some(found) = blame.ignore_revs.as_mut() {
+        found.applied = applied;
+    }
+    Ok(BlameAnswer { blame, line: None })
+}
+
+/// The frame at 120×40, as text.
+fn screen(state: &AppState) -> String {
+    crate::view::tests::draw(state, 120, 40)
+}
+
 #[test]
 fn i_toggles_ignore_revs_and_the_line_says_which() {
     let state = place_on_screen(pane_at(22), false, true);
+    assert!(screen(&state).contains(SKIPPING), "{}", screen(&state));
     let (next, commands) = press(&state, KeyCode::Char('i'));
-    let (_, request) = blame_job(&commands);
+    let (job, request) = blame_job(&commands);
     assert!(!request.options.ignore_revs);
     assert!(!next.trail.top().expect("the place").options.ignore_revs);
+    let (off, _) = answer(&next, job, ignore_answer(false));
+    assert!(screen(&off).contains(SHOWING), "{}", screen(&off));
+
+    let (again, commands) = press(&off, KeyCode::Char('i'));
+    let (job, request) = blame_job(&commands);
+    assert!(request.options.ignore_revs);
+    let (on, _) = answer(&again, job, ignore_answer(true));
+    assert!(screen(&on).contains(SKIPPING), "{}", screen(&on));
+}
+
+/// Review Minor 7: the line and `i` do not vanish while git re-reads — the
+/// list did not change, so its count is the last answer's.
+#[test]
+fn the_ignore_line_and_i_stay_through_a_re_read() {
+    let state = place_on_screen(pane_at(22), false, true);
+    let (reading, commands) = press(&state, KeyCode::Char('i'));
+    let (job, _) = blame_job(&commands);
+    assert!(
+        screen(&reading).contains(SHOWING),
+        "worded for the option just chosen:\n{}",
+        screen(&reading)
+    );
+    assert!(
+        super::hints::bar(&reading).contains(&("i", "ignore list")),
+        "{:?}",
+        super::hints::bar(&reading)
+    );
+
+    // `i` during the read asks again, as `w` does.
+    let (again, commands) = press(&reading, KeyCode::Char('i'));
+    assert!(commands.contains(&Command::CancelJob(job)), "{commands:?}");
+    let (_, request) = blame_job(&commands);
+    assert!(request.options.ignore_revs, "back on");
+    assert!(screen(&again).contains(SKIPPING), "{}", screen(&again));
 }
 
 #[test]
@@ -239,47 +292,35 @@ fn blame_failed_shows_gits_words() {
     );
 }
 
+/// git's words are the outside world's: a bidi override or an escape must
+/// not reach the terminal (review Minor 5; as `view/finish.rs:32`).
+#[test]
+fn blame_failure_words_are_sanitised() {
+    let raw = "fatal: \u{202E}evil\x1b[31m red";
+    let mut state = blamed_at(22);
+    if let Some(blame) = state.trail.top_mut() {
+        blame.body = BlameLoad::Failed(raw.to_owned());
+    }
+    let blame = state.trail.on_screen().expect("the place");
+    let shown = blame.view("a.rs", 0, |view| match view.body {
+        graft_ui::blame::BlameBody::Failed(words) => words.to_owned(),
+        _ => panic!("not failed"),
+    });
+    assert_eq!(
+        shown,
+        graft_term::sanitize::sanitize_line(raw).as_str(),
+        "the words as sanitize_line makes them"
+    );
+    assert!(
+        !shown.contains('\u{202E}') && !shown.contains('\x1b'),
+        "{shown:?}"
+    );
+}
+
 // ---- is_write ----
 
 #[test]
 fn a_blame_read_is_not_a_write() {
     let (_, commands) = press(&pane_at(22), KeyCode::Char('B'));
     assert!(!commands.iter().any(is_write), "{commands:?}");
-}
-
-fn click(row: u16) -> AppEvent {
-    use graft_core::event::{Event, Modifiers, MouseButton, MouseInput, MouseKind};
-    AppEvent::Core(Event::Mouse(MouseInput {
-        kind: MouseKind::Down(MouseButton::Left),
-        column: 60,
-        row,
-        modifiers: Modifiers::NONE,
-    }))
-}
-
-#[test]
-fn mouse_double_click_is_enter() {
-    let mut state = blamed_at(22);
-    state.harness.clock = crate::session::Clock::Fixed(1_000);
-    // Row 0 is the title; screen row 5 is the fifth line (top 0).
-    let (once, _) = update(&state, click(5));
-    assert_eq!(cursor_line(&once), 5);
-    assert!(once.trail.on_screen().is_some(), "one click only selects");
-    let (twice, _) = update(&once, click(5));
-    assert!(twice.trail.hidden(), "a double-click is `⏎`");
-    assert_eq!(
-        twice.line_landing.as_ref().map(|landing| landing.spec),
-        Some(DetailSpec::Commit(mo()))
-    );
-}
-
-#[test]
-fn a_click_in_blame_never_reaches_the_graph() {
-    let state = blamed_at(22);
-    let cursor = |state: &AppState| state.history.as_ref().map(|history| history.cursor);
-    for row in [0, 1, 5, 20, 39] {
-        let (next, _) = update(&state, click(row));
-        assert_eq!(cursor(&next), cursor(&state), "row {row} moved the graph");
-        assert_eq!(next.detail, state.detail, "row {row} reached the pane");
-    }
 }

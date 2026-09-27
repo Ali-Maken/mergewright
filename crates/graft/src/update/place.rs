@@ -326,6 +326,7 @@ fn open_place(
             job,
             want,
             came_from: came_from.clone(),
+            ignore_listed: None,
         },
         cursor: 0,
         top: 0,

@@ -1,6 +1,7 @@
 //! A blame place's own questions: its rows, its matches, its ignore line and
 //! the view handed to the picture.
 
+use graft_term::sanitize::sanitize_line;
 use graft_ui::blame::{BlameBody, BlameView, FindTitle, IgnoreLine};
 
 use super::{BlameLoad, BlameState};
@@ -38,17 +39,24 @@ impl BlameState {
             .collect()
     }
 
-    /// The ignore-revs line, when the repository lists revisions.
+    /// The ignore-revs line, when the repository lists revisions. While a
+    /// re-read runs, the last answer's count, worded for the option chosen.
     #[must_use]
     pub fn ignore_line(&self) -> Option<IgnoreLine> {
-        let BlameLoad::Ready { blame, .. } = &self.body else {
-            return None;
-        };
-        let found = blame.ignore_revs.as_ref()?;
-        Some(IgnoreLine {
-            count: found.revisions,
-            applied: found.applied,
-        })
+        match &self.body {
+            BlameLoad::Ready { blame, .. } => {
+                let found = blame.ignore_revs.as_ref()?;
+                Some(IgnoreLine {
+                    count: found.revisions,
+                    applied: found.applied,
+                })
+            }
+            BlameLoad::Reading { ignore_listed, .. } => ignore_listed.map(|count| IgnoreLine {
+                count,
+                applied: self.options.ignore_revs,
+            }),
+            BlameLoad::Failed(_) => None,
+        }
     }
 
     /// The picture's view of this place, handed to `draw`; `path` is the
@@ -64,9 +72,14 @@ impl BlameState {
                 .max(1),
             of: matches.len(),
         });
+        // git's words come from outside: neutralised before they are drawn.
+        let failed = sanitize_line(match &self.body {
+            BlameLoad::Failed(words) => words,
+            BlameLoad::Reading { .. } | BlameLoad::Ready { .. } => "",
+        });
         let body = match &self.body {
             BlameLoad::Reading { .. } => BlameBody::Reading,
-            BlameLoad::Failed(words) => BlameBody::Failed(words),
+            BlameLoad::Failed(_) => BlameBody::Failed(failed.as_str()),
             BlameLoad::Ready { rows, .. } => BlameBody::Lines {
                 rows,
                 cursor: self.cursor,

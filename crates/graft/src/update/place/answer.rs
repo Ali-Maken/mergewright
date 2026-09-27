@@ -24,6 +24,10 @@ pub enum BlameLoad {
         want: Want,
         /// `^`'s second read, kept so `w`/`i` before the answer ask it too.
         came_from: Option<CameFromRequest>,
+        /// How many revisions the ignore file listed in the last answer
+        /// (`None` before one, or when there is no file): the ignore line
+        /// and `i` stay through a re-read.
+        ignore_listed: Option<usize>,
     },
     /// git failed; its words.
     Failed(String),

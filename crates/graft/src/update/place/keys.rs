@@ -160,11 +160,13 @@ fn rerun(state: &mut AppState) -> Vec<Command> {
     let mut commands = Vec::new();
     // A read still running is asked again whole: `^`'s came-from read too,
     // or its line is lost (review m7-20e-20g Minor 1).
+    let ignore_listed = blame.ignore_line().map(|line| line.count);
     let (want, came_from) = match &blame.body {
         BlameLoad::Reading {
             job,
             want,
             came_from,
+            ..
         } => {
             commands.push(Command::CancelJob(*job));
             (*want, came_from.clone())
@@ -184,6 +186,7 @@ fn rerun(state: &mut AppState) -> Vec<Command> {
         job,
         want,
         came_from: came_from.clone(),
+        ignore_listed,
     };
     commands.push(Command::ReadBlame(
         job,

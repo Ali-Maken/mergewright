@@ -5,6 +5,7 @@
 mod esc_back;
 mod hints;
 mod keys;
+mod mouse;
 mod navigation;
 mod open;
 mod pinned_base;

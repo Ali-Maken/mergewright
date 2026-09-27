@@ -255,6 +255,19 @@ fn b_on_the_changes_pane_blames_the_working_tree() {
     assert_eq!(want(&opened), Want::Line(2));
 }
 
+/// B1 `:1093-1094`: a file row blames the file on disk, cursor on its first
+/// changed line — the same rule as a commit's file row (review Minor 4).
+#[test]
+fn b_on_the_changes_panes_file_row_blames_the_working_tree() {
+    let mut state = changes_at(9);
+    state.detail.focus = DetailFocus::Files;
+    let (opened, commands) = press(&state, KeyCode::Char('B'));
+    let (_, request) = blame_job(&commands);
+    assert_eq!(request.rev, Rev::WorkingTree, "the file on disk");
+    assert_eq!(request.path, PathBuf::from("a.rs"));
+    assert_eq!(want(&opened), Want::Line(2), "the first added line");
+}
+
 #[test]
 fn b_on_a_changes_pane_removed_line_blames_head() {
     let state = changes_at(2);
