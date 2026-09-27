@@ -973,3 +973,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/16-q | Questions from 16: row dimming never shows under a selection (`graft-graph/src/raster.rs:130-136`, pre-existing); `stash@{1}` not drawn (spec leaves it open). `□` for stash-only commits (◇ is Root) — user judges by eye | **unverified** (question) | M7 |
 | M7/16-stale | 15 captures stale after 16, no test writes them (listed in 16 NOTES) | **broken** (stale capture) | M7 |
 | M7/05b-count | Rebase preview follower rows say "3 new commits" for a branch with 1 own commit (`crates/graft/src/update/preview.rs:1085`, 05b NOTES) | **broken** (wording/number, unconfirmed by review) | M7 |
+| M7/21-sbs | History place: side-by-side (`v`) shows no `┃` range marker (21 ruling c: history draws its own body, `diff_body` untouched). Scoped limit | **broken** (scoped limit) | M8 |
+| M7/21-note | Design note landing row :1267 must be amended per 21 ruling (a): while tracing, `Esc` stops git and goes straight back (no rows to keep). Doc change owed (researcher) | **broken** (doc stale) | M7 |
