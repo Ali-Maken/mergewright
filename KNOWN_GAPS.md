@@ -990,3 +990,12 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/21b-narrow | History bar empty below 30 columns: conductor ladder step 3 (`esc back` alone) broke two invariant tests (21b NOTES); `esc` still works, unseen | **broken** (below 30 cols only) | M8 |
 | M7/21b-shots | History captures: fixture has 3 changes, not 4 as the mock; `┃` on rows 17–28 vs title 18–29; `tab` vs `⇥` word. Judge by eye; m5/m2 detail capture producers unconfirmed | **unverified** | M7 |
 | M7/21c-ws | Whitespace-ignored mode (`w`) shows on no screen: detail, blame and history draw no words for it; only the bar says `w whitespace` (21c spec, planner) | **broken** (state invisible) | M8 |
+| M7/r1621-m5 | Submodule marks run into the diff pane's line 2 at 120 (`submodule-row-120x40.txt` row 5: marks end col 28, text starts 30). Judge by eye | **unverified** (visual) | M7 |
+| M7/r1621-m6 | ARCHITECTURE.md:88-92 stale: no `place/history*`, trace/whole-file jobs, `graft-ui::history`, `update::switch` | **broken** (doc stale) | M7 |
+| M7/r1621-m7 | `unreachable!` leaning on another fn's invariant: `detail_pane/files.rs:109`, `preview/kinds.rs:316`, `jobs/runner.rs:361`. Make unrepresentable (review Minor 7) | **broken** (fragile) | M8 |
+| M7/r1621-m9 | Note `m7-power-tools.md:714` says only touched edits set aside; 11a sets aside every changed tracked file | **broken** (doc stale) | M7 |
+| M7/r1621-m10 | Contact-sheet captions TSV lacks rows for history-{lines-187x50,file-140x40,100x30}, esc-back-to-history-120x40, force-box-leaves-{120x40,80x24}, submodule-row-187x40 | **broken** (sheet) | M7 |
+| M7/r1621-m11 | Unbounded working-tree diff read on `L` from a working-tree blame (`jobs/detail/history.rs:100-108`, `usize::MAX`) | **broken** (perf unmeasured) | M7 |
+| M7/r1621-m12 | `git_alone_stops_on_a_pick_of_an_ancestor` pins git's words in the fast tier (`cherry_pick.rs:281-294`); move to heavy or clear failure message | **broken** (test) | M7 |
+| M7/r1621-q1 | History title names HEAD's line range, bracket the selected commit's (17–28 vs 18–29): say on screen? | **unverified** (question) | M7 |
+| M7/r1621-q2 | 11a: a pick with unrelated edits does a stash round trip it didn't need ("N files set aside" for N untouched) | **unverified** (question) | M8 |

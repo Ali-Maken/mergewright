@@ -3,7 +3,7 @@
 Status: ready
 Build with: Sonnet. Pure moves; no behaviour change.
 Needs: nothing new.
-Blocked by: 16b, 10b, 21, 09 (they hold or may touch these files). Conductor dispatches after they merge.
+Blocked by: 16b, 10b, 21, 09 (all merged), 21c (holds graft-ui `history.rs`) (they hold or may touch these files). Conductor dispatches after they merge.
 Scout: none. The review names the seams (`docs/reviews/m7-01a-to-20o.md` Major 3). Read `ARCHITECTURE.md` and use
 `codebase-design` (allowed: moving modules).
 
@@ -17,6 +17,8 @@ Files: the six files below, their new children, the `mod` lines, each crate's MA
 | `crates/graft-ui/src/detail.rs` | 791 | compare types → `detail/compare.rs` |
 | `crates/graft-git/src/status.rs` | 589 | `submodule_status`, `submodules_not_set_up` → `status/submodule.rs` |
 | `crates/graft-git/src/history_reads.rs` | 586 | builder picks the seam; say it in NOTES |
+| `crates/graft/src/update/place/history.rs` | 715 | builder picks the seam (review m7-16b-to-21b Major 3) |
+| `crates/graft-ui/src/history.rs` | 661 | builder picks the seam (review m7-16b-to-21b Major 3) |
 
 Line counts are at 112a5c47; re-measure first — later merges may have moved them.
 
