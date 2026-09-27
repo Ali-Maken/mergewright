@@ -1,6 +1,6 @@
 # compare-since-split — `x` opens the compare at once, the diff is since the split, and the header says so in words
 
-Status: partial — all but the `x base` badge's placement (blocked: `view/entries.rs`, `update/geometry.rs`)
+Status: done
 Blocked by: 14a (`compare_span`)
 Crates: graft (`update::detail` `toggle_compare`, `update::selection::follow_selection`, `jobs::detail` the compare
 read, `view::detail::compare_header`, the base row's badges), graft-ui (`detail::Subject`, `detail_pane::header`,
@@ -86,14 +86,14 @@ Existing field types on `Subject::Commit`/`WorkingTree` are whatever they are to
 - [x] `graft-ui` `detail_pane::tests::the_header_says_changes_since_it_left`, `an_ancestor_says_nothing_of_its_own`,
       `no_shared_history_says_two_dot_in_words`, `a_failed_compare_says_why`,
       `the_header_drops_the_tally_first_when_narrow` (graft-ui header tests).
-- [ ] `the_base_row_carries_x_base` — **half**: graft-ui `graph_screen::tests::the_base_row_carries_x_base` passes (text `[x base]`, written after the variant, not red-first); the app test and placement are **not built** — blocked (NOTES).
+- [x] `the_base_row_carries_x_base` — graft-ui `graph_screen::tests::the_base_row_carries_x_base` (text) + app `m7_walk::pr_contents::the_base_row_carries_x_base` (first on main's row, `▏` kept, drag from `main]` picks `main`, `x base` picks nothing) — red first: `no x base on main's row: ◆   ▏  [◆ main] Readme …`.
 - [x] Existing compare tests updated, each named in NOTES: `update/detail/tests.rs:256-346`,
       `update/selection.rs:444-545`, `update/tests.rs:599-719`, `detail/landing/tests.rs:328-377`,
       `detail/cursor/tests.rs:240`, `place/tests/pinned_base.rs` (blame trail sets aside and restores the base,
       `place.rs:215,229`, `place/trail.rs:39,145`: still green, unchanged meaning).
 - [x] **Walk** `m7_walk::pr_contents::pr_contents`: fixture with feature-a's tip one row from main; cursor on main, pane closed; `x`, `j`;
       key count ≤ `noted_keys("pr-contents")` (2). Header reads `changes on feature-a since it left main · 3 commits`.
-- [~] **Captures** (`m7_walk::pr_contents::capture_compare_since_split`, no `x base` yet): `docs/shots/m7/compare-since-split-187x50.txt` and `-80x24.txt`. **Right:** the header words
+- [x] **Captures** (`m7_walk::pr_contents::capture_compare_since_split`, re-taken with `x base`): `docs/shots/m7/compare-since-split-187x50.txt` and `-80x24.txt`. **Right:** the header words
       above (at 80x24 the ladder's cut, numbers whole); `x base` on main's row; the file list holds only feature-a's
       files. Colour unverified. `gallery.rs:419-423` (`x j j x`, expects `COMPARE 0683985 → e30e870`) re-taken to the
       new header; `docs/shots/m2-compare.txt`, `m2-05-feature-branches-x-j-j-x-160x40-unicode.txt` re-taken if a test
@@ -126,8 +126,10 @@ Medium (~45k).
 - `x` second press on another row when the pane already follows it: `open` of the shown spec asks for nothing (not a forced re-read).
 - `DetailState::compare_followed` added: without it `settle`'s follow undid a Shift/Ctrl+click compare while the cursor sat on the base row (the new base-row rule). An unmoved cursor leaves a compare-against-this-base alone. A `show_line` landing that opened the base as a plain commit keeps it.
 - First `x` keeps focus where it was so `j` moves the graph (else focus went to Files).
-- **Blocked — `x base` badge placement:** push `Badge { kind: CompareBase, .. }` first in `view/entries.rs::row_entry` when `compare_marked`; **and** `update/geometry.rs::badge_at` must subtract 1 from the index on that row (it indexes `refs.on(at)` with the drawn index — a first extra badge would make dragging a branch badge on the base row pick the wrong ref). Neither file in my set.
-- **Found, not fixed — `B` on an old-side line of a compare:** `update/place/from.rs:86` blames `base` with the line number, but the old side is now `split`. Fix: read `split` from `detail.files` (`CompareSummary::Since { split, .. }`) there. Not in my set.
+- **Resumed (grant of `view/entries.rs`, `update/geometry.rs`, `update/place/from.rs`):** badge pushed first in `view/entries.rs::row_entry` when `compare_marked`; `update/geometry.rs::badge_at` subtracts 1 on the row the drawing marks (`base.row == history row`, same test as `view/entries.rs:137`). `B` on a compare's old side blames `split` (`place/from.rs`, test `update::place::from::compare_tests::an_old_side_line_of_a_compare_blames_the_split`, red first: `left: …0101… right: …0909…`); `blame_from` gains `split: Option<Oid>`, so its one caller `update/place.rs:200` changed (one line, outside the grant — needed for the signature).
+- **Was blocked — `x base` badge placement:** push `Badge { kind: CompareBase, .. }` first in `view/entries.rs::row_entry` when `compare_marked`; **and** `update/geometry.rs::badge_at` must subtract 1 from the index on that row (it indexes `refs.on(at)` with the drawn index — a first extra badge would make dragging a branch badge on the base row pick the wrong ref). Neither file in my set.
+- **Fixed since (see above) — `B` on an old-side line of a compare:** `update/place/from.rs:86` blames `base` with the line number, but the old side is now `split`. Fix: read `split` from `detail.files` (`CompareSummary::Since { split, .. }`) there. Not in my set.
 - Tests changed for the behaviour change: `update/detail/tests.rs` (renamed `toggle_compare_with_no_base_pins_one_and_emits_nothing` → `the_first_x_opens_the_compare_on_the_base`); `update/selection.rs` (`follow_selection_back_onto_the_base_row_does_nothing` → `the_cursor_on_the_base_says_x_clears`); `update/tests.rs` (`x_on_a_row_with_no_base_pins_it_and_sends_nothing` → `..._and_opens_the_pane`; `x_on_a_different_row…`, `shift_click…`, `ctrl_click…` — size 160x20 and no "asks for its diff", the compare is already shown); outside the plan's list: `update/context_menu/tests.rs:347`, `update/place/tests/esc_back.rs:~290` (pin now opens the pane on the base), `view/tests.rs:1159` (header words), `update/operate.rs` test literal and `update/detail/cursor/tests.rs` (`compare: None`), `docs/capabilities/m2-details-and-diffs.md` M2-08 (dead citation, registry test). `detail/landing/tests.rs`, `detail/cursor/tests.rs:240`, `place/tests/pinned_base.rs` unchanged in meaning and green; `pinned_base.rs::esc_from_blame_restores_the_compare_base` gains the same-header assertion.
 - Captures: new `docs/shots/m7/compare-since-split-187x50.txt`, `-80x24.txt` (80x24 needs `Tab` to show the pane tab, not counted; the whole header fits in 80 so the ladder's cut shows only in `the_header_drops_the_tally_first_when_narrow`). **Stale, not written by any test:** `docs/shots/m2-compare.txt`, `docs/shots/m2-05-feature-branches-x-j-j-x-160x40-unicode.txt`, `-80x24-unicode.txt`. Gallery caption (`gallery.rs`) re-worded, not re-taken.
-- Not compacted.
+- **Compacted** once mid-ticket (context re-read after). Nothing remains.
+- 05-held files touched, minimal: `update/operate.rs` one line `compare: None,` in the test `FileListView` literal (~:1355); `view/tests.rs:1131,1159-1160` (doc comment + assertion now `comparing`).

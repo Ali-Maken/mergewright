@@ -307,9 +307,20 @@ fn row_entry<'a>(
             row.commit.author.email.clone(),
         ),
     };
-    let badges = refs.map_or_else(Vec::new, |refs| {
-        refs.on(row.commit.id).iter().map(badge_view).collect()
+    // The pinned compare base reads `x base` first on its row (m7-14); it
+    // is not a ref, so `update::geometry::badge_at` skips it by the same
+    // `compare_marked` test.
+    let base = compare_marked.then(|| Badge {
+        name: sanitize_line(""),
+        kind: BadgeKind::CompareBase,
     });
+    let badges = base
+        .into_iter()
+        .chain(
+            refs.into_iter()
+                .flat_map(|refs| refs.on(row.commit.id).iter().map(badge_view)),
+        )
+        .collect();
     let subject = String::from_utf8_lossy(row.commit.subject());
     let marker = super::radar::marker_for(state, row.commit.id, &row.commit.parents, &subject);
     if marker.is_some() {

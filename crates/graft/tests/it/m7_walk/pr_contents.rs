@@ -157,3 +157,51 @@ fn capture_compare_since_split() {
         app.close();
     }
 }
+
+/// The screen columns (in cells) where `needle` starts and ends on `line`.
+fn cells_of(line: &str, needle: &str) -> std::ops::Range<u16> {
+    let byte = line
+        .find(needle)
+        .unwrap_or_else(|| panic!("{needle:?} not on {line:?}"));
+    let start = line[..byte].chars().count();
+    let end = start + needle.chars().count();
+    u16::try_from(start).unwrap_or(u16::MAX)..u16::try_from(end).unwrap_or(u16::MAX)
+}
+
+/// `x` on main: its row reads `[x base]` first, before `[◆ main]`; the ▏
+/// rule stays. A drag from main's own badge picks up `main`; the `x base`
+/// badge is not a ref and picks up nothing.
+#[test]
+fn the_base_row_carries_x_base() {
+    use graft_core::event::{MouseButton, MouseKind};
+
+    let dir = split_repo();
+    let (app, state) = on_main(dir.path(), 187, 50);
+    let state = app.key(&state, KeyCode::Char('x'));
+    let lines = frame(&state, 187, 50);
+    let (row, line) = lines
+        .iter()
+        .enumerate()
+        .find(|(_, line)| line.contains("[\u{25c6} main]"))
+        .unwrap_or_else(|| panic!("main's row: {lines:#?}"));
+    let base = line
+        .find("[x base]")
+        .unwrap_or_else(|| panic!("no x base on main's row: {line}"));
+    assert!(
+        base < line.find("[\u{25c6} main]").unwrap_or(0),
+        "x base first: {line}"
+    );
+    assert!(line.contains('\u{258f}'), "the rule stays: {line}");
+    let row = u16::try_from(row).unwrap_or(u16::MAX);
+    let on_main = cells_of(line, "main]").start;
+    let grabbed = app.mouse(&state, MouseKind::Down(MouseButton::Left), on_main, row);
+    let source = grabbed
+        .drag
+        .as_ref()
+        .unwrap_or_else(|| panic!("main's badge picks up a drag at {on_main}"));
+    assert_eq!(source.source.short, "main");
+    let on_base = cells_of(line, "x base").start;
+    let pressed = app.mouse(&state, MouseKind::Down(MouseButton::Left), on_base, row);
+    assert!(pressed.drag.is_none(), "x base is not a ref");
+    app.close();
+}
