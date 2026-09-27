@@ -60,6 +60,16 @@ fn settled(state: &AppState) -> bool {
     // (m6-conflicts/49).
     let writes_landed = state.operating.is_none()
         && state.remote.reading.is_none()
+        // What a lease would take off the remote: `P` says `still reading`
+        // until it lands (m7-power-tools/16b).
+        && !matches!(
+            state
+                .remote
+                .last_rejected_push
+                .as_ref()
+                .and_then(|rejected| rejected.leaves.as_ref()),
+            Some((_, _, super::remote::LeavesRead::Reading))
+        )
         && state.journal.reading.is_none()
         && !matches!(state.stash.entries, Loading::Pending(_))
         && state.head_message.is_none()

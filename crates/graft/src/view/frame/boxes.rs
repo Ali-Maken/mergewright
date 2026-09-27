@@ -250,6 +250,25 @@ pub(super) fn draw_confirm(
     columns: &[u16],
 ) -> Option<Rect> {
     let pending = state.confirm.as_ref()?;
+    // The box's own keys ride the bar at the foot of the pane it stands in
+    // (`bars::draw_box_bars`). A box centred on the frame that would reach
+    // that row hid them: only then it is centred above the bar instead
+    // (`confirm_area` reserves its area's last row — the bar row). Every
+    // box clear of the bar keeps its place. A frame too short cuts message
+    // rows, never the buttons (graft-ui `confirm`) — m7-power-tools/16b.
+    let centred = graft_ui::confirm::confirm_area(area, &pending.view).intersection(area);
+    let area = match bars::bar_rows(state, area)
+        .iter()
+        .map(|bar| bar.y)
+        .filter(|&y| y > area.y && y >= centred.y && y < centred.bottom())
+        .min()
+    {
+        Some(bar) => Rect {
+            height: bar - area.y + 1,
+            ..area
+        },
+        None => area,
+    };
     let natural = graft_ui::confirm::confirm_area(area, &pending.view).intersection(area);
     if natural.is_empty() {
         return None;

@@ -18,16 +18,16 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●      Commit 187                                                                                                                                GF 7y   3121935
 ●      Commit 186                                                                                                                                GF 7y   fab25df
 ●      Commit 185                                                                                                                                GF 7y   09ae97c
-●      Commit 184                                                                                                                                GF 7y   49d7783
-●      ╭ Force-push main → origin/main? ──────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   22d55c9
-●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                     │  GF 7y   d212b3e
-●      │ rewrites history for everyone who has d5ae5fd                                                                                        │  GF 7y   c8254c5
-●      │                                                                                                                                      │  GF 7y   e95ccd4
-●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/heads/m… │  GF 7y   97b58e5
-●      │                                                                                                                                      │  GF 7y   1c9b7ed
-●      │ ▸[ Cancel ]   [ Force push ]                                                                                                         │  GF 7y   f93340a
-●      ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   5aaeeba
-●      Commit 175                                                                                                                                GF 7y   6be5928
+●      ╭ Force-push main → origin/main? ──────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 7y   49d7783
+●      │ origin/main d5ae5fd → 68c13c4 · refused if origin moved since your fetch (lease)                                                     │  GF 7y   22d55c9
+●      │ rewrites history for everyone who has d5ae5fd                                                                                        │  GF 7y   d212b3e
+●      │ leaves origin/main:                                                                                                                  │  GF 7y   c8254c5
+●      │ d5ae5fd  Commit 200                            Graft Fixture                                                                         │  GF 7y   e95ccd4
+●      │                                                                                                                                      │  GF 7y   97b58e5
+●      │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e20 origin refs/heads/main:refs/heads/m… │  GF 7y   1c9b7ed
+●      │                                                                                                                                      │  GF 7y   f93340a
+●      │ ▸[ Cancel ]   [ Force push ]                                                                                                         │  GF 7y   5aaeeba
+●      ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   6be5928
 ●      Commit 174                                                                                                                                GF 7y   9b67be4
 ●      Commit 173                                                                                                                                GF 7y   937d32b
 ●      Commit 172                                                                                                                                GF 7y   81be718
@@ -47,4 +47,4 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●      Commit 158                                                                                                                                GF 7y   1e28a71
 ●      Commit 157                                                                                                                                GF 7y   b57586d
 ●      Commit 156                                                                                                                                GF 7y   edc7cba
- push rejected: origin/main has moved · p pull first · P force with lease
+ ←/→ move  ⏎ choose  esc cancel

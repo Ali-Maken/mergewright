@@ -63,8 +63,8 @@ fn land(
     sent: &str,
     expected: &str,
     result: Result<Leaves, String>,
-) {
-    let (next, _) = update(
+) -> Vec<Command> {
+    let (next, commands) = update(
         state,
         AppEvent::Produced(
             id,
@@ -76,6 +76,7 @@ fn land(
         ),
     );
     *state = next;
+    commands
 }
 
 fn message(state: &AppState) -> Vec<String> {
@@ -298,7 +299,10 @@ fn a_superseded_leaves_answer_is_dropped() {
     request_leaves(&mut state, &mut commands, &mut || JobId::new(901));
     let (old, _, _) = asked(&commands).pop().expect("a read");
     fetch_moves_tip(&mut state, FETCHED);
-    land(&mut state, old, SENT, THEIRS, Ok(two_leave()));
+    let after = land(&mut state, old, SENT, THEIRS, Ok(two_leave()));
+    // Dropped, not stored: storing it would re-key and ask the current
+    // key's read a second time.
+    assert!(asked(&after).is_empty(), "{after:?}");
     let held = state
         .remote
         .last_rejected_push

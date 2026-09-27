@@ -249,3 +249,29 @@ rejected_then_lease_push, stale_lease_refused; box_owns_the_bar capture_fix_box_
 Deviation: `lease_key` returns `Result<Option<_>, String>` (lease()'s pending errors), not `Option`.
 Also touched (mechanical, forced by the new field/variant): `view/tests/bottom_row.rs`, `jobs/runner.rs` dispatch
 (two unreachable arms merged to stay under clippy's 60-line limit).
+
+## NOTES (builder, resume 2 — 2026-09-27) — done
+Status: done. Gates all green workspace-wide (nextest 4347/4347, fmt, clippy, doc).
+- Harness ready clauses (wait while `leaves` is `Reading`): `crates/graft/tests/it/m4_walk/run.rs:361-367`,
+  `crates/graft/tests/it/remote_by_key.rs:108-114`, and the pty prelude's own `settled`
+  `crates/graft/src/update/prelude.rs` (`writes_landed`) — without it the m4-02 pty capture showed `still reading`.
+- **Bar question:** other boxes did cover it. `m3-undo-drift.txt` had `" y un╰───…"` (box border over the bar) before
+  this ticket. Cause: `draw_confirm` centres on the whole frame (`view/frame/boxes.rs`, `confirm_area(area, …)`) and
+  `graft-ui` `confirm_area_at` reserves only the frame's last row; the bar is the pane's last row
+  (`view/frame/bars.rs:100 bar_rows`), drawn before the box (`view/frame.rs:214-218`). Nothing says boxes may cover it
+  (`box_owns_the_bar` says the reverse). Fix (cause, `boxes.rs` draw_confirm head): a box that would reach a bar row is
+  centred above it instead; boxes clear of the bar keep their place (m3-confirm-discard etc. unchanged). Frame too
+  short → message rows cut, buttons/warning kept (graft-ui clamp).
+- Captures changed: m4-02-push-box-lease-{160x48,80x24} (list row; bar visible), m4-remote-keys, m3-undo-drift (bar
+  now visible), m6/fix-box-owns-the-bar-{120x40,80x24}, m6/fix-box-takes-y-{120x40,80x24}, m6/fix-box-keeps-on-y-120x40,
+  m7/force-box-leaves-{120x40,80x24} (new). The m6 ones also gained `ⓘ` on `main`: the harness now waits for the
+  leaves read, by which time the radar's force-push probe has landed (5/5 stable reruns). Colour unverified.
+  m4-01-push-box-plain unchanged.
+- Probes: `an_unchanged_tip_starts_no_second_read` red with the key check disabled; `a_superseded_leaves_answer_is_dropped`
+  was **not** red at first (the settle tail heals a stored stale answer by re-asking) — strengthened to assert no
+  second read is asked on the stale answer; then red with the guard disabled.
+Ticks:
+- [x] Existing push tests updated: `update/remote/tests.rs` (rejected_at_head, push_box table), `tests/lease.rs`
+      (`reject` helper answers leaves), m4 walk (`m4_walk::every_scenario::push_rejected_then_lease`,
+      `push_lease_refused_stale` green via run.rs clause).
+- [x] Captures re-taken: m4-02 via `.scratch/m4-remotes/pty-walk-m4.py` (`push-rejected-then-lease`); rest via their tests.

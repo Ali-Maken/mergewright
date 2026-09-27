@@ -359,6 +359,12 @@ fn ready(state: &AppState) -> bool {
         && !matches!(state.refs_read, RefsRead::Pending(_))
         && matches!(state.remotes, Loading::Ready(_))
         && state.remote.reading.is_none()
+        // What a lease would take off the remote: `P` says `still reading`
+        // until it lands (m7-power-tools/16b).
+        && !matches!(
+            state.remote.last_rejected_push.as_ref().and_then(|rejected| rejected.leaves.as_ref()),
+            Some((_, _, graft::update::remote::LeavesRead::Reading))
+        )
         && state.operating.is_none()
         && state
             .history
