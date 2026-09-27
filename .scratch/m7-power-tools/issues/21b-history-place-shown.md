@@ -1,6 +1,6 @@
 # history-place-shown — history reaches the real frame, gets its own bar, and is captured
 
-Status: draft
+Status: ready (filed by conductor 2026-09-27; Build with Opus confirmed)
 Remainder of: `21-history-place.md` (partial, merged 2ce85055). **21's scope, Signatures and Rulings (a)–(c) stand**;
 this ticket only finishes them. Split: 21b (this) = frame hook, bars, captures, walks; `21c-history-whitespace-and-sizes`
 = the two reader gaps.
