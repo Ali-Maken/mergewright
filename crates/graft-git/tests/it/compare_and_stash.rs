@@ -325,6 +325,22 @@ fn two_stashes_on_two_rebased_away_bases_each_keep_their_own() {
 /// this floor, and a spawn that ignores `stop` shows as a count under it.
 const CHECKS_PER_RUN: usize = 4;
 
+/// What an `Ok` under a [`StopAfter`] may have seen: at most one `true`, as
+/// the very last check made.
+///
+/// Before m7-power-tools/27b any `true` answer meant `Err(Stopped)`, so `Ok`
+/// implied `made() <= allowed`. That bound is wrong now: `run.rs:489-493`
+/// answers a stop found with git already exited (`try_wait`) with git's own
+/// exit and whole output (`after_exit`, `run.rs:537`), because that command
+/// did finish. Nothing lets work go on past that `true`: the run returns
+/// straight away, and any later spawn asks the stop first (`run.rs:336`,
+/// `:358`) and is `Stopped`. So an `Ok` has made at most `allowed + 1`
+/// checks — the `+ 1` being a stop that came after the last git had exited
+/// — and, the invariant that matters, it is never partial.
+fn ok_checks_bound(allowed: usize) -> usize {
+    allowed + 1
+}
+
 /// Answers `false` for the first `allowed` checks and `true` after.
 struct StopAfter {
     checks: AtomicUsize,
@@ -369,7 +385,11 @@ fn only_in_stash_stopped_at_any_check_is_never_partial() {
         match only_in_stash(&repo, &[entry], 10, &stop) {
             Err(RunError::Stopped) => assert!(stop.made() > k, "k={k}: stopped unasked"),
             Ok(got) => {
-                assert!(stop.made() <= k, "k={k} of N={n}: Ok after a stop");
+                assert!(
+                    stop.made() <= ok_checks_bound(k),
+                    "k={k} of N={n}: Ok with work after a stop ({} checks)",
+                    stop.made()
+                );
                 assert_eq!(got.commits, full.commits, "k={k}: partial");
             }
             Err(other) => panic!("k={k}: {other:?}"),
@@ -396,7 +416,11 @@ fn compare_span_stopped_at_any_check_is_never_partial() {
         match compare_span(&repo, base, tip, &stop) {
             Err(RunError::Stopped) => assert!(stop.made() > k, "k={k}: stopped unasked"),
             Ok(got) => {
-                assert!(stop.made() <= k, "k={k} of N={n}: Ok after a stop");
+                assert!(
+                    stop.made() <= ok_checks_bound(k),
+                    "k={k} of N={n}: Ok with work after a stop ({} checks)",
+                    stop.made()
+                );
                 assert_eq!(got, full, "k={k}: partial");
             }
             Err(other) => panic!("k={k}: {other:?}"),

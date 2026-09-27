@@ -1,6 +1,6 @@
 # 27b stop-after-exit — 27's item 1a, across the crates it touches
 
-Status: blocked (needs `crates/graft-git/tests/it/compare_and_stash.rs`; everything else done — see NOTES)
+Status: done
 Blocked by: 23-recover-op (graft-ops), 12d (graft)
 Crates: graft-git (`run.rs`), graft-ops (`apply/remote.rs`, the undo_cancel / set_aside paths), graft (tests; the
 prompt-cancel mapping if it lives there).
@@ -44,6 +44,11 @@ real exit. Read 27's NOTES "1a" in full (the residual window, the pipe-held-open
   - `undo_cancel::a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed` — **test corrected**: it needs a
     step genuinely killed; now git is held in its `reference-transaction` hook at `prepared` until the stop kills it.
     Mutation-checked: forcing `settled` → `Applied` makes it fail ("refs/heads/main is not where the undo left it").
+- [x] (found here, not in 27's list) `compare_and_stash::{only_in_stash_stopped_at_any_check_is_never_partial,
+  compare_span_stopped_at_any_check_is_never_partial}` — **test corrected** (file granted by the conductor): the bound
+  `made() <= k` became `made() <= ok_checks_bound(k)` = `k + 1`, the old bound made wrong by `run.rs:489-493`
+  (a stop found with git already exited returns its exit); invariant stated in `ok_checks_bound`'s comment; "never
+  partial" kept. 5/5 runs: 2 passed each.
 - [x] Captures unchanged: every `check_shot` test green in the full run (38 files in graft/tests use it); `git status`
   shows no `docs/shots` change.
 
@@ -51,14 +56,12 @@ real exit. Read 27's NOTES "1a" in full (the residual window, the pipe-held-open
 Workspace-wide, plus the heavy clippy line.
 
 ## NOTES (builder, 2026-09-27)
-- Status: **blocked** on one file outside the granted set. Scout 27b used. No compaction.
-- **Blocked: needs `crates/graft-git/tests/it/compare_and_stash.rs`.** Two more tests 27 did not list (they landed with
+- Status: done. Scout 27b used. No compaction. Full suite 4318/4318; fmt, clippy, heavy clippy, doc green.
+- Was blocked on `crates/graft-git/tests/it/compare_and_stash.rs`, then granted; resolved as ticked above. Two more tests 27 did not list (they landed with
   14b after 27's measurement) are red with 1a, deterministically (3/3 runs, alone):
   `compare_and_stash::{only_in_stash_stopped_at_any_check_is_never_partial, compare_span_stopped_at_any_check_is_never_partial}`
   — `k=7 of N=9: Ok after a stop` / `k=6 of N=8`. Wrong premise: they assert any stop check answered `true` ⇒ `Stopped`.
-  With 1a a stop polled after git exited returns git's full result. Proposed correction (lines :372, :399): drop
-  `assert!(stop.made() <= k, "…Ok after a stop")`; keep `assert_eq!(got…, full…, "partial")` — the substance, "never
-  partial", stands. Not applied: outside my Files.
+  With 1a a stop polled after git exited returns git's full result.
 - Scout's "could not confirm" (why later undo steps ignore a latched stop): checked — there were no later steps. The
   `PathExists("a.txt")` trigger fires in the working-tree step, the plan's last (`restore.rs` `run_plan` :448); with 1a
   that step returns `Ok`, the loop ends, `Ran::Done`. A latched stop *does* cancel the next step (`restore.rs:460`), which
@@ -75,4 +78,4 @@ Workspace-wide, plus the heavy clippy line.
 - Residual (27's NOTES, unchanged): git exiting between `try_wait` and the SIGTERM is still `Stopped`.
 - Other `Stopped` mappings (scout: `resume.rs:281`, `finish_merge.rs:67`, `jobs/operate.rs:242`, `restore/steps.rs`):
   not changed; they now see `Ok` for a post-exit stop, which is the true report. Checked only by the full suite
-  (4316/4318 green; the 2 red are the blocked ones).
+  (4318/4318).
