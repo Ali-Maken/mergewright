@@ -96,7 +96,7 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);
 (`Repo`/`Git`: the types `switch_list`'s neighbours in graft-ops take, as the note wrote them; match them.)
 
 ## Acceptance
-- [ ] **graft-ops:** `switch_list_puts_the_previous_branch_first`; `a_remote_with_a_local_copy_shows_once`;
+- [x] **graft-ops:** (10c, all eight in `crates/graft-ops/tests/it/switch_list.rs`, green) `switch_list_puts_the_previous_branch_first`; `a_remote_with_a_local_copy_shows_once`;
       `a_remote_whose_name_a_local_branch_has_is_left_out`; `remote_only_branches_are_listed_with_their_local_name`
       (a remote named `a/b`); `an_upstream_under_heads_reads_built_on`; `here_is_last`;
       `filter_ranks_segment_prefix_above_substring`; `switch_list_honours_stop`.
