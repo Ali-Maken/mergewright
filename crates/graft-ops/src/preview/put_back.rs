@@ -49,6 +49,13 @@ const MAY_STOP: &str = "the rebase may stop first";
 /// could not be replayed here, leaves no tree to put the edits back onto.
 const PICK_MAY_STOP: &str = "the cherry-pick may stop first";
 
+/// The same hole for a rewrite whose replay may stop.
+const REWRITE_MAY_STOP: &str = "the rewrite may stop first";
+
+/// A rewrite that only reorders, rewords or squashes (`R`): the line it
+/// lands on is not built before `y`, so the put-back is not forecast.
+const REORDER_NOT_FORECAST: &str = "the rewritten line is not built before y";
+
 /// Forecast step 6 of `op`, whose own forecast is `replay`.
 ///
 /// `rebase_landed` is a rebase's landed commit from its own chained
@@ -154,9 +161,23 @@ fn landing_of(
             }
             Ok((params.head.oid, Landing::Picked(params.commits.clone())))
         }
+        // A put-in (m7-power-tools/09b Q4): his branch's new tip holds
+        // exactly `HEAD` plus what went into the commits — the commit
+        // Graft wrote from the index for `a` (`made`, parent `HEAD`), or
+        // absorb's `index_base` (`HEAD` plus every placed hunk) — once the
+        // replay is clean. An `R`-editor rewrite writes neither.
+        Operation::Rewrite(params) => {
+            if *replay != ConflictForecast::Clean {
+                return Err(not_checked(REWRITE_MAY_STOP));
+            }
+            match (params.index_base, params.made.as_slice()) {
+                (Some(base), _) | (None, &[base]) => Ok((params.head.oid, Landing::At(base))),
+                _ => Err(not_checked(REORDER_NOT_FORECAST)),
+            }
+        }
         // `sets_aside` is `Some` for a rebase, a rewrite, a cherry-pick, a
         // checkout, a switching create away from `HEAD` or a checked-out
-        // put-back only.
+        // put-back only (a pull has no preview).
         _ => Err(not_checked("nothing is put back after this")),
     }
 }

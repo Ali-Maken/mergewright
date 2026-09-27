@@ -32,7 +32,7 @@
 │ HEAD → feature-a                                                                                                     │
 │ working tree: 2 files updated                                                                                        │
 │ your edits: 3 files set aside, put back after                                                                        │
-│ your edits' put-back: not checked (nothing is put back after this)                                                   │
+│ no conflicts expected                                                                                                │
 │ undo: u takes this back                                                                                              │
 │ git rebase -i --no-update-refs --no-autostash --empty=drop f1c72d66bcb17d9d430527dddef3fd0a9a347b15                  │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                            │

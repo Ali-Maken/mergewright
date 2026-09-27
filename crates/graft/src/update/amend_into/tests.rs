@@ -246,8 +246,12 @@ fn answer(
 /// `a` on the older commit (row 1), answered with a plan, the preview's
 /// own job answered too.
 fn previewed() -> AppState {
-    let state = on_screen(1, &[]);
-    let (state, commands) = update(&state, key('a'));
+    previewed_from(&on_screen(1, &[]))
+}
+
+/// `previewed`, from `state`.
+fn previewed_from(state: &AppState) -> AppState {
+    let (state, commands) = update(state, key('a'));
     let (id, _, _) = plan_job(&commands).expect("a plan job");
     let (mut state, _) = answer(&state, id, Ok(put_in(vec![1], PUT_IT_IN)));
     let job = state.preview.as_ref().expect("the preview opened").job;
@@ -680,4 +684,93 @@ fn a_failed_tag_read_says_so_in_the_status() {
         "put into \"commit 2\" \u{2713} \u{b7} couldn't mark the changed commit: rev-list failed \u{b7} u undoes"
     );
     assert_eq!(state.row_tags.on(oid(2)), None);
+}
+
+// ── 09b Q3: the landing composes with the put-back ─────────────────────
+
+/// `state`'s working tree plus `src/tokens.rs` edited and not staged.
+fn with_unstaged(mut state: AppState) -> AppState {
+    let mut tree = state
+        .working_tree
+        .as_deref()
+        .cloned()
+        .expect("a working tree on screen");
+    tree.entries.push(StatusEntry {
+        path: "src/tokens.rs".into(),
+        original_path: None,
+        staged: None,
+        unstaged: Some(Change::Modified),
+        untracked: false,
+        unmerged: false,
+        unmerged_how: None,
+        submodule: None,
+    });
+    state.working_tree = Some(Arc::new(tree));
+    state
+}
+
+/// `state` (a put-in's preview on screen), `y`, and the write's `Done`;
+/// the status line as drawn.
+fn landing_line(state: &AppState) -> String {
+    let (mut state, commands) = update(state, key('y'));
+    let (id, _) = operate_job(&commands).expect("y launches");
+    crate::update::operate::operated(
+        &mut state,
+        id,
+        crate::jobs::operate::Operated::Done(applied()),
+        &mut ids(),
+    );
+    let Status::Done { what, also, keys } = &state.status else {
+        panic!("not done: {:?}", state.status);
+    };
+    crate::view::status::done_line(what, also.as_deref(), keys.as_deref())
+}
+
+#[test]
+fn a_put_in_over_unstaged_edits_says_they_are_back() {
+    assert_eq!(
+        landing_line(&previewed_from(&with_unstaged(on_screen(1, &[])))),
+        "put into \"commit 2\" \u{2713} \u{b7} your unstaged edits are back \u{b7} u undoes"
+    );
+}
+
+#[test]
+fn a_put_in_with_nothing_unstaged_says_nothing_about_edits() {
+    assert_eq!(
+        landing_line(&previewed()),
+        "put into \"commit 2\" \u{2713} \u{b7} u undoes"
+    );
+}
+
+#[test]
+fn absorb_over_unstaged_edits_says_they_are_back() {
+    let (state, id) = absorb_asked();
+    let planned = RewritePlanned::Plan(Box::new(PlannedPutIn {
+        params: params(),
+        offsets: Vec::new(),
+        words: DoneWords {
+            what: "put 2 hunks into 2 commits".to_owned(),
+            also: Some("1 stays staged".to_owned()),
+        },
+        shown: BoxWords {
+            title: "put staged changes into the commits they belong to".to_owned(),
+            confirm: PUT_THEM_IN,
+            rows: Vec::new(),
+        },
+    }));
+    let (mut state, _) = answer(&with_unstaged(state), id, Ok(planned));
+    let job = state.preview.as_ref().expect("preview").job;
+    preview_produced(
+        &mut state,
+        job,
+        Ok(Arc::new(Planned {
+            plan: a_plan(),
+            anchors: Vec::new(),
+            runs: None,
+        })),
+    );
+    assert_eq!(
+        landing_line(&state),
+        "put 2 hunks into 2 commits \u{2713} \u{b7} 1 stays staged \u{b7} your unstaged edits are back \u{b7} u undoes"
+    );
 }

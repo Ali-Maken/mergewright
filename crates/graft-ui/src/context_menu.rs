@@ -190,20 +190,21 @@ impl ContextMenu {
         }
     }
 
-    /// The uncommitted-changes row's menu: `Open details` (design note,
-    /// "Working tree row selected": `.` "lists `Open details` only"), then
-    /// the same dropped keys every menu carries, then absorb (m7/09) — last,
-    /// so the items before it keep their places. With nothing `staged` the
-    /// absorb item is drawn dim, reading `nothing staged`.
+    /// The uncommitted-changes row's menu: absorb (m7/09) first — the row's
+    /// only verb with no key of its own, so it leads as Checkout leads a
+    /// commit row (keymap §2.1, 09b) — then `Open details` (design note,
+    /// "Working tree row selected"), then the same dropped keys every menu
+    /// carries. With nothing `staged` absorb keeps its place, drawn dim,
+    /// reading `nothing staged`; the cursor opens on it either way, as a
+    /// commit row's opens on its dim Checkout.
     #[must_use]
     pub fn for_working_tree(staged: bool) -> ContextMenu {
-        let mut items = vec![item(ContextAction::OpenDetails, "Open details (⏎)")];
-        items.extend(always_items());
         let mut absorb = item(ContextAction::Absorb, ABSORB_LABEL);
         if !staged {
             absorb.disabled = Some(sanitize_line("nothing staged"));
         }
-        items.push(absorb);
+        let mut items = vec![absorb, item(ContextAction::OpenDetails, "Open details (⏎)")];
+        items.extend(always_items());
         ContextMenu {
             title: None,
             items,
@@ -504,49 +505,56 @@ mod tests {
         assert_eq!(of(&marked), 0);
     }
 
+    /// 09b ruling B (keymap §2.1): absorb is the uncommitted row's only row
+    /// verb, so it leads, as Checkout leads a commit row; the menu opens on
+    /// it.
     #[test]
-    fn for_working_tree_lists_open_details_then_the_dropped_keys() {
+    fn absorb_is_the_first_item_on_the_uncommitted_row() {
         let menu = ContextMenu::for_working_tree(true);
-        assert_eq!(menu.items[0].action, ContextAction::OpenDetails);
-        assert_eq!(
-            menu.items[1..]
-                .iter()
-                .map(|item| item.action)
-                .collect::<Vec<_>>(),
-            vec![
-                ContextAction::Fetch,
-                ContextAction::Pull,
-                ContextAction::Push,
-                ContextAction::Undo,
-                // m7/09: after today's items, so their order doesn't change.
-                ContextAction::Absorb,
-            ]
-        );
-        let absorb = menu.items.last().expect("the absorb item");
+        let absorb = &menu.items[0];
+        assert_eq!(absorb.action, ContextAction::Absorb);
         assert_eq!(
             absorb.label.as_str(),
             "Put staged changes into their commits (absorb)"
         );
         assert_eq!(absorb.disabled, None, "something is staged: it acts");
+        assert_eq!(menu.cursor, 0);
     }
 
-    /// m7/09: with nothing staged the absorb item stays in its place, dim,
-    /// reading `nothing staged` — `Enter` answers with that reason.
+    /// With nothing staged absorb keeps its first place, dim, reading
+    /// `nothing staged` — the cursor still opens on it, as a commit row's
+    /// opens on its dim Checkout, and `Enter` answers with the reason.
     #[test]
-    fn absorb_item_is_dim_with_nothing_staged() {
+    fn absorb_dims_in_first_place_with_nothing_staged() {
         let menu = ContextMenu::for_working_tree(false);
-        let absorb = menu.items.last().expect("the absorb item");
-        assert_eq!(absorb.action, ContextAction::Absorb);
-        assert_eq!(
-            absorb.disabled.as_ref().map(SanitizedText::as_str),
-            Some("nothing staged")
-        );
-        let mut menu = menu;
-        menu.cursor = menu.items.len() - 1;
+        assert_eq!(menu.items[0].action, ContextAction::Absorb);
+        assert_eq!(menu.cursor, 0);
         assert_eq!(
             menu.selected_refusal().map(SanitizedText::as_str),
             Some("nothing staged")
         );
+    }
+
+    /// The five items the row had before absorb, in their old order, one
+    /// place down, staged or not.
+    #[test]
+    fn for_working_tree_keeps_its_old_order_below_absorb() {
+        for staged in [true, false] {
+            let menu = ContextMenu::for_working_tree(staged);
+            assert_eq!(
+                menu.items[1..]
+                    .iter()
+                    .map(|item| item.action)
+                    .collect::<Vec<_>>(),
+                vec![
+                    ContextAction::OpenDetails,
+                    ContextAction::Fetch,
+                    ContextAction::Pull,
+                    ContextAction::Push,
+                    ContextAction::Undo,
+                ]
+            );
+        }
     }
 
     /// `cursor` is a public field, so nothing in this crate stops a caller

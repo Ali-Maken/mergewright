@@ -242,8 +242,8 @@ fn fix_into_older() {
     app.close();
 }
 
-/// `absorb-staged`: `k` to the uncommitted row, `.`, down to absorb, `⏎`,
-/// `y`. Two hunks go into their commits; the README line stays staged.
+/// `absorb-staged`: `k` to the uncommitted row, `.` (the menu opens on
+/// absorb), `⏎`, `y`. Two hunks go into their commits; the README line stays staged.
 /// `u` puts it all back.
 #[test]
 fn absorb_staged() {
@@ -258,26 +258,20 @@ fn absorb_staged() {
         "`k` from the top row: the uncommitted row"
     );
     let mut route = vec!["k", "."];
-    let mut state = app.key(&state, KeyCode::Char('.'));
-    for _ in 0..10 {
-        let at_absorb = state.context_menu.as_ref().is_some_and(|open| {
+    let state = app.key(&state, KeyCode::Char('.'));
+    // 09b ruling B: absorb is the menu's first item and the cursor opens
+    // on it — no motion inside the menu.
+    assert!(
+        state.context_menu.as_ref().is_some_and(|open| {
             open.menu.selected() == graft_ui::context_menu::ContextAction::Absorb
-        });
-        if at_absorb {
-            break;
-        }
-        route.push("j");
-        state = app.key(&state, KeyCode::Char('j'));
-    }
+        }),
+        "the menu opens on absorb"
+    );
     let state = planned(&app, &state, KeyCode::Enter, "\u{23ce}", &mut route);
     assert!(state.preview.is_some(), "the preview: {:?}", state.status);
     let state = y(&app, &state, &mut route);
-    // The note allows 4 (`. motion ⏎ y`). Absorb is the menu's last item,
-    // after today's five (ticket 09 "Decided"), and the menu does not wrap,
-    // so the motion is five `j`: 9 inputs with the `k` that reaches the
-    // row. Not held to the note here; the ticket's NOTES carry the
-    // conflict for a ruling.
-    assert_eq!(route, ["k", ".", "j", "j", "j", "j", "j", "\u{23ce}", "y"]);
+    assert_eq!(route, ["k", ".", "\u{23ce}", "y"]);
+    within("absorb-staged", &route);
 
     let auth = git(repo, &["show", "feature-a~1", "--", "src/auth.rs"], 0);
     assert!(auth.contains("+auth 5 fixed"), "{auth}");
@@ -340,12 +334,19 @@ fn amend_with_dependents() {
 /// <sha7> "Add OAuth callback"` with its `gains` row and `feature-b` marked
 /// `built on yours · follows`; after `y`, the cursor on the new `HEAD`,
 /// `✎ changed` after "Add OAuth callback" only, and the status
-/// `put into "Add OAuth callback" ✓ · u undoes`.
+/// `put into "Add OAuth callback" ✓ · your unstaged edits are back · u
+/// undoes` (09b Q3: `src/tokens.rs` is edited and not staged). The box
+/// says one thing about his edits (09b Q4) and `undo: u takes this back`.
 #[test]
 fn capture_amend_into() {
     let dir = oauth_repo(true);
     let repo = dir.path();
     stage_auth_fix(repo);
+    write(
+        repo,
+        "src/tokens.rs",
+        &ten_lines("tokens").replace("tokens 9\n", "tokens 9 edited\n"),
+    );
     let (app, state) = open(repo, 187, 50);
     let mut route = Vec::new();
     let state = cursor_to(&app, state, "Add OAuth callback", &mut route);
@@ -358,6 +359,8 @@ fn capture_amend_into() {
     );
     assert!(body.contains("gains  src/auth.rs +1 \u{2212}1"), "{body}");
     assert!(body.contains("built on yours \u{b7} follows"), "{body}");
+    assert_edits_rows_agree(&body);
+    assert!(body.contains("undo: u takes this back"), "{body}");
 
     let state = app.resize(&state, 120, 40);
     let state = y(&app, &state, &mut route);
@@ -374,7 +377,9 @@ fn capture_amend_into() {
     }
     crate::captures::check_shot("m7/amend-into-landed-120x40.txt", &body);
     assert!(
-        body.contains("put into \"Add OAuth callback\" \u{2713} \u{b7} u undoes"),
+        body.contains(
+            "put into \"Add OAuth callback\" \u{2713} \u{b7} your unstaged edits are back \u{b7} u undoes"
+        ),
         "{body}"
     );
     assert_eq!(body.matches("\u{270e} changed").count(), 1, "{body}");
@@ -401,10 +406,30 @@ fn capture_absorb() {
     stage_three_hunks(repo);
     let (app, state) = open(repo, 120, 40);
     let state = app.key(&state, KeyCode::Char('k'));
-    let mut state = app.key(&state, KeyCode::Char('.'));
-    for _ in 0..5 {
-        state = app.key(&state, KeyCode::Char('j'));
-    }
+    let state = app.key(&state, KeyCode::Char('.'));
+    // 09b: the menu, the cursor on absorb, first; the old five below.
+    let menu = frame(&state, 120, 40);
+    crate::captures::check_shot("m7/absorb-menu-120x40.txt", &menu);
+    let items: Vec<&str> = menu
+        .lines()
+        .filter(|line| {
+            [
+                "Put staged changes into their commits (absorb)",
+                "Open details (\u{23ce})",
+                "Fetch (f)",
+                "Pull (p)",
+                "Push (P)",
+                "Undo (u)",
+            ]
+            .iter()
+            .any(|label| line.contains(label))
+        })
+        .collect();
+    assert_eq!(items.len(), 6, "{menu}");
+    assert!(items[0].contains("(absorb)"), "{menu}");
+    assert!(items[1].contains("Open details"), "{menu}");
+    assert!(items[5].contains("Undo (u)"), "{menu}");
+
     let state = planned(&app, &state, KeyCode::Enter, "\u{23ce}", &mut Vec::new());
     let body = frame(&state, 120, 40);
     crate::captures::check_shot("m7/absorb-preview-120x40.txt", &body);
@@ -414,58 +439,397 @@ fn capture_absorb() {
         .count();
     assert_eq!(placed, 2, "{body}");
     assert!(body.contains("stays staged \u{b7} "), "{body}");
+    assert!(body.contains("undo: u takes this back"), "{body}");
     drop(state);
     app.close();
 }
 
-/// The dependents check `a` on `HEAD` waits on when another local branch
-/// exists (ticket 09 "Decided": under one frame on the fixture). From `a`
-/// to the amend editor open — the check, then `HEAD`'s message — seven
-/// times, median. Run by `scripts/m7-09-perf.sh` in release; lines start
-/// `m7-09`. Ignored: a measurement, not a test.
-#[test]
-#[ignore = "a measurement: scripts/m7-09-perf.sh"]
-fn perf_dependents_check() {
-    let with_check = a_to_editor(false);
-    // The baseline: `main` deleted, so `feature-a` is the only local branch
-    // and `a` is today's amend at once (no check).
-    let without = a_to_editor(true);
-    for (what, took) in [("with the check", &with_check), ("today's amend", &without)] {
-        for each in took {
-            println!("m7-09 {what}: {:.1} ms", each.as_secs_f64() * 1e3);
-        }
-    }
-    let (median, base) = (with_check[3], without[3]);
-    println!(
-        "m7-09 summary: a to the amend editor, median of 7: {:.1} ms through the dependents check, {:.1} ms today's amend; the check adds {:.1} ms (budget 16.7 ms)",
-        median.as_secs_f64() * 1e3,
-        base.as_secs_f64() * 1e3,
-        median.saturating_sub(base).as_secs_f64() * 1e3
+/// The box's statements about his edits, as one: every line that says
+/// where his edits go.
+fn edits_rows(body: &str) -> Vec<String> {
+    body.lines()
+        .filter(|line| line.contains("your edits"))
+        .map(|line| line.trim_matches(['\u{2502}', ' ']).to_owned())
+        .collect()
+}
+
+/// 09b Q4: a box that says the edits are set aside and put back never
+/// also says nothing is put back (`preview/put_back.rs`'s `landing_of`
+/// had no rewrite arm).
+fn assert_edits_rows_agree(body: &str) {
+    let rows = edits_rows(body);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("set aside, put back after")),
+        "{body}"
+    );
+    assert!(
+        !body.contains("nothing is put back"),
+        "the rows disagree: {rows:?}"
     );
 }
 
-/// Seven `a`s on `HEAD`, each to the amend editor open and `Esc`, sorted.
-fn a_to_editor(only_branch: bool) -> Vec<std::time::Duration> {
+#[test]
+fn the_edits_rows_agree_in_the_put_in_preview() {
+    let dir = oauth_repo(true);
+    let repo = dir.path();
+    stage_auth_fix(repo);
+    let (app, state) = open(repo, 187, 50);
+    let state = cursor_to(&app, state, "Add OAuth callback", &mut Vec::new());
+    let state = planned(&app, &state, KeyCode::Char('a'), "a", &mut Vec::new());
+    assert_edits_rows_agree(&frame(&state, 187, 50));
+    drop(state);
+    app.close();
+}
+
+#[test]
+fn the_edits_rows_agree_in_the_absorb_preview() {
     let dir = oauth_repo(false);
     let repo = dir.path();
-    if only_branch {
-        git(repo, &["branch", "-q", "-D", "main"], 4);
+    stage_three_hunks(repo);
+    let (app, state) = open(repo, 120, 40);
+    let state = app.key(&state, KeyCode::Char('k'));
+    let state = app.key(&state, KeyCode::Char('.'));
+    let state = planned(&app, &state, KeyCode::Enter, "\u{23ce}", &mut Vec::new());
+    assert_edits_rows_agree(&frame(&state, 120, 40));
+    drop(state);
+    app.close();
+}
+
+/// 09b Q4, the truth by the write: a put-in over an unstaged edit puts
+/// the file back byte for byte, still unstaged; the staged fix is in the
+/// commit, so nothing stays staged (ADR-0045).
+#[test]
+fn a_put_in_puts_the_unstaged_file_back() {
+    let dir = oauth_repo(false);
+    let repo = dir.path();
+    stage_auth_fix(repo);
+    let edited = ten_lines("tokens").replace("tokens 9\n", "tokens 9 edited\n");
+    write(repo, "src/tokens.rs", &edited);
+    let (app, state) = open(repo, 120, 40);
+    let state = cursor_to(&app, state, "Add OAuth callback", &mut Vec::new());
+    let state = planned(&app, &state, KeyCode::Char('a'), "a", &mut Vec::new());
+    assert!(state.preview.is_some(), "the preview: {:?}", state.status);
+    let state = y(&app, &state, &mut Vec::new());
+    let on_disk = std::fs::read_to_string(repo.join("src/tokens.rs"))
+        .unwrap_or_else(|why| panic!("read: {why}"));
+    assert_eq!(on_disk, edited, "the unstaged edit is back, byte for byte");
+    assert_eq!(staged(repo), "", "nothing stays staged");
+    let unstaged = git(repo, &["diff", "--no-ext-diff", "--name-only"], 0);
+    assert_eq!(unstaged.trim(), "src/tokens.rs");
+    let shown = git(repo, &["show", "feature-a~1", "--", "src/auth.rs"], 0);
+    assert!(shown.contains("+auth 5 fixed"), "{shown}");
+    drop(state);
+    app.close();
+}
+
+/// 09b A2(a)'s candidate, refuted and pinned: with nothing built on his
+/// branch, `a` on `HEAD` answers from the dependents check alone
+/// (`jobs/rewrite.rs::plan` returns before `rewrite::plan`), so no
+/// `write-tree`/`commit-tree` object is made on the way to the editor.
+#[test]
+fn a_on_head_with_nothing_built_on_it_writes_no_object() {
+    let dir = perf_repo(Fixture::Spike);
+    let objects = || {
+        let counts = git(dir.path(), &["count-objects", "-v"], 0);
+        counts
+            .lines()
+            .filter(|line| line.starts_with("count:") || line.starts_with("in-pack:"))
+            .map(|line| line.split(':').nth(1).unwrap_or("").trim().to_owned())
+            .collect::<Vec<_>>()
+    };
+    let before = objects();
+    let (app, state) = open_on_head(dir.path());
+    let asked = app.key(&state, KeyCode::Char('a'));
+    let opened = app.pump(asked, "the amend editor", |state| {
+        state.commit_editor.is_some() || matches!(state.status, Status::Sticky { .. })
+    });
+    assert!(opened.commit_editor.is_some(), "{:?}", opened.status);
+    assert_eq!(objects(), before, "loose and packed object counts");
+    drop(opened);
+    app.close();
+}
+
+/// The dependents check `a` on `HEAD` waits on when another local branch
+/// exists (ticket 09 "Decided", 09b A1: under one frame on the fixture).
+/// Run by `scripts/m7-09-perf.sh` in release; lines start `m7-09b`.
+/// Ignored: a measurement, not a test.
+///
+/// Phase 1: `a` to the amend editor open, as graft runs it, 3 rounds × 7,
+/// with the check (HEAD on `feature-a`, `main`, and `spike` — a branch that
+/// is not the default and not built on his) and without it (`feature-a`
+/// alone: today's amend at once). Phase 2: each call the plan job makes on
+/// the `HEAD` path, timed alone in the order it makes them (the job's own
+/// `repos.shared()` and `repos.branches()` are cached reads of the store;
+/// `Branches::resolve` is timed cold, the upper bound). Phase 3 is
+/// [`perf_dependents_spawns`]. The 300-branch line is not gated.
+#[test]
+#[ignore = "a measurement: scripts/m7-09-perf.sh"]
+fn perf_dependents_check() {
+    const ROUNDS: usize = 3;
+    let mut with_check = Vec::new();
+    let mut without = Vec::new();
+    for round in 1..=ROUNDS {
+        let with = a_to_editor(Fixture::Spike);
+        let base = a_to_editor(Fixture::OnlyBranch);
+        report("phase 1: a to the editor, with the check", round, &with);
+        report("phase 1: a to the editor, today's amend", round, &base);
+        with_check.push(median(&with));
+        without.push(median(&base));
+    }
+    for round in 1..=ROUNDS {
+        for (call, took) in calls_alone() {
+            report(&format!("phase 2: {call}"), round, &took);
+        }
+    }
+    let wide = a_to_editor(Fixture::Wide);
+    report("300 unrelated branches, a to the editor", 1, &wide);
+
+    let ms = |took: std::time::Duration| took.as_secs_f64() * 1e3;
+    let rounds: Vec<String> = with_check
+        .iter()
+        .map(|took| format!("{:.1}", ms(*took)))
+        .collect();
+    let (with, base) = (median(&with_check), median(&without));
+    println!(
+        "m7-09b summary: a to the amend editor, median of 3\u{d7}7: {:.1} ms through the dependents check (rounds {}), {:.1} ms today's amend; the check adds {:.1} ms (budget 16.7 ms)",
+        ms(with),
+        rounds.join("/"),
+        ms(base),
+        ms(with.saturating_sub(base))
+    );
+}
+
+#[derive(Clone, Copy)]
+enum Fixture {
+    /// `main`, `feature-a` (HEAD) and `spike`, off `main` with its own
+    /// commit: the check runs and finds nothing built on `feature-a`.
+    Spike,
+    /// `feature-a` alone: no check.
+    OnlyBranch,
+    /// `Spike` plus 300 branches at `spike`.
+    Wide,
+}
+
+/// The oauth repo, shaped as `fixture` says, one file staged.
+fn perf_repo(fixture: Fixture) -> tempfile::TempDir {
+    let dir = oauth_repo(false);
+    let repo = dir.path();
+    match fixture {
+        Fixture::OnlyBranch => {
+            git(repo, &["branch", "-q", "-D", "main"], 4);
+        }
+        Fixture::Spike | Fixture::Wide => {
+            git(repo, &["switch", "-q", "-c", "spike", "main"], 4);
+            commit(repo, "SPIKE", "spike\n", "Try a spike", 4);
+            git(repo, &["switch", "-q", "feature-a"], 4);
+        }
+    }
+    if let Fixture::Wide = fixture {
+        // Loose ref files: one write each, no git process per branch.
+        let spike = read(repo, "spike");
+        for n in 0..300 {
+            let path = repo.join(format!(".git/refs/heads/unrelated-{n:03}"));
+            std::fs::write(path, format!("{spike}\n")).unwrap_or_else(|why| panic!("write: {why}"));
+        }
     }
     stage_auth_fix(repo);
-    let (app, mut state) = open(repo, 120, 40);
+    dir
+}
+
+/// Seven `a`s on `HEAD`, each to the amend editor open and `Esc`, sorted.
+fn a_to_editor(fixture: Fixture) -> Vec<std::time::Duration> {
+    let dir = perf_repo(fixture);
+    let (app, mut state) = open_on_head(dir.path());
     let mut took = Vec::new();
     for _ in 0..7 {
         let started = std::time::Instant::now();
-        let asked = app.key(&state, KeyCode::Char('a'));
-        let opened = app.pump(asked, "the amend editor", |state| {
-            state.commit_editor.is_some()
-        });
+        state = a_once(&app, &state);
         took.push(started.elapsed());
-        state = app.key(&opened, KeyCode::Escape);
-        assert!(state.commit_editor.is_none(), "Esc closes the editor");
     }
     took.sort();
     drop(state);
     app.close();
     took
+}
+
+/// Opened with the cursor on `HEAD`'s row (`spike`'s newer commit is the
+/// top row when it exists).
+fn open_on_head(repo: &Path) -> (App, AppState) {
+    let (app, state) = open(repo, 120, 40);
+    let state = cursor_to(&app, state, "Handle expired tokens", &mut Vec::new());
+    (app, state)
+}
+
+/// One `a` to the editor, then `Esc`.
+fn a_once(app: &App, state: &AppState) -> AppState {
+    let asked = app.key(state, KeyCode::Char('a'));
+    let opened = app.pump(asked, "the amend editor", |state| {
+        state.commit_editor.is_some()
+    });
+    let closed = app.key(&opened, KeyCode::Escape);
+    assert!(closed.commit_editor.is_none(), "Esc closes the editor");
+    closed
+}
+
+/// Phase 2: the `HEAD` path's calls, seven times each, in the job's order
+/// (`jobs/rewrite.rs::plan`), then `HEAD`'s message (`commit_message.rs`).
+fn calls_alone() -> Vec<(&'static str, Vec<std::time::Duration>)> {
+    use graft_git::branches::Branches;
+    use graft_git::repo::RepoHandle;
+    use graft_git::version::system_git;
+    let dir = perf_repo(Fixture::Spike);
+    let handle = RepoHandle::open(dir.path()).unwrap_or_else(|why| panic!("open: {why}"));
+    let head = graft_ops::operation::Tip {
+        name: "refs/heads/feature-a".to_owned(),
+        oid: graft_core::oid::Oid::from_hex(&read(dir.path(), "feature-a"))
+            .unwrap_or_else(|why| panic!("oid: {why}")),
+    };
+    let time = |run: &dyn Fn()| {
+        let mut took: Vec<std::time::Duration> = (0..7)
+            .map(|_| {
+                let started = std::time::Instant::now();
+                run();
+                started.elapsed()
+            })
+            .collect();
+        took.sort();
+        took
+    };
+    let git = system_git()
+        .unwrap_or_else(|why| panic!("git: {why}"))
+        .version();
+    let default = Branches::resolve(&handle, None)
+        .unwrap_or_else(|why| panic!("branches: {why}"))
+        .default_branch()
+        .cloned();
+    vec![
+        (
+            "system_git (git --version)",
+            time(&|| {
+                system_git().unwrap_or_else(|why| panic!("git: {why}"));
+            }),
+        ),
+        (
+            "Branches::resolve, cold",
+            time(&|| {
+                Branches::resolve(&handle, None).unwrap_or_else(|why| panic!("branches: {why}"));
+            }),
+        ),
+        (
+            "rewrite::dependents",
+            time(&|| {
+                graft_ops::rewrite::dependents(&handle, &git, &head, default.as_ref(), &())
+                    .unwrap_or_else(|why| panic!("dependents: {why:?}"));
+            }),
+        ),
+        (
+            "HEAD's message (in process)",
+            time(&|| {
+                graft_git::history::read_commit(&handle, head.oid)
+                    .unwrap_or_else(|why| panic!("read: {why}"));
+            }),
+        ),
+    ]
+}
+
+/// Phase 3, its own run so the trace's cost stays out of phases 1 and 2:
+/// seven `a`s with git tracing into the directory `GIT_TRACE2_PERF` names
+/// (the script sets it; Graft's spawns keep the environment); every trace
+/// file that appeared during them is one git process: argv and time.
+#[test]
+#[ignore = "a measurement: scripts/m7-09-perf.sh"]
+fn perf_dependents_spawns() {
+    let dir = std::env::var_os("GIT_TRACE2_PERF")
+        .map(std::path::PathBuf::from)
+        .filter(|dir| dir.is_dir())
+        .unwrap_or_else(|| panic!("GIT_TRACE2_PERF names no directory"));
+    spawns(&dir);
+}
+
+fn spawns(dir: &Path) {
+    let dir_files = || -> std::collections::BTreeSet<std::path::PathBuf> {
+        std::fs::read_dir(dir)
+            .unwrap_or_else(|why| panic!("read {}: {why}", dir.display()))
+            .map(|entry| entry.unwrap_or_else(|why| panic!("entry: {why}")).path())
+            .collect()
+    };
+    let repo = perf_repo(Fixture::Spike);
+    let (app, mut state) = open_on_head(repo.path());
+    // Let the opening reads finish tracing before the window starts.
+    state = a_once(&app, &state);
+    let before = dir_files();
+    for _ in 0..7 {
+        state = a_once(&app, &state);
+    }
+    let after = dir_files();
+    drop(state);
+    app.close();
+    let mut by_argv: BTreeMap<String, Vec<f64>> = BTreeMap::new();
+    for file in after.difference(&before) {
+        let text = std::fs::read_to_string(file)
+            .unwrap_or_else(|why| panic!("read {}: {why}", file.display()));
+        let mut argv = None;
+        let mut took = None;
+        for line in text.lines() {
+            let fields: Vec<&str> = line.split('|').map(str::trim).collect();
+            match fields.get(3).copied() {
+                Some("start") => argv = fields.get(8).map(|argv| (*argv).to_owned()),
+                Some("atexit") => took = fields.get(5).and_then(|at| at.parse::<f64>().ok()),
+                _ => {}
+            }
+        }
+        let (Some(argv), Some(took)) = (argv, took) else {
+            println!("m7-09b phase 3: unreadable trace {}", file.display());
+            continue;
+        };
+        // The fixture's scratch path names this machine and changes every
+        // run: said as `<repo>` (the repo may be published).
+        let argv = [repo.path().to_path_buf(), canonical(repo.path())]
+            .iter()
+            .fold(argv, |argv, path| {
+                argv.replace(&path.display().to_string(), "<repo>")
+            });
+        by_argv.entry(argv).or_default().push(took * 1e3);
+    }
+    println!(
+        "m7-09b phase 3: {} git processes over 7 a's",
+        after.difference(&before).count()
+    );
+    for (argv, mut took) in by_argv {
+        took.sort_by(f64::total_cmp);
+        println!(
+            "m7-09b phase 3: {}× {:.1} ms median (git's own clock)  {argv}",
+            took.len(),
+            took[took.len() / 2]
+        );
+    }
+}
+
+use std::collections::BTreeMap;
+
+/// `path` with symlinks resolved (`/var` is `/private/var` on macOS).
+fn canonical(path: &Path) -> std::path::PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|why| panic!("{}: {why}", path.display()))
+}
+
+fn median(took: &[std::time::Duration]) -> std::time::Duration {
+    let mut sorted = took.to_vec();
+    sorted.sort();
+    sorted[sorted.len() / 2]
+}
+
+/// `m7-09b <what>, round <n>: median <x> ms, spread <min>–<max> ms`.
+fn report(what: &str, round: usize, took: &[std::time::Duration]) {
+    let ms = |took: std::time::Duration| took.as_secs_f64() * 1e3;
+    let (low, high) = (
+        took.iter().min().copied().unwrap_or_default(),
+        took.iter().max().copied().unwrap_or_default(),
+    );
+    println!(
+        "m7-09b {what}, round {round}: median {:.1} ms, spread {:.1}\u{2013}{:.1} ms",
+        ms(median(took)),
+        ms(low),
+        ms(high)
+    );
 }

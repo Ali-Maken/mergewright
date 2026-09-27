@@ -251,3 +251,15 @@ fn stays_already_pushed() {
             .ends_with("stays staged \u{b7} the commit that changed these lines is already pushed")
     );
 }
+
+/// 09b A2: `git --version` cost `a` on `HEAD` one spawn (14.5 ms of the
+/// 30.2 ms, `docs/perf/09b.txt` phase 2) before the dependents check, on
+/// every press. Read once per process, as blame's is.
+#[test]
+fn the_git_version_is_read_at_most_once_per_process() {
+    let first = git_version().expect("git answers --version");
+    let second = git_version().expect("git answers --version");
+    assert_eq!(first, second);
+    // Another test on this thread may have read it first: at most one read.
+    assert!(VERSION_READS.with(std::cell::Cell::get) <= 1);
+}

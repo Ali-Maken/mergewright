@@ -74,7 +74,7 @@ Start: the graph, cursor on HEAD unless stated. "motion" = 1 key, whatever the d
 |---|---|---|---|---|
 | 1 | Squash the last 3 into one | `R s s y` | 4+2 | Tower ~3, JetBrains ~4, lazygit ~5 |
 | 2 | Fix into the commit 4 back (fix staged) | motion `a y` | 3+2 | JetBrains ~2, git-absorb 2 |
-| 2b | …the same, but let the app pick the commit | `.` motion `⏎ y` (absorb) | 4+1 | jj 1, git-absorb 2 |
+| 2b | …the same, but let the app pick the commit | motion `. ⏎ y` (absorb; motion = to the uncommitted row) | 4+1 | jj 1, git-absorb 2 |
 | 3 | Swap two adjacent commits (cursor on one) | `R Alt+↑ y` | 3+1 | lazygit 1–2, Tower 1 drag |
 | 4 | Rewrite stops on a conflict | lands on the resolver, first file; `c` continues | 0 to land | lazygit +1 |
 | 5 | `edit` stop: change a commit's content | lands on the graph at the stopped commit; edit, `space`, `a`, `c` | 3 after the edit | Magit (?) |
@@ -539,8 +539,8 @@ Ask at the end, one line: in which of the three did two different things still l
 - **User:** him, weekly, while reviewing his own branch before a push.
 - **Solution:**
   - Journey 2: motion to the commit, `a`, `y` = 3.
-  - Journey 2b: the app picks the commit. `.` on the uncommitted row, motion to `Put staged changes into their commits
-    (absorb)`, `⏎`, `y` = 4.
+  - Journey 2b: the app picks the commit. motion to the uncommitted row, `.` (the first item is `Put staged changes into
+    their commits (absorb)`), `⏎`, `y` = 4.
   - Journey 7: `a` on HEAD with a branch built on it: `a y` = 2. With nothing built on it, `a` is today's amend,
     unchanged.
 
@@ -822,7 +822,7 @@ Ask at the end, one line: in which of the three did two different things still l
 squash-last-three             4     # +2 · Tower ~3, JetBrains ~4, lazygit ~5 · R s s y
 swap-adjacent                 3     # +1 · lazygit 1–2 · R Alt+↑ y
 fix-into-older                3     # +2 · JetBrains ~2, git-absorb 2 · motion a y
-absorb-staged                 4     # +1 · jj 1, git-absorb 2 · . motion ⏎ y
+absorb-staged                 4     # +1 · jj 1, git-absorb 2 · motion . ⏎ y
 amend-with-dependents         2     # +1 · jj 0, Graphite 1 · a y
 rebase-line-onto-main         3     # +2 · Graphite/Git Town 1 · motion r y
 squash-merged-bottom          3     # +2 · Graphite 1 (forge) · motion r y
