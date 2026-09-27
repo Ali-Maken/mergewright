@@ -151,14 +151,8 @@ pub(super) fn read_blame(
         .shared()
         .map_err(|error| BlameFailure::Failed(error.to_string()))?;
     let handle = repo.handle();
-    let blame =
-        blame(&handle, &request.rev, &request.path, &request.options, stop).map_err(|error| {
-            match error {
-                BlameError::Binary => BlameFailure::Binary,
-                BlameError::Untracked => BlameFailure::Untracked,
-                other => BlameFailure::Failed(other.to_string()),
-            }
-        })?;
+    let blame = blame(&handle, &request.rev, &request.path, &request.options, stop)
+        .map_err(|error| blame_failure(&error))?;
     let line = match &request.came_from {
         None => None,
         Some(asked) => {
@@ -184,6 +178,29 @@ pub(super) fn read_blame(
     };
     Ok(Arc::new(BlameAnswer { blame, line }))
 }
+
+/// What the place makes of git's refusal: the two it words itself (B1's
+/// `… isn't committed yet · no blame`, `… is binary · no blame`), and git's
+/// or the system's own words for the rest. A shallow file that could not be
+/// read says so on one line: the place draws its body on one row.
+fn blame_failure(error: &BlameError) -> BlameFailure {
+    match error {
+        BlameError::Binary => BlameFailure::Binary,
+        BlameError::Untracked => BlameFailure::Untracked,
+        BlameError::Shallow { .. } => {
+            let words = error.to_string();
+            // `split` yields at least one piece, even of an empty string.
+            let first = words.split('\n').next().unwrap_or(&words);
+            BlameFailure::Failed(first.to_owned())
+        }
+        BlameError::Run(_) | BlameError::Parse(_) | BlameError::Stopped => {
+            BlameFailure::Failed(error.to_string())
+        }
+    }
+}
+
+#[cfg(test)]
+mod blame_tests;
 
 /// `path` as git spells it.
 #[cfg(unix)]
