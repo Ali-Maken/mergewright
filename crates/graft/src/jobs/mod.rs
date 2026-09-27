@@ -83,6 +83,7 @@ pub(crate) mod radar;
 pub(crate) mod remote;
 mod runner;
 mod stash;
+mod stash_only;
 mod types;
 pub(crate) mod undo;
 

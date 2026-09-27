@@ -2260,3 +2260,15 @@ fn the_base_row_carries_x_base() {
     assert_eq!(badge.text(Icons::Plain), "[x base]");
     assert_eq!(badge.text(Icons::Nerd), "\u{f47f} x base");
 }
+
+/// m7-power-tools/16: a commit only a stash reaches is badged with the
+/// entry that reaches it, in both icon sets.
+#[test]
+fn only_in_stash_badge_reads_its_entry() {
+    let badge = Badge {
+        name: sanitize_line(""),
+        kind: BadgeKind::OnlyInStash(2),
+    };
+    assert_eq!(badge.text(Icons::Plain), "[only in stash@{2}]");
+    assert_eq!(badge.text(Icons::Nerd), "\u{f01c} only in stash@{2}");
+}

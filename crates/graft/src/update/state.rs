@@ -162,6 +162,9 @@ pub struct AppState {
     /// and read by `super::selection::follow_selection` to keep the compare
     /// live as the cursor moves.
     pub compare_base: Option<super::detail::CompareBase>,
+    /// The commits only a stash reaches, which the graph marks
+    /// (m7-power-tools/16): read after every refs read that lists a stash.
+    pub stash_only: StashOnlyMarks,
     /// The `.`/right-click popup (`context-actions-menu`,
     /// m2-details-and-diffs/12): the row it opened on (`update::context_menu::WORKING_TREE_ROW`
     /// for the uncommitted-changes row), the menu itself, and what each of
@@ -922,6 +925,31 @@ pub struct HeadLanding {
     /// The refresh's history walk, until it — or a walk a later refresh put
     /// in its place — starts (`banner::walk_started`).
     pub walk: Option<JobId>,
+}
+
+/// Which commits only a stash reaches (`graft_git::history_reads::only_in_stash`,
+/// m7-power-tools/16): the graph draws those rows `□`, dimmed, badged
+/// `only in stash@{n}` (`view::rows`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct StashOnlyMarks {
+    /// The read in flight, set when a refs read with a stash answers. An
+    /// answer under any other id is stale (the refs moved again) and dropped.
+    pub job: Option<JobId>,
+    /// The newest answer: each commit and the newest entry `n` (`stash@{n}`)
+    /// reaching it. Kept while the next read runs — the refs a read follows
+    /// rarely change what only a stash holds, and dropping the marks for a
+    /// moment on every refresh would flicker them. Emptied when a refs read
+    /// lists no stash, and when a read fails. Shared: the state is cloned
+    /// per event.
+    pub commits: Arc<std::collections::HashMap<graft_core::oid::Oid, usize>>,
+}
+
+impl StashOnlyMarks {
+    /// `stash@{n}` for `id`, when only a stash reaches it.
+    #[must_use]
+    pub fn entry(&self, id: graft_core::oid::Oid) -> Option<usize> {
+        self.commits.get(&id).copied()
+    }
 }
 
 /// What the status line has to say.

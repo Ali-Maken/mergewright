@@ -44,6 +44,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::EvilProbe(..)
         | Command::ForcePushProbe(..)
         | Command::DuplicatesProbe(..)
+        | Command::ReadStashOnly(..)
         | Command::BuildMap(..)
         | Command::PlanPreview(..)
         | Command::ReadJournal(..)

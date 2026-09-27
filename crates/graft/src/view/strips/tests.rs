@@ -255,3 +255,31 @@ fn strips_draw_when_the_wheel_has_left_the_cursor_row_behind() {
     );
     rasterise_all(&rows);
 }
+
+/// m7-power-tools/16: a commit only a stash reaches is dimmed in its strip,
+/// as its text row is; its neighbours are not. Under a selection the
+/// rasteriser draws the thread's alpha instead of the row's
+/// (`graft_graph::raster::RasterRow::alpha_at`), so the dimming shows only
+/// with no thread in play — pre-existing, the same as Focus mode's.
+#[test]
+fn a_stash_only_commit_is_dimmed_in_its_strip() {
+    let mut state = state(scrolled(history_of(40, 0), 0), 20);
+    let marked = state
+        .history
+        .as_ref()
+        .and_then(|history| history.window.as_ref())
+        .expect("history_of sends a window")
+        .rows[5]
+        .commit
+        .id;
+    state.stash_only.commits = std::sync::Arc::new([(marked, 0)].into());
+
+    let rows = pixel_rows(&state, MAX_LANES, STRIP_ROWS);
+
+    let strip = &rows.strips[0];
+    assert_eq!(strip.first_row, 0);
+    assert_eq!(strip.rows[5].emphasis, Emphasis::Dimmed);
+    assert_eq!(strip.rows[4].emphasis, Emphasis::Normal);
+    assert_eq!(strip.rows[6].emphasis, Emphasis::Normal);
+    rasterise_all(&rows);
+}

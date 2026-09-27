@@ -326,6 +326,15 @@ impl<S: JobEvents> JobRunner<S> {
         }
     }
 
+    /// Which commits only a stash reaches (m7-power-tools/16), under the
+    /// id `update` chose, so an answer to a superseded read is dropped there.
+    fn read_stash_only(&self, id: JobId, stashes: Vec<Oid>) {
+        let repos = Arc::clone(&self.repos);
+        self.detail_job(id, Task::StashOnly, move |cancel| {
+            Product::StashOnly(super::stash_only::read_stash_only(&repos, &stashes, cancel))
+        });
+    }
+
     /// A blame place's read (m7-power-tools/20), cancellable like the
     /// pane's.
     fn blame_job(&self, id: JobId, request: crate::update::place::BlameRequest) {
@@ -1033,6 +1042,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             | Command::DuplicatesProbe(..)) => {
                 self.dispatch_detail(command);
             }
+            Command::ReadStashOnly(id, stashes) => self.read_stash_only(id, stashes),
             Command::BuildMap(id, req) => self.build_map(id, req),
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
             Command::ReadHeadMessage(id) => self.read_head_message(id),

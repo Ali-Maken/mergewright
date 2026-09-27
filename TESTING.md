@@ -2728,3 +2728,11 @@ and `hint_bar::every_tab_context_draws_a_bar`.
 | Journey | Start | Keys | Right looks like |
 |---|---|---|---|
 | `pr-contents` | cursor on `main`, pane closed, `feature-a`'s tip one row below | `x j` = 2 (note: 2) | pane opens on `x`; after `j` the header reads `changes on feature-a since it left main · 3 commits · 2 files +2 −0`; the file list holds only feature-a's files (`src/login.rs`, `src/token.rs`), never main's later `README.md`/`CHANGELOG.md`. Under 100 columns the pane is a tab: `Tab` shows it (not counted). Walk: `crates/graft/tests/it/m7_walk/pr_contents.rs::pr_contents`; captures `docs/shots/m7/compare-since-split-{187x50,80x24}.txt`. `[x base]` first on main's row (187x50). Colour unverified. |
+
+## M7: stashes in history (m7-power-tools/16)
+
+| Scenario | Right looks like |
+|---|---|
+| A stash in the graph | One row per drawn stash (`On <branch>: <message>`, `■`, `[stash@{0}]`); **no** `index on …` and **no** `untracked files on …` row. Only `stash@{0}` is ever a row — older entries live in the reflog, not the walk. Test: `crates/graft/tests/it/stash_in_history.rs::stash_index_and_untracked_commits_are_not_drawn`. |
+| A commit only a stash reaches (its branch deleted or rebased away) | That row draws `□`, dimmed, with `[only in stash@{0}]` last among its badges; a branch put back on it and `Ctrl+R` unmarks it; `H` hides it with the stash. ASCII tier: `*` like every node, the badge carries it. Pixel tier: the row is dimmed (`view/strips/tests.rs::a_stash_only_commit_is_dimmed_in_its_strip`); with a selection only an off-thread row reads dim (pre-existing, ticket 16 NOTES). Tests: `stash_in_history.rs::{a_commit_only_a_stash_reaches_is_drawn_as_only_in_stash, a_rebased_base_on_a_branch_again_loses_the_mark, h_hides_the_only_in_stash_rows_too}`. Captures `docs/shots/m7/stash-in-history-{120x40,80x24}.txt`. Colour (dimming, badge colour) unverified. |
+| A stash's detail header | No `evil merge` line of any kind on a stash entry's commit. Test: `crates/graft/src/view/radar.rs::a_stash_commit_has_no_evil_merge_line`. |

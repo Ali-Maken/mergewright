@@ -55,6 +55,10 @@ pub enum BadgeKind {
     /// The pinned compare base (`x`, m7-14): not a ref, but read like one,
     /// first on its row. Reads `x base` whatever its `name`.
     CompareBase,
+    /// A commit only stash entry `n` reaches (m7-power-tools/16): not a
+    /// ref, and last on its row. Reads `only in stash@{n}` whatever its
+    /// `name`.
+    OnlyInStash(usize),
 }
 
 /// Where a local branch stands against its upstream.
@@ -112,6 +116,7 @@ impl Badge {
             },
             BadgeKind::Remote { .. } | BadgeKind::Head | BadgeKind::Stash => name.to_owned(),
             BadgeKind::CompareBase => "x base".to_owned(),
+            BadgeKind::OnlyInStash(n) => format!("only in stash@{{{n}}}"),
         };
         match icons {
             Icons::Plain => format!("[{body}]"),
@@ -131,8 +136,8 @@ impl Badge {
             BadgeKind::Tag => '\u{f02b}',
             // nf-oct-git_commit
             BadgeKind::Head => '\u{f417}',
-            // nf-fa-inbox
-            BadgeKind::Stash => '\u{f01c}',
+            // nf-fa-inbox: the stash's own icon, for what only it holds
+            BadgeKind::Stash | BadgeKind::OnlyInStash(_) => '\u{f01c}',
             // nf-oct-git_compare
             BadgeKind::CompareBase => '\u{f47f}',
         }

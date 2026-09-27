@@ -111,6 +111,9 @@ pub enum Command {
     /// Probe the newest `window` commits for shared patch-ids, under an id
     /// `update` chose.
     DuplicatesProbe(JobId, u32),
+    /// Read which commits only a stash reaches, under an id `update` chose:
+    /// every entry's own commit, `stash@{0}` first (m7-power-tools/16).
+    ReadStashOnly(JobId, Vec<graft_core::oid::Oid>),
     /// Build the Map view's per-branch bucket counts, under an id `update`
     /// chose (`M`, `update::map`).
     BuildMap(JobId, crate::map::MapRequest),

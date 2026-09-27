@@ -106,7 +106,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 
 ## graph_column
 - `CELLS_PER_LANE` (const) — cells per lane: its own, then a gap.
-- `NodeKind` (enum) — node shape: commit, merge, root, HEAD, stash, uncommitted, `Absent`.
+- `NodeKind` (enum) — node shape: commit, merge, root, HEAD, stash, uncommitted, `StashOnly` (`□`, a commit only a stash reaches — the hollow form of the stash's `■`; not `◇`, which is the root's; accepted by the conductor 2026-09-27, m7-power-tools/16), `Absent`.
 - `NodeKind::Absent` (variant) — a blank where the node goes, for a drawn row that is not a commit (the Ghost Preview's `after rebase` label). Real lanes passing through it keep their glyph; nothing on the row claims to be a commit.
 - `NodeKind::of` (fn) — commit/merge/root from a row's parents.
 - `NodeKind::glyph` (fn) — the node's character.
@@ -195,7 +195,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `Icons` (enum) — `Plain` (default, bracketed) or `Nerd` (icon-prefixed).
 - `Badge` (struct) — one ref on a commit: sanitised `name` and `kind`.
 - `Badge::text` (fn) — the badge as it reads on screen in an icon set.
-- `BadgeKind` (enum) — branch (identity, current, tracking), remote, tag, detached HEAD, stash, `CompareBase` (reads `x base`, m7-14).
+- `BadgeKind` (enum) — branch (identity, current, tracking), remote, tag, detached HEAD, stash, `CompareBase` (reads `x base`, m7-14), `OnlyInStash(n)` (reads `only in stash@{n}`, the stash's colour and Nerd icon; last on its row; m7-power-tools/16).
 - `Tracking` (enum) — untracked, in sync with a remote, or apart by ahead/behind counts.
 - `separator` (fn) — what goes between two badges in an icon set.
 

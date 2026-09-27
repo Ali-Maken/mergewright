@@ -93,6 +93,10 @@ pub enum NodeKind {
     Stash,
     /// The working tree's uncommitted changes, drawn above `HEAD`.
     Uncommitted,
+    /// A commit only a stash reaches — the base a stash was made on, after
+    /// that base was rebased away (m7-power-tools/16). The caller says so
+    /// (`graft::view::rows`); its row is dimmed and badged too.
+    StashOnly,
     /// No node at all: a row that is not a commit, drawn only so a real
     /// lane passing it keeps an unbroken line. The Ghost Preview's
     /// `after rebase` label row is the one that uses it
@@ -124,6 +128,8 @@ impl NodeKind {
             NodeKind::Head => '◆',
             NodeKind::Stash => '■',
             NodeKind::Uncommitted => '◌',
+            // The stash's `■`, emptied. Not `◇`: that is the root's.
+            NodeKind::StashOnly => '□',
             NodeKind::Absent => ' ',
         }
     }
