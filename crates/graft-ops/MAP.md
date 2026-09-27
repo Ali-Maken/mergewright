@@ -332,5 +332,9 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `lost_edits(repo, entries, stop) -> Result<Vec<LostEdit>, FactsError>` (fn, m7/23) and `LOST_EDITS_CAP` (50) — the newest 50 in-force undo/redo entries with a backup: a path is lost when the backup differs there from the reversed entry's after-state (his drift) **and** from the entry's own after-state (it wrote there) **and** the file on disk differs from the backup (one `worktree_tree` read, then `diff-tree`s). Newest first.
 - `Recover` (enum) — `Run(RecoverParams)`, `OfferBranch { at, name, why }`. `recover_for(list, row, entries, facts) -> Result<Recover, Refusal>` (fn) — what `⏎` on a row puts back, or why not. `recover_scope(list, row) -> FactsScope` (fn) — the refs `recover_for` reads (the branch, `refs/remotes/<b>` and `refs/tags/<b>`, `<b>-restored`, `-2`…`-9`). A gone branch whose name a remote-tracking branch or tag has is never made again: `OfferBranch` `restored` instead (review m7-22 M1).
 
+## submodule (m7/13a)
+- `SubmoduleLog` (struct) — `pulled_in`, `rewound`: `Vec<(Oid, String)>` (id, subject), newest first, git's order; every commit (the 50 cap is the diff pane's).
+- `submodule_log(repo, path, from, to, stop) -> Result<SubmoduleLog, FactsError>` (fn) — `git diff --submodule=log`'s walk (`from...to`, left-right, first parent), run as `git --git-dir=<path>/.git log`, so the ids are taken directly and a submodule not set up is never read as the superproject. Not set up and a commit not held are both `History(Exited { status: 128, .. })`, measured.
+
 ## bin (test-only)
 - `askpass_test_helper` (bin) — stands in for Graft's askpass mode (M4 05b) in `tests/it/remote_ops.rs`: reads `GRAFT_ASKPASS_SOCKET`, calls `graft_git::run::askpass::respond` with `argv[1]`. Nothing ships it (m4/04).
