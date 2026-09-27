@@ -67,8 +67,8 @@ The conductor decides.
 - [x] :496 `a_restore_that_fails_mid_way_rolls_back` (red first; a fault injected on the second write). Ticked by 01a: `error_rows::a_restore_that_fails_mid_way_rolls_back` + `error_rows::a_failed_roll_back_names_what_is_left`, both red first.
 - [x] :497 `a_bad_ref_name_is_refused_before_any_write` (red first). Ticked by 01a: `error_rows::a_bad_ref_name_is_refused_before_any_write`, red first.
 - [x] :494 `drift_on_redo_says_capital_u` (red first). Ticked by 01b: `undo::tests::drift_on_redo_says_capital_u`, red first.
-- [ ] NOTES: each row → its test. The conductor closes the KNOWN_GAPS rows from them.
-- [ ] MAP.md (graft-ops, graft).
+- [x] NOTES: each row → its test. The conductor closes the KNOWN_GAPS rows from them. Ticked by 01b: rows :494 :495 :572 in 01b NOTES, :496 :497 :601 :613 :640 in 01a NOTES, each naming its test.
+- [x] MAP.md (graft-ops, graft). Ticked by 01b: graft-ops `RestoreError`, `MergeState`, `UndoError` lines; graft `jobs::conflict` (`unreadable`) and `Undone::Cancelled` lines. Docs, no test.
 
 ## Touches (check each, report how)
 - **Every caller of `live_entry`, `restore::execute`, `RestoreError`:** grep; each listed in NOTES. Check: the workspace
