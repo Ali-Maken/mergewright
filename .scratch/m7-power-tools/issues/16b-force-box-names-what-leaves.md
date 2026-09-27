@@ -85,3 +85,21 @@ As rewrite-engine.
 
 ## Size
 Small-medium (~35k).
+
+## NOTES (builder, 2026-09-27) — blocked before code
+- **Blocked: needs `crates/graft-ui/src/confirm.rs`.** `MAX_MESSAGE_LINES = 4` (`confirm.rs:32`); `wrap_message`
+  (`:37-50`) drops every wrapped line past 4 and ends the 4th in `…`. The box is ≤64 cells wide
+  (`confirm_area`, `:156`), content 60. Decided lines = line 1 (~80 chars → 2 rows) + `leaves origin/main:` + ≤3
+  commits + `+N more` + `rewrites history …` (+ re-push line) = up to 9 rows. Everything past row 4 is cut:
+  the commit list is truncated and `rewrites history for everyone who has <sha7>` never draws. The capture's
+  "Right" cannot hold. "No graft-ui change" in the ticket is wrong.
+- Options for the conductor: (a) per-view line cap on `ConfirmView` (e.g. `with_max_lines(n)`) in graft-ui, bounded
+  by the frame height; (b) fold the list into fewer rows (`leaves origin/main: 2 commits — cda3fd7 Fix typo (Sara), …`)
+  within 4 rows total, dropping the per-line columns; (c) raise the global cap (touches every box's captures).
+- Also found: the ticket's "remote facts are not re-read" while the box can open is false — `f` re-reads them
+  (`update/remote.rs` `remotes_arrived`) while `HEAD == sent` holds, so `expected` can change. Plan was to re-key the
+  read in the `settle` tail instead of `debug_assert!` on mismatch.
+- A read job needs new `Command`/`Product` variants: `update/events/command.rs`, `update/events.rs`,
+  `jobs/runner.rs`, `update/mod.rs` (arm + settle-tail call), `update/place/write.rs` (exhaustive match),
+  `event_loop/label.rs`. None in the ticket's crate description by name; grant them too.
+- Also `view/tests.rs:3252` builds a `RejectedPush` literal — changes with the new field.
