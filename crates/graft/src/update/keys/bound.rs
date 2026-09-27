@@ -174,4 +174,14 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("w", "whitespace"),             // `place::keys::rerun`, `-w` toggled
     ("i", "ignore list"),            // `place::keys::rerun`, the ignore file toggled
     ("esc", "back to blame"),        // `detail::keys::place_key` → `place::show_again`
+    // The history place (`place::history_keys::history_key`,
+    // m7-power-tools/21b). `⏎ that commit` and `esc back` above are its too.
+    ("j/k", "older·newer"),     // `history_keys::step`, the list focused
+    ("j/k", "scroll"),          // `history_keys::step`, the file pane focused
+    ("tab", "file"),            // `history_key`: focus to the file pane
+    ("tab", "list"),            // `history_key`: focus back to the list
+    ("n/N", "next change"),     // `history_keys::next`
+    ("B", "blame here"),        // `history_keys::blame_here`
+    ("F", "history"),           // `detail::keys` → `place::f_key`, on a file
+    ("esc", "back to history"), // `place::esc_goes_back` → the hidden history place
 ];

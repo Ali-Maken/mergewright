@@ -4136,6 +4136,9 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         HintContext::BackToBlame(inner) => {
             classified_form(inner).map(|inner| HintContext::BackToBlame(Box::new(inner)))
         }
+        HintContext::BackToHistory(inner) => {
+            classified_form(inner).map(|inner| HintContext::BackToHistory(Box::new(inner)))
+        }
         // The resolver is an overlay now, and `view::rows::overlay_context`
         // answers exactly this form for it. `base`/`restart` are both
         // `true` (m6-conflicts/05): `B`/`d` act the moment they are
@@ -4216,7 +4219,8 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::NamePrompt { .. }
         | HintContext::Credential
         // The place's own bar (`view::rows::place_context`).
-        | HintContext::Blame { .. } => Some(context.clone()),
+        | HintContext::Blame { .. }
+        | HintContext::History { .. } => Some(context.clone()),
     }
 }
 
@@ -4335,7 +4339,9 @@ fn presses_for(name: &str) -> Vec<Press> {
         "⏎" => vec![plain(KeyCode::Enter)],
         "esc" => vec![plain(KeyCode::Escape)],
         "space" => vec![plain(KeyCode::Char(' '))],
-        "⇥" => vec![plain(KeyCode::Tab)],
+        // The history place spells `Tab` out (m7-power-tools/21b, the note's
+        // words); the same key.
+        "⇥" | "tab" => vec![plain(KeyCode::Tab)],
         "⌃A" => vec![Press::Key(KeyPress::control(KeyCode::Char('a')))],
         "⌃R" => vec![Press::Key(KeyPress::control(KeyCode::Char('r')))],
         "⌃E" => vec![Press::Key(KeyPress::control(KeyCode::Char('e')))],
@@ -4353,7 +4359,7 @@ fn presses_for(name: &str) -> Vec<Press> {
         "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],
         "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
         "←/→" => vec![plain(KeyCode::Left), plain(KeyCode::Right)],
-        "n N" => vec![plain(KeyCode::Char('n')), plain(KeyCode::Char('N'))],
+        "n N" | "n/N" => vec![plain(KeyCode::Char('n')), plain(KeyCode::Char('N'))],
         one => {
             let mut letters = one.chars();
             match (letters.next(), letters.next()) {
@@ -4531,6 +4537,9 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_) => blame_screens(walk, context),
+        HintContext::History { .. } | HintContext::BackToHistory(_) => {
+            history_screens(walk, context)
+        }
         // `merge` is `!skippable` in every form `every_context` makes, the
         // kind `stopped_operation` already picks from `skippable`.
         HintContext::Banner {
@@ -4651,6 +4660,96 @@ fn blame_screens(walk: JobId, context: &HintContext) -> Vec<AppState> {
             })
             .collect(),
         other => screen_for(other),
+    }
+}
+
+/// [`screen_for`]'s history place (m7-power-tools/21b): `L` pressed on a
+/// blame place over the pane, and the trace answered through `update` as
+/// the event loop delivers it. With rows: the list focused, or `Tab` to the
+/// file pane. Without: still tracing, failed, and zero rows (a depth-1
+/// clone). The way back: the inner screen with that place hidden under it.
+fn history_screens(walk: JobId, context: &HintContext) -> Vec<AppState> {
+    use super::place::{TraceAnswer, TraceFailure};
+    use graft_git::trace::{SHALLOW_END, TraceEnd};
+
+    let blame = super::place::tests::place_on_screen(commit_pane(walk, false), false, false);
+    let (tracing, commands) = update(&blame, key(KeyCode::Char('L')));
+    let job = trace_job_of(&commands);
+    let answered = |answer: Result<TraceAnswer, TraceFailure>| {
+        update(
+            &tracing,
+            AppEvent::Produced(job, Product::Trace(answer.map(Arc::new))),
+        )
+        .0
+    };
+    let listed = || {
+        answered(Ok(TraceAnswer {
+            range: None,
+            rows: vec![trace_commit(0xa1), trace_commit(0xa2)],
+            end: TraceEnd::Start {
+                added_by: trace_commit(0xa2).id,
+            },
+        }))
+    };
+    match context {
+        HintContext::History {
+            rows: true,
+            on_file,
+        } => {
+            let state = listed();
+            vec![if *on_file {
+                update(&state, key(KeyCode::Tab)).0
+            } else {
+                state
+            }]
+        }
+        HintContext::History { rows: false, .. } => vec![
+            tracing.clone(),
+            answered(Err(TraceFailure::Failed("fatal: bad revision".to_owned()))),
+            answered(Ok(TraceAnswer {
+                range: None,
+                rows: Vec::new(),
+                end: TraceEnd::GitStops(SHALLOW_END.to_owned()),
+            })),
+        ],
+        HintContext::BackToHistory(inner) => {
+            let mut trail = listed().trail;
+            trail.shown = false;
+            screen_for(inner)
+                .into_iter()
+                .map(|mut state| {
+                    state.trail = trail.clone();
+                    state
+                })
+                .collect()
+        }
+        other => screen_for(other),
+    }
+}
+
+/// The trace job `L` asked for.
+fn trace_job_of(commands: &[Command]) -> JobId {
+    commands
+        .iter()
+        .find_map(|command| match command {
+            Command::TraceHistory { id, .. } => Some(*id),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("`L` asks for a trace: {commands:?}"))
+}
+
+/// One traced version for [`history_screens`], `byte` its whole id.
+fn trace_commit(byte: u8) -> graft_git::trace::TraceCommit {
+    graft_git::trace::TraceCommit {
+        id: Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("an oid"),
+        author: "Lina".to_owned(),
+        when: 0,
+        subject: "a change".to_owned(),
+        path: "a.rs".into(),
+        renamed_from: None,
+        added: 1,
+        removed: 1,
+        range_at: Some((1, 3)),
     }
 }
 

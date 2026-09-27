@@ -158,6 +158,42 @@ fn the_bar_leads_esc_back_to_blame_exactly_where_esc_goes_back() {
     }
 }
 
+/// m7-power-tools/21b: the same table over a history place `⏎` left —
+/// the bar leads `esc back to history` exactly where one `Esc` shows it
+/// again.
+#[test]
+fn the_bar_leads_esc_back_to_history_exactly_where_esc_goes_back() {
+    use super::history::{lines_history, refresh_token, three_rows};
+    let listed = lines_history(three_rows(), refresh_token());
+    for (name, change, back) in TABLE {
+        let (mut state, _) = press(&listed, KeyCode::Enter);
+        state.detail.focus = DetailFocus::Graph;
+        assert!(
+            state.trail.hidden(),
+            "{name}: history waits under the graph"
+        );
+        change(&mut state);
+        let leads = bar(&state).first() == Some(&("esc", "back to history"));
+        let goes = press(&state, KeyCode::Escape)
+            .0
+            .trail
+            .history_on_screen()
+            .is_some();
+        assert_eq!(
+            leads,
+            goes,
+            "{name}: the bar {:?} and the key disagree",
+            bar(&state)
+        );
+        assert_eq!(goes, back, "{name}");
+        assert!(
+            !bar(&state).contains(&("esc", "back to blame")),
+            "{name}: {:?}",
+            bar(&state)
+        );
+    }
+}
+
 #[test]
 fn the_menu_over_a_hidden_trail_closes_first_and_the_bar_does_not_lead_back() {
     let landed = hidden_with_the_pane_open();

@@ -61,3 +61,90 @@ fn a_live_global_passes_through_the_place() {
     assert!(live_global(KeyPress::plain(KeyCode::Char('q'))));
     assert!(!live_global(KeyPress::plain(KeyCode::Char('m'))));
 }
+
+/// m7-power-tools/21b: the history place's bar, one row per state it can
+/// be in — rows with each focus, then tracing, failed and zero rows, which
+/// offer only the way back.
+#[test]
+fn history_rows_in_the_place_bar_table() {
+    use super::history::{
+        blame_on_22, history, lines_history, refresh_token, three_rows, trace_job, traced,
+    };
+    use graft_git::trace::{SHALLOW_END, TraceEnd};
+
+    let list = lines_history(three_rows(), refresh_token());
+    let (file, _) = press(&list, KeyCode::Tab);
+    assert_eq!(history(&file).focus, graft_ui::history::HistoryFocus::File);
+    let (tracing, commands) = press(&blame_on_22(), KeyCode::Char('L'));
+    let (job, _) = trace_job(&commands);
+    let (failed, _) = traced(
+        &tracing,
+        job,
+        Err(TraceFailure::Failed("fatal: bad revision".to_owned())),
+    );
+    let (none, _) = traced(
+        &tracing,
+        job,
+        Ok(TraceAnswer {
+            range: Some(refresh_token()),
+            rows: Vec::new(),
+            end: TraceEnd::GitStops(SHALLOW_END.to_owned()),
+        }),
+    );
+    let rows = [
+        ("j/k", "older·newer"),
+        ("tab", "file"),
+        ("n/N", "next change"),
+        ("B", "blame here"),
+        ("⏎", "that commit"),
+        ("esc", "back"),
+    ];
+    let on_file = [
+        ("j/k", "scroll"),
+        ("tab", "list"),
+        ("n/N", "next change"),
+        ("B", "blame here"),
+        ("⏎", "that commit"),
+        ("esc", "back"),
+    ];
+    let back = [("esc", "back")];
+    let table: [BarRow; 5] = [
+        ("rows, list focus", &list, &rows),
+        ("rows, file focus", &file, &on_file),
+        ("tracing", &tracing, &back),
+        ("failed", &failed, &back),
+        ("zero rows", &none, &back),
+    ];
+    for (name, state, want) in table {
+        assert_eq!(bar(state), want, "{name}");
+    }
+}
+
+/// A row of a bar table: its name, the screen, the (key, verb)s it draws.
+type BarRow<'a> = (&'a str, &'a AppState, &'a [(&'a str, &'a str)]);
+
+/// m7-power-tools/21b: on a file the pane's `F` is history, so the bar
+/// says `F history` right after `B blame`, and no `F focus`.
+#[test]
+fn pane_bar_offers_f_history_on_a_file() {
+    let drawn = bar(&pane_at(22));
+    let b = drawn.iter().position(|hint| *hint == ("B", "blame"));
+    let f = drawn.iter().position(|hint| *hint == ("F", "history"));
+    assert!(b.is_some(), "{drawn:?}");
+    assert_eq!(f, b.map(|b| b + 1), "{drawn:?}");
+    assert!(!drawn.contains(&("F", "focus")), "{drawn:?}");
+}
+
+/// Off a file (`commit_pane`'s `src/` row) `F` falls through to Focus
+/// (`place::f_key`'s guard), and the bar says so.
+#[test]
+fn pane_bar_keeps_f_focus_off_a_file() {
+    let mut state = commit_pane(JobId::new(1), true);
+    state.size = crate::update::Size {
+        columns: 120,
+        rows: 40,
+    };
+    let drawn = bar(&state);
+    assert!(!drawn.contains(&("F", "history")), "{drawn:?}");
+    assert!(drawn.contains(&("F", "focus")), "{drawn:?}");
+}

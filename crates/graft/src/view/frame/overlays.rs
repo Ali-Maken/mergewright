@@ -85,9 +85,8 @@ fn draw_history_place(
         return;
     }
     let bar = (area.x, area.bottom() - 1, area.width);
-    // Its keys need `HintContext::History` (graft-ui `hints/context.rs`,
-    // outside 21's files: blocked). Until then the bar carries a problem
-    // or a notice and no keys.
+    // A problem or a notice first, else `HintContext::History`'s keys
+    // (`view::rows::place_context`, 21b).
     let context = crate::view::rows::place_context(state);
     draw_status_or_hints(
         frame,

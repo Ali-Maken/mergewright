@@ -2019,7 +2019,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 85;
+const COVERAGE_SLOTS: usize = 89;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2066,6 +2066,15 @@ fn coverage_slot(context: &HintContext) -> usize {
             if *lines { 74 + pair } else { 81 + pair }
         }
         HintContext::BackToBlame(_) => 78,
+        // m7-power-tools/21b: the history place's three reachable forms
+        // (85–87; `rows: false` draws one bar whatever the focus) and the way
+        // back to it (88).
+        HintContext::History {
+            rows: true,
+            on_file,
+        } => 85 + usize::from(*on_file),
+        HintContext::History { rows: false, .. } => 87,
+        HintContext::BackToHistory(_) => 88,
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,

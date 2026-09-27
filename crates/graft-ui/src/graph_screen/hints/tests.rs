@@ -481,6 +481,12 @@ fn every_short_rung_is_the_users_own_word() {
         ("status", "stat"),
         ("revert", "rev"),
         ("lanes", "lane"),
+        // m7-power-tools/21b: blame's `L`, third in its bar, fits the
+        // 48-cell floor only at this prefix.
+        ("history of these lines", "history"),
+        // Conductor ruling 2026-09-27 (21b): the history bar at 40 columns.
+        ("next change", "next"),
+        ("older·newer", "older"),
     ];
     for (verb, want) in table {
         assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
@@ -889,8 +895,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
-        | HintContext::Blame { .. } => None,
-        HintContext::BackToBlame(inner) => doorway_of(inner),
+        | HintContext::Blame { .. }
+        | HintContext::History { .. } => None,
+        HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => doorway_of(inner),
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
         // still leads to everything, the dropped `⏎` included. So does the
@@ -1852,8 +1859,8 @@ mod blame_place {
             [
                 "⏎ that commit",
                 "^ before it",
-                "/ find",
                 "L history of these lines",
+                "/ find",
                 "n N match",
                 "space ages",
                 "w whitespace",
@@ -1894,6 +1901,99 @@ mod blame_place {
                 "esc back"
             ]
         );
+    }
+}
+
+/// The history place's bar (design note pass 1b "History";
+/// m7-power-tools/21b): modal, no doorway, no `<> resize`.
+mod history_place {
+    use super::*;
+
+    fn words(context: &HintContext) -> Vec<String> {
+        hints_for(context, Divider::Shown, 400)
+            .iter()
+            .map(Hint::text)
+            .collect()
+    }
+
+    #[test]
+    fn history_bar_words_in_order() {
+        assert_eq!(
+            words(&HintContext::History {
+                rows: true,
+                on_file: false
+            }),
+            [
+                "j/k older·newer",
+                "tab file",
+                "n/N next change",
+                "B blame here",
+                "⏎ that commit",
+                "esc back",
+            ]
+        );
+        assert_eq!(
+            words(&HintContext::History {
+                rows: true,
+                on_file: true
+            }),
+            [
+                "j/k scroll",
+                "tab list",
+                "n/N next change",
+                "B blame here",
+                "⏎ that commit",
+                "esc back",
+            ]
+        );
+    }
+
+    /// Tracing, failed, zero rows: nothing but the way back answers.
+    #[test]
+    fn history_bar_with_no_rows_offers_esc_back_alone() {
+        for on_file in [false, true] {
+            assert_eq!(
+                words(&HintContext::History {
+                    rows: false,
+                    on_file
+                }),
+                ["esc back"]
+            );
+        }
+    }
+
+    /// `esc back to history` leads the inner bar, which is otherwise whole.
+    #[test]
+    fn back_to_history_leads_the_inner_bar() {
+        let led = words(&HintContext::BackToHistory(Box::new(HintContext::PlainRow)));
+        assert_eq!(led.first().map(String::as_str), Some("esc back to history"));
+        assert_eq!(led[1..], words(&HintContext::PlainRow)[..]);
+    }
+
+    /// Conductor ruling 2026-09-27: `next change` gives way first, then
+    /// `older·newer`. Under the 30-cell floor the bar is empty, as every
+    /// modal's is (ADR-0039's bottom; `esc back` alone there would break
+    /// `no_hint_loses_ground_as_the_room_for_it_grows`).
+    #[test]
+    fn history_bar_narrows_by_its_ladder() {
+        let list = HintContext::History {
+            rows: true,
+            on_file: false,
+        };
+        let at = |columns| hints_text(&hints_for(&list, Divider::Hidden, columns));
+        assert!(
+            at(40).starts_with(" j/k older·newer  tab file  n/N next"),
+            "{:?}",
+            at(40)
+        );
+        assert!(!at(40).contains("next change"), "{:?}", at(40));
+        assert_eq!(at(30), " j/k older  tab file  n/N next");
+        assert_eq!(at(29), "");
+    }
+
+    #[test]
+    fn short_form_history_of_these_lines_is_history() {
+        assert_eq!(short_form("history of these lines"), Some("history"));
     }
 }
 

@@ -39,8 +39,8 @@ pub use catalogue::{every_context, every_hint};
 pub use context::{ConfirmYes, HintContext, LiveC, TabWord};
 use fitting::fit_list;
 pub use fitting::{StopWording, fit_status_line, hints_text, stopped_row, stopped_row_before_keys};
-pub use lists::blame_place_list;
 use lists::{TAIL, context_list};
+pub use lists::{blame_place_list, history_place_list};
 
 /// Whether the key a hint names actually does the verb it names, today.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -200,6 +200,14 @@ fn short_form(verb: &str) -> Option<&'static str> {
         "status" => "stat",
         "revert" => "rev",
         "lanes" => "lane",
+        // Blame's `L`, third in its bar (m7-power-tools/21b): the floor's
+        // three fit 48 cells only with this prefix.
+        "history of these lines" => "history",
+        // The history place's bar (conductor ruling 2026-09-27, 21b): its
+        // floor at full words is 43 cells; with these two it is 30, so a
+        // 40-column terminal still draws it. `next` gives way first.
+        "next change" => "next",
+        "older·newer" => "older",
         _ => return None,
     })
 }
@@ -347,8 +355,10 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
-        // The blame place is modal too (keymap §2.1): no doorway.
-        | HintContext::Blame { .. } => (drawable(context, divider), None),
+        // The blame place is modal too (keymap §2.1): no doorway. The
+        // history place likewise (m7-power-tools/21b).
+        | HintContext::Blame { .. }
+        | HintContext::History { .. } => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -371,6 +381,12 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         HintContext::BackToBlame(inner) => {
             let (list, trailer) = whole_bar(inner, divider);
             let mut led = vec![BACK_TO_BLAME];
+            led.extend(list);
+            (led, trailer)
+        }
+        HintContext::BackToHistory(inner) => {
+            let (list, trailer) = whole_bar(inner, divider);
+            let mut led = vec![BACK_TO_HISTORY];
             led.extend(list);
             (led, trailer)
         }
@@ -421,9 +437,15 @@ fn pane_focused_bar(
         })
         .collect();
     if blamable {
+        // On a file `F` is the pane's history, not the graph's Focus
+        // (`graft::update::place::f_key`, guarded on the same `blamable`),
+        // so [`TAIL`]'s `F focus` goes and `F history` follows `B blame`
+        // (m7-power-tools/21b).
+        list.retain(|hint| hint.key != F_HISTORY.key);
         // After `⏎` when it is there, else first: the pane's own key.
         let at = usize::from(list.first().is_some_and(|hint| hint.key == ENTER));
         list.insert(at, BLAME);
+        list.insert(at + 1, F_HISTORY);
     }
     if folds {
         // After `⏎` and `B` when present, else first.
@@ -447,6 +469,14 @@ const FOLD: Hint = hint("space", "fold");
 /// `esc back to blame`: the way back to a hidden blame trail
 /// ([`HintContext::BackToBlame`]).
 const BACK_TO_BLAME: Hint = hint("esc", "back to blame");
+
+/// `esc back to history`: the way back to a hidden history place
+/// ([`HintContext::BackToHistory`], m7-power-tools/21b).
+const BACK_TO_HISTORY: Hint = hint("esc", "back to history");
+
+/// `F history`: the focused pane's file traced
+/// ([`HintContext::PaneFocused`]'s `blamable`, m7-power-tools/21b).
+const F_HISTORY: Hint = hint("F", "history");
 
 /// `⇥ banner`: the way back to a live operation's banner
 /// ([`HintContext::OperationLive`]).
@@ -503,6 +533,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Resolver { .. }
                 | HintContext::Finish { .. }
                 | HintContext::Blame { .. }
+                | HintContext::History { .. }
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the

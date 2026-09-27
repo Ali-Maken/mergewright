@@ -1,6 +1,6 @@
 # history-place-shown — history reaches the real frame, gets its own bar, and is captured
 
-Status: ready (filed by conductor 2026-09-27; Build with Opus confirmed)
+Status: **done** (builder 2026-09-27; see NOTES — compacted once, finished in the same session)
 Remainder of: `21-history-place.md` (partial, merged 2ce85055). **21's scope, Signatures and Rulings (a)–(c) stand**;
 this ticket only finishes them. Split: 21b (this) = frame hook, bars, captures, walks; `21c-history-whitespace-and-sizes`
 = the two reader gaps.
@@ -101,13 +101,13 @@ pub(crate) fn back_to_place(/* back_to_blame's parameters */) -> HintContext;
 `(false,true)` is not reachable-distinct (same list as `(false,false)`); `catalogue` says why, as `pane_focused_form` does.
 
 ## Acceptance (name the verifying test at tick time; red first where marked)
-- [ ] **In the frame:**
+- [x] **In the frame:**
   - `a_history_place_is_drawn_in_the_frame` (`tests/it/history_place.rs`; **red first**: frame row 0 shows the graph
     header, not `HISTORY · `, with the hook reverted). Drawn frame: title row `HISTORY · <path>`, bar row = the
     `List` form's words.
   - `graph_overlay_is_place_while_history_is_shown` (`place/tests/history.rs`).
   - Every `on_screen()` site's verdict in NOTES, each with the grep line.
-- [ ] **History's bar:**
+- [x] **History's bar:**
   - `history_bar_words_in_order` (graft-ui `hints/tests.rs`): the table's two row forms, word for word.
   - `history_bar_with_no_rows_offers_esc_back_alone`.
   - `the_floor_fits_at_forty_eight_cells_of_bar`, `every_context_reaches_every_shape` green (named).
@@ -119,16 +119,16 @@ pub(crate) fn back_to_place(/* back_to_blame's parameters */) -> HintContext;
     extended: the drawn bar reads `esc back` and nothing else.
   - `tests/it/hint_bar.rs`: `hint_bar_history_place`, `hint_bar_back_to_history` (one per reachable context, the file's
     rule).
-- [ ] **`esc back to history`:** `the_bar_leads_esc_back_to_history_exactly_where_esc_goes_back`
+- [x] **`esc back to history`:** `the_bar_leads_esc_back_to_history_exactly_where_esc_goes_back`
   (`place/tests/esc_back.rs`, mirror of `:146`); `esc_on_the_graph_with_the_pane_open_returns_to_history` now ticks
   whole (Esc half from 21 + this bar half).
-- [ ] **Pane bar:** `pane_bar_offers_f_history_on_a_file` (`place/tests/hints.rs`; **red first**: bar lacks
+- [x] **Pane bar:** `pane_bar_offers_f_history_on_a_file` (`place/tests/hints.rs`; **red first**: bar lacks
   `F history`); `pane_bar_keeps_f_focus_off_a_file`; `tests/it/pane_bar_space.rs` green.
-- [ ] **Blame's bar:** `short_form_history_of_these_lines_is_history`; `blame_bar_words_in_order` with `L` third.
-- [ ] **Walks** (`tests/it/m7_walk/history.rs`): `function_history` (`B L`) and `file_history` (`F`) each assert
+- [x] **Blame's bar:** `short_form_history_of_these_lines_is_history`; `blame_bar_words_in_order` with `L` third.
+- [x] **Walks** (`tests/it/m7_walk/history.rs`): `function_history` (`B L`) and `file_history` (`F`) each assert
   `route.within_count()` against `function-history` 2 / `file-history` 1, **and** that the drawn frame after the last
   key shows `HISTORY · ` (red first: the hook reverted).
-- [ ] **Captures** (producer: `tests/it/history_place.rs` capture tests, `GRAFT_UPDATE_SHOTS=1`, then a run without,
+- [x] **Captures** (producer: `tests/it/history_place.rs` capture tests, `GRAFT_UPDATE_SHOTS=1`, then a run without,
   all `settled`). Colour unverified. **Right looks like:**
   - `docs/shots/m7/history-lines-187x50.txt`: 4 rows, `▸` on Lina's; file pane at line 18, `┃` on 18–29; line 19 `+`;
     the old line 22 `−` with no number; bar = `List` form.
@@ -139,7 +139,7 @@ pub(crate) fn back_to_place(/* back_to_blame's parameters */) -> HintContext;
   - Fixture: the blame captures' repo (named in `tests/it/blame_place.rs`) if it has 4 commits on `refresh_token` and
     the rename; else build the story in `history_place.rs`'s own builder. Never edit a fixture another test pins
     (grep its users first).
-- [ ] MAP.md (both), TESTING.md rows (one per new capture, its "right looks like" line).
+- [x] MAP.md (both), TESTING.md rows (one per new capture, its "right looks like" line).
 
 ## Touches (check each, report how)
 - **`graph_overlay` readers:** `view::frame::draw_screen`, `update::banner::graph_screen_on_frame`,
@@ -173,3 +173,68 @@ Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.m
 
 ## Size
 ~55k. One context. If it compacts: captures and re-shoots split off as `21b2`, after the code merges.
+
+## NOTES (builder, 2026-09-27) — done
+- **Compacted once**, after the captures and re-shoots, before MAPs/TESTING/gates. Nothing left over; no `21b2` needed.
+- **Scout:** none new; 21's scout + 21's NOTES used, lines re-checked on base 6fb4b713 (all held).
+- **Grants used:** `update/keys/bound.rs` (conductor, 8 rows only: `j/k older·newer`, `j/k scroll`, `tab file`,
+  `tab list`, `n/N next change`, `B blame here`, `F history`, `esc back to history`). 09 may add rows there too.
+- **Ticks, test by test:**
+  - In the frame: `history_place::a_history_place_is_drawn_in_the_frame` (red seen: hook reverted, row 0 read
+    `graft /code/api  6 commits`), `place::tests::history::graph_overlay_is_place_while_history_is_shown`.
+  - History's bar: graft-ui `hints::tests::history_place::{history_bar_words_in_order,
+    history_bar_with_no_rows_offers_esc_back_alone, back_to_history_leads_the_inner_bar,
+    history_bar_narrows_by_its_ladder}`, `the_floor_fits_at_forty_eight_cells_of_bar`, `every_context_reaches_every_shape`,
+    `no_context_hides_every_key`; graft `update::tests::every_key_the_bar_draws_is_answered`;
+    `place::tests::hints::history_rows_in_the_place_bar_table`; `history_place::{a_depth_one_clone_shows_the_end_row_alone,
+    a_trace_error_is_drawn_as_a_failure}` (bar row == ` esc back`); `hint_bar::{hint_bar_history_place,
+    hint_bar_back_to_history}`.
+  - Red on the sweep: removing only the `n` arm (`history_keys.rs`) left it **green** — `N` still answers `n/N` (a
+    two-key hint is answered when either key acts). Removing both `n` and `N` turned it red:
+    `History { rows: true, on_file: false } … draws n/N next change`. Restored; `git diff history_keys.rs` empty.
+  - esc back to history: `place::tests::esc_back::the_bar_leads_esc_back_to_history_exactly_where_esc_goes_back`,
+    `place::tests::history::esc_on_the_graph_with_the_pane_open_returns_to_history` (bar half added).
+  - Pane bar: `place::tests::hints::{pane_bar_offers_f_history_on_a_file (red seen: F_HISTORY insert removed),
+    pane_bar_keeps_f_focus_off_a_file}`, `pane_bar_space` green (unedited).
+  - Blame's bar: `hints::tests::history_place::short_form_history_of_these_lines_is_history`, `blame_bar_words_in_order`.
+  - Walks: `m7_walk::history::{function_history, file_history}` — `within_count()` + `assert_drawn` (title row starts
+    `HISTORY · `; red seen with the hook reverted).
+  - Captures: `history_place::{capture_history_lines_187x50, capture_history_file_140x40, capture_history_100x30,
+    capture_esc_back_to_history_from_the_graph}`; written with `GRAFT_UPDATE_SHOTS=1`, then green without. 4–8 KB each.
+- **Deviation — width ladder (conductor ruling 2026-09-27), not the note's 48-only measure.** Short forms added to
+  `short_form`: `next change → next`, `older·newer → older` (plus the spec's `history of these lines → history`).
+  History's floor: 43 cells at full words → 36 → **30** (` j/k older  tab file  n/N next`). Ruling step 3 (`esc back`
+  alone when still over) **not built**: a fallback to `esc back` broke `no_hint_loses_ground_as_the_room_for_it_grows`
+  (bar reorders at 30) and `the_bar_never_draws_a_fragment_of_itself` (9 columns). So under 30 columns the History
+  bar is **empty** — same as every other modal below its floor. `no_context_hides_every_key` holds at 40 (sweep
+  40..=200). Widths where the whole bar can't fit: 0–29. Pinned by `history_bar_narrows_by_its_ladder`.
+- **Expected strings edited in `hints/tests.rs`:** `blame_bar_words_in_order` (`L` third, spec);
+  `every_short_rung_is_the_users_own_word` gains 3 rows (history, next, older). No other expected string changed.
+- **`update/tests.rs` beyond the sweeps:** `classified_form`/`screen_for` arms, new `history_screens`,
+  `trace_job_of`, `trace_commit` (fixtures for the sweep), and `presses_for` maps `tab`/`⇥` → Tab and `n/N` → n, N
+  (the sweep panicked on `tab` without it). No other test there touched.
+- **`on_screen()` verdicts** (`grep -rn '\.on_screen()' crates/graft/src`, non-test): `update/state.rs:623`
+  `graph_overlay` → `place_shown()` (spec); `update/place.rs:439` `prompt_open` (blame's find prompt) → keep;
+  `view/rows.rs:648` `place_context` blame arm → keep, history arm added before it; `view/frame/overlays.rs:131`
+  `draw_place` blame branch (after the history branch) → keep. `overlays.rs`: only a stale "blocked" comment replaced.
+- **Touches:**
+  - `graph_overlay` readers (`draw_screen`, `banner::graph_screen_on_frame`, `rows::overlay_context`): nextest
+    workspace green incl. banner tests and `hint_bar.rs`.
+  - Blame re-shoots, bar line only (`L history of these lines` now before `/ find`): `blame-{100x30,140x40,187x50,
+    find-187x50,long-line-187x50,shallow-187x50}.txt`, `esc-back-to-blame-from-the-graph-120x40.txt`. **Also
+    `blame-then-commit-120x40.txt`** (not in the spec's list; its pane is on a file): bar now `esc back to blame  B blame
+    F history  b branch …`, `F` gone from the tail. Blame snapshots: bar not in them, unchanged (`git diff --stat` empty).
+  - Detail-pane captures `m5-hints-detail-*`, `m2-detail-*`: **could not confirm producer** (grep for the file names
+    in tests found none); not hand-edited; neither contains `B blame`, so neither shows a file-focused pane bar.
+  - Focus mode: `git diff --stat docs/shots/16-criss-cross-focus* docs/shots/21-redetect-resize-and-focus.txt` empty;
+    `update/tests.rs` focus tests green.
+  - Keymap doc, journal/undo: none.
+- **Cause vs symptom:** cause. History was never drawn because `graph_overlay` asked blame-only `on_screen()`; now asks
+  `place_shown()`. Cost to user: none beyond the new screen.
+- **Capture observations (questions, not defects — no line proves wrong logic):**
+  - The fixture traces **3** changes on `refresh_token`, not the spec's 4 (title `· 3 changes`).
+  - `history-lines-187x50`: file pane starts at line 11, not 18; `┃` on lines 17–28 while the title says 18–29
+    (off by one? `graft-ui/src/history.rs` is 21c's — not checked here).
+  - No numbered "old line 22 −" row; the two `−` rows sit after line 20, unnumbered.
+  - Bar says `tab` where other screens draw `⇥` (consistency question for the usability walk).
+

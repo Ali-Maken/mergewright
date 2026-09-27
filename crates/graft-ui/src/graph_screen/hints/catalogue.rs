@@ -4,8 +4,8 @@
 
 use super::lists::{TAIL, context_list};
 use super::{
-    BACK_TO_BLAME, BLAME, ConfirmYes, EXPLAIN, Hint, HintContext, LiveC, MORE, RESIZE, TabWord,
-    WAY_BACK,
+    BACK_TO_BLAME, BACK_TO_HISTORY, BLAME, ConfirmYes, EXPLAIN, F_HISTORY, Hint, HintContext,
+    LiveC, MORE, RESIZE, TabWord, WAY_BACK,
 };
 use crate::conflict_resolver::SideRoles;
 
@@ -70,7 +70,33 @@ pub fn every_context() -> Vec<HintContext> {
     let live: Vec<HintContext> = all.iter().flat_map(operation_live_form).collect();
     all.extend(live);
     all.extend(blame_forms());
+    all.extend(history_forms());
     all
+}
+
+/// The history place's three reachable forms and the way back to it over
+/// one inner bar (m7-power-tools/21b). `History { rows: false, on_file:
+/// true }` is not a form of its own: without rows the list is `esc back`
+/// whatever the focus ([`super::lists::history_place_list`]), so it would
+/// sweep the same bar twice — as [`pane_focused_form`] leaves out shapes
+/// the app never makes. One `BackToHistory` is enough for
+/// [`blame_forms`]' reason: it adds a lead and takes nothing away.
+fn history_forms() -> Vec<HintContext> {
+    vec![
+        HintContext::History {
+            rows: true,
+            on_file: false,
+        },
+        HintContext::History {
+            rows: true,
+            on_file: true,
+        },
+        HintContext::History {
+            rows: false,
+            on_file: false,
+        },
+        HintContext::BackToHistory(Box::new(HintContext::PlainRow)),
+    ]
 }
 
 /// The blame place's eight flag triples, and the way back to it led on one
@@ -251,6 +277,8 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Finish { .. }
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
+        | HintContext::History { .. }
+        | HintContext::BackToHistory(_)
         | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
@@ -339,6 +367,8 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
+        | HintContext::History { .. }
+        | HintContext::BackToHistory(_)
         | HintContext::OperationLive { .. } => None,
     }
 }
@@ -400,6 +430,8 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::PaneFocused { .. }
         | HintContext::Blame { .. }
         | HintContext::BackToBlame(_)
+        | HintContext::History { .. }
+        | HintContext::BackToHistory(_)
         | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
@@ -420,6 +452,8 @@ pub fn every_hint() -> Vec<Hint> {
     all.push(WAY_BACK);
     all.push(BLAME);
     all.push(BACK_TO_BLAME);
+    all.push(BACK_TO_HISTORY);
+    all.push(F_HISTORY);
     let mut seen = Vec::new();
     all.retain(|hint| {
         let fresh = !seen.contains(hint);

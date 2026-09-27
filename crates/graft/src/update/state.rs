@@ -620,8 +620,8 @@ impl AppState {
             // editor (`resolver::open_resolver`), so the order below it is
             // untouched.
             Some(GraphOverlay::Resolver)
-        } else if self.trail.on_screen().is_some() {
-            // A blame place covers the graph and the pane, as the resolver
+        } else if self.trail.place_shown() {
+            // A place (blame or history) covers the graph and the pane, as the resolver
             // does; it never opens over the editor or a box (its `B` is
             // the pane's, and those claim the keys first).
             Some(GraphOverlay::Place)

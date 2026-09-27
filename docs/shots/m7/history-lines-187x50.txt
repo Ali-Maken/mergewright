@@ -1,0 +1,50 @@
+ HISTORY · src/auth/session.rs · fn refresh_token, lines 18–29 · 3 changes
+   74f9a9e Handle expired tokens      Graft…  60m +1 −1 │ 2f48ca3 · Lina · 7 months ago · Retry refresh once on 401 · this file +3 −2
+ ▸ 2f48ca3 Retry refresh once on 401  Lina    7mo +3 −2 │    11
+   47593a5 Add token refresh          Tom    10mo +11   │    12   impl Session {
+   the file starts here (47593a5 added it)              │    13       pub fn new(token: String, refresh: String) -> Self {
+                                                        │    14           Session { token, refresh, issued: Instant::now() }
+                                                        │    15       }
+                                                        │    16       /// Refresh the token when the server says it expired.
+                                                        │ ┃  17       pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+                                                        │ ┃  18 +         let mut attempt = 0;
+                                                        │ ┃  19           loop {
+                                                        │ ┃  20               let resp = client.refresh(&self.token)?;
+                                                        │ ┃     −             if resp.status() == 401 {
+                                                        │ ┃     −                 self.back_off();
+                                                        │ ┃  21 +             if resp.status() == 401 && attempt == 0 {
+                                                        │ ┃  22 +                 attempt += 1;
+                                                        │ ┃  23                   continue;
+                                                        │ ┃  24               }
+                                                        │ ┃  25               self.token = resp.token()?;
+                                                        │ ┃  26               return self.record_refresh(&resp, "refreshed after the server answered 401 on the first request; the retry b…
+                                                        │ ┃  27           }
+                                                        │ ┃  28       }
+                                                        │    29
+                                                        │    30       pub fn token(&self)->&str { &self.token }
+                                                        │    31
+                                                        │    32       pub fn age(&self)->Duration { self.issued.elapsed() }
+                                                        │    33
+                                                        │    34       pub fn is_expired(&self) -> bool {
+                                                        │    35           self.age() > SESSION_TTL
+                                                        │    36       }
+                                                        │    37   }
+                                                        │    38
+                                                        │    39   impl Drop for Session {
+                                                        │    40       fn drop(&mut self) {
+                                                        │    41           self.token.clear();
+                                                        │    42           self.refresh.clear();
+                                                        │    43       }
+                                                        │    44   }
+                                                        │    45
+                                                        │    46   #[cfg(test)]
+                                                        │    47   mod tests {
+                                                        │    48       use super::*;
+                                                        │    49
+                                                        │    50       #[test]
+                                                        │    51       fn a_new_session_is_not_expired() {
+                                                        │    52           let session = Session::new("t".into(), "r".into());
+                                                        │    53           assert!(!session.is_expired());
+                                                        │    54       }
+                                                        │    55   }
+ j/k older·newer  tab file  n/N next change  B blame here  ⏎ that commit  esc back
