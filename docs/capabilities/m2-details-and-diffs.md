@@ -25,7 +25,7 @@ status: works
 - **Proven by:**
   `graft::update::detail::tests` (`Enter`/`j`/`Esc`/stale-drop/cache-hit cases per ticket 06's acceptance)
   `graft::view::detail::assemble_files` and `assemble_diff` unit tests (crates/graft/src/view/detail.rs)
-- **Looks like:** `docs/shots/m2-detail-pane-breakpoints.txt`
+- **Looks like:** `docs/shots/m2-detail-pane-breakpoints.txt` (historical record, drawn at M2; today's drawing: `docs/shots/m7/diff-cursor-commit-120x40.txt`)
 - **Decided in:** DESIGN.md §1.8, §2.2–2.5; ADR-0023 (no hover — details live in this pane)
 - **Status:** works
 
@@ -65,7 +65,7 @@ unverified_aspect: colour (captures record character grids only, no colour attri
   `graft-ui::detail_pane::tests` gutter/word-tint/syntax/pin/truncate/CRLF/16-colour cases (ticket 08 acceptance, `crates/graft-ui/src/detail_pane/tests.rs`)
   `graft-ui::diff_words::word_spans` unit tests
   `graft-ui::syntax::tests::keywords_function_and_string_are_found`, `a_block_comment_spans_the_lines_between_open_and_close`
-- **Looks like:** `docs/shots/m2-diff-widget.txt`
+- **Looks like:** `docs/shots/m2-diff-widget.txt` (historical record, drawn at M2; today's drawing: `docs/shots/m7/diff-cursor-commit-120x40.txt`)
 - **Decided in:** M2 design note §05 (New UI); PROMPT.md §5 (Diffs)
 - **Status:** works. Colour itself is unverified (captures record character grids only, no colour attributes — CLAUDE.md rule 5).
 
@@ -121,7 +121,7 @@ status: works
   `graft::update::detail::tests::angle_keys_are_a_no_op_in_the_tab_layout`
   `graft::update::detail::tests::plus_and_minus_never_resize_the_pane`
   `graft::layout` round-trip unit tests (crates/graft/src/layout.rs, 3 tests per ticket 10b notes)
-- **Looks like:** `docs/shots/m2-detail-pane-breakpoints.txt`, `docs/shots/m2-detail-keys-resize.txt`
+- **Looks like:** `docs/shots/m2-detail-pane-breakpoints.txt`, `docs/shots/m2-detail-keys-resize.txt` (historical record, drawn at M2; today's drawing: `docs/shots/m7/diff-cursor-commit-120x40.txt`)
 - **Decided in:** M2 design note §05
 - **Status:** works. `?` help screen listing `<> resize` is deferred to M8 (no help overlay exists anywhere yet).
 
@@ -137,7 +137,7 @@ status: works
 - **How:** `Tab`/`Shift+Tab` cycle focus (`Files`↔`Diff`, wrapping); `Enter` on a file moves focus from `Files` to `Diff`; `Esc` closes the pane.
 - **Behaviour:** `Tab`/`Shift+Tab` cycle in order and wrap at the ends. `Enter` only ever moves `Files → Diff`, never the reverse. The focused region's title paints in the accent colour; the other two stay muted.
 - **Proven by:** `graft-ui::detail_pane::tests` — focus-title snapshot case (ticket 07 acceptance)
-- **Looks like:** `docs/shots/m2-detail-pane-breakpoints.txt`
+- **Looks like:** `docs/shots/m2-detail-pane-breakpoints.txt` (historical record, drawn at M2; today's drawing: `docs/shots/m7/diff-cursor-commit-120x40.txt`)
 - **Decided in:** M2 design note §05
 - **Status:** works
 

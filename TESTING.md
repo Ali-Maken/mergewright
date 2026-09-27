@@ -1165,7 +1165,7 @@ its highlight moves and HEAD's row un-highlights; `Enter` opens
 and unstaged files listed, an untracked file's body shows its content as
 added lines (`empty file` when it has none; binary/capped as any diff); `j` returns to HEAD's commit and the pane follows. Captures:
 `docs/shots/m2-working-tree-row.txt` (graph),
-`docs/shots/m2-detail-pane-breakpoints.txt` (the `UNCOMMITTED` pane).
+`docs/shots/m2-detail-pane-breakpoints.txt` (the `UNCOMMITTED` pane) (historical record, drawn at M2; today's drawing: `docs/shots/m7/diff-cursor-commit-120x40.txt`).
 
 ### Per breakpoint
 
