@@ -989,3 +989,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/11a-gitver | Pick of an ancestor verified only on git 2.54.0 (`git_alone_stops_on_a_pick_of_an_ancestor`); other versions not run | **unverified** | M8 |
 | M7/21b-narrow | History bar empty below 30 columns: conductor ladder step 3 (`esc back` alone) broke two invariant tests (21b NOTES); `esc` still works, unseen | **broken** (below 30 cols only) | M8 |
 | M7/21b-shots | History captures: fixture has 3 changes, not 4 as the mock; `┃` on rows 17–28 vs title 18–29; `tab` vs `⇥` word. Judge by eye; m5/m2 detail capture producers unconfirmed | **unverified** | M7 |
+| M7/21c-ws | Whitespace-ignored mode (`w`) shows on no screen: detail, blame and history draw no words for it; only the bar says `w whitespace` (21c spec, planner) | **broken** (state invisible) | M8 |
