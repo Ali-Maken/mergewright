@@ -27,11 +27,22 @@ pub fn trail_back(state: &mut AppState) -> Option<Vec<Command>> {
     Some(commands)
 }
 
-/// End the trail: pin the set-aside base again and, with `restore`, put
-/// the graph and the pane back where `B` was pressed if anything moved.
+/// End the trail: drop a `⏎` landing still on its way, pin the set-aside
+/// base again and, with `restore`, put the graph and the pane back where `B`
+/// was pressed if anything moved.
+///
+/// Every way off the trail ends that landing: `Esc` off the last place and
+/// a refused read (here, `restore`), a write (`after_commands`) and a new
+/// pin (`end_for_compare`) all come through here; going back to a hidden
+/// trail (`show_again`) calls `abandon` itself (20n, gap M7/20k-q3).
 pub(super) fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: bool) {
     let trail = std::mem::take(&mut state.trail);
     cancel_reading(&trail, commands);
+    // A `⏎` landing still on its way (the walk seeking the commit) is the
+    // trail's; he has left it, so it must not land later, nor its seek
+    // move the graph. A landing that opened the pane on an old commit after
+    // a write or a new pin would answer a request he has moved on from.
+    abandon(state, commands);
     let Some(origin) = trail.origin else {
         return;
     };
@@ -41,10 +52,6 @@ pub(super) fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: 
     if !restore {
         return;
     }
-    // A `⏎` landing still on its way (the walk seeking the commit) is the
-    // trail's; he has left it, so it must not land later, nor its seek
-    // move the graph.
-    abandon(state, commands);
     if Spot::of(state) == origin.spot {
         return;
     }

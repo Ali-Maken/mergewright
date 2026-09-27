@@ -28,7 +28,11 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         } => changes_pane_list(*unmerged, *live, *tab),
         HintContext::Resolver { .. } => resolver_context_list(context),
         HintContext::Finish { focus, expandable } => finish_list(*focus, *expandable),
-        HintContext::Blame { .. } => blame_bar(context),
+        HintContext::Blame {
+            finding,
+            ignore_file,
+            lines,
+        } => blame_bar(*finding, *ignore_file, *lines),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         HintContext::Stash => stash_list(),
@@ -40,14 +44,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // divider to drag: everywhere else the overlay draws its own footer
         // beside the pane (`graft::view::frame::split_for_detail`, which
         // draws a hint row only for `DetailLayout::Tab`).
-        HintContext::PaneOverOverlay { opens } => {
-            let mut list = Vec::new();
-            if *opens {
-                list.push(hint("⏎", "open"));
-            }
-            list.extend([hint("j/k", "move"), hint("u", "undo"), hint("/", "search")]);
-            list
-        }
+        HintContext::PaneOverOverlay { opens } => pane_over_overlay_list(*opens),
         // The drag is a mouse gesture: `release` is not a key, it is what
         // the user's hand has to do, and `esc` is the one key that answers
         // while a badge is in the air (`graft::update::drag::drag_cancel`).
@@ -141,24 +138,26 @@ pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
     list
 }
 
-/// [`blame_place_list`] as the bar draws it: while a read is in flight
-/// (`read`) the keys that act on a line — `⏎`, `^`, `n N` — are left out,
-/// because the place has no lines for them yet (m7-power-tools/20k).
-fn blame_bar(context: &HintContext) -> Vec<Hint> {
-    let HintContext::Blame {
-        finding,
-        ignore_file,
-        read,
-    } = *context
-    else {
-        // Only `context_list`'s `Blame` arm calls this (it takes the whole
-        // context to keep that match short); no other context has this bar.
-        return Vec::new();
-    };
+/// [`blame_place_list`] as the bar draws it: without `lines` (a read in
+/// flight, or a failed one) the keys that act on a line — `⏎`, `^`, `n N`
+/// — are left out, because the place has no lines for them
+/// (m7-power-tools/20k, 20n).
+fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
     let mut list = blame_place_list(finding, ignore_file);
-    if read {
+    if !lines {
         list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "n N"));
     }
+    list
+}
+
+/// [`HintContext::PaneOverOverlay`]'s list: `⏎ open` unless the diff has
+/// focus, then the pane's moves and the two verbs dispatched above it.
+fn pane_over_overlay_list(opens: bool) -> Vec<Hint> {
+    let mut list = Vec::new();
+    if opens {
+        list.push(hint("⏎", "open"));
+    }
+    list.extend([hint("j/k", "move"), hint("u", "undo"), hint("/", "search")]);
     list
 }
 

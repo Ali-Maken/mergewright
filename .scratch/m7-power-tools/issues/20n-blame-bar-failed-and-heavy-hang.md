@@ -1,6 +1,6 @@
 # 20n blame-bar-failed-and-heavy-hang — `Blame { read }` → `lines`, a failed place stops drawing dead keys; every way off the trail ends its landing; the heavy helpers stop hanging
 
-Status: ready
+Status: done
 Milestone: M7 (m7-power-tools)
 Source: review `docs/reviews/m7-20k-to-20l.md` (at `3e05dd3e`): Major 1 (gap M7/12f-hang), Major 2 (M7/20k-read-name,
 M7/20k-q2), Minor 1, Minor 2, Question 2 (M7/20k-q3, ruled below). Planner, 2026-09-27.
@@ -78,35 +78,66 @@ fn wait_for<T, R>(told: &Receiver<T>, bound: Duration, what: &str, pick: impl Fn
 Both helpers keep their signatures and call `wait_for`.
 
 ## Acceptance (each box names its verifying test at tick time; red means seen red and quoted in NOTES)
-- [ ] A red first: `every_key_the_bar_draws_is_answered` with a **failed** place added to the sweep states
-      (`place_reading`, rename to `place_without_lines` if it now holds both; make `Failed` through the real answer
-      path, `answer.rs:142` at `3e05dd3e`: `^` on a line git can't trace). Quote the red (`⏎`/`^` drawn, unanswered).
-- [ ] A green: same test, plus `every_swept_state_is_the_context_it_claims`; no state left out of the sweep.
-- [ ] A: `every_context_reaches_every_shape` (or successor) covers `Blame { lines: false }` and `{ lines: true }`;
-      `COVERAGE_SLOTS` 85. `rg '\bread\b' crates/graft-ui/src/graph_screen/hints crates/graft/src/view/rows.rs` shows
-      no leftover field use (paste the count).
-- [ ] B red first: `a_write_off_the_trail_drops_a_landing_still_seeking` — `B`, `⏎` onto a commit not yet loaded,
-      a write key from `docs/design/02-keymap.md`, deliver the rows: the landing does not select that commit or open
-      the pane; no "missed" status. Same for `a_pin_off_the_trail_drops_a_landing_still_seeking` (the pin key per the
-      keymap). **Either green before the fix** → that half closes "already so": quote the line that stops it
-      (e.g. `LandingWatch`) and change nothing for it.
-- [ ] B green: both tests, and the other `esc_back`/trail/landing tests unchanged and green (name the filter and count).
-- [ ] C red first by mutant: put back `state.line_landing = None` in place of `abandon` in `leave`; the new row
-      (`leaving_where_blame_started_drops_a_landing_still_seeking`) goes red; quote it; revert; `git status` clean.
-      Green after.
-- [ ] D red first: `a_wait_with_no_answer_fails_instead_of_hanging` (in `heavy.rs`) — a `Receiver<u32>` whose sender
-      the test keeps alive, a few non-matching messages, `bound` 1 s; run `wait_for` on a thread and wait for it at
-      most 30 s. Before: the test's own 30 s wait reports "hung" (write the test against the old helper shape first).
-      After: the thread panics within the bound with `what` and the passed-over count in the message.
-- [ ] D green: `cargo test --features heavy-tests --test it -- heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion`
-      run alone, and `heavy::a_wait_with_no_answer_fails_instead_of_hanging`.
-- [ ] Captures: every blame capture under `docs/shots/m7/` re-checked by its `check_shot` test (name the filter);
-      any that shows a failed place is regenerated and listed. None expected (`grep -l "can't" docs/shots/m7/*blame*`
-      in NOTES).
-- [ ] MAP.md graft-ui `:45` (`lines`, what it means, `Failed`); graft `update::place` (`leave`: every way off calls
-      `abandon`) and `LineLanding` (`abandon`'s callers). Edited and read back.
-- [ ] Gates workspace-wide: `cargo fmt --check`; `cargo clippy --all-targets -- -D warnings`; the same with
-      `--features heavy-tests`; `cargo nextest run`; `cargo test --doc`.
+- [x] A red first: `update::tests::every_key_the_bar_draws_is_answered` with failed places in the sweep
+      (`place_reading` → `update::place::tests::place_without_lines` + `failed_places`: `^` answered with no line,
+      `answer.rs` `Want::CameFrom` arm; and, for `finding`, a `w` re-read answered `BlameFailure::Failed`). Red quoted
+      in NOTES (60 dead: `⏎`, `^`, `n N` only).
+- [x] A green: `update::tests::every_key_the_bar_draws_is_answered` + `update::tests::every_swept_state_is_the_context_it_claims`
+      green; the failed states are in the `lines: false` arm with the reading ones.
+- [x] A: `graph_screen::tests::every_context_reaches_every_shape` green, `COVERAGE_SLOTS` 85 (74–77 `lines: true`,
+      81–84 `lines: false`); `hints::tests::…::a_place_without_lines_draws_no_line_keys` green. `grep -rnw read` over the
+      two paths: 28 lines, every one prose in a comment; field uses 0.
+- [x] B red first: `update::place::tests::esc_back::a_write_off_the_trail_drops_a_landing_still_seeking` (`u`) and
+      `…::a_pin_off_the_trail_drops_a_landing_still_seeking` (`x`) both red before the fix (quoted in NOTES); neither
+      green before, so neither half "already so".
+- [x] B green: both tests; filter `-E 'test(/esc_back|landing|trail/) | test(/blame_line_to_commit/)'` 79/79 green.
+- [x] C red first by mutant: `update::place::tests::esc_back::leaving_where_blame_started_drops_a_landing_still_seeking`
+      red under `state.line_landing = None` (quoted in NOTES); reverted, `git diff -- trail.rs` empty; green after.
+- [x] D red first: `heavy::a_wait_with_no_answer_fails_instead_of_hanging` against a `wait_for` with the old blocking
+      `recv()` shape: "hung" after 30.01 s (quoted in NOTES).
+- [x] D green: `heavy::the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion` alone, 20.91 s,
+      ok; `heavy::a_wait_with_no_answer_fails_instead_of_hanging` ok in 1.01 s.
+- [x] Captures: `cargo nextest run -E 'binary(it) & (test(/^blame_place::/) | test(/^blame_partly_staged::/))'` 11/11
+      green, no shot changed (`git status`); `grep -l "can't" docs/shots/m7/*blame*` → nothing (exit 1). None regenerated.
+- [x] MAP.md: graft-ui `HintContext::Blame` row (`lines`, `Ready`, `Failed`); graft `update::place` header (every way
+      off calls `abandon`) and `LineLanding` (`abandon`'s callers). Read back by grep.
+- [x] Gates workspace-wide (final tree): `cargo fmt --check` ok; `cargo clippy --workspace --all-targets -- -D warnings`
+      ok; same with `--features heavy-tests` ok; `cargo nextest run --workspace` 4223/4223 (3 skipped);
+      `cargo test --workspace --doc` ok.
+
+## NOTES (builder, 2026-09-27)
+- Scout: none, per the ticket (the review names every line). Opus.
+- **Red A** (`every_key_the_bar_draws_is_answered`): "the bar draws 60 key(s) the handler with focus does nothing
+  with: Blame { finding: false, ignore_file: false, read: true } (Shown) at 40 columns, bar of Blame { finding:
+  false, ignore_file: false, read: false }, draws `⏎ that commit`" — tally: 24 `⏎ that commit`, 24 `^ before it`,
+  12 `n N match`; no other key. `every_swept_state_is_the_context_it_claims`: "a fixture for Blame { …, read: true }
+  (Shown) is not that screen; left: …read: false". So nothing beyond `⏎ ^ n N` dead on a failed place (`/`, `space`,
+  `w`, `esc` all answer).
+- **Red B**: "assertion `left != right` failed: Char('u'), reached: the graph does not land on the commit; left:
+  Some(Oid(a1a1…)) right: Some(Oid(a1a1…))" and the same for `Char('x')`.
+- B ordering check (the stop condition): no write or pin key starts a seek. `history.seek` callers are
+  `update/search.rs:160`, `update/map.rs:201`, `update/detail/landing.rs:145`, `update/banner/stop.rs:163` (a stop's
+  *answer*, not a dispatch); `x` calls `end_for_compare` before the pin (`update/detail/state.rs:135`). And `abandon`
+  only withdraws when `history.seeking` is the landing's own commit. `show_line`'s only callers are the place's `⏎`
+  (`place/keys.rs:245`) and `leave`'s restore, so every landing is the trail's.
+- `abandon` sits right after `cancel_reading`, before the `origin` return too (not only before `restore`'s): every
+  way off drops it whatever the trail held.
+- **Red C** (mutant): "assertion `left == right` failed: the graph cursor does not move; left: Some(2) right:
+  Some(1)". No key path reaches it: `⏎` hides the trail and `show_again` abandons first; built with `blamed_at`,
+  `trail.shown = true` and `origin.spot = Spot::of(..)` by hand (said in the test's doc).
+- **Red D**: "hung: `wait_for` did not return within 30 s (timed out waiting on channel)", 30.01 s.
+- **Deviation, D "drop `asks`"**: not done — no wait qualifies. The first wait is followed by request 2; the promoted
+  wait sends nothing after but needs `asks` alive: with every sender gone the stream ends before its idle step
+  (`history/serve.rs` `interrupted` → `Arrival::SendersGone` → `Ended::Cancelled`, before `views.idle_step`), so the
+  promoted window would never come. Commented at the call in `heavy.rs`. The bound is what ends a failed wait.
+- `wait_for`'s bound is `crate::deadline::DEADLINE` for the whole wait (one `Instant` deadline, `recv_timeout` on
+  what is left). Heavy test measured well under it (20.9 s incl. fixture).
+- Minor 2 cost one line too many in `context_list` (clippy `too_many_lines`, 61/60): the `PaneOverOverlay` arm's body
+  moved to `pane_over_overlay_list` in the same file, no behaviour change (sweeps green).
+- **Commits 1 and 2 were not clippy-clean** (that `too_many_lines`), contrary to "gates green at each"; found at the
+  D gate run, fixed in the final commit. nextest was green at each.
+- Keymap: `docs/design/02-keymap.md` lists no keys for a failed blame place; no edit.
+- Not compacted.
 
 ## Touches (check each; the report's **Touches:** line says how)
 - Every `HintContext::Blame` construction and match (compiler + `rg 'HintContext::Blame'`): `view/rows.rs`, the

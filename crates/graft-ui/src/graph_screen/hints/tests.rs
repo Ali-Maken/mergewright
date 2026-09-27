@@ -1874,13 +1874,14 @@ mod blame_place {
         assert!(words(&blame_place_list(false, true)).contains(&"i ignore list".to_owned()));
     }
 
-    /// m7-power-tools/20k: while a read is in flight the line keys go.
+    /// m7-power-tools/20k, 20n: without lines (a read in flight, or a
+    /// failed one) the line keys go.
     #[test]
-    fn a_read_in_flight_draws_no_line_keys() {
+    fn a_place_without_lines_draws_no_line_keys() {
         let reading = HintContext::Blame {
             finding: true,
             ignore_file: true,
-            read: true,
+            lines: false,
         };
         assert_eq!(
             words(&lists::context_list(&reading)),

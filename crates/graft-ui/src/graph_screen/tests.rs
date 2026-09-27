@@ -2055,15 +2055,15 @@ fn coverage_slot(context: &HintContext) -> usize {
         // 15, 16, 73, 79, 80.
         HintContext::PaneFocused { .. } => pane_focused_slot(context),
         // m7-power-tools/20: the blame place's four flag pairs (74–77), the
-        // way back to it (78); the same four while a read is in flight
-        // (81–84, m7-power-tools/20k).
+        // way back to it (78); the same four without lines — a read in
+        // flight or a failed one (81–84, m7-power-tools/20k, 20n).
         HintContext::Blame {
             finding,
             ignore_file,
-            read,
+            lines,
         } => {
             let pair = 2 * usize::from(*finding) + usize::from(*ignore_file);
-            if *read { 81 + pair } else { 74 + pair }
+            if *lines { 74 + pair } else { 81 + pair }
         }
         HintContext::BackToBlame(_) => 78,
         HintContext::Map => 17,
