@@ -1,7 +1,9 @@
 //! `Esc` back to a hidden trail from the graph screen (20i, Major 1): the
 //! pane `⏎` opened is not closed first, whichever of graph and pane has
 //! focus, and the bar leads `esc back to blame` exactly where that `Esc`
-//! goes back (`place::esc_goes_back`, read by the key and the bar).
+//! goes back (`place::esc_goes_back`, read by the key and the bar). And
+//! every way off the trail — back, leaving, a write, a new pin — drops a
+//! `⏎` landing still seeking (32i-q1, 20n).
 
 use super::hints::bar;
 use super::*;
@@ -258,6 +260,56 @@ fn esc_back_drops_a_landing_still_seeking() {
             "{case}: origin focus"
         );
     }
+}
+
+/// 20n B (gap M7/20k-q3): `B ⏎` onto a commit the walk has not reached,
+/// then `key` on the graph — a write or a pin, each ending the trail — then
+/// the walk answers. The landing belonged to the trail, so it neither
+/// selects the commit, nor opens the pane on it, nor says it missed.
+fn a_way_off_the_trail_drops_a_landing_still_seeking(key: KeyCode) {
+    let state = blamed_at(22);
+    let (mut landed, commands) = press(&state, KeyCode::Enter);
+    assert!(
+        landed.line_landing.is_some(),
+        "Lina's commit is off the rows on hand: the landing seeks it"
+    );
+    landed.detail.focus = DetailFocus::Graph;
+    let before = landed.clone();
+
+    let (off, _) = press(&landed, key);
+    assert!(!off.trail.is_live(), "{key:?} ended the trail");
+    assert_eq!(off.line_landing, None, "{key:?}: the landing is gone");
+
+    for (third, case) in [(lina(), "reached"), (mo(), "missed")] {
+        let after = find_answered(&off, &commands, third);
+        assert_ne!(
+            selected(&after),
+            Some(lina()),
+            "{key:?}, {case}: the graph does not land on the commit"
+        );
+        assert_eq!(
+            after.detail.spec, before.detail.spec,
+            "{key:?}, {case}: the pane is not opened on it"
+        );
+        assert!(
+            !format!("{:?}", after.status).contains("not in this view"),
+            "{key:?}, {case}: no miss said: {:?}",
+            after.status
+        );
+        assert_eq!(after.line_landing, None, "{key:?}, {case}: no landing");
+    }
+}
+
+/// `u` (keymap §2.1: undo, a write — `place::is_write`).
+#[test]
+fn a_write_off_the_trail_drops_a_landing_still_seeking() {
+    a_way_off_the_trail_drops_a_landing_still_seeking(KeyCode::Char('u'));
+}
+
+/// `x` (keymap §2.1: pin the compare base — `place::end_for_compare`).
+#[test]
+fn a_pin_off_the_trail_drops_a_landing_still_seeking() {
+    a_way_off_the_trail_drops_a_landing_still_seeking(KeyCode::Char('x'));
 }
 
 /// Review Minor 1 (20n C): leaving the trail where `B` was pressed — so
