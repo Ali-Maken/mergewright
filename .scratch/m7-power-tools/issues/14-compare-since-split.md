@@ -1,75 +1,120 @@
-# compare-since-split — `x` between two commits shows what one has since it left the other, in words
+# compare-since-split — `x` opens the compare at once, the diff is since the split, and the header says so in words
 
-Status: ready
-Blocked by: none
-Crates: graft (the `x` compare state, the diff range), graft-ops (`compare_span`), graft-ui (the detail header words, the
-`x base` badge).
-Source: note Decision 2; "Pass 2a" R6 (Compare); journey 16 (`pr-contents`); `docs/research/branch-compare-submodules.md`
-takeaways 1, 4, 5, 6.
-Build with: Sonnet. A diff-range change and words on an existing compare. The scout decides whether today's `x` already
-diffs live as the cursor moves.
-Scout: `scout` first (ADR-0035).
-Needs: none.
+Status: draft
+Blocked by: 14a (`compare_span`)
+Crates: graft (`update::detail` `toggle_compare`, `update::selection::follow_selection`, `jobs::detail` the compare
+read, `view::detail::compare_header`, the base row's badges), graft-ui (`detail::Subject`, `detail_pane::header`,
+`graph_screen::badges`). **Not** graft-ops (scout 14 §4: nothing there).
+Source: note Decision 2; "Pass 2a" R6 (Compare); journey `pr-contents`; `docs/research/branch-compare-submodules.md`
+takeaways 1, 4, 5, 6. Respecified from scout `.scratch/m7-power-tools/scouts/14.md`.
+Build with: Sonnet. The behaviour is fixed below line by line; one read already exists (14a).
+Scout: done (14). No second scout.
+Needs: `graft_git::history_reads::compare_span`, `CompareSpan` (14a).
+
+## Today (scout 14, with lines)
+- First `x` pins `CompareBase` and **opens nothing** (`update/detail/state.rs:137-139`).
+- Motion follows the cursor **only if the pane is shown** (`update/selection.rs:146`); on the base row it returns no
+  command and the pane keeps the old compare (`:155`).
+- Second `x` on another row opens `Compare{base, head}` and keeps the base (`state.rs:145`); same row clears (`:141`).
+- Diff is **two-dot**: `DetailSpec::Compare → DiffSpec::Range{base, head}` (`state.rs:102`) → `diff-tree base head`.
+- Header `COMPARE <base> → <head>` (`graft-ui/src/detail_pane/header.rs:20`, from `graft/src/view/detail.rs:156`).
+- No `x base` badge; the base row has only the `▏` rule (`graft-ui` `render.rs:473-480`).
+- Keymap §2.3 `x` already reads "diffs since they split" (`docs/design/02-keymap.md:212`). No keymap edit.
 
 ## Decided
-- **Diff range:** with a compare base B marked by `x` and the cursor on C, the detail pane diffs `merge-base(B, C)..C`
-  (three-dot). The note says "since the split", never dots.
-- **Header words** (detail pane, top):
-  - `changes on <C's branch or sha7> since it left <B's branch or sha7> · N commits · F files +a −d`, with N =
-    `compare_span.ahead`.
-  - C is an ancestor of B: `<C> is already in <B> · nothing of its own`.
-  - C == B: `this is the compare base · x clears it`.
-  - No common history: `<C> and <B> share no history · showing <B>..<C>`, which is two-dot, said in words.
-- **Live:** once B is marked, the diff follows the cursor. No second `x` is needed (journey 16 = `x`, motion). If the
-  scout finds today's `x` needs a second press to complete, this ticket makes it live, and a second `x` on another row
-  keeps today's meaning (complete/clear). The journey's count assumes live.
-- **Badge:** the base row shows `x base` in the badge column. Distinction: the word + position; colour unverified.
-- **No new screen.** Two-dot is not offered as a toggle in M7.
+- **First `x` opens the pane.** No base → pin it **and** open `DetailSpec::Compare { base, head: base }` (shows the
+  base line below). This is what makes journey `pr-contents` = `x`, motion from a closed pane. *Behaviour change:*
+  today's first `x` is pin-only.
+- **Live.** With a base pinned and the pane shown, every cursor move opens `Compare { base, head: cursor }`
+  (unchanged). **On the base row** it opens `Compare { base, head: base }` too (today: no command).
+- **Second `x`:** same row → clear (unchanged); another row → today's meaning, opens that compare (now a re-read of
+  what is shown). `Esc` clears and closes (unchanged, `update/detail/keys.rs:34`). Shift/Ctrl+click (`mouse.rs:133,
+  223`) and the context menu (`context_menu.rs:222`) go through `toggle_compare`, so they change with it.
+- **Diff range.** The compare read runs `compare_span(base, head)` first, in the same job, same `Stop`:
+  - `Since { split, .. }` → files and each file's diff from `DiffSpec::Range { base: split, head }` (three-dot).
+  - `NoSharedHistory` → `DiffSpec::Range { base, head }` (two-dot), said in words.
+  - The **per-file diff** uses the split the file list used, never a fresh `base` (the file list and a file's hunks
+    must be the same range). Hold the span beside the compare's file list; a file diff before it lands waits.
+- **Header words** (detail pane top, first line). Names: C's = the first local-branch badge on the head row, else
+  its first remote badge, else sha7; B's likewise for the base row.
+  - `head == base` → `this is the compare base · x clears it` (no files).
+  - `Since`, `ahead > 0` → `changes on <C> since it left <B> · N commits · F files +a −d` (`1 commit` singular;
+    `F/+a/−d` summed from the file list, binary files count to `F` only).
+  - `Since`, `ahead == 0` → `<C> is already in <B> · nothing of its own` (no files).
+  - `NoSharedHistory` → `<C> and <B> share no history · showing <B>..<C>`.
+  - Span not landed → `comparing <C> with <B> …`. Read failed → `couldn't compare: <error>` (rule 3).
+  - Narrow pane ladder: drop `· F files +a −d`, then `· N commits`, then cut `<C>` with `…`. Never cut a number.
+- **Badge.** The base row gets a badge `x base` (new `BadgeKind::CompareBase`), first in its badge list; the `▏`
+  rule stays. Distinction: word + position. Colour unverified.
+- **Footer** `compare base <sha7> — move, x again clears` (`view/rows.rs:237`): unchanged.
+- No two-dot toggle, no new screen.
 
 ## Read first
-- Note Decision 2, "Pass 2a" R6, "Journey counts" `pr-contents`.
-- `docs/design/02-keymap.md` §2.3 `x`.
-- `crates/graft/MAP.md`: `compare_base`, the detail pane's diff source. `crates/graft-ops/MAP.md` `history_reads`
-  (`merge_base`, `commits_between`). `crates/graft-ui/MAP.md` `detail_pane::header`, badges.
-
-## Scout brief (≤ 1 page)
-1. What `x` does today, step by step: mark, what moving the cursor does, what a second `x` does. Is the diff two-dot or
-   three-dot? Give the lines.
-2. Where the detail header's words for a compare are built.
-3. Captures and walks that show a compare (`grep -rn compare` in the tests and `docs/shots`).
+- Note Decision 2, "Pass 2a" R6, "Journey counts" `pr-contents`. `docs/design/02-keymap.md` §2.3 `x`.
+- Scout 14 (all).
+- `crates/graft/MAP.md`: `AppState::compare_base`, `toggle_compare`, `follow_selection`, `DetailSpec`, `jobs::detail`.
+  `crates/graft-ui/MAP.md`: `Subject`, `DetailPane`, `graph_screen::badges`. `crates/graft-git/MAP.md`
+  `history_reads` (14a's lines).
 
 ## Signatures
 ```rust
-pub struct CompareSpan { pub split: Option<Oid>, pub ahead: usize, pub behind: usize }
-pub fn compare_span(repo: &Repo, git: &Git, base: Oid, tip: Oid, stop: &dyn Stop) -> Result<CompareSpan, FactsError>;
+// graft-ui::detail — replaces `Compare { base, head }` (one variant, not two).
+pub enum Subject { None, Commit { sha: String }, Compare(CompareHeader), WorkingTree { /* unchanged */ } }
+pub struct CompareHeader { pub base: String, pub head: String, pub state: CompareState }
+pub enum CompareState {
+    Reading,
+    IsBase,
+    Since { commits: usize, tally: Option<FileTally> }, // tally None until the file list lands
+    AlreadyIn,
+    NoSharedHistory,
+    Failed(String),
+}
+pub struct FileTally { pub files: usize, pub added: usize, pub removed: usize }
+// graft-ui::graph_screen::badges
+pub enum BadgeKind { /* existing */ CompareBase }
+// graft: calls graft_git::history_reads::compare_span(repo, base, head, stop)
 ```
+Existing field types on `Subject::Commit`/`WorkingTree` are whatever they are today; keep them.
 
-## Acceptance
-- [ ] **graft-ops:**
-  - `compare_span_counts_commits_since_the_split`;
-  - `an_ancestor_has_nothing_ahead`;
-  - `unrelated_histories_have_no_split`;
-  - `compare_span_honours_stop`.
-- [ ] **App:**
-  - `the_compare_diff_is_since_the_split` (red first if today is two-dot);
-  - `the_diff_follows_the_cursor_after_x`;
-  - `the_header_says_changes_since_it_left`;
-  - `an_ancestor_says_nothing_of_its_own`;
-  - `on_the_base_says_x_clears`.
-- [ ] **Walk** `pr_contents` = `x` motion ≤ `noted_keys("pr-contents")`, starting with the cursor on main. The header
-      reads `changes on feature-a since it left main · 3 commits`.
-- [ ] **Capture** `docs/shots/m7/compare-since-split-187x50.txt`. **Right:** the header words above; `x base` on main's
-      row; the diff lists only feature-a's files. Colour unverified.
-- [ ] Hint-bar tests green. MAP.md for the three crates. TESTING.md row.
+## Acceptance (each box names its test at tick time)
+- [ ] `the_first_x_opens_the_compare_on_the_base` (red first: `state.rs:137`).
+- [ ] `the_diff_follows_the_cursor_after_x` — pane closed, `x`, `j` → `Compare { base, head }` shown.
+- [ ] `the_cursor_on_the_base_says_x_clears` (red first: `selection.rs:155`).
+- [ ] `the_compare_diff_is_since_the_split` (red first: two-dot today) — feature-a 3 commits off main, main moved
+      on by 2 → only feature-a's files listed.
+- [ ] `a_file_diff_in_a_compare_uses_the_split` — the hunks of a file are the split..head hunks.
+- [ ] `the_header_says_changes_since_it_left`, `an_ancestor_says_nothing_of_its_own`,
+      `no_shared_history_says_two_dot_in_words`, `a_failed_compare_says_why`,
+      `the_header_drops_the_tally_first_when_narrow` (graft-ui header tests).
+- [ ] `the_base_row_carries_x_base` (graft-ui badge test + one app test).
+- [ ] Existing compare tests updated, each named in NOTES: `update/detail/tests.rs:256-346`,
+      `update/selection.rs:444-545`, `update/tests.rs:599-719`, `detail/landing/tests.rs:328-377`,
+      `detail/cursor/tests.rs:240`, `place/tests/pinned_base.rs` (blame trail sets aside and restores the base,
+      `place.rs:215,229`, `place/trail.rs:39,145`: still green, unchanged meaning).
+- [ ] **Walk** `pr_contents`: fixture with feature-a's tip one row from main; cursor on main, pane closed; `x`, `j`;
+      key count ≤ `noted_keys("pr-contents")` (2). Header reads `changes on feature-a since it left main · 3 commits`.
+- [ ] **Captures:** `docs/shots/m7/compare-since-split-187x50.txt` and `-80x24.txt`. **Right:** the header words
+      above (at 80x24 the ladder's cut, numbers whole); `x base` on main's row; the file list holds only feature-a's
+      files. Colour unverified. `gallery.rs:419-423` (`x j j x`, expects `COMPARE 0683985 → e30e870`) re-taken to the
+      new header; `docs/shots/m2-compare.txt`, `m2-05-feature-branches-x-j-j-x-160x40-unicode.txt` re-taken if a test
+      writes them, else listed in NOTES as stale (not hand-edited).
+- [ ] Hint-bar tests green. MAP.md for graft and graft-ui. TESTING.md row for `pr-contents`.
 
 ## Touches (check each, report how)
-- **Existing compare walks/captures:** scout Q3. Each is re-taken and listed.
-- **The diff pane (`w W v [ ] < > L`):** unchanged. Check: the diff-pane tests.
-- **Keymap:** §2.3 `x` wording may need "diffs since the split". The conductor's row, named in NOTES.
-- **Journal:** none (read only).
+- **Blame trail** (`Origin.base`, set aside and re-pinned): the re-pin now opens the pane? It must not — re-pinning
+  restores, it does not press `x`. Check: `place/tests/pinned_base.rs` + one new assertion that leaving the trail
+  lands on the same compare header.
+- **Diff pane keys (`w W v [ ] < > L`, `B` blame from a compare):** unchanged. Check: diff-pane tests; `B` on a
+  compare file blames `head` (grep `Compare` in `update/place*`, report the hit).
+- **Mouse and context menu:** through `toggle_compare`. Check: the mouse compare test (`mouse.rs:133` path).
+- **Hint bar / footer:** footer line unchanged; bar under a compare unchanged. Check: hint tests.
+- **Ghost Preview rows** carry no badge: `debug_assert` in `render` forbids `compare_marked` on a ghost row; the
+  `x base` badge is built from the same `compare_base` check, so ghost rows can't get it. Check: grep the badge's
+  builder.
+- **Keymap, journal/undo, other crates:** none (read only; §2.3 already worded).
 
 ## Rules / Gates
 As rewrite-engine.
 
 ## Size
-Small-medium (~35k).
+Medium (~45k).
