@@ -3,35 +3,42 @@
 //! `commit_graph`).
 
 use graft_core::event::{KeyCode, KeyPress, Modifiers};
-use graft_core::job::JobId;
 use graft_core::oid::Oid;
-use graft_git::history::Order;
 
 use crate::history::Motion;
 use graft_ui::detail::DetailFocus;
 
-use super::events::{Command, CommitGraphOffer};
+use super::events::Command;
 use super::state::{AppState, Quit, Status};
 
+mod acknowledge;
 mod actions;
 mod bound;
+mod commit;
+mod escape;
 #[cfg(test)]
 mod live_c_tests;
 mod predicates;
+mod refresh;
 #[cfg(test)]
 mod tab_words_tests;
 #[cfg(test)]
 mod tests;
 mod view_change;
 
+pub(in crate::update) use acknowledge::acknowledge;
+use acknowledge::dismiss_unseen;
 pub(in crate::update) use actions::strip_rows_for;
 use actions::{copy_selected_sha, cycle_tier, toggle_compare_selected};
 pub use bound::bound_actions;
+use commit::commit_key;
+use escape::escape_key;
 use predicates::{
     RemoteKey, is_commit_key, is_compare_key, is_context_menu_key, is_copy_key, is_focus_toggle,
     is_lane_toggle, is_name_key, is_quit, is_refresh, is_remote_key, is_screen_toggle,
     is_tier_cycle, is_undo_key, motion_for,
 };
+pub(in crate::update) use refresh::refresh_key;
 use view_change::{ViewChange, view_change};
 
 /// The two modal boxes drawn over everything, in the order they claim keys.
@@ -112,45 +119,6 @@ fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -
     let claimed = super::banner::banner_key(next, commands, key, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     claimed
-}
-
-/// Clears what only acknowledges something the user just did: the copy
-/// notice, a finished write's `<description> done` line and the
-/// commit-graph written line. Each lasts until the next key **or click**,
-/// whatever that key or click does (m6-conflicts/42) — one rule, called
-/// from [`key_event`] and from `mouse::mouse_event` on a button press.
-///
-/// Not while the row cannot show it (m6-conflicts/78, Decided 1): under a
-/// modal, which owns the bottom row, a `Done` that arrived there stays until
-/// the modal closes and the row has drawn it; and not while an unseen
-/// failure stands in for the status, which the key that dismisses it does
-/// not also acknowledge.
-pub(super) fn acknowledge(next: &mut AppState) {
-    if next.modal_owns_bottom_row() || next.unseen.is_some() {
-        return;
-    }
-    if matches!(
-        next.status,
-        Status::Copied { .. } | Status::Done { .. } | Status::Waiting(_)
-    ) {
-        next.status = Status::Ready;
-    }
-    if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
-        next.commit_graph = CommitGraphOffer::NotNeeded;
-    }
-}
-
-/// A failure that arrived under a box and is drawn now the box has closed
-/// (`AppState::unseen`): any key dismisses it. `true` when the key is spent
-/// doing so — `Esc`, which must not also cancel the write the box's act
-/// started; that is a second `Esc` (m6-conflicts/78, Decided 1). Left alone
-/// while a modal owns the row: it is not on screen to dismiss.
-pub(super) fn dismiss_unseen(next: &mut AppState, key: &KeyPress) -> bool {
-    if next.unseen.is_none() || next.modal_owns_bottom_row() {
-        return false;
-    }
-    next.unseen = None;
-    key.code == KeyCode::Escape
 }
 
 /// The half of [`super::core_event`] that answers a key.
@@ -309,32 +277,6 @@ fn stash_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     claimed
 }
 
-/// `c` or `a` in the graph or the changes pane.
-///
-/// While an operation is live, `c` is the banner's `c` wherever that acts
-/// (`commit_editor::pane_c_acts`, m6-conflicts/52): the finish summary for
-/// a merge, `--continue` for a rebase, cherry-pick or revert Graft began —
-/// with the banner's own refusals, and `Esc` from the summary back on the
-/// banner, the operation's home. Everywhere else, and for `a` always,
-/// `commit_editor::open` answers: the editor, or the words refusing it
-/// while an operation is live (m6-conflicts/48).
-fn commit_key(next: &mut AppState, commands: &mut Vec<Command>, amend: bool) {
-    use super::commit_editor::{live_operation, pane_c_acts};
-    let mut local_jobs = next.local_jobs;
-    let mut next_id = || local_jobs.next_id();
-    if !amend && live_operation(next).is_some_and(pane_c_acts) {
-        super::banner::continue_pressed(
-            next,
-            commands,
-            super::finish::ReturnTo::Banner,
-            &mut next_id,
-        );
-    } else {
-        commands.extend(super::commit_editor::open(next, amend, &mut next_id));
-    }
-    next.local_jobs = local_jobs;
-}
-
 /// The graph's own keys, once the detail pane has passed on the key.
 fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
@@ -422,63 +364,6 @@ fn remote_key(next: &mut AppState, commands: &mut Vec<Command>, remote: RemoteKe
     next.local_jobs = local_jobs;
 }
 
-/// `r`: refresh the repository from disk, cancelling whatever walk was
-/// already in flight — it would otherwise sit waiting for row requests that
-/// now go to its replacement.
-///
-/// Also `super::operate`'s `Refresh::Everything`: a write that moved refs
-/// leaves exactly what `Ctrl+R` rebuilds stale, and two hand-written lists of
-/// what "everything" means drift (m3/04 review M8).
-/// `next_id` rather than `next.local_jobs`: a caller that borrowed the
-/// counter out into a closure writes its copy back when it returns, so a
-/// callee minting from the state's own counter has its ids rewound and the
-/// next mint reissues an id still in flight — a job answering under another
-/// job's name (m3-working-tree-undo-and-stash/06). One counter per pass.
-pub(super) fn refresh_key(
-    next: &mut AppState,
-    commands: &mut Vec<Command>,
-    next_id: &mut impl FnMut() -> JobId,
-) {
-    // The journal is part of "re-read the repository from disk": another
-    // Graft on the same worktree appends to it, and an entry this run has
-    // not seen is one `u` would not offer to take back
-    // (m3-working-tree-undo-and-stash/06).
-    commands.extend(next.journal.read(next_id));
-    // And so is the stash list, while the overlay is up: a stash push or
-    // pop in another window moves `refs/stash` under it
-    // (m3-working-tree-undo-and-stash/06).
-    super::stash::refresh(next, commands, next_id);
-    commands.extend(next.detail.refresh(next_id));
-    // The walk this refresh replaces is cancelled by name — and the name is
-    // one `update` minted when it asked for the walk, not one it learned
-    // from the pool's `Started` event. Learning it late left a window in
-    // which a second `Ctrl+R` had nothing to cancel, so the walk it meant to
-    // replace stayed parked on a worker; two of those fill the pool and the
-    // refs and working-tree reads never get a thread
-    // (m5-history-and-ghost-preview/05).
-    if let Some(id) = next.awaiting.take() {
-        commands.push(Command::CancelJob(id));
-    }
-    if let Some(id) = next.promoting.take() {
-        commands.push(Command::CancelJob(id));
-    }
-    let walk = next_id();
-    next.awaiting = Some(walk);
-    commands.push(Command::OpenRepository);
-    commands.push(Command::ReadHistory(walk, Order::Topological));
-    let refs = next_id();
-    next.refs_read.asked(refs);
-    commands.push(Command::ReadRefs(refs));
-    super::remote::request(next, commands, next_id);
-    let tree = next_id();
-    commands.push(super::status_read::ask(next, tree));
-    // The default branch's tip may have moved: a stale chain would
-    // misclassify a foxtrot merge against a tip that is no longer real.
-    // `radar::request_context` asks for a fresh one once the refreshed refs
-    // land.
-    super::radar::reset_for_refresh(next);
-}
-
 /// A graph motion key: the working-tree row's flag (`update::selection`)
 /// sees it first, then whatever motion is left goes to `History`.
 fn move_cursor(next: &mut AppState, commands: &mut Vec<Command>, motion: Motion) {
@@ -492,68 +377,4 @@ fn move_cursor(next: &mut AppState, commands: &mut Vec<Command>, motion: Motion)
     {
         commands.push(Command::ShowRows(id, request));
     }
-}
-
-/// `Esc` (once the detail pane is closed): backs a `G` still walking out first, then leaves Focus
-/// mode, then cancels the walk while it is reading, else nothing (m1-the-graph/17, ADR-0023,
-/// DESIGN.md §2.2, m6-conflicts/85).
-fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
-    let height = next.graph_rows();
-    // A search still running: stop it and put the selection back.
-    if next
-        .search
-        .as_ref()
-        .is_some_and(|search| matches!(search.state, crate::search::SearchState::Running { .. }))
-    {
-        super::search::cancel_search(next, commands);
-        return;
-    }
-    // A `G` still walking is what `Esc` backs out of first; the
-    // walk itself goes on serving the rows already on screen.
-    if let Some(id) = next.awaiting
-        && let Some(history) = next.history.as_mut()
-        && let Some(request) = history.withdraw_jump(height)
-    {
-        commands.push(Command::ShowRows(id, request));
-        return;
-    }
-    // Then a finished search's line.
-    if next.search.take().is_some() {
-        return;
-    }
-    // Then Focus mode: leaving it is not a reason to stop the walk.
-    if next.focus {
-        next.focus = false;
-        return;
-    }
-    // Then a topological sort still running: the rows stay in the order they
-    // are in, and the screen says that order is provisional. Once the order
-    // has been handed to the walk it is no longer the sort's to cancel.
-    if next.promoting.is_some() {
-        super::history::give_up_promotion(next, commands);
-        return;
-    }
-    // Then the walk — **only while it is reading** (m6-conflicts/85 A1). A
-    // walk resting between asks, or complete, stays `awaiting` for as long
-    // as it is on screen (it serves rows on request), and cancelling it
-    // then stopped a history nothing was loading: `stopped at 6 rows` on a
-    // 6-commit repo, and a long one left unscrollable. With nothing
-    // running, `Esc` does nothing.
-    //
-    // Stop waiting first, then ask the job to stop. The order
-    // matters: a job that finishes between the two lines still
-    // sends its result, and it has to find nobody waiting for it.
-    if super::walk_is_reading(next)
-        && let Some(id) = next.awaiting.take()
-    {
-        commands.push(Command::CancelJob(id));
-        super::history::set_phase(next, crate::history::Phase::Cancelled);
-        return;
-    }
-    // Last: a blame trail waiting under the graph comes back
-    // (m7-power-tools/20, `esc back to blame`), when `place::esc_goes_back`
-    // says so. With it true the pane's `Esc` (`detail::keys`) has already
-    // taken the key, before the walk's rungs above: going back is what he
-    // asked for (20i).
-    super::place::show_again(next, commands);
 }

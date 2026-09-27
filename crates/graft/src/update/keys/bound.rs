@@ -172,5 +172,5 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("space", "ages"),        // `place_key`: the heatmap
     ("w", "whitespace"),      // `place::keys::rerun`, `-w` toggled
     ("i", "ignore list"),     // `place::keys::rerun`, the ignore file toggled
-    ("esc", "back to blame"), // `detail::keys` / `escape_key` → `place::show_again`
+    ("esc", "back to blame"), // `detail::keys::place_key` → `place::show_again`
 ];
