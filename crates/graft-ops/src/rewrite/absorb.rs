@@ -13,9 +13,9 @@ use crate::absorb::{self, AbsorbMap, StaysWhy};
 use crate::operation::{Refusal, RepoFacts, Tip};
 
 use super::dependents::line_of;
-use super::plan::{head_of, refuse_merges};
+use super::plan::{head_of, refuse_merges, short_name};
 use super::reads::{RangeCommit, read_range, unparsable};
-use super::unpushed::{RangeStop, YourCommits, your_commits};
+use super::unpushed::{RangeStop, your_commits};
 use super::{RewriteError, RewriteParams, TodoAction, TodoLine};
 
 /// Where absorb's range starts, and the reason a hunk older than it stays
@@ -25,58 +25,64 @@ struct AbsorbBase {
     below: StaysWhy,
 }
 
-/// The base of his branch; on a branch with no base of its own, his
-/// unpushed commits (06c ruling), refused when there are none.
+/// Where his commits start ([`your_commits`], 06e ruling), refused when
+/// there are none. A hunk whose lines are all older stays with the walk's
+/// stop as its reason: below a pushed commit everything is pushed; below
+/// the base is "older than your branch"; below a merge or the fallback's
+/// cap is "outside your commits".
 fn absorb_base(
     repo: &RepoHandle,
     head: &Tip,
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<AbsorbBase, RewriteError> {
-    let range = match your_commits(repo, head, default_branch, stop)? {
-        YourCommits::Above(base) => {
-            return Ok(AbsorbBase {
-                base,
-                below: StaysWhy::BeforeYourBranch,
-            });
-        }
-        YourCommits::Unpushed(range) => range,
-    };
+    let range = your_commits(repo, head, default_branch, stop)?;
     if range.commits.is_empty() {
         let refusal = match range.stop {
             RangeStop::Pushed => Refusal::AllPushed {
-                branch: head
-                    .name
-                    .strip_prefix("refs/heads/")
-                    .unwrap_or(&head.name)
-                    .to_owned(),
+                branch: short_name(head),
+            },
+            RangeStop::NotItsOwn => Refusal::NoCommitsOfItsOwn {
+                branch: short_name(head),
             },
             RangeStop::Merge(merge) => Refusal::MergeInRange { merge },
             RangeStop::Root => Refusal::RootCommit { commit: head.oid },
-            RangeStop::Cap => {
-                return Err(
-                    unparsable("absorb's range took no commit at its cap".to_owned()).into(),
-                );
+            // The base is below `HEAD` and the cap is 10: neither can stop
+            // the walk before it takes `HEAD`.
+            RangeStop::Base | RangeStop::Cap => {
+                return Err(unparsable(format!(
+                    "absorb's range took no commit, stopped at {:?}",
+                    range.stop
+                ))
+                .into());
             }
         };
         return Err(RewriteError::Refused(refusal));
     }
+    let below = match range.stop {
+        RangeStop::Pushed => StaysWhy::AlreadyPushed,
+        RangeStop::Base => StaysWhy::BeforeYourBranch,
+        RangeStop::NotItsOwn | RangeStop::Merge(_) | RangeStop::Root | RangeStop::Cap => {
+            StaysWhy::OutsideYourCommits
+        }
+    };
     Ok(AbsorbBase {
         base: range.base,
-        below: StaysWhy::OutsideYourCommits,
+        below,
     })
 }
 
 /// Where each staged hunk goes, over the range [`super::plan`]'s absorb
-/// plans on: the base of his branch, or on a branch with no base of its
-/// own his last unpushed commits ([`super::ABSORB_FALLBACK_DEPTH`]). What
-/// the absorb preview lists. Reads only (objects aside).
+/// plans on: his commits, down to the first pushed one, the base, a merge
+/// or the first commit (on the default or only branch with no base below
+/// `HEAD`, at most [`super::ABSORB_FALLBACK_DEPTH`]; 06e ruling). What the
+/// absorb preview lists. Reads only (objects aside).
 ///
 /// # Errors
-/// [`RewriteError::Refused`]: not on a branch; every commit pushed
-/// ([`Refusal::AllPushed`]); `HEAD` a merge or the first commit on a branch
-/// with no base of its own. [`RewriteError::Facts`] when a read fails;
-/// [`RewriteError::Stopped`].
+/// [`RewriteError::Refused`]: not on a branch; `HEAD` pushed
+/// ([`Refusal::AllPushed`]); no commits of its own
+/// ([`Refusal::NoCommitsOfItsOwn`]); `HEAD` a merge or the first commit.
+/// [`RewriteError::Facts`] when a read fails; [`RewriteError::Stopped`].
 pub fn absorb_plan_map(
     repo: &RepoHandle,
     facts: &RepoFacts,

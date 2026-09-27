@@ -1,7 +1,21 @@
-//! "Your commits" on a branch with no base of its own — the default branch,
-//! or the only branch, with no upstream — where the usual base comes out as
-//! `HEAD` itself (planner ruling, 06c Question 2). Absorb and `a` both ask
-//! [`unpushed_range`], so the commits one may change are the other's.
+//! "Your commits" — the one range absorb places into and `a` accepts a
+//! target from (06c ruling; 06e ruling, 2026-09-27: on every base).
+//!
+//! `HEAD`'s first-parent commits, walked down from `HEAD`. At each commit
+//! the walk stops, checking in this order:
+//! 1. a `refs/remotes/*` ref reaches it → [`RangeStop::Pushed`] (first: an
+//!    upstream base is itself pushed, and "already pushed" is the true
+//!    reason there);
+//! 2. it is the base → [`RangeStop::Base`];
+//! 3. a merge → [`RangeStop::Merge`];
+//! 4. the first commit → [`RangeStop::Root`];
+//! 5. only with no base below `HEAD`: [`ABSORB_FALLBACK_DEPTH`] already
+//!    taken → [`RangeStop::Cap`].
+//!
+//! With no base below `HEAD`, the walk runs only on the default branch or
+//! the only local branch (06c's premise). Anywhere else nothing is its own:
+//! [`RangeStop::NotItsOwn`] — unless `HEAD` itself is pushed, which rule 1
+//! answers first, so a tracked branch pushed to its tip says "pushed".
 
 use std::collections::BTreeSet;
 
@@ -13,134 +27,220 @@ use graft_git::run::{GitArg, GitInvocation, Stop};
 use crate::facts::FactsError;
 use crate::operation::Tip;
 
-use super::reads::{base_of, parse_oid, unparsable};
+use super::reads::{base_of, default_branch_of, parents_of, parse_oid, unparsable};
 
-/// How many of his unpushed commits absorb and `a` reach on a branch with
-/// no base of its own: git-absorb's rule, its last 10 commits
-/// (`docs/research/interactive-rebase.md` :135). Older ones he may have
-/// forgotten; a pick he points at further back is `R`'s.
+/// How many of his unpushed commits absorb and `a` reach on the default or
+/// only branch with no base below `HEAD`: git-absorb's rule, its last 10
+/// commits (`docs/research/interactive-rebase.md` :135). Older ones he may
+/// have forgotten; a pick he points at further back is `R`'s.
 pub const ABSORB_FALLBACK_DEPTH: usize = 10;
 
-/// His unpushed commits, the walk that found them, and what ended it.
+/// His commits, the walk that found them, and what ended it.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct UnpushedRange {
-    /// The parent of the oldest commit taken; `HEAD` when none was.
+pub(crate) struct YourCommits {
+    /// Parent of the oldest commit taken; `HEAD` when none were taken.
     pub(crate) base: Oid,
-    /// The commits taken, newest first.
+    /// First-parent, newest first.
     pub(crate) commits: Vec<Oid>,
     /// What ended the walk.
     pub(crate) stop: RangeStop,
 }
 
-/// What ended [`unpushed_range`]'s walk down the first-parent chain.
+/// What ended [`your_commits`]'s walk down the first-parent chain.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum RangeStop {
-    /// [`ABSORB_FALLBACK_DEPTH`] commits taken.
-    Cap,
-    /// The next commit is on a remote-tracking ref (`refs/remotes/*`).
+    /// The next commit is on a remote-tracking ref (`refs/remotes/*`), and
+    /// so is everything below it.
     Pushed,
+    /// The next commit is the branch's base (where it left its upstream or
+    /// the default branch).
+    Base,
+    /// No base below `HEAD`, and the branch is neither the default branch
+    /// nor the only one: a new branch at `main`'s tip. Nothing was taken.
+    NotItsOwn,
     /// The next commit is a merge (ADR-0047 §5 refuses merges in a range).
     Merge(Oid),
     /// The next commit is the repository's first: nothing to replay it
     /// onto.
     Root,
+    /// [`ABSORB_FALLBACK_DEPTH`] commits taken (no base below `HEAD` only).
+    Cap,
 }
 
-/// Which commits are his, for absorb and `a`.
-pub(crate) enum YourCommits {
-    /// The branch has a base of its own (its upstream, or the default
-    /// branch it left): the commits above it, whatever a remote holds.
-    Above(Oid),
-    /// The base came out as `HEAD` itself, or there is none: his unpushed
-    /// commits, at most [`ABSORB_FALLBACK_DEPTH`].
-    Unpushed(UnpushedRange),
+/// One commit the walk looks at: its parents, and the stop it is if a
+/// remote does not reach it first.
+struct Candidate {
+    commit: Oid,
+    parents: Vec<Oid>,
+    ends: Option<RangeStop>,
 }
 
-/// [`base_of`] when it gives a base below `HEAD`; else [`unpushed_range`].
-/// `base_of` itself is unchanged: `R` and others call it.
+/// His commits, for absorb (`plan`'s absorb and `absorb_plan_map`) and `a`
+/// (`AmendInto`). See the module doc for the walk. `base_of` itself is
+/// unchanged: `R` and others call it.
+///
+/// Reads: the base; the chain (`rev-list --first-parent --parents`); on
+/// the fallback, whether the branch is the default or only one; then one
+/// `rev-list <chain> --not --remotes` for which of the chain no remote
+/// reaches — git's own walk, so a commit a remote ref reaches through a
+/// merge's second parent counts as pushed. Not graft-git's
+/// `contained_in`: one `for-each-ref --contains` per commit costs seconds
+/// each on a repository with 50k refs (graft-git MAP, `unreached`).
 pub(crate) fn your_commits(
     repo: &RepoHandle,
     head: &Tip,
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<YourCommits, FactsError> {
-    match base_of(repo, head, default_branch, stop)? {
-        Some(base) if base != head.oid => Ok(YourCommits::Above(base)),
-        _ => Ok(YourCommits::Unpushed(unpushed_range(repo, head, stop)?)),
+    let base = base_of(repo, head, default_branch, stop)?.filter(|base| *base != head.oid);
+    let candidates = match base {
+        Some(base) => down_to_base(repo, head.oid, base, stop)?,
+        None if falls_back(repo, head, default_branch, stop)? => capped(repo, head.oid, stop)?,
+        None => {
+            let parents = parents_of(repo, head.oid, stop)?;
+            vec![Candidate {
+                commit: head.oid,
+                parents,
+                ends: Some(RangeStop::NotItsOwn),
+            }]
+        }
+    };
+    let unpushed = not_on_a_remote(repo, &candidates, stop)?;
+    let mut commits = Vec::new();
+    let mut below = head.oid;
+    for candidate in &candidates {
+        let ended = if unpushed.contains(&candidate.commit) {
+            candidate.ends
+        } else {
+            // Everything below a pushed commit is pushed too.
+            Some(RangeStop::Pushed)
+        };
+        if let Some(stop) = ended {
+            return Ok(YourCommits {
+                base: below,
+                commits,
+                stop,
+            });
+        }
+        commits.push(candidate.commit);
+        below = candidate
+            .parents
+            .first()
+            .copied()
+            .ok_or_else(|| unparsable("a commit your_commits took has no parent".to_owned()))?;
     }
+    Err(unparsable(
+        "your_commits' walk ended without a stop".to_owned(),
+    ))
 }
 
-/// Walk the first-parent chain down from `head`, taking commits while all
-/// hold: fewer than [`ABSORB_FALLBACK_DEPTH`] taken; not a merge; not the
-/// first commit; not reachable from any remote-tracking ref.
-///
-/// Two reads: the chain (`rev-list --first-parent --parents`), then which of
-/// its merge-free prefix no remote-tracking ref reaches (`rev-list <prefix>
-/// --not --remotes`, git's own walk: a commit a remote ref reaches through a
-/// merge's second parent counts as pushed). Not graft-git's `contained_in`:
-/// one `for-each-ref --contains` per commit costs seconds each on a
-/// repository with 50k refs (graft-git MAP, `unreached`).
-pub(crate) fn unpushed_range(
+/// The branch is the default branch (the user's override when set) or the
+/// only local branch: the two places the fallback's premise holds.
+fn falls_back(
     repo: &RepoHandle,
     head: &Tip,
+    default_branch: Option<&RefName>,
     stop: &dyn Stop,
-) -> Result<UnpushedRange, FactsError> {
-    let chain = first_parent_chain(repo, head.oid, stop)?;
-    // The merge-free, root-free prefix, at most the cap, and what ends it.
-    let mut prefix: Vec<(Oid, Oid)> = Vec::new();
-    let mut ended = RangeStop::Cap;
-    for (commit, parents) in &chain {
-        if prefix.len() == ABSORB_FALLBACK_DEPTH {
-            ended = RangeStop::Cap;
-            break;
-        }
-        match parents.as_slice() {
-            [] => {
-                ended = RangeStop::Root;
-                break;
-            }
-            [parent] => prefix.push((*commit, *parent)),
-            _ => {
-                ended = RangeStop::Merge(*commit);
-                break;
-            }
-        }
+) -> Result<bool, FactsError> {
+    if default_branch_of(repo, default_branch)?.as_deref() == Some(head.name.as_str()) {
+        return Ok(true);
     }
-    let unpushed = not_on_a_remote(repo, &prefix, stop)?;
-    let mut commits = Vec::new();
-    let mut base = head.oid;
-    for (commit, parent) in &prefix {
-        if !unpushed.contains(commit) {
-            // Everything below a pushed commit is pushed too.
-            ended = RangeStop::Pushed;
-            break;
-        }
-        commits.push(*commit);
-        base = *parent;
-    }
-    Ok(UnpushedRange {
-        base,
-        commits,
-        stop: ended,
-    })
-}
-
-/// `head` and its first-parent ancestors, newest first, each with its
-/// parents: one more than the cap, so a walk that takes the cap still sees
-/// the next.
-fn first_parent_chain(
-    repo: &RepoHandle,
-    head: Oid,
-    stop: &dyn Stop,
-) -> Result<Vec<(Oid, Vec<Oid>)>, FactsError> {
     let output = GitInvocation::new(repo)
         .args([
-            GitArg::Flag("rev-list"),
-            GitArg::Flag("--first-parent"),
-            GitArg::Flag("--parents"),
+            GitArg::Flag("for-each-ref"),
+            GitArg::Flag("--count=2"),
+            GitArg::Word("--format=%(refname)".to_owned()),
+            GitArg::Word("refs/heads/".to_owned()),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    Ok(String::from_utf8_lossy(&output.stdout).lines().count() == 1)
+}
+
+/// `HEAD` down to the base: every first-parent commit above it, ending at
+/// the first merge or the first commit, else at the base itself.
+fn down_to_base(
+    repo: &RepoHandle,
+    head: Oid,
+    base: Oid,
+    stop: &dyn Stop,
+) -> Result<Vec<Candidate>, FactsError> {
+    let mut candidates = chain(
+        repo,
+        [GitArg::Oid(head), GitArg::Word(format!("^{base}"))],
+        stop,
+    )?
+    .into_iter()
+    .map(|(commit, parents)| Candidate {
+        ends: shape_stop(commit, &parents),
+        commit,
+        parents,
+    })
+    .collect::<Vec<_>>();
+    if let Some(end) = candidates.iter().position(|c| c.ends.is_some()) {
+        candidates.truncate(end + 1);
+        return Ok(candidates);
+    }
+    candidates.push(Candidate {
+        commit: base,
+        parents: parents_of(repo, base, stop)?,
+        ends: Some(RangeStop::Base),
+    });
+    Ok(candidates)
+}
+
+/// The fallback: `HEAD` and the next [`ABSORB_FALLBACK_DEPTH`] first-parent
+/// commits, ending at the first merge or the first commit, else at the
+/// one past the cap.
+fn capped(repo: &RepoHandle, head: Oid, stop: &dyn Stop) -> Result<Vec<Candidate>, FactsError> {
+    let mut candidates = Vec::new();
+    let found = chain(
+        repo,
+        [
             GitArg::Word(format!("--max-count={}", ABSORB_FALLBACK_DEPTH + 1)),
             GitArg::Oid(head),
-        ])
+        ],
+        stop,
+    )?;
+    for (taken, (commit, parents)) in found.into_iter().enumerate() {
+        let ends = shape_stop(commit, &parents)
+            .or_else(|| (taken == ABSORB_FALLBACK_DEPTH).then_some(RangeStop::Cap));
+        candidates.push(Candidate {
+            commit,
+            parents,
+            ends,
+        });
+        if ends.is_some() {
+            break;
+        }
+    }
+    Ok(candidates)
+}
+
+/// A merge or the first commit ends the walk whatever the base.
+fn shape_stop(commit: Oid, parents: &[Oid]) -> Option<RangeStop> {
+    match parents {
+        [] => Some(RangeStop::Root),
+        [_] => None,
+        _ => Some(RangeStop::Merge(commit)),
+    }
+}
+
+/// `rev-list --first-parent --parents <revs>`: each commit, newest first,
+/// with its parents.
+fn chain<const N: usize>(
+    repo: &RepoHandle,
+    revs: [GitArg; N],
+    stop: &dyn Stop,
+) -> Result<Vec<(Oid, Vec<Oid>)>, FactsError> {
+    let mut args = vec![
+        GitArg::Flag("rev-list"),
+        GitArg::Flag("--first-parent"),
+        GitArg::Flag("--parents"),
+    ];
+    args.extend(revs);
+    let output = GitInvocation::new(repo)
+        .args(args)
         .run(stop)
         .map_err(FactsError::of_history)?;
     String::from_utf8_lossy(&output.stdout)
@@ -155,24 +255,29 @@ fn first_parent_chain(
         .collect()
 }
 
-/// Which of `prefix` (a merge-free first-parent run, newest first, each
-/// with its parent) no remote-tracking ref reaches.
+/// Which of `candidates` (a first-parent run, newest first) no
+/// remote-tracking ref reaches: `rev-list <newest> ^<each parent of the
+/// oldest> --not --remotes`. Only the oldest may have more than one parent,
+/// so the positive side is exactly the run.
 fn not_on_a_remote(
     repo: &RepoHandle,
-    prefix: &[(Oid, Oid)],
+    candidates: &[Candidate],
     stop: &dyn Stop,
 ) -> Result<BTreeSet<Oid>, FactsError> {
-    let (Some((newest, _)), Some((_, below))) = (prefix.first(), prefix.last()) else {
+    let (Some(newest), Some(oldest)) = (candidates.first(), candidates.last()) else {
         return Ok(BTreeSet::new());
     };
+    let mut args = vec![GitArg::Flag("rev-list"), GitArg::Oid(newest.commit)];
+    args.extend(
+        oldest
+            .parents
+            .iter()
+            .map(|parent| GitArg::Word(format!("^{parent}"))),
+    );
+    args.push(GitArg::Flag("--not"));
+    args.push(GitArg::Flag("--remotes"));
     let output = GitInvocation::new(repo)
-        .args([
-            GitArg::Flag("rev-list"),
-            GitArg::Oid(*newest),
-            GitArg::Word(format!("^{below}")),
-            GitArg::Flag("--not"),
-            GitArg::Flag("--remotes"),
-        ])
+        .args(args)
         .run(stop)
         .map_err(FactsError::of_history)?;
     String::from_utf8_lossy(&output.stdout)

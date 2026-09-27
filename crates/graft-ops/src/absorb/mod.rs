@@ -86,12 +86,18 @@ pub enum StaysWhy {
     /// A submodule's commit changed (a gitlink, mode `160000`): absorb
     /// moves lines, and a submodule bump has none (review m7-06 M4).
     Submodule,
-    /// On a branch with no base of its own (the default branch, or the only
-    /// one, with no upstream), the lines are older than his unpushed
-    /// commits: pushed, or more than 10 back, or below a merge (06c
-    /// ruling). Where [`StaysWhy::BeforeYourBranch`] would say "older than
-    /// your branch", which there has no answer.
+    /// The lines are older than his commits, and the range stopped at
+    /// neither a pushed commit nor the base: below a merge, or more than 10
+    /// back on the default or only branch (06c ruling; 06e). Where
+    /// [`StaysWhy::BeforeYourBranch`] would say "older than your branch",
+    /// which there may have no answer.
     OutsideYourCommits,
+    /// The lines were last changed by commits a remote-tracking ref holds:
+    /// his range stopped at a pushed commit, and everything below a pushed
+    /// commit is pushed (06e ruling). Words (ticket 09 renders them):
+    /// `stays staged · the commit that changed these lines is already
+    /// pushed`.
+    AlreadyPushed,
 }
 
 /// Where each staged hunk goes.

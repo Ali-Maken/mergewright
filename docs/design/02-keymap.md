@@ -196,7 +196,7 @@ and any redo prompt should lead with.
 | Key | Action |
 |---|---|
 | `c` | Commit |
-| `a` | Amend. On HEAD or the uncommitted row: as before; previewed (`y`) only when a branch is built on HEAD (the dependent branch follows). On an older commit of your branch: put the staged changes into it, previewed, `y`. Amended 2026-09-26 (M7, user "all yes") |
+| `a` | Amend. On HEAD or the uncommitted row: as before; previewed (`y`) only when a branch is built on HEAD (the dependent branch follows). On an older commit of your branch that you haven't pushed: put the staged changes into it; a pushed one is refused in words, previewed, `y`. Amended 2026-09-26 (M7, user "all yes") |
 | `R` | Open the rewrite editor (§2.7) on the cursor's row. Amended 2026-09-26 (M7, user "all yes") |
 | `C` | Open the branch picker (§2.16). Amended 2026-09-26 (M7, user "all yes") |
 | `o` | Take the cursor commit onto your branch (cherry-pick), previewed, `y`. Unsaved edits are set aside and put back (ADR-0045). Amended 2026-09-26 (M7, user "all yes") |

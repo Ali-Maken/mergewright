@@ -5,6 +5,7 @@ mod absorb;
 mod absorb_config;
 mod absorb_oracle;
 mod absorb_printed;
+mod absorb_pushed;
 mod absorb_staged;
 mod absorb_unpushed;
 mod chained_backup;
