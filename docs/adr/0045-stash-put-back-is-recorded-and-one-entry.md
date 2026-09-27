@@ -255,3 +255,13 @@ bytes always have a holder.
 AD caveat, measured: `git stash create` keeps a staged-then-deleted file's staged blob in `S`'s tree, so the plain
 apply re-adds it `A ` and it is not named (`put_back_leaves_a_staged_new_file_deleted_since_unnamed`); the deletion
 is what the stash itself does not keep.
+
+## Amended 2026-09-27 (10b) — when a switch sets aside
+
+Ticket `.scratch/m7-power-tools/issues/10b-switch-rule.md` (title, :1) makes one rule for every switch: "instant on a
+clean tree, preview (`y`) with unsaved edits or a detached target". §4 still applies to `Checkout`, but only on the
+preview path: when the app's last status shows changed tracked files, the preview carries the set-aside line and `y`
+launches with `OnEdits::SetAside` (10b :19–20). A detached target also previews, then `y` (10b :18). Otherwise the switch launches at once with `OnEdits::Refuse`, no preview
+(10b :21). Untracked files alone are not unsaved edits; §4 leaves them, and git's own refusal words stand if one is in
+the way (10b :22–23). Verified by `m7_walk::switch::switch_clean_via_menu_is_two_keys`
+(`crates/graft/tests/it/m7_walk/switch.rs:126`) and `switch_with_edits_via_menu`.

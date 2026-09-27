@@ -524,6 +524,7 @@ switch-dirty                  3                     # . ⏎ y · m6-stash-put-ba
 switch-dirty-clash            5                     # . ⏎ y o ⏎ · m6-stash-put-back.md :43 · JetBrains ~5 (?) · walked there and in m5_walk (75)
 pull-rebase-stop-then-clash   8                     # p r r o ⏎ c o ⏎ · m6-stash-put-back.md :44 · none counted · walked there and in m5_walk (75)
 menu-checkout                 3                     # . ⏎ y · m6-stash-put-back.md :45 · JetBrains 3 · walked in m5_walk (ticket 75)
+# Amended 2026-09-27 (M7/10b): on a clean tree `. ⏎` switches at once, no `y` — 2 steps (`switch_clean_via_menu_is_two_keys`).
 menu-cherry-pick              4                     # . j ⏎ y · m6-stash-put-back.md :46 · JetBrains/SM 2 · walked in m5_walk (ticket 75)
 ```
 The walk (`tests/it/m5_walk/journeys.rs::parse_counts`) reads every fence tagged exactly `journey-counts` in **this

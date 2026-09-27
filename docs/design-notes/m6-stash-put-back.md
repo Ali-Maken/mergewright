@@ -46,6 +46,9 @@ Graft; and *you cannot lose work* (M3): edits set aside are in the tree or in th
 | `pull-rebase-stop-then-clash` | rebase stops, then put-back clashes | `p r r o ⏎ c o ⏎` | **8** | refused | none counted |
 | `menu-checkout` | branch row | `. ⏎ y` | **3** | `. j×4 ⏎ y` 5 (8 presses) | 3 (filter, type, confirm) |
 | `menu-cherry-pick` | commit row | `. j ⏎ y` | **4** (4 presses) | 4 (10 presses, moving) | JetBrains/SM 2 |
+
+`menu-checkout` — Amended 2026-09-27 (M7/10b): on a clean tree `. ⏎` switches at once, no `y` — 2 steps (`switch_clean_via_menu_is_two_keys`).
+
 Decisions: one per journey (the picture), plus one per block taken. `u` after any of them: **1**, back to before.
 
 **Where each event lands him.**
