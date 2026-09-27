@@ -1,0 +1,55 @@
+# ===== pass 1
+# m7-power-tools/12g key 37 at M1 (b5380399 + scripts/m7-key37.patch) — 2026-09-27T12:05:35Z
+# from 47ee9de9, Apple M5, 10 cpus, Darwin 27.0.0, rustc 1.98.1 (48a229cea 2026-09-01)
+# release, frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier, plain=1 spin=1
+# SMOKE PASS: checks the script end to end; not the measurement. A stray process (pid 41125, a debug `it`
+# test left from the removed worktree agent-ae58ad1336bb58fb5, looping in m7_walk::blame::open_on_line_22 for 5 h)
+# held one core at 100% through both runs: that is ADR-0021's spinner condition in both modes, so no run is
+# quiet and none counts. Same smoke at 10138177 (the ticket's commit, not kept): the first key to ask for rows
+# was 75, not 37 (7.1 / 9.6 ms), because 21 src files differ from b5380399; hence M1=b5380399.
+SUMMARY pass1 runs: plain=1 (quiet 0) spin=1 (quiet 0); quiet = 1-min load < 3 before and after and no other process > 50% CPU; * marks a run left out
+SUMMARY pass1 repro: key index ['37']; plain quiet latency MISSING; over 12 ms in 0 of 0; per run r1*=10.4
+SUMMARY pass1 H1 harness slack (late + oversleep before key 37): plain quiet MISSING; per run r1*=0.0+7.0 r2*=0.0+5.6; all keys oversleep p50/max per run r1=4.5/7.6 r2=4.4/7.7
+SUMMARY pass1 H2 spinner: key 37 latency spin quiet MISSING vs plain quiet MISSING; frames spin MISSING vs plain MISSING; worker spin MISSING vs plain MISSING
+SUMMARY pass1 H3 Graft's frames (update+draw summed) and worker waits, per run: r1*:plain:frames=3.4,worker=0.0,wakes=3 r2*:spin:frames=3.4,worker=0.0,wakes=3; all keys' own frame p50/max per run r1=1.1/2.2 r2=1.1/2.2
+SUMMARY pass1 sum: max |latency - (late+oversleep+frames+worker)| = 2 us over 2 runs (1 ms allowed)
+# run 1 mode=plain 2026-09-27T12:05:17Z
+uptime-before: 17:05  up 9 days, 22:12, 5 users, load averages: 2.47 2.97 4.59
+busy-before: 101.2 ~/dev/sandbox/gitter/.claude/worktrees/agent-ae58ad1336bb58fb5/target/debug/deps/it-79950e5eca0d2883
+refs: 50000 refs, badges() 5.810125ms, 25000 lookups 503.666µs (20 ns each), 25588 labels found
+KEY37 key=37 latency_us=10425 late_us=0 oversleep_us=6999 frames_us=3424 worker_wait_us=0 wakes=3 sum_us=10423 detail=[key:wait=0,frame=1193 other:wait=0,frame=1111 rows:wait=0,frame=1120]
+NEAR key=34 latency_us=5394 late_us=0 oversleep_us=4251 frames_us=1142 worker_wait_us=0 wakes=1 sum_us=5393 detail=[key:wait=0,frame=1142]
+NEAR key=35 latency_us=2183 late_us=0 oversleep_us=1067 frames_us=1116 worker_wait_us=0 wakes=1 sum_us=2183 detail=[key:wait=0,frame=1116]
+NEAR key=36 latency_us=2678 late_us=0 oversleep_us=1568 frames_us=1109 worker_wait_us=0 wakes=1 sum_us=2677 detail=[key:wait=0,frame=1109]
+NEAR key=38 latency_us=6497 late_us=0 oversleep_us=3126 frames_us=3370 worker_wait_us=0 wakes=3 sum_us=6496 detail=[key:wait=0,frame=1167 other:wait=0,frame=1103 rows:wait=0,frame=1100]
+NEAR key=39 latency_us=8467 late_us=0 oversleep_us=5088 frames_us=3377 worker_wait_us=0 wakes=3 sum_us=8465 detail=[key:wait=0,frame=1172 other:wait=0,frame=1101 rows:wait=0,frame=1104]
+NEAR key=40 latency_us=7464 late_us=0 oversleep_us=4105 frames_us=3357 worker_wait_us=0 wakes=3 sum_us=7462 detail=[key:wait=0,frame=1170 other:wait=0,frame=1098 rows:wait=0,frame=1089]
+KEYS n=420 late_us_p50=0 late_us_max=430 oversleep_us_p50=4455 oversleep_us_max=7563 own_frame_us_p50=1076 own_frame_us_max=2211
+frames: tier=Unicode refs=FiftyThousand keys=420 p50_us=7614 p99_us=9802 max_us=10425 kitty_commands=0 bytes=2409369
+frames: tier=Unicode refs=FiftyThousand trigger=Char('j') frames=120 totals: bytes=620373 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Other frames=323 totals: bytes=13243 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Window frames=353 totals: bytes=296725 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageDown frames=240 totals: bytes=1160057 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageUp frames=60 totals: bytes=305221 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+exit: 0
+uptime-after: 17:05  up 9 days, 22:12, 5 users, load averages: 2.48 2.95 4.56
+# run 2 mode=spin 2026-09-27T12:05:27Z
+uptime-before: 17:05  up 9 days, 22:12, 5 users, load averages: 2.48 2.95 4.56
+busy-before: 101.6 ~/dev/sandbox/gitter/.claude/worktrees/agent-ae58ad1336bb58fb5/target/debug/deps/it-79950e5eca0d2883
+refs: 50000 refs, badges() 6.546417ms, 25000 lookups 599.166µs (23 ns each), 25588 labels found
+KEY37 key=37 latency_us=9018 late_us=0 oversleep_us=5636 frames_us=3381 worker_wait_us=0 wakes=3 sum_us=9017 detail=[key:wait=0,frame=1167 other:wait=0,frame=1105 rows:wait=0,frame=1109]
+NEAR key=34 latency_us=2705 late_us=0 oversleep_us=1589 frames_us=1115 worker_wait_us=0 wakes=1 sum_us=2704 detail=[key:wait=0,frame=1115]
+NEAR key=35 latency_us=8090 late_us=0 oversleep_us=6986 frames_us=1104 worker_wait_us=0 wakes=1 sum_us=8090 detail=[key:wait=0,frame=1104]
+NEAR key=36 latency_us=5398 late_us=0 oversleep_us=4294 frames_us=1104 worker_wait_us=0 wakes=1 sum_us=5398 detail=[key:wait=0,frame=1104]
+NEAR key=38 latency_us=7198 late_us=0 oversleep_us=3826 frames_us=3370 worker_wait_us=0 wakes=3 sum_us=7196 detail=[key:wait=0,frame=1161 other:wait=0,frame=1105 rows:wait=0,frame=1104]
+NEAR key=39 latency_us=8102 late_us=0 oversleep_us=4738 frames_us=3363 worker_wait_us=0 wakes=3 sum_us=8101 detail=[key:wait=0,frame=1172 other:wait=0,frame=1099 rows:wait=0,frame=1092]
+NEAR key=40 latency_us=7637 late_us=0 oversleep_us=4287 frames_us=3349 worker_wait_us=0 wakes=3 sum_us=7636 detail=[key:wait=0,frame=1161 other:wait=0,frame=1101 rows:wait=0,frame=1087]
+KEYS n=420 late_us_p50=0 late_us_max=365 oversleep_us_p50=4423 oversleep_us_max=7739 own_frame_us_p50=1056 own_frame_us_max=2211
+frames: tier=Unicode refs=FiftyThousand keys=420 p50_us=7327 p99_us=9641 max_us=9958 kitty_commands=0 bytes=2409369
+frames: tier=Unicode refs=FiftyThousand trigger=Char('j') frames=120 totals: bytes=620373 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Other frames=323 totals: bytes=13243 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=Window frames=353 totals: bytes=296725 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageDown frames=240 totals: bytes=1160057 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+frames: tier=Unicode refs=FiftyThousand trigger=PageUp frames=60 totals: bytes=305221 transmits=0 transmit_bytes=0 placements=0 deletes=0 frees=0
+exit: 0
+uptime-after: 17:05  up 9 days, 22:12, 5 users, load averages: 2.56 2.95 4.54

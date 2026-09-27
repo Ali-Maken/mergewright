@@ -1,6 +1,6 @@
 # 12g key-37-cause — name the cause of M1's 17–18 ms key 37 (review m7-12 Major 2)
 
-Status: ready
+Status: blocked — measuring runs need the machine quiet (stray process, see NOTES)
 Blocked by: nothing to build. **The measuring runs** wait for a quiet machine: no other cargo running (conductor
 confirms), and not overlapping 12e's perf rev.
 Crates: **none at HEAD.** Works in its own worktree at M1's commit `10138177` (detached, own `CARGO_TARGET_DIR`); that
@@ -72,3 +72,39 @@ removed at the end (say so).
 
 ## Size
 Small in code (a harness patch, a script); long in wall time (release build at M1, ~15 runs). One context.
+
+## NOTES (debugger, 2026-09-27) — blocked before the measuring runs
+
+No scout: the ticket names none and there is no HEAD code to scout. Used `diagnosing-bugs`.
+
+**Stop 1 — the machine was not quiet.** pid 41125, a debug `it` test binary from the removed worktree
+`.claude/worktrees/agent-ae58ad1336bb58fb5` (`cargo test -q -p graft --test it blame_place`, parent a claude shell),
+ran at 100% of one core for 5 h+ the whole session. `sample` shows it looping in
+`blame_place::capture_blame_shallow_187x50` → `m7_walk::blame::open_on_line_22` → `recv_timeout` + `update`: a test
+that never ends. One busy core is ADR-0021's spinner condition, so every "plain" run is a spinner run and H2 cannot
+be told apart. Pausing it was refused by the permission system (not my process). Load at start 4.45 (1-min).
+**Needs:** someone to end pid 41125 (and find why that walk never ends — likely a hang bug of its own), then
+`bash scripts/m7-key37.sh`.
+
+**Stop 2 — the ticket's commit is not where key 37 was measured.** `10138177` differs from `b5380399` (the commit that
+recorded ADR-0021's key 37 numbers, m1/30c part b seam 1) in 21 `crates/*/src` files (30b, 30d, 30c part a `2bf6bf3e`
+"a row request lays out only the rows it names", 35c) — `git diff --stat 10138177 b5380399 -- crates/`. Measured: at
+`10138177` the first key to ask for rows is **75**, not 37 (smoke, 2 runs, 7.1 / 9.6 ms). At `b5380399` it is 37.
+`b5380399` itself changed only tests and docs, so its src is the code that produced the 12.5–21.4 ms. The script
+defaults to `M1=b5380399` and says why.
+
+**Built and checked (smoke only, not evidence):**
+- `scripts/m7-key37.patch`: harness only (`tests/it/frames.rs`): wake hand-off times, `KEY37`/`NEAR`/`KEYS` lines,
+  `KEY37_SPIN=1` spinner. Parts sum to the latency by construction: smoke max |latency − parts| = 2 µs.
+- `scripts/m7-key37.sh`: worktree, patch, release build, PLAIN=6/SPIN=3 interleaved, `uptime` + busy processes
+  per run, `SUMMARY passN` lines; runs at load ≥ 3 or beside a busy process marked `*`, left out. `bash -n` ok;
+  ran end to end once (PLAIN=1 SPIN=1) → `docs/perf/m7-12g-key-37.txt` pass 1, marked SMOKE, 0 quiet runs.
+- Smoke shape, both runs with the stray core busy (so warm-CPU numbers): key 37 = 9.0–10.4 ms = harness oversleep
+  5.6–7.0 ms + three frames 3.4 ms (key 1.2, progress 1.1, rows 1.1) + worker wait 0 (answer already queued).
+  All keys' oversleep p50 4.5 ms, max 7.7 ms. Suggests H1 + H3 carry a warm key 37 and H2 carries the rest to
+  17–18 ms, but that needs the quiet runs: **not a finding yet.**
+
+**Acceptance:** none ticked. ADR-0021 not amended (no measured cause yet). Worktree and target dirs removed.
+
+Touches: at HEAD only `scripts/m7-key37.sh`, `scripts/m7-key37.patch`, `docs/perf/m7-12g-key-37.txt`, this ticket.
+`rg -n 'key 37' docs/ KNOWN_GAPS.md` still to be listed with the result.
