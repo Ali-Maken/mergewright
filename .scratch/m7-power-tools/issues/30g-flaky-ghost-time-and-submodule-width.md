@@ -1,6 +1,6 @@
 # 30g: flaky ghost-time test, and submodule facts at 120 columns
 
-Status: ready
+Status: done (Major 1). Major 2 moved to 30i (conductor, 2026-09-27); its boxes 2–4 are 30i's, not open here.
 Build with: Sonnet. Both fixes are spelled out in the review; no new decisions.
 Needs: nothing new.
 Blocked by: nothing (files disjoint from 16b, 10b, 21 running).
