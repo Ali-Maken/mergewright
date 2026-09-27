@@ -1,7 +1,7 @@
 # amend-into-and-absorb-keys — `a` on an older commit puts the staged changes into it; absorb from the `.` menu
 
 Status: ready
-Blocked by: 05-rewrite-preview, 06-absorb-map
+Blocked by: 05-rewrite-preview, 06-absorb-map, 06e (new refusal and stay variants — planner, 2026-09-27)
 Crates: graft (the `a` route, the `.` menu item on the uncommitted row, walks, captures). graft-ui only if the scout
 finds the preview box can't draw the absorb rows as `rewrite-preview` left it.
 Source: note "Pass 2a" R2; journeys 2, 2b, 7; the keymap diff (§2.3 `a`, §2.3b `y`).
@@ -98,3 +98,10 @@ Medium (~55k).
 
 ## Carry (conductor, 2026-09-26): words from 06c
 06c added `StaysWhy::Submodule` and `StaysWhy::OutsideYourCommits` (a hunk that stays), and the refusals `AllPushed`, `AlreadyPushed` and `BeyondReach`, whose words are in `explain()` (graft-ops `operation.rs`). This ticket renders them. Every new `StaysWhy` needs words; test each one.
+
+## Carry (planner, 2026-09-27): words from 06e's ruling
+- `StaysWhy::AlreadyPushed` (new): `stays staged · the commit that changed these lines is already pushed`. Test it in the absorb preview.
+- `Refusal::NoCommitsOfItsOwn { branch }` (new): `<branch> has no commits of its own yet · c commits them` — absorb on a branch just cut from `main`'s tip.
+- `Refusal::AlreadyPushed` words now: `<short> is already pushed · a only changes older commits you haven't pushed` (a pushed HEAD is amended, not refused).
+- `Refusal::BeyondReach` now names the branch: `<short> is more than 10 commits back · on <branch> a reaches the last 10 unpushed commits`.
+- `a` on a pushed older commit of a tracked feature branch is now refused `AlreadyPushed` (before 06e it planned). If the scout finds a walk or fixture whose `a` target is a pushed older commit (`fix_into_older`), the fixture's target must be unpushed; say which in NOTES. Test: `a_on_a_pushed_older_commit_is_refused_in_words`.
