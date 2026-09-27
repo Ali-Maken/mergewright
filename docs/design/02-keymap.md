@@ -183,7 +183,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `/` | Find in the focused list |
 | `Enter` | Open / drill in / activate |
 | `.` | Context actions menu for the selected item; `.` again or `Esc` closes it |
-| `Space` | Toggle stage where staging applies, else expand/collapse |
+| `Space` | Toggle stage where staging applies, else expand/collapse. In a commit's file list: a directory folds / unfolds; a file has nothing to toggle, so `space` is unbound there and not offered. While a pane's file list has the keyboard, the graph's merge fold (§2.3) is not live; with a commit's diff focused the pane does not take `space`, so it reaches the graph and folds the merge there, and the bar offers it (Amended 2026-09-27, M7/spacefold; the last clause corrected by m7-power-tools/20h against `update/detail/keys.rs` `diff_key`) |
 
 `Ctrl+Shift+Z` is not a reliable binding: many terminals collapse it to the
 same byte sequence as `Ctrl+Z`, so Graft cannot tell the two apart on every

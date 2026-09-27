@@ -2019,7 +2019,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 79;
+const COVERAGE_SLOTS: usize = 81;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2052,20 +2052,10 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::Stash => 12,
         HintContext::Dragging => 13,
         HintContext::Marked(_) => 14,
-        HintContext::PaneFocused {
-            opens: false,
-            blamable: false,
-            ..
-        } => 15,
-        HintContext::PaneFocused {
-            opens: true,
-            blamable: false,
-            ..
-        } => 16,
-        // m7-power-tools/20: `B blame` on the pane (73; the diff focused —
-        // `catalogue::pane_focused_form` says why not the file list), the
-        // blame place's four flag pairs (74–77), the way back to it (78).
-        HintContext::PaneFocused { blamable: true, .. } => 73,
+        // 15, 16, 73, 79, 80.
+        HintContext::PaneFocused { .. } => pane_focused_slot(context),
+        // m7-power-tools/20: the blame place's four flag pairs (74–77), the
+        // way back to it (78).
         HintContext::Blame {
             finding,
             ignore_file,
@@ -2101,6 +2091,43 @@ fn coverage_slot(context: &HintContext) -> usize {
             focus: crate::finish_summary::SummaryFocus::Body,
             ..
         } => 35,
+    }
+}
+
+/// [`coverage_slot`] for the focused pane (m7-power-tools/20h split it out).
+fn pane_focused_slot(context: &HintContext) -> usize {
+    match context {
+        HintContext::PaneFocused {
+            opens: false,
+            blamable: false,
+            folds: false,
+            ..
+        } => 15,
+        HintContext::PaneFocused {
+            opens: true,
+            blamable: false,
+            folds: false,
+            ..
+        } => 16,
+        // m7-power-tools/20: `B blame` on the pane, the diff focused (73).
+        // m7-power-tools/20h: `B` with the files list on a file (79), and a
+        // directory row's `space fold` (80). `folds` with `blamable` or
+        // without `opens` is no shape the app makes (`PaneFocused::folds`),
+        // so those arms share 80 rather than hold slots nothing can reach.
+        HintContext::PaneFocused {
+            opens: false,
+            blamable: true,
+            folds: false,
+            ..
+        } => 73,
+        HintContext::PaneFocused {
+            opens: true,
+            blamable: true,
+            folds: false,
+            ..
+        } => 79,
+        HintContext::PaneFocused { folds: true, .. } => 80,
+        _ => unreachable!("only a `PaneFocused` is passed"),
     }
 }
 

@@ -3,7 +3,7 @@
 
 use graft_core::event::{KeyCode, KeyPress, Modifiers};
 use graft_core::job::JobId;
-use graft_ui::detail::{DetailFocus, DiffMode};
+use graft_ui::detail::{DetailFocus, DiffMode, FileRowKind};
 
 use crate::update::events::Command;
 use crate::update::state::AppState;
@@ -54,6 +54,23 @@ fn escape_priority(next: &mut AppState, key: KeyPress) -> bool {
 /// the files list focused it opens the diff.
 pub(crate) fn enter_opens(detail: &DetailState) -> bool {
     !(detail.shown && detail.focus == DetailFocus::Diff)
+}
+
+/// **Does `space` fold something in the files list?** The files list has
+/// focus and its cursor is on a directory row — the one row [`files_key`]'s
+/// `space` acts on (`FileListView::toggle_dir` leaves every other row
+/// alone). Read by `view::rows::hint_context` for the bar's `space fold`
+/// (`HintContext::PaneFocused`'s `folds`, m7-power-tools/20h).
+pub(crate) fn space_folds(detail: &DetailState) -> bool {
+    detail.shown
+        && detail.focus == DetailFocus::Files
+        && match &detail.files {
+            Loading::Ready(files) => files
+                .rows
+                .get(files.cursor)
+                .is_some_and(|row| matches!(row.kind, FileRowKind::Dir { .. })),
+            Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => false,
+        }
 }
 
 /// The pane's two blame rungs (m7-power-tools/20). `Esc` with a trail

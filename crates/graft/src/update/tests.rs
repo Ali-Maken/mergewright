@@ -2125,6 +2125,8 @@ fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
     assert_eq!(next.search_prompt.as_deref(), Some("fox]"));
 }
 
+mod pane_space;
+
 mod commit_graph_offer {
     use super::*;
     use crate::repository::CommitGraphFact;
@@ -3974,14 +3976,19 @@ fn every_swept_state_is_the_context_it_claims() {
 fn classified_form(context: &HintContext) -> Option<HintContext> {
     match context {
         HintContext::BranchRow { .. } | HintContext::Marked(_) => Some(HintContext::PlainRow),
-        // `B` answers on a file (`blamable`), not on `commit_pane`'s `src/`
-        // row (`screen_for`).
+        // `B` answers on a file (`blamable`), `space` folds `commit_pane`'s
+        // `src/` row (`folds`), neither on its `✉ message` row
+        // (`blame_screens`).
         HintContext::PaneFocused {
-            opens, blamable, ..
+            opens,
+            blamable,
+            folds,
+            ..
         } => Some(HintContext::PaneFocused {
             row: Box::new(HintContext::PlainRow),
             opens: *opens,
             blamable: *blamable,
+            folds: *folds,
         }),
         // The inner bar, led by the way back.
         HintContext::BackToBlame(inner) => {
@@ -4453,13 +4460,21 @@ fn blame_screens(walk: JobId, context: &HintContext) -> Vec<AppState> {
     match context {
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open. Blamable: the files cursor on
-        // a file, not on the `src/` row.
+        // a file, not on the `src/` row. Folds: the files list on `src/`,
+        // where `commit_pane` leaves it. Neither, with the files list
+        // focused: on a `✉ message` row, which has no file and no fold
+        // (m7-power-tools/20h).
         HintContext::PaneFocused {
-            opens, blamable, ..
+            opens,
+            blamable,
+            folds,
+            ..
         } => {
             let mut state = commit_pane(walk, *opens);
             if *blamable {
                 super::place::tests::on_a_file(&mut state);
+            } else if *opens && !*folds {
+                on_the_message(&mut state);
             }
             vec![state]
         }
@@ -4824,6 +4839,27 @@ fn pane_files() -> (DetailArc<FileListView>, DetailArc<FileList>) {
     }
     view.cursor = 0;
     (DetailArc::new(view), list)
+}
+
+/// [`commit_pane`]'s file list led by a `✉ message` row, the cursor on it:
+/// a files-list row with no file to blame and no directory to fold
+/// (m7-power-tools/20h).
+fn on_the_message(state: &mut AppState) {
+    if let Loading::Ready(files) = &mut state.detail.files {
+        let mut view = (**files).clone();
+        view.rows.insert(
+            0,
+            FileRow {
+                depth: 0,
+                name: sanitize_line("message"),
+                kind: FileRowKind::Message { lines: 1 },
+                entry: None,
+            },
+        );
+        view.message = vec![sanitize_line("the body")];
+        view.cursor = 0;
+        *files = DetailArc::new(view);
+    }
 }
 
 /// A diff long enough to scroll: `j`/`k` in the diff region clamp to the

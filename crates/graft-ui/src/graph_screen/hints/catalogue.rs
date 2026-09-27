@@ -97,11 +97,13 @@ fn blame_forms() -> Vec<HintContext> {
             row: Box::new(HintContext::PlainRow),
             opens: false,
             blamable: true,
+            folds: false,
         },
         HintContext::PaneFocused {
             row: Box::new(HintContext::PlainRow),
             opens: true,
             blamable: false,
+            folds: true,
         },
         HintContext::ChangesPane {
             unmerged: false,
@@ -357,14 +359,26 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
 fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
         HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Marked(_) => {
-            [(true, true), (true, false), (false, true), (false, false)]
-                .into_iter()
-                .map(|(opens, blamable)| HintContext::PaneFocused {
-                    row: Box::new(context.clone()),
-                    opens,
-                    blamable,
-                })
-                .collect()
+            // `(opens, blamable, folds)`: the files list on a file, on a
+            // directory, on neither (the `✉ message` row); the diff on a
+            // line or not. Never `folds` without `opens` (only the files
+            // list folds), nor with `blamable` (a directory has no file to
+            // blame): neither shape exists in the app.
+            [
+                (true, true, false),
+                (true, false, true),
+                (true, false, false),
+                (false, true, false),
+                (false, false, false),
+            ]
+            .into_iter()
+            .map(|(opens, blamable, folds)| HintContext::PaneFocused {
+                row: Box::new(context.clone()),
+                opens,
+                blamable,
+                folds,
+            })
+            .collect()
         }
         HintContext::WorkingTreeRow
         | HintContext::Banner { .. }

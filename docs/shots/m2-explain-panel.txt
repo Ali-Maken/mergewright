@@ -41,4 +41,4 @@
 "                                                                                                     ──╯                                                        "
 "                                                                                             first parent  0101010                                              "
 "                                                                                             Esc close                                                          "
-" . explain  ⏎ open  b branch  r  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  space  1  F  H                                                                     "
+" . explain  ⏎ open  b branch  r  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  1  F  H  f  p                                                                      "

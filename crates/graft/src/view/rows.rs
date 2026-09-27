@@ -716,6 +716,8 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
             // `B`'s own guard (`update::place::blamable`): not while the
             // commit-graph offer takes the key.
             blamable: crate::update::place::blamable(state),
+            // The files list's `space` on a directory row (m7-power-tools/20h).
+            folds: crate::update::detail::space_folds(&state.detail),
         }
     }
 }

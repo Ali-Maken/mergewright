@@ -27,7 +27,7 @@ pub const LOCAL_JOB_BIT: u64 = 1 << 63;
 pub(crate) use control::detail_event;
 pub use control::{LocalJobs, close_explain, effective_layout, open_explain, tab_hint_rows};
 pub use cursor::{DiffCursor, LineRef, Side, diff_cursor};
-pub(crate) use keys::{detail_key, enter_opens};
+pub(crate) use keys::{detail_key, enter_opens, space_folds};
 pub use landing::{LandingStage, LineLanding, show_line};
 pub(crate) use landing::{LandingWatch, advance};
 /// How many diff lines a read carries before it is cut short; the finish

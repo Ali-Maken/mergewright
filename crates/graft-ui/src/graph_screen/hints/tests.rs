@@ -1874,3 +1874,103 @@ mod blame_place {
         assert!(words(&blame_place_list(false, true)).contains(&"i ignore list".to_owned()));
     }
 }
+
+/// m7-power-tools/20h: `space` on a focused pane's bar is the pane's own
+/// fold, or the graph's where the key still reaches the graph — never a
+/// fold the key does not do.
+mod pane_space {
+    use super::*;
+
+    fn keys(context: &HintContext) -> Vec<(&'static str, &'static str)> {
+        hints_for(context, Divider::Hidden, 400)
+            .into_iter()
+            .map(|hint| (hint.key, hint.verb))
+            .collect()
+    }
+
+    fn graph_rows() -> Vec<HintContext> {
+        let mut rows = row_contexts();
+        rows.push(HintContext::Marked(Box::new(HintContext::PlainRow)));
+        rows.push(HintContext::Marked(Box::new(HintContext::BranchRow {
+            current: true,
+        })));
+        rows
+    }
+
+    fn pane(row: HintContext, opens: bool, blamable: bool, folds: bool) -> HintContext {
+        HintContext::PaneFocused {
+            row: Box::new(row),
+            opens,
+            blamable,
+            folds,
+        }
+    }
+
+    /// With the files list focused, `graft`'s `files_key` takes `space`
+    /// whatever the row, so the graph's merge fold is not live there; off a
+    /// directory the bar draws no `space` at all.
+    #[test]
+    fn pane_focused_drops_the_graphs_space_fold() {
+        for row in graph_rows() {
+            for blamable in [false, true] {
+                let context = pane(row.clone(), true, blamable, false);
+                let drawn = keys(&context);
+                assert!(
+                    !drawn.iter().any(|(key, _)| *key == "space"),
+                    "{context:?} draws {drawn:?}"
+                );
+            }
+        }
+    }
+
+    /// With the diff focused, `space` falls through the pane to the graph
+    /// (`graft`'s `diff_key` does not take it) and folds the merge there, so
+    /// a commit row keeps the graph's hint.
+    #[test]
+    fn pane_focused_on_the_diff_keeps_the_graphs_space_fold() {
+        for row in graph_rows() {
+            let context = pane(row.clone(), false, true, false);
+            let commits = !matches!(row, HintContext::WorkingTreeRow);
+            assert_eq!(
+                keys(&context).contains(&("space", "fold")),
+                commits,
+                "{context:?}"
+            );
+        }
+    }
+
+    /// Another list's `space` is not the graph's fold and is kept.
+    #[test]
+    fn pane_focused_keeps_the_changes_panes_space() {
+        let changes = HintContext::ChangesPane {
+            unmerged: false,
+            live: None,
+            tab: TabWord::Graph,
+        };
+        assert!(keys(&changes).contains(&("space", "stage")));
+        let context = pane(changes, true, false, false);
+        assert!(keys(&context).contains(&("space", "stage")), "{context:?}");
+    }
+
+    /// On a directory row the pane's own fold: same key, same verb as the
+    /// graph's, placed after `⏎` and `B` when they are there.
+    #[test]
+    fn pane_focused_folds_offers_space_fold_after_enter_and_b() {
+        let at =
+            |drawn: &[(&str, &str)], want: &str| drawn.iter().position(|(key, _)| *key == want);
+        for row in graph_rows() {
+            for blamable in [false, true] {
+                let drawn = keys(&pane(row.clone(), true, blamable, true));
+                let enter = at(&drawn, "⏎").expect("the files list's ⏎");
+                let lead = at(&drawn, "B").map_or(enter, |b| b.max(enter));
+                assert_eq!(drawn.get(lead + 1), Some(&("space", "fold")), "{drawn:?}");
+                assert_eq!(
+                    drawn.iter().filter(|(key, _)| *key == "space").count(),
+                    1,
+                    "{drawn:?}"
+                );
+                assert_eq!(at(&drawn, "B").is_some(), blamable, "{drawn:?}");
+            }
+        }
+    }
+}
