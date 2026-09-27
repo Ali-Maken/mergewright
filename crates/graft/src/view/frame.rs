@@ -45,7 +45,8 @@ use self::bars::{
     footer_notice,
 };
 use self::boxes::{
-    draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_preview, row_columns,
+    draw_commit_editor, draw_context_menu, draw_modal_boxes, draw_over_graph, draw_preview,
+    row_columns,
 };
 use self::conflicts::{draw_finish, draw_resolver};
 use self::layout::{
@@ -193,10 +194,7 @@ pub fn view_with_graphics(
                 } else {
                     render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
                 };
-                let overlays = [
-                    draw_preview(state, frame, area, &session.theme),
-                    draw_context_menu(state, frame, area, &session.theme),
-                ];
+                let overlays = draw_over_graph(state, frame, area, &session.theme);
                 (
                     pixels_above_overlays(graph, overlays.into_iter().flatten()),
                     row_columns(session, state, &screen, area),

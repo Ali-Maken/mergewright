@@ -159,19 +159,18 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // closes it and carries on down this function to mean what it always
     // means. That is what makes a label reading `Merge main into feature
     // (m)` true (m5-history-and-ghost-preview/13).
-    if super::context_menu::context_menu_key(next, commands, key) {
+    //
+    // Then the branch picker (`C`, m7-power-tools/10), a text field: while
+    // up it claims every key but `Ctrl+C`; on the graph `C` opens it.
+    if super::context_menu::context_menu_key(next, commands, key)
+        || super::picker::picker_key(next, commands, key)
+    {
         return;
     }
     // The commit editor is modal too, and claims every key but `Ctrl+C`
     // (m3-working-tree-undo-and-stash/05).
-    {
-        let mut local_jobs = next.local_jobs;
-        let claimed = super::commit_editor::editor_key(next, &key, &mut || local_jobs.next_id());
-        next.local_jobs = local_jobs;
-        if let Some(editor_commands) = claimed {
-            commands.extend(editor_commands);
-            return;
-        }
+    if editor_key(next, commands, key) {
+        return;
     }
     // `Ctrl+Z` before anything else claims it. Off by default, because
     // ADR-0002 gives the key to undo; on, it means what it means everywhere
@@ -259,6 +258,16 @@ fn undo_key(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
         local_jobs.next_id()
     }));
     next.local_jobs = local_jobs;
+}
+
+/// The commit editor's keys, with `local_jobs` borrowed out the same way.
+fn editor_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::commit_editor::editor_key(next, &key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+        .map(|editor_commands| commands.extend(editor_commands))
+        .is_some()
 }
 
 /// The journal browser's keys, the same way.

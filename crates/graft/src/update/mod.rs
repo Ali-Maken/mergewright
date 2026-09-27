@@ -38,6 +38,7 @@ pub mod map;
 mod mouse;
 pub mod name_prompt;
 pub mod operate;
+pub mod picker;
 pub mod place;
 mod prelude;
 pub mod preview;
@@ -226,6 +227,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Core(event) => core_event(next, commands, event),
         AppEvent::Started(id, task) => started(next, commands, id, &task),
         AppEvent::Produced(id, product @ Product::Stashes(_)) => stash_answer(next, id, &product),
+        AppEvent::Produced(id, Product::SwitchList(result)) => picker::listed(next, id, result),
         // The overlay's file preview reads through `ListFiles` like the
         // detail pane does, under its own id; the guard asks which of the
         // two is waiting for this one.
@@ -520,6 +522,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::PlanPreview
         | Task::RevertTo
         | Task::ReadStashes
+        | Task::ReadSwitchList
         | Task::ReadIndexState
         | Task::ReadRemotes
         | Task::OpenConflict
@@ -871,6 +874,7 @@ fn took_fact(
         | Product::Preview(_)
         | Product::RevertedTo(_)
         | Product::Stashes(_)
+        | Product::SwitchList(_)
         | Product::IndexState(_)
         | Product::Remotes(_)
         | Product::Leaves { .. }

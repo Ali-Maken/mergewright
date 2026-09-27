@@ -709,6 +709,11 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     if let Some(boxed) = box_context(state) {
         return boxed;
     }
+    // The branch picker (m7-power-tools/10) is a text field over the graph:
+    // no graph key is live under it, so the bar offers its keys only.
+    if crate::update::picker::shown(state) {
+        return HintContext::Picker;
+    }
     // A badge in the air first: while the gesture is running, the keys the
     // cursor's row would offer are not the ones that end it. First here
     // because it is first in `update::keys::key_event` too — `drag_key`

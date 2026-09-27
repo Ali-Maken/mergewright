@@ -66,6 +66,9 @@ pub enum HintContext {
     /// carries no keys — `docs/design/02-keymap.md` §2.3a is where this
     /// list comes from).
     Map,
+    /// The branch picker (`C`, m7-power-tools/10) is up: a text field over
+    /// the lower graph that answers typing, `⏎`, `⇥`, `↑↓` and `Esc`.
+    Picker,
     /// **The detail pane has the keyboard with an overlay, not the graph,
     /// standing behind it** (m5/42).
     ///

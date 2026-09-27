@@ -26,6 +26,7 @@ pub mod map_screen;
 pub mod name_prompt;
 pub mod overview_strip;
 pub mod paint;
+pub mod picker;
 pub mod preview_box;
 pub mod stash_screen;
 pub mod status_screen;

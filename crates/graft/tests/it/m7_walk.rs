@@ -4,6 +4,7 @@
 pub mod amend_into;
 pub mod blame;
 pub mod history;
+pub mod picker;
 pub mod pr_contents;
 pub mod pull;
 pub mod rebase_line;

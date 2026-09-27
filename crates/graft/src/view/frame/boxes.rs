@@ -83,6 +83,43 @@ pub(super) fn draw_preview(
     Some(rect)
 }
 
+/// What floats over the graph itself, bottom to top: the Ghost Preview, the
+/// `.` menu, the branch picker. Each is `None` when it is not up.
+pub(super) fn draw_over_graph(
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+    theme: &Theme,
+) -> [Option<Rect>; 3] {
+    [
+        draw_preview(state, frame, area, theme),
+        draw_context_menu(state, frame, area, theme),
+        draw_picker(state, frame, area, theme),
+    ]
+}
+
+/// The branch picker's box (`C`, m7-power-tools/10) over the lower part of
+/// the graph's own rows: the header above and the footer's notice and hint
+/// rows below are left alone (`update::picker::picker_box_in`).
+fn draw_picker(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) -> Option<Rect> {
+    let view = crate::view::picker::picker_view(state)?;
+    let pane = super::layout::primary_pane_area(state, area)?;
+    let (x, y, width, height) =
+        crate::update::picker::picker_box_in(state, (pane.x, pane.y, pane.width, pane.height));
+    let rect = Rect {
+        x,
+        y,
+        width,
+        height,
+    };
+    if rect.is_empty() {
+        return None;
+    }
+    clear_and_tint(frame, rect, rect, theme);
+    graft_ui::picker::draw_picker(frame, rect, &view, theme);
+    Some(rect)
+}
+
 /// Hands an overlay a rectangle it really owns: `clear` is wiped, then
 /// `tint` is painted `SurfaceRaised` so the widget draws onto the overlay's
 /// own background. `clear` is the wider of the two where an overlay is

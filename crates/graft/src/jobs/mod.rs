@@ -85,6 +85,7 @@ pub(crate) mod rewrite;
 mod runner;
 mod stash;
 mod stash_only;
+mod switch_list;
 mod types;
 pub(crate) mod undo;
 

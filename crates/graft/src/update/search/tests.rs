@@ -86,7 +86,16 @@ fn text_fields() -> Vec<Modal> {
         job: JobId::new(1),
     });
 
+    // The branch picker (m7-power-tools/10): the list need not have landed.
+    let mut picker = on_graph();
+    picker.picker = Some(crate::update::picker::PickerState::default());
+
     vec![
+        (
+            "the branch picker",
+            picker,
+            Some(|s| s.picker.as_ref().map(|p| p.query.text().to_owned())),
+        ),
         (
             "the commit editor",
             editor,

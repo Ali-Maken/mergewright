@@ -41,6 +41,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         // `M`/`Esc`. `M` is left out for the reason the journal leaves `J`
         // out — one way of saying "close" is enough for a bar this short.
         HintContext::Map => vec![hint("⏎", "seek"), hint("j/k", "move"), hint("esc", "close")],
+        HintContext::Picker => picker_list(),
         // Only ever drawn in the sub-100-column `Tab` layout, which has no
         // divider to drag: everywhere else the overlay draws its own footer
         // beside the pane (`graft::view::frame::split_for_detail`, which
@@ -88,13 +89,32 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
     }
 }
 
+/// The branch picker's bar.
+/// Keymap §2.16: the branch picker is a text field, so every letter
+/// types; the bar names what the non-letter keys do
+/// (`graft::update::picker::shown_key`). `esc close` is third, not
+/// last as the ticket spelled it: the first three are the floor drawn
+/// at every width (ADR-0037 §4), none of these verbs has a short rung
+/// in the user's table, and with `⇥` third the floor is 52 cells — a
+/// 40-column bar would draw nothing. With `esc` third it is 39, and
+/// the way out stays in words (ADR-0044 §4's reason).
+fn picker_list() -> Vec<Hint> {
+    vec![
+        hint("type", "to find"),
+        hint("⏎", "switch to it"),
+        hint("esc", "close"),
+        hint("⇥", "show it on the graph"),
+        hint("↑↓", "row"),
+    ]
+}
+
 /// The keys the graph screen answers wherever the cursor is, in the order
 /// the old fixed list dropped them (PROMPT.md principle 4: the hint bar
 /// teaches the tool). Appended after a row context's own keys, so a wide
 /// terminal still shows `q quit`, `x compare` and `+ lanes` — which the
 /// per-context table leaves out entirely (m5-03 review, Major 3). Whatever
 /// the context already hints is not repeated ([`drawable`] dedupes by key).
-pub(super) const TAIL: [Hint; 20] = [
+pub(super) const TAIL: [Hint; 21] = [
     hint("q", "quit"),
     hint("F2", "status"),
     hint("F3", "renderer"),
@@ -115,6 +135,7 @@ pub(super) const TAIL: [Hint; 20] = [
     hint("y", "sha"),
     hint("M", "map"),
     hint("O", "overview"),
+    hint("C", "switch"),
 ];
 
 /// The blame place's bar (design note pass 2b B1; m7-power-tools/20c), in

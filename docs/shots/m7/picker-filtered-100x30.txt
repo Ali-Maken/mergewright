@@ -1,0 +1,38 @@
+# m7/picker-filtered-100x30.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/picker.rs, switch_named_branch, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `C login` at 100 columns — each row a glyph, a name and an
+# age only; `login-page` (the segment-prefix match) above
+# `origin/sara/login-page`; the footer `2 of 4 branches`.
+ graft /code/api  6 commits
+  ● ▏ⓘ [login-page] [origin/sara/login-page] fix the bug                             GF 3m   fbb2394
+◆ │    [◆ main ⇄ origin] main moves on                                               GF 4m   37926a7
+●─╯  ⓘ [feature-a] add the base                                                      GF 5m   ed332bc
+●      Correct the note                                                              GF 1y   a82960b
+●      Add the first note                                                            GF 1y   fadcfb3
+◇      Add a readme                                                                  GF 1y   64ded19
+
+
+
+
+
+  ┌ SWITCH BRANCH · yours and the remote's · type to find ───────────────────────────────────────┐
+  │ > login▏                                                                                     │
+  │ ▸ ● login-page                                                                            3m │
+  │   ◌ origin/sara/login-page                                                                3m │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │                                                                                              │
+  │ 2 of 4 branches                                                                              │
+  └──────────────────────────────────────────────────────────────────────────────────────────────┘
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ type to find  ⏎ switch to it  esc close  ⇥ show it on the graph  ↑↓ row
