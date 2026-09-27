@@ -158,3 +158,22 @@ workspace-wide.
   and the file pane at the same line. Red first.
 - Add history's rows to 20i's `the_bar_leads_esc_back_to_blame_exactly_where_esc_goes_back` table, for the states it
   lists with the trail's top a history place. The bar reads `back to history`.
+
+## Note (planner, 2026-09-27, from review 18bcd, Minor 6)
+18c and 18e gave the trace readers inputs this spec didn't carry (`docs/reviews/m7-18bcd.md` Minor 6). **Needs** adds
+`graft_git::trace::{SHALLOW_END, TraceError}`.
+- **Zero rows.** On a depth-1 clone the sink gets nothing and the end is `GitStops(SHALLOW_END)` (18c,
+  `a_depth_one_clone_traces_no_rows_and_says_shallow`). The list draws the end row alone: `git stops tracing here:
+  this clone is shallow; nothing older was fetched`. No row is selected; no code may index row 0 or assume a newest row
+  (from `L`, "the cursor starts on the commit blame showed" has nothing to land on: none selected). The file pane shows
+  `no change to show`, dim. `j`/`k`, `n`/`N`, `B`, `⏎` do nothing and the bar doesn't offer them; `Esc` goes back.
+- **A `TraceError` is a failure, drawn** (H1, H9): `Run`, `Parse`, `Shallow` (18c: `<common_dir>/shallow` unreadable),
+  `TooLarge` (18e). The list area shows `couldn't trace: <Display>` on one line, styled as the blame place's failure
+  line (20e); the title drops `tracing…`; the file pane is empty; the bar offers `Esc` back.
+- **`enclosing_function` returns `TraceError`** (18e; was `RunError`). On `L`, an `Err` is that failure; only
+  `Ok(None)` falls back to the block.
+- Add to **Rows**: `a_depth_one_clone_shows_the_end_row_alone` (red first: a `--depth 1` clone; no panic, nothing
+  selected, the end row's words, the bar without `j`/`k`/`B`/`⏎`), and `a_trace_error_is_drawn_as_a_failure` (a
+  `shallow` that is a directory → `Shallow`; the list shows its `Display`; `Esc` goes back).
+- **Touches** adds: `SHALLOW_END` is already drawn by the blame place (`update/place/keys.rs:192`, 20d/20e). Check both
+  places show the same words, by test or grep.
