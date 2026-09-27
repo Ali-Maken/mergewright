@@ -33,6 +33,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             ignore_file,
             lines,
         } => blame_bar(*finding, *ignore_file, *lines),
+        HintContext::History { rows, on_file } => history_place_list(*rows, *on_file),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         HintContext::Stash => stash_list(),
@@ -81,6 +82,7 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
         | HintContext::BackToBlame(_)
+        | HintContext::BackToHistory(_)
         | HintContext::OperationLive { .. }
         | HintContext::Preview => Vec::new(),
     }
@@ -119,21 +121,19 @@ pub(super) const TAIL: [Hint; 20] = [
 /// the note's order. `n N match` only while a find is active (2b proposal
 /// 7); `i ignore list` only when the repo has `.git-blame-ignore-revs`.
 ///
-/// `L history of these lines` (m7-power-tools/21) comes after `/ find`, not
-/// after `^` as the note's mock-up (`:132`) draws it: third, it would be in
-/// ADR-0037 §4's floor of three full hints, and `⏎ that commit  ^ before
-/// it  L history of these lines` is 52 cells, over the 48-cell bar the
-/// floor must fit (`the_floor_fits_at_forty_eight_cells_of_bar`). The
-/// note's order needs a short form (`history`, a prefix) in the hint
-/// table (`hints.rs` `short_form`, outside 21's files).
+/// `L history of these lines` (m7-power-tools/21) is third, where the note's
+/// mock-up (`:132`) draws it: in ADR-0037 §4's floor it steps down to its
+/// short form, `L history` (`hints.rs` `short_form`, 21b), so the floor's
+/// three are 37 cells, inside the 48-cell bar
+/// (`the_floor_fits_at_forty_eight_cells_of_bar`).
 /// [`HintContext::Blame`]'s list (m7-power-tools/20).
 #[must_use]
 pub fn blame_place_list(finding: bool, ignore_file: bool) -> Vec<Hint> {
     let mut list = vec![
         hint("⏎", "that commit"),
         hint("^", "before it"),
-        hint("/", "find"),
         hint("L", "history of these lines"),
+        hint("/", "find"),
     ];
     if finding {
         list.push(hint("n N", "match"));
@@ -156,6 +156,34 @@ fn blame_bar(finding: bool, ignore_file: bool, lines: bool) -> Vec<Hint> {
         list.retain(|hint| !matches!(hint.key, "⏎" | "^" | "L" | "n N"));
     }
     list
+}
+
+/// [`HintContext::History`]'s list: the history place's bar (design note
+/// pass 1b "History", m7-power-tools/21b), in the note's order. `rows`: the
+/// trace answered with at least one row — without one (tracing, failed,
+/// zero rows) only `esc back` acts, so it is the whole bar. `on_file`: the
+/// file pane has the keys, so `j/k` scrolls and `tab` goes to the list.
+///
+/// `v` (side by side) and `L` (the whole file) are answered but left to
+/// `?`, as the detail pane's bar leaves `v`.
+#[must_use]
+pub fn history_place_list(rows: bool, on_file: bool) -> Vec<Hint> {
+    if !rows {
+        return vec![hint("esc", "back")];
+    }
+    let (moves, tab) = if on_file {
+        (hint("j/k", "scroll"), hint("tab", "list"))
+    } else {
+        (hint("j/k", "older·newer"), hint("tab", "file"))
+    };
+    vec![
+        moves,
+        tab,
+        hint("n/N", "next change"),
+        hint("B", "blame here"),
+        hint("⏎", "that commit"),
+        hint("esc", "back"),
+    ]
 }
 
 /// [`HintContext::PaneOverOverlay`]'s list: `⏎ open` unless the diff has

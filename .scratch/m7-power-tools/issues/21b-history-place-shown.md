@@ -1,6 +1,6 @@
 # history-place-shown — history reaches the real frame, gets its own bar, and is captured
 
-Status: ready (filed by conductor 2026-09-27; Build with Opus confirmed)
+Status: **blocked** (builder 2026-09-27: needs `graft/src/update/keys/bound.rs` + a short-form ruling; see NOTES)
 Remainder of: `21-history-place.md` (partial, merged 2ce85055). **21's scope, Signatures and Rulings (a)–(c) stand**;
 this ticket only finishes them. Split: 21b (this) = frame hook, bars, captures, walks; `21c-history-whitespace-and-sizes`
 = the two reader gaps.
@@ -173,3 +173,44 @@ Worktree only, own `CARGO_TARGET_DIR`. Never read `PROGRESS.md` or `KNOWN_GAPS.m
 
 ## Size
 ~55k. One context. If it compacts: captures and re-shoots split off as `21b2`, after the code merges.
+
+## NOTES (builder, 2026-09-27) — blocked, handoff
+- **Scout:** none new; 21's scout + 21's NOTES used. Lines re-checked on this base (6fb4b713): `update/state.rs:623`
+  (`graph_overlay`, `on_screen()`), `view/rows.rs:550` `back_to_blame`, `:632` `place_context`,
+  `view/frame/overlays.rs:151` (`draw_history_place` already reads `place_context`), `graph_screen/tests.rs:2068`. All hold.
+- **Not compacted.**
+- **Blocker 1 — `graft/src/update/keys/bound.rs` (not in Files).** `update/tests.rs::dead_keys_in` asserts every drawn
+  `(key, verb)` is in `bound_actions()` (`update/tests.rs:4053`). The spec's words need 8 rows there:
+  `("j/k","older·newer")`, `("j/k","scroll")`, `("tab","file")`, `("tab","list")`, `("n/N","next change")`,
+  `("B","blame here")`, `("F","history")`, `("esc","back to history")` (handlers: `place/history_keys.rs:29–51`,
+  `place::f_key`, `place::esc_goes_back`). Without them `every_key_the_bar_draws_is_answered` cannot go green.
+  No concurrent builder's list names `bound.rs` (09: context_menu*, operate*, jobs/*, view/entries.rs; 11a: graft-ops).
+- **Blocker 2 — History's bar hides every key at 40–42 columns.** `no_context_hides_every_key`
+  (`hints/tests.rs:48`, sweeps 40..=200) fails: `History { rows: true, on_file: false } at 40 columns (Shown) hid
+  every key`. Floor at full words = ` j/k older·newer  tab file  n/N next change` = 43 cells (the spec measured 42
+  without the lead space, against 48 only). No verb in the list has a short form, so below 43 `fit_list` goes to
+  `below_the_floor`, which has no doorway for a modal → empty. Needs a ruling, e.g. a prefix short form
+  `next change` → `next` (floor 36) or `older·newer` → `older` (floor 37). Not decided here: the short-form table
+  is the user's (`hints.rs` `short_form` doc).
+- **Done (uncommitted-quality, committed as WIP on this branch):** graft-ui only —
+  `HintContext::{History, BackToHistory}` (`hints/context.rs`), `history_place_list` (`hints/lists.rs`, exported),
+  blame's `L` third + `short_form` `history of these lines → history` (`hints.rs`), `whole_bar`/`drawable` arms,
+  `pane_focused_bar` `F history` after `B blame` and `F focus` dropped when `blamable`, `BACK_TO_HISTORY`/`F_HISTORY`
+  in `every_hint`, `history_forms()` in `every_context` (`catalogue.rs`), `COVERAGE_SLOTS` 85 → 89 (slots 85–88),
+  `doorway_of` arms; tests `history_bar_words_in_order`, `history_bar_with_no_rows_offers_esc_back_alone`,
+  `back_to_history_leads_the_inner_bar`, `short_form_history_of_these_lines_is_history`, `blame_bar_words_in_order`
+  (L third), user's table row added in `every_short_rung_is_the_users_own_word`. graft-ui: 561/562 pass (the one is
+  Blocker 2). Not a tick: nothing above is ticked.
+- **State of the build:** workspace lib compiles; `graft` lib-tests do not — `update/tests.rs:4119` and `:4511`
+  (`classified_form`, `screen_for`) need the two new arms. That is the next step.
+- **Exact next steps once unblocked:** (1) bound rows; (2) short-form ruling applied; (3) `update/tests.rs`: arms in
+  `classified_form` (History → itself; BackToHistory → inner classified) and `screen_for` (history fixtures built via
+  `place::tests::place_on_screen` + `L` + a `Product::Trace` answer; `Tab` for `on_file`; zero rows / tracing /
+  `TraceFailure::Failed` for `rows:false`; hide one for BackToHistory) — `place/tests/history.rs` helpers are private
+  behind `mod history` in `place/tests.rs` (not in Files), so build them in `update/tests.rs`; (4) `state.rs:623` →
+  `place_shown()`; (5) `rows.rs` `place_context` History arm + `back_to_blame` → `back_to_place`; (6) the rest of
+  Acceptance (walks, captures, MAPs, TESTING rows).
+- **`on_screen()` non-test callers (grep `\.on_screen()` in `crates/graft/src`):** `update/state.rs:623`
+  (graph_overlay → `place_shown()`, spec); `update/place.rs:439` (`prompt_open`, blame's find prompt → keep);
+  `view/rows.rs:633` (`place_context`, blame arm → keep, add history arm); `view/frame/overlays.rs:132`
+  (`draw_place` blame branch after the history branch → keep). Not yet edited.

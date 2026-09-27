@@ -233,6 +233,23 @@ pub enum HintContext {
     /// the inner context's own bar, led by `esc back to blame` so the way
     /// back is the last thing the width drops (m7-power-tools/20).
     BackToBlame(Box<HintContext>),
+    /// **A history place is on screen** (m7-power-tools/21b; design note
+    /// pass 1b "History"): modal, its own bar
+    /// ([`history_place_list`](super::lists::history_place_list)), no
+    /// doorway, no `<> resize`.
+    History {
+        /// The trace answered with at least one row. `false` while tracing,
+        /// after a failed trace and with zero rows (a depth-1 clone): the
+        /// bar is `esc back` alone, the only key that acts there.
+        rows: bool,
+        /// The file pane has the keys (`HistoryFocus::File`): `j/k scroll`,
+        /// `tab list`.
+        on_file: bool,
+    },
+    /// **A history place waits under the graph** (`⏎` landed on a commit):
+    /// the inner context's own bar, led by `esc back to history`
+    /// (m7-power-tools/21b). [`HintContext::BackToBlame`]'s twin.
+    BackToHistory(Box<HintContext>),
     /// **An operation is live** over a graph row: the row's own list with
     /// its `c` said the way it acts now ([`LiveC`], m6-conflicts/52), and
     /// `⇥ banner` leading while the banner is one `⇥` away (m6-conflicts/12,
