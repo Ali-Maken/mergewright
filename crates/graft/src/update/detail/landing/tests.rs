@@ -22,6 +22,9 @@ use super::super::state::{DetailSpec, Loading};
 use super::super::{LineRef, Side, diff_cursor};
 use super::{LandingStage, show_line};
 
+mod disk;
+mod select;
+
 const WALK: JobId = JobId::new(4);
 
 /// Commit `i + 1` on row `i`.
@@ -112,6 +115,7 @@ fn landing_far(path: &str, at: Option<LineRef>) -> (AppState, u64) {
         DetailSpec::Commit(commit(200)),
         Path::new(path),
         at,
+        None,
     );
     let [Command::ShowRows(to, asked)] = commands.as_slice() else {
         panic!("one find request: {commands:?}");
@@ -168,6 +172,7 @@ fn show_line_puts_the_hunk_heading_on_top() {
             side: Side::Old,
             line: 11,
         }),
+        None,
     );
     let (state, commands) = step(&state, files(list_job(&commands), &["src/x.rs"]));
     let (state, _) = step(&state, diff_answer(&commands, sample_diff()));
@@ -181,6 +186,7 @@ fn show_line_puts_the_hunk_heading_on_top() {
         DetailSpec::Commit(commit(5)),
         Path::new("src/x.rs"),
         Some(new_line(150)),
+        None,
     );
     let (state, commands) = step(&state, files(list_job(&commands), &["src/x.rs"]));
     let (state, _) = step(&state, diff_answer(&commands, long_diff(200)));
@@ -197,6 +203,7 @@ fn show_line_focuses_the_diff_body() {
         DetailSpec::Commit(commit(3)),
         Path::new("src/x.rs"),
         Some(new_line(2)),
+        None,
     );
     assert_eq!(
         selected(&state),
@@ -234,6 +241,7 @@ fn show_line_working_tree_lands_on_the_uncommitted_row() {
         DetailSpec::WorkingTree,
         Path::new("src/x.rs"),
         Some(new_line(2)),
+        None,
     );
     assert!(
         state.on_working_tree,
@@ -256,6 +264,7 @@ fn show_line_path_missing_says_so() {
         DetailSpec::Commit(commit(3)),
         Path::new("src/gone.rs"),
         Some(new_line(2)),
+        None,
     );
     let (state, _) = step(&state, files(list_job(&commands), &["src/x.rs"]));
     assert_eq!(state.line_landing, None);
@@ -308,6 +317,7 @@ fn a_second_show_line_replaces_the_first() {
         DetailSpec::Commit(commit(3)),
         Path::new("src/x.rs"),
         Some(new_line(3)),
+        None,
     );
     let landing = state.line_landing.clone().expect("the second is pending");
     assert_eq!(landing.spec, DetailSpec::Commit(commit(3)));
@@ -335,6 +345,7 @@ fn show_line_commit_with_a_pinned_base_says_so() {
         DetailSpec::Commit(commit(3)),
         Path::new("src/x.rs"),
         Some(new_line(3)),
+        None,
     );
     assert!(commands.is_empty(), "nothing is asked for: {commands:?}");
     assert_eq!(state.line_landing, None);
@@ -368,6 +379,7 @@ fn show_line_on_the_pinned_base_itself_lands() {
         DetailSpec::Commit(commit(3)),
         Path::new("src/x.rs"),
         Some(new_line(2)),
+        None,
     );
     let (state, commands) = step(&state, files(list_job(&commands), &["src/x.rs"]));
     let (state, _) = step(&state, diff_answer(&commands, sample_diff()));

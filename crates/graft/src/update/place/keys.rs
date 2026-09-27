@@ -250,6 +250,9 @@ fn enter(state: &mut AppState) -> Vec<Command> {
             side: Side::New,
             line: at,
         }),
+        // Blame counts in the file it read — on disk, or the commit's
+        // version: never a changes-pane section (20m).
+        None,
     );
     if let Some(base) = set_aside
         && !matches!(state.status, Status::Sticky { .. })

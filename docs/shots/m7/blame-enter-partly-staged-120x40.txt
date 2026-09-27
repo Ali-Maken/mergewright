@@ -1,0 +1,40 @@
+ graft /code/api  4 commits
+◌ ▏  Uncommitted changes (1 staged, 1 unstaged)
+◆    [◆ main] add f                                                                                      GT 24h  d45d045
+●    Correct the note                                                                                    GF 2d   a82960b
+●    Add the first note                                                                                  GF 2d   fadcfb3
+◇    Add a readme                                                                                        GF 2d   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ esc back to blame  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+UNCOMMITTED · 1 staged 1 unstaged
+diff vs HEAD d45d045
+STAGED (1)                    l4
+  M f.txt               +1 −1   5   5   l5
+UNSTAGED (1)                    6   6   l6
+  M f.txt               +2 −1   7   7   l7
+                                8     - l8
+                                    8▎+ S8
+                                9   9   l9
+                               10  10   l10
+
+
+
+
+
+

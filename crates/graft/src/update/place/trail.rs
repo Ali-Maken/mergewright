@@ -48,7 +48,13 @@ pub(super) fn leave(state: &mut AppState, commands: &mut Vec<Command>, restore: 
     if Spot::of(state) == origin.spot {
         return;
     }
-    commands.extend(show_line(state, origin.spec, &origin.path, origin.at));
+    commands.extend(show_line(
+        state,
+        origin.spec,
+        &origin.path,
+        origin.at,
+        origin.section,
+    ));
     match state.line_landing.as_mut() {
         Some(landing) => landing.then_focus = Some(origin.focus),
         None => state.detail.focus = origin.focus,

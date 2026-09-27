@@ -7,6 +7,7 @@
 
 mod app_harness;
 mod askpass_mode;
+mod blame_partly_staged;
 mod blame_place;
 mod box_owns_the_bar;
 #[cfg(feature = "heavy-tests")]

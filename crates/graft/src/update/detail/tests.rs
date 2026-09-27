@@ -747,7 +747,7 @@ fn g_and_capital_g_jump_the_diff_body_to_its_ends() {
 
 /// A changes-pane file list: `sections` in order, each with its files.
 /// Returns the view and the git list its rows index into.
-fn changes_pane(sections: &[(WorkingTreeSection, &[&str])]) -> (FileListView, FileList) {
+pub(super) fn changes_pane(sections: &[(WorkingTreeSection, &[&str])]) -> (FileListView, FileList) {
     use graft_git::diff::{FileEntry, FileStatus};
 
     let mut rows = Vec::new();

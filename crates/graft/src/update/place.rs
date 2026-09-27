@@ -31,7 +31,7 @@ use graft_core::oid::Oid;
 use graft_git::blame::{BlameOptions, Rev};
 use graft_term::sanitize::sanitize_path;
 use graft_ui::blame::BlameRev;
-use graft_ui::detail::DetailFocus;
+use graft_ui::detail::{DetailFocus, WorkingTreeSection};
 
 use super::detail::{CompareBase, DetailSpec, LineRef, Loading, diff_cursor};
 use super::events::Command;
@@ -115,6 +115,9 @@ pub struct Origin {
     pub path: PathBuf,
     /// The line under the cursor.
     pub at: Option<LineRef>,
+    /// The changes-pane section the file was selected in, which `at`
+    /// counts in (`DiffCursor::section`); `None` off the changes pane.
+    pub section: Option<WorkingTreeSection>,
     /// The pane's focus.
     pub focus: DetailFocus,
     /// The compare base pinned when `B` was pressed, set aside while the
@@ -218,6 +221,7 @@ pub(crate) fn b_key(next: &mut AppState, commands: &mut Vec<Command>) -> bool {
         spec: cursor.spec,
         path: cursor.path.clone(),
         at: cursor.at,
+        section: cursor.section,
         focus: next.detail.focus,
         base,
         spot: Spot::of(next),
