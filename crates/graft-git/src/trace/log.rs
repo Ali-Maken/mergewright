@@ -12,7 +12,7 @@ use super::{LineRange, SHALLOW_END, TraceCommit, TraceEnd, TraceError};
 use crate::blame::{bytes_path, path_bytes};
 use crate::diff::{LineKind, ParseError, find, parse_unified, unquote};
 use crate::repo::RepoHandle;
-use crate::run::{GitArg, GitInvocation, RawOutput, RunError, Stop};
+use crate::run::{DEFAULT_CAP, GitArg, GitInvocation, RawOutput, RunError, Stop};
 
 /// Each commit's header: a `\x01` to find it by, then the fields
 /// NUL-separated. `-L` ends it with a newline; `-z` with a NUL.
@@ -133,23 +133,22 @@ pub(super) fn finish(
         Err(other) => return Err(other.into()),
     };
     if raw.output.truncated {
-        return Err(TraceError::Run(RunError::Unparsable(
-            "git log's output passed the runner's 64 MiB cap".to_owned(),
-        )));
+        return Err(TraceError::TooLarge { cap: DEFAULT_CAP });
     }
     let Some(code) = raw.code else {
         // Only the runner kills without a code, and it has no cap left to
         // hit (checked above): the stop.
         return Ok(TraceEnd::Stopped);
     };
-    let boundaries = boundaries()?;
     if code != 0 {
         let reason = crate::commit_graph::first_line(&raw.output.stderr);
         let reason = reason.strip_prefix("fatal: ").unwrap_or(&reason).to_owned();
-        // git failed: what it printed before failing is sent if it parses.
-        // A half-written record that does not is dropped, safely: git's own
-        // reason, returned below, is the answer the screen shows.
-        if let Ok(records) = parse(&raw.output.stdout) {
+        // git failed: what it printed before failing is sent if it parses
+        // and the boundaries read. Either failing drops those rows, safely:
+        // git's own reason, returned below, is the answer the screen shows
+        // and the cause he can act on; an unreadable `shallow` file must
+        // not replace it (review 18bcd Minor 5).
+        if let (Ok(records), Ok(boundaries)) = (parse(&raw.output.stdout), boundaries()) {
             send(
                 records
                     .into_iter()
@@ -163,6 +162,7 @@ pub(super) fn finish(
         return Ok(TraceEnd::GitStops(reason));
     }
     let records = parse(&raw.output.stdout).map_err(TraceError::Parse)?;
+    let boundaries = boundaries()?;
     let fetched = records.len();
     let mut records: Vec<Record> = records
         .into_iter()

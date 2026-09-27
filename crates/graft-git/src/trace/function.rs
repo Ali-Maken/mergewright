@@ -27,11 +27,11 @@ use std::path::Path;
 
 use graft_core::oid::Oid;
 
-use super::LineRange;
+use super::{LineRange, TraceError};
 use crate::blame::path_bytes;
 use crate::diff::{Hunk, LineKind, parse_unified};
 use crate::repo::RepoHandle;
-use crate::run::{GitArg, GitInvocation, GitOutput, RawOutput, RunError, Stop};
+use crate::run::{DEFAULT_CAP, GitArg, GitInvocation, GitOutput, RawOutput, RunError, Stop};
 
 /// Past this many lines a "function" is more likely a whole file of
 /// top-level code; the app falls back to the blame block.
@@ -73,16 +73,29 @@ const BUILTIN_DRIVERS: &[(&str, &[&str])] = &[
 /// past the file's end.
 ///
 /// # Errors
-/// [`RunError`] from the runner: git missing or stopped, or `path` not in
-/// `at`; `Unparsable` when the file or its marked diff passed the runner's
-/// output cap.
+/// [`TraceError::Run`] from the runner: git missing or stopped, or `path`
+/// not in `at`; [`TraceError::TooLarge`] when the file or its marked diff
+/// passed the runner's output cap.
 pub fn enclosing_function(
     repo: &RepoHandle,
     at: Oid,
     path: &Path,
     line: u32,
     stop: &dyn Stop,
-) -> Result<Option<LineRange>, RunError> {
+) -> Result<Option<LineRange>, TraceError> {
+    enclosing_function_with(repo, at, path, line, stop, DEFAULT_CAP)
+}
+
+/// [`enclosing_function`] with the runner's output cap set by the caller: a
+/// test lowers it to reach the too-large refusal through the real spawns.
+pub(crate) fn enclosing_function_with(
+    repo: &RepoHandle,
+    at: Oid,
+    path: &Path,
+    line: u32,
+    stop: &dyn Stop,
+    cap: usize,
+) -> Result<Option<LineRange>, TraceError> {
     let mut spec = format!("{at}:").into_bytes();
     spec.extend(path_bytes(path));
     let content = blob_content(
@@ -92,17 +105,19 @@ pub fn enclosing_function(
                 GitArg::Flag("blob"),
                 GitArg::Ref(spec),
             ])
+            .output_cap(cap)
             .run(stop)?,
+        cap,
     )?;
-    let headers = headers_by_line(repo, path, &content, stop)?;
+    let headers = headers_by_line(repo, path, &content, stop, cap)?;
     Ok(function_at(&content, &headers, line))
 }
 
-/// The blob `cat-file` printed; one cut at the runner's cap is refused, not
-/// read as a shorter file.
-pub(super) fn blob_content(output: GitOutput) -> Result<Vec<u8>, RunError> {
+/// The blob `cat-file` printed; one cut at the runner's `cap` is refused,
+/// not read as a shorter file.
+pub(super) fn blob_content(output: GitOutput, cap: usize) -> Result<Vec<u8>, TraceError> {
     if output.truncated {
-        return Err(too_large("the file"));
+        return Err(TraceError::TooLarge { cap });
     }
     Ok(output.stdout)
 }
@@ -110,24 +125,20 @@ pub(super) fn blob_content(output: GitOutput) -> Result<Vec<u8>, RunError> {
 /// The marked diff's bytes, from a `diff --no-index` run. The runner's own
 /// kill at the output cap arrives as `code: None` (a stop is `Err(Stopped)`
 /// before this), so that is "too large", never "stopped".
-pub(super) fn marked_diff(raw: RawOutput) -> Result<Vec<u8>, RunError> {
+pub(super) fn marked_diff(raw: RawOutput, cap: usize) -> Result<Vec<u8>, TraceError> {
     if raw.output.truncated {
-        return Err(too_large("the function-header diff"));
+        return Err(TraceError::TooLarge { cap });
     }
     // `--no-index` exits 1 when the files differ, which they always do.
     match raw.code {
         Some(0 | 1) => Ok(raw.output.stdout),
-        Some(status) => Err(RunError::Exited {
+        Some(status) => Err(TraceError::Run(RunError::Exited {
             status,
             stderr_first_line: crate::commit_graph::first_line(&raw.output.stderr),
             command: "git diff --no-index -U0 (function headers)".to_owned(),
-        }),
-        None => Err(too_large("the function-header diff")),
+        })),
+        None => Err(TraceError::TooLarge { cap }),
     }
-}
-
-fn too_large(what: &str) -> RunError {
-    RunError::Unparsable(format!("{what} passed the runner's 64 MiB output cap"))
 }
 
 /// Every line's governing funcname, index 0 = line 1; `None` where git
@@ -137,7 +148,8 @@ fn headers_by_line(
     path: &Path,
     content: &[u8],
     stop: &dyn Stop,
-) -> Result<Vec<Option<Vec<u8>>>, RunError> {
+    cap: usize,
+) -> Result<Vec<Option<Vec<u8>>>, TraceError> {
     let lines = split_lines(content);
     if lines.is_empty() {
         return Ok(Vec::new());
@@ -166,8 +178,9 @@ fn headers_by_line(
             GitArg::Path(path_bytes(&old_file)),
             GitArg::Path(path_bytes(&new_file)),
         ])
+        .output_cap(cap)
         .run_raw(stop)?;
-    let marked = marked_diff(raw)?;
+    let marked = marked_diff(raw, cap)?;
     let diffs = parse_unified(&marked).map_err(|error| {
         RunError::Unparsable(format!(
             "diff --no-index at line {}: {}",

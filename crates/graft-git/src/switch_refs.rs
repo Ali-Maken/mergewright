@@ -83,7 +83,6 @@ fn previous_branch(
         GitArg::Flag("rev-parse"),
         GitArg::Flag("--verify"),
         GitArg::Flag("--quiet"),
-        GitArg::Flag("--symbolic-full-name"),
         GitArg::Word("@{-1}".to_owned()),
     ]);
     if !has_previous(&verify.run_raw(stop)?, &verify.command_line())? {

@@ -222,6 +222,43 @@ fn a_skipped_line_is_marked_skipped() {
     assert_eq!(blamed.lines[29].mark, LineMark::Plain, "line 30 is plain");
 }
 
+/// m7-power-tools/18e: an ignored commit that **added** a line leaves git
+/// no one to pass it to. On every supported git the line reads unblamable
+/// (2.38.5's porcelain has no `unblamable` line; blame reads the human
+/// format's `*`).
+#[test]
+fn an_unblamable_line_is_marked_unblamable() {
+    let temp = tempfile::tempdir().expect("a temp dir");
+    let dir = temp.path();
+    git_ok(dir, &["init", "-q", "-b", "main"]);
+    std::fs::write(dir.join("a.rs"), "fn one() {}\nfn two() {}\n").expect("writes");
+    git_ok(dir, &["add", "a.rs"]);
+    git_ok(dir, &["commit", "-q", "-m", "add"]);
+    std::fs::write(
+        dir.join("a.rs"),
+        "fn one() {}\nfn added_by_the_ignored_commit() {}\nfn two() {}\n",
+    )
+    .expect("writes");
+    git_ok(dir, &["commit", "-q", "-am", "reformat"]);
+    let ignored = rev(dir, "HEAD");
+    std::fs::write(dir.join(".git-blame-ignore-revs"), format!("{ignored}\n")).expect("writes");
+    git_ok(dir, &["add", ".git-blame-ignore-revs"]);
+    git_ok(dir, &["commit", "-q", "-m", "list it"]);
+
+    let blamed = blame_ok(
+        dir,
+        Rev::Commit(rev(dir, "HEAD")),
+        "a.rs",
+        BlameOptions::default(),
+    );
+    let marks: Vec<LineMark> = blamed.lines.iter().map(|line| line.mark).collect();
+    assert_eq!(
+        marks,
+        [LineMark::Plain, LineMark::Unblamable, LineMark::Plain]
+    );
+    assert_eq!(blamed.lines[1].commit, Some(ignored), "git keeps it there");
+}
+
 #[test]
 fn previous_names_the_parent_and_old_path_across_the_rename() {
     let dir = graft_fixtures::borrow(Shape::Session);

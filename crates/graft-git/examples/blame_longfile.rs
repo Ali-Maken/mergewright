@@ -6,6 +6,11 @@
 //!
 //! Run by `scripts/m7-perf-blame-longfile.sh` in release; prints one line
 //! per run and a `blame-longfile p95=<ms>` summary line.
+//!
+//! `--with-list` (m7-power-tools/18e): a root `.git-blame-ignore-revs` lists
+//! the last commit, so git skips lines and, on git before 2.50, blame runs
+//! its second (human-format) pass for the marks. Summary line
+//! `blame-longfile-list p95=<ms>`; run by `scripts/m7-perf-blame-list.sh`.
 
 use std::fmt::Write as _;
 use std::io::Write as _;
@@ -14,7 +19,7 @@ use std::process::{Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 
 use graft_core::oid::Oid;
-use graft_git::blame::{BlameOptions, Rev, blame};
+use graft_git::blame::{BlameOptions, LineMark, Rev, blame};
 use graft_git::repo::RepoHandle;
 
 const RUNS: usize = 10;
@@ -35,10 +40,24 @@ fn main() -> ExitCode {
 }
 
 fn measure() -> Result<(), String> {
+    let with_list = match std::env::args().nth(1).as_deref() {
+        None => false,
+        Some("--with-list") => true,
+        Some(other) => return Err(format!("unknown argument {other:?}; only --with-list")),
+    };
     let scratch = tempfile::tempdir().map_err(|why| why.to_string())?;
     let dir = scratch.path();
     build(dir)?;
-    let head = head(dir)?;
+    let head = resolve(dir, "HEAD")?;
+    let label = if with_list {
+        // The last commit: a line is rewritten again every 50 commits
+        // (`touches`), so only the last 50 commits' lines survive to `HEAD`.
+        std::fs::write(dir.join(".git-blame-ignore-revs"), format!("{head}\n"))
+            .map_err(|why| why.to_string())?;
+        "blame-longfile-list"
+    } else {
+        "blame-longfile"
+    };
     let repo = RepoHandle::open(dir).map_err(|why| why.to_string())?;
     let path = Path::new(FILE);
     let options = BlameOptions::default();
@@ -50,16 +69,27 @@ fn measure() -> Result<(), String> {
         "# long file: {FILE}, {} lines, {COMMITS} commits each rewriting ~1 line in {SPREAD}; every 10th line untouched since the first; blame names {commits} commits",
         first.lines.len()
     );
+    if with_list {
+        let skipped = first
+            .lines
+            .iter()
+            .filter(|line| line.mark == LineMark::Skipped)
+            .count();
+        if skipped == 0 {
+            return Err("the list skipped no line: the measurement would be vacuous".to_owned());
+        }
+        println!("# ignore list: the last commit; {skipped} lines marked skipped");
+    }
 
     let mut times = Vec::with_capacity(RUNS);
     for run in 1..=RUNS {
         let started = Instant::now();
         blame(&repo, &Rev::Commit(head), path, &options, &()).map_err(|why| why.to_string())?;
         let took = started.elapsed();
-        println!("run {run}: blame-longfile={}", ms(took));
+        println!("run {run}: {label}={}", ms(took));
         times.push(took);
     }
-    println!("blame-longfile p95={}", ms(p95(&mut times)));
+    println!("{label} p95={}", ms(p95(&mut times)));
     Ok(())
 }
 
@@ -139,9 +169,9 @@ fn run(dir: &Path, args: &[&str]) -> Result<(), String> {
     }
 }
 
-fn head(dir: &Path) -> Result<Oid, String> {
+fn resolve(dir: &Path, revision: &str) -> Result<Oid, String> {
     let output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
+        .args(["rev-parse", revision])
         .current_dir(dir)
         .output()
         .map_err(|why| format!("running git: {why}"))?;

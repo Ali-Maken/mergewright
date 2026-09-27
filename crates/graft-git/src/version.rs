@@ -70,6 +70,20 @@ impl GitVersion {
         minor: 38,
         patch: 0,
     };
+
+    /// First git whose `blame --porcelain` writes `ignored` / `unblamable`
+    /// lines. Source: `builtin/blame.c` at tag `v2.50.0`, lines 362-364
+    /// (`emit_porcelain_per_line_details`,
+    /// <https://raw.githubusercontent.com/git/git/v2.50.0/builtin/blame.c>);
+    /// absent at `v2.49.0` and `v2.49.1`, and at `v2.38.5` where the marks
+    /// are written only by the human format's `emit_other` (lines 480-487).
+    /// Older git: blame reads the marks from a second, human-format pass
+    /// (m7-power-tools/18e).
+    pub const BLAME_PORCELAIN_MARKS: GitVersion = GitVersion {
+        major: 2,
+        minor: 50,
+        patch: 0,
+    };
 }
 
 impl fmt::Display for GitVersion {

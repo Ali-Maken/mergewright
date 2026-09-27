@@ -1,0 +1,53 @@
+
+# m7-power-tools/18e blame on a long file, ignore list in effect — 2026-09-27T07:43:28Z
+# HEAD 472aaaac +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.38.5
+# release, 10 runs; p95 is nearest-rank (with 10 runs, the slowest); default options (-M -w)
+# long file: long.txt, 5000 lines, 500 commits each rewriting ~1 line in 50; every 10th line untouched since the first; blame names 46 commits
+# ignore list: the last commit; 100 lines marked skipped
+run 1: blame-longfile-list=2089.0
+run 2: blame-longfile-list=1938.4
+run 3: blame-longfile-list=2001.3
+run 4: blame-longfile-list=2224.2
+run 5: blame-longfile-list=2038.1
+run 6: blame-longfile-list=2055.7
+run 7: blame-longfile-list=2155.8
+run 8: blame-longfile-list=2134.9
+run 9: blame-longfile-list=2173.9
+run 10: blame-longfile-list=2196.4
+blame-longfile-list p95=2224.2
+
+# m7-power-tools/18e blame on a long file, ignore list in effect — 2026-09-27T07:43:44Z
+# HEAD 472aaaac +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, 10 runs; p95 is nearest-rank (with 10 runs, the slowest); default options (-M -w)
+# long file: long.txt, 5000 lines, 500 commits each rewriting ~1 line in 50; every 10th line untouched since the first; blame names 46 commits
+# ignore list: the last commit; 100 lines marked skipped
+run 1: blame-longfile-list=1511.5
+run 2: blame-longfile-list=1468.8
+run 3: blame-longfile-list=1497.0
+run 4: blame-longfile-list=1331.4
+run 5: blame-longfile-list=1247.3
+run 6: blame-longfile-list=1304.3
+run 7: blame-longfile-list=1223.5
+run 8: blame-longfile-list=1297.9
+run 9: blame-longfile-list=1271.2
+run 10: blame-longfile-list=1214.2
+blame-longfile-list p95=1511.5
+
+# m7-power-tools/18b blame on a long file — 2026-09-27T07:43:58Z
+# HEAD 472aaaac +uncommitted
+# Apple M5, 10 cpus, Darwin 27.0.0, git version 2.54.0 (Apple Git-157)
+# release, 10 runs; p95 is nearest-rank (with 10 runs, the slowest); default options (-M -w)
+# long file: long.txt, 5000 lines, 500 commits each rewriting ~1 line in 50; every 10th line untouched since the first; blame names 46 commits
+run 1: blame-longfile=1180.6
+run 2: blame-longfile=1314.7
+run 3: blame-longfile=1263.9
+run 4: blame-longfile=1255.1
+run 5: blame-longfile=1203.2
+run 6: blame-longfile=1212.5
+run 7: blame-longfile=1191.6
+run 8: blame-longfile=1227.9
+run 9: blame-longfile=1274.5
+run 10: blame-longfile=1293.6
+blame-longfile p95=1314.7

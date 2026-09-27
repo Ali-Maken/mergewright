@@ -1,0 +1,60 @@
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       1) use std::time::{Duration, Instant};
+0a276279a23da8f28599bdf3e680fa2cccfe25d8 src/auth/session.rs  2) use crate::config::Config;
+74f9a9eac1946466a6892c0196b3d05c58971204 src/auth/session.rs  3) use crate::error::Expired;
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       4) use crate::http::{Client, Result};
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       5) 
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       6) pub struct Session {
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       7)     token: String,
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       8)     refresh: String,
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs       9)     issued: Instant,
+0a276279a23da8f28599bdf3e680fa2cccfe25d8 src/auth/session.rs 10)     ttl: Duration,
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      11) }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      12) 
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      13) impl Session {
+0a276279a23da8f28599bdf3e680fa2cccfe25d8 src/auth/session.rs 14)     pub fn new(token: String, refresh: String, config: &Config) -> Self {
+0a276279a23da8f28599bdf3e680fa2cccfe25d8 src/auth/session.rs 15)         Session { token, refresh, issued: Instant::now(), ttl: config.session_ttl }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      16)     }
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      17)     /// Refresh the token when the server says it expired.
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      18)     pub fn refresh_token(&mut self, client: &Client) -> Result<()> {
+2f48ca38fa1448070e3b8c1e791edc8d3abd292b src/session.rs      19)         let mut attempt = 0;
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      20)         loop {
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      21)             let resp = client.refresh(&self.token)?;
+2f48ca38fa1448070e3b8c1e791edc8d3abd292b src/session.rs      22)             if resp.status() == 401 && attempt == 0 {
+2f48ca38fa1448070e3b8c1e791edc8d3abd292b src/session.rs      23)                 attempt += 1;
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      24)                 continue;
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      25)             }
+74f9a9eac1946466a6892c0196b3d05c58971204 src/auth/session.rs 26)             self.token = resp.token().map_err(Expired::from)?;
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      27)             return self.record_refresh(&resp, "refreshed after the server answered 401 on the first request; the retry budget is spent");
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      28)         }
+47593a5e7db1623ba9f40bf1efae89e1e9a7e2ea src/session.rs      29)     }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      30) 
+^?3f6c311a1b7f837c73d3b5eb4fa5180e047495 src/session.rs      31)     pub fn token(&self) -> &str {
+^?3f6c311a1b7f837c73d3b5eb4fa5180e047495 src/session.rs      32)         &self.token
+^?3f6c311a1b7f837c73d3b5eb4fa5180e047495 src/session.rs      33)     }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      34) 
+^?3f6c311a1b7f837c73d3b5eb4fa5180e047495 src/session.rs      35)     pub fn age(&self) -> Duration {
+^?3f6c311a1b7f837c73d3b5eb4fa5180e047495 src/session.rs      36)         self.issued.elapsed()
+^?3f6c311a1b7f837c73d3b5eb4fa5180e047495 src/session.rs      37)     }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      38) 
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      39)     pub fn is_expired(&self) -> bool {
+0a276279a23da8f28599bdf3e680fa2cccfe25d8 src/auth/session.rs 40)         self.age() > self.ttl
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      41)     }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      42) }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      43) 
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      44) impl Drop for Session {
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      45)     fn drop(&mut self) {
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      46)         self.token.clear();
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      47)         self.refresh.clear();
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      48)     }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      49) }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      50) 
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      51) #[cfg(test)]
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      52) mod tests {
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      53)     use super::*;
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      54) 
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      55)     #[test]
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      56)     fn a_new_session_is_not_expired() {
+0a276279a23da8f28599bdf3e680fa2cccfe25d8 src/auth/session.rs 57)         let session = Session::new("t".into(), "r".into(), &Config::default());
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      58)         assert!(!session.is_expired());
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      59)     }
+^3f6c311a1b7f837c73d3b5eb4fa5180e047495a src/session.rs      60) }

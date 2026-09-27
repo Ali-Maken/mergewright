@@ -23,27 +23,30 @@ One line per public item. Update when a public item changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
 ## blame
-Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `blame` and the binary/untracked check; `blame/porcelain.rs` `parse_porcelain` (paths unquoted by `diff`'s own `unquote`); `blame/ignore_revs.rs` finding and counting `.git-blame-ignore-revs`.
+Files (m7-power-tools/18b, pure moves; paths unchanged): `blame.rs` the types, `blame` and the binary/untracked check; `blame/porcelain.rs` `parse_porcelain` (paths unquoted by `diff`'s own `unquote`); `blame/ignore_revs.rs` finding and counting `.git-blame-ignore-revs`; `blame/marks.rs` (18e) the human-format marks reader and the second-pass predicate.
 - `Rev` (enum) — `Commit(Oid)` or `WorkingTree` (the file on disk; blamed with no rev, uncommitted lines get `commit: None`).
 - `BlameOptions` (struct) — `ignore_whitespace` (`-w`), `ignore_revs` (the repo's ignore file); both on by default. `ignore_revs: false` also clears a configured `blame.ignoreRevsFile`.
 - `BlameCommit` (struct) — one commit's porcelain headers: `id`, `author`, `author_time`, `summary`, `path` (the file's path in this commit, from `filename`; differs from the blamed path across a rename), `previous` (parent id and path there), `boundary`, `shallow` (id is in `<common_dir>/shallow`; set by `blame` after git exits, never by the parser; 20d).
-- `LineMark` (enum) — `Plain`, `Skipped` (passed over by the ignore list), `Unblamable`.
+- `LineMark` (enum) — `Plain`, `Skipped` (passed over by the ignore list), `Unblamable`; both marks on one line read as `Unblamable` in both readers (18e).
 - `BlameLine` (struct) — `commit` (`None`: not committed yet), `orig_line`, `final_line`, `text`, `mark`.
 - `IgnoreRevs` (struct) — `file`, `revisions` (count of listed ids), `applied`.
 - `Blame` (struct) — `path`, `rev`, `lines`, `commits` (by id), `ignore_revs` (`Some` only for a readable list of ≥1 id).
-- `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`, `Shallow { path, source }` (`<common_dir>/shallow` unreadable; 20d); refusals come from a `diff-tree --numstat` check before blame spawns.
+- `BlameError` (enum) — `Run`, `Parse` (`diff::ParseError`), `Binary`, `Untracked`, `Stopped`, `Shallow { path, source }` (`<common_dir>/shallow` unreadable; 20d), `TooLarge { cap }` (output past the runner's cap: "this file's blame is over <MiB> MiB, too large to show"), `Changed { first, second }` (the two passes saw different line counts: "the file changed while blame read it; open blame again"; 18e); refusals come from a `diff-tree --numstat` check before blame spawns.
 - `IGNORE_REVS_FILE` (const) — `.git-blame-ignore-revs`, the conventional name looked for when `blame.ignoreRevsFile` is unset.
-- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…|--no-ignore-revs-file] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(Run(Unparsable))`, never a shorter blame (18b).
+- `blame` (fn) — `git -c blame.markIgnoredLines=true -c blame.markUnblamableLines=true blame --porcelain -M [-w] [--ignore-revs-file=…|--no-ignore-revs-file] [<rev>] -- <path>`, parsed. Output cut at the runner's 64 MiB cap is `Err(TooLarge)`, never a shorter blame (18b, 18e). **Second pass** (18e), only when `needs_marks_pass` holds: the same options with `-c blame.blankBoundary=false -c blame.coloring=none -c color.ui=never blame -l -s` instead of `--porcelain`; its `?`/`*` replace each line's mark by position. Inputs read lazily: no list (no root file, `git config --get blame.ignoreRevsFile` exit 1) costs no extra spawn; the version is one `git --version`.
 - `parse_porcelain` (fn) — pure `--porcelain` reader → `(Vec<BlameLine>, BTreeMap<Oid, BlameCommit>)`; fuzz target `blame_porcelain`.
+- `parse_marks` (fn) — pure `blame -l -s` reader → one `LineMark` per output line, from each line's leading run of `^`/`*`/`?` only (the id after it is hex); `ParseError` when no id follows (18e). No fuzz target yet (the fuzz crate is at the repo root, outside graft-git).
+- `needs_marks_pass` (fn, crate) — `ignore_revs && !porcelain_has_marks && list_in_effect && (git < BLAME_PORCELAIN_MARKS || version unknown)`.
+- `blame_with` / `Knobs { cap, marks }` / `MarksFrom { Auto, HumanFormat }` (crate) — `blame` with the runner cap and the marks' source set by a test.
 
 ## trace
 Files: `shallow.rs` reads a shallow clone's boundary ids; `log.rs` runs both logs and parses `-L`; `follow.rs` parses `--follow` (moved in 18b); `function.rs` `enclosing_function`, `map_to_head`; `whole.rs` `whole_file`.
 - `LineRange` (enum) — `Function { name, start, end }` or `Block { start, end }`, 1-indexed inclusive; `lines()` → `(start, end)` either way.
 - `TraceCommit` (struct) — one trace row: `id`, `author`, `when`, `subject`, `path`, `renamed_from`, `added`/`removed` (the range's for `-L`, the file's for `--follow`), `range_at` (`-L` only).
 - `TraceEnd` (enum) — `Start { added_by }`, `GitStops(reason)`, `Capped { shown }`, `Stopped`.
-- `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`, `Shallow { path, source }` (`<common_dir>/shallow` present but unreadable or not ids; `couldn't read <path>: <source>`).
+- `TraceError` (enum) — `Run(RunError)`, `Parse(diff::ParseError)`, `Shallow { path, source }` (`<common_dir>/shallow` present but unreadable or not ids; `couldn't read <path>: <source>`), `TooLarge { cap }` ("too large to trace: git's output is over <MiB> MiB"; 18e). When git itself exited non-zero its reason (`GitStops`) wins over an unreadable `shallow` (18e).
 - `SHALLOW_END` (const) — `GitStops` reason when a trace hits a shallow clone's boundary. Boundary rule (18c, `shallow.rs`): ids from `<common_dir>/shallow` (missing = not shallow), read once after git exits; boundary rows dropped (git diffed them against nothing); any dropped → `GitStops(SHALLOW_END)`, unless `Capped` (more rows past the cap) wins. A log ending on a change with no boundary → `GitStops("history ends here without the commit that added these lines")`.
-- `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines. The blob or marked diff cut at the output cap is `Unparsable`, not `Stopped` (18b).
+- `enclosing_function` (fn) — the function around a line by git's own funcname headers (a `diff --no-index` of the blob against itself with a marker per line); a built-in driver picked by extension through a temp `core.attributesFile` unless the user set one; `None` when no header governs or it spans over 400 lines. Returns `TraceError` (was `RunError`, 18e). The blob or marked diff cut at the output cap is `TooLarge`, not `Stopped` (18b, 18e); `enclosing_function_with` (crate) takes the cap.
 - `map_to_head` (fn) — a working-tree line number → its `HEAD` line through worktree-vs-HEAD hunks; `None` for an added line.
 - `line_history` (fn) — `git log -L<s>,<e>:<path>`, capped, rows to a sink in one batch at exit (the runner does not stream stdout).
 - `file_history` (fn) — `git log --follow --raw --numstat -z`, capped, the same way.
@@ -108,7 +111,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 - `SwitchRefs` (struct) — `refs` (git's ref order, symrefs like `origin/HEAD` left out), `previous`.
 - `switch_refs` (fn) — up to three commands through `run`, `Stop` honoured (`Err(Stopped)`):
   `for-each-ref --format=%(refname)%00%(objectname)%00%(symref)%00%(upstream)%00%(subject)%00%(authorname)%00%(committerdate:unix) refs/heads refs/remotes`,
-  then `rev-parse --verify --quiet --symbolic-full-name @{-1}` (`run_raw`) for whether there is a previous checkout: exit 1, empty → `None`; exit 0 → there is one; any other exit → `Err(Exited)`.
+  then `rev-parse --verify --quiet @{-1}` (`run_raw`; only the exit code is read, 18e) for whether there is a previous checkout: exit 1, empty → `None`; exit 0 → there is one; any other exit → `Err(Exited)`.
   Then `check-ref-format --branch @{-1}` for its name, as `git switch -` reads it; `Some(refs/heads/<name>)` only when the listing has that branch (a detached previous names a commit id; a deleted one is not listed).
   `rev-parse`'s own name is not used: with a same-named tag it prints nothing, and with only the tag left it names the tag (both measured on 2.38.5 and 2.54, m7-power-tools/18b).
 
@@ -302,6 +305,7 @@ Files (m6-conflicts/23, pure moves; every item below is re-exported from `confli
 ## version
 - `GitVersion` (struct) — a parsed `major.minor.patch` git version.
 - `GitVersion::MINIMUM` (const) — the oldest git version Graft supports.
+- `GitVersion::BLAME_PORCELAIN_MARKS` (const) — 2.50.0, the first git whose `blame --porcelain` writes `ignored`/`unblamable` (`builtin/blame.c` at v2.50.0:362-364; absent at v2.49.1); older git takes blame's second pass (18e).
 - `SystemGit` (enum) — the system git, classified against `GitVersion::MINIMUM`.
 - `SystemGit::for_version` (fn) — classify a found version against the minimum.
 - `SystemGit::version` (fn) — the version found.
