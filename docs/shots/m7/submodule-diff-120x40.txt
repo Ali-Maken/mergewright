@@ -25,7 +25,7 @@
 UNCOMMITTED · 1 unstaged
 diff vs HEAD 7c7e188
 UNSTAGED (1)                  libs/parser · submodule · 5bdba05 → efdd295
-  ▣ libs/parser  submodule ·… + efdd295 parser 3
+  ▣ libs/parser             → + efdd295 parser 3
                               + 8512312 parser 2
                               − 5bdba05 side 1
 

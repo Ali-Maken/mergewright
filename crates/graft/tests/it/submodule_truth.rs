@@ -231,13 +231,33 @@ fn a_moved_and_dirty_submodule_shows_both() {
     let state = crate::captures::settled_frame(&app, state);
     let shot = frame(&state);
     // At 120 columns the pane sits below the graph and its file list is 30
-    // columns wide: the row is cut after `submodule ·` (13b NOTES). The
-    // full words are asserted above, from the row itself.
+    // columns wide: the row keeps every fact as a mark, right-aligned
+    // (m7-power-tools/30i); the diff pane's line 2 has the words.
+    assert_row_marks(&shot, "\u{2192} \u{b1}");
+    // The row carries only marks (asserted just above), so the words are
+    // the diff pane's line 2 — drawn beside the row, on the same screen line.
     assert!(
-        shot.contains(&format!("\u{25a3} {SUB}  submodule \u{b7}")),
-        "{shot}"
+        shot.contains("changed inside"),
+        "line 2 of the diff pane: {shot}"
     );
     crate::captures::check_shot("m7/submodule-row-120x40.txt", &shot);
+    // At 187 the pane sits right with room for the full-words rung.
+    let wide = crate::captures::frame_at(
+        &state,
+        187,
+        40,
+        Some(graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW)),
+    );
+    let wide = format!("{}\n", wide.join("\n"));
+    assert!(
+        wide.contains(&format!(
+            "\u{25a3} {SUB}  submodule \u{b7} pointer moved {} \u{2192} {} \u{b7} changed inside",
+            short(&fixture.ids[0]),
+            short(&fixture.ids[2])
+        )),
+        "{wide}"
+    );
+    crate::captures::check_shot("m7/submodule-row-187x40.txt", &wide);
     app.close();
 }
 
@@ -258,7 +278,29 @@ fn untracked_inside_is_its_own_fact() {
             "submodule \u{b7} untracked inside".to_owned()
         )
     );
+    let state = crate::captures::settled_frame(&app, state);
+    assert_row_marks(&frame(&state), "?");
     app.close();
+}
+
+/// The submodule row in a 120x40 frame ends in exactly `marks`, right after
+/// the path's gap (m7-power-tools/30i).
+fn assert_row_marks(shot: &str, marks: &str) {
+    let row = shot
+        .lines()
+        .find(|line| line.contains(&format!("\u{25a3} {SUB}")))
+        .unwrap_or_else(|| panic!("a submodule row: {shot}"));
+    let after = row
+        .split(&format!("\u{25a3} {SUB}"))
+        .nth(1)
+        .expect("text after the path");
+    let tail: String = after
+        .trim_start()
+        .chars()
+        .take(marks.chars().count() + 1)
+        .collect();
+    assert_eq!(tail.trim_end(), marks, "{row:?}");
+    assert!(!row.contains("submodule"), "{row:?}");
 }
 
 /// A submodule git says nothing about draws no row, even with the pane

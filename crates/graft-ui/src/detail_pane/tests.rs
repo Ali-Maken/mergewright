@@ -1616,3 +1616,196 @@ fn the_diff_pane_says_when_a_submodules_commits_are_not_here() {
         "{screen:#?}"
     );
 }
+
+/// `submodule_row_view` with the row named `name`.
+fn submodule_row_named(name: &str, view: SubmoduleView) -> DetailView {
+    let mut detail = submodule_row_view(view);
+    let mut files = detail.files.as_deref().cloned().expect("a file list");
+    files.rows[1].name = sanitize_line(name);
+    detail.files = Some(Arc::new(files));
+    detail
+}
+
+/// The diff pane on `view` (its `log` as given), focus on the diff; the
+/// row under the cursor carries the same facts, as the app's does.
+fn submodule_diff_of(view: SubmoduleView) -> DetailView {
+    let mut detail = submodule_row_view(SubmoduleView {
+        log: None,
+        ..view.clone()
+    });
+    detail.focus = DetailFocus::Diff;
+    detail.body = BodyView::Diff(Arc::new(DiffView {
+        path: sanitize_line("libs/parser"),
+        old_path: None,
+        status: FileStatusView::Submodule(Box::new(view)),
+        hunks: vec![],
+        binary: None,
+        truncated: None,
+        untracked: false,
+    }));
+    detail
+}
+
+/// The file list's drawn area in `at_width(_, columns)`'s frame.
+fn files_area(columns: u16) -> Rect {
+    let layout = DetailLayout::compute(columns, 40, DetailFocus::Files, None);
+    let width = match layout {
+        DetailLayout::Right { columns } => columns,
+        DetailLayout::Below { .. } | DetailLayout::Tab { .. } => columns,
+    };
+    detail_areas(Rect::new(0, 0, width, 40), layout, 2).files
+}
+
+/// The screen row drawing the submodule row, cut to the list's area.
+fn submodule_row_on_screen(screen: &[String], area: Rect) -> String {
+    let line = screen
+        .iter()
+        .find(|line| line.contains('\u{25a3}'))
+        .unwrap_or_else(|| panic!("a submodule row: {screen:#?}"));
+    line.chars()
+        .skip(usize::from(area.x))
+        .take(usize::from(area.width))
+        .collect()
+}
+
+/// m7-power-tools/30i: at 120 (Below, a 30-column list) the row keeps every
+/// fact as a mark, right-aligned where a file's `+3 −2` sits.
+#[test]
+fn a_submodule_row_keeps_every_fact_at_120_columns() {
+    let screen = at_width(&submodule_row_view(submodule(true, true, true)), 120);
+    let row = submodule_row_on_screen(&screen, files_area(120));
+    assert!(row.contains("\u{25a3} libs/parser"), "{row:?}");
+    assert!(
+        row.ends_with("\u{2192} \u{b1} ?"),
+        "right-aligned at the list's last drawn column: {row:?}"
+    );
+    assert!(!row.contains("submodule"), "{row:?}");
+}
+
+/// m7-power-tools/30i: the diff pane's second line says what the
+/// submodule's own tree holds; moved-only has no second line and no blank.
+#[test]
+fn the_diff_pane_says_what_changed_inside_a_submodule() {
+    let with_log = |mut view: SubmoduleView| {
+        view.log = Some(SubmoduleLogView::Commits(vec![commit(
+            true,
+            "9c8d7e6",
+            "parse the new header",
+        )]));
+        submodule_diff_of(view)
+    };
+    let header_at = |screen: &[String]| {
+        screen
+            .iter()
+            .position(|line| line.contains("libs/parser \u{b7} submodule \u{b7}"))
+            .expect("the header")
+    };
+
+    let screen = at_width(&with_log(submodule(true, true, true)), 187);
+    let header = header_at(&screen);
+    assert!(
+        screen[header + 1].contains("changed inside \u{b7} untracked inside"),
+        "{screen:#?}"
+    );
+    assert!(
+        screen[header + 2].contains("+ 9c8d7e6 parse the new header"),
+        "{screen:#?}"
+    );
+
+    let screen = at_width(&with_log(submodule(true, false, false)), 187);
+    let header = header_at(&screen);
+    assert!(
+        screen[header + 1].contains("+ 9c8d7e6 parse the new header"),
+        "{screen:#?}"
+    );
+    assert!(
+        !screen.iter().any(|line| line.contains("inside")),
+        "{screen:#?}"
+    );
+}
+
+/// The diff pane on `view` at `columns` draws `words` whole.
+fn assert_line_two_whole(view: &SubmoduleView, words: &str, columns: u16) {
+    let mut sub = view.clone();
+    sub.log = Some(SubmoduleLogView::Commits(vec![]));
+    let screen = at_width(&submodule_diff_of(sub), columns);
+    assert!(
+        screen.iter().any(|line| line.contains(words)),
+        "{columns}: {screen:#?}"
+    );
+}
+
+/// The sweep's four views: all three facts; changed only; not set up;
+/// moved + untracked under a long path.
+fn sweep_views() -> [(&'static str, SubmoduleView); 4] {
+    let zlib = SubmoduleView {
+        from: Some(sanitize_line("3b2a1f0")),
+        to: Some(sanitize_line("9c8d7e6")),
+        untracked_inside: true,
+        ..SubmoduleView::default()
+    };
+    let not_set_up = SubmoduleView {
+        not_set_up: true,
+        ..SubmoduleView::default()
+    };
+    [
+        ("libs/parser", submodule(true, true, true)),
+        ("libs/parser", submodule(false, true, false)),
+        ("libs/parser", not_set_up),
+        ("vendor/third_party/zlib-ng", zlib),
+    ]
+}
+
+/// m7-power-tools/30i: at every width the row draws the first rung of its
+/// ladder that fits; no fact word or mark is cut; the path is cut only on
+/// the last rung. The diff pane's line 2 is whole at every width too.
+#[test]
+fn a_submodule_row_degrades_by_its_ladder_only_80_to_187() {
+    use super::files::{SubmoduleTail, submodule_tails};
+    let mut rungs_seen = std::collections::BTreeSet::new();
+    for (name, view) in sweep_views() {
+        let tails = submodule_tails(&view);
+        assert!(
+            matches!(tails.last(), Some(SubmoduleTail::Marks(_))),
+            "{tails:?}"
+        );
+        let row_view = submodule_row_named(name, view.clone());
+        let inside = super::body::submodule_inside_words(&view);
+        for columns in 80..=187_u16 {
+            let area = files_area(columns);
+            let width = usize::from(area.width);
+            let row = submodule_row_on_screen(&at_width(&row_view, columns), area);
+            let lead = format!("  \u{25a3} {name}  ");
+            let (rung, chosen) = tails
+                .iter()
+                .enumerate()
+                .find(|(_, tail)| match tail {
+                    SubmoduleTail::Words(words) => {
+                        lead.chars().count() + words.chars().count() <= width
+                    }
+                    SubmoduleTail::Marks(_) => true,
+                })
+                .expect("the last rung always fits");
+            rungs_seen.insert(rung);
+            match chosen {
+                SubmoduleTail::Words(words) => {
+                    assert_eq!(row.trim_end(), format!("{lead}{words}"), "{columns}");
+                }
+                SubmoduleTail::Marks(marks) => {
+                    assert!(row.ends_with(marks.as_str()), "{columns}: {row:?}");
+                    assert!(
+                        row.contains(&format!("\u{25a3} {name} ")) || row.contains('\u{2026}'),
+                        "the path whole, or cut with `…`: {columns}: {row:?}"
+                    );
+                }
+            }
+            if let Some(words) = &inside {
+                assert_line_two_whole(&view, words, columns);
+            }
+        }
+    }
+    assert!(
+        rungs_seen.len() >= 3,
+        "the sweep crosses rungs: {rungs_seen:?}"
+    );
+}

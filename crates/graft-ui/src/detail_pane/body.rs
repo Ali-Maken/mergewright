@@ -10,8 +10,8 @@ use unicode_width::UnicodeWidthStr;
 use graft_core::mistake_radar::Severity;
 
 use crate::detail::{
-    BodyView, DetailFocus, DetailView, DiffMode, ExplainView, FileStatusView, SubmoduleLogView,
-    SubmoduleView,
+    BodyView, DetailFocus, DetailView, DiffMode, ExplainView, FileRowKind, FileStatusView,
+    SubmoduleLogView, SubmoduleView,
 };
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
@@ -93,7 +93,16 @@ fn render_diff_body(
     muted: Style,
 ) {
     if let FileStatusView::Submodule(submodule) = &diff.status {
-        render_submodule_diff(diff.path.as_str(), submodule, area, theme, buf);
+        // The inside facts come from git's status, which the row carries;
+        // the diff job reads only the pointer's move. Line 2 explains the
+        // row's marks, so it takes them from the row under the cursor
+        // (m7-power-tools/30i).
+        let mut submodule = submodule.as_ref().clone();
+        if let Some(row) = cursor_submodule(view) {
+            submodule.changed_inside = row.changed_inside;
+            submodule.untracked_inside = row.untracked_inside;
+        }
+        render_submodule_diff(diff.path.as_str(), &submodule, area, theme, buf);
         return;
     }
     // An untracked file is read as all added lines (m6-conflicts/81); only
@@ -156,15 +165,7 @@ fn render_submodule_diff(
 ) {
     let text = foreground(theme, Token::Text);
     let muted = foreground(theme, Token::TextMuted);
-    let ids = match (&submodule.from, &submodule.to) {
-        (Some(from), Some(to)) if from != to => {
-            format!(" \u{b7} {} \u{2192} {}", from.as_str(), to.as_str())
-        }
-        (None, Some(to)) => format!(" \u{b7} new at {}", to.as_str()),
-        (Some(from), None) => format!(" \u{b7} removed (was {})", from.as_str()),
-        (Some(at), Some(_)) => format!(" \u{b7} {}", at.as_str()),
-        (None, None) => String::new(),
-    };
+    let ids = pointer_ids(submodule);
     draw_line(
         buf,
         area,
@@ -172,11 +173,18 @@ fn render_submodule_diff(
         &format!("{path} \u{b7} submodule{ids}"),
         foreground(theme, Token::Accent),
     );
+    // Line 2, only when true: what the submodule's own tree holds — the
+    // words behind the row's `±` / `?` marks (m7-power-tools/30i).
+    let inside = submodule_inside_words(submodule);
+    let first: u16 = if inside.is_some() { 2 } else { 1 };
+    if let Some(inside) = inside {
+        draw_line(buf, area, 1, &inside, text);
+    }
     match &submodule.log {
         Some(SubmoduleLogView::NotHere) => draw_line(
             buf,
             area,
-            1,
+            first,
             "the submodule's commits aren't here \u{b7} not set up",
             muted,
         ),
@@ -186,10 +194,10 @@ fn render_submodule_diff(
             } else {
                 "the pointer did not move"
             };
-            draw_line(buf, area, 1, why, muted);
+            draw_line(buf, area, first, why, muted);
         }
         Some(SubmoduleLogView::Commits(commits)) => {
-            let mut offset: u16 = 1;
+            let mut offset: u16 = first;
             for commit in commits.iter().take(SUBMODULE_COMMITS_MAX) {
                 let (sign, token) = if commit.pulled_in {
                     ('+', Token::Added)
@@ -210,8 +218,48 @@ fn render_submodule_diff(
                 draw_line(buf, area, offset, &format!("+{more} more"), muted);
             }
         }
-        None => draw_line(buf, area, 1, "reading\u{2026}", text),
+        None => draw_line(buf, area, first, "reading\u{2026}", text),
     }
+}
+
+/// The header's pointer after `submodule`: ` · <old7> → <new7>`, ` · new
+/// at <id>`, ` · removed (was <id>)`, ` · <id>` unmoved, or nothing.
+fn pointer_ids(submodule: &SubmoduleView) -> String {
+    match (&submodule.from, &submodule.to) {
+        (Some(from), Some(to)) if from != to => {
+            format!(" \u{b7} {} \u{2192} {}", from.as_str(), to.as_str())
+        }
+        (None, Some(to)) => format!(" \u{b7} new at {}", to.as_str()),
+        (Some(from), None) => format!(" \u{b7} removed (was {})", from.as_str()),
+        (Some(at), Some(_)) => format!(" \u{b7} {}", at.as_str()),
+        (None, None) => String::new(),
+    }
+}
+
+/// The submodule facts of the file row under the cursor, if it is one.
+fn cursor_submodule(view: &DetailView) -> Option<&SubmoduleView> {
+    let files = view.files.as_ref()?;
+    match &files.rows.get(files.cursor)?.kind {
+        FileRowKind::File {
+            status: FileStatusView::Submodule(row),
+            ..
+        } => Some(row),
+        _ => None,
+    }
+}
+
+/// The diff pane's line 2 on a submodule (m7-power-tools/30i): each true
+/// fact about the submodule's own tree, joined by ` · ` — `changed inside`,
+/// `untracked inside`. `None` when neither is true (no line, no blank).
+pub(crate) fn submodule_inside_words(view: &SubmoduleView) -> Option<String> {
+    let facts: Vec<&str> = [
+        (view.changed_inside, "changed inside"),
+        (view.untracked_inside, "untracked inside"),
+    ]
+    .into_iter()
+    .filter_map(|(true_, words)| true_.then_some(words))
+    .collect();
+    (!facts.is_empty()).then(|| facts.join(" \u{b7} "))
 }
 
 /// The Explain panel: title (severity glyph + `title`, severity colour),
