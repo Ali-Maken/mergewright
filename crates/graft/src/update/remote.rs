@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
+use graft_git::history_reads::CommitSummary;
 use graft_ops::operation::{FetchParams, Operation, PullParams, PushParams};
 
 use super::detail::Loading;
@@ -36,6 +37,104 @@ pub struct RejectedPush {
     /// `None` when the refs were not current then: with nothing to compare,
     /// `P` offers the plain box and git decides.
     pub sent: Option<Oid>,
+    /// What the lease would take off the remote, keyed on the lease it was
+    /// read for: `(sent, expected, answer)`. `None` until the settle tail
+    /// asks ([`request_leaves`]); re-asked whenever the lease key moves (a
+    /// fetch moves `expected`). Cleared with the record (m7-power-tools/16b).
+    pub leaves: Option<(Oid, Oid, LeavesRead)>,
+}
+
+/// The commits a force-with-lease push takes off the remote: reachable from
+/// the tracking tip the lease names, not from the tip being sent.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Leaves {
+    /// Newest first, at most [`LEAVES_SHOWN`].
+    pub newest: Vec<CommitSummary>,
+    /// How many leave in all.
+    pub count: usize,
+}
+
+/// How many leaving commits the lease box lists by name.
+pub const LEAVES_SHOWN: usize = 3;
+
+/// The read of [`Leaves`] for one lease key.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LeavesRead {
+    /// Asked, not answered: `P` says `still reading`.
+    Reading,
+    /// The answer.
+    Read(Leaves),
+    /// Why it could not be read. The box says so and still offers the force:
+    /// the lease itself still guards the remote.
+    Failed(String),
+}
+
+/// The settle tail: when a lease would be offered and what it takes off the
+/// remote has not been asked for that lease's key, ask it — once per key.
+/// With no lease key the held answer stays: `RejectedPush`'s own clearing
+/// owns its lifetime, and a `HEAD` that moves away and back finds it valid.
+pub(super) fn request_leaves(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let key = {
+        let (Some(rejected), Ok(facts)) = (&state.remote.last_rejected_push, facts(state)) else {
+            return;
+        };
+        // `Err` is "not decidable yet" (refs or facts in flight): the next
+        // update asks again, so nothing is lost by waiting.
+        match push_box::lease_key(state, facts, rejected) {
+            Ok(Some(key)) => key,
+            Ok(None) | Err(_) => return,
+        }
+    };
+    let Some(rejected) = state.remote.last_rejected_push.as_mut() else {
+        return;
+    };
+    if rejected
+        .leaves
+        .as_ref()
+        .is_some_and(|(sent, expected, _)| (*sent, *expected) == key)
+    {
+        return;
+    }
+    let (sent, expected) = key;
+    rejected.leaves = Some((sent, expected, LeavesRead::Reading));
+    commands.push(Command::ReadLeaves {
+        id: next_id(),
+        sent,
+        expected,
+    });
+}
+
+/// The read of what leaves answered for `(sent, expected)`.
+pub(super) fn leaves_arrived(
+    state: &mut AppState,
+    sent: Oid,
+    expected: Oid,
+    result: Result<Leaves, String>,
+) {
+    let Some(rejected) = state.remote.last_rejected_push.as_mut() else {
+        return;
+    };
+    match &rejected.leaves {
+        Some((held_sent, held_expected, _)) if (*held_sent, *held_expected) == (sent, expected) => {
+            rejected.leaves = Some((
+                sent,
+                expected,
+                match result {
+                    Ok(leaves) => LeavesRead::Read(leaves),
+                    Err(why) => LeavesRead::Failed(why),
+                },
+            ));
+        }
+        // Dropped, failure included: safe because this answer is for a
+        // lease key that is no longer the one `P` would offer — the read for
+        // the current key is already in flight or answered, and that is the
+        // one the box shows (a superseded answer, not an error).
+        _ => {}
+    }
 }
 
 /// The remote keys' own state.

@@ -481,7 +481,7 @@ mod tests {
     /// tip ]` both build it: `push_box`'s own view over the lease `then`.
     fn lease_box() -> PendingConfirm {
         PendingConfirm {
-            view: crate::update::remote::push_box(&lease_params(), Some(1), Some(oid())),
+            view: crate::update::remote::push_box(&lease_params(), Some(1), Some(oid()), None),
             then: ConfirmThen::Operate(Operation::Push(lease_params())),
         }
     }
@@ -596,7 +596,12 @@ mod tests {
             (
                 "remote/push_box.rs:30 plain push",
                 PendingConfirm {
-                    view: crate::update::remote::push_box(&push_params(), Some(1), Some(oid())),
+                    view: crate::update::remote::push_box(
+                        &push_params(),
+                        Some(1),
+                        Some(oid()),
+                        None,
+                    ),
                     then: ConfirmThen::Operate(Operation::Push(push_params())),
                 },
             ),

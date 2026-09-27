@@ -51,6 +51,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ReadStashes(..)
         | Command::ReadIndexState { .. }
         | Command::ReadRemotes(..)
+        | Command::ReadLeaves { .. }
         | Command::ReadCommitTemplate(..)
         | Command::ReadHeadMessage(..)
         | Command::EditCommitMessage { .. }

@@ -177,6 +177,7 @@ pub fn remote_failed(
             state.remote.last_rejected_push = Some(RejectedPush {
                 params: params.clone(),
                 sent,
+                leaves: None,
             });
             sticky()
         }

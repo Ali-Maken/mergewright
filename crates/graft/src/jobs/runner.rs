@@ -985,6 +985,26 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads what a force-with-lease push would take off the remote, under
+    /// an id `update` already chose (m7-power-tools/16b). The answer
+    /// carries its lease key; `update` drops one a newer key superseded.
+    fn read_leaves(&self, id: JobId, sent: Oid, expected: Oid) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, None, move |_| {
+            Box::new(move |cancel: &Cancel| {
+                let result = super::remote::read_leaves(&repos, sent, expected, cancel);
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Leaves {
+                    sent,
+                    expected,
+                    result,
+                })
+            })
+        });
+    }
+
     /// Builds the Map view's per-branch bucket counts, under an id `update`
     /// already chose (`update::map::MapState::open`, mirroring the detail
     /// pane's own jobs — see `queue_as`'s doc).
@@ -1062,18 +1082,15 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadFinishSummary(id) => self.read_finish_summary(id),
             Command::ReadFinishDiff(id, path) => self.read_finish_diff(id, path),
             Command::ReadRemotes(id) => self.read_remotes(id),
+            Command::ReadLeaves { id, sent, expected } => self.read_leaves(id, sent, expected),
             Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
             Command::CancelCredential(id) => self.credential(id, None),
-            // The loop writes this to the terminal itself (`event_loop`);
+            // The loop writes these itself — the clipboard to the terminal
+            // (`event_loop`), the layout to disk (`event_loop::running`);
             // reaching here is a routing bug, not a runtime condition.
-            Command::CopyToClipboard(_) => {
-                unreachable!("CopyToClipboard is terminal output, never a job")
-            }
-            // The loop writes this to disk itself (`event_loop::running`);
-            // reaching here is a routing bug, not a runtime condition.
-            Command::SaveLayout(_) => {
-                unreachable!("SaveLayout is written by the loop, never a job")
+            Command::CopyToClipboard(_) | Command::SaveLayout(_) => {
+                unreachable!("{command:?} is written by the loop, never a job")
             }
             // Handing the terminal over and taking it back is the loop's
             // own business (`event_loop::outside`): a worker thread has no

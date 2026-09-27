@@ -5,11 +5,14 @@
 
 use std::sync::Arc;
 
+use graft_core::oid::Oid;
+use graft_git::history_reads::{commits_between, count_between};
 use graft_git::remote::{self, Remote, TrackedUpstream};
 use graft_git::repo::HeadState;
 
 use super::Cancel;
 use crate::repos::RepoStore;
+use crate::update::remote::{LEAVES_SHOWN, Leaves};
 
 /// What the remote keys decide from.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -53,4 +56,28 @@ pub fn read_remotes(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<RemoteFact
         head_branch,
         head_upstream,
     }))
+}
+
+/// What a force-with-lease push of `sent` over `expected` takes off the
+/// remote: `sent..expected`, newest first, at most [`LEAVES_SHOWN`], and the
+/// count (m7-power-tools/16b).
+///
+/// # Errors
+/// The repository not opening, or `git` failing (stopped included), as one
+/// line.
+pub fn read_leaves(
+    repos: &RepoStore,
+    sent: Oid,
+    expected: Oid,
+    cancel: &Cancel,
+) -> Result<Leaves, String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    let range = commits_between(&handle, sent, expected, LEAVES_SHOWN, cancel)
+        .map_err(|error| error.to_string())?;
+    let count =
+        count_between(&handle, sent, expected, cancel).map_err(|error| error.to_string())?;
+    let mut newest = range.commits;
+    newest.reverse();
+    Ok(Leaves { newest, count })
 }

@@ -411,6 +411,17 @@ pub enum Product {
     /// The remotes, `HEAD`'s branch and its upstream, or why they could not
     /// be read (m4-remotes/05).
     Remotes(Result<std::sync::Arc<crate::jobs::remote::RemoteFacts>, String>),
+    /// What a force-with-lease push would take off the remote, for the
+    /// lease key it was asked for (`Command::ReadLeaves`), or why it could
+    /// not be read.
+    Leaves {
+        /// The tip git refused.
+        sent: graft_core::oid::Oid,
+        /// The tracking tip the lease names.
+        expected: graft_core::oid::Oid,
+        /// The answer.
+        result: Result<crate::update::remote::Leaves, String>,
+    },
 }
 
 /// What running `git --version` found.
