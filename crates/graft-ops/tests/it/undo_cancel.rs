@@ -792,3 +792,67 @@ fn a_cancelled_undo_through_u_leaves_u_where_it_was() {
         "u still points at the reset"
     );
 }
+
+/// `KNOWN_GAPS` :495, the planner's ruling (m7/01b): a stop leaves a
+/// restore, and an undo, as `Cancelled` or `CancelledPartway` — never any
+/// other shape — at **every** poll, the ones before the first step included.
+/// A stop before any step is `Cancelled { rolled_back: 0 }` and changes
+/// nothing. Stride 1: this sweep is about the shape, not the roll-back, and
+/// a missed poll is the defect it exists to catch.
+#[test]
+fn every_stop_is_one_shape() {
+    let polls = |through_undo: bool| {
+        let repo = reset_repo();
+        reset_and_state(&repo);
+        let counter = CountPolls::new();
+        stopped_at(&repo, &counter, through_undo).expect("an unstopped undo succeeds");
+        counter.count()
+    };
+    for through_undo in [false, true] {
+        let counted = polls(through_undo);
+        let mut before_any_step = 0;
+        for at in 1..=counted {
+            let repo = reset_repo();
+            let before = reset_and_state(&repo);
+            let stop = StopAtPoll::new(at);
+            // Finished before the stop fired: the "or finished" half.
+            let Err(why) = stopped_at(&repo, &stop, through_undo) else {
+                continue;
+            };
+            let rolled_back = match &why {
+                RestoreError::Cancelled { rolled_back } => *rolled_back,
+                RestoreError::CancelledPartway { .. } => continue,
+                other => panic!(
+                    "poll {at} (through undo: {through_undo}) left as another shape: {other:?}"
+                ),
+            };
+            if rolled_back == 0 {
+                before_any_step += 1;
+                assert_eq!(state_of(&repo), before, "poll {at} changed the repository");
+            }
+        }
+        assert!(
+            before_any_step > 0,
+            "the sweep reached a stop before any step (through undo: {through_undo})"
+        );
+    }
+}
+
+/// The undo of `reset_and_state`, under `stop`: straight at `execute`, or
+/// through `undo::undo` (its rails poll the same stop).
+fn stopped_at(
+    repo: &TempRepo,
+    stop: &dyn Stop,
+    through_undo: bool,
+) -> Result<Applied, RestoreError> {
+    if !through_undo {
+        return execute_under(repo, NOW + 1, stop);
+    }
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let mut ctx = context(&handle, &mut journal, NOW + 1, stop);
+    undo::undo(&mut ctx, false).map_err(|why| match why {
+        UndoError::Restore(why) => why,
+        other => panic!("a stopped undo left as {other:?}"),
+    })
+}

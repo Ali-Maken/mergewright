@@ -693,7 +693,7 @@ fn drift_on_redo_says_capital_u() {
 /// `RestoreError::Run(RunError::Stopped)`, whichever read met it — so the
 /// cancel path's single arm catches every one.
 #[test]
-fn every_stop_is_one_shape() {
+fn inner_stops_fold_to_one_recogniser() {
     use crate::apply::PrepareError;
     use crate::facts::FactsError;
     use crate::restore::RestoreError;

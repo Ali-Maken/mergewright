@@ -42,7 +42,7 @@ pub struct OpenedFile {
     pub on_disk: Option<OnDisk>,
     /// The file is there but could not be read: `can't read <path>:
     /// <reason>`, for the card's notice. `None` when it read, or when it
-    /// is simply not there (KNOWN_GAPS :572).
+    /// is simply not there (`KNOWN_GAPS` :572).
     pub unreadable: Option<String>,
     /// Whether `d` can start a whole-file shape (`file: None`) over — ops'
     /// own answer, asked when it opened (ticket 30: no app mirror of ops'
@@ -210,7 +210,7 @@ pub fn open(store: &RepoStore, path: &Path, stop: &dyn Stop) -> Result<Opening, 
 /// which parses markers this shape does not have. A path that is not there
 /// draws nothing (`Ok(None)`): nothing is the right answer for a file that
 /// is gone. Any other failure is `Err` with the card notice's words,
-/// `can't read <path>: <reason>` (KNOWN_GAPS :572) — never an empty file.
+/// `can't read <path>: <reason>` (`KNOWN_GAPS` :572) — never an empty file.
 /// Neither fails the whole open: the card's `how`/`keys` line still stands.
 fn worktree_glimpse(
     handle: &RepoHandle,

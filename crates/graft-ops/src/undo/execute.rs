@@ -127,7 +127,7 @@ pub fn revert_to(
         if ctx.stop.should_stop() {
             return Err(UndoError::PartWay {
                 done,
-                error: Box::new(UndoError::Restore(RestoreError::STOPPED)),
+                error: Box::new(UndoError::Restore(RestoreError::CANCELLED_BEFORE_ANY_STEP)),
             });
         }
         match run_plan(ctx, plan, force, Direction::Undo) {
@@ -185,7 +185,7 @@ fn run_plan(
     // (m3/03 review, M5). The restore itself copes: its backup keeps the
     // working tree, conflict markers and all.
     let now = facts::read_state_now(ctx.repo, ctx.scratch(), &names, ctx.stop)
-        .map_err(UndoError::Facts)?;
+        .map_err(|why| facts_or_cancel(ctx.stop, why))?;
 
     // Before the rail: a live operation is not drift the user can force
     // past, it is a refusal. With it here, `drift`'s `MergeDrift::Begun`
@@ -200,7 +200,8 @@ fn run_plan(
     // here and only here, so a clean undo pays nothing for it; asked again
     // on the forced run, because the tree may have moved since the box.
     let mut reads = Vec::new();
-    moved.replaced = replaced::replaced(ctx, plan, &now, &mut reads).map_err(UndoError::Facts)?;
+    moved.replaced = replaced::replaced(ctx, plan, &now, &mut reads)
+        .map_err(|why| facts_or_cancel(ctx.stop, why))?;
     if !force {
         return Err(UndoError::Drift {
             drift: Box::new(moved),
@@ -232,7 +233,7 @@ fn refuse_while_live(
     now: &RepoStateNow,
 ) -> Result<(), UndoError> {
     let live = graft_git::state::in_progress(ctx.repo)
-        .map_err(|error| UndoError::Facts(FactsError::from(error)))?;
+        .map_err(|error| facts_or_cancel(ctx.stop, FactsError::from(error)))?;
     let kind = match live {
         None | Some(InProgress::Bisect) => return Ok(()),
         Some(kind) => kind,
@@ -272,5 +273,22 @@ fn nothing_to_say(why: &NotInvertible) -> String {
         // The app words this through `update::undo::live_refusal`, and a
         // graft test pins the two texts equal (`operation_live_words_match_ops`).
         NotInvertible::OperationLive { kind } => super::operation_live_words(*kind),
+    }
+}
+
+/// A rail's read failure, a stop in it kept as what it is: the undo was
+/// cancelled before any step ran, so nothing changed (`KNOWN_GAPS` :495,
+/// planner ruling m7/01b). Nothing was journaled: the rails run before
+/// `begin`.
+///
+/// The stop is asked, not only the error's shape: a stopped read surfaces
+/// nested in many `FactsError` variants (`Snapshot(Stopped)`, a `RunError`
+/// inside `History`, …), and a failure while the user has asked to stop is
+/// the stop's doing — the stop latches, so asking again is exact.
+fn facts_or_cancel(stop: &dyn graft_git::run::Stop, why: FactsError) -> UndoError {
+    if matches!(why, FactsError::Stopped) || stop.should_stop() {
+        UndoError::Restore(RestoreError::CANCELLED_BEFORE_ANY_STEP)
+    } else {
+        UndoError::Facts(why)
     }
 }

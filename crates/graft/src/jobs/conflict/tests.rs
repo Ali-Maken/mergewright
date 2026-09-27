@@ -161,7 +161,7 @@ fn whole_file_card(dir: &std::path::Path) -> std::sync::Arc<super::OpenedFile> {
     }
 }
 
-/// KNOWN_GAPS :572: a file that is there but cannot be read says so in the
+/// `KNOWN_GAPS` :572: a file that is there but cannot be read says so in the
 /// card's words, rather than drawing as an empty file.
 #[test]
 fn a_permission_error_shows_in_the_card_not_empty() {

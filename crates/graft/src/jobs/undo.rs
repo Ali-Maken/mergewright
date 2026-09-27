@@ -736,4 +736,48 @@ mod tests {
             put_back: None,
         }
     }
+
+    /// `KNOWN_GAPS` :495, the planner's ruling (m7/01b): `Esc` before any
+    /// step ran is a clean cancel — `undo cancelled · nothing changed`,
+    /// which `update::undo` shows as `Status::done` — never a failure line.
+    /// The stop is raised before the job starts, so it lands on the very
+    /// first poll, ahead of the rails' reads.
+    #[test]
+    fn a_stop_before_any_step_reads_as_cancelled() {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let repo = scratch.path();
+        std::fs::write(repo.join("new.txt"), "new\n").expect("the scratch repo is writable");
+        let store = RepoStore::new(repo.to_path_buf(), None);
+        let stage =
+            graft_ops::operation::Operation::Stage(graft_ops::operation::Target::Paths(vec![
+                std::path::PathBuf::from("new.txt"),
+            ]));
+        with_context(
+            &store,
+            Clock::Fixed(1_700_000_000),
+            &Cancel::new(),
+            |ctx| graft_ops::apply::apply(ctx, &stage).map(|_| ()),
+            |why| panic!("no context: {why}"),
+        )
+        .unwrap_or_else(|why| panic!("the stage runs: {}", why.explain()));
+        let staged = || {
+            std::process::Command::new("git")
+                .current_dir(repo)
+                .args(["diff", "--cached", "--name-only"])
+                .output()
+                .expect("git runs")
+                .stdout
+        };
+        let before = staged();
+
+        let cancel = Cancel::new();
+        cancel.cancel();
+        let undone = run_undo(&store, false, false, Clock::Fixed(1_700_000_001), &cancel);
+        let Undone::Cancelled { clean, why, .. } = &undone else {
+            panic!("a stop before any step is a cancel, got {undone:?}");
+        };
+        assert!(*clean, "{why}");
+        assert_eq!(why, "undo cancelled · nothing changed");
+        assert_eq!(staged(), before, "nothing changed");
+    }
 }
