@@ -1,6 +1,7 @@
 //! The total-time guard every test pump loop carries (m7-power-tools/33).
-//! Its own file so `budget_run` — also built into the `budgets` example,
-//! which has no `app_harness` — can include it by path.
+//! Declared once at each crate root (`tests/it/main.rs`, and by path in the
+//! examples that include `app_harness` or `budget_run`); users reach it as
+//! `crate::deadline`.
 
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
@@ -8,9 +9,10 @@ use std::time::{Duration, Instant};
 /// The most one pump may take in total, whatever its events. `PATIENCE` is
 /// per event, so a loop that keeps producing events never trips it: the
 /// radar-context retry loop spun for 9 minutes (m7-power-tools/33). A test
-/// guard, not a product retry cap. Longer than any `PATIENCE` so a slow but
-/// settling pump never trips it.
-pub const DEADLINE: Duration = Duration::from_secs(600);
+/// guard, not a product retry cap. Sized for the fast tier (PROMPT.md 7.1,
+/// under 3 minutes in all), and no shorter than the harness's per-event
+/// `PATIENCE`. The heavy `budget_run` carries its own, longer one.
+pub const DEADLINE: Duration = Duration::from_secs(120);
 
 /// How many of the latest events a [`Deadline`] failure quotes.
 const LAST_EVENTS: usize = 10;

@@ -31,13 +31,15 @@ use graft_graph::layout::{
 };
 use graft_graph::row::RowShape;
 
+use crate::deadline::Deadline;
+
 /// How long one step may take before the run is declared hung. Far above
 /// any budget: it turns a hang into a named failure, it is not a threshold.
-#[path = "deadline.rs"]
-mod deadline;
-use deadline::{DEADLINE, Deadline};
-
 const PATIENCE: Duration = Duration::from_secs(300);
+
+/// The most one pump may take in total. The heavy tier's own, longer than the
+/// fast tier's `deadline::DEADLINE` because one step here may take `PATIENCE`.
+const TOTAL: Duration = Duration::from_secs(600);
 
 /// The terminal size the git/git first frame was first timed at (m1/09b).
 const SIZE: Size = Size {
@@ -625,7 +627,7 @@ pub fn pump_until_from<E: std::fmt::Display>(
     mut state: AppState,
     done: impl Fn(&AppState) -> bool,
 ) -> Result<AppState, String> {
-    let mut deadline = Deadline::of(DEADLINE);
+    let mut deadline = Deadline::of(TOTAL);
     loop {
         if let Some(history) = &state.history
             && let Phase::Failed(why) = &history.phase

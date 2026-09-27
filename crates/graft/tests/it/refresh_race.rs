@@ -66,11 +66,15 @@ fn two_refreshes_before_started_leave_one_history_job() {
     // How many walks the screen took a `Started` from: one refresh's walk
     // supersedes the other's, so only one of the two can be accepted.
     let mut accepted = 0usize;
+    let mut deadline = crate::deadline::Deadline::of(crate::deadline::DEADLINE);
     while refs < 2 || working_tree < 2 {
         let event = app.events.recv_timeout(PATIENCE).expect(
             "both refreshes' refs and working-tree reads — a pool with a walk \
              left parked on it never answers the second",
         );
+        if let Err(why) = deadline.note("both refreshes' reads", &event) {
+            panic!("{why}");
+        }
         match &event {
             AppEvent::Produced(_, Product::Refs(_)) => refs += 1,
             AppEvent::Produced(_, Product::WorkingTree(_)) => working_tree += 1,

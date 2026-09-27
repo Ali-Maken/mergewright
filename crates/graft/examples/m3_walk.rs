@@ -33,6 +33,8 @@ mod app_harness;
 #[allow(dead_code, reason = "only `--matrix` is used here")]
 #[path = "../tests/it/coverage.rs"]
 mod coverage;
+#[path = "../tests/it/deadline.rs"]
+mod deadline;
 #[allow(
     dead_code,
     reason = "only its coverage tables are used here; the gallery uses the rest"
