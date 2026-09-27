@@ -1,6 +1,6 @@
 # 03b pull-sets-aside — part -b of 03
 
-Status: ready
+Status: done
 Blocked by: 03 part -a (merged cad5ed86); 06b (the set-aside put-back it uses changes; holds graft-ops)
 Crates: graft-ops (`apply.rs` Pull path, `RepoFacts.incoming` + `read_incoming`, `operation.rs` `sets_aside`/`touches`),
 graft (`tests/it/pull_over_edits.rs`, the pull banner words, the m7 walk harness), TESTING.md rows.
@@ -31,3 +31,12 @@ to 03b". It was never added.
   Build 03b after 30c, and build the pull `SetAside` without `staged`.
 - Acceptance box to add in 03b's tick list:
   `- [ ] T3 pull row: every_set_aside_kind_keeps_the_index covers pull (index v2, worktree v3, undo/redo exact), red run quoted.`
+
+## Acceptance (03b's own)
+- [x] T3 pull row: `put_back_index::every_set_aside_kind_keeps_the_index` covers pull (`Kind::Pull`; index v2,
+      worktree v3, undo/redo exact). Red run: `Pull: pull refused: your edits to p.txt would be overwritten`
+      (`put_back_index.rs:264`, Pull arm forced false).
+- [x] Every `-b:` box in `03-land-on-result.md`, ticked there with its test.
+
+## NOTES
+See 03's "NOTES (builder, 2026-09-27, part -b, ticket 03b)". Compacted once mid-build; nothing left.

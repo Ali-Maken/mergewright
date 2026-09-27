@@ -85,6 +85,7 @@ fn facts() -> RepoFacts {
             ("refs/heads/nb".to_owned(), None),
         ]),
         markers: vec![],
+        incoming: None,
     }
 }
 

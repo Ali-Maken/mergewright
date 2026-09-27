@@ -87,6 +87,7 @@ fn facts() -> RepoFacts {
         upstream: None,
         refs: BTreeMap::new(),
         markers: vec![],
+        incoming: None,
     }
 }
 

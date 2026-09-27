@@ -18,12 +18,12 @@ use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::remote::RemoteError;
 use graft_git::repo::{HeadError, HeadState, RefTarget, RefsError, RepoHandle};
-use graft_git::run::{RunError, Stop};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::stash::StashError;
 use graft_git::status::{StatusError, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-use crate::operation::{FactsScope, RepoFacts};
+use crate::operation::{FactsScope, Incoming, RepoFacts};
 use crate::snapshot::{self, SnapshotError};
 use crate::undo::RepoStateNow;
 
@@ -99,6 +99,10 @@ pub enum FactsError {
         /// What the read said.
         source: std::io::Error,
     },
+    /// What a pull's fetch brought could not be read: the ancestry check or
+    /// the diff between `HEAD` and the tracking tip (m7-power-tools/03b).
+    #[error("reading what the pull brings: {0}")]
+    Incoming(RunError),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
@@ -116,6 +120,14 @@ impl FactsError {
 }
 
 impl FactsError {
+    /// An incoming read's failure: stopped is [`FactsError::Stopped`].
+    pub(crate) fn of_incoming(error: RunError) -> Self {
+        match error {
+            RunError::Stopped => Self::Stopped,
+            other => Self::Incoming(other),
+        }
+    }
+
     /// One line for the status line.
     pub fn explain(&self) -> String {
         self.to_string()
@@ -183,7 +195,66 @@ pub fn read_facts(
         upstream,
         refs,
         markers,
+        incoming: None,
     })
+}
+
+/// What a pull's fetch brought (m7-power-tools/03b): whether `head`
+/// fast-forwards to `tip` (`merge-base --is-ancestor`), and if it does, the
+/// paths between them (`diff --name-only -z --no-renames`). Two spawns at
+/// most, the stop asked by each; a diverged branch costs one.
+///
+/// # Errors
+/// [`FactsError::Incoming`] when either read fails; [`FactsError::Stopped`]
+/// when the caller stops.
+pub(crate) fn read_incoming(
+    repo: &RepoHandle,
+    head: Oid,
+    tip: Oid,
+    stop: &dyn Stop,
+) -> Result<Incoming, FactsError> {
+    let fast_forward =
+        crate::preview::is_ancestor(repo, head, tip, stop).map_err(FactsError::of_incoming)?;
+    if !fast_forward {
+        return Ok(Incoming {
+            tip,
+            fast_forward,
+            paths: Vec::new(),
+        });
+    }
+    let listed = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("diff"),
+            GitArg::Flag("--name-only"),
+            GitArg::Flag("-z"),
+            GitArg::Flag("--no-renames"),
+            GitArg::Oid(head),
+            GitArg::Oid(tip),
+        ])
+        .run(stop)
+        .map_err(FactsError::of_incoming)?;
+    let paths = listed
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|name| !name.is_empty())
+        .map(path_of)
+        .collect();
+    Ok(Incoming {
+        tip,
+        fast_forward,
+        paths,
+    })
+}
+
+#[cfg(unix)]
+fn path_of(name: &[u8]) -> PathBuf {
+    use std::os::unix::ffi::OsStringExt;
+    PathBuf::from(std::ffi::OsString::from_vec(name.to_vec()))
+}
+
+#[cfg(not(unix))]
+fn path_of(name: &[u8]) -> PathBuf {
+    PathBuf::from(String::from_utf8_lossy(name).into_owned())
 }
 
 /// The unmerged paths whose file still holds a `<<<<<<< ` line. A path the

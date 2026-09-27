@@ -35,7 +35,7 @@ walk! {
     fetch_prunes_deleted_branch => "fetch-prunes-deleted-branch",
     pull_fast_forward => "pull-fast-forward",
     pull_diverged_refused => "pull-diverged-refused",
-    pull_dirty_file_refused => "pull-dirty-file-refused",
+    pull_dirty_file_sets_it_aside => "pull-dirty-file-sets-it-aside",
     pull_no_upstream_refused => "pull-no-upstream-refused",
     push_plain => "push-plain",
     push_plain_by_y => "push-plain-by-y",
