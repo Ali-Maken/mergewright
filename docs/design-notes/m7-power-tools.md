@@ -1264,7 +1264,7 @@ edit-in-undo-backup           4     # +1 · today the shell · J n ⏎ y
 | Blame still reading | Blame, with its title line; no keys lost |
 | Blame fails | Blame, showing git's words; `Esc` goes back |
 | `L` on an uncommitted line | Where he was, with the words on the status line |
-| A trace stopped with `Esc` | History, with the rows so far |
+| A trace stopped with `Esc` (title reads `tracing… · esc stops`; rows arrive in one batch, not streamed) | Where he pressed `L`/`F`, same line: `Esc` stops git and goes straight back, no rows to keep (21 ruling (a)) |
 | Put-back refused (the ref moved on) | `J`, with the words on its status row |
 | `b` from `J` | The graph, on the new branch |
 
