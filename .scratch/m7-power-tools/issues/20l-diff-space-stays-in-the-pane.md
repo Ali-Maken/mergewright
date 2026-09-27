@@ -1,6 +1,6 @@
 # 20l diff-space-stays-in-the-pane — `space` with the diff focused no longer folds the graph's merge, at any width
 
-Status: draft
+Status: done
 Blocked by: none by content. Crates graft + graft-ui: the conductor sequences it against whoever holds them.
 Crates: graft (the detail pane's key handler, `update` tests, the pinned captures, MAP.md) + graft-ui (the `hints` filter, its tests, MAP.md) + `docs/design/02-keymap.md` §2.2 `Space` (verbatim, below).
 Build with: **Sonnet**. One key claimed by the pane, one filter made uniform, decided below. The 20h sweeps judge both.
@@ -78,11 +78,16 @@ In `docs/design/02-keymap.md` §2.2, replace the whole `Space` row (`:186`) with
 §2.3 `:221` stays unchanged.
 
 ## Acceptance (name the verifying test at tick time)
-- [ ] Tests 1–2 seen red before the change and green after. Tests 3–4 are green and named.
-- [ ] Captures: grep `space fold` in `docs/shots/` for every **diff-focused** pane bar. 20h's NOTES name `m5-hints-detail-*` and `m7/diff-cursor-commit-120x40.txt`; re-check the list, don't trust it. Regenerate each pinned one through its own test and name the test. Each diff may lose only `space fold` and its re-spent width. List every contact sheet that quotes a changed capture, for M7/20h-sheets.
-- [ ] Keymap row replaced verbatim. `git diff` shows one line.
-- [ ] MAP.md is updated. graft: the detail pane claims `space` in both lists. graft-ui: `PaneFocused` drops the graph's `space fold` in every form.
-- [ ] Gates workspace-wide: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `cargo test --doc --workspace`.
+- [x] Tests 1–2 red before, green after (spec change: they replace the old pins, one-line comment at each old site). `update::tests::pane_space::space_with_the_diff_focused_leaves_the_graph_as_it_was` red: `120x40 left: ["fold"] right: []`. `graph_screen::hints::tests::pane_space::pane_focused_on_the_diff_drops_the_graphs_space_fold` red at `PaneFocused { row: BranchRow { current: false }, opens: false, blamable: true, folds: false }`. Tests 3 green in the full run (4184/4184): `pane_bar_on_a_directory_row_offers_space_fold`, `space_on_a_directory_row_folds_it_and_the_bar_still_says_fold`, `pane_bar_on_a_commits_file_row_draws_no_space`, `pane_focused_keeps_the_changes_panes_space`, `every_key_the_bar_draws_is_answered`, `every_context_reaches_every_shape`, `every_swept_state_is_the_context_it_claims`, `pane_bar_space::capture_the_pane_bar_on_a_file_and_on_a_directory`. Test 4: `it::changes_pane_writes::space_on_a_hunk_stages_only_that_hunk` (diff focused, `space` stages) green.
+- [x] Captures regenerated (`GRAFT_UPDATE_SHOTS=1`); each diff only loses `space` and re-spends width: `m5-hints-detail-{80x24,120x40,160x48}.txt` (`hint_bar::capture_hint_bar_for_docs_shots`), `m7/diff-cursor-commit-120x40.txt` (`diff_cursor::capture_the_commit_diff_cursor`), `m7/blame-then-commit-120x40.txt` (`blame_place::capture_blame_then_commit_120x40`; not on 20h's list). Also the quoted bar in `hint_bar::the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer` (`space  1` → `1  F  H`). Remaining `space fold` in docs/shots: `m7/pane-bar-file-vs-directory-120x40.txt` (files list on a directory: correct), m6 records. Sheets quoting changed captures: `docs/shots/m5-contact-sheet-1.txt`, `docs/shots/m5-contact-sheet-captions.tsv` (past record, not edited); no M7 sheet yet.
+- [x] Keymap row replaced verbatim; `git diff docs/design/02-keymap.md` shows one line.
+- [x] MAP.md updated: graft `keys.rs` entry; graft-ui `PaneFocused` folds entry.
+- [x] Gates workspace-wide: fmt, clippy -D warnings, nextest 4184 passed / 3 skipped, test --doc pass.
+
+## NOTES (20l)
+- Claim placed once, in `diff_option_key` (`update/detail/keys.rs`, first match arm): reached from `diff_key` and `files_key` fallbacks; `files_key`'s own `' '` arm still fires first. No other arm changed.
+- Changes pane: write keys (staging `space`) run before `diff_key`; test 4 green. Conflict screen: `operate::space_on_a_conflicted_file_stages_it_as_the_resolution` green. Blame place `space` (`place/keys.rs:56`): own handler, no key-level test exists. History place: none found.
+- Mouse, journal: untouched. No scout: ticket named the lines; each re-read.
 
 ## Touches (check each; NOTES says how)
 - **Every caller of `detail_key`, and its `false` path:** check that no other key changes routing. Diff the `match` arms before and after.

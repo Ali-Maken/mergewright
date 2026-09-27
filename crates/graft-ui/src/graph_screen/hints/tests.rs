@@ -1943,19 +1943,17 @@ mod pane_space {
         }
     }
 
-    /// With the diff focused, `space` falls through the pane to the graph
-    /// (`graft`'s `diff_key` does not take it) and folds the merge there, so
-    /// a commit row keeps the graph's hint.
+    // Replaced `pane_focused_on_the_diff_keeps_the_graphs_space_fold`: spec
+    // change M7/20h-diff-space (ticket 20l).
+
+    /// With the diff focused the pane claims `space` (`graft`'s
+    /// `diff_option_key`), so the graph's merge fold is not live and not
+    /// offered, on any row.
     #[test]
-    fn pane_focused_on_the_diff_keeps_the_graphs_space_fold() {
+    fn pane_focused_on_the_diff_drops_the_graphs_space_fold() {
         for row in graph_rows() {
             let context = pane(row.clone(), false, true, false);
-            let commits = !matches!(row, HintContext::WorkingTreeRow);
-            assert_eq!(
-                keys(&context).contains(&("space", "fold")),
-                commits,
-                "{context:?}"
-            );
+            assert!(!keys(&context).contains(&("space", "fold")), "{context:?}");
         }
     }
 

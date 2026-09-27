@@ -21,7 +21,7 @@
 
 
 
- esc back to blame  B blame  b branch  . more  r  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P
+ esc back to blame  B blame  b branch  r rebase  . more  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P
 COMMIT 2f48ca3 · Lina <lina@example.invalid> · 2019-06-07 00:00 +0000 · 7mo · parents 47593a5 · diff vs first parent · …
 Retry refresh once on 401
 ▾ src/                        impl Session {

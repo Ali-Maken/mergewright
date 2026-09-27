@@ -411,15 +411,13 @@ fn pane_focused_bar(
     divider: Divider,
 ) -> (Vec<Hint>, Option<Hint>) {
     let (list, trailer) = whole_bar(row, divider);
-    // With the files list focused its `space` is the pane's, on every row, so
-    // the graph's merge fold is not live (m7-power-tools/20h). Only that hint
-    // goes: another list's `space` is its own.
+    // With a pane focused (its files list or its diff) `space` is the pane's,
+    // so the graph's merge fold is not live (m7-power-tools/20h, 20l). Only
+    // that hint goes: another list's `space` is its own.
     let mut list: Vec<Hint> = list
         .into_iter()
         .filter(|hint| {
-            !GRAPH_ONLY.contains(&hint.key)
-                && (opens || hint.key != ENTER)
-                && !(opens && *hint == FOLD)
+            !GRAPH_ONLY.contains(&hint.key) && (opens || hint.key != ENTER) && *hint != FOLD
         })
         .collect();
     if blamable {

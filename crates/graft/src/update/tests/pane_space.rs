@@ -1,7 +1,7 @@
 //! `space` on the detail pane's bar with a commit open (m7-power-tools/20h):
 //! drawn exactly where the key does something — a directory row folds, a
-//! file row has nothing to fold, and with the diff focused the key reaches
-//! the graph's merge fold.
+//! file row has nothing to fold, and with the diff focused the pane claims
+//! the key and does nothing (20l).
 
 use super::*;
 use graft_ui::graph_screen::hints_for;
@@ -70,24 +70,32 @@ fn space_on_a_directory_row_folds_it_and_the_bar_still_says_fold() {
     assert_eq!(space_hints(&unfolded), ["fold"]);
 }
 
-/// Why the diff-focused bar keeps the graph's `space fold`: the diff region
-/// does not take `space` (`detail::keys::diff_key`), so it falls through to
-/// `keys::graph_key` and folds the merge under the graph's cursor.
-#[test]
-fn space_with_the_diff_focused_folds_the_graphs_merge_and_the_bar_says_so() {
-    let state = commit_pane(JobId::new(701), false);
-    assert_eq!(space_hints(&state), ["fold"]);
+// Replaced `space_with_the_diff_focused_folds_the_graphs_merge_and_the_bar_says_so`:
+// spec change M7/20h-diff-space (ticket 20l), the pane now claims `space`.
 
-    let (folded, commands) = update(&state, key(KeyCode::Char(' ')));
-    let merge = state
-        .history
-        .as_ref()
-        .and_then(|history| history.selected())
-        .map(|entry| entry.commit.id)
-        .expect("the cursor on the merge");
-    assert_eq!(asked_view(&commands).inclusion.folded, [merge].into());
-    assert_eq!(
-        folded.detail.files, state.detail.files,
-        "the pane untouched"
-    );
+/// With the diff focused `space` belongs to the pane (it claims the key and
+/// does nothing), at every width: the graph's merge is not folded, and the
+/// bar offers no `space` (m7-power-tools/20l).
+#[test]
+fn space_with_the_diff_focused_leaves_the_graph_as_it_was() {
+    for (columns, rows) in [(120, 40), (80, 24)] {
+        let mut state = commit_pane(JobId::new(701), false);
+        state.size.columns = columns;
+        state.size.rows = rows;
+        let at = format!("{columns}x{rows}");
+        assert_eq!(space_hints(&state), Vec::<&str>::new(), "{at}");
+
+        let (next, commands) = update(&state, key(KeyCode::Char(' ')));
+        // The evil-merge probe rides along on any event over a merge
+        // (`asked_view`); what must be absent is a row request, i.e. a fold.
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::ShowRows(..))),
+            "{at}: {commands:?}"
+        );
+        assert_eq!(next.history, state.history, "{at}");
+        assert_eq!(next.detail.files, state.detail.files, "{at}");
+        assert_eq!(space_hints(&next), Vec::<&str>::new(), "{at}");
+    }
 }

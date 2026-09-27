@@ -358,6 +358,11 @@ fn diff_option_key(
         return false;
     }
     match code {
+        // `space` belongs to the focused pane at every width: claimed here
+        // with no effect so it never falls through to the graph's merge fold,
+        // on a screen that may not even be drawn (m7-power-tools/20l,
+        // keymap §2.2). `files_key` claims it earlier for its own fold.
+        KeyCode::Char(' ') => true,
         KeyCode::Char('v') => {
             detail.mode = match detail.mode {
                 DiffMode::Unified => DiffMode::SideBySide,

@@ -96,4 +96,4 @@
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F  H
+ c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
