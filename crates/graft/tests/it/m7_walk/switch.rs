@@ -283,7 +283,8 @@ fn new_branch_with_edits() {
     assert_eq!(read(path, &other), EDIT);
     assert_eq!(split(path), before, "the staged split kept, no stash left");
     assert!(
-        matches!(&state.status, Status::Done { also: Some(clause), .. } if clause == "your edits are back"),
+        matches!(&state.status, Status::Done { what, also: Some(clause), keys: Some(keys) }
+            if what == "on nb" && clause == "your edits are back" && keys == "u goes back"),
         "{:?}",
         state.status
     );

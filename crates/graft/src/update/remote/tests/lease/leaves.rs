@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use graft_core::commit::{Identity, Timestamp};
-use graft_core::job::JobId;
+use graft_core::event::Event;
+use graft_core::job::{JobFailure, JobId};
 use graft_git::history_reads::CommitSummary;
 
 use super::super::super::{Leaves, LeavesRead, push_box, push_params, request_leaves};
@@ -308,7 +309,11 @@ fn a_superseded_leaves_answer_is_dropped() {
         .last_rejected_push
         .as_ref()
         .and_then(|rejected| rejected.leaves.clone());
-    assert_eq!(held, Some((oid(SENT), oid(FETCHED), LeavesRead::Reading)));
+    assert!(
+        matches!(held, Some((sent, fetched, LeavesRead::Reading(_)))
+            if (sent, fetched) == (oid(SENT), oid(FETCHED))),
+        "{held:?}"
+    );
 }
 
 #[test]
@@ -318,4 +323,61 @@ fn an_unchanged_tip_starts_no_second_read() {
     answer_leaves(&mut state, Ok(two_leave()));
     let commands = fetch_moves_tip(&mut state, THEIRS);
     assert!(asked(&commands).is_empty(), "{commands:?}");
+}
+
+/// Asks the read, then ends its job with `event` instead of an answer.
+fn read_ends_with(event: impl FnOnce(JobId) -> Event) -> AppState {
+    let mut state = on_sent();
+    reject_unread(&mut state);
+    let mut commands = Vec::new();
+    request_leaves(&mut state, &mut commands, &mut || JobId::new(902));
+    let (id, _, _) = asked(&commands).pop().expect("a read");
+    let (next, _) = update(&state, AppEvent::Core(event(id)));
+    next
+}
+
+fn held_leaves(
+    state: &AppState,
+) -> Option<(graft_core::oid::Oid, graft_core::oid::Oid, LeavesRead)> {
+    state
+        .remote
+        .last_rejected_push
+        .as_ref()
+        .and_then(|rejected| rejected.leaves.clone())
+}
+
+/// Review m7-16b..21b, Minor 2: a leaves read whose job failed stranded
+/// `Reading`, so `P` said `still reading` until the tip moved and the
+/// prelude's `settled` never answered. It is a failed read now: the box
+/// opens, says so, and still offers the force.
+#[test]
+fn a_failed_leaves_read_is_shown_not_still_reading() {
+    let state =
+        read_ends_with(|id| Event::JobFailed(id, JobFailure::Failed("git died".to_owned())));
+    let held = held_leaves(&state);
+    assert!(
+        matches!(&held, Some((_, _, LeavesRead::Failed(why))) if why.contains("git died")),
+        "{held:?}"
+    );
+    let (shown, _) = press_p(&state);
+    let lines = message(&shown);
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("couldn't read what leaves")),
+        "{lines:#?}"
+    );
+}
+
+/// The cancelled twin: a read cancelled under it is a failed read too.
+#[test]
+fn a_cancelled_leaves_read_is_shown_not_still_reading() {
+    let state = read_ends_with(Event::JobCancelled);
+    let held = held_leaves(&state);
+    assert!(
+        matches!(&held, Some((_, _, LeavesRead::Failed(_)))),
+        "{held:?}"
+    );
+    let (shown, _) = press_p(&state);
+    assert!(box_title(&shown).is_ok(), "{:?}", shown.status);
 }

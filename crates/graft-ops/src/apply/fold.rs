@@ -154,6 +154,8 @@ fn inside_live_operation(
         // before- or after-state, the merge's included.
         merge_before: None,
         merge_after: None,
+        config_before: BTreeMap::default(),
+        config_after: BTreeMap::default(),
         put_back: None,
     };
     match failure {

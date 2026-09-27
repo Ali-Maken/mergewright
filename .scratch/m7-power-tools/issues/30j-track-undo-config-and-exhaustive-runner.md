@@ -1,6 +1,6 @@
 # 30j: Track undo leaves branch config; runner catch-alls; five small fixes from review 16b..21b
 
-Status: ready
+Status: done
 Build with: Opus. Undo of a config write (journal + restore) is the one hard part.
 Needs: nothing new.
 Blocked by: nothing. Concurrent: 03b (graft-ops `apply.rs` Pull path, `operation.rs` `sets_aside`/`touches`, pull
@@ -35,16 +35,22 @@ where the arriving `FileDiff` lands (name it); `crates/graft-ui/src/graph_screen
 
 ## Acceptance
 
-- [ ] Red first: `undo_of_a_track_switch_removes_the_upstream_it_wrote` (graft-ops, real git): after undo,
-      `git config branch.<b>.remote` is unset; a pre-existing config on another branch unchanged. Record git version.
-- [ ] Red first: a pre-existing upstream for the same branch name survives undo (name the test).
-- [ ] `not_a_job` exhaustive: no `other`/`_` arm (grep in NOTES); build proves it.
-- [ ] Red first: `a_switching_create_lands_on_the_new_branch` — status `on nb ✓ · u goes back`.
-- [ ] Red first: `a_failed_leaves_read_is_shown_not_still_reading` and the cancelled twin.
-- [ ] Red first: `submodule_facts_arrive_with_the_diff` (update::detail); `body.rs` has no cursor copy.
-- [ ] History bar says `⇥`; captures re-taken by their tests; ≤200 KB; colour unverified.
-- [ ] Journey walk parses 2 for `menu-checkout` in m6-conflicts (name the walk test).
-- [ ] MAP.md per crate. Gates workspace-wide.
+- [x] Red first: `undo_of_a_track_switch_removes_the_upstream_it_wrote` (graft-ops `tests/it/switch_rule.rs`, real
+      git 2.54.0 Apple Git-157): red (left `["origin"]`), green after. Also checks main's config unchanged, redo
+      re-adds it, a later branch of the same name has no upstream.
+- [x] Red first: `a_pre_existing_upstream_for_the_same_name_survives_undo` (same file) — red, then green.
+- [x] `not_a_job` exhaustive — `runner.rs` dispatch lists every `Command`; `grep -nE "^\s*(other|_) =>"
+      runner.rs` finds only `:328` (dispatch_detail) and `:361` (dispatch_history), none in dispatch. Build proves it.
+- [x] Red first: `a_switching_create_lands_on_the_new_branch` (`update/switch/tests.rs`); walk
+      `m7_walk::switch` new-branch-with-edits asserts `on nb` / `u goes back`.
+- [x] Red first: `a_failed_leaves_read_is_shown_not_still_reading`, `a_cancelled_leaves_read_is_shown_not_still_reading`
+      (`update/remote/tests/lease/leaves.rs`).
+- [x] Red first: `submodule_facts_arrive_with_the_diff` (`update/detail/inside_facts.rs`); `grep cursor_submodule`
+      in graft-ui finds nothing.
+- [x] History bar says `⇥`: `hints/tests.rs`, `hint_bar.rs`, `history_place.rs`, `place/tests/hints.rs` (8 red first);
+      captures re-taken by `history_place::capture_*` (4 files, 1 line each, all < 10 KB). Colour unverified.
+- [x] `menu_checkout_is_fenced_at_two` (`tests/it/m5_walk/journeys.rs`): red (`Ok(3)`), green after the note edit.
+- [x] MAP.md: graft-core, graft-ops, graft-ui, graft. Gates workspace-wide (see NOTES).
 
 ## Touches (check each, say how)
 
@@ -52,3 +58,40 @@ Every other undo of a checkout (config untouched). Every `Command` added since 2
 capture with the history bar or a submodule diff. KNOWN_GAPS rows closed by this (list for the conductor; don't edit).
 
 ## NOTES (builder)
+
+- **Compacted: yes**, once, after all seven fixes were built; only the gates, ticket and commit remained. Nothing left.
+- Scout: none — the review names every line.
+- **Journal type changed:** `graft_core::JournalEntry` gains `config_before` / `config_after`
+  (`BTreeMap<String, Vec<String>>`, serde default + skipped when empty, so old journals read). Recorded for every
+  touched `refs/heads/<b>` (`branch.<b>.*`, via new `graft-ops/src/branch_config.rs`). Undo/redo emit
+  `Step::SetBranchConfig` where before ≠ after; restore rollback reverses it. Cost: +1 `git config` spawn at begin and
+  finish of ops touching a branch ref; none when no branch ref is touched.
+- Cause vs symptom: all seven are cause fixes. Floor of the history bar ladder 30 → 28 cells (⇥ is narrower) — a
+  knock-on of the ruling, comment updated.
+- Known limits (not fixed, for KNOWN_GAPS): an *interrupted* Track (`mark_interrupted`) does not read
+  `config_after`, so its undo won't remove the upstream; config restore is not compare-and-swap (a config edit made
+  outside Graft between op and undo is overwritten). `runner.rs` still has catch-alls at `:328` and `:361`
+  (dispatch_detail/history sub-dispatch, out of scope). Pre-existing size caps: `update/detail/ops.rs` 705,
+  `update/remote.rs` 531, `runner.rs` ~1200 lines.
+- Out-of-list files Major 1 needs (each line): `graft-core/src/journal.rs:313-324` — the two config fields; the
+  journal is where undo reads "before", so config must be recorded there. `graft-ops/src/apply/record.rs:89,132-133,
+  145-157` — `begin` reads `config_before` for the touched branch refs (helper `config_before`); `:259-262` —
+  `read_after` reads `config_after`, a failed read becomes `AfterState::BranchConfig`, not swallowed.
+  `graft-ops/src/apply/fold.rs:157-158` — the struct literal of the folded entry must carry the two fields (compile).
+  `fold.rs:63`'s stale doc (07a note) not touched — not in that line.
+- Files outside the listed set: graft-ops `facts.rs`, `apply/record.rs`, `apply/error.rs`, `apply/fold.rs`,
+  `journal/lines.rs`, `undo.rs`, `undo/replaced.rs`, `restore.rs`, `restore/rollback.rs`, `lib.rs`; graft
+  `update/keys/bound.rs`, `update/mod.rs` (job_cancelled too), `prelude.rs`, `push_box.rs`; graft-ui
+  `hints/context.rs`; JournalEntry literals in ~19 test/source sites; `TESTING.md:2624,2631` (`tab file` → `⇥ file`).
+  None in 03b's files (`apply.rs`, `operation.rs`). **03b merge risk:** any new `JournalEntry` literal there needs the
+  two config fields.
+- Touches: other checkout undos — plain Checkout touches no branch ref, commits record equal before/after → no step;
+  graft-ops+core suite 908 pass. Commands since 21 (`TraceHistory`, `ReadWholeFile`, `PlanRewrite`, `ResolveRowTags`,
+  `ReadLeaves`) all armed — build proves. Other bars' `⇥`: `lists.rs:73,302,356,365`, `hints.rs:483` already `⇥`.
+  Captures: only the 4 history-bar captures drifted in a full `GRAFT_UPDATE_SHOTS=1` run (raster png regenerated
+  identical). Still saying `tab file`: `docs/design/01-view-mockups.md`, `docs/design-notes/m7-power-tools.md`,
+  prototype shots — design/historical, left.
+- Gates (2026-09-28, workspace-wide): fmt ok, clippy ok, nextest 4531/4531 passed (4 skipped), doctests ok.
+  A first run stalled on the watchdog with no output; re-run clean.
+- Gap rows closed (conductor to move): `M7/10b-track`, `M7/10b-q`, `M7/30i-facts`; the leaves `Reading` strand
+  (Minor 2).

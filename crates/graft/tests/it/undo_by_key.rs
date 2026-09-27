@@ -239,6 +239,8 @@ fn tear_the_journal(repo: &std::path::Path, description: &str) {
         reverses: None,
         merge_before: None,
         merge_after: None,
+        config_before: std::collections::BTreeMap::new(),
+        config_after: std::collections::BTreeMap::new(),
         put_back: None,
     };
     journal

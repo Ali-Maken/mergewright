@@ -386,6 +386,14 @@ free  5  # esc + 2×⇥ + c + ⏎ (ticket 39)\n\
 ```\n\
 more text\n";
 
+    /// Review m7-16b..21b, Minor 8: the fence itself says 2 for
+    /// `menu-checkout`, so a regression to `. ⏎ y` fails the journey walk
+    /// and not only `m6_stash_put_back::menu_checkout_is_three_keys`.
+    #[test]
+    fn menu_checkout_is_fenced_at_two() {
+        assert_eq!(super::noted_keys("menu-checkout"), Ok(2));
+    }
+
     #[test]
     fn the_block_is_read_and_the_superseded_one_is_not() {
         let rows = parse_counts(NOTE).unwrap();

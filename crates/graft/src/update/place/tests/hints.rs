@@ -93,7 +93,7 @@ fn history_rows_in_the_place_bar_table() {
     );
     let rows = [
         ("j/k", "older·newer"),
-        ("tab", "file"),
+        ("⇥", "file"),
         ("n/N", "next change"),
         ("B", "blame here"),
         ("⏎", "that commit"),
@@ -101,7 +101,7 @@ fn history_rows_in_the_place_bar_table() {
     ];
     let on_file = [
         ("j/k", "scroll"),
-        ("tab", "list"),
+        ("⇥", "list"),
         ("n/N", "next change"),
         ("B", "blame here"),
         ("⏎", "that commit"),

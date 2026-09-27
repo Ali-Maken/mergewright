@@ -60,6 +60,10 @@ pub struct PendingLine {
     /// (m6-conflicts/20).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merge_before: Option<MergeState>,
+    /// `branch.<name>.*` of every touched branch before (review
+    /// m7-16b..21b, Major 1). Left out when empty, the same way.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub config_before: BTreeMap<String, Vec<String>>,
     /// The stash a pop, apply or set-aside puts back (ADR-0045 §1). Left out
     /// when there is none, the same way (m6-conflicts/72).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -86,6 +90,9 @@ pub struct OutcomeLine {
     /// git's merge in progress after, the same way.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merge_after: Option<MergeState>,
+    /// The same config keys after, the same way.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub config_after: BTreeMap<String, Vec<String>>,
 }
 
 /// Just enough of any line to know which record it is.
@@ -133,6 +140,7 @@ impl PendingLine {
             pins: entry.pins.clone(),
             reverses: entry.reverses.clone(),
             merge_before: entry.merge_before.clone(),
+            config_before: entry.config_before.clone(),
             put_back: entry.put_back.clone(),
         }
     }
@@ -160,6 +168,8 @@ impl PendingLine {
             reverses: self.reverses,
             merge_before: self.merge_before,
             merge_after: None,
+            config_before: self.config_before,
+            config_after: BTreeMap::new(),
             put_back: self.put_back,
         }
     }
@@ -176,6 +186,7 @@ impl OutcomeLine {
             worktree_after: entry.worktree_after,
             commands: entry.commands.clone(),
             merge_after: entry.merge_after.clone(),
+            config_after: entry.config_after.clone(),
         }
     }
 
@@ -188,5 +199,6 @@ impl OutcomeLine {
         entry.worktree_after = self.worktree_after;
         entry.commands = self.commands;
         entry.merge_after = self.merge_after;
+        entry.config_after = self.config_after;
     }
 }

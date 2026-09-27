@@ -14,7 +14,8 @@ use crate::m7_walk::blame::{blame, drawn, on_line_22, open_on_the_file, session}
 use crate::m7_walk::history::{history, traced};
 
 /// The `List` form's bar, as the frame draws it at 140 columns and wider.
-const LIST_BAR: &str = " j/k older\u{b7}newer  tab file  n/N next change  B blame here  \u{23ce} that commit  esc back";
+const LIST_BAR: &str =
+    " j/k older\u{b7}newer  ⇥ file  n/N next change  B blame here  \u{23ce} that commit  esc back";
 
 /// `B L` from the diff cursor on line 22 at `columns`×`rows`, traced and
 /// the selected commit's file read.
@@ -91,14 +92,14 @@ fn capture_history_file_140x40() {
 }
 
 /// `docs/shots/m7/history-100x30.txt`. Right: one pane, the list (below
-/// 120 the focused pane alone); the bar offers `tab file`.
+/// 120 the focused pane alone); the bar offers `⇥ file`.
 #[test]
 fn capture_history_100x30() {
     let (_scratch, app, state) = lines_history(100, 30);
     let state = crate::captures::settled_frame(&app, state);
     assert_eq!(history(&state).focus, HistoryFocus::List);
     let frame = shoot(&state, 100, 30, "history-100x30.txt");
-    assert!(bar_row(&frame).contains("tab file"), "{}", bar_row(&frame));
+    assert!(bar_row(&frame).contains("⇥ file"), "{}", bar_row(&frame));
     app.close();
 }
 

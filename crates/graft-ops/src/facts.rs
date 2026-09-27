@@ -99,6 +99,11 @@ pub enum FactsError {
         /// What the read said.
         source: std::io::Error,
     },
+    /// A touched branch's `branch.<name>.*` config could not be read, so
+    /// the journal could not record what undo must put back (review
+    /// m7-16b..21b, Major 1).
+    #[error("the branch's config: {0}")]
+    BranchConfig(RunError),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,

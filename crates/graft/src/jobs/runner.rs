@@ -1112,10 +1112,12 @@ impl<S: JobEvents> JobRunner<S> {
     }
 }
 
-/// The detail pane's reads, which `dispatch` hands to `dispatch_detail`.
-fn is_detail(command: &Command) -> bool {
-    matches!(
-        command,
+/// The detail pane's reads, which `dispatch` hands to `dispatch_detail`: a
+/// pattern, so `dispatch` stays one exhaustive match (review m7-16b..21b,
+/// Major 2) — a new `Command` with no arm is a build failure, never a panic
+/// on the event loop.
+macro_rules! detail_read {
+    () => {
         Command::ListFiles(..)
             | Command::ReadFileDiff(..)
             | Command::ReadBlame(..)
@@ -1126,7 +1128,7 @@ fn is_detail(command: &Command) -> bool {
             | Command::EvilProbe(..)
             | Command::ForcePushProbe(..)
             | Command::DuplicatesProbe(..)
-    )
+    };
 }
 
 impl<S: JobEvents> Dispatch for JobRunner<S> {
@@ -1144,7 +1146,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadHistory(id, order) => self.read_history(id, order),
             Command::ShowRows(id, request) => self.show_rows(id, request),
             Command::Search(query) => self.start_search(query),
-            command if is_detail(&command) => self.dispatch_detail(command),
+            command @ (detail_read!()) => self.dispatch_detail(command),
             Command::ReadStashOnly(id, stashes) => self.read_stash_only(id, stashes),
             Command::BuildMap(id, req) => self.build_map(id, req),
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
@@ -1171,34 +1173,25 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
             Command::CancelCredential(id) => self.credential(id, None),
-            other => not_a_job(&other),
+            // The loop writes this to the terminal itself (`event_loop`).
+            Command::CopyToClipboard(_) => not_a_job("CopyToClipboard is terminal output"),
+            // The loop writes this to disk itself (`event_loop::running`).
+            Command::SaveLayout(_) => not_a_job("SaveLayout is written by the loop"),
+            // Handing the terminal over and taking it back is the loop's own
+            // business (`event_loop::outside`): a worker thread has no claim
+            // on the modes the loop drew through (m3/05).
+            Command::OpenExternalEditor { .. }
+            | Command::OpenMergetool { .. }
+            | Command::OpenConflictEditor { .. }
+            | Command::EditCommitMessage { .. }
+            | Command::Suspend => not_a_job("the terminal is handed over by the loop"),
         }
     }
 }
 
-/// The commands the loop carries out itself; one reaching the runner is a
-/// routing bug, not a runtime condition. The detail pane's reads go by
-/// `is_detail`'s guard, so they cannot land here.
-fn not_a_job(command: &Command) -> ! {
-    match command {
-        // The loop writes this to the terminal itself (`event_loop`).
-        Command::CopyToClipboard(_) => {
-            unreachable!("CopyToClipboard is terminal output, never a job")
-        }
-        // The loop writes this to disk itself (`event_loop::running`).
-        Command::SaveLayout(_) => {
-            unreachable!("SaveLayout is written by the loop, never a job")
-        }
-        // Handing the terminal over and taking it back is the loop's own
-        // business (`event_loop::outside`): a worker thread has no claim on
-        // the modes the loop drew through (m3-working-tree-undo-and-stash/05).
-        Command::OpenExternalEditor { .. }
-        | Command::OpenMergetool { .. }
-        | Command::OpenConflictEditor { .. }
-        | Command::EditCommitMessage { .. }
-        | Command::Suspend => {
-            unreachable!("the terminal is handed over by the loop, never by a job")
-        }
-        other => unreachable!("not routed: {other:?}"),
-    }
+/// A command the loop carries out itself reached the runner: a routing bug,
+/// not a runtime condition. `dispatch` names each such variant, so the match
+/// has no catch-all and a new `Command` must be given an arm to build.
+fn not_a_job(why: &str) -> ! {
+    unreachable!("{why}, never a job")
 }

@@ -2621,14 +2621,14 @@ unverified (the heatmap's oldest bucket on the boundary rows).
   Right: row 1 begins `HISTORY · src/auth/session.rs · fn refresh_token`; the
   version list on the left, `▸` on a row, `the file starts here` last; the
   file pane on the right with `┃` down the traced lines; the bottom row is
-  `j/k older·newer  tab file  n/N next change  B blame here  ⏎ that commit  esc back`.
+  `j/k older·newer  ⇥ file  n/N next change  B blame here  ⏎ that commit  esc back`.
   No graph behind it.
 - `docs/shots/m7/history-file-140x40.txt` (`capture_history_file_140x40`):
   `F` on the file, whole-file history. Right: row 1 `HISTORY ·
   src/auth/session.rs · 6 changes`; a `was src/session.rs` row; no `┃`; the
   bottom row the same list bar as above.
 - `docs/shots/m7/history-100x30.txt` (`capture_history_100x30`): list only, no
-  file pane; the bottom row whole, no word cut, `tab file` in it.
+  file pane; the bottom row whole, no word cut, `⇥ file` in it.
 - `docs/shots/m7/esc-back-to-history-from-the-graph-120x40.txt`
   (`capture_esc_back_to_history_from_the_graph`): (a) `⏎` on a version, then
   `Tab` to the graph — the graph's bar begins `esc back to history`, never

@@ -375,7 +375,14 @@ impl DetailState {
             max_lines: self.max_lines,
         };
         if let Some((view, raw)) = self.diff_cache.get(&key) {
-            self.diff = Loading::Ready(Arc::clone(view));
+            // Merged on arrival; again here against the list on show, which
+            // is the one the row's facts are drawn from.
+            self.diff = Loading::Ready(super::inside_facts::with_inside_facts(
+                &self.files,
+                Some(list),
+                &raw.entry.path,
+                Arc::clone(view),
+            ));
             self.diff_raw = Some(Arc::clone(raw));
         } else {
             let id = next_id();
@@ -399,6 +406,12 @@ impl DetailState {
         }
         match result {
             Ok((view, raw)) => {
+                let view = super::inside_facts::with_inside_facts(
+                    &self.files,
+                    self.list.as_deref(),
+                    &raw.entry.path,
+                    view,
+                );
                 self.diff_cache
                     .insert(key, (Arc::clone(&view), Arc::clone(&raw)));
                 self.diff = Loading::Ready(view);
