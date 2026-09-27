@@ -1313,6 +1313,7 @@ fn every_field_spelled_out() -> AppState {
         map: crate::update::map::MapState::default(),
         journal: crate::update::journal::JournalState::default(),
         stash: crate::update::stash::StashState::default(),
+        picker: None,
         remotes: detail::Loading::Idle,
         remote: crate::update::remote::RemoteState::default(),
         last_focus_refresh: None,
@@ -5445,6 +5446,14 @@ const NEVER_HINTED: &[(&str, &str, &str)] = &[
          pane and §2.1 says the bar always shows what is active, but no hint table has \
          ever listed it — the bar draws `c commit` alone. Filed in ticket 33; here so \
          the walk below is honest rather than blocked",
+    ),
+    (
+        "C",
+        "switch",
+        "**not a decision, a seam** (m7-power-tools/10): keymap §2.3 binds `C` and ticket \
+         10 wants it on the graph bar's `more` list, but the tail lives in \
+         `graft_ui::graph_screen::hints::lists`, which ticket 30j held while 10 was built. \
+         Remove this row when `C switch` lands there",
     ),
 ];
 

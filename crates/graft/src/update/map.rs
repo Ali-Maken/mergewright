@@ -193,6 +193,13 @@ fn seek_selected(next: &mut AppState, commands: &mut Vec<Command>) {
         return;
     };
     commands.extend(next.map.close());
+    seek_to(next, commands, tip);
+}
+
+/// Seek the graph cursor to `tip`: at once when its row is loaded, else by
+/// asking the walk for rows around it (`History::seek`). The Map's `Enter`
+/// and the branch picker's `Tab` (m7-power-tools/10) both land this way.
+pub(super) fn seek_to(next: &mut AppState, commands: &mut Vec<Command>, tip: Oid) {
     next.on_working_tree = false;
     let height = next.graph_rows();
     let Some(history) = next.history.as_mut() else {

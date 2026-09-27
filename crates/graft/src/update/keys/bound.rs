@@ -116,6 +116,7 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("J", "journal"),  // `journal::journal_key`: opens the browser
     ("M", "map"),      // `map::map_key`
     ("O", "overview"), // `strip::strip_key`
+    ("C", "switch"),   // `picker::picker_key`: opens the branch picker
     ("/", "search"),   // `search::search_key`, before `key_event`
     // Inside the three overlays, which hint their own lists.
     ("⏎", "seek"),    // `map::seek_selected`: the graph jumps to the tip

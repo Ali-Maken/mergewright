@@ -49,6 +49,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::PlanPreview(..)
         | Command::ReadJournal(..)
         | Command::ReadStashes(..)
+        | Command::ReadSwitchList(..)
         | Command::ReadIndexState { .. }
         | Command::ReadRemotes(..)
         | Command::ReadLeaves { .. }

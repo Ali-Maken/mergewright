@@ -160,6 +160,10 @@ pub enum Command {
     /// `S` overlay opens and again after every write, because any of them
     /// may have moved `refs/stash` (m3-working-tree-undo-and-stash/06).
     ReadStashes(JobId),
+    /// Read every branch the branch picker lists (`graft_ops::switch_list`),
+    /// under an id `update` chose. Asked for when `C` opens the picker
+    /// (m7-power-tools/10); cancelled when it closes first.
+    ReadSwitchList(JobId),
     /// Read the index now as the journal's recorder does
     /// (`graft_ops::snapshot::index_state`), under an id `update` chose:
     /// a stash clash's tie (ADR-0045 §2, amended 2026-09-25). Asked only

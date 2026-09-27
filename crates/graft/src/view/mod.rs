@@ -25,6 +25,7 @@ mod hit;
 mod journal;
 mod map;
 mod name_prompt;
+pub(crate) mod picker;
 mod preview;
 pub(crate) mod radar;
 pub(crate) mod resolver;

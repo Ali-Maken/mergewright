@@ -190,6 +190,9 @@ pub struct AppState {
     /// The stash overlay as this run has read it, and its own cursor
     /// (m3-working-tree-undo-and-stash/06).
     pub stash: super::stash::StashState,
+    /// The branch picker (`C`, m7-power-tools/10), while it is up or hidden
+    /// under the switch preview it opened.
+    pub picker: Option<super::picker::PickerState>,
     /// The configured remotes, `HEAD`'s branch and its upstream: what `f`,
     /// `p` and `P` decide from (m4-remotes/05). Read with the refs; a
     /// re-read keeps the last answer on screen until the new one lands
@@ -779,6 +782,7 @@ impl AppState {
             || self.stash.prompt.is_some()
             || self.credential.is_some()
             || self.name_prompt.is_some()
+            || super::picker::shown(self)
             || self
                 .finish
                 .as_ref()

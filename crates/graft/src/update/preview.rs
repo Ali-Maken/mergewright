@@ -694,6 +694,7 @@ fn refused(state: &mut AppState, refusal: &graft_ops::operation::Refusal) {
     if preview.return_to_journal {
         state.journal.shown = true;
     }
+    super::picker::preview_closed(state);
     state.status = match &preview.subject {
         PreviewSubject::Operation { op, .. } => super::operate::refusal_status(op, refusal),
         // The time machine is planned by `plan_revert_to`, which the job
@@ -739,6 +740,8 @@ pub fn confirm_preview(
         state.preview = Some(preview);
         return;
     };
+    // Answered: a picker hidden under it is done (m7-power-tools/10).
+    super::picker::preview_confirmed(state);
     match preview.subject {
         PreviewSubject::Operation { op, opened_by } => {
             // The same value, not a rebuilt one: `check` refuses `Moved` if
@@ -808,6 +811,8 @@ pub fn close_preview(state: &mut AppState, commands: &mut Vec<Command>) {
     if preview.return_to_journal {
         state.journal.shown = true;
     }
+    // The branch picker comes back the same way (m7-power-tools/10).
+    super::picker::preview_closed(state);
 }
 
 /// The badges the graph draws while the preview is open, or `None` when

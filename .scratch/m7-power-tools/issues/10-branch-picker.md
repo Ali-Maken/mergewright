@@ -1,6 +1,6 @@
 # branch-picker — `C` opens a picker of his branches and the remote's; type, `⏎` switches; `C ⏎` goes back
 
-Status: ready — respecified 2026-09-26 against scout 10. The switch rule is **approved** (field notes :79), no longer
+Status: partial (10-a built 2026-09-27; blocked: needs `crates/graft/src/jobs/runner.rs`, held by 30j — see NOTES) — respecified 2026-09-26 against scout 10. The switch rule is **approved** (field notes :79), no longer
 awaited; it is built in `10b-switch-rule`, and the picker calls it.
 Blocked by: 03-land-on-result, 10a-switch-refs-read, 10b-switch-rule
 Crates: graft-ops (`switch_list`, shaping 10a's read); graft (`update/picker.rs` new, `GraphOverlay::Picker`,
@@ -100,13 +100,20 @@ pub fn draw_picker(frame: &mut Frame, area: Rect, view: &PickerView);
       `a_remote_whose_name_a_local_branch_has_is_left_out`; `remote_only_branches_are_listed_with_their_local_name`
       (a remote named `a/b`); `an_upstream_under_heads_reads_built_on`; `here_is_last`;
       `filter_ranks_segment_prefix_above_substring`; `switch_list_honours_stop`.
-- [ ] **App:** `c_opens_the_picker` (red first); `typing_filters_segment_prefix_first`;
-      `enter_on_a_clean_tree_switches_at_once`; `enter_with_edits_opens_the_set_aside_preview`;
-      `esc_on_that_preview_returns_to_the_picker_with_the_query`; `enter_on_here_writes_nothing`;
-      `enter_while_a_write_runs_refuses_in_the_box`; `tab_puts_the_cursor_on_the_tip_and_writes_nothing`;
-      `tab_on_an_unloaded_tip_seeks`; `esc_closes_and_cancels_the_read`; `the_picker_owns_every_letter` (`j`, `k`,
-      `q`, `C` typed); `a_remote_only_branch_creates_its_tracking_branch`; `a_failed_read_says_so_in_the_box`;
-      `slash_belongs_to_every_modal_that_is_up` extended with the picker.
+- [x] **App:** (all in `crates/graft/src/update/picker/tests.rs` unless named; scripted state through `update::update`,
+      so the real key routing; the list injected as `Product::SwitchList` because the runner arm is missing)
+      `c_opens_the_picker`; `typing_filters_segment_prefix_first`; `enter_on_a_clean_tree_switches_at_once`;
+      `enter_with_edits_opens_the_set_aside_preview`; `esc_on_that_preview_returns_to_the_picker_with_the_query`;
+      `enter_on_here_writes_nothing`; `enter_while_a_write_runs_refuses_in_the_box`;
+      `tab_puts_the_cursor_on_the_tip_and_writes_nothing`; `tab_on_an_unloaded_tip_seeks`;
+      `esc_closes_and_cancels_the_read`; `the_picker_owns_every_letter` (`j k q C u` typed, no quit, no undo);
+      `a_remote_only_branch_creates_its_tracking_branch` (asserts the `Track` target launched — the branch being
+      created on disk is 10b's write, proved there, not re-run here); `a_failed_read_says_so_in_the_box`;
+      `update::search::tests::slash_belongs_to_every_modal_that_is_up` (picker added to `text_fields()`; a mutation
+      dropping it from `text_field_open` fails this and `c_opens_the_picker`). Extra: `enter_on_before_goes_back`,
+      `y_on_that_preview_closes_the_picker`, `c_needs_the_graph_focused_and_nothing_over_it`,
+      `c_in_the_commit_editor_is_typed_there`, `a_stale_list_is_dropped`, `ctrl_c_still_quits`.
+      **Not built:** mouse (click selects, double-click switches) — not in the Acceptance list, in the Decided list.
 - [ ] **Walks** (`m7_walk`, counted against the note's `noted_keys`): `switch_named_branch` = `C login ⏎` (3);
       `switch_back` = `C ⏎` (2); `switch_with_edits` = `C login ⏎ y` (4); `cherry-pick-other-branch` = `C <type> Tab
       motion o y` (6, if `11-cherry-pick-key` has landed; else NOTES says it waits). After each: HEAD on the target,
@@ -141,3 +148,51 @@ Workspace-wide gates. Throwaway repos only.
 Large (~65k). Split if needed: **-a** `switch_list` + filter + overlay + keys; **-b** the ui draw, walks, captures.
 
 Conductor note (2026-09-27, from 10c): the read landed as `graft_ops::switch_list(repo: &RepoHandle, stop: &dyn Stop)` — no `git` argument, matching `rewrite::progress`. Filter matches the short ref name, so a remote-only row matches as `origin/x`.
+
+## NOTES (builder, 2026-09-27)
+
+**Partial — stopped at the seam.** Split used: **10-a** (overlay, keys, filter wiring, ui draw) done; **10-b** (runner
+arm, walks, captures, bar, TESTING.md) blocked.
+
+- **Blocked: needs `crates/graft/src/jobs/runner.rs`** (30j's). `Command::ReadSwitchList` has no dispatch arm, so in the
+  real binary `C` reaches runner.rs's `other => not_a_job` → **`unreachable!` panic on the job thread. Do not ship
+  this commit alone.** The arm to add (copy of `read_stashes`, runner.rs ~:1011 and ~:1161):
+  `Command::ReadSwitchList(id) => self.read_switch_list(id),` and
+  `fn read_switch_list(&self, id: JobId)` → `queue_as(id, Some(Task::ReadSwitchList), …)` → if cancelled
+  `Outcome::Cancelled`, else `Outcome::Produced(Product::SwitchList(super::switch_list::read_switch_list(&repos,
+  cancel)))`. Then drop the `#[expect(dead_code)]` on `jobs/switch_list.rs::read_switch_list`. 30j's exhaustive
+  `not_a_job` will fail to compile on merge until `ReadSwitchList` is handled — good, it forces the arm.
+- **Blocked too: the bar.** `C switch` on the graph `more` list and the picker's own bar (`type to find ⏎ switch to
+  it tab show it on the graph ↑↓ row esc close`) need `graft-ui/src/graph_screen/hints/lists.rs` (30j) plus a
+  `HintContext::Picker`. Meanwhile: `("C","switch")` in `keys/bound.rs` with a named `NEVER_HINTED` row
+  (`update/tests.rs`, "a seam, not a decision"), and `view::rows::hint_context` answers `HintContext::Preview`
+  (empty bar) while the picker is shown — empty, not wrong.
+- **Remaining (10-b):** runner arm; walks `switch_named_branch`, `switch_back`, `switch_with_edits` in
+  `tests/it/m7_walk/` (+ `cherry-pick-other-branch` if 11 landed: **11 has not landed** — only 11a is in the log, so
+  that walk waits); the four captures; hint-bar entries; TESTING.md "Switching" + contact sheet rows.
+- **Scout used:** `scouts/10.md` (given) and `scouts/10-build.md` (mine: overlay/job/routing template).
+- **Deviations, named:**
+  - **Not a `GraphOverlay` variant.** `GraphOverlay` is "an overlay that replaces the graph screen" (`state.rs`), and
+    the box sits over the lower 60% with the graph drawn above it; a variant would stop the graph drawing and the
+    banner riding. It is `AppState::picker: Option<PickerState>`, drawn in the graph arm after the preview and `.`
+    menu (`view/frame/boxes.rs::draw_over_graph`). No `GraphOverlay` match site changed.
+  - **`land_on_result` is not a function** (scout C2): an instant switch lands through 03-a's `lands_on_head`; nothing
+    to call.
+  - **Preview return: paralleled, not generalized.** `picker::preview_closed` / `preview_confirmed`, called beside the
+    journal's `return_to_journal` restore in `preview::close_preview`, `refused`, `confirm_preview`. `switch_into`
+    (30j's file) hard-codes `return_to_journal = false`; a generalized flag would need that file.
+  - `map::seek_selected`'s seek body split out as `map::seek_to` (behaviour unchanged; Map tests green).
+- **Touches:** Other overlays — none changed (not a variant; grep `GraphOverlay::` unchanged). `text_field_open` +
+  modal predicate — picker added to `text_field_open` (so `modal_owns_keys` too); slash sweep extended; `u`/`Esc`
+  typed not fired (`the_picker_owns_every_letter`). Graph `C` — routed in `keys::key_event` after the menu, before
+  the commit editor; editor's `C` untouched (`c_in_the_commit_editor_is_typed_there`, commit_editor tests green).
+  Map seek — `seek_to` extracted (Map tests green). Preview return — journal/stash Esc-back tests green in the
+  workspace run. Journal/undo — entries are 10b's Checkout; `u` after a picker switch **not walked** (needs the
+  runner). Captures — none taken; no existing capture changed (workspace nextest green, no shot diffs). `keys::key_event`
+  — commit-editor claim moved to a helper `editor_key` (clippy line count), same order.
+- **Cause vs symptom:** new feature; the one workaround is the empty bar under the picker (symptom-level stand-in
+  until lists.rs), stated above.
+- **Test-first:** tests written before the code for both new modules (compile-red), then green; not red-per-test.
+- Workspace gates: see report. One flake seen once in a full run: `graft-fixtures
+  remote::tests::http_remote_drop_ends_a_wedged_backend` (crate untouched; passes alone).
+- No compaction.
