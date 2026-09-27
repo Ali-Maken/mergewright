@@ -1,0 +1,33 @@
+# force-box-leaves-80x24.txt: TestBackend capture (not a pty), 80x24, no colour
+# recorded (colour unverified). Fixture: capture_force_box_leaves in
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
+#
+# Right: line 1 (origin/main 9f8e7d6 → <ours> · refused if …), then
+# `rewrites history for everyone who has 9f8e7d6`, then `leaves origin/main:`,
+# then each commit's sha7, subject and author on its own row, aligned in
+# columns (subject cut with … to fit), then `+2 more`; the buttons row whole.
+#
+"Graph  [Detail]                                                                 "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                   "
+"diff vs HEAD 0303030                                                            "
+"                                                                                "
+"STAGED (╭ Force-push main → origin/main? ──────────────────────────────╮        "
+"  ▾ src/│ origin/main 9f8e7d6 → 0303030 · refused if origin moved      │        "
+"    ▾ au│ since your fetch (lease)                                     │        "
+"      M │ rewrites history for everyone who has 9f8e7d6                │  +12 −4"
+"UNSTAGED│ leaves origin/main:                                          │        "
+"  ▾ src/│ ccccccc  Fix typo in the retry docs               Sara       │        "
+"    ▾ ap│ ddddddd  Retry the fetch when the remote hangs …  Ali Rahimi │        "
+"fn route│ eeeeeee  Add the fetch timeout                    Sara       │        "
+" 18  18 │ +2 more                                                      │        "
+" 19     │                                                              │        "
+"     19▎│ git push --progress --force-with-lease=refs/heads/main:9f8e… │        "
+"     20 │                                                              │        "
+" 20  21 │ ▸[ Cancel ]   [ Force push ]                                 │        "
+" 21  22 ╰──────────────────────────────────────────────────────────────╯        "
+"fn ready()                                                                      "
+" 44  45   async fn ready() -> Json<Status> {                                    "
+" 45     -     Json(Status::Ok)                                                  "
+"     46 +     Json(Status::from(&state))                                        "
+" 46  47   }                                                                     "
+" ←/→ move  ⏎ choose  esc cancel                                                 "

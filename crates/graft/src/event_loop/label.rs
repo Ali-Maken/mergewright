@@ -140,6 +140,7 @@ fn product_label(product: &Product) -> &'static str {
         Product::Stashes(_) => "Produced::Stashes",
         Product::IndexState(_) => "Produced::IndexState",
         Product::Remotes(_) => "Produced::Remotes",
+        Product::Leaves { .. } => "Produced::Leaves",
     }
 }
 

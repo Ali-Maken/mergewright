@@ -180,6 +180,7 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     radar::request_duplicates_probe(next, commands, &mut || local_jobs.next_id());
     journal::request(next, commands, &mut || local_jobs.next_id());
     remote::request_at_launch(next, commands, &mut || local_jobs.next_id());
+    remote::request_leaves(next, commands, &mut || local_jobs.next_id());
     // Last of the radar's work: the findings the refs carry, rebuilt only
     // when the refs, `HEAD`, the default branch, the context or the policy
     // moved — so a frame looks a row up instead of walking every ref
@@ -326,6 +327,14 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, Product::Remotes(result)) => {
             remote::remotes_arrived(next, id, result);
         }
+        AppEvent::Produced(
+            _,
+            Product::Leaves {
+                sent,
+                expected,
+                result,
+            },
+        ) => remote::leaves_arrived(next, sent, expected, result),
         AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
             remote::remote_progress(next, id, &brief);
         }
@@ -854,6 +863,7 @@ fn took_fact(
         | Product::Stashes(_)
         | Product::IndexState(_)
         | Product::Remotes(_)
+        | Product::Leaves { .. }
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::ExternalEditor(_)

@@ -2371,7 +2371,7 @@ fn a_narrow_bar_keeps_the_y_hint() {
     };
     let mut push = changes_pane_state(80, 24);
     push.confirm = Some(PendingConfirm {
-        view: crate::update::remote::push_box(&params, Some(1), None),
+        view: crate::update::remote::push_box(&params, Some(1), None, None),
         then: ConfirmThen::Operate(Operation::Push(params)),
     });
     assert_eq!(
@@ -3221,15 +3221,14 @@ fn the_drift_box_line_is_never_cut() {
     }
 }
 
-/// Regenerates `docs/shots/m4-remote-keys.txt` (m4-remotes/05): the lease
-/// push box `P` opens after a rejection, then the footer while a fetch runs.
-#[test]
-fn capture_m4_remote_keys() {
+/// `P` after git refused a push as not a fast-forward, the refs current
+/// and `HEAD` still the refused tip: the lease box open, listing `leaves`.
+fn lease_box_state(columns: u16, rows: u16, leaves: crate::update::remote::Leaves) -> AppState {
     use crate::jobs::remote::RemoteFacts;
     use crate::update::detail::Loading;
     use graft_git::remote::{Remote, TrackedUpstream};
 
-    let mut state = changes_pane_state(120, 40);
+    let mut state = changes_pane_state(columns, rows);
     state.remotes = Loading::Ready(std::sync::Arc::new(RemoteFacts {
         remotes: vec![Remote {
             name: "origin".to_owned(),
@@ -3249,14 +3248,34 @@ fn capture_m4_remote_keys() {
     // Nothing moved since the rejection: the refs are current and `HEAD`
     // is the tip git refused (m6-conflicts/49).
     state.refs_read = crate::update::RefsRead::Current(graft_core::job::JobId::new(1));
+    let sent = state
+        .refs
+        .as_deref()
+        .and_then(crate::refs::RefBadges::head)
+        .expect("HEAD on a branch");
     state.remote.last_rejected_push = Some(crate::update::remote::RejectedPush {
         params: crate::update::remote::push_params(&state).expect("an upstream to push to"),
-        sent: state.refs.as_deref().and_then(crate::refs::RefBadges::head),
+        sent: Some(sent),
+        // What the lease takes off origin, read for this key
+        // (m7-power-tools/16b).
+        leaves: Some((
+            sent,
+            Oid::from_hex("9f8e7d6c5b4a39281706f5e4d3c2b1a098765432").expect("40 hex digits"),
+            crate::update::remote::LeavesRead::Read(leaves),
+        )),
     });
     assert!(
         crate::update::remote::push_key(&mut state),
         "P opens the box"
     );
+    state
+}
+
+/// Regenerates `docs/shots/m4-remote-keys.txt` (m4-remotes/05): the lease
+/// push box `P` opens after a rejection, then the footer while a fetch runs.
+#[test]
+fn capture_m4_remote_keys() {
+    let mut state = lease_box_state(120, 40, crate::update::remote::Leaves::default());
     let push_box = draw(&state, 120, 40);
 
     state.confirm = None;
@@ -3286,6 +3305,83 @@ fn capture_m4_remote_keys() {
         ),
         format!("{header}{push_box}\n# ---- 2. while `f` runs ----\n\n{fetching}"),
     );
+}
+
+fn leaving(hex: char, subject: &str, author: &str) -> graft_git::history_reads::CommitSummary {
+    graft_git::history_reads::CommitSummary {
+        id: Oid::from_hex(&hex.to_string().repeat(40)).expect("40 hex digits"),
+        parents: Vec::new(),
+        subject: subject.to_owned(),
+        author: graft_core::commit::Identity {
+            name: author.as_bytes().to_vec(),
+            email: b"dev@example.invalid".to_vec(),
+            when: graft_core::commit::Timestamp {
+                seconds: 0,
+                offset_seconds: 0,
+            },
+        },
+    }
+}
+
+/// Regenerates `docs/shots/m7/force-box-leaves-{120x40,80x24}.txt`
+/// (m7-power-tools/16b): the lease box names the commits the force takes
+/// off origin — five leave, three named, `+2 more`.
+#[test]
+fn capture_force_box_leaves() {
+    for (columns, rows) in [(120, 40), (80, 24)] {
+        let leaves = crate::update::remote::Leaves {
+            newest: vec![
+                leaving('c', "Fix typo in the retry docs", "Sara"),
+                leaving(
+                    'd',
+                    "Retry the fetch when the remote hangs up mid-pack on a slow link",
+                    "Ali Rahimi",
+                ),
+                leaving('e', "Add the fetch timeout", "Sara"),
+            ],
+            count: 5,
+        };
+        let state = lease_box_state(columns, rows, leaves);
+        let message: Vec<&str> = state
+            .confirm
+            .as_ref()
+            .expect("P opened the lease box")
+            .view
+            .message
+            .iter()
+            .map(SanitizedText::as_str)
+            .collect();
+        let screen = draw(&state, columns, rows);
+        // Every row from the history warning on is one box row, never
+        // wrapped or cut (line 1 may wrap at 80 columns: it always did).
+        for line in &message[1..] {
+            assert!(
+                screen.contains(line),
+                "{columns}x{rows}: {line:?} not drawn whole\n{screen}"
+            );
+        }
+        assert!(screen.contains("[ Force push ]"), "{screen}");
+        let header = format!(
+            "\
+# force-box-leaves-{columns}x{rows}.txt: TestBackend capture (not a pty), {columns}x{rows}, no colour
+# recorded (colour unverified). Fixture: capture_force_box_leaves in
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
+#
+# Right: line 1 (origin/main 9f8e7d6 → <ours> · refused if …), then
+# `rewrites history for everyone who has 9f8e7d6`, then `leaves origin/main:`,
+# then each commit's sha7, subject and author on its own row, aligned in
+# columns (subject cut with … to fit), then `+2 more`; the buttons row whole.
+#
+"
+        );
+        graft_fixtures::capture(
+            format!(
+                "{}/../../docs/shots/m7/force-box-leaves-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            format!("{header}{screen}"),
+        );
+    }
 }
 
 /// A push running, with git's question open over it (m4-remotes/06).

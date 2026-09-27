@@ -34,13 +34,13 @@ const MAX_MESSAGE_LINES: usize = 4;
 /// `message`'s lines, each wrapped on spaces to at most `width` cells, and
 /// the whole result capped at [`MAX_MESSAGE_LINES`] — the rest replaced by a
 /// `…` on the last line kept.
-fn wrap_message(message: &[SanitizedText], width: usize) -> Vec<String> {
+fn wrap_message(message: &[SanitizedText], width: usize, max_lines: usize) -> Vec<String> {
     let mut lines: Vec<String> = message
         .iter()
         .flat_map(|source| wrap_line(source.as_str(), width))
         .collect();
-    if lines.len() > MAX_MESSAGE_LINES {
-        lines.truncate(MAX_MESSAGE_LINES);
+    if lines.len() > max_lines {
+        lines.truncate(max_lines);
         if let Some(last) = lines.last_mut() {
             while cells(last) + 1 > width && !last.is_empty() {
                 last.pop();
@@ -68,6 +68,8 @@ pub struct ConfirmView {
     pub choices: Vec<SanitizedText>,
     /// Which choice the cursor is on. `0` (`Cancel`) on open.
     pub cursor: usize,
+    /// Wrapped message rows this box may draw ([`ConfirmView::with_max_lines`]).
+    max_lines: usize,
 }
 
 impl ConfirmView {
@@ -80,7 +82,19 @@ impl ConfirmView {
             command,
             choices: vec![sanitize_line("Cancel"), sanitize_line("Confirm")],
             cursor: 0,
+            max_lines: MAX_MESSAGE_LINES,
         }
+    }
+
+    /// Wrapped message rows this box may draw; `new` sets
+    /// [`MAX_MESSAGE_LINES`] (4). For the one box whose message is the
+    /// preview itself — the force-push lease box's list of what leaves the
+    /// remote (m7-power-tools/16b). A frame too short for the rows still
+    /// cuts message rows, never the command or the buttons.
+    #[must_use]
+    pub fn with_max_lines(mut self, rows: usize) -> Self {
+        self.max_lines = rows;
+        self
     }
 
     /// The same box with its own choices — `labels[0]` is always the safe
@@ -133,7 +147,7 @@ impl ConfirmView {
 }
 
 /// Rows the box needs to draw itself: the top border (title), the message
-/// wrapped to `width` (capped at [`MAX_MESSAGE_LINES`]), a blank row, the
+/// wrapped to `width` (capped at the view's own line cap, 4 unless raised), a blank row, the
 /// command, a blank row, the choices, the bottom border.
 ///
 /// Wrapped to `width - 4`: two borders and a cell of padding on each side
@@ -141,7 +155,11 @@ impl ConfirmView {
 /// left the longest line exactly filling the border's own gutter cell.
 #[must_use]
 pub fn confirm_rows(view: &ConfirmView, width: u16) -> u16 {
-    let wrapped = wrap_message(&view.message, usize::from(width).saturating_sub(4));
+    let wrapped = wrap_message(
+        &view.message,
+        usize::from(width).saturating_sub(4),
+        view.max_lines,
+    );
     u16::try_from(wrapped.len().saturating_add(6)).unwrap_or(u16::MAX)
 }
 
@@ -218,7 +236,12 @@ impl Widget for &Confirm<'_> {
             }
         };
 
-        for line in wrap_message(&view.message, width.saturating_sub(4)) {
+        // Six rows are the box's own: borders, blanks, command, buttons. A
+        // frame too short for every message row cuts the message, never
+        // those (m7-power-tools/16b).
+        let fits = usize::from(area.height).saturating_sub(6).max(1);
+        let rows = view.max_lines.min(fits);
+        for line in wrap_message(&view.message, width.saturating_sub(4), rows) {
             draw_content(&line, text_style, y, buf);
             y = y.saturating_add(1);
         }
@@ -401,7 +424,7 @@ mod tests {
     #[test]
     fn long_message_wraps() {
         let message = text(&["can't be undone from here — origin keeps what you send"]);
-        let wrapped = wrap_message(&message, 20);
+        let wrapped = wrap_message(&message, 20, MAX_MESSAGE_LINES);
         assert!(wrapped.len() > 1, "{wrapped:?}");
         for line in &wrapped {
             assert!(cells(line) <= 20, "{line:?} wider than 20");
@@ -416,7 +439,7 @@ mod tests {
     #[test]
     fn message_caps_at_four_lines_with_ellipsis() {
         let long = "word ".repeat(80);
-        let wrapped = wrap_message(&[sanitize_line(&long)], 10);
+        let wrapped = wrap_message(&[sanitize_line(&long)], 10, MAX_MESSAGE_LINES);
         assert_eq!(wrapped.len(), MAX_MESSAGE_LINES);
         assert!(wrapped.last().unwrap().ends_with('…'), "{wrapped:?}");
     }
@@ -598,5 +621,47 @@ mod tests {
             sanitize_line("Undo locally"),
             sanitize_line("Re-push old tip"),
         ])
+    }
+
+    fn six_rows() -> ConfirmView {
+        ConfirmView::new(
+            sanitize_line("Force-push?"),
+            text(&["one", "two", "three", "four", "five", "six"]),
+            sanitize_line("git push"),
+        )
+    }
+
+    fn has(drawn: &[String], needle: &str) -> bool {
+        drawn.iter().any(|row| row.contains(needle))
+    }
+
+    #[test]
+    fn default_cap_is_still_four() {
+        let drawn = rows(&six_rows(), 80, 24);
+        assert!(has(&drawn, "four…"), "{drawn:#?}");
+        assert!(!has(&drawn, "five"), "{drawn:#?}");
+    }
+
+    #[test]
+    fn a_raised_cap_draws_every_row() {
+        let drawn = rows(&six_rows().with_max_lines(10), 80, 24);
+        for word in ["one", "four", "five", "six"] {
+            assert!(has(&drawn, &format!("│ {word}")), "{word}: {drawn:#?}");
+        }
+        assert!(!has(&drawn, "…"), "{drawn:#?}");
+    }
+
+    /// 10 rows of frame: 9 usable (the footer row kept), 6 of them the
+    /// box's own borders, blanks, command and buttons — 3 message rows, the
+    /// last one marked cut.
+    #[test]
+    fn a_short_frame_cuts_message_rows_not_the_buttons() {
+        let drawn = rows(&six_rows().with_max_lines(10), 80, 10);
+        assert!(has(&drawn, "Cancel"), "{drawn:#?}");
+        assert!(has(&drawn, "╰"), "{drawn:#?}");
+        assert!(has(&drawn, "git push"), "{drawn:#?}");
+        assert!(has(&drawn, "three…"), "{drawn:#?}");
+        assert!(!has(&drawn, "four"), "{drawn:#?}");
+        assert!(drawn[9].is_empty(), "footer row reached: {drawn:#?}");
     }
 }

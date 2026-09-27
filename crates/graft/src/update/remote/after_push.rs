@@ -243,7 +243,7 @@ pub(in crate::update) fn undo_after_push_box(after: &UndoAfterPush) -> PendingCo
 /// `P` opens after a rejection, worded for a re-push. Still nothing pushed.
 pub(in crate::update) fn repush_chosen(state: &mut AppState, params: PushParams) {
     let local_tip = state.refs.as_deref().and_then(crate::refs::RefBadges::head);
-    let view = push_box(&params, head_ahead(state), local_tip);
+    let view = push_box(&params, head_ahead(state), local_tip, None);
     state.confirm = Some(PendingConfirm {
         view,
         then: ConfirmThen::Operate(Operation::Push(params)),

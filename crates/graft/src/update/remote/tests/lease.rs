@@ -106,8 +106,18 @@ fn answer_remotes(state: &mut AppState) {
     *state = next;
 }
 
-/// git refused the push `P` would build now, as not a fast-forward.
+/// git refused the push `P` would build now, as not a fast-forward, and
+/// the read of what the lease would take off the remote has answered
+/// (nothing leaves) — so `P` decides from the lease rules alone
+/// (m7-power-tools/16b: before that answer `P` says `still reading`).
 fn reject(state: &mut AppState) {
+    reject_unread(state);
+    leaves::answer_leaves(state, Ok(super::super::Leaves::default()));
+}
+
+/// git refused the push `P` would build now; the read of what leaves has
+/// not been asked yet (`update`'s settle tail asks it).
+fn reject_unread(state: &mut AppState) {
     let params = push_params(state).expect("an upstream to push to");
     let status = remote_failed(
         state,
@@ -137,7 +147,7 @@ fn box_title(state: &AppState) -> Result<String, String> {
 fn assert_plain(state: &AppState, why: &str) {
     let params = push_params(state).unwrap_or_else(|words| panic!("{why}: {words}"));
     assert_eq!(params.lease, None, "{why}");
-    let view = push_box(&params, Some(1), Some(oid(MOVED)));
+    let view = push_box(&params, Some(1), Some(oid(MOVED)), None);
     assert!(
         view.title.as_str().starts_with("Push "),
         "{why}: {}",
@@ -509,6 +519,13 @@ fn a_rejection_records_its_params_and_the_tip_sent() {
         Some(RejectedPush {
             params,
             sent: Some(oid(SENT)),
+            leaves: Some((
+                oid(SENT),
+                oid(THEIRS),
+                super::super::LeavesRead::Read(super::super::Leaves::default())
+            )),
         })
     );
 }
+
+mod leaves;

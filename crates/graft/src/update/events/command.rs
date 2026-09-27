@@ -171,6 +171,17 @@ pub enum Command {
     /// Read the remote facts `f`/`p`/`P` decide from, under an id `update`
     /// chose. Asked for wherever the refs are (m4-remotes/05).
     ReadRemotes(JobId),
+    /// Read what a force-with-lease push would take off the remote: the
+    /// commits `expected` reaches that `sent` does not, newest first, and
+    /// how many (m7-power-tools/16b). A read; `Esc` does not cancel it.
+    ReadLeaves {
+        /// The id the answer comes back under.
+        id: JobId,
+        /// The tip git refused.
+        sent: graft_core::oid::Oid,
+        /// The tracking tip the lease names.
+        expected: graft_core::oid::Oid,
+    },
     /// Read `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate(JobId),

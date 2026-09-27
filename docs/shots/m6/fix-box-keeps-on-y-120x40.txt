@@ -11,7 +11,7 @@
 
 === after `y` (identical to before it) ===
  graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                                                                    GF 6y   739071c
+◆ ▏ⓘ [◆ main ↑1] ours                                                                                    GF 6y   739071c
 ●    [origin/main] Commit 200                                                                            GF 7y   d5ae5fd
 ●    Commit 199                                                                                          GF 7y   13e6ab1
 ●    Commit 198                                                                                          GF 7y   f5055d9
@@ -28,12 +28,12 @@
 ●    ╭ Force-push main → origin/main? ────────────────────────────────────────────────────────────────╮  GF 7y   3121935
 ●    │ origin/main d5ae5fd → 739071c · refused if origin moved since your fetch (lease)               │  GF 7y   fab25df
 ●    │ rewrites history for everyone who has d5ae5fd                                                  │  GF 7y   09ae97c
-●    │                                                                                                │  GF 7y   49d7783
-●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   22d55c9
-●    │                                                                                                │  GF 7y   d212b3e
-●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   c8254c5
-●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   e95ccd4
-●    Commit 179                                                                                          GF 7y   97b58e5
+●    │ nothing on origin/main is lost                                                                 │  GF 7y   49d7783
+●    │                                                                                                │  GF 7y   22d55c9
+●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd20365bc3fc66b882104b694f0d9047e… │  GF 7y   d212b3e
+●    │                                                                                                │  GF 7y   c8254c5
+●    │ ▸[ Cancel ]   [ Force push ]                                                                   │  GF 7y   e95ccd4
+●    ╰────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 7y   97b58e5
 ●    Commit 178                                                                                          GF 7y   1c9b7ed
 ●    Commit 177                                                                                          GF 7y   f93340a
 ●    Commit 176                                                                                          GF 7y   5aaeeba

@@ -243,7 +243,7 @@ fn push_box_text_table() {
     );
     let params = push_params(&state).expect("an upstream to push to");
     assert!(!params.set_upstream && params.lease.is_none());
-    let view = push_box(&params, Some(2), Some(ours));
+    let view = push_box(&params, Some(2), Some(ours), None);
     assert_box(
         &view,
         "Push main → origin/main",
@@ -266,7 +266,7 @@ fn push_box_text_table() {
     assert_eq!(params.remote_branch, "refs/heads/main");
     assert!(params.set_upstream);
     assert_box(
-        &push_box(&params, None, Some(ours)),
+        &push_box(&params, None, Some(ours), None),
         "Push main → origin/main",
         &["sets upstream · can't be undone from here — origin keeps what you send"],
         "git push --progress -u origin refs/heads/main:refs/heads/main",
@@ -286,7 +286,7 @@ fn push_box_text_table() {
             expected: oid(THEIRS)
         })
     );
-    let view = push_box(&params, Some(1), Some(ours));
+    let view = push_box(&params, Some(1), Some(ours), None);
     assert_box(
         &view,
         "Force-push main → origin/main?",
@@ -482,7 +482,11 @@ fn failures_are_worded_and_remembered() {
     );
     assert_eq!(
         after.remote.last_rejected_push,
-        Some(RejectedPush { params, sent: None })
+        Some(RejectedPush {
+            params,
+            sent: None,
+            leaves: None
+        })
     );
     assert_eq!(
         remote_failed(
@@ -651,7 +655,25 @@ fn rejected_at_head(state: &mut AppState) {
     state.remote.last_rejected_push = Some(RejectedPush {
         params: push_params(state).expect("an upstream"),
         sent: Some(oid(OURS)),
+        leaves: None,
     });
+    // What leaves was read for the lease's key (m7-power-tools/16b):
+    // nothing, so `P` decides from the lease rules alone.
+    let mut asked = Vec::new();
+    request_leaves(state, &mut asked, &mut || JobId::new(99));
+    if let Some((sent, expected, _)) = state
+        .remote
+        .last_rejected_push
+        .as_mut()
+        .and_then(|rejected| rejected.leaves.take())
+    {
+        state
+            .remote
+            .last_rejected_push
+            .as_mut()
+            .expect("just set")
+            .leaves = Some((sent, expected, LeavesRead::Read(Leaves::default())));
+    }
 }
 
 /// A pull refused over his edits names the keys that get him through from

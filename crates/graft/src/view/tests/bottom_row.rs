@@ -73,9 +73,18 @@ fn rejected_push(columns: u16, rows: u16) -> AppState {
         }),
     }));
     state.refs_read = crate::update::RefsRead::Current(graft_core::job::JobId::new(1));
+    let sent = state.refs.as_deref().and_then(crate::refs::RefBadges::head);
     state.remote.last_rejected_push = Some(crate::update::remote::RejectedPush {
         params: crate::update::remote::push_params(&state).expect("an upstream to push to"),
-        sent: state.refs.as_deref().and_then(crate::refs::RefBadges::head),
+        sent,
+        // What leaves was read for this lease's key (m7-power-tools/16b).
+        leaves: sent.map(|sent| {
+            (
+                sent,
+                oid(9),
+                crate::update::remote::LeavesRead::Read(crate::update::remote::Leaves::default()),
+            )
+        }),
     });
     state.status = Status::Sticky {
         reason: REJECTION.to_owned(),

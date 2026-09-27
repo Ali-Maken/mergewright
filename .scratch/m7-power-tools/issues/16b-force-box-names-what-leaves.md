@@ -219,3 +219,59 @@ now fully decided.
 ### Also noted (not a ruling)
 - Scout 16b says `count_between` already exists (`graft-git/src/history_reads/compare.rs:66`). So "Blocked by: 14a"
   doesn't hold on this branch. Use it as it is, and don't touch graft-git.
+
+## NOTES (builder, resume 2026-09-27) — partial, blocked on test harness files
+Done: graft-ui `with_max_lines` + short-frame clamp (red: `a_short_frame_cuts_message_rows_not_the_buttons` failed with
+the old render); `lease_key`, `Leaves`/`LeavesRead`, settle-tail `request_leaves`, `leaves_arrived` (superseded answer
+dropped, commented), `Command::ReadLeaves`/`Product::Leaves`, `jobs::remote::read_leaves`; box lines per ruling.
+Red quoted: with the list line disabled 7 of the leaves tests failed; with the lease gate forced open
+`p_before_the_read_lands_says_still_reading` and `a_fetch_that_moves_the_remote_tip_rereads_what_leaves` failed.
+`a_superseded_leaves_answer_is_dropped` / `an_unchanged_tip_starts_no_second_read` were not red-probed.
+Ticks (tests in `crates/graft/src/update/remote/tests/lease/leaves.rs` unless named):
+- [x] the_force_box_lists_what_leaves · [x] nothing_leaving_says_so · [x] more_than_three_is_cut_with_more
+- [x] p_before_the_read_lands_says_still_reading · [x] a_failed_leaves_read_is_shown_and_force_stays_offered
+- [x] a_long_subject_is_cut_to_the_box (≤60 cells + `confirm_rows` at 64; drawn whole at 80x24 by `capture_force_box_leaves`)
+- [x] the_lease_box_keeps_the_history_warning_above_the_list · [x] a_fetch_that_moves_the_remote_tip_rereads_what_leaves
+- [x] a_superseded_leaves_answer_is_dropped · [x] an_unchanged_tip_starts_no_second_read
+- [x] graft-ui default_cap_is_still_four · a_raised_cap_draws_every_row · a_short_frame_cuts_message_rows_not_the_buttons
+- [x] Capture `docs/shots/m7/force-box-leaves-{120x40,80x24}.txt` (`view::tests::capture_force_box_leaves`). Colour unverified.
+- [ ] Existing push tests: unit ones updated (`tests.rs` rejected_at_head, `tests/lease.rs` reject → reject+answer,
+      `view/tests.rs` capture_m4_remote_keys, `view/tests/bottom_row.rs` literal). **6 integration tests fail** (below).
+- [ ] m4-02 lease captures not re-taken (their walk fails, below). `docs/shots/m4-remote-keys.txt` changed (+1 row
+      `nothing on origin/main is lost`; the box's bottom border now covers the `←/→ move` bar row at 120x40 — knock-on, judge by eye).
+- [x] MAP.md graft + graft-ui; TESTING.md row.
+**Blocked: needs** the harness `ready` predicates to wait for the new read (cause: they press `P` right after the
+rejection, before `Product::Leaves` lands, so `P` answers `still reading`). One clause each —
+`!matches!(state.remote.last_rejected_push.as_ref().and_then(|r| r.leaves.as_ref()), Some((_, _, LeavesRead::Reading)))` — in
+`crates/graft/tests/it/m4_walk/run.rs:354` and `crates/graft/tests/it/remote_by_key.rs:96` (used by `box_owns_the_bar.rs`).
+Failing: m4_walk push_lease_refused_stale, push_rejected_then_lease; remote_by_key capture_fix_box_takes_y,
+rejected_then_lease_push, stale_lease_refused; box_owns_the_bar capture_fix_box_owns_the_bar. Then re-take m4-02 via the walk.
+Deviation: `lease_key` returns `Result<Option<_>, String>` (lease()'s pending errors), not `Option`.
+Also touched (mechanical, forced by the new field/variant): `view/tests/bottom_row.rs`, `jobs/runner.rs` dispatch
+(two unreachable arms merged to stay under clippy's 60-line limit).
+
+## NOTES (builder, resume 2 — 2026-09-27) — done
+Status: done. Gates all green workspace-wide (nextest 4347/4347, fmt, clippy, doc).
+- Harness ready clauses (wait while `leaves` is `Reading`): `crates/graft/tests/it/m4_walk/run.rs:361-367`,
+  `crates/graft/tests/it/remote_by_key.rs:108-114`, and the pty prelude's own `settled`
+  `crates/graft/src/update/prelude.rs` (`writes_landed`) — without it the m4-02 pty capture showed `still reading`.
+- **Bar question:** other boxes did cover it. `m3-undo-drift.txt` had `" y un╰───…"` (box border over the bar) before
+  this ticket. Cause: `draw_confirm` centres on the whole frame (`view/frame/boxes.rs`, `confirm_area(area, …)`) and
+  `graft-ui` `confirm_area_at` reserves only the frame's last row; the bar is the pane's last row
+  (`view/frame/bars.rs:100 bar_rows`), drawn before the box (`view/frame.rs:214-218`). Nothing says boxes may cover it
+  (`box_owns_the_bar` says the reverse). Fix (cause, `boxes.rs` draw_confirm head): a box that would reach a bar row is
+  centred above it instead; boxes clear of the bar keep their place (m3-confirm-discard etc. unchanged). Frame too
+  short → message rows cut, buttons/warning kept (graft-ui clamp).
+- Captures changed: m4-02-push-box-lease-{160x48,80x24} (list row; bar visible), m4-remote-keys, m3-undo-drift (bar
+  now visible), m6/fix-box-owns-the-bar-{120x40,80x24}, m6/fix-box-takes-y-{120x40,80x24}, m6/fix-box-keeps-on-y-120x40,
+  m7/force-box-leaves-{120x40,80x24} (new). The m6 ones also gained `ⓘ` on `main`: the harness now waits for the
+  leaves read, by which time the radar's force-push probe has landed (5/5 stable reruns). Colour unverified.
+  m4-01-push-box-plain unchanged.
+- Probes: `an_unchanged_tip_starts_no_second_read` red with the key check disabled; `a_superseded_leaves_answer_is_dropped`
+  was **not** red at first (the settle tail heals a stored stale answer by re-asking) — strengthened to assert no
+  second read is asked on the stale answer; then red with the guard disabled.
+Ticks:
+- [x] Existing push tests updated: `update/remote/tests.rs` (rejected_at_head, push_box table), `tests/lease.rs`
+      (`reject` helper answers leaves), m4 walk (`m4_walk::every_scenario::push_rejected_then_lease`,
+      `push_lease_refused_stale` green via run.rs clause).
+- [x] Captures re-taken: m4-02 via `.scratch/m4-remotes/pty-walk-m4.py` (`push-rejected-then-lease`); rest via their tests.
