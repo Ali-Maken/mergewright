@@ -12,8 +12,10 @@
 //! 5. only with no base below `HEAD`: [`ABSORB_FALLBACK_DEPTH`] already
 //!    taken → [`RangeStop::Cap`].
 //!
-//! With no base below `HEAD`, the walk runs only on the default branch or
-//! the only local branch (06c's premise). Anywhere else nothing is its own:
+//! The walk's entry (06f): a base below `HEAD` → rules 1–4; no base at all
+//! (no shared history, nothing to measure from) → the fallback (rules 1, 3,
+//! 4, 5); a base that *is* `HEAD` → the fallback on the default or only
+//! local branch (06c's premise), else nothing is its own:
 //! [`RangeStop::NotItsOwn`] — unless `HEAD` itself is pushed, which rule 1
 //! answers first, so a tracked branch pushed to its tip says "pushed".
 
@@ -29,8 +31,8 @@ use crate::operation::Tip;
 
 use super::reads::{base_of, default_branch_of, parents_of, parse_oid, unparsable};
 
-/// How many of his unpushed commits absorb and `a` reach on the default or
-/// only branch with no base below `HEAD`: git-absorb's rule, its last 10
+/// How many of his unpushed commits absorb and `a` reach where no base
+/// below `HEAD` bounds them (the default or only branch, or no base): git-absorb's rule, its last 10
 /// commits (`docs/research/interactive-rebase.md` :135). Older ones he may
 /// have forgotten; a pick he points at further back is `R`'s.
 pub const ABSORB_FALLBACK_DEPTH: usize = 10;
@@ -55,8 +57,9 @@ pub(crate) enum RangeStop {
     /// The next commit is the branch's base (where it left its upstream or
     /// the default branch).
     Base,
-    /// No base below `HEAD`, and the branch is neither the default branch
-    /// nor the only one: a new branch at `main`'s tip. Nothing was taken.
+    /// The base is `HEAD` itself, and the branch is neither the default
+    /// branch nor the only one: a branch at or behind `main`'s tip. Nothing
+    /// was taken.
     NotItsOwn,
     /// The next commit is a merge (ADR-0047 §5 refuses merges in a range).
     Merge(Oid),
@@ -92,11 +95,16 @@ pub(crate) fn your_commits(
     default_branch: Option<&RefName>,
     stop: &dyn Stop,
 ) -> Result<YourCommits, FactsError> {
-    let base = base_of(repo, head, default_branch, stop)?.filter(|base| *base != head.oid);
+    // 06f ruling, in order: a base below `HEAD` bounds the walk; the default
+    // or only branch falls back; a base that *is* `HEAD` means the branch has
+    // none of its own; no base at all (no shared history) falls back too.
+    let base = base_of(repo, head, default_branch, stop)?;
     let candidates = match base {
-        Some(base) => down_to_base(repo, head.oid, base, stop)?,
-        None if falls_back(repo, head, default_branch, stop)? => capped(repo, head.oid, stop)?,
-        None => {
+        Some(base) if base != head.oid => down_to_base(repo, head.oid, base, stop)?,
+        // No base: the same fallback as the default branch, one read fewer.
+        None => capped(repo, head.oid, stop)?,
+        Some(_) if falls_back(repo, head, default_branch, stop)? => capped(repo, head.oid, stop)?,
+        Some(_) => {
             let parents = parents_of(repo, head.oid, stop)?;
             vec![Candidate {
                 commit: head.oid,

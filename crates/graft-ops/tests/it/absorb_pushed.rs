@@ -322,6 +322,15 @@ fn dependent_on_head(repo: &TempRepo, home: &str) {
     repo.git(&["switch", "-q", home]);
 }
 
+/// The line the rewrite moves holds `dependent` (review m7-06e-20h Minor 3).
+fn carries_the_dependent(params: &graft_ops::rewrite::RewriteParams) -> bool {
+    params
+        .line
+        .branches
+        .iter()
+        .any(|tip| tip.name == "refs/heads/dependent")
+}
+
 #[test]
 fn a_into_a_pushed_head_plans_like_amend() {
     // A tracked feature branch, pushed to its tip.
@@ -335,6 +344,7 @@ fn a_into_a_pushed_head_plans_like_amend() {
         params.todo.last().map(|line| line.action),
         Some(TodoAction::Fixup)
     );
+    assert!(carries_the_dependent(&params), "the dependent follows");
 
     // `main`, pushed to its tip, no upstream.
     let repo = on_main(3);
@@ -347,6 +357,7 @@ fn a_into_a_pushed_head_plans_like_amend() {
         params.todo.last().map(|line| line.action),
         Some(TodoAction::Fixup)
     );
+    assert!(carries_the_dependent(&params), "the dependent follows");
 }
 
 // ── 10. One range for both (Minor 6: one test per fixture) ──────────────

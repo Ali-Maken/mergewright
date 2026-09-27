@@ -4,6 +4,7 @@ mod abort_merge;
 mod absorb;
 mod absorb_config;
 mod absorb_oracle;
+mod absorb_orphan;
 mod absorb_printed;
 mod absorb_pushed;
 mod absorb_staged;
