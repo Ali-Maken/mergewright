@@ -987,3 +987,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30i-facts | Diff job never fills `SubmoduleView`'s inside facts (`graft/src/jobs/detail.rs:298-304`); 30i's `body.rs` copies them from the file row under the cursor (symptom-side). Cause fix: fill them in the diff job | **broken** (workaround in place) | M7 |
 | M7/11a-adr | ADR-0045 needs amendment rows for the cherry-pick set-aside kind (11a; every changed tracked file set aside, put back by `apply/set_aside/put_back.rs:66`). Doc owed (researcher) | **broken** (doc stale) | M7 |
 | M7/11a-gitver | Pick of an ancestor verified only on git 2.54.0 (`git_alone_stops_on_a_pick_of_an_ancestor`); other versions not run | **unverified** | M8 |
+| M7/21b-narrow | History bar empty below 30 columns: conductor ladder step 3 (`esc back` alone) broke two invariant tests (21b NOTES); `esc` still works, unseen | **broken** (below 30 cols only) | M8 |
+| M7/21b-shots | History captures: fixture has 3 changes, not 4 as the mock; `┃` on rows 17–28 vs title 18–29; `tab` vs `⇥` word. Judge by eye; m5/m2 detail capture producers unconfirmed | **unverified** | M7 |
