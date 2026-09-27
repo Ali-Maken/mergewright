@@ -1,6 +1,6 @@
 # 20g blame-place-open-and-base — the rest of 20e's build half
 
-Status: ready
+Status: partial — all but the sweep form done (needs a decision; see 20's NOTES 20g)
 Blocked by: none (20e merged, partial).
 Crates: graft (+ graft-ui only if the shallow Part C tests need it).
 Build with: Opus (unchanged from 20).
