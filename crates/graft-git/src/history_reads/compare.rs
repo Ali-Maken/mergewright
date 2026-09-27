@@ -176,6 +176,9 @@ fn walk_unheld(
         .args([
             GitArg::Flag("rev-list"),
             GitArg::Flag("--parents"),
+            // An unborn `HEAD` holds nothing: `^HEAD` is dropped, not fatal.
+            // Positive lines are safe: `first_parents` already read each.
+            GitArg::Flag("--ignore-missing"),
             GitArg::Flag("--stdin"),
             GitArg::Flag("--not"),
             GitArg::Flag("--branches"),
