@@ -202,7 +202,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  R  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
@@ -245,7 +245,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
+ ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-120x40.txt
@@ -2801,7 +2801,7 @@ what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the f
 ●    Commit 002                                                                                          GF 2d   ace211d
 ◇ ▏  Commit 001                                                                                          GF 2d   a9a0c8e
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m6/stash-clash-take-esc-pane-120x40.txt

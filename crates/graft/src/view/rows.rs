@@ -565,6 +565,7 @@ pub(crate) fn back_to_place(state: &AppState, context: HintContext) -> HintConte
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
+        | HintContext::Rewritable(_)
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. }
         | HintContext::ChangesPane { .. }
@@ -616,9 +617,9 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         GraphOverlay::Map => HintContext::Map,
         GraphOverlay::Journal => HintContext::Journal,
         GraphOverlay::Stash => HintContext::Stash,
-        // 08-b gives the rewrite editor its `HintContext`; until then it
-        // draws no bar hints from the graph's tables.
-        GraphOverlay::CommitEditor | GraphOverlay::Rewrite => return None,
+        GraphOverlay::CommitEditor => return None,
+        // Modal over the graph and the pane (keymap §2.7): its own bar.
+        GraphOverlay::Rewrite => return crate::view::rewrite_editor::rewrite_context(state),
         // Modal in the stronger sense, like the commit editor — but unlike
         // it, the resolver draws a bar, so it has one. It covers the detail
         // pane too, which is why it answers before the focus test below:
@@ -766,6 +767,11 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
                     _ => None,
                 })
                 .unwrap_or(HintContext::PlainRow);
+            let base = if rewrite_offered(state) {
+                HintContext::Rewritable(Box::new(base))
+            } else {
+                base
+            };
             if cursor.marker.is_some() {
                 HintContext::Marked(Box::new(base))
             } else {
@@ -792,6 +798,55 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
             // The files list's `space` on a directory row (m7-power-tools/20h).
             folds: crate::update::detail::space_folds(&state.detail),
         }
+    }
+}
+
+/// Whether the bar offers `R rewrite` on the cursor's commit row
+/// (m7-power-tools/08, ruling 10). `update::rewrite_editor` has no
+/// membership fact at key time, so from what is in state: the graph has the
+/// keyboard, `HEAD` is on a branch, nothing is live, and the row is not on
+/// the default branch's chain — unless `HEAD` *is* the default branch, or
+/// that chain is unread, when every commit row offers it. Anywhere else `R`
+/// still answers, refusing in `plan`'s words.
+fn rewrite_offered(state: &AppState) -> bool {
+    if !state.graph_has_focus() || live_c(state).is_some() {
+        return false;
+    }
+    let Some(refs) = state.refs.as_deref() else {
+        return false;
+    };
+    let Some(head) = refs.head() else {
+        return false;
+    };
+    let Some(branch) = refs.on(head).iter().find_map(|label| match label {
+        crate::refs::RefLabel::Branch {
+            name,
+            current: true,
+            ..
+        } => Some(name),
+        _ => None,
+    }) else {
+        return false;
+    };
+    let default = state
+        .history
+        .as_ref()
+        .and_then(|history| history.walk.as_ref())
+        .and_then(|walk| walk.default_branch.as_ref());
+    if default.is_some_and(|name| name.shorthand() == branch.as_slice()) {
+        return true;
+    }
+    let Some(row) = state
+        .history
+        .as_ref()
+        .and_then(History::selected)
+        .map(|row| row.commit.id)
+    else {
+        return false;
+    };
+    match &state.radar.context {
+        crate::update::detail::Loading::Ready(context) => !context.on_default_chain(&row),
+        _ => true,
     }
 }
 

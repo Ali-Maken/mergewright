@@ -4139,7 +4139,10 @@ fn every_swept_state_is_the_context_it_claims() {
 )]
 fn classified_form(context: &HintContext) -> Option<HintContext> {
     match context {
-        HintContext::BranchRow { .. } | HintContext::Marked(_) => Some(HintContext::PlainRow),
+        // `R rewrite` is decoration on a drawn row too (08, ruling 10).
+        HintContext::BranchRow { .. } | HintContext::Marked(_) | HintContext::Rewritable(_) => {
+            Some(HintContext::PlainRow)
+        }
         // `B` answers on a file (`blamable`), `space` folds `commit_pane`'s
         // `src/` row (`folds`), neither on its `✉ message` row
         // (`blame_screens`).
@@ -4245,7 +4248,10 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Credential
         // The place's own bar (`view::rows::place_context`).
         | HintContext::Blame { .. }
-        | HintContext::History { .. } => Some(context.clone()),
+        | HintContext::History { .. }
+        // The rewrite editor's own bar (`view::rewrite_editor::rewrite_context`).
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage => Some(context.clone()),
     }
 }
 
@@ -4386,6 +4392,23 @@ fn presses_for(name: &str) -> Vec<Press> {
         "←/→" => vec![plain(KeyCode::Left), plain(KeyCode::Right)],
         "n N" | "n/N" => vec![plain(KeyCode::Char('n')), plain(KeyCode::Char('N'))],
         "↑↓" => vec![plain(KeyCode::Up), plain(KeyCode::Down)],
+        // The rewrite editor's row move (keymap §2.7, m7-power-tools/08).
+        "alt+↑↓" => vec![
+            Press::Key(KeyPress {
+                code: KeyCode::Up,
+                modifiers: graft_core::event::Modifiers {
+                    alt: true,
+                    ..graft_core::event::Modifiers::default()
+                },
+            }),
+            Press::Key(KeyPress {
+                code: KeyCode::Down,
+                modifiers: graft_core::event::Modifiers {
+                    alt: true,
+                    ..graft_core::event::Modifiers::default()
+                },
+            }),
+        ],
         // The branch picker's `type to find` (m7-power-tools/10): any letter
         // is typing there, so one letter stands for them all.
         "type" => vec![plain(KeyCode::Char('m'))],
@@ -4456,6 +4479,10 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
         .filter(|state| match context {
             HintContext::OperationLive { tab_to_banner, .. } => {
                 crate::update::banner::one_tab_to_banner(state) == *tab_to_banner
+            }
+            // `tab after` is the narrow editor's alone (R1's breakpoints).
+            HintContext::RewriteEditor { narrow, .. } => {
+                (state.size.columns < graft_ui::rewrite_editor::NARROW_BELOW) == *narrow
             }
             _ => true,
         })
@@ -4587,7 +4614,20 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::Marked(_)
+        | HintContext::Rewritable(_)
         | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
+        // The rewrite editor over the graph (m7-power-tools/08): its plan
+        // landed where `y` starts, else a todo that cannot run.
+        HintContext::RewriteEditor { can_start, .. } => {
+            let mut state = merge_on_screen(walk, MERGE_ROW).0;
+            super::rewrite_editor::tests::open_an_editor_planned(&mut state, *can_start);
+            vec![state]
+        }
+        HintContext::RewriteMessage => {
+            let mut state = merge_on_screen(walk, MERGE_ROW).0;
+            super::rewrite_editor::tests::open_an_editor_field(&mut state);
+            vec![state]
+        }
         HintContext::Resolver { .. } => vec![resolver_for(walk, context)],
         // The focused pane, the blame place, a trail under a screen.
         HintContext::PaneFocused { .. }

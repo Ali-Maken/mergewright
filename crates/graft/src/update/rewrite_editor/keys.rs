@@ -2,7 +2,7 @@
 //! every key but `Ctrl+C` is its own (§2.1); while its `r` field is open,
 //! every key is typed (`text_field_open`).
 
-use graft_core::event::{KeyCode, KeyPress, MouseInput};
+use graft_core::event::{KeyCode, KeyPress, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_git::diff::{DiffOptions, DiffSpec};
 use graft_ops::rewrite::TodoAction;
@@ -71,16 +71,76 @@ pub(crate) fn rewrite_key(
     true
 }
 
-/// The mouse while the editor is up: every event is its own, so nothing
-/// reaches the graph behind it. Selecting and dragging rows need the drawn
-/// layout's hit test (`graft_ui::rewrite_row_at`, 08-b).
+/// The mouse while the editor is up (§2.7): every event is its own, so
+/// nothing reaches the graph behind it. A left click on a row selects it; a
+/// drag from it moves it, one row per row crossed, as `Alt+↑/↓` would. Where
+/// a row is drawn is asked of the drawn layout
+/// (`graft_ui::rewrite_editor::rewrite_row_at` over
+/// `view::rewrite_editor::editor_area`), so a click cannot land on a row
+/// other than the one under it.
 pub(crate) fn rewrite_mouse(
     state: &mut AppState,
-    _commands: &mut Vec<Command>,
-    _mouse: MouseInput,
-    _next_id: &mut impl FnMut() -> JobId,
+    commands: &mut Vec<Command>,
+    mouse: MouseInput,
+    next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
-    state.rewrite.editor.is_some()
+    let Some(editor) = state.rewrite.editor.as_ref() else {
+        return false;
+    };
+    // The field and the `$EDITOR` handover own the keyboard; a click on a
+    // row would change the row under an open edit.
+    if editor.field.is_some() {
+        return true;
+    }
+    let hit = crate::view::rewrite_editor::rewrite_view(state, false).and_then(|view| {
+        graft_ui::rewrite_editor::rewrite_row_at(
+            crate::view::rewrite_editor::editor_area(state),
+            &view,
+            mouse.column,
+            mouse.row,
+        )
+    });
+    let Some(mut editor) = state.rewrite.editor.take() else {
+        return true;
+    };
+    match mouse.kind {
+        MouseKind::Down(MouseButton::Left) => {
+            editor.notice = None;
+            editor.dragging = hit.is_some();
+            if let Some(row) = hit {
+                editor.cursor = row;
+            }
+        }
+        MouseKind::Drag(MouseButton::Left) if editor.dragging => {
+            if let Some(to) = hit {
+                drag_to(state, &mut editor, commands, to, next_id);
+            }
+        }
+        MouseKind::Up(MouseButton::Left) => editor.dragging = false,
+        _ => {}
+    }
+    state.rewrite.editor = Some(editor);
+    true
+}
+
+/// The dragged row (the cursor's) moves toward screen row `to`, one step per
+/// row, until it is there or a move refuses (the base stays).
+fn drag_to(
+    state: &mut AppState,
+    editor: &mut RewriteEditor,
+    commands: &mut Vec<Command>,
+    to: usize,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    // One step at a time so the base and the ends refuse as `Alt+↑/↓` do,
+    // but one AFTER plan for the whole drag, not one per row crossed.
+    let mut moved = false;
+    while editor.cursor != to && editor.notice.is_none() && swap_row(editor, to < editor.cursor) {
+        moved = true;
+    }
+    if moved {
+        after::replan(state, editor, commands, next_id);
+    }
 }
 
 /// A key on the rows.
@@ -156,9 +216,17 @@ fn move_row(
     newer: bool,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    if swap_row(editor, newer) {
+        after::replan(state, editor, commands, next_id);
+    }
+}
+
+/// Swap the cursor's row one place newer or older, the cursor following
+/// it; `false` (and, toward the base, its notice) when it cannot move.
+fn swap_row(editor: &mut RewriteEditor, newer: bool) -> bool {
     let Some(index) = editor.cursor_row() else {
         editor.notice = Some(words::BASE_STAYS.to_owned());
-        return;
+        return false;
     };
     // Newer is later in the todo; the base below stays where it is.
     let Some(other) = (if newer {
@@ -169,12 +237,12 @@ fn move_row(
         if !newer {
             editor.notice = Some(words::BASE_STAYS.to_owned());
         }
-        return;
+        return false;
     };
     editor.todo.swap(index, other);
     editor.moved.insert(editor.todo[other].commit);
     editor.cursor = editor.todo.len() - 1 - other;
-    after::replan(state, editor, commands, next_id);
+    true
 }
 
 /// `r`: the message field under the row, prefilled with its subject line.

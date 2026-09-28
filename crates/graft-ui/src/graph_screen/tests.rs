@@ -2096,7 +2096,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 96;
+const COVERAGE_SLOTS: usize = 102;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2176,6 +2176,13 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::BackToHistory(_) => 88,
         // m7-power-tools/10: the branch picker's one bar.
         HintContext::Picker => 89,
+        // m7-power-tools/08: the rewrite editor's four flag pairs (96–99),
+        // its field (100), `R rewrite` on a commit row (101).
+        HintContext::RewriteEditor { narrow, can_start } => {
+            96 + 2 * usize::from(*narrow) + usize::from(*can_start)
+        }
+        HintContext::RewriteMessage => 100,
+        HintContext::Rewritable(_) => 101,
         HintContext::Map => 17,
         HintContext::PaneOverOverlay { opens: false } => 18,
         HintContext::PaneOverOverlay { opens: true } => 19,

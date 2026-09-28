@@ -2825,6 +2825,21 @@ graft-ops, against real repositories (`crates/graft-ops/tests/it/pull_set_aside.
 |---|---|
 | `P` after a rejected push, teammate's commits on origin | Lease box: line 1 (`origin/main <theirs> → <ours> · refused if …`), then `rewrites history for everyone who has <sha7>`, then `leaves origin/main:`, then one row per commit — sha7, subject, author, aligned in columns, subject cut with `…` — newest first, at most 3, then `+N more`; buttons row whole. `nothing on origin/main is lost` when nothing leaves; `couldn't read what leaves …: <why>` with the force still offered when the read fails. `P` before the read lands: `still reading what leaves origin/main — try again in a moment`. Tests: `update/remote/tests/lease/leaves.rs` (all ten). Captures `docs/shots/m7/force-box-leaves-{120x40,80x24}.txt` (`view::tests::capture_force_box_leaves`). Colour unverified. |
 
+## M7: the rewrite editor (m7-power-tools/08)
+
+Walks: `cargo nextest run --workspace -E 'test(/m7_walk::rewrite_editor/) | test(rewrite_editor)'`. Fixture: `feature-a` 5 commits since `main` (one `fixup!`, opens pre-marked), `feature-b` built on it.
+
+- `squash-last-three`: on HEAD, `R s s y`, 4 keys, fenced (`squash_last_three`). After it `main..feature-a` is `Handle expired tokens`, `Add OAuth callback` (three became one; the fixup melded); its message is the MESSAGE block the editor drew, line for line; `feature-b^` is the new `feature-a`; the cursor lands on the new HEAD (`moves_head` covers `Rewrite`, graft-ops `operation.rs:1278`); `u` puts every branch back.
+- `swap-adjacent`: on HEAD's parent (placed, not counted), `R Alt+↑ y`, 3 keys, fenced (`swap_adjacent`). The two newest commits trade places; `u` puts every branch back.
+- Look and leave: `R s esc` (`rewrite_look_and_leave_writes_nothing`): branches, index, files and the journal's entries unchanged.
+- Mouse: a click selects the row drawn there; a drag moves it and replans once (`a_click_selects_the_row`, `a_drag_moves_the_row`).
+- Graph bar: `R rewrite` on his commit rows, not on the default branch's, not with HEAD detached (`the_bar_offers_capital_r_on_his_commit_rows`, `the_bar_hides_capital_r_on_default_branch_rows`).
+- Capture `m7/rewrite-editor-187x50.txt` — right: title `REWRITE feature-a · 5 commits since it left main · newest first`; two `squash ↓` rows over `pick <sha7> Handle expired tokens`; the `│` rule and `AFTER y · not written yet`; `3 in one`; `MESSAGE of the squashed commit`, the kept row's message first, then the melded ones newest first (`wip`, then `wip: tests`); the bar starts `y rewrite` (`capture_rewrite_editor`).
+- Capture `m7/rewrite-editor-140x40.txt` — right: AFTER below the rows, labelled `AFTER y · not written yet`; the message below it.
+- Capture `m7/rewrite-editor-100x30.txt` — right: rows only; `tab after` on the bar.
+- Capture `m7/rewrite-refused-fork-120x40.txt` — right: status `feature-b and feature-c are both built on yours · Graft moves one line`; no overlay.
+- Not proven by the walk: colour (the bold action word, the dim notes) — unverified (rule 5). The `$EDITOR` handover from the `r` field is unit-tested only (08-a).
+
 ## M7: stops during a rewrite (m7-power-tools/07c, 07d)
 
 Walks: `cargo nextest run --workspace -E 'test(rewrite_stops) | test(continue_in_git) | test(hands_over)'`.

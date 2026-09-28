@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use graft_core::commit::{Commit, Identity, Timestamp};
-use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
+use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
@@ -18,7 +18,7 @@ use graft_ops::operation::{Operation, Refusal, RewriteKey, Tip};
 use graft_ops::rewrite::{BranchLine, RewriteParams, TodoAction, TodoLine, TodoProblem};
 use graft_ui::text_input::TextField;
 
-use super::{AfterFacts, Field, RewriteEditor, words};
+use super::{After, AfterFacts, Field, RewriteEditor, words};
 use crate::history::{HistoryUpdate, Window};
 use crate::jobs::operate::Operated;
 use crate::jobs::rewrite_open::{BaseRow, OpenedRewrite, RewriteOpened};
@@ -298,6 +298,20 @@ pub(crate) fn an_editor() -> Box<RewriteEditor> {
 /// Stand an editor on `state`.
 pub(crate) fn open_an_editor(state: &mut AppState) {
     state.rewrite.editor = Some(an_editor());
+}
+
+/// Stand an editor on `state` whose AFTER plan landed (`y` starts), or
+/// whose todo cannot run (`y` refuses): the rewrite editor bar's two
+/// `can_start` forms.
+pub(crate) fn open_an_editor_planned(state: &mut AppState, can_start: bool) {
+    let mut editor = an_editor();
+    if can_start {
+        editor.after = After::Ready {
+            planned: a_planned(None),
+            asked: editor.opened.clone(),
+        };
+    }
+    state.rewrite.editor = Some(editor);
 }
 
 /// Stand an editor on `state` with its `r` field open and empty.
@@ -1067,4 +1081,159 @@ fn view_facts_show_the_plan_that_landed() {
     assert!(
         matches!(ed(&state).view_facts().after, AfterFacts::Ready(shown) if *shown == *planned)
     );
+}
+
+// ── the mouse ──────────────────────────────────────────────────────────
+
+/// The screen line `subject` is drawn on, found in the drawn editor itself
+/// (not through `rewrite_row_at`, which is what the click goes through): the
+/// first line whose rows' side holds the subject.
+fn drawn_line_of(state: &AppState, subject: &str) -> u16 {
+    let area = crate::view::rewrite_editor::editor_area(state);
+    let view = crate::view::rewrite_editor::rewrite_view(state, false).expect("the editor is up");
+    let theme = graft_ui::theme::Theme::new(
+        graft_ui::theme::ThemeKind::Dark,
+        &crate::session::for_tests::capabilities(),
+    );
+    let mut buffer = ratatui::buffer::Buffer::empty(area);
+    ratatui::widgets::Widget::render(
+        graft_ui::rewrite_editor::RewriteEditorWidget {
+            view: &view,
+            theme: &theme,
+        },
+        area,
+        &mut buffer,
+    );
+    (area.y..area.bottom())
+        .find(|&y| {
+            let left: String = (area.x..graft_ui::rewrite_editor::LEFT_WIDTH)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect();
+            left.contains(subject)
+        })
+        .unwrap_or_else(|| panic!("{subject:?} is drawn on the rows' side"))
+}
+
+fn mouse(state: &AppState, kind: MouseKind, row: u16) -> (AppState, Vec<Command>) {
+    update(
+        state,
+        AppEvent::Core(Event::Mouse(MouseInput {
+            kind,
+            column: 20,
+            row,
+            modifiers: Modifiers::default(),
+        })),
+    )
+}
+
+#[test]
+fn a_click_selects_the_row() {
+    let (state, _) = editor_up(0);
+    assert_eq!(ed(&state).cursor, 0);
+    let line = drawn_line_of(&state, "Handle expired tokens");
+    let (after, commands) = mouse(&state, MouseKind::Down(MouseButton::Left), line);
+    // Newest first: 5, 4, 3, 2 — "Handle expired tokens" (3) is row 2.
+    assert_eq!(ed(&after).cursor, 2, "the clicked row is the cursor");
+    assert_eq!(ed(&after).todo, ed(&state).todo, "a click moves nothing");
+    assert!(
+        plan_job(&commands).is_none(),
+        "nothing changed, nothing replanned"
+    );
+    assert_eq!(
+        after.graph_overlay(),
+        Some(GraphOverlay::Rewrite),
+        "the editor stays up"
+    );
+}
+
+#[test]
+fn a_drag_moves_the_row() {
+    let (state, first) = editor_up(0);
+    let from = drawn_line_of(&state, "wip: tests");
+    let to = drawn_line_of(&state, "Add OAuth callback");
+    let (state, _) = mouse(&state, MouseKind::Down(MouseButton::Left), from);
+    assert_eq!(ed(&state).cursor, 1, "the press selects 4");
+    let (state, commands) = mouse(&state, MouseKind::Drag(MouseButton::Left), to);
+    let (state, _) = mouse(&state, MouseKind::Up(MouseButton::Left), to);
+    let order: Vec<_> = ed(&state).todo.iter().map(|row| row.commit).collect();
+    assert_eq!(
+        order,
+        [oid(4), oid(2), oid(3), oid(5)],
+        "4 dragged down to the oldest place (oldest first)"
+    );
+    assert_eq!(ed(&state).cursor, 3, "the cursor follows the row");
+    assert!(ed(&state).view_facts().rows[3].moved, "↕ moved");
+    assert!(cancels(&commands, first), "the old plan is cancelled");
+    let plans = commands
+        .iter()
+        .filter(|command| matches!(command, Command::PlanPreview(..)))
+        .count();
+    assert_eq!(plans, 1, "one AFTER plan for the whole drag");
+    let (_, params) = plan_job(&commands).expect("replanned");
+    assert_eq!(params.todo[0].commit, oid(4));
+    // After the release, a drag moves nothing.
+    let (after, _) = mouse(&state, MouseKind::Drag(MouseButton::Left), from);
+    assert_eq!(ed(&after).todo, ed(&state).todo);
+}
+
+// ── the graph bar ──────────────────────────────────────────────────────
+
+/// Whether the graph bar, at 187 columns, draws `R rewrite` for `state`.
+fn bar_offers_r(state: &AppState) -> bool {
+    let view = crate::view::rows::graph_view(state, 0);
+    graft_ui::graph_screen::hints_for(
+        &view.hint_context,
+        graft_ui::graph_screen::Divider::Hidden,
+        187,
+    )
+    .iter()
+    .any(|hint| hint.key == "R")
+}
+
+/// `main`'s first-parent chain is commit 1 alone.
+fn with_context(mut state: AppState) -> AppState {
+    state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext::of_ids(
+        [oid(1)],
+        Vec::new(),
+    )));
+    state
+}
+
+#[test]
+fn the_bar_offers_capital_r_on_his_commit_rows() {
+    for at in 0..4 {
+        assert!(
+            bar_offers_r(&with_context(on_screen(at))),
+            "row {at} is his"
+        );
+    }
+    // No context yet: offered on every row and `plan` decides (ruling 10).
+    for at in 0..5 {
+        assert!(bar_offers_r(&on_screen(at)), "row {at}, no context");
+    }
+}
+
+#[test]
+fn the_bar_hides_capital_r_on_default_branch_rows() {
+    assert!(
+        !bar_offers_r(&with_context(on_screen(4))),
+        "1 is on main's chain"
+    );
+    // Detached HEAD: no row is his branch's.
+    let mut detached = with_context(on_screen(0));
+    let refs = crate::refs::badges(
+        &[(name(b"refs/heads/main"), oid(1))],
+        &HeadState::Detached(oid(5)),
+        &HashMap::new(),
+        &[],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
+    .expect("badges");
+    detached.refs = Some(Arc::new(refs));
+    assert!(!bar_offers_r(&detached), "HEAD on no branch");
 }

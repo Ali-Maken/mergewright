@@ -359,7 +359,10 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // The blame place is modal too (keymap §2.1): no doorway. The
         // history place likewise (m7-power-tools/21b).
         | HintContext::Blame { .. }
-        | HintContext::History { .. } => (drawable(context, divider), None),
+        | HintContext::History { .. }
+        // The rewrite editor is modal (keymap §2.7): no doorway.
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -379,21 +382,12 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             blamable,
             folds,
         } => pane_focused_bar(row, *opens, *blamable, *folds, divider),
-        HintContext::BackToBlame(inner) => {
-            let (list, trailer) = whole_bar(inner, divider);
-            let mut led = vec![BACK_TO_BLAME];
-            led.extend(list);
-            (led, trailer)
-        }
-        HintContext::BackToHistory(inner) => {
-            let (list, trailer) = whole_bar(inner, divider);
-            let mut led = vec![BACK_TO_HISTORY];
-            led.extend(list);
-            (led, trailer)
-        }
+        HintContext::BackToBlame(inner) => led_by(BACK_TO_BLAME, inner, divider),
+        HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
+        | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
         // The row's own bar with its `c` said the way it acts now, and —
         // while one `⇥` reaches the banner — the way back leading, so the
@@ -416,6 +410,14 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             (led, trailer)
         }
     }
+}
+
+/// `inner`'s whole bar with `lead` in front: the way back to a place.
+fn led_by(lead: Hint, inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(inner, divider);
+    let mut bar = vec![lead];
+    bar.extend(list);
+    (bar, trailer)
 }
 
 /// [`whole_bar`] for [`HintContext::PaneFocused`]: the row's own bar minus
@@ -537,6 +539,8 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Finish { .. }
                 | HintContext::Blame { .. }
                 | HintContext::History { .. }
+                | HintContext::RewriteEditor { .. }
+                | HintContext::RewriteMessage
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the
@@ -550,7 +554,10 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     }
     let rows = matches!(
         context,
-        HintContext::WorkingTreeRow | HintContext::BranchRow { .. } | HintContext::PlainRow
+        HintContext::WorkingTreeRow
+            | HintContext::BranchRow { .. }
+            | HintContext::PlainRow
+            | HintContext::Rewritable(_)
     );
     if rows {
         let commits = *context != HintContext::WorkingTreeRow;

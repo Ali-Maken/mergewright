@@ -387,7 +387,7 @@ preview needs 40x12 · esc closes
 
 ================================================================================
 docs/shots/m5-06-stop-lands-in-resolver-120x40.txt
-what right looks like: TESTING.md § Per breakpoint, Stopped merge row: the same frame at 120 — `MERGING` in the header, the sticky whole: `… resolve it and stage it; the merge stays in progress until you do · esc dismiss`. (Re-taken 2026-09-25, m6-conflicts/63: the resolver's key bar, bottom right, carries this pass's keys — `⌃O/⌃T`, `O/T`, `j/k`, `d start over`.)
+what right looks like: The same at 120 (TESTING.md: the same): strip `▸ shared.txt · 1 of 1 open`, identity row `▸ shared.txt · 1 conflict · 1 open`, bar from `o yours`, `⌃O/⌃T all  O/T file` … `⏎ done  j/k  M  d start over  esc close`.
 ================================================================================
 
 m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 120x40
@@ -435,7 +435,7 @@ files   ▸ shared.txt · 1 of 1 open
 
 ================================================================================
 docs/shots/m5-06-stop-lands-in-resolver-160x48.txt
-what right looks like: TESTING.md § Per breakpoint, Stopped merge row: the same at 160, the sticky whole. (Re-taken 2026-09-25, m6-conflicts/63: the resolver's key bar, bottom right, carries this pass's keys — `⌃O/⌃T`, `O/T`, `j/k`, `d start over`.)
+what right looks like: The same at 160 (TESTING.md: the same): every key on the bar in full, `j/k file` and `M mergetool` included.
 ================================================================================
 
 m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 160x48
@@ -491,7 +491,7 @@ files   ▸ shared.txt · 1 of 1 open
 
 ================================================================================
 docs/shots/m5-06-stop-lands-in-resolver-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Stopped merge row: `m` on `feature`, confirmed, git stopped on `shared.txt` — `MERGING` at the end of the header row, `Uncommitted changes (1 unmerged)` as the first row, and on the footer the sticky `merge feature into main — shared.txt conflicts: resolve it and s…` cut at 80 columns with `· esc dismiss` — the banner's own keys (`c continue  a abort …`) are under it until `Esc`. Judge whether the cut sticky reads well enough at this width. (Re-taken 2026-09-25, m6-conflicts/63: the resolver's key bar, bottom right, carries this pass's keys — `⌃O/⌃T`, `O/T`, `j/k`, `d start over`.)
+what right looks like: TESTING.md § Per breakpoint, Stopped merge row: `m` on `feature`, confirmed, git stopped on `shared.txt` — the stop lands in the resolver (m6-conflicts/18): `MERGING` on the header row, the file strip `▸ shared.txt`, the identity row `▸ shared.txt · 1 conflict · 1 open`, the bar starting `o yours` (`Esc` is the way to the banner). At 80 the strip is compact (`▸ shared.txt 1/1 open`) and past the first hints the bar's keys are bare.
 ================================================================================
 
 m5 walk capture: m5-06-stop-lands-in-resolver — scenario stop-then-esc-lists-files, keys m → ⏎, unicode tier, 80x24
@@ -792,7 +792,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O
+ ⏎ open  c commit  P push  p pull  . more  f  b  t  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-branch-160x48.txt
@@ -897,7 +897,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  y  M  O
+ ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  . more  R  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-branch-80x24.txt
@@ -978,7 +978,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the tip, 
 
 
  no commit-graph file · B build one · X never here
- ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
+ ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  R  q  F2  F3  x  +
 
 ================================================================================
 docs/shots/m5-hints-changes-120x40.txt
@@ -1342,7 +1342,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- c commit  P push  <> resize  p pull  f fetch  b branch  t tag  . more  u  /  q  F2  F3  x  +  j/k  space  1  F  H  y
+ c commit  P push  <> resize  p pull  f fetch  b branch  t tag  u undo  . more  /  q  F2  F3  x  +  j/k  1  F  H  y
 COMMIT 29a1432 · Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 · 8m · parents 3d9496e · diff vs firs…
 add second
                               reading…
@@ -1463,7 +1463,7 @@ what right looks like: Capture header "Judge by eye": the pane is open on the ti
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F  H
+ c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
 
 ================================================================================
 docs/shots/m5-hints-detail-80x24.txt
@@ -1544,7 +1544,7 @@ reading…
 
 
 
- c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1
+ c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H
 
 ================================================================================
 docs/shots/m5-hints-ladder.txt
@@ -1625,19 +1625,19 @@ what right looks like: Capture header "What right looks like": the bar fills fro
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  . more  /  j/k  q  F2  F3  +  1  F  H  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
- ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O
+ ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 --- the cursor is on another branch's tip
 [·················································· 120 cells of bar ··················································]
- m merge  r rebase  ⏎ open  b branch  . more  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 --- the cursor is on an ordinary commit row
 [·················································· 120 cells of bar ··················································]
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
@@ -1651,19 +1651,19 @@ what right looks like: Capture header "What right looks like": the bar fills fro
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  y  M  O
+ ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  . more  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
- m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 --- the cursor is on an ordinary commit row
 [······································································ 160 cells of bar ······································································]
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
@@ -1773,7 +1773,7 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 
 
 
- . explain  ⏎ open  b branch  r rebase  t tag  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ . explain  ⏎ open  b branch  r rebase  t  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-marked-160x48.txt
@@ -1850,7 +1850,7 @@ what right looks like: Capture header "Judge by eye": for a marked row's hint co
 
 
 
- . explain  ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ . explain  ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-marked-80x24.txt
@@ -2000,7 +2000,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-plain-160x48.txt
@@ -2105,7 +2105,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  . more  /  R  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-plain-80x24.txt
@@ -2186,7 +2186,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on an ordina
 
 
  no commit-graph file · B build one · X never here
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +
 
 ================================================================================
 docs/shots/m5-hints-uncommitted-120x40.txt
@@ -2283,7 +2283,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  . more  /  j/k  q  F2  F3  +  1  F  H  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  . more  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-uncommitted-160x48.txt
@@ -2388,7 +2388,7 @@ what right looks like: Capture header "Judge by eye": the cursor is on the uncom
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 renderer  + lanes  . more  1  F  H  M  O  C
 
 ================================================================================
 docs/shots/m5-hints-uncommitted-80x24.txt
@@ -2539,7 +2539,7 @@ what right looks like: Capture header "What right looks like": the two frames di
 │ │ │ │ │ │ │ │ │ │ ● ⋮  ⓘ [topic-05] Work on topic-05                          51m  3eb9e24
 ◉▾│ │ │ │ │ │ │ │ │ │ ⋮    Merge branch 'topic-04'                              52m  ea6b0bf
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  . more  <>  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F
+ ⏎ open  c commit  P push  . more  <>  p  f  b  t  u  /  q  F2  F3  x  +  j/k  1  F  H  y
 
 == the same terminal, pane closed: the graph has all 160 ==
 
@@ -2566,7 +2566,7 @@ what right looks like: Capture header "What right looks like": the two frames di
 │ │ │ │ │ │ │ │ │ │ ●    ⓘ [topic-05] Work on topic-05                                                                                           GF 51m  3eb9e24
 ◉─│─│─│─│─│─│─│─│─│─│─╮    Merge branch 'topic-04'                                                                                               GF 52m  ea6b0bf
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  / search  q quit  F2 status  F3 renderer  x compare  + lane  . more  j/k  space  1  F  H  y
+ ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  . more  1  F  H  y
 
 ================================================================================
 docs/shots/m5-ui-banner-conflict-120x40.txt
@@ -2951,18 +2951,18 @@ what right looks like: Capture header "What right looks like": while an operatio
  graft /code/api    REBASING step 3 of 7
 ● ▏  Commit 2                                                                                            TE 2h   0202020
 ◇    Commit 1                                                                                            TE 2h   0101010
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 === 160x10 ===
  graft /code/api    REBASING step 3 of 7
 ● ▏  Commit 2                                                                                                                                    TE 2h   0202020
 ◇    Commit 1                                                                                                                                    TE 2h   0101010
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 === a long path does not cut the banner, 120x10 ===
  graft /media/archive/work/customers/acme/services/billing-api    REBASING step 3 of 7
 ● ▏  Commit 2                                                                                            TE 2h   0202020
 ◇    Commit 1                                                                                            TE 2h   0101010
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 

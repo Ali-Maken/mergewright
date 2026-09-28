@@ -52,8 +52,15 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::NamePrompt { toggle: true },
         HintContext::NamePrompt { toggle: false },
         HintContext::Credential,
+        // m7-power-tools/08: `R rewrite` on his commit rows, and the editor's
+        // field.
+        HintContext::Rewritable(Box::new(HintContext::BranchRow { current: false })),
+        HintContext::Rewritable(Box::new(HintContext::BranchRow { current: true })),
+        HintContext::Rewritable(Box::new(HintContext::PlainRow)),
+        HintContext::RewriteMessage,
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
+    all.extend(rewrite_editor_forms());
     all.extend(banner_forms());
     all.extend(changes_pane_forms());
     all.extend(changes_pane_live_forms());
@@ -73,6 +80,18 @@ pub fn every_context() -> Vec<HintContext> {
     all.extend(blame_forms());
     all.extend(history_forms());
     all
+}
+
+/// The rewrite editor's four flag pairs (m7-power-tools/08).
+fn rewrite_editor_forms() -> Vec<HintContext> {
+    [false, true]
+        .into_iter()
+        .flat_map(|narrow| {
+            [false, true]
+                .into_iter()
+                .map(move |can_start| HintContext::RewriteEditor { narrow, can_start })
+        })
+        .collect()
 }
 
 /// The history place's three reachable forms and the way back to it over
@@ -254,6 +273,8 @@ fn finish_forms() -> Vec<HintContext> {
 /// Exhaustive on purpose: see [`every_context`].
 fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
     match context {
+        // `R rewrite` is drawn only while nothing is live (08, ruling 10).
+        HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
@@ -301,6 +322,9 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::BackToBlame(_)
         | HintContext::History { .. }
         | HintContext::BackToHistory(_)
+        | HintContext::Rewritable(_)
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage
         | HintContext::OperationLive { .. } => Vec::new(),
     }
 }
@@ -368,7 +392,7 @@ const ALL_ROLES: [SideRoles; 6] = [
 /// Exhaustive on purpose: see [`every_context`].
 fn marked_form(context: &HintContext) -> Option<HintContext> {
     match context {
-        HintContext::BranchRow { .. } | HintContext::PlainRow => {
+        HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Rewritable(_) => {
             Some(HintContext::Marked(Box::new(context.clone())))
         }
         HintContext::WorkingTreeRow
@@ -392,6 +416,8 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::BackToBlame(_)
         | HintContext::History { .. }
         | HintContext::BackToHistory(_)
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage
         | HintContext::OperationLive { .. } => None,
     }
 }
@@ -414,6 +440,8 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
 /// Exhaustive on purpose: see [`every_context`].
 fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
     match context {
+        // `R` needs the graph's keyboard (08, ruling 10): never under a pane.
+        HintContext::Marked(row) if matches!(**row, HintContext::Rewritable(_)) => Vec::new(),
         HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Marked(_) => {
             // `(opens, blamable, folds)`: the files list on a file, on a
             // directory, on neither (the `✉ message` row); the diff on a
@@ -456,6 +484,9 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::BackToBlame(_)
         | HintContext::History { .. }
         | HintContext::BackToHistory(_)
+        | HintContext::Rewritable(_)
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage
         | HintContext::OperationLive { .. } => Vec::new(),
     }
 }

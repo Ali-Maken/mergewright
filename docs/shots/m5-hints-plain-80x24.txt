@@ -72,4 +72,4 @@
 
 
  no commit-graph file · B build one · X never here
- ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  q  F2  F3  x  +
+ ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  /  R  q  F2  F3  x  +

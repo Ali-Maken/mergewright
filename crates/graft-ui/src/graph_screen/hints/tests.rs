@@ -897,7 +897,9 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Resolver { .. }
         | HintContext::Finish { .. }
         | HintContext::Blame { .. }
-        | HintContext::History { .. } => None,
+        | HintContext::History { .. }
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage => None,
         HintContext::BackToBlame(inner) | HintContext::BackToHistory(inner) => doorway_of(inner),
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
@@ -909,6 +911,7 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
+        | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => Some(MORE),
     }
 }
