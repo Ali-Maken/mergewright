@@ -6,7 +6,7 @@ Blocked by: 07d, 08-b, 24-b, 30l (all edit these files). Dispatch right before 2
 Scout: none. Seams from the review (`docs/reviews/m7-10-to-07c.md` Major 4). Read ARCHITECTURE.md; use `codebase-design`.
 Files: graft `src/update/banner.rs` (→ `banner/rewrite.rs`, `banner/continue_in_git.rs`), `update/banner/stop.rs`,
 `update/preview.rs` (→ `preview/take.rs` …), `update/commit_editor.rs` (edit-stop amend → child), `update/operate.rs`;
-their new children, `mod` lines, MAP.md. Re-measure each at dispatch; add any other file over ~400 that grew in M7.
+graft-ops `src/preview.rs` (430 after 30l); their new children, `mod` lines, MAP.md. Re-measure each at dispatch; add any other file over ~400 that grew in M7.
 
 ## Acceptance
 - [ ] Each file ≤ ~400 after, or a gap row naming why not; before/after counts.
