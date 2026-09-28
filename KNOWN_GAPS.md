@@ -1004,3 +1004,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r0921-q1 | `a` on HEAD with a dependent branch and nothing staged is now refused (`rewrite/plan.rs:178-185` `NothingStagedFor`); before 09 it opened the message-only amend editor (reword HEAD). Intended? | **unverified** (question, user) | M7 |
 | M7/r0921-min | Review 09..21c minors: m1,m2 → 07b; m3-8,12,13 → 30k; m9-11,14 ptr, m15 fixed (ARCHITECTURE, gaps, pull prior-art row); m11 (ticket 09 stale) done by conductor | **unverified** until 07b/30k land | M7 |
 | M7/11-anc | `.` menu slot 2 (cherry-pick) dims only HEAD's row and merges (`check_commit`, no git read); an ancestor stays live and is refused in words on open (11 spec, planner 2026-09-28) | **unverified** (by design) | M7 |
+| M7/30e-priv | rustdoc warns: public docs link private items (`restart_source`, `merge_msg`, `is_operation`) in graft-ops (30e NOTES) | **broken** (doc, warning) | M8 |
