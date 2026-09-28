@@ -1009,3 +1009,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/08-words | Rewrite editor: `Moved` and "base again" wording open (08-a NOTES) | **unverified** (question) | M7 |
 | M7/07d-abort-words | Abort from a chain stop says `aborted: rebase feature-a onto main` (`banner.rs` `closing`), not the note's D3 `✓ rewrite aborted · every branch is as before`; walk asserts today's words | **unverified** (question) | M7 |
 | M7/07d-follow | graft-ui `follower_line` says `1 commit follow` (grammar; 07d NOTES) | **broken** (words) | M7 |
+| M7/08-order | Rewrite editor message order in ticket 08 differs from the engine rule (`graft-ops/src/rewrite/todo.rs:44-67`); captures follow the code | **unverified** (question) | M7 |
+| M7/08-bare | `R rewrite` last among row keys: at some widths bars show `f`/`t` bare (16 captures re-taken, 08 NOTES). Judge by eye | **unverified** (visual) | M7 |
