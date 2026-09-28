@@ -1,6 +1,6 @@
 # 07d — remainder of 07c: `space` stages at an edit stop, the followers row, the walks' fence, the captures
 
-Status: ready (planner spec-only pass, 2026-09-28; filed by conductor, after 08-a). Remainder of 07c (its boxes 1, 4, 5 unticked; NOTES rounds 1–3).
+Status: done (2026-09-28, builder; see NOTES — session compacted once). Remainder of 07c.
 Build with: **Opus** (provisional; the conductor confirms after the scout, ADR-0035). Why: three crates, a key whose
 meaning changes on two rows of the daily graph, and a bar sweep whose knock-ons need judgement; no signature here is
 hard to reverse (no Fable test met).
@@ -117,27 +117,27 @@ pub(crate) fn space_stages_here(state: &AppState) -> bool;
   `update/events*`, `update/mod.rs`.
 
 ## Acceptance
-- [ ] graft-ops, real git, a 3-branch line (his 4, feature-b by Sara 2, feature-c by Lina 1), edit stop on his row 2:
+- [x] graft-ops, real git, a 3-branch line (his 4, feature-b by Sara 2, feature-c by Lina 1), edit stop on his row 2:
   `progress_names_each_follower_with_author_and_count` — followers == `[(feature-b, Sara, 2), (feature-c, Lina, 1)]`,
   `pending_here().len() == 2`; `no_followers_on_the_top_branch` (stop in feature-c's row); `no_followers_for_a_shell_rebase`
   (shell `rebase -i --update-refs`: `branch` None, followers empty).
-- [ ] graft: `pending_view_lists_this_branchs_rows_and_summarises_followers` — no follower's sha7 among the rows; the
+- [x] graft: `pending_view_lists_this_branchs_rows_and_summarises_followers` — no follower's sha7 among the rows; the
   07c box-1 tests still pass (name them at tick time).
-- [ ] `space_on_the_stopped_row_stages_every_change`, `space_on_the_uncommitted_row_at_an_edit_stop_stages`
+- [x] `space_on_the_stopped_row_stages_every_change`, `space_on_the_uncommitted_row_at_an_edit_stop_stages`
   (each: the command sent equals `Ctrl+A`'s, compared, not re-described); `space_on_a_merge_row_at_an_edit_stop_still_folds`;
   `space_outside_an_edit_stop_is_unchanged` (Uncommitted row and a merge row, no stop); `space_with_the_banner_focused_is_the_banners`.
-- [ ] `the_bar_offers_space_stage_exactly_where_space_stages` (sweep: edit stop / conflict stop / no stop × stopped row /
+- [x] `the_bar_offers_space_stage_exactly_where_space_stages` (sweep: edit stop / conflict stop / no stop × stopped row /
   Uncommitted row / other row × graph / banner focus: bar draws `space stage` iff `space_stages_here`); the existing
   sweeps `every_key_the_bar_draws_is_answered`, `the_bar_offers_c_exactly_where_c_acts`, the m1 fold and M7/spacefold
   tests all green (named at tick time).
-- [ ] **Walks** (`m7_walk`, counted, fail over the fence):
+- [x] **Walks** (`m7_walk`, counted, fail over the fence):
   - `edit_stop_amend_continue`: from the landing (cursor on the stopped row), fs write to a tracked file, wait for the
     working-tree read, then `space a c` = 3 ≤ `noted_keys("edit-stop-amend-continue")`. After `space`: `git diff
     --cached` names the file. After `a`: still stopped, HEAD's tree has the edit, same message. After `c`: no
     `rebase-merge/`, his branch's commit has the edit, feature-b on top of his new tip.
   - `abort_from_a_chain_stop`: route `esc a y`, fenced ≤ `noted_keys("abort-from-a-chain-stop")`; every branch at its
     old oid, HEAD on his branch, the status line D3 names.
-- [ ] **Captures** (colour unverified), each ends in `docs/shots/m7/` ≤ 200 KB, under its Right line in the sheet:
+- [x] **Captures** (colour unverified), each ends in `docs/shots/m7/` ≤ 200 KB, under its Right line in the sheet:
   - `rewrite-edit-stop-187x50.txt` — **Right:** `still to apply · not commits yet` boxed; his two `pick` rows only;
     `feature-b (Sara): 2 commits follow, on top`; `▸`/`▏` on `HEAD · stopped here`; bar contains `a amend it`,
     `c continue`, `space stage`.
@@ -148,7 +148,7 @@ pub(crate) fn space_stages_here(state: &AppState) -> bool;
   - `rewrite-chain-stop-187x50.txt` — re-check only: banner `REBASING  step 3 of 5 · pick <sha> <subject> · feature-b,
     branch 2 of 3`, resolver below; byte-identical or each change named in NOTES. `rewrite-edit-stop-120x40.txt`
     regenerated if the pending rows changed.
-- [ ] TESTING.md "Stops during a rewrite": one entry per walk and capture above, saying what right looks like in the
+- [x] TESTING.md "Stops during a rewrite": one entry per walk and capture above, saying what right looks like in the
   words of the Right lines.
 
 ## Touches (each checked, reported on the builder's Touches line)
@@ -180,3 +180,32 @@ Each is decided in the review. Red test first for each, and tick each as its own
 - **Major 2:** the still-to-apply block isn't in the app's layout mirrors (`update/geometry.rs:23-27` `rows_above_graph`; `update/state.rs:473-489` `graph_rows`; `update/picker.rs:256` reads the same). Write one function that mirrors `screen_rows`' pending height, used by both, like `preview_rows_taken`. Test: a click on a drawn row under the block selects that row. Granted: `geometry.rs`, `state.rs`, `update/picker.rs`.
 - **Minor 1:** the stale comment at `keys.rs:343-344` (`o` and place mode).
 - **Minor 7:** the edit-stop bar draws `c` bare and spends width on `r`/`m`, which refuse during a live op (`preview.rs:303-304`). Rank `c continue` above the graph's write keys while an operation is live. Re-take the edit-stop captures.
+
+## NOTES (builder, 2026-09-28)
+
+**Compacted once mid-ticket.** Nothing remains: every box below is done and the workspace gates were run after the compaction. Scout used: `scouts/07d.md`.
+
+Ticks, each naming its test (all green in the final workspace run, 4741/4741 nextest + doc tests):
+- [x] Box 1 (graft-ops): `rewrite_followers::progress_names_each_follower_with_author_and_count` (red first: `followers` empty), `no_followers_on_the_top_branch`, `no_followers_for_a_shell_rebase` (`crates/graft-ops/tests/it/rewrite_followers.rs`, real git).
+- [x] Box 2: `update::banner::rewrite_stop_tests::pending_view_lists_this_branchs_rows_and_summarises_followers` (red first). 07c box-1 tests still green: graft-ui `still_to_apply::tests::{still_to_apply_is_newest_first_with_followers, still_to_apply_caps_at_six_then_more, no_block_when_nothing_is_pending}`, `graph_screen::tests::no_ghost_rows_in_the_graph`.
+- [x] Box 3: `update::keys::edit_stop_tests::{space_on_the_stopped_row_stages_every_change, space_on_the_uncommitted_row_at_an_edit_stop_stages, space_on_a_merge_row_at_an_edit_stop_still_folds, space_outside_an_edit_stop_is_unchanged, space_with_the_banner_focused_is_the_banners}`. The two staging tests compare the command against `operate::stage_all` run on a copy, not re-described.
+- [x] Box 4: `edit_stop_tests::the_bar_offers_space_stage_exactly_where_space_stages` (18 states; `space stage` drawn on 2: stopped row and Uncommitted row, graph focused, edit stop). Written after the bar change, not red first. Existing sweeps green: `update::tests::every_key_the_bar_draws_is_answered`, `every_swept_state_is_the_context_it_claims`, `keys::live_c_tests::the_bar_offers_c_exactly_where_c_acts`, `update::tests::space_folds_the_merge_under_the_cursor_and_unfolds_it`.
+- [x] Box 5 walks: `m7_walk::rewrite_stops::edit_stop_amend_continue` (`space a c`, 3, fenced by `within`); `abort_from_a_chain_stop` (`esc a y`, 3, fenced). Fence row added at `m7-power-tools.md` after `edit-stop-amend-continue`, verbatim.
+- [x] Box 6 captures: `capture_edit_stop_sizes` (187x50, 80x24) and the 120x40 one; `rewrite_stop_to_first_file` for the chain stop. `rewrite-chain-stop-187x50.txt` byte-identical (not in the diff). 80x24: 7 of his rows pending, 6 drawn, `+1 more`; follower row **drawn**. All ≤ 4 KB. Colour unverified.
+- [x] Box 7: TESTING.md "M7: stops during a rewrite" rewritten, one entry per walk and capture.
+- [x] Review **Major 1** (cause): a shown picker now claims keys before `banner_key` (`update/keys.rs` modal chain). `update::picker::tests::tab_in_the_picker_at_a_live_stop_is_the_pickers` (red first), `letters_in_the_picker_at_a_live_stop_are_typed`.
+- [x] Review **Major 2** (cause): `banner::pending_rows_taken` mirrors `view::frame`'s pending carve; `geometry::rows_above_graph` and `AppState::graph_rows` add it (`update/picker.rs` reads `rows_above_graph`, so needed no edit). `m7_walk::rewrite_stops::a_click_under_the_block_selects_the_row_drawn_there` at 120x40 and 80x24 (red first).
+- [x] Review **Minor 1**: `o` comment in `write_key` fixed. A comment: no test possible.
+- [x] Review **Minor 7** (cause): `lists::said_live_on_the_graph` ranks `c` right after `⇥ banner` (and `a amend it`), ahead of the write keys. `graft-ui hints::tests::live_c_is_ranked_ahead_of_the_rows_write_keys` — written after the change, not run red; the old order is on record in the pre-change m6 capture bars (`⇥ banner  m merge  r rebase … c finish`). m5 scenario `hints_at_80_show_three_and_more` expectation updated to `⇥ banner  c continue  ⏎ changes`.
+
+Findings:
+- The ticket's Touches line said `edit_stop_lands`' 3 picks were one branch. They were three branches (a2, b1, c1); the test now asserts rows `["a2"]` + followers `feature-b 1`, `feature-c 1`.
+- **Question (rule 7):** abort's status is `aborted: rebase feature-a onto main` (`update/banner.rs` `closing`, ~:1005), not the note's `✓ rewrite aborted · every branch is as before` (D3). The walk asserts today's words; not changed here.
+- **Textual defect, open:** graft-ui `still_to_apply.rs` `follower_line` says `1 commit follow` (120x40 capture). Out of scope (no widget changes).
+- `space` with nothing stageable does what `Ctrl+A` does: nothing, silently.
+- At 120 wide the bar draws `space` and `⏎` bare (width ladder); `space stage` shows at 187.
+- Harness: `App::focus_gained` added (`tests/it/app_harness.rs`) — the harness has no watcher, so the walk sends focus-gained after his edit, as the terminal would.
+- `graph_key` hit clippy's cognitive-complexity cap; the view arms moved into `view_key` (same order: edit-stop `space` first, then `view_change`).
+- m6 contact sheets regenerated (`scripts/contact-sheet.sh --captions-order m6 docs/shots/m6`): three m6 captures changed bar order; sheets 3 and 4 were already stale from earlier tickets' capture changes and are current now.
+
+Touches: `RewriteProgress` literals (grep, all updated: `update/tests.rs`, `rewrite_stop_tests.rs`, `view/tests.rs`); relaunch chain words (`a_relaunch_mid_rewrite_shows_the_chain` green); graph `space` elsewhere (fold tests green); bar (sweeps green, captures re-taken m6 ×3, m7 ×3); picker geometry (reads `rows_above_graph`; picker tests green); journal/undo (stage is `stage_all`'s entry, no new path); keymap (none edited); held files `operate.rs`, `preview.rs`, `running.rs`, graft-ops `preview.rs` not touched (diff).

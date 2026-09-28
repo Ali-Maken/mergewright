@@ -1538,6 +1538,7 @@ fn operation_live_leads_with_the_way_back() {
             row: Box::new(row.clone()),
             c: LiveC::Finish,
             tab_to_banner: true,
+            space_stages: false,
         };
         // 80 is the narrowest the app lays out for; 187 is the user's.
         for columns in [80, 120, 187, 200] {
@@ -1554,6 +1555,44 @@ fn operation_live_leads_with_the_way_back() {
                 "{row:?} at {columns}: `⇥` means one thing on this bar: {}",
                 hints_text(&drawn)
             );
+        }
+    }
+}
+
+/// Review m7-10-to-07c Minor 7 (07d): while an operation is live the graph's
+/// write keys refuse, so `c` — the key that moves the operation on — is
+/// ranked straight after the way back (and `a amend it` at an edit stop),
+/// ahead of `m`/`r`, and keeps its verb at 120 and 187.
+#[test]
+fn live_c_is_ranked_ahead_of_the_rows_write_keys() {
+    for (c, verb) in [
+        (LiveC::Continue, "continue"),
+        (LiveC::ContinueAmends, "continue"),
+        (LiveC::Finish, "finish"),
+    ] {
+        let context = HintContext::OperationLive {
+            row: Box::new(HintContext::PlainRow),
+            c,
+            tab_to_banner: true,
+            space_stages: false,
+        };
+        for columns in [120, 187] {
+            let drawn = hints_for(&context, Divider::Hidden, columns);
+            let at = |key: &str| drawn.iter().position(|hint| hint.key == key);
+            let lead = if c == LiveC::ContinueAmends { 2 } else { 1 };
+            assert_eq!(
+                drawn.get(lead).map(|hint| (hint.key, hint.verb)),
+                Some(("c", verb)),
+                "{c:?} at {columns}: {}",
+                hints_text(&drawn)
+            );
+            for write in ["m", "r"] {
+                assert!(
+                    at(write).is_none_or(|place| place > lead),
+                    "{c:?} at {columns}: `{write}` before `c`: {}",
+                    hints_text(&drawn)
+                );
+            }
         }
     }
 }

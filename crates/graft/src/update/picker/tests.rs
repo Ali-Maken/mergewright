@@ -592,3 +592,46 @@ fn a_click_outside_the_box_reaches_nothing_behind_it() {
     assert!(state.picker.is_some(), "the picker is modal");
     assert!(operated(&commands).is_none());
 }
+
+// ── At a live stop (review m7-10-to-07c Major 1) ───────────────────────
+
+/// The fixture at a rewrite's `edit` stop, the graph with the keyboard —
+/// where `C` opens the picker while an operation is live.
+fn at_a_live_stop() -> AppState {
+    let mut state = fixture();
+    crate::update::tests::operation_live_as(
+        &mut state,
+        graft_ui::graph_screen::LiveC::ContinueAmends,
+        true,
+    );
+    state
+}
+
+#[test]
+fn tab_in_the_picker_at_a_live_stop_is_the_pickers() {
+    let open = opened(&at_a_live_stop());
+    assert!(shown(&open), "C opens it at an edit stop");
+    let (state, commands) = press(&open, KeyCode::Tab);
+    assert!(!state.banner_focus, "the banner did not take the Tab");
+    assert!(state.picker.is_none(), "Tab closed the picker");
+    assert!(operated(&commands).is_none());
+    assert_eq!(
+        state
+            .history
+            .as_ref()
+            .and_then(crate::history::History::selected)
+            .map(|row| row.commit.id),
+        Some(oid(3)),
+        "the cursor on feature's tip"
+    );
+}
+
+#[test]
+fn letters_in_the_picker_at_a_live_stop_are_typed() {
+    let open = opened(&at_a_live_stop());
+    let state = typed(&open, "csa");
+    assert_eq!(picker(&state).query.text(), "csa");
+    assert!(!state.banner_focus);
+    assert!(state.confirm.is_none(), "no skip or abort box");
+    assert!(state.operating.is_none(), "nothing continued");
+}

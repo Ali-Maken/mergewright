@@ -16,7 +16,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::facts::FactsError;
 
-use super::{EditStop, RewriteProgress, TodoAction, TodoLine, saved};
+use super::{EditStop, Follower, RewriteProgress, TodoAction, TodoLine, saved};
 
 /// One line of a todo file git is running.
 enum Row {
@@ -73,13 +73,117 @@ pub fn progress(repo: &RepoHandle, stop: &dyn Stop) -> Result<Option<RewriteProg
         }
         _ => None,
     };
+    let followers = match (plan, &branch) {
+        (Some(plan), Some((_, index, _))) => followers(repo, plan, *index, &to_do, stop)?,
+        _ => Vec::new(),
+    };
     Ok(Some(RewriteProgress {
         step: counted,
         current,
         pending,
         branch,
         begun_in_graft: plan.is_some(),
+        followers,
     }))
+}
+
+/// The branches of the line above branch `index` (1-based), bottom up.
+///
+/// The todo still to run holds this branch's rows, its `update-ref`, then
+/// each follower's rows ended by its own `update-ref` — except the top
+/// branch (`head-name`), whose rows run to the end. So the k-th segment
+/// after the first `update-ref` is follower k's. Authors come from the
+/// tips the saved plan recorded before the rewrite: one `git log` spawn.
+fn followers(
+    repo: &RepoHandle,
+    plan: &saved::SavedPlan,
+    index: usize,
+    to_do: &[Row],
+    stop: &dyn Stop,
+) -> Result<Vec<Follower>, FactsError> {
+    let above = &plan.line[index.min(plan.line.len())..];
+    if above.is_empty() {
+        return Ok(Vec::new());
+    }
+    // Commit rows per segment; segment 0 is this branch's.
+    let mut segments = Vec::new();
+    let mut current = 0usize;
+    for row in to_do {
+        match row {
+            Row::Commit(_) => current += 1,
+            Row::UpdateRef => {
+                segments.push(current);
+                current = 0;
+            }
+        }
+    }
+    segments.push(current);
+    let tips = above
+        .iter()
+        .map(|(name, tip)| {
+            Oid::from_hex(tip).map_err(|_| {
+                FactsError::History(RunError::Unparsable(format!(
+                    "the saved plan's tip {tip:?} of {name:?}"
+                )))
+            })
+        })
+        .collect::<Result<Vec<Oid>, FactsError>>()?;
+    let authors = tip_authors(repo, &tips, stop)?;
+    above
+        .iter()
+        .zip(&tips)
+        .enumerate()
+        .map(|(k, ((name, _), tip))| {
+            let tip_author = authors
+                .iter()
+                .find(|(id, _)| id == tip)
+                .map(|(_, author)| author.clone())
+                .ok_or_else(|| {
+                    FactsError::History(RunError::Unparsable(format!(
+                        "git log printed no author for {name}'s tip {tip}"
+                    )))
+                })?;
+            Ok(Follower {
+                branch: name.strip_prefix("refs/heads/").unwrap_or(name).to_owned(),
+                tip_author,
+                // A todo with fewer `update-ref` lines than the line has
+                // branches (a hand `--edit-todo` removed one) leaves the
+                // follower no segment: none of its rows are still to come.
+                commits: segments.get(k + 1).copied().unwrap_or(0),
+            })
+        })
+        .collect()
+}
+
+/// Each tip's author name (`%an`), in one `git log --no-walk` spawn.
+fn tip_authors(
+    repo: &RepoHandle,
+    tips: &[Oid],
+    stop: &dyn Stop,
+) -> Result<Vec<(Oid, String)>, FactsError> {
+    let mut args = vec![
+        GitArg::Flag("log"),
+        GitArg::Flag("--no-walk=unsorted"),
+        GitArg::Flag("--format=%H%x00%an"),
+    ];
+    args.extend(tips.iter().map(|tip| GitArg::Word(tip.to_string())));
+    let output = GitInvocation::new(repo)
+        .args(args)
+        .run(stop)
+        .map_err(FactsError::of_history)?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.lines()
+        .map(|line| {
+            let unparsable = || {
+                FactsError::History(RunError::Unparsable(format!(
+                    "git log --format=%H%x00%an printed {line:?}"
+                )))
+            };
+            let (id, author) = line.split_once('\0').ok_or_else(unparsable)?;
+            let id = Oid::from_hex(id).map_err(|_| unparsable())?;
+            Ok((id, author.to_owned()))
+        })
+        .collect()
 }
 
 /// Whether the rebase in progress stopped on an `edit` row, and on which

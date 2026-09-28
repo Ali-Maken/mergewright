@@ -288,6 +288,34 @@ pub struct RewriteProgress {
     /// A plan of Graft's is saved for this rebase. `false` for one begun in
     /// the shell.
     pub begun_in_graft: bool,
+    /// The branches of the line above this step's, bottom up, each with the
+    /// commits of its own still in `pending` (m7-power-tools/07d). Empty
+    /// when `branch` is `None`.
+    pub followers: Vec<Follower>,
+}
+
+impl RewriteProgress {
+    /// `pending` minus the followers' rows: this branch's rows still to
+    /// apply, oldest first. The followers' rows are `pending`'s last ones
+    /// (git runs the line bottom up).
+    #[must_use]
+    pub fn pending_here(&self) -> &[TodoLine] {
+        let theirs: usize = self.followers.iter().map(|f| f.commits).sum();
+        &self.pending[..self.pending.len().saturating_sub(theirs)]
+    }
+}
+
+/// A branch of the line still to come at a rewrite stop: `feature-b
+/// (Sara): 2 commits follow` (m7-power-tools/07d D2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Follower {
+    /// The branch's short name (`feature-b`).
+    pub branch: String,
+    /// Who wrote its tip, as the saved plan had it before the rewrite
+    /// (`%an`): whose branch this is.
+    pub tip_author: String,
+    /// Its pick-like rows still in the todo.
+    pub commits: usize,
 }
 
 /// A rebase stopped on an `edit` row (m7-power-tools/07a): git handed him

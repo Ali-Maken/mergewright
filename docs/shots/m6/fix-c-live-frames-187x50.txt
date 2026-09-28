@@ -112,4 +112,4 @@
 
 
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
- ⏎ changes  c finish  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C
+ c finish  ⏎ changes  S stash  <> resize  p pull  . more  P  f  u  J  /  j/k  q  F2  F3  +  1  F  H  M  O  C

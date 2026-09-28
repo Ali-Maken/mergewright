@@ -462,8 +462,10 @@ fn hints_at_80_show_three_and_more() -> Scenario {
                 // With the rebase live and the banner one `Tab` away, the
                 // way back leads (m6-conflicts/12) and the row's own three
                 // become two. Graft began the rebase, so `c` continues it
-                // (m6-conflicts/52).
-                bar_is(state, "⇥ banner  ⏎ changes  c continue")
+                // (m6-conflicts/52), and is ranked right after the way
+                // back, above the row's own keys (review m7-10-to-07c
+                // Minor 7, m7-power-tools/07d).
+                bar_is(state, "⇥ banner  c continue  ⏎ changes")
             }),
             key(KeyCode::Enter),
             Step::WaitFor(Wait::ChangesPane),

@@ -40,16 +40,16 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 #
 === frame 1: the lease box over a rejected push ===
  graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
 ●    [origin/main] Commit 200                                       7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
 ●    Commit 197                                                     7y   2cce853
-●    Commit 196                                                     7y   325da3f
-●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 0722297
-●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ b6a4a47
-●    │ your fetch (lease)                                              │ 60af0eb
-●    │ rewrites history for everyone who has d5ae5fd                   │ aceb8c5
+●    ╭ Force-push main → origin/main? ─────────────────────────────────╮ 325da3f
+●    │ origin/main d5ae5fd → 739071c · refused if origin moved since   │ 0722297
+●    │ your fetch (lease)                                              │ b6a4a47
+●    │ rewrites history for everyone who has d5ae5fd                   │ 60af0eb
+●    │ nothing on origin/main is lost                                  │ aceb8c5
 ●    │                                                                 │ 11d68ff
 ●    │ git push --progress --force-with-lease=refs/heads/main:d5ae5fd… │ 91900bd
 ●    │                                                                 │ cec3e93
@@ -66,7 +66,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 
 === frame 2: `esc`, the rejection back ===
  graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
 ●    [origin/main] Commit 200                                       7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
@@ -118,7 +118,7 @@ what right looks like: (ticket 69) The same four frames at 80x24: the same four 
 
 === frame 4: `b`, `⏎` on an empty name ===
  graft /code/api  152 rows so far
-◆ ▏  [◆ main ↑1] ours                                               6y   739071c
+◆ ▏ⓘ [◆ main ↑1] ours                                               6y   739071c
 ●    [origin/main] Commit 200                                       7y   d5ae5fd
 ●    Commit 199                                                     7y   13e6ab1
 ●    Commit 198                                                     7y   f5055d9
@@ -166,7 +166,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
  graft /code/api  6 commits
   ● ▏ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
  Checkout fix
- Cherry-pick fbb2394
+ Cherry-pick fbb2394 (o)
  Explain
  Copy SHA (y)
  Compare with this (x)
@@ -202,7 +202,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ . explain  m merge  r rebase  ⏎ open  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 == 2. `.` on main's tip (checked out, no other branch) ==
 
@@ -210,7 +210,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
   ●  ⓘ [fix] fix the bug                                                                                 GF 3m   fbb2394
 ◆ │ ▏  [◆ main] main moves on                                                                            GF 4m   37926a7
  Checkout — already on main
- Cherry-pick 37926a7
+ Cherry-pick (o) — already on main
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)
@@ -245,7 +245,7 @@ what right looks like: (ticket 71) The `.` menu on a commit row leads with Check
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O
+ ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C
 
 ================================================================================
 docs/shots/m6/fix-undo-drift-way-back-120x40.txt
@@ -1049,7 +1049,7 @@ what right looks like: (ticket 70) Every `⇥` word names where `⇥` lands. Fra
 ================================================================================
 
 --- frame 1: files focused: the bar ends `⇥ diff`
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -1090,7 +1090,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -1131,7 +1131,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -1172,7 +1172,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 4: a second `⇥`: the banner has the keyboard
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -1301,7 +1301,7 @@ what right looks like: (ticket 70) The same six frames at 80x24: the same bars a
 ================================================================================
 
 --- frame 1: files focused: the bar ends `⇥ diff`
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1326,7 +1326,7 @@ CONFLICTS (13)
 
  ⏎ resolve  M mergetool  e edit  space resolved  c continue  ⇥ diff  . more
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1351,7 +1351,7 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1376,7 +1376,7 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 4: a second `⇥`: the banner has the keyboard
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -1843,15 +1843,15 @@ what right looks like: (ticket 82) `S p y` clashed in notes.md, then `esc` shut 
 #    then the keys that fit; nothing cut mid-word.
 
 [Graph]  Detail
- graft /code/api  7 commits
-◌     ▏  Uncommitted changes (1 unmerged)
-◆        [◆ main] commit over the notes                             3m   f3742ab
-│ ■─╮    [stash@{0}] WIP on main: cfa370c add the notes             4m   fa9e094
-│ │ ●    index on main: cfa370c add the notes                       4m   6938905
-●─┴─╯    add the notes                                              5m   cfa370c
-●        Correct the note                                           1y   a82960b
-●        Add the first note                                         1y   fadcfb3
-◇        Add a readme                                               1y   64ded19
+ graft /code/api  6 commits
+◌   ▏  Uncommitted changes (1 unmerged)
+◆      [◆ main] commit over the notes                               3m   f3742ab
+│ ■    [stash@{0}] WIP on main: cfa370c add the notes               4m   fa9e094
+●─╯    add the notes                                                5m   cfa370c
+●      Correct the note                                             1y   a82960b
+●      Add the first note                                           1y   fadcfb3
+◇      Add a readme                                                 1y   64ded19
+
 
 
 
@@ -2801,7 +2801,7 @@ what right looks like: (ticket 85 A) `esc G` on a 200-commit history after the f
 ●    Commit 002                                                                                          GF 2d   ace211d
 ◇ ▏  Commit 001                                                                                          GF 2d   a9a0c8e
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
 
 ================================================================================
 docs/shots/m6/stash-clash-take-esc-pane-120x40.txt
@@ -2824,15 +2824,15 @@ what right looks like: (ticket 85 B) `S p y esc ⏎ o esc`: a stash pop that cla
 #  - The header reads `diff vs HEAD <main's sha7>` (main's tip,
 #    `commit over the notes`), not the stash's id.
 
- graft /code/api  7 commits
-◌     ▏  Uncommitted changes (1 unmerged)
-◆        [◆ main] commit over the notes                                                                  GF 3m   f3742ab
-│ ■─╮    [stash@{0}] WIP on main: cfa370c add the notes                                                  GF 4m   fa9e094
-│ │ ●    index on main: cfa370c add the notes                                                            GF 4m   6938905
-●─┴─╯    add the notes                                                                                   GF 5m   cfa370c
-●        Correct the note                                                                                GF 1y   a82960b
-●        Add the first note                                                                              GF 1y   fadcfb3
-◇        Add a readme                                                                                    GF 1y   64ded19
+ graft /code/api  6 commits
+◌   ▏  Uncommitted changes (1 unmerged)
+◆      [◆ main] commit over the notes                                                                    GF 3m   f3742ab
+│ ■    [stash@{0}] WIP on main: cfa370c add the notes                                                    GF 4m   fa9e094
+●─╯    add the notes                                                                                     GF 5m   cfa370c
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
 
 
 

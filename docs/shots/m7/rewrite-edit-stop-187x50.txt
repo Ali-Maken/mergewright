@@ -1,15 +1,17 @@
- graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3 · change files, space stages, a amends it, c continues · ⇥ banner
+ graft /code/api    REBASING  step 3 of 7 · edit 7326de5 a3 · feature-a, branch 1 of 2 · change files, space stages, a amends it, c continues · ⇥ banner
 ╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ pick 1966dda c1                                                                                                                                                                         │
-│ pick 82392de b1                                                                                                                                                                         │
-│ pick 15335d9 a2                                                                                                                                                                         │
+│ pick 90e1a32 a5                                                                                                                                                                         │
+│ pick a00e43d a4                                                                                                                                                                         │
+│ feature-b (Sara): 2 commits follow, on top                                                                                                                                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  ●    [feature-c] c1                                                                                                                                                       GF 2d   1966dda
-● │    [main] m2                                                                                                                                                            GF 2d   9d9646b
-│ ●    [feature-b] b1                                                                                                                                                       GF 2d   82392de
-│ ●    [feature-a] a2                                                                                                                                                       GF 2d   15335d9
-│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                                                                                       GF 2d   0395451
-◇─╯    m1                                                                                                                                                                   GF 2d   256d42c
+  ●    [feature-b] b2                                                                                                                                                       SA 2d   a9d179d
+  ●    b1                                                                                                                                                                   SA 2d   5a1257a
+  ●    [feature-a] a5                                                                                                                                                       GF 2d   90e1a32
+  ●    a4                                                                                                                                                                   GF 2d   a00e43d
+  ◆ ▏  [HEAD] a3  HEAD · stopped here                                                                                                                                       GF 2d   7326de5
+  ●    a2                                                                                                                                                                   GF 2d   15335d9
+  ●    a1                                                                                                                                                                   GF 2d   0395451
+◇─╯    [main] m1                                                                                                                                                            GF 2d   256d42c
 
 
 
@@ -45,6 +47,4 @@
 
 
 
-
-
- ⇥ banner  a amend it  ⏎ open  b branch  r rebase  t tag  c continue  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C
+ ⇥ banner  a amend it  c continue  space stage  ⏎ open  b branch  r rebase  t tag  y sha  m merge  u undo  S stash  J journal  . more  /  q  F2  F3  x  +  j/k  1  F  H  f  p  P  M  O  C
