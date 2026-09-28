@@ -774,3 +774,49 @@ fn absorb_over_unstaged_edits_says_they_are_back() {
         "put 2 hunks into 2 commits \u{2713} \u{b7} 1 stays staged \u{b7} your unstaged edits are back \u{b7} u undoes"
     );
 }
+
+// ── landings that are not `Done` (review m7-09-to-21c, Minor 1) ─────────
+
+/// `previewed`, `y`, and the write's answer `outcome`, with the op `y` ran.
+fn answered(outcome: crate::jobs::operate::Operated) -> (AppState, Vec<Command>, Operation) {
+    let (state, commands) = update(&previewed(), key('y'));
+    let (id, op) = operate_job(&commands).expect("y launches");
+    let op = op.clone();
+    let mut state = state;
+    let commands = crate::update::operate::operated(&mut state, id, outcome, &mut ids());
+    (state, commands, op)
+}
+
+/// The put-in ran and was read back; only the staging did not come back.
+/// It is a landing like `Done`: the changed commit is tagged and the plan's
+/// words are spent — and the staging failure stays on the line.
+#[test]
+fn staging_not_kept_after_a_put_in_tags_and_spends_its_words() {
+    let (state, commands, op) = answered(crate::jobs::operate::Operated::StagingNotKept {
+        applied: applied(),
+        paths: vec!["src/auth.rs".into()],
+    });
+    assert!(tag_job(&commands).is_some(), "the changed commit is tagged");
+    assert_eq!(state.amend_into.shown_for(&op), None, "its words are spent");
+    assert!(sticky(&state).contains("src/auth.rs"), "{:?}", state.status);
+}
+
+/// It ran, but its after-state could not be read: the plan's words are
+/// forgotten, not left for a later write to pick up.
+#[test]
+fn incomplete_after_a_put_in_forgets_its_words() {
+    let (state, _, op) = answered(crate::jobs::operate::Operated::Incomplete {
+        applied: applied(),
+        error: "the refs did not read".to_owned(),
+    });
+    assert_eq!(
+        state.amend_into.shown_for(&op),
+        None,
+        "its words are forgotten"
+    );
+    assert!(
+        sticky(&state).contains("could not confirm"),
+        "{:?}",
+        state.status
+    );
+}

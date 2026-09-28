@@ -93,7 +93,18 @@ pub(super) fn land_on_live_operation(
     {
         state.status = super::state::Status::sticky(unread);
     }
-    land_on_the_work(state, commands, paths.into_iter().next(), next_id);
+    // An `edit` stop lands on `HEAD`'s row in the graph (07b); any other
+    // stop on the work, as it did.
+    if state
+        .stopped
+        .as_ref()
+        .and_then(super::banner::edit_stop_of)
+        .is_some()
+    {
+        super::banner::relaunch_lands_on_head(state, commands);
+    } else {
+        land_on_the_work(state, commands, paths.into_iter().next(), next_id);
+    }
     true
 }
 

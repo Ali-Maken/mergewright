@@ -4908,3 +4908,57 @@ fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
 
 mod bottom_row;
 mod credential_footer;
+
+/// m7-power-tools/07b: at a rewrite's `edit` stop `HEAD`'s row is tagged
+/// `HEAD · stopped here`, from the stop itself — no other row, and no tag
+/// once the stop is a conflict stop.
+#[test]
+fn the_edit_stop_tags_head_s_row_stopped_here() {
+    use graft_ui::graph_screen::RowTag;
+    let mut state = AppState {
+        history: Some(history_of(3, 0)),
+        refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(3))))),
+        size: Size {
+            columns: 80,
+            rows: 6,
+        },
+        ..AppState::default()
+    };
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Rebase,
+        step: Some((1, 2)),
+        head_name: None,
+        onto: None,
+        theirs: Ok(None),
+    });
+    state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
+    state.stopped = Some(crate::update::Stop {
+        origin: crate::update::LiveOrigin::ThisRun,
+        again: false,
+        kind: graft_git::state::InProgress::Rebase,
+        paths_at_stop: 0,
+        rewrite: Some(Ok(crate::update::banner::RewriteStop {
+            progress: graft_ops::rewrite::RewriteProgress {
+                step: (1, 2),
+                current: None,
+                pending: Vec::new(),
+                branch: None,
+                begun_in_graft: true,
+            },
+            edit: Some(graft_ops::rewrite::EditStop {
+                stopped: oid(3),
+                head_on_it: true,
+            }),
+        })),
+    });
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+    let tags: Vec<Option<RowTag>> = view.rows.iter().map(|row| row.tag.clone()).collect();
+    assert_eq!(tags, vec![Some(RowTag::StoppedHere), None, None]);
+
+    // A conflict stop: no `edit` read, no tag.
+    if let Some(stop) = state.stopped.as_mut() {
+        stop.rewrite = None;
+    }
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+    assert!(view.rows.iter().all(|row| row.tag.is_none()));
+}

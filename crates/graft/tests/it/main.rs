@@ -58,6 +58,7 @@ mod refresh_race;
 mod remote_by_key;
 mod repo_truth;
 mod resolver;
+mod rewrite_stop;
 mod seam_rule;
 mod stash_by_key;
 mod stash_clash;

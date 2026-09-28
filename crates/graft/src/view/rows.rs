@@ -488,6 +488,10 @@ fn live_c(state: &AppState) -> Option<LiveC> {
     live_operation(state).map(|live| match (live.0, pane_c_acts(live)) {
         (_, false) => LiveC::Refuses,
         (InProgress::Merge, true) => LiveC::Finish,
+        // A rewrite's `edit` stop: `a amend it` leads (07b).
+        (InProgress::Rebase, true) if crate::update::commit_editor::at_edit_stop(state) => {
+            LiveC::ContinueAmends
+        }
         (_, true) => LiveC::Continue,
     })
 }

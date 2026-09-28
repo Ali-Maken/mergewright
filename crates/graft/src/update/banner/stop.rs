@@ -171,6 +171,38 @@ pub(in crate::update) fn finished_lands_on_head(state: &mut AppState, commands: 
     state.head_landing = crate::update::state::HeadLanding { refs, walk };
 }
 
+/// At a rewrite's `edit` stop the graph gets the keyboard with its cursor
+/// on `HEAD`, the commit the stop handed him (07b, Decided "Edit stop"):
+/// owed through the landing a finished `c` uses, spent once `commands`'
+/// refs read and walk are in. Nothing at any other stop.
+pub(in crate::update) fn edit_stop_lands_on_head(state: &mut AppState, commands: &[Command]) {
+    if state.stopped.as_ref().and_then(edit_stop_of).is_some() {
+        finished_lands_on_head(state, commands);
+    }
+}
+
+/// [`edit_stop_lands_on_head`] at a relaunch: no refresh of its own to wait
+/// on, only the launch's reads — the refs read while it is still out, the
+/// walk while it has not started. Spent at once when both are in.
+pub(in crate::update) fn relaunch_lands_on_head(state: &mut AppState, commands: &mut Vec<Command>) {
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    state.on_working_tree = false;
+    let refs = match state.refs_read {
+        crate::update::state::RefsRead::Pending(id) => Some(id),
+        crate::update::state::RefsRead::Unknown | crate::update::state::RefsRead::Current(_) => {
+            None
+        }
+    };
+    let walk = if state.history.is_none() {
+        state.awaiting
+    } else {
+        None
+    };
+    state.land_on_head = true;
+    state.head_landing = crate::update::state::HeadLanding { refs, walk };
+    land_on_head(state, commands);
+}
+
 /// A refs read answered. The one [`AppState::head_landing`] waits on is
 /// spent here; any other — an older read still in flight when `c` was
 /// pressed — leaves the landing owed.

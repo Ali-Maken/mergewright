@@ -193,7 +193,9 @@ fn changes_pane_live_forms() -> Vec<HintContext> {
     let mut forms = Vec::new();
     for c in LIVE_C {
         let tabs: &[TabWord] = match c {
-            LiveC::Finish | LiveC::Continue => &[TabWord::Diff, TabWord::Banner],
+            LiveC::Finish | LiveC::Continue | LiveC::ContinueAmends => {
+                &[TabWord::Diff, TabWord::Banner]
+            }
             LiveC::Refuses => &[TabWord::Diff, TabWord::Banner, TabWord::Graph],
         };
         for &tab in tabs {
@@ -210,7 +212,12 @@ fn changes_pane_live_forms() -> Vec<HintContext> {
 }
 
 /// Every [`LiveC`], for the forms that carry one.
-const LIVE_C: [LiveC; 3] = [LiveC::Finish, LiveC::Continue, LiveC::Refuses];
+const LIVE_C: [LiveC; 4] = [
+    LiveC::Finish,
+    LiveC::Continue,
+    LiveC::ContinueAmends,
+    LiveC::Refuses,
+];
 
 /// Every [`HintContext::Finish`] form: each focus, a git-combined row under
 /// the cursor or not. Only the files focus reads `expandable`, so the other

@@ -49,7 +49,7 @@ fn stopped(kind: InProgress, paths: &[&str]) -> AppState {
 
 /// An `Applied` naming a finished `--continue`. Only `description` and
 /// `refresh` are read by `resumed`; the rest is a plausible journal entry.
-fn done_applied() -> graft_ops::apply::Applied {
+pub(super) fn done_applied() -> graft_ops::apply::Applied {
     use graft_core::journal::{
         EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
     };

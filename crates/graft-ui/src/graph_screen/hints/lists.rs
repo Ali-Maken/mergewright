@@ -351,25 +351,36 @@ fn changes_pane_list(unmerged: bool, live: Option<LiveC>, tab: TabWord) -> Vec<H
 /// live (m6-conflicts/52), in the same place: `c finish`, `c continue`, or
 /// gone where `c` only refuses in words. Every other hint is untouched.
 pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
-    list.into_iter()
-        .filter_map(|hint| {
-            if hint.key != "c" {
-                return Some(hint);
-            }
-            match c {
-                LiveC::Finish => Some(Hint {
-                    verb: "finish",
-                    ..hint
-                }),
-                LiveC::Continue => Some(Hint {
-                    verb: "continue",
-                    ..hint
-                }),
-                LiveC::Refuses => None,
-            }
-        })
-        .collect()
+    // At an `edit` stop `a` amends the stopped commit, and it leads: it is
+    // the step the stop is for (07b, note R4's bar).
+    let mut said = match c {
+        LiveC::ContinueAmends => vec![AMEND_IT],
+        LiveC::Finish | LiveC::Continue | LiveC::Refuses => Vec::new(),
+    };
+    said.extend(list.into_iter().filter_map(|hint| {
+        if hint.key == AMEND_IT.key && c == LiveC::ContinueAmends {
+            return None;
+        }
+        if hint.key != "c" {
+            return Some(hint);
+        }
+        match c {
+            LiveC::Finish => Some(Hint {
+                verb: "finish",
+                ..hint
+            }),
+            LiveC::Continue | LiveC::ContinueAmends => Some(Hint {
+                verb: "continue",
+                ..hint
+            }),
+            LiveC::Refuses => None,
+        }
+    }));
+    said
 }
+
+/// `a amend it`, at a rewrite's `edit` stop.
+const AMEND_IT: Hint = hint("a", "amend it");
 
 fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {
     if unmerged {

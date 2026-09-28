@@ -870,6 +870,16 @@ fn done_status(
     if let Some((index, why)) = clash_drop {
         return super::clash::dropped_status(index, why);
     }
+    // `a` at a rewrite's `edit` stop (07b): the stop is still live and `c`
+    // is the next key.
+    if matches!(launched_op, Some(Operation::Amend(_))) && super::commit_editor::at_edit_stop(state)
+    {
+        return Status::Done {
+            what: "amended the stopped commit".to_owned(),
+            also: None,
+            keys: Some("c continues".to_owned()),
+        };
+    }
     if let Some(on) = launched_op.and_then(super::switch::landed_words) {
         return Status::Done {
             what: on,
@@ -1033,8 +1043,10 @@ fn stopped(
     // what the commit editor's refusal names.
     let mut commands = refresh_scope(state, Refresh::Everything, next_id);
     // …and, with anything unmerged, lands in the resolver on the
-    // first conflicted file (m6-conflicts/18).
+    // first conflicted file (m6-conflicts/18); at an `edit` stop, on
+    // `HEAD`'s row (07b).
     super::banner::land_in_resolver(state, &mut commands, &paths, next_id);
+    super::banner::edit_stop_lands_on_head(state, &commands);
     commands
 }
 
@@ -1095,10 +1107,26 @@ pub fn operated(
                 .as_ref()
                 .and_then(super::switch::landed_words)
                 .unwrap_or_else(|| done_what(state, remote_op.as_ref(), &applied));
-            state.status = staging_not_kept_status(&what, &paths, state.size.columns);
-            landed(state, &applied, lands_on_head, next_id)
+            let status = staging_not_kept_status(&what, &paths, state.size.columns);
+            let mut commands = landed(state, &applied, lands_on_head, next_id);
+            // A put-in landed all the same: its commits are tagged and its
+            // words spent (review m7-09-to-21c, Minor 1). Its `Done` line
+            // gives way to the staging failure, which must be seen.
+            super::amend_into::landed(state, launched_op.as_ref(), &mut commands, next_id);
+            state.status = status;
+            commands
         }
-        Operated::Incomplete { applied, error } => incomplete(state, &applied, &error, next_id),
+        Operated::Incomplete { applied, error } => {
+            // A put-in's words are over whatever its after-state says: left
+            // standing, a later write's landing could pick them up (Minor 1).
+            if launched_op
+                .as_ref()
+                .is_some_and(|op| state.amend_into.shown_for(op).is_some())
+            {
+                super::amend_into::forget(state);
+            }
+            incomplete(state, &applied, &error, next_id)
+        }
         stop @ Operated::Conflicted { .. } => stopped(state, stop, next_id),
         // A stash put back clashed: the resolver on the first clashed file,
         // no banner (m6-conflicts/72b).

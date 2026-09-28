@@ -53,8 +53,10 @@ pub use stop::{
     stop_wordings,
 };
 pub(crate) use stop::{TabTarget, tab_keys, tab_target, tabs_to_banner};
+pub(super) use stop::{
+    edit_stop_lands_on_head, refs_answered, relaunch_lands_on_head, walk_started,
+};
 pub(crate) use stop::{edit_stop_of, progress_unread, read_rewrite_stop, stop_takes_focus};
-pub(super) use stop::{refs_answered, walk_started};
 
 /// The banner's word for an operation, as the header draws it.
 ///
@@ -769,6 +771,7 @@ pub fn resumed(
             let everything = graft_ops::apply::Refresh::Everything;
             let mut commands = super::operate::refresh_scope(state, everything, next_id);
             land_in_resolver(state, &mut commands, &paths, next_id);
+            edit_stop_lands_on_head(state, &commands);
             commands
         }
         // Over, but its set-aside clashed putting back (ADR-0045 §4, m6-conflicts/74).
@@ -993,5 +996,7 @@ fn kept_open(
     }
 }
 
+#[cfg(test)]
+mod rewrite_stop_tests;
 #[cfg(test)]
 mod tests;

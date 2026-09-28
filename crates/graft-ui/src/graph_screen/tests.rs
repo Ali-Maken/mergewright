@@ -2057,7 +2057,7 @@ fn row_at_is_none_off_the_body() {
 /// Shapes [`coverage_slot`] can answer with — one per variant and per
 /// boolean field combination (54 → 63 in m6-conflicts/50: the confirm box
 /// once per `ConfirmYes`).
-const COVERAGE_SLOTS: usize = 90;
+const COVERAGE_SLOTS: usize = 96;
 
 /// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
 ///
@@ -2070,6 +2070,28 @@ const COVERAGE_SLOTS: usize = 90;
 /// wrap is not a shape of its own: `every_context` builds them by wrapping
 /// the plain list, so a plain shape that reaches the list reaches its
 /// wrapped forms too.
+/// [`coverage_slot`]'s live-operation forms.
+fn operation_live_slot(context: &HintContext) -> usize {
+    match context {
+        // m6-conflicts/52: each `c` × one `⇥` from the banner or not. The
+        // form every live bar had before 52 keeps its slot, 29; the other
+        // five are 49–53.
+        // m7-power-tools/07b: an `edit` stop's `a amend it` (90–91).
+        HintContext::OperationLive {
+            c: super::LiveC::ContinueAmends,
+            tab_to_banner,
+            ..
+        } => 90 + usize::from(!*tab_to_banner),
+        HintContext::OperationLive {
+            c, tab_to_banner, ..
+        } => match 2 * live_c_slot(*c) + usize::from(!*tab_to_banner) {
+            0 => 29,
+            other => 48 + other,
+        },
+        _ => unreachable!("only live-operation forms come here"),
+    }
+}
+
 fn coverage_slot(context: &HintContext) -> usize {
     match context {
         HintContext::WorkingTreeRow => 0,
@@ -2123,15 +2145,7 @@ fn coverage_slot(context: &HintContext) -> usize {
         HintContext::NamePrompt { toggle: false } => 26,
         HintContext::NamePrompt { toggle: true } => 27,
         HintContext::Credential => 28,
-        // m6-conflicts/52: each `c` × one `⇥` from the banner or not. The
-        // form every live bar had before 52 keeps its slot, 29; the other
-        // five are 49–53.
-        HintContext::OperationLive {
-            c, tab_to_banner, ..
-        } => match 2 * live_c_slot(*c) + usize::from(!*tab_to_banner) {
-            0 => 29,
-            other => 48 + other,
-        },
+        HintContext::OperationLive { .. } => operation_live_slot(context),
         // Only the files focus reads `expandable`.
         HintContext::Finish {
             focus: crate::finish_summary::SummaryFocus::Files,
@@ -2205,6 +2219,18 @@ fn changes_pane_slot(context: &HintContext) -> usize {
         // `unmerged`: from the file list, `⇥ diff` (43–48); from the diff
         // with a banner, `⇥ banner` (65–70); a bisect's `⇥ graph` (71–72,
         // which `c finish`/`c continue`, never bannerless, share).
+        // m7-power-tools/07b: an `edit` stop's, from the list (92–93) and
+        // from the diff (94–95).
+        HintContext::ChangesPane {
+            unmerged,
+            live: Some(super::LiveC::ContinueAmends),
+            tab: TabWord::Diff,
+        } => 92 + usize::from(*unmerged),
+        HintContext::ChangesPane {
+            unmerged,
+            live: Some(super::LiveC::ContinueAmends),
+            tab: TabWord::Banner,
+        } => 94 + usize::from(*unmerged),
         HintContext::ChangesPane {
             unmerged,
             live: Some(c),
@@ -2241,6 +2267,7 @@ fn live_c_slot(c: super::LiveC) -> usize {
         super::LiveC::Finish => 0,
         super::LiveC::Continue => 1,
         super::LiveC::Refuses => 2,
+        super::LiveC::ContinueAmends => unreachable!("its slots are its own (90–95)"),
     }
 }
 
@@ -2386,4 +2413,24 @@ fn ascii_tier_draws_tilde_changed() {
     let lines = text(&draw(&tagged, 120, 5));
     assert!(lines[1].contains("Commit 2  ~ changed"), "{lines:#?}");
     assert!(!lines[1].contains('\u{270e}'), "{lines:#?}");
+}
+
+/// m7-power-tools/07b: `HEAD · stopped here` after the subject, in both
+/// tiers.
+#[test]
+fn the_stopped_here_tag_draws_after_the_subject() {
+    let rows = linear(2);
+    let mut tagged = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    tagged.rows[0].tag = Some(RowTag::StoppedHere);
+    let lines = text(&draw(&tagged, 120, 5));
+    assert!(
+        lines[1].contains("Commit 2  HEAD \u{b7} stopped here"),
+        "{lines:#?}"
+    );
+    tagged.ascii = true;
+    let lines = text(&draw(&tagged, 120, 5));
+    assert!(
+        lines[1].contains("Commit 2  HEAD \u{b7} stopped here"),
+        "{lines:#?}"
+    );
 }

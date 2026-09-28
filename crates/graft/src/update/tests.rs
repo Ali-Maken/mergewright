@@ -4461,7 +4461,7 @@ fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, ban
     use graft_ui::graph_screen::LiveC;
     let kind = match c {
         LiveC::Finish => InProgress::Merge,
-        LiveC::Continue => InProgress::Rebase,
+        LiveC::Continue | LiveC::ContinueAmends => InProgress::Rebase,
         LiveC::Refuses if banner => InProgress::Rebase,
         LiveC::Refuses => InProgress::Bisect,
     };
@@ -4472,8 +4472,30 @@ fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, ban
         onto: None,
         theirs: Ok(None),
     });
-    if c == LiveC::Continue {
+    if matches!(c, LiveC::Continue | LiveC::ContinueAmends) {
         state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
+    }
+    // A rewrite's `edit` stop (07b): the stop carries the edit-stop read.
+    if c == LiveC::ContinueAmends {
+        state.stopped = Some(crate::update::Stop {
+            origin: crate::update::LiveOrigin::ThisRun,
+            again: false,
+            kind,
+            paths_at_stop: 0,
+            rewrite: Some(Ok(crate::update::banner::RewriteStop {
+                progress: graft_ops::rewrite::RewriteProgress {
+                    step: (1, 2),
+                    current: None,
+                    pending: Vec::new(),
+                    branch: None,
+                    begun_in_graft: true,
+                },
+                edit: Some(graft_ops::rewrite::EditStop {
+                    stopped: graft_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes"),
+                    head_on_it: true,
+                }),
+            })),
+        });
     }
     state.banner_focus = false;
     // Checked, not trusted: `live_operation` reads "Graft began it" off

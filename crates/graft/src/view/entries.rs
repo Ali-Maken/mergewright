@@ -8,7 +8,7 @@ use graft_graph::{Ancestry, Kin};
 use graft_term::{sanitize_line, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Badge, BadgeKind, GraphEntry, SHA_WIDTH, Tracking, initials, relative_date,
+    AuthorChip, Badge, BadgeKind, GraphEntry, RowTag, SHA_WIDTH, Tracking, initials, relative_date,
     short_sha,
 };
 
@@ -344,9 +344,23 @@ fn row_entry<'a>(
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
         compare_marked,
         marker,
-        // A commit a put-in just changed (m7-power-tools/09).
-        tag: state.row_tags.on(row.commit.id).cloned(),
+        // `HEAD · stopped here` at a rewrite's `edit` stop (07b), else a
+        // commit a put-in just changed (m7-power-tools/09).
+        tag: stopped_here(state, row.commit.id)
+            .or_else(|| state.row_tags.on(row.commit.id).cloned()),
     }
+}
+
+/// `HEAD · stopped here` on `HEAD`'s row while a rewrite is stopped on an
+/// `edit` row (m7-power-tools/07b). Drawn from the stop, not held in
+/// `row_tags`: every write clears those, and an amend at the stop must
+/// leave the new `HEAD` still tagged.
+fn stopped_here(state: &AppState, id: graft_core::oid::Oid) -> Option<RowTag> {
+    let head = state
+        .refs
+        .as_deref()
+        .and_then(crate::refs::RefBadges::head)?;
+    (id == head && crate::update::commit_editor::at_edit_stop(state)).then_some(RowTag::StoppedHere)
 }
 
 /// One ref's badge, its names sanitised on the way into `ui`: ref names are
