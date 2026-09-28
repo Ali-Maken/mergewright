@@ -63,7 +63,7 @@ pub(crate) fn line_of(
 ///
 /// A branch checked out in another worktree is still in the line: it is
 /// built on his, and leaving it behind is the duplicated history the chain
-/// exists to prevent. [`plan`] refuses it in words instead.
+/// exists to prevent. [`plan`](super::plan) refuses it in words instead.
 ///
 /// `default_branch` is the user's `graph.default_branch` when set; it wins
 /// over git's guess.
