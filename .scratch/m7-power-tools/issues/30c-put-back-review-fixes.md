@@ -221,10 +221,10 @@ worktree v3).
 - [x] Minor 2: `SetAside.staged` gone; T11 `set_aside_staged_is_zero_for_every_kind` deleted; sites in NOTES.
       `operation::history::tests::sets_aside_table` and
       `update::preview::tests::the_set_aside_row_sits_under_the_working_tree_line` green.
-- [ ] Minor 3: `put_back.rs`'s link resolved (now `[from_index_base](super::rebuild::from_index_base)`); ADR-0045:227
+- [x] Minor 3: `put_back.rs`'s link resolved (now `[from_index_base](super::rebuild::from_index_base)`); ADR-0045:227
       names `apply/set_aside/rebuild.rs`; `objects.rs:1-4` and graft-ops MAP say absorb uses `resolve` only.
-      **Not ticked: the check does not pass crate-wide.** `put_back.rs` is no longer in its output; 5 other
-      unresolved links, all older than 30c, fail it (NOTES "Minor 3").
+      Ticked by 30e: `RUSTDOCFLAGS="-D rustdoc::broken-intra-doc-links" cargo doc --no-deps -p graft-ops`
+      exits 0 after 30e fixed the 5 older links.
 - [x] Minor 6: M6 `put_back_index::undo_after_a_fallback_restores_the_split` (redo added) green first.
 - [x] Minor 7: the arm folded. `update::banner::tests::resume_words::a_resume_whose_put_back_lost_staging_is_done_and_says_so`
       green; clippy clean.
