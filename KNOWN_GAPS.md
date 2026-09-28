@@ -999,7 +999,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/09b-perf | `a` dependents check 6.8 ms vs 16.7 budget measured at load ~7 (`docs/perf/09b.txt`); quiet re-run owed | **unverified** (perf) | M7 |
 | M7/09b-q3 | Put-in landing says unstaged edits are back from "existed at plan", not `done_status`'s fact (`landed` can't see it) — deviation from 09b ruling | **unverified** (question) | M7 |
 | M7/10-bar | Picker bar order deviates from ticket 10 (esc 3rd; ⇥ 3rd drew nothing at 40 cols); needs ruling on `switch`/`show` short forms to restore order | **unverified** (question) | M7 |
-| M7/10-cp-walk | `cherry-pick-other-branch` walk (`C <type> ⇥ motion o y` = 6) not built; lands with ticket 11 | **unverified** | M7 |
 | M7/30j-cost | 30j adds 2 `git config` spawns (begin + read-after, `graft-ops/src/apply/record.rs`) to every op touching a branch ref; unmeasured (review 09..21c Minor 14) | **unverified** (perf) | M7 |
 | M7/r0921-q1 | `a` on HEAD with a dependent branch and nothing staged is now refused (`rewrite/plan.rs:178-185` `NothingStagedFor`); before 09 it opened the message-only amend editor (reword HEAD). Intended? | **unverified** (question, user) | M7 |
 | M7/r0921-min | Review 09..21c minors: m1,m2 → 07b; m3-8,12,13 → 30k; m9-11,14 ptr, m15 fixed (ARCHITECTURE, gaps, pull prior-art row); m11 (ticket 09 stale) done by conductor | **unverified** until 07b/30k land | M7 |

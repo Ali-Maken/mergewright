@@ -4705,6 +4705,25 @@ fn blame_screens(walk: JobId, context: &HintContext) -> Vec<AppState> {
     }
 }
 
+/// m7-power-tools/11: `o` takes a commit on the graph only. In a place
+/// (blame here) it is unbound: no preview, no command, no status.
+#[test]
+fn o_is_unbound_in_place_mode() {
+    let blame =
+        super::place::tests::place_on_screen(commit_pane(JobId::new(1), false), false, false);
+    let (after, commands) = update(&blame, key(KeyCode::Char('o')));
+    // Every update asks the evil-merge probe for the selected commit once
+    // (`detail/ops.rs`, runs on every update); that is the fixture settling,
+    // not `o`. Anything else would be `o` doing something.
+    let from_o: Vec<_> = commands
+        .iter()
+        .filter(|c| !matches!(c, Command::EvilProbe(..)))
+        .collect();
+    assert!(from_o.is_empty(), "{from_o:?}");
+    assert!(after.preview.is_none());
+    assert_eq!(after.status, blame.status);
+}
+
 /// [`screen_for`]'s history place (m7-power-tools/21b): `L` pressed on a
 /// blame place over the pane, and the trace answered through `update` as
 /// the event loop delivers it. With rows: the list focused, or `Tab` to the

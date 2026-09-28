@@ -186,7 +186,7 @@ fn menu_cherry_pick_is_four_keys() {
         let open = state.context_menu.as_ref().expect("a menu is open");
         assert_eq!(
             open.menu.items[open.menu.cursor].label.as_str(),
-            format!("Cherry-pick {}", &fix[..7]),
+            format!("Cherry-pick {} (o)", &fix[..7]),
             "topic: {with_topic}"
         );
         let state = keys.press(&state, KeyCode::Enter);
@@ -245,9 +245,11 @@ fn a_click_on_the_dim_checkout_slot_keeps_the_menu_and_says_why() {
 
 /// m6-conflicts/75: the dim of `Checkout — already on main`, read from the
 /// cells the app draws (a capture carries no attributes, CLAUDE.md rule 5).
-/// Every cell of that row's words carries `DIM`; no cell of `Cherry-pick`'s
-/// does. Proves the buffer, not how a terminal renders dim: the look is
-/// **unverified** until the user sees it.
+/// Every cell of that row's words carries `DIM`. Since m7-power-tools/11
+/// slot 2 dims too on this row (`Cherry-pick (o) — already on main`, `o`'s
+/// refusal); the name's "only it" now means only the two slots — no cell of
+/// `Copy SHA (y)` is dim. Proves the buffer, not how a terminal renders dim:
+/// the look is **unverified** until the user sees it.
 #[test]
 fn the_checkout_slot_on_head_s_row_is_drawn_dim_and_only_it() {
     use ratatui::style::Modifier;
@@ -293,10 +295,15 @@ fn the_checkout_slot_on_head_s_row_is_drawn_dim_and_only_it() {
         dim.iter().all(|cell| cell.contains(Modifier::DIM)),
         "{dim:?}"
     );
-    let pick = cells_of(&format!("Cherry-pick {}", &main[..7]));
+    let pick = cells_of("Cherry-pick (o) — already on main");
     assert!(
-        pick.iter().all(|cell| !cell.contains(Modifier::DIM)),
+        pick.iter().all(|cell| cell.contains(Modifier::DIM)),
         "{pick:?}"
+    );
+    let copy = cells_of("Copy SHA (y)");
+    assert!(
+        copy.iter().all(|cell| !cell.contains(Modifier::DIM)),
+        "{copy:?}"
     );
     drop(state);
     app.close();
@@ -320,7 +327,7 @@ fn capture_menu_fixed_slots() {
         &labels(&on_fix)[..2],
         &[
             "Checkout fix".to_owned(),
-            format!("Cherry-pick {}", &fix[..7])
+            format!("Cherry-pick {} (o)", &fix[..7])
         ]
     );
     // The `ⓘ` that puts `Explain` third is the "no upstream" mark: fix has
@@ -353,10 +360,7 @@ fn capture_menu_fixed_slots() {
             .map(graft_term::SanitizedText::as_str),
         Some("already on main")
     );
-    assert_eq!(
-        open.menu.items[1].label.as_str(),
-        format!("Cherry-pick {}", &main[..7])
-    );
+    assert_eq!(open.menu.items[1].label.as_str(), "Cherry-pick (o)");
     let main_frame = frame_at(&on_main, 120, 40, Some(Clock::Fixed(FORK_NOW)));
 
     let body = format!(

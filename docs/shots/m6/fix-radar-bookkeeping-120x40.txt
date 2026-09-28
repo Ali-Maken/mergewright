@@ -108,7 +108,7 @@
  graft /code/api  152 rows so far
 ◆   ▏  [◆ main ⇄ origin] ours                                                                            GF now  0000000
  Checkout — already on main
- Cherry-pick 0000000
+ Cherry-pick (o) — already on main
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)

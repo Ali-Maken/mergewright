@@ -9,7 +9,7 @@ use graft_term::{SanitizedText, sanitize_line};
 
 use super::verbs::{
     HistoryVerb, checkout_verbs, delete_verbs, fix_verbs, head_tip, merge_and_rebase_verbs,
-    pick_verb, reset_verbs, revert_verb, short,
+    pick_slot, pick_verb, reset_verbs, revert_verb, short,
 };
 use crate::refs::{RefBadges, RefLabel};
 use crate::update::preview::current_branch;
@@ -18,12 +18,19 @@ use crate::update::preview::current_branch;
 /// `verbs[..leading]` go above `Explain` and the row's own actions, the rest
 /// below them. `dim_first` is `(label, reason)` for a slot 1 that cannot
 /// act — the `HEAD` row whose only local branch is the current one — and
-/// carries no verb, so it dispatches nothing.
+/// carries no verb, so it dispatches nothing. `dimmed` is `(index into
+/// verbs, reason)` for the one verb drawn dim in its place — slot 2's
+/// Cherry-pick where `o` would refuse (m7-power-tools/11); the menu makes it
+/// unavailable, so its operation is never run.
+///
+/// (Held here rather than on [`HistoryVerb`]: the drop menu builds those
+/// too, and never dims one this way.)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Slots {
     pub verbs: Vec<HistoryVerb>,
     pub leading: usize,
     pub dim_first: Option<(SanitizedText, SanitizedText)>,
+    pub dimmed: Option<(usize, SanitizedText)>,
 }
 
 impl Slots {
@@ -32,7 +39,25 @@ impl Slots {
             verbs: Vec::new(),
             leading: 0,
             dim_first: None,
+            dimmed: None,
         }
+    }
+
+    /// The history list `ContextMenu::for_row` takes: each verb's label,
+    /// paired with its dim reason when it is the one dimmed.
+    pub(crate) fn menu_items(&self) -> Vec<(SanitizedText, Option<SanitizedText>)> {
+        self.verbs
+            .iter()
+            .enumerate()
+            .map(|(index, verb)| {
+                let dim = self
+                    .dimmed
+                    .as_ref()
+                    .filter(|(at, _)| *at == index)
+                    .map(|(_, reason)| reason.clone());
+                (verb.label.clone(), dim)
+            })
+            .collect()
     }
 }
 
@@ -65,13 +90,14 @@ pub(crate) fn history_slots(
 
     let mut checkouts = Vec::new();
     let skipped_current = checkout_verbs(&mut checkouts, id, refs, on, &here);
-    let pick = pick_verb(id, subject, &head, &here);
 
     let mut verbs = Vec::new();
+    let mut dimmed = None;
     let (leading, dim_first) = if is_stash_row(on) {
         verbs.extend(checkouts);
         merge_and_rebase_verbs(&mut verbs, id, refs, current.as_ref(), &here);
-        verbs.push(pick);
+        // No `(o)`: `o` refuses on a stash row.
+        verbs.push(pick_verb(id, subject, &head, &here));
         (0, None)
     } else {
         let mut checkouts = checkouts.into_iter();
@@ -91,6 +117,8 @@ pub(crate) fn history_slots(
                 }),
             ),
         };
+        let (pick, dim) = pick_slot(id, parents, subject, &head, &here);
+        dimmed = dim.map(|reason| (verbs.len(), reason));
         verbs.push(pick);
         // Any further Checkout items lead the rest.
         verbs.extend(checkouts);
@@ -110,6 +138,7 @@ pub(crate) fn history_slots(
         verbs,
         leading,
         dim_first,
+        dimmed,
     }
 }
 

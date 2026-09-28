@@ -338,6 +338,15 @@ fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
         next.local_jobs = local_jobs;
         return true;
     }
+    if super::preview::is_take_key(key) {
+        // `o` (keymap §2.3, m7-power-tools/11): take the cursor commit onto
+        // the branch, previewed — its own fn rather than a `HistoryKey`, so
+        // place mode (which reuses `HistoryKey`) leaves `o` unbound.
+        let mut local_jobs = next.local_jobs;
+        super::preview::take_key(next, commands, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
+        return true;
+    }
     if let Some(remote) = is_remote_key(key) {
         remote_key(next, commands, remote);
         return true;

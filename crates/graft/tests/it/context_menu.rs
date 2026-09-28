@@ -619,7 +619,7 @@ fn context_menu_claims(columns: u16) -> String {
         "# What right looks like:\n\
              #  - The menu is anchored under `main`'s row and is wide enough for its\n\
              #    longest label, with the cursor on the first item.\n\
-             #  - `Checkout main` then `Cherry-pick <sha7>` come first (m6-conflicts/71),\n\
+             #  - `Checkout main` then `Cherry-pick <sha7> (o)` come first (m6-conflicts/71),\n\
              #    then `Explain` if the row is marked, then the row's own actions\n\
              #    (`Copy SHA (y)`, `Compare with this (x)`, `Open details (\u{23ce})`),\n\
              #    then the rest of the history verbs, then the ambient\n\
@@ -633,14 +633,15 @@ fn context_menu_claims(columns: u16) -> String {
              #    if the verb were bound to that sha.\n\
              #  - The history verbs name the real branches, not placeholders: `Checkout\n\
              #    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,\n\
-             #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here,\n\
+             #    `Cherry-pick <sha7> (o)`, `Revert <sha7>`, `Reset feature to here,\n\
              #    mixed`/`, hard`, `Delete branch main`. `feature` is the branch\n\
              #    checked out, `main` is the row under the cursor.\n\
              #  - No verb names the branch you are standing on where git would refuse\n\
              #    it: there is no `Checkout feature` and no `Delete branch feature`.\n\
              #  - A trailing `(key)` means one thing everywhere in the menu: that\n\
              #    letter is live right now, so next time you can skip the menu. Only\n\
-             #    `Merge` and `Rebase` carry one, because only `m` and `r` exist. A\n\
+             #    `Merge`, `Rebase` and `Cherry-pick` carry one, because only `m`, `r`\n\
+             #    and `o` (M7) exist. A\n\
              #    qualifier that is not a key never wears that shape \u{2014} hence `Reset\n\
              #    \u{2026}, mixed`, not `(mixed)` (`docs/design/02-keymap.md` \u{a7}2.1).\n\
              #  - Choosing any of them opens a picture, not a write (PROMPT.md \u{a7}1.7).\n\
