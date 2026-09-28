@@ -1007,3 +1007,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r1007-q1 | Fast tier 266 s for 4687 tests under load (budget 3 min, PROMPT 7.1); one unloaded run from a script into `docs/perf/` owed | **unverified** (perf) | M7 |
 | M7/r1007-q2 | Picker filters the whole list every frame and per key (`view/picker.rs:36`, `update/picker.rs:139-140`, `:64`); unmeasured with thousands of remote branches | **unverified** (perf) | M7 |
 | M7/08-words | Rewrite editor: `Moved` and "base again" wording open (08-a NOTES) | **unverified** (question) | M7 |
+| M7/07d-abort-words | Abort from a chain stop says `aborted: rebase feature-a onto main` (`banner.rs` `closing`), not the note's D3 `✓ rewrite aborted · every branch is as before`; walk asserts today's words | **unverified** (question) | M7 |
+| M7/07d-follow | graft-ui `follower_line` says `1 commit follow` (grammar; 07d NOTES) | **broken** (words) | M7 |
