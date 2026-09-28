@@ -172,3 +172,11 @@ Size: ~55k.
 - Keymap §2.6a D1 clause: applied (4df7fa65).
 - 08 also holds graft-ui `hints/context.rs` and `hints/lists.rs`, so 07d is dispatched after 08-a merges.
 - The 07c claim that `k` can't reach Uncommitted was withdrawn by 07c itself (round 3: "`k` does reach it").
+
+## Conductor note (2026-09-28, review `docs/reviews/m7-10-to-07c.md`: Majors 1, 2, Minors 1, 7 are yours; same files)
+
+Each is decided in the review. Red test first for each, and tick each as its own box in NOTES.
+- **Major 1:** `Tab` in a shown picker at a live stop goes to the banner (`keys.rs:150` `banner_key` runs before `:166` `picker_key`; `banner.rs:333-352` `take_focus` ignores the picker). Route the shown picker ahead of `banner_key`, or have `take_focus` return false while `modal_owns_keys()`. Test: `Tab` closes the picker with the cursor on the tip, `banner_focus` untouched, `c`/`s`/`a` typed into the query.
+- **Major 2:** the still-to-apply block isn't in the app's layout mirrors (`update/geometry.rs:23-27` `rows_above_graph`; `update/state.rs:473-489` `graph_rows`; `update/picker.rs:256` reads the same). Write one function that mirrors `screen_rows`' pending height, used by both, like `preview_rows_taken`. Test: a click on a drawn row under the block selects that row. Granted: `geometry.rs`, `state.rs`, `update/picker.rs`.
+- **Minor 1:** the stale comment at `keys.rs:343-344` (`o` and place mode).
+- **Minor 7:** the edit-stop bar draws `c` bare and spends width on `r`/`m`, which refuse during a live op (`preview.rs:303-304`). Rank `c continue` above the graph's write keys while an operation is live. Re-take the edit-stop captures.

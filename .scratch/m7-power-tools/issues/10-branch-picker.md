@@ -1,6 +1,6 @@
 # branch-picker — `C` opens a picker of his branches and the remote's; type, `⏎` switches; `C ⏎` goes back
 
-Status: done 2026-09-28 except the `cherry-pick-other-branch` walk, which waits on ticket 11 (see NOTES) — respecified 2026-09-26 against scout 10. The switch rule is **approved** (field notes :79), no longer
+Status: done (cherry-pick-other-branch walk built by 11, `m7_walk/picker.rs:575-622`; conductor 2026-09-28)
 awaited; it is built in `10b-switch-rule`, and the picker calls it.
 Blocked by: 03-land-on-result, 10a-switch-refs-read, 10b-switch-rule
 Crates: graft-ops (`switch_list`, shaping 10a's read); graft (`update/picker.rs` new, `GraphOverlay::Picker`,

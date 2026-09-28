@@ -1,6 +1,6 @@
 # 07c — part of 07 rewrite-stops (split by planner, filed by conductor 2026-09-27)
 
-Status: ready. Shared context (settled scout findings, order, Decided, Signatures) is `07-rewrite-stops.md` lines 1-118; read it first. This file holds only part 07c plus Touches and Rules.
+Status: partial — merged 31bb664a; remainder → 07d (conductor 2026-09-28).
 
 ## 07c — still-to-apply block, the shell hand-over, walks, captures
 Build with: **Sonnet**. The hand-over copies the `M` pattern (`outside.rs:173`, `running.rs:269`,
