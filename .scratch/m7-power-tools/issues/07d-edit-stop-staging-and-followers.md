@@ -163,3 +163,12 @@ pub(crate) fn space_stages_here(state: &AppState) -> bool;
 ## Gates / Size
 Workspace-wide gates (fmt, clippy `-D warnings`, nextest, doc tests). Captures to files; report paths only.
 Size: ~55k.
+
+## Conductor note (2026-09-28, after scout `scouts/07d.md`)
+
+- The scout's file list governs, not the Files line above. It adds graft-ui `graph_screen/hints.rs` (:403-409), `hints/lists.rs` (:126, :353), `hints/context.rs` and `hints/tests.rs`: drawing `space stage` is this ticket's own acceptance, so they are granted. Colour unverified.
+- `keys.rs:314` is not a `space` arm. `graph_key` (:290) passes `space` to `view_change` (:315), and the fold is `keys/view_change.rs:87`. Branch before that call.
+- `stage_all` (`operate.rs:676`) is reached today only from the changes pane (`detail/keys.rs:269`). Reuse it; add no second path.
+- Keymap §2.6a D1 clause: applied (4df7fa65).
+- 08 also holds graft-ui `hints/context.rs` and `hints/lists.rs`, so 07d is dispatched after 08-a merges.
+- The 07c claim that `k` can't reach Uncommitted was withdrawn by 07c itself (round 3: "`k` does reach it").
