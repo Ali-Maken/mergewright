@@ -276,3 +276,4 @@ Rows whose expiry was M6, closed with the evidence named inline. Re-expired and 
 | M7/10b-track | Undo of a `Track` switch leaves the new branch's upstream config behind (10b NOTES) | **broken** | M7 | closed 2026-09-28 by 30j (merged 3ec8ea34) |
 | M7/10b-q | Should a switching create (`n` new branch) land with `on nb ✓` like every other switch? (10b question; Done pattern `update/state.rs:1021-1041`) | **unverified** (question) | M7 | closed 2026-09-28 by 30j (merged 3ec8ea34) |
 | M7/30i-facts | Diff job never fills `SubmoduleView`'s inside facts (`graft/src/jobs/detail.rs:298-304`); 30i's `body.rs` copies them from the file row under the cursor (symptom-side). Cause fix: fill them in the diff job | **broken** (workaround in place) | M7 | closed 2026-09-28 by 30j (merged 3ec8ea34) |
+| M7/03b-count | Pull journey row in fence | closed 2026-09-28: design note Journeys row 17 + fence `pull-current-branch 1` (researcher, 1de4dafb) |
