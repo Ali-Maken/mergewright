@@ -207,7 +207,7 @@ where
                     drop(crate::layout::save_split(common_dir, &split));
                 }
             }
-            // These three restore the terminal, hand it over and take it
+            // These six restore the terminal, hand it over and take it
             // back (`super::outside`).
             command @ (Command::EditCommitMessage { .. }
             | Command::OpenExternalEditor { .. }
@@ -229,7 +229,7 @@ where
     Ok(state)
 }
 
-/// Carry out one of the three commands that need the terminal itself, and
+/// Carry out one of the six commands that need the terminal itself, and
 /// say what happened as the event `update` answers next.
 ///
 /// Without a [`Handover`] — the headless path, and every test over a
@@ -281,7 +281,7 @@ fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
         Command::Suspend => {
             AppEvent::Produced(JobId::new(0), Product::HandedOver(outside.suspend()))
         }
-        // `frames` matches exactly these four before calling.
+        // `frames` matches exactly these six before calling.
         other => unreachable!("not a terminal handover: {other:?}"),
     }
 }

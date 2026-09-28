@@ -972,8 +972,12 @@ fn take_operation(state: &AppState) -> Result<Operation, Status> {
     {
         return Err(not_a_commit());
     }
+    // No tip on HEAD: reachable, since an orphan branch still shows the
+    // other branches' commits. `check_pick` refuses that HEAD as
+    // `BranchChanged` (graft-ops `head_is`), and `o` says the same words
+    // (ticket 11 Decided).
     let head = super::context_menu::verbs::head_tip(refs)
-        .ok_or_else(|| Status::sticky("o needs a commit on HEAD to take it onto"))?;
+        .ok_or_else(|| Status::sticky(graft_ops::operation::Refusal::BranchChanged.explain()))?;
     let subject = String::from_utf8_lossy(row.commit.subject()).into_owned();
     let params = super::context_menu::verbs::pick_params(id, &subject, &head);
     let refused = params.check_commit(id, id == head.oid, row.commit.parents.len());
