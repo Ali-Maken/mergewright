@@ -67,11 +67,12 @@ pub fn live_operation(state: &AppState) -> Option<(InProgress, Begun)> {
 
 /// Whether `c` in the graph or the changes pane is the banner's `c` while
 /// `live` is (m6-conflicts/52): true where the banner's `c` acts — any
-/// merge, and a rebase, cherry-pick or revert Graft began.
+/// merge, any rebase or cherry-pick (one the shell began is handed to
+/// `git <kind> --continue`, m7-power-tools/07c), and a revert Graft began.
 ///
 /// False for a bisect (the banner's `c` does nothing there, silently) and
-/// for a rebase, cherry-pick or revert the shell began (ops refuses it
-/// only after the command is sent): there `c` keeps
+/// for a revert the shell began (ops refuses it only after the command is
+/// sent): there `c` keeps
 /// [`operation_refusal`]'s words, which say what to do instead.
 ///
 /// The one place this is decided: the key route (`update::keys`) and the
@@ -80,10 +81,10 @@ pub fn live_operation(state: &AppState) -> Option<(InProgress, Begun)> {
 #[must_use]
 pub(crate) fn pane_c_acts(live: (InProgress, Begun)) -> bool {
     match live {
-        (InProgress::Merge, _) => true,
-        (InProgress::Rebase | InProgress::CherryPick | InProgress::Revert, begun) => {
-            begun == Begun::InGraft
-        }
+        // A rebase or cherry-pick the shell began: `c` hands the terminal
+        // to `git <kind> --continue` (m7-power-tools/07c).
+        (InProgress::Merge | InProgress::Rebase | InProgress::CherryPick, _) => true,
+        (InProgress::Revert, begun) => begun == Begun::InGraft,
         (InProgress::Bisect, _) => false,
     }
 }
@@ -149,6 +150,12 @@ pub fn operation_refusal((kind, begun): (InProgress, Begun), tabs: u8) -> Operat
         (InProgress::Merge, Begun::InShell) => (
             "merge begun in the shell".to_owned(),
             Some(format!("{to_banner}, then c finishes it")),
+        ),
+        // A rebase or cherry-pick begun in the shell: `c` hands it to git
+        // (m7-power-tools/07c).
+        (InProgress::Rebase | InProgress::CherryPick, Begun::InShell) => (
+            format!("{} begun in the shell — c hands it to git", kind.name()),
+            None,
         ),
         // Any other begun in the shell has no entry of Graft's; the banner's
         // keys refuse it (m6-07 F12), so the way out is git's own command.

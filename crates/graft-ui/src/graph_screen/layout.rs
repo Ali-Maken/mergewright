@@ -32,6 +32,11 @@ pub struct ScreenRows {
     /// The rows [`GraphView::banner`](super::GraphView::banner) takes under
     /// the header, clipped to what is free above the rest of the chrome.
     pub banner: Rect,
+    /// The still-to-apply block's rows, under the banner
+    /// ([`GraphView::pending`](super::GraphView::pending)). At most half of
+    /// what the banner leaves, so the graph keeps the other half; zero when
+    /// there is nothing pending or no room for a box of three rows.
+    pub pending: Rect,
     /// The rows the commit rows are drawn in.
     pub body: Rect,
     /// The commit-graph offer's row, directly above the hint bar.
@@ -265,14 +270,30 @@ pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
         ..area
     };
     let body_floor = if offer.height > 0 { offer.y } else { footer.y };
-    let body = Rect {
+    let left = body_floor.saturating_sub(banner.bottom());
+    let wanted = view
+        .pending
+        .as_ref()
+        .map_or(0, crate::still_to_apply::still_to_apply_height);
+    let pending_height = wanted.min(left / 2);
+    let pending = Rect {
         y: banner.bottom(),
-        height: body_floor.saturating_sub(banner.bottom()),
+        height: if pending_height >= 3 {
+            pending_height
+        } else {
+            0
+        },
+        ..area
+    };
+    let body = Rect {
+        y: pending.bottom(),
+        height: body_floor.saturating_sub(pending.bottom()),
         ..area
     };
     ScreenRows {
         header,
         banner,
+        pending,
         body,
         offer,
         footer,

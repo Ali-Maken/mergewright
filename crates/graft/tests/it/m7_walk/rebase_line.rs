@@ -16,14 +16,14 @@ use graft_ops::preview::{PreviewPlan, Target};
 
 use crate::app_harness::App;
 
-fn git(repo: &Path, args: &[&str], hour: u8) -> String {
+pub(crate) fn git(repo: &Path, args: &[&str], hour: u8) -> String {
     let date = format!("2020-01-01T{hour:02}:00:00+00:00");
     let out = graft_fixtures::git::run_at(repo, args, &date)
         .unwrap_or_else(|why| panic!("git {args:?}: {why}"));
     String::from_utf8(out).unwrap_or_else(|why| panic!("git speaks utf-8 here: {why}"))
 }
 
-fn commit(repo: &Path, name: &str, hour: u8) {
+pub(crate) fn commit(repo: &Path, name: &str, hour: u8) {
     std::fs::write(repo.join(format!("{name}.txt")), format!("{name}\n"))
         .unwrap_or_else(|why| panic!("write: {why}"));
     git(repo, &["add", "-A"], hour);
@@ -101,7 +101,7 @@ pub fn fork_repo() -> tempfile::TempDir {
     dir
 }
 
-fn open(repo: &Path, columns: u16, rows: u16) -> (App, AppState) {
+pub(crate) fn open(repo: &Path, columns: u16, rows: u16) -> (App, AppState) {
     let (app, state) = App::open_with_clock(
         repo,
         graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW),
@@ -113,7 +113,11 @@ fn open(repo: &Path, columns: u16, rows: u16) -> (App, AppState) {
 
 /// The cursor onto `main`'s row, one key at a time: up first, then down if
 /// the top was reached. Every key pressed is on `route`.
-fn cursor_to_main(app: &App, state: AppState, route: &mut Vec<&'static str>) -> AppState {
+pub(crate) fn cursor_to_main(
+    app: &App,
+    state: AppState,
+    route: &mut Vec<&'static str>,
+) -> AppState {
     let mut state = state;
     let mut up = true;
     for _ in 0..20 {
@@ -135,7 +139,7 @@ fn cursor_to_main(app: &App, state: AppState, route: &mut Vec<&'static str>) -> 
 }
 
 /// `r` pressed, and the job's answer: a drawn plan, or the box closed.
-fn r(app: &App, state: &AppState, route: &mut Vec<&'static str>) -> AppState {
+pub(crate) fn r(app: &App, state: &AppState, route: &mut Vec<&'static str>) -> AppState {
     route.push("r");
     let state = app.key(state, KeyCode::Char('r'));
     assert!(
@@ -163,7 +167,7 @@ fn plan_of(state: &AppState) -> PreviewPlan {
 }
 
 /// `y`, run to its end.
-fn y(app: &App, state: &AppState, route: &mut Vec<&'static str>) -> AppState {
+pub(crate) fn y(app: &App, state: &AppState, route: &mut Vec<&'static str>) -> AppState {
     route.push("y");
     let state = app.key(state, KeyCode::Char('y'));
     app.settle_write(state, "the rebase")
@@ -205,7 +209,7 @@ fn lands_as_drawn(repo: &Path, drawn: &PreviewPlan) {
     }
 }
 
-fn frame(state: &AppState, columns: u16, rows: u16) -> String {
+pub(crate) fn frame(state: &AppState, columns: u16, rows: u16) -> String {
     let lines = crate::captures::frame_at(
         state,
         columns,
@@ -215,7 +219,7 @@ fn frame(state: &AppState, columns: u16, rows: u16) -> String {
     format!("{}\n", lines.join("\n"))
 }
 
-fn within(journey: &str, route: &[&str]) {
+pub(crate) fn within(journey: &str, route: &[&str]) {
     let allowed = super::noted_keys(journey);
     assert!(
         route.len() <= allowed,

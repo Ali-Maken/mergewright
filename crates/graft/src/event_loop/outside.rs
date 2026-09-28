@@ -192,6 +192,32 @@ impl Handover<'_> {
         }
     }
 
+    /// `c` on a rebase or cherry-pick begun in the shell
+    /// (m7-power-tools/07c): `git <kind> --continue`, with the terminal
+    /// handed over as for the mergetool, so git's editor can ask for a
+    /// message. Run in `workdir` for the same reason.
+    ///
+    /// The exit status comes back as is: non-zero is not an error here —
+    /// a rebase that stops on its next conflict exits 1 — and the landing
+    /// reads the working tree to tell which it was.
+    ///
+    /// # Errors
+    /// The terminal could not be handed over or taken back, or `git` could
+    /// not be started.
+    pub fn continue_in_git(
+        &self,
+        kind: graft_git::state::InProgress,
+    ) -> Result<std::process::ExitStatus, String> {
+        let workdir = self
+            .workdir
+            .ok_or_else(|| "this repository has no working tree".to_owned())?;
+        run_outside_terminal(self.session, self.mux, || {
+            continue_command(kind, workdir).status()
+        })
+        .map_err(|error| error.to_string())?
+        .map_err(|error| format!("could not run {}: {error}", kind.continue_command()))
+    }
+
     /// `Ctrl+Z` under `keys.suspend_on_ctrl_z`: stop, with the terminal the
     /// shell's again, until `fg`.
     ///
@@ -466,6 +492,19 @@ pub fn mergetool_command(path: &Path, workdir: &Path) -> Command {
         .arg("--no-prompt")
         .arg("--")
         .arg(path)
+        .current_dir(workdir);
+    command
+}
+
+/// `git <kind> --continue` in `workdir` (m7-power-tools/07c). Builds no
+/// write for `graft_ops`: the operation is git's, begun in the shell, and
+/// Graft has no entry for it (as M6's `M`).
+#[must_use]
+pub fn continue_command(kind: graft_git::state::InProgress, workdir: &Path) -> Command {
+    let mut command = Command::new("git");
+    command
+        .arg(kind.name())
+        .arg("--continue")
         .current_dir(workdir);
     command
 }

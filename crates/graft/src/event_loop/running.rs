@@ -213,6 +213,7 @@ where
             | Command::OpenExternalEditor { .. }
             | Command::OpenMergetool { .. }
             | Command::OpenConflictEditor { .. }
+            | Command::ContinueInGit { .. }
             | Command::Suspend) => {
                 let answer = handed_over(outside.handover.as_ref(), command);
                 // Whatever ran out there drew over every cell, and the frame
@@ -251,6 +252,9 @@ fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
                     result: Err(why),
                 },
             ),
+            Command::ContinueInGit { id, .. } => {
+                AppEvent::Produced(id, Product::ContinuedInGit(Err(why)))
+            }
             _ => AppEvent::Produced(JobId::new(0), Product::HandedOver(Err(why))),
         };
     };
@@ -270,6 +274,10 @@ fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
             let result = outside.mergetool(&path);
             AppEvent::Produced(JobId::new(0), Product::Mergetool { path, result })
         }
+        Command::ContinueInGit { id, kind } => AppEvent::Produced(
+            id,
+            Product::ContinuedInGit(outside.continue_in_git(kind).map(|status| status.code())),
+        ),
         Command::Suspend => {
             AppEvent::Produced(JobId::new(0), Product::HandedOver(outside.suspend()))
         }

@@ -211,6 +211,7 @@ fn c_in_a_rebase_resolver_continues() {
         InProgress::Rebase,
         None,
     ));
+    state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     state.banner_focus = false;
     let (after, commands) = press(&state, KeyCode::Char('c'));
     assert!(

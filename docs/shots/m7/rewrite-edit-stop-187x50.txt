@@ -1,0 +1,50 @@
+ graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3 · change files, space stages, a amends it, c continues · ⇥ banner
+╭ still to apply · not commits yet ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ pick 1966dda c1                                                                                                                                                                         │
+│ pick 82392de b1                                                                                                                                                                         │
+│ pick 15335d9 a2                                                                                                                                                                         │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ●    [feature-c] c1                                                                                                                                                       GF 2d   1966dda
+● │    [main] m2                                                                                                                                                            GF 2d   9d9646b
+│ ●    [feature-b] b1                                                                                                                                                       GF 2d   82392de
+│ ●    [feature-a] a2                                                                                                                                                       GF 2d   15335d9
+│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                                                                                       GF 2d   0395451
+◇─╯    m1                                                                                                                                                                   GF 2d   256d42c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  a amend it  ⏎ open  b branch  r rebase  t tag  c continue  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  C

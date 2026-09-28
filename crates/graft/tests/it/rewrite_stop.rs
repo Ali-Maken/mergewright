@@ -21,7 +21,7 @@ use crate::m7_walk::rebase_line::line_repo;
 const COLUMNS: u16 = 120;
 const ROWS: u16 = 40;
 
-fn id(repo: &Path, rev: &str) -> Oid {
+pub(crate) fn id(repo: &Path, rev: &str) -> Oid {
     Oid::from_hex(git(repo, &["rev-parse", rev]).trim())
         .unwrap_or_else(|why| panic!("a commit id: {why:?}"))
 }
@@ -30,7 +30,7 @@ fn id(repo: &Path, rev: &str) -> Oid {
 /// it, with `edit` on the row whose subject is `edit` (if any) and the base
 /// moved to `onto` (if given). It stops, and nothing of this process's is
 /// left but what is on disk — a kill, as the next Graft sees it.
-fn graft_rewrite_stops(repo: &Path, from: &str, edit: Option<&str>, onto: Option<&str>) {
+pub(crate) fn graft_rewrite_stops(repo: &Path, from: &str, edit: Option<&str>, onto: Option<&str>) {
     let handle = graft_git::repo::RepoHandle::open(repo)
         .unwrap_or_else(|why| panic!("the repo opens: {why:?}"));
     let version = graft_git::version::system_git()
@@ -82,7 +82,7 @@ fn graft_rewrite_stops(repo: &Path, from: &str, edit: Option<&str>, onto: Option
 
 /// Graft opened on the stop: the stop landed with its rewrite read, the
 /// journal's live entry is in, and the history and refs are drawn.
-fn relaunched(repo: &Path) -> (App, AppState) {
+pub(crate) fn relaunched(repo: &Path) -> (App, AppState) {
     let (app, state) = App::open_with_clock(
         repo,
         graft::session::Clock::Fixed(graft_fixtures::CORPUS_NOW),
@@ -117,12 +117,12 @@ fn frame(state: &AppState) -> String {
     format!("{}\n", lines.join("\n"))
 }
 
-fn rebase_merge(repo: &Path) -> bool {
+pub(crate) fn rebase_merge(repo: &Path) -> bool {
     repo.join(".git/rebase-merge").is_dir()
 }
 
 /// `feature-a`'s line (a1 a2 ← b1 ← c1), `R` from a1 with a1 set to `edit`.
-fn stopped_on_a1() -> tempfile::TempDir {
+pub(crate) fn stopped_on_a1() -> tempfile::TempDir {
     let dir = line_repo();
     graft_rewrite_stops(dir.path(), "feature-a~1", Some("a1"), None);
     dir

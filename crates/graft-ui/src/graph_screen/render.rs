@@ -63,6 +63,8 @@ impl Widget for GraphScreen<'_> {
             buf.set_line(area.x, y, &styled, area.width);
         }
 
+        self.pending_block(chrome.pending, buf);
+
         if body.height > 0 {
             self.body(body, rows, applied.as_ref(), buf);
         }
@@ -86,6 +88,22 @@ impl Widget for GraphScreen<'_> {
 }
 
 impl GraphScreen<'_> {
+    /// The still-to-apply block (07c), boxed in its own rows under the
+    /// banner; nothing when there is none or no room for it.
+    fn pending_block(&self, area: Rect, buf: &mut Buffer) {
+        let Some(pending) = &self.view.pending else {
+            return;
+        };
+        let lines = crate::still_to_apply::still_to_apply_lines(pending, area.width, area.height);
+        for (offset, line) in lines.into_iter().enumerate() {
+            let y = area
+                .y
+                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            let styled = Line::styled(line, foreground(self.theme, Token::TextMuted));
+            buf.set_line(area.x, y, &styled, area.width);
+        }
+    }
+
     /// The rows: graph, the reserved marker slot, the subject, and — when
     /// there is room — the author chip, the relative date and the short SHA.
     fn body(&self, area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>, buf: &mut Buffer) {

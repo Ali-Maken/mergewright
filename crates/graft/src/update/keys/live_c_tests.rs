@@ -151,9 +151,36 @@ fn refuses_in_words_and_sends_nothing(kind: InProgress, begun: Begun, frame: Fra
     assert_eq!(after.status, words, "{frame:?}");
 }
 
+/// `c` on a rebase or cherry-pick the shell began hands the terminal to
+/// `git <kind> --continue` (07c), from the pane and the graph alike, and
+/// the bar offers it as `c continue` (`view::rows::live_c`).
+fn hands_over_to_git(kind: InProgress) {
+    for frame in FRAMES {
+        let state = live(kind, Begun::InShell, &[], frame);
+        let (after, commands) = c(&state);
+        assert!(
+            matches!(commands.as_slice(), [Command::ContinueInGit { kind: sent, .. }] if *sent == kind),
+            "{frame:?}: {commands:?}"
+        );
+        assert!(after.commit_editor.is_none());
+        assert_eq!(c_hint(&bar(&state).1), Some("continue"), "{frame:?}");
+    }
+}
+
 #[test]
-fn c_in_the_pane_on_a_shell_begun_rebase_refuses_in_words_and_sends_nothing() {
-    refuses_in_words_and_sends_nothing(InProgress::Rebase, Begun::InShell, Frame::Pane);
+fn c_in_a_shell_rebase_hands_over_to_git() {
+    hands_over_to_git(InProgress::Rebase);
+}
+
+#[test]
+fn c_in_a_shell_cherry_pick_hands_over_to_git() {
+    hands_over_to_git(InProgress::CherryPick);
+}
+
+#[test]
+fn a_shell_begun_revert_is_still_refused() {
+    refuses_in_words_and_sends_nothing(InProgress::Revert, Begun::InShell, Frame::Pane);
+    refuses_in_words_and_sends_nothing(InProgress::Revert, Begun::InShell, Frame::Graph);
 }
 
 #[test]

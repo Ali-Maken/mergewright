@@ -185,6 +185,10 @@ pub struct GraphView<'a> {
     /// (DESIGN.md §1.13, ADR-0038 §3). `None` draws the header as it always
     /// has.
     pub banner_op: Option<BannerView>,
+    /// The still-to-apply block at a rewrite stop, drawn boxed between the
+    /// banner and the rows (m7-power-tools/07c). `None`, or empty, draws
+    /// nothing and costs no row.
+    pub pending: Option<crate::still_to_apply::PendingView>,
 }
 
 /// A problem the footer shows in place of the key hints: a failure, read or

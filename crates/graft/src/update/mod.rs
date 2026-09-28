@@ -302,6 +302,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(_, Product::Mergetool { path, result }) => {
             mergetool_returned(next, commands, &path, result);
         }
+        AppEvent::Produced(_, Product::ContinuedInGit(result)) => {
+            banner::continued_in_git(next, commands, result);
+        }
         AppEvent::Produced(id, Product::ConflictOpened(result)) => {
             resolver::conflict_opened(next, id, result);
         }
@@ -750,8 +753,18 @@ fn working_tree_answered(
     let newest = status_read::answered(next, id);
     match answer {
         Ok(read) => {
+            // The shell hand-over's landing (07c) needs the rewrite read
+            // this answer carries, which `working_tree_read` hands on.
+            let rewrite = (newest && next.continue_in_git_owed.is_some())
+                .then(|| read.rewrite.clone())
+                .flatten();
             working_tree_read(next, commands, *read);
             if newest {
+                let mut local_jobs = next.local_jobs;
+                banner::land_after_continue_in_git(next, commands, rewrite, &mut || {
+                    local_jobs.next_id()
+                });
+                next.local_jobs = local_jobs;
                 undo::land_after_undo(next);
                 status_read::settle(next);
             }
@@ -861,6 +874,7 @@ fn took_fact(
         Product::Repository(_)
         | Product::Resumed(_)
         | Product::Mergetool { .. }
+        | Product::ContinuedInGit(_)
         | Product::TopologicalOrder(_)
         | Product::CommitGraph(_)
         | Product::CommitGraphDeclined(_)

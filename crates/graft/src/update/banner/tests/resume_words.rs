@@ -31,6 +31,13 @@ fn aborted(reason: &str) -> EntryStatus {
     }
 }
 
+/// A rebase Graft began: `c` resumes it (one the shell began is handed to
+/// git, 07c).
+fn graft_began(mut state: AppState) -> AppState {
+    state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
+    state
+}
+
 /// Every key through `update`, the commands kept.
 fn keys(state: AppState, codes: &[KeyCode]) -> (AppState, Vec<Command>) {
     let mut state = state;
@@ -114,7 +121,10 @@ fn edits_back(what: &str) -> Status {
 /// back (`EditsAt::Back`); the line says so and offers no `S p`.
 #[test]
 fn a_continue_whose_drop_fails_says_the_edits_are_back() {
-    let (state, commands) = keys(stopped(InProgress::Rebase, &[]), &[KeyCode::Char('c')]);
+    let (state, commands) = keys(
+        graft_began(stopped(InProgress::Rebase, &[])),
+        &[KeyCode::Char('c')],
+    );
     let (id, how) = sent_resume(&commands);
     assert_eq!(how, Resume::Continue);
     let failure = "rebase main onto origin/main: error: cannot lock ref";
@@ -191,7 +201,7 @@ fn aborting_a_stopped_rebase_says_your_edits_are_back() {
 /// opens on the clashed file with the set-aside's notice.
 #[test]
 fn a_continue_whose_put_back_clashes_lands_on_the_clash() {
-    let mut before = stopped(InProgress::Rebase, &[]);
+    let mut before = graft_began(stopped(InProgress::Rebase, &[]));
     before.stopped = Some(stop(LiveOrigin::ThisRun, false, InProgress::Rebase, 0));
     let (state, commands) = keys(before, &[KeyCode::Char('c')]);
     let (id, how) = sent_resume(&commands);
@@ -419,7 +429,10 @@ fn a_resume_that_dies_takes_its_resuming_with_it() {
 /// by what `resumed_done` puts first — never `could not confirm`.
 #[test]
 fn a_resume_whose_put_back_lost_staging_is_done_and_says_so() {
-    let (state, commands) = keys(stopped(InProgress::Rebase, &[]), &[KeyCode::Char('c')]);
+    let (state, commands) = keys(
+        graft_began(stopped(InProgress::Rebase, &[])),
+        &[KeyCode::Char('c')],
+    );
     let (id, how) = sent_resume(&commands);
     assert_eq!(how, Resume::Continue);
     let mut done = applied(
