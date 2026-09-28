@@ -143,7 +143,7 @@ fn f3_cycles_pixels_unicode_ascii_and_back_to_whole_strips() {
 
 /// A walk in flight whose window holds a plain commit (row 0) and a
 /// merge (row 1), the cursor on row `cursor`.
-fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
+pub(super) fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
     let commit = |byte: u8, parents: Vec<Oid>| Row {
         commit: Commit {
             id: Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
@@ -181,7 +181,7 @@ fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
 }
 
 /// The view the last `ShowRows` asks for.
-fn asked_view(commands: &[Command]) -> View {
+pub(super) fn asked_view(commands: &[Command]) -> View {
     // The evil-merge probe rides along on any event while the cursor rests
     // on a merge (M2 review M3), so the row request is picked out rather
     // than expected to be the only command.
@@ -4216,10 +4216,12 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
             row,
             c,
             tab_to_banner,
+            space_stages,
         } => classified_form(row).map(|row| HintContext::OperationLive {
             row: Box::new(row),
             c: *c,
             tab_to_banner: *tab_to_banner,
+            space_stages: *space_stages,
         }),
         // The three overlays and the pane with one behind it **are**
         // classified, since m5/42: `view::rows` reads
@@ -4465,7 +4467,11 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
 /// `Finish`, a rebase Graft began for `Continue`. For `Refuses`, a revert
 /// the shell began where the banner is to be one `⇥` away, else a bisect —
 /// which has no banner at all.
-fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, banner: bool) {
+pub(super) fn operation_live_as(
+    state: &mut AppState,
+    c: graft_ui::graph_screen::LiveC,
+    banner: bool,
+) {
     use graft_git::state::InProgress;
     use graft_ui::graph_screen::LiveC;
     let kind = match c {
@@ -4498,6 +4504,7 @@ fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, ban
                     pending: Vec::new(),
                     branch: None,
                     begun_in_graft: true,
+                    followers: Vec::new(),
                 },
                 edit: Some(graft_ops::rewrite::EditStop {
                     stopped: graft_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes"),
@@ -4614,11 +4621,16 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
             row,
             c,
             tab_to_banner,
+            space_stages,
         } => screen_for(row)
             .into_iter()
             .map(|mut state| {
                 operation_live_as(&mut state, *c, *tab_to_banner);
                 state
+            })
+            // Each state is the `space` form it claims (07d D1).
+            .filter(|state| {
+                crate::update::keys::edit_stop::space_stages_here(state) == *space_stages
             })
             .collect(),
         HintContext::Journal => vec![overlay_over(

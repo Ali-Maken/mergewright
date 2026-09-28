@@ -382,6 +382,31 @@ pub(super) fn said_live(list: Vec<Hint>, c: LiveC) -> Vec<Hint> {
 /// `a amend it`, at a rewrite's `edit` stop.
 const AMEND_IT: Hint = hint("a", "amend it");
 
+/// `space stage`, at a rewrite's `edit` stop on the rows where `a` amends
+/// (m7-power-tools/07d D1).
+const SPACE_STAGE: Hint = hint("space", "stage");
+
+/// A graph row's bar while an operation is live: [`said_live`]'s list with
+/// `c` ranked first after `a amend it` — above the graph's write keys,
+/// which a live operation refuses (review m7-10-to-07c Minor 7), so the
+/// width ladder drops them before the key that finishes — and, where
+/// `space_stages`, `space stage` right after it in place of `space fold`.
+pub(super) fn said_live_on_the_graph(list: Vec<Hint>, c: LiveC, space_stages: bool) -> Vec<Hint> {
+    let said = said_live(list, c);
+    let (c_hint, rest): (Vec<Hint>, Vec<Hint>) = said.into_iter().partition(|hint| hint.key == "c");
+    let mut rest = rest.into_iter().peekable();
+    let mut ranked = Vec::new();
+    if c == LiveC::ContinueAmends {
+        ranked.extend(rest.next_if(|hint| hint.key == AMEND_IT.key));
+    }
+    ranked.extend(c_hint);
+    if space_stages {
+        ranked.push(SPACE_STAGE);
+    }
+    ranked.extend(rest.filter(|hint| !(space_stages && hint.key == SPACE_STAGE.key)));
+    ranked
+}
+
 fn changes_pane_table(unmerged: bool, tab: TabWord) -> Vec<Hint> {
     if unmerged {
         vec![

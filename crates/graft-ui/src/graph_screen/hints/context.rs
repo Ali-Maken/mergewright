@@ -276,6 +276,12 @@ pub enum HintContext {
         c: LiveC,
         /// One `⇥` lands on the banner, so `⇥ banner` leads.
         tab_to_banner: bool,
+        /// `space` stages every change here, not the fold: an `edit` stop,
+        /// the graph with the keyboard, the cursor on the stopped commit or
+        /// the Uncommitted row (`graft::update::keys::edit_stop::
+        /// space_stages_here`, m7-power-tools/07d D1). `space stage` is
+        /// drawn right after `c`.
+        space_stages: bool,
     },
 }
 

@@ -830,6 +830,7 @@ squash-merged-bottom          3     # +2 · Graphite 1 (forge) · motion r y
 rewrite-stop-to-first-file    0     # lazygit +1 · lands on the resolver
 edit-stop-lands               0     # lands on the graph at the stopped commit
 edit-stop-amend-continue      3     # after his edit · space a c
+abort-from-a-chain-stop       3     # lazygit 3 from files (m a ⏎), git 1 cmd · esc a y
 restart-after-done            3     # Times I left :109 · motion d y (resolver list)
 switch-named-branch           3     # best 3 · C <type> ⏎
 switch-back                   2     # lazygit 3 · C ⏎

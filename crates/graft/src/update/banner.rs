@@ -229,14 +229,12 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
     Some(view)
 }
 
-/// The still-to-apply block at a rewrite stop (07c): the todo's pending
-/// pick-like rows, newest first, capped at [`graft_ui::still_to_apply::MAX_ROWS`]
-/// with the rest counted. `None` when no rewrite is stopped, its progress
-/// read failed (the banner already says so), or nothing is pending.
-///
-/// Followers (`<branch> (<author>): N commits follow`) are left empty: the
-/// rewrite's progress read carries no per-branch counts or tip authors yet
-/// (graft-ops `RewriteProgress`), recorded in the ticket 07c NOTES.
+/// The still-to-apply block at a rewrite stop (07c): this branch's pending
+/// pick-like rows (`pending_here`), newest first, capped at
+/// [`graft_ui::still_to_apply::MAX_ROWS`] with the rest counted, then each
+/// branch of the line still to come as `<branch> (<author>): N commits
+/// follow` (07d). `None` when no rewrite is stopped, its progress read
+/// failed (the banner already says so), or nothing is pending.
 #[must_use]
 pub fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
     let detail = live(state)?;
@@ -248,10 +246,10 @@ pub fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
         .as_ref()?
         .as_ref()
         .ok()?;
-    let pending = &rewrite.progress.pending;
-    if pending.is_empty() {
+    if rewrite.progress.pending.is_empty() {
         return None;
     }
+    let pending = rewrite.progress.pending_here();
     let cap = graft_ui::still_to_apply::MAX_ROWS;
     let rows = pending
         .iter()
@@ -266,8 +264,43 @@ pub fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
     Some(graft_ui::PendingView {
         rows,
         more: pending.len().saturating_sub(cap),
-        followers: Vec::new(),
+        followers: rewrite
+            .progress
+            .followers
+            .iter()
+            .map(|f| {
+                (
+                    sanitize_line(&f.branch).as_str().to_owned(),
+                    sanitize_line(&f.tip_author).as_str().to_owned(),
+                    f.commits,
+                )
+            })
+            .collect(),
     })
+}
+
+/// Screen rows the still-to-apply block takes from the graph body this
+/// frame: `graft_ui::graph_screen::screen_rows`' `pending` carve in plain
+/// numbers — the block's own height, capped at half the rows left under
+/// the header, and none when that is under three (review m7-10-to-07c
+/// Major 2). Read by the layout mirrors, `geometry::rows_above_graph` and
+/// `AppState::graph_rows`, as `preview_rows_taken` is.
+#[must_use]
+pub fn pending_rows_taken(state: &AppState) -> u16 {
+    let Some(view) = pending_view(state) else {
+        return 0;
+    };
+    let wanted = graft_ui::still_to_apply::still_to_apply_height(&view);
+    // What `screen_rows` has left between the banner and the body's floor:
+    // the frame less the chrome and every row above the graph but the block.
+    let left = state.size.rows.saturating_sub(
+        super::CHROME_ROWS
+            .saturating_add(state.harness.banner_rows())
+            .saturating_add(u16::from(state.commit_graph_line().is_some()))
+            .saturating_add(tab_rows_above_graph(state)),
+    );
+    let height = wanted.min(left / 2);
+    if height >= 3 { height } else { 0 }
 }
 
 /// Why `c` will not run yet, or `None` when it would.

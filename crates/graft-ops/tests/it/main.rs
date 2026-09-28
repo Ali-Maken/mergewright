@@ -35,6 +35,7 @@ mod recover;
 mod remote_ops;
 mod restart_gate;
 mod restart_whole_file;
+mod rewrite_followers;
 mod rewrite_oracle;
 mod rewrite_plan;
 mod rewrite_preview;

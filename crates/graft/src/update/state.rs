@@ -488,7 +488,10 @@ impl AppState {
             // covers are rows the graph never drew — rather than rows drawn
             // and then painted over, which is how a preview box ends up
             // hiding the very ghosts it is describing.
-            .saturating_add(super::preview::preview_rows_taken(self));
+            .saturating_add(super::preview::preview_rows_taken(self))
+            // A rewrite stop's still-to-apply block, drawn between the
+            // header and the rows (review m7-10-to-07c Major 2).
+            .saturating_add(super::banner::pending_rows_taken(self));
         usize::from(self.size.rows.saturating_sub(chrome)).max(1)
     }
 

@@ -13,7 +13,7 @@ use graft_core::ref_name::RefName;
 use graft_git::state::{InProgress, InProgressDetail};
 use graft_git::status::{StatusEntry, WorkingTreeStatus};
 use graft_ops::operation::Operation;
-use graft_ops::rewrite::{EditStop, RewriteProgress, TodoAction, TodoLine};
+use graft_ops::rewrite::{EditStop, Follower, RewriteProgress, TodoAction, TodoLine};
 use graft_ui::graph_screen::banner_line;
 
 use super::*;
@@ -67,6 +67,7 @@ fn read(action: TodoAction, chain: Option<(&str, usize, usize)>, edit: bool) -> 
                 )
             }),
             begun_in_graft: chain.is_some(),
+            followers: Vec::new(),
         },
         edit: edit.then(|| EditStop {
             stopped: oid(3),
@@ -481,4 +482,63 @@ fn an_edit_stop_lands_the_cursor_on_head() {
         &mut || crate::update::JobId::new(8),
     );
     assert!(first.land_on_head, "owed to the refresh");
+}
+
+// ── The still-to-apply block (07d D2) ──────────────────────────────────
+
+/// A pick row of `oid(n)` with subject `subject`.
+fn pick(n: u8, subject: &str) -> TodoLine {
+    TodoLine {
+        action: TodoAction::Pick,
+        commit: oid(n),
+        subject: subject.to_owned(),
+    }
+}
+
+#[test]
+fn pending_view_lists_this_branchs_rows_and_summarises_followers() {
+    let mut rewrite = read(TodoAction::Edit, Some(("feature-a", 1, 3)), true);
+    // His a3 a4, then Sara's b1 b2, then Lina's c1: the line runs bottom
+    // up, so the followers' rows are `pending`'s last.
+    rewrite.progress.pending = vec![
+        pick(10, "a3"),
+        pick(11, "a4"),
+        pick(20, "b1"),
+        pick(21, "b2"),
+        pick(30, "c1"),
+    ];
+    rewrite.progress.followers = vec![
+        Follower {
+            branch: "feature-b".to_owned(),
+            tip_author: "Sara".to_owned(),
+            commits: 2,
+        },
+        Follower {
+            branch: "feature-c".to_owned(),
+            tip_author: "Lina".to_owned(),
+            commits: 1,
+        },
+    ];
+    let state = live(Some(Ok(rewrite)), &[]);
+
+    let view = pending_view(&state).expect("the block");
+
+    let subjects: Vec<&str> = view.rows.iter().map(|row| row.subject.as_str()).collect();
+    assert_eq!(subjects, ["a4", "a3"], "his rows only, newest first");
+    let theirs: Vec<String> = [20, 21, 30]
+        .iter()
+        .map(|n| oid(*n).to_string().chars().take(7).collect())
+        .collect();
+    assert!(
+        view.rows.iter().all(|row| !theirs.contains(&row.sha7)),
+        "no follower's sha7 among the rows: {view:?}"
+    );
+    assert_eq!(view.more, 0);
+    assert_eq!(
+        view.followers,
+        [
+            ("feature-b".to_owned(), "Sara".to_owned(), 2),
+            ("feature-c".to_owned(), "Lina".to_owned(), 1),
+        ]
+    );
 }

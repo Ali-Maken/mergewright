@@ -4944,6 +4944,7 @@ fn the_edit_stop_tags_head_s_row_stopped_here() {
                 pending: Vec::new(),
                 branch: None,
                 begun_in_graft: true,
+                followers: Vec::new(),
             },
             edit: Some(graft_ops::rewrite::EditStop {
                 stopped: oid(3),

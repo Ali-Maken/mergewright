@@ -217,6 +217,17 @@ impl App {
         self.mouse_down(state, MouseButton::Right, column, row)
     }
 
+    /// The terminal got focus back — he edited in his editor and came back —
+    /// through the real event the event loop sends: Graft re-reads what may
+    /// have changed under it (m7-power-tools/07d's edit-stop walk).
+    pub fn focus_gained(&self, state: &AppState) -> AppState {
+        let (next, commands) = update(state, AppEvent::Core(Event::FocusGained));
+        for command in commands {
+            self.jobs.dispatch(command);
+        }
+        next
+    }
+
     /// The terminal changed size, through the real event the event loop
     /// sends. A test that needs a viewport the fixture is taller than says
     /// so here rather than building a hundred real commits.

@@ -404,9 +404,10 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             row,
             c,
             tab_to_banner,
+            space_stages,
         } => {
             let (list, trailer) = whole_bar(row, divider);
-            let list = lists::said_live(list, *c);
+            let list = lists::said_live_on_the_graph(list, *c, *space_stages);
             if !*tab_to_banner {
                 return (list, trailer);
             }

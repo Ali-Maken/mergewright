@@ -15,6 +15,9 @@ mod acknowledge;
 mod actions;
 mod bound;
 mod commit;
+pub(crate) mod edit_stop;
+#[cfg(test)]
+mod edit_stop_tests;
 mod escape;
 #[cfg(test)]
 mod live_c_tests;
@@ -159,6 +162,10 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         || rewrite_key(next, commands, key)
         || finish_key(next, commands, key)
         || resolver_key(next, commands, key)
+        // A shown picker is a text field (keymap §2.1): it claims `Tab`
+        // before the banner's `take_focus` could (review m7-10-to-07c
+        // Major 1). Opening it on `C` stays below, with the menu.
+        || (super::picker::shown(next) && super::picker::picker_key(next, commands, key))
         || banner_key(next, commands, key)
         || place_claim(next, commands, key)
     {
@@ -172,8 +179,9 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // means. That is what makes a label reading `Merge main into feature
     // (m)` true (m5-history-and-ghost-preview/13).
     //
-    // Then the branch picker (`C`, m7-power-tools/10), a text field: while
-    // up it claims every key but `Ctrl+C`; on the graph `C` opens it.
+    // Then the branch picker (`C`, m7-power-tools/10): on the graph `C`
+    // opens it. Once shown it claims every key but `Ctrl+C` — above, ahead
+    // of the banner.
     if super::context_menu::context_menu_key(next, commands, key)
         || super::picker::picker_key(next, commands, key)
     {
@@ -322,14 +330,26 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         super::context_menu::open_selected(next);
     } else if let Some(amend) = is_commit_key(key) {
         commit_key(next, commands, amend);
-    } else if write_key(next, commands, key) {
-    } else if let Some(change) = view_change(key) {
-        apply_view_change(next, commands, change);
+    } else if write_key(next, commands, key) || view_key(next, commands, key) {
     } else if let Some(motion) = motion_for(key) {
         move_cursor(next, commands, motion);
     } else if key.code == KeyCode::Escape {
         escape_key(next, commands);
     }
+}
+
+/// The view's keys (`view_change`), `space` first asked of the edit stop:
+/// on the stopped row or the Uncommitted row there, `space` stages every
+/// change (07d D1); elsewhere it folds. `true` when one of them answered.
+fn view_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    if edit_stop::space_key(next, commands, key) {
+        return true;
+    }
+    let Some(change) = view_change(key) else {
+        return false;
+    };
+    apply_view_change(next, commands, change);
+    true
 }
 
 /// The keys that change the repository: `m`/`r`, which end in a Ghost
@@ -352,8 +372,8 @@ fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     }
     if super::preview::is_take_key(key) {
         // `o` (keymap §2.3, m7-power-tools/11): take the cursor commit onto
-        // the branch, previewed — its own fn rather than a `HistoryKey`, so
-        // place mode (which reuses `HistoryKey`) leaves `o` unbound.
+        // the branch, previewed, through its own fn (`preview::take_key`),
+        // not a `HistoryKey`.
         let mut local_jobs = next.local_jobs;
         super::preview::take_key(next, commands, &mut || local_jobs.next_id());
         next.local_jobs = local_jobs;

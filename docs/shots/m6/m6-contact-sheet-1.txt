@@ -889,13 +889,13 @@ what right looks like: (ticket 11) Preview opened by `b`: the box's bottom borde
 #    (no `b` in it: pressing `b` again does not confirm).
 #  - The buttons row shows `▸[ Cancel ]`.
 
- graft /code/api  6 commits
-  ◉─╮ ▏  [stash@{0}] On main: wip                                                                        GF 2m   92f36bb
-  │ ●    index on main: da91a2e add sample                                                               GF 2m   d147c46
-◆─┴─╯    [◆ main] [rescued] add sample                                                                   GF 2m   da91a2e
-●        Correct the note                                                                                GF 1y   a82960b
-●        Add the first note                                                                              GF 1y   fadcfb3
-◇        Add a readme                                                                                    GF 1y   64ded19
+ graft /code/api  5 commits
+  ● ▏  [stash@{0}] On main: wip                                                                          GF 2m   92f36bb
+◆─╯    [◆ main] [rescued] add sample                                                                     GF 2m   da91a2e
+●      Correct the note                                                                                  GF 1y   a82960b
+●      Add the first note                                                                                GF 1y   fadcfb3
+◇      Add a readme                                                                                      GF 1y   64ded19
+
 
 
 
@@ -974,7 +974,7 @@ what right looks like: (ticket 12) After `Esc` from the resolver a stop lands in
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⇥ banner  m merge  r rebase  . more  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/fix-landing-after-esc-187x50.txt
@@ -1030,7 +1030,7 @@ what right looks like: (ticket 12) The same at 187x50: the last row lists `⇥ b
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⇥ banner  m merge  r rebase  ⏎ open  b branch  t tag  P push  c finish  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O
+ ⇥ banner  c finish  m merge  r rebase  ⏎ open  b branch  t tag  P push  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
 
 ================================================================================
 docs/shots/m6/fix-landing-b-launch-120x40.txt
@@ -1287,7 +1287,7 @@ docs/shots/m6/fix-file-list-rebase-step2-120x40.txt
 what right looks like: (ticket 13) Two-stop rebase at step 2: the strip names `b.txt` only; `a.txt` appears nowhere on screen. Colour unverified.
 ================================================================================
 
-REBASING step 2 of 2
+REBASING  step 2 of 2 · pick d93058b Change b on feature
 files   ▸ b.txt · 1 of 1 open
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ▸ b.txt · 1 conflict · 1 open

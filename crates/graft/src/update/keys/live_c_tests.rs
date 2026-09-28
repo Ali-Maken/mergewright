@@ -353,6 +353,7 @@ fn no_graph_row_context_is_unwrapped_while_live() {
             row,
             c,
             tab_to_banner,
+            ..
         } => Some((*row, c, tab_to_banner)),
         _ => None,
     };

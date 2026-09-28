@@ -258,18 +258,31 @@ fn operation_live_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::Marked(_)
-        | HintContext::PaneFocused { .. } => LIVE_C
-            .into_iter()
-            .flat_map(|c| {
-                [true, false]
-                    .into_iter()
-                    .map(move |tab_to_banner| HintContext::OperationLive {
-                        row: Box::new(context.clone()),
-                        c,
-                        tab_to_banner,
+        | HintContext::PaneFocused { .. } => {
+            // `space stage` only at an `edit` stop with the graph focused
+            // (07d D1): never for a pane with the keyboard.
+            let pane = matches!(context, HintContext::PaneFocused { .. });
+            LIVE_C
+                .into_iter()
+                .flat_map(|c| {
+                    let stages: &[bool] = if c == LiveC::ContinueAmends && !pane {
+                        &[false, true]
+                    } else {
+                        &[false]
+                    };
+                    stages.iter().flat_map(move |&space_stages| {
+                        [true, false].into_iter().map(move |tab_to_banner| {
+                            HintContext::OperationLive {
+                                row: Box::new(context.clone()),
+                                c,
+                                tab_to_banner,
+                                space_stages,
+                            }
+                        })
                     })
-            })
-            .collect(),
+                })
+                .collect()
+        }
         HintContext::ChangesPane { .. }
         | HintContext::Banner { .. }
         | HintContext::Preview

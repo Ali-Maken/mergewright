@@ -37,4 +37,4 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⇥ banner  m merge  r rebase  . more  ⏎  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
+ ⇥ banner  c finish  m merge  . more  r  ⏎  b  t  P  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  C
