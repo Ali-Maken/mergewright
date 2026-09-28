@@ -52,7 +52,12 @@ pub(super) fn folded_step(
         return Ok(None);
     }
     let span = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?.cloned();
-    if span.is_none() && op.touches(facts).worktree {
+    // With no span, a step that moves a ref is its own entry too: an amend
+    // at a shell-begun rebase's `edit` stop (07a's P14 exception) replaces
+    // `HEAD`'s commit, and folded into nothing it kept no backup and wrote no
+    // line, so `u` could not take it back (review m7-09-to-21c, Major 1).
+    let touches = op.touches(facts);
+    if span.is_none() && (touches.worktree || !touches.refs.is_empty()) {
         return Ok(None);
     }
     inside_live_operation(ctx, op, facts, span.as_ref(), prep).map(Some)
@@ -95,9 +100,15 @@ pub(super) fn folded_step(
 /// for that hand edit.
 ///
 /// An operation begun in the shell has no entry to chain onto, so
-/// [`folded_step`] never sends a step that can write the working tree here:
-/// that one is its own entry (m6 g04/g08 review, M1). What does arrive with
-/// `span` `None` writes the index alone.
+/// [`folded_step`] never sends a step that can write the working tree or
+/// move a ref here: that one is its own entry (m6 g04/g08 review, M1; review
+/// m7-09-to-21c, Major 1). What does arrive with `span` `None` writes the
+/// index alone.
+///
+/// An amend at an `edit` stop of Graft's own rewrite (m7-power-tools/07b)
+/// does arrive here, with its span: it folds like every step, so `u` after
+/// the rewrite finishes takes it back **with the rewrite**, and it re-reads
+/// the refs as well, since it moved `HEAD`.
 fn inside_live_operation(
     ctx: &mut Context<'_>,
     op: &Operation,
@@ -108,6 +119,12 @@ fn inside_live_operation(
     // Before anything runs: the snapshot that keeps what the step is about
     // to overwrite.
     let touches = op.touches(facts);
+    // An amend at an edit stop moves `HEAD`: the graph re-reads as well.
+    let refresh = if touches.refs.is_empty() {
+        Refresh::WorkingTree
+    } else {
+        Refresh::Everything
+    };
     let step_backup = match span {
         Some(entry) if touches.index || touches.worktree => {
             snapshot::chain_backup(ctx, entry, snapshot::LinkKind::Step).map_err(as_apply_error)?
@@ -161,7 +178,7 @@ fn inside_live_operation(
     match failure {
         None => Ok(Applied {
             entry: record,
-            refresh: Refresh::WorkingTree,
+            refresh,
             step_backup,
             replaced: crate::undo::Replaced::default(),
         }),

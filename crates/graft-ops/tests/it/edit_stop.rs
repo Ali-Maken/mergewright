@@ -231,3 +231,108 @@ fn an_edit_stop_comes_back_as_a_stop() {
     assert!(stop.head_on_it);
     assert_eq!(repo.git(&["log", "-1", "--format=%s"]), "a1");
 }
+
+// ── An amend at an edit stop, through `apply` (m7-power-tools/07b) ───────
+
+fn keep_message(message: &str) -> Operation {
+    Operation::Amend(CommitParams {
+        message: message.to_owned(),
+        sign_off: false,
+        no_verify: false,
+        allow_empty: false,
+    })
+}
+
+fn journal(repo: &TempRepo) -> Vec<graft_core::journal::JournalEntry> {
+    crate::support::journal_for(&repo.open()).entries().to_vec()
+}
+
+/// A rebase begun in the shell has no entry of Graft's to fold into, so an
+/// amend at its edit stop is **its own entry, with its own backup**, like any
+/// amend: `u` can take it back (review m7-09-to-21c, Major 1). It used to run
+/// folded into nothing — no backup, no line.
+#[test]
+fn a_shell_begun_edit_stop_amend_is_recorded_with_a_backup() {
+    let repo = three();
+    edit_c2_in_the_shell(&repo);
+    let stopped = id(&repo, "HEAD");
+    repo.write("c2.txt", b"c2 amended\n");
+    repo.git(&["add", "c2.txt"]);
+
+    let applied = try_run(&repo, &keep_message("c2"), NOW)
+        .unwrap_or_else(|why| panic!("the amend runs: {}", why.explain()));
+    assert_eq!(
+        applied.refresh,
+        graft_ops::apply::Refresh::Everything,
+        "HEAD moved: the graph re-reads"
+    );
+    let amended = id(&repo, "HEAD");
+    assert_ne!(amended, stopped, "HEAD is the amended commit");
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        "c2",
+        "message kept"
+    );
+
+    let entries = journal(&repo);
+    assert_eq!(entries.len(), 1, "one entry, the amend's: {entries:?}");
+    assert_eq!(entries[0].kind, graft_core::journal::OperationKind::Amend);
+    assert!(entries[0].backup_ref.is_some(), "with a backup");
+    assert!(
+        repo.path().join(".git/rebase-merge").is_dir(),
+        "the rebase is still stopped"
+    );
+    repo.git(&["rebase", "--continue"]);
+    assert_eq!(repo.git(&["show", "HEAD~1:c2.txt"]), "c2 amended");
+}
+
+/// Graft's own rewrite keeps one entry for the span: the amend folds into
+/// the live `Pending` rewrite entry (M5 hard choice 2), which `c` then still
+/// finds and finishes — and the graph re-reads, since `HEAD` moved.
+#[test]
+fn an_amend_inside_graft_s_rewrite_folds_and_c_still_continues_it() {
+    let repo = feature();
+    let handle = repo.open();
+    let mut params = plan(
+        &handle,
+        &git_version(),
+        &RewriteRequest::Open {
+            from: id(&repo, "feature~1"),
+        },
+        &facts(&repo),
+        None,
+        &Never,
+    )
+    .unwrap_or_else(|why| panic!("it plans: {why:?}"));
+    params.todo[0].action = TodoAction::Edit;
+    let entry = match try_run(&repo, &Operation::Rewrite(params), NOW) {
+        Err(ApplyError::Conflicted { entry, .. }) => entry.id,
+        Err(other) => panic!("expected a stop, got {}", other.explain()),
+        Ok(_) => panic!("expected a stop"),
+    };
+    repo.write("a1.txt", b"a1 amended\n");
+    repo.git(&["add", "a1.txt"]);
+
+    let applied = try_run(&repo, &keep_message("a1"), NOW + 1)
+        .unwrap_or_else(|why| panic!("the amend runs: {}", why.explain()));
+    assert_eq!(applied.refresh, graft_ops::apply::Refresh::Everything);
+    // Twice, as for a forgotten file.
+    repo.write("late.txt", b"late\n");
+    repo.git(&["add", "late.txt"]);
+    try_run(&repo, &keep_message("a1"), NOW + 2)
+        .unwrap_or_else(|why| panic!("the second amend runs: {}", why.explain()));
+
+    let ids: Vec<_> = journal(&repo).iter().map(|e| e.id.clone()).collect();
+    assert_eq!(ids, vec![entry.clone()], "no entry of the amends' own");
+
+    let handle = repo.open();
+    let mut journal = crate::support::journal_for(&handle);
+    let mut ctx = crate::support::context(&handle, &mut journal, NOW + 3, &Never);
+    let finished = graft_ops::apply::resume(&mut ctx, graft_ops::apply::Resume::Continue)
+        .unwrap_or_else(|why| panic!("c continues: {}", why.explain()));
+    assert_eq!(finished.entry.id, entry, "the live entry was the one found");
+    assert!(!repo.path().join(".git/rebase-merge").exists());
+    assert_eq!(repo.git(&["show", "HEAD~1:a1.txt"]), "a1 amended");
+    assert_eq!(repo.git(&["show", "HEAD~1:late.txt"]), "late");
+    assert_eq!(repo.git(&["log", "-1", "--format=%s", "HEAD~1"]), "a1");
+}
