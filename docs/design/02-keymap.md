@@ -317,7 +317,7 @@ replaces it in M6, keeping the same letters for the same verbs.
 on the first conflicted file, and `Esc` there lands on the banner. A stop
 with nothing unmerged focuses the banner, except an `edit` stop, which gives
 the keyboard to the graph (banner drawn; `⇥` focuses it): `a` amends the
-stopped commit, `space` stages, `c` continues (Amended 2026-09-26 (M7, user "all yes")). Either way the first key after a
+stopped commit, `space` stages — on the stopped commit or the Uncommitted-changes row, every change, as §2.4's Ctrl+A; on any other row §2.3's fold (conductor, 2026-09-28, 07d D1) — `c` continues (Amended 2026-09-26 (M7, user "all yes")). Either way the first key after a
 stop goes to the thing that stopped, not to the graph underneath (P5,
 approved 2026-09-23). A launch mid-operation keeps the banner. So does an undo that puts an operation back (ticket 41).
 
