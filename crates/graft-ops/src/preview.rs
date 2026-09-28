@@ -24,6 +24,7 @@
 //!   than 2.40 leaves it `NotChecked`, never a clean bill.
 
 mod as_run;
+mod aside;
 mod chain;
 mod drops;
 mod ghost;
@@ -384,7 +385,7 @@ pub fn plan(
     drawn.against = op.tips();
     drawn.set_aside = op
         .sets_aside(facts)
-        .map(|aside| shown_aside(op, facts, aside));
+        .map(|aside| aside::shown_aside(op, facts, aside));
     // Only with edits aside: a clean tree spawns nothing more.
     drawn.put_back = match drawn.set_aside {
         Some(_) => Some(put_back::forecast(
@@ -399,27 +400,6 @@ pub fn plan(
         None => None,
     };
     Ok(drawn)
-}
-
-/// The set-aside the preview counts: what is set aside **and put back**.
-/// A put-in's and an absorb's staged edits go into commits, so only the
-/// unstaged part comes back — the landing's "your unstaged edits" (review
-/// m7-09..21c Minor 6); every other kind puts back all it set aside. The
-/// set-aside itself stays `Some`, so the put-back is still forecast.
-fn shown_aside(op: &Operation, facts: &RepoFacts, aside: SetAside) -> SetAside {
-    match op {
-        Operation::Rewrite(params) if !params.made.is_empty() || params.index_base.is_some() => {
-            SetAside {
-                files: facts
-                    .status
-                    .entries
-                    .iter()
-                    .filter(|entry| entry.is_unstaged())
-                    .count(),
-            }
-        }
-        _ => aside,
-    }
 }
 
 /// A plan with the fields every kind fills the same way, ready to be

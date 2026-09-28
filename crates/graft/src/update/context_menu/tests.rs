@@ -1171,6 +1171,27 @@ fn o_on_the_uncommitted_row_is_refused_in_words() {
     );
 }
 
+/// An orphan branch: HEAD has no tip, yet other branches' commits show.
+/// `o` says `check_pick`'s words for that HEAD (ticket 11 Decided).
+#[test]
+fn o_on_an_unborn_head_says_check_picks_words() {
+    let mut state = on_row(0);
+    let name = |full: &str| {
+        graft_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+    };
+    state.refs = Some(std::sync::Arc::new(ref_badges(
+        &[(name("refs/heads/feature"), oid(3))],
+        &graft_git::repo::HeadState::Unborn(name("refs/heads/orphan")),
+    )));
+    let commands = press_o(&mut state);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+    assert_eq!(
+        state.status,
+        sticky("HEAD moved to another branch since it was read \u{2014} look again")
+    );
+}
+
 #[test]
 fn o_on_a_stash_row_is_refused_in_words() {
     let mut state = stash_on_row_0();

@@ -841,6 +841,22 @@ fn discard_command(path: &Path, entry: &StatusEntry) -> String {
 
 /// `operated`'s `Incomplete`: the write ran, only part of its after-state
 /// could not be read back.
+/// `operated`'s `Incomplete` answer. A put-in's words are over whatever its
+/// after-state says: left standing, a later write's landing could pick them
+/// up (review m7-09-to-21c, Minor 1).
+fn incomplete_answered(
+    state: &mut AppState,
+    launched_op: Option<&Operation>,
+    applied: &graft_ops::apply::Applied,
+    error: &str,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    if launched_op.is_some_and(|op| state.amend_into.shown_for(op).is_some()) {
+        super::amend_into::forget(state);
+    }
+    incomplete(state, applied, error, next_id)
+}
+
 fn incomplete(
     state: &mut AppState,
     applied: &graft_ops::apply::Applied,
@@ -998,26 +1014,23 @@ fn landed(
     commands
 }
 
+/// The fields of [`Operated::Conflicted`], so [`stopped`] can only be
+/// handed a stop — the type carries what a silent `else` used to.
+/// In the variant's order: description, kind, paths, stalled, entry, rewrite.
+struct Stop(
+    String,
+    InProgress,
+    Vec<PathBuf>,
+    Option<String>,
+    graft_core::journal::EntryId,
+    Option<Result<super::banner::RewriteStop, String>>,
+);
+
 /// `operated`'s `Conflicted` answer: git stopped and its state is still
 /// there — the stop recorded, the banner focused, everything re-read, and
 /// the resolver opened on the first conflicted file when there is one.
-fn stopped(
-    state: &mut AppState,
-    stop: Operated,
-    next_id: &mut impl FnMut() -> JobId,
-) -> Vec<Command> {
-    let Operated::Conflicted {
-        description,
-        kind,
-        paths,
-        stalled,
-        entry,
-        rewrite,
-    } = stop
-    else {
-        // `operated` sends nothing else here.
-        return Vec::new();
-    };
+fn stopped(state: &mut AppState, stop: Stop, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
+    let Stop(description, kind, paths, stalled, entry, rewrite) = stop;
     // The answer names the live entry; the journal re-read the
     // refresh asks for will say the same (gap row 505).
     state.live_entries = vec![entry];
@@ -1135,17 +1148,19 @@ pub fn operated(
             commands
         }
         Operated::Incomplete { applied, error } => {
-            // A put-in's words are over whatever its after-state says: left
-            // standing, a later write's landing could pick them up (Minor 1).
-            if launched_op
-                .as_ref()
-                .is_some_and(|op| state.amend_into.shown_for(op).is_some())
-            {
-                super::amend_into::forget(state);
-            }
-            incomplete(state, &applied, &error, next_id)
+            incomplete_answered(state, launched_op.as_ref(), &applied, &error, next_id)
         }
-        stop @ Operated::Conflicted { .. } => stopped(state, stop, next_id),
+        Operated::Conflicted {
+            description,
+            kind,
+            paths,
+            stalled,
+            entry,
+            rewrite,
+        } => {
+            let stop = Stop(description, kind, paths, stalled, entry, rewrite);
+            stopped(state, stop, next_id)
+        }
         // A stash put back clashed: the resolver on the first clashed file,
         // no banner (m6-conflicts/72b).
         Operated::Clashed { entry, clash } => {
