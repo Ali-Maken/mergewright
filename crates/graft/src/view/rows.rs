@@ -76,6 +76,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         walk,
         rows,
         banner_op,
+        pending: crate::update::banner::pending_view(state),
         icons: state.icons,
         compaction,
         filters: Filters {
@@ -199,6 +200,7 @@ fn opening_view(
         walk: WalkView::Opening,
         rows: Vec::new(),
         banner_op: None,
+        pending: None,
         icons: state.icons,
         compaction: Compaction::at(max_lanes(state)),
         filters: Filters::default(),

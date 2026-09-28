@@ -229,6 +229,47 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
     Some(view)
 }
 
+/// The still-to-apply block at a rewrite stop (07c): the todo's pending
+/// pick-like rows, newest first, capped at [`graft_ui::still_to_apply::MAX_ROWS`]
+/// with the rest counted. `None` when no rewrite is stopped, its progress
+/// read failed (the banner already says so), or nothing is pending.
+///
+/// Followers (`<branch> (<author>): N commits follow`) are left empty: the
+/// rewrite's progress read carries no per-branch counts or tip authors yet
+/// (graft-ops `RewriteProgress`), recorded in the ticket 07c NOTES.
+#[must_use]
+pub(crate) fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
+    let detail = live(state)?;
+    let rewrite = state
+        .stopped
+        .as_ref()
+        .filter(|stop| stop.kind == detail.kind)?
+        .rewrite
+        .as_ref()?
+        .as_ref()
+        .ok()?;
+    let pending = &rewrite.progress.pending;
+    if pending.is_empty() {
+        return None;
+    }
+    let cap = graft_ui::still_to_apply::MAX_ROWS;
+    let rows = pending
+        .iter()
+        .rev()
+        .take(cap)
+        .map(|row| graft_ui::PendingRowView {
+            action: row.action.word().to_owned(),
+            sha7: row.commit.to_string().chars().take(7).collect(),
+            subject: sanitize_line(&row.subject).as_str().to_owned(),
+        })
+        .collect();
+    Some(graft_ui::PendingView {
+        rows,
+        more: pending.len().saturating_sub(cap),
+        followers: Vec::new(),
+    })
+}
+
 /// Why `c` will not run yet, or `None` when it would.
 ///
 /// `git <kind> --continue` refuses with its own message while paths are
@@ -508,7 +549,83 @@ pub(crate) fn continue_pressed(
         state.resolver = None;
         state.banner_focus = true;
     }
+    // A rebase or cherry-pick the shell began has no plan of Graft's to
+    // resume: `c` hands the terminal to git's own `--continue`, as `M`
+    // hands it to the mergetool (07c). A shell-begun revert still goes to
+    // `resume`, which refuses it in words.
+    if let Some((
+        kind @ (InProgress::Rebase | InProgress::CherryPick),
+        super::commit_editor::Begun::InShell,
+    )) = super::commit_editor::live_operation(state)
+    {
+        commands.push(Command::ContinueInGit {
+            id: next_id(),
+            kind,
+        });
+        return;
+    }
     resume(state, commands, Resume::Continue, next_id);
+}
+
+/// `git <kind> --continue` came back from the shell hand-over (07c). One
+/// working-tree read decides the landing
+/// ([`land_after_continue_in_git`]); a git that could not run at all is
+/// said now, and the stop stays.
+pub(crate) fn continued_in_git(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    result: Result<std::process::ExitStatus, String>,
+) {
+    let tree = state.local_jobs.next_id();
+    commands.push(super::status_read::ask(state, tree));
+    commands.extend(state.detail.refresh(&mut || state.local_jobs.next_id()));
+    let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) else {
+        return;
+    };
+    match result {
+        Ok(exit) => state.continue_in_git_owed = Some((kind, exit)),
+        Err(why) => {
+            state.status = Status::Sticky {
+                reason: why,
+                keys: Some("c continue  a abort".to_owned()),
+            };
+        }
+    }
+}
+
+/// Pays [`AppState::continue_in_git_owed`] on the newest working-tree read
+/// after the hand-over: nothing live → the graph, `✓ git <kind> --continue
+/// finished`; conflicted again → M6's stop landing ([`stopped_again`], the
+/// resolver on the first file); still live after a non-zero exit with
+/// nothing conflicted → the stop stays and the line says how git exited.
+pub(super) fn land_after_continue_in_git(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    rewrite: Option<Result<RewriteStop, String>>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let Some((kind, exit)) = state.continue_in_git_owed.take() else {
+        return;
+    };
+    let command = kind.continue_command();
+    if state.in_progress.is_none() {
+        state.status = Status::done(format!("{command} finished"));
+        return;
+    }
+    let paths = unmerged_paths(state);
+    if !paths.is_empty() || exit.success() {
+        stopped_again(state, kind, paths.len(), None, rewrite);
+        land_in_resolver(state, commands, &paths, next_id);
+        edit_stop_lands_on_head(state, commands);
+        return;
+    }
+    let code = exit
+        .code()
+        .map_or_else(|| "on a signal".to_owned(), |code| code.to_string());
+    state.status = Status::Sticky {
+        reason: format!("{command} exited {code} · still stopped"),
+        keys: Some("c continue  a abort".to_owned()),
+    };
 }
 
 /// `c`'s refusal as the status line says it: the reason, and the keys that

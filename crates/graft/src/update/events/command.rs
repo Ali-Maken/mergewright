@@ -252,6 +252,17 @@ pub enum Command {
         /// The conflicted file, as git's porcelain names it.
         path: std::path::PathBuf,
     },
+    /// Hand the terminal to `git <kind> --continue` for a rebase or
+    /// cherry-pick begun in the shell (`c`, m7-power-tools/07c): Graft has
+    /// no plan of its own to resume, so git carries it on, its editor
+    /// asking for a message when it wants one. Carried out by the frame
+    /// loop, like `OpenMergetool`. Answered by `Product::ContinuedInGit`.
+    ContinueInGit {
+        /// The job this answers as.
+        id: JobId,
+        /// `Rebase` or `CherryPick` only.
+        kind: graft_git::state::InProgress,
+    },
     /// Suspend Graft the way `Ctrl+Z` does in any other terminal program
     /// (`keys.suspend_on_ctrl_z`, ADR-0002). Carried out by the frame loop,
     /// like `OpenExternalEditor`.

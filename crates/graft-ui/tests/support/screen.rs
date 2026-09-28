@@ -67,5 +67,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         hint_context: HintContext::PlainRow,
         marker_column: false,
         banner_op: None,
+        pending: None,
     }
 }

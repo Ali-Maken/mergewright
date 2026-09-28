@@ -63,3 +63,41 @@ Size: ~55k.
 
 ## Rules / Gates
 As rewrite-engine. Workspace-wide gates. Each part commits at its seam.
+
+## NOTES — builder 2026-09-28 (status: **blocked**, partial; not compacted; scout used: `scout07c` in session scratchpad)
+
+**Blocked: needs `crates/graft/src/update/tests.rs`** (held by ticket 11). The hand-over's landing needs a new
+`AppState` field, and `update/tests.rs:1274` builds `AppState` with an exhaustive literal. The one line it needs:
+`continue_in_git_owed: None,` (field: `pub continue_in_git_owed: Option<(graft_git::state::InProgress,
+std::process::ExitStatus)>`, `update/state.rs`). Lib builds and `clippy --workspace` (lib targets) is clean;
+**the graft test target does not compile until that line lands**, so no graft test was run.
+Why a field: finished / stopped again / non-zero-still-stopped can only be told apart by the working-tree read after
+git returns (a rebase that stops on its next conflict exits 1, the same as a failure). No existing field or `Stop`
+(also built literally in `update/tests.rs:4484`) could carry it without touching 11's files.
+
+Done (uncommitted-tests, see above):
+- graft-ui `still_to_apply.rs` (new): `PendingView`, `PendingRowView`, `draw_still_to_apply`,
+  `still_to_apply_lines`, `still_to_apply_height`, `MAX_ROWS`, `TITLE`; `GraphView.pending`; `ScreenRows.pending`
+  (≤ half the rows under the banner, ≥ 3 or none); drawn in `render.rs` `pending_block`. graft-ui tests pass
+  (563): `still_to_apply_is_newest_first_with_followers`, `still_to_apply_caps_at_six_then_more`,
+  `no_block_when_nothing_is_pending` (still_to_apply.rs), `no_ghost_rows_in_the_graph` (graph_screen/tests.rs).
+- graft `banner::pending_view` (todo pending reversed → newest first, capped 6, `more` counted), fed by `view/rows.rs`.
+- `Command::ContinueInGit { id, kind }`, `Product::ContinuedInGit(Result<ExitStatus, String>)`, `Handover::continue_in_git`
+  + `outside::continue_command`, loop arms in `running.rs`, runner `not_a_job`, label, `place/write.rs` (write = true),
+  `update/mod.rs` route → `banner::continued_in_git`; landing `banner::land_after_continue_in_git` run on the newest
+  working-tree read in `working_tree_answered`.
+- `continue_pressed`: shell-begun rebase/cherry-pick → `ContinueInGit`; shell revert → `resume` (refused, as today).
+- `pane_c_acts` true for any rebase/cherry-pick; shell-begun words `{kind} begun in the shell — c hands it to git`.
+
+**Gap — followers have no data.** `RewriteProgress` (graft-ops `rewrite.rs:278`) has no per-branch counts or tip
+authors, so `feature-b (Sara): N commits follow, on top` cannot be drawn: `pending_view` passes `followers: vec![]`.
+Needs a graft-ops read (outside this ticket's crate set). The widget draws followers when given them (tested).
+**Gap — walk fence:** `docs/design-notes/m7-power-tools.md:830-832` has no `abort-from-a-chain-stop` row; `noted_keys`
+would panic. Conductor/planner to add the count.
+
+Next steps once unblocked: add the literal line; run gates; expect `update/tests.rs:4505` (pane_c_acts table) and the
+shell-begun words tests (`commit_editor/tests.rs`, `live_c_tests.rs`, `resolver/shell_begun.rs`) to need updating to
+the new behaviour; write the hand-over tests (fake return: feed `AppEvent::Produced(id,
+Product::ContinuedInGit(Ok(ExitStatus::from_raw(code << 8))))`, then a working-tree answer) — three landings + two
+hand-over tests + revert refusal; walks in `tests/it/m7_walk/rewrite_stops.rs`; captures; MAP.md; TESTING.md.
+None of the acceptance boxes is ticked yet except as named above (graft-ui half of box 1).

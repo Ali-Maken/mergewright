@@ -136,6 +136,7 @@ fn product_label(product: &Product) -> &'static str {
         Product::Operated(_) => "Produced::Operated",
         Product::Resumed(_) => "Produced::Resumed",
         Product::Mergetool { .. } => "Produced::Mergetool",
+        Product::ContinuedInGit(_) => "Produced::ContinuedInGit",
         Product::ConflictOpened(_) => "Produced::ConflictOpened",
         Product::Taken(_) => "Produced::Taken",
         Product::BaseLoaded(_) => "Produced::BaseLoaded",

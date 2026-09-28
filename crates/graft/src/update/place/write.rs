@@ -17,7 +17,8 @@ pub fn is_write(command: &Command) -> bool {
         | Command::TakeSide(..)
         | Command::OpenExternalEditor { .. }
         | Command::OpenConflictEditor { .. }
-        | Command::OpenMergetool { .. } => true,
+        | Command::OpenMergetool { .. }
+        | Command::ContinueInGit { .. } => true,
         // Reads, the loop's own business, and answers to a write already
         // running. `WriteCommitGraph` writes git's lookup cache, never a
         // file's lines; `EditCommitMessage` writes Graft's own message file

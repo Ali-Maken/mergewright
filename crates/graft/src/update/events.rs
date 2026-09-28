@@ -335,6 +335,10 @@ pub enum Product {
     /// nothing to bring back but whether it worked: `e`'s file in `$EDITOR`,
     /// and `Ctrl+Z`'s suspend (m3-working-tree-undo-and-stash/05).
     HandedOver(Result<(), String>),
+    /// `git <kind> --continue` came back (`Command::ContinueInGit`): how it
+    /// exited, or why it could not run. The landing waits for the
+    /// working-tree read it asks for (m7-power-tools/07c).
+    ContinuedInGit(Result<std::process::ExitStatus, String>),
     /// One working-tree write finished. Not a plain `Result`: see
     /// [`crate::jobs::operate::Operated`]'s doc for why an operation that
     /// ran but left part of its after-state unread still carries the

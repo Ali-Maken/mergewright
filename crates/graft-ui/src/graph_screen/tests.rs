@@ -101,6 +101,7 @@ pub(super) fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_>
         hint_context: HintContext::PlainRow,
         marker_column: false,
         banner_op: None,
+        pending: None,
     }
 }
 
@@ -169,6 +170,44 @@ fn a_banner_sits_under_the_header_and_takes_rows_from_the_body() {
     let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
     let area = GraphScreen::new(&view, &theme).graph_area(Rect::new(0, 0, 40, 6));
     assert_eq!((area.y, area.height), (3, 2));
+}
+
+/// The still-to-apply block is a box of its own between the header and
+/// the rows: its picks are never drawn as graph rows, and every real commit
+/// still is (field notes :38, m7-power-tools/07c).
+#[test]
+fn no_ghost_rows_in_the_graph() {
+    use crate::still_to_apply::{PendingRowView, PendingView, TITLE};
+    let rows = linear(3);
+    let mut shown = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    shown.pending = Some(PendingView {
+        rows: vec![PendingRowView {
+            action: "pick".into(),
+            sha7: "1234567".into(),
+            subject: "not yet applied".into(),
+        }],
+        more: 0,
+        followers: Vec::new(),
+    });
+    let screen = text(&draw(&shown, 60, 12));
+    assert!(screen[1].contains(TITLE), "{screen:#?}");
+    assert!(
+        screen[2].contains("pick 1234567 not yet applied"),
+        "{screen:#?}"
+    );
+    assert!(screen[3].starts_with('╰'), "{screen:#?}");
+    assert!(screen[4].contains("Commit 3"), "{screen:#?}");
+    assert!(screen[6].contains("Commit 1"), "{screen:#?}");
+    let mentions = screen
+        .iter()
+        .filter(|line| line.contains("not yet applied"))
+        .count();
+    assert_eq!(
+        mentions, 1,
+        "the pending pick drawn once, in the box: {screen:#?}"
+    );
+    let layout = crate::graph_screen::row_layout(&shown, ratatui::layout::Rect::new(0, 0, 60, 12));
+    assert_eq!(layout.body.y, 4, "the rows start under the box");
 }
 
 #[test]

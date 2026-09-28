@@ -371,6 +371,12 @@ pub struct AppState {
     /// a write that just landed is not in it yet — so `c` does not count
     /// on it (`update::status_read`).
     pub status_read: Option<JobId>,
+    /// `git <kind> --continue` came back from the shell hand-over
+    /// (m7-power-tools/07c) and its landing waits on the newest working-tree
+    /// read: finished, stopped again, or still stopped after a non-zero
+    /// exit — only the read can tell. Spent by
+    /// `update::banner::land_after_continue_in_git`.
+    pub continue_in_git_owed: Option<(graft_git::state::InProgress, std::process::ExitStatus)>,
     /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).

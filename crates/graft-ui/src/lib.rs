@@ -30,9 +30,12 @@ pub mod picker;
 pub mod preview_box;
 pub mod stash_screen;
 pub mod status_screen;
+pub mod still_to_apply;
 pub mod syntax;
 pub mod text_input;
 pub mod theme;
 
 #[cfg(test)]
 mod test_support;
+
+pub use still_to_apply::{PendingRowView, PendingView, draw_still_to_apply};

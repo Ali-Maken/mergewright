@@ -1201,6 +1201,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             // on the modes the loop drew through (m3/05).
             Command::OpenExternalEditor { .. }
             | Command::OpenMergetool { .. }
+            | Command::ContinueInGit { .. }
             | Command::OpenConflictEditor { .. }
             | Command::EditCommitMessage { .. }
             | Command::Suspend => not_a_job("the terminal is handed over by the loop"),
