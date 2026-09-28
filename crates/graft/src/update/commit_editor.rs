@@ -414,12 +414,90 @@ pub fn open(
     commands
 }
 
-/// `HEAD`'s message came back: open the amend editor on it, or say why not.
-pub fn head_message_arrived(state: &mut AppState, id: JobId, message: Result<String, String>) {
+/// `a` at a rewrite's `edit` stop (m7-power-tools/07b): amend the stopped
+/// commit with what is staged, **keeping its message, no editor** — `git
+/// commit --amend --no-edit`, through `Operation::Amend` and `apply` like
+/// every amend. `false` when this is not such a stop, or the cursor is on
+/// an older row: `a` then answers as it always has (P14's words while live).
+///
+/// Asks for `HEAD`'s message first, as the editor's `a` does; the amend
+/// launches on the answer ([`head_message_arrived`]).
+pub(crate) fn amend_at_edit_stop(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    if !at_edit_stop(state) || !on_head_or_the_work(state) {
+        return false;
+    }
+    if state.head_message.is_some() || state.commit_editor.is_some() {
+        return true;
+    }
+    let id = next_id();
+    state.head_message = Some(id);
+    state.edit_amend = true;
+    commands.push(Command::ReadHeadMessage(id));
+    true
+}
+
+/// A rebase is live and stopped on an `edit` row (07a's fact, carried on
+/// the stop): P14's one exception.
+pub(crate) fn at_edit_stop(state: &AppState) -> bool {
+    matches!(live_operation(state), Some((InProgress::Rebase, _)))
+        && state
+            .stopped
+            .as_ref()
+            .filter(|stop| stop.kind == InProgress::Rebase)
+            .and_then(super::banner::edit_stop_of)
+            .is_some()
+}
+
+/// The cursor is on `HEAD`'s row, the uncommitted row, or the changes pane.
+fn on_head_or_the_work(state: &AppState) -> bool {
+    if state.on_working_tree || state.on_changes_pane() {
+        return true;
+    }
+    let head = state.refs.as_deref().and_then(crate::refs::RefBadges::head);
+    let selected = state
+        .history
+        .as_ref()
+        .and_then(|history| history.selected())
+        .map(|row| row.commit.id);
+    selected.is_some() && selected == head
+}
+
+/// `HEAD`'s message came back: open the amend editor on it, or say why not
+/// — or, for `a` at an `edit` stop, amend with it at once (07b).
+pub fn head_message_arrived(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    message: Result<String, String>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     if state.head_message != Some(id) {
         return;
     }
     state.head_message = None;
+    let edit_amend = std::mem::take(&mut state.edit_amend);
+    // P14's exception: at an `edit` stop the amend is the step itself
+    // (`graft_ops`' `check` holds the same rule against a fresh read).
+    if edit_amend && at_edit_stop(state) {
+        match message {
+            Ok(message) => {
+                let amend = Operation::Amend(CommitParams {
+                    message,
+                    sign_off: false,
+                    no_verify: false,
+                    allow_empty: false,
+                });
+                let launched = super::operate::launch(state, commands, amend, next_id);
+                super::operate::say_if_refused(state, launched);
+            }
+            Err(why) => state.status = Status::sticky(format!("amend: {why}")),
+        }
+        return;
+    }
     // An operation became live while the read was in flight: refuse as
     // `open` would have, whatever the read said.
     if let Some(live) = live_operation(state) {

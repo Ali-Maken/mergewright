@@ -1584,6 +1584,7 @@ mod tests {
         kind: Option<graft_git::state::InProgress>,
     ) -> AppState {
         let read = crate::working_tree::WorkingTree {
+            rewrite: None,
             status: Arc::new(graft_git::status::WorkingTreeStatus {
                 entries: Vec::new(),
             }),

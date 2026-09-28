@@ -50,6 +50,7 @@ fn working_tree_read(paths: &[&str]) -> AppEvent {
     AppEvent::Produced(
         JobId::new(90),
         Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+            rewrite: None,
             status: Arc::new(WorkingTreeStatus {
                 entries: paths.iter().map(|path| unmerged(path)).collect(),
             }),

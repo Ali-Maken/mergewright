@@ -119,7 +119,11 @@ impl<'a> GraphScreen<'a> {
         // banner is the urgent half. A path cut with an `…` still says
         // where you are (m5/16, review C1).
         let banner = self.view.banner_op.as_ref().map(|banner| {
-            let text = format!("  {}", banner_line(banner));
+            // The banner's own room: what the brand leaves, less its two
+            // leading spaces. A rewrite's words ladder down to it (07b).
+            let room = width.saturating_sub(used).saturating_sub(2);
+            let room = u16::try_from(room).unwrap_or(u16::MAX);
+            let text = format!("  {}", banner_line(banner, room));
             let mut style = foreground(self.theme, Token::Warning);
             if banner.focused {
                 style = style.add_modifier(ratatui::style::Modifier::REVERSED);

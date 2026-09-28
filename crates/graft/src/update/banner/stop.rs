@@ -13,6 +13,40 @@ use super::{STUCK_KEYS, banner_focusable, unmerged_paths};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
+/// Where a stopped rewrite is (m7-power-tools/07b): the step and rows
+/// (`graft_ops::rewrite::progress`) and, at an `edit` stop, the commit git
+/// handed him (`edit_stop`). Read on the job thread by [`read_rewrite_stop`]
+/// and carried by every stop-producing answer — a first stop, a stop after
+/// `c`, and the working-tree read a relaunch lands from.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RewriteStop {
+    /// The step, the row git is on, what is left, and the branch of the line.
+    pub progress: graft_ops::rewrite::RewriteProgress,
+    /// `Some` at an `edit` stop: the graph takes the keyboard and `a` amends.
+    pub edit: Option<graft_ops::rewrite::EditStop>,
+}
+
+/// The rewrite stop git is at, read on a job thread: `None` when no `rebase
+/// -i` is running (a merge, a cherry-pick, an `apply`-style rebase), `Err`
+/// with the words when git's or Graft's files could not be read — carried to
+/// the banner and said on the status line, never dropped (note R4: "a failed
+/// progress read").
+pub(crate) fn read_rewrite_stop(
+    repo: &graft_git::repo::RepoHandle,
+    stop: &dyn graft_git::run::Stop,
+) -> Option<Result<RewriteStop, String>> {
+    let progress = match graft_ops::rewrite::progress(repo, stop) {
+        Ok(Some(progress)) => progress,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error.explain())),
+    };
+    Some(
+        graft_ops::rewrite::edit_stop(repo, stop)
+            .map(|edit| RewriteStop { progress, edit })
+            .map_err(|error| error.explain()),
+    )
+}
+
 /// **A stop lands in the resolver** (m6-conflicts/18, P5): with anything
 /// unmerged, the resolver opens on `paths`' first — the stop's own answer,
 /// read from git's status in its order, the same source and order as
@@ -62,21 +96,54 @@ pub(super) fn stopped_again(
     kind: InProgress,
     paths: usize,
     stalled: Option<&str>,
+    rewrite: Option<Result<RewriteStop, String>>,
 ) {
-    state.banner_focus = banner_focusable(kind);
-    state.stopped = Some(crate::update::state::Stop {
+    let stop = crate::update::state::Stop {
         origin: crate::update::relaunch::LiveOrigin::ThisRun,
         again: true,
         kind,
         paths_at_stop: paths,
-    });
+        rewrite,
+    };
+    // An `edit` stop hands the keyboard to the graph (07b); every other
+    // stop focuses the banner, as it did.
+    state.banner_focus = stop_takes_focus(kind, &stop);
     state.status = match stalled {
         Some(why) => Status::Sticky {
             reason: format!("stopped again: {why}"),
             keys: Some(STUCK_KEYS.to_owned()),
         },
-        None => Status::Ready,
+        None => progress_unread(&stop).map_or(Status::Ready, Status::sticky),
     };
+    state.stopped = Some(stop);
+}
+
+/// Whether a stop takes the keyboard for the banner: every stop that has a
+/// banner does, except a rewrite's `edit` stop, which hands it to the graph
+/// so `space`, `a` and `c` work on the commit (m7-power-tools/07b, note R4).
+/// A failed progress read keeps the banner's focus — the safe default: its
+/// `a` is behind a box.
+pub(crate) fn stop_takes_focus(kind: InProgress, stop: &crate::update::state::Stop) -> bool {
+    banner_focusable(kind) && edit_stop_of(stop).is_none()
+}
+
+/// The `edit` stop a stop is at, when its rewrite read says so.
+pub(crate) fn edit_stop_of(
+    stop: &crate::update::state::Stop,
+) -> Option<&graft_ops::rewrite::EditStop> {
+    match &stop.rewrite {
+        Some(Ok(rewrite)) => rewrite.edit.as_ref(),
+        Some(Err(_)) | None => None,
+    }
+}
+
+/// `couldn't read the rewrite's progress: <error>`, when the stop's rewrite
+/// read failed: the stop still lands, on today's banner.
+pub(crate) fn progress_unread(stop: &crate::update::state::Stop) -> Option<String> {
+    match &stop.rewrite {
+        Some(Err(error)) => Some(format!("couldn't read the rewrite's progress: {error}")),
+        Some(Ok(_)) | None => None,
+    }
 }
 
 /// A `--continue` finished, or a write that moves `HEAD` did

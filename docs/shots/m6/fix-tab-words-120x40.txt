@@ -1,5 +1,5 @@
 --- frame 1: files focused: the bar ends `⇥ diff`
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -40,7 +40,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -81,7 +81,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42
@@ -122,7 +122,7 @@ CONFLICTS (13)                ▎
   three.txt     both modified
   zdiff3.txt    both modified
 --- frame 4: a second `⇥`: the banner has the keyboard
- graft /code/api    REBASING step 1 of 1
+ graft /code/api    REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 ◌   ▏  Uncommitted changes (13 unmerged)
 ◆    ⓘ [HEAD] [main] Change every file on main                                                           GF 2h   274c7d4
 │ ●  ⓘ [feature] Change every file on feature                                                            GF 2h   9d44f42

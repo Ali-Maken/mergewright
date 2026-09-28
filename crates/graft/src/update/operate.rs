@@ -979,13 +979,21 @@ fn landed(
 /// the resolver opened on the first conflicted file when there is one.
 fn stopped(
     state: &mut AppState,
-    description: &str,
-    kind: InProgress,
-    paths: &[PathBuf],
-    stalled: Option<&str>,
-    entry: graft_core::journal::EntryId,
+    stop: Operated,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
+    let Operated::Conflicted {
+        description,
+        kind,
+        paths,
+        stalled,
+        entry,
+        rewrite,
+    } = stop
+    else {
+        // `operated` sends nothing else here.
+        return Vec::new();
+    };
     // The answer names the live entry; the journal re-read the
     // refresh asks for will say the same (gap row 505).
     state.live_entries = vec![entry];
@@ -996,23 +1004,27 @@ fn stopped(
     // each frame (`banner::stop_reason`) beside the banner's keys —
     // never `esc dismiss`, which read as the way on and dropped the
     // banner's focus (`.scratch/m6-conflicts/scout-stuck-after-merge.md`).
-    state.stopped = Some(super::state::Stop {
+    let stop = super::state::Stop {
         origin: super::relaunch::LiveOrigin::ThisRun,
         again: false,
         kind,
         paths_at_stop: paths.len(),
-    });
+        rewrite,
+    };
     // `Ready` also clears the launch's `Busy`, as the old line did.
     // Why git would not continue (`stalled`) is a real problem, not
-    // the stop's state: it stays on the status line, dismissable.
-    state.status = match stalled {
-        Some(said) => Status::sticky(stalled_line(description, kind, said)),
-        None => Status::Ready,
+    // the stop's state: it stays on the status line, dismissable. A
+    // rewrite whose progress could not be read says so (07b).
+    state.status = match stalled.as_deref() {
+        Some(said) => Status::sticky(stalled_line(&description, kind, said)),
+        None => super::banner::progress_unread(&stop).map_or(Status::Ready, Status::sticky),
     };
     // …and the banner takes the keyboard, so `c`/`s`/`a` are under
     // the user's fingers rather than something to go looking for
-    // (m5-history-and-ghost-preview/09).
-    state.banner_focus = super::banner::banner_focusable(kind);
+    // (m5-history-and-ghost-preview/09) — except at a rewrite's `edit`
+    // stop, which hands it to the graph (07b).
+    state.banner_focus = super::banner::stop_takes_focus(kind, &stop);
+    state.stopped = Some(stop);
     // The editor and its draft are left alone, as on a failure: no
     // commit was made, so clearing a message the user typed would be
     // throwing away their words over someone else's conflict.
@@ -1022,7 +1034,7 @@ fn stopped(
     let mut commands = refresh_scope(state, Refresh::Everything, next_id);
     // …and, with anything unmerged, lands in the resolver on the
     // first conflicted file (m6-conflicts/18).
-    super::banner::land_in_resolver(state, &mut commands, paths, next_id);
+    super::banner::land_in_resolver(state, &mut commands, &paths, next_id);
     commands
 }
 
@@ -1087,21 +1099,7 @@ pub fn operated(
             landed(state, &applied, lands_on_head, next_id)
         }
         Operated::Incomplete { applied, error } => incomplete(state, &applied, &error, next_id),
-        Operated::Conflicted {
-            description,
-            kind,
-            paths,
-            stalled,
-            entry,
-        } => stopped(
-            state,
-            &description,
-            kind,
-            &paths,
-            stalled.as_deref(),
-            entry,
-            next_id,
-        ),
+        stop @ Operated::Conflicted { .. } => stopped(state, stop, next_id),
         // A stash put back clashed: the resolver on the first clashed file,
         // no banner (m6-conflicts/72b).
         Operated::Clashed { entry, clash } => {
@@ -2452,6 +2450,7 @@ mod tests {
     /// git's own state live, two files unmerged.
     fn conflicted(paths: &[&str], stalled: Option<&str>) -> Operated {
         Operated::Conflicted {
+            rewrite: None,
             description: "merge feature into main".to_owned(),
             kind: InProgress::Merge,
             paths: paths.iter().map(PathBuf::from).collect(),

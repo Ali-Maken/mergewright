@@ -525,6 +525,7 @@ fn stopping_again_keeps_the_banner_focused() {
         &mut state,
         id,
         crate::jobs::operate::Operated::Conflicted {
+            rewrite: None,
             description: "rebase feature onto main".to_owned(),
             kind: InProgress::Rebase,
             paths: vec!["a.rs".into(), "b.rs".into()],
@@ -540,6 +541,7 @@ fn stopping_again_keeps_the_banner_focused() {
     assert_eq!(
         state.stopped,
         Some(crate::update::Stop {
+            rewrite: None,
             origin: crate::update::LiveOrigin::ThisRun,
             again: true,
             kind: InProgress::Rebase,
@@ -679,6 +681,7 @@ fn answer_and_read_disagree_says_so() {
         ),
     );
     let read = crate::working_tree::WorkingTree {
+        rewrite: None,
         status: std::sync::Arc::new(WorkingTreeStatus {
             entries: Vec::new(),
         }),
@@ -697,6 +700,7 @@ fn answer_and_read_disagree_says_so() {
 
     // A read that agrees says nothing new.
     let agreeing = crate::working_tree::WorkingTree {
+        rewrite: None,
         status: std::sync::Arc::new(WorkingTreeStatus {
             entries: Vec::new(),
         }),
@@ -1146,6 +1150,7 @@ fn working_tree(in_progress: Option<InProgressDetail>, paths: &[&str]) -> AppEve
     AppEvent::Produced(
         JobId::new(90),
         Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+            rewrite: None,
             status: std::sync::Arc::new(WorkingTreeStatus {
                 entries: paths.iter().map(|path| unmerged(path)).collect(),
             }),
@@ -1175,6 +1180,7 @@ fn a_merge_stops() -> AppState {
         AppEvent::Produced(
             id,
             Product::Operated(Box::new(crate::jobs::operate::Operated::Conflicted {
+                rewrite: None,
                 description: "merge feature into main".to_owned(),
                 kind: InProgress::Merge,
                 paths: vec!["gone.txt".into()],
@@ -1206,6 +1212,7 @@ fn a_rebase_stopping_again_lands_in_the_resolver() {
         &mut state,
         id,
         crate::jobs::operate::Operated::Conflicted {
+            rewrite: None,
             description: "rebase feature onto main".to_owned(),
             kind: InProgress::Rebase,
             paths: vec!["b.rs".into(), "c.rs".into()],
@@ -1359,6 +1366,7 @@ fn esc_on_the_banner_leaves_a_way_back_on_screen() {
 
 fn stop(origin: LiveOrigin, again: bool, kind: InProgress, paths_at_stop: usize) -> Stop {
     Stop {
+        rewrite: None,
         origin,
         again,
         kind,

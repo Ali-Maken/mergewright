@@ -843,6 +843,7 @@ mod tests {
 
     fn banner(focused: bool, conflict: Option<&str>) -> BannerView {
         BannerView {
+            rewrite: None,
             kind: sanitize_line("MERGING"),
             step: None,
             conflict: conflict.map(sanitize_line),

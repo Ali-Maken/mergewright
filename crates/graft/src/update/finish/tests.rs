@@ -606,6 +606,7 @@ fn a_stop_with_new_conflicts_closes_and_keeps_the_draft() {
         AppEvent::Produced(
             id,
             Product::Resumed(Box::new(crate::jobs::operate::Operated::Conflicted {
+                rewrite: None,
                 description: "continue merge".to_owned(),
                 kind: InProgress::Merge,
                 paths: vec!["notes.txt".into()],

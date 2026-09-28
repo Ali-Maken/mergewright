@@ -1348,6 +1348,7 @@ fn every_field_spelled_out() -> AppState {
         undo_landing_owed: false,
         status_read: None,
         head_message: None,
+        edit_amend: false,
         commit_template: None,
         external_editor: None,
         suspend_on_ctrl_z: false,
@@ -2987,6 +2988,7 @@ fn a_clean_tree_while_shown_clears_the_flag_and_follows_off_it() {
         AppEvent::Produced(
             JobId::new(1),
             Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+                rewrite: None,
                 status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
                 in_progress: None,
                 mergetool: None,
@@ -3227,6 +3229,7 @@ fn working_tree_read(id: JobId) -> AppEvent {
     AppEvent::Produced(
         id,
         Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+            rewrite: None,
             status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
             in_progress: None,
             mergetool: None,

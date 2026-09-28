@@ -1332,6 +1332,7 @@ fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>) -> BannerView
         conflict: conflict.map(sanitize_line),
         focused: false,
         skippable: true,
+        rewrite: None,
     }
 }
 
@@ -1342,7 +1343,7 @@ fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>) -> BannerView
 #[test]
 fn the_banner_names_the_state_and_never_the_files() {
     let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
-    let text = banner_line(&banner);
+    let text = banner_line(&banner, u16::MAX);
     assert_eq!(text, "REBASING step 3 of 7");
     assert!(!text.contains("token.rs"), "{text:?}");
     assert!(!text.contains("conflict"), "{text:?}");
@@ -1359,12 +1360,12 @@ fn the_banner_carries_no_warning_glyph() {
         rebase_banner(Some((3, 7)), Some("src/auth/token.rs")),
         rebase_banner(None, None),
     ] {
-        let text = banner_line(&banner);
+        let text = banner_line(&banner, u16::MAX);
         assert!(!text.contains('⚠'), "{text:?}");
     }
 }
 
-/// One wording. `banner_line` takes no width, so there is no tier left to
+/// One wording. A plain banner's `banner_line` reads no width, so there is no tier left to
 /// spell the same fact two ways — `conflict in notes.md` at 120 against
 /// `conflict notes.md` at 80 and 160, which is what the user read off three
 /// captures of one repository in one state (m5/20 item 3). The drawn
@@ -1376,7 +1377,7 @@ fn the_banner_is_worded_the_same_whatever_the_header_it_lands_in() {
     let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
     let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
     with_banner.banner_op = Some(banner.clone());
-    let whole = banner_line(&banner);
+    let whole = banner_line(&banner, u16::MAX);
     for columns in [100u16, 120, 160, 200] {
         let header = text(&draw(&with_banner, columns, 6))[0].clone();
         assert!(
@@ -1395,16 +1396,52 @@ fn banner_line_with_no_step_names_only_the_operation() {
         conflict: Some(sanitize_line("src/x.rs")),
         focused: false,
         skippable: false,
+        rewrite: None,
     };
-    assert_eq!(banner_line(&banner), "MERGING");
+    assert_eq!(banner_line(&banner, u16::MAX), "MERGING");
 }
 
 /// A step, and nothing after it.
 #[test]
 fn banner_line_with_a_step_counts_it() {
     assert_eq!(
-        banner_line(&rebase_banner(Some((3, 7)), None)),
+        banner_line(&rebase_banner(Some((3, 7)), None), u16::MAX),
         "REBASING step 3 of 7"
+    );
+}
+
+/// A rewrite's edit stop at 80 columns: the ladder drops the edit hint (the
+/// hint bar says the same keys) and keeps `REBASING  step i of n` whole, the
+/// row it stopped on after it (m7-power-tools/07b).
+#[test]
+fn banner_line_keeps_step_i_of_n_at_80_columns() {
+    let rows = linear(2);
+    let mut screen = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    screen.location = Some(sanitize_line("~/code/api"));
+    let mut banner = rebase_banner(Some((3, 7)), None);
+    banner.rewrite = Some(crate::graph_screen::RewriteBannerView {
+        action: "edit".to_owned(),
+        sha7: "5d4c3b2".to_owned(),
+        subject: "wip: tests".to_owned(),
+        chain: Some(("feature-b".to_owned(), 2, 3)),
+        edit_hint: true,
+    });
+    screen.banner_op = Some(banner);
+    let header = text(&draw(&screen, 80, 6))[0].clone();
+    assert!(
+        header.contains("REBASING  step 3 of 7 · edit 5d4c3b2"),
+        "{header:?}"
+    );
+    assert!(
+        !header.contains("amends it"),
+        "the hint dropped: {header:?}"
+    );
+    // The banner's room comes first, as it always has: the path is what
+    // an `…` lands on, never the banner's words.
+    let banner = &header[header.find("REBASING").expect("drawn")..];
+    assert!(
+        !banner.contains('\u{2026}'),
+        "nothing cut mid-word: {header:?}"
     );
 }
 
@@ -1457,7 +1494,7 @@ fn a_long_location_is_cut_before_the_banner_is() {
 
     for columns in [80u16, 100, 120, 160] {
         let header = text(&draw(&long, columns, 6))[0].clone();
-        let whole = banner_line(&banner);
+        let whole = banner_line(&banner, u16::MAX);
         assert!(
             header.contains(&whole),
             "at {columns} columns the banner was cut instead of the path: \
@@ -1520,7 +1557,7 @@ fn unmerged_sections_heading_word_is_conflicts() {
 
 /// Not an assertion — dumps the banner at three widths, so the header's
 /// operation banner can be judged by eye. The widths are three sizes of
-/// terminal, **not** three tiers: `banner_line` takes no width and there is
+/// terminal, **not** three tiers: a plain banner's `banner_line` reads no width and there is
 /// one wording (m5/20 item 3). Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_for_docs_shots`.
 ///
 /// The long location is deliberate: it is what pushed the banner off the

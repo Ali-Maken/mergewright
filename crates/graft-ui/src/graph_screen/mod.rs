@@ -32,7 +32,7 @@ use graft_graph::row::Row;
 use graft_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
-pub use banner::{BannerView, banner_line};
+pub use banner::{BannerView, RewriteBannerView, banner_line};
 pub use columns::{absolute_date, initials, relative_date, relative_date_long, short_sha};
 pub use hints::{
     ConfirmYes, Divider, Hint, HintContext, HintState, LiveC, Rung, StopWording, TabWord,
@@ -333,6 +333,9 @@ pub enum RowTag {
     /// `✎ changed` (ASCII `~ changed`): a commit a rewrite just changed.
     /// Journal-screen (24) adds `PutBack` and `WasHere { branch }`.
     Changed,
+    /// `HEAD · stopped here`: the commit a rewrite's `edit` stop handed him
+    /// (m7-power-tools/07b), on `HEAD`'s row while the stop lasts.
+    StoppedHere,
 }
 
 impl RowTag {
@@ -344,6 +347,9 @@ impl RowTag {
         match (self, ascii) {
             (RowTag::Changed, false) => "\u{270e} changed",
             (RowTag::Changed, true) => "~ changed",
+            // `·` is drawn in both tiers: the ASCII tier swaps glyphs, not
+            // the middle dot every status line already uses.
+            (RowTag::StoppedHere, _) => "HEAD \u{b7} stopped here",
         }
     }
 }

@@ -34,7 +34,7 @@ use graft_core::job::JobId;
 use graft_git::state::{InProgress, InProgressDetail};
 use graft_ops::apply::Resume;
 use graft_term::sanitize_line;
-use graft_ui::graph_screen::BannerView;
+use graft_ui::graph_screen::{BannerView, RewriteBannerView};
 
 use crate::jobs::operate::Operated;
 
@@ -49,9 +49,11 @@ pub(super) use stop::finished_lands_on_head;
 pub(super) use stop::land_in_resolver;
 use stop::stopped_again;
 pub use stop::{
-    StopLadder, one_tab_to_banner, stop_line, stop_line_wordings, stop_reason, stop_wordings,
+    RewriteStop, StopLadder, one_tab_to_banner, stop_line, stop_line_wordings, stop_reason,
+    stop_wordings,
 };
 pub(crate) use stop::{TabTarget, tab_keys, tab_target, tabs_to_banner};
+pub(crate) use stop::{edit_stop_of, progress_unread, read_rewrite_stop, stop_takes_focus};
 pub(super) use stop::{refs_answered, walk_started};
 
 /// The banner's word for an operation, as the header draws it.
@@ -185,7 +187,7 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
     let detail = live(state)?;
     let kind = kind_word(detail.kind)?;
     let paths = unmerged_paths(state);
-    Some(BannerView {
+    let mut view = BannerView {
         kind: sanitize_line(kind),
         step: detail.step,
         conflict: paths
@@ -196,7 +198,33 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
         // `s` on one would be a key that runs `git merge --skip`, which does
         // not exist.
         skippable: detail.kind != InProgress::Merge,
-    })
+        rewrite: None,
+    };
+    // A rewrite's stop words itself from the todo (07b): the step counts his
+    // rows only, and the row and branch follow it. A failed read, or none,
+    // keeps today's words.
+    if let Some(rewrite) = state
+        .stopped
+        .as_ref()
+        .filter(|stop| stop.kind == detail.kind)
+        .and_then(|stop| stop.rewrite.as_ref())
+        .and_then(|read| read.as_ref().ok())
+    {
+        let progress = &rewrite.progress;
+        let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+        view.step = Some((count(progress.step.0), count(progress.step.1)));
+        view.rewrite = progress.current.as_ref().map(|row| RewriteBannerView {
+            action: row.action.word().to_owned(),
+            sha7: row.commit.to_string().chars().take(7).collect(),
+            subject: sanitize_line(&row.subject).as_str().to_owned(),
+            chain: progress.branch.as_ref().map(|(name, index, of)| {
+                let name = String::from_utf8_lossy(name.shorthand());
+                (sanitize_line(&name).as_str().to_owned(), *index, *of)
+            }),
+            edit_hint: rewrite.edit.is_some(),
+        });
+    }
+    Some(view)
 }
 
 /// Why `c` will not run yet, or `None` when it would.
@@ -733,10 +761,11 @@ pub fn resumed(
             paths,
             stalled,
             entry,
+            rewrite,
             ..
         } => {
             state.live_entries = vec![entry];
-            stopped_again(state, kind, paths.len(), stalled.as_deref());
+            stopped_again(state, kind, paths.len(), stalled.as_deref(), rewrite);
             let everything = graft_ops::apply::Refresh::Everything;
             let mut commands = super::operate::refresh_scope(state, everything, next_id);
             land_in_resolver(state, &mut commands, &paths, next_id);

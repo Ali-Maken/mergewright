@@ -27,6 +27,7 @@ fn owed(state: &AppState) -> bool {
 /// A status read answering that nothing is unmerged, `kind` in progress.
 fn clean_read(kind: InProgress) -> Product {
     Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+        rewrite: None,
         status: status(&[("gone.txt", false), ("conflicted.rs", false)]),
         in_progress: Some(crate::update::resolver::fixtures::operation(kind, None)),
         mergetool: None,
@@ -264,6 +265,7 @@ fn a_status_still_conflicted_cancels_the_open() {
     let read = owed_read(&commands);
     let state = done_read_lands(&landed, &commands);
     let conflicted = Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+        rewrite: None,
         status: status(&[("gone.txt", true), ("conflicted.rs", false)]),
         in_progress: Some(crate::update::resolver::fixtures::operation(
             InProgress::Merge,

@@ -174,6 +174,7 @@ fn abort_box_over_a_stop(columns: u16, rows: u16, detail: bool) -> AppState {
         theirs: Ok(None),
     });
     state.stopped = Some(crate::update::Stop {
+        rewrite: None,
         origin: crate::update::LiveOrigin::ThisRun,
         again: false,
         kind: InProgress::Rebase,

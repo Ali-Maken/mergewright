@@ -23,6 +23,10 @@ pub(super) fn commit_key(next: &mut AppState, commands: &mut Vec<Command>, amend
             super::super::finish::ReturnTo::Banner,
             &mut next_id,
         );
+    } else if amend && super::super::commit_editor::amend_at_edit_stop(next, commands, &mut next_id)
+    {
+        // `a` at a rewrite's `edit` stop, on `HEAD` or the uncommitted
+        // row: amends the stopped commit, message kept (07b).
     } else if amend {
         // `a` reads the cursor (m7-power-tools/09): an older commit gets
         // the put-in preview; `HEAD` gets today's amend unless something

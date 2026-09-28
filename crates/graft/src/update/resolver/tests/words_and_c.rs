@@ -174,6 +174,7 @@ fn read(unmerged: &[&str]) -> Product {
         .map(|path| (path, unmerged.contains(&path)))
         .collect();
     Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+        rewrite: None,
         status: super::file_list::status(&entries),
         in_progress: Some(crate::update::resolver::fixtures::operation(
             graft_git::state::InProgress::Merge,

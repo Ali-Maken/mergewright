@@ -33,21 +33,51 @@ pub struct BannerView {
     /// (`hint-bar-redesign`'s group, not this one's `graph_screen`
     /// footer) — never the banner's own text or buttons.
     pub skippable: bool,
+    /// A rewrite's stop, read from git's todo and Graft's saved plan
+    /// (m7-power-tools/07b): what the step is, and which branch of the line
+    /// it belongs to. `None` for every other operation, and for a rebase
+    /// whose progress could not be read — those draw today's words.
+    pub rewrite: Option<RewriteBannerView>,
 }
 
-/// `banner`'s text: `MERGING`, or `REBASING step 3 of 7` when the operation
-/// counts steps.
+/// What a rewrite's stop adds to the banner after `REBASING  step i of n`:
+/// `· pick 7f6e5d4 Handle expired tokens · feature-b, branch 2 of 3`, and at
+/// an `edit` stop the hint that the graph has the keyboard.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RewriteBannerView {
+    /// git's action word for the row it stopped on: `pick`, `edit`, …
+    pub action: String,
+    /// The stopped row's commit, short.
+    pub sha7: String,
+    /// The stopped row's subject, sanitised by `graft`.
+    pub subject: String,
+    /// The branch of the line this step belongs to, its place (1-based) and
+    /// how many branches the line has. `None` for a single branch and for a
+    /// rebase begun in the shell.
+    pub chain: Option<(String, usize, usize)>,
+    /// An `edit` stop: adds `change files, space stages, a amends it, c
+    /// continues · ⇥ banner`.
+    pub edit_hint: bool,
+}
+
+/// `banner`'s text in `width` cells (the banner's own room, after the
+/// header's prefix): `MERGING`, `REBASING step 3 of 7`, or at a rewrite's
+/// stop `REBASING  step 3 of 7 · pick 7f6e5d4 Handle expired tokens ·
+/// feature-b, branch 2 of 3`.
 ///
-/// **One wording at every width**, and no `width` to word it to. The two
-/// earlier defects here were one defect: a `width >= 100` tier chose between
-/// `— conflict in notes.md` and `— conflict notes.md`, and the width it was
-/// given is the banner's own region, which is 120 cells on a 120-column
-/// screen (detail pane below) and about 92 on a 160-column one (detail pane
-/// beside). So the same repository in the same state spelled itself two
-/// ways, and the *wider* terminal got the terser spelling. Counting from
-/// the banner's own room was right (ADR-0039's amendment); wording a
-/// fourteen-cell fact in two ways was not. The text is now short enough to
-/// fit everywhere, so there is nothing left to tier.
+/// **Without a rewrite, one wording at every width**: `width` is not read.
+/// Two earlier defects were one defect — a `width >= 100` tier chose between
+/// `— conflict in notes.md` and `— conflict notes.md`, so the same state
+/// spelled itself two ways and the *wider* terminal got the terser one
+/// (m5/20 item 3). Those words are short enough to fit everywhere.
+///
+/// **A rewrite's words are a ladder** (m7-power-tools/07b, note R4): they are
+/// long, and a cut `…` would take the step count's neighbours at random. As
+/// the room shrinks they drop whole, in this order: the edit hint (the hint
+/// bar says the same keys), the subject, the chain words, the action with
+/// its sha7. `REBASING  step i of n` is never dropped; the header cuts it
+/// with `…` only below its own width, as it cuts any text. Each rung is the
+/// same facts, fewer of them — never the same fact spelled two ways.
 ///
 /// No `⚠` either: a stopped merge is a state to finish, not a failure, and
 /// CLAUDE.md's rule is that a status field must never read as an error when
@@ -55,10 +85,56 @@ pub struct BannerView {
 /// (`GraphScreen::marker_glyph`, `OverviewStrip`, the Map screen), which is
 /// what keeps it meaning something.
 #[must_use]
-pub fn banner_line(banner: &BannerView) -> String {
-    let mut line = String::from(banner.kind.as_str());
+pub fn banner_line(banner: &BannerView, width: u16) -> String {
+    let Some(rewrite) = banner.rewrite.as_ref() else {
+        let mut line = String::from(banner.kind.as_str());
+        if let Some((step, total)) = banner.step {
+            line.push_str(&format!(" step {step} of {total}"));
+        }
+        return line;
+    };
+    let mut base = String::from(banner.kind.as_str());
     if let Some((step, total)) = banner.step {
-        line.push_str(&format!(" step {step} of {total}"));
+        base.push_str(&format!("  step {step} of {total}"));
     }
-    line
+    let row = format!("{} {}", rewrite.action, rewrite.sha7);
+    let chain = rewrite
+        .chain
+        .as_ref()
+        .map(|(branch, index, of)| format!("{branch}, branch {index} of {of}"));
+    let hint = rewrite.edit_hint.then_some(EDIT_HINT);
+    // Widest first; each rung drops the next piece: the hint, the subject,
+    // the chain words. Below the last, the row itself goes (`base`).
+    let rungs = [
+        (true, true, true),
+        (true, true, false),
+        (false, true, false),
+        (false, false, false),
+    ];
+    for (with_subject, with_chain, with_hint) in rungs {
+        let mut line = format!("{base} · {row}");
+        if with_subject && !rewrite.subject.is_empty() {
+            line.push(' ');
+            line.push_str(&rewrite.subject);
+        }
+        if let Some(chain) = chain.as_ref().filter(|_| with_chain) {
+            line.push_str(" · ");
+            line.push_str(chain);
+        }
+        if let Some(hint) = hint.filter(|_| with_hint) {
+            line.push_str(" · ");
+            line.push_str(hint);
+        }
+        if super::layout::text_width(&line) <= usize::from(width) {
+            return line;
+        }
+    }
+    base
 }
+
+/// What an `edit` stop's banner adds: the graph has the keyboard, and these
+/// are the keys that finish the step.
+const EDIT_HINT: &str = "change files, space stages, a amends it, c continues · \u{21e5} banner";
+
+#[cfg(test)]
+mod tests;
