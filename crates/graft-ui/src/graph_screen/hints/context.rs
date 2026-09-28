@@ -283,6 +283,25 @@ pub enum HintContext {
         /// drawn right after `c`.
         space_stages: bool,
     },
+    /// A commit row `R` rewrites (m7-power-tools/08, ruling 10): the row's
+    /// own list with `R rewrite` added. `graft` wraps a `BranchRow` or
+    /// `PlainRow` in this while the graph has the keyboard, `HEAD` is on a
+    /// branch, nothing is live, and the row is his branch's (not on the
+    /// default branch's chain, unless `HEAD` is the default branch or that
+    /// chain is unread). A `Marked` row wraps this, never the other way.
+    Rewritable(Box<HintContext>),
+    /// The rewrite editor (m7-power-tools/08, keymap §2.7): modal, its own
+    /// keys.
+    RewriteEditor {
+        /// Below 120 columns: `tab after` swaps the rows for the AFTER side.
+        narrow: bool,
+        /// `y` would start the rewrite: the plan landed and nothing
+        /// refuses (the §2.3b rule — never on a refused, failed or invalid
+        /// plan).
+        can_start: bool,
+    },
+    /// The rewrite editor's `r` message field: every key is typed.
+    RewriteMessage,
 }
 
 /// What `c` does in the graph or the changes pane while an operation is

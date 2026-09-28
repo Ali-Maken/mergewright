@@ -28,6 +28,7 @@ pub mod overview_strip;
 pub mod paint;
 pub mod picker;
 pub mod preview_box;
+pub mod rewrite_editor;
 pub mod stash_screen;
 pub mod status_screen;
 pub mod still_to_apply;

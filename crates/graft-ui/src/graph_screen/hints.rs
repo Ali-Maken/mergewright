@@ -359,7 +359,10 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         // The blame place is modal too (keymap §2.1): no doorway. The
         // history place likewise (m7-power-tools/21b).
         | HintContext::Blame { .. }
-        | HintContext::History { .. } => (drawable(context, divider), None),
+        | HintContext::History { .. }
+        // The rewrite editor is modal (keymap §2.7): no doorway.
+        | HintContext::RewriteEditor { .. }
+        | HintContext::RewriteMessage => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -394,6 +397,7 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
+        | HintContext::Rewritable(_)
         | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
         // The row's own bar with its `c` said the way it acts now, and —
         // while one `⇥` reaches the banner — the way back leading, so the
@@ -537,6 +541,8 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Finish { .. }
                 | HintContext::Blame { .. }
                 | HintContext::History { .. }
+                | HintContext::RewriteEditor { .. }
+                | HintContext::RewriteMessage
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the
@@ -550,7 +556,10 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     }
     let rows = matches!(
         context,
-        HintContext::WorkingTreeRow | HintContext::BranchRow { .. } | HintContext::PlainRow
+        HintContext::WorkingTreeRow
+            | HintContext::BranchRow { .. }
+            | HintContext::PlainRow
+            | HintContext::Rewritable(_)
     );
     if rows {
         let commits = *context != HintContext::WorkingTreeRow;

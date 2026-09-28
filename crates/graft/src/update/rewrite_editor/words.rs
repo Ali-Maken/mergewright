@@ -52,10 +52,6 @@ pub(super) fn with_subject(message: &str, subject: &str) -> String {
 }
 
 /// Everything the view draws, newest row first.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 pub(super) fn view_facts(editor: &RewriteEditor) -> ViewFacts<'_> {
     let count = editor.todo.len();
     let rows = rows(editor);
@@ -100,10 +96,6 @@ pub(super) fn view_facts(editor: &RewriteEditor) -> ViewFacts<'_> {
 }
 
 /// His rows, newest first, as the view draws them.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 fn rows(editor: &RewriteEditor) -> Vec<RowFacts<'_>> {
     let groups = squash_groups(&editor.todo);
     (0..editor.todo.len())
@@ -139,10 +131,6 @@ fn rows(editor: &RewriteEditor) -> Vec<RowFacts<'_>> {
 
 /// One block per message the rewrite writes: each squash group's (when it
 /// writes one) and each reword's, newest kept row first.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 fn messages(editor: &RewriteEditor) -> Vec<MessageFacts> {
     let groups = squash_groups(&editor.todo);
     let mut out = Vec::new();

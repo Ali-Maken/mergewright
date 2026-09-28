@@ -192,4 +192,20 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("B", "blame here"),        // `history_keys::blame_here`
     ("F", "history"),           // `detail::keys` → `place::f_key`, on a file
     ("esc", "back to history"), // `place::esc_goes_back` → the hidden history place
+    // The rewrite editor (`rewrite_editor::rewrite_key`, m7-power-tools/08).
+    // `⌃E $EDITOR` above is its field's too (`field_key`).
+    ("R", "rewrite"),         // `graph_key`: `is_rewrite_key` → `open_rewrite`
+    ("y", "rewrite"),         // `row_key` → `after::start`
+    ("tab", "after"),         // `row_key`: below 120 columns
+    ("⏎", "changes"),         // `row_key` → `toggle_changes`
+    ("p", "pick"),            // `row_key` → `mark`
+    ("r", "reword"),          // `row_key` → `open_field`
+    ("e", "edit"),            // `row_key` → `mark`
+    ("s", "squash"),          // `row_key` → `mark`
+    ("f", "fixup"),           // `row_key` → `mark`
+    ("d", "drop"),            // `row_key` → `mark`
+    ("alt+↑↓", "move"),       // `row_key` → `move_row`
+    ("esc", "cancel"),        // `row_key` → `close`
+    ("⏎", "keep"),            // `field_key` → `keep_message`
+    ("esc", "drop the edit"), // `field_key`: the field closes, its edit dropped
 ];

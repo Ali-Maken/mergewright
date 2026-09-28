@@ -166,12 +166,38 @@ pub(super) fn draw_place(
 }
 
 /// The rewrite editor over the whole frame (m7-power-tools/08; keymap §2.7:
-/// a modal pane). **08-a draws only the cleared frame**: the editor's rows,
-/// AFTER block, message and bar are 08-b's (`graft_ui::rewrite_editor`,
-/// `view/rewrite_editor.rs`), so nothing of the graph shows behind a modal
-/// meanwhile.
-pub(super) fn draw_rewrite(frame: &mut Frame, area: Rect) -> Option<Rect> {
+/// a modal pane), and its bar on the bottom row: a problem or a notice on
+/// the status line, else the editor's keys ([`draw_status_or_hints`], the
+/// ladder every bar uses). The body is `view::rewrite_editor::editor_area`,
+/// the rectangle the editor's mouse asks too.
+///
+/// Never returns a pixel rectangle: the editor covers the graph.
+pub(super) fn draw_rewrite(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
     frame.render_widget(ratatui::widgets::Clear, area);
+    let tier = tier_in_force(session, state);
+    let view = crate::view::rewrite_editor::rewrite_view(state, tier == RenderingTier::Ascii)?;
+    let body = Rect {
+        height: area.height.saturating_sub(1),
+        ..area
+    };
+    graft_ui::rewrite_editor::draw_rewrite_editor(frame, body, &view, &session.theme);
+    if area.height == 0 {
+        return None;
+    }
+    let context = crate::view::rewrite_editor::rewrite_context(state)?;
+    let bar = (area.x, area.bottom() - 1, area.width);
+    draw_status_or_hints(frame, state, tier, bar, &session.theme, || {
+        graft_ui::graph_screen::hints_text(&graft_ui::graph_screen::hints_for(
+            &context,
+            graft_ui::graph_screen::Divider::Hidden,
+            area.width,
+        ))
+    });
     None
 }
 

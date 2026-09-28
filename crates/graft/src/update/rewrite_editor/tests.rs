@@ -18,7 +18,7 @@ use graft_ops::operation::{Operation, Refusal, RewriteKey, Tip};
 use graft_ops::rewrite::{BranchLine, RewriteParams, TodoAction, TodoLine, TodoProblem};
 use graft_ui::text_input::TextField;
 
-use super::{AfterFacts, Field, RewriteEditor, words};
+use super::{After, AfterFacts, Field, RewriteEditor, words};
 use crate::history::{HistoryUpdate, Window};
 use crate::jobs::operate::Operated;
 use crate::jobs::rewrite_open::{BaseRow, OpenedRewrite, RewriteOpened};
@@ -298,6 +298,20 @@ pub(crate) fn an_editor() -> Box<RewriteEditor> {
 /// Stand an editor on `state`.
 pub(crate) fn open_an_editor(state: &mut AppState) {
     state.rewrite.editor = Some(an_editor());
+}
+
+/// Stand an editor on `state` whose AFTER plan landed (`y` starts), or
+/// whose todo cannot run (`y` refuses): the rewrite editor bar's two
+/// `can_start` forms.
+pub(crate) fn open_an_editor_planned(state: &mut AppState, can_start: bool) {
+    let mut editor = an_editor();
+    if can_start {
+        editor.after = After::Ready {
+            planned: a_planned(None),
+            asked: editor.opened.clone(),
+        };
+    }
+    state.rewrite.editor = Some(editor);
 }
 
 /// Stand an editor on `state` with its `r` field open and empty.

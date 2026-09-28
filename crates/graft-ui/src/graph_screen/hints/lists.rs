@@ -77,6 +77,15 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
             list
         }
         HintContext::Credential => vec![hint("⏎", "send"), hint("esc", "cancel")],
+        HintContext::Rewritable(row) => with_rewrite(context_list(row)),
+        HintContext::RewriteEditor { narrow, can_start } => rewrite_editor_list(*narrow, *can_start),
+        // Keymap §2.7: the field is a text field; these three are what the
+        // non-letter keys do (`graft::update::rewrite_editor` `field_key`).
+        HintContext::RewriteMessage => vec![
+            hint("⏎", "keep"),
+            hint("⌃E", "$EDITOR"),
+            hint("esc", "drop the edit"),
+        ],
         // All three are answered in `whole_bar` before this is reached; a
         // `RowContext` sub-enum would say so in the type, at the cost of
         // wrapping every row context at every call site.
@@ -87,6 +96,43 @@ pub(super) fn context_list(context: &HintContext) -> Vec<Hint> {
         | HintContext::OperationLive { .. }
         | HintContext::Preview => Vec::new(),
     }
+}
+
+/// `R rewrite`, on a commit row of his branch (m7-power-tools/08).
+const REWRITE: Hint = hint("R", "rewrite");
+
+/// A commit row's list with [`REWRITE`] last among the row's own keys,
+/// ahead of the whole screen's ([`TAIL`]): a new key takes no rung from the
+/// verbs the row already leads with, so the bar's floor (ADR-0037 §4) and
+/// every narrower bar stay as they were, and wider ones gain `R rewrite`.
+fn with_rewrite(mut list: Vec<Hint>) -> Vec<Hint> {
+    list.push(REWRITE);
+    list
+}
+
+/// The rewrite editor's bar (note R1, keymap §2.7): `y rewrite` leads while
+/// it would start, then `tab after` below 120 (the one way to the AFTER
+/// side there), then the row keys in R1's order.
+fn rewrite_editor_list(narrow: bool, can_start: bool) -> Vec<Hint> {
+    let mut list = Vec::new();
+    if can_start {
+        list.push(hint("y", "rewrite"));
+    }
+    if narrow {
+        list.push(hint("tab", "after"));
+    }
+    list.extend([
+        hint("⏎", "changes"),
+        hint("p", "pick"),
+        hint("r", "reword"),
+        hint("e", "edit"),
+        hint("s", "squash"),
+        hint("f", "fixup"),
+        hint("d", "drop"),
+        hint("alt+↑↓", "move"),
+        hint("esc", "cancel"),
+    ]);
+    list
 }
 
 /// The branch picker's bar.

@@ -29,6 +29,7 @@ pub(crate) mod picker;
 mod preview;
 pub(crate) mod radar;
 pub(crate) mod resolver;
+pub(crate) mod rewrite_editor;
 pub(crate) mod rows;
 mod stash;
 pub(crate) mod status;

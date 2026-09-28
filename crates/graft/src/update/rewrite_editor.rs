@@ -96,6 +96,9 @@ pub(crate) struct RewriteEditor {
     narrow_shows_right: bool,
     /// A refusal in words, on the row above the bar, until the next key.
     notice: Option<String>,
+    /// A left button went down on a row and has not come up: a drag moves
+    /// that row.
+    dragging: bool,
 }
 
 /// `r`'s message field.
@@ -139,12 +142,8 @@ enum Right {
     },
 }
 
-/// What 08-b's view reads to draw the editor: everything on screen, in the
+/// What the view (`view::rewrite_editor`) reads to draw the editor: everything on screen, in the
 /// screen's order, and nothing it has to work out again.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 #[derive(Debug)]
 pub(crate) struct ViewFacts<'a> {
     /// His branch's short name (`feature-a`).
@@ -175,10 +174,6 @@ pub(crate) struct ViewFacts<'a> {
 }
 
 /// One of his rows.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 #[derive(Debug)]
 pub(crate) struct RowFacts<'a> {
     /// Its action now.
@@ -199,10 +194,6 @@ pub(crate) struct RowFacts<'a> {
 }
 
 /// One message the rewrite will write.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 #[derive(Debug)]
 pub(crate) struct MessageFacts {
     /// The kept (or reworded) row.
@@ -216,10 +207,6 @@ pub(crate) struct MessageFacts {
 }
 
 /// The AFTER side's state.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-)]
 #[derive(Debug)]
 pub(crate) enum AfterFacts<'a> {
     /// `checking…`.
@@ -265,6 +252,7 @@ impl RewriteEditor {
             right: Right::After,
             narrow_shows_right: false,
             notice: None,
+            dragging: false,
         }
     }
 
@@ -378,11 +366,7 @@ impl RewriteEditor {
         after.into_iter().chain(files).chain(handover)
     }
 
-    /// Everything the view draws (08-b).
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "08-b's view draws from it (m7-power-tools/08)")
-    )]
+    /// Everything the view draws (`view::rewrite_editor`).
     pub(crate) fn view_facts(&self) -> ViewFacts<'_> {
         words::view_facts(self)
     }
