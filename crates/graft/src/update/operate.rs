@@ -1088,6 +1088,10 @@ pub fn operated(
     if state.operating != Some(id) {
         return Vec::new();
     }
+    // The rewrite editor's `y` (m7-power-tools/08, ruling 6): a refusal
+    // brings the editor back with the words, any other answer ends it.
+    // After the guard above: only the write it launched is its answer.
+    super::rewrite_editor::write_answered(state, &outcome);
     state.operating = None;
     let lands_on_head = state.lands_on_head.take() == Some(id);
     // A write that finished before `Esc`'s stop reached it answers here as

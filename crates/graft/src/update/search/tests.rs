@@ -51,6 +51,7 @@ type Modal = (&'static str, AppState, Option<Readback>);
 /// `AppState::modal_owns_keys`).
 fn every_modal() -> Vec<Modal> {
     let mut modals = text_fields();
+    modals.push(rewrite_field());
     modals.extend(boxes());
     modals
 }
@@ -126,6 +127,17 @@ fn text_fields() -> Vec<Modal> {
     ]
 }
 
+/// The rewrite editor's `r` field (m7-power-tools/08).
+fn rewrite_field() -> Modal {
+    let mut rewrite = on_graph();
+    crate::update::rewrite_editor::tests::open_an_editor_field(&mut rewrite);
+    (
+        "the rewrite editor's message field",
+        rewrite,
+        Some(crate::update::rewrite_editor::tests::field_text),
+    )
+}
+
 /// The modals with no text field: each shuts on a key it has no use for.
 fn boxes() -> Vec<Modal> {
     let mut confirm = on_graph();
@@ -152,7 +164,12 @@ fn boxes() -> Vec<Modal> {
     });
     banner.banner_focus = true;
 
+    // The rewrite editor (m7-power-tools/08): modal, no field until `r`.
+    let mut rewrite = on_graph();
+    crate::update::rewrite_editor::tests::open_an_editor(&mut rewrite);
+
     vec![
+        ("the rewrite editor", rewrite, None),
         ("the confirm box", confirm, None),
         ("the Ghost Preview", preview, None),
         ("the conflict resolver", resolver, None),

@@ -242,7 +242,7 @@ pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u1
 - Docs: MAP.md (graft, graft-ui), TESTING.md, `docs/shots/m7/`, the captions TSV, the contact sheet.
 
 ## Acceptance (each tick names its test; red quoted in NOTES)
-- [ ] **App** `update::rewrite_editor::tests`:
+- [x] **App** `update::rewrite_editor::tests` (08-a: every name below except Mouse and the first two Graph-bar tests, which move to the 08-b box after this one; each named test exists and passes, `cargo nextest run -E 'test(rewrite_editor)'`):
   - Opening:
     - `capital_r_opens_on_the_cursor_row` (**red first**: today `R` is unbound, `keys/predicates.rs`; quote it);
     - `capital_r_on_the_uncommitted_row_opens_on_head`;
@@ -277,15 +277,18 @@ pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u1
     - `a_refused_write_restores_the_editor_with_the_words`;
     - `a_moved_branch_refuses_y_in_words`.
   - Modality: `the_overlay_is_rewrite_while_the_editor_is_up`; `u_while_the_editor_is_up_does_nothing`.
-  - Mouse: `a_click_selects_the_row`, `a_drag_moves_the_row`.
-  - Graph bar:
-    - `the_bar_offers_capital_r_on_his_commit_rows`;
-    - `the_bar_hides_capital_r_on_default_branch_rows`;
-    - `capital_r_on_another_branch_is_refused_in_words`.
-- [ ] Sweeps extended, green: `update/tests.rs:3696` (the field), `search::tests::slash_belongs_to_every_modal_that_is_up`
-  (the editor).
-- [ ] **Job** `jobs::rewrite_open::tests` (real git): `open_reads_every_rows_whole_message`,
-  `open_refuses_forked_dependents_in_words`.
+  - Graph bar (08-a's one): `capital_r_on_another_branch_is_refused_in_words`.
+  - Also added: `r_on_a_melded_row_says_whose_message_it_is`, `ctrl_c_still_quits_under_the_editor`,
+    `view_facts_are_the_screen_in_order`, `view_facts_show_the_plan_that_landed`.
+- [ ] **08-b** App: Mouse `a_click_selects_the_row`, `a_drag_moves_the_row` (need `rewrite_row_at`); Graph bar
+  `the_bar_offers_capital_r_on_his_commit_rows`, `the_bar_hides_capital_r_on_default_branch_rows` (need `HintContext`).
+- [x] Sweeps extended, green: `update/tests.rs:3696` (the field) —
+  `every_text_field_the_app_has_is_named_by_text_field_open` (rows: not a field; `r`: a field);
+  `search::tests::slash_belongs_to_every_modal_that_is_up` (the editor in `boxes()`, its `r` field via `rewrite_field()`
+  in `every_modal`, so `n_and_capital_n_never_step_a_search_behind_a_modal` covers both too). Also
+  `view::frame::tests::standing_on` stands the editor (forced arm).
+- [x] **Job** `jobs::rewrite_open::tests` (real git): `open_reads_every_rows_whole_message`,
+  `open_refuses_forked_dependents_in_words` (both pass).
 - [ ] **UI** `graft_ui::rewrite_editor` snapshots at 187×50, 140×40, 100×30. Each asserts the non-colour carriers:
   `↓ ✎ ⏸ ✗`, `│` (187 only), `○ new`, the `┊` gutter, `built on yours · follows`, `↕ moved`.
   `rewrite_row_at_matches_the_drawn_rows`.
@@ -353,3 +356,52 @@ Large (~120k), over one context → **build as two, in sequence**:
 
 08-b needs 08-a's `RewriteEditor` accessors: 08-a exposes a `pub(crate) fn view_facts(&self)`, whose shape it names
 in NOTES.
+
+## NOTES (08-a)
+- **Status:** 08-a done. **Compacted once mid-ticket** (context ran out after the source, before the tests).
+- **Red first:** `capital_r_opens_on_the_cursor_row` with the `R` binding off (`keys.rs` write_key arm disabled):
+  `assertion left == right failed; left: None; right: Some(Oid(…03))` at `rewrite_editor/tests.rs:319`. Binding
+  restored, green.
+- **Ruling 4, verified before routing:**
+  - `JobRunner::cancel` (`jobs/runner.rs:454`) → `Live::cancel` (`jobs/pool.rs:43`): cancels only a registered token;
+    an id already finished is a no-op and its answer is still on its way (runner.rs doc :440-442). The editor marks every
+    cancelled id `stale` and drops its answer or cancellation (`rewrite_editor.rs` `owns`/`stale`).
+  - `preview_produced` returns when `state.preview` is `None` (`update/preview.rs` ~:626-629) and drops a mismatched
+    job (~:630-633). The editor's ids never reach it: `owns` routes first (`update/mod.rs`, the `Produced` arm after
+    `Started`).
+- **Deviations (say so, not silent):**
+  - `y` launches with `operate::launch_unstoppable` (as `preview::confirm_preview` does for every history op), not
+    `operate::launch`: `Esc` must not kill a `rebase -i` part-way. Words `HISTORY_CANNOT_STOP`, `opened_by` `R`.
+  - `write_answered` sits right after `operated`'s `if state.operating != Some(id)` guard, not literally first, so a
+    stale answer can't take the launched editor.
+  - Whole messages: `graft_git::history::read_commit(handle, oid).message`, the detail pane's read.
+- **Questions (rule 7, one wording kept):**
+  - Moved after `y`/in the AFTER plan: `Refusal::Moved.explain()` = `<b> moved since the preview was drawn — press
+    the key again` (graft-ops `operation.rs:918`); `history_refusal` says `<b> moved since the preview · R again`
+    (`operate.rs:1264`). Neither reads `feature-a moved since this opened · esc, then R again`. Not changed.
+  - `TodoProblem::EverythingDropped.explain()` = `every commit dropped · the branch would be its base again`
+    (graft-ops `rewrite.rs:270`), not `…main again`. Used as is.
+  - The bar hides `R` on default-chain rows (ruling 10) but R1 says `R` deeper opens more rows; `R` currently sends the
+    open for any row and `plan` decides.
+- **Forced arms (literal only):** `event_loop/label.rs` (Task/Product labels), `update/place/write.rs`
+  (`OpenRewrite` is a read), `update/mod.rs` (Started/no-op lists, `rewrite_answer`, `job_cancelled`/`job_failed`),
+  `jobs/runner.rs` (dispatch), `view/frame.rs` + `view/frame/overlays.rs` (`draw_rewrite` placeholder: clears the
+  area; 08-b replaces it), `view/rows.rs::overlay_context` (`Rewrite` → no hints until 08-b), `update/tests.rs`
+  (`every_field_spelled_out`), `view/frame/tests.rs::standing_on`. `view/frame/boxes.rs:290` and `update/undo.rs:1669`
+  compile unchanged (no exhaustive arm needed). `jobs/kinds.rs`: no edit needed.
+- **`view_facts` shape (for 08-b):** `RewriteEditor::view_facts(&self) -> ViewFacts<'_>`:
+  `ViewFacts { branch: &str, since: usize, rows: Vec<RowFacts> (newest first), base: &BaseRow { oid, subject, label },
+  cursor: usize (rows.len() = base), field: Option<(screen_row, &str, caret)>, messages: Vec<MessageFacts { kept,
+  kept_subject, squashed, text }>, after: AfterFacts { Checking | Failed(&str) | Refused(&str) | Invalid(String) |
+  Ready(&Planned) }, changes: Option<(Oid, &Loading<Arc<FileList>>)>, narrow_shows_right, notice: Option<&str>,
+  handing_over }`; `RowFacts { action, commit, subject, moved, by_name, keeps, problem: Option<String> }`. The types
+  carry `cfg_attr(not(test), expect(dead_code))` until 08-b reads them: drop those attributes then.
+- **Touches:** grep `Char('R')` in `update/` (non-test): only `keys/predicates.rs:115`. `modifiers.alt` readers: Alt+↑/↓
+  handled only in `rewrite_editor/keys.rs`, which claims every key while up, before the other modals. Consumers of
+  `modal_owns_keys`/`text_field_open`, `GraphOverlay` users, preview/`CancelJob`/`JobFailed` routing, the `$EDITOR`
+  handover, `operate::operated`: full `cargo nextest run` green (4726/4726), incl. commit-editor, preview, amend-into,
+  stop and search sweeps. `update/preview.rs` not edited. Captures not re-taken: 08-a draws nothing new on any
+  existing screen (graph bar unchanged; 08-b adds `R rewrite` and re-takes).
+- **Left for 08-b:** graft-ui draw + snapshots, `view/rewrite_editor.rs`, replace `draw_rewrite`'s placeholder,
+  `HintContext` + graph bar `R rewrite` (+ `bound.rs` row), mouse hit test (`rewrite_row_at`) in `rewrite_mouse`, the
+  two mouse and two bar tests, walks, captures, TESTING.md, graft-ui MAP.md, captions, contact sheet.

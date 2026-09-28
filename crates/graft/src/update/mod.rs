@@ -46,6 +46,7 @@ pub mod radar;
 mod relaunch;
 pub mod remote;
 pub mod resolver;
+pub(crate) mod rewrite_editor;
 pub(crate) mod row_tags;
 mod search;
 mod selection;
@@ -226,6 +227,16 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         AppEvent::Core(event) => core_event(next, commands, event),
         AppEvent::Started(id, task) => started(next, commands, id, &task),
+        // The rewrite editor's jobs, by id, before the handlers that share
+        // their products: the preview's, the detail pane's and the stash
+        // list's `Files`, the commit editor's `$EDITOR` (m7-power-tools/08).
+        AppEvent::Produced(id, product) if rewrite_editor::owns(next, id) => {
+            rewrite_answer(next, commands, id, product);
+        }
+        // An open read nobody waits for any more: `opened` drops it.
+        AppEvent::Produced(id, product @ Product::RewriteOpened(_)) => {
+            rewrite_answer(next, commands, id, product);
+        }
         AppEvent::Produced(id, product @ Product::Stashes(_)) => stash_answer(next, id, &product),
         AppEvent::Produced(id, Product::SwitchList(result)) => picker::listed(next, id, result),
         // The overlay's file preview reads through `ListFiles` like the
@@ -541,10 +552,41 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::PlanRewrite
+        | Task::OpenRewrite
         | Task::ResolveRowTags
         | Task::WriteCommitGraph
         | Task::DeclineCommitGraph => {}
     }
+}
+
+/// An answer to one of the rewrite editor's jobs (`rewrite_editor::owns`).
+fn rewrite_answer(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: graft_core::job::JobId,
+    product: Product,
+) {
+    let mut local_jobs = next.local_jobs;
+    let mut next_id = || local_jobs.next_id();
+    match product {
+        Product::RewriteOpened(answer) => {
+            rewrite_editor::opened(next, commands, id, answer, &mut next_id);
+        }
+        Product::Preview(answer) => rewrite_editor::after_planned(next, id, answer),
+        Product::Files(answer) => {
+            rewrite_editor::files_listed(next, id, answer.map(|(_, list)| list));
+        }
+        Product::ExternalEditor(answer) => {
+            rewrite_editor::message_returned(next, commands, id, answer, &mut next_id);
+        }
+        // No job of the editor's answers with anything else; one that did
+        // is still over, and whatever waited on it stops waiting.
+        other => {
+            debug_assert!(false, "not the rewrite editor's: {other:?}");
+            rewrite_editor::job_ended(next, id, "an answer the rewrite editor never asked for");
+        }
+    }
+    next.local_jobs = local_jobs;
 }
 
 /// The three products the commit editor waits on
@@ -904,6 +946,7 @@ fn took_fact(
         | Product::HeadMessage(_)
         | Product::RewritePlanned(_)
         | Product::RowTagsResolved(_)
+        | Product::RewriteOpened(_)
         | Product::ExternalEditor(_)
         | Product::HandedOver(_)
         | Product::ConflictOpened(_)
@@ -1128,6 +1171,8 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     next.refs_read.answered(id, false);
     // A put-in's plan or tag read that will never answer (m7/09).
     amend_into::job_ended(next, id);
+    // The rewrite editor's read, plan, file list (m7-power-tools/08).
+    rewrite_editor::job_ended(next, id, "cancelled");
     // A leaves read that will never answer is a failed one (review
     // m7-16b..21b, Minor 2).
     remote::leaves_job_ended(next, id, "the read was cancelled");
@@ -1179,6 +1224,7 @@ fn job_failed(
     next.detail.evil_job_failed(id, &failure.to_string());
     finish::job_ended(next, id, failure);
     amend_into::job_ended(next, id);
+    rewrite_editor::job_ended(next, id, &failure.to_string());
     remote::leaves_job_ended(next, id, &failure.to_string());
     next.status = Status::Failed(format!("{id} failed: {failure}"));
     let mut local_jobs = next.local_jobs;

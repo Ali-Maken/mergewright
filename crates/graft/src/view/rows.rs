@@ -614,7 +614,9 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         GraphOverlay::Map => HintContext::Map,
         GraphOverlay::Journal => HintContext::Journal,
         GraphOverlay::Stash => HintContext::Stash,
-        GraphOverlay::CommitEditor => return None,
+        // 08-b gives the rewrite editor its `HintContext`; until then it
+        // draws no bar hints from the graph's tables.
+        GraphOverlay::CommitEditor | GraphOverlay::Rewrite => return None,
         // Modal in the stronger sense, like the commit editor — but unlike
         // it, the resolver draws a bar, so it has one. It covers the detail
         // pane too, which is why it answers before the focus test below:

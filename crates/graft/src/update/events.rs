@@ -109,6 +109,8 @@ pub enum Task {
     /// Plan `a` into an older commit, or absorb: the rewrite, its preview's
     /// words and its landing's (m7-power-tools/09).
     PlanRewrite,
+    /// Read what the rewrite editor opens on (`R`, m7-power-tools/08).
+    OpenRewrite,
     /// After a put-in landed: the commits it changed on the new line, for
     /// their row tags (m7-power-tools/09).
     ResolveRowTags,
@@ -327,6 +329,9 @@ pub enum Product {
     /// The commits a landed put-in changed, one per planned offset, or why
     /// they could not be read (m7-power-tools/09).
     RowTagsResolved(Result<Vec<graft_core::oid::Oid>, String>),
+    /// What the rewrite editor opens on, `plan`'s refusal, or why the read
+    /// failed (m7-power-tools/08).
+    RewriteOpened(Result<crate::jobs::rewrite_open::RewriteOpened, String>),
     /// What `$EDITOR` left in the message file, or why Graft could not use
     /// it: the editor would not start, exited non-zero, or the file could
     /// not be read back (m3-working-tree-undo-and-stash/05).
