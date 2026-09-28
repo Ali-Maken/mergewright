@@ -1,0 +1,49 @@
+# m7/take-preview-120x40.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/picker.rs, cherry_pick_in_view, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `o` on login-page's commit, main checked out, base.txt edited —
+# the title `Preview: take <sha7> "fix the bug" onto main`; the
+# footer `y confirm … esc cancel`; the set-aside line (the edit is
+# put aside and back).
+ graft /code/api  6 commits
+  ●   ▏  [login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
+  │      after cherry-pick
+  │ ○    [◆ main ⇄ origin] fix the bug                                                                   GF —    —
+●─│─╯    main moves on                                                                                   GF 4m   37926a7
+●─╯      [feature-a] add the base                                                                        GF 5m   ed332bc
+●        Correct the note                                                                                GF 1y   a82960b
+●        Add the first note                                                                              GF 1y   fadcfb3
+◇        Add a readme                                                                                    GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: take fbb2394 "fix the bug" onto main ───────────────────────────────────────────────────────────────────────╮
+│ 1 commit replayed                                                                                                    │
+│ main 37926a7 → 1 new commit                                                                                          │
+│ working tree: 1 file updated                                                                                         │
+│ your edits: 1 file set aside, put back after                                                                         │
+│ no conflicts expected                                                                                                │
+│ undo: u takes this back                                                                                              │
+│ git cherry-pick --no-edit fbb239485a44296a8bcf422dc2957c94be4a7d6c                                                   │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                            │
+╰ y confirm  ←→ choose  ⏎ act  esc cancel ─────────────────────────────────────────────────────────────────────────────╯
+

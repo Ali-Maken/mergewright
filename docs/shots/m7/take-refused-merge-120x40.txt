@@ -1,0 +1,47 @@
+# m7/take-refused-merge-120x40.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/picker.rs, take_refused_on_a_merge, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `o` on a merge commit — the status line `<sha7> is a merge ·
+# taking a merge isn't in Graft yet`; no preview box.
+ graft /code/api  7 commits
+  ◉─╮ ▏ⓘ [merged] merge login-page                                                                       GF now  5c42e39
+  │ ●  ⓘ [login-page] [origin/sara/login-page] fix the bug                                               GF 3m   fbb2394
+◆ │ │    [◆ main ⇄ origin] main moves on                                                                 GF 4m   37926a7
+●─┴─╯  ⓘ [feature-a] add the base                                                                        GF 5m   ed332bc
+●        Correct the note                                                                                GF 1y   a82960b
+●        Add the first note                                                                              GF 1y   fadcfb3
+◇        Add a readme                                                                                    GF 1y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ 5c42e39 is a merge · taking a merge isn't in Graft yet · esc dismiss

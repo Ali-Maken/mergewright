@@ -18,7 +18,7 @@
 # What right looks like:
 #  - The menu is anchored under `main`'s row and is wide enough for its
 #    longest label, with the cursor on the first item.
-#  - `Checkout main` then `Cherry-pick <sha7>` come first (m6-conflicts/71),
+#  - `Checkout main` then `Cherry-pick <sha7> (o)` come first (m6-conflicts/71),
 #    then `Explain` if the row is marked, then the row's own actions
 #    (`Copy SHA (y)`, `Compare with this (x)`, `Open details (⏎)`),
 #    then the rest of the history verbs, then the ambient
@@ -32,14 +32,15 @@
 #    if the verb were bound to that sha.
 #  - The history verbs name the real branches, not placeholders: `Checkout
 #    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,
-#    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here,
+#    `Cherry-pick <sha7> (o)`, `Revert <sha7>`, `Reset feature to here,
 #    mixed`/`, hard`, `Delete branch main`. `feature` is the branch
 #    checked out, `main` is the row under the cursor.
 #  - No verb names the branch you are standing on where git would refuse
 #    it: there is no `Checkout feature` and no `Delete branch feature`.
 #  - A trailing `(key)` means one thing everywhere in the menu: that
 #    letter is live right now, so next time you can skip the menu. Only
-#    `Merge` and `Rebase` carry one, because only `m` and `r` exist. A
+#    `Merge`, `Rebase` and `Cherry-pick` carry one, because only `m`, `r`
+#    and `o` (M7) exist. A
 #    qualifier that is not a key never wears that shape — hence `Reset
 #    …, mixed`, not `(mixed)` (`docs/design/02-keymap.md` §2.1).
 #  - Choosing any of them opens a picture, not a write (PROMPT.md §1.7).
@@ -56,7 +57,7 @@
   ●    start the feature                                            2m   52f3b96
 ● │ ▏  [main] main moves again                                      3m   45fa51d
  Checkout main
- Cherry-pick 45fa51d
+ Cherry-pick 45fa51d (o)
  Copy SHA (y)
  Compare with this (x)
  Open details (⏎)

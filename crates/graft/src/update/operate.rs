@@ -889,6 +889,18 @@ fn done_status(
             keys: Some(super::switch::GOES_BACK.to_owned()),
         };
     }
+    // A one-commit cherry-pick (`o`, or slot 2's `⏎`) lands in `o`'s words
+    // (m7-power-tools/11; the journal keeps git's `cherry-pick …`).
+    if let Some(Operation::CherryPick(params)) = launched_op
+        && params.commits.len() == 1
+    {
+        let onto = super::preview::short_name_of(&params.head.name);
+        return Status::Done {
+            what: format!("took \"{}\" onto {onto}", params.subject),
+            also: super::clash::edits_back(&applied.entry).map(str::to_owned),
+            keys: Some("u undoes".to_owned()),
+        };
+    }
     Status::Done {
         what: done_what(state, remote_op, applied),
         also: super::clash::edits_back(&applied.entry).map(str::to_owned),

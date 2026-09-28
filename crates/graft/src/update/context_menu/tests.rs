@@ -500,7 +500,7 @@ fn a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys
         listed,
         vec![
             "Checkout feature",
-            "Cherry-pick 0303030",
+            "Cherry-pick 0303030 (o)",
             "Merge feature into main (m)",
             "Rebase main onto feature (r)",
             "Revert 0303030",
@@ -932,7 +932,7 @@ fn enter_on_the_dim_checkout_slot_keeps_the_menu_and_says_why() {
                 .map(graft_term::SanitizedText::as_str),
             Some("already on main")
         );
-        assert_eq!(open.menu.items[1].label.as_str(), "Cherry-pick 0202020");
+        assert_eq!(open.menu.items[1].label.as_str(), "Cherry-pick (o)");
         assert_eq!(open.menu.cursor, 0);
     }
     let mut commands = Vec::new();
@@ -1008,4 +1008,291 @@ fn enter_on_each_enabled_slot_runs_its_own_verb() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// m7-power-tools/11: `o` takes the cursor commit; slot 2 is its menu door.
+// ---------------------------------------------------------------------------
+
+/// `history_of(3, 0)` over [`refs_over_the_fixture`] with the cursor on
+/// `row`: row 0 is `feature` (`0303…`), row 1 `HEAD` on `main` (`0202…`),
+/// row 2 main's parent (`0101…`), an ancestor of `HEAD`.
+fn on_row(row: usize) -> AppState {
+    let mut state = on_the_feature_row();
+    state.history.as_mut().expect("history").cursor = row;
+    state
+}
+
+/// Row 0 made a merge: a second parent the fixture does not draw.
+fn with_a_merge_on_row_0(state: &mut AppState) {
+    let window = state
+        .history
+        .as_mut()
+        .and_then(|history| history.window.as_mut())
+        .expect("a window");
+    let mut rows = window.rows.to_vec();
+    rows[0].commit.parents.push(oid(9));
+    window.rows = rows.into();
+}
+
+fn press_o(state: &mut AppState) -> Vec<Command> {
+    let mut commands = Vec::new();
+    super::super::keys::key_event(state, &mut commands, key(KeyCode::Char('o')));
+    commands
+}
+
+/// `feature`'s commit, taken onto `main`.
+fn take_feature() -> Operation {
+    Operation::CherryPick(graft_ops::operation::PickParams {
+        commits: vec![oid(3)],
+        subject: "Commit 3\u{1b}[31m".to_owned(),
+        head: graft_ops::operation::Tip {
+            name: "refs/heads/main".to_owned(),
+            oid: oid(2),
+        },
+    })
+}
+
+fn sticky(reason: &str) -> Status {
+    Status::Sticky {
+        reason: reason.to_owned(),
+        keys: None,
+    }
+}
+
+#[test]
+fn o_opens_the_take_preview() {
+    let mut state = on_row(0);
+    let commands = press_o(&mut state);
+    assert!(!commands.is_empty(), "the plan was asked for");
+    let preview = state.preview.as_ref().expect("a preview opened");
+    assert_eq!(
+        preview.subject,
+        crate::update::preview::PreviewSubject::Operation {
+            op: Box::new(take_feature()),
+            opened_by: "o",
+        }
+    );
+    let view = crate::update::preview::preview_box(&state).expect("a box");
+    assert_eq!(
+        view.title,
+        graft_term::sanitize_line("Preview: take 0303030 \"Commit 3\u{1b}[31m\" onto main"),
+    );
+    assert!(
+        view.title
+            .as_str()
+            .starts_with("Preview: take 0303030 \"Commit 3"),
+        "{:?}",
+        view.title
+    );
+    // The bar keeps every preview's `y confirm`: no verb of its own.
+    assert_eq!(view.again, None);
+    assert!(!view.back_only);
+}
+
+#[test]
+fn slot_two_enter_and_o_open_the_same_preview() {
+    let mut by_key = on_row(0);
+    press_o(&mut by_key);
+    let mut by_menu = on_row(0);
+    open_for_history_row(&mut by_menu, 0);
+    choose(&mut by_menu, "Cherry-pick 0303030 (o)");
+
+    let op_of = |state: &AppState| {
+        state
+            .preview
+            .as_ref()
+            .and_then(|preview| preview.subject.operation().cloned())
+            .expect("a preview opened")
+    };
+    assert_eq!(op_of(&by_key), op_of(&by_menu));
+    assert_eq!(op_of(&by_key), take_feature());
+    let title = |state: &AppState| {
+        crate::update::preview::preview_box(state)
+            .expect("a box")
+            .title
+    };
+    assert_eq!(title(&by_key), title(&by_menu));
+}
+
+#[test]
+fn o_on_head_is_refused_without_a_preview() {
+    let mut state = on_row(1);
+    let commands = press_o(&mut state);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+    assert_eq!(state.status, sticky("0202020 is already on main"));
+}
+
+#[test]
+fn o_on_a_merge_is_refused_without_a_preview() {
+    let mut state = on_row(0);
+    with_a_merge_on_row_0(&mut state);
+    let commands = press_o(&mut state);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+    assert_eq!(
+        state.status,
+        sticky("0303030 is a merge \u{b7} taking a merge isn't in Graft yet")
+    );
+}
+
+/// An ancestor of `HEAD` is not known from the row: `o` opens the preview,
+/// the plan refuses it (11a), and the box closes in the same words.
+#[test]
+fn o_on_an_ancestor_is_refused_in_words() {
+    let mut state = on_row(2);
+    press_o(&mut state);
+    let job = state.preview.as_ref().expect("a preview opened").job;
+    crate::update::preview::preview_produced(
+        &mut state,
+        job,
+        Err(crate::update::preview::PreviewFailure::Refused(
+            graft_ops::operation::Refusal::AlreadyOnBranch {
+                commit: oid(1),
+                branch: "main".to_owned(),
+            },
+        )),
+    );
+    assert!(state.preview.is_none(), "the box closed");
+    assert_eq!(state.status, sticky("0101010 is already on main"));
+}
+
+#[test]
+fn o_on_the_uncommitted_row_is_refused_in_words() {
+    let mut state = on_row(0);
+    state.on_working_tree = true;
+    let commands = press_o(&mut state);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+    assert_eq!(
+        state.status,
+        sticky("o takes a commit \u{b7} this row isn't one")
+    );
+}
+
+#[test]
+fn o_on_a_stash_row_is_refused_in_words() {
+    let mut state = stash_on_row_0();
+    let commands = press_o(&mut state);
+    assert!(commands.is_empty(), "{commands:?}");
+    assert!(state.preview.is_none());
+    assert_eq!(
+        state.status,
+        sticky("o takes a commit \u{b7} this row isn't one")
+    );
+}
+
+/// `a_stash_row_menu_is_unchanged`'s state: `refs/stash` on row 0.
+fn stash_on_row_0() -> AppState {
+    let name = |full: &str| {
+        graft_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+    };
+    let refs = crate::refs::badges(
+        &[(name("refs/heads/main"), oid(2))],
+        &graft_git::repo::HeadState::Branch(name("refs/heads/main")),
+        &std::collections::HashMap::new(),
+        &[(oid(3), 0)],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
+    .expect("no ahead/behind walk can fail here");
+    AppState {
+        history: Some(crate::view::tests::history_of(3, 0)),
+        refs: Some(std::sync::Arc::new(refs)),
+        ..AppState::default()
+    }
+}
+
+/// Slot 2 on `HEAD`'s row and on a merge: dim in its place, the sha
+/// dropped, `o`'s words as its reason.
+#[test]
+fn slot_two_dims_on_head_and_on_a_merge() {
+    let slot_two = |state: &AppState| {
+        let open = state.context_menu.as_ref().expect("menu opened");
+        let item = &open.menu.items[1];
+        (
+            item.action,
+            item.label.as_str().to_owned(),
+            item.disabled
+                .as_ref()
+                .map(|reason| reason.as_str().to_owned()),
+        )
+    };
+    let mut head = on_row(1);
+    open_for_history_row(&mut head, 1);
+    assert_eq!(
+        slot_two(&head),
+        (
+            ContextAction::Unavailable,
+            "Cherry-pick (o)".to_owned(),
+            Some("already on main".to_owned())
+        )
+    );
+    let mut merge = on_row(0);
+    with_a_merge_on_row_0(&mut merge);
+    open_for_history_row(&mut merge, 0);
+    assert_eq!(
+        slot_two(&merge),
+        (
+            ContextAction::Unavailable,
+            "Cherry-pick (o)".to_owned(),
+            Some("a merge \u{b7} taking a merge isn't in Graft yet".to_owned())
+        )
+    );
+}
+
+/// `⏎` on the dim slot 2 does what `⏎` on the dim slot 1 does: nothing
+/// dispatched, the menu stays, the reason on the status line.
+#[test]
+fn slot_two_dim_behaves_as_slot_one_dim() {
+    let enter_at = |at: usize| {
+        let mut state = on_row(1);
+        open_for_history_row(&mut state, 1);
+        state.context_menu.as_mut().expect("menu").menu.cursor = at;
+        let mut commands = Vec::new();
+        assert!(context_menu_key(
+            &mut state,
+            &mut commands,
+            key(KeyCode::Enter)
+        ));
+        (state, commands)
+    };
+    let (one, one_commands) = enter_at(0);
+    let (two, two_commands) = enter_at(1);
+    for (state, commands) in [(&one, &one_commands), (&two, &two_commands)] {
+        assert!(commands.is_empty(), "{commands:?}");
+        assert!(state.context_menu.is_some(), "the menu stays open");
+        assert!(state.preview.is_none());
+        assert!(state.operating.is_none());
+    }
+    assert_eq!(one.status, sticky("already on main"));
+    assert_eq!(two.status, sticky("already on main"));
+}
+
+#[test]
+fn slot_two_label_carries_o() {
+    let mut state = on_row(0);
+    open_for_history_row(&mut state, 0);
+    let open = state.context_menu.as_ref().expect("menu opened");
+    assert_eq!(open.menu.items[1].label.as_str(), "Cherry-pick 0303030 (o)");
+    assert_eq!(open.menu.items[1].action, ContextAction::History(1));
+    assert_eq!(open.menu.items[1].disabled, None);
+}
+
+#[test]
+fn a_stash_row_menu_carries_no_o() {
+    let mut state = stash_on_row_0();
+    open_for_history_row(&mut state, 0);
+    let open = state.context_menu.as_ref().expect("menu opened");
+    let labels: Vec<&str> = open.verbs.iter().map(|verb| verb.label.as_str()).collect();
+    assert!(labels.contains(&"Cherry-pick 0303030"), "{labels:?}");
+    assert!(
+        !labels.iter().any(|label| label.ends_with("(o)")),
+        "{labels:?}"
+    );
 }
