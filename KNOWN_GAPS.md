@@ -1005,3 +1005,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r0921-min | Review 09..21c minors: m1,m2 → 07b; m3-8,12,13 → 30k; m9-11,14 ptr, m15 fixed (ARCHITECTURE, gaps, pull prior-art row); m11 (ticket 09 stale) done by conductor | **unverified** until 07b/30k land | M7 |
 | M7/11-anc | `.` menu slot 2 (cherry-pick) dims only HEAD's row and merges (`check_commit`, no git read); an ancestor stays live and is refused in words on open (11 spec, planner 2026-09-28) | **unverified** (by design) | M7 |
 | M7/30e-priv | rustdoc warns: public docs link private items (`restart_source`, `merge_msg`, `is_operation`) in graft-ops (30e NOTES) | **broken** (doc, warning) | M8 |
+| M7/30k-cas | Branch delete is now `git branch -D` (30k Minor 13): no expected-id compare-and-swap; `check_delete` guards against a moved branch from facts read just before (ms window). Git also now refuses a branch checked out in another worktree | **unverified** (race) | M8 |
+| M7/30k-budget | Put-in perf tests are in the heavy tier but assert no budget (print only); a release-only 16.7 ms assert is owed (ADR-0021) | **broken** (no gate) | M7 |
