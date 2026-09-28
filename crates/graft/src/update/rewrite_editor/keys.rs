@@ -132,15 +132,14 @@ fn drag_to(
     to: usize,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    for _ in 0..editor.todo.len() {
-        if editor.cursor == to || editor.notice.is_some() {
-            return;
-        }
-        let before = editor.cursor;
-        move_row(state, editor, commands, to < editor.cursor, next_id);
-        if editor.cursor == before {
-            return;
-        }
+    // One step at a time so the base and the ends refuse as `Alt+↑/↓` do,
+    // but one AFTER plan for the whole drag, not one per row crossed.
+    let mut moved = false;
+    while editor.cursor != to && editor.notice.is_none() && swap_row(editor, to < editor.cursor) {
+        moved = true;
+    }
+    if moved {
+        after::replan(state, editor, commands, next_id);
     }
 }
 
@@ -217,9 +216,17 @@ fn move_row(
     newer: bool,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    if swap_row(editor, newer) {
+        after::replan(state, editor, commands, next_id);
+    }
+}
+
+/// Swap the cursor's row one place newer or older, the cursor following
+/// it; `false` (and, toward the base, its notice) when it cannot move.
+fn swap_row(editor: &mut RewriteEditor, newer: bool) -> bool {
     let Some(index) = editor.cursor_row() else {
         editor.notice = Some(words::BASE_STAYS.to_owned());
-        return;
+        return false;
     };
     // Newer is later in the todo; the base below stays where it is.
     let Some(other) = (if newer {
@@ -230,12 +237,12 @@ fn move_row(
         if !newer {
             editor.notice = Some(words::BASE_STAYS.to_owned());
         }
-        return;
+        return false;
     };
     editor.todo.swap(index, other);
     editor.moved.insert(editor.todo[other].commit);
     editor.cursor = editor.todo.len() - 1 - other;
-    after::replan(state, editor, commands, next_id);
+    true
 }
 
 /// `r`: the message field under the row, prefilled with its subject line.

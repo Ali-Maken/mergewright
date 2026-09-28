@@ -280,8 +280,9 @@ pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u1
   - Graph bar (08-a's one): `capital_r_on_another_branch_is_refused_in_words`.
   - Also added: `r_on_a_melded_row_says_whose_message_it_is`, `ctrl_c_still_quits_under_the_editor`,
     `view_facts_are_the_screen_in_order`, `view_facts_show_the_plan_that_landed`.
-- [ ] **08-b** App: Mouse `a_click_selects_the_row`, `a_drag_moves_the_row` (need `rewrite_row_at`); Graph bar
+- [x] **08-b** App: Mouse `a_click_selects_the_row`, `a_drag_moves_the_row` (need `rewrite_row_at`); Graph bar
   `the_bar_offers_capital_r_on_his_commit_rows`, `the_bar_hides_capital_r_on_default_branch_rows` (need `HintContext`).
+  All four in `update::rewrite_editor::tests`, passing.
 - [x] Sweeps extended, green: `update/tests.rs:3696` (the field) —
   `every_text_field_the_app_has_is_named_by_text_field_open` (rows: not a field; `r`: a field);
   `search::tests::slash_belongs_to_every_modal_that_is_up` (the editor in `boxes()`, its `r` field via `rewrite_field()`
@@ -289,10 +290,11 @@ pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u1
   `view::frame::tests::standing_on` stands the editor (forced arm).
 - [x] **Job** `jobs::rewrite_open::tests` (real git): `open_reads_every_rows_whole_message`,
   `open_refuses_forked_dependents_in_words` (both pass).
-- [ ] **UI** `graft_ui::rewrite_editor` snapshots at 187×50, 140×40, 100×30. Each asserts the non-colour carriers:
+- [x] **UI** `graft_ui::rewrite_editor` snapshots at 187×50, 140×40, 100×30 (`at_187_the_after_side_stands_right_of_the_rule`,
+  `from_120_to_179_the_after_side_is_below_the_rows_and_labelled`, `below_120_the_rows_stand_alone_and_tab_swaps_to_after`). Each asserts the non-colour carriers:
   `↓ ✎ ⏸ ✗`, `│` (187 only), `○ new`, the `┊` gutter, `built on yours · follows`, `↕ moved`.
   `rewrite_row_at_matches_the_drawn_rows`.
-- [ ] **Walks** `tests/it/m7_walk/rewrite_editor.rs` (fixture: R1's mock, feature-a 5 since main incl. a `fixup!`,
+- [x] **Walks** (`squash_last_three`, `swap_adjacent`, `rewrite_look_and_leave_writes_nothing`, all pass) `tests/it/m7_walk/rewrite_editor.rs` (fixture: R1's mock, feature-a 5 since main incl. a `fixup!`,
   feature-b built on it):
   - `squash_last_three` = `R s s y` (start: cursor on HEAD), `len(keys) <= noted_keys("squash-last-three")`.
     After it:
@@ -304,7 +306,8 @@ pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u1
     `len(keys) <= noted_keys("swap-adjacent")`. The two commits' order is swapped, and `u` restores.
   - `rewrite_look_and_leave_writes_nothing` = `R s esc`: refs, index, files and journal unchanged.
   - `journey_counts_match_the_note` green (unchanged).
-- [ ] **Captures** (rule 6; colour **unverified**), written by the walk's capture tests through `check_shot`:
+- [x] **Captures** (rule 6; colour **unverified**), written by the walk's capture tests through `check_shot`
+  (`capture_rewrite_editor`, `capture_rewrite_refused_fork`). The 187 message order differs from this line: see NOTES:
   - `docs/shots/m7/rewrite-editor-187x50.txt`. **Right:**
     - the title starts `REWRITE feature-a · 5 commits since it left main · newest first`;
     - two `squash ↓` rows over `pick 5d4c3b2`;
@@ -316,8 +319,9 @@ pub fn rewrite_row_at(area: Rect, view: &RewriteEditorView, column: u16, row: u1
   - `docs/shots/m7/rewrite-editor-100x30.txt`. **Right:** rows only; `tab after` on the bar.
   - `docs/shots/m7/rewrite-refused-fork-120x40.txt`. **Right:** status `feature-b and feature-c are both built on
     yours · Graft moves one line`; no overlay.
-- [ ] Hint-bar tests green; `R rewrite` on the graph bar for his commit rows (ruling 10).
-- [ ] MAP.md (graft, graft-ui). TESTING.md section "The rewrite editor": the four capture rows, the journey rows, what
+- [x] Hint-bar tests green (`every_key_the_bar_draws_is_answered`, `hints_at_80_show_three_and_more`, the `hint_bar` it-tests);
+  `R rewrite` on the graph bar for his commit rows (ruling 10) (`the_bar_offers_capital_r_on_his_commit_rows`).
+- [x] (docs; no test) MAP.md (graft, graft-ui). TESTING.md section "The rewrite editor": the four capture rows, the journey rows, what
   the walk does not prove (colour). Captions + contact sheet.
 
 ## Touches (check each, report how)
@@ -405,3 +409,60 @@ in NOTES.
 - **Left for 08-b:** graft-ui draw + snapshots, `view/rewrite_editor.rs`, replace `draw_rewrite`'s placeholder,
   `HintContext` + graph bar `R rewrite` (+ `bound.rs` row), mouse hit test (`rewrite_row_at`) in `rewrite_mouse`, the
   two mouse and two bar tests, walks, captures, TESTING.md, graft-ui MAP.md, captions, contact sheet.
+
+## NOTES (08-b)
+- **Status:** 08-b done. **Compacted once** mid-ticket (after the draw, bar and mouse; before the tests, walks and docs).
+- **Scout:** `.scratch/m7-power-tools/scouts/08b.md`.
+- **Red first:** partly. The mouse and bar code went in before their tests. `a_drag_moves_the_row` was red on first run:
+  `left: Oid(…02) right: Oid(…04)` at `tests.rs:1165`. A drag of N rows sent N plans. **Cause fixed:** `keys.rs`
+  `move_row` split into `swap_row` + one `replan`, and `drag_to` replans once per drag event. The test now asserts one
+  `PlanPreview`.
+- **Deviations (said, not silent):**
+  - graft-ui view fields are `SanitizedText`, not `String`.
+  - `RowMark::Base` carries its label.
+  - `draw_rewrite_editor` takes a `&Theme`.
+  - Field bar says `⌃E $EDITOR`, the commit editor's wording, not `ctrl+e editor`.
+  - `ChangesView::Files` counts are `Option<(u32,u32)>`: a binary file draws `binary`, not `+0 −0`.
+  - AFTER wordings are re-said in `view/rewrite_editor.rs`, because `update/preview.rs`'s helpers are private and that
+    file must not be edited.
+- **`R rewrite` placement:** appended last among the row's own keys, ahead of the tail. Placed first, after `⏎ open`, it
+  broke the m5 floor test `hints_at_80_show_three_and_more`.
+  - Knock-on: each bar gains one bare key, so the ladder demotes one named hint at some widths. Examples: `f fetch` → `f`
+    at 120 on a branch row; `t tag` → `t` on a plain row at 120.
+- **`back_to_place` (`view/rows.rs`):** needed a `Rewritable(_)` arm. Without it the graph bar lost `esc back to
+  blame/history` on rows offering `R`. Caught by `capture_esc_back_to_{blame,history}_from_the_graph` and
+  `hint_bar_back_to_history`. Cause fixed.
+- **Captures re-taken** (`GRAFT_UPDATE_SHOTS=1`, then a clean second pass: the full run, 4763/4763). Each change is the
+  bar gaining `R` (plus the ladder demotion above):
+  - `m5-hints-{branch,plain}-{80x24,120x40,160x48}`, `m5-ui-drop-menu-{80x24,160x48}`;
+  - `m6/{esc-then-g,fix-radar-bookkeeping,menu-fixed-slots}-120x40`;
+  - `m7/{esc-back-to-blame-from-the-graph,esc-back-to-history-from-the-graph,menu-slot-two-dim,stash-in-history}-120x40`,
+    `m7/stash-in-history-80x24`.
+  - The m5/m6 contact sheets were regenerated from the committed shots. The m5 sheets were already stale from earlier
+    tickets (e.g. `C` on the tail), so their diff is larger than this ticket's.
+  - The m7 sheet (`m7-contact-sheet.txt`) is committed for the first time.
+- **Question (rule 7): the message order in the 187 capture's Right line.** The ticket expects `wip: tests` first. The
+  engine draws the kept row's message first, then the melded rows newest first. That rule is at graft-ops
+  `rewrite/todo.rs:44-67`, tested by `default_message_leads_with_the_kept_row_then_newest_first`. In this fixture the
+  kept row is `Handle expired tokens`. The capture and TESTING.md follow the code.
+- **`land_on_head`:** covers `Operation::Rewrite`. `moves_head` at graft-ops `operation.rs:1278` → `update/operate.rs:141`
+  → `:1011`. `squash_last_three` waits for the cursor on the new HEAD.
+- **The walks' `u`:** restores every `refs/heads/*`. The engine's `refs/graft/backup/*` safety refs remain; they are the
+  engine's by design, so the walk compares branches only.
+- **Walk `mod` line:** added to `tests/it/m7_walk.rs`. Nothing else was running, and the walks could not be run
+  without it.
+- **140×40 alignment:** the AFTER block under the rows, and the `Tab`-swapped AFTER under 120, now start at column 1,
+  where `MESSAGE` starts. Before, they started at 0.
+- **Touches:**
+  - Forced arms outside the Files list, literal only: graft-ui `hints.rs` (plus `led_by`, a split for clippy's line cap),
+    `hints/catalogue.rs`, `hints/tests.rs`, `graph_screen/tests.rs` (coverage slots 96–101); graft `view/mod.rs` (mod
+    line), `update/keys/bound.rs` (the bar's rows), `update/rewrite_editor/keys.rs` (mouse).
+  - `Char('R')` in `update/` outside tests: only `keys/predicates.rs:115`.
+  - `modifiers.alt` readers: 21 files in `update/`, each in its own modal. The editor claims every key first while it is
+    up.
+  - Sweeps `every_key_the_bar_draws_is_answered` and `every_swept_state_is_the_context_it_claims` are green.
+  - Preview captures are byte-identical (`check_shot`, clean pass).
+  - Journal/undo: `u` in both walks.
+- **Not proven:** colour — bold action words, dim notes, accent and warning (rule 5). The `$EDITOR` handover from the
+  field is unit-tested only (08-a).
+

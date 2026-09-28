@@ -382,18 +382,8 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             blamable,
             folds,
         } => pane_focused_bar(row, *opens, *blamable, *folds, divider),
-        HintContext::BackToBlame(inner) => {
-            let (list, trailer) = whole_bar(inner, divider);
-            let mut led = vec![BACK_TO_BLAME];
-            led.extend(list);
-            (led, trailer)
-        }
-        HintContext::BackToHistory(inner) => {
-            let (list, trailer) = whole_bar(inner, divider);
-            let mut led = vec![BACK_TO_HISTORY];
-            led.extend(list);
-            (led, trailer)
-        }
+        HintContext::BackToBlame(inner) => led_by(BACK_TO_BLAME, inner, divider),
+        HintContext::BackToHistory(inner) => led_by(BACK_TO_HISTORY, inner, divider),
         HintContext::WorkingTreeRow
         | HintContext::BranchRow { .. }
         | HintContext::PlainRow
@@ -420,6 +410,14 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
             (led, trailer)
         }
     }
+}
+
+/// `inner`'s whole bar with `lead` in front: the way back to a place.
+fn led_by(lead: Hint, inner: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
+    let (list, trailer) = whole_bar(inner, divider);
+    let mut bar = vec![lead];
+    bar.extend(list);
+    (bar, trailer)
 }
 
 /// [`whole_bar`] for [`HintContext::PaneFocused`]: the row's own bar minus

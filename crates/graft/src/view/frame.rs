@@ -154,9 +154,7 @@ pub fn view_with_graphics(
             // (m7-power-tools/20), below the resolver and the finish summary.
             Some(GraphOverlay::Place) => (draw_place(session, state, frame, area), Vec::new()),
             // The rewrite editor: modal, the whole frame (m7-power-tools/08).
-            Some(GraphOverlay::Rewrite) => {
-                (draw_rewrite(session, state, frame, area), Vec::new())
-            }
+            Some(GraphOverlay::Rewrite) => (draw_rewrite(session, state, frame, area), Vec::new()),
             Some(GraphOverlay::Map) => (draw_map(session, state, frame, area), Vec::new()),
             Some(GraphOverlay::Journal) => (draw_journal(session, state, frame, area), Vec::new()),
             Some(GraphOverlay::Stash) => (draw_stash(session, state, frame, area), Vec::new()),

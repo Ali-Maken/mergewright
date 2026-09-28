@@ -225,8 +225,9 @@ pub enum ChangesView {
     Reading,
     /// The read failed, in words.
     Failed(SanitizedText),
-    /// Each file: path, lines added, lines removed.
-    Files(Vec<(SanitizedText, u32, u32)>),
+    /// Each file: path, and lines added and removed — `None` for a binary
+    /// file, which git counts no lines for (drawn `binary`).
+    Files(Vec<(SanitizedText, Option<(u32, u32)>)>),
 }
 
 /// One line in the rows' region.
@@ -340,50 +341,32 @@ fn layout(view: &RewriteEditorView, area: Rect) -> Layout {
 
     if narrow && view.narrow_shows_right {
         return Layout {
-            right: Some(body),
+            right: Some(inset(body)),
             ..empty
         };
     }
 
-    // The left column: the whole width, or the rows' width left of `│`.
-    let left = if wide {
-        Rect::new(body.x, body.y, LEFT_WIDTH.min(body.width), body.height)
-    } else {
-        body
-    };
-    let (rule, right_wide) = if wide {
-        let rule = Rect::new(body.x + LEFT_WIDTH, body.y, 1, body.height);
-        let right = Rect::new(
-            body.x + LEFT_WIDTH + 2,
-            body.y,
-            body.width.saturating_sub(LEFT_WIDTH + 2),
-            body.height,
-        );
-        (Some(rule), Some(right))
-    } else {
-        (None, None)
-    };
-
-    let title = band(left, left.y, 1);
+    let (left, rule, right_wide) = columns(body, wide);
     let below = left.y + 2;
     let room = left.bottom().saturating_sub(below);
-    let right_need = if wide || narrow { 0 } else { right_height(view) + 1 };
+    let right_need = if wide || narrow {
+        0
+    } else {
+        right_height(view) + 1
+    };
     let message_need = message_height(view, area);
-    let rows_height = natural
-        .min(room.saturating_sub(right_need + message_need))
-        .max(natural.min(ROWS_MIN))
-        .min(room);
-    let rows = band(left, below, rows_height);
+    let under = right_need + message_need;
+    let rows = band(left, below, rows_height(natural, room, under));
     let mut y = rows.bottom();
 
-    let right = if let Some(right) = right_wide {
-        Some(right)
+    let right = if right_wide.is_some() {
+        right_wide
     } else if narrow {
         None
     } else {
         // 120–179: a blank line, then the right side under the rows.
         let height = right_need.min(left.bottom().saturating_sub(y));
-        let right = band(left, y + 1, height.saturating_sub(1));
+        let right = inset(band(left, y + 1, height.saturating_sub(1)));
         y += height;
         (right.height > 0).then_some(right)
     };
@@ -391,7 +374,7 @@ fn layout(view: &RewriteEditorView, area: Rect) -> Layout {
     let message = (message_height > 0).then(|| band(left, y, message_height));
 
     Layout {
-        title: Some(title),
+        title: Some(band(left, left.y, 1)),
         rows: Some(rows),
         top: scroll_top(&lines, view.cursor, rows.height),
         rule,
@@ -399,6 +382,44 @@ fn layout(view: &RewriteEditorView, area: Rect) -> Layout {
         message,
         notice,
     }
+}
+
+/// The rows' height: all of them when what goes under them (`below`: the
+/// AFTER side and the message) still fits in `room`; never fewer than
+/// `ROWS_MIN` (or all, if fewer); never more than `room`.
+fn rows_height(natural: u16, room: u16, below: u16) -> u16 {
+    natural
+        .min(room.saturating_sub(below))
+        .max(natural.min(ROWS_MIN))
+        .min(room)
+}
+
+/// The left column (the whole width, or the rows' width left of `│`), and
+/// when `wide` the rule and the right side beyond it.
+fn columns(body: Rect, wide: bool) -> (Rect, Option<Rect>, Option<Rect>) {
+    if !wide {
+        return (body, None, None);
+    }
+    let left = Rect::new(body.x, body.y, LEFT_WIDTH.min(body.width), body.height);
+    let rule = Rect::new(body.x + LEFT_WIDTH, body.y, 1, body.height);
+    let right = Rect::new(
+        body.x + LEFT_WIDTH + 2,
+        body.y,
+        body.width.saturating_sub(LEFT_WIDTH + 2),
+        body.height,
+    );
+    (left, Some(rule), Some(right))
+}
+
+/// `area` one column in from the left: the AFTER side, when it is not right
+/// of the rule, starts where the `MESSAGE` label does.
+fn inset(area: Rect) -> Rect {
+    Rect::new(
+        area.x.saturating_add(1).min(area.right()),
+        area.y,
+        area.width.saturating_sub(1),
+        area.height,
+    )
 }
 
 /// The row (index into `view.rows`) drawn at `(column, row)`, as
@@ -424,13 +445,7 @@ pub fn rewrite_row_at(
 
 /// Draw the editor into `area` (the whole frame but the hint bar).
 pub fn draw_rewrite_editor(frame: &mut Frame, area: Rect, view: &RewriteEditorView, theme: &Theme) {
-    frame.render_widget(
-        RewriteEditorWidget {
-            view,
-            theme,
-        },
-        area,
-    );
+    frame.render_widget(RewriteEditorWidget { view, theme }, area);
 }
 
 /// The editor as a widget, for [`draw_rewrite_editor`] and tests.
@@ -592,7 +607,12 @@ fn draw_rows(
 ) {
     let subject_width = subject_width(view);
     let lines = row_lines(view);
-    for (offset, line) in lines.iter().skip(top).take(usize::from(rows.height)).enumerate() {
+    for (offset, line) in lines
+        .iter()
+        .skip(top)
+        .take(usize::from(rows.height))
+        .enumerate()
+    {
         let y = rows.y + u16::try_from(offset).unwrap_or(u16::MAX);
         let band = band(rows, y, 1);
         match *line {
@@ -645,7 +665,10 @@ fn draw_row(
     let is_base = matches!(row.mark, RowMark::Base { .. });
     let on_cursor = index == view.cursor;
     if on_cursor {
-        buf.set_style(band, Style::new().bg(crate::paint::color(theme.token(Token::Selection))));
+        buf.set_style(
+            band,
+            Style::new().bg(crate::paint::color(theme.token(Token::Selection))),
+        );
     }
     let muted = foreground(theme, Token::TextMuted);
     let lead = if is_base {
@@ -655,7 +678,11 @@ fn draw_row(
     } else {
         " "
     };
-    let lead_style = if is_base { muted } else { foreground(theme, Token::Accent) };
+    let lead_style = if is_base {
+        muted
+    } else {
+        foreground(theme, Token::Accent)
+    };
     let mut x = put(buf, band, band.x + 1, lead, lead_style);
     x = x.max(band.x + u16::try_from(LEAD).unwrap_or(0));
     let (word, style) = action(&row.mark, glyphs, theme);
@@ -694,16 +721,136 @@ fn draw_row(
     }
 }
 
+/// One drawn line: its pieces, each in its own style.
+type Spans = Vec<(String, Style)>;
+
+/// A landed AFTER plan: one line per row (branch, mark, subject, note),
+/// then, after a blank, its facts; a fact starting `!` is a warning.
+fn after_lines(
+    rows: &[AfterRow],
+    facts: &[SanitizedText],
+    theme: &Theme,
+    glyphs: &Glyphs,
+) -> Vec<Spans> {
+    let muted = foreground(theme, Token::TextMuted);
+    let branch_width = rows
+        .iter()
+        .filter_map(|row| row.branch.as_ref())
+        .map(|branch| branch.as_str().chars().count())
+        .max()
+        .unwrap_or(0)
+        + 2;
+    let subject_width = rows
+        .iter()
+        .map(|row| row.subject.as_str().chars().count())
+        .max()
+        .unwrap_or(0)
+        .clamp(SUBJECT_MIN, SUBJECT_MAX)
+        + 2;
+    let mut lines = Vec::new();
+    for row in rows {
+        let branch = row.branch.as_ref().map_or("", SanitizedText::as_str);
+        let (mark, mark_style) = match &row.mark {
+            AfterMark::NewTip => (
+                format!("{} new", glyphs.new_tip),
+                foreground(theme, Token::Accent).add_modifier(Modifier::BOLD),
+            ),
+            AfterMark::New => (
+                format!("{} new", glyphs.new),
+                foreground(theme, Token::Info),
+            ),
+            AfterMark::Unchanged { short } => (short.clone(), muted),
+        };
+        let subject_style = if matches!(row.mark, AfterMark::Unchanged { .. }) {
+            muted
+        } else {
+            foreground(theme, Token::Info)
+        };
+        lines.push(vec![
+            (fit(branch, branch_width), foreground(theme, Token::Text)),
+            (fit(&mark, SHORT_WIDTH), mark_style),
+            (fit(row.subject.as_str(), subject_width), subject_style),
+            (
+                row.note
+                    .as_ref()
+                    .map_or_else(String::new, |note| note.as_str().to_owned()),
+                muted,
+            ),
+        ]);
+    }
+    if !facts.is_empty() {
+        lines.push(Vec::new());
+    }
+    for fact in facts {
+        let style = if fact.as_str().starts_with('!') {
+            foreground(theme, Token::Warning)
+        } else {
+            foreground(theme, Token::Text)
+        };
+        lines.push(vec![(fact.as_str().to_owned(), style)]);
+    }
+    lines
+}
+
+/// A row's changed files: path, `+added`, `-removed`, the paths padded to
+/// one column no wider than `width` leaves room for.
+fn changes_lines(
+    files: &[(SanitizedText, Option<(u32, u32)>)],
+    width: u16,
+    theme: &Theme,
+    glyphs: &Glyphs,
+) -> Vec<Spans> {
+    let path_width = files
+        .iter()
+        .map(|(path, _)| path.as_str().chars().count())
+        .max()
+        .unwrap_or(0)
+        .min(usize::from(width).saturating_sub(16))
+        + 2;
+    files
+        .iter()
+        .map(|(path, counts)| {
+            let path = (
+                fit(path.as_str(), path_width),
+                foreground(theme, Token::Text),
+            );
+            let Some((added, removed)) = counts else {
+                return vec![
+                    path,
+                    ("binary".to_owned(), foreground(theme, Token::TextMuted)),
+                ];
+            };
+            vec![
+                path,
+                (format!("+{added}"), foreground(theme, Token::Added)),
+                (" ".to_owned(), foreground(theme, Token::TextMuted)),
+                (
+                    format!("{}{removed}", glyphs.minus),
+                    foreground(theme, Token::Removed),
+                ),
+            ]
+        })
+        .collect()
+}
+
 /// The right side: its header, a blank, its lines.
-fn draw_right(buf: &mut Buffer, right: Rect, view: &RewriteEditorView, theme: &Theme, glyphs: &Glyphs) {
+fn draw_right(
+    buf: &mut Buffer,
+    right: Rect,
+    view: &RewriteEditorView,
+    theme: &Theme,
+    glyphs: &Glyphs,
+) {
     let header_style = foreground(theme, Token::Accent).add_modifier(Modifier::BOLD);
     let muted = foreground(theme, Token::TextMuted);
     let warning = foreground(theme, Token::Warning);
-    let mut lines: Vec<Vec<(String, Style)>> = Vec::new();
+    let mut lines: Vec<Spans> = Vec::new();
     let header = match &view.right {
         RightSide::After(AfterView::Checking) => "AFTER y \u{b7} checking\u{2026}".to_owned(),
         RightSide::After(_) => "AFTER y \u{b7} not written yet".to_owned(),
-        RightSide::Changes { short, .. } => format!("CHANGES of {short} \u{b7} \u{23ce} back to AFTER"),
+        RightSide::Changes { short, .. } => {
+            format!("CHANGES of {short} \u{b7} \u{23ce} back to AFTER")
+        }
     };
     lines.push(vec![(header, header_style)]);
     lines.push(Vec::new());
@@ -713,54 +860,7 @@ fn draw_right(buf: &mut Buffer, right: Rect, view: &RewriteEditorView, theme: &T
             lines.push(vec![(words.as_str().to_owned(), warning)]);
         }
         RightSide::After(AfterView::Ready { rows, facts }) => {
-            let branch_width = rows
-                .iter()
-                .filter_map(|row| row.branch.as_ref())
-                .map(|branch| branch.as_str().chars().count())
-                .max()
-                .unwrap_or(0)
-                + 2;
-            let subject_width = rows
-                .iter()
-                .map(|row| row.subject.as_str().chars().count())
-                .max()
-                .unwrap_or(0)
-                .clamp(SUBJECT_MIN, SUBJECT_MAX)
-                + 2;
-            for row in rows {
-                let branch = row.branch.as_ref().map_or("", SanitizedText::as_str);
-                let (mark, mark_style) = match &row.mark {
-                    AfterMark::NewTip => (
-                        format!("{} new", glyphs.new_tip),
-                        foreground(theme, Token::Accent).add_modifier(Modifier::BOLD),
-                    ),
-                    AfterMark::New => (format!("{} new", glyphs.new), foreground(theme, Token::Info)),
-                    AfterMark::Unchanged { short } => (short.clone(), muted),
-                };
-                let subject_style = if matches!(row.mark, AfterMark::Unchanged { .. }) {
-                    muted
-                } else {
-                    foreground(theme, Token::Info)
-                };
-                lines.push(vec![
-                    (fit(branch, branch_width), foreground(theme, Token::Text)),
-                    (fit(&mark, SHORT_WIDTH), mark_style),
-                    (fit(row.subject.as_str(), subject_width), subject_style),
-                    (
-                        row.note
-                            .as_ref()
-                            .map_or_else(String::new, |note| note.as_str().to_owned()),
-                        muted,
-                    ),
-                ]);
-            }
-            if !facts.is_empty() {
-                lines.push(Vec::new());
-            }
-            for fact in facts {
-                let style = if fact.as_str().starts_with('!') { warning } else { foreground(theme, Token::Text) };
-                lines.push(vec![(fact.as_str().to_owned(), style)]);
-            }
+            lines.extend(after_lines(rows, facts, theme, glyphs));
         }
         RightSide::Changes { files, .. } => match files {
             ChangesView::Reading => lines.push(vec![("reading\u{2026}".to_owned(), muted)]),
@@ -769,21 +869,7 @@ fn draw_right(buf: &mut Buffer, right: Rect, view: &RewriteEditorView, theme: &T
                 lines.push(vec![("no files changed".to_owned(), muted)]);
             }
             ChangesView::Files(files) => {
-                let path_width = files
-                    .iter()
-                    .map(|(path, _, _)| path.as_str().chars().count())
-                    .max()
-                    .unwrap_or(0)
-                    .min(usize::from(right.width).saturating_sub(16))
-                    + 2;
-                for (path, added, removed) in files {
-                    lines.push(vec![
-                        (fit(path.as_str(), path_width), foreground(theme, Token::Text)),
-                        (format!("+{added}"), foreground(theme, Token::Added)),
-                        (" ".to_owned(), muted),
-                        (format!("{}{removed}", glyphs.minus), foreground(theme, Token::Removed)),
-                    ]);
-                }
+                lines.extend(changes_lines(files, right.width, theme, glyphs));
             }
         },
     }
@@ -813,7 +899,13 @@ fn draw_message(
     if at.height < 2 {
         return;
     }
-    put(buf, band(at, at.y + 1, 1), at.x + 1, block.label.as_str(), label_style);
+    put(
+        buf,
+        band(at, at.y + 1, 1),
+        at.x + 1,
+        block.label.as_str(),
+        label_style,
+    );
     let room = usize::from(at.height - 2);
     let cap = if area.height <= SHORT_HEIGHT {
         SHORT_MESSAGE_LINES
@@ -830,7 +922,13 @@ fn draw_message(
     for line in block.lines.iter().take(shown) {
         let row = band(at, y, 1);
         let x = put(buf, row, row.x + 1, glyphs.gutter, muted);
-        put(buf, row, x + 1, line.as_str(), foreground(theme, Token::Text));
+        put(
+            buf,
+            row,
+            x + 1,
+            line.as_str(),
+            foreground(theme, Token::Text),
+        );
         y += 1;
     }
     if !fits && y < at.bottom() {

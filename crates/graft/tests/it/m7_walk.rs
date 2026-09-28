@@ -8,6 +8,7 @@ pub mod picker;
 pub mod pr_contents;
 pub mod pull;
 pub mod rebase_line;
+pub mod rewrite_editor;
 pub mod rewrite_stops;
 pub mod switch;
 

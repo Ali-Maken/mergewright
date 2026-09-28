@@ -40,6 +40,7 @@ const MELDS: &str = "melds into the row below";
 
 /// R1's mock, plus a reword, an edit and a drop so every glyph is on
 /// screen, and a moved row.
+#[allow(clippy::too_many_lines)] // one hand-built view fixture, not logic
 fn view() -> RewriteEditorView {
     let mut fixup = row(
         RowMark::Fixup,
@@ -53,13 +54,28 @@ fn view() -> RewriteEditorView {
             "REWRITE feature-a \u{b7} 8 commits since it left main \u{b7} newest first \u{b7} nothing written until y",
         ),
         rows: vec![
-            row(RowMark::Squash, "7f6e5d4", "Handle expired tokens", Some(MELDS)),
+            row(
+                RowMark::Squash,
+                "7f6e5d4",
+                "Handle expired tokens",
+                Some(MELDS),
+            ),
             row(RowMark::Squash, "6e5d4c3", "wip", Some(MELDS)),
             row(RowMark::Pick, "5d4c3b2", "wip: tests", None),
             fixup,
             row(RowMark::Pick, "3b2a1f0", "Add OAuth callback", None),
-            row(RowMark::Reword, "3a1f0e9", "Add the login form", Some("new message")),
-            row(RowMark::Edit, "2b1f0e9", "Add the session store", Some("stops here")),
+            row(
+                RowMark::Reword,
+                "3a1f0e9",
+                "Add the login form",
+                Some("new message"),
+            ),
+            row(
+                RowMark::Edit,
+                "2b1f0e9",
+                "Add the session store",
+                Some("stops here"),
+            ),
             row(RowMark::Drop, "2a2f0e9", "Debug logging", Some("left out")),
             row(
                 RowMark::Base {
@@ -90,8 +106,18 @@ fn view() -> RewriteEditorView {
                     Some("built on yours \u{b7} follows"),
                 ),
                 after(None, AfterMark::New, "Settings page skeleton", None),
-                after(Some("feature-a"), AfterMark::NewTip, "wip: tests", Some("3 in one")),
-                after(None, AfterMark::New, "Add OAuth callback", Some("fixup melded in")),
+                after(
+                    Some("feature-a"),
+                    AfterMark::NewTip,
+                    "wip: tests",
+                    Some("3 in one"),
+                ),
+                after(
+                    None,
+                    AfterMark::New,
+                    "Add OAuth callback",
+                    Some("fixup melded in"),
+                ),
                 after(
                     Some("main"),
                     AfterMark::Unchanged {
@@ -142,8 +168,10 @@ fn line_with<'a>(lines: &'a [String], needle: &str) -> (usize, &'a str) {
         .iter()
         .enumerate()
         .find(|(_, line)| line.contains(needle))
-        .map(|(at, line)| (at, line.as_str()))
-        .unwrap_or_else(|| panic!("no line holds {needle:?} in\n{}", lines.join("\n")))
+        .map_or_else(
+            || panic!("no line holds {needle:?} in\n{}", lines.join("\n")),
+            |(at, line)| (at, line.as_str()),
+        )
 }
 
 /// The non-colour carriers every width shows on the rows side.
@@ -218,7 +246,10 @@ fn from_120_to_179_the_after_side_is_below_the_rows_and_labelled() {
     let (base, _) = line_with(&lines, "\u{2500} main");
     let (header, _) = line_with(&lines, "AFTER y \u{b7} not written yet");
     let (label, _) = line_with(&lines, "MESSAGE of the squashed commit");
-    assert!(base < header && header < label, "rows, AFTER, message:\n{text}");
+    assert!(
+        base < header && header < label,
+        "rows, AFTER, message:\n{text}"
+    );
 }
 
 #[test]
@@ -235,7 +266,10 @@ fn below_120_the_rows_stand_alone_and_tab_swaps_to_after() {
     };
     let lines = draw(&swapped, 100, 30);
     assert_after_carriers(&lines);
-    assert!(!screen(&lines).contains("7f6e5d4"), "AFTER only once swapped");
+    assert!(
+        !screen(&lines).contains("7f6e5d4"),
+        "AFTER only once swapped"
+    );
 }
 
 #[test]
@@ -243,14 +277,19 @@ fn a_short_screen_shows_four_message_lines_and_an_ellipsis() {
     let lines = draw(&view(), 100, 24);
     let text = screen(&lines);
     assert!(text.contains("\u{250a} Handle expired tokens"), "{text}");
-    assert!(!text.contains("\u{250a} wip\n"), "the fifth line is cut:\n{text}");
+    assert!(
+        !text.contains("\u{250a} wip\n"),
+        "the fifth line is cut:\n{text}"
+    );
     assert!(text.contains("\u{250a} \u{2026}"), "{text}");
 }
 
 #[test]
 fn the_notice_is_on_the_last_row() {
     let noticed = RewriteEditorView {
-        notice: Some(sanitize_line("the base stays \u{b7} it isn't yours to rewrite")),
+        notice: Some(sanitize_line(
+            "the base stays \u{b7} it isn't yours to rewrite",
+        )),
         ..view()
     };
     let lines = draw(&noticed, 140, 40);
@@ -272,7 +311,11 @@ fn the_field_is_the_line_under_its_row() {
     };
     let lines = draw(&with_field, 140, 40);
     let (kept, _) = line_with(&lines, "5d4c3b2");
-    assert!(lines[kept + 1].contains("Tests for the token flow"), "{:?}", lines[kept + 1]);
+    assert!(
+        lines[kept + 1].contains("Tests for the token flow"),
+        "{:?}",
+        lines[kept + 1]
+    );
     // The row below the field is the next row.
     assert!(lines[kept + 2].contains("4c3b2a1"));
 }
@@ -298,13 +341,17 @@ fn the_changes_side_lists_files_with_counts() {
     let changes = RewriteEditorView {
         right: RightSide::Changes {
             short: "5d4c3b2".to_owned(),
-            files: ChangesView::Files(vec![(sanitize_line("src/auth.rs"), 12, 3)]),
+            files: ChangesView::Files(vec![
+                (sanitize_line("src/auth.rs"), Some((12, 3))),
+                (sanitize_line("logo.png"), None),
+            ]),
         },
         ..view()
     };
     let text = screen(&draw(&changes, 187, 50));
     assert!(text.contains("CHANGES of 5d4c3b2"), "{text}");
     assert!(text.contains("src/auth.rs  +12 \u{2212}3"), "{text}");
+    assert!(text.contains("logo.png     binary"), "no counts: {text}");
 }
 
 #[test]
@@ -317,9 +364,19 @@ fn ascii_has_a_stand_in_for_every_glyph() {
     // The view's own words (`·`) are the app's; every glyph the widget adds
     // has a stand-in.
     for glyph in ['↓', '✎', '⏸', '✗', '↕', '│', '┊', '▸', '─', '○', '●'] {
-        assert!(!text.contains(glyph), "{glyph:?} drawn at the ASCII tier:\n{text}");
+        assert!(
+            !text.contains(glyph),
+            "{glyph:?} drawn at the ASCII tier:\n{text}"
+        );
     }
-    for carrier in ["squash v", "drop x", "<> moved", "| AFTER", ": wip: tests", "o new"] {
+    for carrier in [
+        "squash v",
+        "drop x",
+        "<> moved",
+        "| AFTER",
+        ": wip: tests",
+        "o new",
+    ] {
         assert!(text.contains(carrier), "{carrier:?} missing:\n{text}");
     }
 }
@@ -334,7 +391,12 @@ fn rewrite_row_at_matches_the_drawn_rows() {
             // The rows' own column: the AFTER side shows a sha too.
             let hit = lines
                 .iter()
-                .position(|line| line.chars().take(24).collect::<String>().contains(&row.short))
+                .position(|line| {
+                    line.chars()
+                        .take(24)
+                        .collect::<String>()
+                        .contains(&row.short)
+                })
                 .and_then(|y| u16::try_from(y).ok());
             match hit {
                 Some(y) => assert_eq!(
@@ -382,5 +444,8 @@ fn a_long_list_scrolls_to_keep_the_cursor_on_screen() {
     };
     let lines = draw(&long, 100, 10);
     let text = screen(&lines);
-    assert!(text.contains("\u{2500} main"), "the cursor's (base) row is drawn:\n{text}");
+    assert!(
+        text.contains("\u{2500} main"),
+        "the cursor's (base) row is drawn:\n{text}"
+    );
 }

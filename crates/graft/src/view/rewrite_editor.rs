@@ -33,12 +33,7 @@ const MELDS: &str = "melds into the row below";
 /// `update::rewrite_editor`'s mouse asks the same rectangle.
 #[must_use]
 pub fn editor_area(state: &AppState) -> Rect {
-    Rect::new(
-        0,
-        0,
-        state.size.columns,
-        state.size.rows.saturating_sub(1),
-    )
+    Rect::new(0, 0, state.size.columns, state.size.rows.saturating_sub(1))
 }
 
 /// The editor as drawn, `None` while none is up.
@@ -66,7 +61,11 @@ pub fn rewrite_context(state: &AppState) -> Option<HintContext> {
 
 /// The whole view from the editor's facts.
 fn view_of(facts: &ViewFacts<'_>, ascii: bool) -> RewriteEditorView {
-    let commits = if facts.since == 1 { "commit" } else { "commits" };
+    let commits = if facts.since == 1 {
+        "commit"
+    } else {
+        "commits"
+    };
     let title = format!(
         "REWRITE {} \u{b7} {} {commits} since it left {} \u{b7} newest first \u{b7} nothing \
          written until y",
@@ -182,11 +181,10 @@ fn right_side(facts: &ViewFacts<'_>) -> RightSide {
                 list.files
                     .iter()
                     .map(|file| {
-                        (
-                            sanitize_path_bytes(&file.path),
-                            file.added.unwrap_or(0),
-                            file.removed.unwrap_or(0),
-                        )
+                        // git counts lines for both sides of a text file and
+                        // neither of a binary one.
+                        let counts = file.added.zip(file.removed);
+                        (sanitize_path_bytes(&file.path), counts)
                     })
                     .collect(),
             ),
@@ -233,25 +231,16 @@ fn after_ready(facts: &ViewFacts<'_>, plan: &PreviewPlan) -> AfterView {
             .filter(|(_, by)| *by == branch)
             .map(|(at, _)| *at);
         for at in mine.rev() {
+            // `ghost_owners` walks this plan's own ghosts, so every index it
+            // hands out is in range; one that is not has nothing to draw.
             let Some(ghost) = plan.ghosts.get(at) else {
                 continue;
             };
-            let replayed = ghost.replays.and_then(|commit| rows_by_commit.get(&commit));
-            let mut notes = Vec::new();
-            if branch > 0 && !labelled {
-                notes.push("built on yours \u{b7} follows".to_owned());
-            }
-            if let Some(row) = replayed {
-                notes.extend(group_note(facts, row));
-            }
-            match stop {
-                Some((stops, paths)) if stops == at => notes.push(format!(
-                    "! may stop here \u{b7} {}",
-                    paths_words(paths)
-                )),
-                Some((stops, _)) if at > stops => notes.push("not checked past here".to_owned()),
-                _ => {}
-            }
+            let replayed = ghost
+                .replays
+                .and_then(|commit| rows_by_commit.get(&commit).copied());
+            let follows = branch > 0 && !labelled;
+            let notes = ghost_notes(facts, replayed, follows, stop, at);
             rows.push(AfterRow {
                 branch: (!labelled).then(|| sanitize_line(&short_ref(&moved.name))),
                 mark: if Some(at) == his_tip {
@@ -277,6 +266,32 @@ fn after_ready(facts: &ViewFacts<'_>, plan: &PreviewPlan) -> AfterView {
         rows,
         facts: after_facts(plan, &owner),
     }
+}
+
+/// An AFTER row's notes: `built on yours · follows` on a dependent's first
+/// row, the group it stands for, and where the forecast says git may stop.
+fn ghost_notes(
+    facts: &ViewFacts<'_>,
+    replayed: Option<&RowFacts<'_>>,
+    follows: bool,
+    stop: Option<(usize, &[std::path::PathBuf])>,
+    at: usize,
+) -> Vec<String> {
+    let mut notes = Vec::new();
+    if follows {
+        notes.push("built on yours \u{b7} follows".to_owned());
+    }
+    if let Some(row) = replayed {
+        notes.extend(group_note(facts, row));
+    }
+    match stop {
+        Some((stops, paths)) if stops == at => {
+            notes.push(format!("! may stop here \u{b7} {}", paths_words(paths)));
+        }
+        Some((stops, _)) if at > stops => notes.push("not checked past here".to_owned()),
+        _ => {}
+    }
+    notes
 }
 
 /// Which branch (index into `ref_moves`) each ghost is on: from each moved
@@ -372,7 +387,9 @@ fn after_facts(plan: &PreviewPlan, owner: &[(usize, usize)]) -> Vec<SanitizedTex
     }
     out.push(match &plan.conflicts {
         ConflictForecast::Clean => "no conflicts expected".to_owned(),
-        ConflictForecast::Likely { paths } => format!("! may conflict \u{b7} {}", paths_words(paths)),
+        ConflictForecast::Likely { paths } => {
+            format!("! may conflict \u{b7} {}", paths_words(paths))
+        }
         ConflictForecast::NotChecked(why) => format!("conflicts: not checked ({why})"),
         ConflictForecast::StopsAt { step, of, .. } => {
             format!("! may stop at step {step} of {of} \u{b7} not checked past it")
