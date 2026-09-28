@@ -2376,6 +2376,32 @@ fn the_tag_draws_after_the_subject_and_the_subject_yields() {
     );
 }
 
+/// A subject that fits alone but is cut with `…` once the tag takes its
+/// cells is revealed in the footer like any other cut subject (review
+/// Minor 5: the check subtracted the badges but not the tag).
+#[test]
+fn a_subject_cut_only_by_the_tag_is_revealed() {
+    let words = "abcdefghij".repeat(8);
+    let cut = |view: &GraphView<'_>| text(&draw(view, 90, 6))[1].contains('\u{2026}');
+    let subject = (8..words.len())
+        .map(|len| &words[..len])
+        .find(|subject| {
+            let rows = linear_with_subject(2, subject);
+            let plain = view(&rows, WalkView::Complete { rows: 2 }, 1);
+            let mut tagged = view(&rows, WalkView::Complete { rows: 2 }, 1);
+            tagged.rows[0].tag = Some(RowTag::Changed);
+            !cut(&plain) && cut(&tagged)
+        })
+        .expect("some length is cut by the tag alone");
+    let rows = linear_with_subject(2, subject);
+    let mut open = view(&rows, WalkView::Complete { rows: 2 }, 1);
+    open.rows[0].tag = Some(RowTag::Changed);
+    open.reveal = Some(0);
+    let screen = text(&draw(&open, 90, 6));
+    let footer = screen.last().expect("a footer row");
+    assert!(footer.contains(subject), "{screen:#?}");
+}
+
 /// Below 8 subject cells the tag is left off and the row is today's.
 #[test]
 fn the_tag_drops_below_8_subject_cells() {

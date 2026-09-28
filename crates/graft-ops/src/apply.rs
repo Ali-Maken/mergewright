@@ -79,7 +79,7 @@ pub struct Applied {
     /// One exception, and it is deliberate: a step taken while git already
     /// has an operation in progress (the resolver's "mark resolved") is part
     /// of that operation and writes no line of its own
-    /// ([`inside_live_operation`]). Its record here is **not in the
+    /// (`inside_live_operation`). Its record here is **not in the
     /// journal** — it says what ran, for the caller's status line, and its
     /// command line was folded into the live entry instead. Read
     /// `description` and `refresh` from it; do not look its `id` up.
@@ -92,7 +92,7 @@ pub struct Applied {
     /// What to re-read.
     pub refresh: Refresh,
     /// The chained backup commit taken **before** a folded step ran, when
-    /// there was one ([`snapshot::chain_backup`]).
+    /// there was one ([`snapshot::chain_backup`](crate::snapshot::chain_backup)).
     ///
     /// `Some` only for the exception above: a step inside a live operation
     /// that writes the index or the working tree. It is not in the journal

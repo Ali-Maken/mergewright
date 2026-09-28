@@ -1,6 +1,6 @@
 # amend-into-and-absorb-keys — `a` on an older commit puts the staged changes into it; absorb from the `.` menu; the row tag
 
-Status: partial — built; 2 boxes open (perf over budget; absorb step count vs the note). See NOTES. (Was: ready, respecced after scout 09, planner, 2026-09-27; filed by conductor: 24 confirmed unmerged — `git log --merges` has only m6-conflicts 24). Order: after 10b and 16b merge.
+Status: done — remainder (walk count, perf) built by 09b (`09b-*.md`), merged a7ded2f9 (conductor, 2026-09-28, review 09..21c Minor 11).
 Blocked by: 05-rewrite-preview (partial merged), 05b-rebase-moves-the-line, 06-absorb-map, 06e (new refusal and stay
 variants). **Not beside 10b** (shared files, below). Beside 11a: yes (disjoint). If 16b is still building: wait (the
 JOBS files).
@@ -172,7 +172,7 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
 ```
 
 ## Acceptance
-- [x] **App** (`update/amend_into/tests.rs` unless named) — every name below is a test of that name, green; `absorb_item_is_dim_with_nothing_staged` in graft-ui `context_menu.rs:536`; the StaysWhy words in `jobs/rewrite/tests.rs:192-248` (`stays_no_commit_changed_it`, `stays_two_commits_changed_it`, `stays_new_file`, `stays_before_your_branch`, `stays_renamed`, `stays_submodule`, `stays_outside_your_commits`, `stays_already_pushed`). Red first quoted in NOTES:
+- [x] **App** (`update/amend_into/tests.rs` unless named) — every name below is a test of that name, green; `absorb_dims_in_first_place_with_nothing_staged` in graft-ui `context_menu.rs:536`; the StaysWhy words in `jobs/rewrite/tests.rs:192-248` (`stays_no_commit_changed_it`, `stays_two_commits_changed_it`, `stays_new_file`, `stays_before_your_branch`, `stays_renamed`, `stays_submodule`, `stays_outside_your_commits`, `stays_already_pushed`). Red first quoted in NOTES:
   - `a_on_an_older_commit_opens_the_put_it_in_preview` (red first: `ReadHeadMessage`, ruling 1; quote the red);
   - `a_on_head_without_dependents_is_todays_amend` (no job; `ReadHeadMessage` as before);
   - `a_on_head_with_a_dependent_previews`;
@@ -181,7 +181,7 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
   - `a_with_nothing_staged_is_refused_in_words`;
   - `a_on_a_pushed_older_commit_is_refused_in_words` (06e carry);
   - `a_during_an_operation_keeps_p14`;
-  - `absorb_item_is_dim_with_nothing_staged` (graft-ui `context_menu.rs` test);
+  - `absorb_dims_in_first_place_with_nothing_staged` (graft-ui `context_menu.rs` test);
   - `absorb_opens_its_preview`;
   - `absorb_with_nothing_placeable_is_refused_in_words`;
   - `y_launches`;
@@ -195,7 +195,7 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
   - `a_failed_tag_read_says_so_in_the_status`;
   - graft-ui: `the_tag_draws_after_the_subject_and_the_subject_yields`, `the_tag_drops_below_8_subject_cells`,
     `ascii_tier_draws_tilde_changed`.
-- [~] **Walks** (`m7_walk/amend_into.rs`): `fix_into_older` 3 keys (`j a y`) ≤ 3 ✓; `amend_with_dependents` 2 ✓; `u` restores refs and index in all three ✓. **`absorb_staged` is 9 keys (`k . j j j j j ⏎ y`), not ≤ 4** — asserted exactly at 9, not held to the note (NOTES, question 1). Not ticked:
+- [x] **Walks** (remainder ticked in 09b) (`m7_walk/amend_into.rs`): `fix_into_older` 3 keys (`j a y`) ≤ 3 ✓; `amend_with_dependents` 2 ✓; `u` restores refs and index in all three ✓. **`absorb_staged` is 9 keys (`k . j j j j j ⏎ y`), not ≤ 4** — asserted exactly at 9, not held to the note (NOTES, question 1). Not ticked:
   - `fix_into_older` = motion `a y` ≤ `noted_keys("fix-into-older")`: the target's diff now contains the fix, and
     nothing is staged. The target must be **unpushed** (06e carry): say the fixture's target in NOTES;
   - `absorb_staged` = `.` motion `⏎ y` ≤ `noted_keys("absorb-staged")`: 2 hunks placed, 1 still staged;
@@ -209,7 +209,7 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
     branch changed these lines`.
   - `docs/shots/m7/amend-into-landed-120x40.txt`. **Right:** the cursor on the new HEAD; `✎ changed` after the
     target's subject, on the target's row only; status `put into "Add OAuth callback" ✓ · u undoes`.
-- [ ] **OVER BUDGET** — `scripts/m7-09-perf.sh` → `docs/perf/09.txt`: `m7-09 summary: a to the amend editor, median of 7: 39.7 ms through the dependents check, 0.5 ms today's amend; the check adds 39.2 ms (budget 16.7 ms)`. Perf: the dependents check, `docs/perf/09.txt`, summary line quoted, under 1 frame.
+- [x] **Superseded by 09b** (cause `git --version` spawn, `jobs/rewrite.rs:88`; 6.8 ms provisional, gap M7/09b-perf) — was OVER BUDGET — `scripts/m7-09-perf.sh` → `docs/perf/09.txt`: `m7-09 summary: a to the amend editor, median of 7: 39.7 ms through the dependents check, 0.5 ms today's amend; the check adds 39.2 ms (budget 16.7 ms)`. Perf: the dependents check, `docs/perf/09.txt`, summary line quoted, under 1 frame.
 - [x] Hint-bar tests green (workspace `cargo nextest run`, NOTES). MAP.md (graft, graft-ui). TESTING.md rows, captions, contact sheet.
 
 ## Touches (check each, report how)

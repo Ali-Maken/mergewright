@@ -347,6 +347,63 @@ fn branch_delete_applies_undoes_redoes() {
     );
 }
 
+/// `git config --local --get-all <key>`'s values, empty when unset.
+fn config_values(repo: &TempRepo, key: &str) -> Vec<String> {
+    match repo.try_git(&["config", "--local", "--get-all", key]) {
+        Ok(text) => text.lines().map(str::to_owned).collect(),
+        // Exit 1: the key is not set, which is the answer asked for.
+        Err(_unset) => Vec::new(),
+    }
+}
+
+/// Review m7-09..21c Minor 13: deleting a branch used to leave its
+/// `branch.<b>.*` config, so a later branch of the same name inherited the
+/// old upstream. The delete takes the section with it, `u` puts it back
+/// (the entry's config before and after, 30j's `SetBranchConfig`), and a
+/// new branch of that name tracks nothing.
+#[test]
+fn branch_delete_takes_its_config_and_undo_puts_it_back() {
+    let repo = diverged();
+    repo.git(&["config", "branch.feature.remote", "origin"]);
+    repo.git(&["config", "branch.feature.merge", "refs/heads/feature"]);
+    repo.git(&["config", "branch.main.remote", "origin"]);
+    let op = Operation::BranchDelete(RefDeleteParams {
+        name: "refs/heads/feature".to_owned(),
+        expected: id(&repo, "refs/heads/feature"),
+    });
+    try_run(&repo, &op, NOW).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(
+        config_values(&repo, "branch.feature.remote"),
+        Vec::<String>::new(),
+        "git {:?}",
+        git_version()
+    );
+    assert_eq!(
+        config_values(&repo, "branch.feature.merge"),
+        Vec::<String>::new()
+    );
+    assert_eq!(config_values(&repo, "branch.main.remote"), ["origin"]);
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(config_values(&repo, "branch.feature.remote"), ["origin"]);
+    assert_eq!(
+        config_values(&repo, "branch.feature.merge"),
+        ["refs/heads/feature"]
+    );
+
+    run_redo(&repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    repo.git(&["branch", "feature", "HEAD"]);
+    assert!(
+        repo.try_git(&["rev-parse", "--abbrev-ref", "feature@{upstream}"])
+            .is_err(),
+        "a new branch of the same name tracks nothing"
+    );
+    assert_eq!(
+        config_values(&repo, "branch.feature.remote"),
+        Vec::<String>::new()
+    );
+}
+
 #[test]
 fn tag_create_applies_undoes_redoes() {
     let repo = diverged();

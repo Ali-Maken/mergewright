@@ -387,6 +387,17 @@ fn a_on_head_without_dependents_is_todays_amend() {
     assert!(reads_head_message(&commands), "{commands:?}");
 }
 
+/// Refs not read yet: `HEAD`'s row cannot be told from an older one, so
+/// `a` on the top row is today's amend, not a put-in (review Minor 3).
+#[test]
+fn a_on_head_with_refs_unread_is_todays_amend() {
+    let mut state = on_screen(0, &[]);
+    state.refs = None;
+    let (_, commands) = update(&state, key('a'));
+    assert!(plan_job(&commands).is_none(), "{commands:?}");
+    assert!(reads_head_message(&commands), "{commands:?}");
+}
+
 #[test]
 fn a_on_head_with_a_dependent_previews() {
     let state = on_screen(0, &[(b"refs/heads/feature-b", 3)]);
@@ -504,6 +515,32 @@ fn absorb_asked() -> (AppState, JobId) {
     let (id, request, _) = plan_job(&commands).expect("absorb plans");
     assert_eq!(request, &RewriteRequest::Absorb);
     (state, id)
+}
+
+/// Absorb during a live operation is refused up front, in `a`'s words
+/// (P14), before any job (review Minor 4).
+#[test]
+fn absorb_during_an_operation_keeps_p14() {
+    let mut state = on_screen(0, &[]);
+    state.in_progress = Some(InProgressDetail {
+        kind: InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+        theirs: Ok(None),
+    });
+    let (after_a, _) = update(&state, key('a'));
+    let commands = crate::update::context_menu::apply_context_action(
+        &mut state,
+        ContextAction::Absorb,
+        0,
+        None,
+        &[],
+        &mut ids(),
+    );
+    assert!(plan_job(&commands).is_none(), "{commands:?}");
+    assert!(!state.amend_into.checking());
+    assert_eq!(state.status, after_a.status);
 }
 
 #[test]

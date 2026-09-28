@@ -39,7 +39,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   properties: `check`, `plan`, `touches`, and `undo::inverse`). The
   execution half is `apply.rs` (the §6.2 protocol: read, check, back up,
   journal, run, journal again), `snapshot.rs` (both trees from one copy of
-  the index — never the real one), `restore.rs` (the inverse's plan loop, with
+  the index — never the real one), `restore.rs` with `restore/outcome.rs` (the inverse's plan loop, with
   `restore/steps.rs` for the one `git` per step and `restore/rollback.rs` for
   putting back what a cancelled undo had already done) and
   `undo/execute.rs` (the §6.7 drift rail in front of them). **The seam
@@ -92,8 +92,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `app::jobs::detail` for the blame job (m7-power-tools/20).
 - **Changing the history place** (a line's or a file's history, from blame's
   `L` or the pane's `F`) → `graft-ui::history` for the picture (pure draw, no
-  state), `app::update::place` with `place/history.rs` (state, `open_history`,
-  `f_key`), `place/history_keys.rs` (its keys and mouse) and
+  state), `app::update::place` with `place/history.rs` (state),
+  `place/history/open.rs` (`open_history`, `f_key`), `place/history/view.rs`
+  (view, title, row words), `place/history_keys.rs` (its keys and mouse) and
   `place/history_answer.rs` (trace and whole-file answers);
   `app::jobs::detail` (`jobs/detail/history.rs`) for the trace job
   (working-tree lines mapped to `HEAD`, the enclosing function, else the
@@ -128,6 +129,14 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   the force-push and duplicate-commit probes); `app::update::radar` /
   `app::view::radar` for the state that holds their answers and the per-row
   lookup a frame reads (m2-details-and-diffs/13–17).
+- **Changing put-in (`a` into an older commit) or absorb** →
+  `app::update::amend_into` (`update/amend_into.rs`) for the key and preview,
+  `app::jobs::rewrite` (`jobs/rewrite.rs`) for the job, `app::update::row_tags`
+  for the `changed` tag it leaves on rows (m7-power-tools/09).
+- **Changing how branch config is journaled** (upstream set by Track, undone
+  by `u`) → `graft-ops/src/branch_config.rs` for the reads and writes,
+  `Step::SetBranchConfig` in `graft-ops/src/undo.rs` for the inverse.
+- **Changing pull's fetch-first path** → `graft-ops/src/apply/pull.rs`.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
   runner both live there. **Three commands are the exception: they are

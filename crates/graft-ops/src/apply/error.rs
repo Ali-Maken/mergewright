@@ -92,7 +92,7 @@ pub enum ApplyError {
     /// A history operation stopped on a conflict: git exited non-zero and
     /// left its own in-progress state behind (`MERGE_HEAD`, `rebase-merge/`
     /// …). The entry stays `Pending` — one entry from start to finish, M5
-    /// design note hard choice 2 — and [`resume`] closes it. No outcome line
+    /// design note hard choice 2 — and [`resume`](super::resume) closes it. No outcome line
     /// is written here. `paths` are the unmerged paths the status lists
     /// (m5/07).
     #[error("{}: {} unmerged · resolve, then c continues, a aborts", entry.description, paths.len())]
@@ -117,7 +117,7 @@ pub enum ApplyError {
         /// The stash, why it was put back, and the unmerged paths.
         clash: Clash,
     },
-    /// [`resume`] ran `--continue`, `--skip` or `--abort`, git refused, and
+    /// [`resume`](super::resume) ran `--continue`, `--skip` or `--abort`, git refused, and
     /// its in-progress state is still there with no unmerged path to explain
     /// it (a hook said no, an empty pick). The entry stays `Pending`, the
     /// banner stays up; git's line says what to do (m5/07).

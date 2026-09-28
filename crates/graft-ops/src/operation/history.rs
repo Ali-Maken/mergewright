@@ -888,7 +888,23 @@ pub(super) fn plan_branch_create(params: &BranchCreateParams) -> Vec<Invocation>
     plan
 }
 
+/// A branch: `branch -D`, which takes its `branch.<b>.*` section with it
+/// (an absent section is no error), so a later branch of the same name
+/// inherits no upstream (review m7-09..21c Minor 13). The entry records that
+/// config before and after (`crate::branch_config`; the ref is in
+/// `touches`), so `u` writes it back through `Step::SetBranchConfig`.
+/// `branch -D` takes no expected id: `check_delete` refuses a moved branch
+/// against the facts read just before, and git itself refuses a branch
+/// checked out in another worktree. A tag: `update-ref -d` with
+/// compare-and-swap.
 pub(super) fn plan_delete(params: &RefDeleteParams) -> Vec<Invocation> {
+    if params.name.starts_with("refs/heads/") {
+        return vec![Invocation::new(vec![
+            GitArg::Flag("branch"),
+            GitArg::Flag("-D"),
+            GitArg::Ref(short_ref(&params.name).as_bytes().to_vec()),
+        ])];
+    }
     vec![Invocation::new(vec![
         GitArg::Flag("update-ref"),
         GitArg::Flag("-d"),
