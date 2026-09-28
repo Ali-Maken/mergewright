@@ -90,6 +90,7 @@ Start: the graph, cursor on HEAD unless stated. "motion" = 1 key, whatever the d
 | 14 | A branch deleted in the shell (once checked out) | `J` motion `⏎ y` (its old tip is a `✗` row) | 4+1 | jj 3–4, GitUp 5; rev 1 as built 5+1 |
 | 15 | An edit kept only in an undo's backup (KNOWN_GAPS :812) | `J` motion `⏎ y` | 4+1 | today: the shell |
 | 16 | "What will my PR contain?" | `x` on main, motion to mine | 2+1 | GitHub 2–3 |
+| 17 | Pull the current branch (upstream set) | `p` | 1+0 | lazygit 1 (`p`, [keybindings](https://github.com/jesseduffield/lazygit/blob/master/docs/keybindings/Keybindings_en.md)); VS Code 1 click on Sync, +1 if `git.confirmSync` asks ([docs](https://code.visualstudio.com/docs/sourcecontrol/repos-remotes)) — Sync also pushes |
 
 **Where he lands** (UX §3.1):
 
@@ -836,6 +837,7 @@ switch-with-edits             4     # lazygit/JetBrains 4 · C <type> ⏎ y
 cherry-pick-in-view           3     # best 2 + reaching · motion o y
 cherry-pick-other-branch      6     # C <type> Tab motion o y
 pr-contents                   2     # +1 · GitHub 2–3 · x motion (start: cursor on main)
+pull-current-branch           1     # lazygit 1 (p), VS Code 1 click (+1 confirm) · p
 ```
 
 - A typed string counts 1 (§1.3).
