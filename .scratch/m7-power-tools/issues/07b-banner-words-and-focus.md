@@ -72,4 +72,4 @@ An edit-stop amend in a rebase begun in the shell is admitted (`graft-ops/src/op
 
 - Minor 1: `operate.rs:1081-1088` `StagingNotKept` calls only `landed(...)`; call `amend_into::landed` too (the one that `take`s `asked`, `amend_into.rs:292-295`) and forget `asked` on `Incomplete`. Red test first.
 - Minor 2: `claim_write` (`operate.rs:202`) clears `row_tags` but not `amend_into.tagging`, so `tags_resolved` (`amend_into.rs:342-350`) can set stale tags. Clear it in `claim_write`. Red test first.
-Only these two lines in `amend_into.rs` are yours; 30k holds the rest of that file concurrently.
+Both fixes are in `operate.rs`. Do not edit `amend_into.rs` (30k holds it); if you must, report `blocked: needs amend_into.rs`.
