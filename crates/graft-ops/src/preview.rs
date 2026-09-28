@@ -249,7 +249,9 @@ pub struct PreviewPlan {
     /// [`Refusal::Moved`] if any of them has moved by confirm time.
     pub against: Vec<Tip>,
     /// What a rebase or checkout would set aside first and put back after
-    /// (ADR-0045 §4): `op.sets_aside(facts)`, never a second count.
+    /// (ADR-0045 §4): `op.sets_aside(facts)`, never a second count — but
+    /// for a put-in or absorb, whose staged edits go into commits, `files`
+    /// counts only the unstaged ones, the part put back (0 when none).
     pub set_aside: Option<SetAside>,
     /// Whether putting those edits back is likely to clash (ADR-0045 §8):
     /// `Some` exactly when [`PreviewPlan::set_aside`] is. A forecast, like
@@ -380,7 +382,9 @@ pub fn plan(
         .map(Invocation::command_line)
         .collect();
     drawn.against = op.tips();
-    drawn.set_aside = op.sets_aside(facts);
+    drawn.set_aside = op
+        .sets_aside(facts)
+        .map(|aside| shown_aside(op, facts, aside));
     // Only with edits aside: a clean tree spawns nothing more.
     drawn.put_back = match drawn.set_aside {
         Some(_) => Some(put_back::forecast(
@@ -395,6 +399,27 @@ pub fn plan(
         None => None,
     };
     Ok(drawn)
+}
+
+/// The set-aside the preview counts: what is set aside **and put back**.
+/// A put-in's and an absorb's staged edits go into commits, so only the
+/// unstaged part comes back — the landing's "your unstaged edits" (review
+/// m7-09..21c Minor 6); every other kind puts back all it set aside. The
+/// set-aside itself stays `Some`, so the put-back is still forecast.
+fn shown_aside(op: &Operation, facts: &RepoFacts, aside: SetAside) -> SetAside {
+    match op {
+        Operation::Rewrite(params) if !params.made.is_empty() || params.index_base.is_some() => {
+            SetAside {
+                files: facts
+                    .status
+                    .entries
+                    .iter()
+                    .filter(|entry| entry.is_unstaged())
+                    .count(),
+            }
+        }
+        _ => aside,
+    }
 }
 
 /// A plan with the fields every kind fills the same way, ready to be

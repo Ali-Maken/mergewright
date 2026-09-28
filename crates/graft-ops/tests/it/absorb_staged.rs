@@ -197,6 +197,50 @@ fn absorb_sets_aside_with_no_staging_lost() {
     assert_eq!(aside.files, 2);
 }
 
+/// The preview's `your edits: N files set aside` count, for `request`.
+fn previewed_aside(repo: &TempRepo, request: &RewriteRequest) -> Option<usize> {
+    let handle = repo.open();
+    let facts =
+        read_facts(&handle, git_version(), &Never, &FactsScope::default()).expect("the facts read");
+    let params = plan(&handle, &git_version(), request, &facts, None, &Never)
+        .unwrap_or_else(|why| panic!("it plans: {why}"));
+    let op = Operation::Rewrite(params);
+    let facts = read_facts(&handle, git_version(), &Never, &op.facts_scope())
+        .expect("the preview's facts read");
+    graft_ops::preview::plan(&handle, &git_version(), &op, &facts, &Never)
+        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .set_aside
+        .map(|aside| aside.files)
+}
+
+/// Review Minor 6: a put-in's and an absorb's staged edits go into
+/// commits, so the preview's set-aside row counts only what is set aside
+/// **and put back**: the unstaged part, as the landing's "your unstaged
+/// edits" says. Two staged files and one unstaged edit count 1.
+#[test]
+fn the_preview_counts_only_the_unstaged_edits_set_aside() {
+    let repo = branch();
+    stage_placed(&repo);
+    stage(&repo, "a.txt", b"a1\nA2\na3\na4\na5 changed\n");
+    repo.write("old.txt", b"o1\no2\no3\no4\nO5\n");
+
+    assert_eq!(previewed_aside(&repo, &RewriteRequest::Absorb), Some(1));
+    let target = oid(&repo, "feature~1");
+    assert_eq!(
+        previewed_aside(&repo, &RewriteRequest::AmendInto { target }),
+        Some(1)
+    );
+}
+
+/// Nothing unstaged: no count at all, though the staged edits are still
+/// set aside around the rewrite (`Operation::sets_aside`).
+#[test]
+fn the_preview_counts_nothing_set_aside_with_nothing_unstaged() {
+    let repo = branch();
+    stage_placed(&repo);
+    assert_eq!(previewed_aside(&repo, &RewriteRequest::Absorb), Some(0));
+}
+
 fn map_stays(repo: &TempRepo) -> Vec<StaysWhy> {
     absorb_map(
         &repo.open(),

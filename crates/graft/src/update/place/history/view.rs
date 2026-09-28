@@ -134,7 +134,8 @@ impl HistoryState {
         }
     }
 
-    /// The file pane's header: `sha7 · Name · age · subject · this file +a −r`.
+    /// The file pane's header: `sha7 · Name · age · subject · this file +a −r`
+    /// (no counts for a binary file).
     fn header(&self, now: i64) -> String {
         let Some(row) = self.selected_row() else {
             return String::new();
@@ -146,7 +147,9 @@ impl HistoryState {
             relative_date_long(row.when, now),
             sanitize_line(&row.subject).as_str(),
         );
-        if let Some(view) = self.file_view() {
+        // A binary file has no lines to count: `+0 −0` beside its size
+        // change would read as "no change" (review Minor 8).
+        if let Some(view) = self.file_view().filter(|view| view.binary.is_none()) {
             let lines = file_rows(&view.hunks);
             let added = lines
                 .iter()

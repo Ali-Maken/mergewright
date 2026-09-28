@@ -456,9 +456,11 @@ fn plan_switch_branch_tag_and_stash_branch() {
             "git switch nb".to_owned()
         ]
     );
+    // `branch -D`, so the branch's config goes with it (review m7-09..21c
+    // Minor 13).
     assert_eq!(
         lines(&branch_delete(), &f),
-        [format!("git update-ref -d {FEAT} {}", hex(0x0b))]
+        ["git branch -D feat".to_owned()]
     );
     assert_eq!(
         lines(&tag_create(None), &f),
