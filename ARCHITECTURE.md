@@ -139,9 +139,19 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing pull's fetch-first path** → `graft-ops/src/apply/pull.rs`.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
-  runner both live there. **Three commands are the exception: they are
+  runner both live there. **Six commands are the exception: they are
   carried out by the frame loop itself, never by a job** — see the hand-over
   rule below.
+- **Changing the branch picker** → `app/src/update/picker.rs` for its keys
+  and state, `graft-ui/src/picker.rs` for how it draws.
+- **Changing `o` (take the cursor commit, previewed; m7-power-tools/11)** →
+  `app/src/update/keys.rs` for the key, `app/src/update/context_menu/`
+  (`slots.rs`, `verbs.rs`) for menu slot 2 and its dim refusal,
+  `app/src/update/preview.rs` for the preview, `graft-ui/src/context_menu.rs`
+  for the drawn label.
+- **Changing the still-to-apply list (m7-power-tools/07c)** →
+  `graft-ui/src/still_to_apply.rs`; the graph screen places it
+  (`graft-ui/src/graph_screen/layout.rs`, `render.rs`).
 - **Running another program in Graft's terminal** (`$EDITOR`, a `SIGTSTP`
   suspend) → `app::event_loop::outside`. See the hand-over rule below.
 - **Anything that needs the open repository from a job** → `app/src/repos.rs`.
@@ -151,9 +161,10 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 ## Handing the terminal over
 
 `Ctrl+E`, `e` and `Ctrl+Z` run another program — the user's editor, or the
-shell they suspended to — inside the terminal Graft is drawing on. Their
-three commands (`EditCommitMessage`, `OpenExternalEditor`, `Suspend`) are the
-only ones **carried out by the frame loop rather than queued as jobs**, and
+shell they suspended to — inside the terminal Graft is drawing on. The
+six commands that do this (`EditCommitMessage`, `OpenExternalEditor`,
+`OpenMergetool`, `OpenConflictEditor`, `ContinueInGit`, `Suspend`;
+`app/src/event_loop/running.rs:212-217`) are the only ones **carried out by the frame loop rather than queued as jobs**, and
 that is not a shortcut: the job pool's threads do not own the session or the
 input mux, and only the thread that owns both can give the terminal up. A job
 that tried would leave two readers on one file descriptor and the user's

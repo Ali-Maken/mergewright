@@ -2553,7 +2553,8 @@ row. **Legibility in Zed, dark, 187 columns is unverified** until he looks.
 **The put-back pass's colour** (m6-conflicts/75): the dim of `Checkout —
 already on <b>` is asserted from the cells the app draws by
 `m6_stash_put_back::the_checkout_slot_on_head_s_row_is_drawn_dim_and_only_it`
-(every cell of that slot `DIM`, none of `Cherry-pick`'s). The resolver's
+(every cell of that slot `DIM`, and since m7-power-tools/11 every cell of
+slot 2, `Cherry-pick (o) — already on main`, too; none of `Copy SHA (y)`'s). The resolver's
 roles for a stash (`stashed · stash@{0}`) and for set-aside edits (`set
 aside · your edits`) are **words only** — the role picks the pane names
 (`graft-ui/src/conflict_resolver/draw/block.rs:35`), the tints follow the
@@ -2583,7 +2584,7 @@ shows `—` for the other two).
 | `m6-22-set-aside-preview` | `p r` | the rebase preview box; under `working tree:` the row `your edits: 3 files set aside, put back after`, whole at every size, no staging words (30b); `[ Confirm ]`, `y confirm` |
 | `m6-23-set-aside-clash-landing` | `j k . ⏎ y` | (`j k` only reach `main`'s row: the cursor opens on the uncommitted row) the resolver on `base.txt`; notice `your edits clashed in 1 file · esc, u undoes the switch too`; panes `branch · main` and `yours · edits set aside`; the bottom row starts `o branch  t yours`; `set aside ·` is no pane's name |
 | `m6-24-set-aside-done` | `p r r` | the graph on the rebased `ours` over `origin/main`, `Uncommitted changes (3 unstaged)` on top; status `rebase main onto origin/main ✓ · your edits are back` |
-| `m6-25-menu-fixed-slots` | `k .` | (`k` reaches `fix`'s row) the menu leads `Checkout fix`, `Cherry-pick 401cfbe`, `Explain`; the slot is not dim here — it dims only on `HEAD`'s own row (`menu-fixed-slots-120x40`, frame 2) |
+| `m6-25-menu-fixed-slots` | `k .` | (`k` reaches `fix`'s row) the menu leads `Checkout fix`, `Cherry-pick 401cfbe (o)`, `Explain`; the slot is not dim here — it dims only on `HEAD`'s own row (`menu-fixed-slots-120x40`, frame 2) |
 
 The Rust captures of the same pass (`check_shot`, drawn by `view::view`):
 `menu-fixed-slots-120x40` (71), `stash-clash-landing-{120x40,80x24}` and
