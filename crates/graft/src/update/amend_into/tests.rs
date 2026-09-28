@@ -857,3 +857,17 @@ fn incomplete_after_a_put_in_forgets_its_words() {
         state.status
     );
 }
+
+/// Review m7-09-to-21c, Minor 2: a write that starts while a put-in's tag
+/// read is out ends that read — its answer, coming back after, names rows
+/// of the history before the write and must tag nothing.
+#[test]
+fn a_write_claimed_while_the_tags_are_read_drops_their_answer() {
+    let mut state = AppState::default();
+    let tagging = JobId::new(40);
+    state.amend_into.tagging = Some(tagging);
+    crate::update::operate::claim_write(&mut state, JobId::new(41))
+        .unwrap_or_else(|busy| panic!("nothing else is running: {busy:?}"));
+    super::tags_resolved(&mut state, tagging, Ok(vec![Oid::from_sha1([2; 20])]));
+    assert_eq!(state.row_tags.on(Oid::from_sha1([2; 20])), None);
+}

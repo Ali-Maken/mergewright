@@ -229,6 +229,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `answer` / `planned` / `tags_resolved` (fns, `pub(crate)`) — the plan's answer: the preview (`opened_by` `a` or `.`), a refusal's own words (sticky), or `NothingBuiltOnHead` → today's amend; the tag read's answer sets `RowTag::Changed`, or adds `couldn't mark the changed commit: <why>` to the landing's line.
 - `landed` (fn, `pub(crate)`) — from `operate::operated`'s `Done`: only for the very `Operation::Rewrite` planned, the status `<what> ✓ · <also> · u undoes` and `Command::ResolveRowTags`.
 - `job_ended` / `forget` (fns, `pub(crate)`) — a plan or tag job that will not answer; the preview closed.
+- `write_claimed` (fn, `pub(crate)`, review m7-09-to-21c Minor 2) — called by `operate::claim_write`: a tag read still out is dropped, so its answer after a write tags nothing.
 
 ## update::row_tags
 - `RowTags` (struct) — `set(oid, tag)`, `on(oid)`, `clear()` (all `pub(crate)`); `view::entries::row_entry` reads `on` into `GraphEntry::tag`.

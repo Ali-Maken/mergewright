@@ -1,6 +1,6 @@
 # 07b — part of 07 rewrite-stops (split by planner, filed by conductor 2026-09-27)
 
-Status: done (Minor 2 blocked: needs `amend_into.rs`, see NOTES). Shared context (settled scout findings, order, Decided, Signatures) is `07-rewrite-stops.md` lines 1-118; read it first. This file holds only part 07b plus Touches and Rules.
+Status: done. Shared context (settled scout findings, order, Decided, Signatures) is `07-rewrite-stops.md` lines 1-118; read it first. This file holds only part 07b plus Touches and Rules.
 
 ## 07b — banner words, the ladder, focus, `a` at an edit stop, `Esc` (graft + graft-ui)
 Build with: **Opus**. An amend written inside a live rewrite through `apply` must leave the rewrite's live `Pending`
@@ -23,7 +23,7 @@ Files:
 - Docs: MAP.md (graft, graft-ui).
 
 Acceptance:
-- [x] `a_chain_stop_names_the_branch_in_the_banner` — `graft/src/update/banner/rewrite_stop_tests.rs::a_chain_stop_names_the_branch_in_the_banner`; real repo `tests/it/rewrite_stop.rs::a_relaunch_mid_rewrite_shows_the_chain`. Red first **not observed**: written after compaction, code already in (NOTES).
+- [x] `a_chain_stop_names_the_branch_in_the_banner` (**not** red first: red never observed) — `graft/src/update/banner/rewrite_stop_tests.rs::a_chain_stop_names_the_branch_in_the_banner`; real repo `tests/it/rewrite_stop.rs::a_relaunch_mid_rewrite_shows_the_chain`. Red first **not observed**: written after compaction, code already in (NOTES).
 - [x] `rewrite_stop_tests::a_single_branch_stop_has_no_chain_words`; `tests/it/rewrite_stop.rs::a_shell_begun_rebase_has_no_chain_words` (real `git rebase -i --update-refs` edit stop).
 - [x] graft-ui `graph_screen/tests.rs::banner_line_keeps_step_i_of_n_at_80_columns` (red first, observed) and `graph_screen/banner/tests.rs::banner_ladder_drops_hint_subject_chain_sha_in_order`;
 - [x] `graph_screen/banner/tests.rs::non_rewrite_banners_are_unchanged` (merge, cherry-pick, revert, pull, stash-clash);
@@ -36,6 +36,7 @@ Acceptance:
 - [x] `rewrite_stop_tests::a_failed_progress_read_lands_with_todays_banner_and_says_so`;
 - [x] `tests/it/rewrite_stop.rs::a_relaunch_mid_rewrite_shows_the_chain` — Graft's rewrite applied in-process and dropped at the stop (the disk state a kill leaves), then a fresh `App::open` reads the saved plan. Not a literal `kill -9`.
 - [x] hint-bar tests green (`update::tests::every_key_the_bar_draws_is_answered`, `every_planned_hint_is_still_unbound`, graft-ui coverage slots 90–95); `stop_wordings` tests unedited and green in the workspace run.
+- [x] Conductor notes: Major 1 `graft-ops tests/it/edit_stop.rs::a_shell_begun_edit_stop_amend_is_recorded_with_a_backup`; Minor 1 `amend_into/tests.rs::staging_not_kept_after_a_put_in_tags_and_spends_its_words`, `incomplete_after_a_put_in_forgets_its_words`; Minor 2 `amend_into/tests.rs::a_write_claimed_while_the_tags_are_read_drops_their_answer` (all red first, observed).
 Size: ~55k.
 
 
@@ -74,7 +75,7 @@ Both fixes are in `operate.rs`. Do not edit `amend_into.rs` (30k holds it); if y
 
 ## NOTES (builder, 2026-09-28)
 
-**Compacted once mid-ticket.** Nothing left from the list; Minor 2 blocked (below). Scouts: yes, two.
+**Compacted once mid-ticket.** Nothing left from the list. Scouts: yes, two.
 
 **Fold (note a):** kept for a rewrite Graft began — the amend undoes with the rewrite
 (`graft-ops/src/apply/fold.rs:40` `folded_step`; the folded step now re-reads refs, `fold.rs:126`). Verified by
@@ -90,9 +91,13 @@ line); `Incomplete` forgets a put-in's words. Red first, in `update/amend_into/t
 with 30k at merge): `staging_not_kept_after_a_put_in_tags_and_spends_its_words`,
 `incomplete_after_a_put_in_forgets_its_words`.
 
-**Minor 2 — blocked: needs `amend_into.rs`.** `AmendInto::tagging` is private. Needed:
-`pub(crate) fn write_claimed(state: &mut AppState) { state.amend_into.tagging = None; }` in `amend_into.rs`, called
-from `operate::claim_write`. Not done.
+**Minor 2, cause** (after 30k released `amend_into.rs`, main merged at 73191e72, both sides' tests kept):
+`amend_into::write_claimed` clears `tagging`; `operate::claim_write` calls it. Red first, observed:
+`amend_into/tests.rs::a_write_claimed_while_the_tags_are_read_drops_their_answer`.
+
+**Fold status words (question, open):** the edit-stop amend inside Graft's rewrite **undoes with the rewrite** (one
+`u` takes back the rewrite and every amend in it), but `✓ amended the stopped commit · c continues` does not say so.
+Should the words say it (e.g. `· undoes with the rewrite`)? Not changed here; spec wording is the conductor's call.
 
 **Products carrying `RewriteStop`:** `Operated::Conflicted.rewrite` (apply + resume, read in `jobs/operate.rs`
 `in_context`); `working_tree::WorkingTree.rewrite` (every working-tree read while a rebase is live; the relaunch's).

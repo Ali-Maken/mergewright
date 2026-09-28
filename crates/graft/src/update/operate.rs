@@ -200,6 +200,8 @@ pub(super) fn claim_write(state: &mut AppState, id: JobId) -> Result<(), InFligh
     // A write starts: the `✎ changed` tags of the last put-in are over
     // (m7-power-tools/09) — undo, redo and a stage included.
     state.row_tags.clear();
+    // …and so is a tag read still out: it would tag the old rows.
+    super::amend_into::write_claimed(state);
     Ok(())
 }
 
