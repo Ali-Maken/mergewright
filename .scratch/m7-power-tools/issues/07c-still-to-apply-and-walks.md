@@ -23,9 +23,9 @@ Files:
 Acceptance:
 - [ ] `still_to_apply_is_newest_first_with_followers`, `still_to_apply_caps_at_six_then_more`,
   `no_block_when_nothing_is_pending`, `no_ghost_rows_in_the_graph`;
-- [ ] `c_in_a_shell_rebase_hands_over_to_git` and `…_cherry_pick_…`, with a fake hand-over as the `M` tests do
+- [x] `c_in_a_shell_rebase_hands_over_to_git` and `…_cherry_pick_…`, with a fake hand-over as the `M` tests do — `update/keys/live_c_tests.rs`: `c_in_a_shell_rebase_hands_over_to_git`, `c_in_a_shell_cherry_pick_hands_over_to_git` (pane + graph frames, and the bar says `c continue`), `a_shell_begun_revert_is_still_refused`;
   (`banner/tests.rs:484,503,718`); `a_shell_begun_revert_is_still_refused`;
-- [ ] the three return landings (finished / stopped again / non-zero) each a test;
+- [x] the three return landings (finished / stopped again / non-zero) each a test; — `a_shell_continue_that_finished_lands_on_the_graph`, `a_shell_continue_that_stopped_again_lands_on_the_stop`, `a_shell_continue_that_exited_non_zero_keeps_the_stop` (+ `a_hand_over_that_could_not_run_says_why`), `update/banner/tests/continue_in_git.rs`;
 - [ ] **Walks** (`m7_walk`, counted, fail over the fence):
   - `rewrite_stop_to_first_file`: after `y`, 0 keys, resolver on the first file; ≤ `noted_keys("rewrite-stop-to-first-file")`.
   - `edit_stop_lands`: 0 keys to the graph at the stopped commit, block drawn.
@@ -101,3 +101,56 @@ the new behaviour; write the hand-over tests (fake return: feed `AppEvent::Produ
 Product::ContinuedInGit(Ok(ExitStatus::from_raw(code << 8))))`, then a working-tree answer) — three landings + two
 hand-over tests + revert refusal; walks in `tests/it/m7_walk/rewrite_stops.rs`; captures; MAP.md; TESTING.md.
 None of the acceptance boxes is ticked yet except as named above (graft-ui half of box 1).
+
+
+## NOTES — builder round 2, 2026-09-28 (status: partial; not compacted; scout: `scout07c`)
+
+Granted line landed: `update/tests.rs:1350` `continue_in_git_owed: None,`. Nothing else touched there.
+
+**Blocked: needs one more line in `update/tests.rs` (ticket 11's).** `update/tests.rs:4466`, in
+`operation_live_as`: `LiveC::Refuses if banner => InProgress::Rebase,` must become `InProgress::Revert` — a
+shell-begun rebase is no longer a `Refuses` state (07c's own change), a shell-begun revert still is. Until then
+`every_key_the_bar_draws_is_answered` and `every_swept_state_is_the_context_it_claims` fail (4666/4668).
+
+Ticks:
+- Box 1 **unticked**: the three widget tests and `no_ghost_rows_in_the_graph` pass, but the followers row the spec
+  asks for (`<branch> (<author of its tip>): N commits follow, on top` per dependent still to come) has no data:
+  `graft_ops::rewrite::RewriteProgress` (`crates/graft-ops/src/rewrite.rs:278`) carries `pending` todo lines and
+  the current branch `(name, i, n)` only — no per-branch commit counts, no tip authors. `pending_view` passes
+  `followers: vec![]`. Missing: a graft-ops read giving, for each line branch after the current one, its name, its
+  tip's author, and its commit count. For the conductor to file.
+- Walks box **unticked**:
+  - `rewrite_stop_to_first_file` passes (0 keys ≤ fence 0; resolver on `shared.txt`; banner `step 3 of 5 … feature-b, branch 2 of 3`).
+  - `edit_stop_lands` passes (0 keys ≤ fence 0; `▏` on `HEAD · stopped here`; block drawn, 3 picks newest first).
+  - `edit_stop_amend_continue` **not built — stopped per the ticket's rule.** `space` from where the stop lands
+    (cursor on HEAD's row) does not stage the edit (probe: `git diff --cached` empty after `space`), and `k` to
+    the top reaches `c1`'s row, not the `Uncommitted changes` row drawn above it. So one key cannot stage from
+    the landing; the real count is unknown (≥ 4 + a way onto the uncommitted row). Not rebound. The amend→`c`
+    half is already walked by 07b's `a_twice_then_c_amends_the_stopped_commit_and_the_rewrite_goes_home`
+    (staging via `git add`).
+  - `abort_from_a_chain_stop` passes, **unfenced**: the M7 note's fence (`m7-power-tools.md:830-832`) has no
+    `abort-from-a-chain-stop` row, so no count is asserted; the walk prints its route. Measured route from the
+    stop's landing: `esc a y` (3) — not the ticket's `⇥ a y`: the stop lands in the resolver, which has no `a`
+    (keymap §2.6) and whose `Esc` returns to the banner.
+- Captures box **unticked** (files written, for the user's eye; differ from "Right"):
+  - chain-stop-187x50: banner matches, resolver below. OK against Right as far as text goes.
+  - edit-stop-187x50: box + picks (three, fixture has three pending), `▏` on HEAD, bar `a amend it … c continue`;
+    **no follower row** (above); bar shows `space` bare, not `space stage`.
+  - edit-stop-80x24: fixture is `step 1 of 4`, not `3 of 7`; box whole (3 picks fit in half the screen), so no
+    `+N more` at this size; `c` bare in the bar. `edit-stop-120x40` (07b's) regenerated: now has the box; `c`
+    still bare at 120 (hint-bar fitting drops verbs past the width — not this ticket's rule).
+
+Other:
+- Signature deviation: `Product::ContinuedInGit(Result<Option<i32>, String>)` (exit code, `None` = signal), not
+  `ExitStatus`: `update_cannot_reach_the_world` forbids `std::process` in `update/`. `Handover::continue_in_git`
+  still returns `ExitStatus`; the loop maps `.code()`.
+- New `AppState::continue_in_git_owed` (why: only the post-return read tells finished / stopped again / failed).
+- `pending_view` made `pub` (the walk reads it).
+- I added `pub mod rewrite_stops;` in `tests/it/m7_walk.rs` myself (the ticket said the conductor would).
+- Test fixtures changed to the new behaviour (a Graft-begun rebase now needs `live_entries`): `banner/tests.rs`
+  (`continue_with_nothing_unmerged…`, `did_a_resume_verb` → `continued`), `banner/tests/resume_words.rs`,
+  `finish/tests.rs`, `resolver/tests/finish_here.rs`, `commit_editor/tests.rs` (words table, widest arm now the
+  revert's, 66 cols).
+- `pane_c_acts` callers verified by test: `keys/commit.rs` (key route) and `view/rows.rs::live_c` (bar) —
+  `the_bar_offers_c_exactly_where_c_acts` (every kind × begun × frame: bar offers `c` iff `c` acts) and the two
+  `hands_over_to_git` tests (command sent + `c continue` drawn) pass.

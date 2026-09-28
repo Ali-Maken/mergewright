@@ -376,7 +376,7 @@ pub struct AppState {
     /// read: finished, stopped again, or still stopped after a non-zero
     /// exit — only the read can tell. Spent by
     /// `update::banner::land_after_continue_in_git`.
-    pub continue_in_git_owed: Option<(graft_git::state::InProgress, std::process::ExitStatus)>,
+    pub continue_in_git_owed: Option<(graft_git::state::InProgress, Option<i32>)>,
     /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).

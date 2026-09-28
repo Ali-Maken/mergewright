@@ -510,14 +510,21 @@ fn a_graft_begun_operation_names_the_banner() {
     );
 }
 
-/// A rebase begun in the shell keeps git's own command: the banner's `c`
-/// still refuses it (M7), so naming a key would offer one that does nothing.
+/// A rebase begun in the shell: `c` hands it to git (07c), so the words
+/// name `c`. A revert the shell began still names git's own command.
 #[test]
-fn a_rebase_begun_in_the_shell_still_names_gits_command() {
+fn a_rebase_begun_in_the_shell_names_c_handing_it_to_git() {
     let refusal = shell_refusal(graft_git::state::InProgress::Rebase);
+    assert_eq!(refusal, "rebase begun in the shell — c hands it to git");
+    let refusal = shell_refusal(graft_git::state::InProgress::CherryPick);
     assert_eq!(
         refusal,
-        "rebase begun in the shell — finish it there: git rebase --continue"
+        "cherry-pick begun in the shell — c hands it to git"
+    );
+    let refusal = shell_refusal(graft_git::state::InProgress::Revert);
+    assert_eq!(
+        refusal,
+        "revert begun in the shell — finish it there: git revert --continue"
     );
 }
 
@@ -1025,8 +1032,8 @@ fn every_refusal_fits_80_columns() {
     assert_eq!(
         (widest.width(), widest.as_str()),
         (
-            76,
-            "cherry-pick begun in the shell — finish it there: git cherry-pick --continue"
+            66,
+            "revert begun in the shell — finish it there: git revert --continue"
         ),
         "the widest arm"
     );
@@ -1069,8 +1076,8 @@ const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
     ),
     (
         (InProgress::Rebase, Begun::InShell),
-        "rebase begun in the shell — finish it there: git rebase --continue",
-        "rebase begun in the shell — finish it there: git rebase --continue",
+        "rebase begun in the shell — c hands it to git",
+        "rebase begun in the shell — c hands it to git",
         None,
     ),
     (
@@ -1081,8 +1088,8 @@ const EVERY_LIVE_OPERATION: [LiveRow; 10] = [
     ),
     (
         (InProgress::CherryPick, Begun::InShell),
-        "cherry-pick begun in the shell — finish it there: git cherry-pick --continue",
-        "cherry-pick begun in the shell — finish it there: git cherry-pick --continue",
+        "cherry-pick begun in the shell — c hands it to git",
+        "cherry-pick begun in the shell — c hands it to git",
         None,
     ),
     (

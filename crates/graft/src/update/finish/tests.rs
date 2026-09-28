@@ -177,7 +177,8 @@ fn c_with_a_file_unmerged_is_still_refused() {
 
 #[test]
 fn a_rebase_c_still_continues_directly() {
-    let state = stopped(InProgress::Rebase, &[]);
+    let mut state = stopped(InProgress::Rebase, &[]);
+    state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     let (state, commands) = press(&state, plain(KeyCode::Char('c')));
     assert!(state.finish.is_none());
     assert_eq!(resumes(&commands), vec![&Resume::Continue]);

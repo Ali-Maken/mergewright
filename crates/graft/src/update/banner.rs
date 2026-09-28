@@ -238,7 +238,7 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
 /// rewrite's progress read carries no per-branch counts or tip authors yet
 /// (graft-ops `RewriteProgress`), recorded in the ticket 07c NOTES.
 #[must_use]
-pub(crate) fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
+pub fn pending_view(state: &AppState) -> Option<graft_ui::PendingView> {
     let detail = live(state)?;
     let rewrite = state
         .stopped
@@ -574,7 +574,7 @@ pub(crate) fn continue_pressed(
 pub(crate) fn continued_in_git(
     state: &mut AppState,
     commands: &mut Vec<Command>,
-    result: Result<std::process::ExitStatus, String>,
+    result: Result<Option<i32>, String>,
 ) {
     let tree = state.local_jobs.next_id();
     commands.push(super::status_read::ask(state, tree));
@@ -613,15 +613,13 @@ pub(super) fn land_after_continue_in_git(
         return;
     }
     let paths = unmerged_paths(state);
-    if !paths.is_empty() || exit.success() {
+    if !paths.is_empty() || exit == Some(0) {
         stopped_again(state, kind, paths.len(), None, rewrite);
         land_in_resolver(state, commands, &paths, next_id);
         edit_stop_lands_on_head(state, commands);
         return;
     }
-    let code = exit
-        .code()
-        .map_or_else(|| "on a signal".to_owned(), |code| code.to_string());
+    let code = exit.map_or_else(|| "on a signal".to_owned(), |code| code.to_string());
     state.status = Status::Sticky {
         reason: format!("{command} exited {code} · still stopped"),
         keys: Some("c continue  a abort".to_owned()),

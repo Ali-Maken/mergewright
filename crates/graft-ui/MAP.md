@@ -25,6 +25,7 @@ One line per public item. Update when a public item changes.
 - `map_screen` (mod) — the Map view widget: `MapView`/`MapRowView`/`MapMarkView`/`MapStatus`/`MapScreen`, `ramp_glyph` (m2-details-and-diffs/19).
 - `overview_strip` (mod) — the one-column whole-history strip: `StripMark`/`StripMarks`/`StripCell`, `cell_for`/`row_for_cell`, `OverviewStrip` widget (m2-details-and-diffs/20).
 - `paint` (mod) — token-to-style helpers for widgets.
+- `still_to_apply` (mod) — the still-to-apply block at a rewrite stop (m7-power-tools/07c): `PendingView`/`PendingRowView` (re-exported at the crate root), `draw_still_to_apply`, `still_to_apply_lines(view, width, height)`, `still_to_apply_height`, `MAX_ROWS` (6), `TITLE`. Boxed, never graph rows; cut to `+N more` when the rect is short.
 - `stash_screen` (mod) — the stash overlay (`S`): `StashRowView`/`StashPromptView`/`StashStatus`/`StashView`/`StashScreen`, `files_label` (m3-working-tree-undo-and-stash/06).
 - `status_screen` (mod) — the status screen view and widget.
 - `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
@@ -146,6 +147,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `SHA_WIDTH` (const) — cells the short-SHA column takes, and hex digits to call `short_sha` with.
 - `AUTHOR_BREAKPOINT` (const) — width below which the author chip drops (DESIGN.md §1.2/§1.3).
 - `GraphView` (struct) — everything the graph screen draws.
+- `GraphView::pending` (field) — `Option<PendingView>`: the still-to-apply block, drawn under the banner in `ScreenRows::pending` (≤ half the rows the banner leaves, ≥ 3 or none) (07c).
 - `GraphView::location` (field) — the repository's path, once open.
 - `GraphView::walk` (field) — where the history walk is.
 - `GraphView::problem` (field) — `Option<ProblemLine>`: an unsuperseded error, reason and keys apart; replaces the key hints while it lasts. Drawn with `hints::fit_status_line` so a sticky failure's keys survive a narrow footer (`hint-bar-redesign`).

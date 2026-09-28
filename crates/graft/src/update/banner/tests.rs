@@ -219,6 +219,7 @@ fn the_refusal_counts_one_file_in_the_singular() {
 #[test]
 fn continue_with_nothing_unmerged_queues_an_unstoppable_resume() {
     let mut state = stopped(InProgress::Rebase, &[]);
+    state.live_entries = vec![graft_core::journal::EntryId::new(1, [0; 10])];
     assert_eq!(continue_refusal(&state), None);
     let (claimed, commands) = press(&mut state, KeyCode::Char('c'));
     assert!(claimed);
@@ -878,6 +879,32 @@ fn code_for(key: &str) -> KeyCode {
     }
 }
 
+/// `c` with nothing unmerged: what it queued.
+fn continued(key: &str, verb: &str, before: &AppState, after: &AppState, commands: &[Command]) {
+    match live(before).map(|detail| detail.kind) {
+        // A merge shows the finish summary first (m6-conflicts/19):
+        // nothing is written until its `⏎`.
+        Some(InProgress::Merge) => {
+            assert!(after.finish.is_some(), "`{key} {verb}` opened no summary");
+            assert!(
+                matches!(commands, [Command::ReadFinishSummary(_)]),
+                "`{key} {verb}` queued {commands:?}"
+            );
+        }
+        // A rebase or cherry-pick the shell began: handed to git (07c).
+        Some(InProgress::Rebase | InProgress::CherryPick) if before.live_entries.is_empty() => {
+            assert!(
+                matches!(commands, [Command::ContinueInGit { .. }]),
+                "`{key} {verb}` queued {commands:?}"
+            );
+        }
+        _ => assert!(
+            matches!(commands, [Command::Resume(_, Resume::Continue)]),
+            "`{key} {verb}` queued {commands:?}"
+        ),
+    }
+}
+
 /// `c`/`s`/`a`: the three that move the operation on.
 fn did_a_resume_verb(
     verb: &str,
@@ -897,19 +924,7 @@ fn did_a_resume_verb(
                 },
                 "`{key} {verb}`"
             ),
-            // A merge shows the finish summary first (m6-conflicts/19):
-            // nothing is written until its `⏎`.
-            None if live(before).is_some_and(|detail| detail.kind == InProgress::Merge) => {
-                assert!(after.finish.is_some(), "`{key} {verb}` opened no summary");
-                assert!(
-                    matches!(commands, [Command::ReadFinishSummary(_)]),
-                    "`{key} {verb}` queued {commands:?}"
-                );
-            }
-            None => assert!(
-                matches!(commands, [Command::Resume(_, Resume::Continue)]),
-                "`{key} {verb}` queued {commands:?}"
-            ),
+            None => continued(key, verb, before, after, commands),
         },
         "skip" | "abort" => {
             let want = if verb == "skip" {
@@ -1859,4 +1874,5 @@ fn a_refresh_before_the_walk_starts_still_lands_on_head() {
     );
 }
 
+mod continue_in_git;
 mod resume_words;

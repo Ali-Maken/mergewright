@@ -2820,3 +2820,13 @@ graft-ops, against real repositories (`crates/graft-ops/tests/it/pull_set_aside.
 | Scenario | Right looks like |
 |---|---|
 | `P` after a rejected push, teammate's commits on origin | Lease box: line 1 (`origin/main <theirs> → <ours> · refused if …`), then `rewrites history for everyone who has <sha7>`, then `leaves origin/main:`, then one row per commit — sha7, subject, author, aligned in columns, subject cut with `…` — newest first, at most 3, then `+N more`; buttons row whole. `nothing on origin/main is lost` when nothing leaves; `couldn't read what leaves …: <why>` with the force still offered when the read fails. `P` before the read lands: `still reading what leaves origin/main — try again in a moment`. Tests: `update/remote/tests/lease/leaves.rs` (all ten). Captures `docs/shots/m7/force-box-leaves-{120x40,80x24}.txt` (`view::tests::capture_force_box_leaves`). Colour unverified. |
+
+## M7: stops during a rewrite (m7-power-tools/07c)
+
+Walks: `cargo nextest run --workspace -E 'test(rewrite_stops) | test(continue_in_git) | test(hands_over)'`.
+
+- Conflict stop of a chain rewrite: after `y`, no key; the resolver is open on `shared.txt`; banner `REBASING  step 3 of 5 · pick <sha7> b1 · feature-b, branch 2 of 3` (`rewrite_stop_to_first_file`, capture `m7/rewrite-chain-stop-187x50.txt`).
+- `edit` stop: no key; the graph has the keyboard, `▏` on `[HEAD] a1  HEAD · stopped here`; a box `still to apply · not commits yet` between banner and rows, `pick` rows newest first; the pending commits are never drawn as extra graph rows (`edit_stop_lands`, `no_ghost_rows_in_the_graph`; captures `m7/rewrite-edit-stop-{187x50,120x40,80x24}.txt`).
+- Abort from a chain stop: `esc a y` from the resolver; every branch back, HEAD on `feature-a` (`abort_from_a_chain_stop`).
+- `c` on a rebase/cherry-pick begun in the shell: the terminal goes to `git <kind> --continue`; back in Graft: finished → graph + `✓ git <kind> --continue finished`; conflicted again → resolver; non-zero, still live → `git <kind> --continue exited <code> · still stopped` (`continue_in_git` tests). A shell revert still refuses in words.
+- Not yet right: no `<branch> (<author>): N commits follow, on top` rows (no data); `space` from the edit stop does not stage (see ticket 07c NOTES). Colour unverified.

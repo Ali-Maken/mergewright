@@ -1347,6 +1347,7 @@ fn every_field_spelled_out() -> AppState {
         live_landing_owed: false,
         undo_landing_owed: false,
         status_read: None,
+        continue_in_git_owed: None,
         head_message: None,
         edit_amend: false,
         commit_template: None,

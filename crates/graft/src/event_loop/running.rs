@@ -274,9 +274,10 @@ fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
             let result = outside.mergetool(&path);
             AppEvent::Produced(JobId::new(0), Product::Mergetool { path, result })
         }
-        Command::ContinueInGit { id, kind } => {
-            AppEvent::Produced(id, Product::ContinuedInGit(outside.continue_in_git(kind)))
-        }
+        Command::ContinueInGit { id, kind } => AppEvent::Produced(
+            id,
+            Product::ContinuedInGit(outside.continue_in_git(kind).map(|status| status.code())),
+        ),
         Command::Suspend => {
             AppEvent::Produced(JobId::new(0), Product::HandedOver(outside.suspend()))
         }
