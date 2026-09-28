@@ -1,0 +1,40 @@
+ graft /code/api    REBASING  step 1 of 4 · edit 0395451 a1 · feature-a, branch 1 of 3
+  ●    [feature-c] c1                                                                                    GF 2d   1966dda
+● │    [main] m2                                                                                         GF 2d   9d9646b
+│ ●    [feature-b] b1                                                                                    GF 2d   82392de
+│ ●    [feature-a] a2                                                                                    GF 2d   15335d9
+│ ◆ ▏  [HEAD] a1  HEAD · stopped here                                                                    GF 2d   0395451
+◇─╯    m1                                                                                                GF 2d   256d42c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⇥ banner  a amend it  ⏎ open  . more  b  r  t  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O

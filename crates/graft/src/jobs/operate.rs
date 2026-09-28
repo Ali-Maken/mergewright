@@ -94,6 +94,12 @@ pub enum Operated {
         /// The journal entry git is part-way through, still `Pending` —
         /// the live entry, named by the answer itself (gap row 505).
         entry: graft_core::journal::EntryId,
+        /// A rewrite's stop, read on this job's thread right after git
+        /// stopped (m7-power-tools/07b): the banner's step, row and chain,
+        /// and whether the graph takes the keyboard. `None` outside a
+        /// `rebase -i`; `Err` is a failed read, which the stop still lands
+        /// with.
+        rewrite: Option<Result<crate::update::banner::RewriteStop, String>>,
     },
     /// A stash put back clashed ([`ApplyError::Clashed`], ADR-0045 §1–2):
     /// the entry is `Committed`, the stash is still listed, and the tree
@@ -334,7 +340,18 @@ fn in_context(
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
-    answer(run(&mut ctx))
+    let mut operated = answer(run(&mut ctx));
+    // A rebase stopped: where it is, read here while the repository and the
+    // job's stop flag are at hand, so `update` never reads git (07b).
+    if let Operated::Conflicted {
+        kind: InProgress::Rebase,
+        rewrite,
+        ..
+    } = &mut operated
+    {
+        *rewrite = crate::update::banner::read_rewrite_stop(&handle, cancel);
+    }
+    operated
 }
 
 /// One [`apply::apply`] result, as the caller reads it.
@@ -370,6 +387,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
             paths,
             stalled: None,
             entry: entry.id,
+            rewrite: None,
         },
         Err(ApplyError::ResumeFailed { entry, kind, error }) => Operated::Conflicted {
             description: entry.description.clone(),
@@ -380,6 +398,7 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
             paths: Vec::new(),
             stalled: Some(error.to_string()),
             entry: entry.id,
+            rewrite: None,
         },
         // A stash put back clashed: the user is in it, not past a failure.
         // See [`Operated::Clashed`].

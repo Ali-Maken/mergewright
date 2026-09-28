@@ -288,6 +288,10 @@ pub enum LiveC {
     Finish,
     /// A rebase, cherry-pick or revert Graft began: `c continue`.
     Continue,
+    /// A rewrite Graft began, stopped on an `edit` row (m7-power-tools/07b):
+    /// `c continue`, and `a amend it` leads — `a` amends the stopped commit
+    /// with what is staged, keeping its message.
+    ContinueAmends,
     /// A bisect, or a rebase, cherry-pick or revert the shell began: `c`
     /// only refuses in words, so no `c` hint.
     Refuses,

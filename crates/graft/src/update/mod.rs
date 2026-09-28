@@ -383,7 +383,11 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             if let (Ok(()), Some(path)) = (&result, path) {
                 finish::record_edited(next, &path);
             }
-            commit_editor_answer(next, AppEvent::Produced(id, Product::HandedOver(result)));
+            commit_editor_answer(
+                next,
+                commands,
+                AppEvent::Produced(id, Product::HandedOver(result)),
+            );
         }
         event @ AppEvent::Produced(
             _,
@@ -391,7 +395,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::HeadMessage(_)
             | Product::ExternalEditor(_)
             | Product::HandedOver(_),
-        ) => commit_editor_answer(next, event),
+        ) => commit_editor_answer(next, commands, event),
     }
     // The summary the last file of a merge owes opens once everything that
     // stage started has landed — whichever answer lands last
@@ -542,13 +546,17 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
 
 /// The three products the commit editor waits on
 /// (m3-working-tree-undo-and-stash/05).
-fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
+fn commit_editor_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
     match event {
         AppEvent::Produced(id, Product::CommitTemplate(template)) => {
             commit_editor::template_arrived(next, id, template);
         }
         AppEvent::Produced(id, Product::HeadMessage(message)) => {
-            commit_editor::head_message_arrived(next, id, message);
+            let mut local_jobs = next.local_jobs;
+            commit_editor::head_message_arrived(next, commands, id, message, &mut || {
+                local_jobs.next_id()
+            });
+            next.local_jobs = local_jobs;
         }
         AppEvent::Produced(id, Product::ExternalEditor(result)) => {
             commit_editor::editor_returned(next, id, result);
@@ -717,7 +725,7 @@ fn working_tree_read(
         // The launch lands on git's word alone; the journal only says whose
         // operation it is (m6-conflicts/12).
         let mut local_jobs = next.local_jobs;
-        relaunch::working_tree_read_landed(next, commands, first_read, &mut || {
+        relaunch::working_tree_read_landed(next, commands, first_read, read.rewrite, &mut || {
             local_jobs.next_id()
         });
         next.local_jobs = local_jobs;

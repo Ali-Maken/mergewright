@@ -378,6 +378,13 @@ pub(crate) fn tags_resolved(state: &mut AppState, id: JobId, answer: Result<Vec<
     }
 }
 
+/// A write started (`operate::claim_write`): a tag read still out names
+/// rows of the history before it, so its answer must tag nothing (review
+/// m7-09-to-21c, Minor 2). The tags already drawn go with `row_tags`.
+pub(crate) fn write_claimed(state: &mut AppState) {
+    state.amend_into.tagging = None;
+}
+
 /// A job ended without an answer (cancelled or failed to start): a plan
 /// in flight is over, and so is a tag read.
 pub(crate) fn job_ended(state: &mut AppState, id: JobId) {

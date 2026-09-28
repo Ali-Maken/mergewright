@@ -342,8 +342,9 @@ fn the_banner_keeps_its_state_word_at_every_width() {
                     conflict: Some(sanitize_line(conflict)),
                     focused,
                     skippable: true,
+                    rewrite: None,
                 });
-                let want = banner_line(view.banner_op.as_ref().expect("set above"));
+                let want = banner_line(view.banner_op.as_ref().expect("set above"), u16::MAX);
                 // The banner is drawn behind two spaces of its own, after
                 // the header's prefix.
                 let needs = prefix + 2 + want.chars().count();

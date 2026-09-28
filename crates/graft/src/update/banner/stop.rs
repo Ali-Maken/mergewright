@@ -13,6 +13,40 @@ use super::{STUCK_KEYS, banner_focusable, unmerged_paths};
 use crate::update::events::Command;
 use crate::update::state::{AppState, Status};
 
+/// Where a stopped rewrite is (m7-power-tools/07b): the step and rows
+/// (`graft_ops::rewrite::progress`) and, at an `edit` stop, the commit git
+/// handed him (`edit_stop`). Read on the job thread by [`read_rewrite_stop`]
+/// and carried by every stop-producing answer — a first stop, a stop after
+/// `c`, and the working-tree read a relaunch lands from.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RewriteStop {
+    /// The step, the row git is on, what is left, and the branch of the line.
+    pub progress: graft_ops::rewrite::RewriteProgress,
+    /// `Some` at an `edit` stop: the graph takes the keyboard and `a` amends.
+    pub edit: Option<graft_ops::rewrite::EditStop>,
+}
+
+/// The rewrite stop git is at, read on a job thread: `None` when no `rebase
+/// -i` is running (a merge, a cherry-pick, an `apply`-style rebase), `Err`
+/// with the words when git's or Graft's files could not be read — carried to
+/// the banner and said on the status line, never dropped (note R4: "a failed
+/// progress read").
+pub(crate) fn read_rewrite_stop(
+    repo: &graft_git::repo::RepoHandle,
+    stop: &dyn graft_git::run::Stop,
+) -> Option<Result<RewriteStop, String>> {
+    let progress = match graft_ops::rewrite::progress(repo, stop) {
+        Ok(Some(progress)) => progress,
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error.explain())),
+    };
+    Some(
+        graft_ops::rewrite::edit_stop(repo, stop)
+            .map(|edit| RewriteStop { progress, edit })
+            .map_err(|error| error.explain()),
+    )
+}
+
 /// **A stop lands in the resolver** (m6-conflicts/18, P5): with anything
 /// unmerged, the resolver opens on `paths`' first — the stop's own answer,
 /// read from git's status in its order, the same source and order as
@@ -62,21 +96,54 @@ pub(super) fn stopped_again(
     kind: InProgress,
     paths: usize,
     stalled: Option<&str>,
+    rewrite: Option<Result<RewriteStop, String>>,
 ) {
-    state.banner_focus = banner_focusable(kind);
-    state.stopped = Some(crate::update::state::Stop {
+    let stop = crate::update::state::Stop {
         origin: crate::update::relaunch::LiveOrigin::ThisRun,
         again: true,
         kind,
         paths_at_stop: paths,
-    });
+        rewrite,
+    };
+    // An `edit` stop hands the keyboard to the graph (07b); every other
+    // stop focuses the banner, as it did.
+    state.banner_focus = stop_takes_focus(kind, &stop);
     state.status = match stalled {
         Some(why) => Status::Sticky {
             reason: format!("stopped again: {why}"),
             keys: Some(STUCK_KEYS.to_owned()),
         },
-        None => Status::Ready,
+        None => progress_unread(&stop).map_or(Status::Ready, Status::sticky),
     };
+    state.stopped = Some(stop);
+}
+
+/// Whether a stop takes the keyboard for the banner: every stop that has a
+/// banner does, except a rewrite's `edit` stop, which hands it to the graph
+/// so `space`, `a` and `c` work on the commit (m7-power-tools/07b, note R4).
+/// A failed progress read keeps the banner's focus — the safe default: its
+/// `a` is behind a box.
+pub(crate) fn stop_takes_focus(kind: InProgress, stop: &crate::update::state::Stop) -> bool {
+    banner_focusable(kind) && edit_stop_of(stop).is_none()
+}
+
+/// The `edit` stop a stop is at, when its rewrite read says so.
+pub(crate) fn edit_stop_of(
+    stop: &crate::update::state::Stop,
+) -> Option<&graft_ops::rewrite::EditStop> {
+    match &stop.rewrite {
+        Some(Ok(rewrite)) => rewrite.edit.as_ref(),
+        Some(Err(_)) | None => None,
+    }
+}
+
+/// `couldn't read the rewrite's progress: <error>`, when the stop's rewrite
+/// read failed: the stop still lands, on today's banner.
+pub(crate) fn progress_unread(stop: &crate::update::state::Stop) -> Option<String> {
+    match &stop.rewrite {
+        Some(Err(error)) => Some(format!("couldn't read the rewrite's progress: {error}")),
+        Some(Ok(_)) | None => None,
+    }
 }
 
 /// A `--continue` finished, or a write that moves `HEAD` did
@@ -102,6 +169,38 @@ pub(in crate::update) fn finished_lands_on_head(state: &mut AppState, commands: 
     // stays where it is rather than waiting on reads never asked for.
     state.land_on_head = refs.is_some() && walk.is_some();
     state.head_landing = crate::update::state::HeadLanding { refs, walk };
+}
+
+/// At a rewrite's `edit` stop the graph gets the keyboard with its cursor
+/// on `HEAD`, the commit the stop handed him (07b, Decided "Edit stop"):
+/// owed through the landing a finished `c` uses, spent once `commands`'
+/// refs read and walk are in. Nothing at any other stop.
+pub(in crate::update) fn edit_stop_lands_on_head(state: &mut AppState, commands: &[Command]) {
+    if state.stopped.as_ref().and_then(edit_stop_of).is_some() {
+        finished_lands_on_head(state, commands);
+    }
+}
+
+/// [`edit_stop_lands_on_head`] at a relaunch: no refresh of its own to wait
+/// on, only the launch's reads — the refs read while it is still out, the
+/// walk while it has not started. Spent at once when both are in.
+pub(in crate::update) fn relaunch_lands_on_head(state: &mut AppState, commands: &mut Vec<Command>) {
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    state.on_working_tree = false;
+    let refs = match state.refs_read {
+        crate::update::state::RefsRead::Pending(id) => Some(id),
+        crate::update::state::RefsRead::Unknown | crate::update::state::RefsRead::Current(_) => {
+            None
+        }
+    };
+    let walk = if state.history.is_none() {
+        state.awaiting
+    } else {
+        None
+    };
+    state.land_on_head = true;
+    state.head_landing = crate::update::state::HeadLanding { refs, walk };
+    land_on_head(state, commands);
 }
 
 /// A refs read answered. The one [`AppState::head_landing`] waits on is

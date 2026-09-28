@@ -1,5 +1,5 @@
 --- frame 1: files focused: the bar ends `⇥ diff`
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -24,7 +24,7 @@ CONFLICTS (13)
 
  ⏎ resolve  M mergetool  e edit  space resolved  c continue  ⇥ diff  . more
 --- frame 2: `a`: the bottom row names `⇥ ⇥ banner, then c continue  a abort`
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -49,7 +49,7 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 3: one `⇥` (the diff): the sticky refusal still stands over the bar
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4
@@ -74,7 +74,7 @@ CONFLICTS (13)
 
  rebase in progress · ⇥ ⇥ banner, then c continue  a abort
 --- frame 4: a second `⇥`: the banner has the keyboard
-REBASING step 1 of 1
+REBASING  step 1 of 1 · pick 9d44f42 Change every file on feature
 Graph  [Detail]
 UNCOMMITTED
 diff vs HEAD 274c7d4

@@ -375,6 +375,10 @@ pub struct AppState {
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).
     pub head_message: Option<JobId>,
+    /// [`AppState::head_message`] was asked by `a` at a rewrite's `edit`
+    /// stop (m7-power-tools/07b): its answer amends at once, keeping the
+    /// message, rather than opening the editor.
+    pub edit_amend: bool,
     /// The `commit.template` read an open editor is waiting on, for the same
     /// reason.
     pub commit_template: Option<JobId>,
@@ -856,6 +860,11 @@ pub struct Stop {
     pub kind: graft_git::state::InProgress,
     /// Unmerged paths when it stopped — the count until a read says more.
     pub paths_at_stop: usize,
+    /// A rewrite's stop, read on the job thread (m7-power-tools/07b): its
+    /// step, rows and chain for the banner, and whether it is an `edit` stop.
+    /// `None` outside a `rebase -i`; `Err` is the failed read, shown, never
+    /// dropped.
+    pub rewrite: Option<Result<super::banner::RewriteStop, String>>,
 }
 
 /// A stash put back that clashed, and whose it is (m6-conflicts/72b):

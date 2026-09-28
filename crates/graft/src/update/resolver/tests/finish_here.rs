@@ -20,6 +20,7 @@ use crate::update::{AppEvent, AppState, Command, Product, Status, update};
 /// unmerged.
 pub(super) fn nothing_unmerged() -> Product {
     Product::WorkingTree(Ok(Box::new(crate::working_tree::WorkingTree {
+        rewrite: None,
         status: status(&[("gone.txt", false), ("conflicted.rs", false)]),
         in_progress: Some(crate::update::resolver::fixtures::operation(
             InProgress::Merge,
@@ -328,6 +329,7 @@ fn a_new_stop_from_the_resolver_opens_its_own_resolver() {
         AppEvent::Produced(
             id,
             Product::Resumed(Box::new(crate::jobs::operate::Operated::Conflicted {
+                rewrite: None,
                 description: "continue merge".to_owned(),
                 kind: InProgress::Merge,
                 paths: vec!["fresh.txt".into()],

@@ -50,6 +50,7 @@ pub(super) fn land_on_live_operation(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     origin: LiveOrigin,
+    rewrite: Option<Result<super::banner::RewriteStop, String>>,
     next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
     let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) else {
@@ -70,6 +71,7 @@ pub(super) fn land_on_live_operation(
             again: false,
             kind,
             paths_at_stop: paths.len(),
+            rewrite,
         });
     }
     if state.modal_owns_keys() {
@@ -77,8 +79,32 @@ pub(super) fn land_on_live_operation(
         return false;
     }
     state.live_landing_owed = false;
-    state.banner_focus = true;
-    land_on_the_work(state, commands, paths.into_iter().next(), next_id);
+    // A relaunch mid-rewrite reads the saved plan through `progress` (07b):
+    // at an `edit` stop the graph keeps the keyboard; any other stop — and a
+    // failed read, the safe default — focuses the banner, as it did.
+    state.banner_focus = state
+        .stopped
+        .as_ref()
+        .is_none_or(|stop| super::banner::stop_takes_focus(kind, stop));
+    if let Some(unread) = state
+        .stopped
+        .as_ref()
+        .and_then(super::banner::progress_unread)
+    {
+        state.status = super::state::Status::sticky(unread);
+    }
+    // An `edit` stop lands on `HEAD`'s row in the graph (07b); any other
+    // stop on the work, as it did.
+    if state
+        .stopped
+        .as_ref()
+        .and_then(super::banner::edit_stop_of)
+        .is_some()
+    {
+        super::banner::relaunch_lands_on_head(state, commands);
+    } else {
+        land_on_the_work(state, commands, paths.into_iter().next(), next_id);
+    }
     true
 }
 
@@ -102,7 +128,10 @@ pub(super) fn journal_read_landed(
             } else {
                 LiveOrigin::OutsideGraft
             };
-            land_on_live_operation(state, commands, origin, next_id);
+            // No stop after a working-tree read means nothing with a banner
+            // is live (a read that finds one records its stop, rewrite read
+            // included): there is no rewrite to carry here.
+            land_on_live_operation(state, commands, origin, None, next_id);
         }
         // Already landed with the right origin, or the working-tree read is
         // still out and lands when it comes.
@@ -113,25 +142,38 @@ pub(super) fn journal_read_landed(
 /// A working-tree read came in with an operation live. Lands it when this
 /// is the first read, or when a modal made the launch owe its landing and
 /// has since closed.
+///
+/// `rewrite` is the read's own rewrite stop (07b). It keeps a live stop of
+/// the same kind current — after an amend at an `edit` stop, the banner's
+/// row is still the one git is on — and is what a landing records.
 pub(super) fn working_tree_read_landed(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     first_read: bool,
+    rewrite: Option<Result<super::banner::RewriteStop, String>>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    let kind = state.in_progress.as_ref().map(|detail| detail.kind);
+    if let Some(stop) = state
+        .stopped
+        .as_mut()
+        .filter(|stop| Some(stop.kind) == kind)
+    {
+        stop.rewrite.clone_from(&rewrite);
+    }
     if first_read {
         let origin = if state.live_entries.is_empty() {
             LiveOrigin::OutsideGraft
         } else {
             LiveOrigin::PreviousRun
         };
-        land_on_live_operation(state, commands, origin, next_id);
+        land_on_live_operation(state, commands, origin, rewrite, next_id);
     } else if state.live_landing_owed && !state.modal_owns_keys() {
         let origin = state
             .stopped
             .as_ref()
             .map_or(LiveOrigin::OutsideGraft, |stop| stop.origin);
-        land_on_live_operation(state, commands, origin, next_id);
+        land_on_live_operation(state, commands, origin, rewrite, next_id);
     }
 }
 

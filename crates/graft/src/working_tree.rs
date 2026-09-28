@@ -42,6 +42,10 @@ pub struct WorkingTree {
     /// `git mergetool` and letting git ask the question on a terminal Graft
     /// has just handed over.
     pub mergetool: Option<String>,
+    /// A `rebase -i`'s stop, read with the rest (m7-power-tools/07b): what a
+    /// relaunch mid-rewrite lands on, and what keeps a live stop's banner
+    /// current after each write. `None` outside a `rebase -i`.
+    pub rewrite: Option<Result<crate::update::banner::RewriteStop, String>>,
 }
 
 /// Reads the working tree's status, the repository's in-progress state and
@@ -66,10 +70,16 @@ pub fn read(store: &RepoStore, stop: &dyn Stop) -> Result<WorkingTree, String> {
     // is a different thing, and reporting it as "unset" would tell the user
     // to configure a tool they have already configured.
     let mergetool = graft_git::state::mergetool(&handle).map_err(|error| error.to_string())?;
+    // Only a rebase has a todo to read; every other read costs nothing more.
+    let rewrite = in_progress
+        .as_ref()
+        .filter(|detail| detail.kind == graft_git::state::InProgress::Rebase)
+        .and_then(|_| crate::update::banner::read_rewrite_stop(&handle, stop));
     Ok(WorkingTree {
         status: Arc::new(status),
         in_progress,
         mergetool,
+        rewrite,
     })
 }
 
