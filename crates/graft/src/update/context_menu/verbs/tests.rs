@@ -77,7 +77,7 @@ fn menu_verbs_build_expected_operations() {
         labels(&verbs),
         vec![
             "Checkout feature",
-            "Cherry-pick 0300000",
+            "Cherry-pick 0300000 (o)",
             "Merge feature into main (m)",
             "Rebase main onto feature (r)",
             "Revert 0300000",
@@ -114,7 +114,7 @@ fn menu_verbs_build_expected_operations() {
         ))
     );
     assert_eq!(
-        op_of(&verbs, "Cherry-pick 0300000"),
+        op_of(&verbs, "Cherry-pick 0300000 (o)"),
         &Operation::CherryPick(PickParams {
             commits: vec![oid(3)],
             subject: "third".to_owned(),
@@ -222,7 +222,7 @@ fn the_current_branchs_own_row_offers_neither_checkout_nor_delete_nor_merge() {
     assert_eq!(
         labels,
         vec![
-            "Cherry-pick 0200000",
+            "Cherry-pick (o)",
             "Revert 0200000",
             "Reset main to here, mixed",
             "Reset main to here, hard",
@@ -475,15 +475,25 @@ fn a_commit_is_spelled_the_same_seven_digits_everywhere() {
 /// `preview::is_history_key`, so what that function answers *is* the set of
 /// keys a history verb may put in trailing parens — and which verb each one
 /// owns. A hint of more than one character is not a key press at all.
-fn key_behind(hint: &str) -> Option<crate::update::preview::HistoryKey> {
+fn key_behind(hint: &str) -> Option<Behind> {
     let mut chars = hint.chars();
     let only = chars.next()?;
     if chars.next().is_some() {
         return None;
     }
-    crate::update::preview::is_history_key(graft_core::event::KeyPress::plain(
-        graft_core::event::KeyCode::Char(only),
-    ))
+    let press = graft_core::event::KeyPress::plain(graft_core::event::KeyCode::Char(only));
+    if crate::update::preview::is_take_key(press) {
+        return Some(Behind::Take);
+    }
+    crate::update::preview::is_history_key(press).map(Behind::History)
+}
+
+/// What a label's key runs: `m`/`r`, or `o` (m7-power-tools/11), which
+/// `write_key` sends to `preview::is_take_key`.
+#[derive(Debug)]
+enum Behind {
+    History(crate::update::preview::HistoryKey),
+    Take,
 }
 
 /// Every label `history_verbs` can build, across every shape that changes
@@ -571,10 +581,11 @@ fn a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key() {
         // Half the promise is *which* verb the key does: `(m)` on a rebase
         // would teach a shortcut that runs something else.
         let runs = match which {
-            crate::update::preview::HistoryKey::Merge => {
+            Behind::Take => matches!(verb.op, Operation::CherryPick(_)),
+            Behind::History(crate::update::preview::HistoryKey::Merge) => {
                 matches!(verb.op, Operation::Merge(_))
             }
-            crate::update::preview::HistoryKey::Rebase => {
+            Behind::History(crate::update::preview::HistoryKey::Rebase) => {
                 matches!(verb.op, Operation::Rebase(_))
             }
         };
@@ -641,7 +652,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             &plain,
             &[][..],
             "Checkout feature",
-            "Cherry-pick 0300000",
+            "Cherry-pick 0300000 (o)",
             None,
         ),
         case(
@@ -650,7 +661,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             vec![oid(1)],
             &plain,
             &[][..],
-            "Cherry-pick 0200000",
+            "Cherry-pick (o)",
             "",
             Some("already on main"),
         ),
@@ -661,7 +672,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             &plain,
             &marked[..],
             "Checkout feature",
-            "Cherry-pick 0300000",
+            "Cherry-pick (o)",
             None,
         ),
         case(
@@ -671,7 +682,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             &two_on_three,
             &[][..],
             "Checkout feature",
-            "Cherry-pick 0300000",
+            "Cherry-pick 0300000 (o)",
             None,
         ),
         case(
@@ -681,7 +692,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             &n7,
             &[][..],
             "Checkout topic",
-            "Cherry-pick 0200000",
+            "Cherry-pick (o)",
             None,
         ),
         case(
@@ -691,7 +702,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             &plain,
             &[][..],
             "Checkout feature",
-            "Cherry-pick 0300000",
+            "Cherry-pick (o)",
             None,
         ),
         case(
@@ -701,7 +712,7 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
             &plain,
             &[][..],
             "Checkout 0900000, detached",
-            "Cherry-pick 0900000",
+            "Cherry-pick 0900000 (o)",
             None,
         ),
     ];
@@ -728,4 +739,53 @@ fn checkout_and_cherry_pick_hold_the_first_two_slots() {
     // Two local branches: the second `Checkout` leads the rest.
     let slots = history_slots(oid(3), &[oid(2)], "subject", &two_on_three, &[]);
     assert_eq!(labels(&slots.verbs)[2], "Checkout topic");
+}
+
+/// m7-power-tools/11: slot 2 dims in place where `o` would refuse, in `o`'s
+/// words — `HEAD`'s own row, a merge — decided from the row alone
+/// (`PickParams::check_commit`). A plain commit off `HEAD` stays live, and
+/// so does a stash row's Cherry-pick, which carries no `(o)`.
+#[test]
+fn slot_two_dims_on_head_and_on_a_merge() {
+    let refs = main_and_feature();
+    let dim_of = |row, parents: &[Oid]| {
+        let slots = history_slots(row, parents, "subject", &refs, &[]);
+        let (at, reason) = slots.dimmed.clone().expect("slot 2 is dim");
+        (
+            slots.verbs[at].label.as_str().to_owned(),
+            reason.as_str().to_owned(),
+        )
+    };
+    // HEAD's row: `main` only, so slot 1 is the dim Checkout and the pick is
+    // the first verb.
+    assert_eq!(
+        dim_of(oid(2), &[oid(1)]),
+        ("Cherry-pick (o)".to_owned(), "already on main".to_owned())
+    );
+    assert_eq!(
+        dim_of(oid(3), &[oid(2), oid(4)]),
+        (
+            "Cherry-pick (o)".to_owned(),
+            "a merge \u{b7} taking a merge isn't in Graft yet".to_owned()
+        )
+    );
+    // Already on the branch wins over a merge (`check_commit`'s order).
+    assert_eq!(dim_of(oid(2), &[oid(1), oid(4)]).1, "already on main");
+
+    let live = history_slots(oid(3), &[oid(2)], "subject", &refs, &[]);
+    assert_eq!(live.dimmed, None);
+    assert_eq!(labels(&live.verbs)[1], "Cherry-pick 0300000 (o)");
+    let items = live.menu_items();
+    assert!(items.iter().all(|(_, dim)| dim.is_none()), "{items:?}");
+
+    // Detached on the row: `already on HEAD`.
+    let detached = built(
+        &[(name("refs/heads/main"), oid(2))],
+        &HeadState::Detached(oid(9)),
+    );
+    let slots = history_slots(oid(9), &[oid(2)], "subject", &detached, &[]);
+    assert_eq!(
+        slots.dimmed.map(|(_, reason)| reason.as_str().to_owned()),
+        Some("already on HEAD".to_owned())
+    );
 }

@@ -25,7 +25,8 @@ use graft_core::oid::Oid;
 use graft_ops::mistake_radar::{Evidence, Finding};
 use graft_ops::operation::{
     CheckoutParams, CheckoutTarget, FastForward, MergeParams, OnEdits, Operation, PickParams,
-    RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget, RevertParams, Source, Tip,
+    RebaseParams, RefDeleteParams, Refusal, ResetMode, ResetParams, ResetTarget, RevertParams,
+    Source, Tip,
 };
 use graft_term::{SanitizedText, sanitize_line};
 
@@ -116,16 +117,67 @@ pub(super) fn checkout_verbs(
     skipped
 }
 
-/// `Cherry-pick <sha7>` onto `HEAD`.
+/// Taking `id` onto `HEAD`: the one builder `o` (`update::preview::take_key`)
+/// and slot 2 share, so the key and the menu item open the same preview.
+pub(in crate::update) fn pick_params(id: Oid, subject: &str, head: &Tip) -> PickParams {
+    PickParams {
+        commits: vec![id],
+        subject: subject.to_owned(),
+        head: head.clone(),
+    }
+}
+
+/// `Cherry-pick <sha7>` onto `HEAD`, with no key: a stash row's item, which
+/// `o` refuses (`(key)` promises a live key, keymap §2.1).
 pub(super) fn pick_verb(id: Oid, subject: &str, head: &Tip, here: &str) -> HistoryVerb {
     verb(
         &format!("Cherry-pick {here}"),
-        Operation::CherryPick(PickParams {
-            commits: vec![id],
-            subject: subject.to_owned(),
-            head: head.clone(),
-        }),
+        Operation::CherryPick(pick_params(id, subject, head)),
     )
+}
+
+/// Slot 2 on a commit row (m7-power-tools/11): `Cherry-pick <sha7> (o)`, or
+/// — where `o` would refuse — `Cherry-pick (o)` with `o`'s refusal words as
+/// its dim reason (the sha dropped: the row names it, as slot 1 drops the
+/// branch).
+///
+/// Decided from facts the app already holds, no git read on menu open:
+/// `HEAD`'s own row is already on the branch, and 2+ parents is a merge,
+/// both through [`PickParams::check_commit`] so graft-ops decides and this
+/// only words it. An ancestor of `HEAD` stays live here; its preview's plan
+/// refuses it in the same words.
+pub(super) fn pick_slot(
+    id: Oid,
+    parents: &[Oid],
+    subject: &str,
+    head: &Tip,
+    here: &str,
+) -> (HistoryVerb, Option<SanitizedText>) {
+    let params = pick_params(id, subject, head);
+    let dim = params
+        .check_commit(id, id == head.oid, parents.len())
+        .err()
+        .and_then(|refusal| pick_dim_reason(&refusal));
+    let label = if dim.is_some() {
+        "Cherry-pick (o)".to_owned()
+    } else {
+        format!("Cherry-pick {here} (o)")
+    };
+    (verb(&label, Operation::CherryPick(params)), dim)
+}
+
+/// Slot 2's dim reason for `o`'s refusal: `already on <b>`, or the merge
+/// words. `None` for any other refusal, which `check_commit` never gives.
+fn pick_dim_reason(refusal: &Refusal) -> Option<SanitizedText> {
+    match refusal {
+        Refusal::AlreadyOnBranch { branch, .. } => {
+            Some(sanitize_line(&format!("already on {branch}")))
+        }
+        Refusal::PickMerge { .. } => Some(sanitize_line(
+            "a merge \u{b7} taking a merge isn't in Graft yet",
+        )),
+        _ => None,
+    }
 }
 
 /// `Merge <b> into <cur> (m)` and `Rebase <cur> onto <b> (r)`, the two
@@ -133,9 +185,9 @@ pub(super) fn pick_verb(id: Oid, subject: &str, head: &Tip, here: &str) -> Histo
 /// (neither has a branch to act on — the keys refuse in words there) and on
 /// the current branch's own tip, where both are `already on it`.
 ///
-/// These two are the only history verbs whose labels name a key, because they
-/// are the only ones that have one: a trailing `(key)` in this menu means
-/// "next time you can do this without opening it". Checkout, cherry-pick,
+/// A trailing `(key)` in this menu means "next time you can do this without
+/// opening it", so a label names a key only where one is live: these two,
+/// and slot 2's Cherry-pick `(o)` since M7 ([`pick_slot`]). Checkout,
 /// revert, reset and the deletions own no letter — which is why they live
 /// behind `.` at all (`docs/design/02-keymap.md` §2.1) — so they carry none.
 pub(super) fn merge_and_rebase_verbs(
@@ -347,7 +399,7 @@ pub(super) fn fix_verbs(
 
 /// `HEAD` as a [`Tip`]: its branch when it has one, else `HEAD` itself at the
 /// commit it is detached on. `None` on an unborn branch.
-pub(super) fn head_tip(refs: &RefBadges) -> Option<Tip> {
+pub(in crate::update) fn head_tip(refs: &RefBadges) -> Option<Tip> {
     if let Some(tip) = current_branch(refs) {
         return Some(tip);
     }

@@ -1,0 +1,48 @@
+# m7/menu-slot-two-dim-120x40.txt: drawn by `view::view` from a real AppState
+# (crates/graft/tests/it/m7_walk/picker.rs, menu_slot_two_dim_on_head, asserted). Not a pty
+# capture: a character grid with no colour (CLAUDE.md rule 5, colour
+# unverified).
+#
+# Right: `.` on HEAD's row (main) — slot 1 `Checkout — already on main`
+# and slot 2 `Cherry-pick (o) — already on main`, both dim (dim
+# unverified: a capture carries no attributes), in places 1 and 2.
+ graft /code/api  6 commits
+  ●  ⓘ [login-page] [origin/sara/login-page] fix the bug                                                 GF 3m   fbb2394
+◆ │ ▏  [◆ main ⇄ origin] main moves on                                                                   GF 4m   37926a7
+ Checkout — already on main
+ Cherry-pick (o) — already on main
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Revert 37926a7
+ Reset main to here, mixed
+ Reset main to here, hard
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  c commit  P push  p pull  f fetch  . more  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  C

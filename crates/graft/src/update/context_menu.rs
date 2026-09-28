@@ -67,10 +67,10 @@ pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
             slots = slots::history_slots(id, &parents, &subject, refs, &findings);
         }
     }
-    let labels = slots.verbs.iter().map(|verb| verb.label.clone()).collect();
+    let items = slots.menu_items();
     next.context_menu = Some(OpenMenu {
         row,
-        menu: ContextMenu::for_row(marked, labels, slots.leading, slots.dim_first),
+        menu: ContextMenu::for_row(marked, items, slots.leading, slots.dim_first),
         verbs: slots.verbs,
     });
 }

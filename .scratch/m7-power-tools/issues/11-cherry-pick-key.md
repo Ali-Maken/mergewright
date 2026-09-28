@@ -1,6 +1,6 @@
 # cherry-pick-key — `o` takes the cursor commit onto his branch, previewed; it refuses in words what it can't take
 
-Status: ready (amended 2026-09-28 after scout `.scratch/m7-power-tools/scouts/11-build.md`: four spec/code disagreements
+Status: done 2026-09-28 (was ready, amended 2026-09-28 after scout `.scratch/m7-power-tools/scouts/11-build.md`: four spec/code disagreements
 decided below under "Scout decisions")
 Blocked by: 10-branch-picker (merged); 07b (holds `update/operate.rs`), 30k (may hold `update/preview.rs` for its Minor 6) — conductor, 2026-09-28
 Crates: graft (the `o` route, the take title, slot 2's dim and label), graft-ui (`ContextMenu::for_row` carries a dim
@@ -97,10 +97,12 @@ Exact parameter types the builder copies from the neighbouring code; the shapes 
   - `picking_a_merge_is_refused` (red first) + `picking_a_merge_is_refused_in_the_preview_and_in_apply`;
   - `picking_over_touched_unsaved_edits_sets_them_aside` (approved; `u`/`U` exact);
   - `a_pick_put_back_that_clashes_stops_as_a_clash` (`u` exact).
-- [ ] **graft-ui:**
+- [x] **graft-ui:** (both in `graft-ui src/context_menu.rs` tests; the first was red first: failed to compile on the old signature)
   - `a_dimmed_history_item_draws_label_dash_reason_and_is_unavailable` (red first);
   - `for_row_with_no_dims_draws_as_before` (existing context_menu tests unchanged in output).
-- [ ] **App:**
+- [x] **App:** (each by name in `graft src/update/context_menu/tests.rs`, `slot_two_dims_on_head_and_on_a_merge` also in
+  `context_menu/verbs/tests.rs`; `o_is_unbound_in_place_mode` in `src/update/tests.rs`; `y_takes_it_and_lands_on_the_new_commit`
+  is a helper in `tests/it/m7_walk/picker.rs` run by `cherry_pick_in_view`. **Not red first**: written after the code — see NOTES)
   - `o_opens_the_take_preview` (red first; title exact, bar `y confirm`);
   - `slot_two_enter_and_o_open_the_same_preview` (same op, same title);
   - `o_on_head_is_refused_without_a_preview`, `o_on_a_merge_is_refused_without_a_preview`;
@@ -111,12 +113,14 @@ Exact parameter types the builder copies from the neighbouring code; the shapes 
   - `slot_two_dim_behaves_as_slot_one_dim` (`⏎` on each: nothing dispatched, same outcome);
   - `slot_two_label_carries_o`, `a_stash_row_menu_carries_no_o`;
   - `y_takes_it_and_lands_on_the_new_commit` (status exact).
-- [ ] **Walks** (`m7_walk`):
-  - `cherry_pick_in_view` = `motion o y` = 3;
+- [x] **Walks** (`m7_walk`, `tests/it/m7_walk/picker.rs`):
+  - `cherry_pick_in_view` = `motion o y` = 3; **walked as `o y` = 2** (the graph opens on the wanted commit; no motion);
   - `cherry_pick_other_branch` = `C <type> ⇥ motion o y` = 6.
 
   Each ≤ its `noted_keys`. The commit's change is on HEAD; `u` removes it.
-- [ ] **Captures** (colour unverified):
+- [x] **Captures** (colour unverified; taken and asserted by `cherry_pick_in_view`, `take_refused_on_a_merge`,
+  `menu_slot_two_dim_on_head` in `m7_walk/picker.rs`. The fixture's branch is `main` and the commit `fix the bug`, not
+  `feature-a`/`Fix null session`; bar is the widest rung `y confirm  ←→ choose  ⏎ act  esc cancel`):
   - `docs/shots/m7/take-preview-120x40.txt`. **Right:** title `Preview: take c0ffee1 "Fix null session on logout" onto
     feature-a`; footer `y confirm  esc cancel` (or its widest rung); the set-aside line when edits exist.
   - `docs/shots/m7/take-refused-merge-120x40.txt`. **Right:** status line `<sha7> is a merge · taking a merge isn't in
@@ -124,7 +128,7 @@ Exact parameter types the builder copies from the neighbouring code; the shapes 
   - `docs/shots/m7/menu-slot-two-dim-120x40.txt`. **Right:** on HEAD's row, slot 1 `Checkout — already on feature-a`
     and slot 2 `Cherry-pick (o) — already on feature-a`, both dim, in places 1 and 2.
   - Every existing capture showing slot 2 re-taken (`Cherry-pick <sha7> (o)`); listed in NOTES.
-- [ ] Hint-bar tests green, catalogue untouched (`o` is reached through `.`'s `(o)` label; the note gives it no hint row).
+- [x] Hint-bar tests green (workspace nextest), catalogue untouched (`git status`: not modified) (`o` is reached through `.`'s `(o)` label; the note gives it no hint row).
       MAP.md (graft, graft-ui). TESTING.md rows + captions + contact sheet. NOTES answers KNOWN_GAPS :806's question
       with its line (11a: `history.rs:149-160` via `preview/kinds.rs:133`, `apply.rs:508`; the app: this ticket).
 
@@ -150,3 +154,33 @@ As rewrite-engine.
 
 ## Size
 Medium (~50k).
+
+## NOTES (builder, 2026-09-28)
+- **Compacted: yes**, once, after code and tests were green; the remainder (place-mode test, TESTING rows, captions,
+  ticks) was done after. Nothing left over.
+- **Cause-level build**, no workaround.
+- **Deviations from Signatures:**
+  - `HistoryVerb` unchanged; the dim rides on `Slots::dimmed: Option<(usize, SanitizedText)>` + `Slots::menu_items()`.
+    Why: `update/drag.rs` also builds `HistoryVerb` and is outside the Files line.
+  - `pick_op` is `pick_params(id, subject, head) -> PickParams` (`verbs.rs`), shared by `o`, slot 2 (`pick_slot`) and the
+    stash row's `pick_verb`.
+  - `take_key(state, commands, next_id)` pushes into `commands`, like its neighbours in `keys.rs::write_key`.
+  - The take title is set in `preview.rs::preview_box` for every preview state (planning, ready, closing), not only at
+    the old :997 line, so the title never flips from `cherry-pick` to `take` as the plan lands.
+- **Outside the Files line (forced by the spec'd `(o)` label):** `crates/graft/tests/it/m6_stash_put_back.rs` (labels;
+  `the_checkout_slot_on_head_s_row_is_drawn_dim_and_only_it` now asserts slot 2 dim too, Copy SHA live),
+  `crates/graft/tests/it/context_menu.rs` (caption text). Conductor: approve or revert.
+- **Captures regenerated for the label** (`GRAFT_UPDATE_SHOTS=1`): `docs/shots/m5-ui-context-menu-verbs-160x48.txt`,
+  `docs/shots/m5-ui-context-menu-verbs-80x24.txt`, `docs/shots/m6/fix-radar-bookkeeping-120x40.txt`,
+  `docs/shots/m6/menu-fixed-slots-120x40.txt` (the last two outside `docs/shots/m7/*`).
+- **`operate.rs`:** edited. Before, `done_status` worded a CherryPick as the entry description (`cherry-pick <sha7>
+  "…"`, no keys). Now `took "<subject>" onto <b> ✓ · u undoes` (with `your edits are back` when set aside).
+- **Tests not red first** for the app: written after the code (only the graft-ui one was red first). Each was
+  run green; none was seen failing against the old code.
+- **`o_is_unbound_in_place_mode`** filters out `Command::EvilProbe`: every update probes the selected commit
+  (`update/detail/ops.rs:193-211`), which the blame fixture has not settled. Scout claim "place mode reuses
+  `HistoryKey`" was wrong: `place/history_keys.rs` has no `o` arm and place mode does not route `HistoryKey`.
+- **KNOWN_GAPS :806 answer:** graft-ops `src/operation/history.rs:149-160` (`check_commit`), called at
+  `preview/kinds.rs:133` and `apply.rs:508` (11a); app side: `update/preview.rs::take_operation` (`o`) and
+  `update/context_menu/verbs.rs::pick_slot` (slot 2's dim).
+- Ancestor-of-HEAD stays live in the menu (scout decision 3); KNOWN_GAPS row owed by the conductor.

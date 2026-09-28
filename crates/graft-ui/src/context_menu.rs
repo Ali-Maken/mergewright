@@ -51,7 +51,8 @@ pub enum ContextAction {
     /// is what the label beside this index is.
     History(usize),
     /// A slot shown only to say why it is empty — the `HEAD` row's dim
-    /// `Checkout — already on main` (m6-conflicts/71). Always drawn
+    /// `Checkout — already on main` (m6-conflicts/71), or a history verb the
+    /// app dimmed (`Cherry-pick (o) — a merge · …`, m7/11). Always drawn
     /// disabled, so `Enter` and a click answer with its reason and never
     /// dispatch it; the app maps it to no command.
     Unavailable,
@@ -138,19 +139,25 @@ impl ContextMenu {
     /// (ADR-0037 §4; m5-03 review, Major 1). Each label carries its key, so
     /// choosing an item once teaches the key for next time.
     ///
-    /// `history` is the labels of the history verbs the app offers on this
-    /// row, in the order it wants them listed; each becomes a
-    /// [`ContextAction::History`] carrying its index in `history`, and the
-    /// app maps that index back to the operation it means. `leading` is
+    /// `history` is the history verbs the app offers on this row, in the
+    /// order it wants them listed, each `(label, dim)` as [`for_drop`]
+    /// takes them; each becomes a [`ContextAction::History`] carrying its
+    /// index in `history`, and the app maps that index back to the
+    /// operation it means. One with a `Some(reason)` dim (slot 2's
+    /// `Cherry-pick (o) — already on main`, m7-power-tools/11) is drawn and
+    /// acts as `dim_first` does: `label — reason`, `DIM`,
+    /// [`ContextAction::Unavailable`], never dispatched. `leading` is
     /// clamped to `history.len()`. `dim_first` is `(label, reason)` and
     /// carries no index: it is [`ContextAction::Unavailable`].
     ///
     /// It takes no width, so what the menu holds cannot depend on the
     /// terminal's (ADR-0039): the signature is the guarantee.
+    ///
+    /// [`for_drop`]: ContextMenu::for_drop
     #[must_use]
     pub fn for_row(
         marked: bool,
-        history: Vec<SanitizedText>,
+        history: Vec<(SanitizedText, Option<SanitizedText>)>,
         leading: usize,
         dim_first: Option<(SanitizedText, SanitizedText)>,
     ) -> ContextMenu {
@@ -166,10 +173,17 @@ impl ContextMenu {
         let mut history = history
             .into_iter()
             .enumerate()
-            .map(|(index, label)| MenuItem {
-                action: ContextAction::History(index),
+            .map(|(index, (label, disabled))| MenuItem {
+                // A dimmed verb keeps its label and reason but gives up its
+                // index: `Enter` answers with the reason before dispatch, and
+                // `Unavailable` makes reaching dispatch anyway a routing bug.
+                action: if disabled.is_some() {
+                    ContextAction::Unavailable
+                } else {
+                    ContextAction::History(index)
+                },
                 label,
-                disabled: None,
+                disabled,
             });
         items.extend(history.by_ref().take(leading));
         if marked {
@@ -457,8 +471,8 @@ mod tests {
         let menu = ContextMenu::for_row(
             false,
             vec![
-                sanitize_line("Checkout feature"),
-                sanitize_line("Merge feature into main (m)"),
+                (sanitize_line("Checkout feature"), None),
+                (sanitize_line("Merge feature into main (m)"), None),
             ],
             0,
             None,
@@ -489,7 +503,7 @@ mod tests {
     /// down must not change which operation a verb means.
     #[test]
     fn a_history_index_names_the_apps_own_list_not_the_menu_row() {
-        let history = vec![sanitize_line("Merge feature into main (m)")];
+        let history = vec![(sanitize_line("Merge feature into main (m)"), None)];
         let plain = ContextMenu::for_row(false, history.clone(), 0, None);
         let marked = ContextMenu::for_row(true, history, 0, None);
         let of = |menu: &ContextMenu| {
@@ -597,7 +611,7 @@ mod tests {
     fn width_grows_to_a_history_verbs_label() {
         let menu = ContextMenu::for_row(
             false,
-            vec![sanitize_line("Fix: reset main to before the merge")],
+            vec![(sanitize_line("Fix: reset main to before the merge"), None)],
             0,
             None,
         );
@@ -611,7 +625,7 @@ mod tests {
     fn a_ref_name_carrying_an_escape_cannot_reach_the_buffer() {
         let menu = ContextMenu::for_row(
             false,
-            vec![sanitize_line("Checkout \u{1b}[31mevil")],
+            vec![(sanitize_line("Checkout \u{1b}[31mevil"), None)],
             0,
             None,
         );
@@ -633,7 +647,10 @@ mod tests {
     fn a_pane_too_narrow_for_the_label_cuts_the_key_hint_off_the_end() {
         let menu = ContextMenu::for_row(
             false,
-            vec![sanitize_line("Merge release/2026-q1-hotfix into main (m)")],
+            vec![(
+                sanitize_line("Merge release/2026-q1-hotfix into main (m)"),
+                None,
+            )],
             0,
             None,
         );
@@ -671,8 +688,8 @@ mod tests {
     #[test]
     fn for_row_places_dim_first_and_leading_before_explain() {
         let history = vec![
-            sanitize_line("Cherry-pick abc1234"),
-            sanitize_line("Revert abc1234"),
+            (sanitize_line("Cherry-pick abc1234"), None),
+            (sanitize_line("Revert abc1234"), None),
         ];
         let menu = ContextMenu::for_row(
             true,
@@ -707,6 +724,101 @@ mod tests {
         assert_eq!(
             menu.selected_refusal().map(SanitizedText::as_str),
             Some("already on main")
+        );
+    }
+
+    /// m7-power-tools/11: a history item the app dims (`Cherry-pick (o) —
+    /// already on main`) is drawn and acts exactly as `dim_first` does: its
+    /// row reads `label — reason`, `DIM`, and it is
+    /// [`ContextAction::Unavailable`], so it is never dispatched. The items
+    /// after it keep their indices into the app's list.
+    #[test]
+    fn a_dimmed_history_item_draws_label_dash_reason_and_is_unavailable() {
+        let menu = ContextMenu::for_row(
+            false,
+            vec![
+                (sanitize_line("Checkout feature"), None),
+                (
+                    sanitize_line("Cherry-pick (o)"),
+                    Some(sanitize_line("already on main")),
+                ),
+                (sanitize_line("Revert abc1234"), None),
+            ],
+            2,
+            None,
+        );
+        assert_eq!(
+            menu.items
+                .iter()
+                .map(|item| item.action)
+                .collect::<Vec<_>>(),
+            vec![
+                ContextAction::History(0),
+                ContextAction::Unavailable,
+                ContextAction::CopySha,
+                ContextAction::CompareWithThis,
+                ContextAction::OpenDetails,
+                ContextAction::History(2),
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
+            ]
+        );
+        let mut moved = menu.clone();
+        moved.move_cursor(1);
+        assert_eq!(
+            moved.selected_refusal().map(SanitizedText::as_str),
+            Some("already on main")
+        );
+
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 40,
+            height: u16::try_from(menu.items.len()).expect("a short menu"),
+        };
+        let mut buffer = Buffer::empty(area);
+        (&menu).render(area, &mut buffer);
+        let row: String = (0..area.width).map(|x| buffer[(x, 1)].symbol()).collect();
+        assert_eq!(row.trim_end(), " Cherry-pick (o) \u{2014} already on main");
+        assert!(buffer[(1, 1)].modifier.contains(Modifier::DIM));
+        assert!(!buffer[(1, 2)].modifier.contains(Modifier::DIM));
+    }
+
+    /// No dims: the same items, actions and labels a plain list gave.
+    #[test]
+    fn for_row_with_no_dims_draws_as_before() {
+        let menu = ContextMenu::for_row(
+            true,
+            vec![
+                (sanitize_line("Checkout feature"), None),
+                (sanitize_line("Cherry-pick abc1234 (o)"), None),
+            ],
+            2,
+            None,
+        );
+        assert_eq!(
+            labels(&menu),
+            [
+                "Checkout feature",
+                "Cherry-pick abc1234 (o)",
+                "Explain",
+                "Copy SHA (y)",
+                "Compare with this (x)",
+                "Open details (\u{23ce})",
+                "Fetch (f)",
+                "Pull (p)",
+                "Push (P)",
+                "Undo (u)",
+            ]
+        );
+        assert!(menu.items.iter().all(|item| item.disabled.is_none()));
+        assert!(
+            !menu
+                .items
+                .iter()
+                .any(|item| item.action == ContextAction::Unavailable)
         );
     }
 }
