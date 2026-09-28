@@ -67,3 +67,9 @@ As rewrite-engine. Workspace-wide gates. Each part commits at its seam.
 ## Conductor note (2026-09-28, review m7-09-to-21c Major 1)
 
 An edit-stop amend in a rebase begun in the shell is admitted (`graft-ops/src/operation.rs:1537`) but unrecorded: `apply/fold.rs:55` finds no span, so there is no backup and no journal entry, and `u` can't take it back. 07a's Touches line missed it. This is the same fold path as the earlier note; 07b fixes it: record it, or refuse it with words. Verify first; red test first.
+
+## Conductor note (2026-09-28, review m7-09-to-21c Minors 1, 2 — you hold `operate.rs`)
+
+- Minor 1: `operate.rs:1081-1088` `StagingNotKept` calls only `landed(...)`; call `amend_into::landed` too (the one that `take`s `asked`, `amend_into.rs:292-295`) and forget `asked` on `Incomplete`. Red test first.
+- Minor 2: `claim_write` (`operate.rs:202`) clears `row_tags` but not `amend_into.tagging`, so `tags_resolved` (`amend_into.rs:342-350`) can set stale tags. Clear it in `claim_write`. Red test first.
+Only these two lines in `amend_into.rs` are yours; 30k holds the rest of that file concurrently.

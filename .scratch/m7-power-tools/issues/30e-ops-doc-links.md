@@ -1,6 +1,6 @@
 # 30e ops-doc-links — 30c's Minor 3 check: graft-ops docs build with no broken intra-doc link
 
-Status: draft
+Status: ready
 Build with: Sonnet. Five doc-comment links, each located in 30c's NOTES; no code change.
 Needs: none.
 Blocked by: none. Wave: see `.scratch/m7-power-tools/parallel-plan.md` (after 01a/01b and 03b, which hold `apply.rs`
