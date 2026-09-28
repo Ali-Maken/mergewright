@@ -184,11 +184,7 @@ impl GraphScreen<'_> {
         buf: &mut Buffer,
     ) {
         let subject = entry.subject.as_str();
-        let tag = entry.tag.as_ref().map(|tag| tag.words(self.view.ascii));
-        let Some(tag) = tag.filter(|tag| {
-            let tag = u16::try_from(tag.width()).unwrap_or(u16::MAX);
-            width.saturating_sub(tag.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT
-        }) else {
+        let Some(tag) = drawn_tag(entry, self.view.ascii, width) else {
             draw_cell(buf, x, y, width, subject, style);
             return;
         };
@@ -457,14 +453,34 @@ fn badges_width(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> u16 
     u16::try_from(wanted).unwrap_or(u16::MAX).min(budget)
 }
 
+/// The row tag's words when [`GraphScreen::draw_subject`] draws them in a
+/// subject column of `width` cells: `None` for an untagged row, or when
+/// fewer than [`TAG_MIN_SUBJECT`] cells would be left for the subject.
+fn drawn_tag(entry: &GraphEntry<'_>, ascii: bool, width: u16) -> Option<&'static str> {
+    let tag = entry.tag.as_ref()?.words(ascii);
+    let tag_width = u16::try_from(tag.width()).unwrap_or(u16::MAX);
+    (width.saturating_sub(tag_width.saturating_add(TAG_GAP)) >= TAG_MIN_SUBJECT).then_some(tag)
+}
+
 /// Whether `entry`'s subject needed a `…` to fit the subject column it is
-/// actually drawn into — badges' share subtracted first, the same as
-/// [`GraphScreen::draw_badges`]. What the footer reveal
-/// ([`GraphView::reveal`]) keys off.
-pub(super) fn subject_truncated(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> bool {
+/// actually drawn into — badges' share and the row tag's subtracted first,
+/// the same as [`GraphScreen::draw_badges`] and
+/// [`GraphScreen::draw_subject`]. What the footer reveal
+/// ([`GraphView::reveal`]) keys off. `ascii` is `GraphView::ascii`.
+pub(super) fn subject_truncated(
+    entry: &GraphEntry<'_>,
+    icons: Icons,
+    ascii: bool,
+    columns: &Columns,
+) -> bool {
     let taken = badges_width(entry, icons, columns);
-    let available = usize::from(columns.subject_width.saturating_sub(taken));
-    super::layout::text_width(entry.subject.as_str()) > available
+    let width = columns.subject_width.saturating_sub(taken);
+    let tag = drawn_tag(entry, ascii, width).map_or(0, |tag| {
+        u16::try_from(tag.width())
+            .unwrap_or(u16::MAX)
+            .saturating_add(TAG_GAP)
+    });
+    super::layout::text_width(entry.subject.as_str()) > usize::from(width.saturating_sub(tag))
 }
 
 /// Draws `text`, clamped and padded to exactly `width` cells, at `(x, y)`.

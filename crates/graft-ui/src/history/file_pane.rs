@@ -18,18 +18,14 @@ pub(super) fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {
         FilePane::NoChange => put(buf, area.x, area.y, area.width, "no change to show", dim()),
         FilePane::Failed(words) => put(buf, area.x, area.y, area.width, words, Style::default()),
         FilePane::Reading { header } => {
-            put(buf, area.x, area.y, area.width, header, bold);
-            if !below.is_empty() {
-                put(buf, below.x, below.y, below.width, "reading\u{2026}", dim());
-            }
+            header_and_line(buf, area, header, ("reading\u{2026}".to_owned(), dim()));
         }
-        FilePane::Binary { header, .. } => {
-            put(buf, area.x, area.y, area.width, header, bold);
-            if !below.is_empty() {
-                let (words, style) = binary_words(&view.file);
-                put(buf, below.x, below.y, below.width, &words, style);
-            }
-        }
+        FilePane::Binary {
+            header,
+            old,
+            new,
+            sizes_failed,
+        } => header_and_line(buf, area, header, binary_words(*old, *new, *sizes_failed)),
         FilePane::Lines {
             header,
             hunks,
@@ -65,24 +61,25 @@ pub(super) fn draw_file(buf: &mut Buffer, area: Rect, view: &HistoryView) {
     }
 }
 
+/// `header` in bold on the pane's first row, and `(words, style)` on the
+/// row under it when there is one.
+fn header_and_line(buf: &mut Buffer, area: Rect, header: &str, (words, style): (String, Style)) {
+    let bold = Style::default().add_modifier(Modifier::BOLD);
+    put(buf, area.x, area.y, area.width, header, bold);
+    if area.height > 1 {
+        put(buf, area.x, area.y + 1, area.width, &words, style);
+    }
+}
+
 /// A binary file's line: `binary · <old> → <new>`, or, dim, why the sizes
 /// could not be read (21c).
-/// Empty for any other pane.
-fn binary_words(pane: &FilePane) -> (String, Style) {
-    match pane {
-        FilePane::Binary {
-            sizes_failed: Some(why),
-            ..
-        } => (format!("binary \u{b7} couldn't read sizes: {why}"), dim()),
-        FilePane::Binary { old, new, .. } => (
-            format!("binary \u{b7} {} \u{2192} {}", size(*old), size(*new)),
+fn binary_words(old: Option<u64>, new: Option<u64>, sizes_failed: Option<&str>) -> (String, Style) {
+    match sizes_failed {
+        Some(why) => (format!("binary \u{b7} couldn't read sizes: {why}"), dim()),
+        None => (
+            format!("binary \u{b7} {} \u{2192} {}", size(old), size(new)),
             Style::default(),
         ),
-        FilePane::Empty
-        | FilePane::NoChange
-        | FilePane::Reading { .. }
-        | FilePane::Failed(_)
-        | FilePane::Lines { .. } => (String::new(), Style::default()),
     }
 }
 

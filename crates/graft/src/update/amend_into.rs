@@ -82,11 +82,7 @@ pub(crate) fn a_key(
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    // P14 first: an operation is live, and `a` answers as it always has
-    // (`commit_editor.rs`, m6-conflicts/48).
-    if let Some(live) = super::commit_editor::live_operation(state) {
-        let tabs = super::commit_editor::refusal_tabs(state);
-        state.status = super::commit_editor::operation_refusal(live, tabs).status();
+    if refused_by_live_operation(state) {
         return;
     }
     if state.amend_into.pending.is_some() || state.commit_editor.is_some() {
@@ -98,14 +94,26 @@ pub(crate) fn a_key(
     }
 }
 
+/// P14 first: an operation is live, and `a` (or absorb) answers as `a`
+/// always has (`commit_editor.rs`, m6-conflicts/48). True when refused.
+fn refused_by_live_operation(state: &mut AppState) -> bool {
+    let Some(live) = super::commit_editor::live_operation(state) else {
+        return false;
+    };
+    let tabs = super::commit_editor::refusal_tabs(state);
+    state.status = super::commit_editor::operation_refusal(live, tabs).status();
+    true
+}
+
 /// The commit under the cursor, when it is a history row that is not
-/// `HEAD`'s. `None` sends `a` down the `HEAD` path (ruling 1).
+/// `HEAD`'s. `None` sends `a` down the `HEAD` path (ruling 1) — also while
+/// refs are unread, when `HEAD`'s row cannot be told from an older one.
 fn older_target(state: &AppState) -> Option<Oid> {
     if state.on_working_tree || state.on_changes_pane() {
         return None;
     }
     let row = state.history.as_ref()?.selected()?;
-    let head = state.refs.as_deref().and_then(crate::refs::RefBadges::head);
+    let head = state.refs.as_deref()?.head();
     (Some(row.commit.id) != head).then_some(row.commit.id)
 }
 
@@ -172,6 +180,9 @@ pub(crate) fn absorb_chosen(
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     let mut commands = Vec::new();
+    if refused_by_live_operation(state) {
+        return commands;
+    }
     if state.amend_into.pending.is_none() {
         start(
             state,

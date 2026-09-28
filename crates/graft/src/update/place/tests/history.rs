@@ -838,6 +838,22 @@ fn a_binary_commit_shows_sizes() {
     });
 }
 
+/// A binary file has no lines: its header carries no `this file +0 −0`,
+/// which beside the size change would read as "no change" (review Minor 8).
+#[test]
+fn a_binary_header_has_no_line_counts() {
+    let state = binary_answered(Some(Ok(BlobSizes {
+        old: Some(700),
+        new: Some(1500),
+    })));
+    seen(&state, |view| {
+        let FilePane::Binary { header, .. } = view.file else {
+            panic!("{:?}", view.file);
+        };
+        assert!(!header.contains("this file"), "{header}");
+    });
+}
+
 #[test]
 fn a_size_read_failure_is_drawn() {
     let state = binary_answered(Some(Err("git was stopped".to_owned())));

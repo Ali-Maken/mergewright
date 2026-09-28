@@ -1028,7 +1028,9 @@ fn plan_lines(
     // (ADR-0045 §4, m6-conflicts/74): under the tree line it qualifies.
     // No staging words: every put-back keeps the staging (ADR-0045
     // amendment b), and `SetAside` carries only the file count (30c).
-    if let Some(aside) = plan.set_aside {
+    // A put-in's staged edits go into commits: with nothing unstaged there
+    // is nothing of his to put back, and no row (review Minor 6).
+    if let Some(aside) = plan.set_aside.filter(|aside| aside.files > 0) {
         lines.push(graft_ui::preview_box::fitting_line(
             &graft_ui::preview_box::set_aside_row(aside.files),
             columns,

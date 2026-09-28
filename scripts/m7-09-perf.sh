@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # What the dependents check costs `a` on HEAD when another local branch
 # exists (m7-power-tools/09, "Decided": under one frame on the fixture;
-# 09b A1: the phases). Runs the ignored measurement walks in graft, release
+# 09b A1: the phases). Runs the heavy tier's measurement walks in graft
+# (review m7-09..21c Minor 12: `heavy-tests`, no longer ignored), release
 # build, and writes their lines to docs/perf/09b.txt; a reader takes the
 # `summary` line.
 #
@@ -16,15 +17,15 @@ TRACE="$(mktemp -d)"
 trap 'rm -rf "$TRACE"' EXIT
 
 run() {
-  cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft \
-    --test it -- --ignored --nocapture --test-threads=1 --exact "$1" 2>/dev/null | grep '^m7-09b'
+  cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --features heavy-tests \
+    --test it -- --nocapture --test-threads=1 --exact "$1" 2>/dev/null | grep '^m7-09b'
 }
 
 LOAD_BEFORE=$(sysctl -n vm.loadavg)
 # Build first, so the build's load is not in the numbers.
-cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --test it --no-run 2>/dev/null
-LINES=$(run m7_walk::amend_into::perf_dependents_check)
-SPAWNS=$(GIT_TRACE2_PERF="$TRACE" run m7_walk::amend_into::perf_dependents_spawns)
+cargo test --release --manifest-path "$ROOT/Cargo.toml" -p graft --features heavy-tests --test it --no-run 2>/dev/null
+LINES=$(run m7_walk::amend_into::perf::perf_dependents_check)
+SPAWNS=$(GIT_TRACE2_PERF="$TRACE" run m7_walk::amend_into::perf::perf_dependents_spawns)
 LOAD_AFTER=$(sysctl -n vm.loadavg)
 
 {
