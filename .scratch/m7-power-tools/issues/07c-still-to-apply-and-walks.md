@@ -154,3 +154,22 @@ Other:
 - `pane_c_acts` callers verified by test: `keys/commit.rs` (key route) and `view/rows.rs::live_c` (bar) —
   `the_bar_offers_c_exactly_where_c_acts` (every kind × begun × frame: bar offers `c` iff `c` acts) and the two
   `hands_over_to_git` tests (command sent + `c continue` drawn) pass.
+
+
+## NOTES — builder round 3, 2026-09-28 (status: partial, unticked boxes below; builder compacted once this ticket)
+
+- Merged main (9bf4c9eb) → `f9cb3ee2`; only conflict `docs/shots/m7/m7-contact-sheet-captions.tsv`, both sides kept.
+- `update/tests.rs:4466` `operation_live_as`: `LiveC::Refuses if banner => InProgress::Revert` (was `Rebase`), doc
+  comment above it likewise. The line that makes a shell rebase no longer refuse:
+  `crates/graft/src/update/commit_editor.rs:86` —
+  `(InProgress::Merge | InProgress::Rebase | InProgress::CherryPick, _) => true` in `pane_c_acts`.
+- **Correction to round 2:** "`k` can't reach the Uncommitted row" was wrong. Probe: 8×`k` from the landing puts
+  `▏` on `Uncommitted changes (1 unstaged)`. The box stays unticked for the other reason, now with its lines:
+  graph `space` is the fold, not a stage — `graph_key` routes it at `crates/graft/src/update/keys.rs:314` to
+  `view_change`, which returns `ViewChange::Fold` at `crates/graft/src/update/keys/view_change.rs:87`; nothing in
+  `graph_key` (keys.rs:290-318) or `write_key` stages on `space`. Probe result: `git diff --cached` empty after
+  `space` on the uncommitted row. So `space a c` cannot be walked from the graph as keymap §2.6a/note R4 say
+  (`02-keymap.md:320` "`space` stages"). A spec/keymap question for the conductor, not rebound.
+- Followers row and the `abort-from-a-chain-stop` fence count: unchanged, still unticked (see round 2).
+- Walks box stays unticked (amend walk missing); captures box stays unticked (follower row absent, `space` bare,
+  80x24 not cut) — the four captures are committed for the user's eye.

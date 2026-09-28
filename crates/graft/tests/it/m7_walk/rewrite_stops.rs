@@ -139,11 +139,14 @@ fn capture_edit_stop_sizes() {
     app.close();
 }
 
-// `edit-stop-amend-continue` (`space a c`, fence 3) is not walked here:
-// `space` from where the stop lands (the cursor on HEAD's row) does not
-// stage the edit, and the uncommitted row is not reachable by `k` from
-// there either (probed 2026-09-28). Stopped and reported, not rebound
-// (ticket 07c NOTES). The amend-then-continue itself is walked by
+// `edit-stop-amend-continue` (`space a c`, fence 3) is not walked here.
+// `space` in the graph is the fold, never a stage: `graph_key`
+// (`src/update/keys.rs:314`) routes it to `view_change`, which maps it to
+// `ViewChange::Fold` (`src/update/keys/view_change.rs:87`); no branch before
+// it stages, on the uncommitted row or any other. (`k` does reach the
+// uncommitted row — probed 2026-09-28 — but `space` there stages nothing.)
+// Stopped and reported per the ticket, not rebound. The amend-then-`c` half
+// is walked by 07b's
 // `rewrite_stop::a_twice_then_c_amends_the_stopped_commit_and_the_rewrite_goes_home`.
 
 /// `abort-from-a-chain-stop`: `⇥ a y` — every branch back where it was,

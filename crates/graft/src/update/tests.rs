@@ -4454,7 +4454,7 @@ fn states_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<AppS
 
 /// An operation live over `state` whose `c` in the graph or the changes
 /// pane is `c` (m6-conflicts/52), the banner unfocused: a merge for
-/// `Finish`, a rebase Graft began for `Continue`. For `Refuses`, a rebase
+/// `Finish`, a rebase Graft began for `Continue`. For `Refuses`, a revert
 /// the shell began where the banner is to be one `⇥` away, else a bisect —
 /// which has no banner at all.
 fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, banner: bool) {
@@ -4463,7 +4463,7 @@ fn operation_live_as(state: &mut AppState, c: graft_ui::graph_screen::LiveC, ban
     let kind = match c {
         LiveC::Finish => InProgress::Merge,
         LiveC::Continue | LiveC::ContinueAmends => InProgress::Rebase,
-        LiveC::Refuses if banner => InProgress::Rebase,
+        LiveC::Refuses if banner => InProgress::Revert,
         LiveC::Refuses => InProgress::Bisect,
     };
     state.in_progress = Some(graft_git::state::InProgressDetail {
