@@ -57,6 +57,7 @@ pub fn is_write(command: &Command) -> bool {
         | Command::ReadCommitTemplate(..)
         | Command::ReadHeadMessage(..)
         | Command::PlanRewrite { .. }
+        | Command::OpenRewrite { .. }
         | Command::ResolveRowTags(..)
         | Command::EditCommitMessage { .. }
         | Command::Suspend

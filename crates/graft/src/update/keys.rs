@@ -35,8 +35,8 @@ use commit::commit_key;
 use escape::escape_key;
 use predicates::{
     RemoteKey, is_commit_key, is_compare_key, is_context_menu_key, is_copy_key, is_focus_toggle,
-    is_lane_toggle, is_name_key, is_quit, is_refresh, is_remote_key, is_screen_toggle,
-    is_tier_cycle, is_undo_key, motion_for,
+    is_lane_toggle, is_name_key, is_quit, is_refresh, is_remote_key, is_rewrite_key,
+    is_screen_toggle, is_tier_cycle, is_undo_key, motion_for,
 };
 pub(in crate::update) use refresh::refresh_key;
 use view_change::{ViewChange, view_change};
@@ -64,6 +64,17 @@ fn boxes_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     }
     let mut local_jobs = next.local_jobs;
     let claimed = super::preview::preview_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
+/// The rewrite editor (`R`, m7-power-tools/08), right after the boxes:
+/// modal, every key but `Ctrl+C` is its own while it is up (§2.7), and
+/// `Esc` while its read is out cancels the read.
+fn rewrite_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed =
+        super::rewrite_editor::rewrite_key(next, commands, key, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     claimed
 }
@@ -145,6 +156,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // claim per line.
     if super::drag::drag_key(next, key)
         || boxes_key(next, commands, key)
+        || rewrite_key(next, commands, key)
         || finish_key(next, commands, key)
         || resolver_key(next, commands, key)
         || banner_key(next, commands, key)
@@ -344,6 +356,14 @@ fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
         // place mode (which reuses `HistoryKey`) leaves `o` unbound.
         let mut local_jobs = next.local_jobs;
         super::preview::take_key(next, commands, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
+        return true;
+    }
+    if is_rewrite_key(key) && next.graph_has_focus() && next.graph_overlay().is_none() {
+        // `R` (keymap §2.3, m7-power-tools/08): the rewrite editor on the
+        // cursor's row, once its read answers.
+        let mut local_jobs = next.local_jobs;
+        super::rewrite_editor::open_rewrite(next, commands, &mut || local_jobs.next_id());
         next.local_jobs = local_jobs;
         return true;
     }

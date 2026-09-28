@@ -165,6 +165,16 @@ pub(super) fn draw_place(
     None
 }
 
+/// The rewrite editor over the whole frame (m7-power-tools/08; keymap §2.7:
+/// a modal pane). **08-a draws only the cleared frame**: the editor's rows,
+/// AFTER block, message and bar are 08-b's (`graft_ui::rewrite_editor`,
+/// `view/rewrite_editor.rs`), so nothing of the graph shows behind a modal
+/// meanwhile.
+pub(super) fn draw_rewrite(frame: &mut Frame, area: Rect) -> Option<Rect> {
+    frame.render_widget(ratatui::widgets::Clear, area);
+    None
+}
+
 /// The Map view in the graph's area, with the context menu over it.
 /// Returns the rectangle the detail pane's pixels go in.
 pub(super) fn draw_map(

@@ -32,11 +32,15 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     // since m5). Fixing those three is a separate change; what this does is
     // make sure the resolver is not a fourth.
     // The finish summary before it, and for the same reason: modal, every
-    // mouse event is its own (m6-conflicts/19).
+    // mouse event is its own (m6-conflicts/19). The rewrite editor after it,
+    // modal the same way (m7-power-tools/08).
     let mut local_jobs = next.local_jobs;
-    let finish = super::finish::finish_mouse(next, commands, mouse, &mut || local_jobs.next_id());
+    let modal = super::finish::finish_mouse(next, commands, mouse, &mut || local_jobs.next_id())
+        || super::rewrite_editor::rewrite_mouse(next, commands, mouse, &mut || {
+            local_jobs.next_id()
+        });
     next.local_jobs = local_jobs;
-    if finish {
+    if modal {
         return;
     }
     // A blame place on screen: modal, every mouse event is its own, and

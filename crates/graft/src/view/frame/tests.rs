@@ -292,6 +292,9 @@ fn standing_on(overlay: Option<GraphOverlay>) -> AppState {
         Some(GraphOverlay::Journal) => state.journal.shown = true,
         Some(GraphOverlay::Stash) => state.stash.shown = true,
         Some(GraphOverlay::Place) => crate::update::place::tests::open_a_place(&mut state),
+        Some(GraphOverlay::Rewrite) => {
+            crate::update::rewrite_editor::tests::open_an_editor(&mut state);
+        }
     }
     assert_eq!(state.graph_overlay(), overlay, "the state stands on it");
     state

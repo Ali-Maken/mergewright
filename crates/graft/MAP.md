@@ -39,6 +39,13 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `build_map(store, req, progress, stop) -> Result<MapData, MapError>` — local branches only (M2); default-branch merges only.
 - Split into files, public items unchanged (m2 review M8): `walk.rs` (refs, span, default chain, `walk_branch`/`RowWalk`, one bounded walk per branch), `rows.rs` (`RowContext`, `build_row`/`build_rows`, one row per local branch); this file keeps the public data shapes and `build_map`, the entry point wiring the two together.
 
+## jobs::rewrite_open
+The read behind `R` (m7-power-tools/08). `Command::OpenRewrite { id, from }` → `Task::OpenRewrite` → `Product::RewriteOpened(Result<RewriteOpened, String>)`.
+- `RewriteOpened` (enum) — `Editor(Box<OpenedRewrite>)` | `Refused(Refusal)`.
+- `OpenedRewrite` (struct) — `params` (`plan(Open { from })`), `whole: HashMap<Oid, String>` (every row's whole message, `history::read_commit`), `base: BaseRow`.
+- `BaseRow` (struct) — `oid` (`onto`), `subject`, `label` (upstream's short name if `onto` is the merge-base with it, else the default branch's, else the short sha).
+- `open_rewrite` (fn, `pub(crate)`) — `(repos, from, default_branch, stop)`: the read itself.
+
 ## history
 - `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
 - `History::seeking` (field) — the commit a pending `Find` is to select.
@@ -169,7 +176,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `AppState::on_changes_pane` (fn) — `(&AppState) -> bool`; the pane is shown and its spec is `DetailSpec::WorkingTree` — the only place the write keys mean anything (m3-working-tree-undo-and-stash/04). The footer also asks whether the pane has the keyboard before hinting them: `changes_pane_write_key` refuses every one of them with `DetailFocus::Graph` (m5/31).
 - `AppState::graph_has_focus` (fn) — `(&AppState) -> bool`; `detail.focus == DetailFocus::Graph`. The one answer to "does the graph have the keyboard", read by `S`, `J`, `M` and `O` (each opens something standing where the graph stands) and by `view::rows::hint_context`, which is the point: the four keys were guarded four times over and the bar drew them anyway (m5/31).
 - `AppState::graph_overlay` (fn) — `(&AppState) -> Option<GraphOverlay>`; which overlay stands where the graph would be, in the frame's own precedence: `Finish` (`finish.is_some()`, m6-conflicts/19), then `Resolver` (`resolver.is_some()`; first, because it covers the detail pane too and `⏎` on a `CONFLICTS` row can fire with the Map, the journal or the stash list up), `CommitEditor` (`commit_editor.is_some()`), `Map`, `Journal`, `Stash`. The **one enumeration** of them: `view::frame::draw_screen` matches on it and `update::banner::graph_screen_on_frame` asks it, so a fifth overlay is a fifth variant and the frame stops compiling until it is drawn, while the banner needs no edit (review M3, m5/31).
-- `GraphOverlay` (enum) — `Finish` (first: the finish summary, m6-conflicts/19) | `Resolver` | `CommitEditor` | `Map` | `Journal` | `Stash` | `Place` (a shown blame place, m7-power-tools/20e; comes after `Finish` and `Resolver`); an overlay that replaces the graph screen and carries no operation banner of its own.
+- `GraphOverlay` (enum) — `Finish` (first: the finish summary, m6-conflicts/19) | `Resolver` | `CommitEditor` | `Map` | `Journal` | `Stash` | `Place` (a shown blame place, m7-power-tools/20e; comes after `Finish` and `Resolver`) | `Rewrite` (`rewrite.editor.is_some()`, m7-power-tools/08; after `Place`, before `CommitEditor`; 08-a draws a cleared placeholder, `view::frame::overlays::draw_rewrite`, 08-b the editor); an overlay that replaces the graph screen and carries no operation banner of its own.
 - `AppState::confirm` (field) — `Option<update::confirm::PendingConfirm>`, the discard confirm box; modal like the context menu (m3-working-tree-undo-and-stash/04).
 - `AppState::credential` (field) — `Option<update::credential::CredentialPrompt>`, git's credential question as an in-app prompt; modal over everything, including the confirm box (m4-remotes/06).
 - `AppState::screen` (field) — which screen is on show; graph by default.
@@ -219,6 +226,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `opening` (fn) — `(PathBuf, Size) -> (AppState, Vec<Command>)`: the state Graft starts in and the jobs that fill it (open the repository, check git, walk history, read refs, read the working tree). The real loop and every integration harness go through it, because the history walk's id is minted here and `awaiting` set from it (m5-history-and-ghost-preview/05).
 
 - `AppState::amend_into` (field) — `update::amend_into::AmendInto`: the put-in plan in flight, the planned put-in its preview draws, and the tag read after it lands (m7-power-tools/09).
+- `AppState::rewrite` (field) — `update::rewrite_editor::RewriteState`: the `R` read in flight, the editor on screen, and the editor `y` launched until its write answers (m7-power-tools/08). `modal_owns_keys` is true while the editor is up; `text_field_open` while its `r` field is open.
 - `AppState::row_tags` (field) — `update::row_tags::RowTags`: which commits carry a `graft_ui::graph_screen::RowTag` after their subject; cleared by `update::operate::claim_write` (m7-power-tools/09).
 
 ## update::amend_into
@@ -230,6 +238,22 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `landed` (fn, `pub(crate)`) — from `operate::operated`'s `Done`: only for the very `Operation::Rewrite` planned, the status `<what> ✓ · <also> · u undoes` and `Command::ResolveRowTags`.
 - `job_ended` / `forget` (fns, `pub(crate)`) — a plan or tag job that will not answer; the preview closed.
 - `write_claimed` (fn, `pub(crate)`, review m7-09-to-21c Minor 2) — called by `operate::claim_write`: a tag read still out is dropped, so its answer after a write tags nothing.
+
+## update::rewrite_editor
+The rewrite editor (`R`, m7-power-tools/08, note R1, keymap §2.7). 08-a: state, keys, routing, `y`; 08-b draws it.
+- `RewriteState` (struct) — `opening: Option<JobId>`, `editor: Option<Box<RewriteEditor>>` (`Some` ⇔ `GraphOverlay::Rewrite`), `launched` (after `y`); private: the row `R` was on, and stale job ids whose answers are dropped.
+- `RewriteEditor` (struct) — private fields (todo, moves, edits by `Oid`, cursor, `r` field, AFTER plan, right side, notice). `params()`: validate, then the op `y` runs / AFTER plans, messages rebuilt per ruling 8. `view_facts()` → `ViewFacts`.
+- `ViewFacts<'a>` (struct) — `branch`, `since`, `rows: Vec<RowFacts>` (newest first), `base: &BaseRow`, `cursor` (index into rows; `rows.len()` = base), `field: Option<(screen row, text, caret)>`, `messages: Vec<MessageFacts>`, `after: AfterFacts`, `changes: Option<(Oid, &Loading<Arc<FileList>>)>`, `narrow_shows_right`, `notice`, `handing_over`.
+- `RowFacts<'a>` (struct) — `action`, `commit`, `subject` (a reword's edited subject), `moved`, `by_name`, `keeps` (`n in one`; 0 when not a kept row), `problem` (`nothing below to meld into`).
+- `MessageFacts` (struct) — `kept`, `kept_subject`, `squashed` (group vs reword), `text`.
+- `AfterFacts<'a>` (enum) — `Checking` | `Failed(&str)` | `Refused(&str)` | `Invalid(String)` | `Ready(&Planned)`.
+- `field_open` (fn) — the `r` field is open (`text_field_open`).
+- `open_rewrite` (fn) — `R` on the graph: `preview_refusal`'s words, or `Command::OpenRewrite { id, from }` (cursor row; `HEAD` on the uncommitted row) and `reading <branch>…`.
+- `opened` (fn) — the read's answer: the editor and its first AFTER plan, `Refusal::explain` (sticky), or `couldn't open the rewrite editor: <why>`.
+- `owns` (fn) — is `id` one of the editor's jobs (open read, AFTER plan, `⏎` file list, `$EDITOR` handover) or a stale one; `update::update` routes those products to the next four before any shared handler.
+- `after_planned` / `files_listed` / `message_returned` / `job_ended` (fns) — answers to its jobs; stale ids dropped.
+- `write_answered` (fn) — from `operate::operated`, after its `operating` guard: a refusal restores the editor with `refusal_status`'s words; anything else ends it.
+- `rewrite_key` / `rewrite_mouse` (fns) — modal: every key but `Ctrl+C` while up; `Esc` while the read is out cancels it. The mouse is claimed whole; its hit test is 08-b's.
 
 ## update::row_tags
 - `RowTags` (struct) — `set(oid, tag)`, `on(oid)`, `clear()` (all `pub(crate)`); `view::entries::row_entry` reads `on` into `GraphEntry::tag`.

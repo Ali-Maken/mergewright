@@ -109,6 +109,12 @@ pub(super) fn is_name_key(key: KeyPress) -> Option<bool> {
     }
 }
 
+/// `R` opens the rewrite editor on the cursor's row (keymap §2.3,
+/// m7-power-tools/08).
+pub(super) fn is_rewrite_key(key: KeyPress) -> bool {
+    !key.modifiers.control && !key.modifiers.alt && key.code == KeyCode::Char('R')
+}
+
 /// `c` opens the commit editor, `a` opens it amending `HEAD` (DESIGN.md
 /// §2.3; m3-working-tree-undo-and-stash/05). `Some(amend)` says which.
 pub(super) fn is_commit_key(key: KeyPress) -> Option<bool> {

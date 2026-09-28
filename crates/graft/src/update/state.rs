@@ -432,6 +432,9 @@ pub struct AppState {
     /// `a` into an older commit and absorb: the plan in flight, and the
     /// put-in its preview is of (m7-power-tools/09).
     pub amend_into: super::amend_into::AmendInto,
+    /// The rewrite editor (`R`, m7-power-tools/08): its open read, the
+    /// editor on screen, and the one whose `y` is running.
+    pub(crate) rewrite: super::rewrite_editor::RewriteState,
     /// Tags rows carry after their subject until the next write starts —
     /// `✎ changed` after a put-in (m7-power-tools/09).
     pub row_tags: super::row_tags::RowTags,
@@ -644,6 +647,11 @@ impl AppState {
             // does; it never opens over the editor or a box (its `B` is
             // the pane's, and those claim the keys first).
             Some(GraphOverlay::Place)
+        } else if self.rewrite.editor.is_some() {
+            // Never opens over the others above (its `R` is a graph key,
+            // and each of them claims keys first); modal, the whole frame
+            // (m7-power-tools/08).
+            Some(GraphOverlay::Rewrite)
         } else if self.commit_editor.is_some() {
             Some(GraphOverlay::CommitEditor)
         } else if self.map.shown {
@@ -673,6 +681,9 @@ pub enum GraphOverlay {
     Resolver,
     /// A blame place (`B`, m7-power-tools/20): the whole frame, its own bar.
     Place,
+    /// The rewrite editor (`R`, m7-power-tools/08): the whole frame, its
+    /// own bar.
+    Rewrite,
     /// The commit message editor (`c`).
     CommitEditor,
     /// The Map view (`M`).
@@ -793,6 +804,7 @@ impl AppState {
             || self.credential.is_some()
             || self.name_prompt.is_some()
             || super::picker::shown(self)
+            || super::rewrite_editor::field_open(self)
             || self
                 .finish
                 .as_ref()
@@ -821,6 +833,7 @@ impl AppState {
             || self.preview.is_some()
             || self.resolver.is_some()
             || self.finish.is_some()
+            || self.rewrite.editor.is_some()
             || super::place::owns_keys(self)
             || (self.banner_focus && super::banner::banner_view(self).is_some())
     }

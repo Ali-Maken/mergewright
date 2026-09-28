@@ -82,6 +82,7 @@ mod preview;
 pub(crate) mod radar;
 pub(crate) mod remote;
 pub(crate) mod rewrite;
+pub(crate) mod rewrite_open;
 mod runner;
 mod stash;
 mod stash_only;

@@ -1360,6 +1360,7 @@ fn every_field_spelled_out() -> AppState {
         finish_draft: None,
         conflict_editing: Some(std::path::PathBuf::from("notes.txt")),
         amend_into: super::amend_into::AmendInto::default(),
+        rewrite: super::rewrite_editor::RewriteState::default(),
         row_tags: {
             let mut tags = super::row_tags::RowTags::default();
             tags.set(
@@ -3716,6 +3717,13 @@ mod a_text_field_keeps_its_own_letters {
         let mut stashing = AppState::default();
         stashing.stash.prompt = Some(stash::StashPrompt::default());
         assert!(stashing.text_field_open(), "the stash save prompt");
+
+        // The rewrite editor's rows are not a field; its `r` field is.
+        let mut rewriting = AppState::default();
+        crate::update::rewrite_editor::tests::open_an_editor(&mut rewriting);
+        assert!(!rewriting.text_field_open(), "the rewrite editor's rows");
+        crate::update::rewrite_editor::tests::open_an_editor_field(&mut rewriting);
+        assert!(rewriting.text_field_open(), "the rewrite editor's r field");
     }
 }
 

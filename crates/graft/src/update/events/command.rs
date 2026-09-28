@@ -203,6 +203,15 @@ pub enum Command {
         /// His branch and its tip, on the `HEAD` path only.
         head: Option<graft_ops::operation::Tip>,
     },
+    /// Read what the rewrite editor opens on (`R`, m7-power-tools/08): his
+    /// branch planned from `HEAD` down to its base, deeper to `from`, with
+    /// every row's whole message and the base row. A read; `Esc` cancels it.
+    OpenRewrite {
+        /// The id the answering [`Product::RewriteOpened`] comes back under.
+        id: JobId,
+        /// The row `R` was pressed on (`HEAD`'s on the uncommitted row).
+        from: graft_core::oid::Oid,
+    },
     /// After a put-in landed: the commit `offset` first-parent steps below
     /// `HEAD`, for each offset (m7-power-tools/09).
     ResolveRowTags(JobId, Vec<u32>),
