@@ -329,3 +329,29 @@ Two parts, one context each, **A then B**; the conductor dispatches them as two 
   command log, `cut_at_word`, aborted words), snapshots, walks, captures, and the old J captures re-shot. Needs 24-a
   merged and the fixture order.
 If either compacts, say so; the conductor splits the rest.
+
+## NOTES (builder 24-a, 2026-09-29, base a91ae83c) — **blocked at V4**
+Verify-first done; nothing built. V4 hits the ticket's own stop condition.
+
+- **V4 — blocked: DropPutBack has no why.** `Operation::DropPutBack { stash: Oid }`,
+  `crates/graft-ops/src/operation.rs:156-159`; `describe_in` sees only `stash` (:1437-1446). The one constructor,
+  `crates/graft/src/update/resolver/resolved.rs:170`, has `clash.why` in hand but drops it. Fixing :847 needs a
+  `why: PutBackWhy` field on the variant (graft-ops `operation.rs` beyond the one arm, plus `resolved.rs` and
+  `update/operate/tests/edits_words.rs:14`, both outside the Files list). Spec change → conductor.
+- **V1.** Stash `b`: the prompt opens over the overlay without touching `stash.shown`
+  (`update/stash.rs:238-251`). `Esc` only clears the prompt (`update/name_prompt.rs:263`), so the overlay is back.
+  `stash.shown = false` only when ⏎ creates (`name_prompt.rs:428`), set back if the preview fails (:444).
+  J today: `b` is not bound in J; `name_prompt.rs` never reads `journal` (grep), so J is untouched by the prompt.
+  Whether the prompt box draws over the J overlay: not checked (moot until J binds `b`).
+- **V2.** No J frame in m6: `grep -rl "UNDO JOURNAL\|space command log\|J/esc close" docs/shots/m6` → nothing
+  (183 files, `m6-contact-sheet-captions.tsv` included).
+- **V3.** Undrawn. `crates/graft/src` has no reference to `Operation::Recover` or `FilesEffect` (grep), and no file
+  in graft or graft-ui draws `after y` (grep; only resolver `three_panes` tests match). The conditional files come
+  into scope: `crates/graft/src/update/preview.rs` and `crates/graft-ui/src/preview_box.rs` (+ `preview_box/`).
+- **V5.** `ReflogRecord { refname: String, old: Option<Oid>, new: Option<Oid>, at: i64, subject: String }`
+  (`crates/graft-git/src/reflog.rs:22-32`). Stable key: `refname`, `old`, `new`, `at`. **`new` is `Option<Oid>`**,
+  so the signature's `Outside { reference, new: Oid, time }` must be `Outside { refname: String, old: Option<Oid>,
+  new: Option<Oid>, at: i64 }` (`old` added: two records of one ref in one second can share `new`).
+
+Next step (after the conductor rules on V4): build 24-a as specified; the V4 arm either gets its field (another
+ticket, or 24-a's Files widened to `resolved.rs` + `edits_words.rs`) or is dropped from 24-a.
