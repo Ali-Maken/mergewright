@@ -77,7 +77,7 @@ mod history;
 mod reflog;
 mod scale;
 
-pub use reflog::{LOST, RECORDS, Reflogged, with_reflog};
+pub use reflog::{LOST, RECORDS, Reflogged, with_reflog, with_reflog_of};
 pub use scale::{CommitGraph, CommitSize, Scale};
 
 use history::History;
@@ -140,6 +140,18 @@ pub enum SyntheticError {
         scale: String,
         /// What `git` printed.
         output: String,
+    },
+    /// [`with_reflog_of`] was asked for more lost commits than `HEAD`'s
+    /// share of the records can hold: each lost commit is one of `HEAD`'s
+    /// old values.
+    #[error("the {scale} reflog fixture was asked for {lost} lost commits in {head} HEAD records")]
+    TooManyLost {
+        /// The scale being built on.
+        scale: String,
+        /// Lost commits asked for.
+        lost: usize,
+        /// `HEAD`'s records: at most this many can be lost.
+        head: usize,
     },
 }
 

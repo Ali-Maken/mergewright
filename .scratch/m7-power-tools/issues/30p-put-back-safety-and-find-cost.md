@@ -235,19 +235,27 @@ pub fn with_reflog_of(scale: &Scale, records: usize, lost: usize) -> Result<Refl
   - It exits non-zero unless every run passed and the gate is `ok`. `$HOME` is replaced with `~`.
 
 ### Acceptance
-- [ ] `with_reflog` unchanged: its existing callers' tests stay green under `--features heavy-tests` compile (grep
+- [x] `with_reflog` unchanged: its existing callers' tests stay green under `--features heavy-tests` compile (grep
   `with_reflog(`), and `with_reflog_of_counts_what_it_is_given` (heavy tier; the builder does **not** run it, the
-  conductor's review does) asserts the record and lost counts.
-- [ ] The scenario and the script exist as specified. `cargo clippy --all-targets --features heavy-tests -- -D warnings`
-  is green (this compiles the scenario).
-- [ ] **Smoke, not a measurement:** one **debug** run of `frames::journal_find` only. Its output goes to a file in the
+  conductor's review does) asserts the record and lost counts. — callers (grep: `graft-git/examples/lost_cost.rs:69`,
+  `stash_only_cost.rs:61`; no test calls it) compile under `cargo clippy --all-targets --features heavy-tests`;
+  unchanged output pinned by `with_reflog_splits_its_records_as_before` (`split(RECORDS) == LOGS`, run: ok) and
+  `with_reflog_of_refuses_more_lost_than_head_records` (gap stays `LOST_EVERY` for `RECORDS, LOST`, run: ok);
+  `with_reflog_of_counts_what_it_is_given` written in `synthetic/reflog.rs` tests, **not run** (conductor's).
+- [x] The scenario and the script exist as specified. `cargo clippy --all-targets --features heavy-tests -- -D warnings`
+  is green (this compiles the scenario). — `frames::journal_find::j_with_a_broad_find_holds_the_frame_budget`,
+  `scripts/m7-30p-perf.sh`; clippy heavy green (workspace). Two deviations, NOTES 30p-b.
+- [x] **Smoke, not a measurement:** one **debug** run of `frames::journal_find` only. Its output goes to a file in the
   worktree's scratch; read only the `test result` line and any panic line.
   - A panic from `Gate` in debug is not a finding (ADR-0021: budgets fail only under `--release`). Report no numbers.
   - A premise panic is a finding: fix the fixture or the query.
-  - Say in NOTES which one it was.
-- [ ] `scripts/m7-perf-key-selftest.sh` is green, and it is unchanged. In NOTES, quote the new scenario's `frames:`
-  line format against `m7-perf-key.sh`'s regex.
-- [ ] MAP.md (graft-fixtures, graft). Gates workspace-wide (fast tier).
+  - Say in NOTES which one it was. — `j_with_a_broad_find_holds_the_frame_budget` debug: first run a premise panic
+    (fixed, NOTES), then `test result: ok. 1 passed`.
+- [x] `scripts/m7-perf-key-selftest.sh` is green, and it is unchanged. In NOTES, quote the new scenario's `frames:`
+  line format against `m7-perf-key.sh`'s regex. — selftest: "every check held"; script not in the diff. Format in NOTES.
+- [x] MAP.md (graft-fixtures, graft). Gates workspace-wide (fast tier). — both MAPs; fmt, clippy (fast and heavy),
+  doctests green; nextest 4916/4917, the one red `published_repo::nothing_a_commit_would_carry_names_this_machine`
+  is `docs/reviews/m7-30m-30o.md:16` (committed c14ce973, not this part's file), NOTES 30p-b.
 
 ### Touches
 - **`scripts/m7-perf-key.sh`** runs every `frames::` test, so it will run this one from now on. Its parse must hold
@@ -357,3 +365,34 @@ a builder's context. The design note row (R2) and any KNOWN_GAPS row are the con
 - R1 any red: a **broken** row naming the kind.
 
 ## NOTES (builder)
+
+### 30p-b (builder, Opus, 2026-09-30)
+- **No scout**: the ticket names the harness files for the builder to read; one scout for J's rows/find (pub API).
+- **Smoke:** first debug run was a **premise** panic, not the Gate: the title read `find "step" 2 of 2000`. Cause, by
+  design: once stage 3 is in, J's cursor starts on the newest `✗` row under a `$` row (`update/journal.rs:95-110`
+  `preselect`), and `⏎` finds the first hit at or below it (`update/journal/find.rs:214`) → `2`, not `1`. The premise
+  now accepts `<at> of <n>` with `1 <= at <= n` and n ≥ 1 500 (`hits_in`, comment cites both lines). Second run:
+  `test result: ok`. No numbers reported (debug).
+- **Premises observed:** 2 425 rows, 425 `✗`, 2 000 hits (`/step`). Only 425 of 500 lost show: `find_lost` checks the
+  newest `LOST_CAP` candidates, and HEAD's slots 400-499 tie in time with the three branches' records.
+- **Rows are counted by the functions J's jobs run** (`read_outside`/`find_lost`/`build` with `RECORDS_CAP`/`LOST_CAP`,
+  on the same repo), not from J's state: `JournalState.list` is `pub(crate)`. Hits come from the drawn title of the
+  loop's own state (replayed).
+- **Harness:** two pumps (J; then `/step⏎ n×40 N×40 j×40`), the stage 2-3 wait between via `pump_until_from`, all 127
+  keys in one `Gate`. `run::scroll`/`ready_to_scroll`/`capabilities` are private to `run.rs` (not in the file list), so
+  the scenario opens via `budget_run::open_into` and carries its own Unicode `Capabilities` copy. The rows-on-hand
+  (`waited`) check is not applied (graph rows, not J's). Resize to 187×50 is an `update` before the ready pump.
+- **Deviations:** `with_reflog_of(scale: Scale, …)` by value, as `with_reflog` (ticket wrote `&Scale`); new
+  `SyntheticError::TooManyLost` in `synthetic.rs` (lost > HEAD's records; no existing variant fits).
+- **frames: line** (format): `frames: tier=Unicode refs=<rows> pane=JournalFind control=<c> keys=127 p50_us=… p99_us=…
+  max_us=… over_budget=… hits=<h> lost_rows=<x>`; `m7-perf-key.sh`'s `fields()` gives tier/refs/pane and
+  p50/p99/max (checked by running its regex on the smoke line). Trace lines (`GRAFT_FRAME_TRACE`, traced smoke run)
+  carry every field its Python reads, plus `phase=open|find`; all `kind=scroll`.
+- **Script:** in release the test panics on an over-budget p99 after its line; `m7-30p-perf.sh` counts that exit as
+  `OVER` (line > 16 ms and the gate's own panic text), any other failure `FAIL`. Summariser checked on canned
+  outputs (ok / OVER / OVER-by-panic / FAIL / no line). The release run itself is the conductor's.
+- **Touches:** `m7-perf-key.sh` now runs this test in each of its 6 runs: +1 fixture open + ~1 min per run in debug
+  (smoke test time 52-65 s, first including the 10k fixture's cold build); release unmeasured. Its OVER handling
+  (a panicked plain run → FAIL) is unchanged. `with_reflog` callers: output unchanged (split test). `src/`: untouched.
+- **Pre-existing red, not this part:** `published_repo` flags `docs/reviews/m7-30m-30o.md:16` (a home path).
+

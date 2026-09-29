@@ -36,6 +36,7 @@
 //! script's controls. This file holds the scroll tests and their script.
 
 mod controls;
+mod journal_find;
 mod paced;
 mod readings;
 mod run;
