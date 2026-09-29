@@ -2,7 +2,8 @@
 
 Status: ready — respecified 2026-09-27 against `scouts/24.md` (main @ b90a49e4); **amended 2026-09-29** after 24-a's
 verify-first (commit 80b72040): V3, V4, V5 decided below; a part **24-0** (the drop's why) and a part **24-a2** (the
-put-back box) added. Scope unchanged.
+put-back box) added. Scope unchanged. **Amended again 2026-09-29:** `u`/`U` in J are global, not swallowed (ruling at
+the end; folded into "Keys", "Decided `u`", Part B, "Touches").
 Build with:
 - **24-0: Sonnet.** Mechanical: one field added and passed through, one words arm, red test first. Every site is listed.
 - **24-a, 24-a2, 24-b: Opus.** A screen over a decided list and a decided operation; every choice is fixed here and
@@ -50,6 +51,8 @@ find it by grep.
 - graft-ui: `journal_screen.rs` (+ tests).
 - Docs: `docs/shots/m7/`, the m3/m4/m5 J captures it re-shoots, the contact-sheet captions, `TESTING.md` rows, MAP.md
   (graft, graft-ui).
+- **Not** `update/keys.rs` (the `u` ruling needs no code; if V8 finds `u` in J landing unlike `⏎` on the `← u` row →
+  stop, `blocked: needs update/keys.rs`, naming the line).
 
 ## Blocked by
 - **22** journal-list, **23** recover-op, **03 part -a** (landing), **09** (`RowTags`) — merged.
@@ -108,6 +111,7 @@ show both tips.
 | Cursor keeps its row | `selected: usize`, `expanded: Option<usize>` | `RowKey`; both become `Option<RowKey>`. |
 | `b` lands on the new tip | `BranchCreate { checkout: false }` never lands | `landing_of` gives it `Commit(at)`. `moves_head` unchanged. |
 | The J1 box | Not drawn (V3) | **24-a2** builds it in graft over the existing `PreviewBox`, docked over J. |
+| `u` swallowed in J | `u` global, handled before overlays (`update/keys.rs:212-216`, 24-a NOTES) | **Global stays** (ruling at the end). Spec amended; no code. |
 
 ## Decided (the note; not open)
 - **Stages:** `J` opens at once with the `●` rows (stage 1), as today.
@@ -160,11 +164,12 @@ show both tips.
   | `b` | on any row with a commit (`✗`: its tip; `$`: as V5 above): `open_name_prompt_with(NameKind::Branch { at, checkout: false }, prefill)`, prefill `<b>-restored` when the last `recover_for` on this row offered it, else `""`. On a lost-edit row: status row `a lost edit has no commit · ⏎ puts it back` |
   | `/`, `n`/`N` | find; next/previous match. With no find active, next/previous `✗` row |
   | `Space` | as today (the command log), keyed by `RowKey` |
+  | `u` / `U` | global, as on every screen (§2.2, ADR-0002; `update/keys.rs:212-216` (NOTES)): undo / redo the journal's next entry — the `← u` / `← U` row — whatever row the cursor is on. Never a `$`, `✗` or lost-edit row. Lands as `⏎` on that row does (V8). Refused while an operation is live, as everywhere; the refusal on J's status row |
   | `Esc`/`J` | close |
 
   Every other key stays swallowed. The bar is per row, from the row alone (no facts): `⏎ undo this` / `⏎ redo this` /
   `⏎ revert to before this` / `⏎ put <b> back to it` / `⏎ make <b> again` / `⏎ put your edit back` /
-  `⏎ switch back to <b>`, or none (V5).
+  `⏎ switch back to <b>`, or none (V5). The bar does not add `u`: the legend line already says what `u` touches.
 - **The put-back box (V3; 24-a2).** Not drawn today (NOTES V3). Built in graft, drawn with graft-ui's existing
   `PreviewBox`; **docked over J, J shown above it**, the way the stash box docks over S (`draw_stash`). Why over J and
   not over the graph: the graph cannot show a commit no branch holds, so the picture is the box's lines; and `Esc` is
@@ -209,7 +214,9 @@ show both tips.
   - Tags are set on `Done`, after `claim_write` cleared the old ones, and clear on the next operation, as `✎ changed`
     does.
   - `J` again: the put-back is a `●` row (`put main back (the shell's reset)`), and its `✗` row is gone.
-- **`u`** undoes the put-back (it's a journal entry). In J, `u` stays swallowed; it never acts on a `$` or `✗` row.
+- **`u`** undoes the put-back (it's a journal entry). **In J, `u`/`U` are the global undo/redo** (amended 2026-09-29,
+  ruling at the end): they act on the journal's `← u`/`← U` row, never on a `$`, `✗` or lost-edit row, whatever the
+  cursor is on, and land as `⏎` on that row does.
 - **Status row in `J`:** one line under the rows. It shows `AppState::status`'s problem, else its notice, the way
   `draw_status_or_hints` picks them, **only while there is one** (status rule). Refusals inside J set
   `AppState::status` as everywhere else; nothing J-private.
@@ -235,6 +242,10 @@ show both tips.
   above by it.
 - **V7 (24-a2)** How `draw_stash` docks the box over S and what it does with S's bar (file:line). J copies it; name
   the site.
+- **V8 (24-b)** Where `u` pressed in J lands, against `⏎` on the `← u` row (which closes J:
+  `enter_on_the_next_undo_row_is_u_and_closes_the_browser`). file:line for each path (`update/keys.rs:212-216` (NOTES)
+  and J's `⏎` arm in `update/journal.rs`). Same (J closed, 03's undo landing) → test it and go on. Differs → stop,
+  `blocked: needs update/keys.rs`, naming the line; don't change either path from 24-b's files.
 
 ## Read first
 - This ticket, then `scouts/24.md` (all; its line numbers are b90a49e4's).
@@ -323,6 +334,7 @@ pub struct JournalStatusRow { pub words: String, pub problem: bool }
 // JournalView gains: title_suffix: Option<String>, status: Option<JournalStatusRow>, enter_words: Option<String>
 pub fn cut_at_word(text: &str, width: usize) -> String; // reuse an existing graft-ui word-cut if one exists; name it
 // graft-ops (24-a, unchanged signature): journal_list::words' `commit (initial)` arm.
+// `u`/`U` in J: no new signature; the global route in update/keys.rs, unchanged.
 ```
 
 ## Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
@@ -379,6 +391,7 @@ Part A (24-a):
   `update/operate/tests/lands_on_head.rs` (5) and `tests/it/land_on_result.rs`; 10's:
   `update/switch/tests.rs::{a_switching_create_lands_on_the_new_branch, switch_words_on_landing}`. All green in the full
   run (4831/4831). `u_never_acts_on_outside_rows` asserts what the code does, not "u swallowed in J" (NOTES remainder).
+  **Amended 2026-09-29:** what the code does is now the spec (ruling at the end); the test stands as written.
 - [x] **Carried:** `the_first_commit_reads_committed` (red; graft-ops), `a_refusal_in_j_sets_the_status` (red). —
   `graft-ops/src/journal_list/tests/words.rs::the_first_commit_reads_committed` (red seen by 24-a);
   `graft/src/update/journal/tests.rs::a_refusal_in_j_sets_the_status` (passes; **not** seen red, 24-a NOTES).
@@ -407,6 +420,10 @@ Part B (24-b):
   `$ git` tests), `the_bar_names_what_enter_does_on_each_row`, `no_enter_hint_on_a_step_with_neither`,
   `j_again_shows_a_graft_row_and_no_lost_row`, `put_back_and_was_here_tags_draw`,
   `the_name_prompt_draws_over_j` (V1 left it unchecked).
+- [ ] **`u` in J (ruling at the end):** V8 in NOTES, file:line. `u_in_j_undoes_the_next_entry_from_any_row`
+  (`tests/it/`: cursor on a `✗` row, `u` → the `← u` entry undone, the `✗` row's ref unchanged by `rev-parse`; lands
+  as `enter_on_the_next_undo_row_is_u_and_closes_the_browser` does), `u_in_j_during_an_operation_shows_the_refusal_on_js_status_row`
+  (frame: `finish or abort the <kind> first · ⇥ banner` on the status row). Not red-first: the code exists (say so).
 - [ ] **UI snapshots:** 187×50, 140×40, 100×30, and 187×24 (title, legend, status row and bar kept).
 - [ ] **Walks** (`m7_walk`), on the reordered "lost work" fixture, each landing asserted from the frame and
   `len(keys) <= noted_keys(id)`: `lost_to_shell_reset` `J ⏎ y` = 3; `deleted_branch_back` `J n ⏎ y` = 4 (after 13, as
@@ -435,6 +452,9 @@ Part B (24-b):
 - **Graph `b`** now owes a landing on its own commit: m5 walks using `b` green.
 - **The revert-to and `u`/`U` rows:** unchanged. Check: the `RevertTo` preview tests in `tests/it/preview.rs`,
   `undo_by_key.rs`, `undo_over_drift.rs`, `m3_walk.rs` `journal_and_reads` green.
+- **Global `u`/`U` in J** (ruling at the end): no code change. `02-keymap.md` §2.11 gains a row (the conductor applies
+  it); `u_never_acts_on_outside_rows` and 24-b's two `u` tests are the check. Any J hint-bar or help text that lists
+  swallowed keys: grep `swallow` in `view/journal.rs`, `journal_screen.rs`, `tests/it/hint_bar.rs`.
 - **Every reader of `JournalState::selected`/`expanded`:** grep; each moved to `RowKey`.
 - **The name prompt:** existing callers (`open_from_graph`, stash `b`, any 10 added) unchanged; their tests green. The
   create arm's new J close: stash `b`'s tests green (it closes S, not J).
@@ -483,8 +503,8 @@ Four parts, one context each, **0 → A → A2 → B**; the conductor dispatches
   and their draw, `open_name_prompt_with` and J under the prompt, the `words` arm, Part A's tests.
 - **24-a2** (~30k): V7, the put-back box (words, `preview_box` arm, over J, key order, `y` closes J), its capture.
 - **24-b** (~70k): `view/journal.rs` and `journal_screen` (`RowKind`, breakpoints, legend, status row, per-row bar,
-  command log, `cut_at_word`, aborted words), snapshots, walks, captures, and the old J captures re-shot. Needs 24-a2
-  merged and the fixture order.
+  command log, `cut_at_word`, aborted words), snapshots, walks, captures, and the old J captures re-shot, V8 and the two
+  `u` tests. Needs 24-a2 merged and the fixture order.
 If any compacts, say so; the conductor splits the rest.
 
 ## NOTES (builder 24-a, 2026-09-29, base a91ae83c) — **blocked at V4**
@@ -633,3 +653,21 @@ No compaction. Stages, Enter, Landing, Carried ticked (tests named inline).
   now also cancels stage 2/3 — `escape_closes_it_…` and `esc_on_a_pending_journal_read_does_not_rerequest` updated to
   expect `CancelJob(stage 2)`, the launch read still untouched; 03/10 landings, m3/m5/m6 walks, hint-bar and
   J snapshots — full nextest 4831/4831; captures: none re-shot (no drawing code changed; J's draw is 24-b's).
+
+## Planner ruling (2026-09-29) on 24-a's `u` question — folded into "Keys", "Decided `u`", V8, Part B, "Touches"
+**Keep `u`/`U` global in J. Amend the spec; no code change.**
+- **Why (UX heuristic 4, consistency: "same key, same meaning, every pane"; `docs/research/ux-principles.md:54`):**
+  `u` is Undo on every screen (`02-keymap.md` §2.2, ADR-0002). A screen where it silently does nothing breaks that,
+  and J is the one screen that *shows* what `u` will undo (the `← u` row). J's own legend, already decided, says
+  `● done in Graft: u can undo it · $ done outside Graft: u never touches it`; swallowing `u` in J would make the
+  legend false on the screen that draws it.
+- **What "swallowed" was protecting** — `u` never acting on a `$`/`✗` row — holds under the global route: it acts on
+  the journal's next entry only (`keys.rs:212-216` (NOTES); `u_never_acts_on_outside_rows`, real git).
+- **Where he lands:** as `⏎` on the `← u` row (J closes, 03's undo landing). V8 checks the two agree; they differ →
+  blocked, not patched from 24-b.
+- **Refusal:** `u` while an operation is live refuses as everywhere (§2.2 ¶"refused while an operation is live"); the
+  words on J's status row.
+- **Keymap doc (conductor applies; `docs/design/02-keymap.md` §2.11, a row after `n` / `N`):**
+  `| `u` / `U` | Undo / redo, global as everywhere (§2.2): the journal's next entry (the `← u` / `← U` row), whatever row the cursor is on; never a `$` or `✗` row. Lands as `Enter` on that row (M7) |`
+  And the amendment line under the table gains: `u/U in the browser ruled global 2026-09-29 (m7 24-a question).`
+- **Design note** (`m7-power-tools.md`, wherever pass 2b says `u` is swallowed in J): conductor, same wording.
