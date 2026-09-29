@@ -97,13 +97,9 @@ fn u_undoes_the_put_back() {
     let state = app.settle_write(state, "the put-back");
     assert_eq!(main_tip(repo), lost, "main has the lost commit again");
 
-    // `y` closing J is 24-a2's (`confirm_preview` for a `Recover`
-    // subject); until then J is closed here, as he would.
-    let state = if state.journal.shown {
-        app.key(&state, KeyCode::Escape)
-    } else {
-        state
-    };
+    // `y` closed J with the box (24-a2's `confirm_preview`): `u` is
+    // pressed on the graph, where he landed.
+    assert!(!state.journal.shown, "y closed J");
     let state = app.key(&state, KeyCode::Char('u'));
     let state = app.settle_write(state, "the undo of the put-back");
     drop(state);

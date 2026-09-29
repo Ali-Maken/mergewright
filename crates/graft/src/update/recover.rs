@@ -7,7 +7,7 @@
 
 use graft_core::oid::Oid;
 use graft_ops::journal_list::ListRow;
-use graft_ops::operation::{Operation, RecoverParams, RecoverTarget};
+use graft_ops::operation::{FilesEffect, Operation, RecoverParams, RecoverTarget};
 use graft_term::sanitize_line;
 use graft_ui::graph_screen::RowTag;
 
@@ -91,6 +91,123 @@ pub(super) fn tag_rows(state: &mut AppState, launched: Option<&Operation>) {
     };
     for (at, tag) in put_back_tags(params) {
         state.row_tags.set(at, tag);
+    }
+}
+
+/// The put-back box's title (J1, m7-power-tools/24-a2):
+/// `Preview: put main back to 9a8b7c6 "Add rate limiter"`,
+/// `Preview: make spike again at 4d5e6f7 "Try it"`,
+/// `Preview: put back your edit to src/a.rs`. A subject nobody can name is
+/// left out: the sha7 is already there.
+///
+/// Plain words; `preview_box` sanitises the whole line.
+pub(crate) fn preview_title(
+    params: &RecoverParams,
+    subject_of: impl Fn(Oid) -> Option<String>,
+) -> String {
+    let at = |oid: Oid| match subject_of(oid) {
+        Some(subject) => format!("{} \"{subject}\"", super::place::short(oid)),
+        None => super::place::short(oid),
+    };
+    let what = match &params.target {
+        RecoverTarget::MoveRef { name, to, .. } => format!("put {name} back to {}", at(*to)),
+        RecoverTarget::Recreate { name, at: tip } => format!("make {name} again at {}", at(*tip)),
+        RecoverTarget::Files { paths, .. } => format!("put back {}", your_edits(paths)),
+    };
+    format!("Preview: {what}")
+}
+
+/// The width the box's `now` / `after y` labels are padded to (J1).
+const LABEL: usize = 10;
+
+/// The put-back box's lines (J1): `now` and `after y` for a branch,
+/// `your files: …` when the plan says ([`files_words`]; `None` draws no
+/// line, never an invented one), and `u undoes it`.
+///
+/// Plain strings; `preview_box` sanitises each into `PreviewBox.lines`.
+pub(crate) fn preview_lines(
+    params: &RecoverParams,
+    files: Option<&FilesEffect>,
+    subject_of: impl Fn(Oid) -> Option<String>,
+) -> Vec<String> {
+    // `main → 3d4e5f6  Add metrics endpoint`, the sha7 alone when no
+    // subject is known.
+    let tip = |name: &str, oid: Oid| match subject_of(oid) {
+        Some(subject) => format!("{name} \u{2192} {}  {subject}", super::place::short(oid)),
+        None => format!("{name} \u{2192} {}", super::place::short(oid)),
+    };
+    let labelled = |label: &str, rest: String| format!("{label:<LABEL$}{rest}");
+    let mut lines = match &params.target {
+        RecoverTarget::MoveRef { name, to, expected } => vec![
+            labelled("now", tip(name, *expected)),
+            labelled("after y", tip(name, *to)),
+        ],
+        RecoverTarget::Recreate { name, at } => vec![
+            labelled("now", format!("{name} is gone")),
+            labelled("after y", tip(name, *at)),
+        ],
+        // No branch moves: the files line says it all.
+        RecoverTarget::Files { .. } => Vec::new(),
+    };
+    lines.extend(files.map(files_words));
+    lines.push("u undoes it".to_owned());
+    lines
+}
+
+/// `your files: …` from the plan's [`FilesEffect`]: `unchanged (main isn't
+/// checked out)`, or the clauses that apply joined by ` · ` —
+/// `src/a.rs comes back`, `src/b.rs +2 more go`, `1 unsaved file set
+/// aside, put back after` — and `unchanged` when none does.
+pub(crate) fn files_words(effect: &FilesEffect) -> String {
+    let clauses = match effect {
+        FilesEffect::Unchanged { not_checked_out } => {
+            return format!("your files: unchanged ({not_checked_out})");
+        }
+        FilesEffect::Changes {
+            come_back,
+            go,
+            set_aside,
+        } => {
+            let mut clauses: Vec<String> = [
+                listed(come_back, "comes back", "come back"),
+                listed(go, "goes", "go"),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            match set_aside {
+                0 => {}
+                1 => clauses.push("1 unsaved file set aside, put back after".to_owned()),
+                count => clauses.push(format!("{count} unsaved files set aside, put back after")),
+            }
+            clauses
+        }
+    };
+    if clauses.is_empty() {
+        return "your files: unchanged".to_owned();
+    }
+    format!("your files: {}", clauses.join(" \u{b7} "))
+}
+
+/// `<p> comes back` / `<p> +N more come back`; `None` for no paths.
+fn listed(paths: &[std::path::PathBuf], one: &str, many: &str) -> Option<String> {
+    let first = paths.first()?.to_string_lossy();
+    Some(match paths.len() {
+        1 => format!("{first} {one}"),
+        count => format!("{first} +{} more {many}", count - 1),
+    })
+}
+
+/// `your edit to src/a.rs`, `your edits to src/a.rs +2 more`.
+fn your_edits(paths: &[std::path::PathBuf]) -> String {
+    // `lost_edits` never makes an edit with no files; the words still hold.
+    let Some(first) = paths.first() else {
+        return "your edits".to_owned();
+    };
+    let first = first.to_string_lossy();
+    match paths.len() {
+        1 => format!("your edit to {first}"),
+        count => format!("your edits to {first} +{} more", count - 1),
     }
 }
 

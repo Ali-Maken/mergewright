@@ -2825,6 +2825,12 @@ graft-ops, against real repositories (`crates/graft-ops/tests/it/pull_set_aside.
 |---|---|
 | `P` after a rejected push, teammate's commits on origin | Lease box: line 1 (`origin/main <theirs> → <ours> · refused if …`), then `rewrites history for everyone who has <sha7>`, then `leaves origin/main:`, then one row per commit — sha7, subject, author, aligned in columns, subject cut with `…` — newest first, at most 3, then `+N more`; buttons row whole. `nothing on origin/main is lost` when nothing leaves; `couldn't read what leaves …: <why>` with the force still offered when the read fails. `P` before the read lands: `still reading what leaves origin/main — try again in a moment`. Tests: `update/remote/tests/lease/leaves.rs` (all ten). Captures `docs/shots/m7/force-box-leaves-{120x40,80x24}.txt` (`view::tests::capture_force_box_leaves`). Colour unverified. |
 
+## M7: the put-back box over J (m7-power-tools/24-a2)
+
+| Scenario | Right looks like |
+|---|---|
+| The shell's `reset --hard HEAD~1` lost "Add rate limiter"; `J`, then `⏎` on the lost row | J's rows above; the box titled `Preview: put main back to <sha7> "<subject>"`; now / after y / your files: / u undoes it; footer starts `y put it back`. J's own bar is blank under the box (the box holds the keys, as S's does). `Cancel` / `Put back`, cursor on `Cancel`. `y` closes the box and J; `esc` leaves J on the same row. J's rows themselves are 24-a's drawing (only `●` rows; this repo has none, so `nothing yet`) until 24-b re-draws J. Test `crates/graft/tests/it/put_back_box.rs::the_put_back_box_draws_over_j`; capture `docs/shots/m7/put-back-preview-187x50.txt`. Colour unverified (rule 5). |
+
 ## M7: the rewrite editor (m7-power-tools/08)
 
 Walks: `cargo nextest run --workspace -E 'test(/m7_walk::rewrite_editor/) | test(rewrite_editor)'`. Fixture: `feature-a` 5 commits since `main` (one `fixup!`, opens pre-marked), `feature-b` built on it.
