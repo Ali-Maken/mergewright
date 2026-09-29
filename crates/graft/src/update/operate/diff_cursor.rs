@@ -1,6 +1,11 @@
 //! Writes at the diff cursor: stage, unstage or discard the hunk or lines under it.
 
-use super::*;
+use super::{
+    AppState, BodyRow, Command, ConfirmThen, DetailFocus, DetailSpec, JobId, LineKindView, Loading,
+    Operation, PatchDirection, PatchError, PatchSide, PathBuf, PendingConfirm, Selection, Status,
+    Target, WorkingTreeSection, launch, operation_in_flight, request_discard, sanitize_line,
+    say_if_refused, selected_path, stage_selected,
+};
 
 /// What the diff region's line cursor names: a hunk of the file on show, and
 /// how much of it.

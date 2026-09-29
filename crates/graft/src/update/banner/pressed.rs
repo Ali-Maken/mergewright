@@ -1,6 +1,10 @@
 //! What `c`, `s` and `a` do at a stop, and the hand-over to git when `c` needs it.
 
-use super::*;
+use super::{
+    AppState, Command, ConfirmThen, InProgress, JobId, PendingConfirm, RESOLVE_KEYS, Resume,
+    ReturnTo, RewriteStop, Status, continue_refusal, edit_stop_lands_on_head, land_in_resolver,
+    live, resume, sanitize_line, stopped_again, unmerged_paths,
+};
 
 /// `c`: refuse in words while anything is unmerged, else run `--continue`
 /// — or, for a merge, open the finish summary.
@@ -54,7 +58,7 @@ pub(crate) fn continue_pressed(
         match from {
             ReturnTo::Banner => state.status = Status::sticky(words),
             ReturnTo::Resolver => {
-                crate::update::resolver::set_notice(state, (words.to_owned(), true))
+                crate::update::resolver::set_notice(state, (words.to_owned(), true));
             }
         }
         return;

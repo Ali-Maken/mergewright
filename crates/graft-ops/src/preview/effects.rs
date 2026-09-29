@@ -1,6 +1,9 @@
 //! What a preview says an operation would do: the plan and each effect it names.
 
-use super::*;
+use super::{
+    DropSuggestion, FactsError, FilesEffect, Identity, Oid, PathBuf, RefName, Refusal, RunError,
+    SetAside, Tip,
+};
 
 /// How many replayed commits a rebase forecasts one by one. Past it the
 /// forecast is [`ConflictForecast::NotChecked`]: fifty `merge-tree` spawns

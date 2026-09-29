@@ -1,6 +1,8 @@
 //! Where the preview box sits on screen, and which choice a click lands on.
 
-use super::*;
+use super::{
+    AppState, BoxRect, MIN_BOX_ROWS, PREVIEW_MIN, PreviewBox, fits, preview_box, preview_rows,
+};
 
 /// Rows the graph gives up to the box this frame, footer excluded.
 ///

@@ -1,6 +1,9 @@
 //! Opening the rewrite editor: from a row, from a rebase's preview, and the answer that fills it.
 
-use super::*;
+use super::{
+    AppState, Command, JobId, Oid, OpenedFrom, RebaseParams, RewriteEditor, RewriteOpened,
+    RewriteRequest, Status, after,
+};
 
 /// Is the editor's `r` field open (`AppState::text_field_open`)?
 pub(crate) fn field_open(state: &AppState) -> bool {

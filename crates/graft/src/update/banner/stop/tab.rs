@@ -1,6 +1,6 @@
 //! Where `Tab` goes while a banner is drawn, and the key hint that says so.
 
-use super::*;
+use super::AppState;
 
 /// One `Tab` from here lands on the banner, and nothing modal stands in the
 /// way: the graph footer then leads with `⇥ banner`

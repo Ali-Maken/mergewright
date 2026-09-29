@@ -1,6 +1,9 @@
 //! A write's answer: `operated` and the line each landing leaves.
 
-use super::*;
+use super::{
+    AppState, Command, InProgress, JobId, Landing, Operated, Operation, PathBuf, Refresh, Status,
+    operation_failed, refresh_scope, stalled_line,
+};
 
 /// `operated`'s `Incomplete` answer. A put-in's words are over whatever its
 /// after-state says: left standing, a later write's landing could pick them
@@ -281,6 +284,61 @@ pub(super) fn owed_landing(state: &mut AppState, id: JobId) -> Option<Landing> {
         .and_then(|(launched, on)| (launched == id).then_some(on))
 }
 
+/// `operated`'s `StagingNotKept` answer: it ran and was read back; only the
+/// staging did not come back (30b). Everything a `Done` does, with its own
+/// sticky line.
+fn staging_not_kept_answered(
+    state: &mut AppState,
+    launched_op: Option<&Operation>,
+    remote_op: Option<&Operation>,
+    applied: &graft_ops::apply::Applied,
+    paths: &[PathBuf],
+    lands: Option<Landing>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    let what = launched_op
+        .and_then(crate::update::switch::landed_words)
+        .unwrap_or_else(|| done_what(state, remote_op, applied));
+    let status = staging_not_kept_status(&what, paths, state.size.columns);
+    let mut commands = landed(state, applied, lands, next_id);
+    crate::update::recover::tag_rows(state, launched_op);
+    // A put-in landed all the same: its commits are tagged and its
+    // words spent (review m7-09-to-21c, Minor 1). Its `Done` line
+    // gives way to the staging failure, which must be seen.
+    crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
+    state.status = status;
+    commands
+}
+
+/// The drop a stash clash's close launched (m6-conflicts/72b), when job `id`
+/// is it: its `Done` is worded as the end of the clash.
+fn clash_drop_of(
+    state: &mut AppState,
+    id: JobId,
+) -> Option<(Option<usize>, graft_core::journal::PutBackWhy)> {
+    state
+        .clash_drop
+        .take_if(|(drop, _, _)| *drop == id)
+        .map(|(_, index, why)| (index, why))
+}
+
+/// `operated`'s `Done` answer: the line `words`, then the landing, a
+/// put-in's commits tagged and recovered rows marked.
+fn done_answered(
+    state: &mut AppState,
+    words: Status,
+    launched_op: Option<&Operation>,
+    applied: &graft_ops::apply::Applied,
+    lands: Option<Landing>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    state.status = words;
+    let mut commands = landed(state, applied, lands, next_id);
+    crate::update::amend_into::landed(state, launched_op, &mut commands, next_id);
+    crate::update::recover::tag_rows(state, launched_op);
+    commands
+}
+
 /// An operate job answered. Stale answers (a job that is not the one
 /// `AppState::operating` is waiting for) are dropped. `Operated::Incomplete`
 /// still refreshes — the write happened even though part of its after-state
@@ -306,43 +364,29 @@ pub fn operated(
     state.remote.cancelling = None;
     let launched_op = launched_op(state, id);
     let remote_op = launched_op.clone().filter(Operation::is_remote);
-    // The drop a stash clash's close launched (m6-conflicts/72b): its `Done`
-    // is worded as the end of the clash.
-    let clash_drop = state
-        .clash_drop
-        .take_if(|(drop, _, _)| *drop == id)
-        .map(|(_, index, why)| (index, why));
+    let clash_drop = clash_drop_of(state, id);
     match outcome {
         Operated::Done(applied) => {
-            state.status = done_status(
+            let words = done_status(
                 state,
                 remote_op.as_ref(),
                 launched_op.as_ref(),
                 clash_drop,
                 &applied,
             );
-            let mut commands = landed(state, &applied, lands, next_id);
-            crate::update::amend_into::landed(state, launched_op.as_ref(), &mut commands, next_id);
-            crate::update::recover::tag_rows(state, launched_op.as_ref());
-            commands
+            done_answered(state, words, launched_op.as_ref(), &applied, lands, next_id)
         }
         // It ran and was read back; only the staging did not come back
         // (30b). Everything a `Done` does, with its own sticky line.
-        Operated::StagingNotKept { applied, paths } => {
-            let what = launched_op
-                .as_ref()
-                .and_then(crate::update::switch::landed_words)
-                .unwrap_or_else(|| done_what(state, remote_op.as_ref(), &applied));
-            let status = staging_not_kept_status(&what, &paths, state.size.columns);
-            let mut commands = landed(state, &applied, lands, next_id);
-            crate::update::recover::tag_rows(state, launched_op.as_ref());
-            // A put-in landed all the same: its commits are tagged and its
-            // words spent (review m7-09-to-21c, Minor 1). Its `Done` line
-            // gives way to the staging failure, which must be seen.
-            crate::update::amend_into::landed(state, launched_op.as_ref(), &mut commands, next_id);
-            state.status = status;
-            commands
-        }
+        Operated::StagingNotKept { applied, paths } => staging_not_kept_answered(
+            state,
+            launched_op.as_ref(),
+            remote_op.as_ref(),
+            &applied,
+            &paths,
+            lands,
+            next_id,
+        ),
         Operated::Incomplete { applied, error } => {
             incomplete_answered(state, launched_op.as_ref(), &applied, &error, next_id)
         }

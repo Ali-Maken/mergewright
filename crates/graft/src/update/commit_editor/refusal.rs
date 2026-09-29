@@ -1,6 +1,6 @@
 //! Why `c` in the editor is refused while an operation is live, and the words that say so.
 
-use super::*;
+use super::{AppState, InProgress, Status};
 
 /// Who began the operation git is part-way through — which decides whether
 /// the operation banner's `c` and `a` can end it (m6-07 F12).

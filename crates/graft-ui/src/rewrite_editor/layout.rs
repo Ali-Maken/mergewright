@@ -1,6 +1,9 @@
 //! Where each part of the rewrite editor goes: rows, message, right side, columns.
 
-use super::*;
+use super::{
+    AfterView, ChangesView, LEFT_WIDTH, NARROW_BELOW, ROWS_MIN, Rect, RewriteEditorView, RightSide,
+    SHORT_HEIGHT, SHORT_MESSAGE_LINES, WIDE_MIN,
+};
 
 /// One line in the rows' region.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

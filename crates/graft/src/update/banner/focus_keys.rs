@@ -1,6 +1,9 @@
 //! The banner's focus and keys: `Tab` onto it, `c`/`s`/`a` routed from it.
 
-use super::*;
+use super::{
+    AppState, Command, JobId, KeyCode, KeyPress, ReturnTo, Status, abort_pressed, banner_view,
+    continue_pressed, edit_conflict, first_conflicted, open_mergetool, skip_pressed,
+};
 
 /// `Tab`/`Shift+Tab` **into** the banner: the door back in.
 ///
@@ -145,7 +148,7 @@ pub fn banner_key(
             match crate::update::undo::in_progress_refusal(state) {
                 Some(refusal) => state.status = refusal,
                 None => {
-                    commands.extend(crate::update::undo::undo_key(state, letter == 'U', next_id))
+                    commands.extend(crate::update::undo::undo_key(state, letter == 'U', next_id));
                 }
             }
         }

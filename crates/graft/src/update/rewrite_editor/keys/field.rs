@@ -1,6 +1,9 @@
 //! The reword field's keys, and the message it keeps.
 
-use super::*;
+use super::{
+    AppState, Command, Field, JobId, KeyCode, KeyPress, RewriteEditor, TextField, Then, TodoAction,
+    after, words,
+};
 
 /// `r`: the message field under the row, prefilled with its subject line.
 /// A melded row's message is its kept row's: `r` there says so.

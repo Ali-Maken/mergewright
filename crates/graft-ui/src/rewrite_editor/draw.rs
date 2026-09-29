@@ -1,6 +1,10 @@
 //! Drawing the rewrite editor: the widget, its glyphs and the commit rows.
 
-use super::*;
+use super::{
+    ACTION_WIDTH, Buffer, FieldWidget, Frame, InputView, LEAD, Modifier, Rect, RewriteEditorView,
+    RowLine, RowMark, SHORT_WIDTH, SUBJECT_MAX, SUBJECT_MIN, Style, Theme, Token, Widget, band,
+    draw_message, draw_right, fit, foreground, layout, row_lines,
+};
 
 /// Draw the editor into `area` (the whole frame but the hint bar).
 pub fn draw_rewrite_editor(frame: &mut Frame, area: Rect, view: &RewriteEditorView, theme: &Theme) {

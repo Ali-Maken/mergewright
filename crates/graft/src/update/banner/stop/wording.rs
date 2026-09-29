@@ -1,6 +1,6 @@
 //! The words the footer gives a stopped operation: `stop_reason`, `stop_line` and their ladders.
 
-use super::*;
+use super::{AppState, InProgressDetail, unmerged_paths};
 
 /// Why the live operation stopped, in the footer's words
 /// (m6-conflicts/12, scope item 2): `merge stopped · 1 file conflicted`,

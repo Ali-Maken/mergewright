@@ -1,6 +1,9 @@
 //! The editor's keys: subject, body, options, buttons, and the commit they lead to.
 
-use super::*;
+use super::{
+    AppState, CO_AUTHOR, Command, CommitEditor, Field, JobId, KeyCode, KeyPress, Status,
+    live_operation, refusal_tabs,
+};
 
 /// The editor's keys while it is open. `None` means "not the editor's" — and
 /// the editor claims every key but `Ctrl+C`, which still quits (DESIGN.md

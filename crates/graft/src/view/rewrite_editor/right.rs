@@ -1,6 +1,10 @@
 //! The editor's right side: the after-state from the plan, its ghost notes and group notes.
 
-use super::*;
+use super::{
+    AfterFacts, AfterMark, AfterRow, AfterView, ChangesView, ConflictForecast, HashMap, Loading,
+    Oid, PreviewPlan, RightSide, RowFacts, SanitizedText, Target, TodoAction, ViewFacts,
+    sanitize_line, sanitize_path_bytes, short,
+};
 
 /// The right-hand side: `⏎`'s file list, else the AFTER plan.
 pub(super) fn right_side(facts: &ViewFacts<'_>) -> RightSide {

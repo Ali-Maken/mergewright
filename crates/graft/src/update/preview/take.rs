@@ -1,6 +1,9 @@
 //! The take (`t`) preview: its key, its operation and its title.
 
-use super::*;
+use super::{
+    AppState, Command, JobId, KeyCode, KeyPress, Operation, PickParams, PreviewSubject, RefLabel,
+    Status, open_preview, short, short_name_of,
+};
 
 /// A one-commit cherry-pick's title in the words `o` is named by
 /// (m7-power-tools/11): `take <sha7> "<subject>" onto <branch>`, whether it

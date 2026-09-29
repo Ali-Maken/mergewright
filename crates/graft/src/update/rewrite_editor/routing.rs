@@ -1,6 +1,9 @@
 //! Which job answers are the editor's, and what each does to it: plans, file lists, messages, ends, writes.
 
-use super::*;
+use super::{
+    After, AppState, Arc, Command, FileList, JobId, Loading, Operated, Planned, PreviewFailure,
+    Right, Status, keys, words,
+};
 
 /// Is `id` the open read, the AFTER plan, the `⏎` file list or the
 /// `$EDITOR` handover of the live editor — or one a closed or superseded

@@ -1,6 +1,9 @@
 //! Resuming a stopped operation — mergetool, edit, and the line a resume leaves.
 
-use super::*;
+use super::{
+    AppState, Command, JobId, Operated, Path, PathBuf, Resume, Status, edit_stop_lands_on_head,
+    finished_lands_on_head, land_in_resolver, live, stopped_again,
+};
 
 /// Queue a `--continue`/`--skip`/`--abort`.
 ///

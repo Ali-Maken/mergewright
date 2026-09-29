@@ -1,6 +1,6 @@
 //! Amend at a rewrite's `edit` stop: the editor opened on the stopped commit (07b).
 
-use super::*;
+use super::{AppState, Command, InProgress, JobId, live_operation};
 
 /// `a` at a rewrite's `edit` stop (m7-power-tools/07b): amend the stopped
 /// commit with what is staged, **keeping its message, no editor** — `git

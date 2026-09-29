@@ -1,6 +1,10 @@
 //! The preview boxes that are not a plan's lines: closing, ready, stash and put-back.
 
-use super::*;
+use super::{
+    AppState, Operation, PreviewBox, PreviewPlan, PreviewState, PreviewSubject, RecoverParams,
+    WorktreeEffect, capped_list, conflict_line, nothing_to_do, plan_lines, sanitize_line,
+    undo_line, worktree_line,
+};
 
 /// A put-in's own words over the rewrite's box (m7-power-tools/09, note
 /// R2): the title names what goes where, the rows above the plan's say

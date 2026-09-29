@@ -1,6 +1,10 @@
 //! A plan's lines in the preview box: refs, `HEAD`, working tree, conflicts, undo.
 
-use super::*;
+use super::{
+    ConflictForecast, GhostCommit, HeadMove, Oid, Operation, PreviewBox, PreviewPlan, RefMove,
+    SanitizedText, Target, UndoNote, WorktreeEffect, line_rows, nothing_to_do, sanitize_line,
+    slice,
+};
 
 /// The wording table: ghosts, refs, `HEAD`, the working tree and the edits
 /// set aside around it, the forecast, the undo note, and the slice's own

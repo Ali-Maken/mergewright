@@ -1,6 +1,6 @@
 //! A write that did not land, or was refused: the line it leaves.
 
-use super::*;
+use super::{AppState, Command, InProgress, JobId, Operated, Operation, Refresh, Refusal, Status};
 
 /// A write that did not land: the line it leaves, and what it makes stale.
 ///

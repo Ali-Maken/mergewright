@@ -1,6 +1,6 @@
 //! The rewrite editor's view types: what the app hands the widget to draw.
 
-use super::*;
+use super::SanitizedText;
 
 /// Everything the editor draws.
 #[derive(Clone, Debug, PartialEq, Eq)]

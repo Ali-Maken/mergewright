@@ -2,7 +2,7 @@
 
 use graft_ops::rewrite::{TodoAction, TodoProblem, squash_groups};
 
-use super::*;
+use super::{After, Arc, BaseRow, FileList, Loading, MarkedBy, Oid, Planned, RewriteEditor, Right};
 use crate::update::state::Status;
 
 /// `p s f d e r`, a move, onto the base row (R1).

@@ -1,6 +1,10 @@
 //! Drawing the rewrite editor's right side and message: the after-state, the changes, the message block.
 
-use super::*;
+use super::{
+    AfterMark, AfterRow, AfterView, Buffer, ChangesView, Glyphs, MessageBlock, Modifier, Rect,
+    RewriteEditorView, RightSide, SHORT_HEIGHT, SHORT_MESSAGE_LINES, SHORT_WIDTH, SUBJECT_MAX,
+    SUBJECT_MIN, SanitizedText, Style, Theme, Token, band, fit, foreground, put,
+};
 
 /// One drawn line: its pieces, each in its own style.
 pub(super) type Spans = Vec<(String, Style)>;
