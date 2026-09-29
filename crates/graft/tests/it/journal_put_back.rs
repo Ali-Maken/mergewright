@@ -175,6 +175,17 @@ fn u_in_j_undoes_the_next_entry_from_any_row() {
     git(repo, &["reset", "-q", "--hard", "HEAD~1"]);
 
     let state = journal_with_every_stage(&app, state);
+    // m7/30o Minor 13: the cursor really is on a `✗` row when `u` is
+    // pressed. The put-back's `●` row is newer than the shell's reset, so
+    // no preselect moves it there (the review's point: before this the
+    // test pressed `u` on the `← u` row itself); `n` does.
+    let state = app.key(&state, KeyCode::Char('n'));
+    let frame = crate::m7_walk::journal::drawn(&state, 187, 50);
+    assert!(
+        crate::m7_walk::journal::selected_row(&frame).contains("\u{2717} lost"),
+        "the selected row is a \u{2717} lost row:\n{}",
+        crate::m7_walk::journal::text(&frame)
+    );
     let state = app.key(&state, KeyCode::Char('u'));
     let state = app.settle_write(state, "the undo from J");
     assert_eq!(main_tip(repo), left, "u took the put-back back");
@@ -185,6 +196,68 @@ fn u_in_j_undoes_the_next_entry_from_any_row() {
     );
     drop(state);
     app.close();
+}
+
+/// `⏎` on J's preselected lost row, and its preview's plan landed.
+fn put_back_box(app: &App, state: graft::update::AppState) -> graft::update::AppState {
+    let state = journal_with_every_stage(app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    app.pump(state, "the put-back's plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| matches!(preview.plan, graft::update::detail::Loading::Ready(_)))
+    })
+}
+
+/// m7/30o Minor 7: `Esc` while a put-back runs says what that put-back
+/// does — it runs to the end, and `u` undoes it after — not a rebase's
+/// banner words (`HISTORY_CANNOT_STOP`).
+#[test]
+fn a_put_back_runs_with_its_own_esc_words() {
+    let (scratch, _lost, _left) = lost_by_the_shell();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = put_back_box(&app, state);
+    let state = app.key(&state, KeyCode::Char('y'));
+    assert!(state.operating.is_some(), "the put-back runs");
+    let running = app.key(&state, KeyCode::Escape);
+    assert!(
+        matches!(&running.status, graft::update::Status::Busy(words)
+            if words.ends_with("runs to the end · u undoes it after")),
+        "{:?}",
+        running.status
+    );
+    let state = app.settle_write(running, "the put-back");
+    drop(state);
+    app.close();
+}
+
+/// m7/30o Minor 7: a put-back refused at launch (a write began while the
+/// box was up) leaves J up, the refusal on J's status row — J closes only
+/// once the launch is `Ok`.
+#[test]
+fn a_put_back_refused_at_launch_stays_on_j() {
+    let (scratch, _lost, left) = lost_by_the_shell();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let mut state = put_back_box(&app, state);
+    state.operating = Some(graft_core::job::JobId::new(9_999));
+    let state = app.key(&state, KeyCode::Char('y'));
+    let frame = crate::m7_walk::journal::drawn(&state, 187, 50);
+    let body = crate::m7_walk::journal::text(&frame);
+    assert!(state.journal.shown, "J still up:\n{body}");
+    let legend = frame
+        .iter()
+        .rposition(|row| row.starts_with("● done in Graft"))
+        .unwrap_or_else(|| panic!("J's legend:\n{body}"));
+    assert!(
+        frame[legend - 1].contains("wait for the write to finish"),
+        "the refusal on J's status row:\n{body}"
+    );
+    drop(state);
+    app.close();
+    assert_eq!(main_tip(repo), left, "nothing ran");
 }
 
 /// `⏎ y` on J's preselected lost row, the put-back settled and the graph

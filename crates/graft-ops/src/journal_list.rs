@@ -93,8 +93,9 @@ pub enum HeldBy {
 pub struct LostCommit {
     /// The run: its tip and how many lost ancestors lie under it.
     pub run: LostRun,
-    /// The tip's subject.
-    pub subject: String,
+    /// The tip's subject; `None` when its commit could not be read (the
+    /// screen then names it by its sha alone, m7/30o).
+    pub subject: Option<String>,
     /// What held the tip before its event.
     pub held_by: HeldBy,
 }

@@ -149,12 +149,21 @@ pub(super) fn branch_here(next: &mut AppState) {
         return;
     };
     let index = next.journal.selected();
-    if matches!(list.rows.get(index), Some(ListRow::LostEdit { .. })) {
-        next.status = Status::Sticky {
-            reason: "a lost edit has no commit".to_owned(),
-            keys: Some("\u{23ce} puts it back".to_owned()),
-        };
-        return;
+    match list.rows.get(index) {
+        Some(ListRow::LostEdit { .. }) => {
+            next.status = Status::Sticky {
+                reason: "a lost edit has no commit".to_owned(),
+                keys: Some("\u{23ce} puts it back".to_owned()),
+            };
+            return;
+        }
+        // A `●` entry can move several refs or none, so "its commit" has
+        // no single answer (m7/30o Minor 3): say where `b` does work.
+        Some(ListRow::Graft(_)) => {
+            next.status = Status::sticky("b makes a branch on a $ or \u{2717} row");
+            return;
+        }
+        Some(ListRow::Outside(_) | ListRow::Lost { .. }) | None => {}
     }
     let Some(at) = row_commit(&list, index) else {
         next.status = Status::sticky("this step names no commit");
@@ -268,7 +277,7 @@ pub(super) fn enter(
 
 /// The branch a shell switch left, as a switch target: `checkout: moving
 /// from main to spike` → `main`; a detached start is its commit.
-pub(super) fn switched_from(subject: &str) -> Option<crate::update::switch::SwitchTarget> {
+pub(crate) fn switched_from(subject: &str) -> Option<crate::update::switch::SwitchTarget> {
     let (from, _) = subject
         .strip_prefix("checkout: moving from ")?
         .split_once(" to ")?;
@@ -303,6 +312,15 @@ pub(super) fn enter_graft(
         return;
     };
     let kind = entry.kind;
+    // A step Graft doesn't undo (a fetch, a push): the time machine skips
+    // it, so "before this" is "before" the next newer `●` row, which keeps
+    // its own `⏎`. Nothing to go back to here (m7/30o Minor 4).
+    if let Some(word) = not_undone_kind(entry) {
+        next.status = Status::sticky(format!(
+            "Graft doesn't undo a {word} · nothing to go back to on this row"
+        ));
+        return;
+    }
     let redo = if graft_ops::journal::next_undo(&read.entries).is_some_and(|at| at.id == id) {
         false
     } else if graft_ops::journal::next_redo(&read.entries).is_some_and(|at| at.id == id) {
@@ -341,8 +359,42 @@ pub(super) fn enter_graft(
         // browser stays where it is; there is nothing else to say.
         return;
     };
-    // The result is a change to the graph and the working tree, so the
-    // browser gets out of the way to show it.
-    close(next, commands);
-    commands.extend(crate::update::undo::undo_key(next, redo, next_id));
+    undo_from_j(next, commands, redo, next_id);
+}
+
+/// The word J draws for a step Graft doesn't undo, or `None` for one it
+/// does. The predicate is `graft_ops::journal::undoable`, the one
+/// `plan_revert_to` skips by, so J's `⏎` and its bar cannot disagree with
+/// what the time machine would do.
+pub(crate) fn not_undone_kind(entry: &graft_core::journal::JournalEntry) -> Option<&'static str> {
+    if graft_ops::journal::undoable(entry) {
+        return None;
+    }
+    Some(match entry.kind {
+        OperationKind::Fetch => "fetch",
+        OperationKind::Push => "push",
+        // `undoable` is false for a pull only when it changed nothing.
+        OperationKind::Pull => "pull that changed nothing",
+        // `undoable` answers false for no other kind; "step" is honest if
+        // graft-ops ever adds one.
+        _ => "step",
+    })
+}
+
+/// `u`/`U` in J and `⏎` on the `← u`/`← U` row: one path, one outcome
+/// (m7/30o R3). Launched → J closes, the result is on the graph, as 03's
+/// undo landing follows. Asked → J stays under the undo-after-push box
+/// (its launching choice closes J, `undo::after_push_chosen`; `Esc` brings
+/// J back on the same row). Refused → J stays, the words on its status row.
+pub(crate) fn undo_from_j(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    redo: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    use crate::update::undo::UndoStart;
+    match crate::update::undo::start_undo(next, commands, redo, next_id) {
+        UndoStart::Launched => close(next, commands),
+        UndoStart::Asked | UndoStart::Refused => {}
+    }
 }

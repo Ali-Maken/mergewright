@@ -81,6 +81,7 @@ fn view(rows: Vec<JournalRowView>, status: JournalStatus) -> JournalView {
         title_suffix: None,
         status_row: None,
         enter_words: None,
+        branch_here: false,
         box_open: false,
     }
 }
@@ -324,6 +325,7 @@ fn the_bar_follows_the_selected_row() {
     let mut view = view(mock_rows(), JournalStatus::Ready);
     view.selected = 2;
     view.enter_words = Some("⏎ put main back to it".to_owned());
+    view.branch_here = true;
     let grid = draw(&view, 187, 14);
     assert_eq!(
         grid[13],
@@ -331,8 +333,20 @@ fn the_bar_follows_the_selected_row() {
     );
     view.selected = 0;
     view.enter_words = None;
+    view.branch_here = false;
     let grid = draw(&view, 187, 14);
     assert_eq!(grid[13], "space command log  J/esc close");
+}
+
+/// `b new branch here` is drawn from `branch_here` alone (m7/30o Minor 2):
+/// a `$` or `✗` row whose step names no commit offers no `b`.
+#[test]
+fn the_bar_offers_b_only_where_b_names_a_commit() {
+    let mut view = view(mock_rows(), JournalStatus::Ready);
+    view.selected = 2;
+    view.enter_words = Some("⏎ put main back to it".to_owned());
+    let grid = draw(&view, 187, 14);
+    assert_eq!(grid[13], "⏎ put main back to it  J/esc close");
 }
 
 /// A box docked over J names the keys; J's bar is blank under it.

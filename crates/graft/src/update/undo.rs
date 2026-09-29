@@ -26,24 +26,59 @@ mod consequence;
 
 use consequence::{applied_is_redo, done_with, landing, with_consequence, wrapped};
 
-/// `u`/`Ctrl+Z` (`redo` false) and `U` (`redo` true).
+/// What a `u`/`U` launch did (m7-power-tools/30o R3). Every undo path —
+/// the graph's key, J's key, `⏎` on J's `← u`/`← U` row — reads this one
+/// answer, so none infers it from how many commands came back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum UndoStart {
+    /// `Command::Undo`/`Redo` pushed, `operating` set.
+    Launched,
+    /// The undo-after-push box is up; nothing runs until its choice.
+    Asked,
+    /// Nothing runs; the words are on `AppState::status` (always words).
+    Refused,
+}
+
+/// `u`/`Ctrl+Z` (`redo` false) and `U` (`redo` true): every launch goes
+/// through here.
 ///
-/// Nothing while a write — including another undo — is already running:
-/// one at a time, and the status line is already saying what that one is
-/// (`update::operate::operation_in_flight`).
-pub fn undo_key(
+/// Refused in words while a write — including another undo — is already
+/// running (`InFlight::words()`, the one wording every refused launch
+/// uses, m6-conflicts/78), and while git is part-way through an operation
+/// ([`in_progress_refusal`]).
+pub(crate) fn start_undo(
     state: &mut AppState,
+    commands: &mut Vec<Command>,
     redo: bool,
     next_id: &mut impl FnMut() -> JobId,
-) -> Vec<Command> {
+) -> UndoStart {
     // `u` after a push explains itself before it runs — and only for `u`:
     // `U` puts back something the user has already taken back, so the
     // remote is where it was when they last saw it (ADR-0038 §4).
     if !redo && let Some(after) = super::remote::undo_after_push(state) {
         state.confirm = Some(super::remote::undo_after_push_box(&after));
-        return Vec::new();
+        return UndoStart::Asked;
     }
-    launch(state, redo, false, next_id)
+    match launch(state, redo, false, next_id) {
+        Some(command) => {
+            commands.push(command);
+            UndoStart::Launched
+        }
+        None => UndoStart::Refused,
+    }
+}
+
+/// [`start_undo`] for a caller that only wants the commands.
+pub fn undo_key(
+    state: &mut AppState,
+    redo: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    let mut commands = Vec::new();
+    // The outcome is on the state for every answer (`operating`, the box,
+    // or the status words), which is all such a caller reads.
+    let _started: UndoStart = start_undo(state, &mut commands, redo, next_id);
+    commands
 }
 
 /// `[ Undo locally ]` and `[ Re-push old tip ]` on the undo-after-push box.
@@ -67,9 +102,22 @@ pub(super) fn after_push_chosen(
     // user who reached the lease box and backed out of it has still read
     // what the box had to say.
     state.remote.undo_after_push_asked = Some(push);
+    // A choice that launches closes J when the box was opened from it, as
+    // `u` there lands (R3): the result is on the graph. `Cancel` never
+    // arrives here, so J stays under a cancelled box.
     match (chosen, repush) {
-        (1, _) => commands.extend(launch(state, false, false, next_id)),
-        (2, Some(params)) => super::remote::repush_chosen(state, params),
+        (1, _) => {
+            if let Some(command) = launch(state, false, false, next_id) {
+                commands.push(command);
+                close_journal(state, commands);
+            }
+        }
+        (2, Some(params)) => {
+            super::remote::repush_chosen(state, params);
+            // The lease box stands where the graph does; its push lands
+            // there too.
+            close_journal(state, commands);
+        }
         (other, params) => {
             // Impossible by construction — the box only ever offers two or
             // three choices, `chosen` is its own cursor index, and `2` never
@@ -89,6 +137,15 @@ pub(super) fn after_push_chosen(
                 keys: None,
             };
         }
+    }
+}
+
+/// J closes, when it is shown. Guarded: `journal::close` also cancels J's
+/// stage reads, and with J hidden under a preview (`enter_graft`'s time
+/// machine) those belong to the preview's way back.
+fn close_journal(state: &mut AppState, commands: &mut Vec<Command>) {
+    if state.journal.shown {
+        super::journal::close(state, commands);
     }
 }
 
@@ -238,30 +295,35 @@ pub(super) fn forced(
     redo: bool,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
-    launch(state, redo, true, next_id)
+    launch(state, redo, true, next_id).into_iter().collect()
 }
 
+/// The undo or redo job, or `None` with the refusal's words on the status
+/// line.
 fn launch(
     state: &mut AppState,
     redo: bool,
     force: bool,
     next_id: &mut impl FnMut() -> JobId,
-) -> Vec<Command> {
-    if super::operate::operation_in_flight(state) {
-        return Vec::new();
+) -> Option<Command> {
+    // A write is running: said, as every refused launch says it (R3). It
+    // used to return nothing and say nothing, leaving `u` looking dead.
+    if let Some(busy) = super::operate::in_flight(state) {
+        state.status = Status::Failed(busy.words());
+        return None;
     }
     // Checked here rather than in `undo_key` alone, so the drift box's
     // second, forcing `Enter` cannot slip past it either.
     if let Some(refusal) = in_progress_refusal(state) {
         state.status = refusal;
-        return Vec::new();
+        return None;
     }
     let id = next_id();
     let claimed = super::operate::claim_write(state, id);
     if claimed.is_err() {
-        // Unreachable: `operation_in_flight` returned above.
+        // Unreachable: `in_flight` returned above.
         super::operate::say_if_refused(state, claimed);
-        return Vec::new();
+        return None;
     }
     let words = if redo { "redo" } else { "undo" };
     // `Esc` stops it. `graft_ops::restore::execute` now checks its stop
@@ -278,11 +340,11 @@ fn launch(
         super::remote::Stoppable::Yes,
         None,
     );
-    vec![if redo {
+    Some(if redo {
         Command::Redo(id, force)
     } else {
         Command::Undo(id, force)
-    }]
+    })
 }
 
 /// An undo or redo ran to the end: the status names it, and the reads it
@@ -1102,6 +1164,92 @@ mod tests {
         assert!(undo_key(&mut state, false, &mut ids()).is_empty());
         // The running write keeps the slot: a second `u` must not steal it.
         assert_eq!(state.operating, Some(JobId::new(4)));
+    }
+
+    /// `main` committed, then pushed: the journal `u` asks about first.
+    fn after_a_push() -> AppState {
+        let mut commit = applied("commit \"to push\"", Refresh::WorkingTree).entry;
+        commit.id = EntryId::new(1, [0; 10]);
+        commit.kind = OperationKind::Commit;
+        commit.status = EntryStatus::Committed;
+        commit.head_before = HeadRef::Branch("refs/heads/main".to_owned());
+        commit
+            .refs_before
+            .insert("refs/heads/main".to_owned(), None);
+        let mut push = commit.clone();
+        push.id = EntryId::new(2, [0; 10]);
+        push.kind = OperationKind::Push;
+        push.refs_before.clear();
+        let mut pushed = AppState::default();
+        pushed.journal.entries = Loading::Ready(Arc::new(JournalRead {
+            entries: vec![commit, push],
+            unreadable: Vec::new(),
+            live: Vec::new(),
+            interrupted_edits: Vec::new(),
+        }));
+        pushed
+    }
+
+    /// m7/30o R3: every launch says what it did, so no caller counts
+    /// commands to find out.
+    #[test]
+    fn start_undo_says_what_it_did() {
+        // A write in flight: refused, in the one wording every refused
+        // launch uses (V1: it used to be silent).
+        let mut busy = AppState {
+            operating: Some(JobId::new(4)),
+            ..AppState::default()
+        };
+        let mut commands = Vec::new();
+        assert_eq!(
+            start_undo(&mut busy, &mut commands, false, &mut ids()),
+            UndoStart::Refused
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+        assert_eq!(
+            busy.status,
+            Status::Failed("wait for the write to finish".to_owned())
+        );
+
+        // An operation stopped: refused, with its words.
+        let mut stopped = AppState {
+            in_progress: Some(graft_git::state::InProgressDetail {
+                kind: graft_git::state::InProgress::Rebase,
+                step: None,
+                head_name: None,
+                onto: None,
+                theirs: Ok(None),
+            }),
+            ..AppState::default()
+        };
+        assert_eq!(
+            start_undo(&mut stopped, &mut commands, true, &mut ids()),
+            UndoStart::Refused
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+        assert!(
+            matches!(&stopped.status, Status::Sticky { reason, .. } if reason == "finish or abort the rebase first"),
+            "{:?}",
+            stopped.status
+        );
+
+        // After a push: the box, and nothing runs.
+        let mut pushed = after_a_push();
+        assert_eq!(
+            start_undo(&mut pushed, &mut commands, false, &mut ids()),
+            UndoStart::Asked
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+        assert!(pushed.confirm.is_some(), "the undo-after-push box");
+        assert_eq!(pushed.operating, None);
+
+        // Otherwise: one undo.
+        let mut free = AppState::default();
+        assert_eq!(
+            start_undo(&mut free, &mut commands, false, &mut ids()),
+            UndoStart::Launched
+        );
+        assert_eq!(commands, vec![Command::Undo(JobId::new(1), false)]);
     }
 
     #[test]

@@ -28,7 +28,7 @@ pub struct LostFound {
     /// Where the scan stopped: all of it, or the newest [`LOST_CAP`].
     pub scan: LostScan,
     /// Each run's tip and its subject; a tip whose commit could not be read
-    /// is left out, and the list says so in its row.
+    /// is left out, and its row is named by its sha alone.
     pub subjects: Vec<(Oid, String)>,
 }
 
@@ -72,13 +72,17 @@ pub(crate) fn find_lost(
         .map_err(|error| error.to_string())?;
     let mut subjects = Vec::with_capacity(unreached.lost.len());
     for run in &unreached.lost {
-        // A tip whose commit cannot be read keeps its row: the list words
-        // it `(its subject could not be read)` (`journal_list::build`).
-        if let Ok(commit) = graft_git::history::read_commit(&handle, run.tip) {
-            subjects.push((
+        match graft_git::history::read_commit(&handle, run.tip) {
+            Ok(commit) => subjects.push((
                 run.tip,
                 String::from_utf8_lossy(commit.subject()).into_owned(),
-            ));
+            )),
+            // Not a failure of the scan: the tip keeps its row with no
+            // subject (`LostCommit.subject` `None`). Where it shows: J
+            // draws the row by its sha7 alone (`view::journal`'s
+            // `lost_words`), and the put-back box's title and `✓` line name
+            // it by the sha7 (`update::recover::subject_of` falls back).
+            Err(_unread) => {}
         }
     }
     let scan = if unreached.capped {

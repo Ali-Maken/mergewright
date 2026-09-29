@@ -135,16 +135,22 @@ fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -
     claimed
 }
 
-/// The global `u`/`U`, on every screen. In J it lands as `⏎` on the
-/// `← u`/`← U` row does: J closes and the result is on the graph (ticket
-/// m7/24, ruling 2026-09-29) — but only once the undo is launched; a
-/// refusal stays on J's status row, where he pressed the key.
+/// The global `u`/`U`, on every screen. In J it is `⏎` on the `← u`/`← U`
+/// row: both are `journal::undo_from_j`, which reads the launch's one
+/// outcome (m7/30o R3) — J closes once the undo is launched; the push box
+/// and a refusal leave J where he pressed the key.
 fn undo_key_anywhere(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
-    let asked = commands.len();
-    undo_key(next, commands, redo);
-    if next.journal.shown && commands.len() > asked {
-        super::journal::close(next, commands);
+    let mut local_jobs = next.local_jobs;
+    let mut next_id = || local_jobs.next_id();
+    if next.journal.shown {
+        super::journal::undo_from_j(next, commands, redo, &mut next_id);
+    } else {
+        // The outcome is on the state (`operating`, the box or the words);
+        // off J there is nothing to close.
+        let _started: super::undo::UndoStart =
+            super::undo::start_undo(next, commands, redo, &mut next_id);
     }
+    next.local_jobs = local_jobs;
 }
 
 /// The half of [`super::core_event`] that answers a key.
@@ -280,16 +286,6 @@ fn pane_and_overlay_key(next: &mut AppState, commands: &mut Vec<Command>, key: K
         || super::map::map_key(next, commands, key)
         || (!overlay_first && (journal_key(next, commands, key) || stash_key(next, commands, key)))
         || super::strip::strip_key(next, key)
-}
-
-/// `u`/`U`, with `local_jobs` borrowed out for the closure the way every
-/// other call site here does it.
-fn undo_key(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
-    let mut local_jobs = next.local_jobs;
-    commands.extend(super::undo::undo_key(next, redo, &mut || {
-        local_jobs.next_id()
-    }));
-    next.local_jobs = local_jobs;
 }
 
 /// The commit editor's keys, with `local_jobs` borrowed out the same way.

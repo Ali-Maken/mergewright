@@ -123,6 +123,12 @@ use crate::refs::{RefBadges, RefLabel};
 pub const HISTORY_CANNOT_STOP: &str =
     "runs to the end · a conflict stops it on the banner, where a aborts";
 
+/// Why `Esc` will not stop a running put-back from J (m7/30o Minor 7):
+/// `put main back to 9a8b7c6 runs to the end · u undoes it after`. A
+/// put-back has no conflict and no banner, so [`HISTORY_CANNOT_STOP`]'s
+/// words would name a place he never lands on; `u` is what takes it back.
+pub const PUT_BACK_CANNOT_STOP: &str = "runs to the end · u undoes it after";
+
 /// What a preview is a preview of.
 ///
 /// The `Operation` is boxed and carried whole rather than rebuilt at

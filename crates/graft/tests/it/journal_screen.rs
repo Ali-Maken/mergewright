@@ -92,7 +92,8 @@ fn no_status_row_when_nothing_is_wrong() {
 
 /// Each row of the fixture's J, top to bottom, and how its bar starts.
 const BARS: [(&str, &str); 14] = [
-    ("fetch origin", "⏎ revert to before this  space command log"),
+    // A fetch is not undone (m7/30o Minor 4): no `⏎` offered on it.
+    ("fetch origin", "space command log"),
     (
         "reset main 1 commit back",
         "⏎ put main back to before this  b new branch here",
@@ -167,6 +168,35 @@ fn the_bar_names_what_enter_does_on_each_row() {
             "on {row:?} the bar starts {bar:?}:\n{body}"
         );
     }
+    drop(state);
+    app.close();
+}
+
+/// m7/30o Minor 4: a fetch is a step Graft doesn't undo, so its row offers
+/// no `⏎` — "before this" there is "before" the next newer `●` row, which
+/// keeps its own.
+#[test]
+fn no_enter_hint_on_a_fetch_row() {
+    let fixture = lost_work();
+    let (app, state) = opened(fixture.work());
+    let mut state = in_j(&app, &state);
+    for _ in 0..3 {
+        state = app.key(&state, KeyCode::Char('k'));
+    }
+    let frame = drawn(&state, 187, 50);
+    let body = text(&frame);
+    assert!(
+        selected_row(&frame).contains("fetch origin"),
+        "the top row is the fetch:\n{body}"
+    );
+    assert!(
+        !from_bottom(&frame, BAR).contains('⏎'),
+        "no ⏎ hint:\n{body}"
+    );
+    assert!(
+        from_bottom(&frame, BAR).starts_with("space command log"),
+        "{body}"
+    );
     drop(state);
     app.close();
 }

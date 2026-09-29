@@ -338,7 +338,7 @@ The journal and git's reflog as one list: `●` Graft, `$` the shell, `✗` lost
 - `RECORDS_CAP` (2000), `LOST_CAP` (500), `PAIR_WINDOW_SECS` (2: a `HEAD` record and a branch record with the same old/new this close are one step), `BACK_LIMIT` (100: "N commits back" counted this far) (consts).
 - `OutsideRecord` (struct) — `record: ReflogRecord`, `back: Option<usize>` (reset: new's distance back from old; fast-forward: old's back from new).
 - `OutsideStep` (struct) — `record` (the branch's record when paired; the finish when a rebase folded), `words`, `folded`.
-- `HeldBy` (enum) — `Branch { name, gone }`, `Head`. `LostCommit` (struct) — `run: LostRun`, `subject`, `held_by`. `LostEdit` (struct) — `entry`, `backup_tree`, `paths`.
+- `HeldBy` (enum) — `Branch { name, gone }`, `Head`. `LostCommit` (struct) — `run: LostRun`, `subject: Option<String>` (`None`: the tip could not be read; drawn by its sha alone, m7/30o), `held_by`. `LostEdit` (struct) — `entry`, `backup_tree`, `paths`.
 - `ListRow` (enum) — `Graft(EntryId)`, `Outside(OutsideStep)`, `Lost { event, commit }`, `LostEdit { event, edit }` (`event` indexes `rows`). `LostScan` (enum) — `Running`, `Done`, `Capped { checked }`, `Failed(String)`. `JournalList` (struct) — `rows` (newest first, lost rows right after their event), `scan`.
 - `read_outside(repo, cap, stop) -> Result<Vec<OutsideRecord>, FactsError>` (fn) — stage 2's read, through gix.
 - `find_lost(repo, entries, outside, cap, stop) -> Result<Unreached, FactsError>` (fn) — stage 3: candidates are records' olds and entries' `HEAD`/`refs/heads/*` befores, newest first, once each, through `history_reads::unreached`.

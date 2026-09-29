@@ -1,6 +1,6 @@
 # 30o: J review fixes — journey 15 in the app, walks that assert landings, one `u`, `/` find, seven minors (review m7-24-and-30n C1, M1, M3, M4, Minor 1–7, 13)
 
-Status: 30o-a done (2026-09-30); 30o-b, 30o-c ready
+Status: 30o-a done (2026-09-30); 30o-b done (2026-09-30); 30o-c ready
 Build with (three parts, one context each, **a → b → c**, sequential: they share walks, captures, TSV, sheet, TESTING rows):
 - **30o-a: Opus.** A graft-ops refusal is replaced under the M3 promise. The premise (the put-back's before-snapshot keeps
   what it replaces) is proved by a real-git `u` test, and the part has a stop condition if that test fails. Nothing is
@@ -307,8 +307,9 @@ pub(crate) fn switched_from(subject: &str) -> Option</* as today */>;
 ```
 
 ### Acceptance
-- [ ] **V1, V2** in NOTES, file:line.
-- [ ] **M4, one path:**
+- [x] **V1, V2** in NOTES, file:line. (NOTES 30o-b; V1 pinned by `u_while_a_write_runs_says_wait`, V2 by
+  `enter_on_the_undo_row_after_a_push_opens_the_box_over_j`.)
+- [x] **M4, one path:** all below green, names inline; the four (red) seen red on HEAD's code (NOTES).
   - `start_undo_says_what_it_did` (red: the enum doesn't exist): in progress → `Refused` with words; after a push →
     `Asked`, no command; otherwise → `Launched`, one `Undo`.
   - `enter_on_the_undo_row_during_an_operation_keeps_j` (red: today J closes first, and the words land on the graph).
@@ -321,33 +322,35 @@ pub(crate) fn switched_from(subject: &str) -> Option</* as today */>;
     `enter_on_the_next_redo_row_is_still_capital_u`, `u_in_j_undoes_the_next_entry_from_any_row`,
     `u_in_j_during_an_operation_shows_the_refusal_on_js_status_row`, `under_a_modal_the_landing_is_dropped`,
     `u_never_acts_on_outside_rows`.
-  - Grep: `commands.len()` no longer appears in `undo_key_anywhere`.
-- [ ] **Minor 1:** grep shows one `moving from` parse in `crates/graft/src`. `the_bar_names_what_enter_does_on_each_row`
-  green. Not red-first: it removes a duplicate.
-- [ ] **Minor 2:** `no_b_hint_on_a_step_that_names_no_commit` (red), from the frame.
-- [ ] **Minor 3:** `b_on_a_graft_row_says_where_b_works` (red: today `this step names no commit`). `b_on_a_step_with_no_commit_says_so` still green.
-- [ ] **Minor 4:**
+  - Grep: `commands.len()` no longer appears in `undo_key_anywhere`. (grep over `update/keys.rs`: 0.)
+- [x] **Minor 1:** grep shows one `moving from` parse in `crates/graft/src` (`update/journal/keys.rs` `switched_from`;
+  the view maps its answer). `the_bar_names_what_enter_does_on_each_row` green. Not red-first: it removes a duplicate.
+- [x] **Minor 2:** `no_b_hint_on_a_step_that_names_no_commit` (red, seen), from the frame; graft-ui
+  `the_bar_offers_b_only_where_b_names_a_commit`.
+- [x] **Minor 3:** `b_on_a_graft_row_says_where_b_works` (red, seen: `this step names no commit`). `b_on_a_step_with_no_commit_says_so` green — re-pointed to a `$` step naming no commit (NOTES).
+- [x] **Minor 4:** the three below; the two (red) seen red.
   - `no_enter_hint_on_a_fetch_row` (red).
   - `enter_on_a_fetch_row_says_graft_doesnt_undo_it` (red: today a `RevertTo` preview opens). No preview; the words
     exact.
   - `enter_on_a_graft_row_is_the_revert_as_before` green.
-- [ ] **Minor 5:**
+- [x] **Minor 5:** both (red) seen red; `the_box_names_the_sha_when_the_subject_is_unknown` green.
   - graft-ops `an_unreadable_subject_is_none` (red).
   - graft `a_lost_commit_with_no_subject_draws_its_sha_alone` (red: today `"(its subject could not be read)"`
     quoted). The box title and the `✓` line say the sha7 alone
     (`the_box_names_the_sha_when_the_subject_is_unknown` green).
-- [ ] **Minor 6:**
+- [x] **Minor 6:** `capture_m3_journal` (red, seen, on the `J to inspect` assert). Grep: 0 in each of the three.
   - `capture_m3_journal` builds J through `journal_enter` and asserts the frame has no `J to inspect` (red on
     today's fixture).
   - The three m3 J captures and the m3 sheet are re-shot. Their header's "Judge by eye" line no longer mentions the
     notice. Grep: 0 `J to inspect` in `docs/shots/m3-journal-*`.
-- [ ] **Minor 7:**
+- [x] **Minor 7:** both (red) seen red (Esc showed `HISTORY_CANNOT_STOP`; J closed on the refusal).
   - `a_put_back_runs_with_its_own_esc_words` (red): while it runs, `runs to the end · u undoes it after`.
   - `a_put_back_refused_at_launch_stays_on_j` (red): a write marked in flight before `y` → J shown, the refusal
     (`InFlight::words()`) on J's status row.
-- [ ] **Minor 13:** `u_in_j_undoes_the_next_entry_from_any_row` asserts that the selected row holds `✗ lost` before
-  `u`.
-- [ ] MAP.md (graft, graft-ui, graft-ops). Gates workspace-wide.
+- [x] **Minor 13:** `u_in_j_undoes_the_next_entry_from_any_row` asserts that the selected row holds `✗ lost` before
+  `u` (red first: the cursor was on the `● ← u` row; `n` added, NOTES).
+- [x] MAP.md (graft, graft-ui, graft-ops). Gates workspace-wide: fmt, clippy `-D warnings`, nextest 4901/4901,
+  doc tests green.
 
 ### Touches
 - **`undo_key` callers** (grep `undo_key(`): the graph's `u`/`U`, the banner, J's `⏎`, `undo_key_anywhere`,
@@ -503,4 +506,59 @@ row's absence is not asserted there. Unverified in the walk.
 
 **For the conductor:** R1's "Where he lands" row and R6's keymap clause are yours (not applied). The note's fence row is
 unchanged; walk 15 counts 4 (`J n ⏎ y`).
+
+### 30o-b (2026-09-30, builder Opus; no scout: the ticket names every site, re-grepped by function. **Compacted once** mid-ticket, after Minors 1–5's code; nothing remains)
+
+**V1 — silent.** At HEAD `crates/graft/src/update/undo.rs:250-252`, `launch` did
+`if operation_in_flight(state) { return Vec::new(); }` with no status. Now `launch` first asks `operate::in_flight`
+and sets `Status::Failed(InFlight::words())` (`wait for the write to finish` when nothing is on record), on the
+graph and in J (`u_while_a_write_runs_says_wait`, red on HEAD).
+
+**V2 — not hidden.** The confirm box is drawn over every screen, J included: `draw_modal_boxes`, called at
+`view/frame.rs:220`, defined at `view/frame/boxes.rs:43`. `overlays.rs` untouched. Pinned from the frame by
+`enter_on_the_undo_row_after_a_push_opens_the_box_over_j`.
+
+**Red evidence (M4).** undo.rs, keys.rs, journal/keys.rs, journal.rs checked out at HEAD with the new tests in place:
+`enter_on_the_undo_row_during_an_operation_keeps_j`, `…after_a_push_opens_the_box_over_j`,
+`u_in_j_after_a_push_then_undo_locally_closes_j`, `u_while_a_write_runs_says_wait` red; then restored.
+`esc_on_the_push_box_from_j_returns_to_j_on_the_same_row` was **green on HEAD** (not red). The in-progress test uses a
+Rebase: a Merge with no live entries counts as a shell merge (§2.6a) and sends the undo instead of refusing.
+`start_undo_says_what_it_did` red by compile (no enum). Code was written before the tests for undo.rs; to see red it
+was set aside and HEAD's restored, as above.
+
+**Predicate.** `graft_ops::journal::undoable` (already `pub`, `crates/graft-ops/src/journal.rs:238`) — the one
+`plan_revert_to` skips by. No graft-ops change for it. False for Fetch, Push, a no-op Pull: `not_undone_kind` words
+them `fetch` / `push` / `pull that changed nothing`.
+
+**Push box choices from J.** Choice 1 (undo locally) launching closes J. Choice 2 (re-push old tip) opens the lease box
+and closes J too (the ticket: a choice that launches closes J); Esc on that lease box returns to the graph, not J.
+`journal::close` is called only when `journal.shown` (`close_journal` in undo.rs), so a hidden J's stage jobs are never
+touched from the graph's box: checked by reading `close` (`journal/keys.rs:204`: sets fields, cancels only `Pending`
+ids) and by `after_push_chosen`'s graph tests green.
+
+**Knock-ons.**
+- `b_on_a_step_with_no_commit_says_so` (journal/tests.rs) pressed `b` on a `●` row; Minor 3 changes those words. Its
+  first half now builds a `$` step with no old/new value (same shape as `minors.rs`); the lost-edit half unchanged.
+- `tests/it/journal_screen.rs` `BARS[0]`: the fetch row's bar is now `space command log` (Minor 4).
+- `crates/graft-ops/tests/it/journal_list_oracle.rs` (not on the file list; read as "their tests"): its line
+  formatter reads `subject.as_deref().expect("the oracle read it")`.
+- `update/journal/tests.rs` fixture `subject: Some(…)`.
+- `jobs/journal_list.rs` `find_lost`: the `Err` arm is explicit, commented with where it shows (sha7 alone in J, box
+  title and ✓ line fall back via `subject_of`). `recover.rs` `subject_in` returns the `Option` as is.
+- `view/journal.rs` `switched_from`: `SwitchTarget::Track`/`NewBranch` → `None` (the parse never makes them).
+- `update::journal::journal_enter` re-export is `cfg(test)` (no non-test caller outside the module).
+
+**Minor 13.** Adding the `✗ lost` assert first went red: the cursor was on the `● ← u` row, as R5 suspected. `n`
+moves it onto the `✗` row before `u`; the test still proves `u` undoes the newest entry from a non-`●` row.
+
+**Minor 6 capture diff** (`m3-journal-80x24` / `160x48`; `expanded` the same two body lines, no header change):
+- header: 3 lines added (opened as `J` opens it; first frame; no notice). No "Judge by eye" line named the notice.
+- title: `newest first` → `newest first · finding lost commits…` — J's real first frame, stage 2 still out.
+- bottom: `an operation was interrupted: commit "WIP on refresh" · J to inspect` → blank.
+- m3 sheet rebuilt (`scripts/contact-sheet.sh m3 docs/shots`, relative paths — absolute ones put the home dir in the
+  sheet and `published_repo` caught it). Sizes: 3.6k / 9.4k / 4.6k, sheet 131k.
+- No m7 capture changed: full nextest green with every `check_shot`, so no TSV/TESTING re-run. m4/m5 J captures: none
+  failed their check in the same run.
+
+**Colour:** unverified (captures are character grids). **Not verified by eye:** the re-shot m3 frames.
 
