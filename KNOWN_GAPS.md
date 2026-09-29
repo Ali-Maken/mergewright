@@ -1031,3 +1031,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/30m-left | Still over ~400 lines after 30m: graft `update/keys.rs` 438, graft-ui `hints/lists.rs` 485, `update/preview.rs` 423, `operate/outcome.rs` 420 (30m NOTES) | **broken** (6.2) | M8 |
 | M7/30o-a-row | After a lost-edit put-back, the `✗` lost-edit row's disappearance from J is not checked (30o-a NOTES) | **unverified** | M7 |
 | M7/30o-a-15red | Walk 15 not re-run red; red evidence is the removed refusal test (30o-a NOTES) | **unverified** | M7 |
+| M7/30o-b-lease | After `u` from J on a pushed commit, `Esc` on the lease box returns to the graph, not J; the re-push choice closes J (30o-b NOTES). Consistent with ⏎? usability walk | **unverified** (question) | M7 |
