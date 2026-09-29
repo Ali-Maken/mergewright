@@ -21,20 +21,55 @@ pub(super) fn draw_journal(
     area: Rect,
 ) -> Option<Rect> {
     let screen = journal_view(state, state.harness.clock.now_seconds());
-    let widget = JournalScreen {
-        view: &screen,
-        theme: &session.theme,
+    let widget = WithoutBar {
+        inner: JournalScreen {
+            view: &screen,
+            theme: &session.theme,
+        },
+        // The put-back box over J holds every key and draws its own
+        // footer: J's bar would name keys it does not answer, as S's does
+        // under the stash box (`StashView::box_open`, review 86 M2).
+        blank: state.preview.is_some(),
     };
     if state.detail.shown {
         render_overlay_with_detail(session, state, frame, widget, area, "Journal");
     } else {
         frame.render_widget(widget, area);
     }
+    // `⏎` on a lost row opens the put-back box over J, which stays under
+    // it so `esc` is back on the same row (m7-power-tools/24-a2) — docked
+    // as `draw_stash` docks the stash box over S. No pixels here for the
+    // box to cut either.
+    let _preview: Option<Rect> = draw_preview(state, frame, area, &session.theme);
     // The menu's rectangle is the pixel layer's business
     // (`pixels_above_overlays`), and this overlay draws no pixels — so it is
     // taken and dropped here rather than threaded nowhere.
     let _menu: Option<Rect> = draw_context_menu(state, frame, area, &session.theme);
     None
+}
+
+/// An overlay screen drawn with its bottom row — its bar — left blank when
+/// `blank`: the preview box docked over it names the keys instead.
+///
+/// Here rather than a field on the journal's view because the journal's
+/// view and widget are another part's files (m7-power-tools/24-b); the
+/// stash screen does the same through `StashView::box_open`.
+struct WithoutBar<W> {
+    inner: W,
+    blank: bool,
+}
+
+impl<W: Widget> Widget for WithoutBar<W> {
+    fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
+        self.inner.render(area, buf);
+        if !self.blank || area.height == 0 {
+            return;
+        }
+        let bar = area.bottom() - 1;
+        for x in area.left()..area.right() {
+            buf[(x, bar)].set_symbol(" ");
+        }
+    }
 }
 
 /// The stash overlay in the graph's area, and the context menu over it.

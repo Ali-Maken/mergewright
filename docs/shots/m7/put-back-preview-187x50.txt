@@ -1,0 +1,50 @@
+UNDO JOURNAL · <scratch____________________________________________________________>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+nothing yet — every write lands here and u takes it back
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: put main back to fc48213 "Add rate limiter" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ now       main → a82960b  Correct the note                                                                                                                                              │
+│ after y   main → fc48213  Add rate limiter                                                                                                                                              │
+│ your files: limits.txt comes back                                                                                                                                                       │
+│ u undoes it                                                                                                                                                                             │
+│ git reset --hard fc48213fadfd01fc8050e4aaa8596dfb2697b383                                                                                                                               │
+│ ▸[ Cancel ]   [ Put back ]                                                                                                                                                              │
+╰ y put it back  ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

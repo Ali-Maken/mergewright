@@ -35,7 +35,7 @@ use graft_core::job::JobId;
 use graft_core::journal::EntryId;
 use graft_core::oid::Oid;
 use graft_graph::row::Row;
-use graft_ops::operation::{Operation, PickParams, RebaseParams, Source, Tip};
+use graft_ops::operation::{Operation, PickParams, RebaseParams, RecoverParams, Source, Tip};
 use graft_ops::preview::{
     ConflictForecast, DropSuggestion, GhostCommit, HeadMove, PreviewPlan, RefMove, Target,
     UndoNote, WorktreeEffect,
@@ -540,6 +540,13 @@ fn footer_keys(mut view: PreviewBox, preview: &PreviewState, keep: bool) -> Prev
         view.again = Some((sanitize_line("y"), sanitize_line(stash_verb(pop))));
         return view;
     }
+    // A put-back from J names its confirm the same way: `y put it back`
+    // (m7-power-tools/24-a2), never `R keep`.
+    if let Some(Operation::Recover(_)) = preview.subject.operation() {
+        view.keep = false;
+        view.again = Some((sanitize_line("y"), sanitize_line("put it back")));
+        return view;
+    }
     if let PreviewSubject::Operation { opened_by, .. } = &preview.subject {
         view.confirm_key = true;
         view.again = match *opened_by {
@@ -801,6 +808,14 @@ pub fn confirm_preview(
             // preview (m6-conflicts/86): one git write, which `Esc` may
             // stop, so `launch` — not the history ops' `launch_unstoppable`,
             // whose `Esc` words name a rebase's banner.
+            //
+            // A put-back confirmed over J closes J too: it lands on the
+            // graph, on what came back (m7-power-tools/24-a2). J was left
+            // shown under the box (`return_to_journal` false), so nothing
+            // else would close it.
+            if matches!(*op, Operation::Recover(_)) {
+                super::journal::close(state, commands);
+            }
             let launched = if stash_put_back_op(&op).is_some() {
                 super::operate::launch(state, commands, *op, next_id)
             } else {
@@ -902,6 +917,8 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
                 )
             } else if let Some((index, pop)) = stash_put_back(&preview.subject) {
                 stash_box(&planned.plan, index, pop)
+            } else if let Some(Operation::Recover(params)) = preview.subject.operation() {
+                put_back_box(state, &planned.plan, params)
             } else {
                 ready_box(
                     &planned.plan,
@@ -916,6 +933,13 @@ pub fn preview_box(state: &AppState) -> Option<PreviewBox> {
     let mut view = view;
     if let Some(title) = preview.subject.operation().and_then(take_title_of) {
         view.title = sanitize_line(&format!("Preview: {title}"));
+    }
+    // A put-back from J says what comes back, planning, ready or refused
+    // (m7-power-tools/24-a2, J1), not `describe`'s journal words.
+    if let Some(Operation::Recover(params)) = preview.subject.operation() {
+        view.title = sanitize_line(&super::recover::preview_title(params, |oid| {
+            super::recover::subject_in(state, oid)
+        }));
     }
     let keep = keeps_drops_here(state).is_some();
     let view = put_in_words(footer_keys(view, preview, keep), state, preview);
@@ -1145,6 +1169,28 @@ fn stash_box(plan: &PreviewPlan, index: usize, pop: bool) -> PreviewBox {
         lines.push(undo_line(&plan.undo));
     }
     view.lines = lines.iter().map(|line| sanitize_line(line)).collect();
+    view.commands = plan
+        .commands
+        .iter()
+        .map(|line| sanitize_line(line))
+        .collect();
+    view
+}
+
+/// The box for a put-back from J (m7-power-tools/24-a2, J1): `now` /
+/// `after y` / `your files:` / `u undoes it` (`recover::preview_lines`),
+/// the plan's own git lines, and `Cancel` / `Put back` — the buttons every
+/// other preview has, cursor on `Cancel` (ADR-0038 §1). The title is set
+/// in [`preview_box`] for every state of the box.
+fn put_back_box(state: &AppState, plan: &PreviewPlan, params: &RecoverParams) -> PreviewBox {
+    let subject_of = |oid| super::recover::subject_in(state, oid);
+    let title = sanitize_line(&super::recover::preview_title(params, subject_of));
+    let mut view = PreviewBox::new(title)
+        .with_choices(vec![sanitize_line("Cancel"), sanitize_line("Put back")]);
+    view.lines = super::recover::preview_lines(params, plan.files.as_ref(), subject_of)
+        .iter()
+        .map(|line| sanitize_line(line))
+        .collect();
     view.commands = plan
         .commands
         .iter()

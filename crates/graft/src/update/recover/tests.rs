@@ -3,10 +3,10 @@
 use std::path::PathBuf;
 
 use graft_core::oid::Oid;
-use graft_ops::operation::{RecoverParams, RecoverTarget};
+use graft_ops::operation::{FilesEffect, RecoverParams, RecoverTarget};
 use graft_ui::graph_screen::RowTag;
 
-use super::{done_status, put_back_tags};
+use super::{done_status, files_words, preview_lines, preview_title, put_back_tags};
 use crate::update::state::Status;
 
 fn oid(byte: u8) -> Oid {
@@ -106,4 +106,158 @@ fn a_recreated_branch_tags_its_commit_and_files_tag_nothing() {
         paths: vec![PathBuf::from("src/a.rs")],
     });
     assert!(put_back_tags(&files).is_empty());
+}
+
+// ── the put-back box (24-a2) ────────────────────────────────────────────
+
+/// J1's names: `main` back from oid 3 to oid 4.
+fn subjects(oid: Oid) -> Option<String> {
+    match oid.as_bytes().first() {
+        Some(3) => Some("Add metrics endpoint".to_owned()),
+        Some(4) => Some("Add rate limiter".to_owned()),
+        Some(7) => Some("Try it".to_owned()),
+        _ => None,
+    }
+}
+
+fn changes(come_back: &[&str], go: &[&str], set_aside: usize) -> FilesEffect {
+    FilesEffect::Changes {
+        come_back: come_back.iter().map(PathBuf::from).collect(),
+        go: go.iter().map(PathBuf::from).collect(),
+        set_aside,
+    }
+}
+
+fn edit_to(paths: &[&str]) -> RecoverParams {
+    params(RecoverTarget::Files {
+        entry: graft_core::journal::EntryId::new(1, [0; 10]),
+        backup_tree: oid(8),
+        paths: paths.iter().map(PathBuf::from).collect(),
+    })
+}
+
+#[test]
+fn the_put_back_box_says_now_and_after() {
+    assert_eq!(
+        preview_title(&move_main(), subjects),
+        "Preview: put main back to 0404040 \"Add rate limiter\""
+    );
+    let files = changes(&["src/api/limit.rs"], &[], 1);
+    assert_eq!(
+        preview_lines(&move_main(), Some(&files), subjects),
+        vec![
+            "now       main \u{2192} 0303030  Add metrics endpoint",
+            "after y   main \u{2192} 0404040  Add rate limiter",
+            "your files: src/api/limit.rs comes back \u{b7} 1 unsaved file set aside, put back after",
+            "u undoes it",
+        ]
+    );
+}
+
+#[test]
+fn the_box_says_unchanged_when_not_checked_out() {
+    let files = FilesEffect::Unchanged {
+        not_checked_out: "main isn't checked out".to_owned(),
+    };
+    let lines = preview_lines(&move_main(), Some(&files), subjects);
+    assert_eq!(
+        lines.get(2).map(String::as_str),
+        Some("your files: unchanged (main isn't checked out)")
+    );
+}
+
+#[test]
+fn a_make_again_box_says_the_branch_is_gone() {
+    let recreate = params(RecoverTarget::Recreate {
+        name: "spike".to_owned(),
+        at: oid(7),
+    });
+    assert_eq!(
+        preview_title(&recreate, subjects),
+        "Preview: make spike again at 0707070 \"Try it\""
+    );
+    let files = FilesEffect::Unchanged {
+        not_checked_out: "spike isn't checked out".to_owned(),
+    };
+    assert_eq!(
+        preview_lines(&recreate, Some(&files), subjects),
+        vec![
+            "now       spike is gone",
+            "after y   spike \u{2192} 0707070  Try it",
+            "your files: unchanged (spike isn't checked out)",
+            "u undoes it",
+        ]
+    );
+}
+
+#[test]
+fn a_file_put_back_box_says_only_your_files() {
+    assert_eq!(
+        preview_title(&edit_to(&["src/a.rs"]), subjects),
+        "Preview: put back your edit to src/a.rs"
+    );
+    assert_eq!(
+        preview_title(&edit_to(&["src/a.rs", "b", "c"]), subjects),
+        "Preview: put back your edits to src/a.rs +2 more"
+    );
+    let files = changes(&["src/a.rs"], &[], 0);
+    assert_eq!(
+        preview_lines(&edit_to(&["src/a.rs"]), Some(&files), subjects),
+        vec!["your files: src/a.rs comes back", "u undoes it"]
+    );
+}
+
+#[test]
+fn the_box_names_the_sha_when_the_subject_is_unknown() {
+    assert_eq!(
+        preview_title(&move_main(), |_| None),
+        "Preview: put main back to 0404040"
+    );
+    assert_eq!(
+        preview_lines(&move_main(), None, |_| None),
+        vec![
+            "now       main \u{2192} 0303030",
+            "after y   main \u{2192} 0404040",
+            "u undoes it",
+        ]
+    );
+}
+
+#[test]
+fn files_words_joins_the_clauses_that_apply() {
+    let cases: [(FilesEffect, &str); 8] = [
+        (changes(&["a"], &[], 0), "your files: a comes back"),
+        (
+            changes(&["a", "b", "c"], &[], 0),
+            "your files: a +2 more come back",
+        ),
+        (changes(&[], &["a"], 0), "your files: a goes"),
+        (changes(&[], &["a", "b"], 0), "your files: a +1 more go"),
+        (
+            changes(&[], &[], 1),
+            "your files: 1 unsaved file set aside, put back after",
+        ),
+        (
+            changes(&[], &[], 3),
+            "your files: 3 unsaved files set aside, put back after",
+        ),
+        (
+            changes(&["a"], &["b"], 2),
+            "your files: a comes back \u{b7} b goes \u{b7} 2 unsaved files set aside, put back after",
+        ),
+        (changes(&[], &[], 0), "your files: unchanged"),
+    ];
+    for (effect, words) in cases {
+        assert_eq!(files_words(&effect), words, "{effect:?}");
+    }
+}
+
+#[test]
+fn no_files_line_when_the_plan_has_none() {
+    let lines = preview_lines(&move_main(), None, subjects);
+    assert!(
+        lines.iter().all(|line| !line.starts_with("your files")),
+        "{lines:?}"
+    );
+    assert_eq!(lines.last().map(String::as_str), Some("u undoes it"));
 }

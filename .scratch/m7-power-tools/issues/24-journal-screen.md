@@ -396,22 +396,32 @@ Part A (24-a):
   `graft-ops/src/journal_list/tests/words.rs::the_first_commit_reads_committed` (red seen by 24-a);
   `graft/src/update/journal/tests.rs::a_refusal_in_j_sets_the_status` (passes; **not** seen red, 24-a NOTES).
 
-Part A2 (24-a2):
-- [ ] **V7** in NOTES, file:line.
-- [ ] **Words:** `the_put_back_box_says_now_and_after` (red; J1's MoveRef lines),
+Part A2 (24-a2): **done** (builder 24-a2, 2026-09-29; NOTES 24-a2 at the end)
+- [x] **V7** in NOTES, file:line. — NOTES 24-a2.
+- [x] **Words:** `the_put_back_box_says_now_and_after` (red; J1's MoveRef lines),
   `the_box_says_unchanged_when_not_checked_out`, `a_make_again_box_says_the_branch_is_gone`,
   `a_file_put_back_box_says_only_your_files`, `the_box_names_the_sha_when_the_subject_is_unknown`,
   `files_words_joins_the_clauses_that_apply` (one case per clause, the `+N more` plural, none → `unchanged`),
-  `no_files_line_when_the_plan_has_none`.
-- [ ] **Box:** `the_box_footer_is_y_put_it_back` (`again`, `confirm_key` false, choices `Cancel`/`Put back`, cursor 0),
+  `no_files_line_when_the_plan_has_none`. — all seven in `crates/graft/src/update/recover/tests.rs`, pass; seen red
+  against empty stubs (fail-fast stopped after the first two failures; the rest not individually seen red).
+- [x] **Box:** `the_box_footer_is_y_put_it_back` (`again`, `confirm_key` false, choices `Cancel`/`Put back`, cursor 0),
   `keys_go_to_the_put_back_box_over_j` (red: `j` moves nothing in J, `y` confirms), `y_on_the_put_back_box_closes_j`
   (red), `a_refused_plan_closes_the_box_onto_js_status_row`, `the_put_back_box_draws_over_j` (render: J's title row
-  above, the box at the bottom, J's rows between).
-- [ ] Green, named: the stash box's tests (`draw_stash`'s), every `preview_box` test in graft, 10's
-  `return_to_journal` tests, rebase-preview-keeps-drops' `R` tests.
-- [ ] **Capture** `docs/shots/m7/put-back-preview-187x50.txt` (≤ 200 KB) from `the_put_back_box_draws_over_j`, Right
+  above, the box at the bottom, J's rows between). — all five in `crates/graft/tests/it/put_back_box.rs` (real pool,
+  real git), pass. Red seen: `y_on_the_put_back_box_closes_j`, `the_put_back_box_draws_over_j`.
+  **`keys_go_to_the_put_back_box_over_j` was green on 24-a's code** (not red): `preview_key` already runs in
+  `boxes_key` (`update/keys.rs:69`) before `journal_key` (:264) — no routing site changed.
+  `a_refused_plan_…` hands the refusal to `preview_produced` directly (NOTES).
+- [x] Green, named: the stash box's tests (`update/stash/tests.rs`, e.g. `a_refused_stash_box_offers_only_esc_back`,
+  `an_index_only_stash_names_its_staged_paths_in_the_box`; `tests/it/m6_stash_put_back.rs`), every `preview_box` test
+  in graft (`update/preview/tests.rs`, `tests/it/preview.rs`, `view/tests.rs` preview-box tests), 10's
+  `return_to_journal` tests (`update/journal/tests.rs`, `update/tests.rs`), rebase-preview-keeps-drops' `R` tests
+  (`update/preview/tests.rs`, `tests/it/m7_walk/rebase_line.rs`). — full workspace `cargo nextest run`, 4843/4843.
+- [x] **Capture** `docs/shots/m7/put-back-preview-187x50.txt` (≤ 200 KB) from `the_put_back_box_draws_over_j`, Right
   line: `J's rows above; the box titled "Preview: put main back to <sha7> "<subject>""; now / after y / your files: /
-  u undoes it; footer starts "y put it back"`.
+  u undoes it; footer starts "y put it back"`. — 2.3 KB, checked by `the_put_back_box_draws_over_j`; Right line in
+  TESTING.md "M7: the put-back box over J"; caption row appended to `m7-contact-sheet-captions.tsv`, sheet rebuilt
+  (31 captures). Colour unverified.
 
 Part B (24-b):
 - [ ] **Drawing:** `an_aborted_entry_reads_aborted_by_you` (red; M6/68, replaces the `failed: aborted` test in
@@ -671,3 +681,37 @@ No compaction. Stages, Enter, Landing, Carried ticked (tests named inline).
   `| `u` / `U` | Undo / redo, global as everywhere (§2.2): the journal's next entry (the `← u` / `← U` row), whatever row the cursor is on; never a `$` or `✗` row. Lands as `Enter` on that row (M7) |`
   And the amendment line under the table gains: `u/U in the browser ruled global 2026-09-29 (m7 24-a question).`
 - **Design note** (`m7-power-tools.md`, wherever pass 2b says `u` is swallowed in J): conductor, same wording.
+
+## NOTES 24-a2 (builder, 2026-09-29, base 3038f05c) — **Part A2 done**
+No compaction. No scout: 24's scout plus the ticket's named sites; each read directly (V7 below).
+
+- **V7.** `draw_stash` docks the box by calling `draw_preview(state, frame, area, theme)` after the list
+  (`view/frame/overlays.rs:65` at 3038f05c), into the whole overlay area: `preview_box_area` puts it at the bottom,
+  above the frame's last row (`graft-ui/src/preview_box.rs:216-232`). S's bar: blanked by the list itself —
+  `StashView::box_open = state.preview.is_some()` (`view/stash.rs:50`), and `StashScreen::footer` returns `""` when
+  it is set (`graft-ui/src/stash_screen.rs:177-179`). **J copies it** in `draw_journal` (same file): `draw_preview`
+  after the journal widget. J's bar is blanked by a small `WithoutBar` wrapper in `overlays.rs` (the widget's
+  bottom row set to spaces while a preview is up), because J's view/widget (`view/journal.rs`, graft-ui
+  `journal_screen.rs`) are 24-b's files. **24-b:** move it into the view (`JournalView::box_open`, as S) when it
+  rewrites J's bar, and drop `WithoutBar`.
+- **Built:** `update/recover.rs` `preview_title`, `preview_lines`, `files_words`; `update/preview.rs`
+  `put_back_box` (the `Recover` arm), the J1 title set in every box state (planning / ready / refused, as
+  `take_title_of`), `footer_keys`' `Recover` branch (`again = y put it back`, `confirm_key` false, `keep` false),
+  `confirm_preview` closes J (`journal::close`, which also cancels J's pending stage jobs) before launching a
+  `Recover`.
+- **Differs from the ticket's line list (say if wrong):** the box also shows the plan's own git lines
+  (`view.commands`, e.g. `git reset --hard <sha>`), as the stash box and every other box do (KNOWN_GAPS 229: the
+  lines that run are shown). Title for several files reads `put back your edits to <p> +N more` (plural, as
+  `done_status` says).
+- **`a_refused_plan_closes_the_box_onto_js_status_row`:** the refusal (`MovedOnSince`) is handed to
+  `preview_produced` directly — making the real plan refuse needs `main` to move between the `recover_for` answer
+  and the plan job, and the pool has no seam there. It checks: box closed, J shown, J's frame identical to before
+  `⏎` (same row), `Status::Sticky`. J's status row itself is 24-b's; the refusal is on `AppState::status`.
+- **Capture:** J's rows in it are 24-a's drawing — `nothing yet` (this repo has no `●` rows; `$`/`✗` rows are
+  24-b's to draw). The box is the point of the capture; 24-b re-shoots it. Fixed commit/reflog dates (`@1578000000`)
+  and a fixed clock keep the sha (`fc48213`) and the frame stable.
+- **Also edited:** `tests/it/journal_put_back.rs::u_undoes_the_put_back` — its "Esc if J still shown" fallback
+  (waiting on 24-a2) replaced by `assert!(!state.journal.shown)`.
+- **Verified:** the it/ tests drive the real app (real `recover_for`, real plan, real `git reset`); `main` read back
+  with `rev-parse`. **Not verified:** by eye; colour; mouse clicks on `Put back` over J (the click path is the
+  shared `preview_click`, untested for this box).
