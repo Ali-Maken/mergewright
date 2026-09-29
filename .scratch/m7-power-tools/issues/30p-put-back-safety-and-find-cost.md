@@ -1,0 +1,351 @@
+# 30p: the put-back's `u` for every path kind, a staged path's words, J find's cost, four minors (review m7-30m-30o M1, M2, Minor 2, 3, 6, 7, Q1, Q3)
+
+Status: ready
+Build with (four parts; **a, b, c concurrent**: disjoint file sets, three builders in graft at most (ADR-0051); **d only if the
+conductor's release run of b reads OVER**):
+- **30p-a: Opus.** It holds the M3 promise over every path kind the put-back now writes over. It is real-git tests with a
+  stop condition, plus one graft-ops field and one landing. Nothing structural; the tests judge it, so not Fable.
+- **30p-b: Opus.** A new `frames` scenario and its fixture sizing. The harness (`KeyFeed`, `Gate`, the shared `Wake`
+  channel) is subtle, and the scenario must not break `scripts/m7-perf-key.sh`'s parse.
+- **30p-c: Sonnet.** Four local fixes, each pinned by a named test or grep.
+- **30p-d (conditional): Opus.** J's find computes its hits once per find and once per list rebuild. It is dispatched
+  only on an OVER verdict in `docs/perf/30p-journal-find.txt`.
+Blocked by: nothing; 30o merged (01636c0f).
+Scout: none for a, c (the review names every site; re-grep by function, the review's lines are 01636c0f's). b: the
+builder reads `tests/it/frames/*.rs` and `tests/it/frame_trace.rs` itself (graft MAP "Frame trace").
+Needs: no signature from another ticket.
+
+Source: `docs/reviews/m7-30m-30o.md` M1 (:72), M2 (:113), Minor 2, 3, 6, 7 (:161-189), Q1 (:193), Q3 (:202); ticket 30o R1
+and NOTES 30o-a; graft-ops MAP `snapshot::worktree_tree`, `journal_list::lost_edits`; graft MAP "Frame trace",
+`update::journal::find`; ADR-0021.
+
+## Rulings (planner, 2026-09-30; not open)
+
+**R1 (M1): `u` after a put-back is proved byte-exact for every path kind the put-back writes over or deletes.**
+- The mechanism is unchanged. The entry takes a before-snapshot (`add -A` on an index copy; MAP
+  `snapshot::worktree_tree`), and `u` is `RestoreWorktree` over `ChangedBetween(after, before)`. The review's
+  "by reading" is not an observed run (rule 1), so eight real-git tests observe it (Acceptance, 30p-a).
+- **Any test red → stop that path kind.** Do not refuse the kind. Do not change the snapshot. Add no set-aside, copy,
+  retry or `#[ignore]`. Leave the red test **uncommitted**; its body and failing lines go in NOTES. Report
+  `blocked: the before-snapshot does not hold <kind>`. The planner then decides between refusing that kind in `check`
+  (as the ignored path is refused, `InTheWay`) and fixing the snapshot. R2 depends on test 1: if test 1 is red, R2 stops
+  too. R3 and 30p-b/c/d go on.
+- Planner's expectation, **unverified, not to act on:** test 6 (an LF file under `core.autocrlf=true`) may fail. git's
+  own clean-then-smudge writes CRLF there. Whether that is lost work is the planner's call after the run.
+
+**R2 (Q3): a staged path stays staged, and the box says so; the landing is on the row that shows the lost edit.**
+- **Decision:** the put-back keeps git `restore`'s default and writes the working tree only (`Touches { index: false }`,
+  unchanged). His staged copy stays in the index.
+  - The box adds one clause after `replaced`: `src/a.rs stays staged as you had it`. With several paths:
+    `src/a.rs +N more stay staged as you had them`. The paths are those in `replaced` whose index differs from `HEAD`.
+  - After `y`, the changes pane lands on that path's **`UNSTAGED`** row. That row's diff (the working tree against the
+    index) is the lost edit. The `STAGED` row's diff is his staged copy.
+- **Why:**
+  - H5, show the result before confirming: `what's in src/a.rs now is replaced` alone reads as if his staged work goes
+    too. It does not, so the box says so.
+  - H3, user control: his staging is a separate, deliberate change, and the put-back does not undo it.
+  - §3.1, land where the result is: the `UNSTAGED` row shows the edit he asked for, and his next key (stage it) works on
+    that row.
+  - §3.6, different things look different: the two versions sit in two sections, as `assemble_working_tree` already
+    draws a file that is both staged and unstaged.
+- **Rejected:**
+  - "Write the index too" (`--staged --worktree`). The entry would then touch the index, which widens its inverse. It
+    would also discard his staging decision (H3). git's `restore` defaults to the worktree for this reason.
+  - "Refuse a staged path". He would have to unstage first: +2 steps on journey 15 (fence `J n ⏎ y` = 4), for a backup
+    the snapshot already takes (§3.5).
+- **For the conductor** (the note's "Where he lands" row from 30o R1): append `; a staged path stays staged, and the
+  pane lands on its UNSTAGED row`.
+
+**R3 (Q1): the content a put-back replaces is never a J `✗` row. This is intended.**
+- **Decision:** `lost_edits` keeps scanning `Undo`/`Redo` entries only.
+- **Why:**
+  - `✗` means work an undo overwrote **without asking**: his drift under a forced undo. A put-back's replaced copy was
+    named in the box before `y`, and he chose it. That is the same class as a discard, whose copy is not a `✗` row
+    either (H4, consistency).
+  - §3.6: if chosen and unchosen losses shared `✗`, the glyph would stop telling them apart.
+  - H8: every put-back would add a `✗` row for what it replaced, and putting that back would add another. J would fill
+    with his own choices.
+  - The copy stays reachable: `u` while the put-back is next, and after that the put-back's own `●` row.
+  - No field note asks for the recursive case. If he hits it, it goes to `docs/field-notes.md` and the next design pass.
+- **Pinned** by a graft-ops test (30p-a). The test also closes 30o-a's unverified "the lost-edit row is gone after the
+  put-back" (NOTES 30o-a).
+
+**R4 (M2): measure first; fix only on an OVER verdict.**
+- 30p-b writes a `frames` scenario: J over at least 2 000 rows with a broad find kept. It also writes a script. The
+  release run is the **conductor's**, from `scripts/m7-30p-perf.sh` into `docs/perf/30p-journal-find.txt`. It never
+  runs in a builder's context (CLAUDE.md, Gates).
+- `Gate` (p99 ≤ 16 ms, ADR-0021's 16.7 ms frame) is the verdict.
+  - `ok`: M2 closes with the perf file as evidence, and 30p-d is not dispatched.
+  - `OVER`: 30p-d is dispatched, with this scenario as its red test.
+
+**R5 (Minor 7): the m3 J captures show a settled J.**
+- The fixture answers stages 2 and 3 **empty** through J's real answer functions (`outside_landed`, `lost_landed`), not
+  by setting fields. The commands it returns are asserted.
+- The title then reads exactly what the capture's own "Judge by eye" line says: `JOURNAL · what happened in this repo,
+  newest first`.
+- Why: a capture the user judges must show the steady state. A transient tail that the header only half explains is
+  noise (H8). The m3 captures are about the journal's own marks, not the stages.
+
+## Part 30p-a: `u` after every kind of put-back (R1), a staged path (R2), no row for the replaced copy (R3)
+
+### Files (exact; outside this list → stop, `blocked: needs <file>`)
+- **graft-ops:**
+  - `tests/it/recover.rs` (the premise tests' file; reuse its `GraftOps`).
+  - The file that builds `FilesEffect::Changes` for a `Recover` preview (`preview/recover.rs`, `changed_now`), and the
+    file defining `FilesEffect` (grep `enum FilesEffect`).
+  - `tests/it/lost_work.rs` or `tests/it/recover.rs` for R3's test (whichever holds `lost_edits` tests; grep).
+  - `MAP.md`: `FilesEffect`, `journal_list::lost_edits` (R3's line).
+- **graft:**
+  - `update/recover.rs` (`files_words`) and its tests.
+  - The function that lands a `Recover` `Files` put-back on the changes pane (grep the `your edit to` done words or
+    `Recover` in `update/operate*`/`update/recover.rs`). Only its path-row choice.
+  - `tests/it/journal_put_back.rs` (R2's walk and captures).
+  - `MAP.md` (`update::recover`, and the landing function's entry).
+- **graft-fixtures: none.** Build each case inside the test, on `lost_work` as built.
+- **Docs:**
+  - New `docs/shots/m7/put-back-staged-preview-187x50.txt` and `docs/shots/m7/put-back-staged-landed-187x50.txt`.
+  - `docs/shots/m7/m7-contact-sheet-captions.tsv`: two rows after `put-back-edit-landed-187x50.txt`.
+  - `docs/shots/m7/m7-contact-sheet.txt`, rebuilt with `scripts/contact-sheet.sh --captions-order m7 docs/shots/m7`
+    (relative paths; 30o-b NOTES).
+  - `TESTING.md` "M7: the journal, J": two rows after "`y` on the edit's box (journey 15 lands)".
+
+### Signatures
+```rust
+// graft-ops — FilesEffect::Changes gains one field; the others are unchanged.
+FilesEffect::Changes { /* come_back, go, set_aside, replaced as today */ still_staged: Vec<PathBuf> }
+//   Recover Files: the paths in `replaced` whose index entry differs from HEAD (staged), from the same facts
+//   `changed_now` reads. It is a subset of `replaced`. Every other builder of Changes: `still_staged: Vec::new()`.
+// graft::update::recover — signature unchanged; one clause (R2), order: come back · go · replaced · still staged · set aside.
+pub(crate) fn files_words(effect: &FilesEffect) -> String;
+```
+
+### Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
+- [ ] **R1, the eight premise tests** (graft-ops `tests/it/recover.rs`, real git). Each one runs a put-back, then `u`,
+  through the same path as `u_after_a_file_put_back_brings_back_what_it_replaced`, and asserts with **byte-exact**
+  reads (`std::fs::read`, `symlink_metadata`, `read_link`, `git ls-files -s`, `git show :<path>`). Not red-first: each
+  tests an existing mechanism. A red one is R1's stop, not a build step.
+  1. `u_after_a_put_back_over_a_staged_file_brings_back_both`: index `S` ≠ `HEAD`, worktree `W` ≠ `S`. After the
+     put-back, the worktree is `LOST_EDIT` and the index is still `S`. After `u`, the worktree is `W` and the index `S`.
+  2. `u_brings_back_a_file_a_put_back_deleted`: the `go` direction. The lost edit's backup lacks the path (his drift was
+     a deletion, which the forced undo re-created). He then writes `W` there. The preview's `go` holds the path. After
+     the put-back the path is absent; after `u` it is `W`.
+  3. `u_brings_back_the_exec_bit_a_put_back_replaced`: his file is `W` with mode `0o755`, and the backup's is `0o644`.
+     After `u`: `W`, with the exec bit set.
+  4. `u_brings_back_a_symlink_a_put_back_replaced`: his path is a symlink to `b.rs`. After `u` it is a symlink, and
+     `read_link` gives `b.rs`.
+  5. `u_brings_back_a_crlf_file_under_autocrlf`: `core.autocrlf=true`, and his file is `W` with CRLF endings. After `u`:
+     the same bytes.
+  6. `u_brings_back_an_lf_file_under_autocrlf`: `core.autocrlf=true`, and his file is `W` with LF endings only. After
+     `u`: the same bytes.
+  7. `u_brings_back_a_file_under_a_clean_smudge_filter`: in `.git/info/attributes`, `src/a.rs filter=rot`, with
+     `filter.rot.clean` and `filter.rot.smudge` both `tr 'A-Za-z' 'N-ZA-Mn-za-m'`. After `u`: `W` byte-exact.
+  8. `u_after_a_put_back_that_recreates_a_deleted_file_removes_it`: a tracked path deleted on disk, which the put-back
+     re-creates. After `u` it is absent again, and the index is unchanged throughout.
+  - NOTES: one line per test, `green` or `red: <first failing line>`.
+- [ ] **R2, the field:** `still_staged_names_the_staged_paths` (red, graft-ops): for test 1's state,
+  `replaced == [src/a.rs]` and `still_staged == [src/a.rs]`. For the unstaged `lost_work` state, `still_staged` is
+  empty.
+- [ ] **R2, the words** (graft `update/recover.rs` tests):
+  - `files_words_says_a_staged_path_stays_staged` (red). One path:
+    `… · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`. Three paths:
+    `src/a.rs +2 more stay staged as you had them`.
+  - Green: `files_words_names_what_is_replaced`, `files_words_joins_the_clauses_that_apply`.
+- [ ] **R2, the walk** `a_staged_path_put_back_lands_on_its_unstaged_row` (graft `tests/it/journal_put_back.rs`, real
+  git). Setup: `lost_work` as built, then test 1's state. `J n ⏎ y`, with `Route::within_count` ≤ 4. Red or green on
+  today's code for the landing; say which in NOTES. Asserted **from the frame**:
+  - After `⏎`: the box holds `src/a.rs stays staged as you had it`.
+  - After `y`:
+    - J is closed (no `JOURNAL ·` row).
+    - The pane holds `STAGED (1)` and `UNSTAGED (1)`.
+    - The diff on screen holds the lost edit's line (`2`), and not a line that exists only in `S`'s diff against
+      `HEAD`. Name both lines in NOTES.
+  - From state as well: `selected_entry()`'s section is `Unstaged`.
+  - After `u` (uncounted): `src/a.rs` is `W` and `git show :src/a.rs` is `S`.
+- [ ] **R2, the captures** (written by the walk, `check_shot`, each ≤ 200 KB):
+  - `put-back-staged-preview-187x50.txt`. **Right:** the box titled `Preview: put back your edit to src/a.rs`, with the
+    line `your files: src/a.rs comes back · what's in src/a.rs now is replaced · src/a.rs stays staged as you had it`,
+    then `u undoes it`. The footer starts `y put it back`.
+  - `put-back-staged-landed-187x50.txt`. **Right:** the changes pane shows `STAGED (1)` and `UNSTAGED (1)`, each with
+    `M a.rs`. The diff shown is the lost edit's (`2`). The bottom row is `your edit to src/a.rs is back ✓ · u undoes`.
+    The cursor row is colour only (30o-a NOTES).
+  - The TSV rows and TESTING rows say exactly those Right lines, plus the test name and "Colour unverified (rule 5)".
+    The sheet is rebuilt.
+- [ ] **R3** `a_put_back_leaves_no_lost_edit_row_and_u_brings_it_back` (graft-ops, real git). After the put-back over
+  the changed file, `lost_edits` is empty: the lost edit's row is gone, and no row names the replaced copy. After `u`,
+  `lost_edits` holds the one lost edit again. Not red-first: it pins R3. By mutation, a `lost_edits` that also scans
+  `Recover` entries fails it; say so.
+- [ ] **Unchanged:** `put-back-edit-preview-187x50.txt` and `put-back-preview-187x50.txt` are byte-identical
+  (`the_three_lost_work_journeys`, `the_put_back_box_draws_over_j` green; walk 15's path is unstaged).
+- [ ] MAP.md (graft-ops, graft). Gates workspace-wide.
+
+### Touches (check each; say how on the **Touches:** line)
+- **`FilesEffect::Changes`:** every constructor and pattern. Per review Minor 5 these are `preview/recover.rs`
+  `changed_now` and the `Vec::new()` site, and graft `update/recover.rs`. Grep `FilesEffect::Changes` in both crates.
+- **The landing function:** its other callers. A put-back of a commit lands on the graph, so walk 14 and
+  `the_three_lost_work_journeys` must stay green. So must an unstaged path's landing (walk 15, unchanged capture).
+- **Journal/undo:** no new operation. `Touches { index: false, worktree: true }` is unchanged (grep it in
+  `operation/recover.rs`). `u` is the generic inverse.
+- **`lost_edits`:** unchanged code (R3). The only change is its MAP line.
+- **Keymap:** none. **Design note:** R2's clause is the conductor's.
+
+## Part 30p-b: J's find, measured (R4, M2)
+
+### Files (exact)
+- **graft-fixtures:** `synthetic` (the `with_reflog` module). Add `with_reflog_of(scale, records, lost)`; `with_reflog`
+  becomes `with_reflog_of(scale, RECORDS, LOST)`, with its output unchanged. Plus `MAP.md`.
+- **graft:**
+  - New `tests/it/frames/journal_find.rs`, and the one line registering it (grep where `frames`' children are
+    declared).
+  - `tests/it/frame_trace.rs` only if `Gate` needs a label it lacks (say why in NOTES).
+  - `MAP.md` ("Frame trace": the new scenario).
+- **scripts:** new `scripts/m7-30p-perf.sh`.
+- **Docs: none.** The builder does not write `docs/perf/`; the conductor's run does.
+
+### Signatures
+```rust
+// graft-fixtures::synthetic (heavy-tests)
+/// `records` scripted reflog records (on HEAD and three branches, as with_reflog's), `lost` of whose olds nothing
+/// holds. with_reflog(scale) == with_reflog_of(scale, RECORDS, LOST).
+pub fn with_reflog_of(scale: &Scale, records: usize, lost: usize) -> Result<Reflogged, /* with_reflog's error */>;
+// graft tests/it/frames/journal_find.rs (heavy-tests, as the other frames scenarios)
+#[test] fn j_with_a_broad_find_holds_the_frame_budget();
+```
+
+### The scenario
+- **Fixture:** `with_reflog_of(<small scale>, 2_000, 500)` (`RECORDS_CAP`, `LOST_CAP`). J's cost does not depend on
+  the graph's size, so pick the smallest `Scale` whose cold build stays under ~30 s, and name it.
+- **Terminal:** 187×50, Unicode tier (his daily view).
+- **Before measuring**, wait until `finding_lost()` is false, using the harness's `pump_until_from`. Then check the
+  premises. **A premise failure fails the test**; it is never skipped:
+  - rows ≥ 2 000, of which `✗` rows ≥ 400;
+  - the query (chosen by the builder from the fixture's scripted subjects, and named) has ≥ 1 500 hits;
+  - after `/<query>⏎`, the frame's title ends `· find "<query>" 1 of <n>`, with n ≥ 1 500.
+- **Keys** (`KeyFeed`, paced as the existing scenarios pace; all of them measured): `J`, then the wait above, then `/`,
+  the query, `⏎`, `n`×40, `N`×40, `j`×40.
+- **Verdict:** `Gate`, as the other scenarios use it. Its `frames:` line carries `tier=`, `refs=<rows>` and
+  `pane=JournalFind` (or the harness's existing equivalents), so `scripts/m7-perf-key.sh`'s regex
+  (`tier=\S+ refs=\S+ pane=\S+`, `p50_us`/`p99_us`/`max_us`) parses it. `FrameTrace` lines carry every field that
+  script's Python reads (`kind`, `latency_us`, `pane`, `key`, …).
+- **The script** `scripts/m7-30p-perf.sh`, modelled on `m7-perf-key.sh`:
+  - A release build with `--features heavy-tests`, then 3 runs of `frames::journal_find` only, with
+    `--test-threads=1`.
+  - It writes `docs/perf/30p-journal-find.txt` (or `$1`): a header (date, HEAD, machine, git), then per run a
+    `SUMMARY run<k> rows=<n> hits=<h> p50_us=… p99_us=… max_us=… exit=<s>`, then
+    `SUMMARY journal-find gate(p99<=16ms)=ok|OVER|FAIL(<run> failed)`.
+  - It exits non-zero unless every run passed and the gate is `ok`. `$HOME` is replaced with `~`.
+
+### Acceptance
+- [ ] `with_reflog` unchanged: its existing callers' tests stay green under `--features heavy-tests` compile (grep
+  `with_reflog(`), and `with_reflog_of_counts_what_it_is_given` (heavy tier; the builder does **not** run it, the
+  conductor's review does) asserts the record and lost counts.
+- [ ] The scenario and the script exist as specified. `cargo clippy --all-targets --features heavy-tests -- -D warnings`
+  is green (this compiles the scenario).
+- [ ] **Smoke, not a measurement:** one **debug** run of `frames::journal_find` only. Its output goes to a file in the
+  worktree's scratch; read only the `test result` line and any panic line.
+  - A panic from `Gate` in debug is not a finding (ADR-0021: budgets fail only under `--release`). Report no numbers.
+  - A premise panic is a finding: fix the fixture or the query.
+  - Say in NOTES which one it was.
+- [ ] `scripts/m7-perf-key-selftest.sh` is green, and it is unchanged. In NOTES, quote the new scenario's `frames:`
+  line format against `m7-perf-key.sh`'s regex.
+- [ ] MAP.md (graft-fixtures, graft). Gates workspace-wide (fast tier).
+
+### Touches
+- **`scripts/m7-perf-key.sh`** runs every `frames::` test, so it will run this one from now on. Its parse must hold
+  (the check above), and its runtime grows by one fixture build. Say by roughly how much, from the smoke's wall time.
+- **`with_reflog`'s callers** (m7/19, `lost_cost` example, `m7-perf-lost.sh`): their output is unchanged, because the
+  counts are the same constants.
+- **Nothing in `src/`.** The scenario reads state through the harness only.
+
+## Part 30p-c: four minors (review Minor 2, 3, 6, 7)
+
+### Files (exact)
+- **graft:**
+  - `tests/it/m7_walk/journal.rs` (walk 15's asserts only).
+  - `tests/it/journal_screen.rs` (one rename).
+  - `src/view/tests.rs` (`journal_state`, `capture_m3_journal`).
+  - `MAP.md` if it names the renamed test (grep).
+- **graft-ui:** `src/graph_screen/hints/lists.rs` (the comment above `HintContext::Journal`'s entry only).
+- **Docs:** `docs/shots/m3-journal-{80x24,160x48,expanded}.txt` and `docs/shots/m3-contact-sheet.txt`, rebuilt with
+  `scripts/contact-sheet.sh m3 docs/shots` (relative paths).
+
+### Acceptance
+- [ ] **Minor 2.** In `journey_15`, beside the state asserts, add asserts from the frame after `y`:
+  - no row holds `JOURNAL ·`;
+  - the frame holds the pane's header `UNCOMMITTED · 1 unstaged` and `UNSTAGED (1)` (as in
+    `put-back-edit-landed-187x50.txt`).
+  - Not red-first. Check by mutation: make `confirm` skip J's close, see the new assert fail, then restore. Say so.
+- [ ] **Minor 3.** `esc_while_typing_puts_the_cursor_back` is renamed `esc_while_typing_closes_the_prompt_only`, with
+  the body unchanged. Grep: 0 of the old name in `crates/` and `TESTING.md`. Ticket NOTES are history; leave them.
+- [ ] **Minor 6.** The comment reads, in substance: this entry is the hint catalogue's `Journal` slot; J draws its own
+  bar (`journal_screen`), which also answers `b`, `/`, `n`, `N`, `u`, `U`, `space`.
+  `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` is green.
+- [ ] **Minor 7 (R5).**
+  - `capture_m3_journal` answers stage 2 with an empty `Ready` through `outside_landed`, asserts the `FindLost` command
+    it returns, and answers that with an empty `LostFound` through `lost_landed`.
+  - (red on today's fixture) the frame's title row holds no `finding lost commits`.
+  - The three m3 J captures are re-shot. Their header drops "the shell's steps are still being read (the title ends
+    finding lost commits…)" and says the stages were answered empty, so the title is settled.
+  - Grep: 0 `finding lost commits` in `docs/shots/m3-*`. The m3 sheet is rebuilt, ≤ 200 KB. Diff the title lines in
+    NOTES.
+- [ ] Gates workspace-wide.
+
+### Touches
+- **Other J captures:** m3-08 and m4-07 are pty walks over a real repo, not this fixture, so they are unchanged. Check
+  with a full nextest run and `git status` over `docs/shots`.
+- **`journal_state`'s other users** (grep): every one stays green.
+
+## Part 30p-d (conditional, only on OVER): J's hits computed once per find and once per rebuild
+
+### Files (exact)
+- **graft:** `update/journal/find.rs` + tests; `JournalState`'s file (the `find` field, `rebuild`); `view/journal.rs`
+  (the `count` call); `MAP.md` (`update::journal::find`).
+
+### Signatures
+```rust
+// graft::update::journal::find
+pub(crate) struct JournalFind {
+    /* typing, kept as today */
+    /// Row indices into `journal.list` that hold `kept`, newest first. Rebuilt by `refresh_hits` only.
+    pub(crate) hits: Vec<usize>,
+}
+/// Rows whose naming words hold `query`, as list indices. The `●` descriptions are looked up through one
+/// HashMap<&EntryId, &str> built per call, never a scan per row.
+pub(crate) fn hits(journal: &JournalState, query: &str) -> Vec<usize>;
+/// Recompute `find.hits` from `kept`. Called by `find_key` on ⏎ and by `rebuild` when a find is kept; nowhere else.
+pub(crate) fn refresh_hits(journal: &mut JournalState);
+// count (at, of) reads `hits`: `of = hits.len()`, `at` by `partition_point` on the selected index. No list scan per frame.
+```
+
+### Acceptance
+- [ ] **Red:** the conductor's OVER line in `docs/perf/30p-journal-find.txt`, cited.
+- [ ] Green, named: `hits_find_a_lost_subject_a_branch_and_a_path`, `hits_skip_verdict_words`,
+  `a_blank_find_has_no_hits`, `a_find_survives_rows_arriving` (the `RowKey` cursor still holds across stages),
+  `enter_keeps_the_find_and_n_steps_the_hits`, `u_typed_into_the_find_is_text`.
+- [ ] `count_reads_the_cached_hits` (red): a list rebuilt without `refresh_hits` still counts the old hits. This proves
+  the view does no recompute.
+- [ ] Grep: `index_of` is not called from `find.rs`'s `count` or `kept_hits`.
+- [ ] The conductor re-runs `scripts/m7-30p-perf.sh`: `gate … =ok`. It is the conductor's run, not the builder's.
+
+### Touches
+- **The view:** `view/journal.rs` reads `count` only. `journal-find-187x50.txt` is byte-identical.
+- **Stages 2 and 3:** `rebuild` refreshes the hits. `a_find_survives_rows_arriving` is green.
+
+## Gates
+`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run` and `cargo test --doc`, all
+workspace-wide. Part b adds `cargo clippy --all-targets --features heavy-tests -- -D warnings`.
+
+## Size
+- **30p-a** ~55k. If it compacts: R1 first, then R3, then R2.
+- **30p-b** ~50k.
+- **30p-c** ~30k.
+- **30p-d** ~35k.
+
+If any part compacts, say so; the conductor splits the rest.
+
+## Rules
+Worktree only. `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `KNOWN_GAPS.md`. No perf or release run in
+a builder's context. The design note row (R2) and any KNOWN_GAPS row are the conductor's:
+- R1 all green: no gap row; the review's filter/CRLF row is not needed.
+- R1 any red: a **broken** row naming the kind.
+
+## NOTES (builder)

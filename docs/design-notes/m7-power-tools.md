@@ -1279,7 +1279,7 @@ edit-in-undo-backup           4     # +1 · today the shell · J n ⏎ y
 | `L` on an uncommitted line | Where he was, with the words on the status line |
 | A trace stopped with `Esc` (title reads `tracing… · esc stops`; rows arrive in one batch, not streamed) | Where he pressed `L`/`F`, same line: `Esc` stops git and goes straight back, no rows to keep (21 ruling (a)) |
 | Put-back refused (the ref moved on) | `J`, with the words on its status row |
-| Put-back of a lost edit over the file as it is now | The box says what's in the file now is replaced; `y` → the changes pane on the file, `✓ your edit to <path> is back · u undoes`; `u` brings the replaced copy back |
+| Put-back of a lost edit over the file as it is now | The box says what's in the file now is replaced; `y` → the changes pane on the file, `✓ your edit to <path> is back · u undoes`; `u` brings the replaced copy back; a staged path stays staged, and the pane lands on its UNSTAGED row |
 | `b` from `J` | The graph, on the new branch |
 
 ### Hard-to-reverse choices (2b)
