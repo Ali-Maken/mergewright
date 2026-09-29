@@ -125,6 +125,7 @@ fn changes(come_back: &[&str], go: &[&str], set_aside: usize) -> FilesEffect {
         come_back: come_back.iter().map(PathBuf::from).collect(),
         go: go.iter().map(PathBuf::from).collect(),
         set_aside,
+        replaced: Vec::new(),
     }
 }
 
@@ -250,6 +251,36 @@ fn files_words_joins_the_clauses_that_apply() {
     for (effect, words) in cases {
         assert_eq!(files_words(&effect), words, "{effect:?}");
     }
+}
+
+/// 30o R1: a file put-back over the file as it is now says so before `y`.
+/// Clause order: come back · go · replaced · set aside.
+#[test]
+fn files_words_names_what_is_replaced() {
+    let replacing = |replaced: &[&str]| FilesEffect::Changes {
+        come_back: vec![PathBuf::from("src/a.rs")],
+        go: vec![],
+        set_aside: 0,
+        replaced: replaced.iter().map(PathBuf::from).collect(),
+    };
+    assert_eq!(
+        files_words(&replacing(&["src/a.rs"])),
+        "your files: src/a.rs comes back \u{b7} what's in src/a.rs now is replaced"
+    );
+    assert_eq!(
+        files_words(&replacing(&["src/a.rs", "src/b.rs", "src/c.rs"])),
+        "your files: src/a.rs comes back \u{b7} what's in src/a.rs +2 more now is replaced"
+    );
+    let every = FilesEffect::Changes {
+        come_back: vec![PathBuf::from("a")],
+        go: vec![PathBuf::from("b")],
+        set_aside: 1,
+        replaced: vec![PathBuf::from("c")],
+    };
+    assert_eq!(
+        files_words(&every),
+        "your files: a comes back \u{b7} b goes \u{b7} what's in c now is replaced \u{b7} 1 unsaved file set aside, put back after"
+    );
 }
 
 #[test]

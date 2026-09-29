@@ -33,8 +33,8 @@ use graft_git::run::Stop;
 
 use crate::facts::FactsError;
 use crate::operation::{
-    CheckoutTarget, Operation, RecoverTarget, Refusal, RepoFacts, ResetMode, ResetTarget, Source,
-    short, short_ref,
+    CheckoutTarget, Operation, RecoverParams, RecoverTarget, Refusal, RepoFacts, ResetMode,
+    ResetTarget, Source, short, short_ref,
 };
 use crate::snapshot::tracked_paths_now;
 
@@ -120,6 +120,20 @@ pub(crate) fn refused(op: &Operation, blocking: Blocking) -> Option<Refusal> {
                 ignored: blocking.ignored,
             })
         }
+        // A file put-back writes over his untracked files at its paths:
+        // its entry's before-snapshot (`add -A`) holds them, so `u` brings
+        // them back and the preview names them as replaced (m7/30o R1).
+        // Only an ignored one, which the snapshot skips, is refused.
+        Operation::Recover(RecoverParams {
+            target: RecoverTarget::Files { .. },
+            ..
+        }) => refusal(
+            op,
+            Blocking {
+                ignored: blocking.ignored,
+                untracked: Vec::new(),
+            },
+        ),
         _ => refusal(op, blocking),
     }
 }
@@ -155,7 +169,8 @@ pub fn doing(op: &Operation) -> Option<String> {
             RecoverTarget::MoveRef { name, to, .. } => {
                 format!("putting {name} back to {}", short(*to))
             }
-            _ => return None,
+            RecoverTarget::Files { .. } => "putting back your edit".to_owned(),
+            RecoverTarget::Recreate { .. } => return None,
         },
         Operation::Rebase(params) => format!("rebasing onto {}", source_words(&params.onto)),
         Operation::Rewrite(params) => format!("rewriting {}", short_ref(&params.head.name)),

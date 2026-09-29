@@ -7,21 +7,25 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, JournalEntry, Touches};
 use graft_core::oid::Oid;
-use graft_ops::apply::ApplyError;
+use graft_fixtures::lost_work::{self, Graft, LostWork};
+use graft_git::repo::RepoHandle;
+use graft_ops::apply::{ApplyError, apply};
 use graft_ops::facts::read_facts;
 use graft_ops::journal_list::lost_edits;
 use graft_ops::operation::{
-    CheckoutParams, CheckoutTarget, FilesEffect, Operation, RecoverParams, RecoverTarget, Refusal,
+    CheckoutParams, CheckoutTarget, FetchParams, FilesEffect, Operation, RecoverParams,
+    RecoverTarget, Refusal, Target,
 };
 use graft_ops::preview::{self, PreviewPlan};
+use graft_ops::undo;
 
 use crate::support::{
-    NOW, Never, RepoState, TempRepo, git_version, journal_for, run, run_redo, run_undo, stash_list,
-    state_of, try_run,
+    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, run, run_redo, run_undo,
+    stash_list, state_of, try_run,
 };
 
 // ── the repository ──────────────────────────────────────────────────────
@@ -417,25 +421,184 @@ fn files_restores_the_edit_and_leaves_the_index() {
     assert!(!repo.exists("o.txt"), "only the named path is written");
 }
 
-#[test]
-fn files_refuses_over_unsaved_edits() {
-    let repo = main_and_other();
-    let undo = undo_over_drift(&repo);
-    repo.write("a.txt", b"a newer edit\n");
+// ── a put-back over the file as it is now (m7-power-tools/30o R1) ──────
+//
+// The put-back no longer refuses a changed path: it writes the lost edit
+// over it, and its own entry's before-snapshot keeps what it replaced, so
+// `u` brings that back. Proved first (the premise), on the fixture as the
+// acceptance walk builds it.
 
-    let refusal = refused(&repo, &files_of(&undo, &["a.txt"]));
+/// Graft's own operations for `LostWork::build`, as `lost_work.rs` runs
+/// them.
+struct GraftOps;
+
+fn apply_in(work: &Path, op: &Operation, at_ms: i64) -> Result<(), String> {
+    let repo = RepoHandle::open(work).map_err(|why| why.to_string())?;
+    let mut journal = journal_for(&repo);
+    let never = Never;
+    let mut ctx = context(&repo, &mut journal, at_ms, &never);
+    apply(&mut ctx, op).map(|_| ()).map_err(|why| why.explain())
+}
+
+fn undo_in(work: &Path, at_ms: i64, force: bool) -> Result<(), String> {
+    let repo = RepoHandle::open(work).map_err(|why| why.to_string())?;
+    let mut journal = journal_for(&repo);
+    let never = Never;
+    let mut ctx = context(&repo, &mut journal, at_ms, &never);
+    undo::undo(&mut ctx, force)
+        .map(|_| ())
+        .map_err(|why| why.explain())
+}
+
+impl Graft for GraftOps {
+    fn fetch(&mut self, work: &Path, at_ms: i64) -> Result<(), String> {
+        let op = Operation::Fetch(FetchParams {
+            remote: Some("origin".to_owned()),
+            prune: false,
+        });
+        apply_in(work, &op, at_ms)
+    }
+
+    fn discard(&mut self, work: &Path, path: &str, at_ms: i64) -> Result<(), String> {
+        let op = Operation::Discard(Target::Paths(vec![PathBuf::from(path)]));
+        apply_in(work, &op, at_ms)
+    }
+
+    fn undo_forced(&mut self, work: &Path, at_ms: i64) -> Result<(), String> {
+        undo_in(work, at_ms, true)
+    }
+}
+
+/// After the fixture's last step: later than every time it writes.
+const AFTER_FIXTURE: i64 = 1_900_000_000_000;
+
+/// The fixture's one lost edit (`src/a.rs`) as the put-back `⏎` runs. The
+/// file on disk is as the forced undo left it: `DISCARDED_EDIT`, unstaged.
+fn the_lost_edit_put_back(work: &Path) -> Operation {
+    let handle = RepoHandle::open(work).expect("the fixture opens");
+    let entries = journal_for(&handle).entries().to_vec();
+    let edits = lost_edits(&handle, &entries, &Never).expect("lost edits read");
+    assert_eq!(edits.len(), 1, "{edits:?}");
+    put_back(
+        RecoverTarget::Files {
+            entry: edits[0].entry.clone(),
+            backup_tree: edits[0].backup_tree,
+            paths: edits[0].paths.clone(),
+        },
+        "undo of \"discard\"",
+    )
+}
+
+fn disk(work: &Path, path: &str) -> Vec<u8> {
+    std::fs::read(work.join(path)).expect("the file reads")
+}
+
+#[test]
+fn u_after_a_file_put_back_brings_back_what_it_replaced() {
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let work = fixture.work();
+    assert_eq!(disk(work, lost_work::EDITED), lost_work::DISCARDED_EDIT);
+    let op = the_lost_edit_put_back(work);
+
+    apply_in(work, &op, AFTER_FIXTURE).expect("the put-back runs");
+    assert_eq!(disk(work, lost_work::EDITED), lost_work::LOST_EDIT);
+
+    undo_in(work, AFTER_FIXTURE + 1, false).expect("u runs, no drift");
+    assert_eq!(
+        disk(work, lost_work::EDITED),
+        lost_work::DISCARDED_EDIT,
+        "u brings back byte-exact what the put-back replaced"
+    );
+}
+
+/// `o.txt` is `other`'s: his edit to it is lost when the undo goes back to
+/// `main`, and he then makes an `o.txt` of his own, untracked. The put-back
+/// writes the lost edit over it; `u` brings his untracked file back.
+#[test]
+fn u_brings_back_an_untracked_file_a_put_back_replaced() {
+    let repo = main_and_other();
+    run(&repo, &checkout_other(), NOW);
+    repo.write("o.txt", b"his edit to o\n");
+    let undo = run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .entry;
+    assert!(!repo.exists("o.txt"), "the undo removed it");
+    repo.write("o.txt", b"his new o, untracked\n");
+
+    run(&repo, &files_of(&undo, &["o.txt"]), NOW + 2);
+    assert_eq!(repo.read("o.txt"), b"his edit to o\n");
+
+    run_undo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(repo.read("o.txt"), b"his new o, untracked\n");
+    assert_eq!(
+        repo.git(&["status", "--porcelain", "--", "o.txt"]),
+        "?? o.txt",
+        "untracked, as it was"
+    );
+}
+
+#[test]
+fn a_file_put_back_over_a_changed_file_runs() {
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let work = fixture.work();
+    let op = the_lost_edit_put_back(work);
+
+    apply_in(work, &op, AFTER_FIXTURE).expect("the put-back runs over the undo's copy");
+
+    assert_eq!(disk(work, lost_work::EDITED), lost_work::LOST_EDIT);
+}
+
+#[test]
+fn the_file_put_back_names_what_it_replaces() {
+    let fixture = LostWork::build(&mut GraftOps).expect("the fixture builds");
+    let work = fixture.work();
+    let op = the_lost_edit_put_back(work);
+    let handle = RepoHandle::open(work).expect("the fixture opens");
+    let facts =
+        read_facts(&handle, git_version(), &Never, &op.facts_scope()).expect("the facts read");
+
+    let plan = preview::plan(&handle, &git_version(), &op, &facts, &Never)
+        .unwrap_or_else(|why| panic!("preview: {}", why.explain()));
+
+    assert_eq!(
+        plan.files,
+        Some(FilesEffect::Changes {
+            come_back: vec![PathBuf::from(lost_work::EDITED)],
+            go: vec![],
+            set_aside: 0,
+            replaced: vec![PathBuf::from(lost_work::EDITED)],
+        })
+    );
+}
+
+/// An ignored file at the path: the snapshot's `add -A` skips it, so `u`
+/// could not bring it back. Refused, as a `MoveRef` is (28a).
+#[test]
+fn a_file_put_back_over_an_ignored_file_is_refused() {
+    let repo = main_and_other();
+    run(&repo, &checkout_other(), NOW);
+    repo.write("o.txt", b"his edit to o\n");
+    let undo = run_undo(&repo, NOW + 1, true)
+        .unwrap_or_else(|why| panic!("undo: {}", why.explain()))
+        .entry;
+    repo.write(".git/info/exclude", b"o.txt\n");
+    repo.write("o.txt", b"his ignored o\n");
+
+    let refusal = refused(&repo, &files_of(&undo, &["o.txt"]));
 
     assert_eq!(
         refusal,
-        Refusal::UnsavedEditsTo {
-            paths: vec![PathBuf::from("a.txt")]
+        Refusal::InTheWay {
+            doing: "putting back your edit".to_owned(),
+            ignored: vec![PathBuf::from("o.txt")],
+            untracked: vec![],
         }
     );
     assert_eq!(
         refusal.explain(),
-        "a.txt has unsaved edits · c commits or S stashes them first"
+        "o.txt (ignored) is in the way of putting back your edit · move it aside first"
     );
-    assert_eq!(repo.read("a.txt"), b"a newer edit\n", "nothing written");
+    assert_eq!(repo.read("o.txt"), b"his ignored o\n", "nothing written");
 }
 
 #[test]
@@ -658,6 +821,7 @@ fn recover_preview_lists_your_files() {
             ],
             go: vec![],
             set_aside: 1,
+            replaced: vec![],
         })
     );
     assert_eq!(plan.ref_moves.len(), 1);
@@ -679,6 +843,7 @@ fn recover_preview_lists_your_files() {
             come_back: vec![PathBuf::from("a.txt")],
             go: vec![],
             set_aside: 0,
+            replaced: vec![],
         })
     );
 }

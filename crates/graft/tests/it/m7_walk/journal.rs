@@ -6,7 +6,8 @@
 //! main (13), then spike (14), then the edit (15).
 //!
 //! Also writes J's captures (`docs/shots/m7/journal-*.txt`,
-//! `put-back-landed-187x50.txt`).
+//! `put-back-landed-187x50.txt`, and journey 15's
+//! `put-back-edit-{preview,landed}-187x50.txt`).
 #![allow(
     clippy::expect_used,
     reason = "a test fixture that cannot be built has nothing to test; the panic names why"
@@ -217,7 +218,6 @@ fn the_three_lost_work_journeys_git_clock_pinned() {
 
     let state = journey_13(&app, &state, repo, &commits);
     let state = journey_14(&app, &state, repo, &commits);
-    let state = journey_15_refused(&app, &state);
     let state = journey_15(&app, &state, repo);
     drop(state);
     app.close();
@@ -316,6 +316,31 @@ fn journey_14(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> Ap
     let state = enter_to_the_box(&mut route, app, &state);
     let state = confirm(&mut route, app, &state, "14");
     route.within_count();
+    // The landing, from the frame (30o R2). The graph's cursor rule is `▏`
+    // (graft-ui `row_rule`); the ticket's `▸` is J's.
+    let state = app.pump(state, "the graph re-read with E on it", |state| {
+        drawn(state, 187, 50)
+            .iter()
+            .any(|row| row.contains(lost_work::LOST_ON_SPIKE) && row.contains("↺ put back"))
+    });
+    let state = crate::captures::settled_frame(app, state);
+    let landed = drawn(&state, 187, 50);
+    let body = text(&landed);
+    let on_e = landed
+        .iter()
+        .find(|row| row.contains(lost_work::LOST_ON_SPIKE))
+        .map_or("", String::as_str);
+    assert!(
+        on_e.contains('▏') && on_e.contains("↺ put back"),
+        "the cursor and the put-back tag on E's row:\n{body}"
+    );
+    let bottom = landed.last().map_or("", String::as_str);
+    assert!(
+        bottom.contains("spike is back at \"Try redis cache\"")
+            && bottom.contains('✓')
+            && bottom.contains("u undoes"),
+        "the bottom row:\n{body}"
+    );
     assert_eq!(
         rev(repo, "refs/heads/spike"),
         commits.e,
@@ -326,54 +351,14 @@ fn journey_14(app: &App, state: &AppState, repo: &Path, commits: &Commits) -> Ap
     state
 }
 
-/// Journey 15 on the fixture as built: refused, J left up.
-fn journey_15_refused(app: &App, state: &AppState) -> AppState {
+/// Journey 15 on the fixture as built, with no shell step: the file is as
+/// the forced undo left it (`lost_work::DISCARDED_EDIT`, a real change of
+/// his), and the put-back writes his lost edit over it. Its entry's
+/// before-snapshot keeps what it replaced, so `u` brings that back
+/// (m7/30o R1; graft-ops `u_after_a_file_put_back_brings_back_what_it_replaced`).
+fn journey_15(app: &App, state: &AppState, repo: &Path) -> AppState {
     // 15 · `edit-in-undo-backup`: J n ⏎ y. E is on spike again; `n` finds
     // his edit the forced undo replaced.
-    //
-    // On the fixture as built, `⏎` is refused: the undo put the discarded
-    // edit back on disk (`lost_work::DISCARDED_EDIT`), and a file put-back
-    // never writes over his own changes (`graft_ops::operation::recover`
-    // :208, `Refusal::UnsavedEditsTo`, m7/23). The refusal lands on J's
-    // status row, J still up. The note's count assumes a clean file — an
-    // open question for the planner (ticket 24 NOTES 24-b).
-    let mut refused = Route::new("edit-in-undo-backup");
-    let state = open_j(&mut refused, app, state);
-    let state = refused.press(app, &state, "n", KeyCode::Char('n'));
-    let frame = drawn(&state, 187, 50);
-    assert!(
-        selected_row(&frame).contains("your edit to src/a.rs"),
-        "n lands on the lost edit's row:\n{}",
-        text(&frame)
-    );
-    let state = refused.press(app, &state, "⏎", KeyCode::Enter);
-    let state = app.pump(state, "the plan refused", |state| {
-        matches!(state.status, graft::update::Status::Sticky { .. })
-    });
-    let frame = drawn(&state, 187, 50);
-    let body = text(&frame);
-    assert!(
-        state.journal.shown && state.preview.is_none(),
-        "J up, no box:\n{body}"
-    );
-    let status_row = frame.len() - 3;
-    assert!(
-        frame[status_row]
-            .contains("src/a.rs has unsaved edits · c commits or S stashes them first"),
-        "the refusal on J's status row, above the legend:\n{body}"
-    );
-    let state = app.key(&state, KeyCode::Escape);
-    let state = app.key(&state, KeyCode::Escape);
-    assert!(!state.journal.shown, "esc closed J");
-
-    state
-}
-
-/// Journey 15 once the file is clean.
-fn journey_15(app: &App, state: &AppState, repo: &Path) -> AppState {
-    // The shell drops the discarded edit (setup, not counted): with the file
-    // clean, the journey runs as the note counts it.
-    git(repo, &["checkout", "--", lost_work::EDITED]);
     let mut route = Route::new("edit-in-undo-backup");
     let state = open_j(&mut route, app, state);
     let state = route.press(app, &state, "n", KeyCode::Char('n'));
@@ -384,10 +369,59 @@ fn journey_15(app: &App, state: &AppState, repo: &Path) -> AppState {
         text(&frame)
     );
     let state = enter_to_the_box(&mut route, app, &state);
+    let frame = drawn(&state, 187, 50);
+    let body = text(&frame);
+    assert!(state.journal.shown, "the box is over J:\n{body}");
+    assert!(
+        body.contains("Preview: put back your edit to src/a.rs"),
+        "the box's title:\n{body}"
+    );
+    assert!(
+        body.contains("your files: src/a.rs comes back · what's in src/a.rs now is replaced"),
+        "the box says what is replaced:\n{body}"
+    );
+    assert!(body.contains("u undoes it"), "the box's last line:\n{body}");
+    check_shot("m7/put-back-edit-preview-187x50.txt", &body);
     let state = confirm(&mut route, app, &state, "15");
     route.within_count();
+
+    let landed = drawn(&state, 187, 50);
+    let body = text(&landed);
+    // The changes pane, shown: its file list holds `src/a.rs` and the
+    // diff beside it is that file's, which the pane draws for the file under
+    // its cursor — the lost edit's `2` added.
+    assert!(state.detail.shown, "the changes pane is shown:\n{body}");
+    assert!(
+        state.detail.selected_entry().is_some(),
+        "its cursor is on a file:\n{body}"
+    );
+    assert!(
+        landed.iter().any(|row| row.contains("▾ src/"))
+            && landed.iter().any(|row| row.contains("M a.rs"))
+            && landed.iter().any(|row| row.contains("+     2")),
+        "the pane on src/a.rs, its diff the edit put back:\n{body}"
+    );
+    let bottom = landed.last().map_or("", String::as_str);
+    assert!(
+        bottom.contains("your edit to src/a.rs is back")
+            && bottom.contains('✓')
+            && bottom.contains("u undoes"),
+        "the bottom row:\n{body}"
+    );
+    check_shot("m7/put-back-edit-landed-187x50.txt", &body);
     let on_disk = std::fs::read(repo.join(lost_work::EDITED)).expect("src/a.rs is on disk");
     assert_eq!(on_disk, lost_work::LOST_EDIT, "his edit is back on disk");
+
+    // Uncounted, after the journey: `u` brings back what the put-back
+    // replaced.
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.settle_write(state, "the undo of the put-back");
+    let on_disk = std::fs::read(repo.join(lost_work::EDITED)).expect("src/a.rs is on disk");
+    assert_eq!(
+        on_disk,
+        lost_work::DISCARDED_EDIT,
+        "u brings back what the put-back replaced"
+    );
     state
 }
 

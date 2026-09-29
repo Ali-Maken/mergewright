@@ -37,9 +37,9 @@ fn in_j(app: &App, state: &AppState) -> AppState {
 }
 
 /// A refusal of a key pressed in J lands on J's status row, above the
-/// legend, J still up — here `⏎` on his lost edit, which a file put-back
-/// refuses while the file has changes of his own
-/// (`graft_ops::operation::recover` :208).
+/// legend, J still up — here `b` on his lost edit, which has no commit to
+/// branch at (`update::journal::keys::branch_here`). It was `⏎` there until
+/// m7/30o R1: a file put-back now runs over the file as it is.
 #[test]
 fn a_refusal_in_j_shows_on_its_status_row() {
     let fixture = lost_work();
@@ -54,16 +54,12 @@ fn a_refusal_in_j_shows_on_its_status_row() {
         "n n reaches the lost edit:\n{}",
         text(&frame)
     );
-    let state = app.key(&state, KeyCode::Enter);
-    let state = app.pump(state, "the plan refused", |state| {
-        matches!(state.status, graft::update::Status::Sticky { .. })
-    });
+    let state = app.key(&state, KeyCode::Char('b'));
     let frame = drawn(&state, 187, 50);
     let body = text(&frame);
     assert!(state.journal.shown, "J still up:\n{body}");
     assert!(
-        from_bottom(&frame, STATUS)
-            .contains("src/a.rs has unsaved edits · c commits or S stashes them first"),
+        from_bottom(&frame, STATUS).contains("a lost edit has no commit · ⏎ puts it back"),
         "the refusal on J's status row:\n{body}"
     );
     assert!(

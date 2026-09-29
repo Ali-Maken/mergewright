@@ -1,6 +1,6 @@
 # 30o: J review fixes — journey 15 in the app, walks that assert landings, one `u`, `/` find, seven minors (review m7-24-and-30n C1, M1, M3, M4, Minor 1–7, 13)
 
-Status: ready
+Status: 30o-a done (2026-09-30); 30o-b, 30o-c ready
 Build with (three parts, one context each, **a → b → c**, sequential: they share walks, captures, TSV, sheet, TESTING rows):
 - **30o-a: Opus.** A graft-ops refusal is replaced under the M3 promise. The premise (the put-back's before-snapshot keeps
   what it replaces) is proved by a real-git `u` test, and the part has a stop condition if that test fails. Nothing is
@@ -188,34 +188,34 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
 ```
 
 ### Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
-- [ ] **V4** in NOTES, file:line.
-- [ ] **The put-back runs over the undo's copy** (graft-ops, real git, `lost_work` fixture as built):
+- [x] **V4** in NOTES, file:line. (NOTES 30o-a V4)
+- [x] **The put-back runs over the undo's copy** (`a_file_put_back_over_a_changed_file_runs`, `the_file_put_back_names_what_it_replaces`, `a_file_put_back_over_an_ignored_file_is_refused`, graft-ops `tests/it/recover.rs`; all three seen red) (graft-ops, real git, `lost_work` fixture as built):
   - `a_file_put_back_over_a_changed_file_runs` (red: today `UnsavedEditsTo`): `src/a.rs` = `LOST_EDIT` after.
   - `the_file_put_back_names_what_it_replaces` (red): `FilesEffect::Changes.replaced == [src/a.rs]`.
   - `a_file_put_back_over_an_ignored_file_is_refused` (red unless V4 finds it already refused): `InTheWay`, file
     untouched.
-- [ ] **The premise (M3):**
+- [x] **The premise (M3):** (`u_after_a_file_put_back_brings_back_what_it_replaced`, `u_brings_back_an_untracked_file_a_put_back_replaced`, graft-ops `tests/it/recover.rs`; green once the refusal went, before any other change)
   - `u_after_a_file_put_back_brings_back_what_it_replaced` (real git): after the put-back, `u` → `src/a.rs` is
     **byte-exact** `DISCARDED_EDIT`.
   - `u_brings_back_an_untracked_file_a_put_back_replaced`: the same for an untracked path.
   - **If either is red after the build, stop:** `blocked: the before-snapshot does not hold <what>`. Do not add a
     set-aside or a copy to make it pass; that is the planner's call.
-- [ ] **Words** (graft `update/recover.rs` tests):
+- [x] **Words** (graft `update/recover.rs` tests): (`files_words_names_what_is_replaced`, seen red; `files_words_joins_the_clauses_that_apply` green)
   - `files_words_names_what_is_replaced` (red): one path → `what's in src/a.rs now is replaced`; three →
     `what's in src/a.rs +2 more now is replaced`. Clause order: come back · go · replaced · set aside.
   - 24-a2's `files_words_joins_the_clauses_that_apply` still green.
-- [ ] **The refusal test moved:** `a_refusal_in_j_shows_on_its_status_row` now refuses with `b` on the lost-edit row
+- [x] **The refusal test moved:** (`journal_screen::a_refusal_in_j_shows_on_its_status_row`; removed/re-pointed list in NOTES) `a_refusal_in_j_shows_on_its_status_row` now refuses with `b` on the lost-edit row
   (`a lost edit has no commit · ⏎ puts it back`), still asserted from the frame. Every other test that pinned
   `UnsavedEditsTo` is listed in NOTES as removed or re-pointed.
-- [ ] **Walk 13 (unchanged)** in `the_three_lost_work_journeys`: its existing asserts green.
-- [ ] **Walk 14, asserted from the frame after `J n ⏎ y`** (`Route::within_count`, ≤ 4):
+- [x] **Walk 13 (unchanged)** (`m7_walk::journal::the_three_lost_work_journeys`) in `the_three_lost_work_journeys`: its existing asserts green.
+- [x] **Walk 14, asserted from the frame (`the_three_lost_work_journeys`, `journey_14`; mutation checked, NOTES; cursor glyph `▏` not `▸`, NOTES) after `J n ⏎ y`** (`Route::within_count`, ≤ 4):
   - J closed.
   - `▸` on the row of E (`Try redis cache`), and `↺ put back` on that row.
   - The bottom row holds `spike is back at "Try redis cache"`, `✓` and `u undoes`.
   - `spike` = E by `rev-parse`, `main` untouched.
   - Not red-first: the landing exists, so these asserts are new. Check them by mutation: drop `put_back_tags`'
     `PutBack` and the walk fails. Say so.
-- [ ] **Walk 15, with no shell step** (red: today `⏎` is refused). `J n ⏎ y`, `Route::within_count` ≤ 4:
+- [x] **Walk 15, with no shell step** (`the_three_lost_work_journeys`, `journey_15`; red evidence in NOTES) (red: today `⏎` is refused). `J n ⏎ y`, `Route::within_count` ≤ 4:
   - After `n`: the selected row holds `your edit to src/a.rs`.
   - After `⏎`: the box over J, titled `Preview: put back your edit to src/a.rs`, with the line
     `your files: src/a.rs comes back · what's in src/a.rs now is replaced` and `u undoes it`.
@@ -223,7 +223,7 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
     `your edit to src/a.rs is back`, `✓` and `u undoes`; `src/a.rs` = `LOST_EDIT` on disk.
   - Uncounted, after the journey: `u` → `src/a.rs` = `DISCARDED_EDIT`.
   - The uncounted `git checkout -- src/a.rs` and the refusal assert are **deleted**.
-- [ ] **Captures** (each ≤ 200 KB, written by `the_three_lost_work_journeys`, asserted with `check_shot`):
+- [x] **Captures** (`the_three_lost_work_journeys` via `check_shot`; 3.7 KB and 1.9 KB; sheet rebuilt, 40 captures, 121 KB) (each ≤ 200 KB, written by `the_three_lost_work_journeys`, asserted with `check_shot`):
   - `put-back-edit-preview-187x50.txt`. **Right:** J's rows above, the lost-edit row selected; the box titled
     `Preview: put back your edit to src/a.rs`; `your files: src/a.rs comes back · what's in src/a.rs now is replaced`;
     `u undoes it`; footer starts `y put it back`; J's bar blank.
@@ -231,9 +231,9 @@ pub(crate) fn files_words(effect: &FilesEffect) -> String;
     bottom row `your edit to src/a.rs is back ✓ · u undoes` (as `done_status` orders it).
   - TSV rows and TESTING rows say exactly those Right lines, plus the test name and "Colour unverified (rule 5)". Sheet
     rebuilt.
-- [ ] `put-back-preview-187x50.txt` (a `MoveRef` box, `replaced` empty) is byte-identical:
+- [x] (`put_back_box::the_put_back_box_draws_over_j` green in the workspace run, file unchanged in `git status`) `put-back-preview-187x50.txt` (a `MoveRef` box, `replaced` empty) is byte-identical:
   `the_put_back_box_draws_over_j` green.
-- [ ] MAP.md (graft-ops, graft). Gates workspace-wide.
+- [x] MAP.md (graft-ops, graft). Gates workspace-wide. (fmt, clippy `-D warnings`, nextest 4884/4884, `test --doc` all green)
 
 ### Touches (check each; say how on the **Touches:** line)
 - **`Refusal`:** every exhaustive match (graft-ops `explain`, graft `refusal_status`; grep `Refusal::` in both).
@@ -457,3 +457,50 @@ Worktree only. `CARGO_TARGET_DIR` in the worktree. Never read `PROGRESS.md` or `
 §2.11 and R6. Don't edit the keymap doc or the design note; R1's row and R6 are the conductor's.
 
 ## NOTES (builder)
+
+### 30o-a (2026-09-30, builder Opus; no scout: the ticket names every site, re-grepped)
+
+**V4.**
+- `check` found a `Files` path changed at `crates/graft-ops/src/operation/recover.rs:195-209` (ef83f6ac): any `facts.status`
+  entry at a target path that `is_staged() || is_unstaged() || untracked` → `UnsavedEditsTo`.
+- `in_the_way::blocking` **can** tell ignored from untracked: `crates/graft-ops/src/in_the_way/disk.rs:161-177`
+  (`sort_out`: on disk, not in the index, not in `facts.status`'s untracked list → ignored). But it never ran for a file
+  put-back: `written_paths` answered `None` for Recover `Files` (`in_the_way/written.rs`, `hard_reset_to`, `_ => None`).
+  So `in_the_way` was edited after all (the listed condition "only if it cannot tell" did not hold, but the ignored
+  refusal needs it): `written_paths` returns a `Files` put-back's paths; `refused` drops the untracked for it (the
+  snapshot holds them); `doing` = `putting back your edit`. Preview and `apply` both reach it (`refuse_in_the_way`,
+  `guard_in_the_way`), so no second read.
+
+**Order kept (safety gate).** The premise tests were written first, with the words/ignored/names tests, all seen red
+on today's code (premise red because `⏎` was refused). Then only the `check` refusal was removed: both premise tests
+went green (`src/a.rs` byte-exact `DISCARDED_EDIT` after `u`; the untracked `o.txt` back and still `??`). Only then the
+rest was built.
+
+**Refusal::UnsavedEditsTo removed** (no other user: grep `UnsavedEditsTo` over `crates/` → only recover's check, its
+`explain` arm, one test). Tests that pinned it:
+- `graft-ops recover::files_refuses_over_unsaved_edits` — removed (replaced by the five 30o-a tests).
+- `graft journal_screen::a_refusal_in_j_shows_on_its_status_row` — re-pointed to `b` on the lost-edit row.
+- `graft m7_walk::journal::journey_15_refused` — deleted with its shell `git checkout --`; `journey_15` rewritten.
+- graft `refusal_status` had no `UnsavedEditsTo` arm (grep); `put_back_box.rs` pinned no `Files` refusal (grep).
+
+**Walk 15 red evidence.** Not re-run red after the change: the deleted `journey_15_refused` asserted, green on
+ef83f6ac, that this exact `J n ⏎` is refused (`src/a.rs has unsaved edits …` on J's status row). That is the red.
+
+**Walk 14.** Mutation: `put_back_tags`' `Recreate` arm made `Vec::new()` → the walk fails (it waits for E's row with
+`↺ put back` and times out, `app_harness.rs:252`). Restored. Glyph: the graph's cursor rule is `▏`
+(`graft-ui/src/graph_screen/render.rs` `row_rule`); `▸` there is a drag-drop target. The walk asserts `▏` on E's row.
+
+**Walk 15 landing, what the frame can and can't show.** The changes pane is shown (`state.detail.shown`), its cursor
+is on a file (`selected_entry().is_some()`), and the frame holds `▾ src/`, `M a.rs` and the diff line `+     2` (the
+lost edit), which the pane draws for the file under its cursor. The pane's cursor row itself is colour-only: no glyph
+in the capture to assert. `src/a.rs` is the only changed file, so the cursor can only be there.
+
+**`lost_edits` after the put-back:** the walk does not reopen J after journey 15 (it runs `u` instead), so the
+row's absence is not asserted there. Unverified in the walk.
+
+**Test helpers duplicated:** `recover.rs` carries its own `GraftOps` (≈30 lines, as `tests/it/lost_work.rs` has) —
+`lost_work.rs` was outside the file list, so its private one was not made `pub(crate)`.
+
+**For the conductor:** R1's "Where he lands" row and R6's keymap clause are yours (not applied). The note's fence row is
+unchanged; walk 15 counts 4 (`J n ⏎ y`).
+
