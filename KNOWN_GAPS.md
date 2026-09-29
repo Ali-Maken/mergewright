@@ -1011,3 +1011,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/07d-follow | graft-ui `follower_line` says `1 commit follow` (grammar; 07d NOTES) | **broken** (words) | M7 |
 | M7/08-order | Rewrite editor message order in ticket 08 differs from the engine rule (`graft-ops/src/rewrite/todo.rs:44-67`); captures follow the code | **unverified** (question) | M7 |
 | M7/08-bare | `R rewrite` last among row keys: at some widths bars show `f`/`t` bare (16 captures re-taken, 08 NOTES). Judge by eye | **unverified** (visual) | M7 |
+| M7/r08rk-m2 | `from_rebase` copies the engine's drops-into-rows loop (review m2, docs/reviews/m7-08-to-rebase-keeps-drops.md:174) | **broken** (duplication) | M7 |
+| M7/r08rk-m4 | Rewrite editor re-says the preview's AFTER words in a second place (review m4, :196) | **broken** (minor) | M7 |
+| M7/r08rk-m7 | ARCHITECTURE.md has no entry for the rewrite editor (review m7, :226) | **broken** (doc) | M7 |
+| M7/r08rk-m8 | 24-0: `set-aside copy` term missing from CONTEXT.md; check skipped (review m8, :236) | **broken** (doc) | M7 |
+| M7/r08rk-m9 | Some "red first" boxes (rebase-keeps-drops' 7 graft tests) not seen red; mutation-checked instead (review m9, :244) | **unverified** | M7 |
+| M7/r08rk-m11 | 08-a Q3: bar hides `R` on default-chain rows but `R` still opens and `plan` decides, vs R1 (ticket 08 NOTES :388-389; review m11, :259) | **unverified** (question) | M7 |
+| M7/r08rk-q3 | `r` and `R` side by side in the preview footer, opposite outcomes; a missed Shift confirms the drop (`u` recovers). Keymap §2.3b decided it → usability walk (review Q3, :299) | **unverified** (question) | M7 |
