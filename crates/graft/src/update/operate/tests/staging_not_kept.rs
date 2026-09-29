@@ -9,7 +9,8 @@ use graft_ops::operation::{CommitParams, Operation};
 
 use super::applied;
 use crate::jobs::operate::Operated;
-use crate::update::operate::{launch, operated, staging_not_kept_rungs, staging_not_kept_status};
+use crate::update::operate::outcome::staging_not_kept_rungs;
+use crate::update::operate::{launch, operated, staging_not_kept_status};
 use crate::update::state::{AppState, Status};
 
 fn paths(names: &[&str]) -> Vec<PathBuf> {
