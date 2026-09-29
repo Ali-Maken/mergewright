@@ -32,7 +32,7 @@ pub(super) fn replan(
     let params = editor.params();
     let current = match &editor.after {
         After::Pending { asked, .. } | After::Ready { asked, .. } => Some(asked),
-        After::Failed(_) | After::Refused(_) | After::Invalid(_) => None,
+        After::NotAsked | After::Failed(_) | After::Refused(_) | After::Invalid(_) => None,
     };
     if let (Ok(params), Some(asked)) = (&params, current)
         && params == asked
@@ -92,11 +92,11 @@ pub(super) fn start(
             .cloned()
             .unwrap_or_else(|| Operation::Rewrite(asked.clone())),
         After::Invalid(problem) => {
-            editor.notice = Some(problem.explain());
+            editor.notice = Some(super::words::invalid(&editor, problem));
             state.rewrite.editor = Some(editor);
             return;
         }
-        After::Pending { .. } | After::Failed(_) | After::Refused(_) => {
+        After::NotAsked | After::Pending { .. } | After::Failed(_) | After::Refused(_) => {
             state.rewrite.editor = Some(editor);
             return;
         }

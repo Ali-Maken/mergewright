@@ -139,6 +139,10 @@ struct Field {
 /// The AFTER plan's state.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum After {
+    /// A todo that can run, not yet asked for: drawn as checking. Only
+    /// between `new` and `opened`'s first `replan` (30n m5), so the editor
+    /// never claims a state it did not read.
+    NotAsked,
     /// Asked for `asked`; only `job`'s answer is wanted.
     Pending { job: JobId, asked: RewriteParams },
     /// Landed for `asked`.
@@ -269,6 +273,11 @@ impl RewriteEditor {
             OpenedFrom::Rebase => todo.iter().rposition(|row| row.action == TodoAction::Drop),
         };
         let cursor = at.map_or(0, |index| todo.len() - 1 - index);
+        // What its own todo says: its problem, else not yet asked.
+        let after = match graft_ops::rewrite::validate(&todo) {
+            Ok(()) => After::NotAsked,
+            Err(problem) => After::Invalid(problem),
+        };
         RewriteEditor {
             opened: params,
             whole,
@@ -279,7 +288,7 @@ impl RewriteEditor {
             edits: HashMap::new(),
             cursor,
             field: None,
-            after: After::Invalid(TodoProblem::EverythingDropped),
+            after,
             right: Right::After,
             narrow_shows_right: false,
             notice: None,
@@ -415,15 +424,16 @@ pub(crate) fn field_open(state: &AppState) -> bool {
 // ── opening ────────────────────────────────────────────────────────────
 
 /// `R` on the graph: read what the editor opens on, for the cursor's row
-/// (`HEAD`'s on the uncommitted row). A second `R` while reading starts
-/// nothing; a write running or git part-way through refuses in the preview's
-/// words (one wording, H4).
+/// (`HEAD`'s on the uncommitted row). A write running or git part-way
+/// through refuses in the preview's words (one wording, H4). A read already
+/// out is cancelled and this one starts: the newest `R` is his intent
+/// (30n Q2).
 pub(crate) fn open_rewrite(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    if state.rewrite.opening.is_some() || state.rewrite.editor.is_some() {
+    if state.rewrite.editor.is_some() {
         return;
     }
     if let Some(reason) = super::preview::preview_refusal(state) {
@@ -435,6 +445,7 @@ pub(crate) fn open_rewrite(
             Status::Waiting("still reading the refs \u{2014} try again in a moment".to_owned());
         return;
     };
+    cancel_opening(state, commands);
     let id = next_id();
     state.rewrite.opening = Some(id);
     state.rewrite.opening_from = Some(OpenedFrom::Row(from));
@@ -449,20 +460,22 @@ pub(crate) fn open_rewrite(
 /// found (rebase-preview-keeps-drops): read the editor on that very rebase
 /// — `params` as its `y` would run them — its drops marked `d`, so he sees
 /// what he keeps before `y`. The preview is closed by the caller. Refused
-/// as [`open_rewrite`] is, in the same words.
+/// as [`open_rewrite`] is, in the same words; a read already out is
+/// cancelled and this one starts, as there.
 pub(crate) fn open_rewrite_from_rebase(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
     params: RebaseParams,
 ) {
-    if state.rewrite.opening.is_some() || state.rewrite.editor.is_some() {
+    if state.rewrite.editor.is_some() {
         return;
     }
     if let Some(reason) = super::preview::preview_refusal(state) {
         state.status = Status::Sticky { reason, keys: None };
         return;
     }
+    cancel_opening(state, commands);
     let id = next_id();
     state.rewrite.opening = Some(id);
     state.rewrite.opening_from = Some(OpenedFrom::Rebase);
@@ -494,8 +507,8 @@ fn branch_name(state: &AppState) -> String {
         )
 }
 
-/// `Esc` while the read is out: cancel it and clear its line. `true` when
-/// there was one.
+/// `Esc` while the read is out, or a newer `R`: cancel it (its answer is
+/// dropped by id) and clear its line. `true` when there was one.
 fn cancel_opening(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
     let Some(id) = state.rewrite.opening.take() else {
         return false;
@@ -509,8 +522,15 @@ fn cancel_opening(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
     true
 }
 
+/// Why an answered read did not open the editor: a box took the keys while
+/// it was out (30n Q2). Hidden, not cleared, while that box owns the
+/// bottom row; he reads it when he closes the box.
+const NOT_OPENED: &str = "rewrite editor not opened \u{b7} another box was open";
+
 /// The open read answered: the overlay, a refusal on the status line, or
-/// the failure.
+/// the failure. The overlay never opens over another box — a modal with
+/// the keys, or another overlay (`edit_stop::no_box_is_up`): the answer is
+/// dropped and the status says how to open it again.
 pub(crate) fn opened(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -529,6 +549,17 @@ pub(crate) fn opened(
                 state.status = Status::Ready;
             }
             let from = from.unwrap_or(OpenedFrom::Row(opened.params.head.oid));
+            if !crate::update::keys::edit_stop::no_box_is_up(state) {
+                let keys = match from {
+                    OpenedFrom::Row(_) => "R opens it",
+                    OpenedFrom::Rebase => "r then R opens it",
+                };
+                state.status = Status::Sticky {
+                    reason: NOT_OPENED.to_owned(),
+                    keys: Some(keys.to_owned()),
+                };
+                return;
+            }
             let mut editor = Box::new(RewriteEditor::new(*opened, from));
             after::replan(state, &mut editor, commands, next_id);
             state.rewrite.editor = Some(editor);

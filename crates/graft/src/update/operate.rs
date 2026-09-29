@@ -733,23 +733,50 @@ fn staged_by_stage_all(entry: &StatusEntry) -> bool {
     !entry.unmerged && (entry.unstaged.is_some() || entry.untracked)
 }
 
+/// Why [`stage_all`] staged nothing. Both callers (`Ctrl+A`, `space` at an
+/// edit stop) say it (30n m6): a key that does nothing says why.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum NotStaged {
+    /// Nothing unstaged or untracked: a clean tree, or every change staged.
+    NothingToStage,
+    /// Only conflicted paths are left, which `Ctrl+A` never stages.
+    OnlyConflicted,
+    /// The working tree's status is not read yet.
+    Unread,
+    /// A write is running.
+    WriteRunning(InFlight),
+}
+
+impl NotStaged {
+    /// The status line: `nothing to stage` as a refusal; a running write in
+    /// `f`'s words (`Status::Failed(InFlight::words())`); a conflict in the
+    /// changes pane's own words.
+    pub(crate) fn status(&self) -> Status {
+        match self {
+            Self::NothingToStage => Status::sticky("nothing to stage"),
+            Self::OnlyConflicted => Status::sticky(conflict_refusal("stage all")),
+            Self::Unread => Status::Waiting(
+                "still reading the changes \u{2014} try again in a moment".to_owned(),
+            ),
+            Self::WriteRunning(busy) => Status::Failed(busy.words()),
+        }
+    }
+}
+
 /// `Ctrl+A`: stage every unstaged and untracked path
-/// `AppState::working_tree` lists. `false` while a write is running, or when
-/// nothing there is stageable.
-pub fn stage_all(
+/// `AppState::working_tree` lists. `Err` says why nothing was staged; the
+/// caller puts [`NotStaged::status`] on the status line.
+pub(crate) fn stage_all(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     next_id: &mut impl FnMut() -> JobId,
-) -> bool {
-    if operation_in_flight(next) {
-        return false;
+) -> Result<(), NotStaged> {
+    if let Some(busy) = in_flight(next) {
+        return Err(NotStaged::WriteRunning(busy));
     }
     let Some(status) = next.working_tree.as_ref() else {
-        return false;
+        return Err(NotStaged::Unread);
     };
-    if status.is_clean() {
-        return false;
-    }
     let paths: Vec<PathBuf> = status
         .entries
         .iter()
@@ -757,7 +784,11 @@ pub fn stage_all(
         .map(|entry| entry.path.clone())
         .collect();
     if paths.is_empty() {
-        return false;
+        return Err(if status.entries.iter().any(|entry| entry.unmerged) {
+            NotStaged::OnlyConflicted
+        } else {
+            NotStaged::NothingToStage
+        });
     }
     // Unreachable `Err`: `operation_in_flight` returned above.
     let launched = launch(
@@ -767,7 +798,7 @@ pub fn stage_all(
         next_id,
     );
     say_if_refused(next, launched);
-    true
+    Ok(())
 }
 
 /// `d`: opens the confirm box for discarding the file under the cursor —
@@ -2141,7 +2172,7 @@ mod tests {
             WorkingTreeSection::Unstaged,
         );
         let mut commands = Vec::new();
-        assert!(stage_all(&mut state, &mut commands, &mut ids()));
+        assert_eq!(stage_all(&mut state, &mut commands, &mut ids()), Ok(()));
         let Command::Operate(_, op) = &commands[0] else {
             panic!("expected Operate");
         };
@@ -2160,7 +2191,10 @@ mod tests {
         );
         state.working_tree = Some(Arc::new(WorkingTreeStatus::default()));
         let mut commands = Vec::new();
-        assert!(!stage_all(&mut state, &mut commands, &mut ids()));
+        assert_eq!(
+            stage_all(&mut state, &mut commands, &mut ids()),
+            Err(NotStaged::NothingToStage)
+        );
     }
 
     #[test]
@@ -2250,7 +2284,7 @@ mod tests {
             1,
         );
         let mut commands = Vec::new();
-        assert!(stage_all(&mut state, &mut commands, &mut ids()));
+        assert_eq!(stage_all(&mut state, &mut commands, &mut ids()), Ok(()));
         let Command::Operate(_, op) = &commands[0] else {
             panic!("expected Operate");
         };
@@ -2268,7 +2302,10 @@ mod tests {
             1,
         );
         let mut commands = Vec::new();
-        assert!(!stage_all(&mut state, &mut commands, &mut ids()));
+        assert_eq!(
+            stage_all(&mut state, &mut commands, &mut ids()),
+            Err(NotStaged::NothingToStage)
+        );
         assert!(commands.is_empty());
         assert_eq!(state.operating, None);
     }

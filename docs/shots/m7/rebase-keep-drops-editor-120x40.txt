@@ -7,7 +7,7 @@ REWRITE feature-a · 3 commits since it left main · newest first · nothing wri
 
  AFTER y · not written yet
 
- every commit dropped · the branch would be its base again
+ nothing kept yet · p keeps a commit
 
 
 

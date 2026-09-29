@@ -1,6 +1,6 @@
 # 30n: the rebase-editor entry, the open race, and four small fixes (review 08..rebase-keeps-drops Q1, Q2, m1, m3, m5, m6)
 
-Status: ready
+Status: done
 Build with: Opus. Six local fixes across graft-ops and graft, each pinned by a named test. Q2 needs the stale-id path
 traced (which answer is dropped, which modal holds the keys), not copied; nothing here is expensive to undo → not Fable.
 Blocked by: **follow 24-a** (holds graft `update/operate.rs`, where `stage_all` lives — m6) **and 24-a2** (holds
@@ -97,33 +97,33 @@ pub(crate) fn stage_all(state: &mut AppState, commands: &mut Vec<Command>, next_
 ```
 
 ## Acceptance (name the verifying test at tick time; **(red)** = write it, see it fail on today's code, then build)
-- [ ] **Q1:** `update::rewrite_editor::tests::an_unedited_rebase_editor_says_nothing_kept_yet` (red; AFTER words
+- [x] **Q1:** (ticked: `an_unedited_rebase_editor_says_nothing_kept_yet` red then green; `a_drop_he_marks_again_reads_every_commit_dropped`, `an_open_editor_with_every_row_dropped_keeps_its_words` green guards; graft-ops `rewrite::plan::tests::from_rebase_unedited_matches_the_rebase_todo` green, unedited) `update::rewrite_editor::tests::an_unedited_rebase_editor_says_nothing_kept_yet` (red; AFTER words
   exact, no `every commit dropped`); `a_drop_he_marks_again_reads_every_commit_dropped` (p then d on every row →
   ordinary words); `an_open_editor_with_every_row_dropped_keeps_its_words` (`Open` entry, all `d` → ordinary words,
   unchanged). graft-ops `from_rebase_unedited_matches_the_rebase_todo` still green, unedited.
-- [ ] **Q1 capture** re-taken by `capture_keep_drops_editor`, which now asserts `nothing kept yet · p keeps a commit`
+- [x] **Q1 capture** (ticked: `m7_walk::rebase_line::capture_keep_drops_editor` re-taken and asserting both; line 10 reads the new words, bar has no `y rewrite`; TSV row 4, TESTING.md :2855 (the row had moved from :2849), sheet re-assembled) re-taken by `capture_keep_drops_editor`, which now asserts `nothing kept yet · p keeps a commit`
   and the absence of `every commit dropped`: `docs/shots/m7/rebase-keep-drops-editor-120x40.txt`. **Right:** as before
   (3× `already in main · p keeps it`, `─ main` base row, `▸` on a3), and line 10 reads `nothing kept yet · p keeps a
   commit`; no `y rewrite` in the bar. TSV row 4 and TESTING.md :2849 say exactly that; contact sheet re-assembled.
   Colour unverified (rule 5).
-- [ ] **Q2:** `update::rewrite_editor::tests::r_in_a_preview_while_a_read_is_out_opens_on_the_rebase` (red: the old
+- [x] **Q2:** (ticked: all four named tests red then green; `esc_while_reading_still_cancels` is the old `esc_while_reading_cancels_the_open` renamed, green) `update::rewrite_editor::tests::r_in_a_preview_while_a_read_is_out_opens_on_the_rebase` (red: the old
   answer dropped, the editor opens with `AlreadyIn` rows); `r_on_the_graph_while_a_read_is_out_restarts_it`;
   `an_answer_under_a_preview_does_not_open_the_editor` (red: preview still up, `rewrite.editor` `None`, status reason
   and keys `R opens it` exact); `an_answer_under_a_preview_from_a_rebase_names_r_then_r` (keys `r then R opens it`);
   `esc_while_reading_still_cancels` (green guard).
-- [ ] **m1:** `update::preview::tests::r_is_unbound_when_the_preview_cannot_be_drawn` (red: undrawable box, `R` →
+- [x] **m1:** (ticked: `update::preview::tests::r_is_unbound_when_the_preview_cannot_be_drawn` red then green; `r_is_unbound_in_other_previews`, `the_row_names_r_only_when_live` green) `update::preview::tests::r_is_unbound_when_the_preview_cannot_be_drawn` (red: undrawable box, `R` →
   no `OpenRewrite`, box stays); `r_is_unbound_in_other_previews` and `the_row_names_r_only_when_live` green.
-- [ ] **m3:** graft-ops `head_is_refuses_an_unborn_head_as_head_unborn` (red) beside `head_is`; `explain` words test
+- [x] **m3:** (ticked: graft-ops `operation::history::tests::head_is_refuses_an_unborn_head_as_head_unborn` red (did not compile: no variant), `operation::tests::head_unborn_says_there_is_no_commit_and_the_key_that_makes_one`; graft `o_on_an_unborn_head_says_check_picks_words` seen red on the old words, then green) graft-ops `head_is_refuses_an_unborn_head_as_head_unborn` (red) beside `head_is`; `explain` words test
   for `HeadUnborn`. graft `context_menu::tests::o_on_an_unborn_head_says_check_picks_words` expectation moved to the
   new words (red first). Any graft-ops test pinning `BranchChanged` for `Unborn`: updated, listed in NOTES.
-- [ ] **m5:** `update::rewrite_editor::tests::a_new_editor_claims_nothing_before_its_first_plan` (red: `new` on a
+- [x] **m5:** (ticked: `a_new_editor_claims_nothing_before_its_first_plan` red then green; `a_new_all_drop_editor_is_invalid_from_the_start` green before and after) `update::rewrite_editor::tests::a_new_editor_claims_nothing_before_its_first_plan` (red: `new` on a
   todo with a `pick` → AFTER is not `Invalid(EverythingDropped)`); `a_new_all_drop_editor_is_invalid_from_the_start`.
-- [ ] **m6:** `update::keys::edit_stop` tests `space_with_nothing_to_stage_says_so` (red), `space_while_a_write_runs_says_so`
+- [x] **m6:** (ticked: `update::keys::edit_stop_tests::space_with_nothing_to_stage_says_so`, `space_while_a_write_runs_says_so`, `update::detail::tests::ctrl_a_with_nothing_to_stage_says_so` all red then green; 07d `space` tests green) `update::keys::edit_stop` tests `space_with_nothing_to_stage_says_so` (red), `space_while_a_write_runs_says_so`
   (red); the `Ctrl+A` caller's `ctrl_a_with_nothing_to_stage_says_so` (red). 07d's `space` tests green; any test
   pinning `Ctrl+A`'s silence updated and named in NOTES.
-- [ ] MAP.md: graft-ops `Refusal::HeadUnborn`; graft `stage_all`'s return and `NotStaged`, `open_rewrite`/`opened`'s
+- [x] MAP.md: (ticked: docs only; graft-ops :56, graft `open_rewrite`/`opened`/`stage_all`/`NotStaged`/`no_box_is_up`/`keeps_drops`) graft-ops `Refusal::HeadUnborn`; graft `stage_all`'s return and `NotStaged`, `open_rewrite`/`opened`'s
   race rules, `keeps_drops_here`'s `acts()`. Docs only.
-- [ ] Gates workspace-wide.
+- [x] Gates workspace-wide. (ticked: fmt, clippy -D warnings, nextest 4857/4857, test --doc all ok)
 
 ## Touches (check each; say how on the **Touches:** line)
 - **`Refusal`:** every exhaustive `match` on it (graft-ops `explain`, graft `operate::refusal_status`, grep
@@ -148,3 +148,11 @@ workspace-wide.
 Medium (~50k). If it compacts, say so; split point: m3 (graft-ops + its one graft test) first, then the rest.
 
 ## NOTES (builder)
+
+- No compaction. No scout (ticket: "Scout: none", review names every line; re-grepped each).
+- **Q1 `y`:** `after::start`'s `After::Invalid` arm (`update/rewrite_editor/after.rs:95`) sets `editor.notice` — now `words::invalid`, so `y` there writes `nothing kept yet · p keeps a commit`. Words made in graft `words::invalid`; graft-ops `validate`/`explain` unchanged. Condition: `EverythingDropped` and every row `Drop` with `by_name == AlreadyIn`.
+- **Q2:** gate at `update/rewrite_editor.rs:552`. Shared the predicate: extracted `keys::edit_stop::no_box_is_up` (modal owns keys, or any graph overlay) from `graph_has_the_keyboard`; focus deliberately not part of it (Tab to the pane during the read is not "a box"). Verified by test that the sticky survives `Esc` on the preview. Refusal/failure outcomes of `opened` unchanged. Replaced test `a_second_capital_r_while_reading_starts_nothing` (it pinned the old silent return) with `r_on_the_graph_while_a_read_is_out_restarts_it`.
+- **m3 `head_is(` callers:** `check_merge`, `check_rebase`, `check_pick`, `check_revert`, `check_reset` (`Head` target), `operation/rewrite.rs:56` (rewrite). All true under `HEAD has no commit yet · c makes the first one`. `check_checkout`'s own `BranchChanged` (head_before compare) untouched. No graft-ops test pinned `BranchChanged` for `Unborn`. Note: `Refusal::UnbornHead` (amend/stash words) already exists; kept apart per Decided 4 — its words name amend and stash, false here. Conductor may want one variant later.
+- **m6:** Ctrl+A caller is `update/detail/keys.rs` `changes_pane_write_key`; it now returns `true` on `Err` (was `false`, fall-through; Ctrl+A has no other meaning there, keymap §2.4). `nothing to stash` is **not** a `Status` anywhere (it is the stash prompt's inline refusal, `view/stash.rs:100`), so `nothing to stage` uses `Status::sticky` (the refusal kind, as `nothing to skip in a merge`). Deviation from signature: `WriteRunning(InFlight)` carries the running write for its words. Extra variants: `OnlyConflicted` (`stage all does not act on a conflicted file — resolve the conflict first`, `conflict_refusal`'s words), `Unread` (working tree not read; `Status::Waiting`, `still reading the changes — try again in a moment`). `stage_all` now `pub(crate)`. Operate's `stage_all_*` tests moved from bool to `Ok`/`Err(NothingToStage)`; no test pinned Ctrl+A's silence.
+- **m5:** new `After::NotAsked` (drawn `Checking`); test fixture `open_an_editor_planned(false)` now sets `Invalid(EverythingDropped)` explicitly (it relied on the placeholder).
+- Walk `keep_a_suggested_drop` green, unedited. Colour unverified (rule 5).

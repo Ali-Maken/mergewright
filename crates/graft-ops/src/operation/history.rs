@@ -515,12 +515,13 @@ pub(super) fn tip_holds(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
 }
 
 /// `HEAD` must still be on the tip's branch (or detached, for `HEAD`), and
-/// the tip must hold.
+/// the tip must hold. An unborn `HEAD` is `HeadUnborn`: it has no commit to
+/// act on, and it did not move.
 pub(super) fn head_is(tip: &Tip, facts: &RepoFacts) -> Result<(), Refusal> {
     let on_it = match &facts.head {
         HeadRef::Branch(name) => *name == tip.name,
         HeadRef::Detached(_) => tip.name == "HEAD",
-        HeadRef::Unborn(_) => false,
+        HeadRef::Unborn(_) => return Err(Refusal::HeadUnborn),
     };
     if !on_it {
         return Err(Refusal::BranchChanged);

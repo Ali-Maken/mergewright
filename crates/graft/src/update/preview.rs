@@ -491,6 +491,11 @@ pub(crate) fn keeps_drops<'a>(
 /// `HEAD` is on as the refs read it. `None` while the plan is out.
 fn keeps_drops_here(state: &AppState) -> Option<&RebaseParams> {
     let preview = state.preview.as_ref()?;
+    // A box that cannot act (undrawable, or nothing to do) names no key;
+    // `R` must not answer where the footer says only `esc` (30n m1).
+    if !preview.acts() {
+        return None;
+    }
     let planned = preview.planned()?;
     let head = state.refs.as_deref().and_then(current_branch)?;
     keeps_drops(&preview.subject, &planned.plan, Some(&head.name))
@@ -1044,10 +1049,10 @@ fn take_operation(state: &AppState) -> Result<Operation, Status> {
     }
     // No tip on HEAD: reachable, since an orphan branch still shows the
     // other branches' commits. `check_pick` refuses that HEAD as
-    // `BranchChanged` (graft-ops `head_is`), and `o` says the same words
-    // (ticket 11 Decided).
+    // `HeadUnborn` (graft-ops `head_is`), and `o` says the same words
+    // (ticket 11 Decided; 30n m3).
     let head = super::context_menu::verbs::head_tip(refs)
-        .ok_or_else(|| Status::sticky(graft_ops::operation::Refusal::BranchChanged.explain()))?;
+        .ok_or_else(|| Status::sticky(graft_ops::operation::Refusal::HeadUnborn.explain()))?;
     let subject = String::from_utf8_lossy(row.commit.subject()).into_owned();
     let params = super::context_menu::verbs::pick_params(id, &subject, &head);
     let refused = params.check_commit(id, id == head.oid, row.commit.parents.len());

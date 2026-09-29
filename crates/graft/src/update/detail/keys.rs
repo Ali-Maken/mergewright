@@ -266,7 +266,11 @@ fn changes_pane_write_key(
             super::super::operate::request_discard(next)
         }
     } else if key.code == KeyCode::Char('a') && key.modifiers == Modifiers::CONTROL {
-        super::super::operate::stage_all(next, commands, &mut ids)
+        // `Ctrl+A` has no other meaning here: staging nothing says why.
+        if let Err(why) = super::super::operate::stage_all(next, commands, &mut ids) {
+            next.status = why.status();
+        }
+        true
     } else {
         false
     };

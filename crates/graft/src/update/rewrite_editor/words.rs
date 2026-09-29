@@ -2,11 +2,33 @@
 
 use graft_ops::rewrite::{TodoAction, TodoProblem, squash_groups};
 
-use super::{After, AfterFacts, MessageFacts, RewriteEditor, Right, RowFacts, ViewFacts};
+use super::{After, AfterFacts, MarkedBy, MessageFacts, RewriteEditor, Right, RowFacts, ViewFacts};
 use crate::update::state::Status;
 
 /// `p s f d e r`, a move, onto the base row (R1).
 pub(super) const BASE_STAYS: &str = "the base stays \u{b7} it isn't yours to rewrite";
+
+/// Opened from a rebase whose every row is a suggested drop he has not
+/// touched: he pressed `R` to keep one, so the first words say where he is
+/// and the next key, not a refusal (30n Q1; ux-principles §3.1, H9).
+pub(super) const NOTHING_KEPT_YET: &str = "nothing kept yet \u{b7} p keeps a commit";
+
+/// An invalid todo's words, on the AFTER side and on `y`: the problem's,
+/// except [`NOTHING_KEPT_YET`] while every row is still a drop the rebase
+/// suggested. Once he marks any of them himself, every drop is his choice
+/// and the problem's own words come back.
+pub(super) fn invalid(editor: &RewriteEditor, problem: &TodoProblem) -> String {
+    let arrived = *problem == TodoProblem::EverythingDropped
+        && editor.todo.iter().all(|row| {
+            row.action == TodoAction::Drop
+                && editor.by_name.get(&row.commit) == Some(&MarkedBy::AlreadyIn)
+        });
+    if arrived {
+        NOTHING_KEPT_YET.to_owned()
+    } else {
+        problem.explain()
+    }
+}
 
 /// `r` on a melded row: its message is the kept row's.
 pub(super) fn melds_into(kept_subject: &str) -> String {
@@ -76,11 +98,11 @@ pub(super) fn view_facts(editor: &RewriteEditor) -> ViewFacts<'_> {
         field,
         messages: messages(editor),
         after: match &editor.after {
-            After::Pending { .. } => AfterFacts::Checking,
+            After::NotAsked | After::Pending { .. } => AfterFacts::Checking,
             After::Ready { planned, .. } => AfterFacts::Ready(planned),
             After::Failed(why) => AfterFacts::Failed(why),
             After::Refused(words) => AfterFacts::Refused(words),
-            After::Invalid(problem) => AfterFacts::Invalid(problem.explain()),
+            After::Invalid(problem) => AfterFacts::Invalid(invalid(editor, problem)),
         },
         changes: match &editor.right {
             Right::Changes { commit, files } => Some((*commit, files)),

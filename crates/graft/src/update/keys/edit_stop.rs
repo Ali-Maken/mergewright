@@ -23,7 +23,7 @@ pub(crate) fn space_stages_here(state: &AppState) -> bool {
 /// `space` at an edit stop on a staging row: `Ctrl+A`'s stage-all, the same
 /// `Operation`, command and journal entry (`operate::stage_all`). `true`
 /// when the key was this one's, whether or not anything was stageable —
-/// with nothing to stage it says what `Ctrl+A` says (nothing), and never
+/// with nothing staged it says why, in `Ctrl+A`'s words (30n m6), and never
 /// falls through to the fold.
 pub(super) fn space_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     if key.code != KeyCode::Char(' ') || key.modifiers != Modifiers::NONE {
@@ -33,16 +33,24 @@ pub(super) fn space_key(next: &mut AppState, commands: &mut Vec<Command>, key: K
         return false;
     }
     let mut local_jobs = next.local_jobs;
-    // `stage_all`'s `false` (a write running, or nothing stageable) is
-    // `Ctrl+A`'s own silence; the key is still this one's.
-    super::super::operate::stage_all(next, commands, &mut || local_jobs.next_id());
+    let staged = super::super::operate::stage_all(next, commands, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
+    if let Err(why) = staged {
+        next.status = why.status();
+    }
     true
 }
 
 /// The graph, not a pane, a modal or an overlay, has the keyboard.
 fn graph_has_the_keyboard(state: &AppState) -> bool {
-    state.graph_has_focus() && !state.modal_owns_keys() && state.graph_overlay().is_none()
+    state.graph_has_focus() && no_box_is_up(state)
+}
+
+/// No modal owns the keys and no overlay stands over the graph. Also asked
+/// by the rewrite editor's open read when it answers: the editor never
+/// opens over another box (`rewrite_editor::opened`, 30n Q2).
+pub(crate) fn no_box_is_up(state: &AppState) -> bool {
+    !state.modal_owns_keys() && state.graph_overlay().is_none()
 }
 
 /// The cursor is on `HEAD`'s row — the stopped commit's at an edit stop

@@ -68,7 +68,8 @@ fn ctrl_a(state: &AppState) -> (AppState, Vec<Command>) {
     let mut commands = Vec::new();
     let mut local_jobs = next.local_jobs;
     assert!(
-        crate::update::operate::stage_all(&mut next, &mut commands, &mut || local_jobs.next_id()),
+        crate::update::operate::stage_all(&mut next, &mut commands, &mut || local_jobs.next_id())
+            .is_ok(),
         "Ctrl+A stages here"
     );
     next.local_jobs = local_jobs;
@@ -199,4 +200,32 @@ fn space_with_the_banner_focused_is_the_banners() {
     assert_eq!(commands, sent);
     assert_eq!(next.status, want.status);
     assert_eq!(next.history, want.history);
+}
+
+/// 30n m6: `space stage` with nothing stageable says so, as `Ctrl+A` does.
+#[test]
+fn space_with_nothing_to_stage_says_so() {
+    let mut state = screen(HEAD_ROW, true);
+    state.working_tree = Some(Arc::new(WorkingTreeStatus::default()));
+    assert!(space_stages_here(&state));
+    let (next, commands) = space(&state);
+    assert!(!stages(&commands), "{commands:?}");
+    assert_eq!(
+        next.status,
+        crate::update::state::Status::sticky("nothing to stage")
+    );
+}
+
+/// 30n m6: with a write running it says what `f` says.
+#[test]
+fn space_while_a_write_runs_says_so() {
+    let mut state = screen(HEAD_ROW, true);
+    state.operating = Some(JobId::new(900));
+    assert!(space_stages_here(&state));
+    let (next, commands) = space(&state);
+    assert!(!stages(&commands), "{commands:?}");
+    assert_eq!(
+        next.status,
+        crate::update::state::Status::Failed("wait for the write to finish".to_owned())
+    );
 }
