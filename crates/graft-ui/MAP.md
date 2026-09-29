@@ -388,3 +388,5 @@ owns the `TextField`/`TextArea` halves and passes a view.
 ## File layout (m7-power-tools/30m: pure moves, public paths unchanged)
 
 - `rewrite_editor.rs` → `rewrite_editor/view.rs` (the view types), `rewrite_editor/layout.rs` (`rewrite_row_at`, the layout), `rewrite_editor/draw.rs` (`draw_rewrite_editor`, `RewriteEditorWidget`, rows), `rewrite_editor/right.rs` (right side and message block). All re-exported from `rewrite_editor`.
+- `journal_screen.rs` → `journal_screen/view.rs` (`RowMark`, `RowKind`, `JournalRowView`, `JournalStatus`, `JournalStatusRow`, `JournalView`, re-exported), `journal_screen/pieces.rs` (a row cut into pieces); inline tests → `journal_screen/tests.rs`.
+

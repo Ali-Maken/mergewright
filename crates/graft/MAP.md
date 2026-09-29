@@ -1061,3 +1061,7 @@ The put-in's reads (m7-power-tools/09).
 - `update/rewrite_editor.rs` → `rewrite_editor/open.rs` (`open_rewrite*`, `opened`, `field_open`), `rewrite_editor/routing.rs` (`owns`, `after_planned`, `files_listed`, `message_returned`, `job_ended`, `write_answered`); `ViewFacts`/`RowFacts`/`MessageFacts`/`AfterFacts` → `rewrite_editor/words.rs`; `RewriteEditor::by_name` renamed `marked_by`. `rewrite_editor/keys.rs` → `keys/field.rs` (the reword field, `keep_message`).
 - `view/rewrite_editor.rs` → `view/rewrite_editor/right.rs` (the right side: after-state, ghost and group notes).
 - Re-exports dropped because nothing used them (the items are unchanged, reached at their child path): `operate::NotStaged` (`operate::stage_discard`), `operate::staging_not_kept_rungs` (`operate::outcome`, one test import re-pointed), `preview::keeps_drops` (`preview::keys`), `rewrite_editor::MessageFacts` (`rewrite_editor::words`), `banner::resumed_words` (kept under `cfg(test)` for its tests).
+- `update/journal.rs` → `journal/answers.rs` (`journal_event`, `outside_landed`, `lost_landed`, `recover_answered`), `journal/keys.rs` (`journal_key`, `journal_enter`, `close`, branch-here, `Enter`). Re-export `journal::journal_enter` kept under `cfg(test)` only (no non-test caller).
+- `view/journal.rs` → `view/journal/summary.rs` (an entry's summary and failure words); inline tests → `view/journal/tests.rs`.
+- `crates/graft/tests/it/stop_ladder_readers.rs` pins the ladder's definition file: re-pointed `banner/stop.rs` → `banner/stop/wording.rs`.
+
