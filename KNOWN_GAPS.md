@@ -1028,3 +1028,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r24-m14 | `find_lost` drops a failed subject read (jobs/journal_list.rs:78-84), surfacing only as the row placeholder (minor 14; tied to 30o's minor 5 fix) | **broken** (minor) | M7 |
 | M7/r24-q1 | `R` on graph then `J` during the read: J's status row shows `rewrite editor not opened · another box was open` (rewrite_editor.rs:552; review Q1). Intended? | **unverified** (question) | M7 |
 | M7/24-legend | J legend `● done in Graft: u can undo it` is also shown for a fetch row `u` can't undo; legend's `✗` covers lost edits too (24-b NOTES; 30o out of scope) | **broken** (words) | M7 |
+| M7/30m-left | Still over ~400 lines after 30m: graft `update/keys.rs` 438, graft-ui `hints/lists.rs` 485, `update/preview.rs` 423, `operate/outcome.rs` 420 (30m NOTES) | **broken** (6.2) | M8 |
