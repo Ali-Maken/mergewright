@@ -1019,3 +1019,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M7/r08rk-m11 | 08-a Q3: bar hides `R` on default-chain rows but `R` still opens and `plan` decides, vs R1 (ticket 08 NOTES :388-389; review m11, :259) | **unverified** (question) | M7 |
 | M7/r08rk-q3 | `r` and `R` side by side in the preview footer, opposite outcomes; a missed Shift confirms the drop (`u` recovers). Keymap §2.3b decided it → usability walk (review Q3, :299) | **unverified** (question) | M7 |
 | M7/30n-unborn | Two refusals for one state: `Refusal::UnbornHead` (amend/stash words) and 30n's `Refusal::HeadUnborn` (graft-ops operation.rs; 30n NOTES). Merge into one name | **broken** (naming) | M7 |
+| M7/24-nback | Put-back box has no `N commits back on main` clause (ticket 24 Background; V3 decision) | **broken** (unbuilt) | M7 |
+| M7/24-click | Mouse click on `Put back` over J untested (shared `preview_click`; 24-a2 NOTES) | **unverified** | M7 |
+| M7/r24-m8 | `JournalView.location` computed every frame, never drawn (view/journal.rs:30,49; review minor 8, docs/reviews/m7-24-and-30n.md:226) | **broken** (dead field) | M7 |
+| M7/r24-m9 | J widget text fields are `String` not `SanitizedText` (journal_screen.rs:137,155,160; callers do sanitise; minor 9) | **broken** (types) | M7 |
+| M7/r24-m10 | ARCHITECTURE.md journal-browser entry misses M7 modules: update::recover, jobs::journal_list, ops::journal_list, Landing (minor 10) | **broken** (doc) | M7 |
+| M7/r24-m12 | NOTES of 24-0, 24-a2, 24-b, 30n carry no Touches line; hint_bar.rs J-bar tests untouched though 24-b listed them (minor 12) | **unverified** | M7 |
+| M7/r24-m14 | `find_lost` drops a failed subject read (jobs/journal_list.rs:78-84), surfacing only as the row placeholder (minor 14; tied to 30o's minor 5 fix) | **broken** (minor) | M7 |
+| M7/r24-q1 | `R` on graph then `J` during the read: J's status row shows `rewrite editor not opened · another box was open` (rewrite_editor.rs:552; review Q1). Intended? | **unverified** (question) | M7 |
