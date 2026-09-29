@@ -804,6 +804,7 @@ impl AppState {
     pub fn text_field_open(&self) -> bool {
         self.search_prompt.is_some()
             || super::place::prompt_open(self)
+            || super::journal::find::typing(self)
             || self.commit_editor.is_some()
             || self.stash.prompt.is_some()
             || self.credential.is_some()
@@ -831,6 +832,8 @@ impl AppState {
     /// Not the Map, journal or stash overlay: each claims only the keys it
     /// shows (§2.1), and the bar behind each offers `/ search`, which works
     /// there (`update::tests::the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows`).
+    /// J is the exception for `/`, `n`, `N`: its own find answers them
+    /// first (`update::journal::find::find_key`, keymap §2.11).
     #[must_use]
     pub fn modal_owns_keys(&self) -> bool {
         self.text_field_open()

@@ -465,3 +465,41 @@ fn journal_expanded_capture() {
     drop(state);
     app.close();
 }
+
+/// J's `/` find (m7-power-tools/30o-c): `/spike ⏎` on the "lost work"
+/// fixture. The title ends in blame's find tail, `▸` is on the first row
+/// at or below the cursor that names spike, and the bar offers `n N match`.
+/// Also `docs/shots/m7/journal-find-187x50.txt`.
+#[test]
+fn journal_find_capture() {
+    let fixture = lost_work();
+    let repo = fixture.work();
+    let (app, state) = opened(repo);
+    let mut route = Route::new("lost-to-shell-reset");
+    let mut state = open_j(&mut route, &app, &state);
+    for key in "/spike".chars() {
+        state = app.key(&state, KeyCode::Char(key));
+    }
+    let state = app.key(&state, KeyCode::Enter);
+    let frame = drawn(&state, 187, 50);
+    let body = text(&frame);
+    assert!(
+        frame
+            .first()
+            .is_some_and(|row| row.contains(" · find \"spike\" 1 of ")),
+        "the title's find tail:\n{body}"
+    );
+    assert!(
+        selected_row(&frame).contains("spike"),
+        "▸ on a row naming spike:\n{body}"
+    );
+    assert!(
+        frame
+            .last()
+            .is_some_and(|row| row.contains("/ find  n N match")),
+        "the bar:\n{body}"
+    );
+    check_shot("m7/journal-find-187x50.txt", &body);
+    drop(state);
+    app.close();
+}

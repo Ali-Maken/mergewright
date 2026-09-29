@@ -1,6 +1,6 @@
 # 30o: J review fixes — journey 15 in the app, walks that assert landings, one `u`, `/` find, seven minors (review m7-24-and-30n C1, M1, M3, M4, Minor 1–7, 13)
 
-Status: 30o-a done (2026-09-30); 30o-b done (2026-09-30); 30o-c ready
+Status: done (30o-a, 30o-b, 30o-c all 2026-09-30)
 Build with (three parts, one context each, **a → b → c**, sequential: they share walks, captures, TSV, sheet, TESTING rows):
 - **30o-a: Opus.** A graft-ops refusal is replaced under the M3 promise. The premise (the put-back's before-snapshot keeps
   what it replaces) is proved by a real-git `u` test, and the part has a stop condition if that test fails. Nothing is
@@ -408,31 +408,25 @@ pub struct JournalFindView { pub query: SanitizedText, pub at: Option<usize>, pu
 ```
 
 ### Acceptance
-- [ ] **V3** in NOTES, file:line. Every difference from R4's expected shape is named and taken from blame.
-- [ ] **Unit** (`update/journal/find` tests):
-  - `hits_find_a_lost_subject_a_branch_and_a_path` (red).
-  - `hits_skip_verdict_words` (red): `aborted` finds nothing on an aborted row.
+- [x] **V3** in NOTES, file:line. Every difference from R4's expected shape is named and taken from blame. (NOTES 30o-c "V3")
+- [x] **Unit** (`update/journal/find` tests, `crates/graft/src/update/journal/find/tests.rs`):
+  - `hits_find_a_lost_subject_a_branch_and_a_path` (red by mutation, see NOTES).
+  - `hits_skip_verdict_words` (red by mutation: `aborted` finds nothing on an aborted row).
   - `a_blank_find_has_no_hits`.
-- [ ] **Keys** (`tests/it/journal_screen.rs`, asserted from the frame):
-  - `slash_opens_the_find_on_js_title_row` (red: today `/` is swallowed).
-  - `typing_moves_to_the_first_row_that_holds_it` (red).
+- [x] **Keys** (`tests/it/journal_screen.rs`, asserted from the frame; red on HEAD before routing unless noted):
+  - `slash_opens_the_find_on_js_title_row` (red: `/` opened the graph's search).
+  - `typing_then_enter_moves_to_the_first_row_that_holds_it` (red; renamed from `typing_moves_…`: blame's find is not incremental, V3).
   - `enter_keeps_the_find_and_n_steps_the_hits` (red; `n` wraps, `N` goes back).
-  - `esc_while_typing_puts_the_cursor_back` (red).
+  - `esc_while_typing_puts_the_cursor_back` (**green on HEAD**: the graph search's `Esc` also left the cursor; blame's cursor never moves while typing, V3).
   - `esc_drops_a_kept_find_then_closes_j` (red).
   - `no_match_says_so_and_moves_nothing` (red).
   - `a_paste_goes_into_the_find` (red).
-- [ ] **The trap:** `u_typed_into_the_find_is_text` (red: today `u` undoes). The journal is unchanged by `rev-parse`
-  and by the entry count.
-- [ ] **Stages:** `a_find_survives_rows_arriving`: stage 3 lands mid-find, the cursor keeps its `RowKey`, `of`
-  counts the new `✗` hit, and nothing is preselected.
-- [ ] Green, named: `n_goes_to_the_next_lost_row`, `no_preselect_after_a_key`, `escape_closes_it_…`, J's put-back
-  box tests (`Esc` there still goes to the box first).
-- [ ] **Capture** `docs/shots/m7/journal-find-187x50.txt` (≤ 200 KB) from a named test on the `lost_work` fixture:
-  `/spike ⏎`. **Right:** the title ends in blame's find tail for `spike` (`1 of 2` or as blame words it); `▸` on the
-  first row naming spike; the bar as R4. TSV and TESTING rows say exactly that, plus "Colour unverified (rule 5)".
-  Sheet rebuilt.
-- [ ] Re-shot captures (only if the bar gained `/`): each listed in NOTES as re-shot, with the one-line diff.
-- [ ] MAP.md (graft, graft-ui). Gates workspace-wide.
+- [x] **The trap:** `u_typed_into_the_find_is_text` (red on HEAD by its bar assert: `u` went into the graph search, not an undo; red by mutation — `text_field_open` entry removed → `Ctrl+Z` launched `undo`, `Busy("undo · esc cancels")`). HEAD by `rev-parse`, entry count unchanged.
+- [x] **Stages:** `a_find_survives_rows_arriving` (red): stage 3 lands mid-find, cursor keeps its `RowKey`, `of` counts the new `✗` hit, nothing preselected.
+- [x] Green, named: `n_goes_to_the_next_lost_row`, `no_preselect_after_a_key`, `escape_closes_it_and_cancels_a_read_that_was_only_refreshing_the_list`, `put_back_box` tests — all in the full workspace nextest run (4917/4917).
+- [x] **Capture** `docs/shots/m7/journal-find-187x50.txt` (2 076 B), test `m7_walk::journal::journal_find_capture`: title ends `· find "spike" 1 of 4`, `▸` on `switch from spike to main`, bar `⏎ switch back to spike  b new branch here  / find  n N match  J/esc close`. TSV row after `journal-expanded-120x40.txt`, TESTING row, m7 sheet rebuilt.
+- [x] Re-shot captures (the bar gained `/ find`): listed in NOTES with diffs.
+- [x] MAP.md (graft, graft-ui). Gates workspace-wide: fmt, clippy `-D warnings`, nextest 4917/4917, `test --doc` ok.
 
 ### Touches
 - **`text_field_open`:** every global binding asks it (`u`, `U`, `Ctrl+Z`, `Esc` on a held failure; MAP
@@ -562,3 +556,30 @@ moves it onto the `✗` row before `u`; the test still proves `u` undoes the new
 
 **Colour:** unverified (captures are character grids). **Not verified by eye:** the re-shot m3 frames.
 
+### 30o-c (2026-09-30, builder Opus; two scouts: `.scratch/m7-power-tools/scouts/30o-c-blame-find.md`, `30o-c-journal.md`. Not compacted)
+
+**V3 — blame's find, key by key** (all `crates/graft/src/update/place/keys.rs` unless named; read myself after the scout):
+- `/` :60 `find_prompt = Some(String::new())`. Typing :96 pushes; **not incremental** — cursor moves only on `⏎` (:99-112), to the first match `>= cursor`, else the first (wrap). Empty `⏎` closes the prompt, no find.
+- `Esc` while typing :98 closes the prompt only (the cursor never moved; a kept find stays). `Esc` with a find kept :143-155 drops it; next `Esc` → failure status, then back. `n`/`N` :120-140 wrap; nothing without a find.
+- `Ctrl+U`: no handler (:96 guard drops Ctrl chars). Paste: none — `update/mod.rs` paste router never reached blame's prompt.
+- Case: `to_lowercase().contains` (`place/blame_state.rs:30-40`), same folding as `search::Query` (`src/search.rs:31-80`, `to_lowercase` both sides).
+- Title tail `graft-ui/src/blame.rs:282-286`: ` · find "<q>" <at> of <of>` / ` · find "<q>" · no match`; `at` = matches `<=` cursor, `.max(1)` (`blame_state.rs:66-74`). Inline in `fn title`, not a function — so J repeats the format (`graft-ui/src/journal_screen.rs` `header`), not shared.
+- Bar `graft-ui/src/graph_screen/hints/lists.rs:206-223`: `/ find` always; `n N match` after it only with a find kept; while typing the bar row is ` /<typed>` (`view/frame/overlays.rs:176-184`).
+
+**Differences from R4 taken from blame:** not incremental (typing moves nothing; `⏎` finds); so `Esc` while typing has nothing to put back and `JournalFind.before` is dropped; no `Ctrl+U`. Two tests renamed/reworded for it (above). `JournalFind` is `{ typing: Option<String>, kept: Option<String> }` (blame's two fields, a new `/` over a kept find leaves it in force) instead of `{ field: TextField, typing, before }`; `JournalFindView` has no `typing: bool` — the prompt is `JournalView.find_prompt`. **One deviation from blame:** paste goes into J's prompt (the ticket's acceptance). Blame's prompt drops pastes: a gap for the conductor, not fixed here (outside the file set).
+
+**Routing.** `/` in J opened the graph's search (`update/mod.rs` search gate: J not in `modal_owns_keys`). `find_key` now runs in `core_event` after credential and name prompt, before the search gate. It claims prompt keys always; `/`, and `n`/`N`/`Esc` over a kept find, only with graph focus and no modal (put-back box, confirm, name prompt first). With the changes pane focused over J, `/` stays the graph search (as J's other keys, `pane_and_overlay_key`). Without a kept find, `n`/`N` still fall through: if a graph search is active they step it, not J's `✗` (pre-existing, unchanged; a question for the conductor). `journal_enter` resets the find (one line in `journal/keys.rs`).
+
+**Outside the list, touched as knock-ons of the bar change:** `update/journal/tests/minors.rs` (`no_enter_hint_on_a_fetch_row_in_the_bar` now starts `/ find  space command log`); `graft-ui/src/journal_screen/tests.rs` (three bar asserts). `modal_owns_keys` doc line in `state.rs`.
+
+**Re-shot (only line changed is the bar; `/ find` inserted):**
+- m7 `journal-187x50`, `-187x24`, `-100x30`: `…b new branch here  / find  J/esc close`; `journal-140x40`: same on `put main back to before this`.
+- m7 `journal-after-put-back-120x40`, m3 `m3-08-journal-after-unstage-{80x24,160x48}`: `⏎ undo this  / find  space command log  J/esc close`.
+- m7 `journal-expanded-120x40`, m3 `m3-journal-expanded`: `⏎ revert to before this  / find  space command log …`; `m3-journal-{80x24,160x48}`: `⏎ redo this  / find  space command log …`.
+- m4 `m4-07-journal-remote-rows-{80x24,160x48}`: `⏎ revert to before this  space command log` → `/ find  space command log` — **also 30o-b's Minor 4** (the selected row is a push; no `⏎`): that pty capture was stale since 30o-b (pty walks are not in nextest).
+- m3-08 and m4-07 re-shot with the pty scripts (`GRAFT_UPDATE_SHOTS=1 … pty-walk-m3.py/pty-walk-m4.py <size> <scenario>`), then re-run without update: settled, match.
+- Sheets rebuilt: m7 (`--captions-order`, 124k), m3 (131k), m4 (117k); no home paths (grep `/Users/`). TSV and TESTING rows quoting J's bar updated (2 each).
+
+**Hint catalogue:** `HintContext::Journal` (`graft-ui/src/graph_screen/hints/lists.rs:62`, `⏎ revert  esc close`) is not J's drawn bar (J draws its own footer); left unchanged. `the_bar_behind_an_overlay_draws_no_key_the_overlay_swallows` green.
+
+**Not verified:** colour (rule 5); the frames by eye (rule 6). `/code-review` not run (context budget); self-reviewed diff only.

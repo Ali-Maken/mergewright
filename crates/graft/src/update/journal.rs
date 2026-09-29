@@ -28,6 +28,7 @@ use crate::jobs::journal_list::LostFound;
 use crate::jobs::undo::JournalRead;
 
 mod answers;
+pub(crate) mod find;
 mod keys;
 pub(super) use answers::journal_event;
 pub(crate) use answers::{lost_landed, outside_landed, recover_answered};
@@ -156,6 +157,9 @@ pub struct JournalState {
     /// A `⏎` asking what a row puts back, and the row it asked for. An
     /// answer under any other id is stale.
     pub(crate) recovering: Option<(JobId, RowKey)>,
+    /// The `/` find: its prompt while he types, and the find kept
+    /// (m7-power-tools/30o-c, [`find`]).
+    pub(crate) find: find::JournalFind,
 }
 
 impl JournalState {

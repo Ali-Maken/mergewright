@@ -1064,6 +1064,12 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             if name_prompt_claimed(next, commands, key) {
                 return;
             }
+            // J's own `/` find (§2.11) before the graph's search: with J up,
+            // `/`, and `n`/`N` over a kept find, are J's; its prompt takes
+            // every letter (m7-power-tools/30o-c).
+            if journal::find::find_key(next, key) {
+                return;
+            }
             if next.search_prompt.is_some() || !next.harness.hand_back.contains(&key.code) {
                 // An open search prompt takes every key. Otherwise `/`, `n`
                 // and `N` are the graph's, and a modal pane or box that is
@@ -1126,6 +1132,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // with no text field on it.
             if !credential::credential_paste(next, &text)
                 && !name_prompt::name_prompt_paste(next, &text)
+                && !journal::find::find_paste(next, &text)
                 && !finish::paste(next, &text)
             {
                 let _taken: bool = commit_editor::paste(next, &text);

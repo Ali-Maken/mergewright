@@ -93,7 +93,10 @@ fn no_enter_hint_on_a_fetch_row_in_the_bar() {
     let frame = frame(&state);
     let body = frame.join("\n");
     assert!(!bar(&frame).contains('⏎'), "no ⏎ hint:\n{body}");
-    assert!(bar(&frame).starts_with("space command log"), "{body}");
+    assert!(
+        bar(&frame).starts_with("/ find  space command log"),
+        "{body}"
+    );
 }
 
 /// Minor 4's other half: a `●` row Graft does undo keeps the time machine.

@@ -120,6 +120,19 @@ pub struct JournalStatusRow {
     pub problem: bool,
 }
 
+/// J's kept `/` find, for the title's tail (m7-power-tools/30o-c): drawn as
+/// blame's `FindTitle` is, ` · find "<query>" <at> of <of>`, or
+/// ` · find "<query>" · no match`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JournalFindView {
+    /// What was found, sanitised.
+    pub query: SanitizedText,
+    /// Which hit the cursor is at, 1-based; `None` when nothing matched.
+    pub at: Option<usize>,
+    /// How many rows it matched.
+    pub of: usize,
+}
+
 /// Everything the browser draws.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JournalView {
@@ -146,4 +159,8 @@ pub struct JournalView {
     /// A box is docked over the browser and names the keys: the bar is
     /// left blank, as the stash list's is under its box.
     pub box_open: bool,
+    /// The find `⏎` kept: the title's tail, and `n N match` on the bar.
+    pub find: Option<JournalFindView>,
+    /// The `/` prompt while he types, drawn in place of the bar (blame's).
+    pub find_prompt: Option<SanitizedText>,
 }
